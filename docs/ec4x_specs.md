@@ -453,7 +453,7 @@ Possible fleet missions are listed in the table below. These are the classic fle
 | 08  | Blitz a World          | Loaded Troop Transports                  |
 | 09  | View a World           | At least one scout ship                  |
 | 10  | Scout a Sector         | At least one scout ship                  |
-| 11  | Scout a Solar System   | At least one ETAC                        |
+| 11  | Scout a Solar System   | At least one scout ship                  |
 | 12  | Colonize a World       | At least one ETAC                        |
 | 13  | Join another fleet     | None                                     |
 | 14  | Rendezvous at Sector   | None                                     |
