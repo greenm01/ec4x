@@ -4,6 +4,10 @@ Written by Mason A. Green
 
 In memory of Jonathan F. Pratt.
 
+Contributors:
+
+- Matthew Potter
+
 # Introduction
 
 EC4X is an asynchronous turn based wargame of the classic eXplore, eXpand, eXploit, and eXterminate (4X) variety.
@@ -40,39 +44,21 @@ Prestige is the key to victory. Crush your rivals and take the title of Emperor.
 There are several paths to the throne:
 
 1. Destroy all of your rival's assets.
-2. Crush your opponent's will and force them to capitulate.
-3. Set a game end year, and employ a combination of tactical prowess and subversion to outfox your opponents.
-4. Focus on economic development and population growth to outperform everyone else.
-5. Let your rivals destroy one another, then clean House afterwards.
-6. Outlast everyone.
+2. Capture every homeworld.
+3. Crush your opponent's will and force them to capitulate.
+4. Employ a combination of tactical prowess and subversion to outfox your opponents.
+5. Focus on economic development and population growth to outperform everyone else.
+6. Let your rivals destroy one another, then clean House afterwards.
 7. All of the above.
-8. Whatever the game allows.
+
+This list is not exhaustive. Use whatever means the game allows to win.
 
 Prestige points are won through a combination of military victory, population growth, production, subversion, technological development, and various other factors.
-
 Performing poorly, mismanaging your colonies, acts of sabotage, and acts of subterfuge by other Houses will lower your prestige.
 
 To prevent an open-ended stalemate, it may be prudent to set a game ending year. The goal of EC4X is to provide enough asymmetry to prevent such a condition. **(work in progress..... need help play-testing and regression analysis)**
 
-TODO: Provide a prestige table showing the various factors, both positive and negative.
-
-- Completely destroy a Task Force (+)
-- Force a task force to retreat (+)
-- Invade or blitz a planet (++)
-- Lose a planet (--)
-- Get surprised by a rogue fleet (-)
-- Get ambushed by a rogue fleet (-)
-- Lose a Starbase (-)
-- Destroy a Starbase (+)
-- Establish a new colony (+)
-- Max out the population of a colony (+)
-- Increase a planet's class via terraforming (+)
-- Excessive tax rate (-)
-- Invest IU above 50% of a colony's PU (+)
-- Achieve a new tech level (+)
-- Sabotage a rival Shipyard (+)
-- Spy on an rival's colony (+)
-- And so on.... get creative
+A table of Prestige values is listed in Section 9.
 
 ## 1.2 Turns
 
@@ -99,7 +85,7 @@ There are three classes of jump lanes: restricted, minor, and major. The hub is 
 
 Movement across the lanes is explained in Section 4.
 
-Players start the game with one homeworld (Class P6 planet with a Rich solar system and 500 PU) 250 Satoshis (SAT) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a cruiser, two destroyers, and two scouts. 
+Players start the game with one homeworld (Class P6 planet with a Rich solar system and 500 PU) 250 Monero (XMR) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a cruiser, two destroyers, and two scouts. 
 
 Each player's homeworld should be placed on the outer ring, as far as strategically possible from rival home system(s).
 
@@ -147,7 +133,7 @@ Feel free to create your own ships and races for asymmetrical warfare or narrati
 
 ### 2\.3.2 Spacelift Command
 
-The Spacelift Command provides commerce and transportation services in support of the House's expansion efforts. Assets are owned by the House and commanded by senior Space Force officers. Units are crewed and operated by the civilian Merchant Marine.
+The Spacelift Command provides commerce and transportation services in support of the House's expansion efforts. Assets are owned by the House and commanded by senior Space Force officers. Units are crewed and operated by loyal House citizens.
 
 Spacelift assets have no offensive weapons capability, and un-escorted units are easily captured or destroyed by rival forces. 
 
@@ -227,7 +213,7 @@ Fleets containing a Raider roll a 1D20 on the table above, with the appropriate 
 
 ### 2\.4.4 Starbases
 
-Starbases are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications. Starbases never retreat from combat.
+Starbases are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
 Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
@@ -271,19 +257,23 @@ The Guilds may be contracted to provide various critical services to the House, 
 
 # XY\.0 Economics
 
-The standard unit of account in EC4X is the Satoshi (SAT), i.e. money. The power of a House is fueled by economic might, which in turn is a function of population growth and harvested resources.
+The standard unit of account in EC4X is Monero (XMR), i.e. money. The power of a House is fueled by economic might, which in turn is a function of population growth and harvested resources.
 
-SATs settle instantaneously on the inter-dimensional Lightning network. (All comms and data transfers are instantaneous in this manner. Don't question; it's magic).
+XMR settle near instantaneously on the inter-dimensional communications network. (All comms and data transfers are instantaneous in this manner. Don't question; it's magic).
 
 ## XY\.1 Principles
 
-**Population Unit (PU)**: A unit of population that provides 1 SAT of productivity to the House.   
+**Population Unit (PU)**: A unit of population that provides 1 XMR of productivity to the House.   
 
 **Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately 50k souls. 
 
 The relationship between PSU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
-This is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentivizes eXpanding population across newly acquired planets. 
+This model is disinflinationary; inflation asymptotically approcahes zero over time, i.e. Monero.
+
+Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, defecit spending, out of control socialist entitlements, and simple greed by beaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity.  
+
+A high PSU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentivizes eXpanding population across newly acquired planets. 
 
 The equations (in Python) for converting PU to PSU:
 
@@ -310,7 +300,7 @@ pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + psu + 1
 
 An Excel spreadsheet is included in the Github 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo.  
 
-**Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in SATs.
+**Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in XMR.
 
 GCP = (PU * raw_index + IU) * el_mod
 
@@ -330,11 +320,11 @@ Look up the Raw Material classification of your colony's system in the RAW colum
 
 NCV = GCP * tax_rate
 
-**Tax Rate**: The tax rate that applies to all of your colonies. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler, and slow population growth.
+**Tax Rate**: The tax rate that applies to all of your colonies. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler, and stall population growth.
 
-**House Treasury**: The total sum of NCV collected from colonies is transferred to the House treasury at the beginning of each month (turn). Unspent SATs from each turn rollover and earn 2% interest from *the galactic banking cabal that controls the layer two Lightning channels*.
+**House Treasury**: The total sum of NCV collected from colonies is transferred to the House treasury at the beginning of each month (turn). Unspent XMR from each turn rollover and earn 2% interest on loans to the Space Guild.
 
-**Industrial Units (IU)**: The house may invest in the planetary industry of each colony. IUs may be placed on Small colonies (D1 class planets) or larger. IU invested above 50% of the planet's PU will be donated to the colony and increase House prestige.
+**Industrial Units (IU)**: The house may invest in the planetary industry of each colony. IUs may be placed on Level III+ colonies. IU invested above 50% of the colony's PU will be directed to civilian infrastructure projects that increase House prestige.
 
 ## XY\.2 Population Growth
 
@@ -356,15 +346,15 @@ The Space Guilds are contracted to transfer larger populations between existing 
 
 The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with Section 4.0.
 
-| Conditions | SATs/PTU |
-| ---------- |:--------:|
-| Eden       | 5        |
-| Lush       | 6        |
-| Benign     | 8        |
-| Harsh      | 11       |
-| Hostile    | 14       |
-| Desolate   | 18       |
-| Extreme    | 25       |
+| Conditions | XMR/PTU |
+| ---------- |:-------:|
+| Eden       | 5       |
+| Lush       | 6       |
+| Benign     | 8       |
+| Harsh      | 11      |
+| Hostile    | 14      |
+| Desolate   | 18      |
+| Extreme    | 25      |
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
@@ -376,7 +366,7 @@ In a standard game, all tech levels start at zero.
 
 ## XYZ\.1 Upgrades
 
-Houses may invest SATs to upgrade technologies, which are purchased in levels. 
+Houses may invest XMR to upgrade technologies, which are purchased in levels. 
 TODO: table with cost
 
 Technology upgrades may be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per technology each upgrade cycle.
@@ -391,7 +381,7 @@ Terraforming improve a planet's livable conditions, and thus the population limi
 
 P0 -> P1 -> P2 -> P3 -> P4 -> P5 -> P6 
 
-A planet may not skip a class, and each step costs the upper PU bound for the upgraded planet class in SATs. Example: Upgrading a P3 planet to a P4 planet requires level four terraforming and 1k SATs.
+A planet may not skip a class, and each step costs the upper PU bound for the upgraded planet class in XMR. Example: Upgrading a P3 planet to a P4 planet requires level four terraforming and 1k XMR.
 
 ETACs set the initial livable conditions for a Level I colony. Further terraforming is completed by colonists on the surface and do not require additional ETACs.
 
@@ -430,7 +420,7 @@ Shipyard construction of a ship in orbit is the standard method of commissioning
 
 Ship repairs require a shipyard. The cost of repair equals one quarter (25%) of the unit's PC.
 
-Example: A player wishes to repair a crippled tech-level III Cruiser. The cost is 7 * 0.25 = 1.75 SAT.
+Example: A player wishes to repair a crippled tech-level III Cruiser. The cost is 7 * 0.25 = 1.75 XMR.
 
 The logistics of repairing a ship planetside and returning it to orbit make it economically infeasible. Ships may be scrapped at a colony without restriction and earn 50% of the original PC back to the House treasury.
 
@@ -438,26 +428,28 @@ The logistics of repairing a ship planetside and returning it to orbit make it e
 
 ## 4.1 Fleet Orders
 
-Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterain Conquest.
+Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterain Conquest, modified for EC4X.
 
-| No. | Mission                | Requirements                             |
-| --- | ---------------------- | ---------------------------------------- |
-| 00  | None (hold position)   | None                                     |
-| 01  | Move Fleet (only)      | None                                     |
-| 02  | Seek Home              | None                                     |
-| 03  | Patrol a Sector        | None                                     |
-| 04  | Guard a Starbase       | Combat ship(s)                           |
-| 05  | Guard/Blockade a World | Combat ship(s)                           |
-| 06  | Bombard a World        | Combat ship(s)                           |
-| 07  | Invade a World         | Combat ship(s) & Loaded Troop Transports |
-| 08  | Blitz a World          | Loaded Troop Transports                  |
-| 09  | View a World           | At least one scout ship                  |
-| 10  | Scout a Sector         | At least one scout ship                  |
-| 11  | Scout a Solar System   | At least one scout ship                  |
-| 12  | Colonize a World       | At least one ETAC                        |
-| 13  | Join another fleet     | None                                     |
-| 14  | Rendezvous at Sector   | None                                     |
-| 15  | Salvage                | None                                     |
+| No. | Mission                 | Requirements                             |
+| --- | ----------------------- | ---------------------------------------- |
+| 00  | None (hold position)    | None                                     |
+| 01  | Move Fleet (only)       | None                                     |
+| 02  | Seek Home               | None                                     |
+| 03  | Patrol a Sector         | None                                     |
+| 04  | Guard a Starbase        | Combat ship(s)                           |
+| 05  | Guard/Blockade a Planet | Combat ship(s)                           |
+| 06  | Bombard a Planet        | Combat ship(s)                           |
+| 07  | Invade a Planet         | Combat ship(s) & Loaded Troop Transports |
+| 08  | Blitz a Planet          | Loaded Troop Transports                  |
+| 09  | View a Planet           | At least one scout ship                  |
+| 10* | Hack a Starbase         | At least one scout ship                  |
+| 11  | Scout a Solar System    | At least one scout ship                  |
+| 12  | Colonize a World        | At least one ETAC                        |
+| 13  | Join another fleet      | None                                     |
+| 14  | Rendezvous at Sector    | None                                     |
+| 15  | Salvage                 | None                                     |
+
+\* New to EC4X
 
 ## 4.2 Jump Lanes
 
@@ -604,7 +596,7 @@ A retreating Task Force will fall back to their original fleet formations and fl
 
 Fighter squadrons never retreat from combat. If they remain in the fight, fighter squadrons will screen their fleeing Task Force and combat rounds resume until they are completely destroyed. 
 
-Spacelift Command ships are captured if their escort fleets were destroyed.
+Spacelift Command ships are destroyed if their escort fleets were destroyed.
 
 ### 5\.4.4 End of Space Combat
 
@@ -623,15 +615,23 @@ Combat will proceed in a similar fashion to Section 5.4, with the following rest
 
 Starbases are powerful citadels equipped with advanced sensors and massive artificial intelligence (AI) resources. Their shields are powerful and make them a challenge to strike a critical hit.
 
-Note: If creating your own custom ships or scenarios, you may consider applying rule #1 (listed above) to special assets that are resistant to critical hits.
-
 ## 5\.6 Planetary Bombardment
 
-## 5\.7 Planetary Invasion, Blitz, and Ground Combat
+## 5\.7 Planetary Invasion & Blitz
+
+## 5\.8 Custom Combat Modifications
+
+If customizing your own ships or scenarios, the following list provides a jumping off point for custom modification. EC4X is flexible enough to enable the tailoring of the combat mechanics to your own ideas and requirements. Please report back to the project anthing that works well for you and increases enjoyment of the game. 
+
+- Consider adding your own special modifiers to the CER roll, e.g. battle stations readiness, random chance events, etc.
+- Apply the Starbase critical hit rule to special assets that are resistant to crippling.
+- Insert your imagination here.....
+
+EC4X Space combat is adapted from Empire of the Sun (EOS). 
 
 # 8\.0 Diplomacy, Sabotage & Subversion
 
-# 9\.0 Asset Tables
+# 9\.0 Data Tables
 
 All tables are preliminary place holders.
 
@@ -674,5 +674,27 @@ DS = Defensive Strength, CC= Command Cost, CR = Command Rating, CL = Carry Limit
 | SS        | Shipyard         | 30     | 2.0 | 10  |
 | ET        | ETAC             | 15     | 0.3 | 1   |
 | TT        | Troop Transports | 5      | 0.2 | 1   |
+
+## 9\.3 Prestige
+
+TODO: Provide a prestige table showing the various factors, both positive and negative.
+
+- Completely destroy a Task Force (+)
+- Force a task force to retreat (+)
+- Invade or blitz a planet (++)
+- Lose a planet (--)
+- Get surprised by a rogue fleet (-)
+- Get ambushed by a rogue fleet (-)
+- Lose a Starbase (-)
+- Destroy a Starbase (+)
+- Establish a new colony (+)
+- Max out the population of a colony (+)
+- Increase a planet's class via terraforming (+)
+- Excessive tax rate (-)
+- Invest IU above 50% of a colony's PU (+)
+- Achieve a new tech level (+)
+- Sabotage a rival Shipyard (+)
+- Spy on an rival's colony (+)
+- And so on.... get creative
 
 # 10\.0 Play By Excel
