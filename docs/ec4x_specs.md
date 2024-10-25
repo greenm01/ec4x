@@ -610,13 +610,11 @@ Spacelift Command ships are captured if their escort fleets were destroyed.
 
 After the last round of combat the surviving Task Forces are disbanded and surviving squadrons rejoin their assigned fleets.
 
-Retreating Task Forces must comply with the rules in Section 5.3.
-
 ## 5\.5 Starbase Combat
 
-If a hostile fleet has orders to bombard, invade, or blitz a colony, Starbases are the first line of planetary defense, and units form a Task Force. More than one Starbase may guard a planet.
+If a hostile fleet has orders to bombard, invade, or blitz a colony, Starbases are the first line of planetary defense, and multiple units form a combined Task Force.
 
-Fleets with orders to guard the starbase(s) will also join the combined task force.
+Fleets with orders to guard a starbase(s) will also join the Task Force.
 
 Combat will proceed in a similar fashion to Section 5.4, with the following restrictions:
 
