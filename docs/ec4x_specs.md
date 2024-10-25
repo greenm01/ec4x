@@ -195,9 +195,9 @@ A Task Force is temporary grouping of squadrons organized for combat. After the 
 
 ### 2\.4.1 Fighter Squadrons & Carriers
 
-Fighters are small ships commissioned in squadrons that freely patrol a system. They are based planetside.
+Fighters are small ships commissioned in squadrons that freely patrol a system. They are based planetside and never retreat from combat.
 
-There is no limit to the number of fighter squadrons deployed in a system.
+There is no limit to the number of fighter squadrons deployed in a home system.
 
 Because of their fast lightweight nature, fighters are considered to be in a crippled combat state, but without a reduction in attack strength (AS).
 
@@ -205,7 +205,7 @@ Carriers transport fighter squadrons between systems. Standard carriers hold up 
 
 ### 2\.4.2 Scouts
 
-Scouts are autonomous drones outfitted with advanced sensors that aid with electronic warfare and information gathering. They give a boost to Task Forces during combat operations.
+Scouts are autonomous drones outfitted with advanced sensors that aid with electronic warfare and information gathering. They give a boost to Task Forces during combat operations and provide additional protection against Raiders.
 
 ### 2\.4.3 Raiders
 
@@ -213,23 +213,33 @@ The Raider is the most advanced ship in the arsenal, outfitted with cloaking tec
 
 **Stealth Roll**
 
-| Stealth Tech Level | % Chance | 1D20 Roll |
-|:------------------:|:--------:|:---------:|
-| 0                  | 00       | NA        |
-| 1                  | 15       | 18 - 2 0  |
-| 2                  | 30       | 15 - 20   |
-| 3                  | 45       | 12 - 20   |
-| 4                  | 60       | 8 - 20    |
+| Stealth Tech Level | % Chance | Modified 1D20 Roll |
+|:------------------:|:--------:|:------------------:|
+| 0                  | 00       | NA                 |
+| 1                  | 15       | 18 - 20            |
+| 2                  | 30       | 15 - 20            |
+| 3                  | 45       | 12 - 20            |
+| 4                  | 60       | 8 - 20             |
 
 Fleets containing a Raider roll a 1D20 on the table above, with the appropriate Stealth tech level, for a chance of going undetected by rival forces. The number of Raiders in the fleet does not affect the roll, nor rate multiple chances.
 
+**Stealth Modifiers**: If an opposing fleet contains scout(s), add a minus three (-3) to the roll. 
+
 ### 2\.4.4 Starbases
 
-Starbases are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications. These powerful sentinels are limited to one operational unit per solar system.
+Starbases are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications. Starbases never retreat from combat.
 
-Starbases require five months (five turns) to construct require a shipyard.
+Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
-Starbases boost the morale of a colony by XYZ and production by XYZ every turn. Crippled starbases operate at 50% capacity and contribute half their normal morale and SATs to the colony.  
+Starbases boost the population growth-rate and Industral Units (IU) of a colony by 5% each, every turn (preliminary). 
+
+Example: under normal conditions the natural birthrate of a colony is 2%. With three starbases, the rate is:
+
+```
+2% * (1 + (0.05 * 3)) = 2.3% 
+```
+
+Crippled starbases stop yielding these benefits until they are repaired.  
 
 ### 2\.4.7 Planetary Shields & Ground Batteries
 
@@ -267,22 +277,38 @@ SATs settle instantaneously on the inter-dimensional Lightning network. (All com
 
 ## XY\.1 Principles
 
-**Population Unit (PU)**: A colony population unit that provides 1 SAT of productivity to the House.
+**Population Unit (PU)**: A unit of population that provides 1 SAT of productivity to the House.   
 
-**Population Transfer Unit (PTU)**: A measure of colony population and the associated cost of cargo, industry, and life support technology to colonize a planet or transfer to another colony. 
+**Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately 50k souls. 
 
-PTUs enable the transfer of population from larger colonies to smaller colonies without a significant degradation of PU from the donor colony. A conversion table between PU and PTU is provided below (preliminary).
+The relationship between PSU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
-The relationship is exponential after Level III, as colony population and industry hit critical mass.
+This is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentivizes eXpanding population across newly acquired planets. 
 
-| PU      | Colony Size    | PTU      | PU to PTU             | PTU to PU            |
-|:-------:|:--------------:|:--------:|:---------------------:|:--------------------:|
-| 1 - 20  | Level I        | 1 - 20   | 1:1                   | 1:1                  |
-| 21 - 60 | Level II       | 21- 60   | 1:1                   | 1:1                  |
-| 61- 180 | Level III      | 61 - 180 | 1:1                   | 1:1                  |
-| 181+    | Level IV - VII | 181+     | 182\*exp(2.645E-3*PU) | ln(PTU/182)/2.645E-3 |
+The equations (in Python) for converting PU to PSU:
 
-The assumption is that this calculation will be performed in Excel or code. 
+```
+  psu = pu - 1 + np.exp(0.00657 * pu)
+```
+
+Code for converting PSU back to PU:
+
+```
+import numpy as np
+from scipy.special import lambertw
+
+psu = 100000 #example
+
+def logsumexp(x):
+    c = x.max()
+    return c + np.log(np.sum(np.exp(x - c)))
+
+x = np.float64(657*(psu + 1)/100000)
+
+pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + psu + 1
+```
+
+An Excel spreadsheet is included in the Github 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo.  
 
 **Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in SATs.
 
@@ -312,7 +338,15 @@ NCV = GCP * tax_rate
 
 ## XY\.2 Population Growth
 
-Colonists are hard at work making babies for the House, and the population growth rate under normal conditions is 1% per month (turn), up to the max allowed PU for that planet.
+Colonists are hard at work making babies for the House, and the population growth rate under normal conditions is 2% (preliminary) per turn.
+
+A logistical growth function is used for the calculation. Each planet class has an upper bound on the population it can support. This gives a nice 's' curve distribution, and lends incentive to terraform less hospitable planets.
+
+The Logistic Equation
+
+```
+p_n1 = p_n + r * p_n * (1 - p_n / K)
+```
 
 ## XY.3 Colonization
 
@@ -402,9 +436,30 @@ The logistics of repairing a ship planetside and returning it to orbit make it e
 
 # 4\.0 Movement
 
-## 4\.1 Escorts
+## 4.1 Fleet Orders
 
-Starbases and Spacelift ships must be accompanied by a fleet escort. They can not jump across lanes unassisted, nor cross restricted lanes.
+Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterain Conquest.
+
+| No. | Mission                | Requirements                             |
+| --- | ---------------------- | ---------------------------------------- |
+| 00  | None (hold position)   | None                                     |
+| 01  | Move Fleet (only)      | None                                     |
+| 02  | Seek Home              | None                                     |
+| 03  | Patrol a Sector        | None                                     |
+| 04  | Guard a Starbase       | Combat ship(s)                           |
+| 05  | Guard/Blockade a World | Combat ship(s)                           |
+| 06  | Bombard a World        | Combat ship(s)                           |
+| 07  | Invade a World         | Combat ship(s) & Loaded Troop Transports |
+| 08  | Blitz a World          | Loaded Troop Transports                  |
+| 09  | View a World           | At least one scout ship                  |
+| 10  | Scout a Sector         | At least one scout ship                  |
+| 11  | Scout a Solar System   | At least one ETAC                        |
+| 12  | Colonize a World       | At least one ETAC                        |
+| 13  | Join another fleet     | None                                     |
+| 14  | Rendezvous at Sector   | None                                     |
+| 15  | Salvage                | None                                     |
+
+## 4.2 Jump Lanes
 
 # 5\.0 Combat
 
@@ -452,20 +507,7 @@ A modified 1d10 roll applied to a combat unit’s AS for the purposes of reducin
 
 Critical hits do not apply to ground combat.
 
-### 5\.1.3 Battle Stations Preparedness
-
-A battle stations preparedness modifier is applied to a player's CER
-roll at the beginning of every combat round. The fog of war lends to chaos and unpredictable human behavior under mortal stress.
-
-| **1D6 Roll** | **Battle Stations Modifier** |
-| ------------ | ---------------------------- |
-| 1            | Crews are in panic mode (-2) |
-| 2            | Crews are scrambling (-1)    |
-| 3, 4         | Crews are at the ready (0)   |
-| 5            | Crews are on point (+1)      |
-| 6            | Crews are in a frenzy (+2)   |
-
-### 5\.1.4 Combat State
+### 5\.1.3 Combat State
 
 Squadron units are either undamaged, crippled, or destroyed.
 
@@ -473,7 +515,7 @@ Attack Strength (AS) represents a unit's offensive firepower and is a mutable ty
 
 Defense Strength (DS) represents a unit's defensive shielding and is an immutable type.
 
-**Reduced**: Degradation of combat state.
+**Reduced**: This term is used to describe a transition of state, e.g. undamaged to crippled, crippled to destroyed.
 
 **Undamaged**: A unit’s life support systems, hull integrity, and weapons systems are fully operational.
 
@@ -481,17 +523,15 @@ Defense Strength (DS) represents a unit's defensive shielding and is an immutabl
 
 **Destroyed**: In a crippled combat state, hits equal to DS reduces a unit's state to destroyed. The unit is dead and unrecoverable.
 
-### 5\.1.5 Cloaking
+### 5\.1.4 Cloaking
 
 Cloaking offers an advantage to a Task Force in the initial round of space combat, both on the defensive and offensive.
 
-When defending a solar system, a cloaked fleet is considered to be in ambush.
+When defending a solar system, a cloaked Task Force is considered to be in ambush against invaders.
 
-When attacking a solar system, a cloaked fleet is considered to be a surprise.
+When attacking a solar system, a cloaked Task Force is considered to be a surprise to the defenders.
 
-Both may apply at the same time if opposing fleets are simultaneously cloaked.
-
-Roll for stealth in accordance with Section 2.4.3.  
+Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing fleets provide a modifier to the roll.
 
 ## 5\.2 Task Force Assignment
 
@@ -501,31 +541,11 @@ Task Forces assume the highest ROE of any fleet in the force.
 
 Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
 
-Fleets that are cloaked, and remain undetected, may continue traveling through jump lanes in a contested star system. Otherwise the fleet will join their player's respective Task Force for battle.
+Fleets that are cloaked, and remain undetected in accordance with Section 2.4.3, may continue traveling through jump lanes in a contested star system. Otherwise the fleet will join their player's respective Task Force for battle.
 
-Starbases and Spacelift units are screened behind the Task Force during combat operations and do not engage.
+Spacelift Command ships are screened behind the Task Force during combat operations and do not engage. 
 
-## 5\.3 Retreat
-
-A Task Force may retreat from combat only after the first round of combat, in accordance with their ROE, and between rounds thereafter. The ROE is fixed at the beginning of combat and through all subsequent rounds.
-
-A retreating Task Force will fall back to their original fleet formations and flee to the closest non-hostile star system.
-
-### 5\.3.1 Starbases
-
-Starbases never retreat from a solar system because of their massive size. They are too slow to maneuver.
-
-Refer to Section 5.5 for handling orphaned assets if a Starbase is abandoned by a fleeing Task Force.
-
-### 5\.3.2 Fighter Squadrons & Spacelift Units
-
-Orphaned fighter squadrons are scuttled if there is no carrier capacity available during a retreat.
-
-Space Marines never surrender and self-detonate their troop transports.
-
-ETACs rejoin their surviving escort fleets. If the fleet was destroyed or the ETACs were unescorted before hostilities, they are captured as spoils of war.
-
-This section is null and void if Section 5.3.1 is in effect.
+Starbases remain in reserve to protect the colony from blockaid and direct attack, and do not join a Task Force for combat in open space. If a fleet has direct orders to guard a Starbase, they will also remain in reserve.
 
 ## 5\.4 Space Combat
 
@@ -543,7 +563,6 @@ The CER multiplied by AS equals the number of total enemy hits.
 
 **Die Roll Modifiers**
 
-- Battle Stations: Section 5.1.3
 - Scouts: +1 max
 - Cloaked Surprise: +3 (first round only)
 - Cloaked Ambush: +4 (first round only)
@@ -561,46 +580,52 @@ Destroyed squadrons are no longer a factor and the Task Force loses their associ
 
 In computer moderated play, the algorithm will reduce opposing squadrons with the greatest AS, within restrictions.
 
-### 5\.4.2 Critical Hits
+**Critical Hits**:
 
-Critical hits are a special case. Restriction \#2 above is nullified.
+Critical hits are a special case. Restriction \#2 in the list above is nullified.
 
 Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction \#1 above, then the squadron with the lowest DS is reduced.
 
-### 5\.4.3 End of Round
+### 5\.4.2 End of Round
 
-After all hits are applied and squadrons are appropriately reduced (crippled or destroyed), recalculate the total AS of all Task Forces.
+After all hits are applied and squadrons are appropriately reduced (crippled or destroyed), recalculate the total AS of all surviving Task Forces.
 
-Check each Task Force's ROE on the table in Section 5.1.1 by comparing AS strengths and determine if a retreat is warranted. If more than one Task Force remains in the fight, the next round commences via the same procedure as described above.
+Check each Task Force's ROE on the table in Section 5.1.1 by comparing AS strengths and determine if a retreat is warranted. If so, proceed to Section 5.4.3. 
 
-Otherwise proceed to End of Combat.
+If more than one Task Force remains in the fight, the next round commences via the same procedure as described above.
 
-### 5\.4.4 End of Combat
+Otherwise proceed to Section 5.4.4.
+
+### 5\.4.3 Retreat
+
+A Task Force may retreat from combat only after the first round, in accordance with their ROE, and between rounds thereafter. The ROE is fixed at the beginning of combat and through all subsequent rounds.
+
+A retreating Task Force will fall back to their original fleet formations and flee to the closest non-hostile star system.
+
+Fighter squadrons never retreat from combat. If they remain in the fight, fighter squadrons will screen their fleeing Task Force and combat rounds resume until they are completely destroyed. 
+
+Spacelift Command ships are captured if their escort fleets were destroyed.
+
+### 5\.4.4 End of Space Combat
 
 After the last round of combat the surviving Task Forces are disbanded and surviving squadrons rejoin their assigned fleets.
 
 Retreating Task Forces must comply with the rules in Section 5.3.
 
-### 5\.4.5 Example Combat
+## 5\.5 Starbase Combat
 
-TODO
+If a hostile fleet has orders to bombard, invade, or blitz a colony, Starbases are the first line of planetary defense, and units form a Task Force. More than one Starbase may guard a planet.
 
-## 5\.5 Starbases
-
-### 5\.5.1 Combat
-
-If a hostile fleet has orders to bombard, invade, or blitz a colony, a Starbase is the first line of defense after the Task Force.
+Fleets with orders to guard the starbase(s) will also join the combined task force.
 
 Combat will proceed in a similar fashion to Section 5.4, with the following restrictions:
 
 1. If a player rolls a critical hit against a starbase on the first try, re-roll a second time.
 2. Starbases receive an extra +2 die roll modifier.
 
-Starbases are defensive citadels that are equipped with advanced sensors and massive artificial intelligence (AI) resources. Their shields are powerful and make them a challenge to strike a critical hit.
+Starbases are powerful citadels equipped with advanced sensors and massive artificial intelligence (AI) resources. Their shields are powerful and make them a challenge to strike a critical hit.
 
-### 5\.5.2 Abandoned Starbase
-
-In the special circumstance that a Starbase is orphaned by a retreating Task Force, the Starbase will screen other orphans and proceed straight to combat against hostile forces in accordance with Section 5.5.1.
+Note: If creating your own custom ships or scenarios, you may consider applying rule #1 (listed above) to special assets that are resistant to critical hits.
 
 ## 5\.6 Planetary Bombardment
 
