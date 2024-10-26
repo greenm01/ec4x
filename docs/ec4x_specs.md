@@ -101,15 +101,15 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 
 **Planet Class Table**
 
-| Roll 1D10 | Class | Conditions | Colony Potential | PUs     |
-|:---------:|:-----:| ---------- | ---------------- |:-------:|
-| 0         | P0    | Extreme    | Level I          | 1-20    |
-| 1         | P1    | Desolate   | Level II         | 21-60   |
-| 2, 3      | P2    | Hostile    | Level III        | 61-180  |
-| 4, 5      | P3    | Harsh      | Level IV         | 181-500 |
-| 6, 7      | P4    | Benign     | Level V          | 501-1k  |
-| 8*        | P5    | Lush       | Level VI         | 1.1k-2k |
-| 9*        | P6    | Eden       | Level VII        | 2.1k+   |
+| Roll 1D10 | Class    | Colony Potential | PUs       |
+|:---------:| -------- | ---------------- |:---------:|
+| 0         | Extreme  | Level I          | 1 - 20    |
+| 1         | Desolate | Level II         | 21 - 60   |
+| 2, 3      | Hostile  | Level III        | 61 - 180  |
+| 4, 5      | Harsh    | Level IV         | 181 - 500 |
+| 6, 7      | Benign   | Level V          | 501- 1k   |
+| 8*        | Lush     | Level VI         | 1k - 2k   |
+| 9*        | Eden     | Level VII        | 2k+       |
 
 \*Note: if the roll above is a natural eight (8), add a +1 modifier to your roll on the raw materials table. If the roll is a natural nine (9) add a +2 modifier.
 
@@ -191,25 +191,69 @@ Carriers transport fighter squadrons between systems. Standard carriers hold up 
 
 ### 2\.4.2 Scouts
 
-Scouts are autonomous drones outfitted with advanced sensors that aid with electronic warfare and information gathering. They give a boost to Task Forces during combat operations and provide additional protection against Raiders.
+Scouts are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELINT).
+
+Scouts are the only units that have a chance of countering cloaking via ELINT technology. Scouts assigned to the same fleet operate as a mesh network, and their ELIN capability is merged and magnified.
+
+Fleets that contain at least one Scout make a detection roll on the table below when countering Raiders or other Scouts sent on spy missions.
+
+Note that Scouts with different tech levels may not be assigned to the same squadron or fleet.
+
+**Detection Table**
+
+| ELINT Tech Level | % Chance | Modified 1D20 Roll\* |
+|:----------------:|:--------:|:--------------------:|
+| 0                | 00       | NA                   |
+| 1                | 15       | 18 - 20              |
+| 2                | 30       | 15 - 20              |
+| 3                | 45       | 12 - 20              |
+| 4                | 60       | 8 - 20               |
+
+\*Total the number of Scouts assigned to the same fleet and subtract one. This is the die roll modifier for the detection roll.
+
+Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
+
+Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. They can only hide by themselves and no other ships.
+
+For every turn a Scout operates in an enemy solar system occupied by rival fleets containing scouts, the rival will roll on the ELINT table above (for each fleet) to determine if the opposing Scout is detected. If the Scout is detected, it is destroyed.
+
+Solo operating Scouts can not detect other enemy Scouts operating autonomously.
 
 ### 2\.4.3 Raiders
 
 The Raider is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Battleship and shielding of a Cruiser.
 
-**Stealth Roll**
+Raiders cloak their entire assigned fleet, regardless of size. 
 
-| Stealth Tech Level | % Chance | Modified 1D20 Roll |
-|:------------------:|:--------:|:------------------:|
-| 0                  | 00       | NA                 |
-| 1                  | 15       | 18 - 20            |
-| 2                  | 30       | 15 - 20            |
-| 3                  | 45       | 12 - 20            |
-| 4                  | 60       | 8 - 20             |
+Note that raiders with different tech levels may not be assigned to the same squadron or fleet.
 
-Fleets containing a Raider roll a 1D20 on the table above, with the appropriate Stealth tech level, for a chance of going undetected by rival forces. The number of Raiders in the fleet does not affect the roll, nor rate multiple chances.
+**Stealth Table**
 
-**Stealth Modifiers**: If an opposing fleet contains scout(s), add a minus three (-3) to the roll. 
+| Cloaking Tech Level | % Chance | 1D20 Roll |
+|:-------------------:|:--------:|:---------:|
+| 0                   | 00       | NA        |
+| 1                   | 15       | 18 - 20   |
+| 2                   | 30       | 15 - 20   |
+| 3                   | 45       | 12 - 20   |
+| 4                   | 60       | 8 - 20    |
+
+During combat or moving through an enemy solar system, cloaked fleets have a chance of remaining undetected by enemy forces.
+
+For each fleet containing a Raider in the encounter, roll a 1D20 on the "Stealth Table" above. If there are multiple Raiders in a fleet, roll for as many chances as there are Raiders. Total the number of successful rolls, which will be explained below.
+
+If a fleet does not have at least one success, then the fleet is detected. No need to proceed further.
+
+Opposing fleets containing scouts may roll in accordance with the "Detection Roll" table in Section 2.4.2 to counter. Total the number of successful rolls.
+
+If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected.
+
+Example: 
+
+Three(3) fleets containing a combined total of five(5) Level 3 Raiders enters combat. The player rolls for stealth for each fleet and is successful on all. The total number of successful rolls between all three fleets is three (3).
+
+The opposing player has two(2) fleets in the solar system, the first with two(2) Level 2 ELINT scouts and the other with a single(1) level 3 ELINT scout. The player rolls twice(2) (for each fleet), applying a modifier (+1) to the first fleet. He achieves one (1) successful detection roll.
+
+The three(3) cloaked fleets go undetected.
 
 ### 2\.4.4 Starbases
 
@@ -217,7 +261,7 @@ Starbases are powerful orbital fortresses that facilitate planetary defense and 
 
 Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
-Starbases boost the population growth-rate and Industral Units (IU) of a colony by 5% each, every turn (preliminary). 
+Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% each, every turn (preliminary). 
 
 Example: under normal conditions the natural birthrate of a colony is 2%. With three starbases, the rate is:
 
@@ -269,9 +313,9 @@ XMR settle near instantaneously on the inter-dimensional communications network.
 
 The relationship between PSU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
-This model is disinflinationary; inflation asymptotically approcahes zero over time, i.e. Monero.
+This model is disinflationary; inflation asymptotically approaches zero over time, i.e. Monero.
 
-Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, defecit spending, out of control socialist entitlements, and simple greed by beaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity.  
+Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity.  
 
 A high PSU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentivizes eXpanding population across newly acquired planets. 
 
@@ -314,9 +358,9 @@ GCP = (PU * raw_index + IU) * el_mod
 | Rich      | 120% | 105% | 90%    | 75%   | 72%     | 69%      | 66%     |
 | Very Rich | 140% | 120% | 100%   | 80%   | 76%     | 72%      | 68%     |
 
-Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habital conditions.
+Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habitable conditions.
 
-**Net Colony Value (NCV)**: The net value of taxes collected from each of you colonies.
+**Net Colony Value (NCV)**: The net value of taxes collected from each of your colonies.
 
 NCV = GCP * tax_rate
 
@@ -332,11 +376,7 @@ Colonists are hard at work making babies for the House, and the population growt
 
 A logistical growth function is used for the calculation. Each planet class has an upper bound on the population it can support. This gives a nice 's' curve distribution, and lends incentive to terraform less hospitable planets.
 
-The Logistic Equation
-
-```
-p_n1 = p_n + r * p_n * (1 - p_n / K)
-```
+[The Logistic Equation](https://michaelneuper.com/posts/modelling-population-growth-in-python/)
 
 ## XY.3 Colonization
 
@@ -366,38 +406,50 @@ In a standard game, all tech levels start at zero.
 
 ## XYZ\.1 Upgrades
 
-Houses may invest XMR to upgrade technologies, which are purchased in levels. 
+Houses may invest XMR to upgrade technologies, which are purchased in levels.
+
 TODO: table with cost
 
 Technology upgrades may be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per technology each upgrade cycle.
 
 ## XYZ\.2 Weapons
 
-Uprades improve the Attack Strength (AS) and Defence Strength (DS) of combat ships by 20% for each tech level (rounded down). The ship Production Costs (PC) also increases by 20%. Note that ships are limited in weapons tech level by their rated Hull Size (HS).
+Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by 20% for each tech level (rounded down). The ship Production Costs (PC) also increases by 20%. Note that ships are limited in weapons tech level by their rated Hull Size (HS).
 
 ## XYZ\.3 Terraforming
 
-Terraforming improve a planet's livable conditions, and thus the population limit. There are seven tech levels that correspond directly with the planet classes: 
+Terraforming improve a planet's livable conditions, and thus the population limit. There are seven tech levels that correspond directly with the planet classes.
 
-P0 -> P1 -> P2 -> P3 -> P4 -> P5 -> P6 
+| Tech Level | Planet Class | PU        | PTU             |
+| ---------- | ------------ |:---------:|:---------------:|
+| Terra 0    | Extreme      | 1 - 20    | 1 - 20          |
+| Terra 1    | Desolate     | 21 - 60   | 21 - 60         |
+| Terra 2    | Hostile      | 61 - 180  | 61 - 182        |
+| Terra 3    | Harsh        | 181 - 500 | 183 - 526       |
+| Terra 4    | Benign       | 501 - 1k  | 527 - 1,712     |
+| Terra 5    | Lush         | 1k - 2k   | 1,713 - 510,896 |
+| Terra 6    | Eden         | 2k+       | 510,896+        |
 
-A planet may not skip a class, and each step costs the upper PU bound for the upgraded planet class in XMR. Example: Upgrading a P3 planet to a P4 planet requires level four terraforming and 1k XMR.
-
-ETACs set the initial livable conditions for a Level I colony. Further terraforming is completed by colonists on the surface and do not require additional ETACs.
+A planet may not skip a class, and each step costs the lower PU bound for the next tech level in XMR. Example: Upgrading a Hostile planet to a Harsh planet requires Terra 3 and 181 XMR.
 
 ## XYZ\.4 Economics
 
 EL = Economic Tech Level
 TODO: el_mod
 
-## XYZ\.5 Stealth
+## XYZ.5 Electronic Intelligence (ELINT)
 
-## XYZ\.6 Sabotage & Subversionn
+ELINT technology enables Scouts to counter cloaked Raiders and other scouts, and to gather intelligence from rival assets.
+
+## XYZ\.6 Cloaking
+
+Cloaking technology applies to Raiders and enables them to cloak their assigned fleets with increasing levels of probability.
+
+## XYZ\.7 Sabotage & Subversionn
 
 # 3.0 Construction
 
 Construction and repair of House assets is accomplished planetside or in orbit, with restrictions.  
-
 The number of turns required to newly construct an asset, unless otherwise specified, is equal to the PC times 0.5 (rounded down). Assets remain decommissioned through the activity period.
 
 TODO: Explain construction capacity and rate
@@ -475,6 +527,8 @@ ROE dictates how aggressive your fleet will respond when engaging with the enemy
 | 09      | Engage hostile forces even if outgunned 3:1.           |
 | 10      | Engage hostile forces regardless of their size.        |
 
+A fleet's ROE is defined when it's created, or changed any time before engaging in combat. The ROE may not be changed during combat.
+
 ### 5\.1.2 Combat Effectiveness Rating (CER)
 
 A modified 1d10 roll applied to a combat unit’s AS for the purposes of reducing your opponent’s forces. There are two separate CER tables, one for space combat and another for ground combat.
@@ -503,9 +557,9 @@ Critical hits do not apply to ground combat.
 
 Squadron units are either undamaged, crippled, or destroyed.
 
-Attack Strength (AS) represents a unit's offensive firepower and is a mutable type.
+**Attack Strength (AS)** represents a unit's offensive firepower and is a mutable type.
 
-Defense Strength (DS) represents a unit's defensive shielding and is an immutable type.
+**Defense Strength (DS)** represents a unit's defensive shielding and is an immutable type.
 
 **Reduced**: This term is used to describe a transition of state, e.g. undamaged to crippled, crippled to destroyed.
 
@@ -517,29 +571,37 @@ Defense Strength (DS) represents a unit's defensive shielding and is an immutabl
 
 ### 5\.1.4 Cloaking
 
-Cloaking offers an advantage to a Task Force in the initial round of space combat, both on the defensive and offensive.
+Cloaking offers an advantage in the initial round of space combat, both on the defensive and offensive.
 
-When defending a solar system, a cloaked Task Force is considered to be in ambush against invaders.
+When defending a solar system, cloaked units are considered to be in ambush against invaders.
 
-When attacking a solar system, a cloaked Task Force is considered to be a surprise to the defenders.
+When attacking a solar system, cloaked units are considered to be a surprise to the defenders.
 
-Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing fleets provide a modifier to the roll.
+Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing forces have an opportunity to counter.
+
+**Important**: *Every cloaked fleet joining a Task Force must pass a stealth roll for the entire Task Force to be cloaked*.
 
 ## 5\.2 Task Force Assignment
 
-All of a player’s fleets arriving at a star system in the same turn, and fleets and squadrons already located in said system, are joined together into a single Task Force when battle commences. Fleets are temporarily disbanded and their collective squadrons fight under the Task Force as a monolith.
+*All* of a player’s fleets located in, arriving at, or moving through a star system in the same turn shall be joined together into a single Task Force when engaged in combat. 
+
+Fleets are temporarily disbanded and their squadrons fight individually under a single Task Force.
 
 Task Forces assume the highest ROE of any fleet in the force.
 
 Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
 
-Fleets that are cloaked, and remain undetected in accordance with Section 2.4.3, may continue traveling through jump lanes in a contested star system. Otherwise the fleet will join their player's respective Task Force for battle.
+*Every* cloaked fleet must be in compliance with section 5.1.4 in order for the entire Task Force to be cloaked for combat. Cloaked fleets that have pre-existing orders to travel through the solar system may continue their journey if they pass a stealth roll.
 
 Spacelift Command ships are screened behind the Task Force during combat operations and do not engage. 
 
-Starbases remain in reserve to protect the colony from blockaid and direct attack, and do not join a Task Force for combat in open space. If a fleet has direct orders to guard a Starbase, they will also remain in reserve.
+Starbases remain in reserve to protect the colony from blockade and direct attack, and do not join a Task Force for combat in open space. If a fleet has direct orders to guard a Starbase, they will also remain in reserve.
 
 ## 5\.4 Space Combat
+
+All fleets encountering enemy forces within a solar system, in the same turn, shall engage in combat.  Players align their Task Forces for battle in accordance with Section 5.2.
+
+Squadrons and Spacelift Command ships may neither be re-assigned to new fleets during space combat nor during a retreat. Ships assigned to squadrons may not be reorganized during combat.
 
 ### 5.4.1 Rounds
 
@@ -555,12 +617,16 @@ The CER multiplied by AS equals the number of total enemy hits.
 
 **Die Roll Modifiers**
 
-- Scouts: +1 max
-- Cloaked Surprise: +3 (first round only)
-- Cloaked Ambush: +4 (first round only)
-- Opposing homeworld defended by shields: -2
+| Modifier       | Value | Notes                               |
+| -------------- |:-----:| ----------------------------------- |
+| Scouts         | +1    | Maximum benefit for all Scouts      |
+| Surprise       | +3    | First round only; See Section 5.1.4 |
+| Ambush         | +4    | First round only; See Section 5.1.4 |
+| Planet Shields | -2    | Opposing homeworld                  |
 
-The player who rolled the die will determine where hits are applied within the following **restrictions**:
+The player who rolled the die will determine where hits are applied.
+
+The following **restrictions** apply:
 
 1. If the number of hits equal the opposing squadron's DS, the unit is reduced.
 2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled.
@@ -590,11 +656,11 @@ Otherwise proceed to Section 5.4.4.
 
 ### 5\.4.3 Retreat
 
-A Task Force may retreat from combat only after the first round, in accordance with their ROE, and between rounds thereafter. The ROE is fixed at the beginning of combat and through all subsequent rounds.
+A Task Force may retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter. 
 
-A retreating Task Force will fall back to their original fleet formations and flee to the closest non-hostile star system.
+Squadrons in a retreating Task Force will fall back to their original fleet formations and flee to the closest non-hostile star system.
 
-Fighter squadrons never retreat from combat. If they remain in the fight, fighter squadrons will screen their fleeing Task Force and combat rounds resume until they are completely destroyed. 
+Fighter squadrons never retreat from combat. If they remain in the fight, fighter squadrons will screen their retreating Task Force and combat resumes until they are completely destroyed. 
 
 Spacelift Command ships are destroyed if their escort fleets were destroyed.
 
@@ -621,7 +687,7 @@ Starbases are powerful citadels equipped with advanced sensors and massive artif
 
 ## 5\.8 Custom Combat Modifications
 
-If customizing your own ships or scenarios, the following list provides a jumping off point for custom modification. EC4X is flexible enough to enable the tailoring of the combat mechanics to your own ideas and requirements. Please report back to the project anthing that works well for you and increases enjoyment of the game. 
+If customizing your own ships or scenarios, the following list provides a jumping off point for custom modification. EC4X is flexible enough to enable the tailoring of the combat mechanics to your own ideas and requirements. Please report back to the project anything that works well for you and increases enjoyment of the game. 
 
 - Consider adding your own special modifiers to the CER roll, e.g. battle stations readiness, random chance events, etc.
 - Apply the Starbase critical hit rule to special assets that are resistant to crippling.
