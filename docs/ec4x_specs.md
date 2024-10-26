@@ -85,7 +85,7 @@ There are three classes of jump lanes: restricted, minor, and major. The hub is 
 
 Movement across the lanes is explained in Section 4.
 
-Players start the game with one homeworld (Class P6 planet with a Rich solar system and 500 PU) 250 Monero (XMR) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a cruiser, two destroyers, and two scouts. 
+Players start the game with one homeworld (An Abundant Eden planet, Level IV colony with 420 PU), 210 Monero (XMR) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Cruiser, two Destroyers, and two Scouts. All tech levels start at zero.
 
 Each player's homeworld should be placed on the outer ring, as far as strategically possible from rival home system(s).
 
@@ -199,6 +199,8 @@ Scouts assigned to a fleet or squadron must have the same ELINT tech level. Olde
 
 Players make a detection roll on the table below when countering Raiders or other Scouts sent on spy missions.
 
+Crippled Scouts lose their ELINT sensors until repaired.
+
 **Detection Table**
 
 | ELINT Tech Level | % Chance | Modified 1D20 Roll\* |
@@ -219,9 +221,11 @@ For every turn that a spy Scout operates in enemy territory occupied by rival fl
 
 ### 2\.4.3 Raiders
 
-The Raider is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Battleship and shielding of a Cruiser.
+The Raider is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of Battle Cruiser.
 
 Fleets containing Raiders are fully cloaked, and roll for a chance to go undetected when encountering opposing forces on the Stealth Table below.
+
+Crippled Raiders lose their cloaking ability until repaired.
 
 **Stealth Table**
 
@@ -433,7 +437,7 @@ TODO: el_mod
 
 ## XYZ.5 Electronic Intelligence (ELINT)
 
-ELINT technology enables Scouts to counter cloaked Raiders and other scouts, and to gather intelligence from rival assets.
+ELINT technology enables Scouts to counter enemy cloaked Raiders and Scouts, and to gather intelligence from rival assets.
 
 ## XYZ\.6 Cloaking
 
@@ -479,20 +483,20 @@ Possible fleet missions are listed in the table below. These are the classic fle
 | No. | Mission                 | Requirements                             |
 | --- | ----------------------- | ---------------------------------------- |
 | 00  | None (hold position)    | None                                     |
-| 01  | Move Fleet (only)       | None                                     |
-| 02  | Seek Home               | None                                     |
-| 03  | Patrol a Sector         | None                                     |
+| 01  | Move fleet (only)       | None                                     |
+| 02  | Seek home               | None                                     |
+| 03  | Patrol a system         | None                                     |
 | 04  | Guard a Starbase        | Combat ship(s)                           |
-| 05  | Guard/Blockade a Planet | Combat ship(s)                           |
-| 06  | Bombard a Planet        | Combat ship(s)                           |
-| 07  | Invade a Planet         | Combat ship(s) & Loaded Troop Transports |
+| 05  | Guard/Blockade a planet | Combat ship(s)                           |
+| 06  | Bombard a planet        | Combat ship(s)                           |
+| 07  | Invade a planet         | Combat ship(s) & loaded Troop Transports |
 | 08  | Blitz a Planet          | Loaded Troop Transports                  |
-| 09  | View a Planet           | At least one scout ship                  |
-| 10* | Hack a Starbase         | At least one scout ship                  |
-| 11  | Scout a Solar System    | At least one scout ship                  |
-| 12  | Colonize a World        | At least one ETAC                        |
+| 09  | View a planet           | At least one Scout ship                  |
+| 10* | Hack a Starbase         | At least one Scout ship                  |
+| 11  | Scout a system          | At least one Scout ship                  |
+| 12  | Colonize a planet       | At least one ETAC                        |
 | 13  | Join another fleet      | None                                     |
-| 14  | Rendezvous at Sector    | None                                     |
+| 14  | Rendezvous at system    | None                                     |
 | 15  | Salvage                 | None                                     |
 
 \* New to EC4X
@@ -585,7 +589,7 @@ Task Forces assume the highest ROE of any fleet in the force.
 
 Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
 
-**Note**: *Every* fleet in the Task Force must be in compliance with section 5.1.4 for cloaking. Cloaked fleets that have pre-existing orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
+**Note**: *Every* fleet joining the Task Force must be in compliance with section 5.1.4 for cloaking (ambush or surprise). Cloaked fleets that have pre-existing orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
 
 Spacelift Command ships are screened behind the Task Force during combat operations and do not engage. 
 
@@ -664,7 +668,7 @@ After the last round of combat the surviving Task Forces are disbanded and survi
 
 ## 5\.5 Starbase Combat
 
-If a hostile fleet has orders to bombard, invade, or blitz a colony, Starbases are the first line of planetary defense, and multiple units form a combined Task Force.
+If a hostile fleet has orders to blockade, bombard, invade, or blitz a colony, Starbases are the first line of planetary defense, and multiple units form a combined Task Force.
 
 Fleets with orders to guard a starbase(s) will also join the Task Force.
 
@@ -693,29 +697,31 @@ EC4X Space combat is adapted from Empire of the Sun (EOS).
 
 # 9\.0 Data Tables
 
-All tables are preliminary place holders.
+All tables and attributes are place holders.
 
 ## 9\.1 Space Force (Weapons Level 0)
 
-PC = Production Cost, MC = Maintenance Cost, AS = Attack Strength, HS = Hull Size,
+HS = Hull Size, PC = Production Cost, MC = Maintenance Cost, AS = Attack Strength
 
 DS = Defensive Strength, CC= Command Cost, CR = Command Rating, CL = Carry Limit
 
-| Class | Name             | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
-|:-----:| ---------------- |:---:|:---:|:-----:|:---:|:---:|:---:|:---:|:---:|
-| CT    | Corvette         | 1   | 2   | 0\.1  | 1   | 2   | 1   | 2   | NA  |
-| FF    | Frigate          | 1   | 3   | 0\.2  | 2   | 3   | 2   | 3   | NA  |
-| DD    | Destroyer        | 1   | 4   | 0\.3  | 3   | 4   | 2   | 4   | NA  |
-| CA    | Cruiser          | 2   | 5   | 0\.4  | 4   | 5   | 3   | 6   | NA  |
-| BC    | Battle Cruiser   | 2   | 6   | 0\.5  | 4   | 6   | 3   | 8   | NA  |
-| BB    | Battleship       | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
-| DN    | Dreadnought      | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
-| CV    | Carrier          | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
-| CX    | Super Carrier    | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
-| FR    | Fighter Squadron | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
-| RR    | Raider           | 2   | 25  | 0\.5  | 6   | 5   | 3   | 4   | 0   |
-| SC    | Scout            | 1   | 5   | 0\.1  | 0   | 1   | 1   | NA  | NA  |
-| SB    | Starbase         | 3   | 50  | 2.5   | 45  | 50  | NA  | NA  | NA  |
+| Class | Name              | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
+|:-----:| ----------------- |:---:|:---:|:-----:|:---:|:---:|:---:|:---:|:---:|
+| CT    | Corvette          | 1   | 2   | 0\.1  | 1   | 2   | 1   | 2   | NA  |
+| FG    | Frigate           | 1   | 3   | 0\.2  | 2   | 3   | 2   | 3   | NA  |
+| DD    | Destroyer         | 1   | 4   | 0\.3  | 3   | 4   | 2   | 4   | NA  |
+| CL    | Light Cruiser     | 2   | 5   | 0\.4  | 4   | 5   | 3   | 6   | NA  |
+| CA    | Heavy Cruiser     |     |     |       |     |     |     |     |     |
+| BC    | Battle Cruiser    | 2   | 6   | 0\.5  | 4   | 6   | 3   | 8   | NA  |
+| BB    | Battleship        | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
+| DN    | Dreadnought       | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
+| SD    | Super Dreadnought |     |     |       |     |     |     |     |     |
+| CV    | Carrier           | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
+| CX    | Super Carrier     | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
+| FR    | Fighter Squadron  | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
+| RR    | Raider            | 2   | 25  | 0\.5  | 6   | 5   | 3   | 4   | 0   |
+| SC    | Scout             | 1   | 15  | 0\.1  | 0   | 1   | 1   | NA  | NA  |
+| SB    | Starbase          | 3   | 50  | 2.5   | 45  | 50  | NA  | NA  | NA  |
 
 ## 9.3 Ground Units
 
@@ -730,8 +736,8 @@ DS = Defensive Strength, CC= Command Cost, CR = Command Rating, CL = Carry Limit
 
 | **Class** | **Name**         | **PC** | MC  | CL  |
 |:---------:| ---------------- |:------:|:---:|:---:|
-| PY        | Spaceport        | 20     | 1.0 | 10  |
-| SS        | Shipyard         | 30     | 2.0 | 10  |
+| SP        | Spaceport        | 20     | 1.0 | 10  |
+| SY        | Shipyard         | 30     | 2.0 | 10  |
 | ET        | ETAC             | 15     | 0.3 | 1   |
 | TT        | Troop Transports | 5      | 0.2 | 1   |
 
