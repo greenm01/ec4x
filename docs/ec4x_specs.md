@@ -213,7 +213,7 @@ Players make a detection roll on the table below when countering Raiders or othe
 
 Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
 
-Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves but not operate with other ships.
+Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and not operate with other ships.
 
 For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the ELINT table above (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
 
