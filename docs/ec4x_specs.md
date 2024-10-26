@@ -340,7 +340,10 @@ x = np.float64(657*(psu + 1)/100000)
 pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + psu + 1
 ```
 
-An Excel spreadsheet is included in the Github 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo.  
+An Excel spreadsheet is included in the Github 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo. 
+
+![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/pu_to_ptu.png)
+![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/ptu_to_pu.png)
 
 **Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in XMR.
 
@@ -375,6 +378,8 @@ Colonists are hard at work making babies for the House, and the population growt
 A logistical growth function is used for the calculation. Each planet class has an upper bound on the population it can support. This gives a nice 's' curve distribution, and lends incentive to terraform less hospitable planets.
 
 [The Logistic Equation](https://michaelneuper.com/posts/modelling-population-growth-in-python/)
+
+![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/logistic_population_growth.png)
 
 ## XY.3 Colonization
 
