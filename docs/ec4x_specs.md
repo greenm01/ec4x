@@ -247,7 +247,7 @@ Three fleets containing a combined total of five Level 3 Raiders enter combat. T
 
 The opposing player has four fleets converging on the same battle space. The first two fleets each contain one Level 1 ELINT Scout, and the other two fleets each have two Level 2 ELINT Scouts. The player rolls a totol of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
 
-The three(3) cloaked fleets go undetected.
+The cloaked fleets go undetected.
 
 ### 2\.4.4 Starbases
 
