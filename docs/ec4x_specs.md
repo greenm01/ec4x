@@ -33,7 +33,7 @@ Esterian Conquest was a bulletin board system (BBS) door game from the early 199
 
 While not intended to be an accounting exercise, there is enough complexity in EC4X to allow for dynamic strategic decision making and surprising outcomes.
 
-The background narrative of VB4X is wide open and only limited by the scope of your imagination.
+The background narrative of EC4X is wide open and only limited by the scope of your imagination.
 
 # 1.0 How to Play
 
