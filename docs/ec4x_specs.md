@@ -193,7 +193,7 @@ Carriers transport fighter squadrons between systems. Standard carriers hold up 
 
 Scouts are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELINT).
 
-Fleets containting Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELIN capability is merged and magnified. 
+Fleets containing Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELIN capability is merged and magnified. 
 
 Scouts assigned to a fleet or squadron must have the same ELINT tech level. Older Scouts are not compatible with the upgraded mesh network.
 
@@ -213,7 +213,7 @@ Players make a detection roll on the table below when countering Raiders or othe
 
 Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
 
-Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. Scounts are *not* equipped with cloaking tech. They can only hide by themselves but not operate with other ships.
+Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves but not operate with other ships.
 
 For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the ELINT table above (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
 
@@ -233,7 +233,7 @@ Fleets containing Raiders are fully cloaked, and roll for a chance to go undetec
 | 3                   | 45       | 12 - 20   |
 | 4                   | 60       | 8 - 20    |
 
-Roll a 1D20 for each Raider in the fleet, indexing by tech level. Radiers with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force individually roll for stealth. Total the number of successful rolls.
+Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force individually roll for stealth. Total the number of successful rolls.
 
 If a fleet does not have at least one success, then the fleet is detected. No need to proceed further.
 
@@ -245,7 +245,7 @@ Example:
 
 Three fleets containing a combined total of five Level 3 Raiders enter combat. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
 
-The opposing player has four fleets converging on the same battle space. The first two fleets each contain one Level 1 ELINT Scout, and the other two fleets each have two Level 2 ELINT Scouts. The player rolls a totol of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
+The opposing player has four fleets converging on the same battle space. The first two fleets each contain one Level 1 ELINT Scout, and the other two fleets each have two Level 2 ELINT Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
 
 The cloaked fleets go undetected.
 
@@ -439,7 +439,7 @@ ELINT technology enables Scouts to counter cloaked Raiders and other scouts, and
 
 Cloaking technology applies to Raiders and enables them to cloak their assigned fleets with increasing levels of probability.
 
-## XYZ\.7 Sabotage & Subversionn
+## XYZ\.7 Sabotage & Subversion
 
 # 3.0 Construction
 
