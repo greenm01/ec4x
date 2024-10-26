@@ -669,7 +669,7 @@ Spacelift Command ships are destroyed if their escort fleets were destroyed.
 
 ### 5\.4.4 End of Space Combat
 
-After the last round of combat the surviving Task Forces are disbanded and surviving squadrons rejoin their assigned fleets.
+After the last round of combat the surviving Task Forces are disbanded and surviving squadrons rejoin their original fleets.
 
 ## 5\.5 Starbase Combat
 
