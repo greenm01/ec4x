@@ -247,7 +247,7 @@ If the number of successful stealth rolls *is greater than* the number of succes
 
 Example: 
 
-Three fleets containing a combined total of five Level 3 Raiders enter combat. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
+A player has three fleets containing a combined total of five Level 3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
 
 The opposing player has four fleets converging on the same battle space. The first two fleets each contain one Level 1 ELINT Scout, and the other two fleets each have two Level 2 ELINT Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
 
@@ -604,7 +604,7 @@ Starbases remain in reserve to protect the colony from blockade and direct attac
 
 All fleets encountering enemy forces within a solar system, in the same turn, shall engage in combat.  Players align their Task Forces for battle in accordance with Section 5.2.
 
-Squadrons and Spacelift Command ships may neither be re-assigned to new fleets during space combat nor during a retreat. Ships assigned to squadrons may not be reorganized during combat.
+Squadrons and Spacelift Command ships may neither be re-assigned to new fleets during space combat nor during a retreat. Squadrons may not be reorganized during combat.
 
 ### 5.4.1 Rounds
 
