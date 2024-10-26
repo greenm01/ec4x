@@ -135,7 +135,7 @@ Feel free to create your own ships and races for asymmetrical warfare or narrati
 
 The Spacelift Command provides commerce and transportation services in support of the House's expansion efforts. Assets are owned by the House and commanded by senior Space Force officers. Units are crewed and operated by loyal House citizens.
 
-Spacelift assets have no offensive weapons capability, and un-escorted units are easily captured or destroyed by rival forces. 
+Spacelift assets have no offensive weapons capability, and un-escorted units are easily destroyed by rival forces. 
 
 Spacelift Command attributes are listed in Section 9.
 
@@ -149,15 +149,17 @@ Shipyards are gateways to the stars. They are large bases constructed in orbit a
 
 The majority of ship construction and repair will occur at these important facilities.
 
-Shipyards are equipped with 10 docks for construction and repair, and are fixed in orbit.
+Shipyards are equipped with 10 docks for construction and repair, and are fixed in orbit. Built multiple yards to increate colony ship construction capacity.
 
 #### 2.3.2.3 Environmental Transformation And Colonization (ETAC)
 
-ETACs plant a seed by establishing colonies on uninhabited planets. After use they are scrapped and used by the colony to begin the long terraforming process. They have a Carry Limit (CL) of one Population Transfer Unit (PTU) and must be loaded with colonists.
+ETACs plant a seed by establishing colonies on uninhabited planets. After use they are scrapped and used by the colony to begin the long terraforming process. 
+
+ETACS have a Carry Limit (CL) of one Population Transfer Unit (PTU) and must be loaded with colonists.
 
 #### 2.3.2.4 Troop Transports
 
-Troop Transports are specialized ships that taxi Space Marine divisions between solar systems, along with their required combat gear, armored vehicles, and ammunition. They have a CL of one MM.
+Troop Transports are specialized ships that taxi Space Marine divisions between solar systems, along with their required combat gear, armored vehicles, and ammunition. They have a CL of one Marine Division (MD).
 
 ### 2\.3.3 Squadrons
 
@@ -175,23 +177,23 @@ Squadrons are grouped together into fleets for the purpose of traversing jump la
 
 ### 2\.3.5 Task Force
 
-A Task Force is temporary grouping of squadrons organized for combat. After the cessation of hostilities the task force is disbanded and surviving squadrons return to their respective fleets.
+A Task Force is temporary grouping of squadrons organized for combat. After the cessation of hostilities the task force is disbanded and surviving squadrons return to their originally assigned fleets.
 
 ## 2\.4 Special Units
 
 ### 2\.4.1 Fighter Squadrons & Carriers
 
-Fighters are small ships commissioned in squadrons that freely patrol a system. They are based planetside and never retreat from combat.
+Fighters are small ships commissioned in Fighter Squadrons (FS) that freely patrol a system. They are based planetside and never retreat from combat.
 
 There is no limit to the number of fighter squadrons deployed in a home system.
 
 Because of their fast lightweight nature, fighters are considered to be in a crippled combat state, but without a reduction in attack strength (AS).
 
-Carriers transport fighter squadrons between systems. Standard carriers hold up to three; super carriers hold up to five.
+Carriers (CV) transport fighter squadrons between systems. Standard carriers hold up to three; Super Carriers (CX) hold up to five.
 
 ### 2\.4.2 Scouts
 
-Scouts are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELINT).
+Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELINT).
 
 Fleets containing Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELIN capability is merged and magnified. 
 
@@ -203,25 +205,25 @@ Crippled Scouts lose their ELINT sensors until repaired.
 
 **Detection Table**
 
-| ELINT Tech Level | % Chance | Modified 1D20 Roll\* |
-|:----------------:|:--------:|:--------------------:|
-| 0                | 00       | NA                   |
-| 1                | 15       | 18 - 20              |
-| 2                | 30       | 15 - 20              |
-| 3                | 45       | 12 - 20              |
-| 4                | 60       | 8 - 20               |
+| Tech Level | % Chance | Modified 1D20 Roll\* |
+|:----------:|:--------:|:--------------------:|
+| ELINT 0    | 00       | NA                   |
+| ELINT 1    | 15       | 18 - 20              |
+| ELINT 2    | 30       | 15 - 20              |
+| ELINT 3    | 45       | 12 - 20              |
+| ELINT 4    | 60       | 8 - 20               |
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier for the detection roll.
 
 Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
 
-Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and not operate with other ships.
+Scouts also maintain an element of stealth when performing solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
 For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the ELINT table above (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
 
 ### 2\.4.3 Raiders
 
-The Raider is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of Battle Cruiser.
+The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Battle Cruiser (BC).
 
 Fleets containing Raiders are fully cloaked, and roll for a chance to go undetected when encountering opposing forces on the Stealth Table below.
 
@@ -229,63 +231,63 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 **Stealth Table**
 
-| Cloaking Tech Level | % Chance | 1D20 Roll |
-|:-------------------:|:--------:|:---------:|
-| 0                   | 00       | NA        |
-| 1                   | 15       | 18 - 20   |
-| 2                   | 30       | 15 - 20   |
-| 3                   | 45       | 12 - 20   |
-| 4                   | 60       | 8 - 20    |
+| Tech Level | % Chance | 1D20 Roll |
+|:----------:|:--------:|:---------:|
+| Cloak 0    | 00       | NA        |
+| Cloak 1    | 15       | 18 - 20   |
+| Cloak 2    | 30       | 15 - 20   |
+| Cloak 3    | 45       | 12 - 20   |
+| Cloak 4    | 60       | 8 - 20    |
 
-Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force individually roll for stealth. Total the number of successful rolls.
+Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful rolls.
 
 If a fleet does not have at least one success, then the fleet is detected. No need to proceed further.
 
-Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 to counter. Total the number of successful rolls.
+Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 in order to counter. Total the number of successful rolls.
 
 If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected.
 
-Example: 
+**Example**: 
 
-A player has three fleets containing a combined total of five Level 3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
+A player has three fleets containing a combined total of five Cloak 3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
 
-The opposing player has four fleets converging on the same battle space. The first two fleets each contain one Level 1 ELINT Scout, and the other two fleets each have two Level 2 ELINT Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
+The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELINT 1 Scout, and the other two fleets each have two ELINT 2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
 
 The cloaked fleets go undetected.
 
 ### 2\.4.4 Starbases
 
-Starbases are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
+Starbases (SB) are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
 Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
 Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% each, every turn (preliminary). 
 
-Example: under normal conditions the natural birthrate of a colony is 2%. With three starbases, the rate is:
+Example: under normal conditions the natural birthrate of a colony is 2%. With three Starbases, the rate is:
 
 ```
 2% * (1 + (0.05 * 3)) = 2.3% 
 ```
 
-Crippled starbases stop yielding these benefits until they are repaired.  
+Crippled Starbases do not yield benefits until they are repaired.  
 
 ### 2\.4.7 Planetary Shields & Ground Batteries
 
-Planetary shields and Ground Batteries are planet based assets that provide an extra layer of defense to an player's colonies.
+Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that provide an extra layer of defense to an player's colonies.
 
-Planetary shields are restricted to homeworlds and provide system-wide electronic jamming that disrupt hostile forces assaulting the mother-system. They also serve to protect your homeworld from orbital bombardment. They are restricted to one unit per homeworld.
+Planetary Shields are restricted to homeworlds and provide system-wide electronic jamming that disrupt hostile forces assaulting the mother-system. They also serve to protect your homeworld from orbital bombardment. They are restricted to one unit per homeworld.
 
-Ground batteries are immobile, low-tech, land based units that have the firepower of a battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
+Ground Batteries are immobile, low-tech, land based units that have the firepower of a Battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
 
-Ground batteries are the only units that are constructed in the span of a single turn. Colonies may build them to no limit.
+Ground Batteries are the only units that are constructed in the span of a single turn, and colonies may build them to no limit.
 
 ### 2\.4.8 Space Marines & Armies
 
-Space Marines are ferocious devil dogs that capture rival planets. They deploy in division sized units and will never surrender or abandon one of their own.
+Space Marines are ferocious devil dogs that capture rival planets. They deploy in division sized units (MD) and will never surrender or abandon one of their own.
 
 Marines are dropped on rival planets by troop transports during an invasion or blitz.
 
-Armies garrison your colonies and eradicate invaders. Their orders are to take no prisoners and protect the colony at all cost.
+Armies (AA) garrison your colonies and eradicate invaders. Their orders are to take no prisoners and protect the colony at all cost.
 
 Marines fight alongside the Army if garrisoned planetside.
 
@@ -452,7 +454,8 @@ Cloaking technology applies to Raiders and enables them to cloak their assigned 
 
 # 3.0 Construction
 
-Construction and repair of House assets is accomplished planetside or in orbit, with restrictions.  
+Construction and repair of House assets is accomplished planetside or in orbit, with restrictions. 
+
 The number of turns required to newly construct an asset, unless otherwise specified, is equal to the PC times 0.5 (rounded down). Assets remain decommissioned through the activity period.
 
 TODO: Explain construction capacity and rate
@@ -473,11 +476,11 @@ Shipyard construction of a ship in orbit is the standard method of commissioning
 
 ## 3.4 Orbital Repair
 
-Ship repairs require a shipyard. The cost of repair equals one quarter (25%) of the unit's PC.
+Ship repairs require a Shipyard. The cost of repair equals one quarter (25%) of the unit's PC.
 
 Example: A player wishes to repair a crippled tech-level III Cruiser. The cost is 7 * 0.25 = 1.75 XMR.
 
-The logistics of repairing a ship planetside and returning it to orbit make it economically infeasible. Ships may be scrapped at a colony without restriction and earn 50% of the original PC back to the House treasury.
+The logistics of repairing a ship planetside and returning it to orbit make it economically infeasible. Ships may be salvaged at a colony without restriction and earn 50% of the original PC back to the House treasury.
 
 # 4\.0 Movement
 
@@ -723,7 +726,7 @@ DS = Defensive Strength, CC= Command Cost, CR = Command Rating, CL = Carry Limit
 | SD    | Super Dreadnought |     |     |       |     |     |     |     |     |
 | CV    | Carrier           | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
 | CX    | Super Carrier     | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
-| FR    | Fighter Squadron  | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
+| FS    | Fighter Squadron  | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
 | RR    | Raider            | 2   | 25  | 0\.5  | 6   | 5   | 3   | 4   | 0   |
 | SC    | Scout             | 1   | 15  | 0\.1  | 0   | 1   | 1   | NA  | NA  |
 | SB    | Starbase          | 3   | 50  | 2.5   | 45  | 50  | NA  | NA  | NA  |
@@ -735,13 +738,13 @@ DS = Defensive Strength, CC= Command Cost, CR = Command Rating, CL = Carry Limit
 | PS        | Planetary Shield | 35     | 2.0 | 0   | 50  |
 | GB        | Ground Batteries | 4      | 0.1 | 6   | 2   |
 | AA        | Armies           | 2      | 0.2 | 2   | 3   |
-| MM        | Space Marines    | 3      | 0.2 | 3   | 2   |
+| MD        | Space Marines    | 3      | 0.2 | 3   | 2   |
 
 ## 9\.2 Spacelift Command
 
 | **Class** | **Name**         | **PC** | MC  | CL  |
 |:---------:| ---------------- |:------:|:---:|:---:|
-| SP        | Spaceport        | 20     | 1.0 | 10  |
+| SP        | Spaceport        | 20     | 1.0 | 5   |
 | SY        | Shipyard         | 30     | 2.0 | 10  |
 | ET        | ETAC             | 15     | 0.3 | 1   |
 | TT        | Troop Transports | 5      | 0.2 | 1   |
