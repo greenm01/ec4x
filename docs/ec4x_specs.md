@@ -193,11 +193,11 @@ Carriers transport fighter squadrons between systems. Standard carriers hold up 
 
 Scouts are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELINT).
 
-Scouts are the only units that have a chance of countering cloaking via ELINT technology. Scouts assigned to the same fleet operate as a mesh network, and their ELIN capability is merged and magnified.
+Fleets containting Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELIN capability is merged and magnified. 
 
-Fleets that contain at least one Scout make a detection roll on the table below when countering Raiders or other Scouts sent on spy missions.
+Scouts assigned to a fleet or squadron must have the same ELINT tech level. Older Scouts are not compatible with the upgraded mesh network.
 
-Note that Scouts with different tech levels may not be assigned to the same squadron or fleet.
+Players make a detection roll on the table below when countering Raiders or other Scouts sent on spy missions.
 
 **Detection Table**
 
@@ -209,23 +209,19 @@ Note that Scouts with different tech levels may not be assigned to the same squa
 | 3                | 45       | 12 - 20              |
 | 4                | 60       | 8 - 20               |
 
-\*Total the number of Scouts assigned to the same fleet and subtract one. This is the die roll modifier for the detection roll.
+\*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier for the detection roll.
 
 Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
 
-Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. They can only hide by themselves and no other ships.
+Scouts also maintain an element of stealth when operating on solo missions for information gathering (spy) purposes in enemy solar systems. Scounts are *not* equipped with cloaking tech. They can only hide by themselves but not operate with other ships.
 
-For every turn a Scout operates in an enemy solar system occupied by rival fleets containing scouts, the rival will roll on the ELINT table above (for each fleet) to determine if the opposing Scout is detected. If the Scout is detected, it is destroyed.
-
-Solo operating Scouts can not detect other enemy Scouts operating autonomously.
+For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the ELINT table above (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
 
 ### 2\.4.3 Raiders
 
 The Raider is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Battleship and shielding of a Cruiser.
 
-Raiders cloak their entire assigned fleet, regardless of size. 
-
-Note that raiders with different tech levels may not be assigned to the same squadron or fleet.
+Fleets containing Raiders are fully cloaked, and roll for a chance to go undetected when encountering opposing forces on the Stealth Table below.
 
 **Stealth Table**
 
@@ -237,21 +233,19 @@ Note that raiders with different tech levels may not be assigned to the same squ
 | 3                   | 45       | 12 - 20   |
 | 4                   | 60       | 8 - 20    |
 
-During combat or moving through an enemy solar system, cloaked fleets have a chance of remaining undetected by enemy forces.
-
-For each fleet containing a Raider in the encounter, roll a 1D20 on the "Stealth Table" above. If there are multiple Raiders in a fleet, roll for as many chances as there are Raiders. Total the number of successful rolls, which will be explained below.
+Roll a 1D20 for each Raider in the fleet, indexing by tech level. Radiers with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force individually roll for stealth. Total the number of successful rolls.
 
 If a fleet does not have at least one success, then the fleet is detected. No need to proceed further.
 
-Opposing fleets containing scouts may roll in accordance with the "Detection Roll" table in Section 2.4.2 to counter. Total the number of successful rolls.
+Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 to counter. Total the number of successful rolls.
 
 If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected.
 
 Example: 
 
-Three(3) fleets containing a combined total of five(5) Level 3 Raiders enters combat. The player rolls for stealth for each fleet and is successful on all. The total number of successful rolls between all three fleets is three (3).
+Three fleets containing a combined total of five Level 3 Raiders enter combat. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
 
-The opposing player has two(2) fleets in the solar system, the first with two(2) Level 2 ELINT scouts and the other with a single(1) level 3 ELINT scout. The player rolls twice(2) (for each fleet), applying a modifier (+1) to the first fleet. He achieves one (1) successful detection roll.
+The opposing player has four fleets converging on the same battle space. The first two fleets each contain one Level 1 ELINT Scout, and the other two fleets each have two Level 2 ELINT Scouts. The player rolls a totol of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
 
 The three(3) cloaked fleets go undetected.
 
@@ -579,7 +573,7 @@ When attacking a solar system, cloaked units are considered to be a surprise to 
 
 Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing forces have an opportunity to counter.
 
-**Important**: *Every cloaked fleet joining a Task Force must pass a stealth roll for the entire Task Force to be cloaked*.
+**Important**: *Every fleet joining a Task Force must pass a stealth roll for the entire Task Force to be considered cloaked*.
 
 ## 5\.2 Task Force Assignment
 
@@ -591,7 +585,7 @@ Task Forces assume the highest ROE of any fleet in the force.
 
 Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
 
-*Every* cloaked fleet must be in compliance with section 5.1.4 in order for the entire Task Force to be cloaked for combat. Cloaked fleets that have pre-existing orders to travel through the solar system may continue their journey if they pass a stealth roll.
+**Note**: *Every* fleet in the Task Force must be in compliance with section 5.1.4 for cloaking. Cloaked fleets that have pre-existing orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
 
 Spacelift Command ships are screened behind the Task Force during combat operations and do not engage. 
 
