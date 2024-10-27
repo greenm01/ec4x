@@ -770,6 +770,8 @@ Squadron units are either undamaged, crippled, or destroyed.
 
 **Destroyed**: In a crippled combat state, hits equal to DS reduces a unit's state to destroyed. The unit is dead and unrecoverable.
 
+If a squadron is crippled, all the ships under its command are crippled. If a squadron is destroyed, all the ships are likewise destroyed.
+
 ### 5\.1.4 Cloaking
 
 Cloaking offers an advantage in the initial round of space combat, both on the defensive and offensive.
@@ -891,7 +893,7 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 
 - Additional modifiers to the CER roll, e.g. battle stations readiness, random chance events, etc.
 - Apply the Starbase critical hit rule to special assets that are resistant to crippling.
-- Add a modifier to protect homeworlds
+- Add a modifier to protect a homeworld's solar system
 - Add mines or moon bases
 - Add defensive missile batteries
 - Insert your imagination here.....
