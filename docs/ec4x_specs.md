@@ -535,7 +535,7 @@ Engineering is the practical application of science, and thus dependent upon adv
 
 In VB4X, advances in engineering are tied to the Military and Industrial complex, although development also carries over to commerce, mining, industry, propulsion systems, computing, services, medicine, and almost every other realm of material human flourishing. 
 
-Sprituality is not addressed in this game, although players are free to develop their own ideas of what that means.
+Spirituality is not addressed in this game, although players are free to develop their own ideas of what that means.
 
 The cost of TRP is dependent upon the required SL for the technology being developed.
 
@@ -641,7 +641,7 @@ Upgrades do not apply to preexisting shields. Salvage and build a new one.
 | SLD2      | 6   |          |
 | SLD3+     | 7+  |          |
 
-The maxium SLD level is SLD5.
+The maximum SLD level is SLD5.
 
 # 3.0 Construction
 
