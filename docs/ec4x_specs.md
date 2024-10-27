@@ -248,11 +248,11 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful rolls.
 
-If a fleet does not have at least one success, then the fleet is detected. No need to proceed further.
+If the player does roll at least one success, then the fleet is detected. No need to proceed further.
 
 Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 in order to counter. Total the number of successful rolls.
 
-If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected. In the case of a tie the defending player wins in ambush.
+If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected. In the case of a tie the defending player wins.
 
 **Example**: 
 
