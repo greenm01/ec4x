@@ -296,7 +296,7 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful stealth rolls.
 
-If the player fails to roll at least one success for stealth, then the applicable fleet is detected. No need to proceed further.
+If a fleet fails for stealth, then the fleet is detected. No need to proceed further.
 
 Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 in order to counter. Total the number of successful detection rolls.
 
@@ -309,6 +309,7 @@ A player has three fleets containing a combined total of five CLK3 Raiders conve
 The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELI1 Scout, and the other two fleets each have two ELI2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful detection rolls.
 
 The cloaked fleets go undetected.
+
 
 ### 2\.4.4 Starbases
 
