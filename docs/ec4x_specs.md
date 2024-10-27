@@ -25,10 +25,10 @@ EC4X pays homage and is influenced by the following great titles:
 - Esterian Conquest (EC)
 - Victory by Any Means (VBAM)
 - Empire of The Sun (EOS)
-- Space Empires 4X (SE4X)
-- Solar Starfire (SSF)
-- Stellar Conquest (SC)
-- Fractal, Beyond the Void (FBV)
+- Space Empires 4X
+- Solar Starfire
+- Stellar Conquest
+- Fractal, Beyond the Void
 
 Although not required, it is highly recommended to purchase physical copies of these classics to fully appreciate the art. Dive deep.
 
