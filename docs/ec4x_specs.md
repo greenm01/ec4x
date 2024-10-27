@@ -220,7 +220,7 @@ Crippled Scouts lose their ELI sensors until repaired.
 
 Example:
 ```
-A fleet contains three Scouts.
+A fleet contains three ELI4 Scouts.
 3 - 1 = 2. The die roll modifier is +2
 ```
 
