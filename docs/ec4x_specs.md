@@ -246,7 +246,7 @@ Crippled Raiders lose their cloaking ability until repaired.
 | CLK6       | 90       | 3 - 20    |
 | CLK7       | 100      | 1 - 20    |
 
-Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful rolls.
+Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful stealth rolls.
 
 If the player fails to roll at least one success for stealth, then the applicable fleet is detected. No need to proceed further.
 
