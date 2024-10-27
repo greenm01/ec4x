@@ -32,7 +32,7 @@ EC4X pays homage and is influenced by the following great titles:
 
 Although not required, it is highly recommended to purchase physical copies of these classics to fully appreciate the art. Dive deep.
 
-Esterian Conquest was a bulletin board system (BBS) door game from the early 1990's that initially inspired this project. EC was THE greatest game of all time (no arguments).
+Esterian Conquest was an obscure bulletin board system (BBS) door game from the early 1990's that initially inspired this project. EC was a gem, and great memories were had battling friends, family, and anonymous players over the phone lines on slow crusty modems. Graphics were crude but the ANSI art was fantastic. The early 1990's were simple times, just before the internet blew up and super computers landed in all of our pockets. EC turns progressed once a day and most of the strategic planning occurred in one's imagination offline. Players eagerly awaited each new day's battle reports, and games would last several weeks to several months. Maps and reports were printed on dot matrix printers and marked up with pencil to no end (Excel wasn't a thing). The times were good. That era is long gone but tabletop wargaming is still alive and well in 2024. EC4X is an attempt to recapture the magic.
 
 While not intended to be an accounting exercise, there is enough complexity in EC4X to allow for dynamic strategic decision making and surprising outcomes.
 
@@ -252,7 +252,7 @@ If a fleet does not have at least one success, then the fleet is detected. No ne
 
 Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 in order to counter. Total the number of successful rolls.
 
-If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected.
+If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected. In the case of a tie the defending player wins in ambush.
 
 **Example**: 
 
@@ -293,7 +293,7 @@ Planetary Shields protect your colonies from orbital bombardment. With increasin
 | SLD5      | 75       | 5 - 20    | 40%        |
 | SLD5      | 90       | 2 - 20    | 50%        |
 
-Upgrading a Planetary Shield to a new SLD level requires diabling the old shield and replacing it with a new one. A Planet may not have more than one shield.
+Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet may not have more than one shield.
 
 Ground Batteries are immobile, low-tech, land based units that have the firepower of a Battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
 
@@ -323,7 +323,7 @@ The standard unit of account in EC4X is Monero (XMR), i.e. money.
 
 The power of a House is fueled by economic might, which in turn is a function of population growth and gains in science and technology.
 
-XMR settle near instantaneously on the inter-dimensional Pheonix network. (All comms and data transfers are instantaneous. Don't question; it's magic).
+XMR settle near instantaneously on the inter-dimensional Phoenix network. (All comms and data transfers are instantaneous. Don't question; it's magic).
 
 ## XY\.1 Principles
 
@@ -337,7 +337,7 @@ This model is disinflationary; inflation asymptotically approaches zero over tim
 
 Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity.  
 
-A high PSU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentivizes eXpanding population across newly acquired planets. 
+A high PSU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentives leads expanding population across newly acquired planets.
 
 The equations (in Python) for converting PU to PSU:
 
@@ -449,7 +449,7 @@ Players invest ERP, SRP, and TRP to advance in EL, SL, and TL.
 
 Advances in SL is dependent upon EL, and advances in TL is dependent upon SL, as explained below.
 
-In standard EC4X games, Houses start at EL1, SL1, and TL1. Consider boosting these to expidite the game for impatient players, although the game year should be advanced from 2001 to match. 
+In standard EC4X games, Houses start at EL1, SL1, and TL1. Consider boosting these to expedite the game for impatient players, although the game year should be advanced from 2001 to match.
 
 **TODO: Add a roll for "research breakthrough" for every first and sixth month.**
 
@@ -531,7 +531,7 @@ SRP = 20 + SL(5) (Maxing at 55 SRP)
 
 TL represents the engineering capability of the House. It is the practical application of science, and thus dependent upon advances in SL. 
 
-In VB4X, advances in TL are tied to upgrades in the Military and Industrial complex, although it also carries over to commerce, mining, industry, propulstion systems, computing, services, and almost every other aspect that touches human flourising.
+In VB4X, advances in TL are tied to upgrades in the Military and Industrial complex, although it also carries over to commerce, mining, industry, propulsion systems, computing, services, and almost every other aspect that touches human flourishing.
 
 Advancing to the next TL requires the House to have previously developed an equivalent level of SL. For example, advancing from TL3 to TL4 requires the house to be at SL4 or greater.
 
@@ -593,7 +593,7 @@ Upgrades do not apply to pre-existing ships.
 | WEP2          | 2      |
 | WEP3+         | 3+     |
 
-The maxium weapons level is WEP10.
+The maximum weapons level is WEP10.
 
 ## XYZ\.7 Terraforming (TER)
 
@@ -615,7 +615,7 @@ A planet may not skip a class, and each step costs the lower PU bound for the ne
 
 ELI technology enables Scouts to counter enemy cloaked Raiders and Scouts, and to gather intelligence from rival assets.
 
-Upgrades do not apply to pre-existing Scouts.
+Upgrades do not apply to preexisting Scouts.
 
 | ELI Level | Min TL |
 |:---------:|:------:|
@@ -623,13 +623,13 @@ Upgrades do not apply to pre-existing Scouts.
 | ELI2      | 2      |
 | ELI3+     | 3+     |
 
-The maxium ELI level is ELI5.
+The maximum ELI level is ELI5.
 
 ## XYZ\.9 Cloaking (CLK)
 
 Cloaking technology applies to Raiders and enables them to cloak their assigned fleets with increasing levels of probability.
 
-Upgrades do not apply to pre-existing Raiders.
+Upgrades do not apply to preexisting Raiders.
 
 | CLK Level | Min TL |
 |:---------:|:------:|
@@ -637,13 +637,13 @@ Upgrades do not apply to pre-existing Raiders.
 | CLK2      | 4      |
 | CLK3+     | 5+     |
 
-The maxium CLK level is CLK7.
+The maximum CLK level is CLK7.
 
 ## XYZ\.10 Planetary Shields (SLD)
 
-Planetary Shields protect a colony from bombardment and invastion. 
+Planetary Shields protect a colony from bombardment and invasion.
 
-Upgrades do not apply to pre-existing shields. Salvage and build a new one.
+Upgrades do not apply to preexisting shields. Salvage and build a new one.
 
 | SLD Level | Min TL |
 |:---------:|:------:|
@@ -691,7 +691,7 @@ The logistics of repairing a ship planetside and returning it to orbit make it e
 
 ## 4.1 Fleet Orders
 
-Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterain Conquest, modified for EC4X.
+Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterian Conquest, modified for EC4X.
 
 | No. | Mission                 | Requirements                             |
 | --- | ----------------------- | ---------------------------------------- |
@@ -903,7 +903,7 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 - Apply the Starbase critical hit rule to special assets that are resistant to crippling.
 - Add a modifier to protect homeworlds
 - Add mines or moon bases
-- Add defensive missle batteries
+- Add defensive missile batteries
 - Insert your imagination here.....
 
 EC4X Space combat is adapted from Empire of the Sun (EOS). 
