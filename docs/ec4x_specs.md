@@ -284,14 +284,14 @@ Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that pr
 
 Planetary Shields protect your colonies from orbital bombardment. With increasing SLD levels they have a higher probability of absorbing direct hits, and also become more powerful.
 
-| SLD Level | % Chance | 1D20 Roll | % AS Block |
-|:---------:|:--------:|:---------:| ---------- |
-| SLD1      | 15       | 18 - 20   | 25%        |
-| SLD2      | 30       | 15 - 20   | 25%        |
-| SLD3      | 45       | 12 - 20   | 30%        |
-| SLD4      | 60       | 8 - 20    | 30%        |
-| SLD5      | 75       | 5 - 20    | 40%        |
-| SLD5      | 90       | 2 - 20    | 50%        |
+| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
+|:---------:|:--------:|:---------:| ----------------- |
+| SLD1      | 15       | 18 - 20   | 25%               |
+| SLD2      | 30       | 15 - 20   | 30%               |
+| SLD3      | 45       | 12 - 20   | 35%               |
+| SLD4      | 60       | 8 - 20    | 40%               |
+| SLD5      | 75       | 5 - 20    | 45%               |
+| SLD5      | 90       | 2 - 20    | 50%               |
 
 Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet may not have more than one shield.
 
@@ -299,7 +299,11 @@ Ground Batteries are immobile, low-tech, land based units that have the firepowe
 
 Ground Batteries are the only units that are constructed in the span of a single turn, and colonies may build them to no limit.
 
-### 2\.4.8 Space Marines & Armies
+### 2.4.8 Planet-Breaker
+
+Planet-Breakers (PB) are high technology, late-game ships that penetrate planetary shields and render them inneffective. 
+
+### 2\.4.9 Space Marines & Armies
 
 Space Marines are ferocious devil dogs that capture rival planets. They deploy in division sized units (MD) and will never surrender or abandon one of their own.
 
@@ -362,7 +366,7 @@ x = np.float64(657*(psu + 1)/100000)
 pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + psu + 1
 ```
 
-An Excel spreadsheet is included in the Github 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo. 
+An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo.
 
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/pu_to_ptu.png)
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/ptu_to_pu.png)
@@ -569,7 +573,7 @@ Upgrades improve the construction capability and capacity of planet based factor
 
 CST will open up new, larger hulled classes of combat ships.
 
-Rount up to the nearest whole number when recalculating a capacity increase.
+Round up to the nearest whole number when recalculating a capacity increase.
 
 | CST Level | Min EL | Capacity Increase |
 |:---------:|:------:|:-----------------:|
@@ -585,7 +589,7 @@ Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat sh
 
 For every WEP increase, Production Cost (PC) per unit increases by 10%.
 
-Upgrades do not apply to pre-existing ships.
+Upgrades do not apply to preexisting ships.
 
 | Weapons Level | Min TL |
 |:-------------:|:------:|
@@ -647,9 +651,9 @@ Upgrades do not apply to preexisting shields. Salvage and build a new one.
 
 | SLD Level | Min TL |
 |:---------:|:------:|
-| SLD1      | 3      |
-| SLD2      | 4      |
-| SLD3+     | 5+     |
+| SLD1      | 5      |
+| SLD2      | 6      |
+| SLD3+     | 7+     |
 
 The maxium SLD level is SLD5.
 
@@ -802,7 +806,7 @@ Task Forces assume the highest ROE of any fleet in the force.
 
 Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
 
-**Note**: *Every* fleet joining the Task Force must be in compliance with section 5.1.4 for cloaking (ambush or surprise). Cloaked fleets that have pre-existing orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
+**Note**: *Every* fleet joining the Task Force must be in compliance with section 5.1.4 for cloaking (ambush or surprise). Cloaked fleets that have preexisting orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
 
 Spacelift Command ships are screened behind the Task Force during combat operations and do not engage. 
 
@@ -937,6 +941,7 @@ CL = Carry Limit
 | BB    | Battleship        | 4   | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
 | DN    | Dreadnought       | 5   | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
 | SD    | Super Dreadnought | 6   |     |     |       |     |     |     |     |     |
+| PB    | Planet-Breaker    | 10  |     |     |       |     |     |     |     |     |
 | CV    | Carrier           | 3   | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
 | CX    | Super Carrier     | 5   | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
 | FS    | Fighter Squadron  | 3   | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
@@ -948,7 +953,7 @@ CL = Carry Limit
 
 | **Class** | **Name**         | CST | PC  | MC  | AS  | DS  |
 | --------- | ---------------- |:---:| --- | --- |:---:|:---:|
-| PS        | Planetary Shield | 3   | 35  | 2.0 | 0   | 50  |
+| PS        | Planetary Shield | 5   | 35  | 2.0 | 0   | 50  |
 | GB        | Ground Batteries | 1   | 4   | 0.1 | 6   | 2   |
 | AA        | Armies           | 1   | 2   | 0.2 | 2   | 3   |
 | MD        | Space Marines    | 1   | 3   | 0.2 | 3   | 2   |
