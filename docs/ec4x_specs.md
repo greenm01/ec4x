@@ -788,7 +788,7 @@ Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing fo
 
 Fleets are temporarily disbanded and their squadrons fight individually under a single Task Force.
 
-Task Forces assume the highest ROE of any fleet in the force.
+Task Forces assume the highest ROE of any fleet joining the force.
 
 Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
 
