@@ -457,11 +457,11 @@ In standard EC4X games, Houses start at EL1 and SL1. Consider boosting these to 
 
 ## XYZ.2 Economic Level (EL)
 
-EL represents the general education and skill level of House citizens. 
+EL represents the entrepreneurial skills and general education level of House citizens.
 
 EL is not a specific reflection of scientific or technological advancement, although they are correlated.
 
-A House's GCP benefits from EL upgrades by 5% per level. The economy is tied to Increases in worker productivity and education.
+A House's GCP benefits from EL upgrades by 5% per level. The economy is tied to entrepreneurial ambition and citizen education.
 
 The formula for ERP in XMR is:
 
@@ -534,8 +534,6 @@ SRP = 20 + SL(5) (Maxing at 55 SRP)
 Engineering is the practical application of science, and thus dependent upon advances in SL. Engineering advancements are made with the purchased with TRP.
 
 In VB4X, advances in engineering are tied to the Military and Industrial complex, although development also carries over to commerce, mining, industry, propulsion systems, computing, services, medicine, and almost every other realm of material human flourishing. 
-
-Spirituality is not addressed in this game, although players are free to develop their own ideas of what that means.
 
 The cost of TRP is dependent upon the required SL for the technology being developed.
 
