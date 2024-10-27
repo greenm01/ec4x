@@ -248,17 +248,17 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful rolls.
 
-If the player does roll at least one success, then the fleet is detected. No need to proceed further.
+If the player fails to roll at least one success for stealth, then the applicable fleet is detected. No need to proceed further.
 
-Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 in order to counter. Total the number of successful rolls.
+Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 in order to counter. Total the number of successful detection rolls.
 
 If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected. In the case of a tie the defending player wins.
 
 **Example**: 
 
-A player has three fleets containing a combined total of five CLK3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
+A player has three fleets containing a combined total of five CLK3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful stealth rolls.
 
-The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELI1 Scout, and the other two fleets each have two ELI2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
+The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELI1 Scout, and the other two fleets each have two ELI2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful detection rolls.
 
 The cloaked fleets go undetected.
 
