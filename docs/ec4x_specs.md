@@ -584,7 +584,7 @@ SRP = 20 + SL(5) (Maxing at 55 SRP)
 
 Engineering is the practical application of science, and thus dependent upon advances in SL. Engineering advancements are made with direct investment in TRP.
 
-In VB4X, advances in engineering are tied to the Military and Industrial complex, although development also carries over to commerce, mining, industry, propulsion systems, computing, services, medicine, and almost every other realm of material human flourishing. 
+In VB4X, advances in engineering are tied to the Military and Industrial complex, although development also carries over to commerce, mining, industry, propulsion systems, computing, AI, robotics, services, medicine, and almost every other realm of material human flourishing.
 
 The cost of TRP is dependent upon the required SL for the technology being developed.
 
