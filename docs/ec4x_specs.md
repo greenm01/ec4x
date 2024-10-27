@@ -14,7 +14,9 @@ EC4X is an asynchronous turn based wargame of the classic eXplore, eXpand, eXplo
 
 Upstart Houses battle over a small region of space to dominate usurpers and seize the imperial throne. Your role is to serve as House Duke and lead your people to greatness. 
 
-The game begins at the dawn of the third imperium in the year 2001. Each turn comprises one month of a thirteen month [Terran Computational Calendar](<https://www.terrancalendar.com/> "Terran Computational Calendar"). Turns cycle every 24-hours in real life (IRL) time.
+The game begins at the dawn of the third imperium in the year 2001. Each turn comprises one month of a thirteen month [Terran Computational Calendar](<https://www.terrancalendar.com/> "Terran Computational Calendar"). 
+
+Turns cycle as soon as all players have completed their turns, or generally a maximum of one day In Real Life (IRL) time. EC4X is intentionally slow burn.
 
 EC4X is intended to facilitate remote play between friends over email or local tabletop play. Future releases will be server/client based and written in Rust. EC4X is a flexible framework; adapt it to your own requirements.
 
@@ -193,25 +195,25 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 ### 2\.4.2 Scouts
 
-Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELINT).
+Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Fleets containing Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELIN capability is merged and magnified. 
+Fleets containing Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and magnified. 
 
-Scouts assigned to a fleet or squadron must have the same ELINT tech level. Older Scouts are not compatible with the upgraded mesh network.
+Scouts assigned to a fleet or squadron must have the same ELI tech level. Older Scouts are not compatible with the upgraded mesh network.
 
 Players make a detection roll on the table below when countering Raiders or other Scouts sent on spy missions.
 
-Crippled Scouts lose their ELINT sensors until repaired.
+Crippled Scouts lose their ELI sensors until repaired.
 
 **Detection Table**
 
 | Tech Level | % Chance | Modified 1D20 Roll\* |
 |:----------:|:--------:|:--------------------:|
-| ELINT 0    | 00       | NA                   |
-| ELINT 1    | 15       | 18 - 20              |
-| ELINT 2    | 30       | 15 - 20              |
-| ELINT 3    | 45       | 12 - 20              |
-| ELINT 4    | 60       | 8 - 20               |
+| ELI1       | 15       | 18 - 20              |
+| ELI2       | 30       | 15 - 20              |
+| ELI3       | 45       | 12 - 20              |
+| ELI4       | 60       | 9 - 20               |
+| ELI5       | 75       | 6 - 20               |
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier for the detection roll.
 
@@ -219,11 +221,11 @@ Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
 
 Scouts also maintain an element of stealth when performing solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
-For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the ELINT table above (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
+For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the ELI table above (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
 
 ### 2\.4.3 Raiders
 
-The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Battle Cruiser (BC).
+The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Heavy Cruiser (CA).
 
 Fleets containing Raiders are fully cloaked, and roll for a chance to go undetected when encountering opposing forces on the Stealth Table below.
 
@@ -233,11 +235,13 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 | Tech Level | % Chance | 1D20 Roll |
 |:----------:|:--------:|:---------:|
-| Cloak 0    | 00       | NA        |
-| Cloak 1    | 15       | 18 - 20   |
-| Cloak 2    | 30       | 15 - 20   |
-| Cloak 3    | 45       | 12 - 20   |
-| Cloak 4    | 60       | 8 - 20    |
+| CLK1       | 15       | 18 - 20   |
+| CLK2       | 30       | 15 - 20   |
+| CLK3       | 45       | 12 - 20   |
+| CLK4       | 60       | 9 - 20    |
+| CLK5       | 75       | 6 - 20    |
+| CLK6       | 90       | 3 - 20    |
+| CLK7       | 100      | 1 - 20    |
 
 Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful rolls.
 
@@ -249,9 +253,9 @@ If the number of successful stealth rolls *is greater than* the number of succes
 
 **Example**: 
 
-A player has three fleets containing a combined total of five Cloak 3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
+A player has three fleets containing a combined total of five CLK3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful rolls.
 
-The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELINT 1 Scout, and the other two fleets each have two ELINT 2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
+The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELI1 Scout, and the other two fleets each have two ELI2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful rolls.
 
 The cloaked fleets go undetected.
 
@@ -273,9 +277,20 @@ Crippled Starbases do not yield benefits until they are repaired.
 
 ### 2\.4.7 Planetary Shields & Ground Batteries
 
-Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that provide an extra layer of defense to an player's colonies.
+Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that provide an extra layer of defense to a player's colonies.
 
-Planetary Shields are restricted to homeworlds and provide system-wide electronic jamming that disrupt hostile forces assaulting the mother-system. They also serve to protect your homeworld from orbital bombardment. They are restricted to one unit per homeworld.
+Planetary Shields protect your colonies from orbital bombardment. With increasing SLD levels they have a higher probability of absorbing direct hits, and also become more powerful.
+
+| SLD Level | % Chance | 1D20 Roll | % AS Block |
+|:---------:|:--------:|:---------:| ---------- |
+| SLD1      | 15       | 18 - 20   | 25%        |
+| SLD2      | 30       | 15 - 20   | 25%        |
+| SLD3      | 45       | 12 - 20   | 30%        |
+| SLD4      | 60       | 8 - 20    | 30%        |
+| SLD5      | 75       | 5 - 20    | 40%        |
+| SLD5      | 90       | 2 - 20    | 50%        |
+
+Upgrading a Planetary Shield to a new SLD level requires diabling the old shield and replacing it with a new one. A Planet may not have more than one shield.
 
 Ground Batteries are immobile, low-tech, land based units that have the firepower of a Battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
 
@@ -349,7 +364,9 @@ An Excel spreadsheet is included in the Github 'assets' folder to visualize the 
 
 **Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in XMR.
 
+```
 GCP = (PU * raw_index + IU) * el_mod
+```
 
 **RAW INDEX Table**
 
@@ -365,7 +382,9 @@ Look up the Raw Material classification of your colony's system in the RAW colum
 
 **Net Colony Value (NCV)**: The net value of taxes collected from each of your colonies.
 
+```
 NCV = GCP * tax_rate
+```
 
 **Tax Rate**: The tax rate that applies to all of your colonies. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler, and stall population growth.
 
@@ -405,52 +424,208 @@ Colonists do not start contributing to the colony's economic production for at l
 
 ## XX\.4 Maintenance Costs
 
-# XYZ\.0 Research & Technology
+# XYZ\.0 Research & Development
 
-In a standard game, all tech levels start at zero.
+For every tech level increase, Production Cost (PC) per unit also increases by 20%.
 
-## XYZ\.1 Upgrades
+## XYZ.1 Research Points
 
-Houses may invest XMR to upgrade technologies, which are purchased in levels.
+Each turn, players may invest XMR in Research Points (RP) to further their R&D efforts. 
 
-TODO: table with cost
+R&D upgrades may be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
-Technology upgrades may be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per technology each upgrade cycle.
+There are three areas of investment:
 
-## XYZ\.2 Weapons
+- Economic RP (ERP)
+- Science RP (SRP)
+- Technology RP (TRP)
 
-Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by 20% for each tech level (rounded down). The ship Production Costs (PC) also increases by 20%. Note that ships are limited in weapons tech level by their rated Hull Size (HS).
+The corresponding levels of R&D for each area (in sequence) are Economic Level (EL), Science Level (SL), and Technology Level (TL). 
 
-## XYZ\.3 Terraforming
+Players invest ERP, SRP, and TRP to advance in EL, SL, and TL.
 
-Terraforming improve a planet's livable conditions, and thus the population limit. There are seven tech levels that correspond directly with the planet classes.
+Advances in SL is dependent upon EL, and advances in TL is dependent upon SL, as explained below.
 
-| Tech Level | Planet Class | PU        | PTU             |
-| ---------- | ------------ |:---------:|:---------------:|
-| Terra 0    | Extreme      | 1 - 20    | 1 - 20          |
-| Terra 1    | Desolate     | 21 - 60   | 21 - 60         |
-| Terra 2    | Hostile      | 61 - 180  | 61 - 182        |
-| Terra 3    | Harsh        | 181 - 500 | 183 - 526       |
-| Terra 4    | Benign       | 501 - 1k  | 527 - 1,712     |
-| Terra 5    | Lush         | 1k - 2k   | 1,713 - 510,896 |
-| Terra 6    | Eden         | 2k+       | 510,896+        |
+**TODO: Add a roll for "research breakthrough" for every first and sixth month.**
+
+## XYZ.2 Economic Level (EL)
+
+EL represents the general education and skill level of House citizens. All houses start at EL1 and progress levels by investing in ERP.
+
+EL is not a specific reflection of scientific or technological advancement, although they are correlated.
+
+A House's GCP benefits from EL upgrades by 5% per level. Increases in worker productivity and education benefit the economy.
+
+A House's construction capabilities are tied to EL, and thus advancements open up to building larger hulled Combat Ships.
+
+The formula for ERP in XMR is:
+
+```
+1 ERP = (10 + 0.015(NCV)) XMR
+```
+
+Example: to purchase 10 ERP points with a NCV of 500, the cost in XMR is:
+
+```
+10 ERP = 10(10 + 0.015(500)) = 175 XMR   
+```
+
+The cost in ERP to advance one EL level is:
+
+```
+ERP = 40 + EL(10) (maxing at 140 ERP)
+```
+
+| EL  | ERP Cost | EL MOD |
+|:---:|:--------:|:------:|
+| 01  | 50       | 0.05   |
+| 02  | 60       | 0.10   |
+| 03  | 70       | 0.15   |
+| 04  | 80       | 0.20   |
+| 05  | 90       | 0.25   |
+| 06  | 100      | 0.30   |
+| 07  | 110      | 0.35   |
+| 08  | 120      | 0.40   |
+| 09  | 130      | 0.45   |
+| 10  | 140      | 0.50   |
+| 11+ | 140      | 0.55   |
+
+## XYZ.3 Science Level (SL)
+
+SL represents the scientific knowledge of House scientists. Science explores new knowledge methodically through observation and experimentation. SL is dependent on the education and skill levels of citizens, and thus EL. Houses start at SL1.
+
+Advancing to the next SL requires the House have previously developed an equivalent level of EL. For example, advancing from SL1 to SL2 requires the house to be at EL2 or greater.
+
+The cost of SRP is dependent upon the current SL.
+
+```
+1 SRP = 2 + SL(0.5) XMR
+```
+
+Example: To purchase 10 SPR's at SL2, the price in XMR is:
+
+```
+10 SRP = 10(2 + 2(0.5)) = 30 XMR
+```
+
+The cost in SRP to advance one SL level is:
+
+```
+SRP = 20 + SL(5) (Maxing at 55 SRP)
+```
+
+| SL  | SRP Cost |
+|:---:|:--------:|
+| 01  | 25       |
+| 02  | 30       |
+| 03  | 35       |
+| 04  | 40       |
+| 05  | 45       |
+| 06  | 50       |
+| 07+ | 55       |
+
+## XYZ.4 Technology Level (TL)
+
+TL represents the engineering capability of the House. It is the practical application of science, and thus dependent upon advances in SL. 
+
+In VB4X, advances in TL are tied to upgrades in the Military and Industrial complex, although it also carries over to commerce, mining, industry, propulstion systems, computing, services, and almost every other aspect that touches human flourising.
+
+Advancing to the next TL requires the House to have previously developed an equivalent level of SL. For example, advancing from TL3 to TL4 requires the house to be at SL4 or greater.
+
+The cost of TRP is similar to SRP.
+
+```
+1 TRP = 2 + TL(0.5) XMR
+```
+
+For example, to purchase 5 TRP at SL3, the price in XMR is:
+
+```
+5 TRP = 5(2 + 3(0.5) = 17.5 XMR
+```
+
+The cost in TRP to advance one TL level is:
+
+```
+TRP = 20 + SL(5) (Maxing at 55 TRP)
+```
+
+| TL  | TRP Cost |
+|:---:|:--------:|
+| 01  | 25       |
+| 02  | 30       |
+| 03  | 35       |
+| 04  | 40       |
+| 05  | 45       |
+| 06  | 50       |
+| 07+ | 55       |
+
+## XYZ\.5 Weapons
+
+Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by 10% for each Weapons level (rounded down). 
+
+| Weapons Level | Min TL |
+|:-------------:|:------:|
+| WEP1          | 1      |
+| WEP2          | 2      |
+| WEP3          | 3      |
+| WEP4          | 4+     |
+
+The maxium weapons level is WEP10.
+
+## XYZ\.6 Terraforming
+
+Terraforming improve a planet's livable conditions, and thus the population limit. There are seven Terraforming levels that correspond directly with the planet classes.  
+
+| Terra Level | Min SL | Planet Class | PU        | PTU             |
+|:-----------:|:------:| ------------ |:---------:|:---------------:|
+| TERR1       | 1      | Extreme      | 1 - 20    | 1 - 20          |
+| TERR2       | 2      | Desolate     | 21 - 60   | 21 - 60         |
+| TERR3       | 3      | Hostile      | 61 - 180  | 61 - 182        |
+| TERR4       | 4      | Harsh        | 181 - 500 | 183 - 526       |
+| TERR5       | 5      | Benign       | 501 - 1k  | 527 - 1,712     |
+| TERR6       | 6      | Lush         | 1k - 2k   | 1,713 - 510,896 |
+| TERR7       | 7      | Eden         | 2k+       | 510,896+        |
 
 A planet may not skip a class, and each step costs the lower PU bound for the next tech level in XMR. Example: Upgrading a Hostile planet to a Harsh planet requires Terra 3 and 181 XMR.
 
-## XYZ\.4 Economics
+## XYZ.7 Electronic Intelligence (ELI)
 
-EL = Economic Tech Level
-TODO: el_mod
+ELI technology enables Scouts to counter enemy cloaked Raiders and Scouts, and to gather intelligence from rival assets.
 
-## XYZ.5 Electronic Intelligence (ELINT)
+| ELI Level | Min TL |
+|:---------:|:------:|
+| ELI1      | 1      |
+| ELI2      | 2      |
+| ELI3      | 3      |
+| ELI4      | 4      |
+| ELI5      | 5      |
 
-ELINT technology enables Scouts to counter enemy cloaked Raiders and Scouts, and to gather intelligence from rival assets.
-
-## XYZ\.6 Cloaking
+## XYZ\.8 Cloaking (CLK)
 
 Cloaking technology applies to Raiders and enables them to cloak their assigned fleets with increasing levels of probability.
 
-## XYZ\.7 Sabotage & Subversion
+| CLK Level | Min TL |
+|:---------:|:------:|
+| CLK1      | 3      |
+| CLK2      | 4      |
+| CLK3      | 5      |
+| CLK4      | 6      |
+| CLK5      | 7      |
+| CLK6      | 8      |
+| CLK7      | 9      |
+
+## XYZ\.9 Planetary Shields
+
+Planetary Shields protect a colony from bombardment and invastion. 
+
+| SLD Level | Min TL |
+|:---------:|:------:|
+| SLD1      | 3      |
+| SLD2      | 4      |
+| SLD3      | 5      |
+| SLD4      | 6      |
+| SLD5      | 7      |
 
 # 3.0 Construction
 
@@ -623,12 +798,11 @@ The CER multiplied by AS equals the number of total enemy hits.
 
 **Die Roll Modifiers**
 
-| Modifier       | Value | Notes                               |
-| -------------- |:-----:| ----------------------------------- |
-| Scouts         | +1    | Maximum benefit for all Scouts      |
-| Surprise       | +3    | First round only; See Section 5.1.4 |
-| Ambush         | +4    | First round only; See Section 5.1.4 |
-| Planet Shields | -2    | Opposing homeworld                  |
+| Modifier | Value | Notes                               |
+| -------- |:-----:| ----------------------------------- |
+| Scouts   | +1    | Maximum benefit for all Scouts      |
+| Surprise | +3    | First round only; See Section 5.1.4 |
+| Ambush   | +4    | First round only; See Section 5.1.4 |
 
 The player who rolled the die will determine where hits are applied.
 
@@ -709,45 +883,51 @@ All tables and attributes are place holders.
 
 ## 9\.1 Space Force (Weapons Level 0)
 
-HS = Hull Size, PC = Production Cost, MC = Maintenance Cost, AS = Attack Strength
+EL = Minimum Economic Level
+HS = Hull Size
+PC = Production Cost
+MC = Maintenance Cost
+AS = Attack Strength
+DS = Defensive Strength
+CC= Command Cost
+CR = Command Rating
+CL = Carry Limit
 
-DS = Defensive Strength, CC= Command Cost, CR = Command Rating, CL = Carry Limit
-
-| Class | Name              | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
-|:-----:| ----------------- |:---:|:---:|:-----:|:---:|:---:|:---:|:---:|:---:|
-| CT    | Corvette          | 1   | 2   | 0\.1  | 1   | 2   | 1   | 2   | NA  |
-| FG    | Frigate           | 1   | 3   | 0\.2  | 2   | 3   | 2   | 3   | NA  |
-| DD    | Destroyer         | 1   | 4   | 0\.3  | 3   | 4   | 2   | 4   | NA  |
-| CL    | Light Cruiser     | 2   | 5   | 0\.4  | 4   | 5   | 3   | 6   | NA  |
-| CA    | Heavy Cruiser     |     |     |       |     |     |     |     |     |
-| BC    | Battle Cruiser    | 2   | 6   | 0\.5  | 4   | 6   | 3   | 8   | NA  |
-| BB    | Battleship        | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
-| DN    | Dreadnought       | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
-| SD    | Super Dreadnought |     |     |       |     |     |     |     |     |
-| CV    | Carrier           | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
-| CX    | Super Carrier     | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
-| FS    | Fighter Squadron  | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
-| RR    | Raider            | 2   | 25  | 0\.5  | 6   | 5   | 3   | 4   | 0   |
-| SC    | Scout             | 1   | 15  | 0\.1  | 0   | 1   | 1   | NA  | NA  |
-| SB    | Starbase          | 3   | 50  | 2.5   | 45  | 50  | NA  | NA  | NA  |
+| Class | Name              | EL  | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
+|:-----:| ----------------- |:---:|:---:|:---:|:-----:|:---:|:---:|:---:|:---:|:---:|
+| CT    | Corvette          | 1   | 1   | 2   | 0\.1  | 1   | 2   | 1   | 2   | NA  |
+| FG    | Frigate           | 1   | 1   | 3   | 0\.2  | 2   | 3   | 2   | 3   | NA  |
+| DD    | Destroyer         | 1   | 1   | 4   | 0\.3  | 3   | 4   | 2   | 4   | NA  |
+| CL    | Light Cruiser     | 2   | 2   | 5   | 0\.4  | 4   | 5   | 3   | 6   | NA  |
+| CA    | Heavy Cruiser     | 3   |     |     |       |     |     |     |     |     |
+| BC    | Battle Cruiser    | 5   | 2   | 6   | 0\.5  | 4   | 6   | 3   | 8   | NA  |
+| BB    | Battleship        | 6   | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
+| DN    | Dreadnought       | 7   | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
+| SD    | Super Dreadnought | 9   |     |     |       |     |     |     |     |     |
+| CV    | Carrier           | 3   | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
+| CX    | Super Carrier     | 5   | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
+| FS    | Fighter Squadron  | 3   | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
+| RR    | Raider            | 3   | 2   | 25  | 0\.5  | 4   | 6   | 3   | 4   | 0   |
+| SC    | Scout             | 1   | 1   | 15  | 0\.1  | 0   | 1   | 1   | NA  | NA  |
+| SB    | Starbase          | 3   | 3   | 50  | 2.5   | 45  | 50  | NA  | NA  | NA  |
 
 ## 9.3 Ground Units
 
-| **Class** | **Name**         | **PC** | MC  | AS  | DS  |
-| --------- | ---------------- | ------ | --- |:---:|:---:|
-| PS        | Planetary Shield | 35     | 2.0 | 0   | 50  |
-| GB        | Ground Batteries | 4      | 0.1 | 6   | 2   |
-| AA        | Armies           | 2      | 0.2 | 2   | 3   |
-| MD        | Space Marines    | 3      | 0.2 | 3   | 2   |
+| **Class** | **Name**         | EL  | **PC** | MC  | AS  | DS  |
+| --------- | ---------------- |:---:| ------ | --- |:---:|:---:|
+| PS        | Planetary Shield | 3   | 35     | 2.0 | 0   | 50  |
+| GB        | Ground Batteries | 1   | 4      | 0.1 | 6   | 2   |
+| AA        | Armies           | 1   | 2      | 0.2 | 2   | 3   |
+| MD        | Space Marines    | 1   | 3      | 0.2 | 3   | 2   |
 
 ## 9\.2 Spacelift Command
 
-| **Class** | **Name**         | **PC** | MC  | CL  |
-|:---------:| ---------------- |:------:|:---:|:---:|
-| SP        | Spaceport        | 20     | 1.0 | 5   |
-| SY        | Shipyard         | 30     | 2.0 | 10  |
-| ET        | ETAC             | 15     | 0.3 | 1   |
-| TT        | Troop Transports | 5      | 0.2 | 1   |
+| **Class** | **Name**         | EL  | **PC** | MC  | CL  |
+|:---------:| ---------------- |:---:|:------:|:---:|:---:|
+| SP        | Spaceport        | 1   | 20     | 1.0 | 5   |
+| SY        | Shipyard         | 1   | 30     | 2.0 | 10  |
+| ET        | ETAC             | 1   | 15     | 0.3 | 1   |
+| TT        | Troop Transports | 1   | 5      | 0.2 | 1   |
 
 ## 9\.3 Prestige
 
