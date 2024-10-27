@@ -234,7 +234,7 @@ ELI Integration Index (EII):
 EII = (ELI_Max + ELI_Min) / 2
 ```
 
-Use the EII as the base Tech Level in the Detection Table (round up).
+Use the EII as the base Tech Level in the Detection Table (round down).
 
 Update the die roll modifier as follows:
 
