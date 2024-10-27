@@ -301,7 +301,9 @@ Ground Batteries are the only units that are constructed in the span of a single
 
 ### 2.4.8 Planet-Breaker
 
-Planet-Breakers (PB) are high technology, late-game ships that penetrate planetary shields and render them inneffective. 
+Planet-Breakers (PB) are high technology, late-game ships that penetrate planetary shields.
+
+TODO: Develop this further. Do we need a specific tech or just a ship, or both?
 
 ### 2\.4.9 Space Marines & Armies
 
@@ -447,13 +449,9 @@ There are three areas of investment:
 - Science RP (SRP)
 - Technology RP (TRP)
 
-The corresponding levels of R&D for each area (in sequence) are Economic Level (EL), Science Level (SL), and Technology Level (TL). 
+Economic Levels (EL) are purchased with ERP and Science Levels (SL) are purchased with SRP. Science drives engineering, and new technologies are developed and purchased directly with TRP. EL and SL are correlated.
 
-Players invest ERP, SRP, and TRP to advance in EL, SL, and TL.
-
-Advances in SL is dependent upon EL, and advances in TL is dependent upon SL, as explained below.
-
-In standard EC4X games, Houses start at EL1, SL1, and TL1. Consider boosting these to expedite the game for impatient players, although the game year should be advanced from 2001 to match.
+In standard EC4X games, Houses start at EL1 and SL1. Consider boosting these to expedite the game for impatient players, although the game year should be advanced from 2001 to match.
 
 **TODO: Add a roll for "research breakthrough" for every first and sixth month.**
 
@@ -463,15 +461,15 @@ EL represents the general education and skill level of House citizens.
 
 EL is not a specific reflection of scientific or technological advancement, although they are correlated.
 
-A House's GCP benefits from EL upgrades by 5% per level. Increases in worker productivity and education benefit the economy and quality of life.
+A House's GCP benefits from EL upgrades by 5% per level. The economy is tied to Increases in worker productivity and education.
 
 The formula for ERP in XMR is:
 
 ```
-1 ERP = (10 + 0.015(NCV)) XMR
+1 ERP = (10 + 0.015(GCP)) XMR
 ```
 
-Example: to purchase 10 ERP points with a NCV of 500, the cost in XMR is:
+Example: to purchase 10 ERPs with a GCP of 500, the cost in XMR is:
 
 ```
 10 ERP = 10(10 + 0.015(500)) = 175 XMR   
@@ -509,7 +507,7 @@ The cost of SRP is dependent upon the current SL.
 1 SRP = 2 + SL(0.5) XMR
 ```
 
-Example: To purchase 10 SPR's at SL2, the price in XMR is:
+Example: To purchase 10 SRPs at SL2, the price in XMR is:
 
 ```
 10 SRP = 10(2 + 2(0.5)) = 30 XMR
@@ -531,41 +529,29 @@ SRP = 20 + SL(5) (Maxing at 55 SRP)
 | 06  | 50       |
 | 07+ | 55       |
 
-## XYZ.4 Technology Level (TL)
+## XYZ.4 Engineering R&D
 
-TL represents the engineering capability of the House. It is the practical application of science, and thus dependent upon advances in SL. 
+Engineering is the practical application of science, and thus dependent upon advances in SL. Engineering advancements are made with the purchased with TRP.
 
-In VB4X, advances in TL are tied to upgrades in the Military and Industrial complex, although it also carries over to commerce, mining, industry, propulsion systems, computing, services, and almost every other aspect that touches human flourishing.
+In VB4X, advances in engineering are tied to the Military and Industrial complex, although development also carries over to commerce, mining, industry, propulsion systems, computing, services, medicine, and almost every other realm of material human flourishing. 
 
-Advancing to the next TL requires the House to have previously developed an equivalent level of SL. For example, advancing from TL3 to TL4 requires the house to be at SL4 or greater.
+Sprituality is not addressed in this game, although players are free to develop their own ideas of what that means.
 
-The cost of TRP is similar to SRP.
-
-```
-1 TRP = 2 + TL(0.5) XMR
-```
-
-For example, to purchase 5 TRP at SL3, the price in XMR is:
+The cost of TRP is dependent upon the required SL for the technology being developed.
 
 ```
-5 TRP = 5(2 + 3(0.5) = 17.5 XMR
+1 TRP = (50 + 20(SL))/10 + 0.001(GCP) XMR
 ```
 
-The cost in TRP to advance one TL level is:
+For example, to purchase 5 TRPs towards the development TER3 with a GCP of 500, the price in XMR is:
 
 ```
-TRP = 20 + SL(5) (Maxing at 55 TRP)
+5 TRP = 5((50 + 20(3))/10 + 0.001(500)) = 57.5 XMR
 ```
 
-| TL  | TRP Cost |
-|:---:|:--------:|
-| 01  | 25       |
-| 02  | 30       |
-| 03  | 35       |
-| 04  | 40       |
-| 05  | 45       |
-| 06  | 50       |
-| 07+ | 55       |
+New engineering technologies are purchased directly with TRP.
+
+**TODO: work out TRP cost for each tech level below.**
 
 ## XYZ\.5 Construction (CST)
 
@@ -575,11 +561,11 @@ CST will open up new, larger hulled classes of combat ships.
 
 Round up to the nearest whole number when recalculating a capacity increase.
 
-| CST Level | Min EL | Capacity Increase |
-|:---------:|:------:|:-----------------:|
-| CST1      | 1      | 10%               |
-| CST2      | 2      | 10%               |
-| CST3+     | 3+     | 10%               |
+| CST Level | SL  | TRP Cost | Capacity Increase |
+|:---------:|:---:| -------- |:-----------------:|
+| CST1      | 1   |          | 10%               |
+| CST2      | 2   |          | 10%               |
+| CST3+     | 3+  |          | 10%               |
 
 The maxium construction level is CST10.
 
@@ -591,11 +577,11 @@ For every WEP increase, Production Cost (PC) per unit increases by 10%.
 
 Upgrades do not apply to preexisting ships.
 
-| Weapons Level | Min TL |
-|:-------------:|:------:|
-| WEP1          | 1      |
-| WEP2          | 2      |
-| WEP3+         | 3+     |
+| Weapons Level | SL  | TRP Cost |
+|:-------------:|:---:| -------- |
+| WEP1          | 1   |          |
+| WEP2          | 2   |          |
+| WEP3+         | 3+  |          |
 
 The maximum weapons level is WEP10.
 
@@ -603,43 +589,43 @@ The maximum weapons level is WEP10.
 
 Terraforming improve a planet's livable conditions, and thus the population limit. There are seven Terraforming levels that correspond directly with the planet classes.  
 
-| TER Level | Min SL | Planet Class | PU        | PTU             |
-|:---------:|:------:| ------------ |:---------:|:---------------:|
-| TER1      | 1      | Extreme      | 1 - 20    | 1 - 20          |
-| TER2      | 2      | Desolate     | 21 - 60   | 21 - 60         |
-| TER3      | 3      | Hostile      | 61 - 180  | 61 - 182        |
-| TER4      | 4      | Harsh        | 181 - 500 | 183 - 526       |
-| TER5      | 5      | Benign       | 501 - 1k  | 527 - 1,712     |
-| TER6      | 6      | Lush         | 1k - 2k   | 1,713 - 510,896 |
-| TER7      | 7      | Eden         | 2k+       | 510,896+        |
+| TER Level | SL  | TRP Cost | Planet Class | PU        | PTU             |
+|:---------:|:---:| -------- | ------------ |:---------:|:---------------:|
+| TER1      | 1   |          | Extreme      | 1 - 20    | 1 - 20          |
+| TER2      | 2   |          | Desolate     | 21 - 60   | 21 - 60         |
+| TER3      | 3   |          | Hostile      | 61 - 180  | 61 - 182        |
+| TER4      | 4   |          | Harsh        | 181 - 500 | 183 - 526       |
+| TER5      | 5   |          | Benign       | 501 - 1k  | 527 - 1,712     |
+| TER6      | 6   |          | Lush         | 1k - 2k   | 1,713 - 510,896 |
+| TER7      | 7   |          | Eden         | 2k+       | 510,896+        |
 
-A planet may not skip a class, and each step costs the lower PU bound for the next tech level in XMR. Example: Upgrading a Hostile planet to a Harsh planet requires Terra 3 and 181 XMR.
+Planets may not skip a class in their terraforming development.
 
 ## XYZ.8 Electronic Intelligence (ELI)
 
-ELI technology enables Scouts to counter enemy cloaked Raiders and Scouts, and to gather intelligence from rival assets.
+ELI technology enables the detection of cloaked Raiders and enemy Scouts, and the gathering of intelligence from rival assets.
 
 Upgrades do not apply to preexisting Scouts.
 
-| ELI Level | Min TL |
-|:---------:|:------:|
-| ELI1      | 1      |
-| ELI2      | 2      |
-| ELI3+     | 3+     |
+| ELI Level | SL  | TRP Cost |
+|:---------:|:---:| -------- |
+| ELI1      | 1   |          |
+| ELI2      | 2   |          |
+| ELI3+     | 3+  |          |
 
 The maximum ELI level is ELI5.
 
 ## XYZ\.9 Cloaking (CLK)
 
-Cloaking technology applies to Raiders and enables them to cloak their assigned fleets with increasing levels of probability.
+Cloaking enables Raiders to cloak their assigned fleets with increasing levels of probability.
 
 Upgrades do not apply to preexisting Raiders.
 
-| CLK Level | Min TL |
-|:---------:|:------:|
-| CLK1      | 3      |
-| CLK2      | 4      |
-| CLK3+     | 5+     |
+| CLK Level | SL  | TRP Cost |
+|:---------:|:---:| -------- |
+| CLK1      | 3   |          |
+| CLK2      | 4   |          |
+| CLK3+     | 5+  |          |
 
 The maximum CLK level is CLK7.
 
@@ -649,11 +635,11 @@ Planetary Shields protect a colony from bombardment and invasion.
 
 Upgrades do not apply to preexisting shields. Salvage and build a new one.
 
-| SLD Level | Min TL |
-|:---------:|:------:|
-| SLD1      | 5      |
-| SLD2      | 6      |
-| SLD3+     | 7+     |
+| SLD Level | SL  | TRP Cost |
+|:---------:|:---:| -------- |
+| SLD1      | 5   |          |
+| SLD2      | 6   |          |
+| SLD3+     | 7+  |          |
 
 The maxium SLD level is SLD5.
 
