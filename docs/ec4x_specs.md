@@ -217,6 +217,7 @@ Crippled Scouts lose their ELI sensors until repaired.
 | ELI5       | 75       | 6 - 20               |
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
+\*The maximum modifier is +4
 
 Example:
 ```
