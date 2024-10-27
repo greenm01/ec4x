@@ -202,8 +202,6 @@ Scouts (SC) are small drones outfitted with advanced sensors that assist with el
 
 Fleets containing Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and magnified. 
 
-Scouts assigned to a fleet or squadron must have the same ELI tech level. Older Scouts are not compatible with the upgraded mesh network.
-
 Players make a detection roll on the table below when countering Raiders or other Scouts sent on spy missions.
 
 Crippled Scouts lose their ELI sensors until repaired.
@@ -218,9 +216,55 @@ Crippled Scouts lose their ELI sensors until repaired.
 | ELI4       | 60       | 9 - 20               |
 | ELI5       | 75       | 6 - 20               |
 
-\*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier for the detection roll.
+\*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
 Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
+
+**Mixing Scouts in the same fleet with different tech levels is allowed. Follow the process below.**
+
+ELI Integration Index (EII):
+- ELI_Min = the lowest ELI level present in the fleet.
+- ELI_Max = the highest ELI level present in the fleet.
+
+```
+EII = (ELI_Max + ELI_Min) / 2
+```
+
+Use the EII as the base Tech Level in the Detection Table.
+
+Update the roll modifier is as follows:
+
+1. Base: Subtract 1 from the total number of Scouts
+2. Penalty: Subtract 1 from the number of different tech levels
+3. Modifier = base - penalty
+
+Example:
+```
+Fleet Composition:
+
+1 ELI2 Scout
+2 ELI3 Scouts
+1 ELI4 Scout
+
+We have four(4) scouts with three(3) different tech levels.
+
+ELI Range Calculation:
+
+ELI_Min = 2 (the lowest level available [ELI2])
+ELI_Max = 4 (the highest level available [ELI4])
+
+EII Calculation:
+
+EII = (ELI_Max + ELI_Min) / 2
+EII = (4 + 2) / 2 = 3
+
+Use ELI3 in the Detection Table.
+
+Now calculate the die roll modifier:
+1) Base = 4 - 1 = 3
+2) Penalty = 3 - 1 = 2
+3) Modifier = 3 - 2 = +1
+```
 
 Scouts also maintain an element of stealth when performing solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
