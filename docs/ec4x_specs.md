@@ -218,7 +218,11 @@ Crippled Scouts lose their ELI sensors until repaired.
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
-Example: A fleet contains three Scouts. 3 - 1 = 2. The die roll modifier is +2
+Example:
+```
+A fleet contains three Scouts.
+3 - 1 = 2. The die roll modifier is +2
+```
 
 **Mixing Scouts in the same fleet with different tech levels is allowed. Follow the process below.**
 
@@ -230,9 +234,9 @@ ELI Integration Index (EII):
 EII = (ELI_Max + ELI_Min) / 2
 ```
 
-Use the EII as the base Tech Level in the Detection Table.
+Use the EII as the base Tech Level in the Detection Table (round up).
 
-Update the roll modifier is as follows:
+Update the die roll modifier as follows:
 
 1. Base: Subtract 1 from the total number of Scouts
 2. Penalty: Subtract 1 from the number of different tech levels
