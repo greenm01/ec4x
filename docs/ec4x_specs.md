@@ -51,7 +51,7 @@ There are several paths to the throne:
 3. Crush your opponent's will and force them to capitulate.
 4. Employ a combination of tactical prowess and subversion to outfox your opponents.
 5. Focus on economic development and population growth to outperform everyone else.
-6. Let your rivals destroy one another, then clean House afterwards.
+6. Let your rivals destroy one another, then clean house afterwards.
 7. All of the above.
 
 This list is not exhaustive. Use whatever means the game allows to win.
@@ -59,7 +59,7 @@ This list is not exhaustive. Use whatever means the game allows to win.
 Prestige points are won through a combination of military victory, population growth, production, subversion, technological development, and various other factors.
 Performing poorly, mismanaging your colonies, acts of sabotage, and acts of subterfuge by other Houses will lower your prestige.
 
-To prevent an open-ended stalemate, consider setting a game ending year. The goal of EC4X is to provide enough asymmetry to prevent such a condition. **(work in progress..... need help play-testing and regression analysis)**
+The goal of EC4X is to provide enough asymmetry to prevent a stalemate. **(work in progress..... need help play-testing and regression analysis)**
 
 A table of Prestige values is listed in Section 9.
 
