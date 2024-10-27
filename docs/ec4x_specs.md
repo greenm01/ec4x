@@ -27,6 +27,7 @@ EC4X pays homage and is influenced by the following great titles:
 - Empire of The Sun (EOS)
 - Space Empires 4X (SE4X)
 - Solar Starfire (SSF)
+- Stellar Conquest (SC)
 - Fractal, Beyond the Void (FBV)
 
 Although not required, it is highly recommended to purchase physical copies of these classics to fully appreciate the art. Dive deep.
@@ -58,7 +59,7 @@ This list is not exhaustive. Use whatever means the game allows to win.
 Prestige points are won through a combination of military victory, population growth, production, subversion, technological development, and various other factors.
 Performing poorly, mismanaging your colonies, acts of sabotage, and acts of subterfuge by other Houses will lower your prestige.
 
-To prevent an open-ended stalemate, it may be prudent to set a game ending year. The goal of EC4X is to provide enough asymmetry to prevent such a condition. **(work in progress..... need help play-testing and regression analysis)**
+To prevent an open-ended stalemate, consider setting a game ending year. The goal of EC4X is to provide enough asymmetry to prevent such a condition. **(work in progress..... need help play-testing and regression analysis)**
 
 A table of Prestige values is listed in Section 9.
 
@@ -70,6 +71,8 @@ Each turn comprises four phases
 2. Command phase
 3. Conflict phase
 4. End of turn phase
+
+### 1.3 TODO: Explain actions during eash phase
 
 # 2\.0 Game Assets
 
@@ -118,7 +121,7 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 **System Resources Table**
 
 | Modified Roll 1D10 | Raw Materials |
-| ------------------ | ------------- |
+|:------------------:| ------------- |
 | 0                  | Very Poor     |
 | 2, 3               | Poor          |
 | 4 - 7              | Abundant      |
@@ -316,9 +319,11 @@ The Guilds may be contracted to provide various critical services to the House, 
 
 # XY\.0 Economics
 
-The standard unit of account in EC4X is Monero (XMR), i.e. money. The power of a House is fueled by economic might, which in turn is a function of population growth and harvested resources.
+The standard unit of account in EC4X is Monero (XMR), i.e. money. 
 
-XMR settle near instantaneously on the inter-dimensional communications network. (All comms and data transfers are instantaneous in this manner. Don't question; it's magic).
+The power of a House is fueled by economic might, which in turn is a function of population growth and gains in science and technology.
+
+XMR settle near instantaneously on the inter-dimensional Pheonix network. (All comms and data transfers are instantaneous. Don't question; it's magic).
 
 ## XY\.1 Principles
 
@@ -422,15 +427,13 @@ The cost is expensive and dependent upon the livable conditions of the destinati
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
-## XX\.4 Maintenance Costs
+## XX\.4 TODO: Maintenance Costs
 
 # XYZ\.0 Research & Development
 
-For every tech level increase, Production Cost (PC) per unit also increases by 20%.
+## XYZ.1 Research Points (RP)
 
-## XYZ.1 Research Points
-
-Each turn, players may invest XMR in Research Points (RP) to further their R&D efforts. 
+Each turn, players may invest XMR in RP to further their R&D efforts. 
 
 R&D upgrades may be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
@@ -446,17 +449,17 @@ Players invest ERP, SRP, and TRP to advance in EL, SL, and TL.
 
 Advances in SL is dependent upon EL, and advances in TL is dependent upon SL, as explained below.
 
+In standard EC4X games, Houses start at EL1, SL1, and TL1. Consider boosting these to expidite the game for impatient players, although the game year should be advanced from 2001 to match. 
+
 **TODO: Add a roll for "research breakthrough" for every first and sixth month.**
 
 ## XYZ.2 Economic Level (EL)
 
-EL represents the general education and skill level of House citizens. All houses start at EL1 and progress levels by investing in ERP.
+EL represents the general education and skill level of House citizens. 
 
 EL is not a specific reflection of scientific or technological advancement, although they are correlated.
 
-A House's GCP benefits from EL upgrades by 5% per level. Increases in worker productivity and education benefit the economy.
-
-A House's construction capabilities are tied to EL, and thus advancements open up to building larger hulled Combat Ships.
+A House's GCP benefits from EL upgrades by 5% per level. Increases in worker productivity and education benefit the economy and quality of life.
 
 The formula for ERP in XMR is:
 
@@ -492,7 +495,7 @@ ERP = 40 + EL(10) (maxing at 140 ERP)
 
 ## XYZ.3 Science Level (SL)
 
-SL represents the scientific knowledge of House scientists. Science explores new knowledge methodically through observation and experimentation. SL is dependent on the education and skill levels of citizens, and thus EL. Houses start at SL1.
+Science explores new knowledge methodically through observation and experimentation, in alignment with nature. SL is dependent on the education and skill levels of citizens, and thus EL. 
 
 Advancing to the next SL requires the House have previously developed an equivalent level of EL. For example, advancing from SL1 to SL2 requires the house to be at EL2 or greater.
 
@@ -560,72 +563,95 @@ TRP = 20 + SL(5) (Maxing at 55 TRP)
 | 06  | 50       |
 | 07+ | 55       |
 
-## XYZ\.5 Weapons
+## XYZ\.5 Construction (CRN)
+
+Upgrades improve the construction capability and capacity of planet based factories, Spaceports, Shipyards. Upgrades to existing units are automatic and zero cost.
+
+CRN will open up new, larger hulled classes of combat ships.
+
+Rount up to the nearest whole number when recalculating a capacity increase.
+
+| CRN Level | Min EL | Capacity Increase |
+|:---------:|:------:|:-----------------:|
+| CRN1      | 1      | 10%               |
+| CRN2      | 2      | 10%               |
+| CRN3+     | 3+     | 10%               |
+
+The maxium construction level is CRN10.
+
+## XYZ\.6 Weapons (WEP)
 
 Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by 10% for each Weapons level (rounded down). 
+
+For every WEP increase, Production Cost (PC) per unit increases by 10%.
+
+Upgrades do not apply to pre-existing ships.
 
 | Weapons Level | Min TL |
 |:-------------:|:------:|
 | WEP1          | 1      |
 | WEP2          | 2      |
-| WEP3          | 3      |
-| WEP4          | 4+     |
+| WEP3+         | 3+     |
 
 The maxium weapons level is WEP10.
 
-## XYZ\.6 Terraforming
+## XYZ\.7 Terraforming (TER)
 
 Terraforming improve a planet's livable conditions, and thus the population limit. There are seven Terraforming levels that correspond directly with the planet classes.  
 
-| Terra Level | Min SL | Planet Class | PU        | PTU             |
-|:-----------:|:------:| ------------ |:---------:|:---------------:|
-| TERR1       | 1      | Extreme      | 1 - 20    | 1 - 20          |
-| TERR2       | 2      | Desolate     | 21 - 60   | 21 - 60         |
-| TERR3       | 3      | Hostile      | 61 - 180  | 61 - 182        |
-| TERR4       | 4      | Harsh        | 181 - 500 | 183 - 526       |
-| TERR5       | 5      | Benign       | 501 - 1k  | 527 - 1,712     |
-| TERR6       | 6      | Lush         | 1k - 2k   | 1,713 - 510,896 |
-| TERR7       | 7      | Eden         | 2k+       | 510,896+        |
+| TER Level | Min SL | Planet Class | PU        | PTU             |
+|:---------:|:------:| ------------ |:---------:|:---------------:|
+| TER1      | 1      | Extreme      | 1 - 20    | 1 - 20          |
+| TER2      | 2      | Desolate     | 21 - 60   | 21 - 60         |
+| TER3      | 3      | Hostile      | 61 - 180  | 61 - 182        |
+| TER4      | 4      | Harsh        | 181 - 500 | 183 - 526       |
+| TER5      | 5      | Benign       | 501 - 1k  | 527 - 1,712     |
+| TER6      | 6      | Lush         | 1k - 2k   | 1,713 - 510,896 |
+| TER7      | 7      | Eden         | 2k+       | 510,896+        |
 
 A planet may not skip a class, and each step costs the lower PU bound for the next tech level in XMR. Example: Upgrading a Hostile planet to a Harsh planet requires Terra 3 and 181 XMR.
 
-## XYZ.7 Electronic Intelligence (ELI)
+## XYZ.8 Electronic Intelligence (ELI)
 
 ELI technology enables Scouts to counter enemy cloaked Raiders and Scouts, and to gather intelligence from rival assets.
+
+Upgrades do not apply to pre-existing Scouts.
 
 | ELI Level | Min TL |
 |:---------:|:------:|
 | ELI1      | 1      |
 | ELI2      | 2      |
-| ELI3      | 3      |
-| ELI4      | 4      |
-| ELI5      | 5      |
+| ELI3+     | 3+     |
 
-## XYZ\.8 Cloaking (CLK)
+The maxium ELI level is ELI5.
+
+## XYZ\.9 Cloaking (CLK)
 
 Cloaking technology applies to Raiders and enables them to cloak their assigned fleets with increasing levels of probability.
+
+Upgrades do not apply to pre-existing Raiders.
 
 | CLK Level | Min TL |
 |:---------:|:------:|
 | CLK1      | 3      |
 | CLK2      | 4      |
-| CLK3      | 5      |
-| CLK4      | 6      |
-| CLK5      | 7      |
-| CLK6      | 8      |
-| CLK7      | 9      |
+| CLK3+     | 5+     |
 
-## XYZ\.9 Planetary Shields
+The maxium CLK level is CLK7.
+
+## XYZ\.10 Planetary Shields (SLD)
 
 Planetary Shields protect a colony from bombardment and invastion. 
+
+Upgrades do not apply to pre-existing shields. Salvage and build a new one.
 
 | SLD Level | Min TL |
 |:---------:|:------:|
 | SLD1      | 3      |
 | SLD2      | 4      |
-| SLD3      | 5      |
-| SLD4      | 6      |
-| SLD5      | 7      |
+| SLD3+     | 5+     |
+
+The maxium SLD level is SLD5.
 
 # 3.0 Construction
 
@@ -653,7 +679,11 @@ Shipyard construction of a ship in orbit is the standard method of commissioning
 
 Ship repairs require a Shipyard. The cost of repair equals one quarter (25%) of the unit's PC.
 
-Example: A player wishes to repair a crippled tech-level III Cruiser. The cost is 7 * 0.25 = 1.75 XMR.
+Example: A player wishes to repair a crippled tech-level III Cruiser. The cost is:
+
+```
+7 * 0.25 = 1.75 XMR.
+```
 
 The logistics of repairing a ship planetside and returning it to orbit make it economically infeasible. Ships may be salvaged at a colony without restriction and earn 50% of the original PC back to the House treasury.
 
@@ -674,9 +704,9 @@ Possible fleet missions are listed in the table below. These are the classic fle
 | 06  | Bombard a planet        | Combat ship(s)                           |
 | 07  | Invade a planet         | Combat ship(s) & loaded Troop Transports |
 | 08  | Blitz a Planet          | Loaded Troop Transports                  |
-| 09  | View a planet           | At least one Scout ship                  |
+| 09  | Spy on a planet         | At least one Scout ship                  |
 | 10* | Hack a Starbase         | At least one Scout ship                  |
-| 11  | Scout a system          | At least one Scout ship                  |
+| 11  | Spy on a system         | At least one Scout ship                  |
 | 12  | Colonize a planet       | At least one ETAC                        |
 | 13  | Join another fleet      | None                                     |
 | 14  | Rendezvous at system    | None                                     |
@@ -684,7 +714,7 @@ Possible fleet missions are listed in the table below. These are the classic fle
 
 \* New to EC4X
 
-## 4.2 Jump Lanes
+## 4.2 TODO: Jump Lanes
 
 # 5\.0 Combat
 
@@ -861,21 +891,24 @@ Combat will proceed in a similar fashion to Section 5.4, with the following rest
 
 Starbases are powerful citadels equipped with advanced sensors and massive artificial intelligence (AI) resources. Their shields are powerful and make them a challenge to strike a critical hit.
 
-## 5\.6 Planetary Bombardment
+## 5\.6 TODO: Planetary Bombardment
 
-## 5\.7 Planetary Invasion & Blitz
+## 5\.7 TODO: Planetary Invasion & Blitz
 
 ## 5\.8 Custom Combat Modifications
 
 If customizing your own ships or scenarios, the following list provides a jumping off point for custom modification. EC4X is flexible enough to enable the tailoring of the combat mechanics to your own ideas and requirements. Please report back to the project anything that works well for you and increases enjoyment of the game. 
 
-- Consider adding your own special modifiers to the CER roll, e.g. battle stations readiness, random chance events, etc.
+- Additional modifiers to the CER roll, e.g. battle stations readiness, random chance events, etc.
 - Apply the Starbase critical hit rule to special assets that are resistant to crippling.
+- Add a modifier to protect homeworlds
+- Add mines or moon bases
+- Add defensive missle batteries
 - Insert your imagination here.....
 
 EC4X Space combat is adapted from Empire of the Sun (EOS). 
 
-# 8\.0 Diplomacy, Sabotage & Subversion
+# 8\.0 TODO: Diplomacy & Subversion
 
 # 9\.0 Data Tables
 
@@ -883,7 +916,7 @@ All tables and attributes are place holders.
 
 ## 9\.1 Space Force (Weapons Level 0)
 
-EL = Minimum Economic Level
+CRN = Minimum CRN Level
 HS = Hull Size
 PC = Production Cost
 MC = Maintenance Cost
@@ -893,17 +926,17 @@ CC= Command Cost
 CR = Command Rating
 CL = Carry Limit
 
-| Class | Name              | EL  | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
+| Class | Name              | CRN | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
 |:-----:| ----------------- |:---:|:---:|:---:|:-----:|:---:|:---:|:---:|:---:|:---:|
 | CT    | Corvette          | 1   | 1   | 2   | 0\.1  | 1   | 2   | 1   | 2   | NA  |
 | FG    | Frigate           | 1   | 1   | 3   | 0\.2  | 2   | 3   | 2   | 3   | NA  |
 | DD    | Destroyer         | 1   | 1   | 4   | 0\.3  | 3   | 4   | 2   | 4   | NA  |
-| CL    | Light Cruiser     | 2   | 2   | 5   | 0\.4  | 4   | 5   | 3   | 6   | NA  |
-| CA    | Heavy Cruiser     | 3   |     |     |       |     |     |     |     |     |
-| BC    | Battle Cruiser    | 5   | 2   | 6   | 0\.5  | 4   | 6   | 3   | 8   | NA  |
-| BB    | Battleship        | 6   | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
-| DN    | Dreadnought       | 7   | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
-| SD    | Super Dreadnought | 9   |     |     |       |     |     |     |     |     |
+| CL    | Light Cruiser     | 1   | 2   | 5   | 0\.4  | 4   | 5   | 3   | 6   | NA  |
+| CA    | Heavy Cruiser     | 2   |     |     |       |     |     |     |     |     |
+| BC    | Battle Cruiser    | 3   | 2   | 6   | 0\.5  | 4   | 6   | 3   | 8   | NA  |
+| BB    | Battleship        | 4   | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
+| DN    | Dreadnought       | 5   | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
+| SD    | Super Dreadnought | 6   |     |     |       |     |     |     |     |     |
 | CV    | Carrier           | 3   | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
 | CX    | Super Carrier     | 5   | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
 | FS    | Fighter Squadron  | 3   | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
@@ -913,21 +946,21 @@ CL = Carry Limit
 
 ## 9.3 Ground Units
 
-| **Class** | **Name**         | EL  | **PC** | MC  | AS  | DS  |
-| --------- | ---------------- |:---:| ------ | --- |:---:|:---:|
-| PS        | Planetary Shield | 3   | 35     | 2.0 | 0   | 50  |
-| GB        | Ground Batteries | 1   | 4      | 0.1 | 6   | 2   |
-| AA        | Armies           | 1   | 2      | 0.2 | 2   | 3   |
-| MD        | Space Marines    | 1   | 3      | 0.2 | 3   | 2   |
+| **Class** | **Name**         | CRN | PC  | MC  | AS  | DS  |
+| --------- | ---------------- |:---:| --- | --- |:---:|:---:|
+| PS        | Planetary Shield | 3   | 35  | 2.0 | 0   | 50  |
+| GB        | Ground Batteries | 1   | 4   | 0.1 | 6   | 2   |
+| AA        | Armies           | 1   | 2   | 0.2 | 2   | 3   |
+| MD        | Space Marines    | 1   | 3   | 0.2 | 3   | 2   |
 
 ## 9\.2 Spacelift Command
 
-| **Class** | **Name**         | EL  | **PC** | MC  | CL  |
-|:---------:| ---------------- |:---:|:------:|:---:|:---:|
-| SP        | Spaceport        | 1   | 20     | 1.0 | 5   |
-| SY        | Shipyard         | 1   | 30     | 2.0 | 10  |
-| ET        | ETAC             | 1   | 15     | 0.3 | 1   |
-| TT        | Troop Transports | 1   | 5      | 0.2 | 1   |
+| **Class** | **Name**         | CRN | PC  | MC  | CL  |
+|:---------:| ---------------- |:---:|:---:|:---:|:---:|
+| SP        | Spaceport        | 1   | 20  | 1.0 | 5   |
+| SY        | Shipyard         | 1   | 30  | 2.0 | 10  |
+| ET        | ETAC             | 1   | 15  | 0.3 | 1   |
+| TT        | Troop Transports | 1   | 5   | 0.2 | 1   |
 
 ## 9\.3 Prestige
 
