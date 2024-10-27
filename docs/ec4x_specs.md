@@ -563,21 +563,21 @@ TRP = 20 + SL(5) (Maxing at 55 TRP)
 | 06  | 50       |
 | 07+ | 55       |
 
-## XYZ\.5 Construction (CRN)
+## XYZ\.5 Construction (CST)
 
 Upgrades improve the construction capability and capacity of planet based factories, Spaceports, Shipyards. Upgrades to existing units are automatic and zero cost.
 
-CRN will open up new, larger hulled classes of combat ships.
+CST will open up new, larger hulled classes of combat ships.
 
 Rount up to the nearest whole number when recalculating a capacity increase.
 
-| CRN Level | Min EL | Capacity Increase |
+| CST Level | Min EL | Capacity Increase |
 |:---------:|:------:|:-----------------:|
-| CRN1      | 1      | 10%               |
-| CRN2      | 2      | 10%               |
-| CRN3+     | 3+     | 10%               |
+| CST1      | 1      | 10%               |
+| CST2      | 2      | 10%               |
+| CST3+     | 3+     | 10%               |
 
-The maxium construction level is CRN10.
+The maxium construction level is CST10.
 
 ## XYZ\.6 Weapons (WEP)
 
@@ -916,7 +916,7 @@ All tables and attributes are place holders.
 
 ## 9\.1 Space Force (Weapons Level 0)
 
-CRN = Minimum CRN Level
+CST = Minimum CST Level
 HS = Hull Size
 PC = Production Cost
 MC = Maintenance Cost
@@ -926,7 +926,7 @@ CC= Command Cost
 CR = Command Rating
 CL = Carry Limit
 
-| Class | Name              | CRN | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
+| Class | Name              | CST | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
 |:-----:| ----------------- |:---:|:---:|:---:|:-----:|:---:|:---:|:---:|:---:|:---:|
 | CT    | Corvette          | 1   | 1   | 2   | 0\.1  | 1   | 2   | 1   | 2   | NA  |
 | FG    | Frigate           | 1   | 1   | 3   | 0\.2  | 2   | 3   | 2   | 3   | NA  |
@@ -946,7 +946,7 @@ CL = Carry Limit
 
 ## 9.3 Ground Units
 
-| **Class** | **Name**         | CRN | PC  | MC  | AS  | DS  |
+| **Class** | **Name**         | CST | PC  | MC  | AS  | DS  |
 | --------- | ---------------- |:---:| --- | --- |:---:|:---:|
 | PS        | Planetary Shield | 3   | 35  | 2.0 | 0   | 50  |
 | GB        | Ground Batteries | 1   | 4   | 0.1 | 6   | 2   |
@@ -955,7 +955,7 @@ CL = Carry Limit
 
 ## 9\.2 Spacelift Command
 
-| **Class** | **Name**         | CRN | PC  | MC  | CL  |
+| **Class** | **Name**         | CST | PC  | MC  | CL  |
 |:---------:| ---------------- |:---:|:---:|:---:|:---:|
 | SP        | Spaceport        | 1   | 20  | 1.0 | 5   |
 | SY        | Shipyard         | 1   | 30  | 2.0 | 10  |
