@@ -221,6 +221,7 @@ Crippled Scouts lose their ELI sensors until repaired.
 \*The maximum modifier is +4
 
 Example:
+
 ```
 A fleet contains three ELI4 Scouts.
 3 - 1 = 2. The die roll modifier is +2
@@ -229,6 +230,7 @@ A fleet contains three ELI4 Scouts.
 **Mixing Scouts in the same fleet with different tech levels is allowed. Follow the process below.**
 
 ELI Integration Index (EII):
+
 - ELI_Min = the lowest ELI level present in the fleet.
 - ELI_Max = the highest ELI level present in the fleet.
 
@@ -245,6 +247,7 @@ Update the die roll modifier as follows:
 3. Modifier = base - penalty
 
 Example:
+
 ```
 Fleet Composition:
 
@@ -311,7 +314,6 @@ A player has three fleets containing a combined total of five CLK3 Raiders conve
 The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELI1 Scout, and the other two fleets each have two ELI2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful detection rolls.
 
 The cloaked fleets go undetected.
-
 
 ### 2\.4.4 Starbases
 
@@ -811,25 +813,41 @@ Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing fo
 
 ## 5\.2 Task Force Assignment
 
-*All* of a player’s fleets located in, arriving at, or moving through a star system in the same turn shall be joined together into a single Task Force when engaged in combat. 
+All applicable fleets and Starbases relevant to the combat scenario will merge into a single Task Force.
 
-Fleets are temporarily disbanded and their squadrons fight individually under a single Task Force.
+Rules of Engagement (ROE):
 
-Task Forces assume the highest ROE of any fleet joining the force.
+- Task Forces adopt the highest ROE of any joining fleet.
+- Starbases do not retreat; the Task Force's ROE is set to 10.
 
-Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
+Cloaking:
 
-**Note**: *Every* fleet joining the Task Force must be in compliance with section 5.1.3 for cloaking (ambush or surprise). Cloaked fleets that have preexisting orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
+- Task Forces including Starbases cannot cloak.
+- All fleets must pass a stealth roll for the Task Force to be cloaked (Section 5.1.3).
 
-Spacelift Command ships are screened behind the Task Force during combat operations and do not engage. 
+Fleet Integration:
 
-Starbases remain in reserve to protect the colony from blockade and direct attack, and do not join a Task Force for combat in open space. If a fleet has direct orders to guard a Starbase, they will also remain in reserve.
+- Fleets disband, with their squadrons fighting individually under the Task Force.
+- Fighter Squadrons deploy as independent squadrons.
+
+Cloaked fleets with movement orders can continue if they pass stealth checks; otherwise, they join combat.
+
+Spacelift Command ships are screened behind the Task Force during combat operations and do not engage in combat.
 
 ## 5\.3 Space Combat
 
-All fleets encountering enemy forces within a solar system, in the same turn, shall engage in combat.  Players align their Task Forces for battle in accordance with Section 5.2.
+All fleets within a solar system must engage enemy forces encountered during the same turn, except those under Fleet Orders 04 (Guard a Starbase) and 05 (Guard/Blockade a Planet).
 
-Squadrons and Spacelift Command ships may neither be re-assigned to new fleets during space combat nor during a retreat. Squadrons may not be reorganized during combat.
+Specific Engagement Rules:
+
+- Blockade: A fleet blockading an enemy planet will only engage in space combat with fleets ordered to guard that planet.
+- Guard: A fleet guarding a planet (without a Starbase) will only engage enemy ships with Fleet Orders 05-08.
+
+Task Forces form according to Section 5.2.
+
+Starbases and fleets with Orders 04 (guarding starbases) or 05 (guarding planets) remain in reserve to defend against blockades or direct planet attacks.
+
+Squadron reassignment or reorganization is not permitted during combat or retreat.
 
 ### 5.3.1 Rounds
 
@@ -909,16 +927,16 @@ After the last round of combat the surviving Task Forces are disbanded and survi
 
 ## 5\.4 Starbase Combat
 
-If a hostile fleet has orders to blockade, bombard, invade, or blitz a colony, Starbases are the first line of planetary defense, and multiple units form a combined Task Force.
+Starbases act as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per Section 5.2.
 
-Fleets with orders to guard a starbase(s) will also join the Task Force.
+Fleets with orders to guard the Starbase (Fleet Orders 04) or to guard the planet (Fleet Orders 05) also join the Task Force.
 
 Combat will proceed in a similar fashion to Section 5.3, with the following restrictions:
 
 1. If a player rolls a critical hit against a starbase on the first try, re-roll a second time.
 2. Starbases receive an extra +2 die roll modifier.
 
-Starbases are powerful citadels equipped with advanced sensors and massive artificial intelligence (AI) resources. Their shields are powerful and make them a challenge to strike a critical hit.
+Starbases are fortified with superior AI and sensors, making them formidable, with high defensive capabilities.
 
 ## 5\.5 TODO: Planetary Bombardment
 
