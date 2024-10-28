@@ -779,31 +779,7 @@ ROE dictates how aggressive your fleet will respond when engaging with the enemy
 
 A fleet's ROE is defined when it's created, or changed any time before engaging in combat. The ROE may not be changed during combat.
 
-### 5\.1.2 Combat Effectiveness Rating (CER)
-
-A modified 1d10 roll applied to a combat unit’s AS for the purposes of reducing your opponent’s forces. There are two separate CER tables, one for space combat and another for ground combat.
-
-| **Modified 1D10 Die Roll** | **Space Combat CER**             |
-| -------------------------- | -------------------------------- |
-| Less than zero, 0, 1, 2    | One Quarter (0.25) (round up)    |
-| 3, 4                       | One Half (0.50) (round up)       |
-| 5, 6                       | Three Quarters (0.75) (round up) |
-| 7, 8                       | One (1)                          |
-| 9                          | One\* (1)                        |
-| 9+                         | One (1)                          |
-
-\*If the die roll is a natural nine before any required modification, then a critical hit is achieved
-
-| **Modified 1D10 Die Roll** | **Ground Combat CER**           |
-| -------------------------- | ------------------------------- |
-| Less than zero, 0, 1, 2    | One Half (0.5) (round up)       |
-| 3, 4, 5, 6                 | One (1)                         |
-| 7, 8                       | One and a half (1.5) (round up) |
-| 9 or more                  | Two (2)                         |
-
-Critical hits do not apply to ground combat.
-
-### 5\.1.3 Combat State
+### 5\.1.2 Combat State
 
 Squadron units are either undamaged, crippled, or destroyed.
 
@@ -821,7 +797,7 @@ Squadron units are either undamaged, crippled, or destroyed.
 
 If a squadron is crippled, all the ships under its command are crippled. If a squadron is destroyed, all the ships are likewise destroyed.
 
-### 5\.1.4 Cloaking
+### 5\.1.3 Cloaking
 
 Cloaking offers an advantage in the initial round of space combat, both on the defensive and offensive.
 
@@ -843,29 +819,39 @@ Task Forces assume the highest ROE of any fleet joining the force.
 
 Fighter squadrons deploy to their player's respective Task Force as independent squadrons.
 
-**Note**: *Every* fleet joining the Task Force must be in compliance with section 5.1.4 for cloaking (ambush or surprise). Cloaked fleets that have preexisting orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
+**Note**: *Every* fleet joining the Task Force must be in compliance with section 5.1.3 for cloaking (ambush or surprise). Cloaked fleets that have preexisting orders to move through the solar system may continue their journey if they pass the stealth check. If they fail, they must stop and join the Task Force for combat.
 
 Spacelift Command ships are screened behind the Task Force during combat operations and do not engage. 
 
 Starbases remain in reserve to protect the colony from blockade and direct attack, and do not join a Task Force for combat in open space. If a fleet has direct orders to guard a Starbase, they will also remain in reserve.
 
-## 5\.4 Space Combat
+## 5\.3 Space Combat
 
 All fleets encountering enemy forces within a solar system, in the same turn, shall engage in combat.  Players align their Task Forces for battle in accordance with Section 5.2.
 
 Squadrons and Spacelift Command ships may neither be re-assigned to new fleets during space combat nor during a retreat. Squadrons may not be reorganized during combat.
 
-### 5.4.1 Rounds
+### 5.3.1 Rounds
 
 After Task Forces are aligned for battle, combat commences in a series of rounds until one side is completely destroyed or manages a retreat.
 
 Combat action is simultaneous; all squadrons have the opportunity to fire on enemy forces at least once, regardless of damage sustained during a round.
 
-At the beginning of each combat round, players add up the total AS of their surviving squadrons. The total value is then modified by the following:
+At the beginning of each combat round, players add up the total AS of their surviving squadrons. The total value is then modified by the Combat Effectiveness Rating (CER).
 
-Players roll a die in accordance with Section 5.1.2 to determine their CER, applying all applicable modifiers.
+Roll for CER on the table below, applying all applicable modifiers.
 
-The CER multiplied by AS equals the number of total enemy hits.
+| **Modified 1D10 Die Roll** | **Space Combat CER**             |
+| -------------------------- | -------------------------------- |
+| Less than zero, 0, 1, 2    | One Quarter (0.25) (round up)    |
+| 3, 4                       | One Half (0.50) (round up)       |
+| 5, 6                       | Three Quarters (0.75) (round up) |
+| 7, 8                       | One (1)                          |
+| 9\*                        | One\* (1)                        |
+| 9+                         | One (1)                          |
+
+\*If the die roll is a natural nine before any required modification,
+then a critical hit is achieved
 
 **Die Roll Modifiers**
 
@@ -874,6 +860,8 @@ The CER multiplied by AS equals the number of total enemy hits.
 | Scouts   | +1    | Maximum benefit for all Scouts      |
 | Surprise | +3    | First round only; See Section 5.1.4 |
 | Ambush   | +4    | First round only; See Section 5.1.4 |
+
+**The CER multiplied by AS equals the number of total enemy hits.**
 
 The player who rolled the die will determine where hits are applied.
 
@@ -895,17 +883,17 @@ Critical hits are a special case. Restriction \#2 in the list above is nullified
 
 Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction \#1 above, then the squadron with the lowest DS is reduced.
 
-### 5\.4.2 End of Round
+### 5\.3.2 End of Round
 
 After all hits are applied and squadrons are appropriately reduced (crippled or destroyed), recalculate the total AS of all surviving Task Forces.
 
-Check each Task Force's ROE on the table in Section 5.1.1 by comparing AS strengths and determine if a retreat is warranted. If so, proceed to Section 5.4.3. 
+Check each Task Force's ROE on the table in Section 5.1.1 by comparing AS strengths and determine if a retreat is warranted. If so, proceed to Section 5.3.3.
 
 If more than one Task Force remains in the fight, the next round commences via the same procedure as described above.
 
-Otherwise proceed to Section 5.4.4.
+Otherwise proceed to Section 5.3.4.
 
-### 5\.4.3 Retreat
+### 5\.3.3 Retreat
 
 A Task Force may retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter. 
 
@@ -915,28 +903,35 @@ Fighter squadrons never retreat from combat. If they remain in the fight, fighte
 
 Spacelift Command ships are destroyed if their escort fleets were destroyed.
 
-### 5\.4.4 End of Space Combat
+### 5\.3.4 End of Space Combat
 
 After the last round of combat the surviving Task Forces are disbanded and surviving squadrons rejoin their original fleets.
 
-## 5\.5 Starbase Combat
+## 5\.4 Starbase Combat
 
 If a hostile fleet has orders to blockade, bombard, invade, or blitz a colony, Starbases are the first line of planetary defense, and multiple units form a combined Task Force.
 
 Fleets with orders to guard a starbase(s) will also join the Task Force.
 
-Combat will proceed in a similar fashion to Section 5.4, with the following restrictions:
+Combat will proceed in a similar fashion to Section 5.3, with the following restrictions:
 
 1. If a player rolls a critical hit against a starbase on the first try, re-roll a second time.
 2. Starbases receive an extra +2 die roll modifier.
 
 Starbases are powerful citadels equipped with advanced sensors and massive artificial intelligence (AI) resources. Their shields are powerful and make them a challenge to strike a critical hit.
 
-## 5\.6 TODO: Planetary Bombardment
+## 5\.5 TODO: Planetary Bombardment
 
-## 5\.7 TODO: Planetary Invasion & Blitz
+## 5\.6 TODO: Planetary Invasion & Blitz
 
-## 5\.8 Custom Combat Modifications
+| **Modified 1D10 Die Roll** | **Ground Combat CER**           |
+| -------------------------- | ------------------------------- |
+| Less than zero, 0, 1, 2    | One Half (0.5) (round up)       |
+| 3, 4, 5, 6                 | One (1)                         |
+| 7, 8                       | One and a half (1.5) (round up) |
+| 9 or more                  | Two (2)                         |
+
+## 5\.7 Custom Combat Modifications
 
 If customizing your own ships or scenarios, the following list provides a jumping off point for custom modification. EC4X is flexible enough to enable the tailoring of the combat mechanics to your own ideas and requirements. Please report back to the project anything that works well for you and increases enjoyment of the game. 
 
