@@ -200,36 +200,45 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Fleets containing Scouts are the only units capable of countering Raiders. Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and magnified. 
+Fleets containing Scouts are the only units capable of countering Raiders (Refer to Section 2.4.3). Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and magnified. 
 
-Players make a detection roll on the table below when countering Raiders or other Scouts sent on spy missions.
+Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
+
+For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the Spy Detection Table below (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
+
+Detection Roll Process:
+
+1. Identify the ELI for the defending player's fleet along the top row.
+2. Find the rival Spy Scout's ELI in the first column.
+3. Roll a 1D20 and add the calculated modifier (explained below).
+4. If the total is greater than the number indexed, the spy is detected and destroyed.
 
 Crippled Scouts lose their ELI sensors until repaired.
 
-**Detection Table**
+**Spy Detection Table**
 
-| Tech Level | % Chance | Modified 1D20 Roll\* |
-|:----------:|:--------:|:--------------------:|
-| ELI1       | 15       | 18 - 20              |
-| ELI2       | 30       | 15 - 20              |
-| ELI3       | 45       | 12 - 20              |
-| ELI4       | 60       | 9 - 20               |
-| ELI5       | 75       | 6 - 20               |
+| \*Fleet -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
+| ----------:|:----:|:----:|:----:|:----:|:----:|
+| Spy ELI1   | > 12 | > 7  | > 3  | > 1  | > 1  |
+| Spy ELI2   | > 16 | > 12 | > 7  | > 3  | > 1  |
+| Spy ELI3   | > 18 | > 16 | > 12 | > 7  | > 3  |
+| Spy ELI4   | > 19 | > 18 | > 16 | > 12 | > 7  |
+| Spy ELI5   | NA   | > 19 | > 18 | > 16 | > 12 |
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
-\*The maximum modifier is +4
+\*The maximum modifier is +2
 
 Example:
 
 ```
-A fleet contains three ELI4 Scouts.
+A detecting fleet contains three ELI4 Scouts:
 3 - 1 = 2. The die roll modifier is +2
 ```
 
-**Mixing Scouts in the same fleet with different tech levels is allowed. Follow the process below.**
+**If the fleet has Scouts with different ELI levels, use this method:**
 
-ELI Integration Index (EII):
+First calcualte the ELI Integration Index (EII):
 
 - ELI_Min = the lowest ELI level present in the fleet.
 - ELI_Max = the highest ELI level present in the fleet.
@@ -242,8 +251,8 @@ Use the EII as the base Tech Level in the Detection Table (round down).
 
 Update the die roll modifier as follows:
 
-1. Base: Subtract 1 from the total number of Scouts
-2. Penalty: Subtract 1 from the number of different tech levels
+1. Base: subtract 1 from the ***total number of Scouts***
+2. Penalty: subtract 1 from the ***number of different tech levels***
 3. Modifier = base - penalty
 
 Example:
@@ -267,7 +276,7 @@ EII Calculation:
 EII = (ELI_Max + ELI_Min) / 2
 EII = (4 + 2) / 2 = 3
 
-Use ELI3 in the Detection Table.
+Use ELI3 in the Detection Table (top row).
 
 Now calculate the die roll modifier:
 1) Base = 4 - 1 = 3
@@ -275,15 +284,11 @@ Now calculate the die roll modifier:
 3) Modifier = 3 - 2 = +1
 ```
 
-Scouts also maintain an element of stealth when performing solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
-
-For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the ELI table above (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
-
 ### 2\.4.3 Raiders
 
 The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Heavy Cruiser (CA).
 
-Fleets containing Raiders are fully cloaked, and roll for a chance to go undetected when encountering opposing forces on the Stealth Table below.
+Fleets containing Raiders are cloaked, and roll for a chance to pass undetected against opposing forces on the Stealth Table below.
 
 Crippled Raiders lose their cloaking ability until repaired.
 
@@ -291,29 +296,50 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 | Tech Level | % Chance | 1D20 Roll |
 |:----------:|:--------:|:---------:|
-| CLK1       | 15       | 18 - 20   |
-| CLK2       | 30       | 15 - 20   |
-| CLK3       | 45       | 12 - 20   |
-| CLK4       | 60       | 9 - 20    |
-| CLK5       | 75       | 6 - 20    |
-| CLK6       | 90       | 3 - 20    |
-| CLK7       | 100      | 1 - 20    |
+| CLK1       | 30       | > 14      |
+| CLK2       | 40       | > 12      |
+| CLK3       | 50       | > 10      |
+| CLK4       | 60       | > 8       |
+| CLK5       | 70       | > 6       |
+| CLK6       | 80       | > 4       |
+| CLK7       | 90       | > 2       |
 
-Roll a 1D20 for each Raider in the fleet, indexing by tech level. Raiders with different tech levels may mix in the same fleet. Multiple cloaked fleets converging on a Task Force roll individually for stealth. Total the number of successful stealth rolls.
+When encountering rival fleets **without Scouts**:
 
-If a fleet fails for stealth, then the fleet is detected. No need to proceed further.
+Roll a 1D20 for the highest rated CLK Raider in the fleet, indexing by tech level. Multiple cloaked fleets converging on a Task Force roll individually for stealth. 
 
-Opposing fleets containing Scouts may roll in accordance with the Detection Roll table in Section 2.4.2 in order to counter. Total the number of successful detection rolls.
+If a fleet fails for stealth, then the fleet is detected. 
 
-If the number of successful stealth rolls *is greater than* the number of successful detection rolls, then the cloaked fleet remains undetected. In the case of a tie the defending player wins.
+## **TODO: Not finished working this out**
 
-**Example**: 
+Opposing fleets with Scouts have the opportunity to counter for stealth. 
 
-A player has three fleets containing a combined total of five CLK3 Raiders converging into a Task Force for battle. The player rolls for stealth for each fleet individually, and is successful on all. The player rolled a total of five times, with three successful stealth rolls.
+Select the fleet from the stealth player's Task Force with the highest rated CLK.  
 
-The opposing player has four fleets converging on the same battle space. The first two fleets each contain one ELI1 Scout, and the other two fleets each have two ELI2 Scouts. The player rolls a total of four times (for each fleet) on the Detection Table, applying modifiers, and achieves two successful detection rolls.
+Select the highest rated ELI from the opposing player's fleet and detect for stealth as described below:
 
-The cloaked fleets go undetected.
+1. Identify the fleet's ELI along the top row.
+2. Find the Raider's CLK tech level in the first column.
+3. Roll a 1D20 and add the calculated modifier (explained below).
+4. If the total is greater than the number indexed, the cloaked fleet is detected.
+
+**Raider Detection Table**
+
+| \*Scout Fleet -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
+| ---------------- |:----:|:----:|:----:|:----:|:----:|
+| CLK1             | > 14 | > 9  | > 5  | > 2  | > 1  |
+| CLK2             | > 17 | > 14 | > 9  | > 5  | > 2  |
+| CLK3             | > 19 | > 17 | > 14 | > 9  | > 5  |
+| CLK4             | NA   | > 19 | > 17 | > 14 | > 9  |
+| CLK5             | NA   | NA   | > 19 | > 17 | > 14 |
+| CLK6             | NA   | NA   | NA   | > 19 | > 17 |
+| CLK7             | NA   | NA   | NA   | NA   | > 19 |
+
+*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
+
+*The maximum modifier is +4
+
+**If Scouts in the opposing fleet have mixed ELI tech, use same EII method described in section 2.4.3 to find the adjusted ELI and die roll modifier.**
 
 ### 2\.4.4 Starbases
 
@@ -734,24 +760,24 @@ The logistics of repairing a ship planetside and returning it to orbit make it e
 
 Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterian Conquest, modified for EC4X.
 
-| No. | Mission                 | Requirements                             |
-| --- | ----------------------- | ---------------------------------------- |
-| 00  | None (hold position)    | None                                     |
-| 01  | Move fleet (only)       | None                                     |
-| 02  | Seek home               | None                                     |
-| 03  | Patrol a system         | None                                     |
-| 04  | Guard a Starbase        | Combat ship(s)                           |
-| 05  | Guard/Blockade a planet | Combat ship(s)                           |
-| 06  | Bombard a planet        | Combat ship(s)                           |
-| 07  | Invade a planet         | Combat ship(s) & loaded Troop Transports |
-| 08  | Blitz a Planet          | Loaded Troop Transports                  |
-| 09  | Spy on a planet         | At least one Scout ship                  |
-| 10* | Hack a Starbase         | At least one Scout ship                  |
-| 11  | Spy on a system         | At least one Scout ship                  |
-| 12  | Colonize a planet       | At least one ETAC                        |
-| 13  | Join another fleet      | None                                     |
-| 14  | Rendezvous at system    | None                                     |
-| 15  | Salvage                 | None                                     |
+| No.  | Mission                 | Requirements                             |
+| ---- | ----------------------- | ---------------------------------------- |
+| 00   | None (hold position)    | None                                     |
+| 01   | Move fleet (only)       | None                                     |
+| 02   | Seek home               | None                                     |
+| 03   | Patrol a system         | None                                     |
+| 04   | Guard a Starbase        | Combat ship(s)                           |
+| 05   | Guard/Blockade a planet | Combat ship(s)                           |
+| 06   | Bombard a planet        | Combat ship(s)                           |
+| 07   | Invade a planet         | Combat ship(s) & loaded Troop Transports |
+| 08   | Blitz a Planet          | Loaded Troop Transports                  |
+| 09   | Spy on a planet         | At least one Scout ship                  |
+| 10\* | Hack a Starbase         | At least one Scout ship                  |
+| 11   | Spy on a system         | At least one Scout ship                  |
+| 12   | Colonize a planet       | At least one ETAC                        |
+| 13   | Join another fleet      | None                                     |
+| 14   | Rendezvous at system    | None                                     |
+| 15   | Salvage                 | None                                     |
 
 \* New to EC4X
 
@@ -836,18 +862,23 @@ Spacelift Command ships are screened behind the Task Force during combat operati
 
 ## 5\.3 Space Combat
 
-All fleets within a solar system must engage enemy forces encountered during the same turn, except those under Fleet Orders 04 (Guard a Starbase) and 05 (Guard/Blockade a Planet).
+All fleets within a solar system are mandated to engage enemy forces during their turn, with the following exceptions:
+
+- Fleets under Fleet Order 04: Guard a Starbase 
+- Fleets under Fleet Order 05: Guard/Blockade a Planet
 
 Specific Engagement Rules:
 
-- Blockade: A fleet blockading an enemy planet will only engage in space combat with fleets ordered to guard that planet.
-- Guard: A fleet guarding a planet (without a Starbase) will only engage enemy ships with Fleet Orders 05-08.
+- Blockade Engagement:
+  - Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
+- Guard Engagement:
+  - Fleets assigned to Guard a planet without a Starbase (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08, focusing on defensive or blockading actions.
 
 Task Forces form according to Section 5.2.
 
-Starbases and fleets with Orders 04 (guarding starbases) or 05 (guarding planets) remain in reserve to defend against blockades or direct planet attacks.
+Starbases and fleets assigned to Guard Starbases (Order 04) or Guard Planets (Order 05) are held in reserve. These forces are exclusively designated to counter blockades or direct assaults on planets.
 
-Squadron reassignment or reorganization is not permitted during combat or retreat.
+Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
 
 ### 5.3.1 Rounds
 
