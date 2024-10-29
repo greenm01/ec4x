@@ -32,7 +32,7 @@ EC4X pays homage and is influenced by the following great titles:
 
 Although not required, it is highly recommended to purchase physical copies of these classics to fully appreciate the art. Dive deep.
 
-Esterian Conquest was an obscure bulletin board system (BBS) door game from the early 1990's that inspired this project. EC is a gem, and great times were had battling friends, family, and anonymous players over the phone lines on slow noisy modems. Graphics were crude but the ANSI art was fantastic. The early 1990's was a simple time, just before the internet blew up and super computers landed in all of our pockets. EC turns progressed once a day and most of the strategic planning occurred in one's imagination offline. Players eagerly awaited each new day's battle reports, and games would last several weeks to several months. Maps and reports were printed on dot matrix printers and marked up with pencil to no end. The times were good. That era is long gone but tabletop wargaming is still alive and well in 2024. EC4X is an attempt to recapture the magic.
+Esterian Conquest was an obscure bulletin board system (BBS) door game from the early 1990's that inspired this project. EC is a gem, and great times were had battling friends, family, and anonymous players over the phone lines on slow noisy modems. Graphics were crude but the ANSI art was fantastic. The early 1990's was a simple time, just before the internet blew up and super computers landed in all of our pockets. EC turns progressed once a day and most of the strategic planning occurred in one's imagination offline. Players eagerly awaited each new day's battle reports, and games would last several weeks to several months. Maps and reports were printed on dot matrix printers and marked up with pencil to no end. The times were good. That era is long gone but tabletop wargaming is still alive and well in 2024. EC4X is an attempt to recapture some of that magic.
 
 While not intended to be an accounting exercise, there is enough complexity in EC4X to allow for dynamic strategic decision making and surprising outcomes.
 
@@ -236,7 +236,7 @@ A detecting fleet contains three ELI4 Scouts:
 3 - 1 = 2. The die roll modifier is +2
 ```
 
-**If the fleet has Scouts with different ELI levels, use this method:**
+**If the fleet has Scouts with mixed ELI tech, use this method:**
 
 First calcualte the ELI Integration Index (EII):
 
@@ -304,24 +304,23 @@ Crippled Raiders lose their cloaking ability until repaired.
 | CLK6       | 80       | > 4       |
 | CLK7       | 90       | > 2       |
 
-When encountering rival fleets **without Scouts**:
+When encountering rival fleets **without Scouts**, roll on the Stealth Table above.
 
-Roll a 1D20 for the highest rated CLK Raider in the fleet, indexing by tech level. Multiple cloaked fleets converging on a Task Force roll individually for stealth. 
+Roll a 1D20 for each Raider in the fleet, indexing by tech level, for multiple chances. Multiple cloaked fleets converging on a Task Force roll individually for stealth.  
 
 If a fleet fails for stealth, then the fleet is detected. 
 
-## **TODO: Not finished working this out**
+When encountering fleets ***with scouts***, rivals have the opportunity to counter.
 
-Opposing fleets with Scouts have the opportunity to counter for stealth. 
+Select the highest rated *ELI fleet* from the opposing player's forces. This fleet will be used to detect Raiders.
 
-Select the fleet from the stealth player's Task Force with the highest rated CLK.  
-
-Select the highest rated ELI from the opposing player's fleet and detect for stealth as described below:
+*For each* cloaked fleet in the engagement, select the highest CLK Raider from that fleet and detect for stealth as described below. All cloaked fleets must check for stealth to pass undetected.
 
 1. Identify the fleet's ELI along the top row.
 2. Find the Raider's CLK tech level in the first column.
 3. Roll a 1D20 and add the calculated modifier (explained below).
 4. If the total is greater than the number indexed, the cloaked fleet is detected.
+5. Repeat for all cloaked fleets.
 
 **Raider Detection Table**
 
@@ -339,7 +338,7 @@ Select the highest rated ELI from the opposing player's fleet and detect for ste
 
 *The maximum modifier is +4
 
-**If Scouts in the opposing fleet have mixed ELI tech, use same EII method described in section 2.4.3 to find the adjusted ELI and die roll modifier.**
+**If Scouts in the opposing fleet have mixed ELI tech, use same EII method described in section 2.4.2 to find the adjusted ELI and die roll modifier.**
 
 ### 2\.4.4 Starbases
 
@@ -854,7 +853,7 @@ Cloaking:
 Fleet Integration:
 
 - Fleets disband, with their squadrons fighting individually under the Task Force.
-- Fighter Squadrons deploy as independent squadrons.
+- Fighter Squadrons deploy as independent units.
 
 Cloaked fleets with movement orders can continue if they pass stealth checks; otherwise, they join combat.
 
