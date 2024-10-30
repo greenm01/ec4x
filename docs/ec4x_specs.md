@@ -850,7 +850,7 @@ Rules of Engagement (ROE):
 Cloaking:
 
 - Task Forces including Starbases cannot cloak.
-- All joining fleets must be cloaked and pass undetected for the entire Task Force to be considered cloaked (Section 5.1.3).
+- All joining fleets must be cloaked and pass undetected for Task Force to be cloaked (Section 5.1.3).
 
 Fleet Integration:
 
