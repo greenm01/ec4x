@@ -219,11 +219,11 @@ Crippled Scouts lose their ELI sensors until repaired.
 
 | \*Fleet -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
 | ----------:|:----:|:----:|:----:|:----:|:----:|
-| Spy ELI1   | > 12 | > 7  | > 3  | > 1  | > 1  |
-| Spy ELI2   | > 16 | > 12 | > 7  | > 3  | > 1  |
-| Spy ELI3   | > 18 | > 16 | > 12 | > 7  | > 3  |
-| Spy ELI4   | > 19 | > 18 | > 16 | > 12 | > 7  |
-| Spy ELI5   | NA   | > 19 | > 18 | > 16 | > 12 |
+| Spy ELI1   | > 14 | > 9  | > 5  | > 2  | > 1  |
+| Spy ELI2   | > 17 | > 14 | > 9  | > 5  | > 2  |
+| Spy ELI3   | > 19 | > 17 | > 14 | > 9  | > 5  |
+| Spy ELI4   | NA   | > 19 | > 17 | > 14 | > 9  |
+| Spy ELI5   | NA   | NA   | > 19 | > 17 | > 14 |
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
@@ -296,13 +296,11 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 | Tech Level | % Chance | 1D20 Roll |
 |:----------:|:--------:|:---------:|
-| CLK1       | 30       | > 14      |
+| CLK1       | 20       | > 16      |
 | CLK2       | 40       | > 12      |
-| CLK3       | 50       | > 10      |
-| CLK4       | 60       | > 8       |
-| CLK5       | 70       | > 6       |
-| CLK6       | 80       | > 4       |
-| CLK7       | 90       | > 2       |
+| CLK3       | 60       | > 8       |
+| CLK4       | 80       | > 4       |
+| CLK5       | 90       | > 2       |
 
 When encountering rival fleets **without Scouts**, roll on the Stealth Table above.
 
@@ -345,8 +343,6 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 | CLK3             | > 19 | > 17 | > 14 | > 9  | > 5  |
 | CLK4             | NA   | > 19 | > 17 | > 14 | > 9  |
 | CLK5             | NA   | NA   | > 19 | > 17 | > 14 |
-| CLK6             | NA   | NA   | NA   | > 19 | > 17 |
-| CLK7             | NA   | NA   | NA   | NA   | > 19 |
 
 *Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
@@ -717,7 +713,7 @@ Upgrades do not apply to preexisting Raiders.
 | CLK2      | 4   |          |
 | CLK3+     | 5+  |          |
 
-The maximum CLK level is CLK7.
+The maximum CLK level is CLK5.
 
 ## XYZ\.10 Planetary Shields (SLD)
 
