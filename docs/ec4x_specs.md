@@ -225,7 +225,7 @@ Crippled Scouts lose their ELI sensors until repaired.
 | Spy ELI4    | > 19 | > 18 | > 16 | > 12 | > 7  |
 | Spy ELI5    | NA   | > 19 | > 18 | > 16 | > 12 |
 
-\*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
+\*Total the number of units within the same fleet and subtract one. This is the die roll modifier.
 
 \*The maximum modifier is +3
 
@@ -330,7 +330,7 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 | CLK4        | NA   | > 19 | > 17 | > 14 | > 9  |
 | CLK5        | NA   | NA   | > 19 | > 17 | > 14 |
 
-*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
+*Total the number of units within the same fleet and subtract one. This is the die roll modifier.
 
 *The maximum modifier is +4
 
