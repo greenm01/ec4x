@@ -200,9 +200,9 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Scouts are are one of the few units capable of countering Raiders (Refer to Section 2.4.3). Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and strengthened. 
+Scouts are able to counter Raiders (Refer to Section 2.4.3) and other unfriendly spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and strengthened. 
 
-Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
+Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes in rival solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
 For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the Spy Detection Table below (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
 
@@ -286,9 +286,7 @@ Now calculate the die roll modifier:
 
 ### 2\.4.3 Raiders
 
-The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Heavy Cruiser (CA).
-
-Fleets containing Raiders are fully cloaked and only opposing Scouts and Starbases are able to detect them.
+The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive to R&D and commission, but are a significant factor on the first round of space combat against enemy fleets.
 
 Crippled Raiders lose their cloaking ability until repaired.
 
@@ -341,6 +339,8 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 Starbases (SB) are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
 Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
+
+Raider cloaking is inneffective against Starbases.
 
 Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% each, every turn (preliminary). 
 
