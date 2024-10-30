@@ -312,7 +312,7 @@ If a fleet fails for stealth, then the fleet is detected.
 
 When encountering fleets ***with scouts***, rivals have the opportunity to counter.
 
-Every rated ELI fleet joining the battle space detects for Roges against every other CLK enabled fleet the same space in the same turn. The simplified pseudocode looks like this:
+Every rated ELI fleet joining the battle space detects for Roges against every other CLK enabled fleet. The simplified pseudocode looks like this:
 
 ```
 for each eli_fleet in task_force1:
