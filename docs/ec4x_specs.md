@@ -251,7 +251,7 @@ Use the EII as the base Tech Level in the Detection Table (round down).
 
 Update the die roll modifier as follows:
 
-1. Base: subtract 1 from the ***total number of Scouts***
+1. Base: subtract 1 from the ***total number of units***
 2. Penalty: subtract 1 from the ***number of different tech levels***
 3. Modifier = base - penalty
 
