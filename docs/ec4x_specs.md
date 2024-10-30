@@ -317,9 +317,9 @@ Every rated ELI fleet joining the battle space detects for Roges against every o
 ```
 for each eli_fleet in task_force1:
 	for each clk_fleet in task_force2:
-    	rogue = highest rated CLK tech in clk_fleet
-    	eli_fleet rolls for detection on rogue
-        if success then break
+    		rogue = highest rated CLK tech in clk_fleet
+    		eli_fleet rolls for detection on rogue
+        	if success then break
     end
 end
 ```
@@ -333,7 +333,7 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 3. Find the Raider's CLK in the Raider Detection Table.
 4. Find the ELI rating along the top.
 5. Roll a 1D20; add the calculated modifier (explained below).
-6. If the total is greater than the number indexed, the cloaked fleet is detected.
+6. If the total is greater than the number indexed, the cloaked fleet is detected (stop).
 7. Goto step 2 until all CLK fleets have been tested; otherwise Goto 1.
 
 **Raider Detection Table**
