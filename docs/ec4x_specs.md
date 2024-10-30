@@ -200,15 +200,15 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Scouts are able to counter Raiders (Refer to Section 2.4.3) and other unfriendly spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and strengthened. 
+Scouts are able to counter Raiders (Refer to Section 2.4.3) and rival spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and strengthened. 
 
-Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes in rival solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
+Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
-For every turn that a spy Scout operates in enemy territory occupied by rival fleets, the rival will roll on the Spy Detection Table below (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout to detect.
+For every turn that a spy Scout operates in unfriendly system occupied by rival ELI, the rival will roll on the Spy Detection Table below (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout or Starbase to detect.
 
 Detection Roll Process:
 
-1. Identify the ELI for the defending player's fleet along the top row.
+1. Identify the ELI for the defending player along the top row.
 2. Find the rival Spy Scout's ELI in the first column.
 3. Roll a 1D20 and add the calculated modifier (explained below).
 4. If the total is greater than the number indexed, the spy is detected and destroyed.
@@ -217,13 +217,13 @@ Crippled Scouts lose their ELI sensors until repaired.
 
 **Spy Detection Table**
 
-| \*Fleet -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
-| ----------:|:----:|:----:|:----:|:----:|:----:|
-| Spy ELI1   | > 12 | > 7  | > 3  | > 1  | > 1  |
-| Spy ELI2   | > 16 | > 12 | > 7  | > 3  | > 1  |
-| Spy ELI3   | > 18 | > 16 | > 12 | > 7  | > 3  |
-| Spy ELI4   | > 19 | > 18 | > 16 | > 12 | > 7  |
-| Spy ELI5   | NA   | > 19 | > 18 | > 16 | > 12 |
+| \*Detect -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
+| -----------:|:----:|:----:|:----:|:----:|:----:|
+| Spy ELI1    | > 12 | > 7  | > 3  | > 1  | > 1  |
+| Spy ELI2    | > 16 | > 12 | > 7  | > 3  | > 1  |
+| Spy ELI3    | > 18 | > 16 | > 12 | > 7  | > 3  |
+| Spy ELI4    | > 19 | > 18 | > 16 | > 12 | > 7  |
+| Spy ELI5    | NA   | > 19 | > 18 | > 16 | > 12 |
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
@@ -286,17 +286,17 @@ Now calculate the die roll modifier:
 
 ### 2\.4.3 Raiders
 
-The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive to R&D and commission, but are a significant factor on the first round of space combat against enemy fleets.
+The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive to R&D and commission, but are a significant factor on the first round of space combat against enemy fleets where they gain a surprise or ambush advantage.
 
-Fleets that contain Raiders are fully cloaked.
+Fleets that include Raiders are fully cloaked.
 
 Crippled Raiders lose their cloaking ability until repaired.
 
 **Raider Detection:**
 
-Raiders cannot hide from Starbases. Scouts have a chance to detect them.
+Starbases and Scouts have a chance to counter against cloaked fleets.
 
-In combat, every rated ELI fleet joining the battle space will detect for Roges. The simplified pseudocode looks like this:
+Before combat, every ELI enabled fleet joining the battle space will detect for Raiders. The simplified pseudocode looks like this:
 
 ```
 for each eli_fleet in task_force1:
@@ -322,13 +322,13 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 
 **Raider Detection Table**
 
-| \*Scout Fleet -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
-| ---------------- |:----:|:----:|:----:|:----:|:----:|
-| CLK1             | > 14 | > 9  | > 5  | > 2  | > 1  |
-| CLK2             | > 17 | > 14 | > 9  | > 5  | > 2  |
-| CLK3             | > 19 | > 17 | > 14 | > 9  | > 5  |
-| CLK4             | NA   | > 19 | > 17 | > 14 | > 9  |
-| CLK5             | NA   | NA   | > 19 | > 17 | > 14 |
+| \*Detect -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
+| ----------- |:----:|:----:|:----:|:----:|:----:|
+| CLK1        | > 14 | > 9  | > 5  | > 2  | > 1  |
+| CLK2        | > 17 | > 14 | > 9  | > 5  | > 2  |
+| CLK3        | > 19 | > 17 | > 14 | > 9  | > 5  |
+| CLK4        | NA   | > 19 | > 17 | > 14 | > 9  |
+| CLK5        | NA   | NA   | > 19 | > 17 | > 14 |
 
 *Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
@@ -342,7 +342,9 @@ Starbases (SB) are powerful orbital fortresses that facilitate planetary defense
 
 Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
-Raider cloaking is inneffective against Starbases.
+Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in Section 2.4.2 and Raider Detection Table in Section 2.4.3 respectively. 
+
+Treat a Starbase as an independent fleet when joining a Task Force.
 
 Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% each, every turn (preliminary). 
 
@@ -679,7 +681,7 @@ Planets may not skip a class in their terraforming development.
 
 ELI technology enables the detection of cloaked Raiders and enemy Scouts, and the gathering of intelligence from rival assets.
 
-Upgrades do not apply to preexisting Scouts.
+Upgrades do not apply to preexisting Starbases and Scouts.
 
 | ELI Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
@@ -826,17 +828,15 @@ If a squadron is crippled, all the ships under its command are crippled. If a sq
 
 Cloaking offers an advantage in the initial round of space combat, both on the defensive and offensive.
 
-When defending a solar system, cloaked units are considered to be in ambush against invaders.
+When defending a solar system, cloaked units are considered to be **in ambush** against invaders.
 
-When attacking a solar system, cloaked units are considered to be a surprise to the defenders.
+When attacking a solar system, cloaked units are considered to be **a surprise** to the defenders.
 
-In neutral territory a cloaked fleet is a surprise.
+In neutral territory a cloaked fleet is considered to be a surprise.
 
-Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing forces have an opportunity to counter.
+Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with Section 2.4.3. 
 
-If the fleets on all sides remain cloaked (undetected), then the player defending his solar system wins in ambush. If neither player is defending their own solar system, then fleets carry on with movement orders and combat is cancelled.
-
-**Important**: *Every fleet joining a Task Force must pass a stealth roll for the entire Task Force to be considered cloaked*.
+If cloaked fleets on all sides pass undetected from one another, then the player defending his solar system wins in ambush. If opposing forces are meeting in neutral territory and all pass undetected, then they carry on with movement orders and combat is cancelled.
 
 ## 5\.2 Task Force Assignment
 
@@ -850,7 +850,7 @@ Rules of Engagement (ROE):
 Cloaking:
 
 - Task Forces including Starbases cannot cloak.
-- All fleets must pass a stealth roll for the Task Force to be cloaked (Section 5.1.3).
+- All joining fleets must be cloaked and pass undetected for the entire Task Force to be considered cloaked (Section 5.1.3).
 
 Fleet Integration:
 
