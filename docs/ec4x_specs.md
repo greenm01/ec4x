@@ -200,7 +200,7 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Scouts are able to counter Raiders (Refer to Section 2.4.3) and rival spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and strengthened. 
+Scouts are able to counter Raiders (Refer to Section 2.4.3) and rival spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged. 
 
 Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
