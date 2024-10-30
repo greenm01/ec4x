@@ -826,7 +826,7 @@ If a squadron is crippled, all the ships under its command are crippled. If a sq
 
 ### 5\.1.3 Cloaking
 
-Cloaking offers an advantage in the initial round of space combat, both on the defensive and offensive.
+Cloaking offers an advantage in the initial round of space combat, either on the defensive or offensive.
 
 When defending a solar system, cloaked units are considered to be **in ambush** against invaders.
 
