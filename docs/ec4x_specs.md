@@ -848,6 +848,8 @@ When attacking a solar system, cloaked units are considered to be a surprise to 
 
 Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing forces have an opportunity to counter.
 
+If the fleets on all sides remain cloaked (undetected) then combat is cancelled and the all parties carry on with their movement orders. 
+
 **Important**: *Every fleet joining a Task Force must pass a stealth roll for the entire Task Force to be considered cloaked*.
 
 ## 5\.2 Task Force Assignment
