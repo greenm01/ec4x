@@ -200,7 +200,7 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Fleets containing Scouts are the only units capable of countering Raiders (Refer to Section 2.4.3). Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and magnified. 
+Scouts are are one of the few units capable of countering Raiders (Refer to Section 2.4.3). Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged and strengthened. 
 
 Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes in enemy solar systems. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
@@ -219,15 +219,15 @@ Crippled Scouts lose their ELI sensors until repaired.
 
 | \*Fleet -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
 | ----------:|:----:|:----:|:----:|:----:|:----:|
-| Spy ELI1   | > 14 | > 9  | > 5  | > 2  | > 1  |
-| Spy ELI2   | > 17 | > 14 | > 9  | > 5  | > 2  |
-| Spy ELI3   | > 19 | > 17 | > 14 | > 9  | > 5  |
-| Spy ELI4   | NA   | > 19 | > 17 | > 14 | > 9  |
-| Spy ELI5   | NA   | NA   | > 19 | > 17 | > 14 |
+| Spy ELI1   | > 12 | > 7  | > 3  | > 1  | > 1  |
+| Spy ELI2   | > 16 | > 12 | > 7  | > 3  | > 1  |
+| Spy ELI3   | > 18 | > 16 | > 12 | > 7  | > 3  |
+| Spy ELI4   | > 19 | > 18 | > 16 | > 12 | > 7  |
+| Spy ELI5   | NA   | > 19 | > 18 | > 16 | > 12 |
 
 \*Total the number of Scouts within the same fleet and subtract one. This is the die roll modifier.
 
-\*The maximum modifier is +2
+\*The maximum modifier is +3
 
 Example:
 
@@ -288,41 +288,27 @@ Now calculate the die roll modifier:
 
 The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive but have the firepower of a Heavy Cruiser (CA).
 
-Fleets containing Raiders are cloaked, and roll for a chance to pass undetected against opposing forces on the Stealth Table below.
+Fleets containing Raiders are fully cloaked and only opposing Scouts and Starbases are able to detect them.
 
 Crippled Raiders lose their cloaking ability until repaired.
 
-**Stealth Table**
+**Raider Detection:**
 
-| Tech Level | % Chance | 1D20 Roll |
-|:----------:|:--------:|:---------:|
-| CLK1       | 20       | > 16      |
-| CLK2       | 40       | > 12      |
-| CLK3       | 60       | > 8       |
-| CLK4       | 80       | > 4       |
-| CLK5       | 90       | > 2       |
+Raiders cannot hide from Starbases. Scouts have a chance to detect them.
 
-When encountering rival fleets **without Scouts**, roll on the Stealth Table above.
-
-Roll a 1D20 for each Raider in the fleet, indexing by tech level, for multiple chances. Multiple cloaked fleets converging on a Task Force roll individually for stealth.  
-
-If a fleet fails for stealth, then the fleet is detected. 
-
-When encountering fleets ***with scouts***, rivals have the opportunity to counter.
-
-Every rated ELI fleet joining the battle space detects for Roges against every other CLK enabled fleet. The simplified pseudocode looks like this:
+In combat, every rated ELI fleet joining the battle space will detect for Roges. The simplified pseudocode looks like this:
 
 ```
 for each eli_fleet in task_force1:
-	for each clk_fleet in task_force2:
-    		rogue = highest rated CLK tech in clk_fleet
-    		eli_fleet rolls for detection on rogue
-        	if success then break
+    for each clk_fleet in task_force2:
+            rogue = highest rated CLK in clk_fleet
+            eli_fleet rolls for detection on rogue
+            if success then break
     end
 end
 ```
 
-In IRL it would go as explained below, although running cloaking detection in a Python script would go a much smoother when large fleets are involved. Scrips will be provided in the Github repo to make the process relatively easy. Eventually the entire game will be in code, so this may be a moot point.
+In IRL tabletop play it would go as explained below, although running cloaking detection in a Python script would go a much smoother when large fleets are involved. Scrips will be provided in the Github repo to make the process relatively easy. Eventually the entire game will be in code, so this may be a moot point.
 
 Follow these steps (order of fleet selection does not matter). You can stop as soon as a Rogue is detected:
 
@@ -373,7 +359,7 @@ Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that pr
 Planetary Shields protect your colonies from orbital bombardment. With increasing SLD levels they have a higher probability of absorbing direct hits, and also become more powerful.
 
 | SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
-|:---------:|:--------:|:---------:| ----------------- |
+|:---------:|:--------:|:---------:|:-----------------:|
 | SLD1      | 15       | 18 - 20   | 25%               |
 | SLD2      | 30       | 15 - 20   | 30%               |
 | SLD3      | 45       | 12 - 20   | 35%               |
@@ -842,9 +828,11 @@ When defending a solar system, cloaked units are considered to be in ambush agai
 
 When attacking a solar system, cloaked units are considered to be a surprise to the defenders.
 
+In neutral territory a cloaked fleet is a surprise.
+
 Roll for stealth in accordance with Section 2.4.3. Scouts present in opposing forces have an opportunity to counter.
 
-If the fleets on all sides remain cloaked (undetected) then combat is cancelled and the all parties carry on with their movement orders. 
+If the fleets on all sides remain cloaked (undetected), then the player defending his solar system wins in ambush. If neither player is defending their own solar system, then fleets carry on with movement orders and combat is cancelled.
 
 **Important**: *Every fleet joining a Task Force must pass a stealth roll for the entire Task Force to be considered cloaked*.
 
