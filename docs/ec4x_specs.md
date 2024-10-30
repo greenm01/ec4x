@@ -334,7 +334,7 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 
 *The maximum modifier is +4
 
-**If Scouts in the opposing fleet have mixed ELI tech, use same EII method described in section 2.4.2 to find the adjusted ELI and die roll modifier.**
+**If opposing fleets have mixed ELI tech, use same EII method described in section 2.4.2 to find the adjusted ELI and die roll modifier.**
 
 ### 2\.4.4 Starbases
 
