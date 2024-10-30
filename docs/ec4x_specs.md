@@ -312,15 +312,29 @@ If a fleet fails for stealth, then the fleet is detected.
 
 When encountering fleets ***with scouts***, rivals have the opportunity to counter.
 
-Select the highest rated *ELI fleet* from the opposing player's forces. This fleet will be used to detect Raiders.
+Every rated ELI fleet joining the battle space detects for Roges against every other CLK enabled fleet the same space in the same turn. The simplified pseudocode looks like this:
 
-*For each* cloaked fleet in the engagement, select the highest CLK Raider from that fleet and detect for stealth as described below. All cloaked fleets must check for stealth to pass undetected.
+```
+for each eli_fleet in task_force1:
+	for each clk_fleet in task_force2:
+    	rogue = highest rated CLK tech in clk_fleet
+    	eli_fleet rolls for detection on rogue
+        if success then break
+    end
+end
+```
 
-1. Identify the fleet's ELI along the top row.
-2. Find the Raider's CLK tech level in the first column.
-3. Roll a 1D20 and add the calculated modifier (explained below).
-4. If the total is greater than the number indexed, the cloaked fleet is detected.
-5. Repeat for all cloaked fleets.
+In IRL it would go as explained below, although running cloaking detection in a Python script would go a much smoother when large fleets are involved. Scrips will be provided in the Github repo to make the process relatively easy. Eventually the entire game will be in code, so this may be a mute point.
+
+Follow these steps (order of fleet selection does not matter). You can stop as soon as a Rogue is detected:
+
+1. Select the next ELI fleet (if all tested, stop)
+2. Select the next CLK fleet; choose the highest rated CLK Raider.
+3. Find the Raider's CLK in the Raider Detection Table.
+4. Find the ELI rating along the top.
+5. Roll a 1D20; add the calculated modifier (explained below).
+6. If the total is greater than the number indexed, the cloaked fleet is detected.
+7. Goto step 2 until all CLK fleets have been tested; otherwise Goto 1.
 
 **Raider Detection Table**
 
