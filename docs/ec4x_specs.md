@@ -236,7 +236,7 @@ A detecting fleet contains three ELI4 Scouts:
 3 - 1 = 2. The die roll modifier is +2
 ```
 
-**If the fleet has Scouts with mixed ELI tech, use this method:**
+**If the fleet has mixed ELI tech, use this method:**
 
 First calcualte the ELI Integration Index (EII):
 
