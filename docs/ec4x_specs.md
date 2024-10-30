@@ -288,6 +288,8 @@ Now calculate the die roll modifier:
 
 The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive to R&D and commission, but are a significant factor on the first round of space combat against enemy fleets.
 
+Fleets that contain Raiders are fully cloaked.
+
 Crippled Raiders lose their cloaking ability until repaired.
 
 **Raider Detection:**
