@@ -324,7 +324,7 @@ for each eli_fleet in task_force1:
 end
 ```
 
-In IRL it would go as explained below, although running cloaking detection in a Python script would go a much smoother when large fleets are involved. Scrips will be provided in the Github repo to make the process relatively easy. Eventually the entire game will be in code, so this may be a mute point.
+In IRL it would go as explained below, although running cloaking detection in a Python script would go a much smoother when large fleets are involved. Scrips will be provided in the Github repo to make the process relatively easy. Eventually the entire game will be in code, so this may be a moot point.
 
 Follow these steps (order of fleet selection does not matter). You can stop as soon as a Rogue is detected:
 
