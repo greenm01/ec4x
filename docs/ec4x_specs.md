@@ -52,7 +52,7 @@ Victory in EC4X is achieved through the accumulation of prestige, which is the u
 - Be the last man standing.
 - Adopt a hybrid strategy, employing a mix of all the above.
 
-Every action in the game influences your House's prestige. Military victories directly enhance it, a prosperous and growing economy reflects strength, and technological advancements demonstrate your House's cunning, all of which elevate your standing.
+Every action in the game influences your House's prestige. Military victories directly enhance it, a prosperous and growing economy strengthens it, and technological advancements demonstrate your House's cunning, all of which elevate your standing.
 
 Poor colony management will tarnish your House's legacy, while over-exposure to covert operations by rivals can lead to public disgrace.
 
