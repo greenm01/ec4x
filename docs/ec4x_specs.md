@@ -227,7 +227,7 @@ Crippled Scouts lose their ELI sensors until repaired.
 
 \*Total the number of units within the same fleet and subtract one. This is the die roll modifier.
 
-\*The maximum modifier is +3
+\*The maximum modifier is +2
 
 Example:
 
@@ -252,7 +252,7 @@ Use the EII as the base Tech Level in the Detection Table (round down).
 Update the die roll modifier as follows:
 
 1. Base: subtract 1 from the ***total number of units***
-2. Penalty: subtract 1 from the ***number of different tech levels***
+2. Mesh Divergence: subtract 1 from the ***number of different tech levels***
 3. Modifier = base - penalty
 
 Example:
@@ -280,7 +280,7 @@ Use ELI3 in the Detection Table (top row).
 
 Now calculate the die roll modifier:
 1) Base = 4 - 1 = 3
-2) Penalty = 3 - 1 = 2
+2) Mesh Divergence = 3 - 1 = 2
 3) Modifier = 3 - 2 = +1
 ```
 
@@ -322,19 +322,63 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 
 **Raider Detection Table**
 
-| \*Detect -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
-| ----------- |:----:|:----:|:----:|:----:|:----:|
-| CLK1        | > 14 | > 9  | > 5  | > 2  | > 1  |
-| CLK2        | > 17 | > 14 | > 9  | > 5  | > 2  |
-| CLK3        | > 19 | > 17 | > 14 | > 9  | > 5  |
-| CLK4        | NA   | > 19 | > 17 | > 14 | > 9  |
-| CLK5        | NA   | NA   | > 19 | > 17 | > 14 |
+| *Detect -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
+| ---------- |:----:|:----:|:----:|:----:|:----:|
+| CLK1       | > 14 | > 10 | > 6  | > 3  | > 1  |
+| CLK2       | > 17 | > 14 | > 10 | > 6  | > 3  |
+| CLK3       | > 19 | > 17 | > 14 | > 10 | > 6  |
+| CLK4       | NA   | > 19 | > 17 | > 15 | > 10 |
+| CLK5       | NA   | NA   | > 20 | > 18 | > 15 |
 
-*Total the number of units within the same fleet and subtract one. This is the die roll modifier.
+*Total the number of units within the same fleet and subtract one. This is the die roll modifier. The maximum modifier is +2
 
-*The maximum modifier is +2
+**If opposing fleets have mixed ELI tech, we will employ a modified form of the EII method described in section 2.4.2**
 
-**If opposing fleets have mixed ELI tech, use same EII method described in section 2.4.2 to find the adjusted ELI and die roll modifier.**
+1. **Base Modifier**: Count the total number of ELI units in the fleet and subtract one.
+2. **ELI Integration Index (EII)**:
+   
+   ```
+   EII = (ELI_Max + ELI_Min) / 2 (round down)
+   ```
+   
+   Use the EII as the effective ELI in the table.
+3. **Mesh Divergence**:
+   Subtract one from the *number of different ELI tech levels* in the fleet.
+4. **Final Modifier**:
+   Modifier = Base Modifier + (EII - ELI_Min) - Mesh Divergence.
+
+Example:
+
+```
+2 ELI1
+1 ELI4
+1 ELI5
+
+Base Modifier: 4 units - 1 = +3
+
+EII Calculation:
+
+  ELI_Min = 1
+  ELI_Max = 5
+
+  EII = (5 + 1) / 2 = 3.5, rounded down to 3
+
+  This is the effective ELI
+
+Mesh Divergence:
+
+  3 different tech levels - 1 = 2
+
+Final Modifier:
+
+  (Base) + (EII - ELI_Min) - (Mesh Divergence)
+
+  +3  + (3 - 1) - 2  = +3
+
+  +2 is the max modifier
+
+Use ELI 3 with +2 modifier in the table
+```
 
 ### 2\.4.4 Starbases
 
@@ -1017,6 +1061,7 @@ Regardless of diplomatic status, all fleets will defend solar systems under thei
 ## 8\.2 Subversion & Subterfuge
 
 The Space Guilds are key players in the clandestine world of diplomacy and espionage. They dominate trade, technology sharing, and offer covert operations, wielding influence through subterfuge and strategic manipulation. While their partnerships can significantly enhance a House's capabilities, the Space Guilds remain neutral, their loyalties bought by the highest bidder or the most strategic offer.
+
 - R&D Infiltration: Acquiring or sabotaging enemy technological secrets.
 - Covert Operations: Executing secret missions like sabotage or assassinations.
 - Cyber Attacks: Disrupting or stealing data from enemy networks.
