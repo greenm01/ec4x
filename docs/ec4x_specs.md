@@ -44,24 +44,17 @@ The background narrative of EC4X is wide open and only limited by the scope of y
 
 Victory in EC4X is achieved through the accumulation of prestige, which is the ultimate measure of a House's dominance. Here are some strategic pathways to ascend to the throne of Emperor:
 
-- Total Warfare: Annihilate all the military assets of your rivals.
-- Planetary Conquest: Seize homeworlds and colonies, establishing your power across the starmap.
-- Psychological Warfare: Break the spirit of your adversaries, compelling them to bend the knee.
-- Strategic Mastery: Blend military might with espionage, subversion, and cunning to outmaneuver your rivals.
-- Economic Supremacy: Focus on expanding your economy and population, dominating others with prosperity.
-- The Last Man Standing: Allow rival Houses to weaken each other, then assert mastery over the survivors.
-- Hybrid Strategy: Employ a mix of all the above tactics, adapting to situational dynamics.
+- Engage in total warfare to annihilate the military assets of your rivals.
+- Seize homeworlds and colonies of rivals through planetary conquest.
+- Break the spirit of your adversaries, compelling them to surrender.
+- Blend military might with espionage, subversion, and cunning to outfox your foes.
+- Focus on economic growth and population expansion, using prosperity to dominate.
+- Be the last man standing.
+- Adopt a hybrid strategy, employing a mix of all the above.
 
-Every action you take will either elevate or diminish your standing:
+Every action in the game influences your House's prestige. Military victories directly enhance it, a prosperous and growing economy reflects strength, and technological advancements demonstrate your House's cunning, all of which elevate your standing.
 
-- Military Success: Each battle won adds to your prestige.
-- Economic and Population Growth: A thriving, populous empire is a sign of strength.
-- Technological Advancements: Leading in technology showcases your House's innovation and capability.
-
-However, negative actions can undermine your prestige:
-
-- Poor Management: Inefficiency in ruling your colonies can lead to ruin and humiliation.
-- Sabotage and Espionage: Both receiving and conducting covert operations can impact your house's reputation, depending on their success or exposure.
+Poor colony management will tarnish your House's legacy, while over-exposure to covert operations by rivals can lead to public disgrace.
 
 Flexibility and strategic foresight are your greatest tools in the quest for power. Use every resource and opportunity the game provides to crush your rivals and ensure the dominance of your House.
 
