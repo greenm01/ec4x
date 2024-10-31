@@ -45,7 +45,7 @@ The background narrative of EC4X is wide open and only limited by the scope of y
 Victory in EC4X is achieved through the accumulation of prestige, which is the ultimate measure of a House's dominance. Here are some strategic pathways to ascend to the throne of Emperor:
 
 - Engage in total warfare to annihilate the military assets of your rivals.
-- Seize homeworlds and colonies of rivals through planetary conquest.
+- Seize homeworlds and colonies through planetary conquest.
 - Break the spirit of your adversaries, compelling them to surrender.
 - Blend military might with espionage, subversion, and cunning to outfox your foes.
 - Focus on economic growth and population expansion, using prosperity to dominate.
