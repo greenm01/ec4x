@@ -106,15 +106,15 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 
 **Planet Class Table**
 
-| Roll 1D10 | Class    | Colony Potential | PUs       |
-|:---------:| -------- | ---------------- |:---------:|
-| 0         | Extreme  | Level I          | 1 - 20    |
-| 1         | Desolate | Level II         | 21 - 60   |
-| 2, 3      | Hostile  | Level III        | 61 - 180  |
-| 4, 5      | Harsh    | Level IV         | 181 - 500 |
-| 6, 7      | Benign   | Level V          | 501- 1k   |
-| 8*        | Lush     | Level VI         | 1k - 2k   |
-| 9*        | Eden     | Level VII        | 2k+       |
+| Roll 1D10 | Class    | Colony Potential | PUs       | PTU             |
+|:---------:| -------- | ---------------- |:---------:|:---------------:|
+| 0         | Extreme  | Level I          | 1 - 20    | 1 - 20          |
+| 1         | Desolate | Level II         | 21 - 60   | 21 - 60         |
+| 2, 3      | Hostile  | Level III        | 61 - 180  | 61 - 182        |
+| 4, 5      | Harsh    | Level IV         | 181 - 500 | 183 - 526       |
+| 6, 7      | Benign   | Level V          | 501- 1k   | 527 - 1,712     |
+| 8*        | Lush     | Level VI         | 1k - 2k   | 1,713 - 510,896 |
+| 9*        | Eden     | Level VII        | 2k+       | 510,896+        |
 
 \*Note: if the roll above is a natural eight (8), add a +1 modifier to your roll on the raw materials table. If the roll is a natural nine (9) add a +2 modifier.
 
@@ -335,6 +335,7 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 **If opposing fleets have mixed ELI tech, we will employ a modified form of the EII method described in section 2.4.2**
 
 1. **Base Modifier**: Count the total number of ELI units in the fleet and subtract one.
+
 2. **ELI Integration Index (EII)**:
    
    ```
@@ -342,8 +343,10 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
    ```
    
    Use the EII as the effective ELI in the table.
+
 3. **Mesh Divergence**:
    Subtract one from the *number of different ELI tech levels* in the fleet.
+
 4. **Final Modifier**:
    Modifier = Base Modifier + (EII - ELI_Min) - Mesh Divergence.
 
@@ -707,15 +710,15 @@ The maximum weapons level is WEP10.
 
 Terraforming improve a planet's livable conditions, and thus the population limit. There are seven Terraforming levels that correspond directly with the planet classes.  
 
-| TER Level | SL  | TRP Cost | Planet Class | PU        | PTU             |
-|:---------:|:---:| -------- | ------------ |:---------:|:---------------:|
-| TER1      | 1   |          | Extreme      | 1 - 20    | 1 - 20          |
-| TER2      | 2   |          | Desolate     | 21 - 60   | 21 - 60         |
-| TER3      | 3   |          | Hostile      | 61 - 180  | 61 - 182        |
-| TER4      | 4   |          | Harsh        | 181 - 500 | 183 - 526       |
-| TER5      | 5   |          | Benign       | 501 - 1k  | 527 - 1,712     |
-| TER6      | 6   |          | Lush         | 1k - 2k   | 1,713 - 510,896 |
-| TER7      | 7   |          | Eden         | 2k+       | 510,896+        |
+| TER Level | SL  | TRP Cost | Planet Class |
+|:---------:|:---:| -------- | ------------ |
+| TER1      | 1   |          | Extreme      |
+| TER2      | 2   |          | Desolate     |
+| TER3      | 3   |          | Hostile      |
+| TER4      | 4   |          | Harsh        |
+| TER5      | 5   |          | Benign       |
+| TER6      | 6   |          | Lush         |
+| TER7      | 7   |          | Eden         |
 
 Planets may not skip a class in their terraforming development.
 
