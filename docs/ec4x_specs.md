@@ -42,26 +42,30 @@ The background narrative of EC4X is wide open and only limited by the scope of y
 
 ## 1.1 Prestige
 
-Prestige is the key to victory. Crush your rivals and take the title of Emperor.
+Victory in EC4X is achieved through the accumulation of prestige, which is the ultimate measure of a House's dominance. Here are some strategic pathways to ascend to the throne of Emperor:
 
-There are several paths to the throne:
+- Total Warfare: Annihilate all the military assets of your rivals.
+- Planetary Conquest: Seize homeworlds and colonies, establishing your power across the starmap.
+- Psychological Warfare: Break the spirit of your adversaries, compelling them to bend the knee.
+- Strategic Mastery: Blend military might with espionage, subversion, and cunning to outmaneuver your rivals.
+- Economic Supremacy: Focus on expanding your economy and population, dominating others with prosperity.
+- The Last Man Standing: Allow rival Houses to weaken each other, then assert mastery over the survivors.
+- Hybrid Strategy: Employ a mix of all the above tactics, adapting to situational dynamics.
 
-1. Destroy all of your rival's assets.
-2. Capture every homeworld.
-3. Crush your opponent's will and force them to capitulate.
-4. Employ a combination of tactical prowess and subversion to outfox your opponents.
-5. Focus on economic development and population growth to outperform everyone else.
-6. Let your rivals destroy one another, then clean house afterwards.
-7. All of the above.
+Every action you take will either elevate or diminish your standing:
 
-This list is not exhaustive. Use whatever means the game allows to win.
+- Military Success: Each battle won adds to your prestige.
+- Economic and Population Growth: A thriving, populous empire is a sign of strength.
+- Technological Advancements: Leading in technology showcases your House's innovation and capability.
 
-Prestige points are won through a combination of military victory, population growth, production, subversion, technological development, and various other factors.
-Performing poorly, mismanaging your colonies, acts of sabotage, and acts of subterfuge by other Houses will lower your prestige.
+However, negative actions can undermine your prestige:
 
-The goal of EC4X is to provide enough asymmetry to prevent a stalemate. **(work in progress..... need help play-testing and regression analysis)**
+- Poor Management: Inefficiency in ruling your colonies can lead to ruin and humiliation.
+- Sabotage and Espionage: Both receiving and conducting covert operations can impact your house's reputation, depending on their success or exposure.
 
-A table of Prestige values is listed in Section 9.
+Flexibility and strategic foresight are your greatest tools in the quest for power. Use every resource and opportunity the game provides to crush your rivals and ensure the dominance of your House.
+
+A table of prestige values is listed in Section 9.
 
 ## 1.2 Turns
 
@@ -204,11 +208,13 @@ Scouts are able to counter Raiders (Refer to Section 2.4.3) and rival spy Scouts
 
 Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
-For every turn that a spy Scout operates in unfriendly system occupied by rival ELI, the rival will roll on the Spy Detection Table below (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival fleets must contain at least one Scout or Starbase to detect.
+Within this context "units" refer to either fleets containing Scouts or Starbases.
+
+For every turn that a spy Scout operates in unfriendly system occupied by rival ELI, the rival will roll on the Spy Detection Table below (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival units must contain at least one Scout or Starbase to detect.
 
 Detection Roll Process:
 
-1. Identify the ELI for the defending player along the top row.
+1. Identify the ELI unit for the defending player along the top row.
 2. Find the rival Spy Scout's ELI in the first column.
 3. Roll a 1D20 and add the calculated modifier (explained below).
 4. If the total is greater than the number indexed, the spy is detected and destroyed.
@@ -225,12 +231,12 @@ Crippled Scouts lose their ELI sensors until repaired.
 | Spy ELI4    | > 19 | > 18 | > 16 | > 12 | > 7  |
 | Spy ELI5    | NA   | > 19 | > 18 | > 16 | > 12 |
 
-\*Total the number of units within the same fleet and subtract one. This is the die roll modifier. The maximum is +3
+\*Total the number of units within the same unit and subtract one. This is the die roll modifier. The maximum is +3
 
 Example:
 
 ```
-A detecting fleet contains three ELI4 Scouts:
+A detecting unit contains three ELI4 Scouts:
 3 - 1 = 2. The die roll modifier is +2
 ```
 
@@ -238,8 +244,8 @@ A detecting fleet contains three ELI4 Scouts:
 
 Calculate the ELI Integration Index (EII):
 
-- ELI_Min = the lowest ELI level present in the fleet.
-- ELI_Max = the highest ELI level present in the fleet.
+- ELI_Min = the lowest ELI level present in the unit.
+- ELI_Max = the highest ELI level present in the unit.
 
 ```
 EII = (ELI_Max + ELI_Min) / 2 (round UP)
@@ -285,9 +291,9 @@ Crippled Raiders lose their cloaking ability until repaired.
 
 **Raider Detection:**
 
-Starbases and Scouts have a chance to counter against cloaked fleets.
+Starbases and Scouts have a chance to counter against cloaked fleets. Within this context "units" refer to either fleets containing Scouts or Starbases.
 
-Before combat, every ELI enabled fleet joining the battle space will detect for Raiders. The simplified pseudocode looks like this:
+Before combat, every ELI enabled unit joining the battle space will detect for Raiders. The simplified pseudo-code looks like this:
 
 ```
 for each eli_fleet in task_force1:
@@ -301,14 +307,14 @@ end
 
 In IRL tabletop play it would go as explained below, although running cloaking detection in a Python script would go a much smoother when large fleets are involved. Scrips will be provided in the Github repo to make the process relatively easy. Eventually the entire game will be in code, so this may be a moot point.
 
-Follow these steps (order of fleet selection does not matter). You can stop as soon as a Rogue is detected:
+Follow these steps (order of unit selection does not matter). You can stop as soon as a Rogue is detected:
 
-1. Select the next ELI fleet (if all tested, stop)
+1. Select the next ELI unit (if all tested, stop)
 2. Select the next CLK fleet; choose the highest rated CLK Raider.
 3. Find the Raider's CLK in the Raider Detection Table.
 4. Find the ELI rating along the top.
 5. Roll a 1D20; add the calculated modifier (explained below).
-6. If the total is greater than the number indexed, the cloaked fleet is detected (stop).
+6. If the total is greater than the number indexed, the cloaked unit is detected (stop).
 7. Goto step 2 until all CLK fleets have been tested; otherwise Goto 1.
 
 **Raider Detection Table**
@@ -321,14 +327,14 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 | CLK4       | NA   | > 19 | > 17 | > 15 | > 10 |
 | CLK5       | NA   | NA   | > 20 | > 18 | > 15 |
 
-*Total the number of units within the same fleet and subtract one. This is the die roll modifier. The maximum is +2
+*Total the number of units within the same unit and subtract one. This is the die roll modifier. The maximum is +2
 
 **For mixed ELI tech, employ a slightly modified form of the EII method described in section 2.4.2**
 
 Calculate the ELI Integration Index (EII):
 
-- ELI_Min = the lowest ELI level present in the fleet.
-- ELI_Max = the highest ELI level present in the fleet.
+- ELI_Min = the lowest ELI level present in the unit.
+- ELI_Max = the highest ELI level present in the unit.
 
 ```
 EII = (ELI_Max + ELI_Min) / 2 (round DOWN)
@@ -398,7 +404,7 @@ Planetary Shields protect your colonies from orbital bombardment. With increasin
 | SLD5      | 75       | > 5       | 45%               |
 | SLD5      | 90       | > 2       | 50%               |
 
-Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet may not have more than one shield.
+Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet may not have more than one shield, and shields can be rebuilt within one turn.
 
 Ground Batteries are immobile, low-tech, land based units that have the firepower of a Battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
 
@@ -537,6 +543,21 @@ The cost is expensive and dependent upon the livable conditions of the destinati
 | Extreme    | 25      |
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
+
+## XY\.4 Expenditures
+
+Each turn, the Duke can allocate Treasury funds as follows:
+
+- Military: Construction and recruiting.
+- Spacelift Command: Bases and ships
+- Research and Development: Investment in new technologies.
+- Industrial Units (IU): Expansion or maintenance of colony manufacturing capabilities.
+- Terraforming: Costs for planetary upgrade projects.
+- Space Guild Services:
+  - Population Transfer: Moving citizens to new colonies.
+  - Espionage: Covert operations and intelligence gathering.
+- Counter Intelligence: Defense against espionage.
+- Savings & Investment: Financial reserves and investments for future growth.
 
 ## XX\.4 TODO: Maintenance Costs
 
@@ -746,6 +767,16 @@ Upgrades do not apply to preexisting shields. Salvage and build a new one.
 
 The maximum SLD level is SLD5.
 
+## XYZ\.11 Counter Intelligence Command (CIC)
+
+The CIC enhances security measures to shield the House from espionage threats posed by rivals.
+
+| CIC Level | EL  | TRP Cost |
+|:---------:|:---:| -------- |
+| CIC1      | 1   |          |
+| CIC2      | 2   |          |
+| CIC3+     | 3+  |          |
+
 # 3.0 Construction
 
 Construction and repair of House assets is accomplished planetside or in orbit, with restrictions. 
@@ -900,7 +931,7 @@ Specific Engagement Rules:
 - Blockade Engagement:
   - Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
 - Guard Engagement:
-  - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08, focusing on defensive or blockading actions.
+  - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
 
 Task Forces form according to Section 5.2.
 
@@ -1053,7 +1084,7 @@ This state leads to full-scale warfare where all encounters are treated as hosti
 
 ### 8\.1.4 Defense Protocol
 
-Regardless of diplomatic status, all fleets will defend solar systems under their House's control against any foreign incursions with maximum aggression.
+Regardless of diplomatic status, all units will defend home planets against any foreign incursions with maximum aggression.
 
 Fleets will retaliate against direct attacks regardless of diplomatic state, in accordance with ROE.
 
@@ -1070,6 +1101,14 @@ The Space Guilds are key players in the clandestine world of diplomacy and espio
 These services allow Houses to engage in strategic warfare beyond the battlefield, employing the Guilds' neutrality and expertise to gain an edge.
 
 TODO: Flesh this out
+
+## 8\.3 Counter Intelligence Command (CIC)
+
+The mission of the Counter Intelligence Command (CIC) is to safeguard the House's interests by identifying and neutralizing espionage activities from rival Houses. This involves employing advanced surveillance technologies and running counter-espionage operations to ensure the security of House secrets.
+
+While the CIC's vigilance is crucial for maintaining security, excessive allocations to this service can lead to a perception of overreach, potentially damaging the House's Prestige due to a heavy-handed approach that might be seen as oppressive or paranoid. Balancing security with openness is key to maintaining both safety and the House's esteemed reputation.
+
+TODO: Develop a point system for countering espionage with CIC tech.
 
 # 9\.0 Data Tables
 
