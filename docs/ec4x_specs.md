@@ -253,7 +253,7 @@ Update the die roll modifier as follows:
 
 1. Base: subtract 1 from the ***total number of units***
 2. Mesh Divergence: subtract 1 from the ***number of different tech levels***
-3. Modifier = base - penalty
+3. Modifier = base - mesh_divergence
 
 Example:
 
