@@ -332,7 +332,7 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 
 *Total the number of units within the same fleet and subtract one. This is the die roll modifier.
 
-*The maximum modifier is +4
+*The maximum modifier is +2
 
 **If opposing fleets have mixed ELI tech, use same EII method described in section 2.4.2 to find the adjusted ELI and die roll modifier.**
 
@@ -343,8 +343,6 @@ Starbases (SB) are powerful orbital fortresses that facilitate planetary defense
 Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
 Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in Section 2.4.2 and Raider Detection Table in Section 2.4.3 respectively. 
-
-Treat a Starbase as an independent fleet when joining a Task Force.
 
 Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% each, every turn (preliminary). 
 
@@ -850,7 +848,7 @@ Rules of Engagement (ROE):
 Cloaking:
 
 - Task Forces including Starbases cannot cloak.
-- All joining fleets must remain undetected for the Task Force to be cloaked (Section 5.1.3).
+- All joining fleets must remain undetected for Task Force cloaking (Section 5.1.3).
 
 Fleet Integration:
 
@@ -873,11 +871,11 @@ Specific Engagement Rules:
 - Blockade Engagement:
   - Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
 - Guard Engagement:
-  - Fleets assigned to Guard a planet without a Starbase (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08, focusing on defensive or blockading actions.
+  - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08, focusing on defensive or blockading actions.
 
 Task Forces form according to Section 5.2.
 
-Starbases and fleets assigned to Guard Starbases (Order 04) or Guard Planets (Order 05) are held in reserve. These forces are exclusively designated to counter blockades or direct assaults on planets.
+Starbases and their guarding fleets, operating under Order 04, are maintained as strategic reserves. Their sole purpose is to defend against blockades or direct attacks on the House's colonies.
 
 Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
 
@@ -961,7 +959,7 @@ After the last round of combat the surviving Task Forces are disbanded and survi
 
 Starbases act as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per Section 5.2.
 
-Fleets with orders to guard the Starbase (Fleet Orders 04) or to guard the planet (Fleet Orders 05) also join the Task Force.
+Fleets with orders to guard the Starbase (Fleet Orders 04) also join the Task Force.
 
 Combat will proceed in a similar fashion to Section 5.3, with the following restrictions:
 
@@ -994,7 +992,40 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 
 EC4X Space combat is adapted from Empire of the Sun (EOS). 
 
-# 8\.0 TODO: Diplomacy & Subversion
+# 8\.0 Diplomacy & Espionage
+
+## 8\.1 Diplomacy
+
+In VB4X, diplomacy is binary: **Neutral** or **Enemy**. As House Duke, your mandate is to lead your House to victory by any means, where diplomacy often takes a backseat to the urgency of conflict. Your primary directive is to decisively crush your adversaries, leveraging both military might and strategic cunning.
+
+### 8\.1.2 Neutral
+
+Fleets are instructed to avoid initiating hostilities with the designated neutral House outside of the player's controlled territory.
+
+This status allows both Houses to engage in military actions against third parties within the same battlespace without direct confrontation with each other, promoting non-aggression pacts.
+
+### 8\.1.3 Enemy
+
+Fleets are commanded to engage with the forces of the declared enemy House at every opportunity, both within and outside controlled territories.
+
+This state leads to full-scale warfare where all encounters are treated as hostile, pushing for direct and aggressive confrontations.
+
+### 8\.1.4 Defense Protocol
+
+Regardless of diplomatic status, all fleets will defend solar systems under their House's control against any foreign incursions with maximum aggression.
+
+## 8\.2 Subversion & Subterfuge
+
+The Space Guilds are key players in the clandestine world of diplomacy and espionage. They dominate trade, technology sharing, and offer covert operations, wielding influence through subterfuge and strategic manipulation. While their partnerships can significantly enhance a House's capabilities, the Space Guilds remain neutral, their loyalties bought by the highest bidder or the most strategic offer.
+- R&D Infiltration: Acquiring or sabotaging enemy technological secrets.
+- Covert Operations: Executing secret missions like sabotage or assassinations.
+- Cyber Attacks: Disrupting or stealing data from enemy networks.
+- Psyops: Manipulating enemy morale or inciting internal discord.
+- Economic Sabotage: Undermining rival economies through market manipulation.
+
+These services allow Houses to engage in strategic warfare beyond the battlefield, employing the Guilds' neutrality and expertise to gain an edge.
+
+TODO: Flesh this out
 
 # 9\.0 Data Tables
 
