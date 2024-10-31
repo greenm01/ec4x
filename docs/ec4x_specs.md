@@ -392,11 +392,11 @@ Planetary Shields protect your colonies from orbital bombardment. With increasin
 | SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
 |:---------:|:--------:|:---------:|:-----------------:|
 | SLD1      | 15       | > 17      | 25%               |
-| SLD2      | 30       | > 16      | 30%               |
+| SLD2      | 30       | > 14      | 30%               |
 | SLD3      | 45       | > 11      | 35%               |
-| SLD4      | 60       | > 7       | 40%               |
-| SLD5      | 75       | > 4       | 45%               |
-| SLD5      | 90       | > 1       | 50%               |
+| SLD4      | 60       | > 8       | 40%               |
+| SLD5      | 75       | > 5       | 45%               |
+| SLD5      | 90       | > 2       | 50%               |
 
 Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet may not have more than one shield.
 
