@@ -803,7 +803,7 @@ Possible fleet missions are listed in the table below. These are the classic fle
 | 12   | Colonize a planet       | One ETAC                                 |
 | 13   | Join another fleet      | None                                     |
 | 14   | Rendezvous at system    | None                                     |
-| 15   | Salvage                 | None                                     |
+| 15   | Salvage                 | Friendly Colony System                   |
 
 \* New to EC4X
 
