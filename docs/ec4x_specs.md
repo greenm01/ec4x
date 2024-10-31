@@ -225,9 +225,7 @@ Crippled Scouts lose their ELI sensors until repaired.
 | Spy ELI4    | > 19 | > 18 | > 16 | > 12 | > 7  |
 | Spy ELI5    | NA   | > 19 | > 18 | > 16 | > 12 |
 
-\*Total the number of units within the same fleet and subtract one. This is the die roll modifier.
-
-\*The maximum modifier is +2
+\*Total the number of units within the same fleet and subtract one. This is the die roll modifier. The maximum is +3
 
 Example:
 
@@ -236,24 +234,18 @@ A detecting fleet contains three ELI4 Scouts:
 3 - 1 = 2. The die roll modifier is +2
 ```
 
-**If the fleet has mixed ELI tech, use this method:**
+**For mixed ELI tech, use this method:**
 
-First calcualte the ELI Integration Index (EII):
+Calculate the ELI Integration Index (EII):
 
 - ELI_Min = the lowest ELI level present in the fleet.
 - ELI_Max = the highest ELI level present in the fleet.
 
 ```
-EII = (ELI_Max + ELI_Min) / 2
+EII = (ELI_Max + ELI_Min) / 2 (round UP)
 ```
 
-Use the EII as the base Tech Level in the Detection Table (round down).
-
-Update the die roll modifier as follows:
-
-1. Base: subtract 1 from the ***total number of units***
-2. Mesh Divergence: subtract 1 from the ***number of different tech levels***
-3. Modifier = base - mesh_divergence
+Use the calculated EII as the representative ELI.
 
 Example:
 
@@ -262,26 +254,25 @@ Fleet Composition:
 
 1 ELI2 Scout
 2 ELI3 Scouts
-1 ELI4 Scout
+1 ELI5 Scout
 
 We have four(4) scouts with three(3) different tech levels.
 
 ELI Range Calculation:
 
 ELI_Min = 2 (the lowest level available [ELI2])
-ELI_Max = 4 (the highest level available [ELI4])
+ELI_Max = 5 (the highest level available [ELI5])
 
 EII Calculation:
 
 EII = (ELI_Max + ELI_Min) / 2
-EII = (4 + 2) / 2 = 3
+EII = (5 + 2) / 2 = 3.5 = 4 (rounded up)
 
-Use ELI3 in the Detection Table (top row).
+Use ELI4 in the Detection Table (top row).
 
-Now calculate the die roll modifier:
-1) Base = 4 - 1 = 3
-2) Mesh Divergence = 3 - 1 = 2
-3) Modifier = 3 - 2 = +1
+The die roll modifier is:
+
+4 - 1 = +3
 ```
 
 ### 2\.4.3 Raiders
@@ -330,68 +321,59 @@ Follow these steps (order of fleet selection does not matter). You can stop as s
 | CLK4       | NA   | > 19 | > 17 | > 15 | > 10 |
 | CLK5       | NA   | NA   | > 20 | > 18 | > 15 |
 
-*Total the number of units within the same fleet and subtract one. This is the die roll modifier. The maximum modifier is +2
+*Total the number of units within the same fleet and subtract one. This is the die roll modifier. The maximum is +2
 
-**If opposing fleets have mixed ELI tech, we will employ a modified form of the EII method described in section 2.4.2**
+**For mixed ELI tech, employ a slightly modified form of the EII method described in section 2.4.2**
 
-1. **Base Modifier**: Count the total number of ELI units in the fleet and subtract one.
+Calculate the ELI Integration Index (EII):
 
-2. **ELI Integration Index (EII)**:
-   
-   ```
-   EII = (ELI_Max + ELI_Min) / 2 (round down)
-   ```
-   
-   Use the EII as the effective ELI in the table.
+- ELI_Min = the lowest ELI level present in the fleet.
+- ELI_Max = the highest ELI level present in the fleet.
 
-3. **Mesh Divergence**:
-   Subtract one from the *number of different ELI tech levels* in the fleet.
+```
+EII = (ELI_Max + ELI_Min) / 2 (round DOWN)
+```
 
-4. **Final Modifier**:
-   Modifier = Base Modifier + (EII - ELI_Min) - Mesh Divergence.
+Use EII as the mixed ELI.
 
 Example:
 
 ```
-2 ELI1
-1 ELI4
-1 ELI5
+Fleet Composition:
 
-Base Modifier: 4 units - 1 = +3
+1 ELI2 Scout
+2 ELI3 Scouts
+1 ELI5 Scout
+
+We have four(4) scouts with three(3) different tech levels.
+
+ELI Range Calculation:
+
+ELI_Min = 2 (the lowest level available [ELI2])
+ELI_Max = 5 (the highest level available [ELI5])
 
 EII Calculation:
 
-  ELI_Min = 1
-  ELI_Max = 5
+EII = (ELI_Max + ELI_Min) / 2
+EII = (5 + 2) / 2 = 3.5 = 3 (rounded down)
 
-  EII = (5 + 1) / 2 = 3.5, rounded down to 3
+Use ELI3 in the Detection Table (top row).
 
-  This is the effective ELI
+The die roll modifier is:
+4 - 1 = 3
 
-Mesh Divergence:
-
-  3 different tech levels - 1 = 2
-
-Final Modifier:
-
-  (Base) + (EII - ELI_Min) - (Mesh Divergence)
-
-  +3  + (3 - 1) - 2  = +3
-
-  +2 is the max modifier
-
-Use ELI 3 with +2 modifier in the table
+The max is 2, so the modifier is +2
 ```
 
 ### 2\.4.4 Starbases
 
 Starbases (SB) are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
-Starbases require five months (five turns) to construct require a shipyard. They remain in orbit and do not move out of their home solar systems.
+Starbases require five months (five turns) to construct and require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
 Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in Section 2.4.2 and Raider Detection Table in Section 2.4.3 respectively. 
 
-Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% each, every turn (preliminary). 
+Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% max every turn, regardless of number.
 
 Example: under normal conditions the natural birthrate of a colony is 2%. With three Starbases, the rate is:
 
@@ -584,7 +566,7 @@ EL represents the entrepreneurial skills and general education level of House ci
 
 EL is not a specific reflection of scientific or technological advancement, although they are correlated.
 
-A House's GCP benefits from EL upgrades by 5% per level. The economy is tied to entrepreneurial ambition and citizen education.
+A House's GCP benefits from EL upgrades by 5% per level, for a maximum of 50% at EL10+. The economy is tied to entrepreneurial ambition and citizen education.
 
 The formula for ERP in XMR is:
 
@@ -616,7 +598,7 @@ ERP = 40 + EL(10) (maxing at 140 ERP)
 | 08  | 120      | 0.40   |
 | 09  | 130      | 0.45   |
 | 10  | 140      | 0.50   |
-| 11+ | 140      | 0.55   |
+| 11+ | 140      | 0.50   |
 
 ## XYZ.3 Science Level (SL)
 
@@ -1043,13 +1025,25 @@ EC4X Space combat is adapted from Empire of the Sun (EOS).
 
 ## 8\.1 Diplomacy
 
-In VB4X, diplomacy is binary: **Neutral** or **Enemy**. As House Duke, your mandate is to lead your House to victory by any means, where diplomacy often takes a backseat to the urgency of conflict. Your primary directive is to decisively crush your adversaries, leveraging both military might and strategic cunning.
+In VB4X, diplomacy includes Neutral, Enemy, and Non-Aggression categories. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy can play a pivotal role alongside conflict. Your primary directive remains to decisively manage your adversaries, leveraging both military might and diplomatic cunning.
 
-### 8\.1.2 Neutral
+### 8\.1.1 Neutral
 
-Fleets are instructed to avoid initiating hostilities with the designated neutral House outside of the player's controlled territory.
+Fleets are instructed to avoid initiating hostilities with the designated neutral House outside of the player's controlled territory. This status allows for coexistence in neutral or contested spaces without immediate aggression.
 
-This status allows both Houses to engage in military actions against third parties within the same battlespace without direct confrontation with each other, promoting non-aggression pacts.
+### 8.1.2 Non-Aggression Pacts
+
+Houses can enter into formal or informal agreements to not attack each other, allowing for cooperation or at least a mutual stance of non-hostility.
+
+This can include:
+
+- Joint Military Operations: Against common threats or for mutual defense without direct conflict between the signing parties.
+
+- Territorial Recognition: Agreements to respect each other's territories.
+
+- Strategic Flexibility: While not allies, Houses in a non-aggression pact may share intelligence, coordinate against mutual enemies..
+
+- Violation Consequences: Breaking a non-aggression pact can lead to a swift change to enemy status.
 
 ### 8\.1.3 Enemy
 
