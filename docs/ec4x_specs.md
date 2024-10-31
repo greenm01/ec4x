@@ -797,10 +797,10 @@ Possible fleet missions are listed in the table below. These are the classic fle
 | 06   | Bombard a planet        | Combat ship(s)                           |
 | 07   | Invade a planet         | Combat ship(s) & loaded Troop Transports |
 | 08   | Blitz a Planet          | Loaded Troop Transports                  |
-| 09   | Spy on a planet         | At least one Scout ship                  |
-| 10\* | Hack a Starbase         | At least one Scout ship                  |
-| 11   | Spy on a system         | At least one Scout ship                  |
-| 12   | Colonize a planet       | At least one ETAC                        |
+| 09   | Spy on a planet         | One Scout ship                           |
+| 10\* | Hack a Starbase         | One Scout ship                           |
+| 11   | Spy on a system         | One Scout ship                           |
+| 12   | Colonize a planet       | One ETAC                                 |
 | 13   | Join another fleet      | None                                     |
 | 14   | Rendezvous at system    | None                                     |
 | 15   | Salvage                 | None                                     |
