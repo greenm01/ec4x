@@ -373,7 +373,7 @@ Starbases require five months (five turns) to construct and require a shipyard. 
 
 Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in Section 2.4.2 and Raider Detection Table in Section 2.4.3 respectively. 
 
-Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% max every turn, regardless of number.
+Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% every turn, up to a max of 15% (three Starbases).
 
 Example: under normal conditions the natural birthrate of a colony is 2%. With three Starbases, the rate is:
 
@@ -381,7 +381,7 @@ Example: under normal conditions the natural birthrate of a colony is 2%. With t
 2% * (1 + (0.05 * 3)) = 2.3% 
 ```
 
-Crippled Starbases do not yield benefits until they are repaired.  
+Crippled Starbases do not yield benefits until they are repaired.
 
 ### 2\.4.7 Planetary Shields & Ground Batteries
 
@@ -1025,7 +1025,7 @@ EC4X Space combat is adapted from Empire of the Sun (EOS).
 
 ## 8\.1 Diplomacy
 
-In VB4X, diplomacy includes Neutral, Enemy, and Non-Aggression categories. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy can play a pivotal role alongside conflict. Your primary directive remains to decisively manage your adversaries, leveraging both military might and diplomatic cunning.
+In VB4X, diplomacy includes Neutral, Enemy, and Non-Aggression categories. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy can play a pivotal role alongside the sword. Your primary directive remains to decisively manage your adversaries, leveraging both military might and diplomatic cunning.
 
 ### 8\.1.1 Neutral
 
@@ -1054,6 +1054,8 @@ This state leads to full-scale warfare where all encounters are treated as hosti
 ### 8\.1.4 Defense Protocol
 
 Regardless of diplomatic status, all fleets will defend solar systems under their House's control against any foreign incursions with maximum aggression.
+
+Fleets will retaliate against direct attacks regardless of diplomatic state, in accordance with ROE.
 
 ## 8\.2 Subversion & Subterfuge
 
