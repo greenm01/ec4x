@@ -106,7 +106,7 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 
 **Planet Class Table**
 
-| Roll 1D10 | Class    | Colony Potential | PUs       | PTU             |
+| Roll 1D10 | Class    | Colony Potential | PU        | PTU             |
 |:---------:| -------- | ---------------- |:---------:|:---------------:|
 | 0         | Extreme  | Level I          | 1 - 20    | 1 - 20          |
 | 1         | Desolate | Level II         | 21 - 60   | 21 - 60         |
