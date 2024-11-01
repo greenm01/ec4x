@@ -1085,23 +1085,73 @@ Fleets will retaliate against direct attacks regardless of diplomatic state, in 
 
 The Space Guilds are key players in the clandestine world of diplomacy and espionage. They dominate trade, technology sharing, and offer covert operations, wielding influence through subterfuge and strategic manipulation. While their partnerships can significantly enhance a House's capabilities, the Space Guilds remain neutral, their loyalties bought by the highest bidder or the most strategic offer.
 
-- R&D Infiltration: Acquiring or sabotaging enemy technological secrets.
-- Covert Operations: Executing secret missions like sabotage or assassinations.
-- Cyber Attacks: Disrupting or stealing data from enemy networks.
-- Psyops: Manipulating enemy morale or inciting internal discord.
-- Economic Sabotage: Undermining rival economies through market manipulation.
+Players can allocate Espionage Budget points (EBPs) towards various espionage actions every turn.
 
-These services allow Houses to engage in strategic warfare beyond the battlefield, employing the Guilds' neutrality and expertise to gain an edge.
+EBP points cost 30 XMR each. 
 
-TODO: Flesh this out
+If a player invests more than 5% of their turn budget into EBP they lose Prestige points.
+
+- Investments > 5% lose 1 Prestige point for each additional 1% invested over 5%.
+
+- Example: If a player's turn budget is 100 points, and they invest 7 points in EBP, they lose 2 Prestige points.
+
+| Espionage Action       | Cost in EBPs | Description                                                                              |
+| ---------------------- |:------------:| ---------------------------------------------------------------------------------------- |
+| Tech Theft             | 5            | Attempt to steal a piece of technology or critical data.                                 |
+| Sabotage (Low Impact)  | 2            | Small-scale sabotage like disrupting construction activities in spaceports or shipyards. |
+| Sabotage (High Impact) | 7            | Major sabotage efforts like sabotaging mothballed ships or ships in reserve status.      |
+| Assassination          | 10           | Attempt to eliminate a key figure within the target House.                               |
+| Cyber Attack           | 4            | Attempt to hack into the target's systems for data theft or disruption.                  |
+| Economic Manipulation  | 6            | Influence markets to harm the target's economy, trade, or Industry (IU)                  |
+| Psyops Campaign        | 3            | Launch a misinformation campaign or demoralization effort.                               |
+
+**TODO: Flesh out the exact mechanics for this.**
 
 ## 8\.3 Counter Intelligence Command (CIC)
 
 The mission of the Counter Intelligence Command (CIC) is to safeguard the House's interests by identifying and neutralizing espionage activities from rival Houses. This involves employing advanced surveillance technologies and running counter-espionage operations to ensure the security of House secrets.
 
-While the CIC's vigilance is crucial for maintaining security, excessive allocations to this service can lead to a perception of overreach, potentially damaging the House's Prestige due to a heavy-handed approach that might be seen as oppressive or paranoid. Balancing security with openness is key to maintaining both safety and the House's esteemed reputation.
+**CIC Investment**:
 
-TODO: Develop a point system for countering espionage with CIC tech.
+Players can allocate a portion of their turn budget into Counter Intelligence Points (CIP). 
+
+CIP points cost 30 XMR each.
+
+When an espionage event occurs the House must spend CIP Points to roll for detection. Each roll costs one(1) CIP point. If a House has no CIP Points, espionage automatically succeeds.
+
+If a player invests more than 5% of their turn budget into CIP they lose Prestige points.
+
+- Investments > 5% lose 1 Prestige point for each additional 1% invested over 5%.
+
+- Example: If a player's turn budget is 100 points, and they invest 8 points in CIP, they lose 3 Prestige points.
+
+When there's an espionage event, roll a 1d20 on the table below. If the roll meets or exceeds the number indedex based on your CIC level, you detect and prevent the espionage.
+
+| CIC Level | 1d20 Roll | Probability of Detection |
+|:---------:|:---------:|:------------------------:|
+| CIC1      | > 17      | 15%                      |
+| CIC2      | > 14      | 30%                      |
+| CIC3      | > 11      | 45%                      |
+| CIC4      | > 8       | 60%                      |
+| CIC5      | > 5       | 75%                      |
+
+## 8.4 House Prestige
+
+In the grand arena of imperial succession, where Houses vie for the ultimate prize of crowning their own as Emperor, the balance of power isn't just in fleets or technology but in the delicate dance of perception and political strategy.
+
+**Over-Investment in EBP**:
+
+For a House aspiring to the throne, the use of espionage is a double-edged sword. While it can hurt rivals from within, over-reliance on such shadowy tactics can backfire spectacularly. A House known for its espionage might be seen as scheming and untrustworthy, unfit to rule an empire that values stability and honor. Other Houses and the populace might rally against one perceived to gain power through deceit rather than merit or loyalty. In this competition for the imperial title, a reputation for subterfuge could alienate potential allies and turn public opinion against a House, diminishing its prestige and undermining its claim to the throne.
+
+**Over-Investment in CIP**:
+
+Equally, a House that pours too many resources into counter-espionage might be viewed as a paranoid entity, more concerned with its own shadows than with leading an empire with vision and stability. This approach can signal that the House fears for its own stability, which in a game where confidence and strength are prerequisites for ruling, can be a significant weakness. The arisocracy might view such a House as unable to foster an environment of trust necessary for imperial governance, where alliances are forged through transparency and mutual respect, not suspicion. Furthermore, this heavy-handed security focus might alienate the very people the House seeks to rule, portraying it as oppressive rather than protective.
+
+**Balance**:
+
+In this contest for ultimate power, where every House seeks to claim the throne, the art of governance involves more than just outmaneuvering rivals. It requires a blend of cunning, strength, and diplomacy, where espionage and security are tools, not crutches. A House must demonstrate it can govern with foresight, protect its subjects without stifling them, and engage in politics without being consumed by them. Prestige in this context becomes not just about the grandeur or fear a House can inspire, but about the trust and respect it can command. 
+
+Over-investment in either EBP or CIP highlights a strategic imbalance, potentially costing a House the very qualities needed to ascend to and maintain the imperial title.
 
 # 9\.0 Data Tables
 
