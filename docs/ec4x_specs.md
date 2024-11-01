@@ -77,7 +77,7 @@ Each turn comprises four phases
 
 The starmap consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedural generated jump lanes. The map is sized by rings around the center hub, one per number of players.
 
-The map takes inspiration from VBAM, and the 1st or 2nd edition campaign guides may be used to spawn a random map. The method is briefly explained below.
+The map takes inspiration from VBAM, and the 1st or 2nd edition campaign guides can be used to spawn a random map. The method is briefly explained below.
 
 The center of the map is a special hub occupied by the last holdouts of the former imperial Empire. This system is heavily guarded by fighter squadrons and the home planet is fortified against invasion. The former Emperor has no offensive ships to speak of, which were scuttled by their crews at the height of the collapse. This is prime territory ripe for the taking. He who controls the hub holds great strategic power.
 
@@ -169,13 +169,13 @@ The Space Force is organized by squadrons. Each squadron is commanded by a flags
 
 Squadrons fight as a unit and die as a unit. A squadron's total AS and DS values constitute a sum of all the ships under a flagship's command (including itself).
 
-In non-hostile systems, ships in a squadron may be reassigned to an already existing squadron if the new flagship's CR allows. Squadrons may constitute a solo flagship.
+In non-hostile systems, ships in a squadron can be reassigned to an already existing squadron if the new flagship's CR allows. Squadrons can constitute a solo flagship.
 
 Squadrons are only commissioned in systems with a functioning shipyard.
 
 ### 2\.3.4 Fleets
 
-Squadrons are grouped together into fleets for the purpose of traversing jump lanes. Fleets may be joined or split off (creating new fleets) for strategic purposes in any non-hostile system. There is no limit to the number of squadrons assigned to a fleet.
+Squadrons are grouped together into fleets for the purpose of traversing jump lanes. Fleets are be joined or split off (creating new fleets) for strategic purposes in any non-hostile system. There is no limit to the number of squadrons assigned to a fleet.
 
 ### 2\.3.5 Task Force
 
@@ -289,16 +289,14 @@ Starbases and Scouts have a chance to counter against cloaked fleets. Within thi
 Before combat, every ELI enabled unit joining the battle space will detect for Raiders. The simplified pseudo-code looks like this:
 
 ```
-for each eli_fleet in task_force1:
-    for each clk_fleet in task_force2:
+for each eli_unit in player1_units:
+    for each clk_fleet in player2_fleets:
             rogue = highest rated CLK in clk_fleet
-            eli_fleet rolls for detection on rogue
+            eli_unit rolls for detection on rogue
             if success then break
     end
 end
 ```
-
-In IRL tabletop play it would go as explained below, although running cloaking detection in a Python script would go a much smoother when large fleets are involved. Scrips will be provided in the Github repo to make the process relatively easy. Eventually the entire game will be in code, so this may be a moot point.
 
 Follow these steps (order of unit selection does not matter). You can stop as soon as a Rogue is detected:
 
@@ -397,11 +395,11 @@ Planetary Shields protect your colonies from orbital bombardment. With increasin
 | SLD5      | 75       | > 5       | 45%               |
 | SLD5      | 90       | > 2       | 50%               |
 
-Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet may not have more than one shield, and shields can be rebuilt within one turn.
+Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet shall not have more than one shield, and shields can be rebuilt within one turn.
 
 Ground Batteries are immobile, low-tech, land based units that have the firepower of a Battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
 
-Ground Batteries are the only units that are constructed in the span of a single turn, and colonies may build them to no limit.
+Ground Batteries are the only units that are constructed in the span of a single turn, and colonies can build them to no limit.
 
 ### 2.4.8 Planet-Breaker
 
@@ -425,7 +423,7 @@ A vast decentralized network of trade, commerce, transport, industry, tech, and 
 
 Numerous Space Guilds compete for business in unregulated, private capital markets.
 
-The Guilds may be contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
+The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
 
 # XY\.0 Economics
 
@@ -505,7 +503,9 @@ NCV = GCP * tax_rate
 
 **House Treasury**: The total sum of NCV collected from colonies is transferred to the House treasury at the beginning of each month (turn). Unspent XMR from each turn rollover and earn 2% interest on loans to the Space Guild.
 
-**Industrial Units (IU)**: The house may invest in the planetary industry of each colony. IUs may be placed on Level III+ colonies. IU invested above 50% of the colony's PU will be directed to civilian infrastructure projects that increase House prestige.
+**Industrial Units (IU)**: The House can invest in the planetary industry of each colony, and placed on Level III+ colonies. IU invested above 50% of the colony's PU are directed to civilian infrastructure projects that increase House prestige.
+
+IU cost 30 XMR each. IU can be sold for 30 XMR.
 
 ## XY\.2 Population Growth
 
@@ -558,9 +558,9 @@ Each turn, the Duke can allocate Treasury funds as follows:
 
 ## XYZ.1 Research Points (RP)
 
-Each turn, players may invest XMR in RP to further their R&D efforts. 
+Each turn, players can invest XMR in RP to further their R&D efforts.
 
-R&D upgrades may be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
+R&D upgrades will be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
 There are three areas of investment:
 
@@ -716,7 +716,7 @@ Terraforming improve a planet's livable conditions, and thus the population limi
 | TER6      | 6   |          | Lush         |
 | TER7      | 7   |          | Eden         |
 
-Planets may not skip a class in their terraforming development.
+Planets can not skip a class in their terraforming development.
 
 ## XYZ.8 Electronic Intelligence (ELI)
 
@@ -802,7 +802,7 @@ Example: A player wishes to repair a crippled tech-level III Cruiser. The cost i
 7 * 0.25 = 1.75 XMR.
 ```
 
-The logistics of repairing a ship planetside and returning it to orbit make it economically infeasible. Ships may be salvaged at a colony without restriction and earn 50% of the original PC back to the House treasury.
+The logistics of repairing a ship planetside and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
 
 # 4\.0 Movement
 
@@ -855,7 +855,7 @@ ROE dictates how aggressive your fleet will respond when engaging with the enemy
 | 09      | Engage hostile forces even if outgunned 3:1.           |
 | 10      | Engage hostile forces regardless of their size.        |
 
-A fleet's ROE is defined when it's created, or changed any time before engaging in combat. The ROE may not be changed during combat.
+A fleet's ROE is defined when it's created, or changed any time before engaging in combat. The ROE can not be changed during combat.
 
 ### 5\.1.2 Combat State
 
@@ -970,7 +970,7 @@ The following **restrictions** apply:
 
 1. If the number of hits equal the opposing squadron's DS, the unit is reduced.
 2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled.
-3. Excess hits may be lost if restrictions apply.
+3. Excess hits are be lost if restrictions apply.
 
 Crippled squadrons multiply their AS by 0.5, rounded up the nearest whole number.
 
@@ -996,7 +996,7 @@ Otherwise proceed to Section 5.3.4.
 
 ### 5\.3.3 Retreat
 
-A Task Force may retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter. 
+A Task Force is able retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter.
 
 Squadrons in a retreating Task Force will fall back to their original fleet formations and flee to the closest non-hostile star system.
 
@@ -1065,7 +1065,7 @@ This can include:
 
 - Territorial Recognition: Agreements to respect each other's territories.
 
-- Strategic Flexibility: While not allies, Houses in a non-aggression pact may share intelligence, coordinate against mutual enemies..
+- Strategic Flexibility: While not allies, Houses in a non-aggression pact can share intelligence, coordinate against mutual enemies..
 
 - Violation Consequences: Breaking a non-aggression pact can lead to a swift change to enemy status.
 
