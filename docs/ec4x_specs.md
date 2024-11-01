@@ -145,15 +145,15 @@ Spacelift Command attributes are listed in Section 9.
 
 #### 2.3.2.1 Spaceports
 
-Spaceports are large ground based facilities that launch heavy-lift ships and equipment into orbit. They require two months (two turns) to build and have five docks available for planetside ship construction.
+Spaceports are large ground based facilities that launch heavy-lift ships and equipment into orbit. They require one month (one turn) to build and have five docks available for planetside ship construction.
 
 #### 2.3.2.2 Shipyards
 
-Shipyards are gateways to the stars. They are large bases constructed in orbit and require a spaceport to build over a period of three months (three turns).
+Shipyards are gateways to the stars. They are large bases constructed in orbit and require a spaceport to build over a period of two months (two turns).
 
 The majority of ship construction and repair will occur at these important facilities.
 
-Shipyards are equipped with 10 docks for construction and repair, and are fixed in orbit. Built multiple yards to increate colony ship construction capacity.
+Shipyards are equipped with 10 docks for construction and repair, and are fixed in orbit. Built multiple yards to increase construction capacity at the colony.
 
 #### 2.3.2.3 Environmental Transformation And Colonization (ETAC)
 
@@ -368,7 +368,7 @@ The max is 2, so the modifier is +2
 
 Starbases (SB) are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
-Starbases require five months (five turns) to construct and require a shipyard. They remain in orbit and do not move out of their home solar systems.
+Starbases require three months (three turns) to construct and require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
 Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in Section 2.4.2 and Raider Detection Table in Section 2.4.3 respectively. 
 
@@ -778,9 +778,9 @@ The CIC enhances security measures to shield the House from espionage threats po
 
 Construction and repair of House assets is accomplished planetside or in orbit, with restrictions. 
 
-The number of turns required to construct a ship is two turns, unless otherwise specified.
+The number of turns required to construct a Military ship is two turns. Spacelift Command ships require one turn.
 
-The number of turns required to repair a crippled ship is one turn. The ship's squadron must already be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
+The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
 
 Newly commissioned ships, and repaired ships, will remain in their existing docs until ordered to join a squadron.
 
@@ -867,35 +867,35 @@ Actively patrol a solar system, engaging hostile forces that enter the space.
 
 ### 4.2.5 Guard a Starbase (04):
 
-Order a fleet to protect a Starbase, and join in a combined Task Force, in the event of confronting hostile ships with orders 05 to 08.
+Order a fleet to protect a Starbase, and join in a combined Task Force, when confronting hostile ships with orders 05 to 08.
 
 ### 4.2.6 Guard/Blockade a Planet (05):
 
 Order a fleet to block hostile forces from approaching a planet.
 
-**Guard**: Fleets on guard duty are held in reserve to protect a colony and do not join Space Combat unless confronted by hostile ships with orders 05 to 08. Guarding fleets may contain Raiders and do not auto-join a Starbase's Task Force, which would compromise their cloaking ability.
+**Guard**: Fleets on guard duty are held in reserve to protect a colony and do not join Space Combat unless confronted by hostile ships with orders 05 to 08. Guarding fleets may contain Raiders and do not auto-join a Starbase's Task Force, which would compromise their cloaking ability. Not all planets will have a functional Starbase.
 
-Order a fleet to guard a Starbase if the intent is to join a combined Task Force for planetary defense. Not all planets will have a functional Starbase.
+Order a fleet to guard a Starbase if the intent is to join a combined Task Force for planetary defense.
 
-**Blockade**: Fleets are ordered to blockade an enemy planet and do not join Space Combat unless confronted by hostile ships under order 05.
+**Blockade**: Fleets are ordered to blockade an enemy planet and do not engage in Space Combat unless confronted by enemy ships under order 05.
 
-Colonies under blockaded reduce their GCP by 60%. Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale. House Prestige is reduced by 2 points every turn that a colony is under blockade.
+Colonies under blockaded reduce their GCP by 60%. Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale. House Prestige is reduced by 2 points every turn a colony is under blockade.
 
 ### 4.2.7 Bombard a Planet (06):
 
 Fleets are ordered to attack a planet's defensive ground assets, including shields, ground batteries, garrisoned Army units and Marines, and Spaceports. Bombardment has a detrimental effect on a colony's PTU and IUs.
 
-Three rounds of planetary combat are performed per turn.
+Three rounds of planetary combat are conducted per turn.
 
 ### 4.2.8 Invade a Planet (07):
 
-Fleets are ordered to perform one round of planetary bombardment before dropping Marines on the surface in their Troop Transports. Troop Transports in transit may take losses from Ground Batteries.
+Fleets are ordered to conduct one round of planetary bombardment before dropping Marines on the surface in their Troop Transports. Troop Transports in transit may take losses from Ground Batteries.
 
-After the Marines land on the surface, ground combat is conducted against garrisoned defensive forces. If successful, the colony is captured along with PTU and IUs. Otherwise the Marines fight to the last man.
+After the Marines land on the surface, ground combat is conducted against garrisoned defensive forces. If successful, the colony is captured along with associated PTU and IUs. Otherwise the Marines fight to the last man.
 
 ### 4.2.9 Blitz a Planet (08):
 
-Fleets will forego surface bombardment and drop Troop Transports on the surface for ground combat. Fleets and Troop Transports may take losses from Ground Batteries.
+Fleets will forego surface bombardment and drop Troop Transports directly on the surface for ground combat. Fleets and Troop Transports may take losses from Ground Batteries.
 
 ### 4.2.10 Spy on a Planet (09):
 
@@ -917,7 +917,7 @@ If the planet is already occupied, the fleet will hold position (Order 00) in th
 
 ### 4.2.14 Join another Fleet (13):
 
-Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the new fleet.
+Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the existing one.
 
 ### 4.2.15 Rendezvous at System (14):
 
@@ -925,7 +925,7 @@ Fleets will meet at the designated solar system and hold position (Order 00). Fl
 
 ### 4.2.16 Salvage (15):
 
-Salvage a fleet at the closest colony. The fleet will disband and all the contained ships are salvaged for 50% of their PC.
+Salvage a fleet at the closest colony. The fleet will disband and all the ships are salvaged for 50% of their PC.
 
 # 5\.0 Combat
 
