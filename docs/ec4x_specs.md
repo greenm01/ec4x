@@ -58,6 +58,8 @@ Poor colony management will tarnish your House's legacy, while over-exposure to 
 
 Flexibility and strategic foresight are your greatest tools in the quest for power. Use every resource and opportunity the game provides to crush your rivals and ensure the dominance of your House.
 
+If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
+
 A table of prestige values is listed in Section 9.
 
 ## 1.2 Turns
@@ -385,6 +387,8 @@ Crippled Starbases do not yield benefits until they are repaired.
 Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that provide an extra layer of defense to a player's colonies.
 
 Planetary Shields protect your colonies from orbital bombardment. With increasing SLD levels they have a higher probability of absorbing direct hits, and also become more powerful.
+
+Shields do not prevent the landing of Troop Transports.
 
 | SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
 |:---------:|:--------:|:---------:|:-----------------:|
@@ -774,9 +778,13 @@ The CIC enhances security measures to shield the House from espionage threats po
 
 Construction and repair of House assets is accomplished planetside or in orbit, with restrictions. 
 
-The number of turns required to newly construct an asset, unless otherwise specified, is equal to the PC times 0.5 (rounded down). Assets remain decommissioned through the activity period.
+The number of turns required to construct a ship is two turns, unless otherwise specified.
 
-TODO: Explain construction capacity and rate
+The number of turns required to repair a crippled ship is one turn. The ship's squadron must already be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
+
+Newly commissioned ships, and repaired ships, will remain in their existing docs until ordered to join a squadron.
+
+Spaceport and Shipyard construction capacity is limited by their CST tech.
 
 ## 3.1 Planetside Construction
 
@@ -806,32 +814,116 @@ The logistics of repairing a ship planetside and returning it to orbit make it e
 
 # 4\.0 Movement
 
-## 4.1 Fleet Orders
+## 4.1 Jump Lanes
+
+Fleets move between solar systems on jump lanes:
+- If a player owns all systems along the travel path, ships can jump two major lanes in one turn.
+- Minor and restricted jump lanes enable a single jump per turn, regardless of the destination.
+- If jumping into an unexplored or rival system, the maximum number of jumps is one.
+- Fleets with crippled ships or Spacelift Command ships can not jump across restricted lanes.
+
+## 4.2 Fleet Orders
 
 Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterian Conquest, modified for EC4X.
 
 | No.  | Mission                 | Requirements                             |
 | ---- | ----------------------- | ---------------------------------------- |
 | 00   | None (hold position)    | None                                     |
-| 01   | Move fleet (only)       | None                                     |
+| 01   | Move Fleet (only)       | None                                     |
 | 02   | Seek home               | None                                     |
-| 03   | Patrol a system         | None                                     |
+| 03   | Patrol a System         | None                                     |
 | 04   | Guard a Starbase        | Combat ship(s)                           |
-| 05   | Guard/Blockade a planet | Combat ship(s)                           |
-| 06   | Bombard a planet        | Combat ship(s)                           |
-| 07   | Invade a planet         | Combat ship(s) & loaded Troop Transports |
+| 05   | Guard/Blockade a Planet | Combat ship(s)                           |
+| 06   | Bombard a Planet        | Combat ship(s)                           |
+| 07   | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
 | 08   | Blitz a Planet          | Loaded Troop Transports                  |
-| 09   | Spy on a planet         | One Scout ship                           |
+| 09   | Spy on a Planet         | One Scout ship                           |
 | 10\* | Hack a Starbase         | One Scout ship                           |
-| 11   | Spy on a system         | One Scout ship                           |
-| 12   | Colonize a planet       | One ETAC                                 |
-| 13   | Join another fleet      | None                                     |
-| 14   | Rendezvous at system    | None                                     |
+| 11   | Spy on a System         | One Scout ship                           |
+| 12   | Colonize a Planet       | One ETAC                                 |
+| 13   | Join another Fleet      | None                                     |
+| 14   | Rendezvous at System    | None                                     |
 | 15   | Salvage                 | Friendly Colony System                   |
 
 \* New to EC4X
 
-## 4.2 TODO: Jump Lanes
+New orders command a fleet to jump across the necessary jump lanes to the destination solar system, in accordance with the rules specified in Section 4.1. Depending upon the distance from the fleet's preexisting location and available lanes, movement may take multiple turns to complete.
+
+### 4.2.1 Hold Position (00):
+
+Fleets are ordered to hold position and standby for new orders. They will not preemptively attack hostile ships unless directly engaged.
+
+### 4.2.2 Move Fleet (01):
+
+Move to a new solar system and hold position.
+
+### 4.2.3 Seek home (02):
+
+Order a fleet to seek the closest House controlled solar system.
+
+### 4.2.4 Patrol a System (03):
+
+Actively patrol a solar system, engaging any hostile forces that enter the space.
+
+### 4.2.5 Guard a Starbase (04):
+
+Fleet's protect a Starbase and join in a combined Task Force in the event of encountering hostile ships with orders 05 to 08.
+
+### 4.2.6 Guard/Blockade a Planet (05):
+
+Order a fleet to prevent hostile forces from approaching a planet.
+
+**Guard**: Fleets on guard duty are held in reserve to protect a colony and do not join Space Combat unless confronting by hostile ships with orders 05 to 08. Guarding fleets may contain Raiders and do not auto-join a Starbase's Task Force, which would compromise their cloaking ability.
+
+**Blockade**: Fleets are ordered to blockade an enemy planet and do not join Space Combat unless confronted by hostile ships under order 05.
+
+Colonies under blockaded reduce their GCP by 75%. Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and morale. House Prestige is reduced by 2 points every turn that a colony is under blockade.
+
+### 4.2.7 Bombard a Planet (06):
+
+Fleets are ordered to attack a planet's defensive ground assets, including shields, ground batteries, and garrisoned Army units and Marines, and spaceports. This will have a detrimental impact on a colony's PTU and IUs.
+
+Three rounds of planetary combat are performed per turn.
+
+### 4.2.8 Invade a Planet (07):
+
+Fleets are ordered to perform one round of planetary bombardment before dropping Marines on the surface in their Troop Transports. Troop Transports may take losses on the way down from Ground Batteries.
+
+After the Marines land on the surface, ground combat is conducted against garrisoned defensive forces. If successful, the colony is captured along with existing PTU and IUs. Otherwise the Marines fight to the last man.
+
+### 4.2.9 Blitz a Planet (08):
+
+Fleets with forego planetary bombardment and drop Troop Transports on the surface of a planet for ground combat. Troop Transports may take losses from Ground Batteries.
+
+### 4.2.10 Spy on a Planet (09):
+
+This mission is reserved for solo operating Scouts. The Scout will attempt to hide itself in orbit as a civilian satellite and collect military intelligence from the surface.
+
+### 4.2.11 Hack a Starbase (10):
+
+This mission is reserved for solo operating Scouts. The Scout will disguise itself as a civilian satellite and hack into a rival's Starbase data network for the purpose of collecting economic and R&D intelligence.
+
+### 4.2.12 Spy on a System (11):
+
+This mission is reserved for solo operating Scouts. The Scout will loiter in the solar system and collect military asset intelligence.
+
+### 4.2.13 Colonize a Planet (12):
+
+This mission is reserved for ETACs under fleet escort. The ETAC will land one PTU on an unoccupied planet and establish a colony, and the colonists will break the ETAC down and start the long process of terraforming. New colonies start at Level I regardless of the hospitable conditions.
+
+If the planet is already occupied, the fleet will hold position (Order 00) in the solar system until directed otherwise.
+
+### 4.2.14 Join another Fleet (13):
+
+Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the new fleet.
+
+### 4.2.15 Rendezvous at System (14):
+
+Fleets will meet at the designated solar system and hold position (Order 00). Fleets do not auto-join.
+
+### 4.2.16 Salvage (15):
+
+Order to salvage a fleet at the closest available colony. The fleet will disband and all the ships salvaged for 50% of their PC.
 
 # 5\.0 Combat
 
