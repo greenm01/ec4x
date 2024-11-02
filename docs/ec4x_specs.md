@@ -388,17 +388,6 @@ Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that pr
 
 Planetary Shields protect your colonies from orbital bombardment. With increasing SLD levels they have a higher probability of absorbing direct hits, and also become more powerful.
 
-Shields do not prevent the landing of Troop Transports.
-
-| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
-|:---------:|:--------:|:---------:|:-----------------:|
-| SLD1      | 15       | > 17      | 25%               |
-| SLD2      | 30       | > 14      | 30%               |
-| SLD3      | 45       | > 11      | 35%               |
-| SLD4      | 60       | > 8       | 40%               |
-| SLD5      | 75       | > 5       | 45%               |
-| SLD5      | 90       | > 2       | 50%               |
-
 Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet shall not have more than one shield, and shields can be rebuilt within one turn.
 
 Ground Batteries are immobile, low-tech, land based units that have the firepower of a Battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
@@ -558,7 +547,7 @@ Each turn, the Duke can allocate Treasury funds as follows:
 
 ## XX\.4 Maintenance Costs
 
-At the beginning of each turn players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in Section 9.
+At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in Section 9.
 
 Players are able to reduce maintenance costs by placing active duty ships on either reserve status or mothballing them:
 
@@ -829,6 +818,7 @@ The logistics of repairing a ship planetside and returning it to orbit make it e
 ## 4.1 Jump Lanes
 
 Fleets move between solar systems via jump lanes:
+
 - If a player owns all systems along the travel path, fleets can jump two major lanes in one turn.
 - Minor and restricted jump lanes enable a single jump per turn, regardless of the destination.
 - If jumping into an unexplored or rival system, the maximum number of jumps is one.
@@ -895,17 +885,21 @@ Colonies under blockaded reduce their GCP by 60%. Civilian transport, commerce, 
 
 Fleets are ordered to attack a planet's defensive ground assets, including shields, ground batteries, garrisoned Army units and Marines, and Spaceports. Bombardment has a detrimental effect on a colony's PTU and IUs.
 
-Three rounds of planetary combat are conducted per turn.
-
 ### 4.2.8 Invade a Planet (07):
 
-Fleets are ordered to conduct one round of planetary bombardment before dropping Marines on the surface in their Troop Transports. Troop Transports in transit may take losses from Ground Batteries.
+This is a three round battle:
 
-After the Marines land on the surface, ground combat is conducted against garrisoned defensive forces. If successful, the colony is captured along with associated PTU and IUs. Otherwise the Marines fight to the last man.
+1. Destroy all the planet's ground batteries.
+2. Pound the population centers to soften resistance and take out enemy ground troops.
+3. Send in troop transports to drop off Marines, but ONLY AFTER all ground batteries have been destroyed.
+
+Bombardment damages the planet and gives the defenders time to sabotage industry before being overrun, but gives invading Marines a better chance of seizing the planet. The invasion succeeds if all the ground batteries are destroyed and ground forces defeated.
 
 ### 4.2.9 Blitz a Planet (08):
 
-Fleets will forego surface bombardment and drop Troop Transports directly on the surface for ground combat. Fleets and Troop Transports may take losses from Ground Batteries.
+Quickly infiltrate Marines onto the planet by dodging ground batteries or distracting them. Ground units must be defeated for success.
+
+Because this form of attack is so fast, there is less damage to the planet since the enemy does not have time to sabotage their factories and combat ships go light on surface bombardment.  However, Marines are at greater risk and require superior numbers (twice as many as the enemy or better) to insure victory.
 
 ### 4.2.10 Spy on a Planet (09):
 
@@ -1074,7 +1068,7 @@ The following **restrictions** apply:
 
 1. If the number of hits equal the opposing squadron's DS, the unit is reduced.
 2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled.
-3. Excess hits are be lost if restrictions apply.
+3. Excess hits are lost if restrictions apply.
 
 Crippled squadrons multiply their AS by 0.5, rounded up the nearest whole number.
 
@@ -1125,16 +1119,125 @@ Combat will proceed in a similar fashion to Section 5.3, with the following rest
 
 Starbases are fortified with superior AI and sensors, making them formidable, with high defensive capabilities.
 
-## 5\.5 TODO: Planetary Bombardment
+## 5\.5 Planetary Bombardment
 
-## 5\.6 TODO: Planetary Invasion & Blitz
+After orbital supremacy is achieved, planets are vulnerable to surface attack. Planetary shields, ground batteries, and ground forces are the last line of defence before invasion or blitz.
 
-| **Modified 1D10 Die Roll** | **Ground Combat CER**           |
-| -------------------------- | ------------------------------- |
-| Less than zero, 0, 1, 2    | One Half (0.5) (round up)       |
-| 3, 4, 5, 6                 | One (1)                         |
-| 7, 8                       | One and a half (1.5) (round up) |
-| 9 or more                  | Two (2)                         |
+Like space combat, planetary bombardment is simultaneous. No more than three combat rounds are conducted per turn.
+
+### 5\.5.1 Determine Hits
+
+The attacking player will total the AS value of their fleet's surviving squadrons and the defending player will total the AS strength of all remaining ground batteries. Both players roll on the Bombardment Table.
+
+**Bombardment Table**:
+
+| **1D10 Die Roll** | ** Bombardment CER**          |
+| ----------------- | ----------------------------- |
+| 0, 1, 2           | One Quarter (0.25) (round up) |
+| 3, 4, 5           | One Half (0.50) (round up)    |
+| 6, 7, 8           | One (1)                       |
+| 9\*               | One\* (1)                     |
+
+\* Critical hits are only applied against attacking squadrons
+
+The CER multiplied by AS equals the number of hits on the enemy.
+
+### 5\.5.2 Planetary Shields
+
+If a planet is protected by shields, the defending player will roll on the table below to determine the number of hits blocked.
+
+| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
+|:---------:|:--------:|:---------:|:-----------------:|
+| SLD1      | 15       | > 17      | 25%               |
+| SLD2      | 30       | > 14      | 30%               |
+| SLD3      | 45       | > 11      | 35%               |
+| SLD4      | 60       | > 8       | 40%               |
+| SLD5      | 75       | > 5       | 45%               |
+| SLD5      | 90       | > 2       | 50%               |
+
+Reduce the attacking players hits by the percentage, rounding up. This is the number of effective hits.
+
+Example: A fleet with AS of 75 bombards a planet protected by a SLD3 shield, and the defending player rolls a 15.
+
+```
+Hits = 75 * (1 - .35) = 49
+```
+
+Note that shields are only be destroyed by Marines during planetary invasion.
+
+### 5\.5.3 Ground Batteries
+
+The player who rolled the die will determine where hits are applied. Because ground batteries are all the same, selecting which ground batteries to target is moot. Unlike ships in squadrons, ground batteries are reduced as individual units.
+
+The following **restrictions** apply:
+
+1. If the number of hits equal the opposing unit's DS, the unit is reduced.
+2. Units are not destroyed until all other units are crippled.
+3. Excess hits leftover against Ground Batteries are summed.
+4. Excess hits are lost against squadrons if restrictions apply.
+
+Crippled units multiply their AS by 0.5, rounded up the nearest whole number.
+
+**Critical Hits**:
+
+Critical hits are a special case, and only apply against the attacking fleet. Restriction \#2 in the list above is nullified.
+
+Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction \#1 above, then the squadron with the lowest DS is reduced.
+
+Proceed to the next section.
+
+### 5\.5.4 Ground Units & Civilian Infrastructure
+
+The attacking player will apply unused hits towards ground forces (Armies or Marines):
+
+1. If the number of hits equal the opposing unit's DS, the unit is reduced.
+2. Units are not destroyed until all other units are crippled.
+3. Excess hits are lost if restrictions apply.
+
+Finally, if there are unused hits left over from ground batteries and ground forces, subtract the number of hits from the planet's IU. If there is no IO, apply hits to the planet's PU.
+
+If there are remaining rounds (max 3), return to Section 5.5.1 and repeat.
+
+## 5\.6 Planetary Invasion & Blitz
+
+Combat is simultaneous, and the following table is used to determine the CER.
+
+**Ground Combat Table**:
+
+| **1D10 Die Roll** | **Ground Combat CER**           |
+| ----------------- | ------------------------------- |
+| 0, 1, 2           | One Half (0.5) (round up)       |
+| 3, 4, 5, 6        | One (1)                         |
+| 7, 8              | One and a half (1.5) (round up) |
+| 9                 | Two (2)                         |
+
+### 5\.6.1 Planetary Invasion
+
+To land Marines on a planet during ground invasion, all the surface Ground Batteries must be destroyed. First conduct *one round* of planetary bombardment from Section 5.5. If there are remaining Ground Batteries, the mission fails.
+
+If all ground batteries are destroyed, the Marines are dropped onto the surface. Planetary shields and Spaceports are immediately destroyed.
+
+Both sides total the AS strength of their Armies and Marines, and roll on the Ground Combat Table for the CER. The CER multiplied by AS is the number of hits. Armies and Marines are treated as individual units for the purposes of combat reduction.
+
+The player who rolled the die will determine where hits are applied, with the following restrictions:
+
+1. If the number of hits equal the opposing unit's DS, the unit is reduced.
+2. Units are not destroyed until all other units are crippled.
+3. Excess hits are lost if restrictions apply.
+
+Crippled units multiply their AS by 0.5, rounded up the nearest whole number.
+
+Repeat the process until one side is completely destroyed.
+
+If the planet is conquered, loyal House citizens destroy 50% of of the colony's remaining IU before order is restored.
+
+### 5\.6.2 Planetary Blitz
+
+Fleets and Ground batteries conduct one round of combat in accordance with Section 5.5, with the exception that ground units and civilian infrastructure are not targeted (Sections 5.5.4). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
+
+Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
+
+Ground battle occurs in a similar fashion to section 5.6.1, with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
 
 ## 5\.7 Custom Combat Modifications
 
@@ -1229,7 +1332,7 @@ If a player invests more than 5% of their turn budget into CIP they lose Prestig
 
 - Example: If a player's turn budget is 100 points, and they invest 8 points in CIP, they lose 3 Prestige points.
 
-When there's an espionage event, roll a 1d20 on the table below. If the roll meets or exceeds the number indedex based on your CIC level, you detect and prevent the espionage.
+When there's an espionage event, roll a 1d20 on the table below. If the roll meets or exceeds the number indexed based on your CIC level, you detect and prevent the espionage.
 
 | CIC Level | 1d20 Roll | Probability of Detection |
 |:---------:|:---------:|:------------------------:|
@@ -1249,7 +1352,7 @@ For a House aspiring to the throne, the use of espionage is a double-edged sword
 
 **Over-Investment in CIP**:
 
-Equally, a House that pours too many resources into counter-espionage might be viewed as a paranoid entity, more concerned with its own shadows than with leading an empire with vision and stability. This approach can signal that the House fears for its own stability, which in a game where confidence and strength are prerequisites for ruling, can be a significant weakness. The arisocracy might view such a House as unable to foster an environment of trust necessary for imperial governance, where alliances are forged through transparency and mutual respect, not suspicion. Furthermore, this heavy-handed security focus might alienate the very people the House seeks to rule, portraying it as oppressive rather than protective.
+Equally, a House that pours too many resources into counter-espionage might be viewed as a paranoid entity, more concerned with its own shadows than with leading an empire with vision and stability. This approach can signal that the House fears for its own stability, which in a game where confidence and strength are prerequisites for ruling, can be a significant weakness. The aristocracy might view such a House as unable to foster an environment of trust necessary for imperial governance, where alliances are forged through transparency and mutual respect, not suspicion. Furthermore, this heavy-handed security focus might alienate the very people the House seeks to rule, portraying it as oppressive rather than protective.
 
 **Balance**:
 
