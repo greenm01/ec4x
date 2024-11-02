@@ -1194,7 +1194,7 @@ The attacking player will apply unused hits towards ground forces (Armies or Mar
 2. Units are not destroyed until all other units are crippled.
 3. Excess hits are lost if restrictions apply.
 
-Finally, if there are unused hits left over from ground batteries and ground forces, subtract the number of hits from the planet's IU. If there is no IO, apply hits to the planet's PU.
+Finally, if there are unused hits left over from ground batteries and ground forces, subtract the number of hits from the planet's IU. If there is no remaining IU, apply hits to the planet's PU instead.
 
 If there are remaining rounds (max 3), return to Section 5.5.1 and repeat.
 
