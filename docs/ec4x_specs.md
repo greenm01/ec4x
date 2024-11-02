@@ -556,7 +556,19 @@ Each turn, the Duke can allocate Treasury funds as follows:
 - Counter Intelligence: Defense against espionage.
 - Savings & Investment: Financial reserves and investments for future growth.
 
-## XX\.4 TODO: Maintenance Costs
+## XX\.4 Maintenance Costs
+
+At the beginning of each turn players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in Section 9.
+
+Players are able to reduce maintenance costs by placing active duty ships on either reserve status or mothballing them:
+
+Maintenance costs for reserve ships is reduced by half, are auto-assigned into squadrons, and join a reserve fleet with orders 05 to guard the closest planet. Reserve ships have their AS and DS reduced by half, but do not change combat state. Reserve fleets can not be moved, and ships must already be located at a colony in order to place them in reserve. Colonies are allotted a single fleet for reserve duty.
+
+The maintenance cost for mothballed ships is zero. Mothballed ships are placed in orbit around a colony and taken offline. They are screened during combat and are unable to join the fight. Mothballed ships are vulnerable to destruction if there is no Task Force present to screen them.
+
+The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
+
+For every turn that a player misses payment for maintenance they loose five(5) prestige points.
 
 # XYZ\.0 Research & Development
 
@@ -851,15 +863,15 @@ Movement orders command a fleet to jump across the necessary lanes to the destin
 
 ### 4.2.1 Hold Position (00):
 
-Fleets are ordered to hold position and standby for new orders. They will not preemptively attack hostile ships unless directly engaged.
+Fleets are ordered to hold position and standby for new orders.
 
 ### 4.2.2 Move Fleet (01):
 
-Move to a new solar system and hold position.
+Move to a new solar system and hold position (00).
 
 ### 4.2.3 Seek home (02):
 
-Order a fleet to seek the closest friendly solar system.
+Order a fleet to seek the closest friendly solar system and hold position (00). Should that planet be taken over by an enemy, the fleet will move to the next closest planet you own.
 
 ### 4.2.4 Patrol a System (03):
 
@@ -869,13 +881,11 @@ Actively patrol a solar system, engaging hostile forces that enter the space.
 
 Order a fleet to protect a Starbase, and join in a combined Task Force, when confronting hostile ships with orders 05 to 08.
 
-### 4.2.6 Guard/Blockade a Planet (05):
+### a 4.2.6 Guard/Blockade a Planet (05):
 
 Order a fleet to block hostile forces from approaching a planet.
 
-**Guard**: Fleets on guard duty are held in reserve to protect a colony and do not join Space Combat unless confronted by hostile ships with orders 05 to 08. Guarding fleets may contain Raiders and do not auto-join a Starbase's Task Force, which would compromise their cloaking ability. Not all planets will have a functional Starbase.
-
-Order a fleet to guard a Starbase if the intent is to join a combined Task Force for planetary defense.
+**Guard**: Fleets on guard duty are held in rear guard to protect a colony and do not join Space Combat unless confronted by hostile ships with orders 05 to 08. Guarding fleets may contain Raiders and do not auto-join a Starbase's Task Force, which would compromise their cloaking ability. Not all planets will have a functional Starbase.
 
 **Blockade**: Fleets are ordered to blockade an enemy planet and do not engage in Space Combat unless confronted by enemy ships under order 05.
 
@@ -917,11 +927,11 @@ If the planet is already occupied, the fleet will hold position (Order 00) in th
 
 ### 4.2.14 Join another Fleet (13):
 
-Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the existing one.
+Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the existing one. If the host fleet is destroyed, all joining fleets will abandon their mission and hold position (00).
 
 ### 4.2.15 Rendezvous at System (14):
 
-Fleets will meet at the designated solar system and hold position (Order 00). Fleets do not auto-join.
+Move to the specified system and merge with any other fleets ordered to rendezvous there. The fleet with the lowest ID Number becomes the host fleet.  This order is useful for assembling large fleets near enemy planets for later attack.
 
 ### 4.2.16 Salvage (15):
 
@@ -1022,7 +1032,7 @@ Specific Engagement Rules:
 
 Task Forces form according to Section 5.2.
 
-Starbases and their guarding fleets, operating under Order 04, are maintained as strategic reserves. Their sole purpose is to defend against blockades or direct attacks on the House's colonies.
+Starbases and their guarding fleets, operating under Order 04, are maintained as rear guards. Their sole purpose is to defend against blockades or direct attacks on the House's colonies.
 
 Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
 
@@ -1104,7 +1114,7 @@ After the last round of combat the surviving Task Forces are disbanded and survi
 
 ## 5\.4 Starbase Combat
 
-Starbases act as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per Section 5.2.
+Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per Section 5.2.
 
 Fleets with orders to guard the Starbase (Fleet Orders 04) also join the Task Force.
 
