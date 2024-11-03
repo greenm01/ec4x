@@ -105,11 +105,11 @@ Updated player databases, unique to each House, are reissued by the game moderat
 
 Players receive new reports that reflect updated economics and the outcome of orders issued in the previous turn. This can be achieved through email, on a server, or locally on a laptop for tabletop play.
 
-In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.4](#34-maintenance-costs)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
+In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.4](#34-expenditures)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
 
 ### 1.3.2 Command Phase
 
-In the command phase, players issue fleet orders (Section 6) and make strategic decisions around asset management. Players have the opportunity change diplomatic state (Section 8) in relation to rival Houses.
+In the command phase, players issue fleet orders ([Section 6.2](#62-fleet-orders)) and make strategic decisions around asset management. Players have the opportunity change diplomatic state ([Section 8.1](#81-diplomacy)) in relation to rival Houses.
 
 Players send their locally updated game database back to the game moderator for turn processing.
 
@@ -139,7 +139,7 @@ Solar systems have special traits and are procedural generated. They are filled 
 
 There are three classes of jump lanes: restricted, minor, and major. The hub is guaranteed to have six jump lanes connecting it to the first ring, making it an important strategic asset. Homeworlds on the outer ring will have three lanes. The number of lanes connecting the other hexes are randomly generated in accordance with VBAM. The class of all lanes are random.
 
-Movement across the lanes is explained in Section 6.
+Movement across the lanes is explained in [Section 6.1](#61-jump-lanes).
 
 Each player's homeworld should be placed on the outer ring, as far as strategically possible from rival home system(s).
 
@@ -182,7 +182,7 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 
 ### 2.3.1 Space Force Ships
 
-The base game includes a number of imperial classed space combatants listed in Section 9.
+The base game includes a number of imperial classed space combatants listed in [Section 9.1](#91-space-force-WEP1).
 
 Feel free to create your own ships and races for asymmetrical warfare or narrative purposes.
 
@@ -192,7 +192,7 @@ The Spacelift Command provides commerce and transportation services in support o
 
 Spacelift assets have no offensive weapons capability, and un-escorted units are easily destroyed by rival forces. 
 
-Spacelift Command attributes are listed in Section 9.
+Spacelift Command attributes are listed in [Section 9.3](#93-spacelift-command).
 
 #### 2.3.2.1 Spaceports
 
@@ -250,7 +250,7 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Scouts are able to counter Raiders (Refer to Section 2.4.3) and rival spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged. 
+Scouts are able to counter Raiders ([Section 2.4.3](#243-raiders)) and rival spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged.
 
 Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
 
@@ -373,7 +373,7 @@ Follow these steps (order of unit selection does not matter). You can stop as so
 
 *Total the number of units within the same unit and subtract one. This is the die roll modifier. The maximum is +2
 
-**For mixed ELI tech, employ a slightly modified form of the EII method described in section 2.4.2**
+**For mixed ELI tech, employ a slightly modified form of the EII method described in [Section 2.4.2](#242-scouts)**
 
 Calculate the ELI Integration Index (EII):
 
@@ -421,7 +421,7 @@ Starbases (SB) are powerful orbital fortresses that facilitate planetary defense
 
 Starbases require three months (three turns) to construct and require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
-Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in Section 2.4.2 and Raider Detection Table in Section 2.4.3 respectively. 
+Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in [Section 2.4.2](#242-scouts) and Raider Detection Table in [Section 2.4.3](#243-raiders) respectively.
 
 Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% every turn, up to a max of 15% (three Starbases).
 
@@ -608,7 +608,7 @@ ETACs plant a flag in unoccupied Solar Systems and set the initial conditions fo
 
 The Space Guilds are contracted to transfer larger populations between existing Colonies in civilian Starliners. Passengers are kept in status to minimize living space, and all of their supplies and equipment for their new destination are tightly packed into the cargo hold. 
 
-The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with Section 6.0.
+The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with [Section 6.1](#61-jump-lanes).
 
 | Conditions | PP/PTU |
 | ---------- |:------:|
@@ -639,7 +639,7 @@ Each turn, the Duke can allocate Treasury funds as follows:
 
 ## 3.4 Maintenance Costs
 
-At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in Section 9.
+At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](#90-data-tables).
 
 Players are able to reduce maintenance costs by placing active duty ships on either reserve status or mothballing them:
 
@@ -770,21 +770,13 @@ New engineering technologies are purchased directly with TRP.
 
 [^2]: **Game Designer Notes**:
   As players expand their colonies, their NHV will grow. The logarithmic scaling with GHP allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
-
   If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
-
   For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
-
   The TRP formula assumes a tax rate of 50% and a balanced budget of:
-
-- 40% Military
-
-- 40% R&D
-
-- 20% Other (Terraforming, Guild Services, CIC, IU investment, etc..)
-  
+    - 40% Military
+    - 40% R&D
+    - 20% Other (Terraforming, Guild Services, CIC, IU investment, etc..)
   The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
-  
   Previously the formula used exp(GHP) * 0.0025 PP which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
 ## 4.5 Construction (CST)
@@ -989,7 +981,7 @@ Possible fleet missions are listed in the table below. These are the classic fle
 
 \* New to EC4X
 
-Movement orders command a fleet to jump across the necessary lanes to the destination solar system, in accordance with the rules specified in Section 6.1. Depending upon the distance from the fleet's preexisting location and available lanes, movement may take multiple turns to complete.
+Movement orders command a fleet to jump across the necessary lanes to the destination solar system, in accordance with the rules specified in [Section 6.1](#61-jump-lanes). Depending upon the distance from the fleet's preexisting location and available lanes, movement may take multiple turns to complete.
 
 ### 6.2.1 Hold Position (00):
 
@@ -1123,7 +1115,7 @@ When attacking a solar system, cloaked units are considered to be **a surprise**
 
 In neutral territory a cloaked fleet is considered to be a surprise.
 
-Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with Section 2.4.3. 
+Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](#243-raiders).
 
 If cloaked fleets on all sides pass undetected from one another, then the player defending his solar system wins in ambush. If opposing forces are meeting in neutral territory and all pass undetected, then they carry on with movement orders and combat is cancelled.
 
@@ -1139,7 +1131,7 @@ Rules of Engagement (ROE):
 Cloaking:
 
 - Task Forces including Starbases cannot cloak.
-- All joining fleets must remain undetected for Task Force cloaking (Section 7.1.3).
+- All joining fleets must remain undetected for Task Force cloaking ([Section 7.1.3](#713-cloaking)).
 
 Fleet Integration:
 
@@ -1164,7 +1156,7 @@ Specific Engagement Rules:
 - Guard Engagement:
   - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
 
-Task Forces form according to Section 7.2.
+Task Forces form according to [Section 7.2](#72-task-force-assignment).
 
 Starbases and their guarding fleets, operating under Order 04, are maintained as rear guards. Their sole purpose is to defend against blockades or direct attacks on the House's colonies.
 
@@ -1197,8 +1189,8 @@ then a critical hit is achieved
 | Modifier | Value | Notes                               |
 | -------- |:-----:| ----------------------------------- |
 | Scouts   | +1    | Maximum benefit for all Scouts      |
-| Surprise | +3    | First round only; See Section 7.1.3 |
-| Ambush   | +4    | First round only; See Section 7.1.3 |
+| Surprise | +3    | First round only; See [Section 7.1.3](#713-cloaking) |
+| Ambush   | +4    | First round only; See [Section 7.1.3](#713-cloaking) |
 
 **The CER multiplied by AS equals the number of total enemy hits.**
 
@@ -1226,11 +1218,11 @@ Additionally, if a player takes a critical hit and is unable to reduce a unit ac
 
 After all hits are applied and squadrons are appropriately reduced (crippled or destroyed), recalculate the total AS of all surviving Task Forces.
 
-Check each Task Force's ROE on the table in Section 7.1.1 by comparing AS strengths and determine if a retreat is warranted. If so, proceed to Section 7.3.3.
+Check each Task Force's ROE on the table in [Section 7.1.1](#711-rules-of-engagement-roe) by comparing AS strengths and determine if a retreat is warranted. If so, proceed to [Section 7.3.3](#733-retreat).
 
 If more than one Task Force remains in the fight, the next round commences via the same procedure as described above.
 
-Otherwise proceed to Section 7.3.4.
+Otherwise proceed to [Section 7.3.4](#734-end-of-space-combat).
 
 ### 7.3.3 Retreat
 
@@ -1248,11 +1240,11 @@ After the last round of combat the surviving Task Forces are disbanded and survi
 
 ## 7.4 Starbase Combat
 
-Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per Section 7.2.
+Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per [Section 7.2](#72-task/forcea-ssignment).
 
 Fleets with orders to guard the Starbase (Fleet Orders 04) also join the Task Force.
 
-Combat will proceed in a similar fashion to Section 7.3, with the following restrictions:
+Combat will proceed in a similar fashion to [Section 7.3](#73-space-combat), with the following restrictions:
 
 1. If a player rolls a critical hit against a starbase on the first try, re-roll a second time.
 2. Starbases receive an extra +2 die roll modifier.
@@ -1336,7 +1328,7 @@ The attacking player will apply unused hits towards ground forces (Armies or Mar
 
 Finally, if there are unused hits left over from ground batteries and ground forces, subtract the number of hits from the planet's IU. If there is no remaining IU, apply hits to the planet's PU instead.
 
-If there are remaining rounds (max 3), return to Section 7.5.1 and repeat.
+If there are remaining rounds (max 3), return to [Section 7.5.1](#751-determine-hits) and repeat.
 
 ## 7.6 Planetary Invasion & Blitz
 
@@ -1353,7 +1345,7 @@ Combat is simultaneous, and the following table is used to determine the CER.
 
 ### 7.6.1 Planetary Invasion
 
-To land Marines on a planet during ground invasion, all the surface Ground Batteries must be destroyed. First conduct *one round* of planetary bombardment from Section 7.5. If there are remaining Ground Batteries, the mission fails.
+To land Marines on a planet during ground invasion, all the surface Ground Batteries must be destroyed. First conduct *one round* of planetary bombardment from [Section 7.5](#75-planetary-bombardment). If there are remaining Ground Batteries, the mission fails.
 
 If all ground batteries are destroyed, the Marines are dropped onto the surface. Planetary shields and Spaceports are immediately destroyed.
 
@@ -1373,11 +1365,11 @@ If the planet is conquered, loyal House citizens destroy 50% of of the colony's 
 
 ### 7.6.2 Planetary Blitz
 
-Fleets and Ground batteries conduct one round of combat in accordance with Section 7.5, with the exception that ground units and civilian infrastructure are not targeted (Sections 7.5.4). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
+Fleets and Ground batteries conduct one round of combat in accordance with [Section 7.5](#75-planetary-bombardment), with the exception that ground units and civilian infrastructure are not targeted ([Sections 7.5.4](#754-ground-units--civilian-infrastructure)). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
 
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
-Ground battle occurs in a similar fashion to section 7.6.1, with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
+Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
 
 ## 7.7 Custom Combat Modifications
 
@@ -1535,7 +1527,7 @@ CL = Carry Limit
 | SC    | Scout             | 1   | 1   | 15  | 0\.1  | 0   | 1   | 1   | NA  | NA  |
 | SB    | Starbase          | 3   | 3   | 50  | 2.5   | 45  | 50  | NA  | NA  | NA  |
 
-## 9.3 Ground Units
+## 9.2 Ground Units
 
 | **Class** | **Name**         | CST | PC  | MC  | AS  | DS  |
 | --------- | ---------------- |:---:| --- | --- |:---:|:---:|
@@ -1544,7 +1536,7 @@ CL = Carry Limit
 | AA        | Armies           | 1   | 2   | 0.2 | 2   | 3   |
 | MD        | Space Marines    | 1   | 3   | 0.2 | 3   | 2   |
 
-## 9.2 Spacelift Command
+## 9.3 Spacelift Command
 
 | **Class** | **Name**         | CST | PC  | MC  | CL  |
 |:---------:| ---------------- |:---:|:---:|:---:|:---:|
@@ -1553,7 +1545,7 @@ CL = Carry Limit
 | ET        | ETAC             | 1   | 15  | 0.3 | 1   |
 | TT        | Troop Transports | 1   | 5   | 0.2 | 1   |
 
-## 9.3 Prestige
+## 9.4 Prestige
 
 TODO: Provide a prestige table showing the various factors, both positive and negative.
 
