@@ -62,7 +62,15 @@ If a House's prestige drops and stays below zero for three consecutive turns, th
 
 A table of prestige values is listed in Section 9.
 
-## 1.2 Turns
+## 1.2 Game Setup
+
+Generate a starmap as described in section 2.1 for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
+
+Players start the game with one homeworld (An Abundant Eden planet, Level IV colony with 1000 PU), 500 Monero (XMR) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts.
+
+Tech levels start at: EL1, SL1, CST1, WEP1, TER1, ELI1, and CIC1.
+
+## 1.3 Turns
 
 Each turn comprises four phases
 
@@ -71,7 +79,7 @@ Each turn comprises four phases
 3. Conflict phase
 4. End of turn phase
 
-### 1.3 TODO: Explain actions during eash phase
+### 1.3 TODO: Explain actions during each phase
 
 # 2\.0 Game Assets
 
@@ -88,8 +96,6 @@ Solar systems have special traits and are procedural generated. They are filled 
 There are three classes of jump lanes: restricted, minor, and major. The hub is guaranteed to have six jump lanes connecting it to the first ring, making it an important strategic asset. Homeworlds on the outer ring will have three lanes. The number of lanes connecting the other hexes are randomly generated in accordance with VBAM. The class of all lanes are random.
 
 Movement across the lanes is explained in Section 4.
-
-Players start the game with one homeworld (An Abundant Eden planet, Level IV colony with 420 PU), 210 Monero (XMR) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Cruiser, two Destroyers, and two Scouts. All tech levels start at zero.
 
 Each player's homeworld should be placed on the outer ring, as far as strategically possible from rival home system(s).
 
