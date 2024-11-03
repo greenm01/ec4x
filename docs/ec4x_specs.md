@@ -1237,7 +1237,7 @@ After the last round of combat the surviving Task Forces are disbanded and survi
 
 ## 7.4 Starbase Combat
 
-Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per [Section 7.2](#72-task/forcea-ssignment).
+Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per [Section 7.2](#72-task-force-assignment).
 
 Fleets with orders to guard the Starbase (Fleet Orders 04) also join the Task Force.
 
