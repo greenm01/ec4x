@@ -66,7 +66,7 @@ A table of prestige values is listed in Section 9.
 
 Generate a starmap as described in section 2.1 for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
 
-Players start the game with one homeworld (An Abundant Eden planet, Level IV colony with 1000 PU), 500 Monero (XMR) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts.
+Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 810 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
 
 Tech levels start at: EL1, SL1, CST1, WEP1, TER1, ELI1, and CIC1.
 
@@ -426,21 +426,21 @@ The Guilds are contracted to provide various critical services to the House, mos
 
 # XY\.0 Economics
 
-The standard unit of account in EC4X is Monero (XMR), i.e. money. 
+The standard unit of account in EC4X the Production Point (PP).
 
 The power of a House is fueled by economic might, which in turn is a function of population growth and gains in science and technology.
 
-XMR settle near instantaneously on the inter-dimensional Phoenix network. (All comms and data transfers are instantaneous. Don't question; it's magic).
+Production points settle near instantaneously on the inter-dimensional Phoenix network. (All comms and data transfers are instantaneous. Don't question; it's magic).
 
 ## XY\.1 Principles
 
-**Population Unit (PU)**: A unit of population that provides 1 XMR of productivity to the House.   
+**Population Unit (PU)**: A unit of population that provides 1 production point of productivity to the House.
 
 **Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately 50k souls. 
 
 The relationship between PSU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
-This model is disinflationary; inflation asymptotically approaches zero over time, i.e. Monero.
+This model is disinflationary; inflation asymptotically approaches zero over time.
 
 Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity.  
 
@@ -474,13 +474,11 @@ An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the 
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/pu_to_ptu.png)
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/ptu_to_pu.png)
 
-**Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in XMR.
+**Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in production points.
 
 ```
 GCP = (PU * raw_index + IU) * el_mod
 ```
-
-**Gross House Product (GHP)**: The sum total of all colony GCP.
 
 **RAW INDEX Table**
 
@@ -494,6 +492,8 @@ GCP = (PU * raw_index + IU) * el_mod
 
 Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habitable conditions.
 
+**Gross House Product (GHP)**: The sum total of all colony GCP.
+
 **Net Colony Value (NCV)**: The net value of taxes collected from each of your colonies.
 
 ```
@@ -502,13 +502,13 @@ NCV = GCP * tax_rate
 
 **Net House Value (NHV)**: The sum total of all colony NCV.
 
-**Tax Rate**: The tax rate that applies to all of your colonies. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler, and stall population growth.
+**Tax Rate**: The tax rate that applies to all of your colonies. Taxes above 50% will slow colony birthrate; below 50% will increase it. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler.
 
-**House Treasury**: The total sum of NCV collected from colonies is transferred to the House treasury at the beginning of each month (turn). Unspent XMR from each turn rollover and earn 2% interest on loans to the Space Guild.
+**House Treasury**: NHV is transferred to the House treasury at the beginning of each month (turn). Unspent production points from each turn rollover and earn 2% interest on loans to the Space Guild.
 
 **Industrial Units (IU)**: The House can invest in the planetary industry of each colony, and placed on Level III+ colonies. IU invested above 50% of the colony's PU are directed to civilian infrastructure projects that increase House prestige.
 
-IU cost 30 XMR each. IU can be sold for 30 XMR.
+IU cost 30 PP each. IU can be sold for 30 PP.
 
 ## XY\.2 Population Growth
 
@@ -520,6 +520,31 @@ A logistical growth function is used for the calculation. Each planet class has 
 
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/logistic_population_growth.png)
 
+**Tax Rate Influence on Birth Rate:**
+
+- **Below 50% Tax Rate:** The birth rate increases by 0.1% for every 1% decrease in tax rate, encouraging a more prosperous, less taxed society:
+
+Increased Birth Rate = 2% + (50% - Tax Rate) * 0.1%
+
+- **Above 50% Tax Rate:** The birth rate decreases by 0.1% for every 1% increase in tax rate, reflecting the economic strain of higher taxes:
+
+Decreased Birth Rate = 2% - (Tax Rate - 50%) * 0.1%
+
+**Prestige Penalty:**
+
+If the tax rate exceeds 65%, there's an additional penalty on your prestige, reflecting public discontent with high taxation:
+
+Prestige Penalty = (Tax Rate - 65%) * 2 points per turn
+
+### Examples:
+
+- **Tax Rate at 45%:** Birth Rate = 2% + (50% - 45%) * 0.1% = 2.5%
+- **Tax Rate at 55%:** Birth Rate = 2% - (55% - 50%) * 0.1% = 1.5%
+- **Tax Rate at 66%:** Birth Rate = 2% - (66% - 50%) * 0.1% = 1.4%
+  - Prestige Penalty = (66% - 65%) * 2 = 2 prestige points per turn
+
+The tax rate not just a financial decision but also one that impacts population growth and loyalty to the House, as reflected by prestige. Players must balance their need for revenue with the health and growth of their colonies.
+
 ## XY.3 Colonization
 
 ETACs plant a flag in unoccupied Solar Systems and set the initial conditions for terraforming. Their capacity to move PTU is limited to one unit.
@@ -528,15 +553,15 @@ The Space Guilds are contracted to transfer larger populations between existing 
 
 The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with Section 4.0.
 
-| Conditions | XMR/PTU |
-| ---------- |:-------:|
-| Eden       | 5       |
-| Lush       | 6       |
-| Benign     | 8       |
-| Harsh      | 11      |
-| Hostile    | 14      |
-| Desolate   | 18      |
-| Extreme    | 25      |
+| Conditions | PP/PTU |
+| ---------- |:------:|
+| Eden       | 5      |
+| Lush       | 6      |
+| Benign     | 8      |
+| Harsh      | 11     |
+| Hostile    | 14     |
+| Desolate   | 18     |
+| Extreme    | 25     |
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
@@ -555,7 +580,7 @@ Each turn, the Duke can allocate Treasury funds as follows:
 - Counter Intelligence: Defense against espionage.
 - Savings & Investment: Financial reserves and investments for future growth.
 
-## XX\.4 Maintenance Costs
+## XY\.4 Maintenance Costs
 
 At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in Section 9.
 
@@ -573,7 +598,7 @@ For every turn that a player misses payment for maintenance they loose five(5) p
 
 ## XYZ.1 Research Points (RP)
 
-Each turn, players can invest XMR in RP to further their R&D efforts.
+Each turn, players can invest production points in RP to further their R&D efforts.
 
 R&D upgrades will be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
@@ -597,16 +622,16 @@ EL is not a specific reflection of scientific or technological advancement, alth
 
 A House's GHP benefits from EL upgrades by 5% per level, for a maximum of 50% at EL10+. The economy is tied to entrepreneurial ambition and citizen education.
 
-The formula for ERP in XMR is:
+The formula for ERP in production points is:
 
 ```
-1 ERP = (10 + 0.015(GHP)) XMR
+1 ERP = (10 + 0.015(GHP)) PP
 ```
 
-Example: to purchase 10 ERPs with a GHP of 500, the cost in XMR is:
+Example: to purchase 10 ERPs with a GHP of 500, the cost in production points is:
 
 ```
-10 ERP = 10(10 + 0.015(500)) = 175 XMR   
+10 ERP = 10(10 + 0.015(500)) = 175 PP
 ```
 
 The cost in ERP to advance one EL level is:
@@ -638,13 +663,13 @@ Advancing to the next SL requires the House have previously developed an equival
 The cost of SRP is dependent upon the current SL.
 
 ```
-1 SRP = 2 + SL(0.5) XMR
+1 SRP = 2 + SL(0.5) PP
 ```
 
-Example: To purchase 10 SRPs at SL2, the price in XMR is:
+Example: To purchase 10 SRPs at SL2, the price in production points is:
 
 ```
-10 SRP = 10(2 + 2(0.5)) = 30 XMR
+10 SRP = 10(2 + 2(0.5)) = 30 PP
 ```
 
 The cost in SRP to advance one SL level is:
@@ -673,13 +698,13 @@ In EC4X, advances in engineering are tied to the Military and Industrial complex
 The cost of TRP is dependent upon the required SL for the technology being developed.
 
 ```
-1 TRP = (25 + 5(SL))/10 + log(GHP) * 0.25 XMR
+1 TRP = (25 + 5(SL))/10 + log(GHP) * 0.25 PP
 ```
 
-For example, to purchase 5 TRPs towards the development TER3 with a GHP of 500, the price in XMR is:
+For example, to purchase 5 TRPs towards the development TER3 with a GHP of 500, the price in production points is:
 
 ```
-5 TRP = 5((25 + 5(3))/10 + log(500)(0.25)) = 23.37 XMR
+5 TRP = 5((25 + 5(3))/10 + log(500)(0.25)) = 23.37 PP
 ```
 
 New engineering technologies are purchased directly with TRP.
@@ -702,7 +727,7 @@ The TRP formula assumes a tax rate of 50% and a balanced budget of:
 
 The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
 
-Previously the formula used exp(GHP) * 0.0025 XMR which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
+Previously the formula used exp(GHP) * 0.0025 PP which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
 ## XYZ\.5 Construction (CST)
 
@@ -756,7 +781,7 @@ Terraforming improve a planet's livable conditions, and thus the population limi
 
 After the tech is achieved, the cost to upgrade a planet is 50% the lower bound PU of the next level:
 
-| Planet Class | Required TER | PU        | XMR  |
+| Planet Class | Required TER | PU        | PP   |
 |:------------ |:------------:|:---------:|:----:|
 | Extreme      | TER1         | 1 - 20    | NA   |
 | Desolate     | TER2         | 21 - 60   | 11   |
@@ -766,7 +791,7 @@ After the tech is achieved, the cost to upgrade a planet is 50% the lower bound 
 | Lush         | TER6         | 1k - 2k   | 500  |
 | Eden         | TER7         | 2k+       | 1000 |
 
-Example: Upgrading from TER3 to TER4 requires 91 XMR.
+Example: Upgrading from TER3 to TER4 requires 91 PP.
 
 Planets do not skip a class in their terraforming development.
 
@@ -865,7 +890,7 @@ Ship repairs require a Shipyard. The cost of repair equals one quarter (25%) of 
 Example: A player wishes to repair a crippled tech-level III Cruiser. The cost is:
 
 ```
-7 * 0.25 = 1.75 XMR.
+7 * 0.25 = 1.75 PP.
 ```
 
 The logistics of repairing a ship planetside and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
@@ -1351,7 +1376,7 @@ The Space Guilds are key players in the clandestine world of diplomacy and espio
 
 Players can allocate Espionage Budget points (EBPs) towards various espionage actions every turn.
 
-EBP points cost 30 XMR each. 
+EBP points cost 30 production points each.
 
 If a player invests more than 5% of their turn budget into EBP they lose Prestige points.
 
@@ -1379,7 +1404,7 @@ The mission of the Counter Intelligence Command (CIC) is to safeguard the House'
 
 Players can allocate a portion of their turn budget into Counter Intelligence Points (CIP). 
 
-CIP points cost 30 XMR each.
+CIP points cost 30 production points each.
 
 When an espionage event occurs the House must spend CIP Points to roll for detection. Each roll costs one(1) CIP point. If a House has no CIP Points, espionage automatically succeeds.
 
