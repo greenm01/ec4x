@@ -72,7 +72,7 @@ Flexibility and strategic foresight are your greatest tools in the quest for pow
 
 If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
 
-A table of prestige values is listed in [Section 9](#90-data-tables).
+A table of prestige values is listed in [Section 9.4](#94-prestige).
 
 ## 1.2 Game Setup
 
