@@ -524,11 +524,11 @@ A logistical growth function is used for the calculation. Each planet class has 
 
 - **Below 50% Tax Rate:** The birth rate increases by 0.1% for every 1% decrease in tax rate, encouraging a more prosperous, less taxed society:
 
-Increased Birth Rate = 2% + (50% - Tax Rate) * 0.1%
+       Increased Birth Rate = 2% + (50% - Tax Rate) * 0.1%
 
 - **Above 50% Tax Rate:** The birth rate decreases by 0.1% for every 1% increase in tax rate, reflecting the economic strain of higher taxes:
 
-Decreased Birth Rate = 2% - (Tax Rate - 50%) * 0.1%
+       Decreased Birth Rate = 2% - (Tax Rate - 50%) * 0.1%
 
 **Prestige Penalty:**
 
