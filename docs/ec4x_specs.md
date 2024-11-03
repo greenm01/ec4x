@@ -64,6 +64,12 @@ A table of prestige values is listed in Section 9.
 
 ## 1.2 Game Setup
 
+At the start of a game, players will agree upon and designate a game moderator. The moderator's function is to collect player turn orders, update the master game database, and reissue updated game data back to players at the beginning of each turn. Software tools will be provided to make this a smooth process and maintain fog of war. The moderator would have to go out of their way to cheat, and deconstructing and analyzing the game data would not be an enjoyable task. Regardless, choose a game moderator with integrity. EC4X is intended to be played among friends.[^1]
+
+[^1]: Future iterations of the game will allow for a server/client model, but not everyone will want to setup a dedicated server. Encrypting the game data is also a feature to be integrated.
+
+Communicating with other players over email or in a dedicated chat room is recommended. There are plenty to choose from.
+
 Generate a star-map as described in section 2.1 for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
 
 Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
@@ -77,9 +83,35 @@ Each turn comprises four phases
 1. Income phase
 2. Command phase
 3. Conflict phase
-4. End of turn phase
+4. Maintenance phase
 
-### 1.3.1 TODO: Explain actions during each phase
+### 1.3.1 Income Phase
+
+At the beginning of each turn, all players House economic factors (Section XY) are recalculated and production points deposited in house treasuries. This accounts for population growth for each colony, construction, maintenance costs, taxes, R&D, etc. House prestige points are recalculated and updated. This will be completed by the game moderator using blind software tools and maintained in a master game database.
+
+Updated player databases, unique to each House, are reissued by the game moderator for the new turn. Various tools and database formats can be used to perform this step, including Excel or client game software.
+
+Players receive new reports that reflect updated economics and the outcome of orders issued in the previous turn. This can be achieved through email, on a server, or locally on a laptop for tabletop play.
+
+In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings (Section XY.4). The tax rate can be changed in this phase. Player local databases are updated accordingly.
+
+### 1.3.2 Command Phase
+
+In the command phase, players issue fleet orders (Section 4) and make strategic decisions around asset management. Players have the opportunity change diplomatic state (Section 8) in relation to rival Houses.
+
+Players send their locally updated game database back to the game moderator for turn processing.
+
+### 1.3.3 Conflict Phase
+
+In the conflict phase the game moderator will collect player databases and update the master database with player inputs, via software tools.
+
+Game software will resolve new player orders including movement, colonization, exploration, and combat. Espionage activities will be conducted and outcomes determined.
+
+### 1.3.4 Maintenance Phase
+
+In the maintenance phase, the game software will update the master game database with the outcomes from the conflict phase. New construction orders will be processed, along with investments in R&D, terraforming, Space Guild services, industry, etc.
+
+Player databases will be updated and customized reports issued for each player. Players have their own unique database, blind to the activities of other players.
 
 # 2.0 Game Assets
 
@@ -118,11 +150,11 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 | 2, 3      | Hostile  | Level III        | 61 - 180  | 61 - 182        |
 | 4, 5      | Harsh    | Level IV         | 181 - 500 | 183 - 526       |
 | 6, 7      | Benign   | Level V          | 501- 1k   | 527 - 1,712     |
-| 8[^1]     | Lush     | Level VI         | 1k - 2k   | 1,713 - 510,896 |
-| 9[^2]     | Eden     | Level VII        | 2k+       | 510,896+        |
+| 8\*       | Lush     | Level VI         | 1k - 2k   | 1,713 - 510,896 |
+| 9\*\*     | Eden     | Level VII        | 2k+       | 510,896+        |
 
-[^1]: Note: if the roll above is a natural eight (8), add a +1 modifier to your roll on the raw materials table.
-[^2]: If the roll is a natural nine (9) add a +2 modifier.
+\*If the roll above is a natural eight (8), add a +1 modifier to your roll on the System Resources Table.
+\*\*If the roll is a natural nine (9) add a +2 modifier.
 
 **System Resources Table**
 
