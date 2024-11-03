@@ -474,6 +474,8 @@ An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the 
 GCP = (PU * raw_index + IU) * el_mod
 ```
 
+**Gross House Product (GHP)**: The sum total of all colony GCP.
+
 **RAW INDEX Table**
 
 | RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |
@@ -491,6 +493,8 @@ Look up the Raw Material classification of your colony's system in the RAW colum
 ```
 NCV = GCP * tax_rate
 ```
+
+**Net House Value (NHV)**: The sum total of all colony NCV.
 
 **Tax Rate**: The tax rate that applies to all of your colonies. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler, and stall population growth.
 
@@ -585,15 +589,15 @@ EL represents the entrepreneurial skills and general education level of House ci
 
 EL is not a specific reflection of scientific or technological advancement, although they are correlated.
 
-A House's GCP benefits from EL upgrades by 5% per level, for a maximum of 50% at EL10+. The economy is tied to entrepreneurial ambition and citizen education.
+A House's GHP benefits from EL upgrades by 5% per level, for a maximum of 50% at EL10+. The economy is tied to entrepreneurial ambition and citizen education.
 
 The formula for ERP in XMR is:
 
 ```
-1 ERP = (10 + 0.015(GCP)) XMR
+1 ERP = (10 + 0.015(GHP)) XMR
 ```
 
-Example: to purchase 10 ERPs with a GCP of 500, the cost in XMR is:
+Example: to purchase 10 ERPs with a GHP of 500, the cost in XMR is:
 
 ```
 10 ERP = 10(10 + 0.015(500)) = 175 XMR   
@@ -662,34 +666,54 @@ In EC4X, advances in engineering are tied to the Military and Industrial complex
 The cost of TRP is dependent upon the required SL for the technology being developed.
 
 ```
-1 TRP = (50 + 20(SL))/10 + 0.001(GCP) XMR
+1 TRP = (25 + 5(SL))/10 + log(GHP) * 0.25 XMR
 ```
 
-For example, to purchase 5 TRPs towards the development TER3 with a GCP of 500, the price in XMR is:
+For example, to purchase 5 TRPs towards the development TER3 with a GHP of 500, the price in XMR is:
 
 ```
-5 TRP = 5((50 + 20(3))/10 + 0.001(500)) = 57.5 XMR
+5 TRP = 5((25 + 5(3))/10 + log(500)(0.25)) = 23.37 XMR
 ```
 
 New engineering technologies are purchased directly with TRP.
 
-**TODO: work out TRP cost for each tech level below.**
+\* Starting at Science Level 1 (SL1), each subsequent level of technology requires an additional 5 Technology Research Points (TRP) more than the previous level, with the initial cost being 25 TRP for the first level.
+
+**Game Designer Notes**:
+
+As players expand their colonies, their NHV will grow. The logarithmic scaling with GHP allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
+
+If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
+
+For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
+
+The TRP formula assumes a tax rate of 50% and a balanced budget of:
+
+- 40% Military
+- 40% R&D
+- 20% Other (Terraforming, Guild Services, CIC, IU investment, etc..)
+
+The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
+
+Previously the formula used exp(GHP) * 0.0025 XMR which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
 ## XYZ\.5 Construction (CST)
 
-Upgrades improve the construction capability and capacity of planet based factories, Spaceports, Shipyards. Upgrades to existing units are automatic and zero cost.
+Upgrades improve the construction capability and capacity of planet based factories, Spaceports, Shipyards. Existing units are upgraded at zero cost.
+
+Construction capacity increases by 10% each level (round up).
 
 CST will open up new, larger hulled classes of combat ships.
 
-Round up to the nearest whole number when recalculating a capacity increase.
+| CST Level | SL  | TRP Cost |
+|:---------:|:---:| -------- |
+| CST1      | 1   | 25       |
+| CST2      | 2   | 30       |
+| CST3      | 3   | 35       |
+| CST4      | 4   | 40       |
+| CST5+     | 5+  | \*45     |
 
-| CST Level | SL  | TRP Cost | Capacity Increase |
-|:---------:|:---:| -------- |:-----------------:|
-| CST1      | 1   |          | 10%               |
-| CST2      | 2   |          | 10%               |
-| CST3+     | 3+  |          | 10%               |
-
-The maxium construction level is CST10.
+The maximum construction level is CST10.
 
 ## XYZ\.6 Weapons (WEP)
 
@@ -697,15 +721,17 @@ Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat sh
 
 For every WEP increase, Production Cost (PC) per unit increases by 10%.
 
-Upgrades do not apply to preexisting ships.
+Upgrades do not apply to preexisting ships; only new ships.
 
-| Weapons Level | SL  | TRP Cost |
-|:-------------:|:---:| -------- |
-| WEP1          | 1   |          |
-| WEP2          | 2   |          |
-| WEP3+         | 3+  |          |
+| WEP Level | SL  | TRP Cost |
+|:---------:|:---:| -------- |
+| WEP1      | 1   | 25       |
+| WEP2      | 2   | 30       |
+| WEP3      | 3   | 35       |
+| WEP4      | 4   | 40       |
+| WEP5+     | 5+  | 45       |
 
-The maximum weapons level is WEP10.
+The maximum WEP level is WEP10.
 
 ## XYZ\.7 Terraforming (TER)
 
@@ -713,15 +739,29 @@ Terraforming improve a planet's livable conditions, and thus the population limi
 
 | TER Level | SL  | TRP Cost | Planet Class |
 |:---------:|:---:| -------- | ------------ |
-| TER1      | 1   |          | Extreme      |
-| TER2      | 2   |          | Desolate     |
-| TER3      | 3   |          | Hostile      |
-| TER4      | 4   |          | Harsh        |
-| TER5      | 5   |          | Benign       |
-| TER6      | 6   |          | Lush         |
-| TER7      | 7   |          | Eden         |
+| TER1      | 1   | 25       | Extreme      |
+| TER2      | 2   | 30       | Desolate     |
+| TER3      | 3   | 35       | Hostile      |
+| TER4      | 4   | 40       | Harsh        |
+| TER5      | 5   | 45       | Benign       |
+| TER6      | 6   | 50       | Lush         |
+| TER7      | 7   | 55       | Eden         |
 
-Planets can not skip a class in their terraforming development.
+After the tech is achieved, the cost to upgrade a planet is 50% the lower bound PU of the next level:
+
+| Planet Class | Required TER | PU        | XMR  |
+|:------------ |:------------:|:---------:|:----:|
+| Extreme      | TER1         | 1 - 20    | NA   |
+| Desolate     | TER2         | 21 - 60   | 11   |
+| Hostile      | TER3         | 61 - 180  | 31   |
+| Harsh        | TER4         | 181 - 500 | 91   |
+| Benign       | TER5         | 501- 1k   | 250  |
+| Lush         | TER6         | 1k - 2k   | 500  |
+| Eden         | TER7         | 2k+       | 1000 |
+
+Example: Upgrading from TER3 to TER4 requires 91 XMR.
+
+Planets do not skip a class in their terraforming development.
 
 ## XYZ.8 Electronic Intelligence (ELI)
 
@@ -731,9 +771,11 @@ Upgrades do not apply to preexisting Starbases and Scouts.
 
 | ELI Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| ELI1      | 1   |          |
-| ELI2      | 2   |          |
-| ELI3+     | 3+  |          |
+| ELI1      | 1   | 25       |
+| ELI2      | 2   | 30       |
+| ELI3      | 3   | 35       |
+| ELI4      | 4   | 40       |
+| ELI5      | 5   | 45       |
 
 The maximum ELI level is ELI5.
 
@@ -745,9 +787,11 @@ Upgrades do not apply to preexisting Raiders.
 
 | CLK Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| CLK1      | 3   |          |
-| CLK2      | 4   |          |
-| CLK3+     | 5+  |          |
+| CLK1      | 3   | 35       |
+| CLK2      | 4   | 40       |
+| CLK3      | 5   | 45       |
+| CLK4      | 6   | 50       |
+| CLK5      | 7   | 55       |
 
 The maximum CLK level is CLK5.
 
@@ -759,9 +803,11 @@ Upgrades do not apply to preexisting shields. Salvage and build a new one.
 
 | SLD Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| SLD1      | 5   |          |
-| SLD2      | 6   |          |
-| SLD3+     | 7+  |          |
+| SLD1      | 3   | 35       |
+| SLD2      | 4   | 40       |
+| SLD3      | 5   | 45       |
+| SLD4      | 6   | 50       |
+| SLD5      | 7   | 55       |
 
 The maximum SLD level is SLD5.
 
@@ -769,11 +815,15 @@ The maximum SLD level is SLD5.
 
 The CIC enhances security measures to shield the House from espionage threats posed by rivals.
 
-| CIC Level | EL  | TRP Cost |
+| CIC Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| CIC1      | 1   |          |
-| CIC2      | 2   |          |
-| CIC3+     | 3+  |          |
+| CIC1      | 1   | 25       |
+| CIC2      | 2   | 30       |
+| CIC3      | 3   | 35       |
+| CIC4      | 4   | 40       |
+| CIC5+     | 5+  | 45       |
+
+The maximum CIC level is CIC10.
 
 # 3.0 Construction
 
@@ -871,7 +921,7 @@ Actively patrol a solar system, engaging hostile forces that enter the space.
 
 Order a fleet to protect a Starbase, and join in a combined Task Force, when confronting hostile ships with orders 05 to 08.
 
-### a 4.2.6 Guard/Blockade a Planet (05):
+### 4.2.6 Guard/Blockade a Planet (05):
 
 Order a fleet to block hostile forces from approaching a planet.
 
