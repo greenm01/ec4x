@@ -99,7 +99,7 @@ Each turn comprises four phases
 
 ### 1.3.1 Income Phase
 
-At the beginning of each turn, all players House economic factors ([Section 3](#30-economics)) are recalculated and production points deposited in house treasuries. This accounts for population growth for each colony, construction, maintenance costs, taxes, R&D, etc. House prestige points are recalculated and updated. This will be completed by the game moderator using blind software tools and maintained in a master game database.
+At the beginning of each turn, all economic factors ([Section 3](#30-economics)) are recalculated and production points deposited in house treasuries. This accounts for population growth for each colony, construction, maintenance costs, taxes, R&D, etc. House prestige points are recalculated and updated. This will be completed by the game moderator using blind software tools and maintained in a master game database.
 
 Updated player databases, unique to each House, are reissued by the game moderator for the new turn. Various tools and database formats can be used to perform this step, including Excel or client game software.
 
