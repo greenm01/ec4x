@@ -821,9 +821,9 @@ The CIC enhances security measures to shield the House from espionage threats po
 | CIC2      | 2   | 30       |
 | CIC3      | 3   | 35       |
 | CIC4      | 4   | 40       |
-| CIC5+     | 5+  | 45       |
+| CIC5      | 5   | 45       |
 
-The maximum CIC level is CIC10.
+The maximum CIC level is CIC5.
 
 # 3.0 Construction
 
