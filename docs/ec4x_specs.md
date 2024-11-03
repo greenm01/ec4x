@@ -39,17 +39,18 @@ While not intended to be an accounting exercise, there is enough complexity in E
 The background narrative of EC4X is wide open and only limited by the scope of your imagination.
 
 ## Table of Contents
-1. [How to Play](#play)
-2. [Game Assets](#assets)
-3. [Economics](#econ)
-4. [R&D](#rnd)
-5. [Construction](#cst)
-6. [Movement](#mvnt)
-7. [Combat](#combat)
-8. [Diplomacy](#diplo)
-9. [Game Data Tables](#data)
 
-# 1.0 How to Play {#play}
+1. [How to Play](#how-to-play)
+2. [Game Assets](#game-assets)
+3. [Economics](#economics)
+4. [R&D](#research-&-development)
+5. [Construction](#construction)
+6. [Movement](#movement)
+7. [Combat](#combat)
+8. [Diplomacy](#diplomacy-&-espionage)
+9. [Game Data Tables](#data-tables)
+
+# 1.0 How to Play
 
 ## 1.1 Prestige
 
@@ -71,7 +72,7 @@ Flexibility and strategic foresight are your greatest tools in the quest for pow
 
 If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
 
-A table of prestige values is listed in [Section 9](#data).
+A table of prestige values is listed in [Section 9](#data-tables).
 
 ## 1.2 Game Setup
 
@@ -81,7 +82,7 @@ At the start of a game, players will agree upon and designate a game moderator. 
 
 Communicating with other players over email or in a dedicated chat room is recommended. There are plenty to choose from.
 
-Generate a star-map as described in [Section 2.1](#2.1) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
+Generate a star-map as described in [Section 2.1](#star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
 
 Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
 
@@ -124,9 +125,9 @@ In the maintenance phase, the game software will update the master game database
 
 Player databases will be updated and customized reports issued for each player. Players have their own unique database, blind to the activities of other players.
 
-# 2.0 Game Assets {#assets}
+# 2.0 Game Assets
 
-## 2.1 Star Map {#2.1}
+## 2.1 Star Map
 
 The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedural generated jump lanes. The map is sized by rings around the center hub, one per number of players.
 
@@ -468,7 +469,7 @@ Numerous Space Guilds compete for business in unregulated, private capital marke
 
 The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
 
-# 3.0 Economics {#econ}
+# 3.0 Economics
 
 The standard unit of account in EC4X the Production Point (PP).
 
@@ -650,7 +651,7 @@ The payment of maintenance costs is not optional. If a player is unable to pay m
 
 For every turn that a player misses payment for maintenance they loose five(5) prestige points.
 
-# 4.0 Research & Development {#rnd}
+# 4.0 Research & Development
 
 ## 4.1 Research Points (RP)
 
@@ -768,22 +769,23 @@ New engineering technologies are purchased directly with TRP.
 \* Starting at Science Level 1 (SL1), each subsequent level of technology requires an additional 5 Technology Research Points (TRP) more than the previous level, with the initial cost being 25 TRP for the first level.
 
 [^2]: **Game Designer Notes**:
+  As players expand their colonies, their NHV will grow. The logarithmic scaling with GHP allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
 
-As players expand their colonies, their NHV will grow. The logarithmic scaling with GHP allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
+  If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
 
-If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
+  For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
 
-For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
-
-The TRP formula assumes a tax rate of 50% and a balanced budget of:
+  The TRP formula assumes a tax rate of 50% and a balanced budget of:
 
 - 40% Military
+
 - 40% R&D
+
 - 20% Other (Terraforming, Guild Services, CIC, IU investment, etc..)
-
-The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
-
-Previously the formula used exp(GHP) * 0.0025 PP which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
+  
+  The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
+  
+  Previously the formula used exp(GHP) * 0.0025 PP which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
 ## 4.5 Construction (CST)
 
@@ -913,7 +915,7 @@ The CIC enhances security measures to shield the House from espionage threats po
 
 The maximum CIC level is CIC5.
 
-# 5.0 Construction {#cst}
+# 5.0 Construction
 
 Construction and repair of House assets is accomplished planet-side or in orbit, with restrictions. 
 
@@ -951,7 +953,7 @@ Example: A player wishes to repair a crippled tech-level III Cruiser. The cost i
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
 
-# 6.0 Movement {#mvnt}
+# 6.0 Movement
 
 ## 6.1 Jump Lanes
 
@@ -1069,7 +1071,7 @@ Move to the specified system and merge with any other fleets ordered to rendezvo
 
 Salvage a fleet at the closest colony. The fleet will disband and all the ships are salvaged for 50% of their PC.
 
-# 7.0 Combat {#combat}
+# 7.0 Combat
 
 ## 7.1 Principles
 
@@ -1392,7 +1394,7 @@ EC4X Space combat is adapted from Empire of the Sun (EOS).
 
 # 8.0 Diplomacy & Espionage
 
-## 8.1 Diplomacy {#diplo}
+## 8.1 Diplomacy
 
 In EC4X, diplomacy includes Neutral, Enemy, and Non-Aggression categories. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy can play a pivotal role alongside the sword. Your primary directive remains to decisively manage your adversaries, leveraging both military might and diplomatic cunning.
 
@@ -1498,7 +1500,7 @@ In this contest for ultimate power, where every House seeks to claim the throne,
 
 Over-investment in either EBP or CIP highlights a strategic imbalance, potentially costing a House the very qualities needed to ascend to and maintain the imperial title.
 
-# 9.0 Data Tables {#data}
+# 9.0 Data Tables
 
 All tables and attributes are place holders.
 
