@@ -40,15 +40,15 @@ The background narrative of EC4X is wide open and only limited by the scope of y
 
 ## Table of Contents
 
-1. [How to Play](#how-to-play)
-2. [Game Assets](#game-assets)
-3. [Economics](#economics)
-4. [R&D](#research-&-development)
-5. [Construction](#construction)
-6. [Movement](#movement)
-7. [Combat](#combat)
-8. [Diplomacy](#diplomacy-&-espionage)
-9. [Game Data Tables](#data-tables)
+1. [How to Play](#10-how-to-play)
+2. [Game Assets](#20-game-assets)
+3. [Economics](#30-economics)
+4. [R&D](#40-research--development)
+5. [Construction](#50-construction)
+6. [Movement](#60-movement)
+7. [Combat](#70-combat)
+8. [Diplomacy](#80-diplomacy--espionage)
+9. [Game Data Tables](#90-data-tables)
 
 # 1.0 How to Play
 
@@ -72,7 +72,7 @@ Flexibility and strategic foresight are your greatest tools in the quest for pow
 
 If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
 
-A table of prestige values is listed in [Section 9](#data-tables).
+A table of prestige values is listed in [Section 9](#90-data-tables).
 
 ## 1.2 Game Setup
 
@@ -82,7 +82,7 @@ At the start of a game, players will agree upon and designate a game moderator. 
 
 Communicating with other players over email or in a dedicated chat room is recommended. There are plenty to choose from.
 
-Generate a star-map as described in [Section 2.1](#star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
+Generate a star-map as described in [Section 2.1](#21-star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
 
 Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
 
@@ -99,13 +99,13 @@ Each turn comprises four phases
 
 ### 1.3.1 Income Phase
 
-At the beginning of each turn, all players House economic factors ([Section 3](#econ)) are recalculated and production points deposited in house treasuries. This accounts for population growth for each colony, construction, maintenance costs, taxes, R&D, etc. House prestige points are recalculated and updated. This will be completed by the game moderator using blind software tools and maintained in a master game database.
+At the beginning of each turn, all players House economic factors ([Section 3](#30-economics)) are recalculated and production points deposited in house treasuries. This accounts for population growth for each colony, construction, maintenance costs, taxes, R&D, etc. House prestige points are recalculated and updated. This will be completed by the game moderator using blind software tools and maintained in a master game database.
 
 Updated player databases, unique to each House, are reissued by the game moderator for the new turn. Various tools and database formats can be used to perform this step, including Excel or client game software.
 
 Players receive new reports that reflect updated economics and the outcome of orders issued in the previous turn. This can be achieved through email, on a server, or locally on a laptop for tabletop play.
 
-In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.4](#3.4)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
+In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.4](#34-maintenance-costs)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
 
 ### 1.3.2 Command Phase
 
@@ -622,7 +622,7 @@ The cost is expensive and dependent upon the livable conditions of the destinati
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
-## 3.4 Expenditures {#3.4}
+## 3.4 Expenditures
 
 Each turn, the Duke can allocate Treasury funds as follows:
 
