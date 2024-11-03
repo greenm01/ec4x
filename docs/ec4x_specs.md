@@ -629,7 +629,7 @@ Each turn, the Duke can allocate Treasury funds as follows:
 - Military: Construction and recruiting.
 - Spacelift Command: Bases and ships
 - Research and Development: Investment in new technologies.
-- Industrial Units (IU): Expansion or maintenance of colony manufacturing capabilities.
+- Industrial Units (IU): Investment in colony manufacturing.
 - Terraforming: Costs for planetary upgrade projects.
 - Space Guild Services:
   - Population Transfer: Moving citizens to new colonies.
