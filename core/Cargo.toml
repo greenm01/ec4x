@@ -1,0 +1,14 @@
+[package]
+name = "ec4x_core"
+description = "ec4x core"
+rust-version.workspace = true
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,12 @@
+[package]
+name = "moderator"
+description = "EC4X Game Moderator"
+rust-version.workspace = true
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ec4x_core.workspace = true

@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+  "core",
+  "moderator",
+  "client",
+]
+
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Mason Austin Green"]
+repository = "https://github.com/greenm01/ec4x"
+rust-version = "1.81.0"
+license = "MIT"
+edition = "2021"
+
+[workspace.dependencies]
+ec4x_core = {version = "0.1.0", path = "core"}

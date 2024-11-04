@@ -1,0 +1,12 @@
+[package]
+name = "ec4x_client"
+description = "EC4X Game Client"
+rust-version.workspace = true
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ec4x_core.workspace = true
