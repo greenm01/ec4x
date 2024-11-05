@@ -773,7 +773,7 @@ New engineering technologies are purchased directly with TRP.
   If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
   For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
   The TRP formula assumes a tax rate of 50% and a balanced budget of 40% Military, 30% R&D, 30% Other (Terraforming, Guild Services, CIC, 10% IU investment, etc..)
-  At 30% R&D EL,SL and every tech can be advanced every 1st and 7th month of the game as it becomes available.
+  At 30% R&D EL,SL and every tech can be advanced every 1st and 7th month of the game as it becomes available. Excel file "ec4x_budget.xlsx" included in GitHub repo under "assets"
   The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
   Previously the formula used exp(GHP) * 0.0025 PP which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
