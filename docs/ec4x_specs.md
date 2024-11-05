@@ -657,7 +657,7 @@ For every turn that a player misses payment for maintenance they loose five(5) p
 
 Each turn, players can invest production points in RP to further their R&D efforts.
 
-R&D upgrades will be purchased in the first and sixth months of the Terran calendar, i.e. the first and sixth turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
+R&D upgrades will be purchased in the first and seventh months of the Terran calendar, i.e. the first and seventh turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
 There are three areas of investment:
 
@@ -669,7 +669,7 @@ Economic Levels (EL) are purchased with ERP and Science Levels (SL) are purchase
 
 In standard EC4X games, Houses start at EL1 and SL1. Consider boosting these to expedite the game for impatient players, although the game year should be advanced from 2001 to match.
 
-**TODO: Add a roll for "research breakthrough" for every first and sixth month.**
+**TODO: Add a roll for "research breakthrough" for every first and seventh turn.**
 
 ## 4.2 Economic Level (EL)
 
@@ -682,13 +682,13 @@ A House's GHP benefits from EL upgrades by 5% per level, for a maximum of 50% at
 The formula for ERP in production points is:
 
 ```
-1 ERP = (10 + 0.015(GHP)) PP
+1 ERP = (5 + log(GHP)) PP
 ```
 
 Example: to purchase 10 ERPs with a GHP of 500, the cost in production points is:
 
 ```
-10 ERP = 10(10 + 0.015(500)) = 175 PP
+10 ERP = 10(5 + log(500)) = 77 PP
 ```
 
 The cost in ERP to advance one EL level is:
@@ -755,13 +755,13 @@ In EC4X, advances in engineering are tied to the Military and Industrial complex
 The cost of TRP is dependent upon the required SL for the technology being developed [^2].
 
 ```
-1 TRP = (25 + 5(SL))/10 + log(GHP) * 0.25 PP
+1 TRP = (5 + 4(SL))/10 + log(GHP) * 0.25 PP
 ```
 
 For example, to purchase 5 TRPs towards the development TER3 with a GHP of 500, the price in production points is:
 
 ```
-5 TRP = 5((25 + 5(3))/10 + log(500)(0.25)) = 23.37 PP
+5 TRP = 5((5 + 4(3))/10 + log(500)(0.25)) = 12 PP
 ```
 
 New engineering technologies are purchased directly with TRP.
@@ -772,7 +772,8 @@ New engineering technologies are purchased directly with TRP.
   As players expand their colonies, their NHV will grow. The logarithmic scaling with GHP allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
   If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
   For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
-  The TRP formula assumes a tax rate of 50% and a balanced budget of 40% Military, 40% R&D, 20% Other (Terraforming, Guild Services, CIC, IU investment, etc..)
+  The TRP formula assumes a tax rate of 50% and a balanced budget of 40% Military, 30% R&D, 30% Other (Terraforming, Guild Services, CIC, 10% IU investment, etc..)
+  At 30% R&D EL,SL and every tech can be advanced every 1st and 7th month of the game as it becomes available.
   The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
   Previously the formula used exp(GHP) * 0.0025 PP which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
