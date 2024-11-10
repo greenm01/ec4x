@@ -10,3 +10,9 @@ repository.workspace = true
 
 [dependencies]
 ec4x_core.workspace = true
+
+# external
+clap = {version = "4.5.18", features = ["derive", "string", "cargo"]}
+anyhow = "1.0"
+toml = "0.8"
+serde = {version = "1.0", features = ["derive"]}
