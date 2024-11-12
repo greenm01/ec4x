@@ -563,7 +563,7 @@ The cost of investing in IU increases based on the percentage of IU relative to 
 | 51% - 75%               | 1.2             | 36  |
 | 76% - 100%              | 1.5             | 45  |
 | 101% - 150%             | 2.0             | 60  |
-| 51% and above           | 2.5             | 75  |
+| 151% and above          | 2.5             | 75  |
 
 Prestige Bonus for Excess IU Investment:
 
