@@ -441,7 +441,7 @@ Planetary Shields protect your colonies from orbital bombardment. With increasin
 
 Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet shall not have more than one shield, and shields can be rebuilt within one turn.
 
-Ground Batteries are immobile, low-tech, land based units that have the firepower of a Battleship at half the cost. They lob kinetic shells into orbit and are not upgraded by technology and research.
+Ground Batteries are static defense units positioned on the planet’s surface. They serve as a deterrent against enemy fleets and support planetary defense during bombardment and invasion. They lob kinetic shells into orbit and are not upgraded by technology and research.
 
 Ground Batteries are the only units that are constructed in the span of a single turn, and colonies can build them to no limit.
 
@@ -547,15 +547,32 @@ NCV = GCP * tax_rate
 
 **Net House Value (NHV)**: The sum total of all colony NCV.
 
-**Tax Rate**: The tax rate that applies to all of your colonies. Taxes above 50% will slow colony birthrate; below 50% will increase it. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler.
+**Tax Rate**: The tax rate that applies to all of your colonies. Taxes above 50% will slow colony birthrate; below 50% will increase it. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler; refer to [Section 9.4](#94-prestige).
 
 **House Treasury**: NHV is transferred to the House treasury at the beginning of each month (turn). Unspent production points from each turn rollover and earn 2% interest on loans to the Space Guild.
 
-**Industrial Units (IU)**: The House can invest in the planetary industry of each colony, and placed on Level III+ colonies. IU invested above 50% of the colony's PU are directed to civilian infrastructure projects that increase House prestige.
+### **3.1.2 Industrial Units (IU)**
 
-IU cost 30 PP each. IU can be sold for 30 PP.
+Industrial Units (IU) represent investments in the manufacturing and industrial capacity of a colony. IU investments directly contribute to the Gross Colony Product (GCP) and can significantly boost the economic output of a colony.
 
-For every 10 IU invested beyond the 50% threshold, the House gains a 1% increase in prestige points.
+The cost of investing in IU increases based on the percentage of IU relative to the Population Units (PU) of the colony:
+
+| IU Investment (% of PU) | Cost Multiplier | PP  |
+| ----------------------- |:---------------:|:---:|
+| Up to 50%               | 1.0             | 30  |
+| 51% - 75%               | 1.2             | 36  |
+| 76% - 100%              | 1.5             | 45  |
+| 101% - 150%             | 2.0             | 60  |
+| 51% and above           | 2.5             | 75  |
+
+Prestige Bonus for Excess IU Investment:
+
+| IU Investment (% of PU) | One-Time Prestige Bonus |
+| ----------------------- |:-----------------------:|
+| Reaches 50% IU of PU    | +1                      |
+| Reaches 75% IU of PU    | +2                      |
+| Reaches 100% IU of PU   | +3                      |
+| Reaches 150% IU of PU   | +5                      |
 
 ## 3.2 Population Growth
 
@@ -649,7 +666,7 @@ The maintenance cost for mothballed ships is zero. Mothballed ships are placed i
 
 The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
 
-For every turn that a player misses payment for maintenance they loose five(5) prestige points.
+For every turn that a player misses payment for maintenance they loose prestige points; refer to [Section 9.4](#94-prestige).
 
 # 4.0 Research & Development
 
@@ -1184,9 +1201,9 @@ then a critical hit is achieved
 
 **Die Roll Modifiers**
 
-| Modifier | Value | Notes                               |
-| -------- |:-----:| ----------------------------------- |
-| Scouts   | +1    | Maximum benefit for all Scouts      |
+| Modifier | Value | Notes                                                |
+| -------- |:-----:| ---------------------------------------------------- |
+| Scouts   | +1    | Maximum benefit for all Scouts                       |
 | Surprise | +3    | First round only; See [Section 7.1.3](#713-cloaking) |
 | Ambush   | +4    | First round only; See [Section 7.1.3](#713-cloaking) |
 
@@ -1432,15 +1449,21 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 
 - Example: If a player's turn budget is 100 points, and they invest 7 points in EBP, they lose 2 Prestige points.
 
-| Espionage Action       | Cost in EBPs | Description                                                                              |
-| ---------------------- |:------------:| ---------------------------------------------------------------------------------------- |
-| Tech Theft             | 5            | Attempt to steal a piece of technology or critical data.                                 |
-| Sabotage (Low Impact)  | 2            | Small-scale sabotage like disrupting construction activities in spaceports or shipyards. |
-| Sabotage (High Impact) | 7            | Major sabotage efforts like sabotaging mothballed ships or ships in reserve status.      |
-| Assassination          | 10           | Attempt to eliminate a key figure within the target House.                               |
-| Cyber Attack           | 4            | Attempt to hack into the target's systems for data theft or disruption.                  |
-| Economic Manipulation  | 6            | Influence markets to harm the target's economy, trade, or Industry (IU)                  |
-| Psyops Campaign        | 3            | Launch a misinformation campaign or demoralization effort.                               |
+**Restrictions**:
+
+- Maximum of One Espionage Action Per Turn.
+
+- A player may conduct a maximum of four espionage actions per game year (equivalent to four turns per year).
+
+| Espionage Action       | Cost in EBPs | Description                                                                              | Prestige Change for Player | Prestige Change for Target |
+| ---------------------- |:------------:| ---------------------------------------------------------------------------------------- | -------------------------- | -------------------------- |
+| Tech Theft             | 5            | Attempt to steal a piece of technology or critical data.                                 | +2                         | -3                         |
+| Sabotage (Low Impact)  | 2            | Small-scale sabotage like disrupting construction activities in spaceports or shipyards. | +1                         | -1                         |
+| Sabotage (High Impact) | 7            | Major sabotage efforts like sabotaging mothballed ships or ships in reserve status.      | +3                         | -5                         |
+| Assassination          | 10           | Attempt to eliminate a key figure within the target House.                               | +5                         | -7                         |
+| Cyber Attack           | 4            | Attempt to hack into the target's systems for data theft or disruption.                  | +2                         | -3                         |
+| Economic Manipulation  | 6            | Influence markets to harm the target's economy, trade, or Industry (IU)                  | +3                         | -4                         |
+| Psyops Campaign        | 3            | Launch a misinformation campaign or demoralization effort.                               | +1                         | -2                         |
 
 **TODO: Flesh out the exact mechanics for this.**
 
@@ -1462,7 +1485,7 @@ If a player invests more than 5% of their turn budget into CIP they lose Prestig
 
 - Example: If a player's turn budget is 100 points, and they invest 8 points in CIP, they lose 3 Prestige points.
 
-When there's an espionage event, roll a 1d20 on the table below. If the roll meets or exceeds the number indexed based on your CIC level, you detect and prevent the espionage.
+When there's an espionage event, roll a 1d20 on the table below. If the roll meets or exceeds the number indexed based on your CIC level, you detect and prevent the espionage, and the attacking player loses two (2) prestige points.
 
 | CIC Level | 1d20 Roll | Probability of Detection |
 |:---------:|:---------:|:------------------------:|
@@ -1497,70 +1520,101 @@ All tables and attributes are place holders.
 ## 9.1 Space Force (WEP1)
 
 CST = Minimum CST Level
-HS = Hull Size
 PC = Production Cost
-MC = Maintenance Cost
+MC = Maintenance Cost (% of PC)
 AS = Attack Strength
 DS = Defensive Strength
 CC= Command Cost
 CR = Command Rating
 CL = Carry Limit
 
-| Class | Name              | CST | HS  | PC  | MC    | AS  | DS  | CC  | CR  | CL  |
-|:-----:| ----------------- |:---:|:---:|:---:|:-----:|:---:|:---:|:---:|:---:|:---:|
-| CT    | Corvette          | 1   | 1   | 2   | 0\.1  | 1   | 2   | 1   | 2   | NA  |
-| FG    | Frigate           | 1   | 1   | 3   | 0\.2  | 2   | 3   | 2   | 3   | NA  |
-| DD    | Destroyer         | 1   | 1   | 4   | 0\.3  | 3   | 4   | 2   | 4   | NA  |
-| CL    | Light Cruiser     | 1   | 2   | 5   | 0\.4  | 4   | 5   | 3   | 6   | NA  |
-| CA    | Heavy Cruiser     | 2   |     |     |       |     |     |     |     |     |
-| BC    | Battle Cruiser    | 3   | 2   | 6   | 0\.5  | 4   | 6   | 3   | 8   | NA  |
-| BB    | Battleship        | 4   | 3   | 8   | 1\.0  | 6   | 8   | 3   | 9   | NA  |
-| DN    | Dreadnought       | 5   | 3   | 10  | 1\.25 | 9   | 9   | 4   | 10  | NA  |
-| SD    | Super Dreadnought | 6   |     |     |       |     |     |     |     |     |
-| PB    | Planet-Breaker    | 10  |     |     |       |     |     |     |     |     |
-| CV    | Carrier           | 3   | 1   | 8   | 1\.0  | 2   | 6   | 3   | 8   | 3   |
-| CX    | Super Carrier     | 5   | 2   | 10  | 1\.5  | 3   | 9   | 4   | 10  | 5   |
-| FS    | Fighter Squadron  | 3   | 1   | 3   | 0\.2  | 3   | 2   | NA  | NA  | NA  |
-| RR    | Raider            | 3   | 2   | 25  | 0\.5  | 4   | 6   | 3   | 4   | 0   |
-| SC    | Scout             | 1   | 1   | 15  | 0\.1  | 0   | 1   | 1   | NA  | NA  |
-| SB    | Starbase          | 3   | 3   | 50  | 2.5   | 45  | 50  | NA  | NA  | NA  |
+| Class | Name              | CST | PC  | MC  | AS  | DS  | CC  | CR  | CL  |
+|:-----:| ----------------- |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| CT    | Corvette          | 1   | 20  | 3%  | 2   | 3   | 1   | 2   | NA  |
+| FG    | Frigate           | 1   | 30  | 3%  | 3   | 4   | 2   | 3   | NA  |
+| DD    | Destroyer         | 1   | 40  | 3%  | 5   | 6   | 2   | 4   | NA  |
+| CL    | Light Cruiser     | 1   | 60  | 3%  | 8   | 9   | 3   | 6   | NA  |
+| CA    | Heavy Cruiser     | 2   | 80  | 4%  | 12  | 13  | 3   | 7   | NA  |
+| BC    | Battle Cruiser    | 3   | 100 | 4%  | 16  | 18  | 3   | 8   | NA  |
+| BB    | Battleship        | 4   | 150 | 4%  | 20  | 25  | 3   | 9   | NA  |
+| DN    | Dreadnought       | 5   | 200 | 5%  | 28  | 30  | 4   | 10  | NA  |
+| SD    | Super Dreadnought | 6   | 250 | 5%  | 35  | 40  | 5   | 12  | NA  |
+| PB    | Planet-Breaker    | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
+| CV    | Carrier           | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
+| CX    | Super Carrier     | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
+| FS    | Fighter Squadron  | 3   | 20  | 3%  | 4   | 3   | NA  | NA  | NA  |
+| RR    | Raider            | 3   | 150 | 4%  | 12  | 10  | 3   | 4   | NA  |
+| SC    | Scout             | 1   | 50  | 1%  | 1   | 2   | 1   | NA  | NA  |
+| SB    | Starbase          | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
 
 ## 9.2 Ground Units
 
 | **Class** | **Name**         | CST | PC  | MC  | AS  | DS  |
 | --------- | ---------------- |:---:| --- | --- |:---:|:---:|
-| PS        | Planetary Shield | 5   | 35  | 2.0 | 0   | 50  |
-| GB        | Ground Batteries | 1   | 4   | 0.1 | 6   | 2   |
-| AA        | Armies           | 1   | 2   | 0.2 | 2   | 3   |
-| MD        | Space Marines    | 1   | 3   | 0.2 | 3   | 2   |
+| PS        | Planetary Shield | 5   | 100 | 5%  | 0   | 100 |
+| GB        | Ground Batteries | 1   | 20  | 3%  | 10  | 8   |
+| AA        | Armies           | 1   | 15  | 2%  | 3   | 5   |
+| MD        | Space Marines    | 1   | 25  | 2%  | 6   | 6   |
 
 ## 9.3 Spacelift Command
 
-| **Class** | **Name**         | CST | PC  | MC  | CL  |
-|:---------:| ---------------- |:---:|:---:|:---:|:---:|
-| SP        | Spaceport        | 1   | 20  | 1.0 | 5   |
-| SY        | Shipyard         | 1   | 30  | 2.0 | 10  |
-| ET        | ETAC             | 1   | 15  | 0.3 | 1   |
-| TT        | Troop Transports | 1   | 5   | 0.2 | 1   |
+| **Class** | **Name**         | CST | PC  | MC  | CL  | DS  |
+|:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
+| SP        | Spaceport        | 1   | 100 | 5%  | 5   | 50  |
+| SY        | Shipyard         | 1   | 150 | 5%  | 10  | 70  |
+| ET        | ETAC             | 1   | 50  | 3%  | 1   | 10  |
+| TT        | Troop Transports | 1   | 30  | 3%  | 1   | 15  |
 
 ## 9.4 Prestige
 
-TODO: Provide a prestige table showing the various factors, both positive and negative.
+| **Category**      | **Action/Event**                               | **Prestige Change** |
+| ----------------- | ---------------------------------------------- |:-------------------:|
+| **Economic**      | Establish a new colony                         | +5                  |
+|                   | Max out the population of a colony             | +3                  |
+|                   | Reach 50% IU of PU (per colony)                | +1                  |
+|                   | Reach 75% IU of PU (per colony)                | +2                  |
+|                   | Reach 100% IU of PU (per colony)               | +3                  |
+|                   | Reach 150% IU of PU (per colony)               | +5                  |
+|                   | Increase a planet’s class via terraforming     | +5                  |
+|                   | Achieve a new tech level                       | +2                  |
+| **Military**      | Destroy an enemy Task Force                    | +3                  |
+|                   | Force an enemy Task Force to retreat           | +2                  |
+|                   | Invade or blitz a planet successfully          | +10                 |
+|                   | Lose a planet to an enemy                      | -10                 |
+|                   | Get ambushed by a cloaked fleet                | -1                  |
+|                   | Lose a Starbase                                | -5                  |
+|                   | Destroy an enemy Starbase                      | +5                  |
+| **Espionage**     | Successful Tech Theft                          | +2                  |
+|                   | Successful Low-Impact Sabotage                 | +1                  |
+|                   | Successful High-Impact Sabotage                | +3                  |
+|                   | Successful Assassination                       | +5                  |
+|                   | Successful Cyber Attack                        | +2                  |
+|                   | Successful Economic Manipulation               | +3                  |
+|                   | Successful Psyops Campaign                     | +1                  |
+|                   | Failed espionage action (detected)             | -2                  |
+|                   | Over-investment in Espionage Budget (> 5%)     | -1 per excess 1%    |
+|                   | Over-investment in Counter-Intelligence (> 5%) | -1 per excess 1%    |
+| **Scout Actions** | Successful Spy on a Planet                     | +1                  |
+|                   | Successful Hack of a Starbase                  | +2                  |
+|                   | Successful Spy on a System                     | +1                  |
+|                   | Scout detected and destroyed                   | -3                  |
+| **Setbacks**      | Excessive tax rate (> 65%) per turn            | -2 (cumulative)     |
+|                   | Failure to meet maintenance costs (per turn)   | -5 (cumulative)     |
 
-- Completely destroy a Task Force (+)
-- Force a task force to retreat (+)
-- Invade or blitz a planet (++)
-- Lose a planet (--)
-- Get surprised by a rogue fleet (-)
-- Get ambushed by a rogue fleet (-)
-- Lose a Starbase (-)
-- Destroy a Starbase (+)
-- Establish a new colony (+)
-- Max out the population of a colony (+)
-- Increase a planet's class via terraforming (+)
-- Excessive tax rate (-)
-- Invest IU above 50% of a colony's PU (+)
-- Achieve a new tech level (+)
-- Sabotage a rival Shipyard (+)
-- Spy on an rival's colony (+)
-- And so on.... get creative
+### Notes on Cumulative Penalties:
+
+1. **Excessive Tax Rate Penalty**:
+   
+   - Penalty escalates for consecutive turns above the 65% tax rate:
+     - Turn 1: -2 points
+     - Turn 2: -3 points (cumulative total: -5 points)
+     - Turn 3: -4 points (cumulative total: -9 points)
+     - Continues increasing by 1 additional point each turn.
+
+2. **Missed Maintenance Costs Penalty**:
+   
+   - Penalty escalates for consecutive turns of missed maintenance payments:
+     - Turn 1: -5 points
+     - Turn 2: -7 points (cumulative total: -12 points)
+     - Turn 3: -9 points (cumulative total: -21 points)
+     - Continues increasing by 2 additional points each turn.
