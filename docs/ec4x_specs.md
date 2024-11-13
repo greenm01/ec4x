@@ -1554,7 +1554,7 @@ CL = Carry Limit
 | SC    | Scout             | 1   | 50  | 1%  | 1   | 2   | 1   | NA  | NA  |
 | SB    | Starbase          | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
 
-## 9.2 Ground Units
+## 9.2 Ground Units (WEP1)
 
 | **Class** | **Name**         | CST | PC  | MC  | AS  | DS  |
 | --------- | ---------------- |:---:| --- | --- |:---:|:---:|
@@ -1563,7 +1563,7 @@ CL = Carry Limit
 | AA        | Armies           | 1   | 15  | 2%  | 3   | 5   |
 | MD        | Space Marines    | 1   | 25  | 2%  | 6   | 6   |
 
-## 9.3 Spacelift Command
+## 9.3 Spacelift Command  (WEP1)
 
 | **Class** | **Name**         | CST | PC  | MC  | CL  | DS  |
 |:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
