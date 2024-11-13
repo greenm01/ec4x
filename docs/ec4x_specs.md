@@ -194,7 +194,7 @@ The Spacelift Command provides commerce and transportation services in support o
 
 Spacelift assets have no offensive weapons capability, and un-escorted units are easily destroyed by rival forces. 
 
-Spacelift Command attributes are listed in [Section 9.3](#93-spacelift-command).
+Spacelift Command attributes are listed in [Section 9.3](#93-spacelift-command-WEP1).
 
 #### 2.3.2.1 Spaceports
 
