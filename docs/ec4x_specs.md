@@ -747,7 +747,7 @@ Example: To purchase 10 SRPs at SL2, the price in production points is:
 10 SRP = 10(2 + 2(0.5)) = 30 PP
 ```
 
-The cost in SRP to advance one SL level is:
+For SL1 to SL5, the cost in SRP to advance one SL level is:
 
 ```
 SRP = 20 + SL(5)
