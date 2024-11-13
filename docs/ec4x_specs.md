@@ -1563,7 +1563,7 @@ CL = Carry Limit
 | AA        | Armies           | 1   | 15  | 2%  | 3   | 5   |
 | MD        | Space Marines    | 1   | 25  | 2%  | 6   | 6   |
 
-## 9.3 Spacelift Command  (WEP1)
+## 9.3 Spacelift Command (WEP1)
 
 | **Class** | **Name**         | CST | PC  | MC  | CL  | DS  |
 |:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
