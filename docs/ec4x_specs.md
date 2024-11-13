@@ -527,10 +527,10 @@ An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the 
 GCO = (PU × RAW_INDEX) + (IU × EL_MOD × (1 + PROD_GROWTH))
 ```
 Where:
-- PU: Productivity Units of the colony
-- RAW_INDEX: Resource quality index based on the planet's classification
+- PU: Population Units of the colony
+- RAW_INDEX: Resource quality index based on the solar system's mineral abundance. 
 - IU: Industrial Units at the colony
-- EL_MOD: Economic Level Modifier, based on the colony's tech level
+- EL_MOD: Economic Level Modifier, based on the colony's EL tech level
 - PROD_GROWTH: Productivity growth rate influenced by the tax rate
   
 **RAW INDEX Table**
@@ -762,7 +762,7 @@ SRP = 20 + SL(5) (Maxing at 55 SRP)
 | 07  | 55       |
 | 08+ | 55       |
 
-## 4.4 Technology Research Pounts (TRP)
+## 4.4 Technology Research Points (TRP)
 
 Engineering is the practical application of science, and thus dependent upon advances in SL. Engineering advancements are made with direct investment in TRP.
 
@@ -957,10 +957,10 @@ Shipyard construction of a ship in orbit is the standard method of commissioning
 
 Ship repairs require a Shipyard. The cost of repair equals one quarter (25%) of the unit's PC.
 
-Example: A player wishes to repair a crippled tech-level III Cruiser. The cost is:
+Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 
 ```
-7 * 0.25 = 1.75 PP.
+72.6 * 0.25 = 18.15 PP.
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
