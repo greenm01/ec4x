@@ -707,11 +707,13 @@ Example: to purchase 10 ERPs with a GHO of 500, the cost in production points is
 10 ERP = 10(5 + log(500)) = 77 PP
 ```
 
-The cost in ERP to advance one EL level is:
+For EL1 to EL5 The cost in ERP to advance one EL level is:
 
 ```
-ERP = 40 + EL(10) (maxing at 140 ERP)
+ERP = 40 + EL(10)
 ```
+
+After EL5 the cost increases linearly by 15 points per EL level.
 
 | EL  | ERP Cost | EL MOD |
 |:---:|:--------:|:------:|
@@ -720,12 +722,12 @@ ERP = 40 + EL(10) (maxing at 140 ERP)
 | 03  | 70       | 0.15   |
 | 04  | 80       | 0.20   |
 | 05  | 90       | 0.25   |
-| 06  | 100      | 0.30   |
-| 07  | 110      | 0.35   |
-| 08  | 120      | 0.40   |
-| 09  | 130      | 0.45   |
-| 10  | 140      | 0.50   |
-| 11+ | 140      | 0.50   |
+| 06  | 105      | 0.30   |
+| 07  | 120      | 0.35   |
+| 08  | 135      | 0.40   |
+| 09  | 150      | 0.45   |
+| 10  | 165      | 0.50   |
+| 11+ | 180+     | 0.50   |
 
 ## 4.3 Science Level (SL)
 
@@ -748,8 +750,10 @@ Example: To purchase 10 SRPs at SL2, the price in production points is:
 The cost in SRP to advance one SL level is:
 
 ```
-SRP = 20 + SL(5) (Maxing at 55 SRP)
+SRP = 20 + SL(5)
 ```
+
+After SL5, the cost increases linearly by 10 per level.
 
 | SL  | SRP Cost |
 |:---:|:--------:|
@@ -758,9 +762,9 @@ SRP = 20 + SL(5) (Maxing at 55 SRP)
 | 03  | 35       |
 | 04  | 40       |
 | 05  | 45       |
-| 06  | 50       |
-| 07  | 55       |
-| 08+ | 55       |
+| 06  | 55       |
+| 07  | 65       |
+| 08+ | 75+      |
 
 ## 4.4 Technology Research Points (TRP)
 
@@ -771,13 +775,13 @@ In EC4X, advances in engineering are tied to the Military and Industrial complex
 The cost of TRP is dependent upon the required SL for the technology being developed [^2].
 
 ```
-1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.25 PP
+1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.5 PP
 ```
 
 For example, to purchase 5 TRPs towards the development TER3 with a GHO of 500, the price in production points is:
 
 ```
-5 TRP = 5((5 + 4(3))/10 + log(500)(0.25)) = 12 PP
+5 TRP = 5((5 + 4(3))/10 + log(500)(0.5)) = 15.25 PP
 ```
 
 New engineering technologies are purchased directly with TRP.
