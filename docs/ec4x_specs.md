@@ -622,13 +622,13 @@ The cost is expensive and dependent upon the livable conditions of the destinati
 
 | Conditions | PP/PTU |
 | ---------- |:------:|
-| Eden       | 5      |
-| Lush       | 6      |
-| Benign     | 8      |
-| Harsh      | 11     |
-| Hostile    | 14     |
-| Desolate   | 18     |
-| Extreme    | 25     |
+| Eden       | 4      |
+| Lush       | 5      |
+| Benign     | 6      |
+| Harsh      | 8      |
+| Hostile    | 10     |
+| Desolate   | 12     |
+| Extreme    | 15     |
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
