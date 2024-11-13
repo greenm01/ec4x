@@ -604,7 +604,7 @@ R&D investments allow players to increase their Economic Level Modifier (EL_MOD)
 
 ## 3.6 Population Growth
 
-Colonists are hard at work making babies for the House, and the PTU growth rate under normal conditions is 1% per turn.
+Colonists are hard at work making babies for the House, and the PTU growth rate under normal conditions is 1.5% per turn.
 
 A logistical growth function is used for the calculation. Each planet class has an upper bound on the population it can support. This gives a nice 's' curve distribution, and lends incentive to terraform less hospitable planets.
 
