@@ -1543,9 +1543,9 @@ CL = Carry Limit
 | CL    | Light Cruiser     | 1   | 60  | 3%  | 8   | 9   | 3   | 6   | NA  |
 | CA    | Heavy Cruiser     | 2   | 80  | 4%  | 12  | 13  | 3   | 7   | NA  |
 | BC    | Battle Cruiser    | 3   | 100 | 4%  | 16  | 18  | 3   | 8   | NA  |
-| BB    | Battleship        | 4   | 150 | 4%  | 20  | 25  | 3   | 9   | NA  |
-| DN    | Dreadnought       | 5   | 200 | 5%  | 28  | 30  | 4   | 10  | NA  |
-| SD    | Super Dreadnought | 6   | 250 | 5%  | 35  | 40  | 5   | 12  | NA  |
+| BB    | Battleship        | 4   | 150 | 4%  | 20  | 25  | 3   | 10  | NA  |
+| DN    | Dreadnought       | 5   | 200 | 5%  | 28  | 30  | 4   | 12  | NA  |
+| SD    | Super Dreadnought | 6   | 250 | 5%  | 35  | 40  | 5   | 14  | NA  |
 | PB    | Planet-Breaker    | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
 | CV    | Carrier           | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
 | CX    | Super Carrier     | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
