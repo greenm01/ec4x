@@ -70,6 +70,8 @@ Poor colony management will tarnish your House's legacy, while over-exposure to 
 
 Flexibility and strategic foresight are your greatest tools in the quest for power. Use every resource and opportunity the game provides to crush your rivals and ensure the dominance of your House.
 
+Players start the game with 50 prestige pounts.
+
 If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
 
 A table of prestige values is listed in [Section 9.4](#94-prestige).
@@ -105,7 +107,7 @@ Updated player databases, unique to each House, are reissued by the game moderat
 
 Players receive new reports that reflect updated economics and the outcome of orders issued in the previous turn. This can be achieved through email, on a server, or locally on a laptop for tabletop play.
 
-In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.4](#34-expenditures)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
+In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.4](#38-expenditures)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
 
 ### 1.3.2 Command Phase
 
@@ -471,23 +473,23 @@ The Guilds are contracted to provide various critical services to the House, mos
 
 # 3.0 Economics
 
+Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity. 
+
 The standard unit of account in EC4X the Production Point (PP).
 
-The power of a House is fueled by economic might, which in turn is a function of population growth and gains in science and technology.
+The economic power of a House is fueled by productivity, industrial capacity, and technological growth. Strategic decisions around taxation, industrial investment, and research & development (R&D) will directly impact a player's economic output and military strength.
 
-Production points settle near instantaneously on the inter-dimensional Phoenix network. (All comms and data transfers are instantaneous. Don't question; it's magic).
+Production points settle near instantaneously on the inter-dimensional Phoenix network. (All comms and data transfers are instantaneous).
 
 ## 3.1 Principles
 
-**Population Unit (PU)**: A unit of population that provides 1 production point of productivity to the House.
+**Population Unit (PU)**: Represents a measure of economic production rather than raw population size.
 
 **Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately 50k souls. 
 
 The relationship between PSU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
 This model is dis-inflationary; inflation asymptotically approaches zero over time.
-
-Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity.  
 
 A high PSU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentives expanding population across newly acquired planets.
 
@@ -519,12 +521,18 @@ An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the 
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/pu_to_ptu.png)
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/ptu_to_pu.png)
 
-**Gross Colony Product (GCP)**: A monetary measure of the market value of all the final goods and services produced and rendered in a turn for each of your colonies, measured in production points.
+**Gross Colony Output (GCO)**: The total economic output of a colony, expressed in production points. GCO is determined by the productivity of the colony, industrial investments, resource availability, and technological enhancements.
 
 ```
-GCP = (PU * raw_index + IU) * el_mod
+GCO = (PU × RAW_INDEX) + (IU × EL_MOD × (1 + PROD_GROWTH))
 ```
-
+Where:
+- PU: Productivity Units of the colony
+- RAW_INDEX: Resource quality index based on the planet's classification
+- IU: Industrial Units at the colony
+- EL_MOD: Economic Level Modifier, based on the colony's tech level
+- PROD_GROWTH: Productivity growth rate influenced by the tax rate
+  
 **RAW INDEX Table**
 
 | RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |
@@ -537,25 +545,42 @@ GCP = (PU * raw_index + IU) * el_mod
 
 Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habitable conditions.
 
-**Gross House Product (GHP)**: The sum total of all colony GCP.
+**Gross House Output (GHO)**: The sum total of all colony GCO.
 
-**Net Colony Value (NCV)**: The net value of taxes collected from each of your colonies.
+## 3.2 Taxation and Productivity Growth
+
+Tax policy is a critical lever for managing the economy. The Tiered Taxation System links the tax rate directly to productivity growth, impacting economic output and House prestige [Section 9.4](#94-prestige).
+
+The baseline productivity growth (PROD_GROWTH) rate is 3%.
+
+### Tiered Taxation Table
+
+| Tax Rate | Effect on Productivity Growth | Effect on NCV (Tax Revenue) | Prestige Impact                     |
+|----------|-------------------------------|-----------------------------|-------------------------------------|
+| < 30%    | +1.0% to PROD_GROWTH          | Low revenue                 | +1 prestige per turn (max +5 total) |
+| 30%-50%  | No change (baseline)          | Normal revenue              | No prestige impact                  |
+| 51%-65%  | -0.5% to PROD_GROWTH          | High revenue                | -1 prestige every 3 turns           |
+| > 65%    | -1.0% to PROD_GROWTH          | Very high revenue           | -2 prestige every 5 turns           |
+
+Explanation:
+- Low Tax Rate (<30%): Encourages productivity growth, simulating a favorable economic environment. Provides lower immediate revenue but increases long-term economic output. Small prestige gain (+1 per turn, capped at +5 total).
+- Moderate Tax Rate (30%-50%): Balanced approach with no changes to productivity growth. Provides steady revenue and avoids any prestige impact.
+- High Tax Rate (51%-65%): Increases short-term revenue but slightly reduces productivity growth (-0.5%). Minor prestige penalty (-1 point every 3 turns) reflects mild discontent from heavier taxation.
+- Very High Tax Rate (>65%): Maximizes short-term revenue at the cost of long-term productivity (-1.0% to growth). Moderate prestige penalty (-2 points every 5 turns), reflecting significant public discontent and potential economic strain.
+
+## 3.3 Net Colony Value (NCV) and Treasury Management
+
+Net Colony Value (NCV): Represents the net tax revenue collected from each colony.
 
 ```
-NCV = GCP * tax_rate
+NCV = GCO × tax rate
 ```
 
-**Net House Value (NHV)**: The sum total of all colony NCV.
+Net House Value (NHV): The sum total of all NCVs across the player's colonies. NHV is transferred to the House treasury at the beginning of each turn.
 
-**Tax Rate**: The tax rate that applies to all of your colonies. Taxes above 50% will slow colony birthrate; below 50% will increase it. Setting the tax rate above 65% will result in a negative impact to your prestige as a ruler; refer to [Section 9.4](#94-prestige).
+### **3.4 Industrial Investments and Productivity Growth**
 
-**House Treasury**: NHV is transferred to the House treasury at the beginning of each month (turn). Unspent production points from each turn rollover and earn 2% interest on loans to the Space Guild.
-
-### **3.1.2 Industrial Units (IU)**
-
-Industrial Units (IU) represent investments in the manufacturing and industrial capacity of a colony. IU investments directly contribute to the Gross Colony Product (GCP) and can significantly boost the economic output of a colony.
-
-The cost of investing in IU increases based on the percentage of IU relative to the Population Units (PU) of the colony:
+Investing in Industrial Units (IU) increases the manufacturing capacity of a colony, directly boosting GCO. The cost of IU investments scales based on the percentage of IU relative to the colony's PU.
 
 | IU Investment (% of PU) | Cost Multiplier | PP  |
 | ----------------------- |:---------------:|:---:|
@@ -565,18 +590,21 @@ The cost of investing in IU increases based on the percentage of IU relative to 
 | 101% - 150%             | 2.0             | 60  |
 | 151% and above          | 2.5             | 75  |
 
-Prestige Bonus for Excess IU Investment:
+## 3.5 Research & Development (R&D)
 
-| IU Investment (% of PU) | One-Time Prestige Bonus |
-| ----------------------- |:-----------------------:|
-| Reaches 50% IU of PU    | +1                      |
-| Reaches 75% IU of PU    | +2                      |
-| Reaches 100% IU of PU   | +3                      |
-| Reaches 150% IU of PU   | +5                      |
+R&D investments allow players to increase their Economic Level Modifier (EL_MOD), boosting overall productivity. Advancing tech levels requires significant PP investment but provides exponential benefits to GCO.
 
-## 3.2 Population Growth
+| EL Level | EL_MOD Increase | PP Cost |
+|----------|-----------------|---------|
+| EL1      | +5%             | 50 PP   |
+| EL2      | +10%            | 60 PP   |
+| EL3      | +15%            | 70 PP   |
+| EL4      | +20%            | 80 PP   |
+| EL5      | +25%            | 90 PP   |
 
-Colonists are hard at work making babies for the House, and the population growth rate under normal conditions is 2% (preliminary) per turn.
+## 3.6 Population Growth
+
+Colonists are hard at work making babies for the House, and the PTU growth rate under normal conditions is 1% per turn.
 
 A logistical growth function is used for the calculation. Each planet class has an upper bound on the population it can support. This gives a nice 's' curve distribution, and lends incentive to terraform less hospitable planets.
 
@@ -584,42 +612,7 @@ A logistical growth function is used for the calculation. Each planet class has 
 
 ![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/logistic_population_growth.png)
 
-### 3.2.1 Tax Rate Influence on Birth Rate
-
-**Below 50% Tax Rate**: The birth rate increases by 0.1% for every 1% decrease in tax rate, encouraging a more prosperous, less taxed society:
-
-Increased Birth Rate = 2% + (50% - Tax Rate) * 0.1%
-
-**Above 50% Tax Rate**: The birth rate decreases by 0.1% for every 1% increase in tax rate, reflecting the economic strain of higher taxes:
-
-Decreased Birth Rate = 2% - (Tax Rate - 50%) * 0.1%
-
-**Prestige Penalty:**
-
-If the tax rate exceeds 65%, there's an additional penalty on your prestige, reflecting public discontent with high taxation:
-
-Prestige Penalty = (Tax Rate - 65%) * 2 points per turn
-
-### Examples:
-
-```
-Tax Rate at 45%:
-
-  Birth Rate = 2% + (50% - 45%) * 0.1% = 2.5%
-
-Tax Rate at 55%:
-
-  Birth Rate = 2% - (55% - 50%) * 0.1% = 1.5%
-
-Tax Rate at 66%:
-
-  Birth Rate = 2% - (66% - 50%) * 0.1% = 1.4%
-  Prestige Penalty = (66% - 65%) * 2 = 2 prestige points per turn
-```
-
-The tax rate not just a financial decision but also one that impacts population growth and loyalty to the House, as reflected by prestige. Players must balance their need for revenue with the health and growth of their colonies.
-
-## 3.3 Colonization
+## 3.7 Colonization
 
 ETACs plant a flag in unoccupied Solar Systems and set the initial conditions for terraforming. Their capacity to move PTU is limited to one unit.
 
@@ -639,7 +632,7 @@ The cost is expensive and dependent upon the livable conditions of the destinati
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
-## 3.4 Expenditures
+## 3.8 Expenditures
 
 Each turn, the Duke can allocate Treasury funds as follows:
 
@@ -654,7 +647,7 @@ Each turn, the Duke can allocate Treasury funds as follows:
 - Counter Intelligence: Defense against espionage.
 - Savings & Investment: Financial reserves and investments for future growth.
 
-## 3.4 Maintenance Costs
+## 3.9 Maintenance Costs
 
 At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](#90-data-tables).
 
@@ -667,6 +660,12 @@ The maintenance cost for mothballed ships is zero. Mothballed ships are placed i
 The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
 
 For every turn that a player misses payment for maintenance they loose prestige points; refer to [Section 9.4](#94-prestige).
+
+## 3.10 Strategic Considerations
+
+- Balancing Tax Rate: The tiered system encourages players to weigh the benefits of increased revenue against potential losses in productivity growth and prestige. A high tax rate can provide immediate revenue but may harm long-term economic stability.
+- Investing in Infrastructure: Strategic investments in IU and R&D will enhance productivity growth, compensating for potential tax rate penalties.
+- Adaptation to Game Phases: In the early game, players may prefer lower tax rates to boost productivity growth and build a strong economic base. In the mid and late game, shifting to a higher tax rate may be necessary to fund large-scale military operations or R&D projects.
 
 # 4.0 Research & Development
 
@@ -694,15 +693,15 @@ EL represents the entrepreneurial skills and general education level of House ci
 
 EL is not a specific reflection of scientific or technological advancement, although they are correlated.
 
-A House's GHP benefits from EL upgrades by 5% per level, for a maximum of 50% at EL10+. The economy is tied to entrepreneurial ambition and citizen education.
+A House's GHO benefits from EL upgrades by 5% per level, for a maximum of 50% at EL10+. The economy is tied to entrepreneurial ambition and citizen education.
 
 The formula for ERP in production points is:
 
 ```
-1 ERP = (5 + log(GHP)) PP
+1 ERP = (5 + log(GHO)) PP
 ```
 
-Example: to purchase 10 ERPs with a GHP of 500, the cost in production points is:
+Example: to purchase 10 ERPs with a GHO of 500, the cost in production points is:
 
 ```
 10 ERP = 10(5 + log(500)) = 77 PP
@@ -763,7 +762,7 @@ SRP = 20 + SL(5) (Maxing at 55 SRP)
 | 07  | 55       |
 | 08+ | 55       |
 
-## 4.4 Engineering R&D
+## 4.4 Technology Research Pounts (TRP)
 
 Engineering is the practical application of science, and thus dependent upon advances in SL. Engineering advancements are made with direct investment in TRP.
 
@@ -772,10 +771,10 @@ In EC4X, advances in engineering are tied to the Military and Industrial complex
 The cost of TRP is dependent upon the required SL for the technology being developed [^2].
 
 ```
-1 TRP = (5 + 4(SL))/10 + log(GHP) * 0.25 PP
+1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.25 PP
 ```
 
-For example, to purchase 5 TRPs towards the development TER3 with a GHP of 500, the price in production points is:
+For example, to purchase 5 TRPs towards the development TER3 with a GHO of 500, the price in production points is:
 
 ```
 5 TRP = 5((5 + 4(3))/10 + log(500)(0.25)) = 12 PP
@@ -786,13 +785,13 @@ New engineering technologies are purchased directly with TRP.
 \* Starting at Science Level 1 (SL1), each subsequent level of technology requires an additional 5 Technology Research Points (TRP) more than the previous level, with the initial cost being 25 TRP for the first level.
 
 [^2]: **Game Designer Notes**:
-  As players expand their colonies, their NHV will grow. The logarithmic scaling with GHP allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
+  As players expand their colonies, their NHV will grow. The logarithmic scaling with GHO allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
   If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
   For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
   The TRP formula assumes a tax rate of 50% and a balanced budget of 40% Military, 30% R&D, 30% Other (Terraforming, Guild Services, CIC, 10% IU investment, etc..)
   At 30% R&D EL,SL and every tech can be advanced every 1st and 7th month of the game as it becomes available. Excel file "ec4x_budget.xlsx" included in GitHub repo under "assets"
   The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
-  Previously the formula used exp(GHP) * 0.0025 PP which grows the cost way too quickly in relation to GHP. Conversely, log(GHP) increases very slowly as GHP grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
+  Previously the formula used exp(GHO) * 0.0025 PP which grows the cost way too quickly in relation to GHO. Conversely, log(GHO) increases very slowly as GHO grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
 ## 4.5 Construction (CST)
 
@@ -922,6 +921,12 @@ The CIC enhances security measures to shield the House from espionage threats po
 
 The maximum CIC level is CIC5.
 
+## 4.12 Strategic Considerations
+
+- Balancing R&D Investments: Players must balance investments across ERP, SRP, and TRP to maximize their economic output, technological advancements, and military strength.
+- Economic Synergies: Increasing EL and SL together can provide synergistic benefits, enhancing overall productivity and unlocking powerful technologies.
+- Adapting to Opponents: Flexibility in R&D strategy is key. Prioritizing weapons technology (WEP) during a military conflict or focusing on terraforming (TER) for long-term economic growth can be critical decisions based on the game state.
+
 # 5.0 Construction
 
 Construction and repair of House assets is accomplished planet-side or in orbit, with restrictions. 
@@ -1026,7 +1031,7 @@ Order a fleet to block hostile forces from approaching a planet.
 
 **Blockade**: Fleets are ordered to blockade an enemy planet and do not engage in Space Combat unless confronted by enemy ships under order 05.
 
-Colonies under blockaded reduce their GCP by 60%. Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale. House Prestige is reduced by 2 points every turn a colony is under blockade.
+Colonies under blockaded reduce their GCO by 60%. Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale. House Prestige is reduced by 2 points every turn a colony is under blockade.
 
 ### 6.2.7 Bombard a Planet (06):
 
