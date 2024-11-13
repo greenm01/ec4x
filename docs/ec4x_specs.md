@@ -70,7 +70,7 @@ Poor colony management will tarnish your House's legacy, while over-exposure to 
 
 Flexibility and strategic foresight are your greatest tools in the quest for power. Use every resource and opportunity the game provides to crush your rivals and ensure the dominance of your House.
 
-Players start the game with 50 prestige pounts.
+Players start the game with 50 prestige points.
 
 If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
 
@@ -487,33 +487,33 @@ Production points settle near instantaneously on the inter-dimensional Phoenix n
 
 **Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately 50k souls. 
 
-The relationship between PSU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
+The relationship between PTU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
 This model is dis-inflationary; inflation asymptotically approaches zero over time.
 
-A high PSU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentives expanding population across newly acquired planets.
+A high PTU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentives expanding population across newly acquired planets.
 
-The equations (in Python) for converting PU to PSU:
+The equations (in Python) for converting PU to PTU:
 
 ```
-  psu = pu - 1 + np.exp(0.00657 * pu)
+  PTU = pu - 1 + np.exp(0.00657 * pu)
 ```
 
-Code for converting PSU back to PU:
+Code for converting PTU back to PU:
 
 ```
 import numpy as np
 from scipy.special import lambertw
 
-psu = 100000 #example
+PTU = 100000 #example
 
 def logsumexp(x):
     c = x.max()
     return c + np.log(np.sum(np.exp(x - c)))
 
-x = np.float64(657*(psu + 1)/100000)
+x = np.float64(657*(PTU + 1)/100000)
 
-pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + psu + 1
+pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + PTU + 1
 ```
 
 An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo.
