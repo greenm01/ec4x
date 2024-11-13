@@ -107,7 +107,7 @@ Updated player databases, unique to each House, are reissued by the game moderat
 
 Players receive new reports that reflect updated economics and the outcome of orders issued in the previous turn. This can be achieved through email, on a server, or locally on a laptop for tabletop play.
 
-In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.4](#38-expenditures)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
+In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.8](#38-expenditures)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
 
 ### 1.3.2 Command Phase
 
