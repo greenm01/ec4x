@@ -1524,8 +1524,6 @@ Over-investment in either EBP or CIP highlights a strategic imbalance, potential
 
 # 9.0 Data Tables
 
-All tables and attributes are place holders.
-
 ## 9.1 Space Force (WEP1)
 
 CST = Minimum CST Level
