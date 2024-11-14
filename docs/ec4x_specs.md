@@ -263,13 +263,13 @@ For every turn that a spy Scout operates in unfriendly system occupied by rival 
 For a fleet with Scouts of different ELI tech levels:
 
 1. Calculate the Weighted Average:
-   - Sum the ELI tech levels of all Scouts in the fleet.
-   - Divide by the total number of Scouts.
-   - Round up to determine the initial effective ELI level.
+- Sum the ELI tech levels of all Scouts in the fleet.
+- Divide by the total number of Scouts.
+- Round up to determine the initial effective ELI level.
 2. Apply Dominant Tech Level Penalty:
-   - If more than 50% of the Scouts are of a lower ELI tech level than the rounded average, reduce the effective ELI level by 1.
+- If more than 50% of the Scouts are of a lower ELI tech level than the average (round up), reduce the effective ELI level by 1.
 3. Mesh Network Modifier:
-   - Multiple ELI Scouts form a mesh network, enhancing detection capabilities. Apply a modifier based on the number of Scouts from the table below:
+- Multiple ELI Scouts form a mesh network, enhancing detection capabilities. Apply a modifier based on the number of Scouts from the table below:
 
 | Number of Scouts | Mesh Network Modifier |
 |:----------------:| --------------------- |
@@ -279,7 +279,7 @@ For a fleet with Scouts of different ELI tech levels:
 | 6+               | +3 (maximum)          |
 
 4. Final Effective ELI Level:
-   - Combine the effective ELI level with the mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
+- Combine the effective ELI level with the tech penalty and mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
 
 **Starbases operate as independent ELI units and receive a +2 ELI modifier against spy scouts.**
 
@@ -299,10 +299,10 @@ For a fleet with Scouts of different ELI tech levels:
 | Spy ELI5    | NA     | >18-20 | >17-19 | >15-17 | >11-3 |
 
 3. Random Threshold Determination:
-   - Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
-   - This introduces slight variability to the detection roll, adding an element of unpredictability.
+- Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
+- This introduces slight variability to the detection roll, adding an element of unpredictability.
 4. Roll 1D20 for the detection attempt:
-   - If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
+- If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
 
 **Example 1: Fleet with Mixed ELI Tech**
 
@@ -316,7 +316,7 @@ Number of units: 5
 Weighted Average: 16 / 5 = 3.2 (Round up) → ELI4
 
 Dominant Tech Level Penalty: 
-More than 50% of Scouts are ELI2 (lower tech), so  reduce by 1 → ELI3
+More than 50% of Scouts are ELI2 (lower tech, rounded up), so  reduce by 1 → ELI3
 
 Mesh Network Modifier: +2 (for 4-5 Scouts)
 Final Effective ELI Level: ELI3 + 2 = ELI5 (capped at ELI5)
@@ -383,7 +383,6 @@ Determine the effective ELI level following the same method from Step 1 in [Sect
 **Step 2: Determine Detection Threshold**
 
 Compare the final effective ELI level with the CLK level of the Raider unit:
-
 - If the ELI level is 2+ levels higher than the CLK level, use the lower bound detection threshold from the table below.
 - If the ELI level is equal to or only 1 level higher than the CLK level, introduce the Random Threshold Roll (1D3) to add unpredictability.
 - If the ELI level is lower than the CLK level, use the higher bound threshold, reflecting the difficulty of detection.
@@ -401,10 +400,10 @@ Compare the final effective ELI level with the CLK level of the Raider unit:
 **Random Threshold Roll (1D3) Application**:
 
 1. If the detection scenario uses a range (e.g., >10-12), roll 1D3 to determine the exact threshold value within the range.
-   - For example, if the range is >10-12, roll 1D3:
-   - Result 1: Threshold is 10
-   - Result 2: Threshold is 11
-   - Result 3: Threshold is 12
+- For example, if the range is >10-12, roll 1D3:
+- Result 1: Threshold is 10
+- Result 2: Threshold is 11
+- Result 3: Threshold is 12
 2. This random element only applies when the ELI level is equal to or one level higher than the CLK level, introducing variability in uncertain detection scenarios.
 
 **Step 3: Make the Detection Roll**
@@ -563,7 +562,6 @@ GCO = (PU × RAW_INDEX) + (IU × EL_MOD × (1 + PROD_GROWTH))
 ```
 
 Where:
-
 - PU: Population Units of the colony
 - RAW_INDEX: Resource quality index based on the solar system's mineral abundance. 
 - IU: Industrial Units at the colony
@@ -600,7 +598,6 @@ The baseline productivity growth (PROD_GROWTH) rate is 3%.
 | > 65%    | -1.0% to PROD_GROWTH          | Very high revenue           | -2 prestige every 5 turns           |
 
 Explanation:
-
 - Low Tax Rate (<30%): Encourages productivity growth, simulating a favorable economic environment. Provides lower immediate revenue but increases long-term economic output. Small prestige gain (+1 per turn, capped at +5 total).
 - Moderate Tax Rate (30%-50%): Balanced approach with no changes to productivity growth. Provides steady revenue and avoids any prestige impact.
 - High Tax Rate (51%-65%): Increases short-term revenue but slightly reduces productivity growth (-0.5%). Minor prestige penalty (-1 point every 3 turns) reflects mild discontent from heavier taxation.
@@ -668,16 +665,16 @@ Colonists do not start contributing to the colony's economic production for at l
 
 Each turn, the Duke can allocate Treasury funds as follows:
 
-- Military: Construction and recruiting.
-- Spacelift Command: Bases and ships
-- Research and Development: Investment in new technologies.
-- Industrial Units (IU): Investment in colony manufacturing.
-- Terraforming: Costs for planetary upgrade projects.
-- Space Guild Services:
-  - Population Transfer: Moving citizens to new colonies.
-  - Espionage: Covert operations and intelligence gathering.
-- Counter Intelligence: Defense against espionage.
-- Savings & Investment: Financial reserves and investments for future growth.
+1. Military: Construction and recruiting.
+2. Spacelift Command: Bases and ships
+3. Research and Development: Investment in new technologies.
+4. Industrial Units (IU): Investment in colony manufacturing.
+5. Terraforming: Costs for planetary upgrade projects.
+6. Space Guild Services:
+- Population Transfer: Moving citizens to new colonies.
+- Espionage: Covert operations and intelligence gathering.
+7. Counter Intelligence: Defense against espionage.
+8. Savings & Investment: Financial reserves and investments for future growth.
 
 ## 3.9 Maintenance Costs
 
@@ -708,9 +705,9 @@ Each turn, players can invest production points in RP to further their R&D effor
 R&D upgrades will be purchased in the first and seventh months of the Terran calendar, i.e. the first and seventh turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
 There are three areas of investment:
-  - Economic RP (ERP)
-  - Science RP (SRP)
-  - Technology RP (TRP)
+- Economic RP (ERP)
+- Science RP (SRP)
+- Technology RP (TRP)
 
 Economic Levels (EL) are purchased with ERP and Science Levels (SL) are purchased with SRP. Science drives engineering, and new technologies are developed and purchased directly with TRP. EL and SL are correlated.
 
@@ -720,16 +717,14 @@ In standard EC4X games, Houses start at EL1 and SL1. Consider boosting these to 
 
 Technological progress can experience sudden leaps due to unexpected Research Breakthroughs. These moments of serendipity inject variability into the game, rewarding players for consistent investment in R&D and offering the chance for significant, game-altering advances.
 
-#### Triggering a Research Breakthrough
+**Research breakthroughs are triggered automatically twice per year**:
 
-Research breakthroughs are triggered automatically twice per year:
+Bi-Annual Roll (Turn 1 and Turn 7):
+- At the beginning of the year (Turn 1) and mid-year (Turn 7), the game system makes a 1d10 roll for each player.
+- The base chance for a breakthrough is 10%.
+- Players receive a +1% bonus for every 50 RP invested during the previous six turns (including ERP, SRP, and TRP combined).
 
-**Bi-Annual Roll (Turn 1 and Turn 7)**:
-  - At the beginning of the year (Turn 1) and mid-year (Turn 7), the game system makes a 1d10 roll for each player.
-  - The base chance for a breakthrough is 10%.
-  - Players receive a +1% bonus for every 50 RP invested during the previous six turns (including ERP, SRP, and TRP combined).
-
-#### Breakthrough Types and Dice Roll
+**Breakthrough Types and Dice Roll**:
 
 If the breakthrough is successful, a second 1d10 roll determines the type of breakthrough achieved. Each result on the die corresponds to a specific breakthrough type:
 
@@ -738,11 +733,7 @@ If the breakthrough is successful, a second 1d10 roll determines the type of bre
 | 0-4       | **Minor Breakthrough**      | +10 ERP, SRP, or TRP based on the current investment focus |
 | 5-6       | **Moderate Breakthrough**   | 20% reduction in TRP cost for the next technology upgrade  |
 | 7-8       | **Major Breakthrough**      | Automatically advance the next SL or EL by 1 level         |
-| 9\*       | **Revolutionary Discovery** | Unlocks a unique technology or double-level advancement    |
-
-\* Must roll a natural nine to achieve a Revolutionary Discovery
-
-#### Breakthrough Effects
+| 9         | **Revolutionary Discovery** | Unlocks a unique technology or double-level advancement    |
 
 **Minor Breakthrough (0-4)**:
    
@@ -756,15 +747,15 @@ The player receives a 20% reduction in TRP cost for the next technology upgrade,
    
 The player automatically advances the next SL or EL by 1 level, skipping the usual SRP or ERP cost. This represents a significant leap in understanding, allowing rapid progression in core economic or scientific capabilities.
 
-**Revolutionary Discovery (Natural 9)**:
-  - **Quantum Computing**: Permanently increases EL_MOD by 10%.
-  - **Advanced Stealth Systems**: Grants Raiders an additional +2 detection difficulty.
-  - **Terraforming Nexus**: Increases colony growth rate by an additional 2% per turn.
-  - **Experimental Propulsion**: Allows crippled military ships to jump across **restricted lanes**, enhancing fleet mobility.
+**Revolutionary Discovery (9)**:
+- **Quantum Computing**: Permanently increases EL_MOD by 10%.
+- **Advanced Stealth Systems**: Grants Raiders an additional +2 detection difficulty.
+- **Terraforming Nexus**: Increases colony growth rate by an additional 2% per turn.
+- **Experimental Propulsion**: Allows crippled military ships to jump across **restricted lanes**, enhancing fleet mobility.
 
-#### Example of a Research Breakthrough
+Example:
 
-During Turn 7, the game system performs a Research Breakthrough Roll for each player. Player A has invested a total of 150 RP over the previous six turns, providing a +3% bonus to their roll (10% base + 3% investment bonus).  The player is successful, and the second roll on the table is a natural 9, resulting in a "Revolutionary Discovery." Player A unlocks Experimental Propulsion, allowing their crippled military ships to traverse restricted jump lanes, providing a significant strategic advantage in maneuverability.
+During Turn 7, the game system performs a Research Breakthrough Roll for each player. Player A has invested a total of 150 RP over the previous six turns, providing a +3% bonus to their roll (10% base + 3% investment bonus).  The player is successful, and the second roll on the table is a 9, resulting in a "Revolutionary Discovery." Player A unlocks Experimental Propulsion, allowing their crippled military ships to traverse restricted jump lanes, providing a significant strategic advantage in maneuverability.
 
 ## 4.2 Economic Level (EL)
 
@@ -868,13 +859,13 @@ New engineering technologies are purchased directly with TRP.
 \* Starting at Science Level 1 (SL1), each subsequent level of technology requires an additional 5 Technology Research Points (TRP) more than the previous level, with the initial cost being 25 TRP for the first level.
 
 [^2]: **Game Designer Notes**:
-  As players expand their colonies, their NHV will grow. The logarithmic scaling with GHO allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
-  If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
-  For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
-  The TRP formula assumes a tax rate of 50% and a balanced budget of 40% Military, 30% R&D, 30% Other (Terraforming, Guild Services, CIC, 10% IU investment, etc..)
-  At 30% R&D EL,SL and every tech can be advanced every 1st and 7th month of the game as it becomes available. Excel file "ec4x_budget.xlsx" included in GitHub repo under "assets"
-  The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
-  Previously the formula used exp(GHO) * 0.0025 PP which grows the cost way too quickly in relation to GHO. Conversely, log(GHO) increases very slowly as GHO grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
+As players expand their colonies, their NHV will grow. The logarithmic scaling with GHO allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
+If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
+For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
+The TRP formula assumes a tax rate of 50% and a balanced budget of 40% Military, 30% R&D, 30% Other (Terraforming, Guild Services, CIC, 10% IU investment, etc..)
+At 30% R&D EL,SL and every tech can be advanced every 1st and 7th month of the game as it becomes available. Excel file "ec4x_budget.xlsx" included in GitHub repo under "assets"
+The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
+Previously the formula used exp(GHO) * 0.0025 PP which grows the cost way too quickly in relation to GHO. Conversely, log(GHO) increases very slowly as GHO grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
 
 ## 4.5 Construction (CST)
 
@@ -1253,11 +1244,10 @@ All fleets within a solar system are mandated to engage enemy forces during thei
 - Fleets under Fleet Order 05: Guard/Blockade a Planet
 
 Specific Engagement Rules:
-
-- Blockade Engagement:
-  - Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
-- Guard Engagement:
-  - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
+1. Blockade Engagement:
+- Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
+2. Guard Engagement:
+- Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
 
 Task Forces form according to [Section 7.2](#72-task-force-assignment).
 
@@ -1502,13 +1492,9 @@ Fleets are instructed to avoid initiating hostilities with the designated neutra
 Houses can enter into formal or informal agreements to not attack each other, allowing for cooperation or at least a mutual stance of non-hostility.
 
 This can include:
-
 - Joint Military Operations: Against common threats or for mutual defense without direct conflict between the signing parties.
-
 - Territorial Recognition: Agreements to respect each others territories.
-
 - Strategic Flexibility: While not allies, Houses in a non-aggression pact can share intelligence, coordinate against mutual enemies..
-
 - Violation Consequences: Breaking a non-aggression pact can lead to a swift change to enemy status.
 
 ### 8.1.3 Enemy
