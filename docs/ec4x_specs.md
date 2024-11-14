@@ -263,13 +263,13 @@ For every turn that a spy Scout operates in unfriendly system occupied by rival 
 For a fleet with Scouts of different ELI tech levels:
 
 1. Calculate the Weighted Average:
-- Sum the ELI tech levels of all Scouts in the fleet.
-- Divide by the total number of Scouts.
-- Round up to determine the initial effective ELI level.
+    - Sum the ELI tech levels of all Scouts in the fleet.
+    - Divide by the total number of Scouts.
+    - Round up to determine the initial effective ELI level.
 2. Apply Dominant Tech Level Penalty:
-- If more than 50% of the Scouts are of a lower ELI tech level than the average (round up), reduce the effective ELI level by 1.
+    - If more than 50% of the Scouts are of a lower ELI tech level than the average (round up), reduce the effective ELI level by 1.
 3. Mesh Network Modifier:
-- Multiple ELI Scouts form a mesh network, enhancing detection capabilities. Apply a modifier based on the number of Scouts from the table below:
+    - Multiple ELI Scouts form a mesh network, enhancing detection capabilities. Apply a modifier based on the number of Scouts from the table below:
 
 | Number of Scouts | Mesh Network Modifier |
 |:----------------:| --------------------- |
@@ -279,7 +279,7 @@ For a fleet with Scouts of different ELI tech levels:
 | 6+               | +3 (maximum)          |
 
 4. Final Effective ELI Level:
-- Combine the effective ELI level with the tech penalty and mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
+    - Combine the effective ELI level with the tech penalty and mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
 
 **Starbases operate as independent ELI units and receive a +2 ELI modifier against spy scouts.**
 
@@ -299,10 +299,10 @@ For a fleet with Scouts of different ELI tech levels:
 | Spy ELI5    | NA     | >18-20 | >17-19 | >15-17 | >11-3 |
 
 3. Random Threshold Determination:
-- Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
-- This introduces slight variability to the detection roll, adding an element of unpredictability.
+    - Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
+    - This introduces slight variability to the detection roll, adding an element of unpredictability.
 4. Roll 1D20 for the detection attempt:
-- If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
+    - If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
 
 **Example 1: Fleet with Mixed ELI Tech**
 
@@ -400,10 +400,10 @@ Compare the final effective ELI level with the CLK level of the Raider unit:
 **Random Threshold Roll (1D3) Application**:
 
 1. If the detection scenario uses a range (e.g., >10-12), roll 1D3 to determine the exact threshold value within the range.
-- For example, if the range is >10-12, roll 1D3:
-- Result 1: Threshold is 10
-- Result 2: Threshold is 11
-- Result 3: Threshold is 12
+    - For example, if the range is >10-12, roll 1D3:
+    - Result 1: Threshold is 10
+    - Result 2: Threshold is 11
+    - Result 3: Threshold is 12
 2. This random element only applies when the ELI level is equal to or one level higher than the CLK level, introducing variability in uncertain detection scenarios.
 
 **Step 3: Make the Detection Roll**
@@ -671,8 +671,8 @@ Each turn, the Duke can allocate Treasury funds as follows:
 4. Industrial Units (IU): Investment in colony manufacturing.
 5. Terraforming: Costs for planetary upgrade projects.
 6. Space Guild Services:
-- Population Transfer: Moving citizens to new colonies.
-- Espionage: Covert operations and intelligence gathering.
+    - Population Transfer: Moving citizens to new colonies.
+    - Espionage: Covert operations and intelligence gathering.
 7. Counter Intelligence: Defense against espionage.
 8. Savings & Investment: Financial reserves and investments for future growth.
 
@@ -1044,7 +1044,6 @@ The logistics of repairing a ship planet-side and returning it to orbit make it 
 ## 6.1 Jump Lanes
 
 Fleets move between solar systems via jump lanes:
-
 - If a player owns all systems along the travel path, fleets can jump two major lanes in one turn.
 - Minor and restricted jump lanes enable a single jump per turn, regardless of the destination.
 - If jumping into an unexplored or rival system, the maximum number of jumps is one.
@@ -1245,9 +1244,9 @@ All fleets within a solar system are mandated to engage enemy forces during thei
 
 Specific Engagement Rules:
 1. Blockade Engagement:
-- Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
+    - Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
 2. Guard Engagement:
-- Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
+    - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
 
 Task Forces form according to [Section 7.2](#72-task-force-assignment).
 
@@ -1290,7 +1289,6 @@ then a critical hit is achieved
 The player who rolled the die will determine where hits are applied.
 
 The following **restrictions** apply:
-
 1. If the number of hits equal the opposing squadron's DS, the unit is reduced.
 2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled.
 3. Excess hits are lost if restrictions apply.
@@ -1395,7 +1393,6 @@ Note that shields are only be destroyed by Marines during planetary invasion.
 The player who rolled the die will determine where hits are applied. Because ground batteries are all the same, selecting which ground batteries to target is moot. Unlike ships in squadrons, ground batteries are reduced as individual units.
 
 The following **restrictions** apply:
-
 1. If the number of hits equal the opposing unit's DS, the unit is reduced.
 2. Units are not destroyed until all other units are crippled.
 3. Excess hits leftover against Ground Batteries are summed.
@@ -1414,7 +1411,6 @@ Proceed to the next section.
 ### 7.5.4 Ground Units & Civilian Infrastructure
 
 The attacking player will apply unused hits towards ground forces (Armies or Marines):
-
 1. If the number of hits equal the opposing unit's DS, the unit is reduced.
 2. Units are not destroyed until all other units are crippled.
 3. Excess hits are lost if restrictions apply.
@@ -1445,7 +1441,6 @@ If all ground batteries are destroyed, the Marines are dropped onto the surface.
 Both sides total the AS strength of their Armies and Marines, and roll on the Ground Combat Table for the CER. The CER multiplied by AS is the number of hits. Armies and Marines are treated as individual units for the purposes of combat reduction.
 
 The player who rolled the die will determine where hits are applied, with the following restrictions:
-
 1. If the number of hits equal the opposing unit's DS, the unit is reduced.
 2. Units are not destroyed until all other units are crippled.
 3. Excess hits are lost if restrictions apply.
