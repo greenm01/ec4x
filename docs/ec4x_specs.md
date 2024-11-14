@@ -281,7 +281,7 @@ For a fleet with Scouts of different ELI tech levels:
 4. Final Effective ELI Level:
    - Combine the effective ELI level with the mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
 
-Starbases operate as independent ELI units and do not benefit from modifiers.
+**Starbases operate as independent ELI units and receive a +2 ELI modifier against spy scouts.**
 
 **Step 2: Randomized Detection Roll Process**
 
@@ -375,8 +375,6 @@ for each eli_unit in player1_units:
     end
 end
 ```
-
-Follow the steps (order of unit selection does not matter) below. You can stop as soon as a Rogue is detected.
 
 **Step 1: Determine Effective ELI Level**
 
@@ -630,17 +628,11 @@ Investing in Industrial Units (IU) increases the manufacturing capacity of a col
 | 101% - 150%             | 2.0             | 60  |
 | 151% and above          | 2.5             | 75  |
 
-## 3.5 Research & Development (R&D)
+## 3.5 Economic Level Modifier
 
 R&D investments allow players to increase their Economic Level Modifier (EL_MOD), boosting overall productivity. Advancing tech levels requires significant PP investment but provides exponential benefits to GCO.
 
-| EL Level | EL_MOD Increase | PP Cost |
-| -------- | --------------- | ------- |
-| EL1      | +5%             | 50 PP   |
-| EL2      | +10%            | 60 PP   |
-| EL3      | +15%            | 70 PP   |
-| EL4      | +20%            | 80 PP   |
-| EL5      | +25%            | 90 PP   |
+Refer to [Section 4.2](#42-economic-level-el) for cost and modifiers.
 
 ## 3.6 Population Growth
 
@@ -887,17 +879,17 @@ Terraforming improve a planet's livable conditions, and thus the population limi
 | TER6      | 6   | 50       | Lush         |
 | TER7      | 7   | 55       | Eden         |
 
-After the tech is achieved, the cost to upgrade a planet is 50% the lower bound PU of the next level:
+After the tech is achieved, the cost to upgrade a planet is as follows:
 
-| Planet Class | Required TER | PU        | PP   |
-|:------------ |:------------:|:---------:|:----:|
-| Extreme      | TER1         | 1 - 20    | NA   |
-| Desolate     | TER2         | 21 - 60   | 11   |
-| Hostile      | TER3         | 61 - 180  | 31   |
-| Harsh        | TER4         | 181 - 500 | 91   |
-| Benign       | TER5         | 501- 1k   | 250  |
-| Lush         | TER6         | 1k - 2k   | 500  |
-| Eden         | TER7         | 2k+       | 1000 |
+| Planet Class | Required TER | PU        | PP    |
+|:------------ |:------------:|:---------:|:-----:|
+| Extreme      | TER1         | 1 - 20    | NA    |
+| Desolate     | TER2         | 21 - 60   | 60    |
+| Hostile      | TER3         | 61 - 180  | 180   |
+| Harsh        | TER4         | 181 - 500 | 500   |
+| Benign       | TER5         | 501- 1k   | 1000  |
+| Lush         | TER6         | 1k - 2k   | 1500  |
+| Eden         | TER7         | 2k+       | 21000 |
 
 Example: Upgrading from TER3 to TER4 requires 91 PP.
 
