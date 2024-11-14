@@ -380,7 +380,7 @@ Follow the steps (order of unit selection does not matter) below. You can stop a
 
 **Step 1: Determine Effective ELI Level**
 
-Determine the effective ELI level following the same method from Step 1 in [Section 2.4.2](242-scouts).
+Determine the effective ELI level following the same method from Step 1 in [Section 2.4.2](#242-scouts).
 
 **Step 2: Determine Detection Threshold**
 
