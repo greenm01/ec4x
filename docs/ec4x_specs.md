@@ -390,13 +390,13 @@ Compare the final effective ELI level with the CLK level of the Raider unit:
 
 **Detection Table (With Random Threshold Roll)**
 
-| Detect    | CLK1   | CLK2   | CLK3   | CLK4   | CLK5   |
-| --------- |:------:|:------:|:------:|:------:|:------:|
-| ELI1      | >14-16 | >17-19 | NA     | NA     | NA     |
-| ELI2      | >10-12 | >14-16 | >17-19 | NA     | NA     |
-| ELI3      | >6-8   | >10-12 | >14-16 | >17-19 | NA     |
-| ELI4      | >3-5   | >6-8   | >10-12 | >14-16 | >17-19 |
-| ELI5      | >1-3   | >3-5   | >6-8   | >10-12 | >14-16 |
+| Detect | CLK1   | CLK2   | CLK3   | CLK4   | CLK5   |
+| ------ |:------:|:------:|:------:|:------:|:------:|
+| ELI1   | >14-16 | >17-19 | NA     | NA     | NA     |
+| ELI2   | >10-12 | >14-16 | >17-19 | NA     | NA     |
+| ELI3   | >6-8   | >10-12 | >14-16 | >17-19 | NA     |
+| ELI4   | >3-5   | >6-8   | >10-12 | >14-16 | >17-19 |
+| ELI5   | >1-3   | >3-5   | >6-8   | >10-12 | >14-16 |
 
 **Random Threshold Roll (1D3) Application**:
 
@@ -708,16 +708,63 @@ Each turn, players can invest production points in RP to further their R&D effor
 R&D upgrades will be purchased in the first and seventh months of the Terran calendar, i.e. the first and seventh turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
 There are three areas of investment:
-
-- Economic RP (ERP)
-- Science RP (SRP)
-- Technology RP (TRP)
+  - Economic RP (ERP)
+  - Science RP (SRP)
+  - Technology RP (TRP)
 
 Economic Levels (EL) are purchased with ERP and Science Levels (SL) are purchased with SRP. Science drives engineering, and new technologies are developed and purchased directly with TRP. EL and SL are correlated.
 
 In standard EC4X games, Houses start at EL1 and SL1. Consider boosting these to expedite the game for impatient players, although the game year should be advanced from 2001 to match.
 
-**TODO: Add a roll for "research breakthrough" for every first and seventh turn.**
+### 4.1.1 Research Breakthroughs
+
+Technological progress can experience sudden leaps due to unexpected Research Breakthroughs. These moments of serendipity inject variability into the game, rewarding players for consistent investment in R&D and offering the chance for significant, game-altering advances.
+
+#### Triggering a Research Breakthrough
+
+Research breakthroughs are triggered automatically twice per year:
+
+**Bi-Annual Roll (Turn 1 and Turn 7)**:
+  - At the beginning of the year (Turn 1) and mid-year (Turn 7), the game system makes a 1d10 roll for each player.
+  - The base chance for a breakthrough is 10%.
+  - Players receive a +1% bonus for every 50 RP invested during the previous six turns (including ERP, SRP, and TRP combined).
+
+#### Breakthrough Types and Dice Roll
+
+If the breakthrough is successful, a second 1d10 roll determines the type of breakthrough achieved. Each result on the die corresponds to a specific breakthrough type:
+
+| Dice Roll | Breakthrough Type           | Effect Description                                         |
+|:---------:| --------------------------- | ---------------------------------------------------------- |
+| 0-4       | **Minor Breakthrough**      | +10 ERP, SRP, or TRP based on the current investment focus |
+| 5-6       | **Moderate Breakthrough**   | 20% reduction in TRP cost for the next technology upgrade  |
+| 7-8       | **Major Breakthrough**      | Automatically advance the next SL or EL by 1 level         |
+| 9\*       | **Revolutionary Discovery** | Unlocks a unique technology or double-level advancement    |
+
+\* Must roll a natural nine to achieve a Revolutionary Discovery
+
+#### Breakthrough Effects
+
+**Minor Breakthrough (0-4)**:
+   
+The player gains an additional +10 points in ERP, SRP, or TRP, depending on their current investment focus (whichever has the highest allocation). This boosts research progress without direct cost.
+
+**Moderate Breakthrough (5-6)**:
+   
+The player receives a 20% reduction in TRP cost for the next technology upgrade, reflecting streamlined research processes. This provides a cost advantage in the upcoming tech level advancement.
+
+**Major Breakthrough (7-8)**:
+   
+The player automatically advances the next SL or EL by 1 level, skipping the usual SRP or ERP cost. This represents a significant leap in understanding, allowing rapid progression in core economic or scientific capabilities.
+
+**Revolutionary Discovery (Natural 9)**:
+  - **Quantum Computing**: Permanently increases EL_MOD by 10%.
+  - **Advanced Stealth Systems**: Grants Raiders an additional +2 detection difficulty.
+  - **Terraforming Nexus**: Increases colony growth rate by an additional 2% per turn.
+  - **Experimental Propulsion**: Allows crippled military ships to jump across **restricted lanes**, enhancing fleet mobility.
+
+#### Example of a Research Breakthrough
+
+During Turn 7, the game system performs a Research Breakthrough Roll for each player. Player A has invested a total of 150 RP over the previous six turns, providing a +3% bonus to their roll (10% base + 3% investment bonus).  The player is successful, and the second roll on the table is a natural 9, resulting in a "Revolutionary Discovery." Player A unlocks Experimental Propulsion, allowing their crippled military ships to traverse restricted jump lanes, providing a significant strategic advantage in maneuverability.
 
 ## 4.2 Economic Level (EL)
 
@@ -881,15 +928,15 @@ Terraforming improve a planet's livable conditions, and thus the population limi
 
 After the tech is achieved, the cost to upgrade a planet is as follows:
 
-| Planet Class | Required TER | PU        | PP    |
-|:------------ |:------------:|:---------:|:-----:|
-| Extreme      | TER1         | 1 - 20    | NA    |
-| Desolate     | TER2         | 21 - 60   | 60    |
-| Hostile      | TER3         | 61 - 180  | 180   |
-| Harsh        | TER4         | 181 - 500 | 500   |
-| Benign       | TER5         | 501- 1k   | 1000  |
-| Lush         | TER6         | 1k - 2k   | 1500  |
-| Eden         | TER7         | 2k+       | 2000  |
+| Planet Class | Required TER | PU        | PP   |
+|:------------ |:------------:|:---------:|:----:|
+| Extreme      | TER1         | 1 - 20    | NA   |
+| Desolate     | TER2         | 21 - 60   | 60   |
+| Hostile      | TER3         | 61 - 180  | 180  |
+| Harsh        | TER4         | 181 - 500 | 500  |
+| Benign       | TER5         | 501- 1k   | 1000 |
+| Lush         | TER6         | 1k - 2k   | 1500 |
+| Eden         | TER7         | 2k+       | 2000 |
 
 Example: Upgrading from TER3 to TER4 requires 91 PP.
 
@@ -1482,12 +1529,11 @@ The Space Guilds are key players in the clandestine world of diplomacy and espio
 
 Players can allocate Espionage Budget points (EBPs) towards various espionage actions every turn.
 
-EBP points cost 30 production points each.
+EBP points **cost 40 PP each**.
 
 If a player invests more than 5% of their turn budget into EBP they lose Prestige points.
 
 - Investments > 5% lose 1 Prestige point for each additional 1% invested over 5%.
-
 - Example: If a player's turn budget is 100 points, and they invest 7 points in EBP, they lose 2 Prestige points.
 
 **Restrictions**:
@@ -1545,45 +1591,85 @@ The mission of the Counter Intelligence Command (CIC) is to safeguard the House'
 
 **CIC Investment**:
 
-Players can allocate a portion of their turn budget into Counter Intelligence Points (CIP). 
+Players can allocate a portion of their turn budget into Counter Intelligence Points (CIP).
 
-CIP points cost 30 production points each.
-
-When an espionage event occurs the House must spend CIP Points to roll for detection. Each roll costs one(1) CIP point. If a House has no CIP Points, espionage automatically succeeds.
+- CIP points cost **40 PP each**.
+- Each detection attempt (roll) costs **1 CIP point**. If a House has no CIP points, espionage attempts automatically succeed.
+- When an espionage event occurs, a **detection modifier** is applied based on the player's total CIP points.
 
 If a player invests more than 5% of their turn budget into CIP they lose Prestige points.
 
 - Investments > 5% lose 1 Prestige point for each additional 1% invested over 5%.
+- Example: If a player's turn budget is 100 points, and they invest 7 points in CIP, they lose 2 Prestige points.
 
-- Example: If a player's turn budget is 100 points, and they invest 8 points in CIP, they lose 3 Prestige points.
+### Detection Modifier:
 
-When there's an espionage event, roll a 1d20 on the table below. If the roll meets or exceeds the number indexed based on your CIC level, you detect and prevent the espionage, and the attacking player loses two (2) prestige points.
+The modifier is determined based on the total **CIP points** held by the player when an espionage event occurs:
 
-| CIC Level | 1d20 Roll | Probability of Detection |
-|:---------:|:---------:|:------------------------:|
-| CIC1      | > 17      | 15%                      |
-| CIC2      | > 14      | 30%                      |
-| CIC3      | > 11      | 45%                      |
-| CIC4      | > 8       | 60%                      |
-| CIC5      | > 5       | 75%                      |
+| Total CIP Points | Automatic Detection Modifier          |
+|:----------------:|:-------------------------------------:|
+| 0                | +0 (espionage automatically succeeds) |
+| 1-5              | +1                                    |
+| 6-10             | +2                                    |
+| 11-15            | +3                                    |
+| 16-20            | +4                                    |
+| 21+              | +5 (maximum)                          |
 
-## 8.4 House Prestige
+### Espionage Detection Table:
 
-In the grand arena of imperial succession, where Houses vie for the ultimate prize of crowning their own as Emperor, the balance of power isn't just in fleets or technology but in the delicate dance of perception and political strategy.
+| CIC Level | Base 1D20 Roll | Detection Probability (with Automatic Modifier) |
+|:---------:|:--------------:|:-----------------------------------------------:|
+| CIC1      | > 15           | 25% → 30-50%                                    |
+| CIC2      | > 12           | 40% → 45-65%                                    |
+| CIC3      | > 10           | 55% → 60-80%                                    |
+| CIC4      | > 7            | 65% → 70-90%                                    |
+| CIC5      | > 4            | 80% → 85-95%                                    |
 
-**Over-Investment in EBP**:
+**Example**:
 
-For a House aspiring to the throne, the use of espionage is a double-edged sword. While it can hurt rivals from within, over-reliance on such shadowy tactics can backfire spectacularly. A House known for its espionage might be seen as scheming and untrustworthy, unfit to rule an empire that values stability and honor. Other Houses and the populace might rally against one perceived to gain power through deceit rather than merit or loyalty. In this competition for the imperial title, a reputation for subterfuge could alienate potential allies and turn public opinion against a House, diminishing its prestige and undermining its claim to the throne.
+1. A player with **CIC3** and **8 CIP points** faces an espionage event.
+2. The game deducts **1 CIP point** for the detection roll and applies a +2 modifier (based on having 6-10 CIP points).
+3. The detection roll threshold for CIC3 is **10+**. With the +2 modifier, the roll only needs to meet or exceed **8**.
+4. The roll result is **8**, so the espionage attempt is successfully detected.
 
-**Over-Investment in CIP**:
+**Outcome of Successful Detection**:
 
-Equally, a House that pours too many resources into counter-espionage might be viewed as a paranoid entity, more concerned with its own shadows than with leading an empire with vision and stability. This approach can signal that the House fears for its own stability, which in a game where confidence and strength are prerequisites for ruling, can be a significant weakness. The aristocracy might view such a House as unable to foster an environment of trust necessary for imperial governance, where alliances are forged through transparency and mutual respect, not suspicion. Furthermore, this heavy-handed security focus might alienate the very people the House seeks to rule, portraying it as oppressive rather than protective.
+- If the roll (including the modifier) meets or exceeds the required threshold, the espionage action is detected and prevented.
+- The attacking player loses **2 prestige points** for the failed attempt.
 
-**Balance**:
+## 8.4 Risks of Over-Investing in Espionage
 
-In this contest for ultimate power, where every House seeks to claim the throne, the art of governance involves more than just outmaneuvering rivals. It requires a blend of cunning, strength, and diplomacy, where espionage and security are tools, not crutches. A House must demonstrate it can govern with foresight, protect its subjects without stifling them, and engage in politics without being consumed by them. Prestige in this context becomes not just about the grandeur or fear a House can inspire, but about the trust and respect it can command. 
+While espionage is a powerful tool for undermining rival Houses, over-reliance on covert actions comes with significant risks. In the volatile political landscape of EC4X, the perception of your House can be as important as its actual strength. An overly aggressive espionage strategy can backfire, tarnishing your reputation and eroding the trust of allies, subjects, and even neutral factions. The path to the throne is narrow, and using shadow tactics too liberally can leave a House vulnerable to unforeseen consequences.
 
-Over-investment in either EBP or CIP highlights a strategic imbalance, potentially costing a House the very qualities needed to ascend to and maintain the imperial title.
+### Reputation Damage
+
+A House known for excessive use of espionage becomes synonymous with treachery. Other Houses may become wary of forming alliances or trading agreements, fearing betrayal. This distrust can isolate a House diplomatically, limiting options for cooperation or joint military efforts against common threats.
+
+The citizens of the Empire prize strength, honor, and open warfare over deceit. A Duke who leans too heavily on spies and saboteurs may be seen as weak or dishonorable, risking a loss of public support. This can manifest in reduced prestige, lower tax compliance, and even increased civil unrest across your colonies.
+
+### Diminished Strategic Impact
+
+The more frequently espionage tactics are used, the more likely rivals are to bolster their counter-intelligence efforts. As other Houses ramp up their CIP investments, the effectiveness of your espionage actions diminishes, resulting in wasted resources and fewer successful missions.
+
+Excessive espionage may trigger rival Houses to adopt aggressive countermeasures, such as initiating economic sanctions, launching retaliatory cyber attacks, or coordinating with other players to mount a joint military response. The risks of provoking a coalition against your House increase with every detected espionage action.
+
+### Prestige Penalties
+
+Investing too much in espionage can erode the prestige of your House over time, creating a long-term disadvantage. The aristocracy views shadowy tactics as a sign of desperation rather than strength, leading to the perception that your House is incapable of achieving its goals through legitimate means.
+
+Each turn that espionage investments exceed 5% of your budget, your House loses 1 prestige point for every additional 1% invested over the 5% threshold. This penalty reflects the growing skepticism of your peers and the erosion of your House’s noble reputation.
+
+Repeated over-investment in espionage actions compounds the loss of prestige, as the Empire’s nobility becomes increasingly suspicious of your methods. Over time, this can severely impact your standing, making it difficult to assert dominance and achieve key diplomatic or military objectives.
+
+### Increased Vulnerability to Espionage
+
+Ironically, focusing heavily on offensive espionage often means neglecting your own defenses. Houses that pour resources into EBP at the expense of CIP may find themselves exposed to enemy spies, suffering from stolen technologies, sabotage, and propaganda campaigns. A House that gains a reputation for aggressive espionage is likely to attract more counter-espionage efforts from its rivals, creating a dangerous cycle of escalating spy wars.
+
+Rivals who detect your espionage efforts are likely to respond in kind, targeting your colonies with sabotage, tech theft, or even assassination attempts. The cost of countering these actions can quickly exceed the initial benefits of your own espionage investments.
+
+### Finding the Balance
+
+In EC4X, effective use of espionage is about balance. Strategic investments in covert operations can provide decisive advantages, but overextending your reach can be disastrous. Successful Dukes must weigh the immediate gains of espionage against the long-term costs to prestige, diplomatic relations, and overall stability. In the quest for the imperial throne, it is often the House that combines subtlety with strength, and deception with diplomacy, that emerges victorious.
 
 # 9.0 Data Tables
 
