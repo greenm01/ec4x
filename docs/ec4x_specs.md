@@ -889,7 +889,7 @@ After the tech is achieved, the cost to upgrade a planet is as follows:
 | Harsh        | TER4         | 181 - 500 | 500   |
 | Benign       | TER5         | 501- 1k   | 1000  |
 | Lush         | TER6         | 1k - 2k   | 1500  |
-| Eden         | TER7         | 2k+       | 21000 |
+| Eden         | TER7         | 2k+       | 2000  |
 
 Example: Upgrading from TER3 to TER4 requires 91 PP.
 
