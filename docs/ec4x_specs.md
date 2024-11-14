@@ -252,81 +252,104 @@ Carriers (CV) transport fighter squadrons between systems. Standard carriers hol
 
 Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
 
-Scouts are able to counter Raiders ([Section 2.4.3](#243-raiders)) and rival spy Scouts.  Multiple Scouts assigned to the same fleet operate as a mesh network, and their ELI capability is merged.
+Scouts are able to counter Raiders ([Section 2.4.3](#243-raiders)) and rival spy Scouts.  Multiple ELI assigned to the same unit operate as a mesh network, and their ELI capability is merged and magnified.
 
-Scouts maintain an element of stealth when performing solo missions for information gathering (spy) purposes. Scouts are *not* equipped with cloaking tech. They can only hide by themselves and no other ships.
+Scouts and Starbases are responsible for detecting rival Scouts performing espionage activities. The effectiveness of detection is influenced by the composition of the detecting units(s), which may include mixed ELI levels.
 
-Within this context "units" refer to either fleets containing Scouts or Starbases.
+For every turn that a spy Scout operates in unfriendly system occupied by rival ELI, the rival will roll on the Spy Detection Table below to determine if the spy Scout is detected *by each* fleet or Starbase(s). If the Scout is detected, it is destroyed. Rival units must contain at least one Scout or Starbase to detect.
 
-For every turn that a spy Scout operates in unfriendly system occupied by rival ELI, the rival will roll on the Spy Detection Table below (for each fleet) to determine if the spy Scout is detected. If the Scout is detected, it is destroyed. Rival units must contain at least one Scout or Starbase to detect.
+**Step 1: Determine Effective ELI Level**
 
-Detection Roll Process:
+For a fleet with Scouts of different ELI tech levels:
 
-1. Identify the ELI unit for the defending player along the top row.
-2. Find the rival Spy Scout's ELI in the first column.
-3. Roll a 1D20 and add the calculated modifier (explained below).
-4. If the total is greater than the number indexed, the spy is detected and destroyed.
+1. Calculate the Weighted Average:
+   - Sum the ELI tech levels of all Scouts in the fleet.
+   - Divide by the total number of Scouts.
+   - Round up to determine the initial effective ELI level.
+2. Apply Dominant Tech Level Penalty:
+   - If more than 50% of the Scouts are of a lower ELI tech level than the rounded average, reduce the effective ELI level by 1.
+3. Mesh Network Modifier:
+   - Multiple ELI Scouts form a mesh network, enhancing detection capabilities. Apply a modifier based on the number of Scouts from the table below:
 
-Crippled Scouts lose their ELI sensors until repaired.
+| Number of Scouts | Mesh Network Modifier |
+|:----------------:| --------------------- |
+| 1                | NA                    |
+| 2-3              | +1                    |
+| 4-5              | +2                    |
+| 6+               | +3 (maximum)          |
+
+4. Final Effective ELI Level:
+   - Combine the effective ELI level with the mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
+
+Starbases operate as independent ELI units and do not benefit from modifiers.
+
+**Step 2: Randomized Detection Roll Process**
+
+1. Compare the final effective ELI level of the detecting fleet or Starbase with the ELI level of the spy Scout.
+2. Determine the base detection range from the table below.
 
 **Spy Detection Table**
 
-| \*Detect -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
-| -----------:|:----:|:----:|:----:|:----:|:----:|
-| Spy ELI1    | > 12 | > 7  | > 3  | > 1  | > 1  |
-| Spy ELI2    | > 16 | > 12 | > 7  | > 3  | > 1  |
-| Spy ELI3    | > 18 | > 16 | > 12 | > 7  | > 3  |
-| Spy ELI4    | > 19 | > 18 | > 16 | > 12 | > 7  |
-| Spy ELI5    | NA   | > 19 | > 18 | > 16 | > 12 |
+| \*Detect -> | ELI1   | ELI2   | ELI3   | ELI4   | ELI5  |
+| -----------:|:------:|:------:|:------:|:------:|:-----:|
+| Spy ELI1    | >11-13 | >6-8   | >2-4   | >0-2   | >0-1  |
+| Spy ELI2    | >15-17 | >11-13 | >6-8   | >2-4   | >0-2  |
+| Spy ELI3    | >17-19 | >15-17 | >11-13 | >6-8   | >2-4  |
+| Spy ELI4    | >18-20 | >17-19 | >15-17 | >11-13 | >6-8  |
+| Spy ELI5    | NA     | >18-20 | >17-19 | >15-17 | >11-3 |
 
-\*Total the number of units within the same unit and subtract one. This is the die roll modifier. The maximum is +3
+3. Random Threshold Determination:
+   - Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
+   - This introduces slight variability to the detection roll, adding an element of unpredictability.
+4. Roll 1D20 for the detection attempt:
+   - If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
 
-Example:
-
-```
-A detecting unit contains three ELI4 Scouts:
-3 - 1 = 2. The die roll modifier is +2
-```
-
-**For mixed ELI tech, use this method:**
-
-Calculate the ELI Integration Index (EII):
-
-- ELI_Min = the lowest ELI level present in the unit.
-- ELI_Max = the highest ELI level present in the unit.
+**Example 1: Fleet with Mixed ELI Tech**
 
 ```
-EII = (ELI_Max + ELI_Min) / 2 (round UP)
+Detecting Fleet:
+    2 Scouts with ELI2
+    3 Scouts with ELI4
+
+Total Tech Levels: 2 + 2 + 4 + 4 + 4 = 16
+Number of units: 5
+Weighted Average: 16 / 5 = 3.2 (Round up) → ELI4
+
+Dominant Tech Level Penalty: 
+More than 50% of Scouts are ELI2 (lower tech), so  reduce by 1 → ELI3
+
+Mesh Network Modifier: +2 (for 4-5 Scouts)
+Final Effective ELI Level: ELI3 + 2 = ELI5 (capped at ELI5)
+
+Spy Scout:
+    ELI3
+
+Comparison: ELI5 vs. ELI3
+Detection Range: From the table, use >11-13.
+Random Threshold Roll (1D3): Result is 2, so the threshold is 12.
+Detection Roll (1D20): If the roll is 12 or higher, the spy is detected.
 ```
 
-Use the calculated EII as the representative ELI.
-
-Example:
+**Example 2: Balanced Fleet**
 
 ```
-Fleet Composition:
+Detecting Fleet:
+    1 Scout with ELI1
+    1 Scout with ELI3
 
-1 ELI2 Scout
-2 ELI3 Scouts
-1 ELI5 Scout
+Total Tech Levels: 1 + 3 = 4
+Number of Scouts: 2
+Weighted Average: 4 / 2 = 2 (Round up) → ELI2
+Mesh Network Modifier: +1 (for 2-3 Scouts)
+Final Effective ELI Level: ELI2 + 1 = ELI3
 
-We have four(4) scouts with three(3) different tech levels.
+Spy Scout:
+    ELI4
 
-ELI Range Calculation:
-
-ELI_Min = 2 (the lowest level available [ELI2])
-ELI_Max = 5 (the highest level available [ELI5])
-
-EII Calculation:
-
-EII = (ELI_Max + ELI_Min) / 2
-EII = (5 + 2) / 2 = 3.5 = 4 (rounded up)
-
-Use ELI4 in the Detection Table (top row).
-
-The die roll modifier is:
-
-4 - 1 = +3
+Comparison: ELI3 vs. ELI4
+Detection Range: From the table, use >15-17.
+Random Threshold Roll (1D3): Result is 1, so the threshold is 15.
+Detection Roll (1D20): If the roll is 15 or higher, the spy is detected.
 ```
 
 ### 2.4.3 Raiders
@@ -353,68 +376,82 @@ for each eli_unit in player1_units:
 end
 ```
 
-Follow these steps (order of unit selection does not matter). You can stop as soon as a Rogue is detected:
+Follow the steps (order of unit selection does not matter) below. You can stop as soon as a Rogue is detected.
 
-1. Select the next ELI unit (if all tested, stop)
-2. Select the next CLK fleet; choose the highest rated CLK Raider.
-3. Find the Raider's CLK in the Raider Detection Table.
-4. Find the ELI rating along the top.
-5. Roll a 1D20; add the calculated modifier (explained below).
-6. If the total is greater than the number indexed, the cloaked unit is detected (stop).
-7. Goto step 2 until all CLK fleets have been tested; otherwise Goto 1.
+**Step 1: Determine Effective ELI Level**
 
-**Raider Detection Table**
+Determine the effective ELI level following the same method from Step 1 in [Section 2.4.2](242-scouts).
 
-| *Detect -> | ELI1 | ELI2 | ELI3 | ELI4 | ELI5 |
-| ---------- |:----:|:----:|:----:|:----:|:----:|
-| CLK1       | > 14 | > 10 | > 6  | > 3  | > 1  |
-| CLK2       | > 17 | > 14 | > 10 | > 6  | > 3  |
-| CLK3       | > 19 | > 17 | > 14 | > 10 | > 6  |
-| CLK4       | NA   | > 19 | > 17 | > 15 | > 10 |
-| CLK5       | NA   | NA   | > 20 | > 18 | > 15 |
+**Step 2: Determine Detection Threshold**
 
-*Total the number of units within the same unit and subtract one. This is the die roll modifier. The maximum is +2
+Compare the final effective ELI level with the CLK level of the Raider unit:
 
-**For mixed ELI tech, employ a slightly modified form of the EII method described in [Section 2.4.2](#242-scouts)**
+- If the ELI level is 2+ levels higher than the CLK level, use the lower bound detection threshold from the table below.
+- If the ELI level is equal to or only 1 level higher than the CLK level, introduce the Random Threshold Roll (1D3) to add unpredictability.
+- If the ELI level is lower than the CLK level, use the higher bound threshold, reflecting the difficulty of detection.
 
-Calculate the ELI Integration Index (EII):
+**Detection Table (With Random Threshold Roll)**
 
-- ELI_Min = the lowest ELI level present in the unit.
-- ELI_Max = the highest ELI level present in the unit.
+| Detect    | CLK1   | CLK2   | CLK3   | CLK4   | CLK5   |
+| --------- |:------:|:------:|:------:|:------:|:------:|
+| ELI1      | >14-16 | >17-19 | NA     | NA     | NA     |
+| ELI2      | >10-12 | >14-16 | >17-19 | NA     | NA     |
+| ELI3      | >6-8   | >10-12 | >14-16 | >17-19 | NA     |
+| ELI4      | >3-5   | >6-8   | >10-12 | >14-16 | >17-19 |
+| ELI5      | >1-3   | >3-5   | >6-8   | >10-12 | >14-16 |
+
+**Random Threshold Roll (1D3) Application**:
+
+1. If the detection scenario uses a range (e.g., >10-12), roll 1D3 to determine the exact threshold value within the range.
+   - For example, if the range is >10-12, roll 1D3:
+   - Result 1: Threshold is 10
+   - Result 2: Threshold is 11
+   - Result 3: Threshold is 12
+2. This random element only applies when the ELI level is equal to or one level higher than the CLK level, introducing variability in uncertain detection scenarios.
+
+**Step 3: Make the Detection Roll**
+
+1. Roll 1D20 for the detection attempt.
+2. If the roll meets or exceeds the chosen threshold (from the fixed value or random roll), the Raider is detected.
+3. If the roll is below the threshold, the Raider remains undetected and retains its stealth.
+
+**Example 1: High-Tech ELI Fleet Detecting a Low-Tech Raider**
 
 ```
-EII = (ELI_Max + ELI_Min) / 2 (round DOWN)
+Detecting Fleet:
+  3 Scouts with ELI5
+
+Final Effective ELI Level: ELI5 (after applying mesh network and no penalties)
+
+Raider:
+CLK2
+
+Comparison: ELI5 vs. CLK2
+Detection Threshold: From the table, the fixed threshold is >3-5.
+Random Roll Not Applied (since ELI5 is significantly higher).
+Detection Roll (1D20): If the roll is 3 or higher, the Raider is detected.
 ```
 
-Use EII as the mixed ELI.
-
-Example:
+**Example 2: Uncertain Detection Scenario with Random Threshold Roll**
 
 ```
-Fleet Composition:
+Detecting Fleet:
+  1 Scout with ELI3
+  1 Scout with ELI4
 
-1 ELI2 Scout
-2 ELI3 Scouts
-1 ELI5 Scout
+Total Tech Levels: 3 + 4 = 7
+Number of Scouts: 2
+Weighted Average: 7 / 2 = 3.5 (Round up) → ELI4
+Mesh Network Modifier: +1 (2 Scouts)
+Final Effective ELI Level: ELI4 + 1 = ELI5
 
-We have four(4) scouts with three(3) different tech levels.
+Raider:
+  CLK4
 
-ELI Range Calculation:
-
-ELI_Min = 2 (the lowest level available [ELI2])
-ELI_Max = 5 (the highest level available [ELI5])
-
-EII Calculation:
-
-EII = (ELI_Max + ELI_Min) / 2
-EII = (5 + 2) / 2 = 3.5 = 3 (rounded down)
-
-Use ELI3 in the Detection Table (top row).
-
-The die roll modifier is:
-4 - 1 = 3
-
-The max is 2, so the modifier is +2
+Comparison: ELI5 vs. CLK4
+Detection Threshold: From the table, use >10-12.
+Random Threshold Roll (1D3): Result is 2, so the threshold is 11.
+Detection Roll (1D20): If the roll is 11 or higher, the Raider is detected.
 ```
 
 ### 2.4.4 Starbases
@@ -526,13 +563,15 @@ An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the 
 ```
 GCO = (PU × RAW_INDEX) + (IU × EL_MOD × (1 + PROD_GROWTH))
 ```
+
 Where:
+
 - PU: Population Units of the colony
 - RAW_INDEX: Resource quality index based on the solar system's mineral abundance. 
 - IU: Industrial Units at the colony
 - EL_MOD: Economic Level Modifier, based on the colony's EL tech level
 - PROD_GROWTH: Productivity growth rate influenced by the tax rate
-  
+
 **RAW INDEX Table**
 
 | RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |
@@ -555,14 +594,15 @@ The baseline productivity growth (PROD_GROWTH) rate is 3%.
 
 ### Tiered Taxation Table
 
-| Tax Rate | Effect on Productivity Growth | Effect on NCV (Tax Revenue) | Prestige Impact                     |
-|----------|-------------------------------|-----------------------------|-------------------------------------|
-| < 30%    | +1.0% to PROD_GROWTH          | Low revenue                 | +1 prestige per turn (max +5 total) |
-| 30%-50%  | No change (baseline)          | Normal revenue              | No prestige impact                  |
-| 51%-65%  | -0.5% to PROD_GROWTH          | High revenue                | -1 prestige every 3 turns           |
-| > 65%    | -1.0% to PROD_GROWTH          | Very high revenue           | -2 prestige every 5 turns           |
+| Tax Rate | Effect on Productivity Growth | Effect on NCV (Tax Revenue) | Prestige Impact                     |
+| -------- | ----------------------------- | --------------------------- | ----------------------------------- |
+| < 30%    | +1.0% to PROD_GROWTH          | Low revenue                 | +1 prestige per turn (max +5 total) |
+| 30%-50%  | No change (baseline)          | Normal revenue              | No prestige impact                  |
+| 51%-65%  | -0.5% to PROD_GROWTH          | High revenue                | -1 prestige every 3 turns           |
+| > 65%    | -1.0% to PROD_GROWTH          | Very high revenue           | -2 prestige every 5 turns           |
 
 Explanation:
+
 - Low Tax Rate (<30%): Encourages productivity growth, simulating a favorable economic environment. Provides lower immediate revenue but increases long-term economic output. Small prestige gain (+1 per turn, capped at +5 total).
 - Moderate Tax Rate (30%-50%): Balanced approach with no changes to productivity growth. Provides steady revenue and avoids any prestige impact.
 - High Tax Rate (51%-65%): Increases short-term revenue but slightly reduces productivity growth (-0.5%). Minor prestige penalty (-1 point every 3 turns) reflects mild discontent from heavier taxation.
@@ -595,12 +635,12 @@ Investing in Industrial Units (IU) increases the manufacturing capacity of a col
 R&D investments allow players to increase their Economic Level Modifier (EL_MOD), boosting overall productivity. Advancing tech levels requires significant PP investment but provides exponential benefits to GCO.
 
 | EL Level | EL_MOD Increase | PP Cost |
-|----------|-----------------|---------|
-| EL1      | +5%             | 50 PP   |
-| EL2      | +10%            | 60 PP   |
-| EL3      | +15%            | 70 PP   |
-| EL4      | +20%            | 80 PP   |
-| EL5      | +25%            | 90 PP   |
+| -------- | --------------- | ------- |
+| EL1      | +5%             | 50 PP   |
+| EL2      | +10%            | 60 PP   |
+| EL3      | +15%            | 70 PP   |
+| EL4      | +20%            | 80 PP   |
+| EL5      | +25%            | 90 PP   |
 
 ## 3.6 Population Growth
 
@@ -1462,19 +1502,50 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 
 - Maximum of One Espionage Action Per Turn.
 
-- A player may conduct a maximum of four espionage actions per game year (equivalent to four turns per year).
+| Espionage Action       | Cost in EBPs | Description                                                          | Prestige Change for Player | Prestige Change for Target |
+| ---------------------- |:------------:| -------------------------------------------------------------------- | -------------------------- | -------------------------- |
+| Tech Theft             | 5            | Attempt to steal critical R&D tech.                                  | +2                         | -3                         |
+| Sabotage (Low Impact)  | 2            | Small-scale sabotage to a colony's industry.                         | +1                         | -1                         |
+| Sabotage (High Impact) | 7            | Major sabotage to a colony's industry.                               | +3                         | -5                         |
+| Assassination          | 10           | Attempt to eliminate a key figures within the target House.          | +5                         | -7                         |
+| Cyber Attack           | 6            | Attempt to hack into a Starbase's systems to cause damage and chaos. | +2                         | -3                         |
+| Economic Manipulation  | 6            | Influence markets to harm the target's economy                       | +3                         | -4                         |
+| Psyops Campaign        | 3            | Launch a misinformation campaign or demoralization effort.           | +1                         | -2                         |
 
-| Espionage Action       | Cost in EBPs | Description                                                                              | Prestige Change for Player | Prestige Change for Target |
-| ---------------------- |:------------:| ---------------------------------------------------------------------------------------- | -------------------------- | -------------------------- |
-| Tech Theft             | 5            | Attempt to steal a piece of technology or critical data.                                 | +2                         | -3                         |
-| Sabotage (Low Impact)  | 2            | Small-scale sabotage like disrupting construction activities in spaceports or shipyards. | +1                         | -1                         |
-| Sabotage (High Impact) | 7            | Major sabotage efforts like sabotaging mothballed ships or ships in reserve status.      | +3                         | -5                         |
-| Assassination          | 10           | Attempt to eliminate a key figure within the target House.                               | +5                         | -7                         |
-| Cyber Attack           | 4            | Attempt to hack into the target's systems for data theft or disruption.                  | +2                         | -3                         |
-| Economic Manipulation  | 6            | Influence markets to harm the target's economy, trade, or Industry (IU)                  | +3                         | -4                         |
-| Psyops Campaign        | 3            | Launch a misinformation campaign or demoralization effort.                               | +1                         | -2                         |
+### **8.2.1 Espionage Mechanics**
 
-**TODO: Flesh out the exact mechanics for this.**
+Espionage actions allow players to disrupt their rivals' operations and gain tactical advantages through covert maneuvers. Below is a detailed overview of each available action, including its effects and thematic narrative.
+
+| Espionage Action         | Effect                                                  |
+| ------------------------ | ------------------------------------------------------- |
+| **Tech Theft**           | Steals **10 SRP** from the target’s research pool       |
+| **Low Impact Sabotage**  | Reduces target’s **1d6 Industrial Units (IU)**          |
+| **High Impact Sabotage** | Reduces target’s **1d20 Industrial Units (IU)**         |
+| **Assassination**        | Reduces target’s **SRP gain by 50%** for one turn       |
+| **Economic Disruption**  | Halves target’s **Net Colony Value (NCV)** for one turn |
+| **Propaganda Campaign**  | Reduces target’s **tax revenue by 25%** for one turn    |
+| **Cyber Attack**         | Cripples the target’s **Starbase**                      |
+
+**Tech Theft**:
+In the dead of night, a covert team of elite hackers infiltrates the rival House's research network, siphoning critical data and blueprints. By the time their intrusion is detected, valuable research progress has already been uploaded and integrated into your own laboratories, giving your scientists a sudden leap forward.
+
+**Low Impact Sabotage**:
+A series of small, untraceable explosions ripple through the industrial district of the target colony. Machines grind to a halt, assembly lines are disrupted, and productivity drops. While the damage is minimal, it forces costly repairs and creates a ripple effect of delays across the colony’s production schedule.
+
+**High Impact Sabotage**:
+Coordinated explosions rock the core industrial facilities of the enemy colony, sending plumes of smoke into the sky. Entire factories are leveled, leaving a twisted wreck of debris and fire. The sabotage is devastating, crippling the enemy’s manufacturing capabilities and resulting in the loss of up to **1d20 Industrial Units (IU)**.
+
+**Assassination**:
+A shadowy operative slips through the security perimeter and strikes at a key figure in the rival House’s R&D division. The death sends shock-waves through their research teams, causing chaos and demoralizing the scientists. The pace of research slows to a crawl as panic and distrust spread among the staff.
+
+**Economic Disruption**:
+Anonymous agents spread false rumors of an impending financial collapse, triggering a panic among investors and merchants in the enemy colony. Markets plunge, trade grinds to a halt, and the local economy falters. Revenues drop sharply as the effects of the disruption ripple through the entire colony’s financial system.
+
+**Propaganda Campaign**:
+A coordinated propaganda blitz floods the rival House’s communications networks with fake news and altered footage, painting their leadership as corrupt and ineffective. Citizens begin to protest, refusing to pay full taxes as public confidence crumbles. The unrest leaves the enemy Duke struggling to maintain control, with lower revenues compounding their problems.
+
+**Cyber Attack**:
+A powerful virus infiltrates the core systems of the enemy’s Starbase, shutting down its defenses and key operational modules. The Starbase is left crippled, its functions severely impaired until extensive repairs are completed. The colony's defensive posture and economic output suffer a significant blow, leaving it vulnerable to further attacks.
 
 ## 8.3 Counter Intelligence Command (CIC)
 
