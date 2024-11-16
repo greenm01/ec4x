@@ -2,6 +2,7 @@ use ec4x_core::{Fleet, Ship, ShipType, StarMap};
 
 #[test]
 fn gen_starmap() {
+    // generate a starmap and test fleets
     let player_count = 3;
     let mut star_map = StarMap::new(player_count);
 
