@@ -401,51 +401,51 @@ proc validateOrderInput*(order: FleetOrder, fleet: FleetState): ValidationResult
 proc displayOrderConfirmation*(orders: seq[FleetOrder])
 ```
 
-## Implementation Timeline
+## Implementation Planning
 
-### Phase 1: Core Infrastructure (6-8 weeks)
+### Phase 1: Core Infrastructurev
 - [ ] TCP server foundation with JSON protocol
 - [ ] Basic illwill client interface
 - [ ] Player session management
 - [ ] Database schema and basic operations
 - [ ] Simple order submission and validation
 
-### Phase 2: Movement System (4-6 weeks)
+### Phase 2: Movement System
 - [ ] Turn-based movement calculation
 - [ ] Route ownership validation
 - [ ] Multi-turn route planning
 - [ ] Fleet encounter detection
 - [ ] Movement rule enforcement
 
-### Phase 3: Fleet Order System (8-10 weeks)
+### Phase 3: Fleet Order System
 - [ ] Implement orders 01-05 (Move, Seek Home, Patrol, Guard)
 - [ ] Implement orders 06-10 (Combat orders, Spy operations)
 - [ ] Implement orders 11-15 (Colonize, Join, Rendezvous, Salvage)
 - [ ] Order validation and prerequisites
 - [ ] Multi-fleet coordination
 
-### Phase 4: Player Intel System (4-6 weeks)
+### Phase 4: Player Intel System
 - [ ] Fog of war implementation
 - [ ] Fleet sighting system
 - [ ] Intelligence report generation
 - [ ] System exploration mechanics
 - [ ] Enemy position estimation
 
-### Phase 5: Advanced UI Features (6-8 weeks)
+### Phase 5: Advanced UI Features
 - [ ] Advanced fleet filtering and sorting
 - [ ] Batch order operations
 - [ ] Fleet templates and saved orders
 - [ ] Intel analysis tools
 - [ ] Turn result presentation
 
-### Phase 6: Map Generation (4-6 weeks)
+### Phase 6: Map Generation
 - [ ] PDF hex map generation
 - [ ] SVG vector graphics export
 - [ ] Print-optimized layouts
 - [ ] Fleet position overlays
 - [ ] Player-specific map views
 
-### Phase 7: Polish and Testing (4-6 weeks)
+### Phase 7: Polish and Testing
 - [ ] Comprehensive testing suite
 - [ ] Performance optimization
 - [ ] Error handling and recovery
