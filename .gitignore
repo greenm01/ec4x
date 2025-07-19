@@ -1,0 +1,47 @@
+# Generated game directories
+offline_game/
+test_game/
+*_offline/
+demo_game/
+example_game/
+
+# Build artifacts
+bin/
+build/
+dist/
+
+# Nim compiler generated files
+*.exe
+*.so
+*.dylib
+*.dll
+nimcache/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Game state files (if any)
+*.save
+*.state
