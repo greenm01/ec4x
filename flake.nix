@@ -1,11 +1,9 @@
 {
   description = "EC4X Nim development shell";
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
-
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -17,8 +15,8 @@
             nim
             nimble
             git
+            nushell  # Add nushell to available packages
           ];
-
           shellHook = ''
             echo "EC4X Nim development shell"
             echo "Nim version: $(nim --version | head -1)"
@@ -34,6 +32,19 @@
             echo "  nimble build"
             echo "  ./bin/moderator new my_game"
             echo "  ./bin/client offline --players=4"
+            echo ""
+            
+            # Try nushell first, fallback to current shell, then bash
+            if command -v nu >/dev/null 2>&1; then
+              echo "Starting nushell..."
+              exec nu
+            elif [ -n "$SHELL" ] && [ -x "$SHELL" ]; then
+              echo "Nushell not available, using current shell: $SHELL"
+              exec "$SHELL"
+            else
+              echo "Using bash fallback"
+              exec ${pkgs.bash}/bin/bash
+            fi
           '';
         };
       });
