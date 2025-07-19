@@ -1,0 +1,5 @@
+hostName = "EC4X Host"
+gameName = "New EC4X Game"
+serverIp = "127.0.0.1"
+port = "8080"
+numEmpires = 4
