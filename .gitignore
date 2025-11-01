@@ -45,3 +45,7 @@ logs/
 # Game state files (if any)
 *.save
 *.state
+
+# Root binaries
+/client
+/moderator
