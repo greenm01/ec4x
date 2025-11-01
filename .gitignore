@@ -46,6 +46,8 @@ logs/
 *.save
 *.state
 
-# Root binaries
+# Compiled binaries
 /client
 /moderator
+tests/test_*[!.]*
+
