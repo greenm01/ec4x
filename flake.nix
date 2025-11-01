@@ -16,6 +16,7 @@
             nimble
             git
             nushell
+            helix
           ];
           shellHook = ''
             echo "EC4X Nim development shell"
@@ -34,10 +35,14 @@
             echo "  ./bin/client offline --players=4"
             echo ""
             
+            # Create alias for helix
+            alias hx='helix'
+            
             # Launch nushell if available, otherwise use default shell
             if command -v nu >/dev/null 2>&1; then
               echo "Starting nushell..."
               nu
+              exit
             fi
           '';
         };
