@@ -11,3 +11,27 @@ EC4X is a simple and straight-forward framework that will also enable well organ
 Victory is won by crushing your rivals and earning the most Prestige by end of game.
 
 [Game Specification (work in progress)](https://github.com/greenm01/ec4x/blob/main/docs/ec4x_specs.md)
+
+## Development Setup
+
+### Prerequisites
+
+This project uses Nix flakes. Enable experimental features:
+```bash
+mkdir -p ~/.config/nix
+echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+```
+
+### Enter Development Shell
+```bash
+nix develop
+```
+
+This provides nim, nimble, git, and nushell in an isolated environment.
+
+### Quick Start
+```bash
+nimble build
+./bin/moderator new my_game
+./bin/client offline --players=4
+```
