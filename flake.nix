@@ -15,7 +15,7 @@
             nim
             nimble
             git
-            nushell  # Add nushell to available packages
+            nushell
           ];
           shellHook = ''
             echo "EC4X Nim development shell"
@@ -34,16 +34,10 @@
             echo "  ./bin/client offline --players=4"
             echo ""
             
-            # Try nushell first, fallback to current shell, then bash
+            # Launch nushell if available, otherwise use default shell
             if command -v nu >/dev/null 2>&1; then
               echo "Starting nushell..."
-              exec nu
-            elif [ -n "$SHELL" ] && [ -x "$SHELL" ]; then
-              echo "Nushell not available, using current shell: $SHELL"
-              exec "$SHELL"
-            else
-              echo "Using bash fallback"
-              exec ${pkgs.bash}/bin/bash
+              nu
             fi
           '';
         };
