@@ -8,17 +8,18 @@ EC4X is a robust, performance-optimized implementation of an asynchronous turn-b
 
 ## Documentation Index
 
-### 📋 Project Summary
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Complete project overview and technical achievements
-- **[STARMAP_MIGRATION.md](STARMAP_MIGRATION.md)** - Migration from original to robust starmap implementation
+### 📋 Architecture & Design
+- **[EC4X-Architecture.md](EC4X-Architecture.md)** - Complete system architecture and design
+- **[EC4X-Deployment.md](EC4X-Deployment.md)** - Production deployment guide
+- **[ec4x_specs.md](ec4x_specs.md)** - Complete game specification and rules
 
 ### 🔍 Technical Analysis
 - **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Detailed implementation analysis and technical overview
 - **[STARMAP_ANALYSIS.md](STARMAP_ANALYSIS.md)** - Comprehensive analysis of starmap implementations and optimizations
+- **[STARMAP_MIGRATION.md](STARMAP_MIGRATION.md)** - Migration from original to robust starmap implementation
 
 ### 📚 User Documentation
 - **[../README.md](../README.md)** - Main project documentation with usage examples
-- **[../INSTALL.md](../INSTALL.md)** - Installation guide and troubleshooting
 
 ## Quick Reference
 
@@ -85,7 +86,7 @@ EC4X is a robust, performance-optimized implementation of an asynchronous turn-b
 
 ### Basic Starmap Generation
 ```nim
-import ec4x_core
+import core
 
 # Create a starmap for 4 players
 let starMap = starMap(4)
@@ -102,7 +103,7 @@ echo starMap.getStarMapStats()
 
 ### Pathfinding with Fleet Restrictions
 ```nim
-import ec4x_core
+import core
 
 let starMap = starMap(6)
 let fleet = Fleet(ships: @[
@@ -118,7 +119,7 @@ if path.found:
 
 ### Error Handling
 ```nim
-import ec4x_core
+import core
 
 try:
   let starMap = starMap(15)  # Too many players
@@ -184,4 +185,4 @@ except StarMapError as e:
 
 ---
 
-*This documentation represents the current state of the EC4X Nim implementation as of July 2025*
+*Last updated: November 2024*
