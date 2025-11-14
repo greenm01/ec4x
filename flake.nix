@@ -34,7 +34,7 @@
 
             # Launch fish if available (suppress greeting)
             if command -v fish >/dev/null 2>&1; then
-              exec fish -C "set fish_greeting"
+              exec fish -C "function fish_greeting; end"
             fi
           '';
         };
