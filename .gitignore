@@ -4,6 +4,8 @@ test_game/
 *_offline/
 demo_game/
 example_game/
+data/games/
+data/snapshots/
 
 # Build artifacts
 bin/
