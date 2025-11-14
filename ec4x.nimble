@@ -45,22 +45,22 @@ task testWarnings, "Run tests with warnings enabled":
 task build, "Build all binaries":
   echo "Building EC4X binaries..."
   mkDir "bin"
-  exec "nim c -d:release --opt:speed -o:bin/moderator src/moderator.nim"
-  exec "nim c -d:release --opt:speed -o:bin/client src/client.nim"
+  exec "nim c -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
+  exec "nim c -d:release --opt:speed -o:bin/client src/main/client.nim"
   echo "Build completed successfully!"
 
 task buildDebug, "Build with debug information":
   echo "Building EC4X binaries with debug info..."
   mkDir "bin"
-  exec "nim c -d:debug --debuginfo --linedir:on -o:bin/moderator src/moderator.nim"
-  exec "nim c -d:debug --debuginfo --linedir:on -o:bin/client src/client.nim"
+  exec "nim c -d:debug --debuginfo --linedir:on -o:bin/moderator src/main/moderator.nim"
+  exec "nim c -d:debug --debuginfo --linedir:on -o:bin/client src/main/client.nim"
   echo "Debug build completed successfully!"
 
 task check, "Check syntax of all source files":
   echo "Checking syntax of all source files..."
-  exec "nim check src/ec4x_core.nim"
-  exec "nim check src/moderator.nim"
-  exec "nim check src/client.nim"
+  exec "nim check src/core.nim"
+  exec "nim check src/main/moderator.nim"
+  exec "nim check src/main/client.nim"
   echo "All syntax checks passed!"
 
 task clean, "Clean build artifacts":
@@ -75,14 +75,14 @@ task clean, "Clean build artifacts":
 
 task docs, "Generate documentation":
   echo "Generating documentation..."
-  exec "nim doc --project --index:on --git.url:https://github.com/greenm01/ec4x --git.commit:main src/ec4x_core.nim"
+  exec "nim doc --project --index:on --git.url:https://github.com/greenm01/ec4x --git.commit:main src/core.nim"
   echo "Documentation generated successfully!"
 
 task example, "Run example commands":
   echo "Running example commands..."
   mkDir "bin"
-  exec "nim c -d:release --opt:speed -o:bin/moderator src/moderator.nim"
-  exec "nim c -d:release --opt:speed -o:bin/client src/client.nim"
+  exec "nim c -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
+  exec "nim c -d:release --opt:speed -o:bin/client src/main/client.nim"
   exec "./bin/moderator new example_game"
   exec "./bin/client offline --players=4 --output-dir=example_offline"
   echo "Example commands completed!"
@@ -90,8 +90,8 @@ task example, "Run example commands":
 task demo, "Build and run a quick demo":
   echo "Building and running EC4X demo..."
   mkDir "bin"
-  exec "nim c -d:release --opt:speed -o:bin/moderator src/moderator.nim"
-  exec "nim c -d:release --opt:speed -o:bin/client src/client.nim"
+  exec "nim c -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
+  exec "nim c -d:release --opt:speed -o:bin/client src/main/client.nim"
   echo "=== EC4X Demo ==="
   echo "Creating demo game..."
   exec "./bin/moderator new demo_game"

@@ -3,7 +3,8 @@
 ## This is the main module for the EC4X core library, providing all the
 ## fundamental game mechanics and data structures for the 4X strategy game.
 
-import ec4x_core/[hex, ship, system, fleet, starmap, types]
+import common/[hex, system, types]
+import engine/[ship, fleet, starmap]
 
 # Re-export all public types and procedures
 export hex, ship, system, fleet, starmap, types
