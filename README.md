@@ -2,7 +2,7 @@
 
 EC4X is an asynchronous turn-based wargame of the classic eXplore, eXpand, eXploit, and eXterminate (4X) variety for multiple players.
 
-Inspired by Esterian Conquest and other classic BBS games, EC4X combines the "slow burn" rhythm of play-by-mail gaming with modern automation.
+Inspired by Esterian Conquest and other classic BBS door games, EC4X combines the async rhythm of turn-based strategy with modern cryptographic identity and decentralized infrastructure.
 
 ## Game Overview
 
@@ -14,15 +14,16 @@ Victory is won by crushing your rivals and earning the most **Prestige** by end 
 
 ## Architecture
 
-EC4X uses a unique **SSH file-drop architecture** optimized for asynchronous gameplay:
+EC4X runs on the **Nostr protocol**, like a modern BBS door game with cryptographic identity:
 
-- **SSH Transport**: Players submit orders via SSH (no persistent connections needed)
-- **Daemon**: Systemd service processes turns on schedule (midnight by default)
-- **ANSI Client**: Lightweight terminal interface for order entry
+- **Nostr Protocol**: Players submit encrypted orders as Nostr events to relays
+- **Daemon**: Subscribes to order events, resolves turns on schedule (midnight by default)
+- **Desktop Client**: Terminal UI (TUI) for order entry, publishes to Nostr relays
+- **Nostr Relay**: Stores game history permanently, delivers events between players and daemon
 - **Hybrid Tabletop**: Supports printed hex maps + digital order submission
-- **Discord Bot** (optional): Social layer for game coordination and turn notifications
+- **Discord Bot** (optional): Monitors Nostr events, posts turn summaries to Discord
 
-See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete details.
+See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete system design.
 
 ## Current Status
 
@@ -35,19 +36,28 @@ See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete det
 - Build system and development environment
 
 🚧 **In Development:**
+- Nostr protocol implementation (crypto, events, WebSocket client)
 - Turn resolution engine (income, command, conflict, maintenance phases)
-- SSH transport layer and file-drop packet system
 - Fleet order system (16 order types)
-- Daemon with turn scheduler
-- ANSI UI for order entry
+- Daemon (subscriber/processor/publisher for Nostr events)
+- Desktop client with TUI for order entry
 - PDF/SVG map generation for hybrid tabletop play
+- Nostr relay deployment (nostr-rs-relay)
 
 ## Documentation
 
-- **[Game Specification](docs/ec4x_specs.md)** - Complete game rules and mechanics
+- **[Game Specification](docs/specs/)** - Complete game rules and mechanics
+  - [Gameplay](docs/specs/gameplay.md) - How to play, prestige, turns
+  - [Military Assets](docs/specs/military.md) - Ships, fleets, special units
+  - [Economy](docs/specs/economy.md) - Economics, R&D, construction
+  - [Operations](docs/specs/operations.md) - Movement and combat
+  - [Diplomacy](docs/specs/diplomacy.md) - Diplomacy and espionage
+  - [Reference Tables](docs/specs/reference.md) - Ship stats and data tables
 - **[Architecture Guide](docs/EC4X-Architecture.md)** - System design and structure
-- **[Deployment Guide](docs/EC4X-Deployment.md)** - Production setup instructions
-- **[Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md)** - Technical achievements
+- **[Nostr Implementation](docs/EC4X-Nostr-Implementation.md)** - Protocol modules and code structure
+- **[Nostr Events Schema](docs/EC4X-Nostr-Events.md)** - Event kinds, tags, and data flow
+- **[VPS Deployment](docs/EC4X-VPS-Deployment.md)** - Production deployment with Nostr relay
+- **[Deployment Guide](docs/EC4X-Deployment.md)** - General deployment instructions
 
 ## Development Setup
 
@@ -64,7 +74,7 @@ echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 nix develop
 ```
 
-This provides nim, nimble, git, and nushell in an isolated environment.
+This provides nim, nimble, and git in an isolated environment (launches fish shell if available).
 
 ### Quick Start
 ```bash
