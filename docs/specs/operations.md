@@ -1,0 +1,433 @@
+# 6.0 Movement
+
+## 6.1 Jump Lanes
+
+Fleets move between solar systems via jump lanes:
+- If a player owns all systems along the travel path, fleets can jump two major lanes in one turn.
+- Minor and restricted jump lanes enable a single jump per turn, regardless of the destination.
+- If jumping into an unexplored or rival system, the maximum number of jumps is one.
+- Fleets containing crippled ships or Spacelift Command ships can not jump across restricted lanes.
+
+## 6.2 Fleet Orders
+
+Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterian Conquest, modified for EC4X.
+
+| No.  | Mission                 | Requirements                             |
+| ---- | ----------------------- | ---------------------------------------- |
+| 00   | None (hold position)    | None                                     |
+| 01   | Move Fleet (only)       | None                                     |
+| 02   | Seek home               | None                                     |
+| 03   | Patrol a System         | None                                     |
+| 04   | Guard a Starbase        | Combat ship(s)                           |
+| 05   | Guard/Blockade a Planet | Combat ship(s)                           |
+| 06   | Bombard a Planet        | Combat ship(s)                           |
+| 07   | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
+| 08   | Blitz a Planet          | Loaded Troop Transports                  |
+| 09   | Spy on a Planet         | One Scout ship                           |
+| 10\* | Hack a Starbase         | One Scout ship                           |
+| 11   | Spy on a System         | One Scout ship                           |
+| 12   | Colonize a Planet       | One ETAC                                 |
+| 13   | Join another Fleet      | None                                     |
+| 14   | Rendezvous at System    | None                                     |
+| 15   | Salvage                 | Friendly Colony System                   |
+
+\* New to EC4X
+
+Movement orders command a fleet to jump across the necessary lanes to the destination solar system, in accordance with the rules specified in [Section 6.1](#61-jump-lanes). Depending upon the distance from the fleet's preexisting location and available lanes, movement may take multiple turns to complete.
+
+### 6.2.1 Hold Position (00):
+
+Fleets are ordered to hold position and standby for new orders.
+
+### 6.2.2 Move Fleet (01):
+
+Move to a new solar system and hold position (00).
+
+### 6.2.3 Seek home (02):
+
+Order a fleet to seek the closest friendly solar system and hold position (00). Should that planet be taken over by an enemy, the fleet will move to the next closest planet you own.
+
+### 6.2.4 Patrol a System (03):
+
+Actively patrol a solar system, engaging hostile forces that enter the space.
+
+### 6.2.5 Guard a Starbase (04):
+
+Order a fleet to protect a Starbase, and join in a combined Task Force, when confronting hostile ships with orders 05 to 08.
+
+### 6.2.6 Guard/Blockade a Planet (05):
+
+Order a fleet to block hostile forces from approaching a planet.
+
+**Guard**: Fleets on guard duty are held in rear guard to protect a colony and do not join Space Combat unless confronted by hostile ships with orders 05 to 08. Guarding fleets may contain Raiders and do not auto-join a Starbase's Task Force, which would compromise their cloaking ability. Not all planets will have a functional Starbase.
+
+**Blockade**: Fleets are ordered to blockade an enemy planet and do not engage in Space Combat unless confronted by enemy ships under order 05.
+
+Colonies under blockaded reduce their GCO by 60%. Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale. House Prestige is reduced by 2 points every turn a colony is under blockade.
+
+### 6.2.7 Bombard a Planet (06):
+
+Fleets are ordered to attack a planet's defensive ground assets, including shields, ground batteries, garrisoned Army units and Marines, and Spaceports. Bombardment has a detrimental effect on a colony's PTU and IUs.
+
+### 6.2.8 Invade a Planet (07):
+
+This is a three round battle:
+
+1. Destroy all the planet's ground batteries.
+2. Pound the population centers to soften resistance and take out enemy ground troops.
+3. Send in troop transports to drop off Marines, but ONLY AFTER all ground batteries have been destroyed.
+
+Bombardment damages the planet and gives the defenders time to sabotage industry before being overrun, but gives invading Marines a better chance of seizing the planet. The invasion succeeds if all the ground batteries are destroyed and ground forces defeated.
+
+### 6.2.9 Blitz a Planet (08):
+
+Quickly infiltrate Marines onto the planet by dodging ground batteries or distracting them. Ground units must be defeated for success.
+
+Because this form of attack is so fast, there is less damage to the planet since the enemy does not have time to sabotage their factories and combat ships go light on surface bombardment.  However, Marines are at greater risk and require superior numbers (twice as many as the enemy or better) to insure victory.
+
+### 6.2.10 Spy on a Planet (09):
+
+This mission is reserved for solo operating Scouts. The Scout will attempt to hide itself in orbit as a civilian satellite and collect military intelligence from the surface.
+
+### 6.2.11 Hack a Starbase (10):
+
+This mission is reserved for solo operating Scouts. The Scout will disguise itself as a civilian satellite and hack into a rival's Starbase network for the purpose of collecting economic and R&D intelligence.
+
+### 6.2.12 Spy on a System (11):
+
+This mission is reserved for solo operating Scouts. The Scout will loiter in the solar system and collect military asset intelligence.
+
+### 6.2.13 Colonize a Planet (12):
+
+This mission is reserved for ETACs under fleet escort. The ETAC will land one PTU on an unoccupied planet and establish a colony. The colonists will break the ETAC down and start the long process of terraforming. New colonies start at Level I regardless of the hospitable conditions.
+
+If the planet is already occupied, the fleet will hold position (Order 00) in the solar system until directed otherwise.
+
+### 6.2.14 Join another Fleet (13):
+
+Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the existing one. If the host fleet is destroyed, all joining fleets will abandon their mission and hold position (00).
+
+### 6.2.15 Rendezvous at System (14):
+
+Move to the specified system and merge with any other fleets ordered to rendezvous there. The fleet with the lowest ID Number becomes the host fleet.  This order is useful for assembling large fleets near enemy planets for later attack.
+
+### 6.2.16 Salvage (15):
+
+Salvage a fleet at the closest colony. The fleet will disband and all the ships are salvaged for 50% of their PC.
+
+# 7.0 Combat
+
+## 7.1 Principles
+
+### 7.1.1 Rules of Engagement (ROE)
+
+ROE dictates how aggressive your fleet will respond when engaging with the enemy from a scale of 0 to 10. The higher the ROE, the more aggressive your fleet will engage with enemy fleets of increasing relative strength to your own. With a low ROE, your fleet will attempt to retreat more readily when engaged in combat. A low ROE does not guarantee survival against a more powerful fleet. Once engaged, fleets have the opportunity to retreat only after the first round of combat.
+
+| **ROE** | **ORDERS**                                             |
+| ------- | ------------------------------------------------------ |
+| 00      | Avoid all hostile forces. (Non-combat forces)          |
+| 01      | Engage forces only if they are defenseless.            |
+| 02      | Engage forces only if your advantage is 4:1 or better. |
+| 03      | Engage forces only if your advantage is 3:1 or better. |
+| 04      | Engage forces only if your advantage is 2:1 or better. |
+| 05      | Engage forces only if your advantage is 3:2 or better. |
+| 06      | Engage hostile forces of equal or inferior strength.   |
+| 07      | Engage hostile forces even if outgunned 3:2.           |
+| 08      | Engage hostile forces even if outgunned 2:1.           |
+| 09      | Engage hostile forces even if outgunned 3:1.           |
+| 10      | Engage hostile forces regardless of their size.        |
+
+A fleet's ROE is defined when it's created, or changed any time before engaging in combat. The ROE can not be changed during combat.
+
+### 7.1.2 Combat State
+
+Squadron units are either undamaged, crippled, or destroyed.
+
+**Attack Strength (AS)** represents a unit's offensive firepower and is a mutable type.
+
+**Defense Strength (DS)** represents a unit's defensive shielding and is an immutable type.
+
+**Reduced**: This term is used to describe a transition of state, e.g. undamaged to crippled, crippled to destroyed.
+
+**Undamaged**: A unit’s life support systems, hull integrity, and weapons systems are fully operational.
+
+**Crippled**: When an undamaged unit’s DS is equaled in battle by hits, that unit’s primary defensive shielding is compromised and the unit is reduced to a crippled combat state. AS is reduced by half.
+
+**Destroyed**: In a crippled combat state, hits equal to DS reduces a unit's state to destroyed. The unit is dead and unrecoverable.
+
+If a squadron is crippled, all the ships under its command are crippled. If a squadron is destroyed, all the ships are likewise destroyed.
+
+### 7.1.3 Cloaking
+
+Cloaking offers an advantage in the initial round of space combat, either on the defensive or offensive.
+
+When defending a solar system, cloaked units are considered to be **in ambush** against invaders.
+
+When attacking a solar system, cloaked units are considered to be **a surprise** to the defenders.
+
+In neutral territory a cloaked fleet is considered to be a surprise.
+
+Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](#243-raiders).
+
+If cloaked fleets on all sides pass undetected from one another, then the player defending his solar system wins in ambush. If opposing forces are meeting in neutral territory and all pass undetected, then they carry on with movement orders and combat is cancelled.
+
+## 7.2 Task Force Assignment
+
+All applicable fleets and Starbases relevant to the combat scenario will merge into a single Task Force.
+
+Rules of Engagement (ROE):
+
+- Task Forces adopt the highest ROE of any joining fleet.
+- Starbases do not retreat; the Task Force's ROE is set to 10.
+
+Cloaking:
+
+- Task Forces including Starbases cannot cloak.
+- All joining fleets must remain undetected for Task Force cloaking ([Section 7.1.3](#713-cloaking)).
+
+Fleet Integration:
+
+- Fleets disband, with their squadrons fighting individually under the Task Force.
+- Fighter Squadrons deploy as independent units.
+
+Cloaked fleets with movement orders can continue if they pass stealth checks; otherwise, they join combat.
+
+Spacelift Command ships are screened behind the Task Force during combat operations and do not engage in combat.
+
+## 7.3 Space Combat
+
+All fleets within a solar system are mandated to engage enemy forces during their turn, with the following exceptions:
+
+- Fleets under Fleet Order 04: Guard a Starbase 
+- Fleets under Fleet Order 05: Guard/Blockade a Planet
+
+Specific Engagement Rules:
+1. Blockade Engagement:
+    - Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
+2. Guard Engagement:
+    - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
+
+Task Forces form according to [Section 7.2](#72-task-force-assignment).
+
+Starbases and their guarding fleets, operating under Order 04, are maintained as rear guards. Their sole purpose is to defend against blockades or direct attacks on the House's colonies.
+
+Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
+
+### 7.3.1 Rounds
+
+After Task Forces are aligned for battle, combat commences in a series of rounds until one side is completely destroyed or manages a retreat.
+
+Combat action is simultaneous; all squadrons have the opportunity to fire on enemy forces at least once, regardless of damage sustained during a round.
+
+At the beginning of each combat round, players add up the total AS of their surviving squadrons. The total value is then modified by the Combat Effectiveness Rating (CER).
+
+Roll for CER on the table below, applying all applicable modifiers.
+
+| **Modified 1D10 Die Roll** | **Space Combat CER**             |
+| -------------------------- | -------------------------------- |
+| Less than zero, 0, 1, 2    | One Quarter (0.25) (round up)    |
+| 3, 4                       | One Half (0.50) (round up)       |
+| 5, 6                       | Three Quarters (0.75) (round up) |
+| 7, 8                       | One (1)                          |
+| 9\*                        | One\* (1)                        |
+| 9+                         | One (1)                          |
+
+\*If the die roll is a natural nine before any required modification,
+then a critical hit is achieved
+
+**Die Roll Modifiers**
+
+| Modifier | Value | Notes                                                |
+| -------- |:-----:| ---------------------------------------------------- |
+| Scouts   | +1    | Maximum benefit for all Scouts                       |
+| Surprise | +3    | First round only; See [Section 7.1.3](#713-cloaking) |
+| Ambush   | +4    | First round only; See [Section 7.1.3](#713-cloaking) |
+
+**The CER multiplied by AS equals the number of total enemy hits.**
+
+The player who rolled the die will determine where hits are applied.
+
+The following **restrictions** apply:
+1. If the number of hits equal the opposing squadron's DS, the unit is reduced.
+2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled.
+3. Excess hits are lost if restrictions apply.
+
+Crippled squadrons multiply their AS by 0.5, rounded up the nearest whole number.
+
+Destroyed squadrons are no longer a factor and the Task Force loses their associated die roll modifiers (e.g. Scouts).
+
+In computer moderated play, the algorithm will reduce opposing squadrons with the greatest AS, within restrictions.
+
+**Critical Hits**:
+
+Critical hits are a special case. Restriction \#2 in the list above is nullified.
+
+Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction \#1 above, then the squadron with the lowest DS is reduced.
+
+### 7.3.2 End of Round
+
+After all hits are applied and squadrons are appropriately reduced (crippled or destroyed), recalculate the total AS of all surviving Task Forces.
+
+Check each Task Force's ROE on the table in [Section 7.1.1](#711-rules-of-engagement-roe) by comparing AS strengths and determine if a retreat is warranted. If so, proceed to [Section 7.3.3](#733-retreat).
+
+If more than one Task Force remains in the fight, the next round commences via the same procedure as described above.
+
+Otherwise proceed to [Section 7.3.4](#734-end-of-space-combat).
+
+### 7.3.3 Retreat
+
+A Task Force is able retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter.
+
+Squadrons in a retreating Task Force will fall back to their original fleet formations and flee to the closest non-hostile star system.
+
+Fighter squadrons never retreat from combat. If they remain in the fight, fighter squadrons will screen their retreating Task Force and combat resumes until they are completely destroyed. 
+
+Spacelift Command ships are destroyed if their escort fleets were destroyed.
+
+### 7.3.4 End of Space Combat
+
+After the last round of combat the surviving Task Forces are disbanded and surviving squadrons rejoin their original fleets.
+
+## 7.4 Starbase Combat
+
+Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per [Section 7.2](#72-task-force-assignment).
+
+Fleets with orders to guard the Starbase (Fleet Orders 04) also join the Task Force.
+
+Combat will proceed in a similar fashion to [Section 7.3](#73-space-combat), with the following restrictions:
+
+1. If a player rolls a critical hit against a starbase on the first try, re-roll a second time.
+2. Starbases receive an extra +2 die roll modifier.
+
+Starbases are fortified with superior AI and sensors, making them formidable, with high defensive capabilities.
+
+## 7.5 Planetary Bombardment
+
+After orbital supremacy is achieved, planets are vulnerable to surface attack. Planetary shields, ground batteries, and ground forces are the last line of defense before invasion or blitz.
+
+Like space combat, planetary bombardment is simultaneous. No more than three combat rounds are conducted per turn.
+
+### 7.5.1 Determine Hits
+
+The attacking player will total the AS value of their fleet's surviving squadrons and the defending player will total the AS strength of all remaining ground batteries. Both players roll on the Bombardment Table.
+
+**Bombardment Table**:
+
+| **1D10 Die Roll** | ** Bombardment CER**          |
+| ----------------- | ----------------------------- |
+| 0, 1, 2           | One Quarter (0.25) (round up) |
+| 3, 4, 5           | One Half (0.50) (round up)    |
+| 6, 7, 8           | One (1)                       |
+| 9\*               | One\* (1)                     |
+
+\* Critical hits are only applied against attacking squadrons
+
+The CER multiplied by AS equals the number of hits on the enemy.
+
+### 7.5.2 Planetary Shields
+
+If a planet is protected by shields, the defending player will roll on the table below to determine the number of hits blocked.
+
+| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
+|:---------:|:--------:|:---------:|:-----------------:|
+| SLD1      | 15       | > 17      | 25%               |
+| SLD2      | 30       | > 14      | 30%               |
+| SLD3      | 45       | > 11      | 35%               |
+| SLD4      | 60       | > 8       | 40%               |
+| SLD5      | 75       | > 5       | 45%               |
+| SLD5      | 90       | > 2       | 50%               |
+
+Reduce the attacking players hits by the percentage, rounding up. This is the number of effective hits.
+
+Example: A fleet with AS of 75 bombards a planet protected by a SLD3 shield, and the defending player rolls a 15.
+
+```
+Hits = 75 * (1 - .35) = 49
+```
+
+Note that shields are only be destroyed by Marines during planetary invasion.
+
+### 7.5.3 Ground Batteries
+
+The player who rolled the die will determine where hits are applied. Because ground batteries are all the same, selecting which ground batteries to target is moot. Unlike ships in squadrons, ground batteries are reduced as individual units.
+
+The following **restrictions** apply:
+1. If the number of hits equal the opposing unit's DS, the unit is reduced.
+2. Units are not destroyed until all other units are crippled.
+3. Excess hits leftover against Ground Batteries are summed.
+4. Excess hits are lost against squadrons if restrictions apply.
+
+Crippled units multiply their AS by 0.5, rounded up the nearest whole number.
+
+**Critical Hits**:
+
+Critical hits are a special case, and only apply against the attacking fleet. Restriction \#2 in the list above is nullified.
+
+Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction \#1 above, then the squadron with the lowest DS is reduced.
+
+Proceed to the next section.
+
+### 7.5.4 Ground Units & Civilian Infrastructure
+
+The attacking player will apply unused hits towards ground forces (Armies or Marines):
+1. If the number of hits equal the opposing unit's DS, the unit is reduced.
+2. Units are not destroyed until all other units are crippled.
+3. Excess hits are lost if restrictions apply.
+
+Finally, if there are unused hits left over from ground batteries and ground forces, subtract the number of hits from the planet's IU. If there is no remaining IU, apply hits to the planet's PU instead.
+
+If there are remaining rounds (max 3), return to [Section 7.5.1](#751-determine-hits) and repeat.
+
+## 7.6 Planetary Invasion & Blitz
+
+Combat is simultaneous, and the following table is used to determine the CER.
+
+**Ground Combat Table**:
+
+| **1D10 Die Roll** | **Ground Combat CER**           |
+| ----------------- | ------------------------------- |
+| 0, 1, 2           | One Half (0.5) (round up)       |
+| 3, 4, 5, 6        | One (1)                         |
+| 7, 8              | One and a half (1.5) (round up) |
+| 9                 | Two (2)                         |
+
+### 7.6.1 Planetary Invasion
+
+To land Marines on a planet during ground invasion, all the surface Ground Batteries must be destroyed. First conduct *one round* of planetary bombardment from [Section 7.5](#75-planetary-bombardment). If there are remaining Ground Batteries, the mission fails.
+
+If all ground batteries are destroyed, the Marines are dropped onto the surface. Planetary shields and Spaceports are immediately destroyed.
+
+Both sides total the AS strength of their Armies and Marines, and roll on the Ground Combat Table for the CER. The CER multiplied by AS is the number of hits. Armies and Marines are treated as individual units for the purposes of combat reduction.
+
+The player who rolled the die will determine where hits are applied, with the following restrictions:
+1. If the number of hits equal the opposing unit's DS, the unit is reduced.
+2. Units are not destroyed until all other units are crippled.
+3. Excess hits are lost if restrictions apply.
+
+Crippled units multiply their AS by 0.5, rounded up the nearest whole number.
+
+Repeat the process until one side is completely destroyed.
+
+If the planet is conquered, loyal House citizens destroy 50% of of the colony's remaining IU before order is restored.
+
+### 7.6.2 Planetary Blitz
+
+Fleets and Ground batteries conduct one round of combat in accordance with [Section 7.5](#75-planetary-bombardment), with the exception that ground units and civilian infrastructure are not targeted ([Sections 7.5.4](#754-ground-units--civilian-infrastructure)). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
+
+Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
+
+Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
+
+## 7.7 Custom Combat Modifications
+
+If customizing your own ships or scenarios, the following list provides a jumping off point for custom modification. EC4X is flexible enough to enable the tailoring of the combat mechanics to your own ideas and requirements. Please report back to the project anything that works well for you and increases enjoyment of the game. 
+
+- Additional modifiers to the CER roll, e.g. battle stations readiness, random chance events, etc.
+- Apply the Starbase critical hit rule to special assets that are resistant to crippling.
+- Add a modifier to protect a homeworld's solar system
+- Add mines or moon bases
+- Add defensive missile batteries
+- Insert your imagination here.....
+
+EC4X Space combat is adapted from Empire of the Sun (EOS). 
+
