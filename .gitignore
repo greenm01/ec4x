@@ -12,6 +12,7 @@ dist/
 
 # Nim compiler generated files
 *.exe
+*.out
 *.so
 *.dylib
 *.dll
