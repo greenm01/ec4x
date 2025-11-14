@@ -5,7 +5,7 @@
 
 import std/[os, strutils, net, times, tables]
 import cligen
-import ec4x_core
+import ../core
 
 type
   ClientError* = object of CatchableError

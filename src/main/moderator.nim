@@ -5,7 +5,7 @@
 
 import std/[os, strutils, exitprocs, sequtils]
 import cligen
-import ec4x_core
+import ../core
 import moderator/[config, create]
 
 proc newGameCmd(dir: string): int =
