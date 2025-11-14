@@ -14,9 +14,7 @@ EC4X is a robust, performance-optimized implementation of an asynchronous turn-b
 - **[ec4x_specs.md](ec4x_specs.md)** - Complete game specification and rules
 
 ### 🔍 Technical Analysis
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Detailed implementation analysis and technical overview
-- **[STARMAP_ANALYSIS.md](STARMAP_ANALYSIS.md)** - Comprehensive analysis of starmap implementations and optimizations
-- **[STARMAP_MIGRATION.md](STARMAP_MIGRATION.md)** - Migration from original to robust starmap implementation
+- **[archive/starmap-migration/](archive/starmap-migration/)** - Historical starmap implementation documentation (archived)
 
 ### 📚 User Documentation
 - **[../README.md](../README.md)** - Main project documentation with usage examples
