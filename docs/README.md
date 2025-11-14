@@ -11,7 +11,14 @@ EC4X is a robust, performance-optimized implementation of an asynchronous turn-b
 ### 📋 Architecture & Design
 - **[EC4X-Architecture.md](EC4X-Architecture.md)** - Complete system architecture and design
 - **[EC4X-Deployment.md](EC4X-Deployment.md)** - Production deployment guide
-- **[ec4x_specs.md](ec4x_specs.md)** - Complete game specification and rules
+- **[Game Specification](specs/)** - Complete game rules (split for easy navigation)
+  - [Index](specs/index.md) - Introduction and overview
+  - [Gameplay](specs/gameplay.md) - How to play, prestige, turns
+  - [Military](specs/military.md) - Ships, fleets, special units
+  - [Economy](specs/economy.md) - Economics, R&D, construction
+  - [Operations](specs/operations.md) - Movement and combat
+  - [Diplomacy](specs/diplomacy.md) - Diplomacy and espionage
+  - [Reference](specs/reference.md) - Ship stats and data tables
 
 ### 🔍 Technical Analysis
 - **[archive/starmap-migration/](archive/starmap-migration/)** - Historical starmap implementation documentation (archived)

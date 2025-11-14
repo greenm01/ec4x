@@ -6,31 +6,41 @@
 
 ## 1️⃣ High‑Level Vision
 
-- **Goal:** A turn‑based 4X game written in Nim that can be played over SSH (or any future transport) with a simple ANSI UI now and a modern GUI later.
+- **Goal:** A turn‑based 4X game written in Nim that runs on the Nostr protocol, combining the async rhythm of BBS door games with modern cryptographic identity and decentralized infrastructure.
 
-- **Core Principle:** **Separation of concerns** – the *engine* knows nothing about networking or rendering; the *transport* only moves JSON blobs; the *UI* only displays data and collects orders.
+- **Core Principle:** **Separation of concerns** – the *engine* knows nothing about networking or rendering; the *transport* only moves Nostr events (encrypted JSON); the *UI* only displays data and collects orders.
 
-- **Optional Discord front‑end:** A lightweight bot that creates games, registers users, and posts the SSH command / turn‑summary notifications. The bot talks to the daemon via a local HTTP/UNIX‑socket API; it never runs game logic.
+- **Nostr-Native Architecture:** Players submit orders as encrypted Nostr events to relays, daemon watches for order events, resolves turns on schedule, publishes encrypted game states back to players. Like a BBS door game, but with cryptographic signatures and decentralized message passing.
+
+- **Optional Discord integration:** A lightweight bot for game announcements, turn notifications, and social coordination. The bot monitors Nostr events and posts summaries to Discord channels.
 
 ---
 
 ## 2️⃣ Layered Architecture
 
 ```
-+-------------------+      +-------------------+     +-------------------+
-|   UI Layer        | <──► |   Engine Core     | ◄── |   Transport Layer |
-| (ANSI now, later  |      | (pure Nim, no I/O)|     | (SSH, files, TCP, |
-|  Nuklear/ImGui…)  |      +-------------------+     |  Discord‑bot)     |
-+-------------------+                                +-------------------+
++-------------------+      +-------------------+     +------------------------+
+|   UI Layer        | <──► |   Engine Core     | ◄── |   Transport Layer      |
+| (Desktop client:  |      | (pure Nim, no I/O)|     | (Nostr events via      |
+|  ANSI/TUI now,    |      +-------------------+     |  WebSocket to relays)  |
+|  GUI later)       |                                +------------------------+
++-------------------+                                          ▲
+                                                               │
+                                                    +----------▼----------+
+                                                    |   Nostr Relay(s)    |
+                                                    | (nostr-rs-relay or  |
+                                                    |  public relays)     |
+                                                    +---------------------+
 ```
 
 | Layer                      | Responsibility                                                                                                                                               | Typical implementation                                      |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
 | **Engine Core**            | All game rules, data structures, turn resolution. Pure functions, deterministic, unit‑testable.                                                              | Nim modules under `src/engine/`.                            |
-| **Transport Layer**        | Authentication, session handling, file‑watching or socket I/O. Converts player actions ↔ JSON packets.                                                       | `src/transport/` (SSH‑file drop now, TCP/WS later).         |
-| **UI Layer**               | Renders a player’s filtered view, collects orders, builds a `PlayerPacket`.                                                                                  | `src/ui/ansi.nim` (current), `src/ui/nuklear.nim` (future). |
-| **Discord Bot** (optional) | Game creation, user registration, posting SSH commands, announcing turn results. Communicates with the daemon via a tiny local HTTP API.                     | `src/bot/` (separate process).                              |
-| **Daemon**                 | Systemd‑managed long‑running service. Watches all game folders, validates packets, schedules nightly turn resolution, serves the local HTTP API for the bot. | `src/daemon/`.                                              |
+| **Transport Layer**        | Nostr protocol implementation: WebSocket relay connections, event signing/encryption (NIP-44), subscription management. Converts player actions ↔ encrypted Nostr events. | `src/transport/nostr/` (client, events, crypto, filters).   |
+| **UI Layer**               | Renders a player's filtered view, collects orders, publishes encrypted order events.                                                                        | `src/ui/ansi.nim` (current TUI), `src/ui/gui.nim` (future). |
+| **Discord Bot** (optional) | Monitors Nostr events for game updates, posts turn summaries to Discord. Creates games, coordinates players.                                                 | `src/bot/` (separate process, bridges Nostr ↔ Discord).     |
+| **Daemon**                 | Systemd‑managed service. Subscribes to order events on Nostr relays, decrypts orders, runs turn resolution, publishes encrypted game states to each player. | `src/daemon/` (subscriber, processor, publisher).           |
+| **Nostr Relay**            | Message broker and event storage. Receives encrypted orders from players, delivers them to daemon. Stores game history permanently.                         | `nostr-rs-relay` (Rust) or public relays.                   |
 
 ---
 
@@ -58,9 +68,12 @@ ec4x/
 │   │   └─ validation.nim           # 🚧 packet sanity checks
 │   │
 │   ├─ transport/                   # 🚧 I/O abstractions (future)
-│   │   ├─ ssh_file.nim             # 🚧 file‑drop over SSH (inotify watcher)
-│   │   ├─ http_api.nim             # 🚧 local HTTP server for daemon & bot
-│   │   └─ packets.nim              # 🚧 packet serialization/validation
+│   │   └─ nostr/                   # 🚧 Nostr protocol implementation
+│   │       ├─ types.nim            # 🚧 Nostr event types, filters, constants
+│   │       ├─ crypto.nim           # 🚧 secp256k1, NIP-44 encryption
+│   │       ├─ events.nim           # 🚧 event creation, parsing, signing
+│   │       ├─ filter.nim           # 🚧 subscription filters
+│   │       └─ client.nim           # 🚧 WebSocket relay connection
 │   │
 │   ├─ ui/                          # 🚧 rendering & input (future)
 │   │   ├─ ui.nim                   # 🚧 UI interface trait
@@ -70,8 +83,9 @@ ec4x/
 │   ├─ daemon/                      # 🚧 systemd service (future)
 │   │   ├─ daemon.nim               # 🚧 entry point (systemd ExecStart)
 │   │   ├─ scheduler.nim            # 🚧 turn‑timer (midnight or manual)
-│   │   ├─ game_manager.nim         # 🚧 iterate over games, call engine
-│   │   └─ webhook.nim              # 🚧 receive turn‑complete POST from bot
+│   │   ├─ subscriber.nim           # 🚧 listen for order events on relays
+│   │   ├─ processor.nim            # 🚧 decrypt orders, validate, resolve turn
+│   │   └─ publisher.nim            # 🚧 publish game states to players
 │   │
 │   ├─ bot/                         # 🚧 Discord integration (optional future)
 │   │   ├─ bot.nim                  # 🚧 main bot process
@@ -113,13 +127,14 @@ ec4x/
 
 ### What's Next
 
+- 🚧 **Nostr protocol implementation** - Core transport layer (crypto, events, WebSocket client)
 - 🚧 **Turn resolution engine** - Income, command, conflict, maintenance phases
-- 🚧 **SSH transport layer** - File-drop packet system
-- 🚧 **Daemon** - Turn scheduler and game manager
+- 🚧 **Daemon** - Subscriber/processor/publisher for Nostr events
+- 🚧 **Desktop client** - TUI with Nostr integration for order submission
 - 🚧 **Fleet orders** - 16 order types from specification
-- 🚧 **ANSI UI** - Simple terminal interface for order entry
 - 🚧 **Map export** - PDF/SVG generation for hybrid tabletop play
-- 🚧 **Discord bot** - Optional social layer (lowest priority)
+- 🚧 **Discord bot** - Optional bridge (Nostr events → Discord announcements)
+- 🚧 **Nostr relay** - Deploy nostr-rs-relay for game event storage
 
 ### Naming Conventions
 
@@ -133,21 +148,63 @@ ec4x/
 
 ## 4️⃣ Interaction Flow (Typical Turn)
 
-1. **Discord bot** → `/newgame` → creates `games/&lt;game-id&gt;/`, copies `initial_state.json`, stores creator in `users.db`, posts SSH command.
+### Game Creation
 
-2. **Player** runs the SSH command → forced‑command starts `ec4x --mode=client &lt;game-id&gt;`.
+1. **Moderator** runs `./bin/moderator new-game --config game.toml`
+2. **Moderator daemon** publishes game metadata as Nostr event (kind 30004)
+3. **Players** discover game via relay, register their pubkeys
+4. **Game starts** when all players ready
 
-3. **Client (UI layer)** loads the player’s filtered view (`players/&lt;house&gt;_view.json`), shows the ANSI menu, collects orders, writes `games/&lt;game-id&gt;/packets/&lt;house&gt;.json`.
+### Order Submission (Player Perspective)
 
-4. **Transport (ssh\_file)** detects the new packet via inotify and notifies the **daemon**.
+1. **Player** opens desktop client: `./bin/client`
+2. **Client** subscribes to relay for their game state events (kind 30002)
+3. **Client** receives encrypted game state, decrypts with player private key
+4. **Client** displays ANSI/TUI interface with fog-of-war filtered view
+5. **Player** studies map, plans strategy, enters orders
+6. **Client** encrypts orders to moderator pubkey (NIP-44)
+7. **Client** publishes order packet as Nostr event (kind 30001) to relay(s)
+8. **Relay** stores event, delivers to daemon's subscription
 
-5. **Daemon** (at scheduled midnight or on manual `/nextturn`) loads all pending packets, calls `engine.resolveTurn`, writes a fresh `state.json`, archives the previous turn, regenerates each `players/&lt;house&gt;_view.json`.
+### Turn Resolution (Daemon Perspective)
 
-6. **Daemon** POSTs a tiny JSON payload to the **Discord bot** (`/turn_done`).
+1. **Scheduler** triggers at midnight UTC (or manual `/nextturn`)
+2. **Daemon** queries relay for all order events (kind 30001) for current game/turn
+3. **Daemon** decrypts each player's orders using moderator private key
+4. **Daemon** validates orders (schema, legality, resources)
+5. **Daemon** calls `engine.resolveTurn(gameState, allOrders)` -> new state
+6. **Daemon** archives previous turn state
+7. **For each player:**
+   - Generate filtered view (fog of war, intel level)
+   - Encrypt game state to player's pubkey
+   - Publish as Nostr event (kind 30002) tagged for that player
+8. **Daemon** publishes public turn summary (kind 30003) - leaderboard, major events
+9. **Daemon** optionally publishes spectator feed (kind 30006) - sanitized public view
 
-7. **Bot** posts an embed in the game channel: turn number, prestige table, who submitted, link to the snapshot.
+### Notification (Discord Bot, Optional)
 
-The next day players repeat from step 2.
+1. **Bot** subscribes to turn complete events (kind 30003)
+2. **Bot** receives turn summary from relay
+3. **Bot** posts embed to Discord channel: turn #, prestige rankings, battles
+4. **Bot** reminds players to check their clients for new turn
+
+### Next Turn
+
+Players repeat order submission flow. The game continues until victory condition or max turns reached.
+
+### BBS Door Game Analogy
+
+Like classic BBS door games:
+- Players "dial in" (connect via Nostr client)
+- Submit their moves (encrypted orders)
+- Log out (client disconnects)
+- Game processes all moves overnight (turn resolution)
+- Players "dial in" next day to see results
+
+But modernized with:
+- Cryptographic identity (Nostr keypairs)
+- Decentralized infrastructure (multiple relays)
+- Provable game history (signed events on relay)
 
 ---
 
@@ -155,8 +212,8 @@ The next day players repeat from step 2.
 
 | What you want to add                                      | Where it belongs                                                                                                                                         | Minimal changes required                                                                                      |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Web UI**                                                | New `ui/web.nim` (or a separate JS front‑end) that talks to the same transport (HTTP API).                                                               | Implement the UI to consume `players/&lt;house&gt;_view.json` and POST a `PlayerPacket`. No engine changes.   |
-| **Persistent TCP server**                                 | `transport/tcp_socket.nim` \+ a small listener in `daemon/daemon.nim`.                                                                                   | Add the listener, register it in the daemon’s HTTP API, and expose the same `loadState/savePacket` interface. |
+| **Web UI**                                                | New `ui/web.nim` (or browser-based client in JS/WASM) that uses Nostr protocol.                                                                          | Implement Nostr client in browser (nostr-tools), subscribe to game state events, publish order events. No engine changes. |
+| **Additional relays**                                     | Configure daemon and clients with additional relay URLs in config.                                                                                        | Add relay URLs to config files. System automatically uses all configured relays for redundancy. |
 | **Additional game mechanics** (new ship class, tech tree) | `common/types.nim` (data structs) + `engine/core.nim` (rules).                                                                                           | Extend the structs, add the rule logic, update `serde` if needed.                                             |
 | **Graphical UI (Nuklear/ImGui)**                          | `ui/nuklear.nim` (or `ui/imgui.nim`).                                                                                                                    | Implement the same `render` / `collectOrders` signatures; the daemon and engine stay untouched.               |
 | **Multiple Discord servers**                              | `bot/commands.nim` (store guild‑ID → game‑folder mapping).                                                                                               | Adjust the bot to prefix game IDs with the guild, but the daemon still sees plain folder names.               |
@@ -299,7 +356,7 @@ proc generatePlayerMaps*(gameId: GameId, turn: int) =
 
 1. **Game Start**: Moderator generates initial strategic maps for all players
 2. **Each Turn**: Daemon auto-generates updated player maps after resolution
-3. **Players**: Print latest map, study offline, SSH in to submit orders
+3. **Players**: Print latest map, study offline, open client to submit orders
 4. **Repeat**: New maps generated with updated positions and intel
 
 This hybrid approach captures the "print and mark up with pencil" aesthetic of classic play-by-mail games while leveraging modern automation.
@@ -308,37 +365,56 @@ This hybrid approach captures the "print and mark up with pencil" aesthetic of c
 
 ## 6️⃣ Deployment Sketch
 
-1. **VPS (Ubuntu/Debian)**
-   
-   - Create a system user `ec4x` (no login shell).
-   
-   - Install Nim, clone the repo, run `nimble build -d:release`.
-   
-   - Place binaries (`ec4x-daemon`, `ec4x-client`, `ec4x-bot`) in `/opt/ec4x/bin/`.
-   
-   - Enable the systemd services: `systemctl enable --now ec4x.service ec4x-bot.service`.
-   
-   - (Optional) Enable `ec4x.timer` for nightly turn execution.
 
-2. **SSH configuration**
-   
-   - Add a `ForceCommand` line for the `ec4x` user that runs the client binary with the supplied game ID:
-     
+1. **VPS Setup (Ubuntu/Debian)**
+   - Create system user `ec4x` (no login shell)
+   - Install Nim and build EC4X: `nimble build -d:release`
+   - Place binaries in `/opt/ec4x/bin/`
+
+2. **Nostr Relay Deployment**
+   - Install nostr-rs-relay (Rust): `cargo build --release`
+   - Configure relay in `/opt/nostr-relay/config.toml`:
+     - Set permanent retention for EC4X events (kinds 30001-30006)
+     - Bind to localhost:8080 (Caddy will proxy)
+     - Enable event archival (never prune game data)
+   - Create systemd service: `nostr-relay.service`
+   - Enable: `systemctl enable --now nostr-relay`
+
+3. **Reverse Proxy (Caddy)**
+   - Install Caddy for automatic HTTPS
+   - Configure `/etc/caddy/Caddyfile`:
      ```
-     Match User ec4x
-         ForceCommand /opt/ec4x/bin/ec4x-client --mode=client %d
-         AllowTcpForwarding no
-         X11Forwarding no
+     relay.ec4x.game {
+         reverse_proxy localhost:8080
+     }
      ```
-   
-   - Users add their public keys to `~ec4x/.ssh/authorized_keys` (the bot can insert a line automatically when a user registers).
+   - Caddy auto-obtains Let's Encrypt certificates
+   - Point DNS A record to your VPS IP
 
-3. **Discord bot token**
-   
-   - Store the token in `/opt/ec4x/bot/.env` (or a systemd secret).
-   
-   - Bot reads the token, connects, registers slash commands, and talks to the daemon via the UNIX socket `/run/ec4x.sock`.
+4. **EC4X Daemon Configuration**
+   - Generate moderator Nostr keypair: `./bin/moderator keygen`
+   - Configure `/opt/ec4x/daemon_config.toml`:
+     - Relay URLs (local + public fallbacks)
+     - Moderator private key path
+     - Turn schedule (midnight UTC)
+     - Game data directories
+   - Create systemd service: `ec4x-daemon.service`
+   - Enable: `systemctl enable --now ec4x-daemon`
 
+5. **Discord Bot (Optional)**
+   - Store bot token in `/opt/ec4x/bot/.env`
+   - Configure bot to monitor Nostr relay for game events
+   - Bot subscribes to turn complete events (kind 30003)
+   - Posts summaries to Discord channels
+   - Create systemd service: `ec4x-bot.service`
+
+6. **Player Clients**
+   - Players download client binary or build from source
+   - Generate Nostr keypair: `./bin/client keygen`
+   - Configure client with relay URLs
+   - Connect and register for games
+
+See **[docs/EC4X-VPS-Deployment.md](EC4X-VPS-Deployment.md)** for detailed step-by-step deployment guide.
 ---
 
 ## 7️⃣ Quick Reference Glossary
@@ -347,11 +423,14 @@ This hybrid approach captures the "print and mark up with pencil" aesthetic of c
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **GameState**                                         | Full master representation of a single EC4X game (all houses, colonies, ships, tech, etc.).                                                          |
 | **PlayerPacket**                                      | JSON object containing one house’s orders for the current turn (tax, build, move, espionage, etc.).                                                  |
-| **Filtered View** (`players/&lt;house&gt;_view.json`) | Subset of `GameState` that a house is allowed to see (fog‑of‑war, known intel).                                                                      |
-| **Transport**                                         | The mechanism that moves JSON files between client and daemon (currently SSH‑file‑drop).                                                             |
-| **Daemon**                                            | Systemd‑managed process that watches all game folders, validates packets, runs the engine each turn, and serves a tiny HTTP API for the Discord bot. |
-| **Discord Bot**                                       | Convenience front‑end for game creation, user registration, and turn announcements; communicates with the daemon via local HTTP.                     |
-| **UI Layer**                                          | Code that renders a player’s view and collects orders; currently ANSI, later Nuklear/ImGui.                                                          |
+| **Filtered View** | Subset of `GameState` that a house is allowed to see (fog of war, known intel). Sent as encrypted Nostr events. |
+| **Nostr Event** | Signed JSON message transmitted via relays. EC4X uses custom event kinds (30001-30006) for game operations. |
+| **Transport** | Nostr protocol: WebSocket connections to relays, encrypted event publishing/subscribing. |
+| **Daemon** | Systemd-managed process that subscribes to order events, decrypts them, runs turn resolution, publishes game states. |
+| **Nostr Relay** | Message broker that stores and delivers EC4X events. Archives complete game history. |
+| **Moderator** | Game operator with private key to decrypt orders and sign official game states. |
+| **Discord Bot** | Optional bridge that monitors Nostr events and posts turn summaries to Discord channels. |
+| **UI Layer** | Desktop client (TUI/GUI) that displays game state and publishes encrypted orders as Nostr events. |
 
 ---
 
@@ -368,5 +447,17 @@ This hybrid approach captures the "print and mark up with pencil" aesthetic of c
 - **Look at `tests/`** for examples of how to unit‑test engine functions.
 
 - **If you want to add a UI:** implement the two procedures in `ui/ui.nim` (`render`, `collectOrders`) and register the new module in `src/main/client.nim`.
+
+- **For Nostr implementation details:** see `EC4X-Nostr-Implementation.md` for module structure, `EC4X-Nostr-Events.md` for event schema, and `EC4X-VPS-Deployment.md` for deployment guide.
+
+---
+
+## 9️⃣ Additional Documentation
+
+- **[EC4X-Nostr-Implementation.md](EC4X-Nostr-Implementation.md)** - Nostr protocol module structure and implementation guide
+- **[EC4X-Nostr-Events.md](EC4X-Nostr-Events.md)** - Complete event schema and data flow examples
+- **[EC4X-VPS-Deployment.md](EC4X-VPS-Deployment.md)** - Production VPS deployment with Nostr relay
+- **[Game Specification](specs/)** - Complete game rules and mechanics
+- **[EC4X-Deployment.md](EC4X-Deployment.md)** - General deployment guide
 
 ---
