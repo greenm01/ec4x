@@ -4,10 +4,11 @@
 ## fundamental game mechanics and data structures for the 4X strategy game.
 
 import common/[hex, system, types]
-import engine/[ship, fleet, starmap]
+import engine/[ship, fleet, starmap, gamestate, orders, resolve]
 
 # Re-export all public types and procedures
 export hex, ship, system, fleet, starmap, types
+export gamestate, orders, resolve
 
 # Version information
 const
