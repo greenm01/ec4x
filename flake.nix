@@ -32,9 +32,9 @@
             echo "  ./bin/client offline --players=4"
             echo ""
 
-            # Launch fish if available
+            # Launch fish if available (suppress greeting)
             if command -v fish >/dev/null 2>&1; then
-              exec fish
+              exec fish -C "set fish_greeting"
             fi
           '';
         };
