@@ -31,6 +31,11 @@
             echo "  ./bin/moderator new my_game"
             echo "  ./bin/client offline --players=4"
             echo ""
+
+            # Launch fish if available
+            if command -v fish >/dev/null 2>&1; then
+              exec fish
+            fi
           '';
         };
       });
