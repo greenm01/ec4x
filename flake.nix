@@ -31,11 +31,6 @@
             echo "  ./bin/moderator new my_game"
             echo "  ./bin/client offline --players=4"
             echo ""
-
-            # Launch nushell if available
-            if command -v nu >/dev/null 2>&1; then
-              exec nu
-            fi            
           '';
         };
       });
