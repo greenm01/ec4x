@@ -5,7 +5,7 @@
 
 import unittest
 import std/[options, tables]
-import ../src/ec4x_core
+import ../src/core
 
 suite "Hex Coordinate Tests":
   test "hex creation and basic properties":

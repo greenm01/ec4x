@@ -8,8 +8,9 @@
 
 import unittest
 import std/[options, tables, sequtils, sets, algorithm, math, random, times, strutils]
-import ../src/ec4x_core/starmap
-import ../src/ec4x_core/[hex, system, fleet, ship, types]
+import ../src/engine/starmap
+import ../src/engine/[fleet, ship]
+import ../src/common/[hex, system, types]
 
 suite "Robust Starmap Tests":
 

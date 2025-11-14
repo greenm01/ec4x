@@ -6,8 +6,9 @@
 
 import unittest
 import std/[options, tables, math, random, times]
-import ../src/ec4x_core/starmap
-import ../src/ec4x_core/[hex, system, fleet, ship, types]
+import ../src/engine/starmap
+import ../src/engine/[fleet, ship]
+import ../src/common/[hex, system, types]
 
 # Expected behavior based on EC4X game specification
 proc expectedGameBehavior(playerCount: int): tuple[

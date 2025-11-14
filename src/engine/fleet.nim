@@ -3,7 +3,8 @@
 ## This module defines fleets which are collections of ships that can
 ## move together and engage in combat as a unit.
 
-import ship, types
+import ship
+import ../common/types
 import std/[sequtils, algorithm, strutils]
 
 type
