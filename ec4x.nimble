@@ -5,14 +5,17 @@ author        = "Mason Austin Green"
 description   = "EC4X - Asynchronous turn-based 4X wargame"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["moderator", "client"]
+bin           = @["moderator", "client", "daemon"]
 
 # Dependencies
 
 requires "nim >= 2.0.0"
 requires "cligen >= 1.7.0"
-
 requires "toml_serialization >= 0.2.0"
+
+# Future Nostr dependencies (TODO: uncomment when implementing)
+# requires "websocket >= 0.5.0"
+# requires "nimcrypto >= 0.6.0"
 
 # Tasks
 
@@ -47,6 +50,7 @@ task build, "Build all binaries":
   mkDir "bin"
   exec "nim c -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
   exec "nim c -d:release --opt:speed -o:bin/client src/main/client.nim"
+  # exec "nim c -d:release --opt:speed -o:bin/daemon src/main/daemon.nim"  # TODO: Enable when dependencies ready
   echo "Build completed successfully!"
 
 task buildDebug, "Build with debug information":
@@ -54,6 +58,7 @@ task buildDebug, "Build with debug information":
   mkDir "bin"
   exec "nim c -d:debug --debuginfo --linedir:on -o:bin/moderator src/main/moderator.nim"
   exec "nim c -d:debug --debuginfo --linedir:on -o:bin/client src/main/client.nim"
+  # exec "nim c -d:debug --debuginfo --linedir:on -o:bin/daemon src/main/daemon.nim"  # TODO: Enable when dependencies ready
   echo "Debug build completed successfully!"
 
 task check, "Check syntax of all source files":
