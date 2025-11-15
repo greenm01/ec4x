@@ -7,14 +7,23 @@ import ship
 import ../common/types
 import std/[sequtils, algorithm, strutils]
 
+# Forward declarations to avoid circular dependency
+type
+  FleetId* = string    # String ID for fleets
+  SystemId* = uint     # System ID matches StarMap (uint from hex coordinates)
+  HouseId* = string    # String ID for houses
+
 type
   Fleet* = object
     ## A collection of ships that move and fight together
-    ships*: seq[Ship]
+    id*: FleetId          # Unique fleet identifier
+    ships*: seq[Ship]     # Ships in the fleet
+    owner*: HouseId       # House that owns this fleet
+    location*: SystemId   # Current system location
 
-proc newFleet*(ships: seq[Ship] = @[]): Fleet =
+proc newFleet*(ships: seq[Ship] = @[], id: FleetId = "", owner: HouseId = "", location: SystemId = 0): Fleet =
   ## Create a new fleet with the given ships
-  Fleet(ships: ships)
+  Fleet(id: id, ships: ships, owner: owner, location: location)
 
 proc `$`*(f: Fleet): string =
   ## String representation of a fleet

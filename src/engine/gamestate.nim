@@ -1,12 +1,13 @@
 ## Core game state representation for EC4X
 
-import std/[tables, options]
+import std/[tables, options, strutils]
 import ../common/[types, hex, system]
-import fleet, ship
+import fleet, ship, starmap
+
+# Re-export ID types from fleet module
+export fleet.HouseId, fleet.SystemId, fleet.FleetId
 
 type
-  HouseId* = string  # e.g., "house-atreides"
-
   PlanetClass* = enum
     pcBarren, pcTerran, pcJungle, pcOcean, pcDesert, pcIce, pcVolcanic
 
@@ -66,8 +67,6 @@ type
     fleets*: Table[FleetId, Fleet]
     diplomacy*: Table[(HouseId, HouseId), DiplomaticRelation]
     turnDeadline*: int64          # Unix timestamp
-
-  FleetId* = string  # e.g., "fleet-atreides-1"
 
 # Initialization
 

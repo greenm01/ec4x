@@ -4,7 +4,7 @@
 ## star map generation, system setup, and initial game state.
 
 import std/[os, strutils, sequtils, tables, options]
-import ../ec4x_core
+import ../../core
 import config
 
 type

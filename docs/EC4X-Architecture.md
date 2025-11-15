@@ -10,6 +10,8 @@
 
 - **Core Principle:** **Separation of concerns** – the *engine* knows nothing about networking or rendering; the *transport* only moves Nostr events (encrypted JSON); the *UI* only displays data and collects orders.
 
+- **Development Strategy:** **Offline first** – Complete game engine supports local/hotseat multiplayer independently of Nostr. Network transport is added as a layer around the working game logic, not intertwined with it.
+
 - **Nostr-Native Architecture:** Players submit orders as encrypted Nostr events to relays, daemon watches for order events, resolves turns on schedule, publishes encrypted game states back to players. Like a BBS door game, but with cryptographic signatures and decentralized message passing.
 
 - **Optional Discord integration:** A lightweight bot for game announcements, turn notifications, and social coordination. The bot monitors Nostr events and posts summaries to Discord channels.

@@ -1,8 +1,12 @@
 ## Turn resolution engine - the heart of EC4X gameplay
+##
+## OFFLINE GAMEPLAY SYSTEM - No network dependencies
+## This module is designed to work standalone for local/hotseat multiplayer
+## Network transport (Nostr) wraps around this engine without modifying it
 
 import std/[tables, algorithm, options]
 import ../common/[types, hex]
-import gamestate, orders, fleet, ship, starmap
+import gamestate, orders, fleet, ship, starmap, combat, economy
 
 type
   TurnResult* = object
@@ -27,6 +31,25 @@ type
     attackerLosses*: int
     defenderLosses*: int
     victor*: Option[HouseId]
+
+# Forward declarations for phase functions
+proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket])
+proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
+                        events: var seq[GameEvent])
+proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
+                         combatReports: var seq[CombatReport], events: var seq[GameEvent])
+proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent])
+
+# Forward declarations for helper functions
+proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
+proc resolveMovementOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
+                         events: var seq[GameEvent])
+proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
+                              events: var seq[GameEvent])
+proc resolveBattle(state: var GameState, systemId: SystemId,
+                  combatReports: var seq[CombatReport], events: var seq[GameEvent])
+proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrder,
+                       events: var seq[GameEvent])
 
 ## Main Turn Resolution
 
@@ -76,12 +99,14 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
   echo "  [Income Phase]"
 
   for houseId, house in state.houses:
+    # TODO: Call economy.calculateHouseIncome() instead of inline calculation
     var totalIncome = 0
     var totalProduction = 0
 
     # Collect from colonies
     for colony in state.getHouseColonies(houseId):
-      let income = colony.population * 100  # 100 credits per million population
+      # TODO: Call economy.calculateProduction() for accurate calculations
+      let income = colony.population * 100  # 100 credits per million population (placeholder)
       let production = colony.population * 10 + colony.infrastructure * 50
 
       totalIncome += income
@@ -94,7 +119,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
     if houseId in orders:
       let packet = orders[houseId]
       for field, points in packet.researchAllocation:
-        # TODO: Apply research points to tech tree
+        # TODO: Call economy.applyResearch()
         discard
 
     echo "    ", house.name, ": +", totalIncome, " credits, ", totalProduction, " production"
@@ -137,7 +162,9 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process construction orders for a house
-  # TODO: Implement ship construction, building construction, infrastructure upgrades
+  # TODO: Call economy.startConstruction() for each build order
+  # TODO: Validate orders against treasury and production capacity
+  # TODO: Generate events for construction started/completed
   discard
 
 proc resolveMovementOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
@@ -155,9 +182,10 @@ proc resolveMovementOrder(state: var GameState, houseId: HouseId, order: FleetOr
 
   echo "    Fleet ", order.fleetId, " moving to ", targetId
 
-  # TODO: Use pathfinding to determine route
-  # TODO: Check lane traversal rules
-  # TODO: Update fleet location
+  # TODO: Call starmap.findPath() to determine route
+  # TODO: Apply lane traversal rules (1-2 lanes per turn)
+  # TODO: Handle multi-turn journeys (store waypoints on fleet)
+  # TODO: Check for fleet encounters at destination
   # For now, just teleport (placeholder)
   fleet.location = targetId
   state.fleets[order.fleetId] = fleet
@@ -179,24 +207,18 @@ proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: Fle
   if fleetOpt.isNone:
     return
 
-  # Create colony
+  # Create colony (ownership tracked via colonies table)
   let colony = createHomeColony(targetId, houseId)
   state.colonies[targetId] = colony
-
-  # Update system ownership
-  if targetId in state.starMap.systems:
-    var sys = state.starMap.systems[targetId]
-    sys.owner = some(houseId)
-    state.starMap.systems[targetId] = sys
 
   events.add(GameEvent(
     eventType: geColonyEstablished,
     houseId: houseId,
-    description: "Established colony at " & targetId,
+    description: "Established colony at system " & $targetId,
     systemId: some(targetId)
   ))
 
-  echo "    ", state.houses[houseId].name, " colonized ", targetId
+  echo "    ", state.houses[houseId].name, " colonized system ", targetId
 
 ## Phase 3: Conflict
 
@@ -237,12 +259,12 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
   ## Resolve space battle in a system
   echo "    Battle at ", systemId
 
-  # TODO: Implement combat resolution
-  # - Group fleets by house
-  # - Calculate combat strength
-  # - Apply damage based on weapon tech
-  # - Remove destroyed ships
-  # - Generate combat report
+  # TODO: Gather all fleets at system
+  # TODO: Group into attacker/defender based on system ownership
+  # TODO: Build BattleContext with fleets and tech levels
+  # TODO: Call combat.resolveBattle()
+  # TODO: Apply results to game state (remove destroyed ships)
+  # TODO: Generate combat report and events
 
   let report = CombatReport(
     systemId: systemId,
@@ -257,10 +279,11 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
 proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrder,
                        events: var seq[GameEvent]) =
   ## Process orbital bombardment order
-  # TODO: Implement bombardment
-  # - Check fleet is in orbit
-  # - Damage colony infrastructure/population
-  # - Generate event
+  # TODO: Validate fleet is at target system
+  # TODO: Get fleet and colony
+  # TODO: Call combat.resolveBombardment()
+  # TODO: Apply damage to colony
+  # TODO: Generate event
   discard
 
 ## Phase 4: Maintenance
@@ -270,11 +293,13 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   echo "  [Maintenance Phase]"
 
   for houseId, house in state.houses:
+    # TODO: Call economy.calculateHouseUpkeep() for accurate costs
     # Calculate fleet upkeep
     var upkeep = 0
     for fleet in state.getHouseFleets(houseId):
+      # TODO: Call economy.calculateFleetUpkeep()
       for ship in fleet.ships:
-        upkeep += 10  # 10 credits per ship
+        upkeep += 10  # 10 credits per ship (placeholder)
 
     # Deduct upkeep from treasury
     state.houses[houseId].treasury -= upkeep

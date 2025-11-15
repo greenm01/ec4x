@@ -25,24 +25,34 @@ EC4X runs on the **Nostr protocol**, like a modern BBS door game with cryptograp
 
 See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete system design.
 
-## Current Status
+## Development Approach
 
-✅ **Working:**
+**Offline First:** Game engine is being developed for local/hotseat multiplayer before adding Nostr integration. This ensures solid gameplay mechanics before network complexity.
+
+**Current Status:**
+
+✅ **Working (Offline Playable Foundation):**
 - Robust starmap generation (2-12 players)
 - Hexagonal coordinate system with procedural lane generation
 - A* pathfinding with fleet traversal rules
-- Game rule compliance (hub connectivity, player placement)
+- Game state types and turn resolution framework
+- Order system (16 types defined, validation framework)
 - Comprehensive test suite (58 tests, 100% passing)
 - Build system and development environment
 
-🚧 **In Development:**
+🚧 **Next Phase (Complete Offline Game):**
+- Combat resolution (ship damage, battles, casualties)
+- Economy system (production, construction, research)
+- Movement integration (pathfinding + turn rules)
+- Basic TUI for order entry
+- Hotseat multiplayer support
+
+🔮 **Future (Network Integration):**
 - Nostr protocol implementation (crypto, events, WebSocket client)
-- Turn resolution engine (income, command, conflict, maintenance phases)
-- Fleet order system (16 order types)
 - Daemon (subscriber/processor/publisher for Nostr events)
-- Desktop client with TUI for order entry
+- Desktop client network integration
 - PDF/SVG map generation for hybrid tabletop play
-- Nostr relay deployment (nostr-rs-relay)
+- Production VPS deployment
 
 ## Documentation
 

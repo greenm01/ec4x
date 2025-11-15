@@ -2,13 +2,17 @@
 ##
 ## This is the main module for the EC4X core library, providing all the
 ## fundamental game mechanics and data structures for the 4X strategy game.
+##
+## OFFLINE-FIRST DESIGN: This library has zero network dependencies.
+## It implements complete gameplay for local/hotseat multiplayer.
+## Network transport (Nostr) wraps around this core without modifying it.
 
 import common/[hex, system, types]
-import engine/[ship, fleet, starmap, gamestate, orders, resolve]
+import engine/[ship, fleet, starmap, gamestate, orders, resolve, combat, economy]
 
 # Re-export all public types and procedures
 export hex, ship, system, fleet, starmap, types
-export gamestate, orders, resolve
+export gamestate, orders, resolve, combat, economy
 
 # Version information
 const
