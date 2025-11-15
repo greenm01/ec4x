@@ -4,9 +4,6 @@ Written by Mason A. Green
 
 In memory of Jonathan F. Pratt.
 
-Contributors:
-- Matthew Potter
-
 ---
 
 ## Introduction
@@ -77,3 +74,6 @@ The complete EC4X game specification is organized into the following documents:
 ---
 
 *For implementation details, see [EC4X-Architecture.md](../EC4X-Architecture.md)*
+
+Contributors:
+- Matthew Potter
