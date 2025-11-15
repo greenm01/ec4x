@@ -22,7 +22,7 @@ Players start the game with 50 prestige points.
 
 If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
 
-A table of prestige values is listed in [Section 9.4](#94-prestige).
+A table of prestige values is listed in [Section 9.4](reference.md#94-prestige).
 
 ## 1.2 Game Setup
 
@@ -32,7 +32,7 @@ At the start of a game, players will agree upon and designate a game moderator. 
 
 Communicating with other players over email or in a dedicated chat room is recommended. There are plenty to choose from.
 
-Generate a star-map as described in [Section 2.1](#21-star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
+Generate a star-map as described in [Section 2.1](military.md#21-star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
 
 Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
 
@@ -49,17 +49,17 @@ Each turn comprises four phases
 
 ### 1.3.1 Income Phase
 
-At the beginning of each turn, all economic factors ([Section 3](#30-economics)) are recalculated and production points deposited in house treasuries. This accounts for population growth for each colony, construction, maintenance costs, taxes, R&D, etc. House prestige points are recalculated and updated. This will be completed by the game moderator using blind software tools and maintained in a master game database.
+At the beginning of each turn, all economic factors ([Section 3](economy.md#30-economics)) are recalculated and production points deposited in house treasuries. This accounts for population growth for each colony, construction, maintenance costs, taxes, R&D, etc. House prestige points are recalculated and updated. This will be completed by the game moderator using blind software tools and maintained in a master game database.
 
 Updated player databases, unique to each House, are reissued by the game moderator for the new turn. Various tools and database formats can be used to perform this step, including Excel or client game software.
 
 Players receive new reports that reflect updated economics and the outcome of orders issued in the previous turn. This can be achieved through email, on a server, or locally on a laptop for tabletop play.
 
-In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.8](#38-expenditures)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
+In the new turn, players decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings ([Section 3.8](economy.md#38-expenditures)). The tax rate can be changed in this phase. Player local databases are updated accordingly.
 
 ### 1.3.2 Command Phase
 
-In the command phase, players issue fleet orders ([Section 6.2](#62-fleet-orders)) and make strategic decisions around asset management. Players have the opportunity change diplomatic state ([Section 8.1](#81-diplomacy)) in relation to rival Houses.
+In the command phase, players issue fleet orders ([Section 6.2](operations.md#62-fleet-orders)) and make strategic decisions around asset management. Players have the opportunity change diplomatic state ([Section 8.1](diplomacy.md#81-diplomacy)) in relation to rival Houses.
 
 Players send their locally updated game database back to the game moderator for turn processing.
 
