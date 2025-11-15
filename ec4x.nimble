@@ -5,7 +5,7 @@ author        = "Mason Austin Green"
 description   = "EC4X - Asynchronous turn-based 4X wargame"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["moderator", "client", "daemon"]
+bin           = @["main/moderator", "main/client"]  # daemon not ready yet (needs Nostr dependencies)
 
 # Dependencies
 

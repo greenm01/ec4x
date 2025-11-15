@@ -2,7 +2,7 @@
 
 import std/[options, tables]
 import ../common/[types, hex]
-import gamestate, fleet
+import gamestate, fleet, ship
 
 type
   FleetOrderType* = enum
@@ -92,7 +92,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     # Check fleet has colony ship
     var hasColonyShip = false
     for ship in fleet.ships:
-      if ship.shipType == stSpaceLift and not ship.isCrippled:
+      if ship.shipType == Spacelift and not ship.isCrippled:
         hasColonyShip = true
         break
 
@@ -108,7 +108,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     # Check fleet has military ships
     var hasMilitary = false
     for ship in fleet.ships:
-      if ship.shipType == stMilitary and not ship.isCrippled:
+      if ship.shipType == Military and not ship.isCrippled:
         hasMilitary = true
         break
 
