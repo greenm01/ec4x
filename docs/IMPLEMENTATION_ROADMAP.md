@@ -1,5 +1,19 @@
 # EC4X Implementation Roadmap
 
+## Development Strategy
+
+**Offline First, Network Later:** Build complete gameplay systems for local/hotseat multiplayer before adding Nostr integration. This approach:
+- Validates game mechanics independently of network complexity
+- Enables rapid iteration and testing
+- Separates concerns (game logic vs transport layer)
+- Provides playable game at each milestone
+
+**Implementation order:**
+1. **Phase 1**: Complete game engine → Playable offline/localhost
+2. **Phase 2**: Add Nostr protocol → Wrap working game in network transport
+3. **Phase 3**: Build daemon → Automated turn processing
+4. **Phase 4**: Polish TUI → Improved player experience
+
 ## Current Status
 
 **Foundation Complete:** Core architecture, starmap generation, and data structures implemented and tested. Turn resolution framework in place. Ready for gameplay system implementation.
@@ -517,16 +531,22 @@ echo "keys/" >> .gitignore
 
 ## Milestones
 
+**Offline Development (Localhost/Hotseat):**
 - ✅ **M1**: Starmap generation and pathfinding
 - ✅ **M2**: Game state types and turn framework
 - ✅ **M3**: Order system and validation
-- 🎯 **M4**: Combat and economy functional (offline playable)
-- 🎯 **M5**: Nostr event signing and encryption working
-- 🎯 **M6**: Daemon processes turns from relay
-- 🎯 **M7**: Two players complete turn via Nostr
-- 🎯 **M8**: Complete game to victory over Nostr
-- 🎯 **M9**: Production deployment on VPS
-- 🎯 **M10**: Multi-player game with 4+ players
+- 🎯 **M4**: Combat system functional
+- 🎯 **M5**: Economy and production working
+- 🎯 **M6**: Complete offline game to victory (hotseat multiplayer)
+- 🎯 **M7**: Basic TUI for order entry
+
+**Network Integration (Nostr Protocol):**
+- 🎯 **M8**: Nostr event signing and encryption working
+- 🎯 **M9**: Daemon processes turns from relay
+- 🎯 **M10**: Two players complete turn via Nostr
+- 🎯 **M11**: Complete game to victory over Nostr
+- 🎯 **M12**: Production deployment on VPS
+- 🎯 **M13**: Multi-player game with 4+ players
 
 ---
 
