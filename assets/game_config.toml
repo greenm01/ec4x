@@ -1,0 +1,6 @@
+# EC4X Game Config
+host_name = "Toys In The Attic"
+game_name = "EC Game #1"
+server_ip = "localhost"
+port = "19910"
+num_empires = 4
