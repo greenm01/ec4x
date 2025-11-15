@@ -45,8 +45,8 @@ pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + PTU + 1
 
 An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo.
 
-![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/pu_to_ptu.png)
-![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/ptu_to_pu.png)
+![PU to PTU Conversion](../../assets/pu_to_ptu.png)
+![PTU to PU Conversion](../../assets/ptu_to_pu.png)
 
 **Gross Colony Output (GCO)**: The total economic output of a colony, expressed in production points. GCO is determined by the productivity of the colony, industrial investments, resource availability, and technological enhancements.
 
@@ -77,7 +77,7 @@ Look up the Raw Material classification of your colony's system in the RAW colum
 
 ## 3.2 Taxation and Productivity Growth
 
-Tax policy is a critical lever for managing the economy. The Tiered Taxation System links the tax rate directly to productivity growth, impacting economic output and House prestige [Section 9.4](#94-prestige).
+Tax policy is a critical lever for managing the economy. The Tiered Taxation System links the tax rate directly to productivity growth, impacting economic output and House prestige [Section 9.4](reference.md#94-prestige).
 
 The baseline productivity growth (PROD_GROWTH) rate is 3%.
 
@@ -132,7 +132,7 @@ A logistical growth function is used for the calculation. Each planet class has 
 
 [The Logistic Equation](https://michaelneuper.com/posts/modelling-population-growth-in-python/)
 
-![Alt text](https://github.com/greenm01/ec4x/blob/main/assets/logistic_population_growth.png)
+![Logistic Population Growth](../../assets/logistic_population_growth.png)
 
 ## 3.7 Colonization
 
@@ -140,7 +140,7 @@ ETACs plant a flag in unoccupied Solar Systems and set the initial conditions fo
 
 The Space Guilds are contracted to transfer larger populations between existing Colonies in civilian Starliners. Passengers are kept in status to minimize living space, and all of their supplies and equipment for their new destination are tightly packed into the cargo hold. 
 
-The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with [Section 6.1](#61-jump-lanes).
+The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with [Section 6.1](operations.md#61-jump-lanes).
 
 | Conditions | PP/PTU |
 | ---------- |:------:|
@@ -171,7 +171,7 @@ Each turn, the Duke can allocate Treasury funds as follows:
 
 ## 3.9 Maintenance Costs
 
-At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](#90-data-tables).
+At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](reference.md#90-data-tables).
 
 Players are able to reduce maintenance costs by placing active duty ships on either reserve status or mothballing them:
 
@@ -181,7 +181,7 @@ The maintenance cost for mothballed ships is zero. Mothballed ships are placed i
 
 The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
 
-For every turn that a player misses payment for maintenance they loose prestige points; refer to [Section 9.4](#94-prestige).
+For every turn that a player misses payment for maintenance they loose prestige points; refer to [Section 9.4](reference.md#94-prestige).
 
 ## 3.10 Strategic Considerations
 

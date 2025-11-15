@@ -167,7 +167,7 @@ When attacking a solar system, cloaked units are considered to be **a surprise**
 
 In neutral territory a cloaked fleet is considered to be a surprise.
 
-Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](#243-raiders).
+Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](military.md#243-raiders).
 
 If cloaked fleets on all sides pass undetected from one another, then the player defending his solar system wins in ambush. If opposing forces are meeting in neutral territory and all pass undetected, then they carry on with movement orders and combat is cancelled.
 
