@@ -12,7 +12,7 @@ Solar systems have special traits and are procedural generated. They are filled 
 
 There are three classes of jump lanes: restricted, minor, and major. The hub is guaranteed to have six jump lanes connecting it to the first ring, making it an important strategic asset. Homeworlds on the outer ring will have three lanes. The number of lanes connecting the other hexes are randomly generated in accordance with VBAM. The class of all lanes are random.
 
-Movement across the lanes is explained in [Section 6.1](#61-jump-lanes).
+Movement across the lanes is explained in [Section 6.1](operations.md#61-jump-lanes).
 
 Each player's homeworld should be placed on the outer ring, as far as strategically possible from rival home system(s).
 
@@ -55,7 +55,7 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 
 ### 2.3.1 Space Force Ships
 
-The base game includes a number of imperial classed space combatants listed in [Section 9.1](#91-space-force-WEP1).
+The base game includes a number of imperial classed space combatants listed in [Section 9.1](reference.md#91-space-force-wep1).
 
 Feel free to create your own ships and races for asymmetrical warfare or narrative purposes.
 
@@ -65,7 +65,7 @@ The Spacelift Command provides commerce and transportation services in support o
 
 Spacelift assets have no offensive weapons capability, and un-escorted units are easily destroyed by rival forces. 
 
-Spacelift Command attributes are listed in [Section 9.3](#93-spacelift-command-WEP1).
+Spacelift Command attributes are listed in [Section 9.3](reference.md#93-spacelift-command-wep1).
 
 #### 2.3.2.1 Spaceports
 

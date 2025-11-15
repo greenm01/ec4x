@@ -4,26 +4,30 @@ EC4X is an asynchronous turn-based wargame of the classic eXplore, eXpand, eXplo
 
 Inspired by Esterian Conquest and other classic BBS door games, EC4X combines the async rhythm of turn-based strategy with modern cryptographic identity and decentralized infrastructure.
 
+**📖 [Read the Complete Game Specification](docs/specs/index.md)** - Full rules, gameplay mechanics, and strategic systems
+
 ## Game Overview
 
 Upstart Houses battle over a small region of space to dominate rivals and seize the imperial throne. The game starts at the dawn of the third imperium in year 2001. Each turn comprises one month of a thirteen month Terran Computational Calendar.
 
-Turns cycle every 24 hours in real life (IRL) time, intentionally designed for async gameplay where players check in once per day.
+**Game Details:**
+- **Players:** 2-12
+- **Turn Duration:** ~24 hours (real-time)
+- **Victory Condition:** Highest prestige or last House standing
+- **Starting Prestige:** 50 points
 
-Victory is won by crushing your rivals and earning the most **Prestige** by end of game.
+Turns cycle every 24 hours IRL, intentionally designed for async gameplay where players check in once per day.
 
 ## Architecture
 
 EC4X runs on the **Nostr protocol**, like a modern BBS door game with cryptographic identity:
 
-- **Nostr Protocol**: Players submit encrypted orders as Nostr events to relays
-- **Daemon**: Subscribes to order events, resolves turns on schedule (midnight by default)
-- **Desktop Client**: Terminal UI (TUI) for order entry, publishes to Nostr relays
-- **Nostr Relay**: Stores game history permanently, delivers events between players and daemon
-- **Hybrid Tabletop**: Supports printed hex maps + digital order submission
-- **Discord Bot** (optional): Monitors Nostr events, posts turn summaries to Discord
+- **Desktop Client** - Terminal UI for order entry, publishes encrypted orders to Nostr relays
+- **Daemon** - Subscribes to order events, resolves turns on schedule (midnight default)
+- **Nostr Relay** - Stores game history permanently, delivers events between players and daemon
+- **Hybrid Tabletop** - Supports printed hex maps + digital order submission
 
-See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete system design.
+See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete system design and implementation details.
 
 ## Development Approach
 
@@ -56,18 +60,14 @@ See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete sys
 
 ## Documentation
 
-- **[Game Specification](docs/specs/)** - Complete game rules and mechanics
-  - [Gameplay](docs/specs/gameplay.md) - How to play, prestige, turns
-  - [Military Assets](docs/specs/military.md) - Ships, fleets, special units
-  - [Economy](docs/specs/economy.md) - Economics, R&D, construction
-  - [Operations](docs/specs/operations.md) - Movement and combat
-  - [Diplomacy](docs/specs/diplomacy.md) - Diplomacy and espionage
-  - [Reference Tables](docs/specs/reference.md) - Ship stats and data tables
-- **[Architecture Guide](docs/EC4X-Architecture.md)** - System design and structure
-- **[Nostr Implementation](docs/EC4X-Nostr-Implementation.md)** - Protocol modules and code structure
+### Game Rules
+- **[Complete Game Specification](docs/specs/index.md)** - Full rules, gameplay, and strategic systems
+
+### Technical Documentation
+- **[Architecture Guide](docs/EC4X-Architecture.md)** - System design and implementation structure
+- **[Nostr Implementation](docs/EC4X-Nostr-Implementation.md)** - Protocol modules and event handling
 - **[Nostr Events Schema](docs/EC4X-Nostr-Events.md)** - Event kinds, tags, and data flow
-- **[VPS Deployment](docs/EC4X-VPS-Deployment.md)** - Production deployment with Nostr relay
-- **[Deployment Guide](docs/EC4X-Deployment.md)** - General deployment instructions
+- **[Deployment Guide](docs/EC4X-VPS-Deployment.md)** - Production deployment with Nostr relay
 
 ## Development Setup
 
