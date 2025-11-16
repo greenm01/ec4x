@@ -1,6 +1,6 @@
 ## EC4X Configuration Loading and Validation
 ## Central module for loading and validating all game configuration files
-## Based on EC4X specifications and Empire of the Sun (EOS) combat
+## Based on EC4X specifications
 
 import std/[tables, parsecfg, strutils, os]
 
