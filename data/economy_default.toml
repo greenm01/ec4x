@@ -1,0 +1,104 @@
+# EC4X Economy Configuration
+# Edit this file to change economic mechanics for all games
+
+[starting_resources]
+treasury = 1000                    # Starting credits
+starting_population = 5            # Starting homeworld population (millions)
+starting_infrastructure = 3        # Starting homeworld infrastructure level
+
+[population]
+natural_growth_rate = 0.02         # 2% natural birth rate per turn
+growth_rate_per_starbase = 0.05    # +5% per starbase (max 3 starbases)
+max_starbase_bonus = 0.15          # Maximum 15% bonus (3 starbases)
+
+[production]
+# Production calculation
+production_per_10_population = 1   # 1 production per 10 million population
+production_split_credits = 0.33    # 1/3 of production → credits
+production_split_production = 0.33 # 1/3 of production → industrial units
+production_split_research = 0.33   # 1/3 of production → research points
+
+[infrastructure]
+# Infrastructure bonuses
+# TODO: Define infrastructure production modifiers
+
+[planet_classes]
+# Population Unit (PU) limits by planet class
+extreme_pu_min = 1
+extreme_pu_max = 20
+
+desolate_pu_min = 21
+desolate_pu_max = 60
+
+hostile_pu_min = 61
+hostile_pu_max = 180
+
+harsh_pu_min = 181
+harsh_pu_max = 500
+
+benign_pu_min = 501
+benign_pu_max = 1000
+
+lush_pu_min = 1001
+lush_pu_max = 2000
+
+eden_pu_min = 2001
+# eden has no max
+
+[construction]
+# Construction times (in turns/months)
+spaceport_turns = 1
+spaceport_docks = 5                # Number of construction docks
+
+shipyard_turns = 2
+shipyard_docks = 10                # Number of construction docks
+shipyard_requires_spaceport = true # Must have spaceport to build shipyard
+
+starbase_turns = 3
+starbase_requires_shipyard = true  # Must have shipyard to build starbase
+starbase_max_per_colony = 3        # Maximum 3 starbases per colony
+
+planetary_shield_turns = 1         # Can rebuild in one turn
+planetary_shield_max = 1           # Only one shield per planet
+planetary_shield_replace_on_upgrade = true  # Must salvage old to upgrade
+
+ground_battery_turns = 1           # Single turn construction
+ground_battery_max = -1            # No limit (-1 = unlimited)
+
+fighter_squadron_planet_based = true  # Fighters are planet-based, not fleet
+
+[construction_costs]
+# Build costs for infrastructure (not ships - those in ships_default.toml)
+spaceport_cost = 500
+shipyard_cost = 1000
+starbase_cost = 1200
+ground_battery_cost = 100
+
+# Planetary shield costs by tech level
+planetary_shield_sld1_cost = 500
+planetary_shield_sld2_cost = 750
+planetary_shield_sld3_cost = 1000
+planetary_shield_sld4_cost = 1500
+planetary_shield_sld5_cost = 2000
+planetary_shield_sld6_cost = 3000
+
+[upkeep]
+# Annual upkeep costs
+spaceport_upkeep = 25
+shipyard_upkeep = 50
+starbase_upkeep = 75
+ground_battery_upkeep = 5
+planetary_shield_upkeep = 50
+
+[salvage]
+salvage_value_multiplier = 0.5     # Salvaged ships return 50% of build cost
+
+[blockade]
+# Blockade effects
+blockade_production_penalty = 0.60 # -60% Gross Colonial Output (GCO)
+blockade_prestige_penalty = 2      # -2 prestige per turn per blockaded colony
+
+[invasion]
+# Invasion and conquest effects
+invasion_iu_loss = 0.50            # Conquered planet loses 50% of IU
+blitz_iu_loss = 0.00               # Blitz preserves all IU if successful
