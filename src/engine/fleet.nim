@@ -7,11 +7,7 @@ import ship
 import ../common/types
 import std/[sequtils, algorithm, strutils]
 
-# Forward declarations to avoid circular dependency
-type
-  FleetId* = string    # String ID for fleets
-  SystemId* = uint     # System ID matches StarMap (uint from hex coordinates)
-  HouseId* = string    # String ID for houses
+export FleetId, SystemId, HouseId
 
 type
   Fleet* = object
