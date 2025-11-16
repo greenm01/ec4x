@@ -9,8 +9,8 @@ export types.HouseId, types.SystemId, types.FleetId, types.PlanetClass, types.Te
 export types.ResourceRating, types.TechLevel, types.DiplomaticState
 
 type
-  BuildingType* = enum
-    btInfrastructure, btShipyard, btResearchLab, btDefenseGrid
+  BuildingType* {.pure.} = enum
+    Infrastructure, Shipyard, ResearchLab, DefenseGrid
 
   Colony* = object
     systemId*: SystemId
@@ -41,8 +41,8 @@ type
     techTree*: TechTree
     eliminated*: bool
 
-  GamePhase* = enum
-    gpSetup, gpActive, gpPaused, gpCompleted
+  GamePhase* {.pure.} = enum
+    Setup, Active, Paused, Completed
 
   GameState* = object
     gameId*: string
@@ -66,7 +66,7 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     turn: 0,
     year: 2001,
     month: 1,
-    phase: gpSetup,
+    phase: GamePhase.Setup,
     starMap: starMap,
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
@@ -84,13 +84,13 @@ proc initializeHouse*(name: string, color: string): House =
     treasury: 1000,  # Starting treasury
     techTree: TechTree(
       levels: TechLevel(
-        EL: 0,
-        SL: 0,
-        CST: 0,
-        WEP: 0,
-        TER: 0,
-        ELI: 0,
-        CIC: 0
+        energyLevel: 0,
+        shieldLevel: 0,
+        constructionTech: 0,
+        weaponsTech: 0,
+        terraformingTech: 0,
+        electronicIntelligence: 0,
+        counterIntelligence: 0
       ),
       researchPoints: 0
     ),
@@ -104,9 +104,9 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     owner: owner,
     population: 5,  # Starting population
     infrastructure: 3,  # Starting infrastructure
-    planetClass: pcEden,  # Homeworlds are Abundant Eden per specs
-    resources: rrAbundant,  # Abundant resources
-    buildings: @[btShipyard],  # Start with basic shipyard
+    planetClass: PlanetClass.Eden,  # Homeworlds are Abundant Eden per specs
+    resources: ResourceRating.Abundant,  # Abundant resources
+    buildings: @[BuildingType.Shipyard],  # Start with basic shipyard
     production: 0,
     underConstruction: none(ConstructionProject)
   )
@@ -166,8 +166,9 @@ proc calculatePrestige*(state: GameState, houseId: HouseId): int =
   # Prestige from technology
   let house = state.houses[houseId]
   let levels = house.techTree.levels
-  result += (levels.EL + levels.SL + levels.CST + levels.WEP +
-             levels.TER + levels.ELI + levels.CIC) * 100
+  result += (levels.energyLevel + levels.shieldLevel + levels.constructionTech +
+             levels.weaponsTech + levels.terraformingTech +
+             levels.electronicIntelligence + levels.counterIntelligence) * 100
 
   # Prestige from treasury
   result += house.treasury div 100

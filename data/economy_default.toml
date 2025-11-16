@@ -109,7 +109,9 @@ blitz_iu_loss = 0.00               # Blitz preserves all IU if successful
 research_cost_base = 1000          # Base cost for level 1
 research_cost_exponent = 2         # Quadratic scaling (level^2)
 
-# Tech fields: EL, SL, CST, WEP, TER, ELI, CIC (all hardcoded in engine)
+# Tech fields: EnergyLevel, ShieldLevel, ConstructionTech, WeaponsTech,
+#              TerraformingTech, ElectronicIntelligence, CounterIntelligence
+#              (all hardcoded in engine)
 
 [espionage]
 # Espionage and Counter-Intelligence costs
