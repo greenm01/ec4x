@@ -79,11 +79,12 @@ The EC4X technical implementation is documented in the following guides:
 
 ### Architecture Documentation
 - **[Architecture Overview](../architecture/overview.md)** - System design, components, and philosophy
-- **[Storage Layer](../architecture/storage.md)** - SQLite schema and database design
+- **[Storage Layer](../architecture/storage.md)** - SQLite schema and database design (per-game)
 - **[Transport Layer](../architecture/transport.md)** - Localhost and Nostr transport modes
 - **[Intel System](../architecture/intel.md)** - Fog of war and visibility mechanics
-- **[Daemon Design](../architecture/daemon.md)** - Turn processing service architecture
+- **[Daemon Design](../architecture/daemon.md)** - TEA pattern and async event loop
 - **[Data Flow](../architecture/dataflow.md)** - Complete turn cycle and data flow
+- **[TEA Implementation](../architecture/tea-implementation.md)** - The Elm Architecture guide
 
 ### Nostr Protocol
 - **[Nostr Events](../EC4X-Nostr-Events.md)** - Event kind specifications
