@@ -1,0 +1,81 @@
+# EC4X Technology Configuration
+# Edit this file to change tech tree mechanics for all games
+
+[research]
+# Research cost formula: base_cost * (current_level + 1)^2
+research_cost_base = 1000          # Base research cost
+research_cost_exponent = 2         # Quadratic scaling
+
+# Example costs:
+# Level 0→1: 1000 * (0+1)^2 = 1000
+# Level 1→2: 1000 * (1+1)^2 = 4000
+# Level 2→3: 1000 * (2+1)^2 = 9000
+# Level 3→4: 1000 * (3+1)^2 = 16000
+# Level 4→5: 1000 * (4+1)^2 = 25000
+
+[tech_fields]
+# Technology fields and starting levels
+ship_design = 0                    # Ship hull and propulsion tech
+weapons = 0                        # Offensive weapons systems
+defense = 0                        # Defensive shields and armor
+economics = 0                      # Production and efficiency
+espionage = 0                      # Intelligence gathering (ELI/CLK)
+
+[tech_limits]
+max_tech_level = 10                # Maximum tech level (0-10)
+
+[ship_tech_requirements]
+# Minimum tech levels required to build ship classes
+# (from ships_default.toml, duplicated here for reference)
+
+fighter_min_tech = 0
+scout_min_tech = 0
+raider_min_tech = 3                # Requires espionage tech for cloaking
+destroyer_min_tech = 0
+cruiser_min_tech = 1
+battlecruiser_min_tech = 2
+battleship_min_tech = 3
+dreadnought_min_tech = 5
+carrier_min_tech = 2
+supercarrier_min_tech = 4
+starbase_min_tech = 2
+etac_min_tech = 0
+troop_transport_min_tech = 0
+ground_battery_min_tech = 0
+planet_breaker_min_tech = 7        # Late-game ship
+
+[tech_effects]
+# Tech level effects on gameplay
+# TODO M3: Define how tech levels modify stats
+
+# ELI (Electronic Intelligence) levels
+# Scouts get ELI based on espionage tech level
+eli_from_espionage = true
+
+# CLK (Cloaking) levels
+# Raiders get CLK based on espionage tech level
+clk_from_espionage = true
+
+# Planetary Shield levels
+# SLD level corresponds to defense tech level
+sld_from_defense = true
+
+# Ship stat modifiers
+# TODO M3: Define stat scaling formulas
+# Example: AS = base_AS * (1 + weapons_level * 0.1)
+#          DS = base_DS * (1 + defense_level * 0.1)
+
+[special_tech]
+# Special technologies that unlock capabilities
+
+planet_breaker_tech = 7            # Planet-breaker ships require tech 7
+shield_penetration = 7             # Shield penetration requires tech 7
+
+# Terraforming tech allows planet class upgrades
+terraforming_enables_upgrades = true
+terraforming_min_tech = 5
+
+[research_allocation]
+# How research points are allocated
+player_controlled = true           # Players decide research allocation
+auto_allocation = false            # No automatic research distribution
