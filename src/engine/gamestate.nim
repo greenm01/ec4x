@@ -71,7 +71,7 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
-    diplomacy: initTable[(HouseId, HouseId), DiplomaticRelation]()
+    diplomacy: initTable[(HouseId, HouseId), DiplomaticState]()
   )
 
 proc initializeHouse*(name: string, color: string): House =
