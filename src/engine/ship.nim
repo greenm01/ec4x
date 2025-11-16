@@ -3,7 +3,7 @@
 ## This module defines the different types of ships and their capabilities,
 ## including movement restrictions and combat abilities.
 
-import ../common/types
+import ../common/types/units
 
 export ShipType
 

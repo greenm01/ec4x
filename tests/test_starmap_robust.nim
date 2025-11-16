@@ -10,7 +10,8 @@ import unittest
 import std/[options, tables, sequtils, sets, algorithm, math, random, times, strutils]
 import ../src/engine/starmap
 import ../src/engine/[fleet, ship]
-import ../src/common/[hex, system, types]
+import ../src/common/[hex, system]
+import ../src/common/types/combat
 
 suite "Robust Starmap Tests":
 

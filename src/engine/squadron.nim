@@ -11,10 +11,10 @@
 
 import std/[sequtils, strutils, options, parsecfg, tables, os]
 import ship
-import ../common/types
+import ../common/types/[core, units]
 
 export HouseId, FleetId, SystemId, SquadronId, ShipClass, ShipStats
-export types.ShipType  # Use ShipType from types, not ship
+export units.ShipType  # Use ShipType from types/units, not ship
 
 type
   EnhancedShip* = object

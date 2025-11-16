@@ -1,7 +1,7 @@
 ## Fleet order types and validation for EC4X
 
 import std/[options, tables]
-import ../common/[types, hex]
+import ../common/[hex, types/core]
 import gamestate, fleet, ship
 
 type
