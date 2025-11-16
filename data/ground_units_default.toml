@@ -1,0 +1,52 @@
+# EC4X Ground Units Configuration
+# Based on EC4X specifications (Section 9.2)
+
+[planetary_shield]
+name = "Planetary Shield"
+class = "PS"
+cst_min = 5
+build_cost = 100
+upkeep_cost = 5
+attack_strength = 0
+defense_strength = 100
+description = "Protects colonies from orbital bombardment"
+build_time = 1  # turns
+max_per_planet = 1
+salvage_required = true  # Must salvage old shield before upgrading
+
+[ground_battery]
+name = "Ground Battery"
+class = "GB"
+cst_min = 1
+build_cost = 20
+upkeep_cost = 3
+attack_strength = 10
+defense_strength = 8
+description = "Static defense units positioned on planet surface"
+build_time = 1  # turns (instant)
+max_per_planet = -1  # unlimited
+
+[army]
+name = "Army"
+class = "AA"
+cst_min = 1
+build_cost = 15
+upkeep_cost = 2
+attack_strength = 3
+defense_strength = 5
+description = "Garrison forces that defend colonies"
+build_time = 1  # turns
+max_per_planet = -1  # unlimited
+
+[marine_division]
+name = "Space Marine Division"
+class = "MD"
+cst_min = 1
+build_cost = 25
+upkeep_cost = 2
+attack_strength = 6
+defense_strength = 6
+description = "Elite invasion forces that capture rival planets"
+build_time = 1  # turns
+max_per_planet = -1  # unlimited
+requires_transport = true  # Must be loaded on Troop Transports

@@ -53,4 +53,7 @@ logs/
 /client
 /moderator
 tests/test_*[!.]*
+src/**/squadron
+src/**/moderator
+src/**/client
 
