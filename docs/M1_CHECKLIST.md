@@ -79,10 +79,10 @@ proc calculateProduction*(colony: Colony, techLevel: int): ProductionOutput =
 **Current status:** Framework exists, needs TODOs filled
 
 **Review and complete:**
-- [ ] Phase 1 (Income): Call `economy.calculateHouseIncome()`
-- [ ] Phase 2 (Command): Process movement orders
-- [ ] Phase 3 (Conflict): Call `combat.resolveBattle()`
-- [ ] Phase 4 (Maintenance): Call `economy.advanceConstruction()`
+- [ ] Phase 1 (Conflict): Call `combat.resolveBattle()` and damage infrastructure
+- [ ] Phase 2 (Income): Call `economy.calculateHouseIncome()` (accounts for damage)
+- [ ] Phase 3 (Command): Process movement orders
+- [ ] Phase 4 (Maintenance): Call `economy.advanceConstruction()` and repairs
 
 **This ties everything together!**
 
