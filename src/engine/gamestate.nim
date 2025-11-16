@@ -104,8 +104,8 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     owner: owner,
     population: 5,  # Starting population
     infrastructure: 3,  # Starting infrastructure
-    planetClass: pcTerran,
-    resources: rtAverage,
+    planetClass: pcEden,  # Homeworlds are Abundant Eden per specs
+    resources: rrAbundant,  # Abundant resources
     buildings: @[btShipyard],  # Start with basic shipyard
     production: 0,
     underConstruction: none(ConstructionProject)
