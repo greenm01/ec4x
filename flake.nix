@@ -16,6 +16,8 @@
             nimble
           ];
           shellHook = ''
+            export IN_NIX_SHELL=1
+
             echo "EC4X Nim development shell"
             echo "Nim version: $(nim --version | head -1)"
             echo "Nimble version: $(nimble --version)"
