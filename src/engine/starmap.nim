@@ -292,6 +292,16 @@ proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool =
         return false
     return true
 
+proc weight*(laneType: LaneType): uint32 =
+  ## Get movement cost for lane type (for pathfinding)
+  case laneType:
+  of LaneType.Major:
+    1  # Standard cost
+  of LaneType.Minor:
+    2  # Higher cost (less desirable)
+  of LaneType.Restricted:
+    3  # Highest cost (most restrictive)
+
 proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathResult =
   ## Robust A* pathfinding with game rule compliance
   if start == goal:
