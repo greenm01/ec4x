@@ -83,15 +83,19 @@ proc initializeHouse*(name: string, color: string): House =
     prestige: 0,
     treasury: 1000,  # Starting treasury
     techTree: TechTree(
-      fields: initTable[TechField, int](),
+      levels: TechLevel(
+        EL: 0,
+        SL: 0,
+        CST: 0,
+        WEP: 0,
+        TER: 0,
+        ELI: 0,
+        CIC: 0
+      ),
       researchPoints: 0
     ),
     eliminated: false
   )
-
-  # Initialize tech levels to 0
-  for field in TechField:
-    result.techTree.fields[field] = 0
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
   ## Create a starting homeworld colony
@@ -161,8 +165,9 @@ proc calculatePrestige*(state: GameState, houseId: HouseId): int =
 
   # Prestige from technology
   let house = state.houses[houseId]
-  for level in house.techTree.fields.values:
-    result += level * 100
+  let levels = house.techTree.levels
+  result += (levels.EL + levels.SL + levels.CST + levels.WEP +
+             levels.TER + levels.ELI + levels.CIC) * 100
 
   # Prestige from treasury
   result += house.treasury div 100
