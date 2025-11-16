@@ -81,10 +81,12 @@ proc getShipStats*(shipClass: ShipClass, techLevel: int = 0): ShipStats =
   ## Get default stats for a ship class
   ## Stats may be modified by tech level
   ##
-  ## TODO M2: Implement tech level modifiers
-  ## TODO M2: Load from config file for mod support
+  ## M2: Hardcoded defaults (temporary)
+  ## M3: Will load from data/ships_default.toml
+  ## M3: Game-specific overrides from game_config.toml
   ##
-  ## STUB: Basic stats for M2
+  ## TODO M3: Replace with TOML config loading
+  ## TODO M3: Implement tech level modifiers
   case shipClass
   of scFighter:
     ShipStats(
