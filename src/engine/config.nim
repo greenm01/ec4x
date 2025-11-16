@@ -3,77 +3,12 @@
 ## Based on EC4X specifications
 
 import std/[tables, parsecfg, strutils, os]
+import ../common/types
+
+export ShipClass, ShipStats, GroundUnitType, GroundUnitStats, FacilityType, FacilityStats
 
 type
   ConfigError* = object of CatchableError
-
-  # Ship configuration
-  ShipClass* = enum
-    Fighter
-    Scout
-    Raider
-    Destroyer
-    Cruiser
-    LightCruiser
-    HeavyCruiser
-    Battlecruiser
-    Battleship
-    Dreadnought
-    SuperDreadnought
-    Carrier
-    SuperCarrier
-    Starbase
-    ETAC
-    TroopTransport
-    PlanetBreaker
-
-  ShipStats* = object
-    name*: string
-    class*: string
-    attackStrength*: int
-    defenseStrength*: int
-    commandCost*: int
-    commandRating*: int
-    techLevel*: int
-    buildCost*: int
-    upkeepCost*: int
-    specialCapability*: string
-    carryLimit*: int  # For carriers, transports
-
-  # Ground unit configuration
-  GroundUnitType* = enum
-    PlanetaryShield
-    GroundBattery
-    Army
-    MarineDivision
-
-  GroundUnitStats* = object
-    name*: string
-    class*: string
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    attackStrength*: int
-    defenseStrength*: int
-    buildTime*: int
-    maxPerPlanet*: int  # -1 = unlimited
-
-  # Facility configuration
-  FacilityType* = enum
-    Spaceport
-    Shipyard
-
-  FacilityStats* = object
-    name*: string
-    class*: string
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    defenseStrength*: int
-    carryLimit*: int
-    buildTime*: int
-    docks*: int
-    maxPerPlanet*: int  # -1 = unlimited
 
   # Combat configuration
   CombatConfig* = object
