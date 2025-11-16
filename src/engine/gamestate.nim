@@ -4,21 +4,13 @@ import std/[tables, options, strutils]
 import ../common/[types, hex, system]
 import fleet, ship, starmap
 
-# Re-export ID types from fleet module
-export fleet.HouseId, fleet.SystemId, fleet.FleetId
+# Re-export common types
+export types.HouseId, types.SystemId, types.FleetId, types.PlanetClass, types.TechField
+export types.ResourceRating, types.TechLevel, types.DiplomaticState
 
 type
-  PlanetClass* = enum
-    pcBarren, pcTerran, pcJungle, pcOcean, pcDesert, pcIce, pcVolcanic
-
-  ResourceType* = enum
-    rtPoor, rtAverage, rtRich, rtArtifact
-
   BuildingType* = enum
     btInfrastructure, btShipyard, btResearchLab, btDefenseGrid
-
-  TechField* = enum
-    tfShipDesign, tfWeapons, tfDefense, tfEconomics, tfEspionage
 
   Colony* = object
     systemId*: SystemId
@@ -26,7 +18,7 @@ type
     population*: int              # Population in millions
     infrastructure*: int          # Infrastructure level (0-10)
     planetClass*: PlanetClass
-    resources*: ResourceType
+    resources*: ResourceRating
     buildings*: seq[BuildingType]
     production*: int              # Current turn production
     underConstruction*: Option[ConstructionProject]
@@ -37,11 +29,8 @@ type
     cost*: int
 
   TechTree* = object
-    fields*: Table[TechField, int]  # Tech level per field (0-10)
-    researchPoints*: int            # Available research points
-
-  DiplomaticRelation* = enum
-    drWar, drHostile, drNeutral, drPeace, drAlliance
+    levels*: TechLevel            # Tech levels for all fields
+    researchPoints*: int          # Available research points
 
   House* = object
     id*: HouseId
@@ -65,7 +54,7 @@ type
     houses*: Table[HouseId, House]
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
-    diplomacy*: Table[(HouseId, HouseId), DiplomaticRelation]
+    diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
     turnDeadline*: int64          # Unix timestamp
 
 # Initialization
