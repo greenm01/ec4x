@@ -1,0 +1,68 @@
+# EC4X Diplomacy Configuration
+
+[diplomatic_states]
+# Available diplomatic relations between houses
+
+neutral = "Neutral"
+non_aggression = "Non-Aggression Pact"
+enemy = "Enemy"
+
+# Note: No formal "Alliance" state in EC4X
+# Non-aggression pacts allow cooperation but not formal alliance
+
+[rules]
+# Diplomatic rules and behaviors
+
+[rules.neutral]
+description = "Avoid initiating hostilities outside controlled territory"
+attack_in_own_territory = true    # Can attack neutral forces in own systems
+attack_in_neutral_space = false   # Don't attack in neutral/contested space
+defend_if_attacked = true         # Retaliate if attacked regardless
+
+[rules.non_aggression]
+description = "Formal agreement to not attack each other"
+can_share_intelligence = true     # Can share intel
+can_coordinate_operations = true  # Can coordinate against common enemies
+respect_territory = true          # Respect territorial boundaries
+violation_penalty_prestige = 10   # Prestige loss for breaking pact
+violation_changes_to = "enemy"    # Becomes enemy if violated
+
+[rules.enemy]
+description = "Full-scale warfare"
+attack_on_sight = true            # Engage at every opportunity
+attack_in_all_space = true        # Attack in any territory
+no_cooperation = true             # No joint operations
+
+[rules.defense_protocol]
+# Universal defense rules regardless of diplomatic state
+defend_homeworld_always = true    # Always defend home planets with max aggression
+retaliate_if_attacked = true      # Always retaliate against direct attacks
+retaliate_follows_roe = true      # Retaliation follows Rules of Engagement
+
+[diplomatic_actions]
+# Actions available during command phase
+
+change_state_cost = 0             # No cost to change diplomatic state
+change_state_delay_turns = 0      # Takes effect immediately
+requires_mutual_agreement = false # Unilateral declaration (except non-aggression)
+
+# Non-aggression pacts require mutual agreement
+non_aggression_requires_mutual = true
+
+[reputation]
+# Reputation effects of diplomatic actions
+
+breaking_non_aggression_prestige = -10  # Major prestige hit
+declaring_war_prestige = 0              # No inherent penalty
+making_peace_prestige = 0               # No inherent bonus
+
+[intel_sharing]
+# Intelligence sharing mechanics under non-aggression
+
+can_share_system_intel = true     # Share system exploration data
+can_share_fleet_positions = true  # Share fleet movement intel
+can_share_tech_progress = false   # Cannot share tech research
+can_coordinate_attacks = true     # Can coordinate military operations
+
+# Intel accuracy (future feature)
+intel_accuracy_percent = 100      # 100% accurate intel sharing (no fog of war between non-aggression partners)
