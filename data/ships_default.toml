@@ -1,0 +1,183 @@
+# EC4X Default Ship Statistics
+# Edit this file to change ship stats for all games
+# Game-specific overrides can be placed in game_directory/game_config.toml
+
+[fighter]
+name = "Fighter Squadron"
+class = "FS"
+attack_strength = 1
+defense_strength = 1
+command_cost = 0
+command_rating = 0
+tech_level = 0
+build_cost = 50
+upkeep_cost = 1
+special_capability = ""
+
+[scout]
+name = "Scout"
+class = "SC"
+attack_strength = 1
+defense_strength = 2
+command_cost = 1
+command_rating = 1
+tech_level = 0
+build_cost = 100
+upkeep_cost = 2
+special_capability = "ELI"
+
+[raider]
+name = "Raider"
+class = "RR"
+attack_strength = 4
+defense_strength = 2
+command_cost = 2
+command_rating = 2
+tech_level = 3
+build_cost = 300
+upkeep_cost = 5
+special_capability = "CLK"
+
+[destroyer]
+name = "Destroyer"
+class = "DD"
+attack_strength = 4
+defense_strength = 3
+command_cost = 2
+command_rating = 3
+tech_level = 0
+build_cost = 200
+upkeep_cost = 3
+special_capability = ""
+
+[cruiser]
+name = "Cruiser"
+class = "CR"
+attack_strength = 6
+defense_strength = 4
+command_cost = 3
+command_rating = 5
+tech_level = 1
+build_cost = 400
+upkeep_cost = 5
+special_capability = ""
+
+[battlecruiser]
+name = "Battlecruiser"
+class = "BC"
+attack_strength = 8
+defense_strength = 5
+command_cost = 4
+command_rating = 7
+tech_level = 2
+build_cost = 600
+upkeep_cost = 8
+special_capability = ""
+
+[battleship]
+name = "Battleship"
+class = "BS"
+attack_strength = 10
+defense_strength = 6
+command_cost = 5
+command_rating = 9
+tech_level = 3
+build_cost = 1000
+upkeep_cost = 12
+special_capability = ""
+
+[dreadnought]
+name = "Dreadnought"
+class = "DN"
+attack_strength = 15
+defense_strength = 8
+command_cost = 7
+command_rating = 12
+tech_level = 5
+build_cost = 2000
+upkeep_cost = 20
+special_capability = ""
+
+[carrier]
+name = "Carrier"
+class = "CV"
+attack_strength = 2
+defense_strength = 4
+command_cost = 4
+command_rating = 6
+tech_level = 2
+build_cost = 800
+upkeep_cost = 10
+special_capability = "CAR3"
+
+[supercarrier]
+name = "Super Carrier"
+class = "CX"
+attack_strength = 3
+defense_strength = 5
+command_cost = 6
+command_rating = 8
+tech_level = 4
+build_cost = 1500
+upkeep_cost = 18
+special_capability = "CAR5"
+
+[starbase]
+name = "Starbase"
+class = "SB"
+attack_strength = 12
+defense_strength = 10
+command_cost = 0
+command_rating = 0
+tech_level = 2
+build_cost = 1200
+upkeep_cost = 15
+special_capability = "ELI+2"
+
+[etac]
+name = "ETAC"
+class = "ETAC"
+attack_strength = 0
+defense_strength = 2
+command_cost = 2
+command_rating = 0
+tech_level = 0
+build_cost = 500
+upkeep_cost = 5
+special_capability = "COL"
+
+[troop_transport]
+name = "Troop Transport"
+class = "TT"
+attack_strength = 0
+defense_strength = 3
+command_cost = 2
+command_rating = 0
+tech_level = 0
+build_cost = 400
+upkeep_cost = 4
+special_capability = "TRP"
+
+[ground_battery]
+name = "Ground Battery"
+class = "GB"
+attack_strength = 3
+defense_strength = 2
+command_cost = 0
+command_rating = 0
+tech_level = 0
+build_cost = 100
+upkeep_cost = 1
+special_capability = ""
+
+[planet_breaker]
+name = "Planet-Breaker"
+class = "PB"
+attack_strength = 20
+defense_strength = 6
+command_cost = 8
+command_rating = 10
+tech_level = 7
+build_cost = 5000
+upkeep_cost = 50
+special_capability = "SHP"
