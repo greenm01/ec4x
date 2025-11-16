@@ -9,7 +9,14 @@ EC4X is a robust, performance-optimized implementation of an asynchronous turn-b
 ## Documentation Index
 
 ### 📋 Architecture & Design
-- **[EC4X-Architecture.md](EC4X-Architecture.md)** - Complete system architecture and design
+- **[Architecture Documentation](architecture/)** - Complete system architecture
+  - [Overview](architecture/overview.md) - System design and components
+  - [Storage Layer](architecture/storage.md) - SQLite schema (per-game databases)
+  - [Transport Layer](architecture/transport.md) - Localhost and Nostr modes
+  - [Intel System](architecture/intel.md) - Fog of war mechanics
+  - [Daemon Design](architecture/daemon.md) - TEA pattern and async architecture
+  - [Data Flow](architecture/dataflow.md) - Complete turn cycle
+  - [TEA Implementation](architecture/tea-implementation.md) - TEA pattern guide
 - **[EC4X-Deployment.md](EC4X-Deployment.md)** - Production deployment guide
 - **[Game Specification](specs/)** - Complete game rules (split for easy navigation)
   - [Index](specs/index.md) - Introduction and overview
@@ -42,9 +49,11 @@ EC4X is a robust, performance-optimized implementation of an asynchronous turn-b
 - ✅ **Specification Compliance** - Follows EC4X game specification exactly
 
 ### Architecture Highlights
-- **Simple, maintainable code** over complex optimizations
+- **TEA Pattern** - The Elm Architecture for predictable state management
+- **Async Non-Blocking** - Single-threaded event loop with concurrent operations
+- **Per-Game Databases** - Separate SQLite file per game for isolation
+- **Transport Agnostic** - Same engine for localhost and Nostr modes
 - **Comprehensive validation** at every step
-- **Structured error handling** with meaningful messages
 - **Modular design** with clean separation of concerns
 
 ## Development Status
