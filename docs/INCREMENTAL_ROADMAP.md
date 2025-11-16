@@ -18,7 +18,7 @@ Target architecture (from docs/architecture/):
 
 ---
 
-## Milestone 1: Playable Offline Game (1-2 weeks)
+## Milestone 1: Playable Offline Game
 
 **Goal:** 2-player hotseat game you can actually play
 
@@ -111,7 +111,7 @@ Turn 2 - House Alpha's turn
 
 ---
 
-## Milestone 2: Add SQLite Persistence (2-3 days)
+## Milestone 2: Add SQLite Persistence
 
 **Goal:** Replace JSON files with per-game SQLite databases
 
@@ -189,7 +189,7 @@ game_data/test_game/
 
 ---
 
-## Milestone 3: Localhost Daemon (3-5 days)
+## Milestone 3: Localhost Daemon
 
 **Goal:** Automated turn resolution via daemon process
 
@@ -275,7 +275,7 @@ Monitoring orders for turn 2...
 
 ---
 
-## Milestone 4: Refactor to TEA Pattern (3-5 days)
+## Milestone 4: Refactor to TEA Pattern
 
 **Goal:** Make daemon maintainable with predictable state management
 
@@ -357,7 +357,7 @@ proc mainLoop() {.async.} =
 
 ---
 
-## Milestone 5: Multi-Game Support (2-3 days)
+## Milestone 5: Multi-Game Support
 
 **Goal:** Daemon manages multiple games simultaneously
 
@@ -422,7 +422,7 @@ Monitoring all games...
 
 ---
 
-## Milestone 6: Add Fog of War (Intel System) (3-5 days)
+## Milestone 6: Add Fog of War (Intel System)
 
 **Goal:** Players only see what they should see
 
@@ -506,7 +506,7 @@ Turn 5:
 
 ---
 
-## Milestone 7: Nostr Transport (1-2 weeks)
+## Milestone 7: Nostr Transport
 
 **Goal:** Network multiplayer via Nostr protocol
 
@@ -593,7 +593,7 @@ Orders encrypted and published to relay
 
 ---
 
-## Milestone 8: State Deltas (3-5 days)
+## Milestone 8: State Deltas
 
 **Goal:** Bandwidth optimization for Nostr
 
@@ -723,27 +723,6 @@ Before moving to next milestone:
 - [ ] Commit and tag: `git tag milestone-N`
 - [ ] Document what you learned
 - [ ] Decide: continue or pivot?
-
----
-
-## Estimated Timeline
-
-**Conservative estimates (solo developer, part-time):**
-
-| Milestone | Duration | Cumulative |
-|-----------|----------|------------|
-| M1: Offline hotseat | 1-2 weeks | 2 weeks |
-| M2: SQLite | 2-3 days | 2.5 weeks |
-| M3: Daemon | 3-5 days | 3.5 weeks |
-| M4: TEA refactor | 3-5 days | 4.5 weeks |
-| M5: Multi-game | 2-3 days | 5 weeks |
-| M6: Fog of war | 3-5 days | 6 weeks |
-| M7: Nostr | 1-2 weeks | 8 weeks |
-| M8: Deltas | 3-5 days | 9 weeks |
-
-**Total: ~2 months part-time OR 1 month full-time**
-
-**Reality check:** Add 50% buffer for unexpected issues, learning curve, life happening.
 
 ---
 
