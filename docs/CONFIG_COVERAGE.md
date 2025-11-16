@@ -2,6 +2,8 @@
 
 This document maps EC4X specification tables to their corresponding configuration files.
 
+**Philosophy**: Config files contain **tunable numbers** (stats, costs, values). Core game mechanics (tech tree, espionage actions, diplomatic rules, fleet orders, ROE) are **hardcoded** in the engine.
+
 ## Complete Coverage Map
 
 ### Reference Tables (reference.md)
@@ -26,19 +28,15 @@ This document maps EC4X specification tables to their corresponding configuratio
 
 | Spec Section | Mechanic | Config File | Status |
 |--------------|----------|-------------|--------|
-| 8.2 | Espionage Actions | `espionage_default.toml` | ✅ Complete |
-| 8.3 | Counter Intelligence | `espionage_default.toml` | ✅ Complete |
-| 2.4.2 | Spy Scout Detection Tables | `espionage_default.toml` | ✅ Complete |
-| 2.4.3 | Raider Detection Tables | `espionage_default.toml` | ✅ Complete |
-| 2.4.2 | ELI Mesh Network Modifiers | `espionage_default.toml` | ✅ Complete |
+| 8.2 | Espionage Action Costs | `economy_default.toml` | ✅ Complete |
+| 8.3 | Counter Intelligence Costs | `economy_default.toml` | ✅ Complete |
+| 8.2/8.3 | Espionage Prestige Gains/Losses | `prestige_default.toml` | ✅ Complete |
 
 ### Diplomacy (diplomacy.md)
 
 | Spec Section | Mechanic | Config File | Status |
 |--------------|----------|-------------|--------|
-| 8.1 | Diplomatic States | `diplomacy_default.toml` | ✅ Complete |
-| 8.1 | Diplomatic Rules | `diplomacy_default.toml` | ✅ Complete |
-| 8.1 | Intel Sharing | `diplomacy_default.toml` | ✅ Complete |
+| 8.1 | Diplomatic Prestige Changes | `prestige_default.toml` | ✅ Complete |
 
 ### Economy (economy.md)
 
@@ -53,9 +51,7 @@ This document maps EC4X specification tables to their corresponding configuratio
 
 | Spec Section | Mechanic | Config File | Status |
 |--------------|----------|-------------|--------|
-| 3.x | Tech Fields | `tech_default.toml` | ✅ Complete |
-| 3.x | Research Costs | `tech_default.toml` | ✅ Complete |
-| 3.x | Ship Tech Requirements | `tech_default.toml` | ✅ Complete |
+| 3.x | Research Costs | `economy_default.toml` | ✅ Complete |
 
 ### Prestige System (reference.md, gameplay.md)
 
@@ -106,39 +102,16 @@ This document maps EC4X specification tables to their corresponding configuratio
 - Starbase combat modifiers
 
 ### 5. `economy_default.toml`
-**Coverage**: Economic mechanics
+**Coverage**: Economic mechanics and costs
 - Starting resources and treasury
 - Population growth rates
 - Construction times and costs
 - Planet class PU limits
 - Tax and maintenance rules
+- **Research costs** (tech advancement)
+- **Espionage costs** (EBP/CIP, action costs)
 
-### 6. `tech_default.toml`
-**Coverage**: Technology research system
-- 7 tech fields (EL, SL, CST, WEP, TER, ELI, CIC)
-- Research cost formulas (quadratic scaling)
-- Ship tech requirements
-- Tech level advancement rules
-
-### 7. `espionage_default.toml`
-**Coverage**: Espionage and counter-intelligence
-- EBP/CIP costs and thresholds
-- 7 espionage actions (tech theft, sabotage, assassination, etc.)
-- Counter-intelligence detection modifiers
-- Spy scout detection tables (ELI1-5 vs ELI1-5)
-- Raider detection tables (ELI1-5 vs CLK1-5)
-- ELI mesh network modifiers
-- Starbase detection bonuses
-
-### 8. `diplomacy_default.toml`
-**Coverage**: Diplomatic relations
-- 3 diplomatic states (Neutral, Non-Aggression, Enemy)
-- Rules and behaviors per state
-- Intel sharing under non-aggression
-- Defense protocols
-- Reputation effects
-
-### 9. `prestige_default.toml`
+### 6. `prestige_default.toml`
 **Coverage**: Prestige system
 - Victory conditions (5000 prestige, last house standing)
 - Economic prestige gains (colonies, population, infrastructure, tech)
@@ -150,10 +123,16 @@ This document maps EC4X specification tables to their corresponding configuratio
 
 ## Not Requiring Config Files
 
-The following mechanics are fundamental game mechanics, procedural, or map-specific and do not require default config files:
+The following are **fundamental game mechanics** (hardcoded in engine) or procedural/map-specific:
 
-- **Fleet Orders** (Section 6.2): Fundamental game mechanics (16 orders: 00-15)
-- **Rules of Engagement** (Section 7.1.1): Core combat behavior (ROE 0-10)
+### Core Game Systems (Hardcoded)
+- **Tech Tree** (Section 3.x): 7 tech fields (EL, SL, CST, WEP, TER, ELI, CIC), research mechanics, ship requirements
+- **Espionage System** (Section 8.2-8.3): 7 action types, detection algorithms, spy scout/raider detection tables, mesh networks
+- **Diplomacy System** (Section 8.1): 3 diplomatic states (Neutral, Non-Aggression, Enemy), rules, behaviors, intel sharing
+- **Fleet Orders** (Section 6.2): 16 orders (00-15), order behaviors and logic
+- **Rules of Engagement** (Section 7.1.1): ROE 0-10, engagement rules, retreat logic
+
+### Procedural/Map-Specific
 - **Star Map Generation** (Section 2.1-2.2): Procedural generation using VBAM-inspired rules
 - **Jump Lanes** (Section 6.1): Map-specific, generated during map creation
 - **Solar System Traits** (Section 2.2): Random generation per hex
@@ -168,8 +147,9 @@ Admins can optionally override any default config by creating game-specific conf
 
 ## Implementation Status
 
-All spec data tables are now covered by configuration files. The config system is complete for M2.
+All configurable spec data (stats, costs, values) are covered. Core game mechanics are hardcoded in the engine where they belong.
 
-**Total Config Files**: 9
+**Total Config Files**: 6
+**Config Philosophy**: Tunable numbers only, not game mechanics
 **Total Spec Coverage**: 100%
 **Status**: ✅ Ready for M2
