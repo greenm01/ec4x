@@ -63,27 +63,30 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 
   echo "Resolving turn ", state.turn, " (Year ", state.year, ", Month ", state.month, ")"
 
-  # Phase 1: Income Phase
-  # - Collect taxes from colonies
-  # - Calculate production
+  # Phase 1: Conflict Phase
+  # - Resolve space battles
+  # - Process bombardments
+  # - Resolve invasions
+  # - Damage infrastructure (shipyards, starbases, planetary improvements)
+  # NOTE: Conflict happens FIRST so damaged infrastructure affects production
+  resolveConflictPhase(result.newState, orders, result.combatReports, result.events)
+
+  # Phase 2: Income Phase
+  # - Collect taxes from colonies (reduced if infrastructure damaged)
+  # - Calculate production (accounts for bombed facilities)
   # - Allocate research points
   resolveIncomePhase(result.newState, orders)
 
-  # Phase 2: Command Phase
-  # - Process build orders
+  # Phase 3: Command Phase
+  # - Process build orders (may fail if shipyards destroyed)
   # - Execute movement orders
   # - Process colonization
   resolveCommandPhase(result.newState, orders, result.events)
 
-  # Phase 3: Conflict Phase
-  # - Resolve space battles
-  # - Process bombardments
-  # - Resolve invasions
-  resolveConflictPhase(result.newState, orders, result.combatReports, result.events)
-
   # Phase 4: Maintenance Phase
   # - Pay fleet upkeep
-  # - Apply attrition
+  # - Advance construction projects
+  # - Apply repairs to damaged facilities
   # - Check victory conditions
   resolveMaintenancePhase(result.newState, result.events)
 
@@ -92,10 +95,46 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 
   echo "Turn ", state.turn, " resolved. New turn: ", result.newState.turn
 
-## Phase 1: Income
+## Phase 1: Conflict
+
+proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
+                         combatReports: var seq[CombatReport], events: var seq[GameEvent]) =
+  ## Phase 1: Resolve all combat and infrastructure damage
+  ## This happens FIRST so damaged facilities affect production
+  echo "  [Conflict Phase]"
+
+  # Find all systems with hostile fleets
+  var combatSystems: seq[SystemId] = @[]
+
+  for systemId, system in state.starMap.systems:
+    # Check if multiple houses have fleets here
+    var housesPresent: seq[HouseId] = @[]
+    for fleet in state.fleets.values:
+      if fleet.location == systemId and fleet.owner notin housesPresent:
+        housesPresent.add(fleet.owner)
+
+    if housesPresent.len > 1:
+      # Check if any are at war
+      # TODO: Check diplomatic relations
+      # For now, assume all non-allied fleets fight
+      combatSystems.add(systemId)
+
+  # Resolve battles in each system
+  for systemId in combatSystems:
+    resolveBattle(state, systemId, combatReports, events)
+
+  # Process bombardment orders (damages infrastructure before income phase)
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      for order in orders[houseId].fleetOrders:
+        if order.orderType == foBombard:
+          resolveBombardment(state, houseId, order, events)
+
+## Phase 2: Income
 
 proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket]) =
-  ## Phase 1: Collect income and allocate resources
+  ## Phase 2: Collect income and allocate resources
+  ## Production is calculated AFTER conflict, so damaged infrastructure produces less
   echo "  [Income Phase]"
 
   for houseId, house in state.houses:
@@ -124,11 +163,12 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
     echo "    ", house.name, ": +", totalIncome, " credits, ", totalProduction, " production"
 
-## Phase 2: Command
+## Phase 3: Command
 
 proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
                         events: var seq[GameEvent]) =
-  ## Phase 2: Execute orders
+  ## Phase 3: Execute orders
+  ## Build orders may fail if shipyards were destroyed in conflict phase
   echo "  [Command Phase]"
 
   # Process build orders first
@@ -220,39 +260,7 @@ proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: Fle
 
   echo "    ", state.houses[houseId].name, " colonized system ", targetId
 
-## Phase 3: Conflict
-
-proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
-                         combatReports: var seq[CombatReport], events: var seq[GameEvent]) =
-  ## Phase 3: Resolve battles
-  echo "  [Conflict Phase]"
-
-  # Find all systems with hostile fleets
-  var combatSystems: seq[SystemId] = @[]
-
-  for systemId, system in state.starMap.systems:
-    # Check if multiple houses have fleets here
-    var housesPresent: seq[HouseId] = @[]
-    for fleet in state.fleets.values:
-      if fleet.location == systemId and fleet.owner notin housesPresent:
-        housesPresent.add(fleet.owner)
-
-    if housesPresent.len > 1:
-      # Check if any are at war
-      # TODO: Check diplomatic relations
-      # For now, assume all non-allied fleets fight
-      combatSystems.add(systemId)
-
-  # Resolve battles in each system
-  for systemId in combatSystems:
-    resolveBattle(state, systemId, combatReports, events)
-
-  # Process bombardment orders
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      for order in orders[houseId].fleetOrders:
-        if order.orderType == foBombard:
-          resolveBombardment(state, houseId, order, events)
+## Phase 1: Conflict (helper functions)
 
 proc resolveBattle(state: var GameState, systemId: SystemId,
                   combatReports: var seq[CombatReport], events: var seq[GameEvent]) =
