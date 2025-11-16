@@ -4,7 +4,7 @@
 ## move together and engage in combat as a unit.
 
 import ship
-import ../common/types
+import ../common/types/[core, combat]
 import std/[sequtils, algorithm, strutils]
 
 export FleetId, SystemId, HouseId, LaneType

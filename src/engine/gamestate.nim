@@ -1,12 +1,15 @@
 ## Core game state representation for EC4X
 
 import std/[tables, options, strutils]
-import ../common/[types, hex, system]
+import ../common/[hex, system]
+import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
 
 # Re-export common types
-export types.HouseId, types.SystemId, types.FleetId, types.PlanetClass, types.TechField
-export types.ResourceRating, types.TechLevel, types.DiplomaticState
+export core.HouseId, core.SystemId, core.FleetId
+export planets.PlanetClass, planets.ResourceRating
+export tech.TechField, tech.TechLevel
+export diplomacy.DiplomaticState
 
 type
   BuildingType* {.pure.} = enum

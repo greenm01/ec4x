@@ -5,7 +5,7 @@
 
 import std/[json, tables, options, os]
 import ../engine/[gamestate, fleet, ship, starmap]
-import ../common/[types, hex, system]
+import ../common/[hex, system]
 
 type
   StorageError* = object of CatchableError

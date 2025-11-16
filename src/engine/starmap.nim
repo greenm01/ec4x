@@ -8,7 +8,7 @@
 ## - Provides fast, reliable starmap generation and pathfinding
 
 import fleet, ship
-import ../common/[hex, system, types]
+import ../common/[hex, system, types/combat]
 import std/[tables, sequtils, random, math, algorithm, hashes, sets]
 import std/options
 

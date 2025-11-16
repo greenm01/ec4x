@@ -5,7 +5,7 @@
 ## Network transport (Nostr) wraps around this engine without modifying it
 
 import std/[tables, algorithm, options]
-import ../common/[types, hex]
+import ../common/[hex, types/core]
 import gamestate, orders, fleet, ship, starmap, combat, economy
 
 type

@@ -4,7 +4,7 @@
 ## Implements resource production, ship construction, research allocation
 
 import std/[tables, options]
-import ../common/types
+import ../common/types/[core, tech]
 import gamestate, ship, fleet
 
 type

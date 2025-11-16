@@ -3,7 +3,7 @@
 ## Based on EC4X specifications
 
 import std/[tables, parsecfg, strutils, os]
-import ../common/types
+import ../common/types/units
 
 export ShipClass, ShipStats, GroundUnitType, GroundUnitStats, FacilityType, FacilityStats
 
