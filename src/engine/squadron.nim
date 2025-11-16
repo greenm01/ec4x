@@ -11,44 +11,11 @@
 
 import std/[sequtils, strutils, options, parsecfg, tables, os]
 import ship
+import ../common/types
 
-# Forward declarations to avoid circular dependency
-type
-  SquadronId* = string
-  SystemId* = uint
-  HouseId* = string
+export HouseId, FleetId, SystemId, SquadronId, ShipClass, ShipStats, ShipType
 
 type
-  ShipClass* = enum
-    ## Detailed ship classifications
-    ## Each class has different Command Cost (CC) and capabilities
-    scFighter,        # Fighter Squadron - based planet-side, not fleet-based
-    scScout,          # Scout (SC) - ELI capable
-    scRaider,         # Raider (RR) - Cloaking capable
-    scDestroyer,      # Destroyer (DD) - Fast attack ship
-    scCruiser,        # Cruiser (CR) - Medium warship
-    scBattlecruiser,  # Battlecruiser (BC) - Heavy flagship
-    scBattleship,     # Battleship (BS) - Capital ship
-    scDreadnought,    # Dreadnought (DN) - Super capital
-    scCarrier,        # Carrier (CV) - Fighter transport (3 FS)
-    scSuperCarrier,   # Super Carrier (CX) - Fighter transport (5 FS)
-    scStarbase,       # Starbase (SB) - Orbital fortress
-    scETAC,           # Environmental Transformation And Colonization
-    scTroopTransport, # Troop Transport - Marines and equipment
-    scGroundBattery,  # Ground Battery (GB) - Planet-based defense
-    scPlanetBreaker   # Planet-Breaker (PB) - Late-game shield penetration
-
-  ShipStats* = object
-    ## Combat and operational statistics for a ship
-    attackStrength*: int     # AS - offensive firepower
-    defenseStrength*: int    # DS - defensive shielding
-    commandCost*: int        # CC - cost to assign to squadron
-    commandRating*: int      # CR - for flagships, capacity to lead
-    techLevel*: int          # Minimum tech level to build
-    buildCost*: int          # Production cost to construct
-    upkeepCost*: int         # Per-turn maintenance cost
-    specialCapability*: string  # ELI, CLK, or empty
-
   EnhancedShip* = object
     ## Enhanced ship with class and stats
     ## Replaces simple Ship type for M2+
@@ -83,21 +50,23 @@ var configLoaded = false
 proc shipClassToConfigKey(shipClass: ShipClass): string =
   ## Convert ShipClass enum to config file key
   case shipClass
-  of scFighter: "fighter"
-  of scScout: "scout"
-  of scRaider: "raider"
-  of scDestroyer: "destroyer"
-  of scCruiser: "cruiser"
-  of scBattlecruiser: "battlecruiser"
-  of scBattleship: "battleship"
-  of scDreadnought: "dreadnought"
-  of scCarrier: "carrier"
-  of scSuperCarrier: "supercarrier"
-  of scStarbase: "starbase"
-  of scETAC: "etac"
-  of scTroopTransport: "troop_transport"
-  of scGroundBattery: "ground_battery"
-  of scPlanetBreaker: "planet_breaker"
+  of Fighter: "fighter"
+  of Scout: "scout"
+  of Raider: "raider"
+  of Destroyer: "destroyer"
+  of Cruiser: "cruiser"
+  of LightCruiser: "light_cruiser"
+  of HeavyCruiser: "heavy_cruiser"
+  of Battlecruiser: "battlecruiser"
+  of Battleship: "battleship"
+  of Dreadnought: "dreadnought"
+  of SuperDreadnought: "super_dreadnought"
+  of Carrier: "carrier"
+  of SuperCarrier: "super_carrier"
+  of Starbase: "starbase"
+  of ETAC: "etac"
+  of TroopTransport: "troop_transport"
+  of PlanetBreaker: "planet_breaker"
 
 proc loadShipConfig(configPath: string = "data/ships_default.toml") =
   ## Load ship stats from config file
