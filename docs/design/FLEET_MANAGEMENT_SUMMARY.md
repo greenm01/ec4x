@@ -332,6 +332,7 @@ When commissioning ships:
 1. **docs/design/FLEET_MANAGEMENT_TUI.md** - Full TUI design specification
 2. **src/engine/squadron.nim** - Squadron implementation with ship classes
 3. **docs/design/FLEET_MANAGEMENT_SUMMARY.md** - This summary
+4. **docs/design/CONFIG_SYSTEM.md** - Configuration system design (M3)
 
 ### Squadron Module Features
 - 15 ship classes defined (Fighter to Planet-Breaker)
@@ -341,6 +342,8 @@ When commissioning ships:
 - Combat strength calculations
 - Special capabilities (ELI, CLK, CAR, etc.)
 - Crippling and destruction mechanics
+- M2: Hardcoded defaults (temporary)
+- M3: Will migrate to TOML config files (see CONFIG_SYSTEM.md)
 
 ### Next Steps
 1. **Test squadron module**: Write tests for CR/CC mechanics
