@@ -23,7 +23,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
               ↓
 ┌─────────────────────────────────────┐
 │   Storage Layer (src/storage/)      │
-│  • SQLite database (single file)    │
+│  • SQLite (one db per game)         │
 │  • Full game state                  │
 │  • Intel/fog of war tracking        │
 │  • Event history                    │
@@ -61,7 +61,11 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Resolves turns on deadline or completion
 - Publishes results via appropriate transport
 
-**Operation**: Single process manages all active games
+**Architecture**:
+- TEA (The Elm Architecture) pattern
+- Single-threaded async event loop
+- Non-blocking concurrent operations
+- Manages all active games in one process
 
 ### Moderator (Admin Tool)
 **Binary**: `bin/moderator`
@@ -199,11 +203,12 @@ Daemon decrypts and saves to SQLite
 See [storage.md](./storage.md) for complete schema.
 
 **Core Principles**:
-- One `ec4x.db` per game (or shared for multiple games)
-- Full authoritative game state
+- **One `ec4x.db` per game** (separate database files)
+- Each game directory contains its own database
+- Full authoritative game state per database
 - Intel tracking for fog of war
 - Optional Nostr event cache
-- All queries filtered by `game_id`
+- Isolation: corruption in one game doesn't affect others
 
 ## Transport Architecture
 

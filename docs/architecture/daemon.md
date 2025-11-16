@@ -62,21 +62,29 @@ The **daemon** is the autonomous turn processing service that powers EC4X. It mo
 ### 1. Game Discovery
 
 **On Startup:**
-1. Connect to SQLite database(s)
-2. Query for active games: `SELECT * FROM games WHERE phase = 'Active'`
+1. Scan game directories for `ec4x.db` files
+2. Open each database and query: `SELECT * FROM games WHERE phase = 'Active'`
 3. Load transport configuration for each game
 4. Initialize transport handlers (filesystem watchers, Nostr subscriptions)
 
 **During Runtime:**
-1. Periodically re-query for new games (hot reload)
+1. Periodically re-scan for new game directories (hot reload)
 2. Detect games added by `moderator new`
 3. Detect games paused/resumed/completed
 4. Adjust monitoring dynamically
 
+**Directory Structure:**
+```
+/var/ec4x/games/
+├── game-uuid-1/ec4x.db  → Discovered
+├── game-uuid-2/ec4x.db  → Discovered
+└── game-uuid-3/ec4x.db  → Discovered
+```
+
 **Configuration:**
 ```toml
 [daemon]
-db_path = "/var/ec4x/games.db"
+games_root = "/var/ec4x/games"
 poll_interval = 30  # seconds
 discovery_interval = 300  # re-scan for new games every 5 min
 ```
@@ -357,26 +365,283 @@ max_games = 100                 # Refuse to monitor more than 100 games
 memory_limit_mb = 2048          # Restart if exceeds 2 GB
 ```
 
-### Concurrency Model
+### Event Loop Architecture (TEA Pattern)
 
-**Single-Threaded Event Loop:**
+The daemon uses **The Elm Architecture (TEA)** pattern with async/await for non-blocking concurrency.
+
+#### Why TEA?
+
+**Benefits:**
+- **Predictable State**: All state changes go through pure `update()` function
+- **Testable**: Pure functions easy to unit test
+- **Single-Threaded**: No locks, mutexes, or race conditions
+- **Non-Blocking**: Async I/O doesn't block the event loop
+- **Concurrent**: Multiple games resolve simultaneously without threads
+
+#### TEA Components
+
+**Model (Application State):**
+```nim
+type
+  DaemonModel = object
+    games: Table[GameId, GameInfo]        # All managed games
+    resolving: HashSet[GameId]            # Currently resolving games
+    transports: Table[GameId, Transport]  # Transport handlers
+    pendingOrders: Table[GameId, seq[Order]]
+    deadlines: Table[GameId, Deadline]
+    nostrConnections: Table[RelayUrl, WebSocket]
 ```
-Main thread:
-  - Game discovery
-  - Order collection
-  - Turn readiness checks
-  - Result distribution
 
-Worker pool:
-  - Turn resolution (CPU-intensive)
-  - Nostr encryption/decryption
-  - Delta generation
+**Messages (Events):**
+```nim
+type
+  DaemonMsg = enum
+    # Timer events
+    Tick(timestamp: Time)
+    DeadlineReached(gameId: GameId)
+
+    # Order events
+    OrderReceived(gameId: GameId, houseId: HouseId, order: Order)
+
+    # Turn resolution events
+    TurnResolving(gameId: GameId)
+    TurnResolved(gameId: GameId, result: TurnResult)
+
+    # Result publishing events
+    ResultsPublishing(gameId: GameId)
+    ResultsPublished(gameId: GameId)
+
+    # Discovery events
+    GameDiscovered(gameDir: string)
+    GameRemoved(gameId: GameId)
+
+    # Transport events
+    NostrConnected(relay: RelayUrl)
+    NostrDisconnected(relay: RelayUrl)
+    TransportError(gameId: GameId, error: string)
+```
+
+**Update (Pure State Transitions):**
+```nim
+proc update(msg: DaemonMsg, model: DaemonModel): (DaemonModel, seq[Cmd]) =
+  # Pure function - no I/O, no side effects
+  case msg.kind:
+
+  of OrderReceived:
+    var newModel = model
+    newModel.pendingOrders[msg.gameId].add(msg.order)
+
+    # Check if ready to resolve
+    if isReadyForResolution(newModel, msg.gameId):
+      let cmd = Cmd.msg(TurnResolving(gameId: msg.gameId))
+      return (newModel, @[cmd])
+    else:
+      return (newModel, @[])
+
+  of TurnResolving:
+    var newModel = model
+    newModel.resolving.incl(msg.gameId)
+
+    # Kick off async resolution (doesn't block!)
+    let cmd = Cmd.perform(resolveTurnAsync(msg.gameId), TurnResolved)
+    return (newModel, @[cmd])
+
+  of TurnResolved:
+    var newModel = model
+    newModel.resolving.excl(msg.gameId)
+    newModel.games[msg.gameId].updateState(msg.result)
+
+    # Kick off async publishing
+    let cmd = Cmd.perform(publishResultsAsync(msg.gameId, msg.result), ResultsPublished)
+    return (newModel, @[cmd])
+
+  # ... other message handlers
+```
+
+**Commands (Async Effects):**
+```nim
+type
+  Cmd = proc(): Future[DaemonMsg] {.async.}
+
+# Async turn resolution (non-blocking)
+proc resolveTurnAsync(gameId: GameId): Future[TurnResult] {.async.} =
+  let db = await openDbAsync(gameId)
+  let state = await db.loadGameState()
+  let orders = await db.loadOrders()
+
+  # Pure game engine (fast)
+  let result = engine.resolveTurn(state, orders)
+
+  # Save results
+  await db.saveGameState(result.newState)
+  await db.close()
+
+  return result
+
+# Async result publishing (non-blocking)
+proc publishResultsAsync(gameId: GameId, result: TurnResult): Future[void] {.async.} =
+  for house in result.houses:
+    let delta = generateDelta(house)
+    await transport.publish(gameId, house, delta)
+```
+
+#### Main Event Loop
+
+**Non-blocking concurrent execution:**
+
+```nim
+proc mainLoop() {.async.} =
+  var model = initModel()
+  var msgQueue = newAsyncQueue[DaemonMsg]()
+  var pendingCmds: seq[Future[DaemonMsg]] = @[]
+
+  # Background tasks (run concurrently)
+  asyncCheck tickTimer(msgQueue)              # Periodic poll
+  asyncCheck discoverGames(msgQueue)          # Hot reload
+  asyncCheck listenNostr(msgQueue)            # WebSocket subscriptions
+  asyncCheck watchFilesystem(msgQueue)        # File watchers
+
+  # Main event loop
+  while true:
+    # Wait for next message (non-blocking)
+    let msg = await msgQueue.recv()
+
+    # Update model (pure, instant)
+    let (newModel, newCmds) = update(msg, model)
+    model = newModel
+
+    # Execute commands concurrently
+    for cmd in newCmds:
+      let future = cmd()
+      pendingCmds.add(future)
+
+    # Check completed commands (non-blocking)
+    var completed: seq[int] = @[]
+    for i, fut in pendingCmds:
+      if fut.finished:
+        completed.add(i)
+        let resultMsg = fut.read()
+        msgQueue.addLast(resultMsg)
+
+    # Remove completed futures
+    for i in countdown(completed.high, 0):
+      pendingCmds.delete(completed[i])
+
+    # Yield to async scheduler
+    await sleepAsync(1)
+```
+
+#### Concurrency in Action
+
+**Example: 3 games resolving simultaneously**
+
+```
+Time 0ms:
+  Msg(TurnResolving, game-a) → update() → Cmd(resolveTurnAsync)
+  Msg(TurnResolving, game-b) → update() → Cmd(resolveTurnAsync)
+  Msg(TurnResolving, game-c) → update() → Cmd(resolveTurnAsync)
+
+  All 3 resolveTurnAsync() futures running concurrently!
+  Event loop continues processing other messages...
+
+Time 100ms:
+  Msg(OrderReceived, game-d) → processed immediately
+  Games a, b, c still resolving in background
+
+Time 5000ms:
+  resolveTurnAsync(game-a) completes
+  → Msg(TurnResolved, game-a) → msgQueue
+
+Time 5200ms:
+  resolveTurnAsync(game-c) completes
+  → Msg(TurnResolved, game-c) → msgQueue
+
+Time 6000ms:
+  resolveTurnAsync(game-b) completes
+  → Msg(TurnResolved, game-b) → msgQueue
+```
+
+**No blocking! All games processed concurrently on single thread.**
+
+#### Transport Integration (Async)
+
+**Nostr Subscriptions:**
+```nim
+proc listenNostr(msgQueue: AsyncQueue[DaemonMsg]) {.async.} =
+  let ws = await newWebSocket(relay)
+
+  while true:
+    let packet = await ws.receiveStrPacket()  # Non-blocking
+    let event = parseNostrEvent(packet)
+
+    if event.kind == 30001:  # Order packet
+      let order = decryptOrder(event)
+      await msgQueue.send(Msg(
+        kind: OrderReceived,
+        gameId: extractGameId(event),
+        order: order
+      ))
+```
+
+**Filesystem Watchers:**
+```nim
+proc watchFilesystem(msgQueue: AsyncQueue[DaemonMsg]) {.async.} =
+  let watcher = initInotify()
+
+  for gameDir in gameDirs:
+    watcher.addWatch(gameDir / "houses", IN_CREATE)
+
+  while true:
+    let events = await watcher.readAsync()  # Non-blocking
+
+    for event in events:
+      if event.name.endsWith("orders_pending.json"):
+        let order = parseOrderFile(event.path)
+        await msgQueue.send(Msg(
+          kind: OrderReceived,
+          gameId: extractGameId(event.path),
+          order: order
+        ))
+```
+
+#### Performance Characteristics
+
+**Single async thread handles:**
+- ✅ 100+ concurrent game resolutions
+- ✅ 1000+ WebSocket connections
+- ✅ 10,000+ file watches
+- ✅ Millisecond-level responsiveness
+
+**When to use thread pool:**
+- Turn resolution takes > 10 seconds per game
+- Use `spawn` for CPU-heavy computation
+- Return via channel → Msg
+
+#### Testability
+
+**Pure update function:**
+```nim
+# Easy to unit test!
+test "order received triggers resolution when ready":
+  let model = DaemonModel(
+    games: {"game-1": gameWithOrders(4)}.toTable,
+    pendingOrders: {"game-1": @[]}.toTable
+  )
+
+  let msg = Msg(kind: OrderReceived, gameId: "game-1", order: order5)
+  let (newModel, cmds) = update(msg, model)
+
+  check newModel.pendingOrders["game-1"].len == 5
+  check cmds.len == 1  # Should trigger resolution
+  check cmds[0] is TurnResolving
 ```
 
 **Thread Safety:**
-- SQLite writes: Serialized per database file
-- Nostr publishing: Async queue with worker threads
-- Game state: Immutable during resolution (transaction isolation)
+- ✅ No locks needed (single-threaded)
+- ✅ No race conditions
+- ✅ All state changes in `update()`
+- ✅ SQLite writes per-game (isolated)
+- ✅ Game state immutable during resolution
 
 ## Monitoring and Observability
 
