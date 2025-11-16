@@ -3,12 +3,11 @@
 ## This module defines the different types of ships and their capabilities,
 ## including movement restrictions and combat abilities.
 
-type
-  ShipType* = enum
-    ## Types of ships available in the game
-    Military,    ## Military vessels capable of combat
-    Spacelift    ## Transport vessels for moving troops and supplies
+import ../common/types
 
+export ShipType
+
+type
   Ship* = object
     ## Individual ship with type and status
     shipType*: ShipType
