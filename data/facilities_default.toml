@@ -1,0 +1,37 @@
+# EC4X Facilities Configuration
+# Based on EC4X specifications (Section 9.3, 2.3.2)
+
+[spaceport]
+name = "Spaceport"
+class = "SP"
+cst_min = 1
+build_cost = 100
+upkeep_cost = 5
+defense_strength = 50
+carry_limit = 5
+description = "Ground-based facility that launches heavy-lift ships and equipment into orbit"
+build_time = 1  # turns (one month)
+docks = 5  # Available for planet-side ship construction
+max_per_planet = -1  # unlimited
+required_for_shipyard = true
+
+[shipyard]
+name = "Shipyard"
+class = "SY"
+cst_min = 1
+build_cost = 150
+upkeep_cost = 5
+defense_strength = 70
+carry_limit = 10
+description = "Orbital base for ship construction and repair"
+build_time = 2  # turns (two months)
+docks = 10  # Available for construction and repair
+max_per_planet = -1  # unlimited
+requires_spaceport = true
+fixed_orbit = true  # Cannot move out of system
+
+[construction]
+# Construction rules
+repair_rate_per_turn = 0.25  # 25% of DS restored per turn
+multiple_docks_allowed = true  # Can build multiple ships simultaneously
+squadron_commission_location = "shipyard"  # Squadrons only commissioned at shipyards
