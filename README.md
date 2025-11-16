@@ -20,14 +20,23 @@ Turns cycle every 24 hours IRL, intentionally designed for async gameplay where 
 
 ## Architecture
 
-EC4X runs on the **Nostr protocol**, like a modern BBS door game with cryptographic identity:
+EC4X supports **two transport modes** with the same game engine:
 
-- **Desktop Client** - Terminal UI for order entry, publishes encrypted orders to Nostr relays
-- **Daemon** - Subscribes to order events, resolves turns on schedule (midnight default)
-- **Nostr Relay** - Stores game history permanently, delivers events between players and daemon
-- **Hybrid Tabletop** - Supports printed hex maps + digital order submission
+- **Localhost Mode** - File-based transport for offline/hotseat multiplayer and testing
+- **Nostr Mode** - Decentralized relay-based transport with end-to-end encryption
 
-See **[Architecture Documentation](docs/EC4X-Architecture.md)** for complete system design and implementation details.
+**Components:**
+- **Client** - Player interface (supports both modes, auto-detects transport)
+- **Daemon** - Autonomous turn processing service (manages multiple games)
+- **SQLite** - Single source of truth for game state (both modes)
+
+**Key Features:**
+- Server-authoritative game state
+- Fog of war via intel system
+- Bandwidth-efficient state deltas (Nostr)
+- Transport-agnostic game engine
+
+See **[Architecture Documentation](docs/architecture/overview.md)** for complete system design and implementation details.
 
 ## Development Approach
 
