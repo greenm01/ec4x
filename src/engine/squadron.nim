@@ -9,7 +9,7 @@
 ## MILESTONE 2 - Squadron implementation
 ## M1 uses direct Fleet→Ship for simplicity
 
-import std/[sequtils, strutils, options]
+import std/[sequtils, strutils, options, parsecfg, tables, os]
 import ship
 
 # Forward declarations to avoid circular dependency
@@ -77,182 +77,78 @@ type
 ## Ship class statistics
 ## Based on VBAM and EC specifications
 
-proc getShipStats*(shipClass: ShipClass, techLevel: int = 0): ShipStats =
-  ## Get default stats for a ship class
+var shipConfigCache: Table[ShipClass, ShipStats]
+var configLoaded = false
+
+proc shipClassToConfigKey(shipClass: ShipClass): string =
+  ## Convert ShipClass enum to config file key
+  case shipClass
+  of scFighter: "fighter"
+  of scScout: "scout"
+  of scRaider: "raider"
+  of scDestroyer: "destroyer"
+  of scCruiser: "cruiser"
+  of scBattlecruiser: "battlecruiser"
+  of scBattleship: "battleship"
+  of scDreadnought: "dreadnought"
+  of scCarrier: "carrier"
+  of scSuperCarrier: "supercarrier"
+  of scStarbase: "starbase"
+  of scETAC: "etac"
+  of scTroopTransport: "troop_transport"
+  of scGroundBattery: "ground_battery"
+  of scPlanetBreaker: "planet_breaker"
+
+proc loadShipConfig(configPath: string = "data/ships_default.toml") =
+  ## Load ship stats from config file
+  ## Caches results for subsequent calls
+
+  if configLoaded:
+    return
+
+  if not fileExists(configPath):
+    raise newException(IOError, "Ship config file not found: " & configPath)
+
+  let config = loadConfig(configPath)
+  shipConfigCache = initTable[ShipClass, ShipStats]()
+
+  for shipClass in ShipClass:
+    let key = shipClassToConfigKey(shipClass)
+
+    let stats = ShipStats(
+      attackStrength: config.getSectionValue(key, "attack_strength", "0").parseInt(),
+      defenseStrength: config.getSectionValue(key, "defense_strength", "0").parseInt(),
+      commandCost: config.getSectionValue(key, "command_cost", "0").parseInt(),
+      commandRating: config.getSectionValue(key, "command_rating", "0").parseInt(),
+      techLevel: config.getSectionValue(key, "tech_level", "0").parseInt(),
+      buildCost: config.getSectionValue(key, "build_cost", "0").parseInt(),
+      upkeepCost: config.getSectionValue(key, "upkeep_cost", "0").parseInt(),
+      specialCapability: config.getSectionValue(key, "special_capability", "")
+    )
+
+    shipConfigCache[shipClass] = stats
+
+  configLoaded = true
+
+proc getShipStats*(shipClass: ShipClass, techLevel: int = 0, configPath: string = ""): ShipStats =
+  ## Get stats for a ship class from config file
   ## Stats may be modified by tech level
   ##
-  ## M2: Hardcoded defaults (temporary)
-  ## M3: Will load from data/ships_default.toml
-  ## M3: Game-specific overrides from game_config.toml
+  ## Loads from data/ships_default.toml (or configPath if specified)
+  ## Game-specific overrides from game_config.toml not yet implemented
   ##
-  ## TODO M3: Replace with TOML config loading
+  ## TODO M3: Support game-specific overrides
   ## TODO M3: Implement tech level modifiers
-  case shipClass
-  of scFighter:
-    ShipStats(
-      attackStrength: 1,
-      defenseStrength: 1,
-      commandCost: 0,      # Fighters don't use CC (planet-based)
-      commandRating: 0,
-      techLevel: 0,
-      buildCost: 50,
-      upkeepCost: 1,
-      specialCapability: ""
-    )
-  of scScout:
-    ShipStats(
-      attackStrength: 1,
-      defenseStrength: 2,
-      commandCost: 1,
-      commandRating: 1,
-      techLevel: 0,
-      buildCost: 100,
-      upkeepCost: 2,
-      specialCapability: "ELI" & $techLevel  # ELI level = tech level
-    )
-  of scRaider:
-    ShipStats(
-      attackStrength: 4,
-      defenseStrength: 2,
-      commandCost: 2,
-      commandRating: 2,
-      techLevel: 3,        # Advanced tech required
-      buildCost: 300,
-      upkeepCost: 5,
-      specialCapability: "CLK" & $techLevel  # CLK level = tech level
-    )
-  of scDestroyer:
-    ShipStats(
-      attackStrength: 4,
-      defenseStrength: 3,
-      commandCost: 2,
-      commandRating: 3,
-      techLevel: 0,
-      buildCost: 200,
-      upkeepCost: 3,
-      specialCapability: ""
-    )
-  of scCruiser:
-    ShipStats(
-      attackStrength: 6,
-      defenseStrength: 4,
-      commandCost: 3,
-      commandRating: 5,
-      techLevel: 1,
-      buildCost: 400,
-      upkeepCost: 5,
-      specialCapability: ""
-    )
-  of scBattlecruiser:
-    ShipStats(
-      attackStrength: 8,
-      defenseStrength: 5,
-      commandCost: 4,
-      commandRating: 7,
-      techLevel: 2,
-      buildCost: 600,
-      upkeepCost: 8,
-      specialCapability: ""
-    )
-  of scBattleship:
-    ShipStats(
-      attackStrength: 10,
-      defenseStrength: 6,
-      commandCost: 5,
-      commandRating: 9,
-      techLevel: 3,
-      buildCost: 1000,
-      upkeepCost: 12,
-      specialCapability: ""
-    )
-  of scDreadnought:
-    ShipStats(
-      attackStrength: 15,
-      defenseStrength: 8,
-      commandCost: 7,
-      commandRating: 12,
-      techLevel: 5,
-      buildCost: 2000,
-      upkeepCost: 20,
-      specialCapability: ""
-    )
-  of scCarrier:
-    ShipStats(
-      attackStrength: 2,   # Light combat capability
-      defenseStrength: 4,
-      commandCost: 4,
-      commandRating: 6,
-      techLevel: 2,
-      buildCost: 800,
-      upkeepCost: 10,
-      specialCapability: "CAR3"  # Carries 3 fighter squadrons
-    )
-  of scSuperCarrier:
-    ShipStats(
-      attackStrength: 3,
-      defenseStrength: 5,
-      commandCost: 6,
-      commandRating: 8,
-      techLevel: 4,
-      buildCost: 1500,
-      upkeepCost: 18,
-      specialCapability: "CAR5"  # Carries 5 fighter squadrons
-    )
-  of scStarbase:
-    ShipStats(
-      attackStrength: 12,
-      defenseStrength: 10,
-      commandCost: 0,      # Starbases don't use CC (orbital)
-      commandRating: 0,
-      techLevel: 2,
-      buildCost: 1200,
-      upkeepCost: 15,
-      specialCapability: "ELI+2"  # +2 ELI modifier
-    )
-  of scETAC:
-    ShipStats(
-      attackStrength: 0,
-      defenseStrength: 2,
-      commandCost: 2,
-      commandRating: 0,
-      techLevel: 0,
-      buildCost: 500,
-      upkeepCost: 5,
-      specialCapability: "COL"  # Colonization
-    )
-  of scTroopTransport:
-    ShipStats(
-      attackStrength: 0,
-      defenseStrength: 3,
-      commandCost: 2,
-      commandRating: 0,
-      techLevel: 0,
-      buildCost: 400,
-      upkeepCost: 4,
-      specialCapability: "TRP"  # Troop transport
-    )
-  of scGroundBattery:
-    ShipStats(
-      attackStrength: 3,
-      defenseStrength: 2,
-      commandCost: 0,      # Ground batteries don't use CC (planet-based)
-      commandRating: 0,
-      techLevel: 0,
-      buildCost: 100,
-      upkeepCost: 1,
-      specialCapability: ""
-    )
-  of scPlanetBreaker:
-    ShipStats(
-      attackStrength: 20,
-      defenseStrength: 6,
-      commandCost: 8,
-      commandRating: 10,
-      techLevel: 7,        # Late-game tech
-      buildCost: 5000,
-      upkeepCost: 50,
-      specialCapability: "SHP"  # Shield penetration
-    )
+
+  let path = if configPath.len > 0: configPath else: "data/ships_default.toml"
+
+  if not configLoaded:
+    loadShipConfig(path)
+
+  result = shipConfigCache[shipClass]
+
+  # TODO M3: Apply tech level modifiers
+  # For now, just return base stats
 
 ## Ship construction
 
