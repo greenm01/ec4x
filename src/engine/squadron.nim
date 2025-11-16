@@ -75,7 +75,7 @@ type
     sfRearGuard   # Rear guard, last to engage
 
 ## Ship class statistics
-## Based on VBAM and EC specifications
+## Based on EC4X specifications and Empire of the Sun (EOS) combat
 
 var shipConfigCache: Table[ShipClass, ShipStats]
 var configLoaded = false
