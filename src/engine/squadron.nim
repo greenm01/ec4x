@@ -34,13 +34,13 @@ type
     owner*: HouseId
     location*: SystemId
 
-  SquadronFormation* = enum
+  SquadronFormation* {.pure.} = enum
     ## Formation roles for squadrons in fleet
-    sfVanguard,   # Front line, first to engage
-    sfMainLine,   # Main battle line
-    sfReserve,    # Held in reserve
-    sfScreen,     # Screening/picket duty
-    sfRearGuard   # Rear guard, last to engage
+    Vanguard,   # Front line, first to engage
+    MainLine,   # Main battle line
+    Reserve,    # Held in reserve
+    Screen,     # Screening/picket duty
+    RearGuard   # Rear guard, last to engage
 
 ## Ship class statistics
 ## Based on EC4X specifications
@@ -51,23 +51,23 @@ var configLoaded = false
 proc shipClassToConfigKey(shipClass: ShipClass): string =
   ## Convert ShipClass enum to config file key
   case shipClass
-  of Fighter: "fighter"
-  of Scout: "scout"
-  of Raider: "raider"
-  of Destroyer: "destroyer"
-  of Cruiser: "cruiser"
-  of LightCruiser: "light_cruiser"
-  of HeavyCruiser: "heavy_cruiser"
-  of Battlecruiser: "battlecruiser"
-  of Battleship: "battleship"
-  of Dreadnought: "dreadnought"
-  of SuperDreadnought: "super_dreadnought"
-  of Carrier: "carrier"
-  of SuperCarrier: "super_carrier"
-  of Starbase: "starbase"
-  of ETAC: "etac"
-  of TroopTransport: "troop_transport"
-  of PlanetBreaker: "planet_breaker"
+  of ShipClass.Fighter: "fighter"
+  of ShipClass.Scout: "scout"
+  of ShipClass.Raider: "raider"
+  of ShipClass.Destroyer: "destroyer"
+  of ShipClass.Cruiser: "cruiser"
+  of ShipClass.LightCruiser: "light_cruiser"
+  of ShipClass.HeavyCruiser: "heavy_cruiser"
+  of ShipClass.Battlecruiser: "battlecruiser"
+  of ShipClass.Battleship: "battleship"
+  of ShipClass.Dreadnought: "dreadnought"
+  of ShipClass.SuperDreadnought: "super_dreadnought"
+  of ShipClass.Carrier: "carrier"
+  of ShipClass.SuperCarrier: "super_carrier"
+  of ShipClass.Starbase: "starbase"
+  of ShipClass.ETAC: "etac"
+  of ShipClass.TroopTransport: "troop_transport"
+  of ShipClass.PlanetBreaker: "planet_breaker"
 
 proc loadShipConfig(configPath: string = "data/ships_default.toml") =
   ## Load ship stats from config file
@@ -126,10 +126,10 @@ proc newEnhancedShip*(shipClass: ShipClass, techLevel: int = 0, name: string = "
   ## Create a new ship with stats
   let stats = getShipStats(shipClass, techLevel)
   let shipType = case shipClass
-    of scETAC, scTroopTransport:
-      Spacelift
+    of ShipClass.ETAC, ShipClass.TroopTransport:
+      ShipType.Spacelift
     else:
-      Military
+      ShipType.Military
 
   EnhancedShip(
     shipClass: shipClass,
@@ -266,11 +266,11 @@ proc crippleShip*(sq: var Squadron, index: int): bool =
 
 proc militaryShips*(sq: Squadron): seq[EnhancedShip] =
   ## Get all military ships in squadron
-  sq.allShips().filterIt(it.shipType == Military)
+  sq.allShips().filterIt(it.shipType == ShipType.Military)
 
 proc spaceliftShips*(sq: Squadron): seq[EnhancedShip] =
   ## Get all spacelift ships in squadron
-  sq.allShips().filterIt(it.shipType == Spacelift)
+  sq.allShips().filterIt(it.shipType == ShipType.Spacelift)
 
 proc crippledShips*(sq: Squadron): seq[EnhancedShip] =
   ## Get all crippled ships in squadron

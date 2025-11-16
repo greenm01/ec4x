@@ -44,16 +44,16 @@ type
     buildType*: BuildType
     quantity*: int
 
-  BuildType* = enum
-    btShip, btBuilding, btInfrastructure
+  BuildType* {.pure.} = enum
+    Ship, Building, Infrastructure
 
   DiplomaticAction* = object
     targetHouse*: HouseId
     actionType*: DiplomaticActionType
     message*: string
 
-  DiplomaticActionType* = enum
-    daProposeAlliance, daDeclarWar, daSendMessage, daBreakTreaty
+  DiplomaticActionType* {.pure.} = enum
+    ProposeAlliance, DeclarWar, SendMessage, BreakTreaty
 
   ValidationResult* = object
     valid*: bool
@@ -92,7 +92,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     # Check fleet has colony ship
     var hasColonyShip = false
     for ship in fleet.ships:
-      if ship.shipType == Spacelift and not ship.isCrippled:
+      if ship.shipType == ShipType.Spacelift and not ship.isCrippled:
         hasColonyShip = true
         break
 
@@ -108,7 +108,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     # Check fleet has military ships
     var hasMilitary = false
     for ship in fleet.ships:
-      if ship.shipType == Military and not ship.isCrippled:
+      if ship.shipType == ShipType.Military and not ship.isCrippled:
         hasMilitary = true
         break
 
