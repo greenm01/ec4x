@@ -7,7 +7,7 @@ import ship
 import ../common/types
 import std/[sequtils, algorithm, strutils]
 
-export FleetId, SystemId, HouseId
+export FleetId, SystemId, HouseId, LaneType
 
 type
   Fleet* = object
