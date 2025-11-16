@@ -102,3 +102,33 @@ blockade_prestige_penalty = 2      # -2 prestige per turn per blockaded colony
 # Invasion and conquest effects
 invasion_iu_loss = 0.50            # Conquered planet loses 50% of IU
 blitz_iu_loss = 0.00               # Blitz preserves all IU if successful
+
+[research]
+# Technology research costs
+# Cost formula: base * (level ^ exponent)
+research_cost_base = 1000          # Base cost for level 1
+research_cost_exponent = 2         # Quadratic scaling (level^2)
+
+# Tech fields: EL, SL, CST, WEP, TER, ELI, CIC (all hardcoded in engine)
+
+[espionage]
+# Espionage and Counter-Intelligence costs
+ebp_cost_per_point = 40            # PP cost per Espionage Budget Point (EBP)
+cip_cost_per_point = 40            # PP cost per Counter Intelligence Point (CIP)
+max_actions_per_turn = 1           # Maximum espionage actions per turn
+
+# Over-investment penalties (prestige loss)
+budget_threshold_percent = 5       # Above this % of budget loses prestige
+prestige_loss_per_percent_over = 1 # Prestige lost per 1% over threshold
+
+# Espionage action costs (in EBP)
+tech_theft_cost = 5
+sabotage_low_cost = 2
+sabotage_high_cost = 7
+assassination_cost = 10
+cyber_attack_cost = 6
+economic_manipulation_cost = 6
+psyops_campaign_cost = 3
+
+# Counter-intelligence detection cost
+detection_roll_cost = 1            # CIP cost per detection attempt

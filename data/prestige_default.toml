@@ -31,7 +31,7 @@ lose_starbase = -5                 # Starbase destroyed
 destroy_enemy_starbase = 5         # Destroy enemy starbase
 
 [espionage]
-# Espionage actions (see espionage_default.toml for details)
+# Espionage actions
 
 successful_tech_theft = 2
 successful_sabotage_low = 1
@@ -68,7 +68,7 @@ missed_maintenance_escalation = 2  # Increases by this per consecutive turn
 colony_under_blockade = -2         # Per turn per colony under blockade
 
 [diplomacy]
-# Diplomatic actions (see diplomacy_default.toml)
+# Diplomatic actions
 
 break_non_aggression_pact = -10    # Major prestige hit for betrayal
 declare_war = 0                    # No inherent penalty
