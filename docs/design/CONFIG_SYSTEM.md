@@ -382,17 +382,18 @@ $ moderator config my_game --export > my_game_config_snapshot.toml
 ## Implementation Timeline
 
 ### M2 (Current)
-- ✅ Hardcoded stats in `getShipStats()`
-- ✅ Comments note migration to M3
+- ✅ Created `data/ships_default.toml`
+- ✅ Implemented TOML parsing with std/parsecfg
+- ✅ Replaced hardcoded `getShipStats()` with config loading
+- ✅ Added caching for performance
+- ✅ All 15 ship classes in config file
 
-### M3 (Config System)
-- [ ] Create `data/*_default.toml` files
-- [ ] Implement TOML parsing (use std/parsecfg or parsetoml)
-- [ ] Replace `getShipStats()` with config loading
+### M3 (Config Extensions)
 - [ ] Support optional `game_config.toml` overrides
-- [ ] Add validation
+- [ ] Add validation with error messages
 - [ ] Update `moderator new` to work with configs
 - [ ] Add `moderator config` command
+- [ ] Create additional config files (combat, economy, tech)
 
 ### M4 (Config Tools)
 - [ ] Add `moderator config --validate`
