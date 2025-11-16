@@ -7,11 +7,12 @@
 ## It implements complete gameplay for local/hotseat multiplayer.
 ## Network transport (Nostr) wraps around this core without modifying it.
 
-import common/[hex, system, types]
+import common/[hex, system]
 import engine/[ship, fleet, starmap, gamestate, orders, resolve, combat, economy]
 
 # Re-export all public types and procedures
-export hex, ship, system, fleet, starmap, types
+# Note: types are re-exported through their respective modules (gamestate, fleet, etc.)
+export hex, ship, system, fleet, starmap
 export gamestate, orders, resolve, combat, economy
 
 # Version information

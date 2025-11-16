@@ -4,7 +4,7 @@
 ## Implements space battles, orbital bombardment, and planetary invasions
 
 import std/[tables, options, sequtils]
-import ../common/[types, hex]
+import ../common/[hex, types/core]
 import gamestate, fleet, ship
 
 type
