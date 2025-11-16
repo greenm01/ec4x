@@ -14,6 +14,18 @@ type
   ColonyId* = string     ## Unique identifier for a colony
 
 # =============================================================================
+# Star Map and Lane Types
+# =============================================================================
+
+type
+  LaneType* = enum
+    ## Jump lane classifications (hardcoded)
+    ## Determines movement restrictions per game specs
+    Major        ## Standard lanes, 2 jumps/turn if owned
+    Minor        ## 1 jump/turn
+    Restricted   ## 1 jump/turn, no crippled/spacelift ships
+
+# =============================================================================
 # Ship Types and Stats
 # =============================================================================
 

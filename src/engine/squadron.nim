@@ -13,7 +13,8 @@ import std/[sequtils, strutils, options, parsecfg, tables, os]
 import ship
 import ../common/types
 
-export HouseId, FleetId, SystemId, SquadronId, ShipClass, ShipStats, ShipType
+export HouseId, FleetId, SystemId, SquadronId, ShipClass, ShipStats
+export types.ShipType  # Use ShipType from types, not ship
 
 type
   EnhancedShip* = object
