@@ -73,7 +73,27 @@ The complete EC4X game specification is organized into the following documents:
 
 ---
 
-*For implementation details, see [EC4X-Architecture.md](../EC4X-Architecture.md)*
+## Implementation & Architecture
+
+The EC4X technical implementation is documented in the following guides:
+
+### Architecture Documentation
+- **[Architecture Overview](../architecture/overview.md)** - System design, components, and philosophy
+- **[Storage Layer](../architecture/storage.md)** - SQLite schema and database design
+- **[Transport Layer](../architecture/transport.md)** - Localhost and Nostr transport modes
+- **[Intel System](../architecture/intel.md)** - Fog of war and visibility mechanics
+- **[Daemon Design](../architecture/daemon.md)** - Turn processing service architecture
+- **[Data Flow](../architecture/dataflow.md)** - Complete turn cycle and data flow
+
+### Nostr Protocol
+- **[Nostr Events](../EC4X-Nostr-Events.md)** - Event kind specifications
+- **[Nostr Implementation](../EC4X-Nostr-Implementation.md)** - Protocol implementation guide
+
+### Deployment
+- **[Deployment Guide](../EC4X-Deployment.md)** - Server setup and configuration
+- **[VPS Deployment](../EC4X-VPS-Deployment.md)** - Production deployment guide
+
+---
 
 Contributors:
 - Matthew Potter
