@@ -77,11 +77,11 @@ proc hasTransportShips*(f: Fleet): bool =
 
 proc militaryShips*(f: Fleet): seq[Ship] =
   ## Get all military ships in the fleet
-  f.ships.filterIt(it.shipType == Military)
+  f.ships.filterIt(it.shipType == ShipType.Military)
 
 proc spaceliftShips*(f: Fleet): seq[Ship] =
   ## Get all spacelift ships in the fleet
-  f.ships.filterIt(it.shipType == Spacelift)
+  f.ships.filterIt(it.shipType == ShipType.Spacelift)
 
 proc crippledShips*(f: Fleet): seq[Ship] =
   ## Get all crippled ships in the fleet

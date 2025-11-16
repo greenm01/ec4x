@@ -90,7 +90,7 @@ proc loadGameState*(filePath: string): Option[GameState] =
       turn: jsonData["turn"].getInt(),
       year: jsonData["year"].getInt(),
       month: jsonData["month"].getInt(),
-      phase: gpActive,  # TODO: parse from string
+      phase: GamePhase.Active,  # TODO: parse from string
       starMap: StarMap(
         systems: initTable[uint, System](),
         lanes: @[],
@@ -101,7 +101,7 @@ proc loadGameState*(filePath: string): Option[GameState] =
       houses: initTable[HouseId, House](),
       colonies: initTable[SystemId, Colony](),
       fleets: initTable[FleetId, Fleet](),
-      diplomacy: initTable[(HouseId, HouseId), DiplomaticRelation]()
+      diplomacy: initTable[(HouseId, HouseId), DiplomaticState]()
     )
 
     return some(state)

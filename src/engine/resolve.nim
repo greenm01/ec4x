@@ -335,5 +335,5 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   let victorOpt = state.checkVictoryCondition()
   if victorOpt.isSome:
     let victorId = victorOpt.get()
-    state.phase = gpCompleted
+    state.phase = GamePhase.Completed
     echo "  *** ", state.houses[victorId].name, " has won the game! ***"

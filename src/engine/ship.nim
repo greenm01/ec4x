@@ -25,30 +25,30 @@ proc `$`*(s: Ship): string =
 proc canCrossRestrictedLane*(ship: Ship): bool =
   ## Check if a ship can traverse restricted jump lanes
   case ship.shipType
-  of Military:
+  of ShipType.Military:
     not ship.isCrippled
-  of Spacelift:
+  of ShipType.Spacelift:
     false
 
 proc isCombatCapable*(ship: Ship): bool =
   ## Check if a ship can engage in combat
   case ship.shipType
-  of Military:
+  of ShipType.Military:
     not ship.isCrippled
-  of Spacelift:
+  of ShipType.Spacelift:
     false
 
 proc canCarryTroops*(ship: Ship): bool =
   ## Check if a ship can transport ground forces
   case ship.shipType
-  of Military:
+  of ShipType.Military:
     false
-  of Spacelift:
+  of ShipType.Spacelift:
     not ship.isCrippled
 
 # Convenience constructors
 proc militaryShip*(crippled: bool = false): Ship =
-  newShip(Military, crippled)
+  newShip(ShipType.Military, crippled)
 
 proc spaceliftShip*(crippled: bool = false): Ship =
-  newShip(Spacelift, crippled)
+  newShip(ShipType.Spacelift, crippled)

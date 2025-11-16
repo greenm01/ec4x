@@ -18,7 +18,7 @@ type
 # =============================================================================
 
 type
-  LaneType* = enum
+  LaneType* {.pure.} = enum
     ## Jump lane classifications (hardcoded)
     ## Determines movement restrictions per game specs
     Major        ## Standard lanes, 2 jumps/turn if owned
@@ -30,7 +30,7 @@ type
 # =============================================================================
 
 type
-  ShipClass* = enum
+  ShipClass* {.pure.} = enum
     ## All hardcoded ship classes in EC4X
     ## 17 ship types total - no custom ships allowed
     Fighter
@@ -65,7 +65,7 @@ type
     specialCapability*: string  # ELI, CLK, or empty
     carryLimit*: int         # For carriers, transports (0 if N/A)
 
-  ShipType* = enum
+  ShipType* {.pure.} = enum
     ## Ship category
     Military     ## Combat-capable warship
     Spacelift    ## Non-combat support vessel
@@ -75,7 +75,7 @@ type
 # =============================================================================
 
 type
-  GroundUnitType* = enum
+  GroundUnitType* {.pure.} = enum
     ## All hardcoded ground unit types in EC4X
     ## 4 unit types total - no custom units allowed
     PlanetaryShield
@@ -100,7 +100,7 @@ type
 # =============================================================================
 
 type
-  FacilityType* = enum
+  FacilityType* {.pure.} = enum
     ## All hardcoded facility types in EC4X
     ## 2 facility types total - no custom facilities allowed
     Spaceport
@@ -124,60 +124,60 @@ type
 # =============================================================================
 
 type
-  PlanetClass* = enum
+  PlanetClass* {.pure.} = enum
     ## Planet habitability classifications
     ## Determines population and infrastructure limits
-    pcExtreme      # Level I   - 1-20 PU
-    pcDesolate     # Level II  - 21-60 PU
-    pcHostile      # Level III - 61-180 PU
-    pcHarsh        # Level IV  - 181-500 PU
-    pcBenign       # Level V   - 501-1000 PU
-    pcLush         # Level VI  - 1k-2k PU
-    pcEden         # Level VII - 2k+ PU
+    Extreme      # Level I   - 1-20 PU
+    Desolate     # Level II  - 21-60 PU
+    Hostile      # Level III - 61-180 PU
+    Harsh        # Level IV  - 181-500 PU
+    Benign       # Level V   - 501-1000 PU
+    Lush         # Level VI  - 1k-2k PU
+    Eden         # Level VII - 2k+ PU
 
-  ResourceRating* = enum
+  ResourceRating* {.pure.} = enum
     ## System resource availability
-    rrVeryPoor
-    rrPoor
-    rrAbundant
-    rrRich
-    rrVeryRich
+    VeryPoor
+    Poor
+    Abundant
+    Rich
+    VeryRich
 
 # =============================================================================
 # Technology Types
 # =============================================================================
 
 type
-  TechField* = enum
+  TechField* {.pure.} = enum
     ## Seven tech fields in EC4X (hardcoded)
-    tfEL   # Energy Level
-    tfSL   # Shield Level
-    tfCST  # Construction Tech
-    tfWEP  # Weapons Tech
-    tfTER  # Terraforming Tech
-    tfELI  # Electronic Intelligence
-    tfCIC  # Counter Intelligence Command
+    EnergyLevel              # EL
+    ShieldLevel              # SL
+    ConstructionTech         # CST
+    WeaponsTech              # WEP
+    TerraformingTech         # TER
+    ElectronicIntelligence   # ELI
+    CounterIntelligence      # CIC
 
   TechLevel* = object
     ## Tech levels for all fields
-    EL*: int    # Energy Level (0-10)
-    SL*: int    # Shield Level (0-10)
-    CST*: int   # Construction Tech (0-10)
-    WEP*: int   # Weapons Tech (0-10)
-    TER*: int   # Terraforming Tech (0-10)
-    ELI*: int   # Electronic Intelligence (0-10)
-    CIC*: int   # Counter Intelligence Command (0-10)
+    energyLevel*: int              # EL (0-10)
+    shieldLevel*: int              # SL (0-10)
+    constructionTech*: int         # CST (0-10)
+    weaponsTech*: int              # WEP (0-10)
+    terraformingTech*: int         # TER (0-10)
+    electronicIntelligence*: int   # ELI (0-10)
+    counterIntelligence*: int      # CIC (0-10)
 
 # =============================================================================
 # Diplomatic and Prestige Types
 # =============================================================================
 
 type
-  DiplomaticState* = enum
+  DiplomaticState* {.pure.} = enum
     ## Relations between houses (hardcoded)
-    dsNeutral          # Default state
-    dsNonAggression    # Formal non-aggression pact
-    dsEnemy            # At war
+    Neutral          # Default state
+    NonAggression    # Formal non-aggression pact
+    Enemy            # At war
 
   PrestigeChange* = object
     ## Record of prestige gain/loss
@@ -191,10 +191,10 @@ type
 # =============================================================================
 
 type
-  CombatState* = enum
+  CombatState* {.pure.} = enum
     ## Unit combat readiness
-    csUndamaged
-    csCrippled
-    csDestroyed
+    Undamaged
+    Crippled
+    Destroyed
 
   CombatEffectivenessRating* = float  ## CER multiplier (0.25 to 2.0)
