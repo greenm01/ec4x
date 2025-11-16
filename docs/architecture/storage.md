@@ -13,29 +13,49 @@ EC4X uses **SQLite** as its single source of truth for all game state. This desi
 
 ## Database Structure
 
-### Single vs Multiple Databases
+### One Database Per Game (Recommended)
 
-**Recommended: Single Database for All Games**
+**EC4X uses separate SQLite files for each game:**
+
 ```
-/var/ec4x/
-└── games.db (contains all games)
+/var/ec4x/games/
+├── game-uuid-1/
+│   ├── ec4x.db          # Game 1's database
+│   ├── houses/
+│   └── public/
+├── game-uuid-2/
+│   ├── ec4x.db          # Game 2's database
+│   ├── houses/
+│   └── public/
+└── game-uuid-3/
+    ├── ec4x.db          # Game 3's database
+    ├── houses/
+    └── public/
 ```
 
-**Alternative: One Database Per Game**
-```
-/var/ec4x/
-├── game-uuid-1/ec4x.db
-├── game-uuid-2/ec4x.db
-└── game-uuid-3/ec4x.db
-```
+**Benefits:**
+- **Isolation**: Corruption in one game doesn't affect others
+- **Scalability**: No single large file (each game ~1-10 MB)
+- **Portability**: Copy game directory = copy entire game
+- **Backup**: Backup individual games independently
+- **Concurrency**: No write contention across games
+- **Archival**: Easy to archive/delete completed games
 
-Both approaches work. Single database is simpler for daemon discovery.
+**Daemon Discovery**: Scan directories for `ec4x.db` files to find active games.
 
 ## Core Schema
 
+**Note on game_id:** Since each game has its own database file, the `game_id` foreign key in tables below is technically redundant (each database contains only one game). However, it's retained for:
+- Consistency with queries and code
+- Potential future consolidation if needed
+- Clarity in data model
+- Simplified multi-game queries if databases are attached
+
+In practice, each `ec4x.db` file will have exactly one row in the `games` table.
+
 ### games
 
-Master table for game instances.
+Master table for game instances (one row per database).
 
 ```sql
 CREATE TABLE games (
