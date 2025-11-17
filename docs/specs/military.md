@@ -113,11 +113,170 @@ A Task Force is temporary grouping of squadrons organized for combat. After the 
 
 Fighters are small ships commissioned in Fighter Squadrons (FS) that freely patrol a system. They are based planet-side and never retreat from combat.
 
-There is no limit to the number of fighter squadrons deployed in a home system.
+**Fighter Squadron Capacity:**
 
-Because of their fast lightweight nature, fighters are considered to be in a crippled combat state, but without a reduction in attack strength (AS).
+The maximum number of fighter squadrons a colony can support is determined by:
 
-Carriers (CV) transport fighter squadrons between systems. Standard carriers hold up to three; Super Carriers (CX) hold up to five.
+```
+Max FS = floor(PU / 100) × FD Tech Level Multiplier
+```
+
+Where Fighter Doctrine (FD) Tech Level Multiplier is:
+- FD I (base): 1.0x
+- FD II: 1.5x  
+- FD III: 2.0x
+
+**Infrastructure Requirement:**
+
+Colonies must have at least one operational Starbase per 5 fighter squadrons (round up) to commission and maintain fighter squadron capacity. Crippled Starbases do not count toward this requirement.
+
+Starbases provide the logistical coordination, advanced maintenance facilities, and strategic communications necessary to field large fighter wings. However, once commissioned, fighter squadrons operate independently from distributed planetary bases and remain combat-effective even if Starbases are crippled or destroyed.
+
+**Capacity Violations:**
+
+A colony enters capacity violation when:
+- Operational Starbase count falls below `ceil(Current FS / 5)`, OR
+- Population loss reduces maximum capacity below current fighter squadron count
+
+Common causes of capacity violations:
+- Starbases destroyed or crippled in combat
+- Population loss due to orbital bombardment
+- Population transfer reducing colony PU below threshold
+- Fighter Doctrine tech loss (rare, only via certain game events)
+
+**Violation Grace Period:**
+
+When a capacity violation occurs, existing fighter squadrons remain fully operational and combat-effective. The player has 2 turns to resolve the violation by:
+
+**For Infrastructure Violations:**
+- Repairing crippled Starbases
+- Constructing new Starbases
+- Disbanding excess fighter squadrons
+- Relocating excess squadrons via carrier to another colony with available capacity
+
+**For Population Capacity Violations:**
+- Transferring population to the colony to increase PU
+- Disbanding excess fighter squadrons
+- Relocating excess squadrons via carrier to another colony with available capacity
+
+If the violation is not resolved within 2 turns, the player must disband excess squadrons (oldest squadrons first) until capacity requirements are met. Disbanded squadrons provide no salvage value.
+
+**Multiple Simultaneous Violations:**
+
+A colony can suffer both infrastructure and population capacity violations simultaneously (e.g., Starbases destroyed AND population bombarded in the same engagement). The grace period applies to the total violation:
+
+- Calculate required Starbase count: `ceil(Current FS / 5)`
+- Calculate population capacity: `floor(PU / 100) × FD multiplier`
+- Effective capacity = minimum of (Starbase capacity, population capacity)
+- Excess squadrons = Current FS - Effective capacity
+- Player has 2 turns to resolve regardless of violation type
+
+**Capacity Calculation Examples:**
+
+**Example 1: Infrastructure Violation**
+
+A colony with 850 PU and Fighter Doctrine Level II can support:
+```
+floor(850 / 100) × 1.5 = 8 × 1.5 = 12 fighter squadrons
+```
+This requires 3 operational Starbases (12 FS / 5 = 2.4, rounded up).
+
+If 2 of the 3 Starbases are crippled in combat:
+- All 12 fighter squadrons remain operational and fight at full effectiveness
+- The colony can only maintain 5 FS with 1 operational Starbase (5 FS / 5 = 1)
+- The colony is in violation with 7 excess squadrons
+- Player has 2 turns to repair Starbases or disband/relocate 7 squadrons
+
+**Example 2: Population Capacity Violation**
+
+A colony with 12 fighter squadrons, 3 operational Starbases, 850 PU, and FD II suffers orbital bombardment reducing population to 450 PU:
+```
+New capacity: floor(450 / 100) × 1.5 = 4 × 1.5 = 6 fighter squadrons
+```
+
+Infrastructure supports: 3 Starbases × 5 = 15 FS  
+Population supports: 6 FS  
+Effective capacity: min(15, 6) = 6 FS
+
+- All 12 fighter squadrons remain operational during and after bombardment
+- Colony is in violation with 6 excess squadrons (12 current - 6 capacity)
+- Player has 2 turns to transfer population, disband, or relocate 6 squadrons
+- Infrastructure is adequate (3 Starbases), so repairing Starbases won't help
+
+**Example 3: Combined Violation**
+
+A colony with 12 fighter squadrons, 3 operational Starbases, 850 PU, and FD II suffers severe bombardment:
+- 2 Starbases crippled
+- Population reduced to 450 PU
+
+```
+Infrastructure capacity: 1 Starbase × 5 = 5 FS
+Population capacity: floor(450 / 100) × 1.5 = 6 FS
+Effective capacity: min(5, 6) = 5 FS
+```
+
+- All 12 fighter squadrons remain operational
+- Colony is in violation with 7 excess squadrons (12 current - 5 capacity)
+- Player has 2 turns to address BOTH infrastructure and population issues
+- Must repair/build Starbases AND/OR transfer population AND/OR disband/relocate squadrons
+
+**Fighter Squadron Economics:**
+
+- **Production Cost (PC)**: 15 PP per squadron
+- **Construction Time**: 1 turn (planet-side only, requires colony industry)
+- **Maintenance Cost**: 1 PP per turn per squadron
+- **Construction Capacity**: Not limited by Spaceport docks; produced via distributed colony factories
+
+Fighter squadrons cannot be constructed in orbit and do not benefit from CST tech levels for construction speed. However, colonies with higher IU can produce more fighters simultaneously based on available production points.
+
+**Commissioning Requirements:**
+
+To commission new fighter squadrons, a colony must:
+1. Have available capacity: `Current FS < Max FS`
+2. Meet infrastructure requirement: `Operational Starbases ≥ ceil((Current FS + New FS) / 5)`
+3. Have sufficient population capacity: `floor(PU / 100) × FD ≥ (Current FS + New FS)`
+4. Have sufficient treasury: `Available PP ≥ 15 × New FS`
+
+Colonies in capacity violation cannot commission new fighter squadrons until the violation is resolved.
+
+**Combat Characteristics:**
+
+Fighter squadrons attack first in combat resolution, before capital ships engage. This represents their speed advantage and defensive intercept capability.
+
+**Combat Initiative Order:**
+1. Undetected Raiders (ambush advantage)
+2. Fighter Squadrons (all fighters attack simultaneously)
+3. Detected Raiders
+4. Capital Ships (by squadron)
+
+Because of their fast lightweight nature, fighters are considered to be in a permanent crippled combat state, but without a reduction in attack strength (AS). Fighter squadrons have reduced Defense Strength (DS) as reflected in their combat statistics.
+
+Fighter squadrons based in a system never retreat from combat and fight to the last pilot.
+
+**Carriers:**
+
+Carriers transport fighter squadrons between systems and enable offensive fighter deployment beyond home colonies.
+
+**Carrier Types and Capacity:**
+
+| Carrier Type | Base Capacity | ACO II Capacity | ACO III Capacity |
+|:------------:|:-------------:|:---------------:|:----------------:|
+| CV           | 3 FS          | 4 FS            | 5 FS             |
+| CX           | 5 FS          | 6 FS            | 8 FS             |
+
+Carrier capacity is determined by the House's Advanced Carrier Operations (ACO) tech level. All carriers in the House fleet are upgraded immediately when ACO tech is researched.
+
+**Carrier Deployment:**
+
+Fighters aboard carriers do not participate in combat until deployed to a system. Deployment occurs during the fleet movement phase and requires the carrier to be in a non-hostile system or during the first round of combat in a hostile system.
+
+Once deployed, fighters become planet-based assets and remain in the system when the carrier fleet departs. Deployed fighters count against the colony's maximum fighter squadron capacity and require the colony to meet infrastructure requirements.
+
+If deploying fighters would violate the destination colony's capacity or infrastructure requirements, deployment is not permitted. Carriers must find an alternative colony with available capacity or the fighter squadrons remain aboard.
+
+To retrieve fighters, carriers must return to the system and spend one full turn loading them. Fighters cannot be loaded while the system is under attack or contested.
+
+Fighters destroyed in combat cannot be replaced except through normal construction at a colony with available capacity.
 
 ### 2.4.2 Scouts
 
@@ -375,4 +534,5 @@ A vast decentralized network of trade, commerce, transport, industry, tech, and 
 Numerous Space Guilds compete for business in unregulated, private capital markets.
 
 The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
+
 
