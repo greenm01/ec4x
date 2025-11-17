@@ -186,107 +186,38 @@ For every turn that a player misses payment for maintenance they loose prestige 
 ## 3.10 Fighter Squadron Economics
 
 **Construction:**
-
-Fighter squadrons are produced planet-side through distributed colony manufacturing. Construction does not require Spaceport docks and is limited only by available production points, colony capacity constraints, and infrastructure requirements.
-
-**Production Cost**: 15 PP per squadron  
-**Construction Time**: 1 turn  
-**Location**: Planet-side only
-
-Multiple fighter squadrons can be constructed simultaneously at a single colony, limited by the player's available treasury allocation, colony capacity, and operational Starbase count.
+- **Production Cost**: 15 PP per squadron  
+- **Construction Time**: 1 turn  
+- **Location**: Planet-side only (distributed manufacturing, no Spaceport required)
 
 **Maintenance:**
+- **Cost**: 1 PP per turn per squadron
+- **Applies to**: All fighters (planet-based and embarked)
+- **Payment**: Beginning of each turn with other military assets
+- **Non-payment**: Squadrons disbanded (oldest first), no salvage value
 
-Each fighter squadron costs 1 PP per turn in maintenance. This represents pilot salaries, fuel, ammunition, replacement parts, and training operations.
+**Fighter Capacity Constraints:**
+- Max FS = floor(PU / 100) × FD Multiplier
+- Infrastructure requirement: 1 operational Starbase per 5 FS (round up)
+- Effective capacity = min(Population capacity, Infrastructure capacity)
 
-Maintenance costs are paid at the beginning of each turn along with all other military assets. Fighter squadrons that cannot be maintained due to treasury shortfalls are immediately disbanded (oldest squadrons first).
+**Capacity Impact by Status:**
+- Planet-based fighters: Count against colony capacity
+- Embarked fighters: Do NOT count against any colony capacity
+- Combat-deployed (hostile systems): Do NOT count against enemy capacity
 
-**Capacity Constraints:**
+**Capacity Violations:**
 
-Fighter squadron deployment is constrained by:
-1. Population-based capacity: `floor(PU / 100) × FD multiplier`
-2. Infrastructure requirement: 1 operational Starbase per 5 FS (round up)
+Grace period: 2 turns to resolve violations from:
+- Infrastructure loss (Starbase destroyed/crippled)
+- Population loss (bombardment, transfer)
 
-The effective capacity is the minimum of population capacity and infrastructure capacity.
-
-**Operational Starbase Calculation:**
-
-Only fully operational Starbases count toward infrastructure requirements. Crippled Starbases do not count.
-
-If a colony falls below required capacity (infrastructure OR population), existing fighter squadrons remain combat-effective but the colony cannot commission new squadrons. The player has 2 turns to resolve the capacity violation.
-
-Fighters can be relocated to another friendly colony via carrier transport, provided the destination colony has available capacity and meets infrastructure requirements for the additional squadrons.
-
-**Economic Impact Example:**
-
-A colony with 500 PU and FD II can support:
-```
-floor(500 / 100) × 1.5 = 5 × 1.5 = 7 fighter squadrons (rounded down)
-```
-
-This requires 2 Starbases (7 FS / 5 = 1.4, rounded up).
-
-Total costs:
-- Fighter Construction: 7 FS × 15 PP = 105 PP (one-time)
-- Fighter Maintenance: 7 FS × 1 PP = 7 PP/turn
-- Starbase Construction: 2 SB × [SB construction cost] (one-time, requires 3 turns each)
-- Starbase Maintenance: 2 SB × [SB maintenance cost]/turn
-
-**Capacity Violation Scenarios:**
-
-**Scenario 1: Infrastructure Loss**
-
-If 1 Starbase is destroyed:
-- 7 fighter squadrons remain operational
-- Colony can maintain only 5 FS with 1 operational Starbase
-- Colony is in violation with 2 excess squadrons
-- Player has 2 turns to: build a new Starbase, repair a crippled Starbase, or disband/relocate 2 squadrons
-
-**Scenario 2: Population Loss**
-
-If orbital bombardment reduces colony to 350 PU:
-```
-New capacity: floor(350 / 100) × 1.5 = 3 × 1.5 = 4 fighter squadrons (rounded down)
-```
-- 7 fighter squadrons remain operational
-- Colony population only supports 4 FS
-- Colony is in violation with 3 excess squadrons (even though 2 Starbases are operational)
-- Player has 2 turns to: transfer population to colony, disband, or relocate 3 squadrons
-
-**Scenario 3: Combined Loss**
-
-If bombardment reduces colony to 350 PU AND destroys 1 Starbase:
-```
-Infrastructure capacity: 1 Starbase × 5 = 5 FS
-Population capacity: floor(350 / 100) × 1.5 = 4 FS
-Effective capacity: min(5, 4) = 4 FS
-```
-- 7 fighter squadrons remain operational
-- Colony is in violation with 3 excess squadrons
-- Player has 2 turns to address population shortage (infrastructure is adequate for 4 FS)
-- Most efficient solution: transfer 200 PTU to colony or disband/relocate 3 squadrons
-
-**Strategic Considerations:**
-
-Fighter squadrons provide cost-effective planetary defense with a favorable AS/PC ratio compared to capital ships. However, their effectiveness is constrained by:
-- Infrastructure investment (Starbases are expensive and time-consuming to build)
-- Fixed deployment (cannot leave system without carriers)
-- Permanent crippled state (low DS makes them vulnerable to return fire)
-- Population-based capacity limits (requires large colonies for mass deployment)
-- Infrastructure vulnerability (losing Starbases creates capacity crises)
-- Population vulnerability (bombardment can force squadron disbandment)
-
-Early-game colonies lack the population and infrastructure to field significant fighter wings. Mid-game economies can support defensive fighter screens of 5-10 squadrons per major colony. Late-game fortress worlds with 1000+ PU and FD III can deploy 20+ fighter squadrons with 4+ Starbases, creating formidable defensive barriers.
-
-Protecting both Starbases AND population becomes a strategic priority for colonies with large fighter deployments. Orbital bombardment that reduces population can be as devastating to fighter capacity as destroying infrastructure.
-
-The 2-turn grace period allows players to:
-- Mount rescue operations to transfer population
-- Expedite Starbase repairs or construction
-- Strategically relocate fighters to safer colonies
-- Make calculated decisions about disbandment vs. reconstruction costs
-
-Attackers benefit from bombardment beyond immediate damage - forcing capacity violations creates long-term strategic consequences even if the attack is repelled.
+Resolution costs:
+- Repair Starbase: 25% of Starbase PC (1 turn)
+- Build Starbase: Full Starbase PC (3 turns)
+- Transfer population: 4-15 PP per PTU (varies by planet class)
+- Disband excess fighters: 0 PP (no salvage, loses 15 PP asset value per squadron)
+- Carrier relocation: Carrier maintenance costs during transit
 
 ## 3.11 Strategic Considerations
 
@@ -702,6 +633,7 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
+
 
 
 
