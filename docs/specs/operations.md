@@ -213,15 +213,143 @@ Starbases and their guarding fleets, operating under Order 04, are maintained as
 
 Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
 
-### 7.3.1 Rounds
+### 7.3.1 Combat Initiative and Phase Resolution
 
-After Task Forces are aligned for battle, combat commences in a series of rounds until one side is completely destroyed or manages a retreat.
+Space combat resolves in initiative phases based on unit tactical characteristics. Each phase resolves completely before proceeding to the next phase.
 
-Combat action is simultaneous; all squadrons have the opportunity to fire on enemy forces at least once, regardless of damage sustained during a round.
+**Combat Initiative Order:**
 
-At the beginning of each combat round, players add up the total AS of their surviving squadrons. The total value is then modified by the Combat Effectiveness Rating (CER).
+1. **Undetected Raiders** (Ambush Phase)
+2. **Fighter Squadrons**  (Intercept Phase)
+3. **Detected Raiders**   (Stealth Phase)
+4. **Capital Ships**      (Main Engagement Phase)
 
-Roll for CER on the table below, applying all applicable modifiers.
+Units destroyed in an earlier phase do not participate in later phases.
+
+#### 7.3.1.1 Phase 1: Undetected Raiders (Ambush Phase)
+
+Cloaked Raider fleets that successfully evaded ELI detection during the pre-combat detection phase strike first with full ambush advantage.
+
+**Pre-Combat Detection:**
+
+Before combat begins, all ELI-equipped units (Scouts and Starbases) in the defending force attempt to detect cloaked Raiders using the detection mechanics defined in [Section 2.4.3](military.md#243-raiders).
+
+For each defending ELI unit:
+- Calculate effective ELI level (weighted average, dominant tech penalty, mesh network modifier)
+- Starbases receive +2 ELI modifier for detection rolls
+- Roll detection against each attacking cloaked fleet's highest CLK rating
+- If detected, the Raider fleet loses ambush advantage and attacks in Phase 3 instead
+
+**Ambush Resolution:**
+
+Undetected Raiders attack before any defending units can respond:
+- Raiders receive +4 die roll modifier on CER roll (see [Section 7.3.2](#732-combat-effectiveness-rating-cer))
+- Destroyed targets do not return fire
+- Multiple undetected Raider fleets attack simultaneously in this phase
+
+#### 7.3.1.2 Phase 2: Fighter Squadrons (Intercept Phase)
+
+All fighter squadrons in the system attack simultaneously, regardless of ownership or deployment status. Fighters attack before capital ships can engage, representing their speed and intercept capability.
+
+**Fighter Participation:**
+
+**Colony-Owned Fighters:**
+- Permanently stationed at colony (planet-based assets)
+- Always participate in system defense
+- Fight until destroyed or enemy eliminated
+
+**Carrier-Owned Fighters:**
+- Automatically deploy before combat begins.
+- Remain carrier-owned
+
+**Fighter Attack Mechanics:**
+
+All deployed fighters (colony-owned and carrier-owned) aggregate their Attack Strength (AS) values and attack as a unified force. The combined fighter AS is applied against enemy targets according to target priority rules.
+
+**Target Priority Algorithm:**
+
+1. **Priority 1 - Enemy Fighters:** Attack enemy fighter squadrons to establish space superiority.
+
+2. **Priority 2 - Enemy Carriers:** Fighters prioritize carriers (CV and CX) to prevent enemy fighter retrieval and deny reinforcement capability. If multiple carriers present, distribute attacks proportionally by carrier DS.
+
+3. **Priority 3 - Capital Ship Squadrons:** If no carriers present, fighters distribute attacks across all enemy squadrons proportionally based on each squadron's total Defense Strength (DS).
+
+4. **Priority 4 - Installations:** Fighters attacking planetary installations (Starbases, Planetary Shields, Ground Batteries) combine their AS against the installation's DS.
+
+**Proportional Attack Distribution:**
+
+When attacking multiple targets of the same priority, fighter AS is distributed proportionally:
+
+```
+Target_Damage = (Target_DS / Total_Enemy_DS) × Total_Fighter_AS
+```
+
+**Fighter Vulnerability:**
+
+Fighters are permanently in a crippled combat state with reduced DS. After dealing damage in Phase 2, fighters remain on the battlefield and are subject to return fire from surviving enemy units in subsequent phases.
+
+Fighters never retreat from combat and fight until destroyed or the enemy is eliminated.
+
+**Fighter Independence During Combat:**
+
+Fighter squadrons remain fully operational throughout combat regardless of:
+- Starbase damage or destruction
+- Population losses from orbital bombardment
+- Infrastructure capacity violations
+
+Capacity violations resulting from combat damage are evaluated at the end of combat resolution. The 2-turn grace period for resolving violations begins on the following turn (see [Section 2.4.1](military.md#241-fighter-squadrons--carriers)).
+
+**Carrier-Owned Fighter Deployment:**
+
+**In Hostile/Neutral Systems:**
+- Carrier-owned fighters can deploy for combat
+- No colony capacity checks (not using local infrastructure)
+- Fighters remain carrier-owned throughout engagement
+- After combat:
+  - If carrier survives: fighters must re-embark (1 turn) or be destroyed
+  - If carrier destroyed: all carrier-owned fighters destroyed
+  - If carrier withdraws: carrier-owned fighters must withdraw or be destroyed
+- No ownership transfer occurs
+
+**In Friendly/Controlled Systems:**
+- Carrier-owned fighters deploy for combat alongside colony-owned fighters
+- After combat: carrier-owned fighters re-embark (1 turn), remain carrier-owned
+- No ownership transfer unless permanent deployment is executed (outside combat, see [Section 2.4.1](military.md#241-fighter-squadrons--carriers))
+
+#### 7.3.1.3 Phase 3: Detected Raiders (Stealth Phase)
+
+Raiders that were successfully detected by ELI units during the pre-combat detection phase attack in this phase, having lost their ambush advantage.
+
+Detected Raiders attack using normal combat mechanics (same as capital ships in Phase 4) but resolve their attacks before the main capital ship engagement.
+
+Multiple detected Raider fleets attack simultaneously in this phase.
+
+#### 7.3.1.4 Phase 4: Capital Ships (Main Engagement Phase)
+
+All remaining capital ships attack by squadron in this phase. Squadron attack order is determined by flagship Command Rating (CR).
+
+**Attack Order Resolution:**
+
+1. Squadrons attack in descending order by flagship CR (highest CR attacks first)
+2. Squadrons with equal CR attack simultaneously
+3. Each squadron's total AS (sum of all ships in squadron) is applied against target(s)
+4. Destroyed squadrons do not return fire
+
+**Squadron Damage Application:**
+
+A squadron fights as a single unit. The squadron's total AS and DS values are the sum of all ships under the flagship's command.
+
+When a squadron takes damage:
+- Damage is applied to the squadron's total DS pool
+- Individual ships within the squadron are destroyed when cumulative damage exceeds their individual DS
+- Ships are removed from the squadron in order of lowest DS first (smallest ships destroyed first)
+- The flagship is always the last ship destroyed in a squadron
+
+### 7.3.2 Combat Effectiveness Rating (CER)
+
+After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), players add up the total AS of their attacking units and roll for Combat Effectiveness Rating.
+
+**CER Table:**
 
 | **Modified 1D10 Die Roll** | **Space Combat CER**             |
 | -------------------------- | -------------------------------- |
@@ -232,61 +360,112 @@ Roll for CER on the table below, applying all applicable modifiers.
 | 9\*                        | One\* (1)                        |
 | 9+                         | One (1)                          |
 
-\*If the die roll is a natural nine before any required modification,
-then a critical hit is achieved
+\*If the die roll is a natural nine before any required modification, then a critical hit is achieved
 
-**Die Roll Modifiers**
+**Die Roll Modifiers:**
 
-| Modifier | Value | Notes                                                |
-| -------- |:-----:| ---------------------------------------------------- |
-| Scouts   | +1    | Maximum benefit for all Scouts                       |
-| Surprise | +3    | First round only; See [Section 7.1.3](#713-cloaking) |
-| Ambush   | +4    | First round only; See [Section 7.1.3](#713-cloaking) |
+| Modifier | Value | Notes                                  | Applicable Phases |
+| -------- |:-----:| -------------------------------------- | ----------------- |
+| Scouts   | +1    | Maximum benefit for all Scouts         | All phases        |
+| Surprise | +3    | First round only                       | Phase 1 only      |
+| Ambush   | +4    | First round only                       | Phase 1 only      |
 
-**The CER multiplied by AS equals the number of total enemy hits.**
+**CER Application:**
 
-The player who rolled the die will determine where hits are applied.
+Fighter squadrons in Phase 2 do not use CER - their combined AS is applied directly as damage. Phases 1, 3, and 4 use CER to determine effectiveness.
 
-The following **restrictions** apply:
-1. If the number of hits equal the opposing squadron's DS, the unit is reduced.
-2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled.
-3. Excess hits are lost if restrictions apply.
+```
+Total Hits = CER × Total AS
+```
 
-Crippled squadrons multiply their AS by 0.5, rounded up the nearest whole number.
+The player who rolled the die determines where hits are applied, subject to the following restrictions:
+
+1. If the number of hits equal the opposing squadron's DS, the unit is reduced
+2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled
+3. Excess hits are lost if restrictions apply
+
+Crippled squadrons multiply their AS by 0.5, rounded up to the nearest whole number.
 
 Destroyed squadrons are no longer a factor and the Task Force loses their associated die roll modifiers (e.g. Scouts).
 
-In computer moderated play, the algorithm will reduce opposing squadrons with the greatest AS, within restrictions.
+**Critical Hits:**
 
-**Critical Hits**:
+Critical hits nullify restriction #2 above. Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction #1, then the squadron with the lowest DS is reduced.
 
-Critical hits are a special case. Restriction \#2 in the list above is nullified.
+### 7.3.3 Rounds
 
-Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction \#1 above, then the squadron with the lowest DS is reduced.
+Combat continues in rounds until one side is completely destroyed or manages a retreat.
 
-### 7.3.2 End of Round
+Combat action within each phase is simultaneous; all units have the opportunity to attack at least once in their designated phase, regardless of damage sustained during the round.
 
-After all hits are applied and squadrons are appropriately reduced (crippled or destroyed), recalculate the total AS of all surviving Task Forces.
+After all phases complete and hits are applied:
 
-Check each Task Force's ROE on the table in [Section 7.1.1](#711-rules-of-engagement-roe) by comparing AS strengths and determine if a retreat is warranted. If so, proceed to [Section 7.3.3](#733-retreat).
+1. **Casualty Assessment:** Mark all crippled and destroyed units (colony-owned and carrier-owned fighters tracked separately)
+2. **Capacity Violation Checks:** Evaluate colonies for fighter capacity violations (only colony-owned fighters count toward capacity)
+3. **Recalculate AS:** Determine total AS of all surviving Task Forces
+4. **ROE Check:** Compare AS strengths and determine if retreat is warranted per [Section 7.1.1](#711-rules-of-engagement-roe)
 
-If more than one Task Force remains in the fight, the next round commences via the same procedure as described above.
+If more than one Task Force remains and no retreat occurs, proceed to the next combat round.
 
-Otherwise proceed to [Section 7.3.4](#734-end-of-space-combat).
+### 7.3.4 Retreat
 
-### 7.3.3 Retreat
+A Task Force may retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter.
 
-A Task Force is able retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter.
+**Retreat Mechanics:**
 
-Squadrons in a retreating Task Force will fall back to their original fleet formations and flee to the closest non-hostile star system.
+Squadrons in a retreating Task Force fall back to their original fleet formations and flee to the closest non-hostile star system via available jump lanes.
 
-Fighter squadrons never retreat from combat. If they remain in the fight, fighter squadrons will screen their retreating Task Force and combat resumes until they are completely destroyed. 
+**Retreat Restrictions:**
 
-Spacelift Command ships are destroyed if their escort fleets were destroyed.
+- Colony-owned fighters never retreat from combat
+- If colony-owned fighters remain, they screen their retreating Task Force
+- Combat continues until all colony-owned fighters are destroyed
+- Spacelift Command ships are destroyed if their escort fleets are destroyed
+- Crippled ships cannot retreat through restricted lanes
 
-### 7.3.4 End of Space Combat
+**Carrier-Owned Fighter Retreat:**
 
-After the last round of combat the surviving Task Forces are disbanded and surviving squadrons rejoin their original fleets.
+**In Hostile/Neutral Systems:**
+- Carrier-owned fighters withdraw with retreating carrier (emergency withdrawal, no re-embark time)
+- Destroyed if carrier lost or left behind
+- Crippled carriers can perform emergency withdrawal with carrier-owned fighters
+
+**In Friendly Systems:**
+- Carrier-owned fighters withdraw with carrier (emergency withdrawal, no re-embark time)
+- Carrier-owned fighters remain carrier-owned, do not transfer to colony
+- Crippled carriers can perform emergency withdrawal with carrier-owned fighters
+
+**Colony-Owned Fighters:**
+- Never retreat
+- Screen retreating friendly forces
+- Fight until destroyed
+
+### 7.3.5 End of Space Combat
+
+After the last round of combat, surviving Task Forces disband and squadrons rejoin their original fleets.
+
+**Post-Combat Resolution:**
+
+1. **Salvage Operations:** Destroyed ships can be salvaged for 50% of original PC (requires system control and 1 turn per ship)
+2. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
+3. **Capacity Violations:** Evaluate all colonies for fighter squadron capacity violations (only colony-owned fighters count)
+4. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed must re-embark (1 turn)
+5. **Strategic Position:** Determine system control and potential for bombardment/invasion operations
+
+**Capacity Violation Assessment:**
+
+For each colony involved in combat, evaluate capacity per [Section 2.4.1](military.md#241-fighter-squadrons--carriers).
+
+Only colony-owned fighters count toward capacity limits. Carrier-owned fighters (embarked or temporarily deployed) do not count.
+
+Violations trigger a 2-turn grace period beginning on the following turn. All fighter squadrons remain operational during the grace period.
+
+**Fighter Ownership After Combat:**
+
+- Colony-owned fighters remain colony-owned
+- Carrier-owned fighters re-embark and remain carrier-owned (1 turn)
+- No automatic ownership transfers occur as result of combat
+- Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](military.md#241-fighter-squadrons--carriers))
 
 ## 7.4 Starbase Combat
 
@@ -430,4 +609,5 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 - Insert your imagination here.....
 
 EC4X Space combat is adapted from Empire of the Sun (EOS). 
+
 
