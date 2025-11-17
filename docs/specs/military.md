@@ -157,7 +157,7 @@ If the violation is not resolved within 2 turns, the player must disband excess 
 
 **Fighter Squadron Construction:**
 
-For construction and maintenance costs, see [Section 3.10](economics.md#3.10-fighter-squadron-economics).
+For construction and maintenance costs, see [Section 3.10](economy.md#310-fighter-squadron-economics).
 
 **Commissioning Requirements:**
 
@@ -567,6 +567,7 @@ A vast decentralized network of trade, commerce, transport, industry, tech, and 
 Numerous Space Guilds compete for business in unregulated, private capital markets.
 
 The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
+
 
 
 
