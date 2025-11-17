@@ -593,7 +593,73 @@ The CIC enhances security measures to shield the House from espionage threats po
 
 The maximum CIC level is CIC5.
 
-## 4.12 Strategic Considerations
+## 4.12 Fighter Doctrine (FD)
+
+Fighter Doctrine represents advancements in tactical coordination, pilot training infrastructure, and logistics systems that enable colonies to support larger fighter wings.
+
+**Research Progression:**
+
+| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier |
+|:----------:|--------------|:--------:|:-----------:|:-------------------:|
+| FD I       | None         | N/A      | 1           | 1.0x                |
+| FD II      | FD I         | 30       | 2           | 1.5x                |
+| FD III     | FD II        | 35       | 3           | 2.0x                |
+
+**FD I - Basic Fighter Operations**
+
+Standard fighter squadron operations with conventional command structures. Base capacity determined by population and infrastructure.
+
+**FD II - Advanced Fighter Operations**
+
+Enhanced pilot academies, improved communication networks, and advanced squadron coordination protocols. Increases operational capacity by 50% through better resource utilization and training throughput.
+
+**FD III - Elite Fighter Operations**
+
+Elite pilot training programs, AI-assisted tactical coordination, and distributed command networks. Doubles fighter squadron capacity through revolutionary organizational efficiency and automated logistics systems.
+
+**Application:**
+
+Fighter Doctrine upgrades apply house-wide immediately upon research completion. All colonies recalculate their maximum fighter squadron capacity using the new multiplier.
+
+Colonies must maintain the required Starbase infrastructure (1 operational Starbase per 5 FS) regardless of doctrine level. The Starbase requirement does not scale with FD tech.
+
+When FD tech increases capacity, existing fighter squadrons remain operational and colonies can immediately commission additional squadrons up to their new capacity limit (subject to infrastructure requirements and available production points).
+
+If capacity increases would require additional Starbases, colonies have 2 turns to construct the required infrastructure before commissioning new squadrons. Existing squadrons are grandfathered and remain operational during the grace period.
+
+## 4.13 Advanced Carrier Operations (ACO)
+
+Advanced Carrier Operations improves carrier efficiency, allowing greater fighter squadron capacity per vessel through enhanced hangar systems, rapid deployment mechanisms, and improved logistics.
+
+**Research Progression:**
+
+| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity |
+|:----------:|--------------|:--------:|:-----------:|:-----------:|:-----------:|
+| ACO I      | None         | N/A      | 1           | 3 FS        | 5 FS        |
+| ACO II     | ACO I        | 40       | 4           | 4 FS        | 6 FS        |
+| ACO III    | ACO II       | 45       | 5           | 5 FS        | 8 FS        |
+
+**ACO I - Standard Carrier Operations**
+
+Base carrier capacity with conventional hangar layouts and deployment systems. Standard Carriers (CV) accommodate 3 fighter squadrons; Super Carriers (CX) carry 5.
+
+**ACO II - Enhanced Carrier Operations**
+
+Improved hangar bay design, automated fighter launch systems, and enhanced maintenance facilities increase carrier capacity by 33%. Standard Carriers (CV) can accommodate 4 fighter squadrons; Super Carriers (CX) can carry 6.
+
+**ACO III - Advanced Carrier Operations**
+
+Revolutionary multi-deck hangar systems, AI-coordinated rapid deployment, and advanced repair facilities maximize carrier efficiency. Standard Carriers (CV) accommodate 5 fighter squadrons; Super Carriers (CX) carry 8.
+
+**Application:**
+
+ACO upgrades apply immediately to all carriers in the House fleet upon research completion. Existing carriers can load additional fighters up to their new capacity limit at any friendly colony during the loading phase.
+
+Carriers in transit or in combat zones must return to a friendly colony to take advantage of increased capacity.
+
+ACO technology affects carrier capacity only and does not modify fighter squadron statistics, maintenance costs, or combat effectiveness.
+
+## 4.14 Strategic Considerations
 
 - Balancing R&D Investments: Players must balance investments across ERP, SRP, and TRP to maximize their economic output, technological advancements, and military strength.
 - Economic Synergies: Increasing EL and SL together can provide synergistic benefits, enhancing overall productivity and unlocking powerful technologies.
@@ -636,5 +702,6 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
+
 
 
