@@ -608,6 +608,7 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 - Add defensive missile batteries
 - Insert your imagination here.....
 
-EC4X Space combat is adapted from Empire of the Sun (EOS). 
+EC4X Space combat is inspired by Empire of the Sun (EOS). 
+
 
 
