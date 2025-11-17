@@ -141,7 +141,7 @@ A fleet's ROE is defined when it's created, or changed any time before engaging 
 
 ### 7.1.2 Combat State
 
-Squadron units are either undamaged, crippled, or destroyed.
+Squadron units and installations are either undamaged, crippled, or destroyed.
 
 **Attack Strength (AS)** represents a unit's offensive firepower and is a mutable type.
 
@@ -149,13 +149,16 @@ Squadron units are either undamaged, crippled, or destroyed.
 
 **Reduced**: This term is used to describe a transition of state, e.g. undamaged to crippled, crippled to destroyed.
 
-**Undamaged**: A unit’s life support systems, hull integrity, and weapons systems are fully operational.
+**Undamaged**: A unit's life support systems, hull integrity, and weapons systems are fully operational.
 
-**Crippled**: When an undamaged unit’s DS is equaled in battle by hits, that unit’s primary defensive shielding is compromised and the unit is reduced to a crippled combat state. AS is reduced by half.
+**Crippled**: When an undamaged unit's DS is equaled in battle by hits, that unit's primary defensive shielding is compromised and the unit is reduced to a crippled combat state. AS is reduced by half (rounded up).
 
 **Destroyed**: In a crippled combat state, hits equal to DS reduces a unit's state to destroyed. The unit is dead and unrecoverable.
 
-If a squadron is crippled, all the ships under its command are crippled. If a squadron is destroyed, all the ships are likewise destroyed.
+**Unit State Propagation:**
+- If a squadron is crippled, all the ships under its command are crippled
+- If a squadron is destroyed, all the ships are likewise destroyed
+- Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed)
 
 ### 7.1.3 Cloaking
 
@@ -226,6 +229,16 @@ Space combat resolves in initiative phases based on unit tactical characteristic
 
 Units destroyed in an earlier phase do not participate in later phases.
 
+**Simultaneous Attack Resolution:**
+
+Within each phase, when multiple units attack simultaneously (same initiative tier), use the following resolution sequence:
+
+1. **Target Selection**: All attacking units select their targets using [Section 7.3.2](#732-target-priority-rules)
+2. **Damage Application**: All damage is applied simultaneously after all selections are made
+3. **Overkill Handling**: If multiple attackers independently selected the same target and combined damage exceeds destruction threshold, excess damage is lost
+
+This creates natural variance in combat outcomes due to independent target selection.
+
 #### 7.3.1.1 Phase 1: Undetected Raiders (Ambush Phase)
 
 Cloaked Raider fleets that successfully evaded ELI detection during the pre-combat detection phase strike first with full ambush advantage.
@@ -244,9 +257,10 @@ For each defending ELI unit:
 
 Undetected Raiders attack before any defending units can respond:
 - Raiders receive +4 die roll modifier on CER roll (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
-- Raiders select targets using [Section 7.3.2](#732-target-priority-rules)
+- Each Raider squadron independently selects targets using [Section 7.3.2](#732-target-priority-rules)
+- All Raider squadrons select targets, then all damage is applied simultaneously
 - Destroyed targets do not return fire
-- Multiple undetected Raider fleets attack simultaneously in this phase
+- Multiple undetected Raider squadrons attack simultaneously in this phase
 
 #### 7.3.1.2 Phase 2: Fighter Squadrons (Intercept Phase)
 
@@ -258,15 +272,23 @@ All fighter squadrons in the system attack simultaneously, regardless of ownersh
 - Permanently stationed at colony (planet-based assets)
 - Always participate in system defense
 - Fight until destroyed or enemy eliminated
+- Never retreat independently from combat
 
 **Carrier-Owned Fighters:**
 - Automatically deploy when carrier enters combat
 - Remain carrier-owned assets throughout engagement
 - Fight alongside colony-owned fighters
+- Retreat only when carrier retreats (not independent retreat)
 
 **Fighter Attack Mechanics:**
 
 All fighters (colony-owned and carrier-owned) attack using the target priority rules defined in [Section 7.3.2](#732-target-priority-rules).
+
+**Fighter Attack Resolution:**
+1. Each fighter squadron independently selects a target using weighted random selection
+2. All fighter squadrons complete target selection
+3. All damage is applied simultaneously
+4. Each fighter squadron applies its full AS as damage to its selected target
 
 Fighters follow the special fighter targeting rule: prioritize enemy fighters first, then apply bucket order if no enemy fighters present.
 
@@ -274,7 +296,7 @@ Fighters follow the special fighter targeting rule: prioritize enemy fighters fi
 
 Fighters are permanently in a crippled combat state with reduced DS. After dealing damage in Phase 2, fighters remain on the battlefield and are subject to return fire from surviving enemy units in subsequent phases.
 
-Fighters never retreat from combat and fight until destroyed or the enemy is eliminated.
+Colony-owned fighters never retreat from combat and fight until destroyed or the enemy is eliminated. Carrier-owned fighters retreat only when their carrier retreats.
 
 **Fighter Independence During Combat:**
 
@@ -291,7 +313,7 @@ Capacity violations resulting from combat damage are evaluated at the end of com
 - After combat ends:
   - If carrier survives: fighters must re-embark (1 turn) or be destroyed
   - If carrier destroyed: all carrier-owned fighters destroyed
-  - If carrier withdraws: carrier-owned fighters must withdraw or be destroyed
+  - If carrier withdraws: carrier-owned fighters must withdraw with carrier or be destroyed
 - No ownership transfer occurs
 
 **In Friendly/Controlled Systems:**
@@ -303,11 +325,12 @@ Capacity violations resulting from combat damage are evaluated at the end of com
 Raiders that were successfully detected by ELI units during the pre-combat detection phase attack in this phase, having lost their ambush advantage.
 
 Detected Raiders attack using normal combat mechanics (same as capital ships in Phase 4):
-- Roll for CER (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
-- Select targets using [Section 7.3.2](#732-target-priority-rules)
+- Each Raider squadron rolls for CER independently (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
+- Each Raider squadron selects target using [Section 7.3.2](#732-target-priority-rules)
+- All Raider squadrons complete target selection, then all damage is applied simultaneously
 - Apply damage to selected targets
 
-Detected Raiders resolve their attacks before the main capital ship engagement. Multiple detected Raider fleets attack simultaneously in this phase.
+Detected Raiders resolve their attacks before the main capital ship engagement. Multiple detected Raider squadrons attack simultaneously in this phase.
 
 #### 7.3.1.4 Phase 4: Capital Ships (Main Engagement Phase)
 
@@ -316,12 +339,13 @@ All remaining capital ships attack by squadron in this phase. Squadron attack or
 **Attack Order Resolution:**
 
 1. Squadrons attack in descending order by flagship CR (highest CR attacks first)
-2. Squadrons with equal CR attack simultaneously
-3. Each attacking squadron:
-   - Rolls for CER (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
-   - Selects target using [Section 7.3.2](#732-target-priority-rules)
-   - Applies total hits (CER × Squadron AS) to selected target
-4. Destroyed squadrons do not return fire
+2. Squadrons with equal CR attack simultaneously using simultaneous attack resolution
+3. For each CR tier (attacking simultaneously):
+   - Each squadron rolls for CER (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
+   - Each squadron selects target using [Section 7.3.2](#732-target-priority-rules)
+   - All squadrons in this CR tier complete selections
+   - All damage is applied simultaneously
+4. Destroyed squadrons do not return fire in subsequent CR tiers
 
 **Squadron Damage Application:**
 
@@ -337,21 +361,25 @@ When a squadron takes damage:
 
 All attacking units (squadrons, fighters, and Starbases) select targets using the following priority system.
 
+**Terminology:**
+- **Fighter squadron**: A squadron consisting entirely of fighter craft with no capital ship flagship (bucket 4)
+- **Capital ship squadron**: A squadron led by a capital ship flagship (buckets 1, 2, or 3)
+
 #### 7.3.2.1 Bucket Classification
 
-Every squadron is assigned to a bucket based on its flagship class:
+Every squadron and installation is assigned to a bucket based on its type:
 
-| Bucket (Priority Order) | Flagship Class | Base Weight |
-|------------------------|----------------|-------------|
-| **1 – Raider**         | Raider         | 1.0         |
-| **2 – Capital**        | Cruiser, Carrier | 2.0       |
-| **3 – Destroyer**      | Destroyer      | 3.0         |
-| **4 – Fighter**        | None (fighter-only squadron) | 4.0 |
-| **5 – Starbase**       | None (orbital installation) | 5.0 |
+| Bucket (Priority Order) | Unit Type | Base Weight |
+|------------------------|-----------|-------------|
+| **1 – Raider**         | Squadron with Raider flagship | 1.0 |
+| **2 – Capital**        | Squadron with Cruiser or Carrier flagship | 2.0 |
+| **3 – Destroyer**      | Squadron with Destroyer flagship | 3.0 |
+| **4 – Fighter**        | Fighter squadron (no capital ship flagship) | 4.0 |
+| **5 – Starbase**       | Orbital installation | 5.0 |
 
 **Notes:**
-- Fighter-only squadrons have no flagship and are assigned to bucket 4
-- Starbases are not squadrons but are treated as bucket 5 for target priority
+- Fighter squadrons consist entirely of fighter craft and have no capital ship flagship
+- Starbases are orbital installations, not squadrons
 - Lower bucket numbers indicate higher targeting priority
 
 #### 7.3.2.2 Special Rule: Fighter Squadron Targeting
@@ -372,6 +400,7 @@ For all non-fighter attackers (capital ship squadrons, Raiders, Starbases) and f
 2. **Build candidate pool:** For each bucket in order, collect all enemy units matching that bucket
 3. **Select first non-empty bucket:** The first bucket containing at least one enemy unit becomes the candidate pool
 4. **Apply weighted random selection:** Select target from candidate pool using weights (see 7.3.2.4)
+5. **No valid targets:** If no enemy units exist in any bucket, the attacker does not fire this phase
 
 #### 7.3.2.4 Weighted Random Target Selection
 
@@ -379,25 +408,30 @@ Once a candidate pool is determined:
 
 1. **Calculate weight for each candidate:**
    ```
-   Weight = Base_Weight(bucket) × Squadron_Size × Crippled_Modifier
+   Weight = Base_Weight(bucket) × Unit_Size × Crippled_Modifier
    ```
    Where:
    - `Base_Weight(bucket)` is from the bucket classification table (7.3.2.1)
-   - `Squadron_Size` is the number of ships in the squadron (or 1 for Starbases)
-   - `Crippled_Modifier` = 2.0 if squadron is crippled, 1.0 otherwise
+   - `Unit_Size` is the number of ships in the squadron (or 1 for Starbases)
+   - `Crippled_Modifier` = 2.0 if unit is crippled, 1.0 if undamaged
 
 2. **Perform weighted random draw:**
-   - Use PRNG seeded with `hash(gameId, turnNumber)` for deterministic combat resolution
-   - Optional: Custom seed can be specified for testing or alternate outcomes
+   - Use PRNG seeded with SHA-256 hash of string `"{gameId}-{turnNumber}"` modulo 2^32
+   - Alternatively, custom seed can be specified for testing or alternate outcomes
    - Select target based on weighted probability distribution
+   - Standard weighted random selection algorithm (available in most programming language standard libraries)
 
-3. **Apply all attacker AS to selected target**
+3. **Apply damage to selected target:**
+   - Fighters: Apply full AS as damage
+   - Other units: Apply CER × AS as damage (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
 
-**Crippled Squadron Priority:**
+**Crippled Unit Priority:**
 
-Crippled squadrons receive double weight in target selection, representing tactical doctrine to finish weakened enemies before engaging fresh forces. This creates natural "focus fire" behavior on damaged units while still allowing fresh large squadrons to draw fire.
+Crippled units (squadrons and Starbases) receive double weight in target selection, representing tactical doctrine to finish weakened enemies before engaging fresh forces. This creates natural "focus fire" behavior on damaged units while still allowing fresh large squadrons to draw fire.
 
-Crippled modifier makes small crippled squadron equally attractive as larger fresh squadron.
+**Deterministic Combat:**
+
+The SHA-256 hash ensures combat resolution is deterministic and reproducible for the same game state, allowing for replay analysis and debugging. The same tactical situation on the same turn of the same game will always produce identical target selections.
 
 #### 7.3.2.5 Interaction with Damage Restrictions
 
@@ -405,14 +439,18 @@ Target selection works in conjunction with damage application restrictions from 
 
 **First Combat Round:**
 - Fresh squadrons targeted by size and bucket priority
-- Damage typically cripples multiple squadrons (restriction #2 prevents destruction)
+- Damage typically cripples multiple squadrons (restriction #2 prevents immediate destruction)
 - Task Force degraded but remains combat-effective
 
 **Subsequent Rounds:**
-- Crippled squadrons receive 2x targeting weight
+- Crippled squadrons and Starbases receive 2x targeting weight
 - Attackers naturally focus fire on crippled targets
-- Once all enemy squadrons crippled, destruction proceeds by weighted probability
+- Once all enemy squadrons in a Task Force are crippled, destruction proceeds by weighted probability
 - Larger crippled squadrons eliminated first (higher weight)
+
+**Critical Hit Exception:**
+- Critical hits allow destroying a squadron even if other squadrons in the Task Force remain undamaged
+- See [Section 7.3.3](#733-combat-effectiveness-rating-cer) for critical hit mechanics
 
 This creates attrition combat where:
 1. Initial engagement cripples multiple squadrons (spread damage)
@@ -422,26 +460,26 @@ This creates attrition combat where:
 #### 7.3.2.6 Target Priority Summary
 
 **Fighter squadrons:**
-1. Enemy fighters (if any exist) - weighted by size and crippled state
+1. Enemy fighter squadrons (if any exist) - weighted by size and crippled state
 2. Raiders → Capital → Destroyer → Starbase (if no enemy fighters) - weighted by size and crippled state
 
 **All other attackers:**
 1. Raiders - weighted by size and crippled state
 2. Capital ships (Cruisers, Carriers) - weighted by size and crippled state
 3. Destroyers - weighted by size and crippled state
-4. Fighters - weighted by size and crippled state
+4. Fighter squadrons - weighted by size and crippled state
 5. Starbases - weighted by crippled state (size = 1)
 
 **Weighting Factors (applied multiplicatively):**
 - **Bucket Base Weight:** 1.0 (Raider) to 5.0 (Starbase)
-- **Squadron Size:** Number of ships in squadron
+- **Unit Size:** Number of ships in squadron (or 1 for Starbases)
 - **Crippled Modifier:** 2.0 if crippled, 1.0 if undamaged
 
 This creates a threat-based targeting hierarchy where high-value units (Raiders) are prioritized, modified by squadron size (larger = more threatening) and damage state (crippled = easier kill).
 
 ### 7.3.3 Combat Effectiveness Rating (CER)
 
-After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), players add up the total AS of their attacking units and roll for Combat Effectiveness Rating.
+After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), each attacking unit rolls independently for Combat Effectiveness Rating.
 
 **CER Table:**
 
@@ -460,35 +498,54 @@ After determining combat initiative order and resolving detection checks, combat
 
 | Modifier | Value | Notes                                  | Applicable Phases |
 | -------- |:-----:| -------------------------------------- | ----------------- |
-| Scouts   | +1    | Maximum benefit for all Scouts         | All phases        |
+| Scouts   | +1    | Maximum benefit for all Scouts in Task Force | All CER phases |
 | Surprise | +3    | First round only                       | Phase 1 only      |
 | Ambush   | +4    | First round only                       | Phase 1 only      |
 
 **CER Application:**
 
-Fighter squadrons in Phase 2 do not use CER. Instead, each fighter squadron independently selects a target using the rules in [Section 7.3.2](#732-target-priority-rules) and applies its full AS as damage to the selected target.
+**Phase 2 (Fighter Squadrons):**
+- Fighters do NOT use CER
+- Each fighter squadron independently selects a target using [Section 7.3.2](#732-target-priority-rules)
+- Each fighter squadron applies its full AS as damage to its selected target
+- All selections are made, then all damage is applied simultaneously
 
-Phases 1, 3, and 4 use CER to determine attack effectiveness:
+**Phases 1, 3, and 4 (Raiders and Capital Ships):**
+- Each attacking squadron rolls independently for CER
+- Calculate total hits: `Total Hits = CER × Squadron_AS`
+- Squadron selects target using [Section 7.3.2](#732-target-priority-rules)
+- All squadrons in the same initiative tier complete target selection
+- All damage is applied simultaneously
 
-```
-Total Hits = CER × Total AS
-```
+**Damage Application Restrictions:**
 
-After rolling for CER, the attacking squadron selects its target using [Section 7.3.2](#732-target-priority-rules), then applies total hits to that target.
+After target selection and CER calculation, apply hits to selected target with the following restrictions:
 
-The following restrictions apply when applying hits:
+1. **Reduction Threshold:** If hits equal or exceed the target's DS, the target is reduced (undamaged → crippled, or crippled → destroyed)
+2. **Destruction Protection:** Squadrons are not destroyed until all other squadrons in the Task Force are crippled (does not apply to Starbases)
+3. **Excess Hit Loss:** Excess hits beyond destruction threshold are lost if restrictions apply
 
-1. If the number of hits equal the opposing squadron's DS, the unit is reduced
-2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled
-3. Excess hits are lost if restrictions apply
+**Crippled Unit Effects:**
 
-Crippled squadrons multiply their AS by 0.5, rounded up to the nearest whole number.
+Crippled squadrons and Starbases multiply their AS by 0.5, rounded up to the nearest whole number.
 
 Destroyed squadrons are no longer a factor and the Task Force loses their associated die roll modifiers (e.g. Scouts).
 
 **Critical Hits:**
 
-Critical hits nullify restriction #2 above. Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction #1, then the squadron with the lowest DS is reduced.
+Critical hits (natural 9 on die roll before modifiers) have special effects:
+
+1. **Nullify Destruction Protection:** Restriction #2 above is nullified - the squadron can be destroyed even if other squadrons in the Task Force remain undamaged
+2. **Force Reduction:** If the critical hit cannot reduce the selected target according to restriction #1 (insufficient damage), then the squadron with the lowest DS in the target Task Force is reduced instead
+
+**Overkill Damage:**
+
+When multiple attackers independently select the same target during simultaneous attack resolution:
+- Combined damage from all attackers is applied to the target
+- If combined damage exceeds destruction threshold and restriction #2 applies (other squadrons not yet crippled), the target is crippled but not destroyed
+- Excess damage beyond crippling threshold is lost
+- Once all squadrons are crippled, excess damage can destroy targets
+
 ### 7.3.4 Rounds
 
 Combat continues in rounds until one side is completely destroyed or manages a retreat.
@@ -522,6 +579,8 @@ Squadrons in a retreating Task Force fall back to their original fleet formation
 
 **Carrier-Owned Fighter Retreat:**
 
+Carrier-owned fighters do not retreat independently. They retreat only when their carrier retreats.
+
 **In Hostile/Neutral Systems:**
 - Carrier-owned fighters withdraw with retreating carrier (emergency withdrawal, no re-embark time)
 - Destroyed if carrier lost or left behind
@@ -533,7 +592,7 @@ Squadrons in a retreating Task Force fall back to their original fleet formation
 - Crippled carriers can perform emergency withdrawal with carrier-owned fighters
 
 **Colony-Owned Fighters:**
-- Never retreat
+- Never retreat independently from combat
 - Screen retreating friendly forces
 - Fight until destroyed
 
@@ -570,12 +629,14 @@ Starbases serve as the primary defense if a hostile fleet aims to blockade, bomb
 
 Fleets with orders to guard the Starbase (Fleet Orders 04) also join the Task Force.
 
-Combat will proceed in a similar fashion to [Section 7.3](#73-space-combat), with the following restrictions:
+Combat will proceed in a similar fashion to [Section 7.3](#73-space-combat), with the following special rules:
 
-1. If a player rolls a critical hit against a starbase on the first try, re-roll a second time.
-2. Starbases receive an extra +2 die roll modifier.
+1. **Critical Hit Protection:** If a player rolls a critical hit against a Starbase on the first attempt, re-roll a second time. The second roll stands regardless of result.
+2. **Starbase Bonus:** Starbases receive an extra +2 die roll modifier on all CER rolls.
+3. **Starbase State Transitions:** Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed) as defined in [Section 7.1.2](#712-combat-state).
+4. **Starbase Targeting:** Starbases are assigned to bucket 5 and can be targeted using the rules in [Section 7.3.2](#732-target-priority-rules). Crippled Starbases receive the 2x targeting weight modifier.
 
-Starbases are fortified with superior AI and sensors, making them formidable, with high defensive capabilities.
+Starbases are fortified with superior AI and sensors, making them formidable defensive platforms with high defensive capabilities.
 
 ## 7.5 Planetary Bombardment
 
@@ -589,7 +650,7 @@ The attacking player will total the AS value of their fleet's surviving squadron
 
 **Bombardment Table**:
 
-| **1D10 Die Roll** | ** Bombardment CER**          |
+| **1D10 Die Roll** | **Bombardment CER**           |
 | ----------------- | ----------------------------- |
 | 0, 1, 2           | One Quarter (0.25) (round up) |
 | 3, 4, 5           | One Half (0.50) (round up)    |
@@ -611,9 +672,9 @@ If a planet is protected by shields, the defending player will roll on the table
 | SLD3      | 45       | > 11      | 35%               |
 | SLD4      | 60       | > 8       | 40%               |
 | SLD5      | 75       | > 5       | 45%               |
-| SLD5      | 90       | > 2       | 50%               |
+| SLD6      | 90       | > 2       | 50%               |
 
-Reduce the attacking players hits by the percentage, rounding up. This is the number of effective hits.
+Reduce the attacking player's hits by the percentage, rounding up. This is the number of effective hits.
 
 Example: A fleet with AS of 75 bombards a planet protected by a SLD3 shield, and the defending player rolls a 15.
 
@@ -621,7 +682,7 @@ Example: A fleet with AS of 75 bombards a planet protected by a SLD3 shield, and
 Hits = 75 * (1 - .35) = 49
 ```
 
-Note that shields are only be destroyed by Marines during planetary invasion.
+Note that shields can only be destroyed by Marines during planetary invasion.
 
 ### 7.5.3 Ground Batteries
 
@@ -633,13 +694,13 @@ The following **restrictions** apply:
 3. Excess hits leftover against Ground Batteries are summed.
 4. Excess hits are lost against squadrons if restrictions apply.
 
-Crippled units multiply their AS by 0.5, rounded up the nearest whole number.
+Crippled units multiply their AS by 0.5, rounded up to the nearest whole number.
 
 **Critical Hits**:
 
-Critical hits are a special case, and only apply against the attacking fleet. Restriction \#2 in the list above is nullified.
+Critical hits are a special case, and only apply against the attacking fleet. Restriction #2 in the list above is nullified.
 
-Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction \#1 above, then the squadron with the lowest DS is reduced.
+Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction #1 above, then the squadron with the lowest DS is reduced.
 
 Proceed to the next section.
 
@@ -680,15 +741,15 @@ The player who rolled the die will determine where hits are applied, with the fo
 2. Units are not destroyed until all other units are crippled.
 3. Excess hits are lost if restrictions apply.
 
-Crippled units multiply their AS by 0.5, rounded up the nearest whole number.
+Crippled units multiply their AS by 0.5, rounded up to the nearest whole number.
 
 Repeat the process until one side is completely destroyed.
 
-If the planet is conquered, loyal House citizens destroy 50% of of the colony's remaining IU before order is restored.
+If the planet is conquered, loyal House citizens destroy 50% of the colony's remaining IU before order is restored.
 
 ### 7.6.2 Planetary Blitz
 
-Fleets and Ground batteries conduct one round of combat in accordance with [Section 7.5](#75-planetary-bombardment), with the exception that ground units and civilian infrastructure are not targeted ([Sections 7.5.4](#754-ground-units--civilian-infrastructure)). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
+Fleets and Ground batteries conduct one round of combat in accordance with [Section 7.5](#75-planetary-bombardment), with the exception that ground units and civilian infrastructure are not targeted ([Section 7.5.4](#754-ground-units--civilian-infrastructure)). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
 
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
@@ -705,9 +766,4 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 - Add defensive missile batteries
 - Insert your imagination here.....
 
-EC4X Space combat is inspired by Empire of the Sun (EOS). 
-
-
-
-
-
+EC4X Space combat is inspired by Empire of the Sun (EOS).
