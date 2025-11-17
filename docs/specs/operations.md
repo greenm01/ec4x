@@ -243,7 +243,7 @@ For each defending ELI unit:
 **Ambush Resolution:**
 
 Undetected Raiders attack before any defending units can respond:
-- Raiders receive +4 die roll modifier on CER roll (see [Section 7.3.2](#732-combat-effectiveness-rating-cer))
+- Raiders receive +4 die roll modifier on CER roll (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
 - Destroyed targets do not return fire
 - Multiple undetected Raider fleets attack simultaneously in this phase
 
@@ -265,24 +265,6 @@ All fighter squadrons in the system attack simultaneously, regardless of ownersh
 **Fighter Attack Mechanics:**
 
 All deployed fighters (colony-owned and carrier-owned) aggregate their Attack Strength (AS) values and attack as a unified force. The combined fighter AS is applied against enemy targets according to target priority rules.
-
-**Target Priority Algorithm:**
-
-1. **Priority 1 - Enemy Fighters:** Attack enemy fighter squadrons to establish space superiority.
-
-2. **Priority 2 - Enemy Carriers:** Fighters prioritize carriers (CV and CX) to prevent enemy fighter retrieval and deny reinforcement capability. If multiple carriers present, distribute attacks proportionally by carrier DS.
-
-3. **Priority 3 - Capital Ship Squadrons:** If no carriers present, fighters distribute attacks across all enemy squadrons proportionally based on each squadron's total Defense Strength (DS).
-
-4. **Priority 4 - Installations:** Fighters attacking planetary installations (Starbases, Planetary Shields, Ground Batteries) combine their AS against the installation's DS.
-
-**Proportional Attack Distribution:**
-
-When attacking multiple targets of the same priority, fighter AS is distributed proportionally:
-
-```
-Target_Damage = (Target_DS / Total_Enemy_DS) × Total_Fighter_AS
-```
 
 **Fighter Vulnerability:**
 
@@ -345,7 +327,40 @@ When a squadron takes damage:
 - Ships are removed from the squadron in order of lowest DS first (smallest ships destroyed first)
 - The flagship is always the last ship destroyed in a squadron
 
-### 7.3.2 Combat Effectiveness Rating (CER)
+### 7.3.2 Target Priority Rules  
+
+1. **Flagship derived bucket order (for all non fighter only attackers)**  
+
+| Bucket (high → low) | Flagship class that assigns a squadron to this bucket | Default base weight |
+|--------------------|--------------------------------------------------------|------------|
+| **1 – Raider**      | Flagship is a **Raider** (stealth strike craft)      | 1.0 |
+| **2 – Capital**     | Flagship is a **Capital** (Cruiser or Carrier)   | 2.0 |
+| **3 – Destroyer**   | Flagship is a **Destroyer**                   | 3.0 |
+| **4 – Fighter‑only**| No flagship  | 4.0 |
+| **5 – Starbase**    | No flagship  | 5.0 |
+
+2. **Special rule for Fighter Squadrons**  
+
+   * When a fighter squadron fires, it first looks for any enemy fighter squadron first.  
+   * If at least one exists, the attacker builds a candidate list of those squads, computes a weight (`BaseWeight(Fighter only) × SquadronSize`), and picks a target with a weighted random draw.  
+   * If no enemy fighter‑only squadron exists, the attacker falls back to the **flagship‑derived bucket order** (Raider → Capital → Destroyer → Fighter‑only → Starbase).
+
+3. **General target selection steps for all other attackers (including Starbases)**  
+
+   1. Walk the bucket order **Raider → Capital → Destroyer → Fighter‑only → Starbase*.  
+   2. For each bucket, collect **all enemy units** whose bucket (determined by the flagship rule or, for Starbases, by the Starbase bucket) matches the current bucket.  
+   3. The first bucket that contains at least one unit becomes the **candidate pool**.  
+   4. Compute each candidate’s weight as  
+
+      ```
+      weight = BaseWeight(bucket) × UnitSize
+      ```  
+
+      *`UnitSize` is the number of units in a squadron*  
+   5. Perform a **deterministic weighted random draw** using a PRNG seeded with `hash(gameId, turnNumber)` (or an optional custom seed).  
+   6. The selected unit (squadron or Starbase) is the target.  
+   
+### 7.3.3 Combat Effectiveness Rating (CER)
 
 After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), players add up the total AS of their attacking units and roll for Combat Effectiveness Rating.
 
@@ -392,7 +407,7 @@ Destroyed squadrons are no longer a factor and the Task Force loses their associ
 
 Critical hits nullify restriction #2 above. Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction #1, then the squadron with the lowest DS is reduced.
 
-### 7.3.3 Rounds
+### 7.3.4 Rounds
 
 Combat continues in rounds until one side is completely destroyed or manages a retreat.
 
@@ -407,7 +422,7 @@ After all phases complete and hits are applied:
 
 If more than one Task Force remains and no retreat occurs, proceed to the next combat round.
 
-### 7.3.4 Retreat
+### 7.3.5 Retreat
 
 A Task Force may retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter.
 
@@ -440,7 +455,7 @@ Squadrons in a retreating Task Force fall back to their original fleet formation
 - Screen retreating friendly forces
 - Fight until destroyed
 
-### 7.3.5 End of Space Combat
+### 7.3.6 End of Space Combat
 
 After the last round of combat, surviving Task Forces disband and squadrons rejoin their original fleets.
 
@@ -609,6 +624,7 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 - Insert your imagination here.....
 
 EC4X Space combat is inspired by Empire of the Sun (EOS). 
+
 
 
 
