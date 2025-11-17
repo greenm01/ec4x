@@ -481,6 +481,8 @@ This creates a threat-based targeting hierarchy where high-value units (Raiders)
 
 After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), each attacking unit rolls independently for Combat Effectiveness Rating.
 
+Each squadron rolls once for CER and applies CER × (sum of all ships' AS in squadron).
+
 **CER Table:**
 
 | **Modified 1D10 Die Roll** | **Space Combat CER**             |
@@ -767,3 +769,4 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 - Insert your imagination here.....
 
 EC4X Space combat is inspired by Empire of the Sun (EOS).
+
