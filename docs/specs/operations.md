@@ -244,6 +244,7 @@ For each defending ELI unit:
 
 Undetected Raiders attack before any defending units can respond:
 - Raiders receive +4 die roll modifier on CER roll (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
+- Raiders select targets using [Section 7.3.2](#732-target-priority-rules)
 - Destroyed targets do not return fire
 - Multiple undetected Raider fleets attack simultaneously in this phase
 
@@ -259,12 +260,15 @@ All fighter squadrons in the system attack simultaneously, regardless of ownersh
 - Fight until destroyed or enemy eliminated
 
 **Carrier-Owned Fighters:**
-- Automatically deploy before combat begins.
-- Remain carrier-owned
+- Automatically deploy when carrier enters combat
+- Remain carrier-owned assets throughout engagement
+- Fight alongside colony-owned fighters
 
 **Fighter Attack Mechanics:**
 
-All deployed fighters (colony-owned and carrier-owned) aggregate their Attack Strength (AS) values and attack as a unified force. The combined fighter AS is applied against enemy targets according to target priority rules.
+All fighters (colony-owned and carrier-owned) attack using the target priority rules defined in [Section 7.3.2](#732-target-priority-rules).
+
+Fighters follow the special fighter targeting rule: prioritize enemy fighters first, then apply bucket order if no enemy fighters present.
 
 **Fighter Vulnerability:**
 
@@ -281,30 +285,29 @@ Fighter squadrons remain fully operational throughout combat regardless of:
 
 Capacity violations resulting from combat damage are evaluated at the end of combat resolution. The 2-turn grace period for resolving violations begins on the following turn (see [Section 2.4.1](military.md#241-fighter-squadrons--carriers)).
 
-**Carrier-Owned Fighter Deployment:**
+**Carrier-Owned Fighter Post-Combat:**
 
 **In Hostile/Neutral Systems:**
-- Carrier-owned fighters can deploy for combat
-- No colony capacity checks (not using local infrastructure)
-- Fighters remain carrier-owned throughout engagement
-- After combat:
+- After combat ends:
   - If carrier survives: fighters must re-embark (1 turn) or be destroyed
   - If carrier destroyed: all carrier-owned fighters destroyed
   - If carrier withdraws: carrier-owned fighters must withdraw or be destroyed
 - No ownership transfer occurs
 
 **In Friendly/Controlled Systems:**
-- Carrier-owned fighters deploy for combat alongside colony-owned fighters
 - After combat: carrier-owned fighters re-embark (1 turn), remain carrier-owned
-- No ownership transfer unless permanent deployment is executed (outside combat, see [Section 2.4.1](military.md#241-fighter-squadrons--carriers))
+- No ownership transfer unless permanent deployment executed outside combat (see [Section 2.4.1](military.md#241-fighter-squadrons--carriers))
 
 #### 7.3.1.3 Phase 3: Detected Raiders (Stealth Phase)
 
 Raiders that were successfully detected by ELI units during the pre-combat detection phase attack in this phase, having lost their ambush advantage.
 
-Detected Raiders attack using normal combat mechanics (same as capital ships in Phase 4) but resolve their attacks before the main capital ship engagement.
+Detected Raiders attack using normal combat mechanics (same as capital ships in Phase 4):
+- Roll for CER (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
+- Select targets using [Section 7.3.2](#732-target-priority-rules)
+- Apply damage to selected targets
 
-Multiple detected Raider fleets attack simultaneously in this phase.
+Detected Raiders resolve their attacks before the main capital ship engagement. Multiple detected Raider fleets attack simultaneously in this phase.
 
 #### 7.3.1.4 Phase 4: Capital Ships (Main Engagement Phase)
 
@@ -314,7 +317,10 @@ All remaining capital ships attack by squadron in this phase. Squadron attack or
 
 1. Squadrons attack in descending order by flagship CR (highest CR attacks first)
 2. Squadrons with equal CR attack simultaneously
-3. Each squadron's total AS (sum of all ships in squadron) is applied against target(s)
+3. Each attacking squadron:
+   - Rolls for CER (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
+   - Selects target using [Section 7.3.2](#732-target-priority-rules)
+   - Applies total hits (CER × Squadron AS) to selected target
 4. Destroyed squadrons do not return fire
 
 **Squadron Damage Application:**
@@ -327,39 +333,112 @@ When a squadron takes damage:
 - Ships are removed from the squadron in order of lowest DS first (smallest ships destroyed first)
 - The flagship is always the last ship destroyed in a squadron
 
-### 7.3.2 Target Priority Rules  
+### 7.3.2 Target Priority Rules
 
-1. **Flagship derived bucket order (for all non fighter only attackers)**  
+All attacking units (squadrons, fighters, and Starbases) select targets using the following priority system.
 
-| Bucket (high → low) | Flagship class that assigns a squadron to this bucket | Default base weight |
-|--------------------|--------------------------------------------------------|------------|
-| **1 – Raider**      | Flagship is a **Raider** (stealth strike craft)      | 1.0 |
-| **2 – Capital**     | Flagship is a **Capital** (Cruiser or Carrier)   | 2.0 |
-| **3 – Destroyer**   | Flagship is a **Destroyer**                   | 3.0 |
-| **4 – Fighter‑only**| No flagship  | 4.0 |
-| **5 – Starbase**    | No flagship  | 5.0 |
+#### 7.3.2.1 Bucket Classification
 
-2. **Special rule for Fighter Squadrons**  
+Every squadron is assigned to a bucket based on its flagship class:
 
-   * When a fighter squadron fires, it first looks for any enemy fighter squadron first.  
-   * If at least one exists, the attacker builds a candidate list of those squads, computes a weight (`BaseWeight(Fighter only) × SquadronSize`), and picks a target with a weighted random draw.  
-   * If no enemy fighter‑only squadron exists, the attacker falls back to the **flagship‑derived bucket order** (Raider → Capital → Destroyer → Fighter‑only → Starbase).
+| Bucket (Priority Order) | Flagship Class | Base Weight |
+|------------------------|----------------|-------------|
+| **1 – Raider**         | Raider         | 1.0         |
+| **2 – Capital**        | Cruiser, Carrier | 2.0       |
+| **3 – Destroyer**      | Destroyer      | 3.0         |
+| **4 – Fighter**        | None (fighter-only squadron) | 4.0 |
+| **5 – Starbase**       | None (orbital installation) | 5.0 |
 
-3. **General target selection steps for all other attackers (including Starbases)**  
+**Notes:**
+- Fighter-only squadrons have no flagship and are assigned to bucket 4
+- Starbases are not squadrons but are treated as bucket 5 for target priority
+- Lower bucket numbers indicate higher targeting priority
 
-   1. Walk the bucket order **Raider → Capital → Destroyer → Fighter‑only → Starbase*.  
-   2. For each bucket, collect **all enemy units** whose bucket (determined by the flagship rule or, for Starbases, by the Starbase bucket) matches the current bucket.  
-   3. The first bucket that contains at least one unit becomes the **candidate pool**.  
-   4. Compute each candidate’s weight as  
+#### 7.3.2.2 Special Rule: Fighter Squadron Targeting
 
-      ```
-      weight = BaseWeight(bucket) × UnitSize
-      ```  
+When a fighter squadron attacks:
 
-      *`UnitSize` is the number of units in a squadron*  
-   5. Perform a **deterministic weighted random draw** using a PRNG seeded with `hash(gameId, turnNumber)` (or an optional custom seed).  
-   6. The selected unit (squadron or Starbase) is the target.  
-   
+1. **Check for enemy fighters:** If any enemy fighter squadrons (bucket 4) exist, build candidate list from all enemy fighter squadrons only
+2. **If enemy fighters exist:** Compute weights and select target using weighted random selection (see 7.3.2.4)
+3. **If no enemy fighters exist:** Fall back to standard bucket order targeting (7.3.2.3)
+
+This represents fighter squadrons establishing air superiority before engaging capital ships.
+
+#### 7.3.2.3 Standard Bucket Order Targeting
+
+For all non-fighter attackers (capital ship squadrons, Raiders, Starbases) and fighters when no enemy fighters exist:
+
+1. **Walk bucket order:** Raider (1) → Capital (2) → Destroyer (3) → Fighter (4) → Starbase (5)
+2. **Build candidate pool:** For each bucket in order, collect all enemy units matching that bucket
+3. **Select first non-empty bucket:** The first bucket containing at least one enemy unit becomes the candidate pool
+4. **Apply weighted random selection:** Select target from candidate pool using weights (see 7.3.2.4)
+
+#### 7.3.2.4 Weighted Random Target Selection
+
+Once a candidate pool is determined:
+
+1. **Calculate weight for each candidate:**
+   ```
+   Weight = Base_Weight(bucket) × Squadron_Size × Crippled_Modifier
+   ```
+   Where:
+   - `Base_Weight(bucket)` is from the bucket classification table (7.3.2.1)
+   - `Squadron_Size` is the number of ships in the squadron (or 1 for Starbases)
+   - `Crippled_Modifier` = 2.0 if squadron is crippled, 1.0 otherwise
+
+2. **Perform weighted random draw:**
+   - Use PRNG seeded with `hash(gameId, turnNumber)` for deterministic combat resolution
+   - Optional: Custom seed can be specified for testing or alternate outcomes
+   - Select target based on weighted probability distribution
+
+3. **Apply all attacker AS to selected target**
+
+**Crippled Squadron Priority:**
+
+Crippled squadrons receive double weight in target selection, representing tactical doctrine to finish weakened enemies before engaging fresh forces. This creates natural "focus fire" behavior on damaged units while still allowing fresh large squadrons to draw fire.
+
+Crippled modifier makes small crippled squadron equally attractive as larger fresh squadron.
+
+#### 7.3.2.5 Interaction with Damage Restrictions
+
+Target selection works in conjunction with damage application restrictions from [Section 7.3.3](#733-combat-effectiveness-rating-cer):
+
+**First Combat Round:**
+- Fresh squadrons targeted by size and bucket priority
+- Damage typically cripples multiple squadrons (restriction #2 prevents destruction)
+- Task Force degraded but remains combat-effective
+
+**Subsequent Rounds:**
+- Crippled squadrons receive 2x targeting weight
+- Attackers naturally focus fire on crippled targets
+- Once all enemy squadrons crippled, destruction proceeds by weighted probability
+- Larger crippled squadrons eliminated first (higher weight)
+
+This creates attrition combat where:
+1. Initial engagement cripples multiple squadrons (spread damage)
+2. Follow-up attacks destroy crippled squadrons (focused fire)
+3. Task Forces degrade systematically rather than through alpha strikes
+
+#### 7.3.2.6 Target Priority Summary
+
+**Fighter squadrons:**
+1. Enemy fighters (if any exist) - weighted by size and crippled state
+2. Raiders → Capital → Destroyer → Starbase (if no enemy fighters) - weighted by size and crippled state
+
+**All other attackers:**
+1. Raiders - weighted by size and crippled state
+2. Capital ships (Cruisers, Carriers) - weighted by size and crippled state
+3. Destroyers - weighted by size and crippled state
+4. Fighters - weighted by size and crippled state
+5. Starbases - weighted by crippled state (size = 1)
+
+**Weighting Factors (applied multiplicatively):**
+- **Bucket Base Weight:** 1.0 (Raider) to 5.0 (Starbase)
+- **Squadron Size:** Number of ships in squadron
+- **Crippled Modifier:** 2.0 if crippled, 1.0 if undamaged
+
+This creates a threat-based targeting hierarchy where high-value units (Raiders) are prioritized, modified by squadron size (larger = more threatening) and damage state (crippled = easier kill).
+
 ### 7.3.3 Combat Effectiveness Rating (CER)
 
 After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), players add up the total AS of their attacking units and roll for Combat Effectiveness Rating.
@@ -387,13 +466,17 @@ After determining combat initiative order and resolving detection checks, combat
 
 **CER Application:**
 
-Fighter squadrons in Phase 2 do not use CER - their combined AS is applied directly as damage. Phases 1, 3, and 4 use CER to determine effectiveness.
+Fighter squadrons in Phase 2 do not use CER. Instead, each fighter squadron independently selects a target using the rules in [Section 7.3.2](#732-target-priority-rules) and applies its full AS as damage to the selected target.
+
+Phases 1, 3, and 4 use CER to determine attack effectiveness:
 
 ```
 Total Hits = CER × Total AS
 ```
 
-The player who rolled the die determines where hits are applied, subject to the following restrictions:
+After rolling for CER, the attacking squadron selects its target using [Section 7.3.2](#732-target-priority-rules), then applies total hits to that target.
+
+The following restrictions apply when applying hits:
 
 1. If the number of hits equal the opposing squadron's DS, the unit is reduced
 2. Squadrons are not destroyed until all other squadrons in the Task Force are crippled
@@ -406,7 +489,6 @@ Destroyed squadrons are no longer a factor and the Task Force loses their associ
 **Critical Hits:**
 
 Critical hits nullify restriction #2 above. Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction #1, then the squadron with the lowest DS is reduced.
-
 ### 7.3.4 Rounds
 
 Combat continues in rounds until one side is completely destroyed or manages a retreat.
@@ -624,6 +706,7 @@ If customizing your own ships or scenarios, the following list provides a jumpin
 - Insert your imagination here.....
 
 EC4X Space combat is inspired by Empire of the Sun (EOS). 
+
 
 
 
