@@ -186,8 +186,8 @@ For every turn that a player misses payment for maintenance they loose prestige 
 ## 3.10 Fighter Squadron Economics
 
 **Construction:**
-- **Production Cost**: 15 PP per squadron  
-- **Construction Time**: 1 turn  
+- **Production Cost**: 20 PP per squadron
+- **Construction Time**: 1 turn
 - **Location**: Planet-side only (distributed manufacturing, no Spaceport required)
 
 **Maintenance:**
@@ -216,7 +216,7 @@ Resolution costs:
 - Repair Starbase: 25% of Starbase PC (1 turn)
 - Build Starbase: Full Starbase PC (3 turns)
 - Transfer population: 4-15 PP per PTU (varies by planet class)
-- Disband excess fighters: 0 PP (no salvage, loses 15 PP asset value per squadron)
+- Disband excess fighters: 0 PP (no salvage, loses 20 PP asset value per squadron)
 - Carrier relocation: Carrier maintenance costs during transit
 
 ## 3.11 Strategic Considerations
