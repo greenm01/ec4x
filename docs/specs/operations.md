@@ -174,6 +174,35 @@ Scouts and Starbases present in opposing forces have the opportunity to counter 
 
 If cloaked fleets on all sides pass undetected from one another, then the player defending his solar system wins in ambush. If opposing forces are meeting in neutral territory and all pass undetected, then they carry on with movement orders and combat is cancelled.
 
+### 7.1.4 Morale
+
+House prestige affects crew morale and combat effectiveness. At the start of each turn, the game rolls 1D20 to determine morale status for that turn.
+
+**Morale Check Table:**
+
+| Prestige Level    | Morale Threshold | Effect on Success                      |
+|:------------------|:----------------:|:---------------------------------------|
+| ≤ 0 (Crisis)      | Never succeeds   | -1 to all CER rolls this turn          |
+| 1-20 (Low)        | > 18             | No effect                              |
+| 21-40 (Average)   | > 15             | +1 to CER for one random fleet         |
+| 41-60 (Good)      | > 12             | +1 to all CER rolls this turn          |
+| 61-80 (High)      | > 9              | +1 CER + one critical auto-succeeds    |
+| 81+ (Elite)       | > 6              | +2 to all CER rolls this turn          |
+
+**Morale Effects:**
+
+- CER bonuses/penalties apply to all CER die rolls before consulting the CER table.
+- Critical auto-success (61-80 prestige): Player selects one attack during the turn that automatically achieves critical hit effects, bypassing destruction protection and applying force reduction rules.
+- Morale effects last for the current turn only.
+- Prestige ≤ 0 automatically triggers morale crisis without requiring a roll.
+
+**Morale Crisis (Prestige ≤ 0):**
+
+When a House's prestige drops to zero or below, morale collapses:
+- All CER rolls receive -1 penalty (no morale check roll required).
+- One random fleet refuses orders and holds position for the turn.
+- Effects persist until prestige rises above 0.
+
 ## 7.2 Task Force Assignment
 
 All applicable fleets and Starbases relevant to the combat scenario will merge into a single Task Force.
@@ -501,6 +530,7 @@ Each squadron rolls once for CER and applies CER × (sum of all ships' AS in squ
 | Modifier | Value | Notes                                  | Applicable Phases |
 | -------- |:-----:| -------------------------------------- | ----------------- |
 | Scouts   | +1    | Maximum benefit for all Scouts in Task Force | All CER phases |
+| Morale   | -1 to +2 | Per turn morale check (see [Section 7.1.4](#714-morale)) | All CER phases |
 | Surprise | +3    | First round only                       | Phase 1 only      |
 | Ambush   | +4    | First round only                       | Phase 1 only      |
 
