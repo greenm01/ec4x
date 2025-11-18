@@ -192,7 +192,7 @@ House prestige affects crew morale and combat effectiveness. At the start of eac
 **Morale Effects:**
 
 - CER bonuses/penalties apply to all CER die rolls before consulting the CER table.
-- Critical auto-success (61-80 prestige): Player selects one attack during the turn that automatically achieves critical hit effects, bypassing destruction protection and applying force reduction rules.
+- Critical auto-success (61-80 prestige): The first squadron attack during the turn automatically achieves critical hit effects (natural 9), bypassing destruction protection and applying force reduction rules as defined in Section 7.3.3.
 - Morale effects last for the current turn only.
 - Prestige ≤ 0 automatically triggers morale crisis without requiring a roll.
 
