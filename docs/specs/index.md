@@ -50,7 +50,7 @@ The complete EC4X game specification is organized into the following documents:
 - **[Gameplay](gameplay.md)** - How to play, prestige, setup, and turn structure
 
 ### Game Systems
-- **[Military Assets](military.md)** - Ships, fleets, squadrons, and special units
+- **[Military Assets](assets.md)** - Ships, fleets, squadrons, and special units
 - **[Economy](economy.md)** - Economics, R&D, and construction systems
 
 ### Operations

@@ -15,7 +15,7 @@ This document maps EC4X specification tables to their corresponding configuratio
 | 9.3 | Spacelift Command (WEP1) | `facilities_default.toml` | ✅ Complete |
 | 9.4 | Prestige | `prestige_default.toml` | ✅ Complete |
 
-### Combat Mechanics (operations.md, military.md)
+### Combat Mechanics (operations.md, assets.md)
 
 | Spec Section | Mechanic | Config File | Status |
 |--------------|----------|-------------|--------|

@@ -21,7 +21,7 @@ EC4X is a robust, performance-optimized implementation of an asynchronous turn-b
 - **[Game Specification](specs/)** - Complete game rules (split for easy navigation)
   - [Index](specs/index.md) - Introduction and overview
   - [Gameplay](specs/gameplay.md) - How to play, prestige, turns
-  - [Military](specs/military.md) - Ships, fleets, special units
+  - [Military Assets](specs/assets.md) - Ships, fleets, special units
   - [Economy](specs/economy.md) - Economics, R&D, construction
   - [Operations](specs/operations.md) - Movement and combat
   - [Diplomacy](specs/diplomacy.md) - Diplomacy and espionage
