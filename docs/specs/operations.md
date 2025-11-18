@@ -184,7 +184,7 @@ House prestige affects crew morale and combat effectiveness. At the start of eac
 |:------------------|:----------------:|:---------------------------------------|
 | ≤ 0 (Crisis)      | Never succeeds   | -1 to all CER rolls this turn          |
 | 1-20 (Low)        | > 18             | No effect                              |
-| 21-40 (Average)   | > 15             | +1 to CER for one random fleet         |
+| 21-40 (Average)   | > 15             | +1 to CER for one random squadron      |
 | 41-60 (Good)      | > 12             | +1 to all CER rolls this turn          |
 | 61-80 (High)      | > 9              | +1 CER + one critical auto-succeeds    |
 | 81+ (Elite)       | > 6              | +2 to all CER rolls this turn          |
