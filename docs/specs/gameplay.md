@@ -32,7 +32,7 @@ At the start of a game, players will agree upon and designate a game moderator. 
 
 Communicating with other players over email or in a dedicated chat room is recommended. There are plenty to choose from.
 
-Generate a star-map as described in [Section 2.1](military.md#21-star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
+Generate a star-map as described in [Section 2.1](assets.md#21-star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
 
 Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
 
