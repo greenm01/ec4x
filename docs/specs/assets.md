@@ -239,9 +239,9 @@ Fighters aboard carriers exist in three operational states:
 - Fighters remain carrier-owned assets
 
 **Temporary Combat Deployment:**
+- Fighters automatically deploy when carrier enters combat
 - Fighters launch for combat but remain carrier-owned
 - Available in both hostile and friendly systems
-- Player decides to deploy or keep embarked before combat begins
 - Fighters fight alongside colony-owned fighters if in friendly system
 - After combat, fighters re-embark (1 turn) and remain carrier-owned
 - No ownership transfer occurs
