@@ -170,7 +170,7 @@ When attacking a solar system, cloaked units are considered to be **a surprise**
 
 In neutral territory a cloaked fleet is considered to be a surprise.
 
-Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](military.md#243-raiders).
+Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](assets.md#243-raiders).
 
 If cloaked fleets on all sides pass undetected from one another, then the player defending his solar system wins in ambush. If opposing forces are meeting in neutral territory and all pass undetected, then they carry on with movement orders and combat is cancelled.
 
@@ -245,7 +245,7 @@ Cloaked Raider fleets that successfully evaded ELI detection during the pre-comb
 
 **Pre-Combat Detection:**
 
-Before combat begins, all ELI-equipped units (Scouts and Starbases) in the defending force attempt to detect cloaked Raiders using the detection mechanics defined in [Section 2.4.3](military.md#243-raiders).
+Before combat begins, all ELI-equipped units (Scouts and Starbases) in the defending force attempt to detect cloaked Raiders using the detection mechanics defined in [Section 2.4.3](assets.md#243-raiders).
 
 For each defending ELI unit:
 - Calculate effective ELI level (weighted average, dominant tech penalty, mesh network modifier)
@@ -305,7 +305,7 @@ Fighter squadrons remain fully operational throughout combat regardless of:
 - Population losses from orbital bombardment
 - Infrastructure capacity violations
 
-Capacity violations resulting from combat damage are evaluated at the end of combat resolution. The 2-turn grace period for resolving violations begins on the following turn (see [Section 2.4.1](military.md#241-fighter-squadrons--carriers)).
+Capacity violations resulting from combat damage are evaluated at the end of combat resolution. The 2-turn grace period for resolving violations begins on the following turn (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers)).
 
 **Carrier-Owned Fighter Post-Combat:**
 
@@ -318,7 +318,7 @@ Capacity violations resulting from combat damage are evaluated at the end of com
 
 **In Friendly/Controlled Systems:**
 - After combat: carrier-owned fighters re-embark (1 turn), remain carrier-owned
-- No ownership transfer unless permanent deployment executed outside combat (see [Section 2.4.1](military.md#241-fighter-squadrons--carriers))
+- No ownership transfer unless permanent deployment executed outside combat (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
 
 #### 7.3.1.3 Phase 3: Detected Raiders (Stealth Phase)
 
@@ -612,7 +612,7 @@ After the last round of combat, surviving Task Forces disband and squadrons rejo
 
 **Capacity Violation Assessment:**
 
-For each colony involved in combat, evaluate capacity per [Section 2.4.1](military.md#241-fighter-squadrons--carriers).
+For each colony involved in combat, evaluate capacity per [Section 2.4.1](assets.md#241-fighter-squadrons-carriers).
 
 Only colony-owned fighters count toward capacity limits. Carrier-owned fighters (embarked or temporarily deployed) do not count.
 
@@ -623,7 +623,7 @@ Violations trigger a 2-turn grace period beginning on the following turn. All fi
 - Colony-owned fighters remain colony-owned
 - Carrier-owned fighters re-embark and remain carrier-owned (1 turn)
 - No automatic ownership transfers occur as result of combat
-- Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](military.md#241-fighter-squadrons--carriers))
+- Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
 
 ## 7.4 Starbase Combat
 
@@ -751,7 +751,7 @@ If the planet is conquered, loyal House citizens destroy 50% of the colony's rem
 
 ### 7.6.2 Planetary Blitz
 
-Fleets and Ground batteries conduct one round of combat in accordance with [Section 7.5](#75-planetary-bombardment), with the exception that ground units and civilian infrastructure are not targeted ([Section 7.5.4](#754-ground-units--civilian-infrastructure)). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
+Fleets and Ground batteries conduct one round of combat in accordance with [Section 7.5](#75-planetary-bombardment), with the exception that ground units and civilian infrastructure are not targeted ([Section 7.5.4](#754-ground-units-civilian-infrastructure)). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
 
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
