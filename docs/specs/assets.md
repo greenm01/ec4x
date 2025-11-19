@@ -69,7 +69,7 @@ Spacelift Command attributes are listed in [Section 9.3](reference.md#93-spaceli
 
 #### 2.3.2.1 Spaceports
 
-Spaceports are large ground based facilities that launch heavy-lift ships and equipment into orbit. They require one month (one turn) to build and have five docks available for planet-side ship construction.
+Spaceports are large ground based facilities that launch heavy-lift ships and equipment into orbit. They require one month (one turn) to build and have five construction docks, allowing up to five simultaneous ship construction projects planet-side.
 
 #### 2.3.2.2 Shipyards
 
@@ -77,7 +77,7 @@ Shipyards are gateways to the stars. They are large bases constructed in orbit a
 
 The majority of ship construction and repair will occur at these important facilities.
 
-Shipyards are equipped with 10 docks for construction and repair, and are fixed in orbit. Built multiple yards to increase construction capacity at the colony.
+Shipyards are equipped with 10 docks for construction and repair, and are fixed in orbit. Build multiple yards to increase construction capacity at the colony.
 
 #### 2.3.2.3 Environmental Transformation And Colonization (ETAC)
 
@@ -367,7 +367,7 @@ For a fleet with Scouts of different ELI tech levels:
 | Spy ELI2    | >15-17 | >11-13 | >6-8   | >2-4   | >0-2  |
 | Spy ELI3    | >17-19 | >15-17 | >11-13 | >6-8   | >2-4  |
 | Spy ELI4    | >18-20 | >17-19 | >15-17 | >11-13 | >6-8  |
-| Spy ELI5    | NA     | >18-20 | >17-19 | >15-17 | >11-3 |
+| Spy ELI5    | NA     | >18-20 | >17-19 | >15-17 | >11-13 |
 
 3. Random Threshold Determination:
     - Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
