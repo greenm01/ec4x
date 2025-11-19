@@ -181,7 +181,7 @@ The maintenance cost for mothballed ships is zero. Mothballed ships are placed i
 
 The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
 
-For every turn that a player misses payment for maintenance they loose prestige points; refer to [Section 9.4](reference.md#94-prestige).
+For every turn that a player misses payment for maintenance they lose prestige points; refer to [Section 9.4](reference.md#94-prestige).
 
 ## 3.10 Fighter Squadron Economics
 
