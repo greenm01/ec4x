@@ -265,8 +265,6 @@ Within each phase, when multiple units attack simultaneously (same initiative ti
 2. **Damage Application**: All damage is applied simultaneously after all selections are made
 3. **Overkill Handling**: If multiple attackers independently selected the same target and combined damage exceeds destruction threshold, excess damage is lost
 
-This creates natural variance in combat outcomes due to independent target selection.
-
 #### 7.3.1.1 Phase 1: Undetected Raiders (Ambush Phase)
 
 Cloaked Raider fleets that successfully evaded ELI detection during the pre-combat detection phase strike first with full ambush advantage.
@@ -292,39 +290,20 @@ Undetected Raiders attack before any defending units can respond:
 
 #### 7.3.1.2 Phase 2: Fighter Squadrons (Intercept Phase)
 
-All fighter squadrons in the system attack simultaneously, regardless of ownership or deployment status. Fighters attack before capital ships can engage, representing their speed and intercept capability.
+All fighter squadrons in the system attack simultaneously, regardless of ownership or deployment status.
 
-**Fighter Participation:**
+**Fighter Combat Behavior:**
 
 **Colony-Owned Fighters:**
-- Permanently stationed at colony (planet-based assets)
 - Always participate in system defense
-- Fight until destroyed or enemy eliminated
 - Never retreat independently from combat
+- Fight until destroyed or enemy eliminated
 
 **Carrier-Owned Fighters:**
 - Automatically deploy when carrier enters combat
-- Remain carrier-owned assets throughout engagement
-- Fight alongside colony-owned fighters
-- Retreat only when carrier retreats (not independent retreat)
+- Retreat only when carrier retreats
 
-**Fighter Attack Mechanics:**
-
-All fighters (colony-owned and carrier-owned) attack using the target priority rules defined in [Section 7.3.2](#732-target-priority-rules).
-
-**Fighter Attack Resolution:**
-1. Each fighter squadron independently selects a target using weighted random selection
-2. All fighter squadrons complete target selection
-3. All damage is applied simultaneously
-4. Each fighter squadron applies its full AS as damage to its selected target
-
-Fighters follow the special fighter targeting rule: prioritize enemy fighters first, then apply bucket order if no enemy fighters present.
-
-**Fighter Vulnerability:**
-
-Fighters have low Defense Strength due to their lightweight construction. After dealing damage in Phase 2, fighters remain on the battlefield and are subject to return fire from surviving enemy units in subsequent phases. Fighters skip the crippled state and transition directly from undamaged to destroyed per [Section 7.1.2](#712-combat-state).
-
-Colony-owned fighters never retreat from combat and fight until destroyed or the enemy is eliminated. Carrier-owned fighters retreat only when their carrier retreats.
+All fighters attack using target priority rules defined in [Section 7.3.2](#732-target-priority-rules). Each fighter squadron applies its full AS as damage to its selected target.
 
 **Fighter Independence During Combat:**
 
@@ -434,8 +413,6 @@ When a fighter squadron attacks:
 2. **If enemy fighters exist:** Compute weights and select target using weighted random selection (see 7.3.2.5)
 3. **If no enemy fighters exist:** Fall back to standard bucket order targeting (7.3.2.4)
 
-This represents fighter squadrons establishing air superiority before engaging capital ships.
-
 #### 7.3.2.4 Standard Bucket Order Targeting
 
 For all non-fighter attackers (capital ship squadrons, Raiders, Starbases) and fighters when no enemy fighters exist:
@@ -468,58 +445,6 @@ Once a candidate pool is determined from hostile Task Forces:
 3. **Apply damage to selected target:**
    - Fighters: Apply full AS as damage
    - Other units: Apply CER × AS as damage (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
-
-**Crippled Unit Priority:**
-
-Crippled units (squadrons and Starbases) receive double weight in target selection, representing tactical doctrine to finish weakened enemies before engaging fresh forces. This creates natural "focus fire" behavior on damaged units while still allowing fresh large squadrons to draw fire.
-
-**Deterministic Combat:**
-
-The SHA-256 hash ensures combat resolution is deterministic and reproducible for the same game state, allowing for replay analysis and debugging. The same tactical situation on the same turn of the same game will always produce identical target selections.
-
-#### 7.3.2.6 Interaction with Damage Restrictions
-
-Target selection works in conjunction with damage application restrictions from [Section 7.3.3](#733-combat-effectiveness-rating-cer):
-
-**First Combat Round:**
-- Fresh squadrons targeted by size and bucket priority
-- Damage typically cripples multiple squadrons (restriction #2 prevents immediate destruction)
-- Task Force degraded but remains combat-effective
-
-**Subsequent Rounds:**
-- Crippled squadrons and Starbases receive 2x targeting weight
-- Attackers naturally focus fire on crippled targets
-- Once all enemy squadrons in a Task Force are crippled, destruction proceeds by weighted probability
-- Larger crippled squadrons eliminated first (higher weight)
-
-**Critical Hit Exception:**
-- Critical hits allow destroying a squadron even if other squadrons in the Task Force remain undamaged
-- See [Section 7.3.3](#733-combat-effectiveness-rating-cer) for critical hit mechanics
-
-This creates attrition combat where:
-1. Initial engagement cripples multiple squadrons (spread damage)
-2. Follow-up attacks destroy crippled squadrons (focused fire)
-3. Task Forces degrade systematically rather than through alpha strikes
-
-#### 7.3.2.7 Target Priority Summary
-
-**Fighter squadrons:**
-1. Enemy fighter squadrons from hostile houses (if any exist) - weighted by size and crippled state
-2. Raiders → Capital → Destroyer → Starbase from hostile houses (if no enemy fighters) - weighted by size and crippled state
-
-**All other attackers:**
-1. Raiders from hostile houses - weighted by size and crippled state
-2. Capital ships (Cruisers, Carriers) from hostile houses - weighted by size and crippled state
-3. Destroyers from hostile houses - weighted by size and crippled state
-4. Fighter squadrons from hostile houses - weighted by size and crippled state
-5. Starbases from hostile houses - weighted by crippled state (size = 1)
-
-**Weighting Factors (applied multiplicatively):**
-- **Bucket Base Weight:** 1.0 (Raider) to 5.0 (Starbase)
-- **Unit Size:** Number of ships in squadron (or 1 for Starbases)
-- **Crippled Modifier:** 2.0 if crippled, 1.0 if undamaged
-
-This creates a threat-based targeting hierarchy where high-value units (Raiders) are prioritized, modified by squadron size (larger = more threatening) and damage state (crippled = easier kill).
 
 ### 7.3.3 Combat Effectiveness Rating (CER)
 
@@ -597,7 +522,7 @@ When multiple attackers independently select the same target during simultaneous
 
 Combat continues in rounds until one side is completely destroyed or manages a retreat.
 
-Combat action within each phase is simultaneous; all units have the opportunity to attack at least once in their designated phase, regardless of damage sustained during the round.
+All units attack in their designated phase regardless of damage sustained during the round.
 
 After all phases complete and hits are applied:
 
