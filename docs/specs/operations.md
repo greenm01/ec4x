@@ -710,19 +710,10 @@ After the last round of combat, surviving Task Forces disband and squadrons rejo
 **Post-Combat Resolution:**
 
 1. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
-2. **Capacity Violations:** Evaluate all colonies for fighter squadron capacity violations (only colony-owned fighters count)
-3. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed re-embark immediately after combat
-4. **Strategic Position:** Determine system control and potential for bombardment/invasion operations
+2. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed re-embark immediately after combat
+3. **Strategic Position:** Determine system control and potential for bombardment/invasion operations
 
 Destroyed ships cannot be salvaged from battle wreckage. Salvage operations apply only to active fleets intentionally decommissioned via Fleet Order 15 per [Section 6.2.16](#6216-salvage-15).
-
-**Capacity Violation Assessment:**
-
-For each colony involved in combat, evaluate capacity per [Section 2.4.1](assets.md#241-fighter-squadrons-carriers).
-
-Only colony-owned fighters count toward capacity limits. Carrier-owned fighters (embarked or temporarily deployed) do not count.
-
-Violations trigger a 2-turn grace period beginning on the following turn. All fighter squadrons remain operational during the grace period.
 
 **Fighter Ownership After Combat:**
 
