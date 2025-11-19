@@ -695,7 +695,7 @@ After the last round of combat, surviving Task Forces disband and squadrons rejo
 
 **Post-Combat Resolution:**
 
-1. **Salvage Operations:** Destroyed ships can be salvaged for 50% of original PC (requires system control and 1 turn per ship)
+1. **Salvage Operations:** Destroyed ships can be salvaged for 50% of original PC (requires system control and 1 turn per ship). Multiple ships can be salvaged simultaneously if sufficient facilities are available
 2. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
 3. **Capacity Violations:** Evaluate all colonies for fighter squadron capacity violations (only colony-owned fighters count)
 4. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed must re-embark (1 turn)
