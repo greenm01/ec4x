@@ -75,27 +75,43 @@ Look up the Raw Material classification of your colony's system in the RAW colum
 
 **Gross House Output (GHO)**: The sum total of all colony GCO.
 
-## 3.2 Tax Rate & Prestige Penalties
+## 3.2 Tax Rate
 
-Players may set the House tax rate each turn between 0 % and 100 %. Higher rates generate more revenue but risk long-term prestige damage as the population grows resentful.
+Each turn in the Income Phase the player sets a House-wide tax rate from 0 % to 100 %. The tax rate determines how much of a colony’s Gross Colony Output (GCO) is collected as Production Points (PP) for the treasury.
 
-Every Income Phase the game examines the **average tax rate over the current turn + the previous five turns** (a rolling 6-turn window). Apply the following prestige penalty based on that average:
+**Tax Collection**  
+PP Income = Total GCO across all colonies × Tax Rate (rounded up)
 
-| Rolling 6-Turn Average Tax Rate | Prestige Penalty (applied every turn the average qualifies) |
-|---------------------------------|-------------------------------------------------------------|
-| ≤ 50 %                          | 0                                                           |
-| 51 – 60 %                       | –1                                                          |
-| 61 – 70 %                       | –2                                                          |
-| 71 – 80 %                       | –4                                                          |
-| 81 – 90 %                       | –7                                                          |
-| 91 – 100 %                      | –11                                                         |
+Higher tax rates generate more immediate revenue but anger the population. Lower rates slow short-term spending power but accelerate long-term growth and prestige.
 
-**Examples**
-- Turns 1–6 all at 65 % → Turn 7 onward: –2 prestige per turn until the average drops.
-- Alternating 90 % / 30 % / 90 % / 30 % … → stable 6-turn average of 60 % → permanent –1 prestige per turn.
-- One emergency turn at 100 % followed by five turns at 40 % → average 23.3 % → no penalty at all.
+### 3.2.1 High-Tax Prestige Penalty (Anti-Cycling Rule)
 
-This penalty is calculated automatically in the Income Phase after population growth and before new treasury deposits. 
+Every Income Phase the game calculates the **average tax rate over the current turn + the previous five turns** (rolling 6-turn window) and applies the following prestige penalty if the average is above 50 %:
+
+| Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |
+|---------------------------------|---------------------------|
+| ≤ 50 %                          | 0                         |
+| 51 – 60 %                       | –1                        |
+| 61 – 70 %                       | –2                        |
+| 71 – 80 %                       | –4                        |
+| 81 – 90 %                       | –7                        |
+| 91 – 100 %                      | –11                       |
+
+This penalty is applied every turn the qualifying average is met and cannot be avoided by short-term cycling.
+
+### 3.2.2 Low-Tax Incentives (The Carrot)
+
+To reward benevolent or populist rule, colonies grant bonuses in the same Income Phase based on the **tax rate set this turn**:
+
+| Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn |
+|--------------------|----------------------------------------------------------|-------------------------------------|
+| 41 – 50 %          | No bonus                                                 | –                                   |
+| 31 – 40 %          | ×1.05 (+5 %)                                             | –                                   |
+| 21 – 30 %          | ×1.10 (+10 %)                                            | +1                                  |
+| 11 – 20 %          | ×1.15 (+15 %)                                            | +2                                  |
+| 0 – 10 %           | ×1.20 (+20 %)                                            | +3                                  |
+
+With multiple big colonies, low taxes become a legitimate prestige-farming strategy that can outpace military victories in the late game.
 
 ## 3.3 Net Colony Value (NCV) and Treasury Management
 
@@ -635,6 +651,7 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
+
 
 
 
