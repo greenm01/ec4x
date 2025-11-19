@@ -791,6 +791,27 @@ Hits = 75 * (1 - .35) = 49
 
 Note that shields can only be destroyed by Marines during planetary invasion.
 
+**Planet-Breaker Shield Penetration:**
+
+Planet-Breakers completely bypass planetary shields during bombardment per [Section 2.4.8](assets.md#248-planet-breaker). When calculating bombardment damage:
+
+1. **Separate AS calculations:**
+   - Planet-Breaker AS is calculated separately from other ships
+   - Other ships' AS is subject to normal shield mechanics above
+
+2. **Planet-Breaker bombardment:**
+   - Roll CER for Planet-Breaker squadrons independently
+   - Apply `CER × Planet-Breaker AS` directly to ground batteries (no shield roll)
+   - Planet-Breaker damage bypasses all shield levels (SLD1-SLD6)
+
+3. **Mixed fleet bombardment:**
+   - If Task Force contains both Planet-Breakers and conventional ships, resolve separately:
+     - Planet-Breaker hits: Apply directly to ground batteries
+     - Conventional ship hits: Apply shield reduction, then apply to ground batteries
+   - Defender allocates damage from both sources to ground batteries
+
+This creates strategic choices for defenders: shields protect against conventional bombardment but are useless against Planet-Breakers, while ground batteries defend against both.
+
 ### 7.5.3 Ground Batteries
 
 The player who rolled the die will determine where hits are applied. Because ground batteries are all the same, selecting which ground batteries to target is moot. Unlike ships in squadrons, ground batteries are reduced as individual units.
