@@ -565,7 +565,7 @@ Each squadron rolls once for CER and applies CER × (sum of all ships' AS in squ
 - Each fighter squadron applies its full AS as damage to its selected target
 - All selections are made, then all damage is applied simultaneously
 
-**Phases 1, 3, and 4 (Raiders and Capital Ships):**
+**Phases 1 and 3 (Raiders and Capital Ships):**
 - Each attacking squadron rolls independently for CER
 - Calculate total hits: `Total Hits = CER × Squadron_AS`
 - Squadron selects target using [Section 7.3.2](#732-target-priority-rules)
