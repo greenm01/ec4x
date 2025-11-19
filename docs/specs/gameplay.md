@@ -132,6 +132,10 @@ Victory is achieved by reaching a prestige threshold or by being the last active
 
 A player in autopilot can still win through prestige accumulation if their empire's defensive economy generates sufficient prestige growth.
 
+**Final Conflict Rule:**
+
+When only two active players remain in the game (excluding Defensive Collapse and Autopilot empires), their diplomatic status automatically converts to Enemy per [Section 8.1.3](diplomacy.md#813-enemy) and cannot be changed. Non-Aggression Pacts are dissolved, and Neutral status cannot be established. There can be only one Emperor - the final two houses must fight for the throne. This rule takes effect at the start of the Income Phase when the condition is detected.
+
 ## 1.5 Intelligence & Fog of War
 
 EC4X employs fog of war mechanics where players have limited visibility into rival empires' activities. Intelligence gathering is a critical component of strategic planning and tactical operations.
