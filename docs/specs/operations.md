@@ -239,22 +239,9 @@ Spacelift Command ships are screened behind the Task Force during combat operati
 
 ## 7.3 Space Combat
 
-All fleets within a solar system are mandated to engage forces from houses with Enemy diplomatic status during their turn, with the following exceptions:
+When multiple houses are present in a solar system, each house forms an independent Task Force from its applicable fleets and installations per [Section 7.2](#72-task-force-assignment). Houses do not combine forces into joint Task Forces, even under Non-Aggression Pacts.
 
-- Fleets under Fleet Order 04: Guard a Starbase
-- Fleets under Fleet Order 05: Guard/Blockade a Planet
-
-When multiple houses are present in a solar system, combat engagement is determined by diplomatic relationships as defined in Section 8.1. Each house forms an independent Task Force and engages only those houses identified as hostile according to diplomatic status and territorial context.
-
-**Specific Engagement Rules:**
-
-1. **Blockade Engagement**: Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
-
-2. **Guard Engagement**: Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
-
-3. **Territorial Defense**: Regardless of diplomatic status, houses will defend their controlled colonies against direct threats. Fleet orders 05 through 08 and 12 directed at a colony constitute direct threats and trigger defensive engagement from the colony's controlling house.
-
-Task Forces form according to [Section 7.2](#72-task-force-assignment). Each house forms an independent Task Force from its applicable fleets and installations. Houses do not combine forces into joint Task Forces, even under Non-Aggression Pacts.
+Attacking units select targets using diplomatic filtering and priority rules defined in [Section 7.3.2](#732-target-priority-rules).
 
 Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
 
@@ -411,9 +398,16 @@ An attacking unit may only target Task Forces from houses considered hostile. A 
 3. The target Task Force is executing patrol orders in territory controlled by the attacking house and the houses do not have a Non-Aggression Pact per [Section 8.1.2](diplomacy.md#812-non-aggression-pacts)
 4. The target Task Force has engaged the attacking house's forces in previous rounds of the current engagement
 
+**Fleet Order Targeting Restrictions:**
+
+Certain fleet orders have additional targeting restrictions beyond diplomatic filtering:
+
+1. **Blockade (Fleet Order 05)**: Fleets blockading an enemy planet may only target enemy fleets with Fleet Order 05 (Guard/Blockade) at that same planet
+2. **Guard (Fleet Order 05)**: Fleets guarding a planet may only target enemy fleets with orders 05 through 08 or 12 (threatening orders)
+
 **No Valid Targets:**
 
-If an attacking squadron has no valid hostile targets available due to diplomatic filtering, that squadron does not attack during the current phase. The squadron remains in the engagement and may attack in subsequent combat rounds if hostile targets become available.
+If an attacking squadron has no valid hostile targets available due to diplomatic filtering or fleet order restrictions, that squadron does not attack during the current phase. The squadron remains in the engagement and may attack in subsequent combat rounds if hostile targets become available.
 
 #### 7.3.2.2 Bucket Classification
 
