@@ -59,9 +59,7 @@ Patrol orders trigger combat engagement when:
 
 Patrol does NOT trigger engagement with Neutral or Non-Aggression houses unless they execute threatening fleet orders (05-08, 12) in your controlled territory per [Section 7.3.2.1](operations.md#7321-diplomatic-filtering).
 
-**Intelligence Gathering:**
-
-Regardless of diplomatic status or combat engagement, fleets encountering each other during patrol operations report intelligence on observed forces. Players receive information about foreign fleet composition, size, and location when their patrol forces detect other houses' fleets in the system. This intelligence is provided even when diplomatic status prevents combat engagement.
+Patrol operations automatically gather intelligence on all foreign forces encountered per [Section 1.5.1](gameplay.md#151-fleet-encounters-and-intelligence).
 
 ### 6.2.5 Guard a Starbase (04):
 
