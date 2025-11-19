@@ -159,10 +159,15 @@ Squadron units and installations are either undamaged, crippled, or destroyed.
 
 **Destroyed**: In a crippled combat state, hits equal to DS reduces a unit's state to destroyed. The unit is dead and unrecoverable.
 
+**Fighter Exception:**
+
+Fighter squadrons skip the crippled combat state due to their lightweight construction. Fighters transition directly from undamaged to destroyed when they take damage equal to or exceeding their DS. Fighters maintain full AS until destroyed. See [Section 2.4.1](assets.md#241-fighter-squadrons-carriers) for detailed fighter combat mechanics.
+
 **Unit State Propagation:**
 - If a squadron is crippled, all the ships under its command are crippled
 - If a squadron is destroyed, all the ships are likewise destroyed
 - Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed)
+- Fighter squadrons follow binary state transition (undamaged → destroyed)
 
 ### 7.1.3 Cloaking
 
@@ -333,7 +338,7 @@ Fighters follow the special fighter targeting rule: prioritize enemy fighters fi
 
 **Fighter Vulnerability:**
 
-Fighters are permanently in a crippled combat state with reduced DS. After dealing damage in Phase 2, fighters remain on the battlefield and are subject to return fire from surviving enemy units in subsequent phases.
+Fighters have low Defense Strength due to their lightweight construction. After dealing damage in Phase 2, fighters remain on the battlefield and are subject to return fire from surviving enemy units in subsequent phases. Fighters skip the crippled state and transition directly from undamaged to destroyed per [Section 7.1.2](#712-combat-state).
 
 Colony-owned fighters never retreat from combat and fight until destroyed or the enemy is eliminated. Carrier-owned fighters retreat only when their carrier retreats.
 
