@@ -494,7 +494,7 @@ Each squadron rolls once for CER and applies CER × (sum of all ships' AS in squ
 After target selection and CER calculation, apply hits to selected target with the following restrictions:
 
 1. **Reduction Threshold:** If hits equal or exceed the target's DS, the target is reduced (undamaged → crippled, or crippled → destroyed)
-2. **Destruction Protection:** Squadrons are not destroyed until all other squadrons in the Task Force are crippled (does not apply to Starbases)
+2. **Destruction Protection:** A squadron may not be destroyed in the same combat round it's crippled. (Excess damage that would destroy a freshly crippled squadron is still lost, and critical hits still bypass this protection.)
 3. **Excess Hit Loss:** Excess hits beyond destruction threshold are lost if restrictions apply
 
 **Crippled Unit Effects:**
@@ -763,4 +763,5 @@ Fleets and Ground batteries conduct one round of combat in accordance with [Sect
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
 Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
+
 
