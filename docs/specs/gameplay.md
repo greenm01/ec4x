@@ -20,7 +20,7 @@ Flexibility and strategic foresight are your greatest tools in the quest for pow
 
 Players start the game with 50 prestige points.
 
-If a House's prestige drops and stays below zero for three consecutive turns, the Duke is forced surrender to a rival House.
+If a House's prestige drops and stays below zero for three consecutive turns, the empire enters Defensive Collapse and the player is permanently eliminated. See [Section 1.4](#14-player-elimination--autopilot) for full elimination and autopilot mechanics.
 
 A table of prestige values is listed in [Section 9.4](reference.md#94-prestige).
 
@@ -82,4 +82,53 @@ In the maintenance phase, the game software will advance construction projects, 
 New construction orders will be processed, along with investments in R&D, terraforming, Space Guild services, industry, etc.
 
 Player databases will be updated and customized reports issued for each player. Players have their own unique database, blind to the activities of other players.
+
+## 1.4 Player Elimination & Autopilot
+
+### 1.4.1 Prestige Failure (Defensive Collapse)
+
+If a House's prestige drops and stays below zero for three consecutive turns, the empire enters **Defensive Collapse** and the player is permanently eliminated.
+
+**Defensive Collapse Behavior:**
+
+- All fleets immediately return to the nearest controlled system
+- Fleets defend colonies against attacks from Enemy-status houses per [Section 8.1.3](diplomacy.md#813-enemy)
+- No offensive operations or expansion
+- No new construction orders
+- No diplomatic changes
+- Economy ceases (no income, no R&D, no maintenance costs)
+
+The collapsed empire remains on the map as a defensive AI target. Other players can conquer colonies and destroy fleets for prestige as normal. Defensive Collapse is permanent - eliminated players cannot rejoin the game.
+
+### 1.4.2 MIA Autopilot
+
+If a player fails to submit orders for three consecutive turns, the empire automatically enters **Autopilot** mode. Unlike Defensive Collapse, autopilot is temporary and allows the player to rejoin at any time.
+
+**Autopilot Behavior:**
+
+- Fleets continue executing standing orders until completion
+- Fleets without active orders patrol and defend home systems
+- Economy continues operating (current tax rate and R&D allocations maintained)
+- Construction focuses on defensive infrastructure and essential facilities
+- No new offensive operations or colonization attempts
+- Diplomatic stances remain unchanged
+- Engages Enemy-status houses that enter controlled territory per [Section 8.1.3](diplomacy.md#813-enemy)
+
+When the player returns and submits new orders, the empire immediately exits autopilot and resumes normal operations.
+
+**Turn Processing:**
+
+- Autopilot activates in the Income Phase after the third consecutive missed turn per [Section 1.3.2](#132-income-phase)
+- Autopilot orders are executed during the Command Phase per [Section 1.3.3](#133-command-phase)
+- Player can resume control in any subsequent turn by submitting orders
+
+### 1.4.3 Victory Conditions
+
+Victory is achieved by reaching a prestige threshold or by being the last active player in the game.
+
+- **Active Players**: Players submitting orders (not in autopilot or defensive collapse)
+- **Autopilot Players**: Count as active and can return to win
+- **Defensive Collapse Players**: Eliminated, do not count toward victory
+
+A player in autopilot can still win through prestige accumulation if their empire's defensive economy generates sufficient prestige growth.
 
