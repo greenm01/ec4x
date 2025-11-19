@@ -212,12 +212,6 @@ Carrier → Colony (Permanent Deployment):
 
 Fighter squadrons attack first in combat resolution, before capital ships engage.
 
-**Combat Initiative Order:**
-1. Undetected Raiders (ambush advantage)
-2. Fighter Squadrons (all fighters attack simultaneously)
-3. Detected Raiders
-4. Capital Ships (by squadron)
-
 **Fighter Combat States:**
 
 Fighters are lightweight strike craft that skip the crippled combat state. Fighters transition directly from undamaged to destroyed when they take damage equal to or exceeding their DS. This reflects their fragile construction - a fighter is either combat-effective or destroyed.
@@ -568,6 +562,8 @@ Planet-Breakers (PB) are high technology, late-game siege weapons designed to br
 
 Planet-Breakers require CST 10 shipyards to construct. No additional research technology is required - the ship itself represents a breakthrough in siege warfare capabilities. The extremely high construction cost (400 PP) and CST requirement naturally gate Planet-Breakers to the late-game phase when stalemates are most likely to occur.
 
+A house may never possess more than five (5) actively comissioned Planet-Breakers at one time.
+
 **Shield Penetration Mechanics:**
 
 Planet-Breakers completely ignore planetary shields during bombardment operations. Their advanced weapons systems phase through shield matrices, applying damage directly to ground-based defensive installations. This makes them uniquely effective against shield-dependent defensive strategies.
@@ -613,7 +609,3 @@ A vast decentralized network of trade, commerce, transport, industry, tech, and 
 Numerous Space Guilds compete for business in unregulated, private capital markets.
 
 The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
-
-
-
-
