@@ -266,8 +266,9 @@ Space combat resolves in initiative phases based on unit tactical characteristic
 
 1. **Undetected Raiders** (Ambush Phase)
 2. **Fighter Squadrons** (Intercept Phase)
-3. **Detected Raiders** (Stealth Phase)
-4. **Capital Ships** (Main Engagement Phase)
+3. **Capital Ships** (Main Engagement Phase)
+
+Detected Raiders attack in Phase 3 with other capital ships based on their Command Rating.
 
 Units destroyed in an earlier phase do not participate in later phases.
 
@@ -362,21 +363,9 @@ Capacity violations resulting from combat damage are evaluated at the end of com
 - After combat: carrier-owned fighters re-embark immediately, remain carrier-owned
 - No ownership transfer unless permanent deployment executed outside combat (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
 
-#### 7.3.1.3 Phase 3: Detected Raiders (Stealth Phase)
+#### 7.3.1.3 Phase 3: Capital Ships (Main Engagement Phase)
 
-Raiders that were successfully detected by ELI units during the pre-combat detection phase attack in this phase, having lost their ambush advantage.
-
-Detected Raiders attack using normal combat mechanics (same as capital ships in Phase 4):
-- Each Raider squadron rolls for CER independently (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
-- Each Raider squadron selects target using [Section 7.3.2](#732-target-priority-rules)
-- All Raider squadrons complete target selection, then all damage is applied simultaneously
-- Apply damage to selected targets
-
-Detected Raiders resolve their attacks before the main capital ship engagement. Multiple detected Raider squadrons attack simultaneously in this phase.
-
-#### 7.3.1.4 Phase 4: Capital Ships (Main Engagement Phase)
-
-All remaining capital ships attack by squadron in this phase. Squadron attack order is determined by flagship Command Rating (CR).
+All capital ships attack by squadron in this phase, including detected Raiders. Squadron attack order is determined by flagship Command Rating (CR).
 
 **Attack Order Resolution:**
 
