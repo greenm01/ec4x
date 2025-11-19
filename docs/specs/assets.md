@@ -171,12 +171,12 @@ Colonies in capacity violation cannot commission new fighter squadrons until the
 
 **Fighter Ownership and Tracking:**
 
-Fighter squadrons are owned by either colonies or carriers.
+Fighter squadrons are owned by either colonies or carriers. Each fighter squadron has exactly one owner at all times.
 
 **Colony-Owned Fighters:**
 - Commissioned at a colony using colony production capacity
-- Permanently stationed at colony (planet-based assets)
-- Count against colony capacity limits
+- Stationed at colony (planet-based assets)
+- Count against that colony's capacity limits
 - Always participate in system defense
 - Recorded in colony asset roster
 
@@ -186,6 +186,14 @@ Fighter squadrons are owned by either colonies or carriers.
 - Do NOT count against any colony capacity while embarked
 - Automatically deploy when carrier enters combat
 - Recorded in carrier asset roster
+
+**Ownership Mechanics:**
+
+When fighters transfer ownership, they become assets of the new owner and are subject to that owner's capacity constraints:
+- Fighters loaded onto carriers become carrier-owned and no longer count toward colony capacity
+- Fighters deployed from carriers to colonies become owned by the receiving colony and count toward that colony's capacity
+- A colony receiving fighters must have available capacity to accept them
+- Fighters cannot be "homeless" - they must always be owned by either a colony or carrier
 
 **Ownership Transfer:**
 
