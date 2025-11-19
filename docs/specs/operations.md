@@ -63,7 +63,9 @@ Order a fleet to block hostile forces from approaching a planet.
 
 **Blockade**: Fleets are ordered to blockade an enemy planet and do not engage in Space Combat unless confronted by enemy ships under order 05.
 
-Colonies under blockaded reduce their GCO by 60%. Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale. House Prestige is reduced by 2 points every turn a colony is under blockade.
+Colonies under blockade reduce their GCO by 60%. Blockade effects apply during the Income Phase per [Section 1.3.2](gameplay.md#132-income-phase). If a colony was blockaded at the start of the turn (during Conflict Phase), its GCO is reduced by 60% for that turn's income calculation. Blockades established or lifted during the turn take effect in the following turn's Income Phase.
+
+Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale. House Prestige is reduced by 2 points every turn a colony is under blockade.
 
 ### 6.2.7 Bombard a Planet (06):
 
