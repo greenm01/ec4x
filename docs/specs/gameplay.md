@@ -132,3 +132,47 @@ Victory is achieved by reaching a prestige threshold or by being the last active
 
 A player in autopilot can still win through prestige accumulation if their empire's defensive economy generates sufficient prestige growth.
 
+## 1.5 Intelligence & Fog of War
+
+EC4X employs fog of war mechanics where players have limited visibility into rival empires' activities. Intelligence gathering is a critical component of strategic planning and tactical operations.
+
+### 1.5.1 Fleet Encounters and Intelligence
+
+When fleets from different houses encounter each other in the same system, intelligence is automatically gathered regardless of diplomatic status or whether combat occurs.
+
+**Automatic Intelligence Reporting:**
+
+Whenever friendly fleets are present in the same system as foreign forces, players receive intelligence reports containing:
+- Fleet composition (ship types and approximate quantities)
+- Fleet size and combat strength estimates
+- Fleet location (current system)
+- Fleet orders (if observable: patrol, blockade, bombardment, etc.)
+
+**Intelligence Collection Scenarios:**
+
+Intelligence is gathered in all of the following situations:
+- Patrol operations detecting foreign fleets per [Section 6.2.4](operations.md#624-patrol-a-system-03)
+- Fleet movement through systems containing foreign forces
+- Combat engagements (both participating and observing forces)
+- Scouts conducting reconnaissance missions per [Section 6.2.9-6.2.12](operations.md#629-spy-on-a-planet-09)
+
+**Diplomatic Status Independence:**
+
+Intelligence gathering occurs regardless of diplomatic relationships:
+- Enemy forces: Intelligence gathered, combat may occur
+- Neutral forces: Intelligence gathered, no combat
+- Non-Aggression partners: Intelligence gathered, no combat (unless pact violated)
+
+This reflects the reality that military forces cannot remain completely hidden when operating in the same system, even if diplomatic protocols prevent engagement.
+
+### 1.5.2 Fog of War
+
+Players do not have automatic visibility into:
+- Rival empire economics (income, production, treasury)
+- Rival empire technology levels (requires espionage per [Section 8.2](diplomacy.md#82-subversion--subterfuge))
+- Fleet movements in systems without friendly presence
+- Colony development and construction projects
+- Strategic intentions and future orders
+
+The game moderator maintains separate databases for each house to preserve fog of war. Intelligence must be actively gathered through fleet operations, scout missions, and espionage activities.
+
