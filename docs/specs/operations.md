@@ -228,18 +228,22 @@ Spacelift Command ships are screened behind the Task Force during combat operati
 
 ## 7.3 Space Combat
 
-All fleets within a solar system are mandated to engage enemy forces during their turn, with the following exceptions:
+All fleets within a solar system are mandated to engage forces from houses with Enemy diplomatic status during their turn, with the following exceptions:
 
-- Fleets under Fleet Order 04: Guard a Starbase 
+- Fleets under Fleet Order 04: Guard a Starbase
 - Fleets under Fleet Order 05: Guard/Blockade a Planet
 
-Specific Engagement Rules:
-1. Blockade Engagement:
-    - Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
-2. Guard Engagement:
-    - Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
+When multiple houses are present in a solar system, combat engagement is determined by diplomatic relationships as defined in Section 8.1. Each house forms an independent Task Force and engages only those houses identified as hostile according to diplomatic status and territorial context.
 
-Task Forces form according to [Section 7.2](#72-task-force-assignment).
+**Specific Engagement Rules:**
+
+1. **Blockade Engagement**: Fleets assigned to Blockade an enemy planet (Fleet Order 05) will engage only with enemy fleets ordered to Guard that same planet.
+
+2. **Guard Engagement**: Fleets assigned to Guard a planet (Fleet Order 05) will engage only enemy fleets with orders ranging from 05 to 08 and 12, focusing on defensive or blockading actions.
+
+3. **Territorial Defense**: Regardless of diplomatic status, houses will defend their controlled colonies against direct threats. Fleet orders 05 through 08 and 12 directed at a colony constitute direct threats and trigger defensive engagement from the colony's controlling house.
+
+Task Forces form according to [Section 7.2](#72-task-force-assignment). Each house forms an independent Task Force from its applicable fleets and installations. Houses do not combine forces into joint Task Forces, even under Non-Aggression Pacts.
 
 Starbases and their guarding fleets, operating under Order 04, are maintained as rear guards. Their sole purpose is to defend against blockades or direct attacks on the House's colonies.
 
@@ -247,14 +251,14 @@ Squadrons are not allowed to change assignments or restructure during combat eng
 
 ### 7.3.1 Combat Initiative and Phase Resolution
 
-Space combat resolves in initiative phases based on unit tactical characteristics. Each phase resolves completely before proceeding to the next phase.
+Space combat resolves in initiative phases based on unit tactical characteristics. Each phase resolves completely before proceeding to the next phase. When multiple houses are present, all houses participate simultaneously in each phase according to their unit types.
 
 **Combat Initiative Order:**
 
 1. **Undetected Raiders** (Ambush Phase)
-2. **Fighter Squadrons**  (Intercept Phase)
-3. **Detected Raiders**   (Stealth Phase)
-4. **Capital Ships**      (Main Engagement Phase)
+2. **Fighter Squadrons** (Intercept Phase)
+3. **Detected Raiders** (Stealth Phase)
+4. **Capital Ships** (Main Engagement Phase)
 
 Units destroyed in an earlier phase do not participate in later phases.
 
@@ -394,7 +398,28 @@ All attacking units (squadrons, fighters, and Starbases) select targets using th
 - **Fighter squadron**: A squadron consisting entirely of fighter craft with no capital ship flagship (bucket 4)
 - **Capital ship squadron**: A squadron led by a capital ship flagship (buckets 1, 2, or 3)
 
-#### 7.3.2.1 Bucket Classification
+#### 7.3.2.1 Diplomatic Filtering
+
+Before applying target priority rules, attacking units must identify valid targets based on diplomatic relationships.
+
+**Hostile Force Identification:**
+
+An attacking unit may only target Task Forces from houses considered hostile. A house is considered hostile if any of the following conditions apply:
+
+1. The houses have Enemy diplomatic status
+2. The target Task Force contains fleets with orders 05 through 08 or 12 directed at colonies controlled by the attacking house
+3. The target Task Force is executing patrol orders in territory controlled by the attacking house and the houses do not have a Non-Aggression Pact
+4. The target Task Force has engaged the attacking house's forces in previous rounds of the current engagement
+
+**Non-Aggression Enforcement:**
+
+Houses with Non-Aggression Pacts are never considered hostile to each other unless the pact has been formally dissolved prior to the conflict phase. Attacking a Non-Aggression partner constitutes a pact violation and immediately converts diplomatic status to Enemy.
+
+**No Valid Targets:**
+
+If an attacking squadron has no valid hostile targets available due to diplomatic filtering, that squadron does not attack during the current phase. The squadron remains in the engagement and may attack in subsequent combat rounds if hostile targets become available.
+
+#### 7.3.2.2 Bucket Classification
 
 Every squadron and installation is assigned to a bucket based on its type:
 
@@ -411,36 +436,36 @@ Every squadron and installation is assigned to a bucket based on its type:
 - Starbases are orbital installations, not squadrons
 - Lower bucket numbers indicate higher targeting priority
 
-#### 7.3.2.2 Special Rule: Fighter Squadron Targeting
+#### 7.3.2.3 Special Rule: Fighter Squadron Targeting
 
 When a fighter squadron attacks:
 
-1. **Check for enemy fighters:** If any enemy fighter squadrons (bucket 4) exist, build candidate list from all enemy fighter squadrons only
-2. **If enemy fighters exist:** Compute weights and select target using weighted random selection (see 7.3.2.4)
-3. **If no enemy fighters exist:** Fall back to standard bucket order targeting (7.3.2.3)
+1. **Check for enemy fighters:** If any enemy fighter squadrons (bucket 4) exist among hostile Task Forces, build candidate list from all enemy fighter squadrons only
+2. **If enemy fighters exist:** Compute weights and select target using weighted random selection (see 7.3.2.5)
+3. **If no enemy fighters exist:** Fall back to standard bucket order targeting (7.3.2.4)
 
 This represents fighter squadrons establishing air superiority before engaging capital ships.
 
-#### 7.3.2.3 Standard Bucket Order Targeting
+#### 7.3.2.4 Standard Bucket Order Targeting
 
 For all non-fighter attackers (capital ship squadrons, Raiders, Starbases) and fighters when no enemy fighters exist:
 
 1. **Walk bucket order:** Raider (1) → Capital (2) → Destroyer (3) → Fighter (4) → Starbase (5)
-2. **Build candidate pool:** For each bucket in order, collect all enemy units matching that bucket
+2. **Build candidate pool:** For each bucket in order, collect all enemy units from hostile Task Forces matching that bucket
 3. **Select first non-empty bucket:** The first bucket containing at least one enemy unit becomes the candidate pool
-4. **Apply weighted random selection:** Select target from candidate pool using weights (see 7.3.2.4)
-5. **No valid targets:** If no enemy units exist in any bucket, the attacker does not fire this phase
+4. **Apply weighted random selection:** Select target from candidate pool using weights (see 7.3.2.5)
+5. **No valid targets:** If no enemy units exist in any bucket from hostile houses, the attacker does not fire this phase
 
-#### 7.3.2.4 Weighted Random Target Selection
+#### 7.3.2.5 Weighted Random Target Selection
 
-Once a candidate pool is determined:
+Once a candidate pool is determined from hostile Task Forces:
 
 1. **Calculate weight for each candidate:**
    ```
    Weight = Base_Weight(bucket) × Unit_Size × Crippled_Modifier
    ```
    Where:
-   - `Base_Weight(bucket)` is from the bucket classification table (7.3.2.1)
+   - `Base_Weight(bucket)` is from the bucket classification table (7.3.2.2)
    - `Unit_Size` is the number of ships in the squadron (or 1 for Starbases)
    - `Crippled_Modifier` = 2.0 if unit is crippled, 1.0 if undamaged
 
@@ -462,7 +487,7 @@ Crippled units (squadrons and Starbases) receive double weight in target selecti
 
 The SHA-256 hash ensures combat resolution is deterministic and reproducible for the same game state, allowing for replay analysis and debugging. The same tactical situation on the same turn of the same game will always produce identical target selections.
 
-#### 7.3.2.5 Interaction with Damage Restrictions
+#### 7.3.2.6 Interaction with Damage Restrictions
 
 Target selection works in conjunction with damage application restrictions from [Section 7.3.3](#733-combat-effectiveness-rating-cer):
 
@@ -486,18 +511,18 @@ This creates attrition combat where:
 2. Follow-up attacks destroy crippled squadrons (focused fire)
 3. Task Forces degrade systematically rather than through alpha strikes
 
-#### 7.3.2.6 Target Priority Summary
+#### 7.3.2.7 Target Priority Summary
 
 **Fighter squadrons:**
-1. Enemy fighter squadrons (if any exist) - weighted by size and crippled state
-2. Raiders → Capital → Destroyer → Starbase (if no enemy fighters) - weighted by size and crippled state
+1. Enemy fighter squadrons from hostile houses (if any exist) - weighted by size and crippled state
+2. Raiders → Capital → Destroyer → Starbase from hostile houses (if no enemy fighters) - weighted by size and crippled state
 
 **All other attackers:**
-1. Raiders - weighted by size and crippled state
-2. Capital ships (Cruisers, Carriers) - weighted by size and crippled state
-3. Destroyers - weighted by size and crippled state
-4. Fighter squadrons - weighted by size and crippled state
-5. Starbases - weighted by crippled state (size = 1)
+1. Raiders from hostile houses - weighted by size and crippled state
+2. Capital ships (Cruisers, Carriers) from hostile houses - weighted by size and crippled state
+3. Destroyers from hostile houses - weighted by size and crippled state
+4. Fighter squadrons from hostile houses - weighted by size and crippled state
+5. Starbases from hostile houses - weighted by crippled state (size = 1)
 
 **Weighting Factors (applied multiplicatively):**
 - **Bucket Base Weight:** 1.0 (Raider) to 5.0 (Starbase)
@@ -589,9 +614,30 @@ After all phases complete and hits are applied:
 1. **Casualty Assessment:** Mark all crippled and destroyed units (colony-owned and carrier-owned fighters tracked separately)
 2. **Capacity Violation Checks:** Evaluate colonies for fighter capacity violations (only colony-owned fighters count toward capacity)
 3. **Recalculate AS:** Determine total AS of all surviving Task Forces
-4. **ROE Check:** Compare AS strengths and determine if retreat is warranted per [Section 7.1.1](#711-rules-of-engagement-roe)
+4. **ROE Check:** Each Task Force evaluates retreat conditions independently according to [Section 7.1.1](#711-rules-of-engagement-roe)
 
-If more than one Task Force remains and no retreat occurs, proceed to the next combat round.
+**Multi-Faction Retreat Evaluation:**
+
+When multiple houses are present in combat, each Task Force independently evaluates retreat by comparing its total combat strength against the combined strength of all hostile Task Forces.
+
+To evaluate retreat:
+1. Sum the total AS of all Task Forces identified as hostile per [Section 7.3.2.1](#7321-diplomatic-filtering)
+2. Compare this combined hostile strength against the evaluating house's own Task Force strength
+3. Apply the ROE threshold from [Section 7.1.1](#711-rules-of-engagement-roe) to determine if retreat is warranted
+
+One house retreating does not force other houses to retreat. Combat continues between remaining Task Forces.
+
+**Combat Termination Conditions:**
+
+Combat ends when any of the following conditions are met:
+
+- Only one Task Force remains in the system
+- All remaining Task Forces are non-hostile to each other per [Section 7.3.2.1](#7321-diplomatic-filtering)
+- All Task Forces have retreated from the engagement
+
+If combat reduces the engagement such that all remaining Task Forces are non-hostile to each other, combat immediately ceases even if multiple houses remain in the system. This occurs when all Enemy relationships have been eliminated through retreat or destruction, leaving only Neutral or Non-Aggression relationships.
+
+If more than one hostile Task Force remains and no retreat occurs, proceed to the next combat round.
 
 ### 7.3.5 Retreat
 
@@ -654,6 +700,20 @@ Violations trigger a 2-turn grace period beginning on the following turn. All fi
 - Carrier-owned fighters re-embark and remain carrier-owned (1 turn)
 - No automatic ownership transfers occur as result of combat
 - Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
+
+**System Control:**
+
+System control after multi-faction combat is determined as follows:
+
+**Colony Control:** Houses retain control of their colonies regardless of foreign Task Force presence, unless the colony has been successfully invaded or captured through fleet orders 07 or 08.
+
+**Foreign Force Presence:** Task Forces from houses that are non-hostile to the controlling house may remain in the system and must have valid fleet orders for the subsequent turn. Their presence does not constitute system control transfer unless the controlling house's colony has been eliminated.
+
+**Contested Systems:** Systems with no colonies or multiple colonies owned by different houses remain contested. Control for movement purposes is determined by which houses have Task Forces present and their diplomatic relationships.
+
+**Salvage Rights:** Only the controlling house may conduct salvage operations. Houses control systems where they own colonies or are the sole surviving force after combat. Foreign houses cannot salvage in systems they do not control, even if their Task Force participated in the engagement.
+
+**Multiple Surviving Houses:** If multiple non-hostile houses remain in the system after combat, system control belongs to the house with a colony present. If multiple houses have colonies in the system, each controls their own colony hex but the system remains contested for movement and strategic purposes.
 
 ## 7.4 Starbase Combat
 
