@@ -184,7 +184,7 @@ Fighter squadrons are owned by either colonies or carriers.
 - Loaded from colony onto carrier (transfers ownership from colony to carrier)
 - Embarked in carrier hangar bays (mobile assets)
 - Do NOT count against any colony capacity while embarked
-- Only participate in combat if carrier deploys them
+- Automatically deploy when carrier enters combat
 - Recorded in carrier asset roster
 
 **Ownership Transfer:**
