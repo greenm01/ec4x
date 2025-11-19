@@ -224,7 +224,9 @@ Fleet Integration:
 
 Cloaked fleets with movement orders can continue if they pass stealth checks; otherwise, they join combat.
 
-Spacelift Command ships are screened behind the Task Force during combat operations and do not engage in combat.
+**Spacelift Command Protection:**
+
+Spacelift Command ships are screened behind the Task Force during combat operations and do not engage in combat. Spacelift ships are destroyed if all friendly escort fleets in their house's Task Force are destroyed or retreat while hostile forces remain in the system. The presence of non-hostile houses does not protect Spacelift ships belonging to a retreating or destroyed Task Force.
 
 ## 7.3 Space Combat
 
@@ -402,14 +404,22 @@ All attacking units (squadrons, fighters, and Starbases) select targets using th
 
 Before applying target priority rules, attacking units must identify valid targets based on diplomatic relationships.
 
+**Controlled Territory Definition:**
+
+A house controls territory in systems containing its colony. Systems without colonies are considered uncontrolled or neutral space. Systems containing another house's colony are considered that house's controlled territory.
+
 **Hostile Force Identification:**
 
 An attacking unit may only target Task Forces from houses considered hostile. A house is considered hostile if any of the following conditions apply:
 
 1. The houses have Enemy diplomatic status
-2. The target Task Force contains fleets with orders 05 through 08 or 12 directed at colonies controlled by the attacking house
+2. The target Task Force contains fleets with orders 05 through 08 or 12 directed at the attacking house's controlled systems or colonies
 3. The target Task Force is executing patrol orders in territory controlled by the attacking house and the houses do not have a Non-Aggression Pact
 4. The target Task Force has engaged the attacking house's forces in previous rounds of the current engagement
+
+**Colonization as Direct Threat:**
+
+Fleet Order 12 (Colonize a Planet) is considered a direct threat when executed in systems containing another house's colony. During the initial expansion phase, houses compete for territorial control and the destruction of rival ETACs provides strategic advantage. Houses without Non-Aggression Pacts will engage colonization attempts in their controlled systems regardless of whether the colonization targets an empty planet or occurs by navigational error.
 
 **Non-Aggression Enforcement:**
 
@@ -645,7 +655,11 @@ A Task Force may retreat from combat after the first round, in accordance with t
 
 **Retreat Mechanics:**
 
-Squadrons in a retreating Task Force fall back to their original fleet formations and flee to the closest non-hostile star system via available jump lanes.
+Squadrons in a retreating Task Force fall back to their original fleet formations and flee to the closest friendly star system via available jump lanes. Friendly systems are those controlled by the retreating house or houses with Non-Aggression Pacts.
+
+**No Retreat Sanctuary:**
+
+Retreating fleets arriving in a new system do not receive sanctuary protection. If hostile forces are present at the retreat destination, the retreating fleet immediately engages in combat according to standard engagement rules. Fleets should plan retreat routes to avoid hostile territory.
 
 **Retreat Restrictions:**
 
@@ -709,11 +723,11 @@ System control after multi-faction combat is determined as follows:
 
 **Foreign Force Presence:** Task Forces from houses that are non-hostile to the controlling house may remain in the system and must have valid fleet orders for the subsequent turn. Their presence does not constitute system control transfer unless the controlling house's colony has been eliminated.
 
-**Contested Systems:** Systems with no colonies or multiple colonies owned by different houses remain contested. Control for movement purposes is determined by which houses have Task Forces present and their diplomatic relationships.
+**Contested Systems:** Systems without colonies remain contested regardless of Task Force presence. Control for movement purposes is determined by which houses have Task Forces present and their diplomatic relationships.
 
-**Salvage Rights:** Only the controlling house may conduct salvage operations. Houses control systems where they own colonies or are the sole surviving force after combat. Foreign houses cannot salvage in systems they do not control, even if their Task Force participated in the engagement.
+**Salvage Rights:** Only houses with colonies in the system may conduct salvage operations. Salvage requires system control through colony ownership and cannot be performed in uncolonized systems regardless of combat victory. Foreign houses cannot salvage in systems they do not control, even if their Task Force participated in the engagement.
 
-**Multiple Surviving Houses:** If multiple non-hostile houses remain in the system after combat, system control belongs to the house with a colony present. If multiple houses have colonies in the system, each controls their own colony hex but the system remains contested for movement and strategic purposes.
+**Multiple Surviving Houses:** If multiple non-hostile houses remain in the system after combat, system control belongs to the house with a colony present. Systems can contain only one colony per the colonization rules in [Section 6.2.13](operations.md#6213-colonize-a-planet-12).
 
 ## 7.4 Starbase Combat
 
