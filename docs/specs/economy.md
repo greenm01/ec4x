@@ -275,6 +275,22 @@ The counter resets only after a turn of **full upkeep payment with no forced dis
 
 This ensures that running sustained deficits is catastrophic (as intended), while giving benevolent low-tax empires a natural safety cushion through larger cash reserves and faster recovery.
 
+## 3.14 Population Support Limit for Ships
+
+A House’s total population determines the maximum number of capital ships and fighter squadrons it can crew and sustain.
+
+**Maximum Supported Units = Total House Population Units (PU) ÷ 100** (round down, minimum 5)
+
+- 1 capital ship (CT → PB, CV/CX, SC, RR, SB, etc.) = 1 unit  
+
+- 1 fighter squadron (FS) = 1 unit  
+
+(Starbases optionally count as 2 units each if you want them rarer in late game)
+
+Fighter squadrons count toward this limit **whether colony-owned or carrier-embarked**.
+
+Construction may not be queued that would exceed the limit on completion. If the limit is exceeded (combat losses reducing PU, conquest, etc.), the House has 2 turns to return to compliance or excess units are automatically disbanded (oldest first, no salvage).
+
 # 4.0 Research & Development
 
 ## 4.1 Research Points (RP)
@@ -683,6 +699,7 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
+
 
 
 
