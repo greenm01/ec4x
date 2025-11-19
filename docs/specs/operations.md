@@ -10,8 +10,6 @@ Fleets move between solar systems via jump lanes:
 
 ## 6.2 Fleet Orders
 
-Possible fleet missions are listed in the table below. These are the classic fleet orders from Esterian Conquest, modified for EC4X.
-
 | No.  | Mission                 | Requirements                             |
 | ---- | ----------------------- | ---------------------------------------- |
 | 00   | None (hold position)    | None                                     |
@@ -30,10 +28,6 @@ Possible fleet missions are listed in the table below. These are the classic fle
 | 13   | Join another Fleet      | None                                     |
 | 14   | Rendezvous at System    | None                                     |
 | 15   | Salvage                 | Friendly Colony System                   |
-
-\* New to EC4X
-
-Movement orders command a fleet to jump across the necessary lanes to the destination solar system, in accordance with the rules specified in [Section 6.1](#61-jump-lanes). Depending upon the distance from the fleet's preexisting location and available lanes, movement may take multiple turns to complete.
 
 ### 6.2.1 Hold Position (00):
 
@@ -76,8 +70,6 @@ Order a fleet to block hostile forces from approaching a planet.
 Colonies under blockade reduce their GCO by 60%. Blockade effects apply immediately during the Income Phase per [Section 1.3.2](gameplay.md#132-income-phase). Blockades established during the Conflict Phase reduce GCO for that same turn's Income Phase calculation - there is no delay. Lifting a blockade immediately restores full GCO for the following turn's Income Phase.
 
 **Prestige Penalty:** House Prestige is reduced by 2 points for each turn a colony begins under blockade. The prestige penalty applies even if the blockade is lifted before the Income Phase - establishing a blockade triggers the penalty for that turn regardless of duration.
-
-Civilian transport, commerce, trade, and mining activities in the Solar System are severely restricted, which results in a critical negative impact on the economy and citizen morale.
 
 ### 6.2.7 Bombard a Planet (06):
 
@@ -185,17 +177,11 @@ Fighter squadrons skip the crippled combat state due to their lightweight constr
 
 ### 7.1.3 Cloaking
 
-Cloaking offers an advantage in the initial round of space combat, either on the defensive or offensive.
-
-When defending a solar system, cloaked units are considered to be **in ambush** against invaders.
-
-When attacking a solar system, cloaked units are considered to be **a surprise** to the defenders.
-
-In neutral territory a cloaked fleet is considered to be a surprise.
+Undetected cloaked units strike first in combat initiative per [Section 7.3.1.1](#7311-phase-1-undetected-raiders-ambush-phase).
 
 Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](assets.md#243-raiders).
 
-If cloaked fleets on all sides pass undetected from one another, then the player defending his solar system wins in ambush. If opposing forces are meeting in neutral territory and all pass undetected, then they carry on with movement orders and combat is cancelled.
+If cloaked fleets on all sides pass undetected from one another, the player defending their solar system wins initiative. If opposing forces are meeting in neutral territory and all pass undetected, they carry on with movement orders and combat is cancelled.
 
 ### 7.1.4 Morale
 
@@ -269,8 +255,6 @@ When multiple houses are present in a solar system, combat engagement is determi
 3. **Territorial Defense**: Regardless of diplomatic status, houses will defend their controlled colonies against direct threats. Fleet orders 05 through 08 and 12 directed at a colony constitute direct threats and trigger defensive engagement from the colony's controlling house.
 
 Task Forces form according to [Section 7.2](#72-task-force-assignment). Each house forms an independent Task Force from its applicable fleets and installations. Houses do not combine forces into joint Task Forces, even under Non-Aggression Pacts.
-
-Starbases and their guarding fleets, operating under Order 04, are maintained as rear guards. Their sole purpose is to defend against blockades or direct attacks on the House's colonies.
 
 Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
 
@@ -873,17 +857,4 @@ Fleets and Ground batteries conduct one round of combat in accordance with [Sect
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
 Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
-
-## 7.7 Custom Combat Modifications
-
-If customizing your own ships or scenarios, the following list provides a jumping off point for custom modification. EC4X is flexible enough to enable the tailoring of the combat mechanics to your own ideas and requirements. Please report back to the project anything that works well for you and increases enjoyment of the game. 
-
-- Additional modifiers to the CER roll, e.g. battle stations readiness, random chance events, etc.
-- Apply the Starbase critical hit rule to special assets that are resistant to crippling.
-- Add a modifier to protect a homeworld's solar system
-- Add mines or moon bases
-- Add defensive missile batteries
-- Insert your imagination here.....
-
-EC4X Space combat is inspired by Empire of the Sun (EOS).
 
