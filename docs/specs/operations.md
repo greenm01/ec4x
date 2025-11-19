@@ -765,3 +765,4 @@ Because of quick insertion and Ground Battery evasion, surviving Marines that ma
 Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
 
 
+
