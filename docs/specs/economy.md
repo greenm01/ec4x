@@ -275,24 +275,23 @@ The counter resets only after a turn of **full upkeep payment with no forced dis
 
 This ensures that running sustained deficits is catastrophic (as intended), while giving benevolent low-tax empires a natural safety cushion through larger cash reserves and faster recovery.
 
-## 3.12 House Population Support Limit
+## 3.12 House Combat Squadron Limit
 
-The total population of the House sets the maximum number of **combat squadrons** it may have in active service at any one time, regardless of where the ships were built or are currently stationed.
+Maximum Capital-Ship Squadrons + Carriers = Total House PU ÷ 100 (round down, minimum 8)
 
-**Maximum Active Combat Squadrons = Total House Population Units ÷ 120** (round down, minimum 6)
+What counts:
+- Every squadron that has a capital-ship flagship (CT and larger, including Raiders) = 1 slot
+- Every carrier (CV / CX) that is NOT the flagship of a squadron = 1 slot
 
-This single House-wide limit applies to:
-- Every capital-ship squadron (one flagship + escorts = 1 squadron)
-- Every fighter squadron (colony-owned or carrier-embarked)
-- Every solo combat ship formed as a single-ship squadron
+Players never pay double for the same carrier.
 
-Exempt (do not count):
-- All Spacelift Command vessels (ETAC, Troop Transports)
-- Starbases
-- Scouts on pure espionage missions this turn (orders 09–12)
+What does NOT count (completely unlimited except money / existing rules):
+- Pure fighter squadrons (FS) – still only governed by Section 2.4.1 (per-colony PU + Starbases)
+- Scouts (SC) – free to spam for espionage
+- Starbases, ETACs, Troop Transports – unchanged
 
-No tracking of “birth colony” is required. Once a ship or fighter squadron exists, it simply consumes one global squadron slot until destroyed or salvaged.
 
+  
 # 4.0 Research & Development
 
 ## 4.1 Research Points (RP)
@@ -701,6 +700,7 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
+
 
 
 
