@@ -165,7 +165,7 @@ To commission new fighter squadrons, a colony must:
 1. Have available capacity: `Current FS < Max FS`
 2. Meet infrastructure requirement: `Operational Starbases ≥ ceil((Current FS + New FS) / 5)`
 3. Have sufficient population capacity: `floor(PU / 100) × FD ≥ (Current FS + New FS)`
-4. Have sufficient treasury: `Available PP ≥ 15 × New FS`
+4. Have sufficient treasury: `Available PP ≥ 20 × New FS`
 
 Colonies in capacity violation cannot commission new fighter squadrons until the violation is resolved.
 
