@@ -103,6 +103,10 @@ This mission is reserved for ETACs under fleet escort. The ETAC will land one PT
 
 If the planet is already occupied, the fleet will hold position (Order 00) in the solar system until directed otherwise.
 
+**Strategic Note:**
+
+Fleet Order 12 executed in systems containing another house's colony is considered a direct threat and triggers defensive engagement per [Section 7.3.2.1](#7321-diplomatic-filtering). During the expansion phase, territorial competition makes destruction of rival ETACs a strategic priority. Houses without Non-Aggression Pacts will engage colonization attempts in their controlled systems regardless of whether the colonization targets an empty planet or occurs by navigational error.
+
 ### 6.2.14 Join another Fleet (13):
 
 Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the existing one. If the host fleet is destroyed, all joining fleets will abandon their mission and hold position (00).
@@ -402,28 +406,16 @@ All attacking units (squadrons, fighters, and Starbases) select targets using th
 
 #### 7.3.2.1 Diplomatic Filtering
 
-Before applying target priority rules, attacking units must identify valid targets based on diplomatic relationships.
-
-**Controlled Territory Definition:**
-
-A house controls territory in systems containing its colony. Systems without colonies are considered uncontrolled or neutral space. Systems containing another house's colony are considered that house's controlled territory.
+Before applying target priority rules, attacking units must identify valid targets based on diplomatic relationships as defined in [Section 8.1](diplomacy.md#81-diplomacy).
 
 **Hostile Force Identification:**
 
 An attacking unit may only target Task Forces from houses considered hostile. A house is considered hostile if any of the following conditions apply:
 
-1. The houses have Enemy diplomatic status
-2. The target Task Force contains fleets with orders 05 through 08 or 12 directed at the attacking house's controlled systems or colonies
-3. The target Task Force is executing patrol orders in territory controlled by the attacking house and the houses do not have a Non-Aggression Pact
+1. The houses have Enemy diplomatic status per [Section 8.1.3](diplomacy.md#813-enemy)
+2. The target Task Force contains fleets with orders 05 through 08 or 12 directed at the attacking house's controlled systems per [Section 8.1.5](diplomacy.md#815-territorial-control)
+3. The target Task Force is executing patrol orders in territory controlled by the attacking house and the houses do not have a Non-Aggression Pact per [Section 8.1.2](diplomacy.md#812-non-aggression-pacts)
 4. The target Task Force has engaged the attacking house's forces in previous rounds of the current engagement
-
-**Colonization as Direct Threat:**
-
-Fleet Order 12 (Colonize a Planet) is considered a direct threat when executed in systems containing another house's colony. During the initial expansion phase, houses compete for territorial control and the destruction of rival ETACs provides strategic advantage. Houses without Non-Aggression Pacts will engage colonization attempts in their controlled systems regardless of whether the colonization targets an empty planet or occurs by navigational error.
-
-**Non-Aggression Enforcement:**
-
-Houses with Non-Aggression Pacts are never considered hostile to each other unless the pact has been formally dissolved prior to the conflict phase. Attacking a Non-Aggression partner constitutes a pact violation and immediately converts diplomatic status to Enemy.
 
 **No Valid Targets:**
 
