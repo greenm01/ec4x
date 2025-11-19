@@ -655,7 +655,7 @@ A Task Force may retreat from combat after the first round, in accordance with t
 
 **Retreat Mechanics:**
 
-Squadrons in a retreating Task Force fall back to their original fleet formations and flee to the closest friendly star system via available jump lanes. Friendly systems are those controlled by the retreating house or houses with Non-Aggression Pacts.
+Squadrons in a retreating Task Force fall back to their original fleet formations and flee to the closest friendly star system via available jump lanes. Friendly systems are those controlled by the retreating house.
 
 **No Retreat Sanctuary:**
 
