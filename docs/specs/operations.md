@@ -514,9 +514,8 @@ Critical hits (natural 9 on die roll before modifiers) have special effects:
 
 When multiple attackers independently select the same target during simultaneous attack resolution:
 - Combined damage from all attackers is applied to the target
-- If combined damage exceeds destruction threshold and restriction #2 applies (other squadrons not yet crippled), the target is crippled but not destroyed
+- If combined damage exceeds destruction threshold and restriction #2 applies, the target is crippled but not destroyed
 - Excess damage beyond crippling threshold is lost
-- Once all squadrons are crippled, excess damage can destroy targets
 
 ### 7.3.4 Rounds
 
@@ -763,6 +762,7 @@ Fleets and Ground batteries conduct one round of combat in accordance with [Sect
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
 Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
+
 
 
 
