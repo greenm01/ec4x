@@ -210,7 +210,15 @@ Fighter squadrons attack first in combat resolution, before capital ships engage
 3. Detected Raiders
 4. Capital Ships (by squadron)
 
-Because of their fast lightweight nature, fighters are considered to be in a permanent crippled combat state, but without a reduction in attack strength (AS). Fighter squadrons have reduced Defense Strength (DS) as reflected in their combat statistics.
+**Fighter Combat States:**
+
+Fighters are lightweight strike craft that skip the crippled combat state. Fighters transition directly from undamaged to destroyed when they take damage equal to or exceeding their DS. This reflects their fragile construction - a fighter is either combat-effective or destroyed.
+
+**Combat State Transitions:**
+- Capital Ships: Undamaged → Crippled → Destroyed
+- Fighters: Undamaged → Destroyed (no crippled state)
+
+Fighters maintain full Attack Strength (AS) until destroyed. Fighter squadrons have reduced Defense Strength (DS) as reflected in their combat statistics.
 
 Fighter squadrons based in a system never retreat from combat and fight to the last pilot.
 
