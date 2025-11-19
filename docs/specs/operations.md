@@ -709,11 +709,12 @@ After the last round of combat, surviving Task Forces disband and squadrons rejo
 
 **Post-Combat Resolution:**
 
-1. **Salvage Operations:** Destroyed ships can be salvaged for 50% of original PC (requires system control and 1 turn per ship). Multiple ships can be salvaged simultaneously if sufficient facilities are available
-2. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
-3. **Capacity Violations:** Evaluate all colonies for fighter squadron capacity violations (only colony-owned fighters count)
-4. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed re-embark immediately after combat
-5. **Strategic Position:** Determine system control and potential for bombardment/invasion operations
+1. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
+2. **Capacity Violations:** Evaluate all colonies for fighter squadron capacity violations (only colony-owned fighters count)
+3. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed re-embark immediately after combat
+4. **Strategic Position:** Determine system control and potential for bombardment/invasion operations
+
+Destroyed ships cannot be salvaged from battle wreckage. Salvage operations apply only to active fleets intentionally decommissioned via Fleet Order 15 per [Section 6.2.16](#6216-salvage-15).
 
 **Capacity Violation Assessment:**
 
@@ -739,8 +740,6 @@ System control after multi-faction combat is determined as follows:
 **Foreign Force Presence:** Task Forces from houses that are non-hostile to the controlling house may remain in the system and must have valid fleet orders for the subsequent turn. Their presence does not constitute system control transfer unless the controlling house's colony has been eliminated.
 
 **Contested Systems:** Systems without colonies remain contested regardless of Task Force presence. Control for movement purposes is determined by which houses have Task Forces present and their diplomatic relationships.
-
-**Salvage Rights:** Only houses with colonies in the system may conduct salvage operations. Salvage requires system control through colony ownership and cannot be performed in uncolonized systems regardless of combat victory. Foreign houses cannot salvage in systems they do not control, even if their Task Force participated in the engagement.
 
 **Multiple Surviving Houses:** If multiple non-hostile houses remain in the system after combat, system control belongs to the house with a colony present. Systems can contain only one colony per the colonization rules in [Section 6.2.13](operations.md#6213-colonize-a-planet-12).
 
