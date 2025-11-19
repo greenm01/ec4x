@@ -25,7 +25,7 @@ CL = Carry Limit
 | PB    | Planet-Breaker    | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
 | CV    | Carrier           | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
 | CX    | Super Carrier     | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
-| FS    | Fighter Squadron  | 3   | 20  | 3%  | 4   | 3   | NA  | NA  | NA  |
+| FS    | Fighter Squadron  | 3   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
 | RR    | Raider            | 3   | 150 | 4%  | 12  | 10  | 3   | 4   | NA  |
 | SC    | Scout             | 1   | 50  | 1%  | 1   | 2   | 1   | NA  | NA  |
 | SB    | Starbase          | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
