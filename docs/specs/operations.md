@@ -711,7 +711,6 @@ After the last round of combat, surviving Task Forces disband and squadrons rejo
 
 1. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
 2. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed re-embark immediately after combat
-3. **Strategic Position:** Determine system control and potential for bombardment/invasion operations
 
 Destroyed ships cannot be salvaged from battle wreckage. Salvage operations apply only to active fleets intentionally decommissioned via Fleet Order 15 per [Section 6.2.16](#6216-salvage-15).
 
