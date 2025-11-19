@@ -15,8 +15,11 @@ Houses can enter into formal or informal agreements to not attack each other, al
 This can include:
 - Joint Military Operations: Against common threats or for mutual defense without direct conflict between the signing parties.
 - Territorial Recognition: Agreements to respect each others territories.
-- Strategic Flexibility: While not allies, Houses in a non-aggression pact can share intelligence, coordinate against mutual enemies..
-- Violation Consequences: Breaking a non-aggression pact can lead to a swift change to enemy status.
+- Strategic Flexibility: While not allies, Houses in a non-aggression pact can share intelligence, coordinate against mutual enemies.
+
+**Violation Consequences:**
+
+Attacking a Non-Aggression partner constitutes immediate pact violation. When a violation is detected during the Conflict Phase, both houses have the opportunity to negotiate resolution during the Command Phase per [Section 1.3.3](gameplay.md#133-command-phase). If not resolved through diplomacy, the diplomatic status converts to Enemy and takes effect in the subsequent turn's Conflict Phase. This grace period allows houses to distinguish between genuine accidents and intentional aggression before committing to full warfare.
 
 ### 8.1.3 Enemy
 
@@ -29,6 +32,20 @@ This state leads to full-scale warfare where all encounters are treated as hosti
 Regardless of diplomatic status, all units will defend home planets against any foreign incursions with maximum aggression.
 
 Fleets will retaliate against direct attacks regardless of diplomatic state, in accordance with ROE.
+
+### 8.1.5 Territorial Control
+
+A house controls territory in systems containing its colony. Each system can contain only one colony per the colonization rules in [Section 6.2.13](operations.md#6213-colonize-a-planet-12).
+
+**Territory Classifications:**
+
+- **Controlled Territory**: Systems containing the house's colony
+- **Foreign Territory**: Systems containing another house's colony
+- **Neutral Space**: Systems without any colonies
+
+**Diplomatic Application:**
+
+Neutral diplomatic status (Section 8.1.1) governs behavior outside controlled territory. Within controlled territory, houses may engage neutral forces per Defense Protocol (Section 8.1.4). Enemy status (Section 8.1.3) applies in all territories regardless of location.
 
 ## 8.2 Subversion & Subterfuge
 
