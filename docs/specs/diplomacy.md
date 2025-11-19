@@ -19,7 +19,7 @@ This can include:
 
 **Violation Consequences:**
 
-Attacking a Non-Aggression partner constitutes immediate pact violation. When a violation is detected during the Conflict Phase, both houses have the opportunity to negotiate resolution during the Command Phase per [Section 1.3.3](gameplay.md#133-command-phase). If not resolved through diplomacy, the diplomatic status converts to Enemy and takes effect in the subsequent turn's Conflict Phase. This grace period allows houses to distinguish between genuine accidents and intentional aggression before committing to full warfare.
+Attacking a Non-Aggression partner constitutes immediate pact violation. When a violation is detected during the Conflict Phase per [Section 1.3.1](gameplay.md#131-conflict-phase), the diplomatic status automatically converts to Enemy and takes effect at the start of the next turn's Conflict Phase. The violating house loses 2 prestige points. Non-Aggression Pacts cannot be reinstated between the same houses for 5 turns after violation.
 
 ### 8.1.3 Enemy
 
