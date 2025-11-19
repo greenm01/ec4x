@@ -268,8 +268,6 @@ Space combat resolves in initiative phases based on unit tactical characteristic
 2. **Fighter Squadrons** (Intercept Phase)
 3. **Capital Ships** (Main Engagement Phase)
 
-Detected Raiders attack in Phase 3 with other capital ships based on their Command Rating.
-
 Units destroyed in an earlier phase do not participate in later phases.
 
 **Simultaneous Attack Resolution:**
@@ -365,7 +363,7 @@ Capacity violations resulting from combat damage are evaluated at the end of com
 
 #### 7.3.1.3 Phase 3: Capital Ships (Main Engagement Phase)
 
-All capital ships attack by squadron in this phase, including detected Raiders. Squadron attack order is determined by flagship Command Rating (CR).
+All capital ships attack by squadron in this phase. Squadron attack order is determined by flagship Command Rating (CR).
 
 **Attack Order Resolution:**
 
