@@ -554,9 +554,39 @@ Ground Batteries are the only units that are constructed in the span of a single
 
 ### 2.4.8 Planet-Breaker
 
-Planet-Breakers (PB) are high technology, late-game ships that penetrate planetary shields.
+Planet-Breakers (PB) are high technology, late-game siege weapons designed to break defensive stalemates against heavily fortified colonies. These massive warships employ advanced weapons systems that bypass conventional planetary shield technology, making them the ultimate tool for cracking heavily defended worlds.
 
-TODO: Develop this further. Do we need a specific tech or just a ship, or both?
+**Technology Requirement:**
+
+Planet-Breakers require CST 10 shipyards to construct. No additional research technology is required - the ship itself represents a breakthrough in siege warfare capabilities. The extremely high construction cost (400 PP) and CST requirement naturally gate Planet-Breakers to the late-game phase when stalemates are most likely to occur.
+
+**Shield Penetration Mechanics:**
+
+Planet-Breakers completely ignore planetary shields during bombardment operations. Their advanced weapons systems phase through shield matrices, applying damage directly to ground-based defensive installations. This makes them uniquely effective against shield-dependent defensive strategies.
+
+**Bombardment Operations:**
+
+During planetary bombardment per [Section 7.5](operations.md#75-planetary-bombardment):
+- Planet-Breaker attacks bypass planetary shield protection entirely
+- Planet-Breaker AS (50) applies directly to ground batteries without shield reduction
+- Other ships in the Task Force still face normal shield mechanics
+- Planet-Breakers roll on the standard Bombardment CER table per [Section 7.5.1](operations.md#751-determine-hits)
+- Ground batteries defend normally against Planet-Breaker attacks
+
+**Space Combat:**
+
+Planet-Breakers participate in normal fleet combat with their listed combat statistics (AS: 50, DS: 20). However, their design prioritizes bombardment capability over fleet engagement efficiency. With DS: 20, Planet-Breakers are vulnerable to concentrated enemy fire and require escort fleets to survive transit to target systems and protect them during bombardment operations.
+
+**Strategic Considerations:**
+
+Planet-Breakers are force multipliers that shift the economics of planetary assault. Defenders must choose between investing in shields (effective against conventional bombardment) or additional ground batteries (effective against Planet-Breakers). Breaking a defensive stalemate requires combined arms doctrine: fleet superiority to protect the Planet-Breaker, the Planet-Breaker itself to neutralize shields, and invasion forces to capture the colony.
+
+**Defensive Counters:**
+
+- Destroy Planet-Breakers in space combat before bombardment begins
+- Mass-produce ground batteries to absorb unshielded bombardment
+- Blockade enemy shipyards to prevent CST 10 construction
+- Target Planet-Breakers with focused fire (crippled weight modifier makes them priority targets)
 
 ### 2.4.9 Space Marines & Armies
 
