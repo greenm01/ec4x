@@ -401,6 +401,10 @@ When a squadron takes damage:
 - Ships are removed from the squadron in order of lowest DS first (smallest ships destroyed first)
 - The flagship is always the last ship destroyed in a squadron
 
+**Squadron Composition During Combat:**
+
+Command Capacity (CC) is a fleet formation constraint validated during fleet commissioning and reorganization in the Command Phase per [Section 1.3.3](gameplay.md#133-command-phase). Once combat begins, squadrons fight as integrated tactical units regardless of CC/CR ratios. As ships are destroyed, the squadron's CC may fall below the flagship's CR, but this does not affect combat operations. Players can reorganize squadrons to restore CC/CR compliance during the Command Phase after combat concludes.
+
 ### 7.3.2 Target Priority Rules
 
 All attacking units (squadrons, fighters, and Starbases) select targets using the following priority system.
