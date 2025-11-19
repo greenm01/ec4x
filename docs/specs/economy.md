@@ -275,21 +275,23 @@ The counter resets only after a turn of **full upkeep payment with no forced dis
 
 This ensures that running sustained deficits is catastrophic (as intended), while giving benevolent low-tax empires a natural safety cushion through larger cash reserves and faster recovery.
 
-## 3.14 Population Support Limit for Ships
+## 3.12 House Population Support Limit
 
-A House’s total population determines the maximum number of capital ships and fighter squadrons it can crew and sustain.
+The total population of the House sets the maximum number of **combat squadrons** it may have in active service at any one time, regardless of where the ships were built or are currently stationed.
 
-**Maximum Supported Units = Total House Population Units (PU) ÷ 100** (round down, minimum 5)
+**Maximum Active Combat Squadrons = Total House Population Units ÷ 120** (round down, minimum 6)
 
-- 1 capital ship (CT → PB, CV/CX, SC, RR, SB, etc.) = 1 unit  
+This single House-wide limit applies to:
+- Every capital-ship squadron (one flagship + escorts = 1 squadron)
+- Every fighter squadron (colony-owned or carrier-embarked)
+- Every solo combat ship formed as a single-ship squadron
 
-- 1 fighter squadron (FS) = 1 unit  
+Exempt (do not count):
+- All Spacelift Command vessels (ETAC, Troop Transports)
+- Starbases
+- Scouts on pure espionage missions this turn (orders 09–12)
 
-(Starbases optionally count as 2 units each if you want them rarer in late game)
-
-Fighter squadrons count toward this limit **whether colony-owned or carrier-embarked**.
-
-Construction may not be queued that would exceed the limit on completion. If the limit is exceeded (combat losses reducing PU, conquest, etc.), the House has 2 turns to return to compliance or excess units are automatically disbanded (oldest first, no salvage).
+No tracking of “birth colony” is required. Once a ship or fighter squadron exists, it simply consumes one global squadron slot until destroyed or salvaged.
 
 # 4.0 Research & Development
 
@@ -699,6 +701,7 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
+
 
 
 
