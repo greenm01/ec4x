@@ -252,10 +252,7 @@ Bi-Annual Roll (Turn 1 and Turn 7):
 - During the Income Phase of Turn 1 and Turn 7, the game system makes a 1d10 roll for each player per [Section 1.3.2](gameplay.md#132-income-phase).
 - The base chance for a breakthrough is 10%.
 - Players receive a +1% bonus for every 50 RP invested during the previous six turns (including ERP, SRP, and TRP combined).
-
-**Breakthrough Timing:**
-
-Breakthroughs are resolved during the Income Phase and are immediately available for use in the Command Phase of the same turn. This allows players to spend breakthrough RP bonuses or apply breakthrough effects during R&D purchases in the Command Phase per [Section 1.3.3](gameplay.md#133-command-phase).
+- Breakthrough RP bonuses are immediately available for R&D purchases during the Command Phase of the same turn per [Section 1.3.3](gameplay.md#133-command-phase).
 
 **Breakthrough Types and Dice Roll**:
 
