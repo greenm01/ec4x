@@ -560,9 +560,9 @@ Planet-Breakers (PB) are high technology, late-game siege weapons designed to br
 
 **Technology Requirement:**
 
-Planet-Breakers require CST 10 shipyards to construct. No additional research technology is required - the ship itself represents a breakthrough in siege warfare capabilities. The extremely high construction cost (400 PP) and CST requirement naturally gate Planet-Breakers to the late-game phase when stalemates are most likely to occur.
+Planet-Breakers require a CST 10 shipyard and 400 PP to construct. No additional research technology is required - the ship itself represents a breakthrough in siege warfare capabilities. The extremely high construction cost (400 PP) and CST requirement naturally gate Planet-Breakers to the late-game phase when stalemates are most likely to occur.
 
-A house may never possess more than five (5) actively comissioned Planet-Breakers at one time.
+A House may never operate more than one Planet-Breaker per currently owned colony (homeworld counts as one colony). If a colony is lost, any Planet-Breaker assigned to it is immediately and permanently scrapped (no salvage).
 
 **Shield Penetration Mechanics:**
 
@@ -609,3 +609,4 @@ A vast decentralized network of trade, commerce, transport, industry, tech, and 
 Numerous Space Guilds compete for business in unregulated, private capital markets.
 
 The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
+
