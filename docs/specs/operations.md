@@ -69,7 +69,7 @@ Order a fleet to block hostile forces from approaching a planet.
 
 Colonies under blockade reduce their GCO by 60%. Blockade effects apply immediately during the Income Phase per [Section 1.3.2](gameplay.md#132-income-phase). Blockades established during the Conflict Phase reduce GCO for that same turn's Income Phase calculation - there is no delay. Lifting a blockade immediately restores full GCO for the following turn's Income Phase.
 
-**Prestige Penalty:** House Prestige is reduced by 2 points for each turn a colony begins under blockade. The prestige penalty only applies if the colony begins the income phase still under blockade.
+**Prestige Penalty:** House Prestige is reduced by 2 points for each turn if the colony begins the income phase under blockade.
 
 ### 6.2.7 Bombard a Planet (06):
 
@@ -763,6 +763,7 @@ Fleets and Ground batteries conduct one round of combat in accordance with [Sect
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
 Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
+
 
 
 
