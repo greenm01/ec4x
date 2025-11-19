@@ -81,18 +81,18 @@ CL = Carry Limit
 |                   | Successful Hack of a Starbase                  | +2                  |
 |                   | Successful Spy on a System                     | +1                  |
 |                   | Scout detected and destroyed                   | -3                  |
-| **Setbacks**      | Excessive tax rate (> 65%) per turn            | -2 (cumulative)     |
+| **Setbacks**      | High tax rate (51-65%)                         | -1 every 3 turns    |
+|                   | Very high tax rate (> 65%)                     | -2 every 5 turns    |
 |                   | Failure to meet maintenance costs (per turn)   | -5 (cumulative)     |
 
-### Notes on Cumulative Penalties:
+### Notes on Penalties:
 
-1. **Excessive Tax Rate Penalty**:
-   
-   - Penalty escalates for consecutive turns above the 65% tax rate:
-     - Turn 1: -2 points
-     - Turn 2: -3 points (cumulative total: -5 points)
-     - Turn 3: -4 points (cumulative total: -9 points)
-     - Continues increasing by 1 additional point each turn.
+1. **Tax Rate Penalties**:
+
+   - High tax rate (51-65%): -1 prestige every 3 consecutive turns at this rate
+   - Very high tax rate (>65%): -2 prestige every 5 consecutive turns at this rate
+   - Penalties apply periodically, not cumulatively
+   - See [Section 3.1.3](economy.md#313-tax-rate) for full tax mechanics
 
 2. **Missed Maintenance Costs Penalty**:
    
