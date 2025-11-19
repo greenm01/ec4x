@@ -51,6 +51,18 @@ Order a fleet to seek the closest friendly solar system and hold position (00). 
 
 Actively patrol a solar system, engaging hostile forces that enter the space.
 
+**Engagement Rules:**
+
+Patrol orders trigger combat engagement when:
+- Entering systems controlled by houses with Enemy diplomatic status per [Section 8.1.3](diplomacy.md#813-enemy)
+- Encountering Enemy-status forces in any territory (controlled, neutral, or contested)
+
+Patrol does NOT trigger engagement with Neutral or Non-Aggression houses unless they execute threatening fleet orders (05-08, 12) in your controlled territory per [Section 7.3.2.1](operations.md#7321-diplomatic-filtering).
+
+**Intelligence Gathering:**
+
+Regardless of diplomatic status or combat engagement, fleets encountering each other during patrol operations report intelligence on observed forces. Players receive information about foreign fleet composition, size, and location when their patrol forces detect other houses' fleets in the system. This intelligence is provided even when diplomatic status prevents combat engagement.
+
 ### 6.2.5 Guard a Starbase (04):
 
 Order a fleet to protect a Starbase, and join in a combined Task Force, when confronting hostile ships with orders 05 to 08.
