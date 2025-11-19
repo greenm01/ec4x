@@ -721,18 +721,6 @@ Destroyed ships cannot be salvaged from battle wreckage. Salvage operations appl
 - No automatic ownership transfers occur as result of combat
 - Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
 
-**System Control:**
-
-System control after multi-faction combat is determined as follows:
-
-**Colony Control:** Houses retain control of their colonies regardless of foreign Task Force presence, unless the colony has been successfully invaded or captured through fleet orders 07 or 08.
-
-**Foreign Force Presence:** Task Forces from houses that are non-hostile to the controlling house may remain in the system and must have valid fleet orders for the subsequent turn. Their presence does not constitute system control transfer unless the controlling house's colony has been eliminated.
-
-**Contested Systems:** Systems without colonies remain contested regardless of Task Force presence. Control for movement purposes is determined by which houses have Task Forces present and their diplomatic relationships.
-
-**Multiple Surviving Houses:** If multiple non-hostile houses remain in the system after combat, system control belongs to the house with a colony present. Systems can contain only one colony per the colonization rules in [Section 6.2.13](operations.md#6213-colonize-a-planet-12).
-
 ## 7.4 Starbase Combat
 
 Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per [Section 7.2](#72-task-force-assignment).
