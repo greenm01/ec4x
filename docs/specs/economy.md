@@ -236,18 +236,50 @@ Resolution costs:
 - Disband excess fighters: 0 PP (no salvage, loses 20 PP asset value per squadron)
 - Carrier relocation: Carrier maintenance costs during transit
 
-## 3.11 Strategic Considerations
+## 3.11 Maintenance & Tax Shortfall Consequences
 
-- Balancing Tax Rate: The tiered system encourages players to weigh the benefits of increased revenue against potential losses in productivity growth and prestige. A high tax rate can provide immediate revenue but may harm long-term economic stability.
-- Investing in Infrastructure: Strategic investments in IU and R&D will enhance productivity growth, compensating for potential tax rate penalties.
-- Adaptation to Game Phases: In the early game, players may prefer lower tax rates to boost productivity growth and build a strong economic base. In the mid and late game, shifting to a higher tax rate may be necessary to fund large-scale military operations or R&D projects.
+Each Maintenance Phase the game first calculates total upkeep costs for all assets (fleet maintenance, Starbase upkeep, ground forces, planetary infrastructure, etc.) as defined in Sections 9.1–9.3.
+
+Upkeep is deducted automatically from the House treasury. If the treasury contains insufficient Production Points to pay full upkeep, the following resolution order is applied immediately (player has no choice in prioritisation):
+
+1. **Treasury is reduced to 0 PP.**
+2. **All current-turn construction and research projects are cancelled** (no partial progress is retained; PP spent this turn are lost).
+3. **Random fleet disbanding begins** until upkeep can be met:
+   - The game randomly selects fleets (lowest ID first in case of ties).
+   - Entire fleets are disbanded squadron-by-squadron.
+   - Ships are salvaged for **25 % of their original Production Cost** (instead of the normal 50 % from Order 15 Salvage). Credits are added to the treasury immediately.
+   - Disbanded fleets lose all orders and are removed from the map.
+4. If disbanding all fleets is still insufficient (extremely rare), planetary infrastructure is stripped in this order until upkeep is met:
+   - Industrial Units are removed (1 IU = 1 PP value)
+   - Spaceports / Shipyards (salvaged for 25 % PC)
+   - Starbases (salvaged for 25 % PC)
+   - Ground defences and shields last
+
+**Prestige Penalties for Missing Maintenance**  
+Missing full upkeep (i.e., any forced disbanding or asset stripping occurs) triggers escalating prestige losses applied at the end of the Maintenance Phase:
+
+| Consecutive Turns of Missed Full Upkeep | Prestige Loss This Turn | Cumulative Example |
+|-----------------------------------------|-------------------------|--------------------|
+| 1st turn                                | –5                      | –5                 |
+| 2nd consecutive turn                    | –7                      | –12                |
+| 3rd consecutive turn                    | –9                      | –21                |
+| 4th+ consecutive turn                   | –11 per turn            | –32, –43, etc.     |
+
+The counter resets only after a turn of **full upkeep payment with no forced disbanding**.
+
+**Strategic Notes**
+- A single turn of tax shortfall is survivable but painful.
+- Two or more consecutive turns of shortfall spirals quickly into prestige collapse and potential elimination (prestige ≤ 0 for three turns → Defensive Collapse).
+- Low-tax strategies (Section 3.2.2) that leave a large treasury buffer are the best defence against sudden blockade or bombardment income crashes.
+- Players are encouraged to maintain at least 1–2 turns of upkeep in reserve at all times, especially during wartime.
+
+This ensures that running sustained deficits is catastrophic (as intended), while giving benevolent low-tax empires a natural safety cushion through larger cash reserves and faster recovery.
 
 # 4.0 Research & Development
 
 ## 4.1 Research Points (RP)
 
 Each turn, players can invest production points in RP to further their R&D efforts.
-
 R&D upgrades will be purchased in the first and seventh months of the Terran calendar, i.e. the first and seventh turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
 
 There are three areas of investment:
@@ -651,6 +683,7 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 ```
 
 The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50% of the original PC back to the House treasury.
+
 
 
 
