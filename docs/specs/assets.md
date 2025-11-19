@@ -128,7 +128,7 @@ Where Fighter Doctrine (FD) Tech Level Multiplier is:
 
 **Infrastructure Requirement:**
 
-Colonies must have at least one operational Starbase per 5 fighter squadrons (round up) to commission and maintain fighter squadron capacity. Crippled Starbases do not count toward this requirement.
+Colonies must have at least one operational Starbase per 5 fighter squadrons: `ceil(FS / 5)` to commission and maintain fighter squadron capacity. Crippled Starbases do not count toward this requirement.
 
 Starbases provide the logistical coordination, advanced maintenance facilities, and strategic communications necessary to field large fighter wings. However, once commissioned, fighter squadrons operate independently from distributed planetary bases and remain combat-effective even if Starbases are crippled or destroyed.
 
