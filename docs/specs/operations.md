@@ -357,13 +357,13 @@ Capacity violations resulting from combat damage are evaluated at the end of com
 
 **In Hostile/Neutral Systems:**
 - After combat ends:
-  - If carrier survives: fighters must re-embark (1 turn) or be destroyed
+  - If carrier survives: fighters re-embark immediately or be destroyed
   - If carrier destroyed: all carrier-owned fighters destroyed
   - If carrier withdraws: carrier-owned fighters must withdraw with carrier or be destroyed
 - No ownership transfer occurs
 
 **In Friendly/Controlled Systems:**
-- After combat: carrier-owned fighters re-embark (1 turn), remain carrier-owned
+- After combat: carrier-owned fighters re-embark immediately, remain carrier-owned
 - No ownership transfer unless permanent deployment executed outside combat (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
 
 #### 7.3.1.3 Phase 3: Detected Raiders (Stealth Phase)
@@ -700,7 +700,7 @@ After the last round of combat, surviving Task Forces disband and squadrons rejo
 1. **Salvage Operations:** Destroyed ships can be salvaged for 50% of original PC (requires system control and 1 turn per ship). Multiple ships can be salvaged simultaneously if sufficient facilities are available
 2. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
 3. **Capacity Violations:** Evaluate all colonies for fighter squadron capacity violations (only colony-owned fighters count)
-4. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed must re-embark (1 turn)
+4. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed re-embark immediately after combat
 5. **Strategic Position:** Determine system control and potential for bombardment/invasion operations
 
 **Capacity Violation Assessment:**
@@ -714,7 +714,7 @@ Violations trigger a 2-turn grace period beginning on the following turn. All fi
 **Fighter Ownership After Combat:**
 
 - Colony-owned fighters remain colony-owned
-- Carrier-owned fighters re-embark and remain carrier-owned (1 turn)
+- Carrier-owned fighters re-embark immediately and remain carrier-owned
 - No automatic ownership transfers occur as result of combat
 - Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
 

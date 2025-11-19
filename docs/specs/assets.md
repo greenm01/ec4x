@@ -190,12 +190,12 @@ Fighter squadrons are owned by either colonies or carriers.
 **Ownership Transfer:**
 
 Colony → Carrier (Loading):
-- Carrier loads fighters from colony (1 turn, non-hostile system)
+- Carrier loads fighters from colony (same turn, non-hostile system)
 - Fighters transfer from colony asset pool to carrier asset pool
 - Colony capacity usage decreases
 
 Carrier → Colony (Permanent Deployment):
-- Carrier permanently deploys fighters to colony (1 turn, non-hostile system)
+- Carrier permanently deploys fighters to colony (same turn, non-hostile system)
 - Colony must have available capacity
 - Fighters transfer from carrier asset pool to colony asset pool
 - Colony capacity usage increases
@@ -251,12 +251,12 @@ Fighters aboard carriers exist in three operational states:
 - Fighters launch for combat but remain carrier-owned
 - Available in both hostile and friendly systems
 - Fighters fight alongside colony-owned fighters if in friendly system
-- After combat, fighters re-embark (1 turn) and remain carrier-owned
+- After combat, fighters re-embark immediately and remain carrier-owned
 - No ownership transfer occurs
 
 **Permanent Transfer to Colony:**
 - Fighters disembark and transfer ownership to colony
-- Requires 1 turn deployment time in non-hostile system (outside combat)
+- Completed in same turn in non-hostile system (outside combat)
 - Colony must have available capacity:
   - `Population capacity: floor(Colony_PU / 100) × FD ≥ (Current_FS + Transferred_FS)`
   - `Infrastructure: Operational_Starbases ≥ ceil((Current_FS + Transferred_FS) / 5)`
@@ -267,15 +267,15 @@ Fighters aboard carriers exist in three operational states:
 
 **Loading from Colony (Colony → Carrier Ownership Transfer):**
 - Carrier must be at colony (non-hostile system)
-- Spend 1 full turn loading fighters
+- Loading completes same turn
 - Fighters transfer from colony asset pool to carrier asset pool
 - Colony capacity usage decreases
-- System must remain non-hostile during loading
-- Crippled carriers can load fighters at normal rate (1 turn)
+- System must be non-hostile when loading
+- Crippled carriers can load fighters normally
 
 **Retrieval After Temporary Combat Deployment:**
 - Applies only to carrier-owned fighters temporarily deployed for combat
-- After combat in friendly system, carrier-owned fighters re-embark (1 turn)
+- After combat in friendly system, carrier-owned fighters re-embark immediately
 - No ownership transfer, fighters return to carrier asset pool
 - After combat in hostile system, carrier-owned fighters must re-embark or be destroyed
 
