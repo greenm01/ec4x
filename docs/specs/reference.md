@@ -101,3 +101,16 @@ CL = Carry Limit
      - Turn 2: -7 points (cumulative total: -12 points)
      - Turn 3: -9 points (cumulative total: -21 points)
      - Continues increasing by 2 additional points each turn.
+
+## 9.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
+
+| Limit Description                              | Rule Details                                                                                 | Source Section |
+|------------------------------------------------|----------------------------------------------------------------------------------------------|----------------|
+| Capital-Ship Squadrons + Carriers              | Maximum = Total House PU ÷ 100 (round down, minimum 8). Every capital-ship squadron (including Raiders as flagships) and every carrier (solo or flagship) costs 1 slot. Scouts, fighters, starbases, Spacelift exempt. | 3.14           |
+| Planet-Breakers                                | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage). | 2.4.8          |
+| Fighter Squadrons (per colony)                 | Max FS = floor(Colony PU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Also requires 1 operational Starbase per 5 FS (ceil). 2-turn grace on violation → auto-disband excess. | 2.4.1          |
+| Carrier Hangar Capacity                        | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit. | 2.4.1          |
+| Scout CER Bonus                                | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.   | 7.3.3          |
+| Squadron Destruction Protection (anti-fodder)  | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass). | 7.3.3          |
+| Blockade Prestige Penalty                     | –2 prestige only if colony begins the Income Phase still under blockade (drive-by blockades not effective). | 6.2.6          |
+| Tax Rate Prestige Penalty                     | Rolling 6-turn average tax rate >50 % triggers escalating prestige bleed (51–60 % = –1, up to 91–100 % = –11 per turn). Low-tax incentives also apply. | 3.2            |
