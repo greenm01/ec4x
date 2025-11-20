@@ -263,7 +263,8 @@ Within each phase, when multiple units attack simultaneously (same initiative ti
 
 1. **Target Selection**: All attacking units select their targets using [Section 7.3.2](#732-target-priority-rules)
 2. **Damage Application**: All damage is applied simultaneously after all selections are made
-3. **Overkill Handling**: If multiple attackers independently selected the same target and combined damage exceeds destruction threshold, excess damage is lost
+3. **State Transitions**: All squadron state transitions are evaluated after all damage is applied
+4. **Overkill Handling**: If multiple attackers independently selected the same target and combined damage exceeds destruction threshold, excess damage is lost
 
 #### 7.3.1.1 Phase 1: Undetected Raiders (Ambush Phase)
 
@@ -285,6 +286,7 @@ Undetected Raiders attack before any defending units can respond:
 - Raiders receive +4 die roll modifier on CER roll (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
 - Each Raider squadron independently selects targets using [Section 7.3.2](#732-target-priority-rules)
 - All Raider squadrons select targets, then all damage is applied simultaneously
+- All state transitions are evaluated after all damage is applied
 - Destroyed targets do not return fire
 - Multiple undetected Raider squadrons attack simultaneously in this phase
 
@@ -304,6 +306,10 @@ All fighter squadrons in the system attack simultaneously, regardless of ownersh
 - Retreat only when carrier retreats
 
 All fighters attack using target priority rules defined in [Section 7.3.2](#732-target-priority-rules). Each fighter squadron applies its full AS as damage to its selected target.
+
+**Fighter State Transitions:**
+
+Fighter squadrons skip the crippled state due to their lightweight construction. Fighters transition directly from undamaged to destroyed when they take damage equal to or exceeding their DS.
 
 **Fighter Independence During Combat:**
 
@@ -340,21 +346,28 @@ All capital ships attack by squadron in this phase. Squadron attack order is det
    - Each squadron selects target using [Section 7.3.2](#732-target-priority-rules)
    - All squadrons in this CR tier complete selections
    - All damage is applied simultaneously
+   - All state transitions are evaluated after all damage is applied
 4. Destroyed squadrons do not return fire in subsequent CR tiers
 
-**Squadron Damage Application:**
+**Squadron Combat Mechanics:**
 
-A squadron fights as a single unit. The squadron's total AS and DS values are the sum of all ships under the flagship's command.
+A squadron fights as a unified tactical unit with pooled combat values:
 
-When a squadron takes damage:
-- Damage is applied to the squadron's total DS pool
-- Individual ships within the squadron are destroyed when cumulative damage exceeds their individual DS
-- Ships are removed from the squadron in order of lowest DS first (smallest ships destroyed first)
-- The flagship is always the last ship destroyed in a squadron
+- **Squadron AS**: Sum of all ships' AS values under flagship command
+- **Squadron DS**: Sum of all ships' DS values under flagship command
+- **Damage Application**: All damage is applied to the squadron as a single entity
+- **State Transitions**: Squadron state (undamaged/crippled/destroyed) applies uniformly to all ships in the squadron
+
+**Squadron State Propagation:**
+
+When a squadron transitions state, all ships under its command transition simultaneously:
+- **Undamaged → Crippled**: All ships in the squadron become crippled
+- **Crippled → Destroyed**: All ships in the squadron are destroyed
+- Individual ships within a squadron cannot have different states during combat
 
 **Squadron Composition During Combat:**
 
-Command Capacity (CC) is a fleet formation constraint validated during fleet commissioning and reorganization in the Command Phase per [Section 1.3.3](gameplay.md#133-command-phase). Once combat begins, squadrons fight as integrated tactical units regardless of CC/CR ratios. As ships are destroyed, the squadron's CC may fall below the flagship's CR, but this does not affect combat operations. Players can reorganize squadrons to restore CC/CR compliance during the Command Phase after combat concludes.
+Command Capacity (CC) is a fleet formation constraint validated during fleet commissioning and reorganization in the Command Phase per [Section 1.3.3](gameplay.md#133-command-phase). Once combat begins, squadrons fight as integrated tactical units regardless of CC/CR ratios. Players can reorganize squadrons to restore CC/CR compliance during the Command Phase after combat concludes.
 
 ### 7.3.2 Target Priority Rules
 
@@ -429,15 +442,14 @@ Once a candidate pool is determined from hostile Task Forces:
 
 1. **Calculate weight for each candidate:**
    ```
-   Weight = Base_Weight(bucket) × Unit_Size × Crippled_Modifier
+   Weight = Base_Weight(bucket) × Crippled_Modifier
    ```
    Where:
    - `Base_Weight(bucket)` is from the bucket classification table (7.3.2.2)
-   - `Unit_Size` is the number of ships in the squadron (or 1 for Starbases)
    - `Crippled_Modifier` = 2.0 if unit is crippled, 1.0 if undamaged
 
 2. **Perform weighted random draw:**
-   - Use PRNG seeded with SHA-256 hash of string `"{gameId}-{turnNumber}"` modulo 2^32
+   - Use PRNG seeded with SHA-256 hash of string `"{gameId}-{turnNumber}-{combatId}-{phaseNumber}-{roundNumber}"` modulo 2^32
    - Alternatively, custom seed can be specified for testing or alternate outcomes
    - Select target based on weighted probability distribution
    - Standard weighted random selection algorithm (available in most programming language standard libraries)
@@ -450,7 +462,7 @@ Once a candidate pool is determined from hostile Task Forces:
 
 After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), each attacking unit rolls independently for Combat Effectiveness Rating.
 
-Each squadron rolls once for CER and applies CER × (sum of all ships' AS in squadron).
+Each squadron rolls once for CER and applies CER × (squadron total AS).
 
 **CER Table:**
 
@@ -481,6 +493,7 @@ Each squadron rolls once for CER and applies CER × (sum of all ships' AS in squ
 - Each fighter squadron independently selects a target using [Section 7.3.2](#732-target-priority-rules)
 - Each fighter squadron applies its full AS as damage to its selected target
 - All selections are made, then all damage is applied simultaneously
+- Fighter squadrons transition from undamaged to destroyed when damage ≥ DS (no crippled state)
 
 **Phases 1 and 3 (Raiders and Capital Ships):**
 - Each attacking squadron rolls independently for CER
@@ -488,34 +501,51 @@ Each squadron rolls once for CER and applies CER × (sum of all ships' AS in squ
 - Squadron selects target using [Section 7.3.2](#732-target-priority-rules)
 - All squadrons in the same initiative tier complete target selection
 - All damage is applied simultaneously
+- All state transitions are evaluated after all damage is applied
 
-**Damage Application Restrictions:**
+**Squadron State Transitions:**
 
-After target selection and CER calculation, apply hits to selected target with the following restrictions:
+After all damage is applied in a phase:
 
-1. **Reduction Threshold:** If hits equal or exceed the target's DS, the target is reduced (undamaged → crippled, or crippled → destroyed)
-2. **Destruction Protection:** A squadron may not be destroyed in the same combat round it's crippled. (Excess damage that would destroy a freshly crippled squadron is still lost, and critical hits still bypass this protection.)
-3. **Excess Hit Loss:** Excess hits beyond destruction threshold are lost if restrictions apply
+1. **Undamaged → Crippled**: If total damage to an undamaged squadron ≥ squadron DS, the squadron becomes crippled
+2. **Crippled → Destroyed**: If total damage to a crippled squadron ≥ squadron DS, the squadron is destroyed
+3. **Destruction Protection**: A squadron may not transition from undamaged → crippled → destroyed within the same combat round, even if damage accumulates across multiple attack phases (Phase 2 then Phase 3). The squadron must survive until the next round begins before it can be destroyed.
+4. **State Propagation**: All ships in the squadron transition to the squadron's new state simultaneously
 
-**Crippled Unit Effects:**
+**Crippled Squadron Effects:**
 
-Crippled squadrons and Starbases multiply their AS by 0.5, rounded up to the nearest whole number.
+When a squadron becomes crippled:
+- All ships in the squadron are crippled
+- Squadron AS is multiplied by 0.5, rounded up to the nearest whole number
+- Squadron DS remains unchanged (used for calculating destruction threshold)
+- Crippled squadrons receive 2× targeting weight modifier per [Section 7.3.2.5](#7325-weighted-random-target-selection)
 
-Destroyed squadrons are no longer a factor and the Task Force loses their associated die roll modifiers (e.g. Scouts).
+Destroyed squadrons are eliminated from combat and the Task Force loses their associated die roll modifiers (e.g. Scouts).
 
 **Critical Hits:**
 
 Critical hits (natural 9 on die roll before modifiers) have special effects:
 
-1. **Nullify Destruction Protection:** Restriction #2 above is nullified - the squadron can be destroyed even if other squadrons in the Task Force remain undamaged
-2. **Force Reduction:** If the critical hit cannot reduce the selected target according to restriction #1 (insufficient damage), then the squadron with the lowest DS in the target Task Force is reduced instead
+1. **Bypass Destruction Protection**: The squadron can be destroyed in the same round it is crippled, even across multiple phases
+2. **Force Reduction**: If the critical hit deals insufficient damage to reduce the selected target (hits < target DS), then the squadron with the lowest current DS in the target Task Force is reduced instead (undamaged → crippled, or crippled → destroyed)
+3. **Prestige Award**: The house that achieves a critical hit causing squadron destruction is awarded prestige for the kill, even in multi-house combat scenarios
 
 **Overkill Damage:**
 
 When multiple attackers independently select the same target during simultaneous attack resolution:
 - Combined damage from all attackers is applied to the target
-- If combined damage exceeds destruction threshold and restriction #2 applies, the target is crippled but not destroyed
-- Excess damage beyond crippling threshold is lost
+- If combined damage would destroy a squadron in the same round it is crippled, and no critical hit was rolled, destruction protection applies
+- The squadron becomes crippled, and excess damage beyond the crippling threshold is lost
+- If any attacking squadron rolled a critical hit against this target, destruction protection is bypassed and the squadron is destroyed
+
+**Multi-House Combat Prestige Attribution:**
+
+When three or more houses participate in combat:
+- Prestige for "Destroy an enemy Task Force" (+3) is awarded to the house that dealt the crippling blow to the final squadron in that Task Force
+- If a squadron is destroyed in the same round it is crippled (via critical hit or overkill with critical), prestige goes to the house that dealt the crippling blow
+- If multiple houses attack simultaneously and a squadron is destroyed (already crippled from previous round), all attacking houses share prestige equally (rounded down, minimum 1 per house)
+- Prestige for "Force an enemy Task Force to retreat" (+2) is awarded to all houses engaged with the retreating Task Force, divided evenly (rounded down, minimum 1 per house)
+- Track damage sources to determine which house dealt the crippling blow for prestige awards
 
 ### 7.3.4 Rounds
 
@@ -525,10 +555,10 @@ All units attack in their designated phase regardless of damage sustained during
 
 After all phases complete and hits are applied:
 
-1. **Casualty Assessment:** Mark all crippled and destroyed units (colony-owned and carrier-owned fighters tracked separately)
-2. **Capacity Violation Checks:** Evaluate colonies for fighter capacity violations (only colony-owned fighters count toward capacity)
-3. **Recalculate AS:** Determine total AS of all surviving Task Forces
-4. **ROE Check:** Each Task Force evaluates retreat conditions independently according to [Section 7.1.1](#711-rules-of-engagement-roe)
+1. **Casualty Assessment**: Mark all crippled and destroyed units (colony-owned and carrier-owned fighters tracked separately)
+2. **Capacity Violation Checks**: Evaluate colonies for fighter capacity violations (only colony-owned fighters count toward capacity)
+3. **Recalculate AS**: Determine total AS of all surviving Task Forces
+4. **ROE Check**: Each Task Force evaluates retreat conditions independently according to [Section 7.1.1](#711-rules-of-engagement-roe)
 
 **Multi-Faction Retreat Evaluation:**
 
@@ -537,9 +567,69 @@ When multiple houses are present in combat, each Task Force independently evalua
 To evaluate retreat:
 1. Sum the total AS of all Task Forces identified as hostile per [Section 7.3.2.1](#7321-diplomatic-filtering)
 2. Compare this combined hostile strength against the evaluating house's own Task Force strength
-3. Apply the ROE threshold from [Section 7.1.1](#711-rules-of-engagement-roe) to determine if retreat is warranted
+3. Apply morale modifier to effective ROE (see below)
+4. Apply the modified ROE threshold from [Section 7.1.1](#711-rules-of-engagement-roe) to determine if retreat is warranted
+5. Apply homeworld defense exception (see below)
+
+**Homeworld Defense Exception:**
+
+Houses never voluntarily retreat from their homeworld system regardless of ROE evaluation:
+- If a house is defending their homeworld system (original starting colony per [Section 8.1.5](diplomacy.md#815-territorial-control)), that house's forces always remain and fight to the death
+- Homeworld defense overrides all ROE thresholds and morale modifiers
+- Forces are not destroyed by the exception; they fight normally but cannot choose to retreat
+- Exception only prevents voluntary retreat; forces can still be destroyed in combat
+- Rationale: Abandoning your capital is political suicide; admirals fight to the death defending the homeworld
+
+Non-homeworld colonies follow standard ROE evaluation and may be tactically abandoned if ROE indicates retreat.
+
+**Morale ROE Modifier:**
+
+House morale affects combat behavior by modifying effective ROE for retreat evaluation:
+
+| Prestige Level    | Morale ROE Modifier | Effect                                      |
+|:------------------|:-------------------:|:--------------------------------------------|
+| ≤ 0 (Crisis)      | -2                  | Retreat much more readily                   |
+| 1-20 (Low)        | -1                  | Retreat more readily                        |
+| 21-40 (Average)   | 0                   | No modification                             |
+| 41-60 (Good)      | 0                   | No modification                             |
+| 61-80 (High)      | +1                  | Fight more aggressively, retreat less often |
+| 81+ (Elite)       | +2                  | Fight much more aggressively                |
+
+**Application:**
+- Effective ROE = Base ROE + Morale ROE Modifier
+- Example: A fleet with ROE 6 (engage equal or inferior) and Elite morale (81+ prestige) has effective ROE 8 (engage even if outgunned 2:1)
+- Example: A fleet with ROE 6 and Crisis morale (≤0 prestige) has effective ROE 4 (engage only if 2:1 advantage)
+- Morale modifier applies only to retreat evaluation, not to fleet orders or diplomatic status
+- Minimum effective ROE is 0 (flee from all combat), maximum is 10 (fight to the death)
+- Homeworld defense exception overrides morale-modified ROE
 
 One house retreating does not force other houses to retreat. Combat continues between remaining Task Forces.
+
+**Multi-House Retreat Priority:**
+
+When multiple houses attempt to retreat simultaneously:
+1. Houses retreat in ascending order of total Task Force AS (weakest first)
+2. When multiple houses have equal AS, retreat priority is determined by house ID (ascending alphanumeric order)
+3. After each house retreats, remaining houses re-evaluate ROE against remaining hostile forces
+4. Re-evaluation may cause a house to cancel its retreat and continue fighting
+5. Process continues until all retreat decisions are finalized
+
+**Simultaneous Retreat Resolution:**
+
+If multiple Task Forces simultaneously attempt to retreat after Round 1, and re-evaluation confirms all still wish to retreat:
+1. All houses evaluate retreat intentions simultaneously
+2. If all hostile Task Forces attempt to retreat after re-evaluation, all successfully disengage
+3. All retreating forces withdraw to their designated fallback systems
+4. No combat occurs - treat as mutual withdrawal
+5. No prestige is awarded or lost for mutual withdrawal
+
+**Combat Duration Limit:**
+
+If combat continues for 20 consecutive rounds without any squadron being destroyed, retreating, or state transition occurring:
+1. All Task Forces are forced to disengage due to ammunition and fuel depletion
+2. All forces withdraw per post-combat positioning rules below
+3. No prestige is awarded for this engagement
+4. This represents a tactical stalemate
 
 **Combat Termination Conditions:**
 
@@ -548,10 +638,84 @@ Combat ends when any of the following conditions are met:
 - Only one Task Force remains in the system
 - All remaining Task Forces are non-hostile to each other per [Section 7.3.2.1](#7321-diplomatic-filtering)
 - All Task Forces have retreated from the engagement
+- 20 consecutive rounds have elapsed without resolution (forced stalemate)
 
 If combat reduces the engagement such that all remaining Task Forces are non-hostile to each other, combat immediately ceases even if multiple houses remain in the system. This occurs when all Enemy relationships have been eliminated through retreat or destruction, leaving only Neutral or Non-Aggression relationships.
 
 If more than one hostile Task Force remains and no retreat occurs, proceed to the next combat round.
+
+**Post-Combat Positioning:**
+
+After combat terminates but before Task Forces disband, determine final fleet positioning based on retreat evaluation and system ownership:
+
+**If combat ended via retreat orders:**
+- Forces that executed retreat orders arrive at their designated fallback systems per [Section 7.3.5](#735-retreat)
+- Forces that remained in combat stay in the current system
+
+**If combat ended without retreat execution (mutual withdrawal, stalemate, or total destruction of one side):**
+
+Apply positioning rules based on system ownership status:
+
+**1. Systems with Colony Present (Owned Systems):**
+
+**System Owner Forces:**
+
+**If Homeworld System:**
+- Forces always remain in system (hold position 00)
+- Cannot choose to retreat even if modified ROE indicates retreat
+- Homeworld defense is absolute; admirals fight to the death
+- Only exception: All forces destroyed in combat
+
+**If Non-Homeworld Colony:**
+- Remain in system and hold position (Fleet Order 00)
+- Exception: If owner's modified ROE (base ROE + morale modifier) indicated retreat was desired, owner may choose to retreat to fallback system
+- Owner forces never automatically abandon territory unless choosing to retreat
+
+**Non-Owner Forces:**
+
+Evaluate positioning based on whether owner forces remain present:
+
+**If Owner Forces Present (Active Defense):**
+- Non-owner forces cannot maintain presence while owner actively defends
+- All non-owner forces must withdraw to their closest friendly system per [Section 7.3.5](#735-retreat)
+- Rationale: Cannot occupy territory under active defense
+
+**If Owner Forces Absent (No Active Defense):**
+- If modified ROE indicated retreat: Execute retreat to fallback system per [Section 7.3.5](#735-retreat)
+- If modified ROE indicated stay: Remain in system and hold position (Fleet Order 00)
+- System state becomes "Under Siege" - non-owner forces may execute blockade (Fleet Order 05), bombardment (06), invasion (07), or blitz (08) orders
+- Multiple non-owner houses may remain if all indicated stay (multi-faction siege)
+- Rationale: Victorious forces can besiege undefended or abandoned colonies
+
+**2. Contested Systems (No Colony Present):**
+
+**All Forces:**
+- If modified ROE indicated retreat: Execute retreat to fallback system per [Section 7.3.5](#735-retreat)
+- If modified ROE indicated stay: Remain in system and hold position (Fleet Order 00)
+- Multiple houses may remain simultaneously
+- System remains contested until a house establishes colony via Fleet Order 12
+
+**Forced Withdrawal Mechanics:**
+
+When forces must withdraw (non-owner in owned system, or ROE-based retreat):
+- Use retreat destination priority from [Section 7.3.5](#735-retreat)
+- Crippled ships cannot use restricted lanes (must seek alternative routes)
+- Carriers execute emergency withdrawal with all embarked fighters
+- Crippled carriers can withdraw at full fighter capacity
+- Withdrawing fighters cannot attack or be targeted during withdrawal
+- Spacelift Command ships accompany their house's forces during withdrawal
+- Spacelift ships are not destroyed during forced post-combat withdrawal
+
+**System Control Status:**
+
+After post-combat positioning, update system status for game state tracking:
+
+- **Controlled**: Owner colony present, owner forces present
+- **Undefended**: Owner colony present, no owner forces, no hostile forces
+- **Under Siege**: Owner colony present, hostile forces present (may execute blockade/bombardment/invasion orders)
+- **Contested**: No colony present (regardless of forces present)
+
+System status changes do not transfer ownership. Ownership transfers only via successful planetary invasion per [Section 7.6](#76-planetary-invasion-blitz) or abandonment/destruction of colony.
 
 ### 7.3.5 Retreat
 
@@ -559,7 +723,14 @@ A Task Force may retreat from combat after the first round, in accordance with t
 
 **Retreat Mechanics:**
 
-Squadrons in a retreating Task Force fall back to their original fleet formations and flee to the closest friendly star system via available jump lanes. Friendly systems are those controlled by the retreating house.
+Squadrons in a retreating Task Force fall back to their original fleet formations and flee to a friendly star system via available jump lanes. Friendly systems are those controlled by the retreating house via colony presence per [Section 8.1.5](diplomacy.md#815-territorial-control).
+
+**Retreat Destination Priority:**
+
+1. **Player-Designated Fallback**: If the fleet was assigned a fallback system during the Command Phase, retreat to that system
+2. **Closest Friendly System**: If no designation exists, retreat to the closest friendly system without hostile forces present
+3. **Next Tier Systems**: If all adjacent friendly systems contain hostile forces, retreat to systems 2 jumps away
+4. **Fight to the Death**: If no valid retreat destination exists, the Task Force must continue fighting until destroyed
 
 **No Retreat Sanctuary:**
 
@@ -570,36 +741,44 @@ Retreating fleets arriving in a new system do not receive sanctuary protection. 
 - Colony-owned fighters never retreat from combat
 - If colony-owned fighters remain, they screen their retreating Task Force
 - Combat continues until all colony-owned fighters are destroyed
-- Spacelift Command ships are destroyed if their escort fleets are destroyed
-- Crippled ships cannot retreat through restricted lanes
+- Spacelift Command ships are destroyed if their escort fleets are destroyed or retreat while hostile forces remain in the system per [Section 7.2](#72-task-force-assignment)
+- Crippled ships can retreat normally through major and minor jump lanes
+- Crippled ships cannot retreat through restricted lanes and must seek alternative routes
 
 **Carrier-Owned Fighter Retreat:**
 
 Carrier-owned fighters do not retreat independently. They retreat only when their carrier retreats.
 
 **In Hostile/Neutral Systems:**
-- Carrier-owned fighters withdraw with retreating carrier (emergency withdrawal, no re-embark time)
-- Destroyed if carrier lost or left behind
-- Crippled carriers can perform emergency withdrawal with carrier-owned fighters
+- Carrier-owned fighters withdraw with retreating carrier (emergency withdrawal, no re-embark time required)
+- Crippled carriers can perform emergency withdrawal with carrier-owned fighters at full capacity
+- Destroyed carriers result in all their embarked fighters being destroyed
+- Fighters left behind (carrier destroyed during retreat) are destroyed
 
 **In Friendly Systems:**
 - Carrier-owned fighters withdraw with carrier (emergency withdrawal, no re-embark time)
 - Carrier-owned fighters remain carrier-owned, do not transfer to colony
-- Crippled carriers can perform emergency withdrawal with carrier-owned fighters
-
+- Crippled carriers can perform emergency withdrawal with carrier-owned fighters at full capacity
 **Colony-Owned Fighters:**
 - Never retreat independently from combat
 - Screen retreating friendly forces
 - Fight until destroyed
 
+**Withdrawing Fighter Combat Participation:**
+
+Fighters withdrawing with retreating carriers do not participate in rearguard combat during the retreat round. They are considered to be embarking on their carriers and cannot attack or be targeted during the withdrawal process.
+
 ### 7.3.6 End of Space Combat
 
-After the last round of combat, surviving Task Forces disband and squadrons rejoin their original fleets.
+After the last round of combat and post-combat positioning is resolved per [Section 7.3.4](#734-rounds), surviving Task Forces disband and squadrons rejoin their original fleets at their current locations.
 
 **Post-Combat Resolution:**
 
-1. **Repair Requirements:** Crippled ships require shipyard repairs (1 turn, 25% of PC)
-2. **Carrier Fighter Re-embark:** Carrier-owned fighters temporarily deployed re-embark immediately after combat
+1. **Squadron Reorganization**: All squadrons return to their original fleet assignments at their current system locations
+2. **Repair Requirements**: Crippled squadrons require shipyard repairs (1 turn, 25% of squadron PC)
+3. **Carrier Fighter Re-embark**: Carrier-owned fighters temporarily deployed re-embark immediately after combat
+4. **Fighter Capacity Violations**: Colonies exceeding fighter capacity limits begin the 2-turn grace period for resolving violations per [Section 2.4.1](assets.md#241-fighter-squadrons-carriers)
+5. **System Control Status Update**: Update system control status based on post-combat positioning results (controlled/occupied/contested)
 
 Destroyed ships cannot be salvaged from battle wreckage. Salvage operations apply only to active fleets intentionally decommissioned via Fleet Order 15 per [Section 6.2.16](#6216-salvage-15).
 
@@ -609,6 +788,16 @@ Destroyed ships cannot be salvaged from battle wreckage. Salvage operations appl
 - Carrier-owned fighters re-embark immediately and remain carrier-owned
 - No automatic ownership transfers occur as result of combat
 - Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
+
+**Prestige Awards:**
+
+Prestige is awarded after combat resolution:
+- +3 prestige for destroying an enemy Task Force (awarded to house that dealt crippling blow to final squadron)
+- +2 prestige for forcing an enemy Task Force to retreat (divided among all engaged houses)
+- +5 prestige for destroying an enemy Starbase
+- -5 prestige for losing a Starbase
+- -1 prestige for being ambushed by a cloaked fleet (if Raiders achieved surprise in Phase 1)
+- No prestige awarded or lost for mutual withdrawal, forced stalemate, or forced post-combat withdrawal
 
 ## 7.4 Starbase Combat
 
@@ -762,6 +951,7 @@ Fleets and Ground batteries conduct one round of combat in accordance with [Sect
 Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
 
 Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
+
 
 
 
