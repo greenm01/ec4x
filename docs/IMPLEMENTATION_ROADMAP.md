@@ -543,7 +543,7 @@ echo "keys/" >> .gitignore
 - ✅ **M1**: Starmap generation and pathfinding
 - ✅ **M2**: Game state types and turn framework
 - ✅ **M3**: Order system and validation
-- 🎯 **M4**: Combat system functional
+- ✅ **M4**: Combat system complete (space, ground, starbase)
 - 🎯 **M5**: Economy and production working
 - 🎯 **M6**: Complete offline game to victory (hotseat multiplayer)
 - 🎯 **M7**: Basic TUI for order entry
