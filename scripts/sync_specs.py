@@ -111,6 +111,46 @@ def generate_espionage_actions_table(config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def generate_espionage_prestige_table(prestige_config: Dict[str, Any], espionage_config: Dict[str, Any]) -> str:
+    """Generate espionage prestige rewards/penalties table from prestige.toml and espionage.toml."""
+    espionage_rewards = prestige_config.get('espionage', {})
+    espionage_victims = prestige_config.get('espionage_victim', {})
+    costs = espionage_config.get('costs', {})
+
+    lines = [
+        "| Espionage Action | Cost in EBPs | Description | Prestige Change for Player | Prestige Change for Target |",
+        "|------------------|:------------:|-------------|----------------------------|----------------------------|",
+    ]
+
+    # Mapping of actions
+    actions = [
+        ("tech_theft", "tech_theft_victim", "Tech Theft", "tech_theft_ebp", "Attempt to steal critical R&D tech."),
+        ("low_impact_sabotage", "low_impact_sabotage_victim", "Sabotage (Low Impact)", "sabotage_low_ebp", "Small-scale sabotage to a colony's industry."),
+        ("high_impact_sabotage", "high_impact_sabotage_victim", "Sabotage (High Impact)", "sabotage_high_ebp", "Major sabotage to a colony's industry."),
+        ("assassination", "assassination_victim", "Assassination", "assassination_ebp", "Attempt to eliminate a key figures within the target House."),
+        ("cyber_attack", "cyber_attack_victim", "Cyber Attack", "cyber_attack_ebp", "Attempt to hack into a Starbase's systems to cause damage and chaos."),
+        ("economic_manipulation", "economic_manipulation_victim", "Economic Manipulation", "economic_manipulation_ebp", "Influence markets to harm the target's economy"),
+        ("psyops_campaign", "psyops_campaign_victim", "Psyops Campaign", "psyops_campaign_ebp", "Launch a misinformation campaign or demoralization effort."),
+    ]
+
+    for player_key, victim_key, name, cost_key, description in actions:
+        player_prestige = espionage_rewards.get(player_key, 0)
+        victim_prestige = espionage_victims.get(victim_key, 0)
+        ebp_cost = costs.get(cost_key, 0)
+
+        player_sign = "+" if player_prestige >= 0 else ""
+        victim_sign = "+" if victim_prestige >= 0 else ""
+
+        lines.append(
+            f"| {name} | {ebp_cost} | {description} | {player_sign}{player_prestige} | {victim_sign}{victim_prestige} |"
+        )
+
+    lines.append("")
+    lines.append("*Source: config/prestige.toml [espionage] and [espionage_victim] sections; config/espionage.toml [costs]*")
+
+    return "\n".join(lines)
+
+
 def generate_penalty_mechanics_table(config: Dict[str, Any]) -> str:
     """Generate penalty mechanics table from prestige.toml [penalties] section."""
     penalties = config.get('penalties', {})
@@ -182,8 +222,8 @@ def update_reference_spec(prestige_table: str, morale_table: str, espionage_tabl
     morale_start = "<!-- MORALE_TABLE_START -->"
     morale_end = "<!-- MORALE_TABLE_END -->"
 
-    espionage_start = "<!-- ESPIONAGE_TABLE_START -->"
-    espionage_end = "<!-- ESPIONAGE_TABLE_END -->"
+    espionage_start = "<!-- ESPIONAGE_ACTIONS_TABLE_START -->"
+    espionage_end = "<!-- ESPIONAGE_ACTIONS_TABLE_END -->"
 
     penalty_start = "<!-- PENALTY_MECHANICS_START -->"
     penalty_end = "<!-- PENALTY_MECHANICS_END -->"
@@ -229,6 +269,34 @@ def update_reference_spec(prestige_table: str, morale_table: str, espionage_tabl
     print(f"\n✓ Successfully updated {spec_file}")
 
 
+def update_diplomacy_spec(espionage_prestige_table: str):
+    """Update docs/specs/diplomacy.md with generated espionage prestige table."""
+    spec_file = Path("docs/specs/diplomacy.md")
+
+    if not spec_file.exists():
+        print(f"Warning: {spec_file} not found, skipping update")
+        return
+
+    content = spec_file.read_text()
+
+    # Markers for table replacement
+    esp_prestige_start = "<!-- ESPIONAGE_PRESTIGE_TABLE_START -->"
+    esp_prestige_end = "<!-- ESPIONAGE_PRESTIGE_TABLE_END -->"
+
+    # Replace espionage prestige table if markers exist
+    if esp_prestige_start in content and esp_prestige_end in content:
+        start_idx = content.index(esp_prestige_start) + len(esp_prestige_start)
+        end_idx = content.index(esp_prestige_end)
+        content = content[:start_idx] + "\n" + espionage_prestige_table + "\n" + content[end_idx:]
+        print("✓ Updated espionage prestige table in diplomacy.md")
+    else:
+        print("⚠ Espionage prestige table markers not found in diplomacy.md")
+
+    # Write updated content
+    spec_file.write_text(content)
+    print(f"✓ Successfully updated {spec_file}")
+
+
 def main():
     """Main script entry point."""
     print("EC4X Specification Sync")
@@ -260,9 +328,13 @@ def main():
     penalty_table = generate_penalty_mechanics_table(prestige_config)
     print("✓ Generated penalty mechanics table (4 penalty types)")
 
-    # Update spec file
+    espionage_prestige_table = generate_espionage_prestige_table(prestige_config, espionage_config)
+    print("✓ Generated espionage prestige table (7 actions)")
+
+    # Update spec files
     print("\nUpdating specification documents...")
     update_reference_spec(prestige_table, morale_table, espionage_table, penalty_table)
+    update_diplomacy_spec(espionage_prestige_table)
 
     print("\n" + "=" * 50)
     print("Sync complete!")
