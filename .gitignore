@@ -70,3 +70,7 @@ tests/integration/test_fleet_movement
 src/engine/resolve
 tests/debug_roe4
 tests/scenarios/orders/roe_retreat
+tests/scenarios/orders/blockade_mechanics
+tests/scenarios/orders/diplomatic_filtering
+tests/scenarios/orders/guard_behaviors
+tests/scenarios/orders/threatening_orders
