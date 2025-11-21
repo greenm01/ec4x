@@ -135,8 +135,7 @@ type
     ## Complete battle scenario with context
     name*: string
     description*: string
-    attacker*: TaskForce
-    defender*: TaskForce
+    taskForces*: seq[TaskForce]  # All participating task forces
     systemId*: SystemId
     seed*: int64
     expectedOutcome*: string
@@ -152,8 +151,10 @@ proc generateBalancedBattle*(
   result = BattleScenario(
     name: name,
     description: "Balanced fleet engagement",
-    attacker: generateRandomTaskForce(config, "house-alpha", seed),
-    defender: generateRandomTaskForce(config, "house-beta", seed + 1),
+    taskForces: @[
+      generateRandomTaskForce(config, "house-alpha", seed),
+      generateRandomTaskForce(config, "house-beta", seed + 1)
+    ],
     systemId: systemId,
     seed: seed,
     expectedOutcome: "Either side could win"
@@ -176,8 +177,10 @@ proc generateAsymmetricBattle*(
   result = BattleScenario(
     name: name,
     description: "Asymmetric engagement - attacker stronger",
-    attacker: generateRandomTaskForce(attackerCfg, "house-alpha", seed),
-    defender: generateRandomTaskForce(defenderCfg, "house-beta", seed + 1),
+    taskForces: @[
+      generateRandomTaskForce(attackerCfg, "house-alpha", seed),
+      generateRandomTaskForce(defenderCfg, "house-beta", seed + 1)
+    ],
     systemId: systemId,
     seed: seed,
     expectedOutcome: "Attacker favored"
@@ -195,8 +198,10 @@ proc generateFighterVsCapital*(
   result = BattleScenario(
     name: name,
     description: "Fighter swarm vs capital ships",
-    attacker: generateRandomTaskForce(fighterCfg, "house-fighters", seed),
-    defender: generateRandomTaskForce(capitalCfg, "house-capitals", seed + 1),
+    taskForces: @[
+      generateRandomTaskForce(fighterCfg, "house-fighters", seed),
+      generateRandomTaskForce(capitalCfg, "house-capitals", seed + 1)
+    ],
     systemId: systemId,
     seed: seed,
     expectedOutcome: "Tactical matchup test"
@@ -214,11 +219,144 @@ proc generateRaiderAmbush*(
   result = BattleScenario(
     name: name,
     description: "Cloaked raider ambush",
-    attacker: generateRandomTaskForce(raiderCfg, "house-raiders", seed),
-    defender: generateRandomTaskForce(targetCfg, "house-target", seed + 1),
+    taskForces: @[
+      generateRandomTaskForce(raiderCfg, "house-raiders", seed),
+      generateRandomTaskForce(targetCfg, "house-target", seed + 1)
+    ],
     systemId: systemId,
     seed: seed,
     expectedOutcome: "Ambush advantage test"
+  )
+
+proc generateMultiFactionBattle*(
+  name: string,
+  seed: int64,
+  numFactions: int,
+  systemId: SystemId = 0
+): BattleScenario =
+  ## Generate multi-faction battle (3+ empires converging)
+  var rng = initRand(seed)
+
+  # Generate multiple task forces with varying configs
+  var taskForces: seq[TaskForce] = @[]
+
+  for i in 0..<numFactions:
+    let houseName = fmt"house-{char(ord('A') + i)}"
+    let factionSeed = seed + int64(i * 100)
+
+    # Vary tech levels (0-3)
+    var config = defaultConfig()
+    config.techLevel = rng.rand(0..3)
+
+    # Vary fleet sizes
+    config.maxSquadrons = rng.rand(1..4)
+    config.prestige = rng.rand(30..70)
+
+    let tf = generateRandomTaskForce(config, houseName, factionSeed)
+    taskForces.add(tf)
+
+  result = BattleScenario(
+    name: name,
+    description: fmt"{numFactions}-way battle with mixed tech levels",
+    taskForces: taskForces,
+    systemId: systemId,
+    seed: seed,
+    expectedOutcome: "Multi-faction chaos"
+  )
+
+proc generateTechMismatchBattle*(
+  name: string,
+  seed: int64,
+  systemId: SystemId = 0
+): BattleScenario =
+  ## Generate tech level mismatch (advanced vs primitive)
+  var attackerCfg = defaultConfig()
+  attackerCfg.techLevel = 3  # Advanced
+  attackerCfg.maxSquadrons = 2
+  attackerCfg.prestige = 80
+
+  var defenderCfg = defaultConfig()
+  defenderCfg.techLevel = 0  # Primitive
+  defenderCfg.maxSquadrons = 5
+  defenderCfg.prestige = 40
+
+  result = BattleScenario(
+    name: name,
+    description: "Tech level mismatch - advanced vs primitive",
+    taskForces: @[
+      generateRandomTaskForce(attackerCfg, "house-advanced", seed),
+      generateRandomTaskForce(defenderCfg, "house-primitive", seed + 1)
+    ],
+    systemId: systemId,
+    seed: seed,
+    expectedOutcome: "Quality vs quantity"
+  )
+
+proc generateHomeDefenseBattle*(
+  name: string,
+  seed: int64,
+  systemId: SystemId = 0
+): BattleScenario =
+  ## Generate homeworld defense scenario
+  var attackerCfg = defaultConfig()
+  attackerCfg.maxSquadrons = 4
+  attackerCfg.prestige = 60
+  attackerCfg.techLevel = 2
+
+  var defenderCfg = defaultConfig()
+  defenderCfg.maxSquadrons = 3
+  defenderCfg.prestige = 70
+  defenderCfg.techLevel = 1
+
+  result = BattleScenario(
+    name: name,
+    description: "Homeworld defense - defender never retreats",
+    taskForces: @[
+      generateRandomTaskForce(attackerCfg, "house-invader", seed),
+      generateRandomTaskForce(defenderCfg, "house-defender", seed + 1, isHomeworld = true)
+    ],
+    systemId: systemId,
+    seed: seed,
+    expectedOutcome: "Fight to the death"
+  )
+
+proc generateMergedFleetBattle*(
+  name: string,
+  seed: int64,
+  systemId: SystemId = 0
+): BattleScenario =
+  ## Generate battle with merged fleets (rendezvous/join orders)
+  ## Simulates multiple fleets from same house converging
+  var rng = initRand(seed)
+
+  # House Alpha sends 2 fleets that merged via rendezvous
+  var alphaConfig1 = defaultConfig()
+  alphaConfig1.maxSquadrons = 3
+  alphaConfig1.techLevel = rng.rand(1..2)
+  let alphaFleet1 = generateRandomFleet(alphaConfig1, "house-alpha", seed)
+
+  var alphaConfig2 = defaultConfig()
+  alphaConfig2.maxSquadrons = 2
+  alphaConfig2.techLevel = rng.rand(1..2)
+  let alphaFleet2 = generateRandomFleet(alphaConfig2, "house-alpha", seed + 100)
+
+  # Merge into single task force
+  var alphaMerged = alphaFleet1 & alphaFleet2
+  let alphaTF = initializeTaskForce("house-alpha", alphaMerged, 6, 60, false)
+
+  # House Beta sends single fleet
+  var betaConfig = defaultConfig()
+  betaConfig.maxSquadrons = 4
+  betaConfig.techLevel = rng.rand(0..1)
+  let betaTF = generateRandomTaskForce(betaConfig, "house-beta", seed + 200)
+
+  result = BattleScenario(
+    name: name,
+    description: "Merged fleet battle - multiple fleets rendezvoused",
+    taskForces: @[alphaTF, betaTF],
+    systemId: systemId,
+    seed: seed,
+    expectedOutcome: "Fleet coordination matters"
   )
 
 ## Batch Generation
@@ -231,7 +369,14 @@ proc generateTestSuite*(baseSeed: int64, numScenarios: int): seq[BattleScenario]
     "balanced",
     "asymmetric",
     "fighter_vs_capital",
-    "raider_ambush"
+    "raider_ambush",
+    "multi_faction_3",
+    "multi_faction_4",
+    "multi_faction_6",
+    "multi_faction_12",  # Max player stress test
+    "tech_mismatch",
+    "home_defense",
+    "merged_fleet"       # Rendezvous/join scenarios
   ]
 
   for i in 0..<numScenarios:
@@ -248,6 +393,20 @@ proc generateTestSuite*(baseSeed: int64, numScenarios: int): seq[BattleScenario]
         generateFighterVsCapital(name, seed)
       of "raider_ambush":
         generateRaiderAmbush(name, seed)
+      of "multi_faction_3":
+        generateMultiFactionBattle(name, seed, 3)
+      of "multi_faction_4":
+        generateMultiFactionBattle(name, seed, 4)
+      of "multi_faction_6":
+        generateMultiFactionBattle(name, seed, 6)
+      of "multi_faction_12":
+        generateMultiFactionBattle(name, seed, 12)  # Max players
+      of "tech_mismatch":
+        generateTechMismatchBattle(name, seed)
+      of "home_defense":
+        generateHomeDefenseBattle(name, seed)
+      of "merged_fleet":
+        generateMergedFleetBattle(name, seed)
       else:
         generateBalancedBattle(name, seed)
 
@@ -260,8 +419,8 @@ proc `$`*(scenario: BattleScenario): string =
   result = fmt"""
 Battle: {scenario.name}
 Description: {scenario.description}
-Attacker: {scenario.attacker.house} ({scenario.attacker.squadrons.len} squadrons, ROE {scenario.attacker.roe})
-Defender: {scenario.defender.house} ({scenario.defender.squadrons.len} squadrons, ROE {scenario.defender.roe})
-Expected: {scenario.expectedOutcome}
-Seed: {scenario.seed}
 """
+  for i, tf in scenario.taskForces:
+    result.add(fmt"Faction {i+1}: {tf.house} ({tf.squadrons.len} squadrons, ROE {tf.roe})" & "\n")
+  result.add(fmt"Expected: {scenario.expectedOutcome}" & "\n")
+  result.add(fmt"Seed: {scenario.seed}" & "\n")
