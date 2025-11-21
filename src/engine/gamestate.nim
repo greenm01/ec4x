@@ -6,6 +6,7 @@ import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
 import config/prestige_config
 import diplomacy/types as dip_types
+import espionage/types as esp_types
 
 # Re-export common types
 export core.HouseId, core.SystemId, core.FleetId
@@ -48,6 +49,9 @@ type
     negativePrestigeTurns*: int  # Consecutive turns with prestige < 0 (defensive collapse)
     diplomaticRelations*: dip_types.DiplomaticRelations  # Relations with other houses
     violationHistory*: dip_types.ViolationHistory  # Track pact violations
+    espionageBudget*: esp_types.EspionageBudget  # EBP/CIP points
+    dishonoredStatus*: dip_types.DishonoredStatus  # Pact violation penalty
+    diplomaticIsolation*: dip_types.DiplomaticIsolation  # Pact violation penalty
 
   GamePhase* {.pure.} = enum
     Setup, Active, Paused, Completed
@@ -64,6 +68,7 @@ type
     fleets*: Table[FleetId, Fleet]
     diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
     turnDeadline*: int64          # Unix timestamp
+    ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
 
 # Initialization
 
@@ -79,7 +84,8 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
-    diplomacy: initTable[(HouseId, HouseId), DiplomaticState]()
+    diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
+    ongoingEffects: @[]
   )
 
 proc initializeHouse*(name: string, color: string): House =
@@ -102,7 +108,13 @@ proc initializeHouse*(name: string, color: string): House =
       ),
       researchPoints: 0
     ),
-    eliminated: false
+    eliminated: false,
+    negativePrestigeTurns: 0,
+    diplomaticRelations: dip_types.initDiplomaticRelations(),
+    violationHistory: dip_types.initViolationHistory(),
+    espionageBudget: esp_types.initEspionageBudget(),
+    dishonoredStatus: dip_types.DishonoredStatus(active: false, turnsRemaining: 0, violationTurn: 0),
+    diplomaticIsolation: dip_types.DiplomaticIsolation(active: false, turnsRemaining: 0, violationTurn: 0)
   )
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =

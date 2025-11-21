@@ -4,12 +4,16 @@
 ## This module is designed to work standalone for local/hotseat multiplayer
 ## Network transport (Nostr) wraps around this engine without modifying it
 
-import std/[tables, algorithm, options]
+import std/[tables, algorithm, options, random]
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import research/[types as res_types, advancement]
-import config/prestige_config
+import espionage/[types as esp_types, engine as esp_engine]
+import diplomacy/[types as dip_types, engine as dip_engine]
+import colonization/engine as col_engine
+import config/[prestige_config, espionage_config]
+import prestige
 # Note: Space combat via combat/engine module when needed
 
 type
@@ -64,6 +68,9 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   result.newState = state  # Start with current state
   result.events = @[]
   result.combatReports = @[]
+
+  # Initialize RNG for this turn (use turn number as seed for reproducibility)
+  var rng = initRand(state.turn)
 
   echo "Resolving turn ", state.turn, " (Year ", state.year, ", Month ", state.month, ")"
 
@@ -139,7 +146,30 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
 proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket]) =
   ## Phase 2: Collect income and allocate resources
   ## Production is calculated AFTER conflict, so damaged infrastructure produces less
+  ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
   echo "  [Income Phase]"
+
+  # Apply ongoing espionage effects to houses
+  var activeEffects: seq[esp_types.OngoingEffect] = @[]
+  for effect in state.ongoingEffects:
+    if effect.turnsRemaining > 0:
+      activeEffects.add(effect)
+
+      case effect.effectType
+      of esp_types.EffectType.SRPReduction:
+        echo "    ", effect.targetHouse, " affected by SRP reduction (-",
+             int(effect.magnitude * 100), "%)"
+      of esp_types.EffectType.NCVReduction:
+        echo "    ", effect.targetHouse, " affected by NCV reduction (-",
+             int(effect.magnitude * 100), "%)"
+      of esp_types.EffectType.TaxReduction:
+        echo "    ", effect.targetHouse, " affected by tax reduction (-",
+             int(effect.magnitude * 100), "%)"
+      of esp_types.EffectType.StarbaseCrippled:
+        if effect.targetSystem.isSome:
+          echo "    Starbase at system ", effect.targetSystem.get(), " is crippled"
+
+  state.ongoingEffects = activeEffects
 
   # Convert GameState colonies to M5 economy colonies
   var econColonies: seq[econ_types.Colony] = @[]
@@ -340,7 +370,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
 proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
                               events: var seq[GameEvent]) =
-  ## Establish a new colony
+  ## Establish a new colony with prestige rewards
   if order.targetSystem.isNone:
     return
 
@@ -355,18 +385,34 @@ proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: Fle
   if fleetOpt.isNone:
     return
 
-  # Create colony (ownership tracked via colonies table)
+  # Get colony info from game state
   let colony = createHomeColony(targetId, houseId)
-  state.colonies[targetId] = colony
 
-  events.add(GameEvent(
-    eventType: geColonyEstablished,
-    houseId: houseId,
-    description: "Established colony at system " & $targetId,
-    systemId: some(targetId)
-  ))
+  # Use colonization engine to establish with prestige
+  let result = col_engine.establishColony(
+    houseId,
+    targetId,
+    colony.planetClass,
+    colony.resources,
+    50  # Starting PTU
+  )
 
-  echo "    ", state.houses[houseId].name, " colonized system ", targetId
+  if result.success:
+    state.colonies[targetId] = colony
+
+    # Apply prestige award
+    if result.prestigeEvent.isSome:
+      let prestigeEvent = result.prestigeEvent.get()
+      state.houses[houseId].prestige += prestigeEvent.amount
+      echo "    ", state.houses[houseId].name, " colonized system ", targetId,
+           " (+", prestigeEvent.amount, " prestige)"
+
+    events.add(GameEvent(
+      eventType: geColonyEstablished,
+      houseId: houseId,
+      description: "Established colony at system " & $targetId,
+      systemId: some(targetId)
+    ))
 
 ## Phase 1: Conflict (helper functions)
 
@@ -405,8 +451,39 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
 ## Phase 4: Maintenance
 
 proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
-  ## Phase 4: Upkeep and cleanup
+  ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
   echo "  [Maintenance Phase]"
+
+  # Decrement ongoing espionage effect counters
+  var remainingEffects: seq[esp_types.OngoingEffect] = @[]
+  for effect in state.ongoingEffects:
+    var updatedEffect = effect
+    updatedEffect.turnsRemaining -= 1
+
+    if updatedEffect.turnsRemaining > 0:
+      remainingEffects.add(updatedEffect)
+      echo "    Effect on ", updatedEffect.targetHouse, " expires in ",
+           updatedEffect.turnsRemaining, " turn(s)"
+    else:
+      echo "    Effect on ", updatedEffect.targetHouse, " has expired"
+
+  state.ongoingEffects = remainingEffects
+
+  # Update diplomatic status timers for all houses
+  for houseId, house in state.houses.mpairs:
+    # Update dishonored status
+    if house.dishonoredStatus.active:
+      house.dishonoredStatus.turnsRemaining -= 1
+      if house.dishonoredStatus.turnsRemaining <= 0:
+        house.dishonoredStatus.active = false
+        echo "    ", house.name, " is no longer dishonored"
+
+    # Update diplomatic isolation
+    if house.diplomaticIsolation.active:
+      house.diplomaticIsolation.turnsRemaining -= 1
+      if house.diplomaticIsolation.turnsRemaining <= 0:
+        house.diplomaticIsolation.active = false
+        echo "    ", house.name, " is no longer diplomatically isolated"
 
   # Convert colonies for M5 maintenance
   var econColonies: seq[econ_types.Colony] = @[]

@@ -20,15 +20,16 @@ export types.ProductionOutput
 ## RAW INDEX Table (economy.md:3.1)
 
 const RAW_INDEX_TABLE = [
-  # Format: [planet_class][resource_rating] = percentage (0.0-1.4)
+  # Format: [resource_rating][planet_class] = percentage (0.0-1.4)
   # Rows: Very Poor, Poor, Abundant, Rich, Very Rich
-  # Cols: Eden, Lush, Benign, Harsh, Hostile, Desolate, Extreme
+  # Cols: Extreme, Desolate, Hostile, Harsh, Benign, Lush, Eden
+  # (Enum order: Extreme=0, Desolate=1, ..., Eden=6)
 
   [0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60],  # Very Poor
-  [0.80, 0.75, 0.70, 0.65, 0.64, 0.63, 0.62],  # Poor
-  [1.00, 0.90, 0.80, 0.70, 0.68, 0.66, 0.64],  # Abundant
-  [1.20, 1.05, 0.90, 0.75, 0.72, 0.69, 0.66],  # Rich
-  [1.40, 1.20, 1.00, 0.80, 0.76, 0.72, 0.68],  # Very Rich
+  [0.62, 0.63, 0.64, 0.65, 0.70, 0.75, 0.80],  # Poor (reversed from spec)
+  [0.64, 0.66, 0.68, 0.70, 0.80, 0.90, 1.00],  # Abundant (reversed from spec)
+  [0.66, 0.69, 0.72, 0.75, 0.90, 1.05, 1.20],  # Rich (reversed from spec)
+  [0.68, 0.72, 0.76, 0.80, 1.00, 1.20, 1.40],  # Very Rich (reversed from spec)
 ]
 
 proc getRawIndex*(planetClass: PlanetClass, resources: ResourceRating): float =
