@@ -36,6 +36,7 @@ type
     HighTaxPenalty,         # High tax average penalty
     BlockadePenalty,        # Colony under blockade
     MaintenanceShortfall,   # Failed to pay maintenance
+    PactViolation,          # Violated non-aggression pact
     Eliminated,             # House eliminated from game
 
   PrestigeEvent* = object
