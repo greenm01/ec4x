@@ -74,3 +74,14 @@ tests/scenarios/orders/blockade_mechanics
 tests/scenarios/orders/diplomatic_filtering
 tests/scenarios/orders/guard_behaviors
 tests/scenarios/orders/threatening_orders
+tests/scenarios/balance/asymmetric_warfare
+src/engine/economy/types
+src/engine/economy/production
+src/engine/economy/income
+src/engine/economy/construction
+src/engine/economy/maintenance
+src/engine/economy/engine
+src/engine/research/types
+src/engine/research/costs
+src/engine/research/advancement
+src/engine/research/effects
