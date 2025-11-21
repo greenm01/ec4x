@@ -23,23 +23,23 @@ type
 
   RelayMessage* = object
     case kind*: RelayMessageKind
-    of rmEvent:
+    of RelayMessageKind.Event:
       subscriptionId*: string
       event*: NostrEvent
-    of rmOk:
+    of RelayMessageKind.Ok:
       eventId*: string
       accepted*: bool
       message*: string
-    of rmEose:
+    of RelayMessageKind.Eose:
       subId*: string
-    of rmClosed:
+    of RelayMessageKind.Closed:
       closedSubId*: string
       reason*: string
-    of rmNotice:
+    of RelayMessageKind.Notice:
       notice*: string
 
-  RelayMessageKind* = enum
-    rmEvent, rmOk, rmEose, rmClosed, rmNotice
+  RelayMessageKind* {.pure.} = enum
+    Event, Ok, Eose, Closed, Notice
 
   NostrClient* = ref object
     relays*: seq[string]           # WebSocket URLs

@@ -5,24 +5,24 @@ import ../common/[hex, types/core]
 import gamestate, fleet, ship
 
 type
-  FleetOrderType* = enum
-    foHold              # Hold position, do nothing
-    foMove              # Navigate to target system
-    foSeekHome          # Find closest friendly system
-    foPatrol            # Defend and intercept in system
-    foGuardStarbase     # Protect orbital installation
-    foGuardPlanet       # Planetary defense
-    foBlockadePlanet    # Planetary siege
-    foBombard           # Orbital bombardment
-    foInvade            # Ground assault
-    foBlitz             # Combined bombardment + invasion
-    foColonize          # Establish colony
-    foSpyPlanet         # Intelligence gathering on planet
-    foSpySystem         # Reconnaissance of system
-    foHackStarbase      # Electronic warfare
-    foJoinFleet         # Merge with another fleet
-    foRendezvous        # Coordinate movement with fleet
-    foSalvage           # Recover wreckage
+  FleetOrderType* {.pure.} = enum
+    Hold              # Hold position, do nothing
+    Move              # Navigate to target system
+    SeekHome          # Find closest friendly system
+    Patrol            # Defend and intercept in system
+    GuardStarbase     # Protect orbital installation
+    GuardPlanet       # Planetary defense
+    BlockadePlanet    # Planetary siege
+    Bombard           # Orbital bombardment
+    Invade            # Ground assault
+    Blitz             # Combined bombardment + invasion
+    Colonize          # Establish colony
+    SpyPlanet         # Intelligence gathering on planet
+    SpySystem         # Reconnaissance of system
+    HackStarbase      # Electronic warfare
+    JoinFleet         # Merge with another fleet
+    Rendezvous        # Coordinate movement with fleet
+    Salvage           # Recover wreckage
 
   FleetOrder* = object
     fleetId*: FleetId
@@ -74,11 +74,11 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
 
   # Validate based on order type
   case order.orderType
-  of foHold:
+  of FleetOrderType.Hold:
     # Always valid
     discard
 
-  of foMove:
+  of FleetOrderType.Move:
     if order.targetSystem.isNone:
       return ValidationResult(valid: false, error: "Move order requires target system")
 
@@ -88,7 +88,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
 
     # TODO: Check pathfinding - can fleet reach target?
 
-  of foColonize:
+  of FleetOrderType.Colonize:
     # Check fleet has colony ship
     var hasColonyShip = false
     for ship in fleet.ships:
@@ -104,7 +104,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
 
     # TODO: Check if system already colonized
 
-  of foBombard, foInvade, foBlitz:
+  of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
     # Check fleet has military ships
     var hasMilitary = false
     for ship in fleet.ships:
@@ -118,7 +118,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     if order.targetSystem.isNone:
       return ValidationResult(valid: false, error: "Combat order requires target system")
 
-  of foJoinFleet:
+  of FleetOrderType.JoinFleet:
     if order.targetFleet.isNone:
       return ValidationResult(valid: false, error: "Join order requires target fleet")
 
@@ -162,7 +162,7 @@ proc createMoveOrder*(fleetId: FleetId, targetSystem: SystemId, priority: int = 
   ## Create a movement order
   result = FleetOrder(
     fleetId: fleetId,
-    orderType: foMove,
+    orderType: FleetOrderType.Move,
     targetSystem: some(targetSystem),
     targetFleet: none(FleetId),
     priority: priority
@@ -172,7 +172,7 @@ proc createColonizeOrder*(fleetId: FleetId, targetSystem: SystemId, priority: in
   ## Create a colonization order
   result = FleetOrder(
     fleetId: fleetId,
-    orderType: foColonize,
+    orderType: FleetOrderType.Colonize,
     targetSystem: some(targetSystem),
     targetFleet: none(FleetId),
     priority: priority
@@ -192,7 +192,7 @@ proc createHoldOrder*(fleetId: FleetId, priority: int = 0): FleetOrder =
   ## Create a hold position order
   result = FleetOrder(
     fleetId: fleetId,
-    orderType: foHold,
+    orderType: FleetOrderType.Hold,
     targetSystem: none(SystemId),
     targetFleet: none(FleetId),
     priority: priority
