@@ -1,149 +1,188 @@
-# EC4X Combat Testing Framework
+# EC4X Test Suite
 
-Comprehensive combat simulation and testing infrastructure for EC4X game engine.
+Modular test organization for the EC4X game engine.
 
-## Overview
+## Directory Structure
 
-This framework generates random combat scenarios with varying fleet compositions, tech levels, and player counts to systematically test the combat engine for edge cases, balance issues, and spec violations.
+```
+tests/
+├── unit/              Unit tests for individual modules
+│   ├── test_hex.nim          Hex coordinate system
+│   ├── test_ship.nim         Ship types and capabilities
+│   ├── test_fleet.nim        Fleet composition
+│   ├── test_system.nim       Star systems
+│   └── test_config.nim       Configuration loading
+│
+├── combat/            Combat system tests
+│   ├── test_space_combat.nim    10 integrated scenarios
+│   ├── test_ground_combat.nim   5 ground combat scenarios
+│   ├── test_combat_compile.nim  Compilation check
+│   ├── harness.nim              Bulk execution framework
+│   ├── generator.nim            Random scenario generation
+│   ├── reporter.nim             JSON export
+│   └── run_stress_test.nim      10k battle stress test
+│
+├── integration/       Multi-system integration tests
+│   ├── test_starmap_robust.nim       Starmap generation
+│   ├── test_starmap_validation.nim   Starmap validation
+│   └── test_offline_engine.nim       Offline engine
+│
+├── scenarios/         Hand-crafted test scenarios
+│   ├── historical/    Known bugs and edge cases
+│   ├── balance/       Game balance verification
+│   └── regression/    Regression prevention
+│
+└── fixtures/          Shared test data
+    ├── fleets.nim     Pre-built fleet configurations
+    └── battles.nim    Known battle setups
+```
 
-## Test Scenario Types
+## Quick Start
 
-### 2-Faction Battles
-- **Balanced**: Equal strength fleets with similar compositions
-- **Asymmetric**: Unbalanced forces (strong vs weak)
-- **Fighter vs Capital**: Tactical matchup testing
-- **Raider Ambush**: Cloaked raider scenarios with ambush bonuses
-- **Tech Mismatch**: Advanced tech (level 3) vs primitive (level 0)
-- **Home Defense**: Defender never retreats (homeworld rules)
-
-### Multi-Faction Battles
-- **3-way**: Three empires converging simultaneously
-- **4-way**: Four empires with mixed tech levels
-- **6-way**: Six-player free-for-all
-- **12-way**: Maximum player count stress test
-
-Each multi-faction battle randomizes:
-- Tech levels (0-3) per faction
-- Fleet sizes (1-4 squadrons)
-- Prestige/morale (30-70)
-
-## Running Tests
-
+### Run All Unit Tests
 ```bash
-# Compile and run default test suite (30 scenarios)
-nim c -r tests/run_combat_tests.nim
-
-# Or run directly
-./tests/run_combat_tests
+for test in tests/unit/test_*.nim; do
+  nim c -r "$test"
+done
 ```
 
-## Output Formats
+### Run Combat Scenarios
+```bash
+# Space combat scenarios
+nim c -r tests/combat/test_space_combat.nim
 
-### JSON (Full Details)
-`combat_test_results.json` - Complete round-by-round combat logs including:
-- All attack rolls and CER calculations
-- State transitions (undamaged → crippled → destroyed)
-- Critical hits
-- Phase-by-phase resolution
+# Ground combat scenarios
+nim c -r tests/combat/test_ground_combat.nim
 
-### JSON (Summary)
-`combat_summary.json` - Aggregate statistics only:
-- Test run metadata
-- Win rates by house
-- Edge case counts
-- Spec violation summary
-- Average combat duration
-
-### CSV (Spreadsheet)
-`combat_stats.csv` - One row per test:
-```
-test_name,victor,rounds,duration,edge_cases,violations,num_factions,total_squadrons
-multi_faction_12_8,none,3,0.0004,1,0,12,25
+# 10,000 battle stress test
+nim c -r tests/combat/run_stress_test.nim
 ```
 
-## Edge Cases Detected
+### Run Integration Tests
+```bash
+nim c -r tests/integration/test_starmap_robust.nim
+nim c -r tests/integration/test_starmap_validation.nim
+```
 
-- **Instant Victory**: Combat resolved in 1 round
-- **Mutual Destruction**: All forces destroyed (common in 12-player battles)
-- **Stalemate**: No progress after 20 rounds
-- **Long Combat**: Exceeds 15 rounds
-- **No Damage Loop**: 5+ consecutive rounds without state changes
-- **Immediate Retreat**: Retreat after first eligible round
+## Test Philosophy
 
-## Spec Violations Checked
+### Unit Tests
+- Test single modules in isolation
+- Fast execution (<100ms each)
+- No external dependencies
+- Pure function testing
 
-- **No Retreat First Round**: Section 7.3.5 violation
-- **Stalemate at 20 Rounds**: Combat duration limit (Section 7.3.4)
-- **Invalid Victor**: Victor must be in survivors list
+### Combat Tests
+- Integrated combat scenarios
+- Stress testing with random generation
+- Performance benchmarking
+- Edge case discovery
 
-## Test Results Summary
+### Integration Tests
+- Multi-system interactions
+- Full workflow testing
+- System boundary verification
+- Data flow validation
 
-Sample run (30 tests, 12 max players):
-- **Average Rounds**: 2.37
-- **Critical Hit Rate**: 10.3% per round
-- **Edge Cases**: 13 detected (6 instant victories, 7 mutual destructions)
+### Fixtures
+- Reusable test data
+- Consistent fleet setups
+- Known battle configurations
+- Regression test baselines
+
+## Test Output
+
+Combat tests generate three output files (gitignored):
+
+1. **combat_test_results.json** - Full round-by-round logs (~145 MB)
+2. **combat_summary.json** - Aggregate statistics
+3. **combat_stats.csv** - Spreadsheet format
+
+## Adding New Tests
+
+### Unit Test
+```bash
+# Create new test file
+cat > tests/unit/test_mymodule.nim << 'EOF'
+import unittest
+import ../../src/engine/mymodule
+
+suite "MyModule Tests":
+  test "basic functionality":
+    check myFunction() == expectedResult
+EOF
+
+# Run it
+nim c -r tests/unit/test_mymodule.nim
+```
+
+### Combat Scenario
+```nim
+# Add to tests/combat/test_space_combat.nim
+proc scenario_MyNewTest*() =
+  echo "\n=== Scenario: My Test ==="
+  let attackers = createFleet(...)
+  let result = resolveCombat(...)
+  assert result.victor.isSome
+```
+
+### Integration Test
+```bash
+# Create new integration test
+cat > tests/integration/test_myfeature.nim << 'EOF'
+import unittest
+import ../../src/engine/[module1, module2]
+
+suite "MyFeature Integration":
+  test "modules work together":
+    let data = module1.getData()
+    let result = module2.process(data)
+    check result.isValid
+EOF
+```
+
+## Continuous Testing
+
+During development:
+```bash
+# Watch mode (requires entr or similar)
+ls tests/**/*.nim | entr nim c -r /_
+
+# Quick smoke test
+nim c -r tests/unit/test_hex.nim && \
+nim c -r tests/combat/test_combat_compile.nim
+```
+
+## Test Coverage Goals
+
+- [x] Hex coordinate system
+- [x] Ship types and capabilities
+- [x] Fleet composition
+- [x] Star systems
+- [x] Starmap generation
+- [x] Space combat (all phases)
+- [x] Ground combat (bombardment, invasion, blitz)
+- [x] Combat stress testing (10k+ battles)
+- [ ] Fleet movement + pathfinding
+- [ ] Turn resolution
+- [ ] Economy and production
+- [ ] Diplomacy integration
+- [ ] Tech research
+- [ ] Victory conditions
+
+## Performance Benchmarks
+
+From 10,000 battle stress test:
+- **Combat Resolution**: 15,600 combats/second
+- **Average Battle**: 2.37 rounds
+- **Edge Case Rate**: 0.42% desperation rounds
 - **Spec Violations**: 0
 
-Notable findings:
-- 12-player battles consistently result in mutual destruction
-- Tech level 3 vs 0 creates instant victories despite numerical superiority
-- Homeworld defense dramatically extends combat duration
+## Further Documentation
 
-## Architecture
-
-### Pure Nim Types
-Combat engine uses pure Nim types throughout - no JSON in core logic. JSON export happens only at the boundary layer (`combat_report_json.nim`).
-
-### Deterministic PRNG
-Linear Congruential Generator ensures same seed = same battle result, enabling:
-- Reproducible test failures
-- Regression testing
-- Balance verification
-
-### Modular Design
-```
-combat_generator.nim      → Random scenario generation
-combat_test_harness.nim   → Bulk execution & analysis
-combat_report_json.nim    → Export layer (AI-friendly)
-run_combat_tests.nim      → Test runner
-```
-
-## Customization
-
-### Create Custom Test Suites
-
-```nim
-import combat_generator, combat_test_harness, combat_report_json
-
-# Generate specific scenarios
-let scenarios = @[
-  generateMultiFactionBattle("epic_battle", 12345, numFactions = 8),
-  generateTechMismatchBattle("tech_war", 54321),
-  generateHomeDefenseBattle("last_stand", 99999)
-]
-
-# Run and export
-let results = runTestSuite(scenarios, verbose = true)
-exportToJsonFile(results, "custom_results.json")
-```
-
-### Adjust Fleet Configurations
-
-```nim
-var config = defaultConfig()
-config.techLevel = 2
-config.maxSquadrons = 10
-config.minShipsPerSquadron = 3
-config.allowedShipClasses = @[ShipClass.Dreadnought, ShipClass.Carrier]
-
-let fleet = generateRandomFleet(config, "house-titans", seed)
-```
-
-## Future Enhancements
-
-- [ ] Starbase defense scenarios
-- [ ] Coalition/alliance battles (diplomatic status variations)
-- [ ] Reinforcement arrival mid-combat
-- [ ] Retreat path testing (fallback systems)
-- [ ] Balance analysis reports (which ship classes dominate?)
-- [ ] Performance profiling for large-scale battles
+See README.md files in each subdirectory for module-specific details:
+- `unit/README.md` - Unit testing guidelines
+- `combat/README.md` - Combat test architecture
+- `integration/README.md` - Integration test patterns
+- `fixtures/README.md` - Using test fixtures
+- `scenarios/README.md` - Scenario organization

@@ -53,9 +53,12 @@ logs/
 /client
 /moderator
 tests/test_*[!.]*
+tests/run_*[!.]*
 src/**/squadron
 src/**/moderator
 src/**/client
+src/**/config
+main/
 
 
 # Combat test results (large files)
