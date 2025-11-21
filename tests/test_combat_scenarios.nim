@@ -442,14 +442,15 @@ proc scenario_MultiHouseConvergence*() =
   echo fmt"  Retreated: {result.retreated}"
   echo fmt"  Note: Beta should not be engaged (NAP)"
 
-## Scenario 8: Jump Lane Encounter (Meeting in Transit)
-proc scenario_JumpLaneEncounter*() =
+## Scenario 8: System Transit Encounter (Fleets Meet in System)
+proc scenario_SystemTransitEncounter*() =
   echo "\n╔════════════════════════════════════════════════════════════════╗"
-  echo "║ SCENARIO 8: Jump Lane Encounter (Fleets in Transit)          ║"
+  echo "║ SCENARIO 8: System Transit Encounter (Fleets Meet in Sector) ║"
   echo "╚════════════════════════════════════════════════════════════════╝"
-  echo "\nSituation: Two fleets meet while traveling through system"
-  echo "Orders: Alpha: 01 (Move through), Beta: 03 (Patrol)"
-  echo "Expected: Patrol intercepts moving fleet"
+  echo "\nSituation: Two fleets encounter each other in same system"
+  echo "Note: Jump lanes are instant - encounters happen within systems"
+  echo "Orders: Alpha: 01 (Move through system), Beta: 03 (Patrol system)"
+  echo "Expected: Patrol intercepts fleet passing through their system"
 
   # House Alpha: 3 Fighters (moving through)
   let alphaFleet = createFleet("house-alpha", 800, @[
@@ -617,7 +618,7 @@ when isMainModule:
   scenario_PlanetaryBlitz()
   scenario_PlanetBreakerAttack()
   scenario_MultiHouseConvergence()
-  scenario_JumpLaneEncounter()
+  scenario_SystemTransitEncounter()
   scenario_CloakedRaiderAmbush()
   scenario_FourWayBattle()
 
@@ -637,7 +638,7 @@ when isMainModule:
   echo "║                                                                ║"
   echo "║  Multi-House Scenarios:                                       ║"
   echo "║    • 3-faction convergence (diplomatic targeting)             ║"
-  echo "║    • Jump lane encounter (moving fleets)                      ║"
+  echo "║    • System transit encounter (fleets in same sector)         ║"
   echo "║    • Cloaked raider ambush (multi-defender)                   ║"
   echo "║    • 4-way free-for-all (all hostile)                         ║"
   echo "║                                                                ║"
