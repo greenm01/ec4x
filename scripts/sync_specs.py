@@ -63,6 +63,9 @@ def generate_prestige_table(config: Dict[str, Any]) -> str:
         sign = "+" if value >= 0 else ""
         lines.append(f"| {readable_name} | `{enum_name}` | {sign}{value} |")
 
+    lines.append("")
+    lines.append("*Source: config/prestige.toml [economic], [military], and [espionage] sections*")
+
     return "\n".join(lines)
 
 
