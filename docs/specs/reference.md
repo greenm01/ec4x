@@ -71,6 +71,8 @@ CL = Carry Limit
 | Planet Conquered | `PlanetConquered` | +10 |
 | House Eliminated | `HouseEliminated` | +3 |
 | Victory Achieved | `VictoryAchieved` | +5 |
+
+*Source: config/prestige.toml [economic], [military], and [espionage] sections*
 <!-- PRESTIGE_TABLE_END -->
 
 ### Prestige Penalty Mechanics
