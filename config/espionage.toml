@@ -1,0 +1,54 @@
+# Espionage System Configuration
+# Per diplomacy.md:8.2 - All espionage mechanics for balance tuning
+
+[costs]
+# EBP/CIP costs in PP
+ebp_cost_pp = 40
+cip_cost_pp = 40
+
+# Action costs in EBP
+tech_theft_ebp = 5
+sabotage_low_ebp = 2
+sabotage_high_ebp = 7
+assassination_ebp = 10
+cyber_attack_ebp = 6
+economic_manipulation_ebp = 6
+psyops_campaign_ebp = 3
+
+[investment]
+# Over-investment penalties
+threshold_percentage = 5  # 5% of turn budget
+penalty_per_percent = -1  # -1 prestige per 1% over threshold
+
+[detection]
+# CIP consumed per detection roll
+cip_per_roll = 1
+
+# Detection thresholds (d20 roll must meet or exceed)
+cic0_threshold = 21  # Impossible (no counter-intelligence)
+cic1_threshold = 15  # 25% base detection
+cic2_threshold = 12  # 40% base detection
+cic3_threshold = 10  # 55% base detection
+cic4_threshold = 7   # 65% base detection
+cic5_threshold = 4   # 80% base detection
+
+# CIP point modifiers
+cip_0_modifier = 0
+cip_1_5_modifier = 1
+cip_6_10_modifier = 2
+cip_11_15_modifier = 3
+cip_16_20_modifier = 4
+cip_21_plus_modifier = 5
+
+[effects]
+# Action effects
+tech_theft_srp = 10            # SRP stolen
+sabotage_low_dice = 6          # d6 IU damage
+sabotage_high_dice = 20        # d20 IU damage
+assassination_srp_reduction = 50  # Percentage (50%)
+economic_ncv_reduction = 50    # Percentage (50%)
+psyops_tax_reduction = 25      # Percentage (25%)
+effect_duration_turns = 1      # How long effects last
+
+# Detection failure penalties
+failed_espionage_prestige = -2  # When detected
