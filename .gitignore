@@ -57,3 +57,8 @@ src/**/squadron
 src/**/moderator
 src/**/client
 
+
+# Combat test results (large files)
+combat_test_results.json
+combat_summary.json
+combat_stats.csv
