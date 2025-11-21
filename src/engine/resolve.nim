@@ -5,7 +5,7 @@
 ## Network transport (Nostr) wraps around this engine without modifying it
 
 import std/[tables, algorithm, options]
-import ../common/[hex, types/core]
+import ../common/[hex, types/core, types/combat]
 import gamestate, orders, fleet, ship, starmap, economy
 # Note: Space combat via combat/engine module when needed
 
@@ -43,7 +43,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent])
 
 # Forward declarations for helper functions
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
-proc resolveMovementOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent])
 proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
                               events: var seq[GameEvent])
@@ -208,9 +208,15 @@ proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var s
   # TODO: Generate events for construction started/completed
   discard
 
-proc resolveMovementOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =
-  ## Execute a fleet movement order
+  ## Execute a fleet movement order with pathfinding and lane traversal rules
+  ## Per operations.md:6.1 - Lane traversal rules:
+  ##   - Major lanes: 2 jumps per turn if all systems owned by player
+  ##   - Major lanes: 1 jump per turn if jumping into unexplored/rival system
+  ##   - Minor/Restricted lanes: 1 jump per turn maximum
+  ##   - Crippled ships or Spacelift ships cannot cross Restricted lanes
+
   if order.targetSystem.isNone:
     return
 
@@ -220,16 +226,79 @@ proc resolveMovementOrder(state: var GameState, houseId: HouseId, order: FleetOr
 
   var fleet = fleetOpt.get()
   let targetId = order.targetSystem.get()
+  let startId = fleet.location
 
-  echo "    Fleet ", order.fleetId, " moving to ", targetId
+  # Already at destination
+  if startId == targetId:
+    echo "    Fleet ", order.fleetId, " already at destination"
+    return
 
-  # TODO: Call starmap.findPath() to determine route
-  # TODO: Apply lane traversal rules (1-2 lanes per turn)
-  # TODO: Handle multi-turn journeys (store waypoints on fleet)
-  # TODO: Check for fleet encounters at destination
-  # For now, just teleport (placeholder)
-  fleet.location = targetId
+  echo "    Fleet ", order.fleetId, " moving from ", startId, " to ", targetId
+
+  # Find path to destination (operations.md:6.1)
+  let pathResult = state.starMap.findPath(startId, targetId, fleet)
+
+  if not pathResult.found:
+    echo "      No valid path found (blocked by restricted lanes or terrain)"
+    return
+
+  if pathResult.path.len < 2:
+    echo "      Invalid path"
+    return
+
+  # Determine how many jumps the fleet can make this turn
+  var jumpsAllowed = 1  # Default: 1 jump per turn
+
+  # Check if we can do 2 major lane jumps (operations.md:6.1)
+  if pathResult.path.len >= 3:
+    # Check if all systems along path are owned by this house
+    var allSystemsOwned = true
+    for systemId in pathResult.path:
+      if systemId notin state.colonies or state.colonies[systemId].owner != houseId:
+        allSystemsOwned = false
+        break
+
+    # Check if next two jumps are both major lanes
+    var nextTwoAreMajor = true
+    if allSystemsOwned:
+      for i in 0..<min(2, pathResult.path.len - 1):
+        let fromSys = pathResult.path[i]
+        let toSys = pathResult.path[i + 1]
+
+        # Find lane type between these systems
+        var laneIsMajor = false
+        for lane in state.starMap.lanes:
+          if (lane.source == fromSys and lane.destination == toSys) or
+             (lane.source == toSys and lane.destination == fromSys):
+            if lane.laneType == LaneType.Major:
+              laneIsMajor = true
+            break
+
+        if not laneIsMajor:
+          nextTwoAreMajor = false
+          break
+
+    # Apply 2-jump rule for major lanes in friendly territory
+    if allSystemsOwned and nextTwoAreMajor:
+      jumpsAllowed = 2
+
+  # Execute movement (up to jumpsAllowed systems)
+  let actualJumps = min(jumpsAllowed, pathResult.path.len - 1)
+  let newLocation = pathResult.path[actualJumps]
+
+  fleet.location = newLocation
   state.fleets[order.fleetId] = fleet
+
+  echo "      Moved ", actualJumps, " jump(s) to system ", newLocation
+
+  # Check for fleet encounters at destination
+  # Find other fleets at the same location
+  for otherFleetId, otherFleet in state.fleets:
+    if otherFleetId != order.fleetId and otherFleet.location == newLocation:
+      if otherFleet.owner != houseId:
+        echo "      Encountered fleet ", otherFleetId, " (", otherFleet.owner, ") at ", newLocation
+        # Combat will be resolved in conflict phase next turn
+        # This just logs the encounter
 
 proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
                               events: var seq[GameEvent]) =
