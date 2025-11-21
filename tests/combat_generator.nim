@@ -244,9 +244,9 @@ proc generateMultiFactionBattle*(
     let houseName = fmt"house-{char(ord('A') + i)}"
     let factionSeed = seed + int64(i * 100)
 
-    # Vary tech levels (0-3)
+    # Vary tech levels (1-3) - houses start at tech 1 per gameplay.md:1.2
     var config = defaultConfig()
-    config.techLevel = rng.rand(0..3)
+    config.techLevel = rng.rand(1..3)
 
     # Vary fleet sizes
     config.maxSquadrons = rng.rand(1..4)
@@ -269,20 +269,20 @@ proc generateTechMismatchBattle*(
   seed: int64,
   systemId: SystemId = 0
 ): BattleScenario =
-  ## Generate tech level mismatch (advanced vs primitive)
+  ## Generate tech level mismatch (advanced vs early)
   var attackerCfg = defaultConfig()
   attackerCfg.techLevel = 3  # Advanced
   attackerCfg.maxSquadrons = 2
   attackerCfg.prestige = 80
 
   var defenderCfg = defaultConfig()
-  defenderCfg.techLevel = 0  # Primitive
+  defenderCfg.techLevel = 1  # Early tech (starting level)
   defenderCfg.maxSquadrons = 5
   defenderCfg.prestige = 40
 
   result = BattleScenario(
     name: name,
-    description: "Tech level mismatch - advanced vs primitive",
+    description: "Tech level mismatch - advanced vs early tech",
     taskForces: @[
       generateRandomTaskForce(attackerCfg, "house-advanced", seed),
       generateRandomTaskForce(defenderCfg, "house-primitive", seed + 1)
@@ -347,7 +347,7 @@ proc generateMergedFleetBattle*(
   # House Beta sends single fleet
   var betaConfig = defaultConfig()
   betaConfig.maxSquadrons = 4
-  betaConfig.techLevel = rng.rand(0..1)
+  betaConfig.techLevel = rng.rand(1..2)  # Tech 1-2 per gameplay.md:1.2
   let betaTF = generateRandomTaskForce(betaConfig, "house-beta", seed + 200)
 
   result = BattleScenario(
