@@ -5,8 +5,11 @@
 ## Network transport (Nostr) wraps around this engine without modifying it
 
 import std/[tables, algorithm, options]
-import ../common/[hex, types/core, types/combat]
-import gamestate, orders, fleet, ship, starmap, economy
+import ../common/[hex, types/core, types/combat, types/tech, types/units]
+import gamestate, orders, fleet, ship, starmap
+import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
+import research/[types as res_types, advancement]
+import config/prestige_config
 # Note: Space combat via combat/engine module when needed
 
 type
@@ -138,31 +141,66 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
   ## Production is calculated AFTER conflict, so damaged infrastructure produces less
   echo "  [Income Phase]"
 
+  # Convert GameState colonies to M5 economy colonies
+  var econColonies: seq[econ_types.Colony] = @[]
+  for systemId, colony in state.colonies:
+    # Convert old Colony to new M5 Colony
+    econColonies.add(econ_types.Colony(
+      systemId: colony.systemId,
+      owner: colony.owner,
+      populationUnits: colony.population,  # Map population (millions) to PU
+      populationTransferUnits: 0,  # TODO: Track PTU separately
+      industrial: econ_types.IndustrialUnits(units: colony.infrastructure * 10),  # Map infrastructure to IU
+      planetClass: colony.planetClass,
+      resources: colony.resources,
+      grossOutput: colony.production,  # Use cached production
+      taxRate: 50,  # TODO: Get from house tax policy
+      underConstruction: none(econ_types.ConstructionProject),  # TODO: Convert construction
+      infrastructureDamage: 0.0  # TODO: Track damage from combat
+    ))
+
+  # Build house tax policies (TODO: store in House)
+  var houseTaxPolicies = initTable[HouseId, econ_types.TaxPolicy]()
+  for houseId in state.houses.keys:
+    houseTaxPolicies[houseId] = econ_types.TaxPolicy(
+      currentRate: 50,  # Default
+      history: @[50]
+    )
+
+  # Build house tech levels
+  var houseTechLevels = initTable[HouseId, int]()
   for houseId, house in state.houses:
-    # TODO: Call economy.calculateHouseIncome() instead of inline calculation
-    var totalIncome = 0
-    var totalProduction = 0
+    houseTechLevels[houseId] = house.techTree.levels.energyLevel  # TODO: Use actual EL
 
-    # Collect from colonies
-    for colony in state.getHouseColonies(houseId):
-      # TODO: Call economy.calculateProduction() for accurate calculations
-      let income = colony.population * 100  # 100 credits per million population (placeholder)
-      let production = colony.population * 10 + colony.infrastructure * 50
+  # Build house treasuries
+  var houseTreasuries = initTable[HouseId, int]()
+  for houseId, house in state.houses:
+    houseTreasuries[houseId] = house.treasury
 
-      totalIncome += income
-      totalProduction += production
+  # Call M5 economy engine
+  let incomeReport = econ_engine.resolveIncomePhase(
+    econColonies,
+    houseTaxPolicies,
+    houseTechLevels,
+    houseTreasuries
+  )
 
-    # Update treasury
-    state.houses[houseId].treasury += totalIncome
+  # Apply results back to game state
+  for houseId, houseReport in incomeReport.houseReports:
+    state.houses[houseId].treasury = houseTreasuries[houseId]
+    echo "    ", state.houses[houseId].name, ": +", houseReport.totalNet, " PP (Gross: ", houseReport.totalGross, ")"
 
-    # Allocate research if orders provided
-    if houseId in orders:
-      let packet = orders[houseId]
-      for field, points in packet.researchAllocation:
-        # TODO: Call economy.applyResearch()
-        discard
+    # Apply prestige events from economic activities
+    for event in houseReport.prestigeEvents:
+      state.houses[houseId].prestige += event.amount
+      echo "      Prestige: ",
+           (if event.amount > 0: "+" else: ""), event.amount,
+           " (", event.description, ") -> ", state.houses[houseId].prestige
 
-    echo "    ", house.name, ": +", totalIncome, " credits, ", totalProduction, " production"
+  # Apply research prestige from tech advancements (if any occurred)
+  # Note: Tech advancements are tracked separately and applied here
+  # TODO: Integrate with full research system when implemented
+  # For now, research prestige is embedded in advancement events
 
 ## Phase 3: Command
 
@@ -370,24 +408,57 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   ## Phase 4: Upkeep and cleanup
   echo "  [Maintenance Phase]"
 
-  for houseId, house in state.houses:
-    # TODO: Call economy.calculateHouseUpkeep() for accurate costs
-    # Calculate fleet upkeep
-    var upkeep = 0
+  # Convert colonies for M5 maintenance
+  var econColonies: seq[econ_types.Colony] = @[]
+  for systemId, colony in state.colonies:
+    econColonies.add(econ_types.Colony(
+      systemId: colony.systemId,
+      owner: colony.owner,
+      populationUnits: colony.population,
+      populationTransferUnits: 0,
+      industrial: econ_types.IndustrialUnits(units: colony.infrastructure * 10),
+      planetClass: colony.planetClass,
+      resources: colony.resources,
+      grossOutput: colony.production,
+      taxRate: 50,
+      underConstruction: none(econ_types.ConstructionProject),
+      infrastructureDamage: 0.0
+    ))
+
+  # Build house fleet data
+  var houseFleetData = initTable[HouseId, seq[(ShipClass, bool)]]()
+  for houseId in state.houses.keys:
+    houseFleetData[houseId] = @[]
     for fleet in state.getHouseFleets(houseId):
-      # TODO: Call economy.calculateFleetUpkeep()
       for ship in fleet.ships:
-        upkeep += 10  # 10 credits per ship (placeholder)
+        # TODO: Get actual ship class and crippled status
+        houseFleetData[houseId].add((ShipClass.Cruiser, false))
 
-    # Deduct upkeep from treasury
-    state.houses[houseId].treasury -= upkeep
+  # Build house treasuries
+  var houseTreasuries = initTable[HouseId, int]()
+  for houseId, house in state.houses:
+    houseTreasuries[houseId] = house.treasury
 
-    # Check if house can afford upkeep
-    if state.houses[houseId].treasury < 0:
-      echo "    ", house.name, " cannot afford upkeep! (", state.houses[houseId].treasury, " credits)"
-      # TODO: Apply attrition (ships start to desert/break down)
+  # Call M5 maintenance engine
+  let maintenanceReport = econ_engine.resolveMaintenancePhase(
+    econColonies,
+    houseFleetData,
+    houseTreasuries
+  )
 
-    # Check for elimination
+  # Apply results back to game state
+  for houseId, upkeep in maintenanceReport.houseUpkeep:
+    state.houses[houseId].treasury = houseTreasuries[houseId]
+    echo "    ", state.houses[houseId].name, ": -", upkeep, " PP maintenance"
+
+  # Report completed projects
+  for completed in maintenanceReport.completedProjects:
+    echo "    Completed: ", completed.projectType
+
+  # Check for elimination and defensive collapse
+  let config = globalPrestigeConfig
+  for houseId, house in state.houses:
+    # Standard elimination: no colonies and no fleets
     let colonies = state.getHouseColonies(houseId)
     let fleets = state.getHouseFleets(houseId)
 
@@ -400,6 +471,26 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         systemId: none(SystemId)
       ))
       echo "    ", house.name, " eliminated!"
+      continue
+
+    # Defensive collapse: prestige < 0 for consecutive turns
+    if house.prestige < 0:
+      state.houses[houseId].negativePrestigeTurns += 1
+      echo "    ", house.name, " negative prestige: ", house.prestige,
+           " (", state.houses[houseId].negativePrestigeTurns, "/", config.collapseTurns, " turns)"
+
+      if state.houses[houseId].negativePrestigeTurns >= config.collapseTurns:
+        state.houses[houseId].eliminated = true
+        events.add(GameEvent(
+          eventType: geHouseEliminated,
+          houseId: houseId,
+          description: house.name & " has collapsed from negative prestige!",
+          systemId: none(SystemId)
+        ))
+        echo "    ", house.name, " collapsed from negative prestige!"
+    else:
+      # Reset counter when prestige becomes positive
+      state.houses[houseId].negativePrestigeTurns = 0
 
   # Check victory condition
   let victorOpt = state.checkVictoryCondition()
