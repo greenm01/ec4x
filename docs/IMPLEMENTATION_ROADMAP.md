@@ -16,7 +16,9 @@
 
 ## Current Status
 
-**Foundation Complete:** Core architecture, starmap generation, and data structures implemented and tested. Turn resolution framework in place. Ready for gameplay system implementation.
+**Combat System Complete (M4):** Space combat, ground combat, and starbase integration fully implemented and tested with 10,000+ passing tests. Foundation complete. Currently implementing M5 (Economy & Production).
+
+**See `docs/IMPLEMENTATION_PROGRESS.md` for detailed current status.**
 
 ---
 
@@ -32,9 +34,17 @@
 - Order system (`src/engine/orders.nim`) - 16 order types, validation
 - Test suite (58 tests, 100% passing)
 
+**Combat System:**
+- Complete 3-phase space combat (`src/engine/combat/` - 9 modules)
+- Ground combat (bombardment, invasion, blitz)
+- Starbase integration (detection, guard mechanics)
+- 10,000+ tests passing (stress tested, balance verified)
+- Performance: 15,600 combats/second
+
 **Infrastructure:**
 - Build system (Nimble with 12 tasks)
 - Nix development environment
+- Modular test organization (unit, combat, integration, scenarios, fixtures)
 - Complete documentation (2,400+ lines)
 
 ### Implementation-Ready
@@ -52,31 +62,29 @@
 
 ## Implementation Phases
 
-### Phase 1: Core Gameplay Systems (4-6 weeks)
+### Phase 1: Core Gameplay Systems (4-6 weeks) - IN PROGRESS
 
-**Combat Resolution**
+**Combat Resolution** ✅ **COMPLETE** (M4)
 
-*Location:* `src/engine/combat.nim`
+*Location:* `src/engine/combat/` (9 modules)
 
-Required implementations:
-```nim
-proc calculateDamage(attacker: Fleet, defender: Fleet, techLevels: TechTree): (int, int)
-  # Ship-to-ship damage calculation
-  # Apply weapon/defense tech modifiers
-  # Account for crippled ships
+Implemented:
+- ✅ 3-phase combat resolution (Ambush, Intercept, Main Engagement)
+- ✅ CER system with 1d10 rolls and effectiveness multipliers
+- ✅ Target priority and diplomatic filtering
+- ✅ Damage application with destruction protection
+- ✅ Retreat mechanics with ROE and morale
+- ✅ Desperation rounds (prevents infinite loops)
+- ✅ Multi-faction combat (up to 12 houses)
+- ✅ Ground combat (bombardment, invasion, blitz)
+- ✅ Starbase integration (detection bonuses, guard orders)
 
-proc resolveBattle(attackers: seq[Fleet], defenders: seq[Fleet],
-                   techLevels: Table[HouseId, TechTree]): CombatResult
-  # Multi-fleet engagement
-  # Apply damage to ships
-  # Determine casualties and victor
-  # Generate combat report
-
-proc applyDamage(fleet: var Fleet, damage: int): DestructionResult
-  # Distribute damage across ships
-  # Handle ship destruction and crippling
-  # Update fleet composition
-```
+Test Coverage:
+- ✅ 10,000+ stress tests (0 spec violations)
+- ✅ 10 integrated space combat scenarios
+- ✅ 5 ground combat scenarios
+- ✅ Tech balance verification
+- ✅ Asymmetric warfare scenarios
 
 **Movement & Pathfinding Integration**
 
