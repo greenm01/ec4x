@@ -87,16 +87,20 @@ proc rollCER*(
   hasScouts: bool,
   moraleModifier: int,
   isSurprise: bool = false,
-  isAmbush: bool = false
+  isAmbush: bool = false,
+  desperationBonus: int = 0  # Bonus for desperation rounds
 ): CERRoll =
   ## Roll for Combat Effectiveness Rating
   ## Returns CERRoll with all details
+  ##
+  ## desperationBonus: Additional modifier when combat stalls (both sides fight desperately)
 
   let naturalRoll = rng.roll1d10()  # 0-9
-  let modifiers = calculateModifiers(
+  let baseModifiers = calculateModifiers(
     phase, roundNumber, hasScouts, moraleModifier,
     isSurprise, isAmbush
   )
+  let modifiers = baseModifiers + desperationBonus
   let finalRoll = naturalRoll + modifiers
 
   # Check for critical hit (natural 9 before modifiers)

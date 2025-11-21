@@ -84,6 +84,36 @@ proc resolveCombat*(context: BattleContext): CombatResult =
     else:
       consecutiveRoundsNoChange += 1
 
+    # Desperation mechanics: After 5 rounds without progress, give one final chance
+    if consecutiveRoundsNoChange == 5:
+      # Desperation round: both sides get +2 CER bonus
+      let desperationResults = resolveRound(
+        taskForces,
+        roundNum + 1,  # Desperation is a bonus "round"
+        diplomaticRelations,
+        systemOwner,
+        rng,
+        desperationBonus = 2  # +2 CER to all attacks
+      )
+
+      result.rounds.add(desperationResults)
+      result.totalRounds += 1
+
+      # Check if desperation broke the stalemate
+      var desperationProgress = false
+      for phaseResult in desperationResults:
+        if phaseResult.stateChanges.len > 0:
+          desperationProgress = true
+          break
+
+      if desperationProgress:
+        # Reset stalemate counter - combat continues
+        consecutiveRoundsNoChange = 0
+      else:
+        # Still no progress - force tactical stalemate
+        result.wasStalemate = true
+        break
+
     # Check combat termination after round
     let termCheck2 = checkCombatTermination(taskForces, consecutiveRoundsNoChange)
     if termCheck2.shouldEnd:
