@@ -68,3 +68,5 @@ combat_stats.csv
 tests/scenarios/balance/asymmetric_warfare
 tests/integration/test_fleet_movement
 src/engine/resolve
+tests/debug_roe4
+tests/scenarios/orders/roe_retreat
