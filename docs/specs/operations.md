@@ -189,14 +189,18 @@ House prestige affects crew morale and combat effectiveness. At the start of eac
 
 **Morale Check Table:**
 
-| Prestige Level    | Morale Threshold | Effect on Success                      |
-|:------------------|:----------------:|:---------------------------------------|
-| ≤ 0 (Crisis)      | Never succeeds   | -1 to all CER rolls this turn          |
-| 1-20 (Low)        | > 18             | No effect                              |
-| 21-40 (Average)   | > 15             | +1 to CER for one random squadron      |
-| 41-60 (Good)      | > 12             | +1 to all CER rolls this turn          |
-| 61-80 (High)      | > 9              | +1 CER + one critical auto-succeeds    |
-| 81+ (Elite)       | > 6              | +2 to all CER rolls this turn          |
+*Note: Morale levels and thresholds are defined in Table 9.4. The values below match the current configuration but may change - always refer to Table 9.4 for authoritative values.*
+
+| Morale Level | Morale Threshold | Effect on Success                      |
+|:-------------|:----------------:|:---------------------------------------|
+| Collapsing   | Never succeeds   | -1 to all CER rolls this turn          |
+| VeryLow      | > 18             | No effect                              |
+| Low          | > 15             | +1 to CER for one random squadron      |
+| Normal       | > 12             | +1 to all CER rolls this turn          |
+| High         | > 9              | +1 CER + one critical auto-succeeds    |
+| VeryHigh/Exceptional | > 6     | +2 to all CER rolls this turn          |
+
+See [Table 9.4](reference.md#94-prestige) for prestige ranges that determine morale level.
 
 **Morale Effects:**
 
@@ -205,12 +209,12 @@ House prestige affects crew morale and combat effectiveness. At the start of eac
 - Morale effects last for the current turn only.
 - Prestige ≤ 0 automatically triggers morale crisis without requiring a roll.
 
-**Morale Crisis (Prestige ≤ 0):**
+**Morale Crisis (Collapsing Morale):**
 
-When a House's prestige drops to zero or below, morale collapses:
+When a House's morale reaches Collapsing level (see [Table 9.4](reference.md#94-prestige) for prestige threshold), morale collapses:
 - All CER rolls receive -1 penalty (no morale check roll required).
 - One random fleet refuses orders and holds position for the turn.
-- Effects persist until prestige rises above 0.
+- Effects persist until prestige rises above the Collapsing threshold.
 
 ## 7.2 Task Force Assignment
 
@@ -541,10 +545,10 @@ When multiple attackers independently select the same target during simultaneous
 **Multi-House Combat Prestige Attribution:**
 
 When three or more houses participate in combat:
-- Prestige for "Destroy an enemy Task Force" (+3) is awarded to the house that dealt the crippling blow to the final squadron in that Task Force
+- **FleetVictory** prestige is awarded to the house that dealt the crippling blow to the final squadron in that Task Force - see [Table 9.4](reference.md#94-prestige)
 - If a squadron is destroyed in the same round it is crippled (via critical hit or overkill with critical), prestige goes to the house that dealt the crippling blow
 - If multiple houses attack simultaneously and a squadron is destroyed (already crippled from previous round), all attacking houses share prestige equally (rounded down, minimum 1 per house)
-- Prestige for "Force an enemy Task Force to retreat" (+2) is awarded to all houses engaged with the retreating Task Force, divided evenly (rounded down, minimum 1 per house)
+- **FleetVictory** prestige is awarded to all houses engaged with the retreating Task Force, divided evenly (rounded down, minimum 1 per house) - see [Table 9.4](reference.md#94-prestige)
 - Track damage sources to determine which house dealt the crippling blow for prestige awards
 
 ### 7.3.4 Rounds
@@ -584,21 +588,22 @@ Non-homeworld colonies follow standard ROE evaluation and may be tactically aban
 
 **Morale ROE Modifier:**
 
-House morale affects combat behavior by modifying effective ROE for retreat evaluation:
+House morale affects combat behavior by modifying effective ROE for retreat evaluation. See [Table 9.4](reference.md#94-prestige) for morale level definitions.
 
-| Prestige Level    | Morale ROE Modifier | Effect                                      |
-|:------------------|:-------------------:|:--------------------------------------------|
-| ≤ 0 (Crisis)      | -2                  | Retreat much more readily                   |
-| 1-20 (Low)        | -1                  | Retreat more readily                        |
-| 21-40 (Average)   | 0                   | No modification                             |
-| 41-60 (Good)      | 0                   | No modification                             |
-| 61-80 (High)      | +1                  | Fight more aggressively, retreat less often |
-| 81+ (Elite)       | +2                  | Fight much more aggressively                |
+| Morale Level     | Morale ROE Modifier | Effect                                      |
+|:-----------------|:-------------------:|:--------------------------------------------|
+| Collapsing       | -2                  | Retreat much more readily                   |
+| VeryLow          | -1                  | Retreat more readily                        |
+| Low              | 0                   | No modification                             |
+| Normal           | 0                   | No modification                             |
+| High             | +1                  | Fight more aggressively, retreat less often |
+| VeryHigh         | +1                  | Fight more aggressively, retreat less often |
+| Exceptional      | +2                  | Fight much more aggressively                |
 
 **Application:**
 - Effective ROE = Base ROE + Morale ROE Modifier
-- Example: A fleet with ROE 6 (engage equal or inferior) and Elite morale (81+ prestige) has effective ROE 8 (engage even if outgunned 2:1)
-- Example: A fleet with ROE 6 and Crisis morale (≤0 prestige) has effective ROE 4 (engage only if 2:1 advantage)
+- Example: A fleet with ROE 6 (engage equal or inferior) and Exceptional morale has effective ROE 8 (engage even if outgunned 2:1)
+- Example: A fleet with ROE 6 and Collapsing morale has effective ROE 4 (engage only if 2:1 advantage)
 - Morale modifier applies only to retreat evaluation, not to fleet orders or diplomatic status
 - Minimum effective ROE is 0 (flee from all combat), maximum is 10 (fight to the death)
 - Homeworld defense exception overrides morale-modified ROE
@@ -824,11 +829,11 @@ Destroyed ships cannot be salvaged from battle wreckage. Salvage operations appl
 **Prestige Awards:**
 
 Prestige is awarded after combat resolution:
-- +3 prestige for destroying an enemy Task Force (awarded to house that dealt crippling blow to final squadron)
-- +2 prestige for forcing an enemy Task Force to retreat (divided among all engaged houses)
-- +5 prestige for destroying an enemy Starbase
-- -5 prestige for losing a Starbase
-- -1 prestige for being ambushed by a cloaked fleet (if Raiders achieved surprise in Phase 1)
+- **FleetVictory** prestige for destroying an enemy Task Force (awarded to house that dealt crippling blow to final squadron) - see [Table 9.4](reference.md#94-prestige)
+- **FleetVictory** prestige for forcing an enemy Task Force to retreat (divided among all engaged houses) - see [Table 9.4](reference.md#94-prestige)
+- **StarbaseDestroyed** prestige for destroying an enemy Starbase - see [Table 9.4](reference.md#94-prestige)
+- **StarbaseDestroyed** penalty for losing a Starbase - see [Table 9.4](reference.md#94-prestige)
+- **DishonoredExpires** penalty for being ambushed by a cloaked fleet (if Raiders achieved surprise in Phase 1) - see [Table 9.4](reference.md#94-prestige)
 - No prestige awarded or lost for mutual withdrawal, forced stalemate, or forced post-combat withdrawal
 
 ## 7.4 Starbase Combat
