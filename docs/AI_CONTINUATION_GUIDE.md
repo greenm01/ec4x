@@ -65,6 +65,51 @@ ec4x/
 
 ---
 
+## Type System Quick Reference
+
+**IMPORTANT**: Always check types in `src/common/types/` before writing code.
+
+### Common Types Location Guide
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| `HouseId`, `FleetId`, `SystemId` | `src/common/types/core.nim` | Basic identifiers |
+| `ShipClass`, `EnhancedShip` | `src/common/types/units.nim` | Ship definitions with stats |
+| `LaneType`, `CombatState` | `src/common/types/combat.nim` | Basic combat & movement types |
+| `System` | `src/common/system.nim` | Star system representation |
+| `Hex`, `HexCoord` | `src/common/hex.nim` | Hexagonal coordinates |
+| `Ship` (simple) | `src/engine/ship.nim` | Simple ship (type + crippled flag) |
+| `Fleet` | `src/engine/fleet.nim` | Fleet container |
+| `Squadron` | `src/engine/squadron.nim` | Squadron with enhanced ship |
+| `CombatSquadron`, `TaskForce` | `src/engine/combat/types.nim` | Combat-specific types |
+
+### Key Type Distinctions
+
+**`Ship` vs `EnhancedShip` vs `Squadron`**:
+- `Ship` (ship.nim): Simple `{shipType, isCrippled}` for fleet movement
+- `EnhancedShip` (units.nim): Full stats (AS, DS, tech level) for combat
+- `Squadron` (squadron.nim): `{EnhancedShip, id, owner, location}`
+
+**`System` vs `StarSystem`**:
+- Only `System` exists in `src/common/system.nim`
+- Old code may reference `StarSystem` - this is outdated
+
+**`Lane` vs `JumpLane`**:
+- Use `JumpLane` from `src/engine/starmap.nim`
+- `Lane` is not a type in the codebase
+
+### Quick Type Lookup Commands
+
+```bash
+# Find where a type is defined
+grep -r "type YourType" src/common/types/ src/engine/
+
+# See all types in a module
+nim check --verbosity:0 src/common/types/core.nim
+```
+
+---
+
 ## Critical Context
 
 ### Tech Stack
