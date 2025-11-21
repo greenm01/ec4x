@@ -16,7 +16,7 @@ type
     numEmpires*: uint32
 
 const
-  CONFIG_FILE* = "game_config.toml"
+  configFile* = "game_config.toml"
 
 proc checkGamePath*(dir: string): bool =
   ## Verify that the given path is a valid directory
