@@ -42,6 +42,7 @@ destroy_starbase = 5
 destroy_squadron = 1
 
 [espionage]
+# Prestige rewards for performing espionage
 tech_theft = 2
 low_impact_sabotage = 1
 high_impact_sabotage = 3
@@ -52,6 +53,16 @@ psyops_campaign = 1
 failed_espionage = -2  # Detected
 over_invest_espionage = -1  # Per 1% over 5%
 over_invest_counter_intel = -1  # Per 1% over 5%
+
+[espionage_victim]
+# Prestige penalties for being targeted by espionage
+tech_theft_victim = -3
+low_impact_sabotage_victim = -1
+high_impact_sabotage_victim = -5
+assassination_victim = -7
+cyber_attack_victim = -3
+economic_manipulation_victim = -4
+psyops_campaign_victim = -2
 
 [scout]
 spy_on_planet = 1
