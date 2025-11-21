@@ -159,7 +159,7 @@ proc runTest*(scenario: BattleScenario): TestResult =
   # Build battle context
   let context = BattleContext(
     systemId: scenario.systemId,
-    taskForces: @[scenario.attacker, scenario.defender],
+    taskForces: scenario.taskForces,
     seed: scenario.seed,
     maxRounds: 20
   )
@@ -220,16 +220,8 @@ proc calculateWinRates*(results: seq[TestResult]): Table[string, tuple[wins: int
   result = initTable[string, tuple[wins: int, total: int]]()
 
   for testResult in results:
-    for tf in testResult.scenario.attacker.squadrons:
-      let house = testResult.scenario.attacker.house
-      var entry = result.getOrDefault(house, (0, 0))
-      entry.total += 1
-      if testResult.result.victor.isSome and testResult.result.victor.get() == house:
-        entry.wins += 1
-      result[house] = entry
-
-    for tf in testResult.scenario.defender.squadrons:
-      let house = testResult.scenario.defender.house
+    for tf in testResult.scenario.taskForces:
+      let house = tf.house
       var entry = result.getOrDefault(house, (0, 0))
       entry.total += 1
       if testResult.result.victor.isSome and testResult.result.victor.get() == house:
