@@ -66,12 +66,15 @@ def generate_space_force_table(ships_config: Dict[str, Any]) -> str:
         cst = ship.get('tech_level', ship.get('cst_min', 1))
         pc = ship.get('build_cost', 0)
 
-        # Calculate MC percentage from upkeep_cost
-        upkeep = ship.get('upkeep_cost', 0)
-        if pc > 0:
-            mc_percent = round((upkeep / pc) * 100)
+        # Use maintenance_percent if specified, otherwise calculate from upkeep_cost
+        if 'maintenance_percent' in ship:
+            mc_percent = ship['maintenance_percent']
         else:
-            mc_percent = 0
+            upkeep = ship.get('upkeep_cost', 0)
+            if pc > 0:
+                mc_percent = round((upkeep / pc) * 100)
+            else:
+                mc_percent = 0
         mc = f"{mc_percent}%"
 
         as_val = ship.get('attack_strength', 0)
@@ -80,9 +83,9 @@ def generate_space_force_table(ships_config: Dict[str, Any]) -> str:
         cr = ship.get('command_rating', 'NA')
         cl = ship.get('carry_limit', 'NA')
 
-        # Format values
-        cc_str = str(cc) if cc != 'NA' else 'NA'
-        cr_str = str(cr) if cr != 'NA' else 'NA'
+        # Format values - treat 0 as NA for CC/CR
+        cc_str = str(cc) if cc != 'NA' and cc != 0 else 'NA'
+        cr_str = str(cr) if cr != 'NA' and cr != 0 else 'NA'
         cl_str = str(cl) if cl != 'NA' and cl > 0 else 'NA'
 
         lines.append(
@@ -117,13 +120,16 @@ def generate_ground_units_table(ground_config: Dict[str, Any]) -> str:
 
         cst = unit.get('cst_min', 1)
         pc = unit.get('build_cost', 0)
-        upkeep = unit.get('upkeep_cost', 0)
 
-        # Calculate MC percentage
-        if pc > 0:
-            mc_percent = round((upkeep / pc) * 100)
+        # Use maintenance_percent if specified, otherwise calculate
+        if 'maintenance_percent' in unit:
+            mc_percent = unit['maintenance_percent']
         else:
-            mc_percent = 0
+            upkeep = unit.get('upkeep_cost', 0)
+            if pc > 0:
+                mc_percent = round((upkeep / pc) * 100)
+            else:
+                mc_percent = 0
         mc = f"{mc_percent}%"
 
         as_val = unit.get('attack_strength', 0)
@@ -159,13 +165,16 @@ def generate_spacelift_table(facilities_config: Dict[str, Any], ships_config: Di
 
         cst = facility.get('cst_min', 1)
         pc = facility.get('build_cost', 0)
-        upkeep = facility.get('upkeep_cost', 0)
 
-        # Calculate MC percentage
-        if pc > 0:
-            mc_percent = round((upkeep / pc) * 100)
+        # Use maintenance_percent if specified, otherwise calculate
+        if 'maintenance_percent' in facility:
+            mc_percent = facility['maintenance_percent']
         else:
-            mc_percent = 0
+            upkeep = facility.get('upkeep_cost', 0)
+            if pc > 0:
+                mc_percent = round((upkeep / pc) * 100)
+            else:
+                mc_percent = 0
         mc = f"{mc_percent}%"
 
         cl = facility.get('carry_limit', 0)
@@ -188,13 +197,16 @@ def generate_spacelift_table(facilities_config: Dict[str, Any], ships_config: Di
 
         cst = ship.get('tech_level', ship.get('cst_min', 1))
         pc = ship.get('build_cost', 0)
-        upkeep = ship.get('upkeep_cost', 0)
 
-        # Calculate MC percentage
-        if pc > 0:
-            mc_percent = round((upkeep / pc) * 100)
+        # Use maintenance_percent if specified, otherwise calculate
+        if 'maintenance_percent' in ship:
+            mc_percent = ship['maintenance_percent']
         else:
-            mc_percent = 0
+            upkeep = ship.get('upkeep_cost', 0)
+            if pc > 0:
+                mc_percent = round((upkeep / pc) * 100)
+            else:
+                mc_percent = 0
         mc = f"{mc_percent}%"
 
         cl = ship.get('carry_limit', 0)

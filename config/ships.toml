@@ -20,7 +20,8 @@ command_cost = 1
 command_rating = 2
 tech_level = 1  # CST requirement
 build_cost = 20  # PC from spec
-upkeep_cost = 1  # MC = 3% of PC = 0.6 → round to 1
+upkeep_cost = 1  # Actual PP cost (rounded from 3% of 20)
+maintenance_percent = 3  # MC% as shown in spec
 special_capability = ""
 
 [frigate]
@@ -154,6 +155,7 @@ attack_strength = 5
 defense_strength = 18
 command_cost = 3
 command_rating = 8
+carry_limit = 3
 tech_level = 3
 build_cost = 120
 upkeep_cost = 4  # MC = 3% of 120 = 3.6 → round to 4
@@ -166,6 +168,7 @@ attack_strength = 8
 defense_strength = 25
 command_cost = 4
 command_rating = 10
+carry_limit = 5
 tech_level = 5
 build_cost = 200
 upkeep_cost = 10  # MC = 5% of 200 = 10
@@ -229,26 +232,29 @@ special_capability = "ELI+2"
 
 [etac]
 name = "ETAC"
-class = "ETAC"
+class = "ET"
 attack_strength = 0
-defense_strength = 2
-command_cost = 2
+defense_strength = 10
+command_cost = 0
 command_rating = 0
-tech_level = 0
-build_cost = 500
-upkeep_cost = 5
+carry_limit = 1
+tech_level = 1
+build_cost = 50
+upkeep_cost = 2  # Actual PP cost
+maintenance_percent = 3  # MC% as shown in spec
 special_capability = "COL"
 
 [troop_transport]
 name = "Troop Transport"
 class = "TT"
 attack_strength = 0
-defense_strength = 3
-command_cost = 2
+defense_strength = 15
+command_cost = 0
 command_rating = 0
-tech_level = 0
-build_cost = 400
-upkeep_cost = 4
+carry_limit = 1
+tech_level = 1
+build_cost = 30
+upkeep_cost = 1  # MC = 3% of 30 = 0.9 → round to 1
 special_capability = "TRP"
 
 # ============================================================================
