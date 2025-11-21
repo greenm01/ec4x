@@ -85,3 +85,7 @@ src/engine/research/types
 src/engine/research/costs
 src/engine/research/advancement
 src/engine/research/effects
+tests/integration/test_m5_economy_integration
+tests/unit/test_economy
+tests/unit/test_research
+tests/balance/test_economy_balance
