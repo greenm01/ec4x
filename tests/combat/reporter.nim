@@ -4,10 +4,10 @@
 ## This is the ONLY place JSON touches the combat system
 
 import std/[json, options, strformat, tables]
-import ../src/engine/combat/[types, engine]
-import ../src/engine/squadron
-import ../src/common/types/[core, units, combat]
-import combat_test_harness
+import ../../src/engine/combat/[types, engine]
+import ../../src/engine/squadron
+import ../../src/common/types/[core, units, combat]
+import harness
 
 ## Core Type Conversions
 
