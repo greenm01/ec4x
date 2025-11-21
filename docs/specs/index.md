@@ -28,7 +28,6 @@ EC4X pays homage and is influenced by the following great titles:
 - Space Empires 4X
 - Solar Starfire
 - Stellar Conquest
-- Fractal, Beyond the Void
 
 Although not required, it is highly recommended to purchase physical copies of these classics to fully appreciate the art. Dive deep.
 
@@ -95,6 +94,3 @@ The EC4X technical implementation is documented in the following guides:
 - **[VPS Deployment](../EC4X-VPS-Deployment.md)** - Production deployment guide
 
 ---
-
-Contributors:
-- Matthew Potter
