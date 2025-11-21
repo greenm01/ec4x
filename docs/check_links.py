@@ -109,6 +109,7 @@ def main():
         'specs/diplomacy.md',
         'specs/economy.md',
         'specs/gameplay.md',
+        'specs/glossary.md',
         'specs/index.md',
         'specs/operations.md',
         'specs/reference.md'
