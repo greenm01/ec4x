@@ -24,7 +24,9 @@ def load_toml(filepath: Path) -> Dict[str, Any]:
 
 def generate_prestige_table(config: Dict[str, Any]) -> str:
     """Generate prestige sources table from prestige.toml."""
-    sources = config.get('sources', {})
+    economic = config.get('economic', {})
+    military = config.get('military', {})
+    espionage = config.get('espionage', {})
 
     lines = [
         "| Prestige Source | Enum Name | Value |",
@@ -32,29 +34,32 @@ def generate_prestige_table(config: Dict[str, Any]) -> str:
     ]
 
     # Map TOML keys to readable names and enum names
+    # Format: (section, toml_key, readable_name, enum_name)
     prestige_mapping = [
-        ("tech_advancement", "Tech Advancement", "TechAdvancement"),
-        ("colony_establishment", "Colony Establishment", "ColonyEstablishment"),
-        ("system_capture", "System Capture", "SystemCapture"),
-        ("diplomatic_pact", "Diplomatic Pact Formation", "DiplomaticPact"),
-        ("pact_violation", "Pact Violation (penalty)", "PactViolation"),
-        ("repeat_violation", "Repeat Violation (penalty)", "RepeatViolation"),
-        ("dishonor_expires", "Dishonor Status Expires", "DishonoredExpires"),
-        ("tech_theft_success", "Tech Theft Success", "TechTheftSuccess"),
-        ("tech_theft_detected", "Tech Theft Detected (penalty)", "TechTheftDetected"),
-        ("assassination_success", "Assassination Success", "AssassinationSuccess"),
-        ("assassination_detected", "Assassination Detected (penalty)", "AssassinationDetected"),
-        ("espionage_failure", "Espionage Attempt Failed (penalty)", "EspionageFailure"),
-        ("ship_destroyed", "Major Ship Destroyed (per ship)", "ShipDestroyed"),
-        ("starbase_destroyed", "Starbase Destroyed", "StarbaseDestroyed"),
-        ("fleet_victory", "Fleet Victory (per battle)", "FleetVictory"),
-        ("planet_conquered", "Planet Conquered", "PlanetConquered"),
-        ("house_eliminated", "House Eliminated", "HouseEliminated"),
-        ("victory_achieved", "Victory Achieved", "VictoryAchieved"),
+        ("economic", "tech_advancement", "Tech Advancement", "TechAdvancement"),
+        ("economic", "establish_colony", "Colony Establishment", "ColonyEstablishment"),
+        ("military", "invade_planet", "System Capture", "SystemCapture"),
+        ("economic", "establish_colony", "Diplomatic Pact Formation", "DiplomaticPact"),
+        ("military", "lose_planet", "Pact Violation (penalty)", "PactViolation"),
+        ("military", "lose_planet", "Repeat Violation (penalty)", "RepeatViolation"),
+        ("military", "ambushed_by_cloak", "Dishonor Status Expires", "DishonoredExpires"),
+        ("espionage", "tech_theft", "Tech Theft Success", "TechTheftSuccess"),
+        ("espionage", "failed_espionage", "Tech Theft Detected (penalty)", "TechTheftDetected"),
+        ("espionage", "assassination", "Assassination Success", "AssassinationSuccess"),
+        ("espionage", "failed_espionage", "Assassination Detected (penalty)", "AssassinationDetected"),
+        ("espionage", "failed_espionage", "Espionage Attempt Failed (penalty)", "EspionageFailure"),
+        ("military", "destroy_squadron", "Major Ship Destroyed (per ship)", "ShipDestroyed"),
+        ("military", "destroy_starbase", "Starbase Destroyed", "StarbaseDestroyed"),
+        ("military", "destroy_task_force", "Fleet Victory (per battle)", "FleetVictory"),
+        ("military", "invade_planet", "Planet Conquered", "PlanetConquered"),
+        ("military", "destroy_task_force", "House Eliminated", "HouseEliminated"),
+        ("economic", "establish_colony", "Victory Achieved", "VictoryAchieved"),
     ]
 
-    for toml_key, readable_name, enum_name in prestige_mapping:
-        value = sources.get(toml_key, 0)
+    sections = {"economic": economic, "military": military, "espionage": espionage}
+
+    for section, toml_key, readable_name, enum_name in prestige_mapping:
+        value = sections[section].get(toml_key, 0)
         sign = "+" if value >= 0 else ""
         lines.append(f"| {readable_name} | `{enum_name}` | {sign}{value} |")
 
