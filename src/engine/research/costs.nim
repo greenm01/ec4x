@@ -30,20 +30,21 @@ proc getELUpgradeCost*(currentLevel: int): int =
   ## Per economy.md:4.2
   ##
   ## EL1-5: 40 + EL(10)
-  ## EL6+: Increases by 15 per level
+  ## EL6+: 90 + 15 per level above 5
 
-  if currentLevel < 5:
+  if currentLevel <= 5:
     return 40 + currentLevel * 10
   else:
-    # EL6 = 105, EL7 = 120, etc.
+    # EL6 = 90 + 15 = 105, EL7 = 90 + 30 = 120, etc.
     let baseEL5Cost = 40 + 5 * 10  # 90
     let levelsAbove5 = currentLevel - 5
-    return baseEL5Cost + (15 * (levelsAbove5 + 1))
+    return baseEL5Cost + (15 * levelsAbove5)
 
 proc getELModifier*(level: int): float =
-  ## Get EL economic modifier
+  ## Get EL economic modifier (as multiplier)
   ## Per economy.md:4.2: +5% per level, capped at 50%
-  result = min(float(level) * EL_MODIFIER_PER_LEVEL, EL_MAX_MODIFIER)
+  ## Returns 1.0 + bonus (e.g., 1.05 for EL1, 1.50 for EL10+)
+  result = 1.0 + min(float(level) * EL_MODIFIER_PER_LEVEL, EL_MAX_MODIFIER)
 
 ## Science Research Points (economy.md:4.3)
 
