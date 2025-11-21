@@ -255,6 +255,45 @@ proc scenario_CarrierDeployment*() =
   echo "  - Mobile defense strategy vs. fixed defenses"
   echo "\nImplementation: Requires starmap movement integration"
 
+## Scenario 5: Starbase Hacking
+## Scout infiltrates enemy starbase to gather intelligence
+proc scenario_StarbaseHacking*() =
+  echo "\n=== Scenario: Starbase Hacking ==="
+  echo "Design: Solo Scout infiltrates enemy starbase network"
+  echo "Expected: Scout gathers economic and R&D intelligence without combat\n"
+
+  echo "Per operations.md:6.2.11 - Hack a Starbase:"
+  echo "  - Mission reserved for solo Scouts"
+  echo "  - Scout disguises as civilian satellite"
+  echo "  - Hacks starbase network for intelligence"
+  echo "  - Gathers economic and R&D data"
+  echo ""
+  echo "Strategic value:"
+  echo "  - Reveals enemy tech levels and research direction"
+  echo "  - Exposes production capacity and economy"
+  echo "  - Non-combat intelligence gathering"
+  echo "  - Requires starbase detection rolls to succeed"
+  echo "\nImplementation: Stub exists in starbase.nim, needs full implementation"
+
+## Scenario 6: Multi-System Fleet Transit
+## Fleet navigates through multiple systems using lane traversal rules
+proc scenario_MultiSystemTransit*() =
+  echo "\n=== Scenario: Multi-System Fleet Transit ==="
+  echo "Design: Fleet moves through friendly territory using 2-jump rule"
+  echo "Expected: Fleet reaches distant system in fewer turns\n"
+
+  echo "Per operations.md:6.1 - Jump Lane Traversal:"
+  echo "  - Major lanes: 2 jumps/turn if all systems owned by player"
+  echo "  - Major lanes: 1 jump/turn into unexplored/rival systems"
+  echo "  - Minor/Restricted lanes: Always 1 jump/turn"
+  echo ""
+  echo "Tactical application:"
+  echo "  - Rapid reinforcement along friendly supply lines"
+  echo "  - Strategic mobility advantage in controlled space"
+  echo "  - Border defense can respond faster"
+  echo "  - Invasion slows at enemy borders (1 jump/turn)"
+  echo "\nImplementation: ✅ COMPLETE in resolve.nim:resolveMovementOrder"
+
 ## Main Runner
 when isMainModule:
   echo "╔════════════════════════════════════════════════╗"
@@ -265,6 +304,8 @@ when isMainModule:
   scenario_RaiderAmbush()
   scenario_ScoutDetection()
   scenario_CarrierDeployment()
+  scenario_StarbaseHacking()
+  scenario_MultiSystemTransit()
 
   echo "\n╔════════════════════════════════════════════════╗"
   echo "║  Asymmetric Tests Complete                    ║"
