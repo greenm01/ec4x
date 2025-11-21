@@ -11,9 +11,11 @@
 
 import std/[tables, options]
 import ../../common/types/[core, tech]
+import ../prestige
 
 export core.HouseId
 export tech.TechField, tech.TechLevel
+export prestige.PrestigeEvent
 
 type
   ## Research Point Categories
@@ -77,6 +79,7 @@ type
     fromLevel*: int
     toLevel*: int
     cost*: int        # ERP/SRP/TRP spent
+    prestigeEvent*: Option[PrestigeEvent]  # Prestige awarded for advancement
 
   ResearchReport* = object
     ## Research phase report

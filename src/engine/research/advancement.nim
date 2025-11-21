@@ -11,6 +11,8 @@
 import std/[random, tables, options]
 import types, costs
 import ../../common/types/tech
+import ../prestige
+import ../config/prestige_config
 
 export types.TechAdvancement, types.BreakthroughEvent, types.TechTree
 
@@ -116,12 +118,21 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
     # TODO: Proper EL field (currently using energyLevel as placeholder)
     tree.levels.energyLevel = currentEL + 1
 
+    # Create prestige event
+    let config = globalPrestigeConfig
+    let prestigeEvent = createPrestigeEvent(
+      PrestigeSource.TechAdvancement,
+      config.techAdvancement,
+      "Economic Level " & $currentEL & " → " & $(currentEL + 1)
+    )
+
     return some(TechAdvancement(
       houseId: "",  # Set by caller
       field: TechField.EnergyLevel,  # TODO: Separate EL from tech fields
       fromLevel: currentEL,
       toLevel: currentEL + 1,
-      cost: cost
+      cost: cost,
+      prestigeEvent: some(prestigeEvent)
     ))
 
   return none(TechAdvancement)
@@ -140,12 +151,21 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[TechAdvan
     # TODO: Proper SL field (currently using shieldLevel as placeholder)
     tree.levels.shieldLevel = currentSL + 1
 
+    # Create prestige event
+    let config = globalPrestigeConfig
+    let prestigeEvent = createPrestigeEvent(
+      PrestigeSource.TechAdvancement,
+      config.techAdvancement,
+      "Science Level " & $currentSL & " → " & $(currentSL + 1)
+    )
+
     return some(TechAdvancement(
       houseId: "",  # Set by caller
       field: TechField.ShieldLevel,  # TODO: Separate SL from tech fields
       fromLevel: currentSL,
       toLevel: currentSL + 1,
-      cost: cost
+      cost: cost,
+      prestigeEvent: some(prestigeEvent)
     ))
 
   return none(TechAdvancement)
@@ -196,10 +216,20 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
   of TechField.CounterIntelligence:
     tree.levels.counterIntelligence += 1
 
+  # Create prestige event
+  let config = globalPrestigeConfig
+  let fieldName = $field
+  let prestigeEvent = createPrestigeEvent(
+    PrestigeSource.TechAdvancement,
+    config.techAdvancement,
+    fieldName & " " & $currentLevel & " → " & $(currentLevel + 1)
+  )
+
   return some(TechAdvancement(
     houseId: "",  # Set by caller
     field: field,
     fromLevel: currentLevel,
     toLevel: currentLevel + 1,
-    cost: cost
+    cost: cost,
+    prestigeEvent: some(prestigeEvent)
   ))
