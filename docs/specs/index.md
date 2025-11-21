@@ -58,6 +58,7 @@ The complete EC4X game specification is organized into the following documents:
 
 ### Reference
 - **[Game Data Tables](reference.md)** - Ship stats, tech trees, and data tables
+- **[Glossary](glossary.md)** - Comprehensive definitions of game terms and abbreviations
 
 ---
 
