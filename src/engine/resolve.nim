@@ -6,7 +6,8 @@
 
 import std/[tables, algorithm, options]
 import ../common/[hex, types/core]
-import gamestate, orders, fleet, ship, starmap, combat, economy
+import gamestate, orders, fleet, ship, starmap, economy
+# Note: Space combat via combat/engine module when needed
 
 type
   TurnResult* = object
