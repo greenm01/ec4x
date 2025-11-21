@@ -114,51 +114,51 @@ proc resolveCombat*(context: BattleContext): CombatResult =
         result.wasStalemate = true
         break
 
-    # Check combat termination after round
+    # Evaluate retreat BEFORE checking termination (operations.md:7.3.4)
+    # Retreat evaluation happens after round completes but before termination check
+    # This allows fleets to retreat before being eliminated
+
+    # Can't retreat on first round
+    if roundNum > 1:
+      # Evaluate retreat for all Task Forces
+      var retreatEvals: seq[RetreatEvaluation] = @[]
+      for tf in taskForces:
+        # Use prestige from game state (placeholder: use ROE * 10)
+        let prestige = tf.roe * 10
+        let eval = evaluateRetreat(tf, taskForces, prestige)
+        if eval.wantsToRetreat:
+          retreatEvals.add(eval)
+
+      if retreatEvals.len > 0:
+        # Get retreat priority order
+        let retreatOrder = getRetreatPriority(taskForces)
+
+        # Process retreats in priority order
+        for houseId in retreatOrder:
+          # Check if this house wants to retreat
+          var wantsRetreat = false
+          for eval in retreatEvals:
+            if eval.taskForce == houseId:
+              wantsRetreat = true
+              break
+
+          if not wantsRetreat:
+            continue
+
+          # Execute retreat
+          result.retreated.add(houseId)
+          executeRetreat(taskForces, houseId)
+
+          # After each retreat, remaining forces re-evaluate
+          # (simplified: would check if retreat still desired)
+
+    # Check combat termination after retreat evaluation
     let termCheck2 = checkCombatTermination(taskForces, consecutiveRoundsNoChange)
     if termCheck2.shouldEnd:
       result.victor = termCheck2.victor
       if termCheck2.reason.contains("Stalemate"):
         result.wasStalemate = true
       break
-
-    # Can't retreat on first round
-    if roundNum == 1:
-      continue
-
-    # Evaluate retreat for all Task Forces
-    var retreatEvals: seq[RetreatEvaluation] = @[]
-    for tf in taskForces:
-      # Use prestige from game state (placeholder: use ROE * 10)
-      let prestige = tf.roe * 10
-      let eval = evaluateRetreat(tf, taskForces, prestige)
-      if eval.wantsToRetreat:
-        retreatEvals.add(eval)
-
-    if retreatEvals.len == 0:
-      continue
-
-    # Get retreat priority order
-    let retreatOrder = getRetreatPriority(taskForces)
-
-    # Process retreats in priority order
-    for houseId in retreatOrder:
-      # Check if this house wants to retreat
-      var wantsRetreat = false
-      for eval in retreatEvals:
-        if eval.taskForce == houseId:
-          wantsRetreat = true
-          break
-
-      if not wantsRetreat:
-        continue
-
-      # Execute retreat
-      result.retreated.add(houseId)
-      executeRetreat(taskForces, houseId)
-
-      # After each retreat, remaining forces re-evaluate
-      # (simplified: would check if retreat still desired)
 
   # Record survivors and eliminated
   for tf in context.taskForces:
