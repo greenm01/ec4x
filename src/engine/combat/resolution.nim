@@ -8,7 +8,7 @@
 ## Phase 3: Capital Ships (Main Engagement)
 
 import std/[tables, sequtils, algorithm, options]
-import combat_types, combat_cer, combat_targeting, combat_damage
+import types, cer, targeting, damage
 
 export BattleContext, CombatResult
 
