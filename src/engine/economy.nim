@@ -13,13 +13,13 @@ type
     production*: int
     research*: int
 
-  ConstructionResult* = enum
-    crStarted,      # New project started
-    crInProgress,   # Existing project advanced
-    crCompleted,    # Project finished this turn
-    crInsufficientFunds,
-    crInsufficientCapacity,
-    crInvalidProject
+  ConstructionResult* {.pure.} = enum
+    Started,      # New project started
+    InProgress,   # Existing project advanced
+    Completed,    # Project finished this turn
+    InsufficientFunds,
+    InsufficientCapacity,
+    InvalidProject
 
   CompletedProject* = object
     projectType*: BuildingType  # Type of construction completed
@@ -76,10 +76,10 @@ proc startConstruction*(colony: var Colony, project: ConstructionProject,
   ##
   ## STUB: Simple construction start (no validation)
   if colony.underConstruction.isSome:
-    return crInsufficientCapacity
+    return ConstructionResult.InsufficientCapacity
 
   colony.underConstruction = some(project)
-  return crStarted
+  return ConstructionResult.Started
 
 proc advanceConstruction*(colony: var Colony): Option[CompletedProject] =
   ## Advance construction one turn

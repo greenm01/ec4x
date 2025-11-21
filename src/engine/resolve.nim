@@ -28,9 +28,9 @@ type
     description*: string
     systemId*: Option[SystemId]
 
-  GameEventType* = enum
-    geColonyEstablished, geSystemCaptured, geBattleOccurred,
-    geTechAdvance, geFleetDestroyed, geHouseEliminated
+  GameEventType* {.pure.} = enum
+    ColonyEstablished, SystemCaptured, BattleOccurred,
+    TechAdvance, FleetDestroyed, HouseEliminated
 
   CombatReport* = object
     systemId*: SystemId
@@ -138,7 +138,7 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
   for houseId in state.houses.keys:
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
-        if order.orderType == foBombard:
+        if order.orderType == FleetOrderType.Bombard:
           resolveBombardment(state, houseId, order, events)
 
 ## Phase 2: Income
@@ -251,7 +251,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   for houseId in state.houses.keys:
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
-        if order.orderType in [foMove, foSeekHome, foPatrol]:
+        if order.orderType in [FleetOrderType.Move, FleetOrderType.SeekHome, FleetOrderType.Patrol]:
           allMovementOrders.add((houseId, order))
 
   # Sort by priority
@@ -266,7 +266,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   for houseId in state.houses.keys:
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
-        if order.orderType == foColonize:
+        if order.orderType == FleetOrderType.Colonize:
           resolveColonizationOrder(state, houseId, order, events)
 
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
@@ -408,7 +408,7 @@ proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: Fle
            " (+", prestigeEvent.amount, " prestige)"
 
     events.add(GameEvent(
-      eventType: geColonyEstablished,
+      eventType: GameEventType.ColonyEstablished,
       houseId: houseId,
       description: "Established colony at system " & $targetId,
       systemId: some(targetId)
@@ -542,7 +542,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
     if colonies.len == 0 and fleets.len == 0:
       state.houses[houseId].eliminated = true
       events.add(GameEvent(
-        eventType: geHouseEliminated,
+        eventType: GameEventType.HouseEliminated,
         houseId: houseId,
         description: house.name & " has been eliminated!",
         systemId: none(SystemId)
@@ -559,7 +559,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
       if state.houses[houseId].negativePrestigeTurns >= config.collapseTurns:
         state.houses[houseId].eliminated = true
         events.add(GameEvent(
-          eventType: geHouseEliminated,
+          eventType: GameEventType.HouseEliminated,
           houseId: houseId,
           description: house.name & " has collapsed from negative prestige!",
           systemId: none(SystemId)
