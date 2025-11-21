@@ -73,15 +73,19 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 
 - Maximum of One Espionage Action Per Turn.
 
-| Espionage Action       | Cost in EBPs | Description                                                          | Prestige Change for Player | Prestige Change for Target |
-| ---------------------- |:------------:| -------------------------------------------------------------------- | -------------------------- | -------------------------- |
-| Tech Theft             | 5            | Attempt to steal critical R&D tech.                                  | +2                         | -3                         |
-| Sabotage (Low Impact)  | 2            | Small-scale sabotage to a colony's industry.                         | +1                         | -1                         |
-| Sabotage (High Impact) | 7            | Major sabotage to a colony's industry.                               | +3                         | -5                         |
-| Assassination          | 10           | Attempt to eliminate a key figures within the target House.          | +5                         | -7                         |
-| Cyber Attack           | 6            | Attempt to hack into a Starbase's systems to cause damage and chaos. | +2                         | -3                         |
-| Economic Manipulation  | 6            | Influence markets to harm the target's economy                       | +3                         | -4                         |
-| Psyops Campaign        | 3            | Launch a misinformation campaign or demoralization effort.           | +1                         | -2                         |
+<!-- ESPIONAGE_PRESTIGE_TABLE_START -->
+| Espionage Action | Cost in EBPs | Description | Prestige Change for Player | Prestige Change for Target |
+|------------------|:------------:|-------------|----------------------------|----------------------------|
+| Tech Theft | 5 | Attempt to steal critical R&D tech. | +2 | -3 |
+| Sabotage (Low Impact) | 2 | Small-scale sabotage to a colony's industry. | +1 | -1 |
+| Sabotage (High Impact) | 7 | Major sabotage to a colony's industry. | +3 | -5 |
+| Assassination | 10 | Attempt to eliminate a key figures within the target House. | +5 | -7 |
+| Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +2 | -3 |
+| Economic Manipulation | 6 | Influence markets to harm the target's economy | +3 | -4 |
+| Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +1 | -2 |
+
+*Source: config/prestige.toml [espionage] and [espionage_victim] sections; config/espionage.toml [costs]*
+<!-- ESPIONAGE_PRESTIGE_TABLE_END -->
 
 ### **8.2.1 Espionage Mechanics**
 
