@@ -9,7 +9,7 @@
 ## MILESTONE 2 - Squadron implementation
 ## M1 uses direct Fleet→Ship for simplicity
 
-import std/[sequtils, strutils, options, parsecfg, tables, os]
+import std/[sequtils, strutils, options, parsecfg, tables, os, math]
 import ship
 import ../common/types/[core, units]
 
@@ -102,13 +102,16 @@ proc loadShipConfig(configPath: string = "data/ships_default.toml") =
 
 proc getShipStats*(shipClass: ShipClass, techLevel: int = 0, configPath: string = ""): ShipStats =
   ## Get stats for a ship class from config file
-  ## Stats may be modified by tech level
+  ## Stats may be modified by tech level (WEP)
   ##
   ## Loads from data/ships_default.toml (or configPath if specified)
   ## Game-specific overrides from game_config.toml not yet implemented
   ##
+  ## Per economy.md Section 4.6: "Upgrades improve the Attack Strength (AS)
+  ## and Defense Strength (DS) of combat ships by 10% for each Weapons level
+  ## (rounded down)."
+  ##
   ## TODO M3: Support game-specific overrides
-  ## TODO M3: Implement tech level modifiers
 
   let path = if configPath.len > 0: configPath else: "data/ships_default.toml"
 
@@ -117,8 +120,13 @@ proc getShipStats*(shipClass: ShipClass, techLevel: int = 0, configPath: string 
 
   result = shipConfigCache[shipClass]
 
-  # TODO M3: Apply tech level modifiers
-  # For now, just return base stats
+  # Apply WEP tech level modifiers (AS and DS only)
+  # Base tech is WEP1 (techLevel = 1), each upgrade adds 10%
+  # Formula: stat × (1.10 ^ (techLevel - 1)), rounded down
+  if techLevel > 1:
+    let weaponsMultiplier = pow(1.10, float(techLevel - 1))
+    result.attackStrength = int(float(result.attackStrength) * weaponsMultiplier)
+    result.defenseStrength = int(float(result.defenseStrength) * weaponsMultiplier)
 
 ## Ship construction
 
