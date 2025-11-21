@@ -4,6 +4,8 @@ import std/[tables, options, strutils]
 import ../common/[hex, system]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
+import config/prestige_config
+import diplomacy/types as dip_types
 
 # Re-export common types
 export core.HouseId, core.SystemId, core.FleetId
@@ -43,6 +45,9 @@ type
     treasury*: int                # Accumulated wealth
     techTree*: TechTree
     eliminated*: bool
+    negativePrestigeTurns*: int  # Consecutive turns with prestige < 0 (defensive collapse)
+    diplomaticRelations*: dip_types.DiplomaticRelations  # Relations with other houses
+    violationHistory*: dip_types.ViolationHistory  # Track pact violations
 
   GamePhase* {.pure.} = enum
     Setup, Active, Paused, Completed
@@ -158,28 +163,15 @@ proc getHouseFleets*(state: GameState, houseId: HouseId): seq[Fleet] =
 # Victory condition checks
 
 proc calculatePrestige*(state: GameState, houseId: HouseId): int =
-  ## Calculate prestige for a house based on colonies, tech, etc.
-  result = 0
-
-  # Prestige from colonies
-  for colony in state.getHouseColonies(houseId):
-    result += colony.population * 10
-    result += colony.infrastructure * 50
-
-  # Prestige from technology
-  let house = state.houses[houseId]
-  let levels = house.techTree.levels
-  result += (levels.energyLevel + levels.shieldLevel + levels.constructionTech +
-             levels.weaponsTech + levels.terraformingTech +
-             levels.electronicIntelligence + levels.counterIntelligence) * 100
-
-  # Prestige from treasury
-  result += house.treasury div 100
+  ## Return current prestige for a house
+  ## Prestige is tracked via events and stored in House.prestige
+  return state.houses[houseId].prestige
 
 proc checkVictoryCondition*(state: GameState): Option[HouseId] =
   ## Check if any house has won the game
-  ## Victory: 5000 prestige or last house standing
+  ## Victory: prestige threshold (configurable) or last house standing
 
+  let config = globalPrestigeConfig
   let activeHouses = state.getActiveHouses()
 
   # Last house standing
@@ -188,8 +180,7 @@ proc checkVictoryCondition*(state: GameState): Option[HouseId] =
 
   # Prestige victory
   for house in activeHouses:
-    let prestige = state.calculatePrestige(house.id)
-    if prestige >= 5000:
+    if house.prestige >= config.prestigeVictoryThreshold:
       return some(house.id)
 
   return none(HouseId)
