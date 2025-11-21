@@ -23,6 +23,7 @@ python3 scripts/sync_specs.py
 
 **Tables Generated:**
 - Prestige sources (18 entries) - ✅ Active
+- Penalty mechanics (4 penalty types) - ✅ Active
 - Morale levels (7 levels) - ⏳ Pending markers in reference.md
 - Espionage actions (7 actions) - ⏳ Pending markers in reference.md
 

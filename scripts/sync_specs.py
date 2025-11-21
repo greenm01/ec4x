@@ -111,7 +111,61 @@ def generate_espionage_actions_table(config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def update_reference_spec(prestige_table: str, morale_table: str, espionage_table: str):
+def generate_penalty_mechanics_table(config: Dict[str, Any]) -> str:
+    """Generate penalty mechanics table from prestige.toml [penalties] section."""
+    penalties = config.get('penalties', {})
+
+    lines = [
+        "| Penalty Type | Condition | Prestige Impact | Frequency | Config Keys |",
+        "|--------------|-----------|-----------------|-----------|-------------|",
+    ]
+
+    # Tax rate penalties
+    high_threshold = penalties.get('high_tax_threshold', 51)
+    high_penalty = penalties.get('high_tax_penalty', -1)
+    high_freq = penalties.get('high_tax_frequency', 3)
+
+    very_high_threshold = penalties.get('very_high_tax_threshold', 66)
+    very_high_penalty = penalties.get('very_high_penalty', -2)
+    very_high_freq = penalties.get('very_high_tax_frequency', 5)
+
+    lines.append(
+        f"| High Tax Rate | Rolling 6-turn avg {high_threshold}-65% | "
+        f"{high_penalty} prestige | Every {high_freq} consecutive turns | "
+        f"`high_tax_*` |"
+    )
+    lines.append(
+        f"| Very High Tax Rate | Rolling 6-turn avg >{very_high_threshold}% | "
+        f"{very_high_penalty} prestige | Every {very_high_freq} consecutive turns | "
+        f"`very_high_tax_*` |"
+    )
+
+    # Maintenance shortfall
+    maint_base = penalties.get('maintenance_shortfall_base', -5)
+    maint_increment = penalties.get('maintenance_shortfall_increment', -2)
+
+    lines.append(
+        f"| Maintenance Shortfall | Missed maintenance payment | "
+        f"{maint_base} turn 1, escalates by {maint_increment}/turn | Per turn missed | "
+        f"`maintenance_shortfall_*` |"
+    )
+
+    # Blockade
+    blockade_penalty = penalties.get('blockade_penalty', -2)
+
+    lines.append(
+        f"| Blockade | Colony under blockade at Income Phase | "
+        f"{blockade_penalty} prestige | Per turn per colony | "
+        f"`blockade_penalty` |"
+    )
+
+    lines.append("")
+    lines.append("*Source: config/prestige.toml [penalties] section*")
+
+    return "\n".join(lines)
+
+
+def update_reference_spec(prestige_table: str, morale_table: str, espionage_table: str, penalty_table: str):
     """Update docs/specs/reference.md with generated tables."""
     spec_file = Path("docs/specs/reference.md")
 
@@ -130,6 +184,9 @@ def update_reference_spec(prestige_table: str, morale_table: str, espionage_tabl
 
     espionage_start = "<!-- ESPIONAGE_TABLE_START -->"
     espionage_end = "<!-- ESPIONAGE_TABLE_END -->"
+
+    penalty_start = "<!-- PENALTY_MECHANICS_START -->"
+    penalty_end = "<!-- PENALTY_MECHANICS_END -->"
 
     # Replace prestige table if markers exist
     if prestige_start in content and prestige_end in content:
@@ -157,6 +214,15 @@ def update_reference_spec(prestige_table: str, morale_table: str, espionage_tabl
         print("✓ Updated espionage table in reference.md")
     else:
         print("⚠ Espionage table markers not found in reference.md")
+
+    # Replace penalty mechanics table if markers exist
+    if penalty_start in content and penalty_end in content:
+        start_idx = content.index(penalty_start) + len(penalty_start)
+        end_idx = content.index(penalty_end)
+        content = content[:start_idx] + "\n" + penalty_table + "\n" + content[end_idx:]
+        print("✓ Updated penalty mechanics table in reference.md")
+    else:
+        print("⚠ Penalty mechanics table markers not found in reference.md")
 
     # Write updated content
     spec_file.write_text(content)
@@ -191,9 +257,12 @@ def main():
     espionage_table = generate_espionage_actions_table(espionage_config)
     print("✓ Generated espionage table (7 actions)")
 
+    penalty_table = generate_penalty_mechanics_table(prestige_config)
+    print("✓ Generated penalty mechanics table (4 penalty types)")
+
     # Update spec file
     print("\nUpdating specification documents...")
-    update_reference_spec(prestige_table, morale_table, espionage_table)
+    update_reference_spec(prestige_table, morale_table, espionage_table, penalty_table)
 
     print("\n" + "=" * 50)
     print("Sync complete!")

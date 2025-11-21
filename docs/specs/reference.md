@@ -73,22 +73,26 @@ CL = Carry Limit
 | Victory Achieved | `VictoryAchieved` | +5 |
 <!-- PRESTIGE_TABLE_END -->
 
-### Notes on Penalties:
+### Prestige Penalty Mechanics
 
-1. **Tax Rate Penalties**:
+Penalty mechanics describe how prestige is deducted based on player actions and game state. Unlike prestige sources (discrete events in Table 9.4), these are recurring penalties triggered by conditions.
 
-   - High tax rate (51-65%): -1 prestige every 3 consecutive turns at this rate
-   - Very high tax rate (>65%): -2 prestige every 5 consecutive turns at this rate
-   - Penalties apply periodically, not cumulatively
-   - See [Section 3.1.3](economy.md#313-tax-rate) for full tax mechanics
+<!-- PENALTY_MECHANICS_START -->
+| Penalty Type | Condition | Prestige Impact | Frequency | Config Keys |
+|--------------|-----------|-----------------|-----------|-------------|
+| High Tax Rate | Rolling 6-turn avg 51-65% | -1 prestige | Every 3 consecutive turns | `high_tax_*` |
+| Very High Tax Rate | Rolling 6-turn avg >66% | -2 prestige | Every 5 consecutive turns | `very_high_tax_*` |
+| Maintenance Shortfall | Missed maintenance payment | -5 turn 1, escalates by -2/turn | Per turn missed | `maintenance_shortfall_*` |
+| Blockade | Colony under blockade at Income Phase | -2 prestige | Per turn per colony | `blockade_penalty` |
 
-2. **Missed Maintenance Costs Penalty**:
-   
-   - Penalty escalates for consecutive turns of missed maintenance payments:
-     - Turn 1: -5 points
-     - Turn 2: -7 points (cumulative total: -12 points)
-     - Turn 3: -9 points (cumulative total: -21 points)
-     - Continues increasing by 2 additional points each turn.
+*Source: config/prestige.toml [penalties] section*
+<!-- PENALTY_MECHANICS_END -->
+
+**Additional Notes:**
+- Tax penalties apply periodically based on rolling 6-turn average, not instantaneously
+- Maintenance shortfall escalates: Turn 1 (-5), Turn 2 (-7), Turn 3 (-9), continues +2/turn
+- See [Section 3.1.3](economy.md#313-tax-rate) for full tax mechanics
+- See [Section 3.2](economy.md#32-maintenance-costs) for maintenance mechanics
 
 ## 9.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
 
@@ -100,5 +104,5 @@ CL = Carry Limit
 | Carrier Hangar Capacity                        | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit. | [2.4.1](assets.md#241-fighter-squadrons-carriers)          |
 | Scout CER Bonus                                | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.   | [7.3.3](operations.md#733-combat-effectiveness-rating-cer)          |
 | Squadron Destruction Protection (anti-fodder)  | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass). | [7.3.3](operations.md#733-combat-effectiveness-rating-cer)          |
-| Blockade Prestige Penalty                     | –2 prestige only if colony begins the Income Phase still under blockade (drive-by blockades not effective). | [6.2.6](operations.md#626-guardblockade-a-planet-05)          |
-| Tax Rate Prestige Penalty                     | Rolling 6-turn average tax rate >50 % triggers escalating prestige bleed (51–60 % = –1, up to 91–100 % = –11 per turn). Low-tax incentives also apply. | [3.2](economy.md#32-tax-rate)            |
+| Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details. | [6.2.6](operations.md#626-guardblockade-a-planet-05)          |
+| Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details. | [3.2](economy.md#32-tax-rate)            |
