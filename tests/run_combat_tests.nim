@@ -10,8 +10,8 @@ when isMainModule:
   echo "=== EC4X Combat Test Runner ==="
   echo ""
 
-  # Run quick test suite
-  let results = quickTest(numTests = 30, seed = 12345, verbose = true)
+  # Run massive stress test - 10,000 scenarios
+  let results = quickTest(numTests = 10000, seed = 12345, verbose = false)
 
   echo ""
   echo "=== Exporting Results ==="

@@ -19,13 +19,14 @@ proc resolvePhase1_Ambush*(
   roundNumber: int,
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
-  rng: var CombatRNG
+  rng: var CombatRNG,
+  desperationBonus: int = 0
 ): RoundResult =
   ## Phase 1: Undetected Raiders attack with ambush bonus
   ## Section 7.3.1.1
   ##
   ## - Only undetected cloaked Raiders attack
-  ## - +4 CER modifier
+  ## - +4 CER modifier (+ desperation bonus if applicable)
   ## - Simultaneous attacks within phase
 
   result = RoundResult(
@@ -69,7 +70,7 @@ proc resolvePhase1_Ambush*(
     if targetId.isNone():
       continue
 
-    # Roll for CER with ambush bonus
+    # Roll for CER with ambush bonus (and desperation if applicable)
     let cerRoll = rollCER(
       rng,
       CombatPhase.Ambush,
@@ -77,7 +78,8 @@ proc resolvePhase1_Ambush*(
       hasScouts = taskForces[tfIdx].scoutBonus,
       moraleModifier = taskForces[tfIdx].moraleModifier,
       isSurprise = (roundNumber == 1),
-      isAmbush = true  # +4 bonus
+      isAmbush = true,  # +4 bonus
+      desperationBonus = desperationBonus
     )
 
     # Calculate damage
@@ -119,7 +121,8 @@ proc resolvePhase2_Fighters*(
   roundNumber: int,
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
-  rng: var CombatRNG
+  rng: var CombatRNG,
+  desperationBonus: int = 0  # Not used by fighters (no CER), but kept for consistency
 ): RoundResult =
   ## Phase 2: All fighter squadrons attack simultaneously
   ## Section 7.3.1.2
@@ -127,6 +130,7 @@ proc resolvePhase2_Fighters*(
   ## - Fighters do NOT use CER (full AS as damage)
   ## - All fighters attack at once
   ## - Fighters have binary state (undamaged → destroyed, no crippled)
+  ## - Note: desperationBonus does not apply to fighters (they always use full AS)
 
   result = RoundResult(
     phase: CombatPhase.Intercept,
@@ -206,7 +210,8 @@ proc resolveCRTier(
   roundNumber: int,
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
-  rng: var CombatRNG
+  rng: var CombatRNG,
+  desperationBonus: int = 0
 ): RoundResult
 
 proc resolvePhase3_CapitalShips*(
@@ -214,14 +219,15 @@ proc resolvePhase3_CapitalShips*(
   roundNumber: int,
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
-  rng: var CombatRNG
+  rng: var CombatRNG,
+  desperationBonus: int = 0
 ): RoundResult =
   ## Phase 3: Capital ships attack by CR order
   ## Section 7.3.1.3
   ##
   ## - Attack order by flagship CR (highest first)
   ## - Simultaneous attacks within same CR tier
-  ## - CER rolls per squadron
+  ## - CER rolls per squadron (with desperation bonus if applicable)
 
   result = RoundResult(
     phase: CombatPhase.MainEngagement,
@@ -254,7 +260,7 @@ proc resolvePhase3_CapitalShips*(
     if cap.cr != currentCR:
       # New CR tier - resolve previous tier first
       if crTier.len > 0:
-        let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng)
+        let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
         result.attacks.add(tierResult.attacks)
         result.stateChanges.add(tierResult.stateChanges)
 
@@ -266,7 +272,7 @@ proc resolvePhase3_CapitalShips*(
 
   # Resolve final tier
   if crTier.len > 0:
-    let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng)
+    let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
     result.attacks.add(tierResult.attacks)
     result.stateChanges.add(tierResult.stateChanges)
 
@@ -276,7 +282,8 @@ proc resolveCRTier(
   roundNumber: int,
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
-  rng: var CombatRNG
+  rng: var CombatRNG,
+  desperationBonus: int = 0
 ): RoundResult =
   ## Resolve all attacks for squadrons with same CR
   ## All attacks in tier are simultaneous
@@ -309,14 +316,15 @@ proc resolveCRTier(
     if targetId.isNone():
       continue
 
-    # Roll CER
+    # Roll CER (with desperation bonus if applicable)
     let cerRoll = rollCER(
       rng,
       CombatPhase.MainEngagement,
       roundNumber,
       hasScouts = taskForces[tfIdx].scoutBonus,
       moraleModifier = taskForces[tfIdx].moraleModifier,
-      isSurprise = (roundNumber == 1)
+      isSurprise = (roundNumber == 1),
+      desperationBonus = desperationBonus
     )
 
     # Calculate damage
@@ -360,25 +368,29 @@ proc resolveRound*(
   roundNumber: int,
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
-  rng: var CombatRNG
+  rng: var CombatRNG,
+  desperationBonus: int = 0  # Bonus CER modifier for desperation rounds
 ): seq[RoundResult] =
   ## Resolve complete combat round (all 3 phases)
   ## Returns results from each phase
+  ##
+  ## desperationBonus: Additional CER modifier applied when combat stalls
+  ## (both sides gain this bonus for one final attack attempt)
 
   result = @[]
 
   # Phase 1: Undetected Raiders (Ambush)
-  let phase1 = resolvePhase1_Ambush(taskForces, roundNumber, diplomaticRelations, systemOwner, rng)
+  let phase1 = resolvePhase1_Ambush(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
   if phase1.attacks.len > 0:
     result.add(phase1)
 
   # Phase 2: Fighter Squadrons (Intercept)
-  let phase2 = resolvePhase2_Fighters(taskForces, roundNumber, diplomaticRelations, systemOwner, rng)
+  let phase2 = resolvePhase2_Fighters(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
   if phase2.attacks.len > 0:
     result.add(phase2)
 
   # Phase 3: Capital Ships (Main Engagement)
-  let phase3 = resolvePhase3_CapitalShips(taskForces, roundNumber, diplomaticRelations, systemOwner, rng)
+  let phase3 = resolvePhase3_CapitalShips(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
   if phase3.attacks.len > 0:
     result.add(phase3)
 

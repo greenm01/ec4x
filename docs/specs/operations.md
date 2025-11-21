@@ -638,11 +638,43 @@ Combat ends when any of the following conditions are met:
 - Only one Task Force remains in the system
 - All remaining Task Forces are non-hostile to each other per [Section 7.3.2.1](#7321-diplomatic-filtering)
 - All Task Forces have retreated from the engagement
+- Tactical stalemate declared after desperation round (see [Section 7.3.4.1](#7341-desperation-tactics))
 - 20 consecutive rounds have elapsed without resolution (forced stalemate)
 
 If combat reduces the engagement such that all remaining Task Forces are non-hostile to each other, combat immediately ceases even if multiple houses remain in the system. This occurs when all Enemy relationships have been eliminated through retreat or destruction, leaving only Neutral or Non-Aggression relationships.
 
 If more than one hostile Task Force remains and no retreat occurs, proceed to the next combat round.
+
+#### 7.3.4.1 Desperation Tactics
+
+When combat stalls with neither side able to inflict damage, commanders resort to desperate, high-risk maneuvers in a final attempt to break the deadlock.
+
+**Trigger Condition:**
+
+If 5 consecutive combat rounds elapse without any squadron state changes (no squadrons crippled or destroyed), both Task Forces immediately execute one desperation round.
+
+**Desperation Round:**
+
+- Both Task Forces receive +2 CER modifier on all attack rolls
+- This bonus applies to Ambush phase and Main Engagement phase
+- The bonus stacks with all other modifiers (scouts, morale, surprise, ambush)
+- Fighters are unaffected (they do not use CER rolls)
+
+**Narrative:** Desperate commanders order aggressive, high-risk tactics: fighters commit to closer strafing runs despite increased exposure, capital ships drop auxiliary shields to redirect power to weapons, and cloaked raiders decloak for point-blank attack runs.
+
+**Resolution:**
+
+After the desperation round resolves:
+
+- **If any squadron state changes occurred**: Reset the no-progress counter. Combat continues normally.
+- **If no state changes occurred**: Declare **Tactical Stalemate** immediately. Combat ends with no victor.
+
+**Tactical Stalemate vs Forced Stalemate:**
+
+- **Tactical Stalemate**: Neither side can damage the other despite desperate tactics (triggers after desperation round fails)
+- **Forced Stalemate**: Maximum combat duration reached (20 total rounds)
+
+Both result in no victor and apply identical post-combat positioning rules.
 
 **Post-Combat Positioning:**
 
