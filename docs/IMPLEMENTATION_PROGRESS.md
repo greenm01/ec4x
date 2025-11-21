@@ -145,31 +145,28 @@ proc applyResearch(house: var House, field: TechField,
 
 ---
 
-**Fleet Movement Integration**
+**Fleet Movement Integration** ✅ **COMPLETE**
 
-**Location**: `src/engine/resolve.nim` (update stubs)
+**Location**: `src/engine/resolve.nim:211-302`
 
-**Needed**:
-```nim
-proc resolveMovementOrder(state: var GameState, houseId: HouseId,
-                         order: FleetOrder, events: var seq[GameEvent])
-  # Call findPath() from starmap.nim (already implemented)
-  # Apply lane traversal rules (1-2 lanes per turn per operations.md:6.2.2)
-  # Handle multi-turn journeys
-  # Update fleet location
-  # Check for fleet encounters → trigger combat if hostile
-```
+**Implemented**:
+- ✅ Full pathfinding integration using `starmap.findPath()`
+- ✅ Lane traversal rules (operations.md:6.1):
+  - 2 jumps/turn on major lanes in friendly territory
+  - 1 jump/turn into enemy/unexplored territory
+  - 1 jump/turn on minor/restricted lanes
+  - Restricted lane blocking for spacelift/crippled ships
+- ✅ Fleet encounter detection at destination
+- ✅ Exported for testing
 
-**Spec References**:
-- `docs/specs/operations.md` Section 6.2 - Fleet orders
-- `src/engine/starmap.nim` lines 305-372 - findPath() already implemented
+**Test Coverage**:
+- `tests/integration/test_fleet_movement.nim` (6 tests, all passing)
+- Single/double jump in friendly territory
+- Enemy territory restrictions
+- Restricted lane blocking
+- Fleet encounter detection
 
-**Integration with Combat**:
-- Fleet encounters trigger combat resolution
-- Use existing `resolveCombat()` from `combat/engine.nim`
-- Apply diplomatic filtering (already implemented in `combat/targeting.nim`)
-
-**Estimated Effort**: 2-3 days
+**Status**: Ready for integration with combat resolution
 
 ---
 
@@ -240,12 +237,43 @@ proc checkVictoryConditions(state: GameState): Option[HouseId]
 - Research system
 
 **M6 - Complete Offline Game**: 🎯 **In Progress** (1-2 weeks)
-- Fleet movement integration (2-3 days)
+- ✅ Fleet movement integration (COMPLETE)
+- 🎯 Fleet order integration testing (1-2 days) - HIGH PRIORITY
 - Turn resolution complete cycle (3-4 days)
 - Victory conditions (1 day)
 - Offline testing and polish (2-3 days)
 
 **M7 - Basic TUI**: 🔜 **Pending** (after M6)
+
+---
+
+## Fleet Order Testing Gaps (HIGH PRIORITY)
+
+**Status**: Combat mechanics work, but fleet order integration needs validation
+
+**Currently Tested**:
+- ✅ Patrol (03) - Multiple scenarios
+- ✅ Guard Starbase (04) - StarbaseDefense scenario
+- ✅ Bombard (06), Invade (07), Blitz (08) - Ground combat scenarios
+- ✅ Move Fleet (01) - 6 integration tests
+- ⚠️ ROE/Retreat (operations.md:7.1.1) - 4 basic scenarios created
+
+**Critical Gaps** (affect gameplay):
+1. **ROE Retreat Validation** - Tests created but need behavior verification
+2. **Blockade Mechanics** (05) - GCO reduction, prestige penalty, combat triggers
+3. **Diplomatic Filtering** - NAP vs Enemy vs Neutral behavior
+4. **Guard Behaviors** - Rear guard positioning, raider cloaking preservation
+5. **Threatening Orders** - Orders 05-08, 12 triggering defensive engagement
+
+**Non-Critical** (can be deferred):
+- Seek Home (02), Spy operations (09-11), Join/Rendezvous (13-14), Salvage (15)
+
+**Recommendation**: Complete fleet order integration tests before economy implementation.
+This ensures combat and movement work correctly together.
+
+**Location for new tests**: `tests/scenarios/orders/` (started with roe_retreat.nim)
+
+**Estimated Effort**: 1-2 days for comprehensive fleet order scenarios
 
 ---
 
