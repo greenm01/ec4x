@@ -143,24 +143,32 @@ If a player invests more than 5% of their turn budget into CIP they lose Prestig
 
 The modifier is determined based on the total **CIP points** held by the player when an espionage event occurs:
 
-| Total CIP Points | Automatic Detection Modifier          |
-|:----------------:|:-------------------------------------:|
-| 0                | +0 (espionage automatically succeeds) |
-| 1-5              | +1                                    |
-| 6-10             | +2                                    |
-| 11-15            | +3                                    |
-| 16-20            | +4                                    |
-| 21+              | +5 (maximum)                          |
+<!-- CIC_MODIFIER_TABLE_START -->
+| Total CIP Points | Automatic Detection Modifier |
+|:----------------:|:----------------------------:|
+| 0 | 0 (espionage automatically succeeds) |
+| 1-5 | +1 |
+| 6-10 | +2 |
+| 11-15 | +3 |
+| 16-20 | +4 |
+| 21+ | +5 (maximum) |
+
+*Source: config/espionage.toml [detection] section*
+<!-- CIC_MODIFIER_TABLE_END -->
 
 ### Espionage Detection Table:
 
+<!-- CIC_THRESHOLD_TABLE_START -->
 | CIC Level | Base 1D20 Roll | Detection Probability (with Automatic Modifier) |
 |:---------:|:--------------:|:-----------------------------------------------:|
-| CIC1      | > 15           | 25% → 30-50%                                    |
-| CIC2      | > 12           | 40% → 45-65%                                    |
-| CIC3      | > 10           | 55% → 60-80%                                    |
-| CIC4      | > 7            | 65% → 70-90%                                    |
-| CIC5      | > 4            | 80% → 85-95%                                    |
+| CIC1 | > 15 | 25% → 30-50% |
+| CIC2 | > 12 | 40% → 45-65% |
+| CIC3 | > 10 | 55% → 60-80% |
+| CIC4 | > 7 | 65% → 70-90% |
+| CIC5 | > 4 | 80% → 85-95% |
+
+*Source: config/espionage.toml [detection] section*
+<!-- CIC_THRESHOLD_TABLE_END -->
 
 **Example**:
 

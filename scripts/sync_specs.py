@@ -151,6 +151,64 @@ def generate_espionage_prestige_table(prestige_config: Dict[str, Any], espionage
     return "\n".join(lines)
 
 
+def generate_cic_detection_modifier_table(espionage_config: Dict[str, Any]) -> str:
+    """Generate CIC detection modifier table from espionage.toml."""
+    detection = espionage_config.get('detection', {})
+
+    lines = [
+        "| Total CIP Points | Automatic Detection Modifier |",
+        "|:----------------:|:----------------------------:|",
+    ]
+
+    # Map CIP ranges to modifiers
+    cip_ranges = [
+        ("0", detection.get('cip_0_modifier', 0), "espionage automatically succeeds"),
+        ("1-5", detection.get('cip_1_5_modifier', 1), None),
+        ("6-10", detection.get('cip_6_10_modifier', 2), None),
+        ("11-15", detection.get('cip_11_15_modifier', 3), None),
+        ("16-20", detection.get('cip_16_20_modifier', 4), None),
+        ("21+", detection.get('cip_21_plus_modifier', 5), "maximum"),
+    ]
+
+    for cip_range, modifier, note in cip_ranges:
+        modifier_text = f"+{modifier}" if modifier > 0 else str(modifier)
+        if note:
+            modifier_text += f" ({note})"
+        lines.append(f"| {cip_range} | {modifier_text} |")
+
+    lines.append("")
+    lines.append("*Source: config/espionage.toml [detection] section*")
+
+    return "\n".join(lines)
+
+
+def generate_cic_detection_thresholds_table(espionage_config: Dict[str, Any]) -> str:
+    """Generate CIC detection thresholds table from espionage.toml."""
+    detection = espionage_config.get('detection', {})
+
+    lines = [
+        "| CIC Level | Base 1D20 Roll | Detection Probability (with Automatic Modifier) |",
+        "|:---------:|:--------------:|:-----------------------------------------------:|",
+    ]
+
+    # Map CIC levels to thresholds
+    cic_levels = [
+        ("CIC1", detection.get('cic1_threshold', 15), "25% → 30-50%"),
+        ("CIC2", detection.get('cic2_threshold', 12), "40% → 45-65%"),
+        ("CIC3", detection.get('cic3_threshold', 10), "55% → 60-80%"),
+        ("CIC4", detection.get('cic4_threshold', 7), "65% → 70-90%"),
+        ("CIC5", detection.get('cic5_threshold', 4), "80% → 85-95%"),
+    ]
+
+    for level, threshold, probability in cic_levels:
+        lines.append(f"| {level} | > {threshold} | {probability} |")
+
+    lines.append("")
+    lines.append("*Source: config/espionage.toml [detection] section*")
+
+    return "\n".join(lines)
+
+
 def generate_penalty_mechanics_table(config: Dict[str, Any]) -> str:
     """Generate penalty mechanics table from prestige.toml [penalties] section."""
     penalties = config.get('penalties', {})
@@ -269,8 +327,8 @@ def update_reference_spec(prestige_table: str, morale_table: str, espionage_tabl
     print(f"\n✓ Successfully updated {spec_file}")
 
 
-def update_diplomacy_spec(espionage_prestige_table: str):
-    """Update docs/specs/diplomacy.md with generated espionage prestige table."""
+def update_diplomacy_spec(espionage_prestige_table: str, cic_modifier_table: str, cic_threshold_table: str):
+    """Update docs/specs/diplomacy.md with generated tables."""
     spec_file = Path("docs/specs/diplomacy.md")
 
     if not spec_file.exists():
@@ -283,6 +341,12 @@ def update_diplomacy_spec(espionage_prestige_table: str):
     esp_prestige_start = "<!-- ESPIONAGE_PRESTIGE_TABLE_START -->"
     esp_prestige_end = "<!-- ESPIONAGE_PRESTIGE_TABLE_END -->"
 
+    cic_modifier_start = "<!-- CIC_MODIFIER_TABLE_START -->"
+    cic_modifier_end = "<!-- CIC_MODIFIER_TABLE_END -->"
+
+    cic_threshold_start = "<!-- CIC_THRESHOLD_TABLE_START -->"
+    cic_threshold_end = "<!-- CIC_THRESHOLD_TABLE_END -->"
+
     # Replace espionage prestige table if markers exist
     if esp_prestige_start in content and esp_prestige_end in content:
         start_idx = content.index(esp_prestige_start) + len(esp_prestige_start)
@@ -291,6 +355,24 @@ def update_diplomacy_spec(espionage_prestige_table: str):
         print("✓ Updated espionage prestige table in diplomacy.md")
     else:
         print("⚠ Espionage prestige table markers not found in diplomacy.md")
+
+    # Replace CIC modifier table if markers exist
+    if cic_modifier_start in content and cic_modifier_end in content:
+        start_idx = content.index(cic_modifier_start) + len(cic_modifier_start)
+        end_idx = content.index(cic_modifier_end)
+        content = content[:start_idx] + "\n" + cic_modifier_table + "\n" + content[end_idx:]
+        print("✓ Updated CIC modifier table in diplomacy.md")
+    else:
+        print("⚠ CIC modifier table markers not found in diplomacy.md")
+
+    # Replace CIC threshold table if markers exist
+    if cic_threshold_start in content and cic_threshold_end in content:
+        start_idx = content.index(cic_threshold_start) + len(cic_threshold_start)
+        end_idx = content.index(cic_threshold_end)
+        content = content[:start_idx] + "\n" + cic_threshold_table + "\n" + content[end_idx:]
+        print("✓ Updated CIC threshold table in diplomacy.md")
+    else:
+        print("⚠ CIC threshold table markers not found in diplomacy.md")
 
     # Write updated content
     spec_file.write_text(content)
@@ -331,10 +413,16 @@ def main():
     espionage_prestige_table = generate_espionage_prestige_table(prestige_config, espionage_config)
     print("✓ Generated espionage prestige table (7 actions)")
 
+    cic_modifier_table = generate_cic_detection_modifier_table(espionage_config)
+    print("✓ Generated CIC detection modifier table (6 ranges)")
+
+    cic_threshold_table = generate_cic_detection_thresholds_table(espionage_config)
+    print("✓ Generated CIC detection thresholds table (5 levels)")
+
     # Update spec files
     print("\nUpdating specification documents...")
     update_reference_spec(prestige_table, morale_table, espionage_table, penalty_table)
-    update_diplomacy_spec(espionage_prestige_table)
+    update_diplomacy_spec(espionage_prestige_table, cic_modifier_table, cic_threshold_table)
 
     print("\n" + "=" * 50)
     print("Sync complete!")
