@@ -5,7 +5,7 @@
 ## (Section 7.3.4, 7.3.5)
 
 import std/[sequtils, algorithm, strformat, strutils, options]
-import combat_types
+import types
 
 export RetreatEvaluation
 
