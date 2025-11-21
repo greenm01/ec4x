@@ -50,40 +50,28 @@ CL = Carry Limit
 
 ## 9.4 Prestige
 
-| **Category**      | **Action/Event**                               | **Prestige Change** |
-| ----------------- | ---------------------------------------------- |:-------------------:|
-| **Economic**      | Establish a new colony                         | +5                  |
-|                   | Max out the population of a colony             | +3                  |
-|                   | Reach 50% IU of PU (per colony)                | +1                  |
-|                   | Reach 75% IU of PU (per colony)                | +2                  |
-|                   | Reach 100% IU of PU (per colony)               | +3                  |
-|                   | Reach 150% IU of PU (per colony)               | +5                  |
-|                   | Increase a planet’s class via terraforming     | +5                  |
-|                   | Achieve a new tech level                       | +2                  |
-| **Military**      | Destroy an enemy Task Force                    | +3                  |
-|                   | Force an enemy Task Force to retreat           | +2                  |
-|                   | Invade or blitz a planet successfully          | +10                 |
-|                   | Lose a planet to an enemy                      | -10                 |
-|                   | Get ambushed by a cloaked fleet                | -1                  |
-|                   | Lose a Starbase                                | -5                  |
-|                   | Destroy an enemy Starbase                      | +5                  |
-| **Espionage**     | Successful Tech Theft                          | +2                  |
-|                   | Successful Low-Impact Sabotage                 | +1                  |
-|                   | Successful High-Impact Sabotage                | +3                  |
-|                   | Successful Assassination                       | +5                  |
-|                   | Successful Cyber Attack                        | +2                  |
-|                   | Successful Economic Manipulation               | +3                  |
-|                   | Successful Psyops Campaign                     | +1                  |
-|                   | Failed espionage action (detected)             | -2                  |
-|                   | Over-investment in Espionage Budget (> 5%)     | -1 per excess 1%    |
-|                   | Over-investment in Counter-Intelligence (> 5%) | -1 per excess 1%    |
-| **Scout Actions** | Successful Spy on a Planet                     | +1                  |
-|                   | Successful Hack of a Starbase                  | +2                  |
-|                   | Successful Spy on a System                     | +1                  |
-|                   | Scout detected and destroyed                   | -3                  |
-| **Setbacks**      | High tax rate (51-65%)                         | -1 every 3 turns    |
-|                   | Very high tax rate (> 65%)                     | -2 every 5 turns    |
-|                   | Failure to meet maintenance costs (per turn)   | -5 (cumulative)     |
+<!-- PRESTIGE_TABLE_START -->
+| Prestige Source | Enum Name | Value |
+|-----------------|-----------|-------|
+| Tech Advancement | `TechAdvancement` | +2 |
+| Colony Establishment | `ColonyEstablishment` | +5 |
+| System Capture | `SystemCapture` | +10 |
+| Diplomatic Pact Formation | `DiplomaticPact` | +5 |
+| Pact Violation (penalty) | `PactViolation` | -10 |
+| Repeat Violation (penalty) | `RepeatViolation` | -10 |
+| Dishonor Status Expires | `DishonoredExpires` | -1 |
+| Tech Theft Success | `TechTheftSuccess` | +2 |
+| Tech Theft Detected (penalty) | `TechTheftDetected` | -2 |
+| Assassination Success | `AssassinationSuccess` | +5 |
+| Assassination Detected (penalty) | `AssassinationDetected` | -2 |
+| Espionage Attempt Failed (penalty) | `EspionageFailure` | -2 |
+| Major Ship Destroyed (per ship) | `ShipDestroyed` | +1 |
+| Starbase Destroyed | `StarbaseDestroyed` | +5 |
+| Fleet Victory (per battle) | `FleetVictory` | +3 |
+| Planet Conquered | `PlanetConquered` | +10 |
+| House Eliminated | `HouseEliminated` | +3 |
+| Victory Achieved | `VictoryAchieved` | +5 |
+<!-- PRESTIGE_TABLE_END -->
 
 ### Notes on Penalties:
 
