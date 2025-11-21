@@ -162,11 +162,15 @@ proc toJson*(violation: SpecViolation): JsonNode =
   }
 
 proc toJson*(scenario: BattleScenario): JsonNode =
+  var taskForcesJson = newJArray()
+  for tf in scenario.taskForces:
+    taskForcesJson.add(tf.toJson())
+
   %*{
     "name": scenario.name,
     "description": scenario.description,
-    "attacker": scenario.attacker.toJson(),
-    "defender": scenario.defender.toJson(),
+    "task_forces": taskForcesJson,
+    "num_factions": scenario.taskForces.len,
     "system_id": scenario.systemId,
     "seed": scenario.seed,
     "expected_outcome": scenario.expectedOutcome
@@ -262,11 +266,15 @@ proc exportSummaryToJson*(suiteResults: TestSuiteResults, filename: string) =
 
 proc exportStatsToCsv*(suiteResults: TestSuiteResults, filename: string) =
   ## Export aggregate statistics to CSV
-  var csv = "test_name,victor,rounds,duration,edge_cases,violations,attacker_squadrons,defender_squadrons\n"
+  var csv = "test_name,victor,rounds,duration,edge_cases,violations,num_factions,total_squadrons\n"
 
   for testResult in suiteResults.results:
     let victor = if testResult.result.victor.isSome: testResult.result.victor.get() else: "none"
-    let line = fmt"{testResult.scenario.name},{victor},{testResult.result.totalRounds},{testResult.duration:.4f},{testResult.edgeCases.len},{testResult.violations.len},{testResult.scenario.attacker.squadrons.len},{testResult.scenario.defender.squadrons.len}" & "\n"
+    let numFactions = testResult.scenario.taskForces.len
+    var totalSquadrons = 0
+    for tf in testResult.scenario.taskForces:
+      totalSquadrons += tf.squadrons.len
+    let line = fmt"{testResult.scenario.name},{victor},{testResult.result.totalRounds},{testResult.duration:.4f},{testResult.edgeCases.len},{testResult.violations.len},{numFactions},{totalSquadrons}" & "\n"
     csv.add(line)
 
   writeFile(filename, csv)

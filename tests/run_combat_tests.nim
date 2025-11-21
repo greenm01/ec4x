@@ -11,7 +11,7 @@ when isMainModule:
   echo ""
 
   # Run quick test suite
-  let results = quickTest(numTests = 10, seed = 12345, verbose = true)
+  let results = quickTest(numTests = 30, seed = 12345, verbose = true)
 
   echo ""
   echo "=== Exporting Results ==="
