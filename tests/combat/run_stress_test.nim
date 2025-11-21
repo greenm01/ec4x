@@ -3,15 +3,15 @@
 ## Simple runner to verify the complete testing framework
 ## Generates scenarios, runs tests, and exports results
 
-import combat_test_harness
-import combat_report_json
+import harness
+import reporter
 
 when isMainModule:
   echo "=== EC4X Combat Test Runner ==="
   echo ""
 
-  # Run massive stress test - 10,000 scenarios
-  let results = quickTest(numTests = 10000, seed = 12345, verbose = false)
+  # Run quick balance test - 500 scenarios for smaller JSON output
+  let results = quickTest(numTests = 500, seed = 12345, verbose = false)
 
   echo ""
   echo "=== Exporting Results ==="

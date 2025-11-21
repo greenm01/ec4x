@@ -4,9 +4,9 @@
 ## Uses deterministic PRNG for reproducible tests
 
 import std/[random, sequtils, strformat]
-import ../src/engine/combat/[types, engine]
-import ../src/engine/squadron
-import ../src/common/types/[core, units]
+import ../../src/engine/combat/[types, engine]
+import ../../src/engine/squadron
+import ../../src/common/types/[core, units]
 
 export TaskForce, Squadron, ShipClass
 
