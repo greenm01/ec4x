@@ -49,16 +49,41 @@ logs/
 *.save
 *.state
 
-# Compiled binaries
+# Compiled binaries - Pattern-based exclusions
 /client
 /moderator
-tests/test_*[!.]*
-tests/run_*[!.]*
-src/**/squadron
-src/**/moderator
-src/**/client
-src/**/config
-main/
+main
+
+# All executables in src/ and tests/ (but not .nim files)
+src/**/[!.]*.exe
+src/**/[!.]*.out
+tests/**/[!.]*.exe
+tests/**/[!.]*.out
+
+# Specific binary patterns
+src/engine/**/[!.]*[!.nim]
+tests/unit/test_*[!.nim]
+tests/integration/test_*[!.nim]
+tests/balance/test_*[!.nim]
+tests/scenarios/**/[!.]*[!.nim]
+
+# Nim-compiled executables (no extension on Linux)
+# Match files without extensions in common binary locations
+src/engine/combat/starbase
+src/engine/combat/ground
+src/engine/resolve
+src/engine/gamestate
+src/engine/prestige
+src/engine/**/types
+src/engine/**/engine
+src/engine/**/production
+src/engine/**/income
+src/engine/**/construction
+src/engine/**/maintenance
+src/engine/**/costs
+src/engine/**/advancement
+src/engine/**/effects
+src/engine/config/prestige_config
 
 
 # Combat test results (large files)
