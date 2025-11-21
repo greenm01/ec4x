@@ -14,7 +14,7 @@ CL = Carry Limit
 
 | Class | Name              | CST | PC  | MC  | AS  | DS  | CC  | CR  | CL  |
 |:-----:| ----------------- |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| CT    | Corvette          | 1   | 20  | 5%  | 2   | 3   | 1   | 2   | NA  |
+| CT    | Corvette          | 1   | 20  | 3%  | 2   | 3   | 1   | 2   | NA  |
 | FG    | Frigate           | 1   | 30  | 3%  | 3   | 4   | 2   | 3   | NA  |
 | DD    | Destroyer         | 1   | 40  | 5%  | 5   | 6   | 2   | 4   | NA  |
 | CL    | Light Cruiser     | 1   | 60  | 3%  | 8   | 9   | 3   | 6   | NA  |
@@ -24,12 +24,12 @@ CL = Carry Limit
 | DN    | Dreadnought       | 5   | 200 | 5%  | 28  | 30  | 4   | 12  | NA  |
 | SD    | Super Dreadnought | 6   | 250 | 5%  | 35  | 40  | 5   | 14  | NA  |
 | PB    | Planet-Breaker    | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
-| CV    | Carrier           | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | NA  |
-| CX    | Super Carrier     | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | NA  |
-| FS    | Fighter Squadron  | 3   | 20  | 5%  | 4   | 3   | 0   | 0   | NA  |
+| CV    | Carrier           | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
+| CX    | Super Carrier     | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
+| FS    | Fighter Squadron  | 3   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
 | RR    | Raider            | 3   | 150 | 4%  | 12  | 10  | 3   | 4   | NA  |
-| SC    | Scout             | 1   | 50  | 2%  | 1   | 2   | 1   | 0   | NA  |
-| SB    | Starbase          | 3   | 300 | 5%  | 45  | 50  | 0   | 0   | NA  |
+| SC    | Scout             | 1   | 50  | 2%  | 1   | 2   | 1   | NA  | NA  |
+| SB    | Starbase          | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
 
 *Source: config/ships.toml*
 <!-- SPACE_FORCE_TABLE_END -->
@@ -40,9 +40,9 @@ CL = Carry Limit
 | **Class** | **Name**         | CST | PC  | MC  | AS  | DS  |
 | --------- | ---------------- |:---:| --- | --- |:---:|:---:|
 | PS        | Planetary Shield | 5   | 100 | 5%  | 0   | 100 |
-| GB        | Ground Batteries | 1   | 20  | 15% | 10  | 8   |
-| AA        | Armies           | 1   | 15  | 13% | 3   | 5   |
-| MD        | Space Marines    | 1   | 25  | 8%  | 6   | 6   |
+| GB        | Ground Batteries | 1   | 20  | 3%  | 10  | 8   |
+| AA        | Armies           | 1   | 15  | 2%  | 3   | 5   |
+| MD        | Space Marines    | 1   | 25  | 2%  | 6   | 6   |
 
 *Source: config/ground_units.toml*
 <!-- GROUND_UNITS_TABLE_END -->
@@ -54,8 +54,8 @@ CL = Carry Limit
 |:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
 | SP        | Spaceport        | 1   | 100 | 5%  | 5   | 50  |
 | SY        | Shipyard         | 1   | 150 | 3%  | 10  | 70  |
-| ET        | ETAC             | 0   | 500 | 1%  | 0   | 2   |
-| TT        | Troop Transports | 0   | 400 | 1%  | 0   | 3   |
+| ET        | ETAC             | 1   | 50  | 3%  | 1   | 10  |
+| TT        | Troop Transports | 1   | 30  | 3%  | 1   | 15  |
 
 *Source: config/facilities.toml and config/ships.toml*
 <!-- SPACELIFT_TABLE_END -->
