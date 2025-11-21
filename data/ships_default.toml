@@ -1,18 +1,203 @@
-# EC4X Default Ship Statistics
+# EC4X Default Ship Statistics (WEP1)
+# Source: docs/specs/reference.md Section 9.1
+#
 # Edit this file to change ship stats for all games
 # Game-specific overrides can be placed in game_directory/game_config.toml
+#
+# Note: WEP modifiers (+10% AS/DS per level) are applied by the engine
+# These are base stats at WEP1
+
+# ============================================================================
+# Capital Ships
+# ============================================================================
+
+[corvette]
+name = "Corvette"
+class = "CT"
+attack_strength = 2
+defense_strength = 3
+command_cost = 1
+command_rating = 2
+tech_level = 1  # CST requirement
+build_cost = 20  # PC from spec
+upkeep_cost = 1  # MC = 3% of PC = 0.6 → round to 1
+special_capability = ""
+
+[frigate]
+name = "Frigate"
+class = "FG"
+attack_strength = 3
+defense_strength = 4
+command_cost = 2
+command_rating = 3
+tech_level = 1
+build_cost = 30
+upkeep_cost = 1  # MC = 3% of 30 = 0.9 → round to 1
+special_capability = ""
+
+[destroyer]
+name = "Destroyer"
+class = "DD"
+attack_strength = 5
+defense_strength = 6
+command_cost = 2
+command_rating = 4
+tech_level = 1
+build_cost = 40
+upkeep_cost = 2  # MC = 3% of 40 = 1.2 → round to 2
+special_capability = ""
+
+[cruiser]
+name = "Cruiser"
+class = "CR"
+attack_strength = 8
+defense_strength = 9
+command_cost = 3
+command_rating = 6
+tech_level = 1
+build_cost = 60
+upkeep_cost = 2  # MC = 3% of 60 = 1.8 → round to 2
+special_capability = ""
+
+[light_cruiser]
+name = "Light Cruiser"
+class = "CL"
+attack_strength = 8
+defense_strength = 9
+command_cost = 3
+command_rating = 6
+tech_level = 1
+build_cost = 60
+upkeep_cost = 2  # MC = 3% of 60 = 1.8 → round to 2
+special_capability = ""
+
+[heavy_cruiser]
+name = "Heavy Cruiser"
+class = "CA"
+attack_strength = 12
+defense_strength = 13
+command_cost = 3
+command_rating = 7
+tech_level = 2
+build_cost = 80
+upkeep_cost = 4  # MC = 4% of 80 = 3.2 → round to 4
+special_capability = ""
+
+[battlecruiser]
+name = "Battle Cruiser"
+class = "BC"
+attack_strength = 16
+defense_strength = 18
+command_cost = 3
+command_rating = 8
+tech_level = 3
+build_cost = 100
+upkeep_cost = 4  # MC = 4% of 100 = 4
+special_capability = ""
+
+[battleship]
+name = "Battleship"
+class = "BB"
+attack_strength = 20
+defense_strength = 25
+command_cost = 3
+command_rating = 10
+tech_level = 4
+build_cost = 150
+upkeep_cost = 6  # MC = 4% of 150 = 6
+special_capability = ""
+
+[dreadnought]
+name = "Dreadnought"
+class = "DN"
+attack_strength = 28
+defense_strength = 30
+command_cost = 4
+command_rating = 12
+tech_level = 5
+build_cost = 200
+upkeep_cost = 10  # MC = 5% of 200 = 10
+special_capability = ""
+
+[super_dreadnought]
+name = "Super Dreadnought"
+class = "SD"
+attack_strength = 35
+defense_strength = 40
+command_cost = 5
+command_rating = 14
+tech_level = 6
+build_cost = 250
+upkeep_cost = 13  # MC = 5% of 250 = 12.5 → round to 13
+special_capability = ""
+
+[planetbreaker]
+name = "Planet-Breaker"
+class = "PB"
+attack_strength = 50
+defense_strength = 20
+command_cost = 6
+command_rating = 6
+tech_level = 10
+build_cost = 400
+upkeep_cost = 20  # MC = 5% of 400 = 20
+special_capability = "SHP"
+
+# ============================================================================
+# Carriers
+# ============================================================================
+
+[carrier]
+name = "Carrier"
+class = "CV"
+attack_strength = 5
+defense_strength = 18
+command_cost = 3
+command_rating = 8
+tech_level = 3
+build_cost = 120
+upkeep_cost = 4  # MC = 3% of 120 = 3.6 → round to 4
+special_capability = "CAR3"
+
+[supercarrier]
+name = "Super Carrier"
+class = "CX"
+attack_strength = 8
+defense_strength = 25
+command_cost = 4
+command_rating = 10
+tech_level = 5
+build_cost = 200
+upkeep_cost = 10  # MC = 5% of 200 = 10
+special_capability = "CAR5"
+
+# ============================================================================
+# Special Units
+# ============================================================================
 
 [fighter]
 name = "Fighter Squadron"
 class = "FS"
-attack_strength = 1
-defense_strength = 1
-command_cost = 0
+attack_strength = 4
+defense_strength = 3
+command_cost = 0  # Fighters don't use CC
 command_rating = 0
-tech_level = 0
-build_cost = 50
-upkeep_cost = 1
+tech_level = 3
+build_cost = 20
+upkeep_cost = 1  # MC = 5% of 20 = 1
 special_capability = ""
+
+[raider]
+name = "Raider"
+class = "RR"
+attack_strength = 12
+defense_strength = 10
+command_cost = 3
+command_rating = 4
+tech_level = 3
+build_cost = 150
+upkeep_cost = 6  # MC = 4% of 150 = 6
+special_capability = "CLK"
 
 [scout]
 name = "Scout"
@@ -20,119 +205,27 @@ class = "SC"
 attack_strength = 1
 defense_strength = 2
 command_cost = 1
-command_rating = 1
-tech_level = 0
-build_cost = 100
-upkeep_cost = 2
-special_capability = "ELI"
-
-[raider]
-name = "Raider"
-class = "RR"
-attack_strength = 4
-defense_strength = 2
-command_cost = 2
-command_rating = 2
-tech_level = 3
-build_cost = 300
-upkeep_cost = 5
-special_capability = "CLK"
-
-[destroyer]
-name = "Destroyer"
-class = "DD"
-attack_strength = 4
-defense_strength = 3
-command_cost = 2
-command_rating = 3
-tech_level = 0
-build_cost = 200
-upkeep_cost = 3
-special_capability = ""
-
-[cruiser]
-name = "Cruiser"
-class = "CR"
-attack_strength = 6
-defense_strength = 4
-command_cost = 3
-command_rating = 5
+command_rating = 0  # Scouts have CR = NA in spec
 tech_level = 1
-build_cost = 400
-upkeep_cost = 5
-special_capability = ""
-
-[battlecruiser]
-name = "Battlecruiser"
-class = "BC"
-attack_strength = 8
-defense_strength = 5
-command_cost = 4
-command_rating = 7
-tech_level = 2
-build_cost = 600
-upkeep_cost = 8
-special_capability = ""
-
-[battleship]
-name = "Battleship"
-class = "BS"
-attack_strength = 10
-defense_strength = 6
-command_cost = 5
-command_rating = 9
-tech_level = 3
-build_cost = 1000
-upkeep_cost = 12
-special_capability = ""
-
-[dreadnought]
-name = "Dreadnought"
-class = "DN"
-attack_strength = 15
-defense_strength = 8
-command_cost = 7
-command_rating = 12
-tech_level = 5
-build_cost = 2000
-upkeep_cost = 20
-special_capability = ""
-
-[carrier]
-name = "Carrier"
-class = "CV"
-attack_strength = 2
-defense_strength = 4
-command_cost = 4
-command_rating = 6
-tech_level = 2
-build_cost = 800
-upkeep_cost = 10
-special_capability = "CAR3"
-
-[supercarrier]
-name = "Super Carrier"
-class = "CX"
-attack_strength = 3
-defense_strength = 5
-command_cost = 6
-command_rating = 8
-tech_level = 4
-build_cost = 1500
-upkeep_cost = 18
-special_capability = "CAR5"
+build_cost = 50
+upkeep_cost = 1  # MC = 1% of 50 = 0.5 → round to 1
+special_capability = "ELI"
 
 [starbase]
 name = "Starbase"
 class = "SB"
-attack_strength = 12
-defense_strength = 10
-command_cost = 0
+attack_strength = 45
+defense_strength = 50
+command_cost = 0  # Starbases don't use CC
 command_rating = 0
-tech_level = 2
-build_cost = 1200
-upkeep_cost = 15
+tech_level = 3
+build_cost = 300
+upkeep_cost = 15  # MC = 5% of 300 = 15
 special_capability = "ELI+2"
+
+# ============================================================================
+# Spacelift (Non-combat)
+# ============================================================================
 
 [etac]
 name = "ETAC"
@@ -158,6 +251,10 @@ build_cost = 400
 upkeep_cost = 4
 special_capability = "TRP"
 
+# ============================================================================
+# Ground Forces
+# ============================================================================
+
 [ground_battery]
 name = "Ground Battery"
 class = "GB"
@@ -169,15 +266,3 @@ tech_level = 0
 build_cost = 100
 upkeep_cost = 1
 special_capability = ""
-
-[planet_breaker]
-name = "Planet-Breaker"
-class = "PB"
-attack_strength = 20
-defense_strength = 6
-command_cost = 8
-command_rating = 10
-tech_level = 7
-build_cost = 5000
-upkeep_cost = 50
-special_capability = "SHP"
