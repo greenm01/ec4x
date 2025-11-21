@@ -4,7 +4,8 @@
 ## Detects edge cases, spec violations, and balance issues
 
 import std/[times, sequtils, tables, strformat, options]
-import ../src/engine/[combat_types, combat_engine, squadron]
+import ../src/engine/combat/[types, engine]
+import ../src/engine/squadron
 import ../src/common/types/[core, units, combat]
 import combat_generator
 

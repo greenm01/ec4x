@@ -5,7 +5,7 @@
 ## (Section 7.3.2)
 
 import std/[sequtils, options, tables]
-import combat_types, combat_cer
+import types, cer
 
 export TargetBucket, DiplomaticState
 

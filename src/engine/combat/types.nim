@@ -6,8 +6,8 @@
 ## Based on EC4X specifications Section 7.0 Combat
 
 import std/[tables, options]
-import ../common/types/[core, units, combat as commonCombat, diplomacy]
-import squadron
+import ../../common/types/[core, units, combat as commonCombat, diplomacy]
+import ../squadron
 
 export HouseId, SystemId, FleetId, SquadronId
 export Squadron, EnhancedShip, ShipClass

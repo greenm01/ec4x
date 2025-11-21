@@ -6,7 +6,7 @@
 ## Uses deterministic PRNG for reproducible tests
 
 import std/[hashes, strutils]
-import combat_types
+import types
 
 export CERRoll, CERModifier
 
