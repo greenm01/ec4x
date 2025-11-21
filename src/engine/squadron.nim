@@ -69,7 +69,7 @@ proc shipClassToConfigKey(shipClass: ShipClass): string =
   of ShipClass.TroopTransport: "troop_transport"
   of ShipClass.PlanetBreaker: "planet_breaker"
 
-proc loadShipConfig(configPath: string = "data/ships_default.toml") =
+proc loadShipConfig(configPath: string = "config/ships.toml") =
   ## Load ship stats from config file
   ## Caches results for subsequent calls
 
@@ -104,7 +104,7 @@ proc getShipStats*(shipClass: ShipClass, techLevel: int = 0, configPath: string 
   ## Get stats for a ship class from config file
   ## Stats may be modified by tech level (WEP)
   ##
-  ## Loads from data/ships_default.toml (or configPath if specified)
+  ## Loads from config/ships.toml (or configPath if specified)
   ## Game-specific overrides from game_config.toml not yet implemented
   ##
   ## Per economy.md Section 4.6: "Upgrades improve the Attack Strength (AS)
@@ -113,7 +113,7 @@ proc getShipStats*(shipClass: ShipClass, techLevel: int = 0, configPath: string 
   ##
   ## TODO M3: Support game-specific overrides
 
-  let path = if configPath.len > 0: configPath else: "data/ships_default.toml"
+  let path = if configPath.len > 0: configPath else: "config/ships.toml"
 
   if not configLoaded:
     loadShipConfig(path)

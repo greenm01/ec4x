@@ -36,13 +36,13 @@ type
 
 # Constants for robust behavior
 const
-  MIN_PLAYERS = 2
-  MAX_PLAYERS = 12
-  MAX_VERTEX_PLAYERS = 4  # Hex grids only have 4 true vertices
+  minPlayers = 2
+  maxPlayers = 12
+  maxVertexPlayers = 4  # Hex grids only have 4 true vertices
 
 proc validatePlayerCount(count: int) =
-  if count < MIN_PLAYERS or count > MAX_PLAYERS:
-    raise newException(StarMapError, "Player count must be between " & $MIN_PLAYERS & " and " & $MAX_PLAYERS)
+  if count < minPlayers or count > maxPlayers:
+    raise newException(StarMapError, "Player count must be between " & $minPlayers & " and " & $maxPlayers)
 
 proc newStarMap*(playerCount: int): StarMap =
   validatePlayerCount(playerCount)
@@ -132,7 +132,7 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
   # Player placement strategy based on game spec
   var selectedSystems: seq[System] = @[]
 
-  if starMap.playerCount <= MAX_VERTEX_PLAYERS:
+  if starMap.playerCount <= maxVertexPlayers:
     # Use vertices (corners) for optimal strategic placement
     let vertices = outerRingSystems.filterIt(starMap.countHexNeighbors(it.coords) == 3)
 
