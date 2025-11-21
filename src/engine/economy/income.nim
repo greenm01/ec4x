@@ -12,6 +12,8 @@
 import std/[tables, math]
 import types, production
 import ../../common/types/core
+import ../prestige
+import ../config/prestige_config
 
 export types.ColonyIncomeReport, types.HouseIncomeReport, types.IncomePhaseReport
 
@@ -126,7 +128,8 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
     totalPrestigeBonus: 0,
     treasuryBefore: treasury,
     treasuryAfter: treasury,
-    transactions: @[]
+    transactions: @[],
+    prestigeEvents: @[]
   )
 
   # Calculate each colony's income
@@ -140,6 +143,25 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
   result.taxAverage6Turn = calculateRollingTaxAverage(taxPolicy.history)
   result.taxPenalty = calculateTaxPenalty(result.taxAverage6Turn)
   result.totalPrestigeBonus = calculateTaxBonus(taxPolicy.currentRate, colonies.len)
+
+  # Generate prestige events from tax policy
+  let config = globalPrestigeConfig
+
+  # Low tax bonus (using configured thresholds and values)
+  if result.totalPrestigeBonus > 0:
+    result.prestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.LowTaxBonus,
+      result.totalPrestigeBonus,
+      "Low tax bonus (rate: " & $taxPolicy.currentRate & "%, " & $colonies.len & " colonies)"
+    ))
+
+  # High tax penalty (using configured thresholds and values)
+  if result.taxPenalty < 0:
+    result.prestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.HighTaxPenalty,
+      result.taxPenalty,
+      "High tax penalty (avg: " & $result.taxAverage6Turn & "%)"
+    ))
 
   # Apply to treasury
   result.treasuryAfter = treasury + result.totalNet

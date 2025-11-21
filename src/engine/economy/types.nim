@@ -11,8 +11,10 @@
 
 import std/[tables, options]
 import ../../common/types/[core, planets]
+import ../prestige  # For PrestigeEvent
 
 export core.HouseId, core.SystemId
+export prestige.PrestigeEvent
 
 type
   ## Production and Output
@@ -128,6 +130,7 @@ type
     treasuryBefore*: int
     treasuryAfter*: int
     transactions*: seq[TreasuryTransaction]
+    prestigeEvents*: seq[PrestigeEvent]  # Prestige changes this turn
 
   IncomePhaseReport* = object
     ## Complete income phase results

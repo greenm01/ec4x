@@ -1,0 +1,91 @@
+# Prestige System Configuration
+# Per reference.md:9.4 - All prestige values for balance tuning
+
+[victory]
+# Victory threshold - needs playtesting to determine optimal value
+# Starting prestige is 50, so this should be achievable but challenging
+prestige_victory = 5000
+# Defensive collapse: prestige < 0 for this many turns
+collapse_turns = 3
+# Starting prestige for new houses
+starting_prestige = 50
+
+[morale]
+# Morale thresholds for combat (operations.md:7.1.4)
+# These affect CER rolls and combat effectiveness
+crisis_max = 0        # ≤0: -1 CER, never succeeds morale check
+low_max = 20          # 1-20: No effect unless morale check succeeds (>18)
+average_max = 40      # 21-40: +1 CER to one squadron if check succeeds (>15)
+good_max = 60         # 41-60: +1 CER all if check succeeds (>12)
+high_max = 80         # 61-80: +1 CER + critical auto-success if check succeeds (>9)
+# 81+: Elite: +2 CER all if check succeeds (>6)
+
+[economic]
+establish_colony = 5
+max_population = 3  # Max out PU on a colony
+iu_milestone_50 = 1   # Reach 50% IU of PU
+iu_milestone_75 = 2   # Reach 75% IU of PU
+iu_milestone_100 = 3  # Reach 100% IU of PU
+iu_milestone_150 = 5  # Reach 150% IU of PU
+terraform_planet = 5  # Increase planet class
+tech_advancement = 2  # Any tech level increase
+
+[military]
+destroy_task_force = 3
+force_retreat = 2
+invade_planet = 10
+lose_planet = -10
+ambushed_by_cloak = -1
+lose_starbase = -5
+destroy_starbase = 5
+# Per squadron destroyed (multiplied by count)
+destroy_squadron = 1
+
+[espionage]
+tech_theft = 2
+low_impact_sabotage = 1
+high_impact_sabotage = 3
+assassination = 5
+cyber_attack = 2
+economic_manipulation = 3
+psyops_campaign = 1
+failed_espionage = -2  # Detected
+over_invest_espionage = -1  # Per 1% over 5%
+over_invest_counter_intel = -1  # Per 1% over 5%
+
+[scout]
+spy_on_planet = 1
+hack_starbase = 2
+spy_on_system = 1
+scout_destroyed = -3
+
+[penalties]
+# Tax penalties (reference.md spec)
+# 51-65%: -1 every 3 turns
+# >65%: -2 every 5 turns
+high_tax_threshold = 51
+high_tax_penalty = -1
+high_tax_frequency = 3  # Every N turns
+very_high_tax_threshold = 66
+very_high_tax_penalty = -2
+very_high_tax_frequency = 5  # Every N turns
+
+# Maintenance shortfall escalates
+maintenance_shortfall_base = -5
+maintenance_shortfall_increment = -2  # Increases by this each turn
+
+# Blockade
+blockade_penalty = -2  # Per colony per turn
+
+[bonuses]
+# Low tax bonuses (per colony)
+# Tax 0-10%: +3 per colony
+# Tax 11-20%: +2 per colony
+# Tax 21-30%: +1 per colony
+# Tax 31-40%: +0
+tax_bonus_tier_1_max = 10
+tax_bonus_tier_1 = 3
+tax_bonus_tier_2_max = 20
+tax_bonus_tier_2 = 2
+tax_bonus_tier_3_max = 30
+tax_bonus_tier_3 = 1
