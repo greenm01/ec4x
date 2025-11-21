@@ -65,3 +65,6 @@ main/
 combat_test_results.json
 combat_summary.json
 combat_stats.csv
+tests/scenarios/balance/asymmetric_warfare
+tests/integration/test_fleet_movement
+src/engine/resolve
