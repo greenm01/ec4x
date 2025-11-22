@@ -62,7 +62,7 @@ proc establishColony*(houseId: HouseId, systemId: SystemId,
   # Create prestige event
   let prestigeEvent = createPrestigeEvent(
     PrestigeSource.ColonyEstablished,
-    config.establishColony,
+    config.economic.establish_colony,
     "Established colony at system " & $systemId
   )
 

@@ -79,12 +79,12 @@ proc executeTechTheft*(attacker: HouseId, target: HouseId,
     result.srpStolen = espConfig.techTheftSRP
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.TechAdvancement,  # Closest match
-      prestigeConfig.techTheft,
+      prestigeConfig.espionage.tech_theft,
       "Tech theft successful"
     ))
     result.targetPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.TechAdvancement,
-      -prestigeConfig.techTheft - 1,  # -3 prestige for target
+      -prestigeConfig.espionage.tech_theft - 1,  # -3 prestige for target
       "Research stolen"
     ))
 
@@ -123,7 +123,7 @@ proc executeSabotageLow*(attacker: HouseId, target: HouseId, targetSystem: Syste
     result.iuDamage = rng.rand(1..SABOTAGE_LOW_DICE)
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,  # Closest match
-      config.lowImpactSabotage,
+      config.espionage.low_impact_sabotage,
       "Sabotage successful (" & $result.iuDamage & " IU damaged)"
     ))
     result.targetPrestigeEvents.add(createPrestigeEvent(
@@ -167,7 +167,7 @@ proc executeSabotageHigh*(attacker: HouseId, target: HouseId, targetSystem: Syst
     result.iuDamage = rng.rand(1..SABOTAGE_HIGH_DICE)
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,
-      config.highImpactSabotage,
+      config.espionage.high_impact_sabotage,
       "Major sabotage (" & $result.iuDamage & " IU destroyed)"
     ))
     result.targetPrestigeEvents.add(createPrestigeEvent(
@@ -217,7 +217,7 @@ proc executeAssassination*(attacker: HouseId, target: HouseId,
     ))
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,
-      config.assassination,
+      config.espionage.assassination,
       "Assassination successful"
     ))
     result.targetPrestigeEvents.add(createPrestigeEvent(
@@ -267,7 +267,7 @@ proc executeCyberAttack*(attacker: HouseId, target: HouseId, targetSystem: Syste
     ))
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,
-      config.cyberAttack,
+      config.espionage.cyber_attack,
       "Cyber attack successful"
     ))
     result.targetPrestigeEvents.add(createPrestigeEvent(
@@ -317,7 +317,7 @@ proc executeEconomicManipulation*(attacker: HouseId, target: HouseId,
     ))
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,
-      config.economicManipulation,
+      config.espionage.economic_manipulation,
       "Economic disruption successful"
     ))
     result.targetPrestigeEvents.add(createPrestigeEvent(
@@ -367,7 +367,7 @@ proc executePsyopsCampaign*(attacker: HouseId, target: HouseId,
     ))
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,
-      config.psyopsCampaign,
+      config.espionage.psyops_campaign,
       "Psyops campaign successful"
     ))
     result.targetPrestigeEvents.add(createPrestigeEvent(
