@@ -4,7 +4,7 @@
 ## This module is designed to work standalone for local/hotseat multiplayer
 ## Network transport (Nostr) wraps around this engine without modifying it
 
-import std/[tables, algorithm, options, random, strformat, sequtils]
+import std/[tables, algorithm, options, random, strformat, sequtils, strutils]
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap, squadron
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
@@ -943,6 +943,48 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           eventType: GameEventType.ColonyEstablished,
           houseId: colony.owner,
           description: "Shipyard commissioned at " & $completed.colonyId,
+          systemId: some(completed.colonyId)
+        ))
+
+    # Special handling for ground batteries
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId == "GroundBattery":
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Add ground battery (instant construction, 1 turn)
+        colony.groundBatteries += 1
+        state.colonies[completed.colonyId] = colony
+
+        echo "      Deployed ground battery at ", completed.colonyId
+        echo "        Total ground defenses: ", getTotalGroundDefense(colony)
+
+        events.add(GameEvent(
+          eventType: GameEventType.ColonyEstablished,
+          houseId: colony.owner,
+          description: "Ground battery deployed at " & $completed.colonyId,
+          systemId: some(completed.colonyId)
+        ))
+
+    # Special handling for planetary shields (replacement, not upgrade)
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId.startsWith("PlanetaryShield"):
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Extract shield level from itemId (e.g., "PlanetaryShield-3" -> 3)
+        # For now, assume sequential upgrades
+        let newLevel = colony.planetaryShieldLevel + 1
+        colony.planetaryShieldLevel = min(newLevel, 6)  # Max SLD6
+        state.colonies[completed.colonyId] = colony
+
+        echo "      Deployed planetary shield SLD", colony.planetaryShieldLevel, " at ", completed.colonyId
+        echo "        Block chance: ", int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0), "%"
+
+        events.add(GameEvent(
+          eventType: GameEventType.ColonyEstablished,
+          houseId: colony.owner,
+          description: "Planetary Shield SLD" & $colony.planetaryShieldLevel & " deployed at " & $completed.colonyId,
           systemId: some(completed.colonyId)
         ))
 
