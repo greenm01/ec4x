@@ -1,7 +1,7 @@
 ## Fleet order types and validation for EC4X
 
 import std/[options, tables]
-import ../common/[hex, types/core]
+import ../common/[hex, types/core, types/units]
 import gamestate, fleet, ship
 
 type
@@ -43,6 +43,9 @@ type
     colonySystem*: SystemId
     buildType*: BuildType
     quantity*: int
+    shipClass*: Option[ShipClass]      # For Ship type
+    buildingType*: Option[string]      # For Building type
+    industrialUnits*: int              # For Infrastructure type
 
   BuildType* {.pure.} = enum
     Ship, Building, Infrastructure
