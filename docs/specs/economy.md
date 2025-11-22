@@ -318,6 +318,22 @@ What does NOT count (completely unlimited except money / existing rules):
   
 # 4.0 Research & Development
 
+**CRITICAL: All technology levels start at level 1, never 0.** Starting tech values are configured in `config/gameplay.toml` under the `[starting_tech]` section. This applies to ALL nine technology types:
+
+| Tech | Starting Level | Effect |
+|------|----------------|--------|
+| **EL** | 1 | Economic Level - 5% production bonus (GCO modifier) |
+| **SL** | 1 | Science Level - Base research capability |
+| **CST** | 1 | Construction Tech - Base shipyard capacity |
+| **WEP** | 1 | Weapons Tech - Base combat strength (AS/DS) |
+| **TER** | 1 | Terraforming Tech - Base terraforming capability |
+| **ELI** | 1 | Electronic Intelligence - Base spy scout capability |
+| **CIC** | 1 | Counter-Intelligence - Base espionage detection |
+| **FD** | 1 | Fighter Doctrine I - 1.0x fighter capacity multiplier |
+| **ACO** | 1 | Advanced Carrier Operations I - CV=3FS, CX=5FS |
+
+The starting tech configuration ensures consistent behavior across the engine. Game scenario files (e.g., `game_setup/standard.toml`) inherit these values. See [Section 9.11](#911-technology-research) for complete tech advancement tables.
+
 ## 4.1 Research Points (RP)
 
 Each turn, players can invest production points in RP to further their R&D efforts.
@@ -329,8 +345,6 @@ There are three areas of investment:
 - Technology RP (TRP)
 
 Economic Levels (EL) are purchased with ERP and Science Levels (SL) are purchased with SRP. Science drives engineering, and new technologies are developed and purchased directly with TRP. EL and SL are correlated.
-
-In standard EC4X games, Houses start at EL1 and SL1. Consider boosting these to expedite the game for impatient players, although the game year should be advanced from 2001 to match.
 
 ### 4.1.1 Research Breakthroughs
 
