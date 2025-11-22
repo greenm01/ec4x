@@ -878,14 +878,18 @@ The CER multiplied by AS equals the number of hits on the enemy.
 
 If a planet is protected by shields, the defending player will roll on the table below to determine the number of hits blocked.
 
+<!-- SHIELD_EFFECTIVENESS_TABLE_START -->
 | SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
 |:---------:|:--------:|:---------:|:-----------------:|
 | SLD1      | 15       | > 17      | 25%               |
 | SLD2      | 30       | > 14      | 30%               |
 | SLD3      | 45       | > 11      | 35%               |
-| SLD4      | 60       | > 8       | 40%               |
-| SLD5      | 75       | > 5       | 45%               |
-| SLD6      | 90       | > 2       | 50%               |
+| SLD4      | 60       | > 8      | 40%               |
+| SLD5      | 75       | > 5      | 45%               |
+| SLD6      | 90       | > 2      | 50%               |
+
+*Source: config/combat.toml [planetary_shields] section*
+<!-- SHIELD_EFFECTIVENESS_TABLE_END -->
 
 Reduce the attacking player's hits by the percentage, rounding up. This is the number of effective hits.
 

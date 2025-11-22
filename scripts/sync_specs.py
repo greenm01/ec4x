@@ -1097,6 +1097,28 @@ def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_ta
     print(f"✓ Successfully updated {spec_file}")
 
 
+def generate_shield_effectiveness_table(combat_config: Dict[str, Any]) -> str:
+    """Generate planetary shield effectiveness table from combat.toml."""
+    shields = combat_config.get('planetary_shields', {})
+
+    lines = [
+        "| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |",
+        "|:---------:|:--------:|:---------:|:-----------------:|",
+    ]
+
+    for level in range(1, 7):  # SLD1-SLD6
+        chance = shields.get(f'sld{level}_chance', 0)
+        roll = shields.get(f'sld{level}_roll', 0)
+        block = shields.get(f'sld{level}_block', 0)
+
+        lines.append(f"| SLD{level}      | {chance}       | > {roll}      | {block}%               |")
+
+    lines.append("")
+    lines.append("*Source: config/combat.toml [planetary_shields] section*")
+
+    return "\n".join(lines)
+
+
 def replace_inline_values(content: str, economy_config: Dict[str, Any]) -> str:
     """Replace inline marker values in prose with values from config."""
     import re
@@ -1154,6 +1176,58 @@ def replace_inline_values(content: str, economy_config: Dict[str, Any]) -> str:
     return content
 
 
+def replace_inline_values_operations(content: str, economy_config: Dict[str, Any]) -> str:
+    """Replace inline marker values in operations.md with values from config."""
+    import re
+
+    # Define inline value replacements for operations.md
+    replacements = {
+        'BLOCKADE_PENALTY': lambda: f"{int(economy_config['blockade']['blockade_production_penalty'] * 100)}%",
+        'BLOCKADE_PRESTIGE': lambda: str(economy_config['blockade']['blockade_prestige_penalty']),
+        'SALVAGE_VALUE': lambda: f"{int(economy_config['salvage']['salvage_value_multiplier'] * 100)}%",
+        'SHIP_REPAIR_COST': lambda: f"{int(economy_config['construction']['ship_repair_cost_multiplier'] * 100)}%",
+        'INVASION_IU_LOSS': lambda: f"{int(economy_config['invasion']['invasion_iu_loss'] * 100)}%",
+    }
+
+    # Replace each inline marker with plain value (removes markers)
+    for marker, value_func in replacements.items():
+        pattern = f"<!-- {marker} -->.*?<!-- /{marker} -->"
+        replacement = value_func()
+        content = re.sub(pattern, replacement, content)
+
+    return content
+
+
+def update_operations_spec(shield_table: str, economy_config: Dict[str, Any]):
+    """Update docs/specs/operations.md with generated tables and inline values."""
+    spec_file = Path("docs/specs/operations.md")
+
+    if not spec_file.exists():
+        print(f"⚠ {spec_file} not found, skipping operations.md update")
+        return
+
+    content = spec_file.read_text()
+
+    # Replace inline values first
+    content = replace_inline_values_operations(content, economy_config)
+
+    # Replace shield effectiveness table
+    shield_start = "<!-- SHIELD_EFFECTIVENESS_TABLE_START -->"
+    shield_end = "<!-- SHIELD_EFFECTIVENESS_TABLE_END -->"
+
+    if shield_start in content and shield_end in content:
+        start_idx = content.index(shield_start) + len(shield_start)
+        end_idx = content.index(shield_end)
+        content = content[:start_idx] + "\n" + shield_table + "\n" + content[end_idx:]
+        print("✓ Updated shield effectiveness table in operations.md")
+    else:
+        print("⚠ Shield effectiveness table markers not found in operations.md")
+
+    # Write updated content
+    spec_file.write_text(content)
+    print(f"✓ Successfully updated {spec_file}")
+
+
 def main():
     """Main script entry point."""
     print("EC4X Specification Sync")
@@ -1184,6 +1258,9 @@ def main():
 
     tech_config = load_toml(config_dir / "tech.toml")
     print(f"✓ Loaded {config_dir / 'tech.toml'}")
+
+    combat_config = load_toml(config_dir / "combat.toml")
+    print(f"✓ Loaded {config_dir / 'combat.toml'}")
 
     # Generate tables
     print("\nGenerating specification tables...")
@@ -1274,6 +1351,10 @@ def main():
     aco_table = generate_aco_table(tech_config)
     print("✓ Generated Advanced Carrier Operations (ACO) table (3 levels)")
 
+    # Generate operations tables
+    shield_table = generate_shield_effectiveness_table(combat_config)
+    print("✓ Generated shield effectiveness table (6 levels)")
+
     # Update spec files
     print("\nUpdating specification documents...")
     update_reference_spec(ships_table, ground_table, spacelift_table, prestige_table, morale_table, espionage_table, penalty_table)
@@ -1282,6 +1363,7 @@ def main():
                         maintenance_shortfall_table, el_table, sl_table, cst_table, wep_table,
                         ter_table, ter_upgrade_table, eli_table, clk_table, sld_table,
                         cic_tech_table, fd_table, aco_table, economy_config)
+    update_operations_spec(shield_table, economy_config)
 
     print("\n" + "=" * 50)
     print("Sync complete!")
