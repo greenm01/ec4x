@@ -8,11 +8,11 @@
 ## Network transport (Nostr) wraps around this core without modifying it.
 
 import common/[hex, system]
-import engine/[ship, fleet, starmap, gamestate, orders, resolve, economy]
+import engine/[ship, squadron, fleet, starmap, gamestate, orders, resolve, economy]
 
 # Re-export all public types and procedures
 # Note: types are re-exported through their respective modules (gamestate, fleet, etc.)
-export hex, ship, system, fleet, starmap
+export hex, ship, squadron, system, fleet, starmap
 export gamestate, orders, resolve, economy
 # Note: Combat system available via engine/combat/ submodules when needed
 

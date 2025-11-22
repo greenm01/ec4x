@@ -1,140 +1,148 @@
 ## Fleet management for EC4X
 ##
-## This module defines fleets which are collections of ships that can
+## This module defines fleets which are collections of squadrons that can
 ## move together and engage in combat as a unit.
 
-import ship
+import ship, squadron
 import ../common/types/[core, combat]
 import std/[sequtils, algorithm, strutils]
 
 export FleetId, SystemId, HouseId, LaneType
+export Squadron, EnhancedShip, ShipClass  # Export for fleet users
 
 type
   Fleet* = object
-    ## A collection of ships that move and fight together
-    id*: FleetId          # Unique fleet identifier
-    ships*: seq[Ship]     # Ships in the fleet
-    owner*: HouseId       # House that owns this fleet
-    location*: SystemId   # Current system location
+    ## A collection of squadrons that move and fight together
+    id*: FleetId              # Unique fleet identifier
+    squadrons*: seq[Squadron] # Squadrons in the fleet (CHANGED from ships)
+    owner*: HouseId           # House that owns this fleet
+    location*: SystemId       # Current system location
 
-proc newFleet*(ships: seq[Ship] = @[], id: FleetId = "", owner: HouseId = "", location: SystemId = 0): Fleet =
-  ## Create a new fleet with the given ships
-  Fleet(id: id, ships: ships, owner: owner, location: location)
+proc newFleet*(squadrons: seq[Squadron] = @[], id: FleetId = "", owner: HouseId = "", location: SystemId = 0): Fleet =
+  ## Create a new fleet with the given squadrons
+  Fleet(id: id, squadrons: squadrons, owner: owner, location: location)
 
 proc `$`*(f: Fleet): string =
   ## String representation of a fleet
-  if f.ships.len == 0:
+  if f.squadrons.len == 0:
     "Empty Fleet"
   else:
-    "Fleet[" & $f.ships.len & " ships: " & f.ships.mapIt($it).join(", ") & "]"
+    var shipClasses: seq[string] = @[]
+    for sq in f.squadrons:
+      let status = if sq.flagship.isCrippled: "*" else: ""
+      shipClasses.add($sq.flagship.shipClass & status)
+    "Fleet[" & $f.squadrons.len & " squadrons: " & shipClasses.join(", ") & "]"
 
 proc len*(f: Fleet): int =
-  ## Get the number of ships in the fleet
-  f.ships.len
+  ## Get the number of squadrons in the fleet
+  f.squadrons.len
 
 proc isEmpty*(f: Fleet): bool =
-  ## Check if the fleet has no ships
-  f.ships.len == 0
+  ## Check if the fleet has no squadrons
+  f.squadrons.len == 0
 
-proc add*(f: var Fleet, ship: Ship) =
-  ## Add a ship to the fleet
-  f.ships.add(ship)
+proc add*(f: var Fleet, squadron: Squadron) =
+  ## Add a squadron to the fleet
+  f.squadrons.add(squadron)
 
 proc remove*(f: var Fleet, index: int) =
-  ## Remove a ship at the given index
-  if index >= 0 and index < f.ships.len:
-    f.ships.delete(index)
+  ## Remove a squadron at the given index
+  if index >= 0 and index < f.squadrons.len:
+    f.squadrons.delete(index)
 
 proc clear*(f: var Fleet) =
-  ## Remove all ships from the fleet
-  f.ships.setLen(0)
+  ## Remove all squadrons from the fleet
+  f.squadrons.setLen(0)
 
 proc canTraverse*(f: Fleet, laneType: LaneType): bool =
   ## Check if the fleet can traverse a specific type of jump lane
   case laneType
   of LaneType.Restricted:
-    # All ships must be able to cross restricted lanes
-    f.ships.allIt(it.canCrossRestrictedLane())
+    # All squadrons must be able to cross restricted lanes
+    # Crippled squadrons and spacelift squadrons cannot
+    for sq in f.squadrons:
+      if sq.flagship.isCrippled:
+        return false
+      if sq.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
+        return false
+    return true
   else:
     # Major and Minor lanes can be traversed by any fleet
     true
 
 proc combatStrength*(f: Fleet): int =
-  ## Calculate the total combat strength of the fleet
-  f.ships.countIt(it.isCombatCapable())
+  ## Calculate the total attack strength of the fleet
+  result = 0
+  for sq in f.squadrons:
+    result += sq.combatStrength()
 
 proc transportCapacity*(f: Fleet): int =
-  ## Calculate the total transport capacity of the fleet
-  f.ships.countIt(it.canCarryTroops())
+  ## Calculate the number of transport squadrons
+  result = 0
+  for sq in f.squadrons:
+    if sq.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
+      if not sq.flagship.isCrippled:
+        result += 1
 
 proc hasCombatShips*(f: Fleet): bool =
-  ## Check if the fleet has any combat-capable ships
-  f.ships.anyIt(it.isCombatCapable())
+  ## Check if the fleet has any combat-capable squadrons
+  for sq in f.squadrons:
+    if sq.combatStrength() > 0:
+      return true
+  return false
 
 proc hasTransportShips*(f: Fleet): bool =
-  ## Check if the fleet has any transport-capable ships
-  f.ships.anyIt(it.canCarryTroops())
+  ## Check if the fleet has any transport-capable squadrons
+  for sq in f.squadrons:
+    if sq.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
+      if not sq.flagship.isCrippled:
+        return true
+  return false
 
-proc militaryShips*(f: Fleet): seq[Ship] =
-  ## Get all military ships in the fleet
-  f.ships.filterIt(it.shipType == ShipType.Military)
+proc combatSquadrons*(f: Fleet): seq[Squadron] =
+  ## Get all combat-capable squadrons
+  result = @[]
+  for sq in f.squadrons:
+    if sq.combatStrength() > 0:
+      result.add(sq)
 
-proc spaceliftShips*(f: Fleet): seq[Ship] =
-  ## Get all spacelift ships in the fleet
-  f.ships.filterIt(it.shipType == ShipType.Spacelift)
+proc transportSquadrons*(f: Fleet): seq[Squadron] =
+  ## Get all transport squadrons
+  result = @[]
+  for sq in f.squadrons:
+    if sq.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
+      result.add(sq)
 
-proc crippledShips*(f: Fleet): seq[Ship] =
-  ## Get all crippled ships in the fleet
-  f.ships.filterIt(it.isCrippled)
+proc crippledSquadrons*(f: Fleet): seq[Squadron] =
+  ## Get all squadrons with crippled flagships
+  result = @[]
+  for sq in f.squadrons:
+    if sq.flagship.isCrippled:
+      result.add(sq)
 
-proc effectiveShips*(f: Fleet): seq[Ship] =
-  ## Get all non-crippled ships in the fleet
-  f.ships.filterIt(not it.isCrippled)
+proc effectiveSquadrons*(f: Fleet): seq[Squadron] =
+  ## Get all squadrons with non-crippled flagships
+  result = @[]
+  for sq in f.squadrons:
+    if not sq.flagship.isCrippled:
+      result.add(sq)
 
 proc merge*(f1: var Fleet, f2: Fleet) =
   ## Merge another fleet into this one
-  f1.ships.add(f2.ships)
+  f1.squadrons.add(f2.squadrons)
 
 proc split*(f: var Fleet, indices: seq[int]): Fleet =
-  ## Split off ships at the given indices into a new fleet
-  var newShips: seq[Ship] = @[]
+  ## Split off squadrons at the given indices into a new fleet
+  var newSquadrons: seq[Squadron] = @[]
   var toRemove: seq[int] = @[]
 
   for i in indices:
-    if i >= 0 and i < f.ships.len:
-      newShips.add(f.ships[i])
+    if i >= 0 and i < f.squadrons.len:
+      newSquadrons.add(f.squadrons[i])
       toRemove.add(i)
 
-  # Remove ships from original fleet (in reverse order to maintain indices)
+  # Remove squadrons from original fleet (in reverse order to maintain indices)
   for i in toRemove.sorted(Descending):
-    f.ships.delete(i)
+    f.squadrons.delete(i)
 
-  newFleet(newShips)
-
-# Convenience constructors
-proc fleet*(ships: varargs[Ship]): Fleet =
-  ## Create a fleet from individual ships
-  newFleet(@ships)
-
-proc militaryFleet*(count: int, crippled: bool = false): Fleet =
-  ## Create a fleet of military ships
-  var ships: seq[Ship] = @[]
-  for i in 0..<count:
-    ships.add(militaryShip(crippled))
-  newFleet(ships)
-
-proc spaceliftFleet*(count: int, crippled: bool = false): Fleet =
-  ## Create a fleet of spacelift ships
-  var ships: seq[Ship] = @[]
-  for i in 0..<count:
-    ships.add(spaceliftShip(crippled))
-  newFleet(ships)
-
-proc mixedFleet*(military: int, spacelift: int): Fleet =
-  ## Create a mixed fleet with both military and spacelift ships
-  var ships: seq[Ship] = @[]
-  for i in 0..<military:
-    ships.add(militaryShip())
-  for i in 0..<spacelift:
-    ships.add(spaceliftShip())
-  newFleet(ships)
+  newFleet(newSquadrons)

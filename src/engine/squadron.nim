@@ -9,7 +9,7 @@
 ## MILESTONE 2 - Squadron implementation
 ## M1 uses direct Fleet→Ship for simplicity
 
-import std/[sequtils, strutils, options, math]
+import std/[sequtils, strutils, options, math, strformat]
 import ship
 import ../common/types/[core, units]
 import config/ships_config
@@ -290,3 +290,54 @@ proc isCloaked*(sq: Squadron): bool =
       return false
 
   return true
+
+## Squadron Construction Helpers (for Fleet creation)
+
+proc createSquadron*(
+  shipClass: ShipClass,
+  techLevel: int = 1,
+  id: SquadronId = "",
+  owner: HouseId = "",
+  location: SystemId = 0,
+  isCrippled: bool = false
+): Squadron =
+  ## Create a squadron with one ship (flagship only)
+  ## This is the standard way to create squadrons for fleets
+  let flagship = EnhancedShip(
+    shipClass: shipClass,
+    stats: getShipStats(shipClass, techLevel),
+    isCrippled: isCrippled,
+    name: ""
+  )
+  newSquadron(flagship, id, owner, location)
+
+proc createFleetSquadrons*(
+  ships: openArray[(ShipClass, int)],
+  techLevel: int = 1,
+  owner: HouseId = "",
+  location: SystemId = 0
+): seq[Squadron] =
+  ## Create multiple squadrons for a fleet
+  ## ships: seq of (ShipClass, count) tuples
+  ## Returns: seq of Squadron
+  ##
+  ## Example:
+  ##   let squadrons = createFleetSquadrons(
+  ##     @[(ShipClass.Corvette, 3), (ShipClass.Cruiser, 2)],
+  ##     techLevel = 2,
+  ##     owner = "house1",
+  ##     location = 100
+  ##   )
+  result = @[]
+  var counter = 0
+  for (shipClass, count) in ships:
+    for i in 0..<count:
+      let sq = createSquadron(
+        shipClass,
+        techLevel,
+        id = &"{owner}-sq-{counter}",
+        owner,
+        location
+      )
+      result.add(sq)
+      counter += 1

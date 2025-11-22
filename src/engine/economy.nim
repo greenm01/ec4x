@@ -137,8 +137,8 @@ proc calculateFleetUpkeep*(fleet: Fleet): int =
   ## TODO M1: Apply modifiers for damaged ships
   ## TODO M1: Check for special cases (mothballed, etc.)
   ##
-  ## STUB: Simple upkeep - 1 credit per ship
-  return fleet.ships.len
+  ## STUB: Simple upkeep - 1 credit per squadron
+  return fleet.squadrons.len
 
 proc calculateHouseUpkeep*(state: GameState, houseId: HouseId): int =
   ## Calculate total upkeep for house

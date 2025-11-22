@@ -286,9 +286,11 @@ proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool =
   of LaneType.Major, LaneType.Minor:
     return true
   of LaneType.Restricted:
-    # Restricted lanes: no crippled ships or spacelift command
-    for ship in fleet.ships:
-      if ship.isCrippled or ship.shipType == ShipType.Spacelift:
+    # Restricted lanes: no crippled squadrons or spacelift squadrons
+    for squadron in fleet.squadrons:
+      if squadron.flagship.isCrippled:
+        return false
+      if squadron.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
         return false
     return true
 
