@@ -98,6 +98,10 @@ level_5_trp = 45
 # PC increases by 10% per WEP level
 # Upgrades apply to new ships only
 
+# BALANCE: Weapons technology modifiers
+weapons_stat_increase_per_level = 0.10  # WEP increases AS/DS by 10% per level
+weapons_cost_increase_per_level = 0.10  # WEP increases PC by 10% per level
+
 level_1_sl = 1
 level_1_trp = 25
 

@@ -1,11 +1,13 @@
 # EC4X Economy Configuration
-# Edit this file to change economic mechanics for all games
+# Core economic mechanics: population, production, investment, taxation, colonization
 #
 # This file contains:
 # - BALANCE VARIABLES: Tunable gameplay parameters (adjust during playtesting)
 # - CORE MECHANICS: Fundamental game rules (mathematical formulas, type systems)
 #
 # Note: Starting resources and scenario setup are in game_setup/*.toml files
+# Note: Construction costs/times are in construction.toml
+# Note: Military squadron limits are in military.toml
 
 # ============================================================================
 # POPULATION MECHANICS
@@ -65,71 +67,9 @@ lush_pu_max = 2000
 eden_pu_min = 2001
 # eden has no max
 
-[construction]
-# Construction times (in turns/months)
-spaceport_turns = 1
-spaceport_docks = 5                # Number of construction docks
-
-shipyard_turns = 2                 # Military ship construction time (turns)
-shipyard_docks = 10                # Number of construction docks
-shipyard_requires_spaceport = true # Must have spaceport to build shipyard
-
-starbase_turns = 3
-starbase_requires_shipyard = true  # Must have shipyard to build starbase
-starbase_max_per_colony = 3        # Maximum 3 starbases per colony
-
-planetary_shield_turns = 1         # Can rebuild in one turn
-planetary_shield_max = 1           # Only one shield per planet
-planetary_shield_replace_on_upgrade = true  # Must salvage old to upgrade
-
-ground_battery_turns = 1           # Single turn construction
-ground_battery_max = -1            # No limit (-1 = unlimited)
-
-fighter_squadron_planet_based = true  # Fighters are planet-based, not fleet
-
-# Construction and repair modifiers
-ship_repair_turns = 1              # Time to repair crippled ship at shipyard
-ship_repair_cost_multiplier = 0.25 # Ship repair cost = 25% of unit PC
-starbase_repair_cost_multiplier = 0.25  # Starbase repair cost = 25% of PC
-planetside_construction_cost_multiplier = 2.0  # 100% PC increase for planet-side ship construction
-construction_capacity_increase_per_level = 0.10  # CST increases capacity by 10% per level
-
-[construction_costs]
-# Build costs for infrastructure (not ships - those in ships_default.toml)
-spaceport_cost = 500
-shipyard_cost = 1000
-starbase_cost = 1200
-ground_battery_cost = 100
-
-# Planetary shield costs by tech level
-planetary_shield_sld1_cost = 500
-planetary_shield_sld2_cost = 750
-planetary_shield_sld3_cost = 1000
-planetary_shield_sld4_cost = 1500
-planetary_shield_sld5_cost = 2000
-planetary_shield_sld6_cost = 3000
-
-[upkeep]
-# Annual upkeep costs
-spaceport_upkeep = 25
-shipyard_upkeep = 50
-starbase_upkeep = 75
-ground_battery_upkeep = 5
-planetary_shield_upkeep = 50
-
-[salvage]
-salvage_value_multiplier = 0.5     # Salvaged ships return 50% of build cost
-emergency_salvage_multiplier = 0.25  # Emergency/combat salvage returns 25% of PC
-
-[blockade]
-# Blockade effects
-blockade_production_penalty = 0.60 # -60% Gross Colonial Output (GCO)
-blockade_prestige_penalty = 2      # -2 prestige per turn per blockaded colony
-
-[invasion]
-# Invasion and conquest effects
-invasion_iu_loss = 0.50            # Conquered planet loses 50% of IU
-blitz_iu_loss = 0.00               # Blitz preserves all IU if successful
+# ============================================================================
+# RESEARCH MECHANICS
+# ============================================================================
 
 [research]
 # Technology research costs
@@ -170,6 +110,10 @@ sl_late_increment = 10             # SL6+: increases by 10 per level
 # TRP (Technology Research Points) cost formula: 1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.5 PP
 trp_first_level_cost = 25          # Starting cost for first tech level
 trp_level_increment = 5            # Each level costs +5 TRP more
+
+# ============================================================================
+# ESPIONAGE COSTS
+# ============================================================================
 
 [espionage]
 # Espionage and Counter-Intelligence costs
@@ -331,28 +275,3 @@ harsh_pp_per_ptu = 8
 hostile_pp_per_ptu = 10
 desolate_pp_per_ptu = 12
 extreme_pp_per_ptu = 15
-
-# ============================================================================
-# Fighter Squadron & Fleet Mechanics
-# Source: docs/specs/economy.md Sections 3.3, 3.9
-# ============================================================================
-
-[fighter_mechanics]
-# Fighter capacity formula: floor(PU / 100) * FD multiplier
-fighter_capacity_pu_divisor = 100  # Base: 1 FS per 100 PU
-starbase_per_fighter_squadrons = 5  # Requires 1 Starbase per 5 FS
-capacity_violation_grace_period = 2  # 2 turns grace before auto-disband
-
-[squadron_limits]
-# Squadron limit formula: Total House PU ÷ 100 (round down, minimum 8)
-squadron_limit_pu_divisor = 100    # Capital squadrons + carriers = House PU / 100
-squadron_limit_minimum = 8         # Minimum squadron slots regardless of PU
-
-# ============================================================================
-# Weapons Technology Modifiers
-# Source: docs/specs/economy.md Section 4.6
-# ============================================================================
-
-[weapons_tech]
-weapons_stat_increase_per_level = 0.10  # WEP increases AS/DS by 10% per level
-weapons_cost_increase_per_level = 0.10  # WEP increases PC by 10% per level

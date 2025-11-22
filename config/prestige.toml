@@ -1,142 +1,195 @@
-# Prestige System Configuration
-# Per reference.md:9.4 - All prestige values for balance tuning
+# EC4X Prestige Configuration
+# Source: docs/specs/reference.md Section 9.4
+#
+# This file contains:
+# - BALANCE VARIABLES: Prestige values (tunable during playtesting)
+# - GAME CONSTANTS: Victory thresholds, morale tiers
+
+# ============================================================================
+# VICTORY CONDITIONS
+# ============================================================================
 
 [victory]
-# Victory threshold - needs playtesting to determine optimal value
-# Starting prestige is 50, so this should be achievable but challenging
-prestige_victory = 5000
-# Defensive collapse: prestige < 0 for this many turns
-collapse_turns = 3
-# Starting prestige for new houses
-starting_prestige = 50
+# BALANCE: Victory and defeat thresholds
+prestige_victory = 5000            # Reach 5000 prestige to win
+starting_prestige = 50             # All houses start with 50 prestige
+defeat_threshold = 0               # Below 0 for consecutive turns = surrender
+defeat_consecutive_turns = 3       # Turns below 0 before forced surrender
+
+# ============================================================================
+# MORALE SYSTEM (GAME CONSTANTS)
+# ============================================================================
 
 [morale]
 # Morale thresholds for combat (operations.md:7.1.4)
-# These affect CER rolls and combat effectiveness
-crisis_max = 0        # ≤0: -1 CER, never succeeds morale check
-low_max = 20          # 1-20: No effect unless morale check succeeds (>18)
-average_max = 40      # 21-40: +1 CER to one squadron if check succeeds (>15)
-good_max = 60         # 41-60: +1 CER all if check succeeds (>12)
-high_max = 80         # 61-80: +1 CER + critical auto-success if check succeeds (>9)
-# 81+: Elite: +2 CER all if check succeeds (>6)
+# MECHANIC: These define the morale tier system
+crisis_max = 0        # ≤0: Crisis (-1 CER, never succeeds morale check)
+low_max = 20          # 1-20: Low (no effect unless check succeeds >18)
+average_max = 40      # 21-40: Average (+1 CER one squadron if >15)
+good_max = 60         # 41-60: Good (+1 CER all if >12)
+high_max = 80         # 61-80: High (+1 CER + critical auto-success if >9)
+# 81+: Elite (+2 CER all if >6)
+
+# ============================================================================
+# PRESTIGE SOURCES (BALANCE VARIABLES)
+# Source: reference.md Table 9.4
+# ============================================================================
 
 [economic]
-establish_colony = 5
-max_population = 3  # Max out PU on a colony
-iu_milestone_50 = 1   # Reach 50% IU of PU
-iu_milestone_75 = 2   # Reach 75% IU of PU
-iu_milestone_100 = 3  # Reach 100% IU of PU
-iu_milestone_150 = 5  # Reach 150% IU of PU
-terraform_planet = 5  # Increase planet class
-tech_advancement = 2  # Any tech level increase
+# BALANCE: Economic achievement rewards
+tech_advancement = 2               # Advance to new tech level
+establish_colony = 5               # New colony established
+max_population = 3                 # Colony reaches max PU
+iu_milestone_50 = 1                # Reach 50% IU of PU
+iu_milestone_75 = 2                # Reach 75% IU of PU
+iu_milestone_100 = 3               # Reach 100% IU of PU
+iu_milestone_150 = 5               # Reach 150% IU of PU
+terraform_planet = 5               # Upgrade planet class via terraforming
 
 [military]
-destroy_task_force = 3
-force_retreat = 2
-invade_planet = 10
-lose_planet = -10
-ambushed_by_cloak = -1
-lose_starbase = -5
-destroy_starbase = 5
-# Per squadron destroyed (multiplied by count)
-destroy_squadron = 1
+# BALANCE: Military victory rewards
+destroy_squadron = 1               # Per major ship destroyed
+destroy_starbase = 5               # Destroy enemy starbase
+fleet_victory = 3                  # Win fleet battle
+invade_planet = 10                 # Successfully invade/blitz planet
+eliminate_house = 3                # Eliminate rival house
+system_capture = 10                # Capture star system
+
+# BALANCE: Military defeat penalties
+lose_planet = -10                  # Lose colony to enemy
+lose_starbase = -5                 # Starbase destroyed
+ambushed_by_cloak = -1             # Ambushed by cloaked fleet
+force_retreat = 2                  # Force enemy to retreat
+scout_destroyed = -3               # Scout detected and destroyed
 
 [espionage]
-# Prestige rewards for performing espionage
-tech_theft = 2
-low_impact_sabotage = 1
-high_impact_sabotage = 3
-assassination = 5
-cyber_attack = 2
-economic_manipulation = 3
-psyops_campaign = 1
-failed_espionage = -2  # Detected
-over_invest_espionage = -1  # Per 1% over 5%
-over_invest_counter_intel = -1  # Per 1% over 5%
+# BALANCE: Espionage success rewards
+tech_theft = 2                     # Successful tech theft
+low_impact_sabotage = 1            # Low-impact sabotage success
+high_impact_sabotage = 3           # High-impact sabotage success
+assassination = 5                  # Successful assassination
+cyber_attack = 2                   # Successful cyber attack
+economic_manipulation = 3          # Successful economic manipulation
+psyops_campaign = 1                # Successful psyops
+
+# BALANCE: Espionage failure/detection penalties
+failed_espionage = -2              # Espionage detected and prevented
 
 [espionage_victim]
-# Prestige penalties for being targeted by espionage
-tech_theft_victim = -3
-low_impact_sabotage_victim = -1
-high_impact_sabotage_victim = -5
-assassination_victim = -7
-cyber_attack_victim = -3
-economic_manipulation_victim = -4
-psyops_campaign_victim = -2
+# BALANCE: Prestige penalties for being targeted by espionage
+tech_theft_victim = -3             # Victim of tech theft
+low_impact_sabotage_victim = -1    # Victim of low sabotage
+high_impact_sabotage_victim = -5   # Victim of high sabotage
+assassination_victim = -7          # Leader assassinated
+cyber_attack_victim = -3           # Victim of cyber attack
+economic_manipulation_victim = -4  # Victim of economic manipulation
+psyops_campaign_victim = -2        # Victim of psyops
 
 [scout]
-spy_on_planet = 1
-hack_starbase = 2
-spy_on_system = 1
-scout_destroyed = -3
+# BALANCE: Scout mission rewards
+spy_on_planet = 1                  # Successful planet espionage
+hack_starbase = 2                  # Successful starbase hack
+spy_on_system = 1                  # Successful system reconnaissance
+
+[diplomacy]
+# BALANCE: Diplomatic action prestige impacts
+diplomatic_pact_formation = 5      # Form diplomatic pact
+pact_violation = -10               # Break non-aggression pact
+repeat_violation = -10             # Repeat violation (dishonored status)
+dishonored_expires = -1            # Dishonor status expires
+declare_war = 0                    # No inherent penalty
+make_peace = 0                     # No inherent bonus
+
+[victory_achievement]
+# BALANCE: Final victory rewards
+victory_achieved = 5               # Game victory bonus
+
+# ============================================================================
+# PRESTIGE PENALTY MECHANICS (BALANCE VARIABLES)
+# Source: reference.md Section 9.4 - Prestige Penalty Mechanics
+# ============================================================================
 
 [penalties]
-# Tax penalties (reference.md spec)
-# 51-65%: -1 every 3 turns
-# >65%: -2 every 5 turns
-high_tax_threshold = 51
-high_tax_penalty = -1
-high_tax_frequency = 3  # Every N turns
-very_high_tax_threshold = 66
-very_high_tax_penalty = -2
-very_high_tax_frequency = 5  # Every N turns
+# BALANCE: Tax penalties (old system - reference.md spec)
+# These use simple thresholds, not rolling averages
+high_tax_threshold = 51            # >51% triggers penalty
+high_tax_penalty = -1              # -1 prestige
+high_tax_frequency = 3             # Every 3 consecutive turns
 
-# Maintenance shortfall escalates
-maintenance_shortfall_base = -5
-maintenance_shortfall_increment = -2  # Increases by this each turn
+very_high_tax_threshold = 66       # >66% triggers higher penalty
+very_high_tax_penalty = -2         # -2 prestige
+very_high_tax_frequency = 5        # Every 5 consecutive turns
 
-# Blockade
-blockade_penalty = -2  # Per colony per turn
+# BALANCE: Maintenance shortfall escalation
+maintenance_shortfall_base = -5    # -5 turn 1
+maintenance_shortfall_increment = -2  # Increases by -2 each turn (-5, -7, -9...)
+
+# BALANCE: Blockade penalty
+blockade_penalty = -2              # -2 prestige per turn per colony
+
+# BALANCE: Over-investment penalties (espionage/counter-intel)
+over_invest_espionage = -1         # -1 per 1% over 5% threshold
+over_invest_counter_intel = -1     # -1 per 1% over 5% threshold
+
+# ============================================================================
+# TAX PENALTIES (NEW SYSTEM - economy.md spec)
+# Source: docs/specs/economy.md Section 3.2.1
+# Uses rolling 6-turn average instead of consecutive turns
+# ============================================================================
 
 [tax_penalties]
-# High-tax prestige penalties (rolling 6-turn average)
-# Source: docs/specs/economy.md Section 3.2.1
+# BALANCE: High-tax prestige penalties (rolling 6-turn average)
 # Format: min_rate, max_rate, prestige_penalty
 tier_1_min = 0
 tier_1_max = 50
-tier_1_penalty = 0
+tier_1_penalty = 0                 # No penalty
 
 tier_2_min = 51
 tier_2_max = 60
-tier_2_penalty = -1
+tier_2_penalty = -1                # -1 prestige per turn
 
 tier_3_min = 61
 tier_3_max = 70
-tier_3_penalty = -2
+tier_3_penalty = -2                # -2 prestige per turn
 
 tier_4_min = 71
 tier_4_max = 80
-tier_4_penalty = -4
+tier_4_penalty = -4                # -4 prestige per turn
 
 tier_5_min = 81
 tier_5_max = 90
-tier_5_penalty = -7
+tier_5_penalty = -7                # -7 prestige per turn
 
 tier_6_min = 91
 tier_6_max = 100
-tier_6_penalty = -11
+tier_6_penalty = -11               # -11 prestige per turn
+
+# ============================================================================
+# TAX INCENTIVES (NEW SYSTEM - economy.md spec)
+# Source: docs/specs/economy.md Section 3.2.2
+# ============================================================================
 
 [tax_incentives]
-# Low-tax incentives (applied same turn)
-# Source: docs/specs/economy.md Section 3.2.2
+# BALANCE: Low-tax prestige bonuses (applied same turn)
 # Format: min_rate, max_rate, prestige_bonus_per_colony
-# Note: population growth multipliers are in economy.toml since they're economic, not prestige
+# Note: Population growth multipliers are in economy.toml
+
 tier_1_min = 41
 tier_1_max = 50
-tier_1_prestige = 0
+tier_1_prestige = 0                # No bonus
 
 tier_2_min = 31
 tier_2_max = 40
-tier_2_prestige = 0
+tier_2_prestige = 0                # No bonus
 
 tier_3_min = 21
 tier_3_max = 30
-tier_3_prestige = 1
+tier_3_prestige = 1                # +1 prestige per colony
 
 tier_4_min = 11
 tier_4_max = 20
-tier_4_prestige = 2
+tier_4_prestige = 2                # +2 prestige per colony
 
 tier_5_min = 0
 tier_5_max = 10
-tier_5_prestige = 3
+tier_5_prestige = 3                # +3 prestige per colony

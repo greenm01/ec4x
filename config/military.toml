@@ -1,0 +1,35 @@
+# EC4X Military Configuration
+# Fighter squadrons, fleet limits, and salvage mechanics
+#
+# This file contains:
+# - BALANCE VARIABLES: Squadron limits, fighter capacity
+# - CORE MECHANICS: Military organizational rules
+
+# ============================================================================
+# FIGHTER SQUADRON MECHANICS
+# Source: docs/specs/economy.md Sections 3.3, 3.9
+# ============================================================================
+
+[fighter_mechanics]
+# BALANCE: Fighter capacity formula: floor(PU / 100) * FD multiplier
+fighter_capacity_pu_divisor = 100  # Base: 1 FS per 100 PU
+starbase_per_fighter_squadrons = 5  # Requires 1 Starbase per 5 FS
+capacity_violation_grace_period = 2  # 2 turns grace before auto-disband
+
+# ============================================================================
+# FLEET SQUADRON LIMITS
+# ============================================================================
+
+[squadron_limits]
+# BALANCE: Squadron limit formula: Total House PU ÷ 100 (round down, minimum 8)
+squadron_limit_pu_divisor = 100    # Capital squadrons + carriers = House PU / 100
+squadron_limit_minimum = 8         # Minimum squadron slots regardless of PU
+
+# ============================================================================
+# SALVAGE MECHANICS
+# ============================================================================
+
+[salvage]
+# BALANCE: Salvage value returns
+salvage_value_multiplier = 0.5     # Salvaged ships return 50% of build cost
+emergency_salvage_multiplier = 0.25  # Emergency/combat salvage returns 25% of PC

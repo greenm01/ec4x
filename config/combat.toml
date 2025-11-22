@@ -84,3 +84,21 @@ destroy_after_all_crippled = true  # Don't destroy until all others crippled
 fighters_never_retreat = true      # Fighter squadrons never retreat
 spacelift_destroyed_if_escort_lost = true  # Spacelift ships destroyed if escorts die
 retreat_to_nearest_friendly = true # Retreating fleets go to nearest friendly system
+
+# ============================================================================
+# BLOCKADE MECHANICS
+# ============================================================================
+
+[blockade]
+# BALANCE: Blockade effects
+blockade_production_penalty = 0.60 # -60% Gross Colonial Output (GCO)
+blockade_prestige_penalty = 2      # -2 prestige per turn per blockaded colony
+
+# ============================================================================
+# INVASION MECHANICS
+# ============================================================================
+
+[invasion]
+# BALANCE: Invasion and conquest effects
+invasion_iu_loss = 0.50            # Conquered planet loses 50% of IU
+blitz_iu_loss = 0.00               # Blitz preserves all IU if successful
