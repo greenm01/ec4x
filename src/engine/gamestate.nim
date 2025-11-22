@@ -101,6 +101,9 @@ type
     dishonoredStatus*: dip_types.DishonoredStatus  # Pact violation penalty
     diplomaticIsolation*: dip_types.DiplomaticIsolation  # Pact violation penalty
 
+    # Planet-Breaker tracking (assets.md:2.4.8)
+    planetBreakerCount*: int  # Current PB count (max = current colony count)
+
   GamePhase* {.pure.} = enum
     Setup, Active, Paused, Completed
 
@@ -152,7 +155,9 @@ proc initializeHouse*(name: string, color: string): House =
         weaponsTech: 0,
         terraformingTech: 0,
         electronicIntelligence: 0,
-        counterIntelligence: 0
+        counterIntelligence: 0,
+        fighterDoctrine: 0,  # FD I (base 1.0x multiplier)
+        advancedCarrierOps: 0  # ACO I (base capacity)
       ),
       researchPoints: 0
     ),
@@ -162,7 +167,8 @@ proc initializeHouse*(name: string, color: string): House =
     violationHistory: dip_types.initViolationHistory(),
     espionageBudget: esp_types.initEspionageBudget(),
     dishonoredStatus: dip_types.DishonoredStatus(active: false, turnsRemaining: 0, violationTurn: 0),
-    diplomaticIsolation: dip_types.DiplomaticIsolation(active: false, turnsRemaining: 0, violationTurn: 0)
+    diplomaticIsolation: dip_types.DiplomaticIsolation(active: false, turnsRemaining: 0, violationTurn: 0),
+    planetBreakerCount: 0
   )
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
@@ -267,12 +273,11 @@ proc isOverSquadronLimit*(state: GameState, houseId: HouseId): bool =
 proc getFighterDoctrineMultiplier*(techLevels: TechLevel): float =
   ## Get fighter doctrine multiplier from tech level
   ## FD I = 1.0x, FD II = 1.5x, FD III = 2.0x
-  ## FD tech is separate from other tech fields (placeholder: use constructionTech)
-  let fdLevel = techLevels.constructionTech  # TODO: Add proper FD field
+  let fdLevel = techLevels.fighterDoctrine
   case fdLevel
-  of 0..4:
-    return 1.0  # FD I
-  of 5..9:
+  of 0, 1:
+    return 1.0  # FD I (base)
+  of 2:
     return 1.5  # FD II
   else:
     return 2.0  # FD III
@@ -383,6 +388,19 @@ proc getTotalGroundDefense*(colony: Colony): int =
   ## Calculate total ground defense strength
   ## Ground batteries + armies + marines
   return colony.groundBatteries + colony.armies + colony.marines
+
+# Planet-Breaker management (assets.md:2.4.8)
+
+proc getPlanetBreakerLimit*(state: GameState, houseId: HouseId): int =
+  ## Get maximum Planet-Breakers allowed for house
+  ## Limit = current colony count (homeworld counts)
+  return state.getHouseColonies(houseId).len
+
+proc canBuildPlanetBreaker*(state: GameState, houseId: HouseId): bool =
+  ## Check if house can build another Planet-Breaker
+  let current = state.houses[houseId].planetBreakerCount
+  let limit = state.getPlanetBreakerLimit(houseId)
+  return current < limit
 
 # Victory condition checks
 

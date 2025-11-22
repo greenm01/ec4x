@@ -25,3 +25,7 @@ type
     terraformingTech*: int         # TER (0-10)
     electronicIntelligence*: int   # ELI (0-10)
     counterIntelligence*: int      # CIC (0-10)
+
+    # Military doctrines (assets.md)
+    fighterDoctrine*: int          # FD (0-3): Fighter capacity multiplier
+    advancedCarrierOps*: int       # ACO (0-3): Carrier hangar capacity
