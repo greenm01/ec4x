@@ -102,7 +102,7 @@ Every Income Phase the game calculates the **average tax rate over the current t
 | 81 – 90 %                       |            -7             |
 | 91 – 100 %                      |            -11            |
 
-*Source: config/economy.toml [tax_penalties] section*
+*Source: config/prestige.toml [tax_penalties] section*
 <!-- TAX_PENALTY_TABLE_END -->
 
 This penalty is applied every turn the qualifying average is met and cannot be avoided by short-term cycling.
@@ -120,7 +120,7 @@ To reward benevolent or populist rule, colonies grant bonuses in the same Income
 | 11 – 20 %          | ×1.15 (+14 %)                                            |                 +2                  |
 | 0 – 10 %           | ×1.20 (+19 %)                                            |                 +3                  |
 
-*Source: config/economy.toml [tax_incentives] section*
+*Source: config/prestige.toml [tax_incentives] and config/economy.toml [tax_population_growth] sections*
 <!-- TAX_INCENTIVE_TABLE_END -->
 
 With multiple big colonies, low taxes become a legitimate prestige-farming strategy that can outpace military victories in the late game.
