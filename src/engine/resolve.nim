@@ -146,14 +146,15 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
       if packet.espionageAction.isSome:
         let attempt = packet.espionageAction.get()
 
-        # Get target's CIC level from tech tree (starts at CIC1 per gameplay.md:1.2)
+        # Get target's CIC level from tech tree
+        # CRITICAL: Tech starts at level 1 (CIC1), not 0! (gameplay.md:1.2)
         let targetCICLevel = case state.houses[attempt.target].techTree.levels.counterIntelligence
-          of 0: esp_types.CICLevel.CIC0
           of 1: esp_types.CICLevel.CIC1
           of 2: esp_types.CICLevel.CIC2
           of 3: esp_types.CICLevel.CIC3
           of 4: esp_types.CICLevel.CIC4
-          else: esp_types.CICLevel.CIC5
+          of 5: esp_types.CICLevel.CIC5
+          else: esp_types.CICLevel.CIC1  # Fallback to base level
         let targetCIP = if attempt.target in state.houses:
                           state.houses[attempt.target].espionageBudget.cipPoints
                         else:

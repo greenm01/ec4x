@@ -2,6 +2,20 @@
 # Core gameplay mechanics and thresholds
 # Source: docs/specs/gameplay.md Section 1.4
 
+[starting_tech]
+# CRITICAL: ALL tech levels start at 1, not 0! (gameplay.md:1.2 + economy.md FD/ACO tables)
+# "Tech levels start at: EL1, SL1, CST1, WEP1, TER1, ELI1, and CIC1."
+# FD and ACO also start at level 1 (FD I, ACO I) per economy.md tech tables
+energy_level = 1          # EL1 - Economic productivity modifier
+shield_level = 1          # SL1 - Defensive shield technology
+construction_tech = 1     # CST1 - Shipyard construction capability
+weapons_tech = 1          # WEP1 - Combat ship AS/DS modifier
+terraforming_tech = 1     # TER1 - Planet habitability improvement
+electronic_intelligence = 1  # ELI1 - Spy scout capability
+counter_intelligence = 1  # CIC1 - Espionage detection
+fighter_doctrine = 1      # FD I - Base fighter capacity (1.0x multiplier)
+advanced_carrier_ops = 1  # ACO I - Base carrier capacity (CV=3FS, CX=5FS)
+
 [elimination]
 # BALANCE: Player elimination thresholds
 defensive_collapse_turns = 3        # Turns below 0 prestige before elimination (gameplay.md:23, 90)

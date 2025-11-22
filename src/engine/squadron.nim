@@ -364,13 +364,16 @@ proc getCarrierCapacity*(sq: Squadron, acoLevel: int): int =
 
   case sq.flagship.shipClass
   of ShipClass.Carrier:
+    # Per economy.md tech tables: ACO I (starting level) = 3FS, ACO II = 4FS, ACO III = 5FS
+    # CRITICAL: ACO starts at level 1 (ACO I), not 0! (gameplay.md:1.2)
     case acoLevel
-    of 0, 1: 3  # ACO I (base)
+    of 1: 3     # ACO I (base level, ships start here)
     of 2: 4     # ACO II
     else: 5     # ACO III+
   of ShipClass.SuperCarrier:
+    # Per economy.md tech tables: ACO I = 5FS, ACO II = 6FS, ACO III = 8FS
     case acoLevel
-    of 0, 1: 5  # ACO I (base)
+    of 1: 5     # ACO I (base level, ships start here)
     of 2: 6     # ACO II
     else: 8     # ACO III+
   else:
