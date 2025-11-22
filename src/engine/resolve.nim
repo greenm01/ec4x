@@ -13,7 +13,7 @@ import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
 import combat/[engine as combat_engine, types as combat_types, ground]
-import config/[prestige_config, espionage_config, gameplay_config, construction_config]
+import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config]
 import prestige
 
 type
@@ -828,9 +828,35 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
     state.houses[houseId].treasury = houseTreasuries[houseId]
     echo "    ", state.houses[houseId].name, ": -", upkeep, " PP maintenance"
 
-  # Report completed projects
+  # Report and handle completed projects
   for completed in maintenanceReport.completedProjects:
-    echo "    Completed: ", completed.projectType
+    echo "    Completed: ", completed.projectType, " at system ", completed.colonyId
+
+    # Special handling for fighter squadrons
+    if completed.projectType == econ_types.ConstructionType.Building and
+       completed.itemId == "FighterSquadron":
+      # Commission fighter squadron at colony
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Create new fighter squadron
+        let fighterSq = FighterSquadron(
+          id: $completed.colonyId & "-FS-" & $(colony.fighterSquadrons.len + 1),
+          commissionedTurn: state.turn
+        )
+
+        colony.fighterSquadrons.add(fighterSq)
+        state.colonies[completed.colonyId] = colony
+
+        echo "      Commissioned fighter squadron ", fighterSq.id, " at ", completed.colonyId
+
+        # Generate event
+        events.add(GameEvent(
+          eventType: GameEventType.ColonyEstablished,  # TODO: Add FighterCommissioned event type
+          houseId: colony.owner,
+          description: "Fighter Squadron commissioned at " & $completed.colonyId,
+          systemId: some(completed.colonyId)
+        ))
 
   # Check for elimination and defensive collapse
   let gameplayConfig = globalGameplayConfig
@@ -889,6 +915,100 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
       echo "    ", house.name, ": At squadron limit (", current, "/", limit, ")"
     else:
       echo "    ", house.name, ": ", current, "/", limit, " squadrons (", totalPU, " PU)"
+
+  # Check fighter squadron capacity violations (assets.md:2.4.1)
+  echo "  Checking fighter squadron capacity..."
+  let militaryConfig = globalMilitaryConfig.fighter_mechanics
+
+  for systemId, colony in state.colonies.mpairs:
+    let house = state.houses[colony.owner]
+    if house.eliminated:
+      continue
+
+    # Get FD multiplier from house tech level
+    let fdMultiplier = getFighterDoctrineMultiplier(house.techTree.levels)
+
+    # Check current capacity
+    let current = getCurrentFighterCount(colony)
+    let capacity = getFighterCapacity(colony, fdMultiplier)
+    let popCapacity = getFighterPopulationCapacity(colony, fdMultiplier)
+    let infraCapacity = getFighterInfrastructureCapacity(colony)
+
+    # Check if over capacity
+    let isOverCapacity = current > capacity
+
+    if isOverCapacity:
+      # Determine violation type
+      let violationType = if popCapacity < current:
+        "population"
+      elif infraCapacity < current:
+        "infrastructure"
+      else:
+        "unknown"
+
+      # Start or continue violation
+      if not colony.capacityViolation.active:
+        # New violation - start grace period
+        colony.capacityViolation = CapacityViolation(
+          active: true,
+          violationType: violationType,
+          turnsRemaining: militaryConfig.capacity_violation_grace_period,
+          violationTurn: state.turn
+        )
+        echo "    WARNING: ", house.name, " - System ", systemId, " over fighter capacity!"
+        echo "      Current: ", current, " FS, Capacity: ", capacity,
+             " (Pop: ", popCapacity, ", Infra: ", infraCapacity, ")"
+        echo "      Violation type: ", violationType
+        echo "      Grace period: ", militaryConfig.capacity_violation_grace_period, " turns"
+      else:
+        # Existing violation - decrement timer
+        colony.capacityViolation.turnsRemaining -= 1
+        echo "    ", house.name, " - System ", systemId, " capacity violation continues"
+        echo "      Current: ", current, " FS, Capacity: ", capacity
+        echo "      Grace period remaining: ", colony.capacityViolation.turnsRemaining, " turn(s)"
+
+        # Check if grace period expired
+        if colony.capacityViolation.turnsRemaining <= 0:
+          # Auto-disband excess fighters (oldest first)
+          let excess = current - capacity
+          echo "      Grace period expired! Auto-disbanding ", excess, " excess fighter squadron(s)"
+
+          # Remove oldest squadrons first
+          for i in 0..<excess:
+            if colony.fighterSquadrons.len > 0:
+              let disbanded = colony.fighterSquadrons[0]
+              colony.fighterSquadrons.delete(0)
+              echo "        Disbanded: ", disbanded.id
+
+          # Clear violation
+          colony.capacityViolation = CapacityViolation(
+            active: false,
+            violationType: "",
+            turnsRemaining: 0,
+            violationTurn: 0
+          )
+
+          # Generate event
+          events.add(GameEvent(
+            eventType: GameEventType.ColonyEstablished,  # TODO: Add FighterDisbanded event type
+            houseId: colony.owner,
+            description: $excess & " fighter squadrons auto-disbanded at " & $systemId & " (capacity violation)",
+            systemId: some(systemId)
+          ))
+
+    elif colony.capacityViolation.active:
+      # Was in violation but now resolved
+      echo "    ", house.name, " - System ", systemId, " capacity violation resolved!"
+      colony.capacityViolation = CapacityViolation(
+        active: false,
+        violationType: "",
+        turnsRemaining: 0,
+        violationTurn: 0
+      )
+    elif current > 0:
+      # Normal status report
+      echo "    ", house.name, " - System ", systemId, ": ", current, "/", capacity,
+           " FS (Pop: ", popCapacity, ", Infra: ", infraCapacity, ")"
 
   # Check victory condition
   let victorOpt = state.checkVictoryCondition()

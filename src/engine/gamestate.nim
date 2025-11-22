@@ -18,6 +18,18 @@ type
   BuildingType* {.pure.} = enum
     Infrastructure, Shipyard, ResearchLab, DefenseGrid
 
+  FighterSquadron* = object
+    ## Colony-based fighter squadron
+    id*: string                   # Unique identifier
+    commissionedTurn*: int        # Turn when squadron was commissioned
+
+  CapacityViolation* = object
+    ## Tracks fighter capacity violations and grace period
+    active*: bool                 # Is there an active violation
+    violationType*: string        # "infrastructure" or "population"
+    turnsRemaining*: int          # Grace period turns left (starts at 2)
+    violationTurn*: int           # Turn when violation began
+
   Colony* = object
     systemId*: SystemId
     owner*: HouseId
@@ -28,6 +40,10 @@ type
     buildings*: seq[BuildingType]
     production*: int              # Current turn production
     underConstruction*: Option[ConstructionProject]
+
+    # Fighter squadrons (assets.md:2.4.1)
+    fighterSquadrons*: seq[FighterSquadron]  # Colony-based fighters
+    capacityViolation*: CapacityViolation     # Capacity violation tracking
 
   ConstructionProject* = object
     projectType*: BuildingType
@@ -128,7 +144,14 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     resources: ResourceRating.Abundant,  # Abundant resources
     buildings: @[BuildingType.Shipyard],  # Start with basic shipyard
     production: 0,
-    underConstruction: none(ConstructionProject)
+    underConstruction: none(ConstructionProject),
+    fighterSquadrons: @[],  # No fighters at start
+    capacityViolation: CapacityViolation(
+      active: false,
+      violationType: "",
+      turnsRemaining: 0,
+      violationTurn: 0
+    )
   )
 
 # Game state queries
@@ -199,6 +222,57 @@ proc isOverSquadronLimit*(state: GameState, houseId: HouseId): bool =
   let current = state.getHouseSquadronCount(houseId)
   let limit = state.getSquadronLimit(houseId)
   return current > limit
+
+# Fighter squadron capacity (assets.md:2.4.1)
+
+proc getFighterDoctrineMultiplier*(techLevels: TechLevel): float =
+  ## Get fighter doctrine multiplier from tech level
+  ## FD I = 1.0x, FD II = 1.5x, FD III = 2.0x
+  ## FD tech is separate from other tech fields (placeholder: use constructionTech)
+  let fdLevel = techLevels.constructionTech  # TODO: Add proper FD field
+  case fdLevel
+  of 0..4:
+    return 1.0  # FD I
+  of 5..9:
+    return 1.5  # FD II
+  else:
+    return 2.0  # FD III
+
+proc getFighterPopulationCapacity*(colony: Colony, fdMultiplier: float): int =
+  ## Calculate fighter capacity based on population
+  ## Max FS = floor(PU / 100) × FD Multiplier
+  ## Per military.toml: fighter_capacity_pu_divisor = 100
+  let config = globalMilitaryConfig.fighter_mechanics
+  let baseCap = colony.population div config.fighter_capacity_pu_divisor
+  return int(float(baseCap) * fdMultiplier)
+
+proc getFighterInfrastructureCapacity*(colony: Colony): int =
+  ## Calculate fighter capacity based on starbases
+  ## Requires 1 operational Starbase per 5 FS
+  ## Per military.toml: starbase_per_fighter_squadrons = 5
+  let config = globalMilitaryConfig.fighter_mechanics
+  var operationalStarbases = 0
+
+  # Count operational (non-crippled) starbases
+  # TODO: Need starbase tracking on colonies
+  # For now, return unlimited capacity (will implement starbase tracking later)
+  return 999
+
+proc getFighterCapacity*(colony: Colony, fdMultiplier: float): int =
+  ## Get effective fighter capacity (minimum of population and infrastructure limits)
+  let popCap = getFighterPopulationCapacity(colony, fdMultiplier)
+  let infraCap = getFighterInfrastructureCapacity(colony)
+  return min(popCap, infraCap)
+
+proc getCurrentFighterCount*(colony: Colony): int =
+  ## Get current number of fighter squadrons at colony
+  return colony.fighterSquadrons.len
+
+proc isOverFighterCapacity*(colony: Colony, fdMultiplier: float): bool =
+  ## Check if colony has exceeded fighter capacity
+  let current = getCurrentFighterCount(colony)
+  let capacity = getFighterCapacity(colony, fdMultiplier)
+  return current > capacity
 
 # Victory condition checks
 
