@@ -96,7 +96,6 @@ spy_on_system = 1                  # Successful system reconnaissance
 diplomatic_pact_formation = 5      # Form diplomatic pact
 pact_violation = -10               # Break non-aggression pact
 repeat_violation = -10             # Repeat violation (dishonored status)
-dishonored_expires = -1            # Dishonor status expires
 dishonored_bonus = 1               # Bonus for attacking dishonored house
 declare_war = 0                    # No inherent penalty
 make_peace = 0                     # No inherent bonus

@@ -71,17 +71,17 @@ CL = Carry Limit
 | Diplomatic Pact Formation | `DiplomaticPact` | +5 |
 | Pact Violation (penalty) | `PactViolation` | -10 |
 | Repeat Violation (penalty) | `RepeatViolation` | -10 |
-| Dishonor Status Expires | `DishonoredExpires` | -1 |
+| Attack Dishonored House | `DishonoredBonus` | +1 |
 | Tech Theft Success | `TechTheftSuccess` | +2 |
-| Tech Theft Detected (penalty) | `TechTheftDetected` | -2 |
+| Tech Theft Detected (penalty) | `TechTheftDetected` | +2 |
 | Assassination Success | `AssassinationSuccess` | +5 |
-| Assassination Detected (penalty) | `AssassinationDetected` | -2 |
-| Espionage Attempt Failed (penalty) | `EspionageFailure` | -2 |
+| Assassination Detected (penalty) | `AssassinationDetected` | +5 |
+| Espionage Attempt Failed (penalty) | `EspionageFailure` | +1 |
 | Major Ship Destroyed (per ship) | `ShipDestroyed` | +1 |
 | Starbase Destroyed | `StarbaseDestroyed` | +5 |
-| Fleet Victory (per battle) | `FleetVictory` | +0 |
+| Fleet Victory (per battle) | `FleetVictory` | +3 |
 | Planet Conquered | `PlanetConquered` | +10 |
-| House Eliminated | `HouseEliminated` | +0 |
+| House Eliminated | `HouseEliminated` | +3 |
 | Victory Achieved | `VictoryAchieved` | +5 |
 
 *Source: config/prestige.toml [economic], [military], and [espionage] sections*
