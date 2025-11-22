@@ -1390,6 +1390,68 @@ def update_assets_spec(spy_detection_table: str, raider_detection_table: str, es
     print(f"✓ Successfully updated {spec_file}")
 
 
+def replace_inline_values_gameplay(content: str, gameplay_config: Dict[str, Any], game_setup_config: Dict[str, Any]) -> str:
+    """Replace inline marker values in gameplay.md with values from config."""
+    import re
+
+    # Helper to convert number to word
+    def num_to_word(n: int) -> str:
+        words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
+        return words.get(n, str(n))
+
+    # Define inline value replacements for gameplay.md
+    replacements = {
+        'STARTING_PRESTIGE': lambda: str(game_setup_config['starting_resources']['starting_prestige']),
+        'DEFENSIVE_COLLAPSE_TURNS': lambda: num_to_word(gameplay_config['elimination']['defensive_collapse_turns']),
+        'MIA_TURNS': lambda: num_to_word(gameplay_config['autopilot']['mia_turns_threshold']),
+        'HOMEWORLD_QUALITY': lambda: game_setup_config['homeworld']['raw_quality'],
+        'HOMEWORLD_CLASS': lambda: game_setup_config['homeworld']['planet_class'],
+        'HOMEWORLD_COLONY_LEVEL': lambda: "V" if game_setup_config['homeworld']['colony_level'] == 5 else str(game_setup_config['homeworld']['colony_level']),
+        'HOMEWORLD_PU': lambda: str(game_setup_config['homeworld']['population_units']),
+        'STARTING_TREASURY': lambda: str(game_setup_config['starting_resources']['treasury']),
+        'DEFAULT_TAX_RATE': lambda: str(int(game_setup_config['starting_resources']['default_tax_rate'] * 100)),
+        'STARTING_SPACEPORTS': lambda: num_to_word(game_setup_config['starting_facilities']['spaceports']),
+        'STARTING_SHIPYARDS': lambda: num_to_word(game_setup_config['starting_facilities']['shipyards']),
+        'STARTING_ETAC': lambda: num_to_word(game_setup_config['starting_fleet']['etac']),
+        'STARTING_LIGHT_CRUISER': lambda: "a" if game_setup_config['starting_fleet']['light_cruiser'] == 1 else str(game_setup_config['starting_fleet']['light_cruiser']),
+        'STARTING_DESTROYERS': lambda: num_to_word(game_setup_config['starting_fleet']['destroyer']),
+        'STARTING_SCOUTS': lambda: num_to_word(game_setup_config['starting_fleet']['scout']),
+        'STARTING_EL': lambda: str(game_setup_config['starting_tech']['economic_level']),
+        'STARTING_SL': lambda: str(game_setup_config['starting_tech']['science_level']),
+        'STARTING_CST': lambda: str(game_setup_config['starting_tech']['construction_tech']),
+        'STARTING_WEP': lambda: str(game_setup_config['starting_tech']['weapons_tech']),
+        'STARTING_TER': lambda: str(game_setup_config['starting_tech']['terraforming_tech']),
+        'STARTING_ELI': lambda: str(game_setup_config['starting_tech']['electronic_intelligence']),
+        'STARTING_CIC': lambda: str(game_setup_config['starting_tech']['counter_intelligence']),
+    }
+
+    # Replace each inline marker with plain value (removes markers)
+    for marker, value_func in replacements.items():
+        pattern = f"<!-- {marker} -->.*?<!-- /{marker} -->"
+        replacement = value_func()
+        content = re.sub(pattern, replacement, content)
+
+    return content
+
+
+def update_gameplay_spec(gameplay_config: Dict[str, Any], game_setup_config: Dict[str, Any]):
+    """Update docs/specs/gameplay.md with inline values from config."""
+    spec_file = Path("docs/specs/gameplay.md")
+
+    if not spec_file.exists():
+        print(f"⚠ {spec_file} not found, skipping gameplay.md update")
+        return
+
+    content = spec_file.read_text()
+
+    # Replace inline values
+    content = replace_inline_values_gameplay(content, gameplay_config, game_setup_config)
+
+    # Write updated content
+    spec_file.write_text(content)
+    print(f"✓ Successfully updated {spec_file}")
+
+
 def main():
     """Main script entry point."""
     print("EC4X Specification Sync")
@@ -1432,6 +1494,12 @@ def main():
 
     diplomacy_config = load_toml(config_dir / "diplomacy.toml")
     print(f"✓ Loaded {config_dir / 'diplomacy.toml'}")
+
+    gameplay_config = load_toml(config_dir / "gameplay.toml")
+    print(f"✓ Loaded {config_dir / 'gameplay.toml'}")
+
+    game_setup_config = load_toml(Path("game_setup/standard.toml"))
+    print(f"✓ Loaded game_setup/standard.toml")
 
     # Generate tables
     print("\nGenerating specification tables...")
@@ -1543,6 +1611,7 @@ def main():
                         cic_tech_table, fd_table, aco_table, economy_config, construction_config, military_config, tech_config)
     update_operations_spec(shield_table, combat_config, construction_config, military_config)
     update_assets_spec(spy_detection_table, raider_detection_table, espionage_config, construction_config)
+    update_gameplay_spec(gameplay_config, game_setup_config)
 
     print("\n" + "=" * 50)
     print("Sync complete!")
