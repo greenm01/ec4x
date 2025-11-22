@@ -190,64 +190,33 @@ very_rich_desolate = 0.72
 very_rich_extreme = 0.68
 
 # ============================================================================
-# Tax Rate Tables
-# Source: docs/specs/economy.md Sections 3.2.1 and 3.2.2
+# Tax Rate - Population Growth Bonuses
+# Source: docs/specs/economy.md Section 3.2.2
+# Note: Prestige bonuses are in prestige.toml [tax_incentives]
 # ============================================================================
 
-[tax_penalties]
-# High-tax prestige penalties (rolling 6-turn average)
-# Format: min_rate, max_rate, prestige_penalty
-tier_1_min = 0
-tier_1_max = 50
-tier_1_penalty = 0
-
-tier_2_min = 51
-tier_2_max = 60
-tier_2_penalty = -1
-
-tier_3_min = 61
-tier_3_max = 70
-tier_3_penalty = -2
-
-tier_4_min = 71
-tier_4_max = 80
-tier_4_penalty = -4
-
-tier_5_min = 81
-tier_5_max = 90
-tier_5_penalty = -7
-
-tier_6_min = 91
-tier_6_max = 100
-tier_6_penalty = -11
-
-[tax_incentives]
-# Low-tax incentives (applied same turn)
-# Format: min_rate, max_rate, population_growth_multiplier, prestige_bonus_per_colony
+[tax_population_growth]
+# Low-tax population growth multipliers (applied same turn)
+# Format: min_rate, max_rate, population_growth_multiplier
 tier_1_min = 41
 tier_1_max = 50
 tier_1_pop_multiplier = 1.0
-tier_1_prestige = 0
 
 tier_2_min = 31
 tier_2_max = 40
 tier_2_pop_multiplier = 1.05
-tier_2_prestige = 0
 
 tier_3_min = 21
 tier_3_max = 30
 tier_3_pop_multiplier = 1.10
-tier_3_prestige = 1
 
 tier_4_min = 11
 tier_4_max = 20
 tier_4_pop_multiplier = 1.15
-tier_4_prestige = 2
 
 tier_5_min = 0
 tier_5_max = 10
 tier_5_pop_multiplier = 1.20
-tier_5_prestige = 3
 
 # ============================================================================
 # Industrial Unit Investment Costs

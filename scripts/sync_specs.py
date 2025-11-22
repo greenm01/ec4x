@@ -508,9 +508,9 @@ def generate_raw_material_table(economy_config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def generate_tax_penalty_table(economy_config: Dict[str, Any]) -> str:
-    """Generate high-tax prestige penalty table from economy.toml."""
-    tax_penalties = economy_config.get('tax_penalties', {})
+def generate_tax_penalty_table(prestige_config: Dict[str, Any]) -> str:
+    """Generate high-tax prestige penalty table from prestige.toml."""
+    tax_penalties = prestige_config.get('tax_penalties', {})
 
     lines = [
         "| Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |",
@@ -531,14 +531,15 @@ def generate_tax_penalty_table(economy_config: Dict[str, Any]) -> str:
         lines.append(f"| {range_str:<31} | {penalty:^25} |")
 
     lines.append("")
-    lines.append("*Source: config/economy.toml [tax_penalties] section*")
+    lines.append("*Source: config/prestige.toml [tax_penalties] section*")
 
     return "\n".join(lines)
 
 
-def generate_tax_incentive_table(economy_config: Dict[str, Any]) -> str:
-    """Generate low-tax incentive table from economy.toml."""
-    tax_incentives = economy_config.get('tax_incentives', {})
+def generate_tax_incentive_table(prestige_config: Dict[str, Any], economy_config: Dict[str, Any]) -> str:
+    """Generate low-tax incentive table from prestige.toml and economy.toml."""
+    tax_incentives = prestige_config.get('tax_incentives', {})
+    tax_pop_growth = economy_config.get('tax_population_growth', {})
 
     lines = [
         "| Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn |",
@@ -547,9 +548,14 @@ def generate_tax_incentive_table(economy_config: Dict[str, Any]) -> str:
 
     # Process 5 tiers (reverse order - highest rates first)
     for tier_num in range(1, 6):
+        # Get range from either config (both have same ranges)
         min_rate = tax_incentives.get(f'tier_{tier_num}_min', 0)
         max_rate = tax_incentives.get(f'tier_{tier_num}_max', 0)
-        multiplier = tax_incentives.get(f'tier_{tier_num}_pop_multiplier', 1.0)
+
+        # Get population multiplier from economy config
+        multiplier = tax_pop_growth.get(f'tier_{tier_num}_pop_multiplier', 1.0)
+
+        # Get prestige from prestige config
         prestige = tax_incentives.get(f'tier_{tier_num}_prestige', 0)
 
         range_str = f"{min_rate} – {max_rate} %"
@@ -565,7 +571,7 @@ def generate_tax_incentive_table(economy_config: Dict[str, Any]) -> str:
         lines.append(f"| {range_str:<18} | {bonus_str:<56} | {prestige_str:^35} |")
 
     lines.append("")
-    lines.append("*Source: config/economy.toml [tax_incentives] section*")
+    lines.append("*Source: config/prestige.toml [tax_incentives] and config/economy.toml [tax_population_growth] sections*")
 
     return "\n".join(lines)
 
@@ -1110,10 +1116,10 @@ def main():
     raw_table = generate_raw_material_table(economy_config)
     print("✓ Generated RAW material efficiency table (5 qualities × 7 planet classes)")
 
-    tax_penalty_table = generate_tax_penalty_table(economy_config)
+    tax_penalty_table = generate_tax_penalty_table(prestige_config)
     print("✓ Generated tax penalty table (6 tiers)")
 
-    tax_incentive_table = generate_tax_incentive_table(economy_config)
+    tax_incentive_table = generate_tax_incentive_table(prestige_config, economy_config)
     print("✓ Generated tax incentive table (5 tiers)")
 
     iu_table = generate_iu_investment_table(economy_config)
