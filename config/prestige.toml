@@ -88,15 +88,55 @@ maintenance_shortfall_increment = -2  # Increases by this each turn
 # Blockade
 blockade_penalty = -2  # Per colony per turn
 
-[bonuses]
-# Low tax bonuses (per colony)
-# Tax 0-10%: +3 per colony
-# Tax 11-20%: +2 per colony
-# Tax 21-30%: +1 per colony
-# Tax 31-40%: +0
-tax_bonus_tier_1_max = 10
-tax_bonus_tier_1 = 3
-tax_bonus_tier_2_max = 20
-tax_bonus_tier_2 = 2
-tax_bonus_tier_3_max = 30
-tax_bonus_tier_3 = 1
+[tax_penalties]
+# High-tax prestige penalties (rolling 6-turn average)
+# Source: docs/specs/economy.md Section 3.2.1
+# Format: min_rate, max_rate, prestige_penalty
+tier_1_min = 0
+tier_1_max = 50
+tier_1_penalty = 0
+
+tier_2_min = 51
+tier_2_max = 60
+tier_2_penalty = -1
+
+tier_3_min = 61
+tier_3_max = 70
+tier_3_penalty = -2
+
+tier_4_min = 71
+tier_4_max = 80
+tier_4_penalty = -4
+
+tier_5_min = 81
+tier_5_max = 90
+tier_5_penalty = -7
+
+tier_6_min = 91
+tier_6_max = 100
+tier_6_penalty = -11
+
+[tax_incentives]
+# Low-tax incentives (applied same turn)
+# Source: docs/specs/economy.md Section 3.2.2
+# Format: min_rate, max_rate, prestige_bonus_per_colony
+# Note: population growth multipliers are in economy.toml since they're economic, not prestige
+tier_1_min = 41
+tier_1_max = 50
+tier_1_prestige = 0
+
+tier_2_min = 31
+tier_2_max = 40
+tier_2_prestige = 0
+
+tier_3_min = 21
+tier_3_max = 30
+tier_3_prestige = 1
+
+tier_4_min = 11
+tier_4_max = 20
+tier_4_prestige = 2
+
+tier_5_min = 0
+tier_5_max = 10
+tier_5_prestige = 3
