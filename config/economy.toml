@@ -10,6 +10,9 @@ starting_infrastructure = 3        # Starting homeworld infrastructure level
 natural_growth_rate = 0.02         # 2% natural birth rate per turn
 growth_rate_per_starbase = 0.05    # +5% per starbase (max 3 starbases)
 max_starbase_bonus = 0.15          # Maximum 15% bonus (3 starbases)
+ptu_to_souls = 50000               # One PTU is approximately 50k souls
+pu_to_ptu_conversion = 0.00657     # PU to PTU conversion constant
+ptu_growth_rate = 0.015            # 1.5% per turn under normal conditions
 
 [production]
 # Production calculation
@@ -50,7 +53,7 @@ eden_pu_min = 2001
 spaceport_turns = 1
 spaceport_docks = 5                # Number of construction docks
 
-shipyard_turns = 2
+shipyard_turns = 2                 # Military ship construction time (turns)
 shipyard_docks = 10                # Number of construction docks
 shipyard_requires_spaceport = true # Must have spaceport to build shipyard
 
@@ -66,6 +69,13 @@ ground_battery_turns = 1           # Single turn construction
 ground_battery_max = -1            # No limit (-1 = unlimited)
 
 fighter_squadron_planet_based = true  # Fighters are planet-based, not fleet
+
+# Construction and repair modifiers
+ship_repair_turns = 1              # Time to repair crippled ship at shipyard
+ship_repair_cost_multiplier = 0.25 # Ship repair cost = 25% of unit PC
+starbase_repair_cost_multiplier = 0.25  # Starbase repair cost = 25% of PC
+planetside_construction_cost_multiplier = 2.0  # 100% PC increase for planet-side ship construction
+construction_capacity_increase_per_level = 0.10  # CST increases capacity by 10% per level
 
 [construction_costs]
 # Build costs for infrastructure (not ships - those in ships_default.toml)
@@ -92,6 +102,7 @@ planetary_shield_upkeep = 50
 
 [salvage]
 salvage_value_multiplier = 0.5     # Salvaged ships return 50% of build cost
+emergency_salvage_multiplier = 0.25  # Emergency/combat salvage returns 25% of PC
 
 [blockade]
 # Blockade effects
@@ -112,6 +123,36 @@ research_cost_exponent = 2         # Quadratic scaling (level^2)
 # Tech fields: EnergyLevel, ShieldLevel, ConstructionTech, WeaponsTech,
 #              TerraformingTech, ElectronicIntelligence, CounterIntelligence
 #              (all hardcoded in engine)
+
+# Research breakthrough mechanics (occurs every 6 turns)
+research_breakthrough_base_chance = 0.10  # 10% base chance for breakthrough
+research_breakthrough_rp_per_percent = 50  # +1% bonus per 50 RP invested
+minor_breakthrough_bonus = 10      # +10 ERP/SRP/TRP for minor breakthrough
+moderate_breakthrough_discount = 0.20  # 20% reduction in next TRP cost
+revolutionary_quantum_computing_el_mod_bonus = 0.10  # +10% to EL_MOD
+revolutionary_stealth_detection_bonus = 2  # +2 detection difficulty for Raiders
+revolutionary_terraforming_growth_bonus = 0.02  # +2% colony growth per turn
+
+# ERP (Economic Research Points) cost formula: 1 ERP = (5 + log(GHO)) PP
+erp_base_cost = 5                  # Base cost component for ERP
+
+# EL (Economic Level) progression costs
+el_early_base = 40                 # EL1-5: ERP = 40 + EL(10)
+el_early_increment = 10            # EL increment for levels 1-5
+el_late_increment = 15             # EL6+: increases by 15 points per level
+
+# SRP (Science Research Points) cost formula: 1 SRP = 2 + SL(0.5) PP
+srp_base_cost = 2                  # Base cost component for SRP
+srp_sl_multiplier = 0.5            # SL multiplier for SRP cost
+
+# SL (Science Level) progression costs
+sl_early_base = 20                 # SL1-5: SRP = 20 + SL(5)
+sl_early_increment = 5             # SL increment for levels 1-5
+sl_late_increment = 10             # SL6+: increases by 10 per level
+
+# TRP (Technology Research Points) cost formula: 1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.5 PP
+trp_first_level_cost = 25          # Starting cost for first tech level
+trp_level_increment = 5            # Each level costs +5 TRP more
 
 [espionage]
 # Espionage and Counter-Intelligence costs
@@ -190,6 +231,14 @@ very_rich_desolate = 0.72
 very_rich_extreme = 0.68
 
 # ============================================================================
+# Tax System Mechanics
+# Source: docs/specs/economy.md Section 3.2
+# ============================================================================
+
+[tax_mechanics]
+tax_averaging_window_turns = 6     # Rolling 6-turn window for tax penalties
+
+# ============================================================================
 # Tax Rate - Population Growth Bonuses
 # Source: docs/specs/economy.md Section 3.2.2
 # Note: Prestige bonuses are in prestige.toml [tax_incentives]
@@ -265,3 +314,28 @@ harsh_pp_per_ptu = 8
 hostile_pp_per_ptu = 10
 desolate_pp_per_ptu = 12
 extreme_pp_per_ptu = 15
+
+# ============================================================================
+# Fighter Squadron & Fleet Mechanics
+# Source: docs/specs/economy.md Sections 3.3, 3.9
+# ============================================================================
+
+[fighter_mechanics]
+# Fighter capacity formula: floor(PU / 100) * FD multiplier
+fighter_capacity_pu_divisor = 100  # Base: 1 FS per 100 PU
+starbase_per_fighter_squadrons = 5  # Requires 1 Starbase per 5 FS
+capacity_violation_grace_period = 2  # 2 turns grace before auto-disband
+
+[squadron_limits]
+# Squadron limit formula: Total House PU ÷ 100 (round down, minimum 8)
+squadron_limit_pu_divisor = 100    # Capital squadrons + carriers = House PU / 100
+squadron_limit_minimum = 8         # Minimum squadron slots regardless of PU
+
+# ============================================================================
+# Weapons Technology Modifiers
+# Source: docs/specs/economy.md Section 4.6
+# ============================================================================
+
+[weapons_tech]
+weapons_stat_increase_per_level = 0.10  # WEP increases AS/DS by 10% per level
+weapons_cost_increase_per_level = 0.10  # WEP increases PC by 10% per level
