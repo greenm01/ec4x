@@ -71,12 +71,12 @@ proc executeTechTheft*(attacker: HouseId, target: HouseId,
     # Failed - attacker loses prestige
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.Eliminated,  # Using generic source
-      espConfig.failedEspionagePrestige,
+      espConfig.effects.failed_espionage_prestige,
       "Failed espionage attempt (detected)"
     ))
   else:
     # Success - steal SRP and award prestige
-    result.srpStolen = espConfig.techTheftSRP
+    result.srpStolen = espConfig.effects.tech_theft_srp
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.TechAdvancement,  # Closest match
       prestigeConfig.espionage.tech_theft,

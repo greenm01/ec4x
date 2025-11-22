@@ -154,36 +154,36 @@ proc getActionCost*(action: EspionageAction): int =
   ## Get EBP cost for action (from config)
   let config = globalEspionageConfig
   case action
-  of EspionageAction.TechTheft: config.techTheftEBP
-  of EspionageAction.SabotageLow: config.sabotageLowEBP
-  of EspionageAction.SabotageHigh: config.sabotageHighEBP
-  of EspionageAction.Assassination: config.assassinationEBP
-  of EspionageAction.CyberAttack: config.cyberAttackEBP
-  of EspionageAction.EconomicManipulation: config.economicManipulationEBP
-  of EspionageAction.PsyopsCampaign: config.psyopsCampaignEBP
+  of EspionageAction.TechTheft: config.costs.tech_theft_ebp
+  of EspionageAction.SabotageLow: config.costs.sabotage_low_ebp
+  of EspionageAction.SabotageHigh: config.costs.sabotage_high_ebp
+  of EspionageAction.Assassination: config.costs.assassination_ebp
+  of EspionageAction.CyberAttack: config.costs.cyber_attack_ebp
+  of EspionageAction.EconomicManipulation: config.costs.economic_manipulation_ebp
+  of EspionageAction.PsyopsCampaign: config.costs.psyops_campaign_ebp
 
 proc getDetectionThreshold*(cicLevel: CICLevel): int =
   ## Get detection roll threshold for CIC level (from config)
   ## Per diplomacy.md:8.3 - roll must meet or exceed threshold
   let config = globalEspionageConfig
   case cicLevel
-  of CICLevel.CIC0: config.cic0Threshold
-  of CICLevel.CIC1: config.cic1Threshold
-  of CICLevel.CIC2: config.cic2Threshold
-  of CICLevel.CIC3: config.cic3Threshold
-  of CICLevel.CIC4: config.cic4Threshold
-  of CICLevel.CIC5: config.cic5Threshold
+  of CICLevel.CIC0: config.detection.cic0_threshold
+  of CICLevel.CIC1: config.detection.cic1_threshold
+  of CICLevel.CIC2: config.detection.cic2_threshold
+  of CICLevel.CIC3: config.detection.cic3_threshold
+  of CICLevel.CIC4: config.detection.cic4_threshold
+  of CICLevel.CIC5: config.detection.cic5_threshold
 
 proc getCIPModifier*(cipPoints: int): int =
   ## Get detection modifier based on CIP points (from config)
   ## Per diplomacy.md:8.3
   let config = globalEspionageConfig
-  if cipPoints == 0: config.cip0Modifier
-  elif cipPoints <= 5: config.cip15Modifier
-  elif cipPoints <= 10: config.cip610Modifier
-  elif cipPoints <= 15: config.cip1115Modifier
-  elif cipPoints <= 20: config.cip1620Modifier
-  else: config.cip21PlusModifier
+  if cipPoints == 0: config.detection.cip_0_modifier
+  elif cipPoints <= 5: config.detection.cip_1_5_modifier
+  elif cipPoints <= 10: config.detection.cip_6_10_modifier
+  elif cipPoints <= 15: config.detection.cip_11_15_modifier
+  elif cipPoints <= 20: config.detection.cip_16_20_modifier
+  else: config.detection.cip_21_plus_modifier
 
 proc initEspionageBudget*(): EspionageBudget =
   ## Initialize empty espionage budget
