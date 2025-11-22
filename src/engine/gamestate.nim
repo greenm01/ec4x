@@ -4,7 +4,7 @@ import std/[tables, options, strutils]
 import ../common/[hex, system]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
-import config/prestige_config
+import config/[prestige_config, military_config]
 import diplomacy/types as dip_types
 import espionage/types as esp_types
 
@@ -171,6 +171,34 @@ proc getHouseFleets*(state: GameState, houseId: HouseId): seq[Fleet] =
   for fleet in state.fleets.values:
     if fleet.owner == houseId:
       result.add(fleet)
+
+# Squadron and military limits
+
+proc getHousePopulationUnits*(state: GameState, houseId: HouseId): int =
+  ## Get total population units for a house across all colonies
+  result = 0
+  for colony in state.getHouseColonies(houseId):
+    result += colony.population
+
+proc getSquadronLimit*(state: GameState, houseId: HouseId): int =
+  ## Calculate squadron limit for a house based on population
+  ## Per military.toml: Squadron limit = Total PU ÷ 100 (minimum 8)
+  let config = globalMilitaryConfig.squadron_limits
+  let totalPU = state.getHousePopulationUnits(houseId)
+  let calculatedLimit = totalPU div config.squadron_limit_pu_divisor
+  return max(config.squadron_limit_minimum, calculatedLimit)
+
+proc getHouseSquadronCount*(state: GameState, houseId: HouseId): int =
+  ## Count total squadrons for a house across all fleets
+  result = 0
+  for fleet in state.getHouseFleets(houseId):
+    result += fleet.squadrons.len
+
+proc isOverSquadronLimit*(state: GameState, houseId: HouseId): bool =
+  ## Check if house has exceeded squadron limit
+  let current = state.getHouseSquadronCount(houseId)
+  let limit = state.getSquadronLimit(houseId)
+  return current > limit
 
 # Victory condition checks
 
