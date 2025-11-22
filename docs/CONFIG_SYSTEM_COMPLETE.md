@@ -168,7 +168,7 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ### 10. `economy_config.nim` ✅
 **Config File:** `config/economy.toml`
-**Status:** Ready for integration
+**Status:** Partially integrated
 **Lines:** 213 lines
 
 **Features:**
@@ -181,10 +181,10 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 - Colonization costs by planet type
 
 **Integration:**
-- ⏳ Future: `src/engine/economy/production.nim` - RAW_INDEX_TABLE
+- ✅ `src/engine/economy/production.nim:23` - getRawIndex() uses config
 - ⏳ Future: Research system can use cost formulas
 - ⏳ Future: Tax system can use tier penalties
-- **Note:** 2D RAW table requires mapping logic
+- ⏳ Future: Population growth rates from config
 
 ---
 
@@ -227,21 +227,21 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ## Integration Status Summary
 
-### ✅ Fully Integrated (3/12)
+### ✅ Fully Integrated (4/12)
 1. **prestige_config.nim** - All prestige values from config
 2. **espionage_config.nim** - All espionage mechanics from config
 3. **combat_config.nim** - Ground combat CER tables and shields from config
+4. **economy_config.nim** - RAW material efficiency table from config
 
 ### 🔄 Partially Integrated (1/12)
-4. **diplomacy_config.nim** - Accessor functions created, some usage in engine
+5. **diplomacy_config.nim** - Accessor functions created, some usage in engine
 
-### ⏳ Ready for Integration (8/12)
-5. gameplay_config.nim
-6. military_config.nim
-7. facilities_config.nim
-8. ground_units_config.nim
-9. construction_config.nim
-10. economy_config.nim
+### ⏳ Ready for Integration (7/12)
+6. gameplay_config.nim
+7. military_config.nim
+8. facilities_config.nim
+9. ground_units_config.nim
+10. construction_config.nim
 11. ships_config.nim
 12. tech_config.nim
 
@@ -258,9 +258,10 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
    - ⏳ Integrate space combat CER table from config
 
 2. **Economy System** (`economy_config.nim`)
-   - Replace `RAW_INDEX_TABLE` in `production.nim:22`
-   - Implement config-based tax penalties
-   - Use colonization costs from config
+   - ✅ Replaced `RAW_INDEX_TABLE` in `production.nim:23` with config
+   - ⏳ Implement config-based tax penalties
+   - ⏳ Use colonization costs from config
+   - ⏳ Population growth rates from config
 
 3. **Ship Stats** (`ships_config.nim`)
    - Load ship stats at runtime from config
