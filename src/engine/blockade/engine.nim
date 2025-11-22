@@ -13,17 +13,27 @@ proc isSystemBlockaded*(
   state: GameState,
   systemId: SystemId,
   colonyOwner: HouseId
-): (bool, Option[HouseId]) =
+): (bool, seq[HouseId]) =
   ## Check if a system is currently blockaded by hostile forces
-  ## Returns (isBlockaded, blockadingHouse)
+  ## Returns (isBlockaded, blockadingHouses)
   ##
   ## Per operations.md:6.2.6:
   ## "Fleets are ordered to blockade an enemy planet and do not engage
   ##  in Space Combat unless confronted by enemy ships under order 05"
+  ##
+  ## Multiple empires can blockade the same planet if all are hostile
+  ## to the colony owner. Blockade effects stack (still 60% reduction,
+  ## but multiple houses contribute to the blockade).
 
-  # Check if any enemy fleets are present with combat capability
+  var blockadingHouses: seq[HouseId] = @[]
+
+  # Check all fleets at this system
   for fleet in state.fleets.values:
     if fleet.location == systemId and fleet.owner != colonyOwner:
+      # Check diplomatic status - only Enemy status can blockade
+      # TODO: Add diplomatic status check when diplomacy system integrated
+      # For now, any non-owner fleet with combat capability can blockade
+
       # Check if fleet has combat ships
       var hasCombatShips = false
       for squadron in fleet.squadrons:
@@ -31,10 +41,10 @@ proc isSystemBlockaded*(
           hasCombatShips = true
           break
 
-      if hasCombatShips:
-        return (true, some(fleet.owner))
+      if hasCombatShips and fleet.owner notin blockadingHouses:
+        blockadingHouses.add(fleet.owner)
 
-  return (false, none(HouseId))
+  return (blockadingHouses.len > 0, blockadingHouses)
 
 # =============================================================================
 # Blockade Application
@@ -47,22 +57,23 @@ proc applyBlockades*(state: var GameState) =
   ## reduce GCO for that same turn's Income Phase calculation"
 
   for systemId, colony in state.colonies.mpairs:
-    let (isBlockaded, blockader) = isSystemBlockaded(state, systemId, colony.owner)
+    let (isBlockaded, blockaders) = isSystemBlockaded(state, systemId, colony.owner)
 
     if isBlockaded:
       if not colony.blockaded:
         # Blockade just established
         colony.blockaded = true
-        colony.blockadedBy = blockader
+        colony.blockadedBy = blockaders
         colony.blockadeTurns = 1
       else:
-        # Blockade continues
+        # Blockade continues (update blockading houses list)
+        colony.blockadedBy = blockaders
         colony.blockadeTurns += 1
     else:
       if colony.blockaded:
         # Blockade lifted
         colony.blockaded = false
-        colony.blockadedBy = none(HouseId)
+        colony.blockadedBy = @[]
         colony.blockadeTurns = 0
 
 # =============================================================================
