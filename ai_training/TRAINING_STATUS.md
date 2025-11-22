@@ -24,13 +24,13 @@
    - ✅ PyTorch 2.4.1 with ROCm 6.0 installed
    - ✅ Basic GPU operations working
 
-### Current Blocker ⚠️
+### Current Blocker ⚠️ → POTENTIAL FIXES FOUND! 🔧
 
 **ROCm/PyTorch Compatibility Issues**
 
 The training fails with "HIP error: invalid device function" during forward pass. This is a known issue with:
 - PyTorch compiled for ROCm 6.0
-- Specific AMD GPU architectures
+- Specific AMD GPU architectures (RDNA3/gfx1100)
 - PEFT/LoRA operations
 - Even basic transformer operations
 
@@ -40,6 +40,40 @@ The training fails with "HIP error: invalid device function" during forward pass
 3. Transformer forward pass - RoPE embedding calculation failure
 
 **Root cause**: Deep PyTorch/ROCm kernel incompatibility with the GPU architecture.
+
+### FREE Solutions Found Online 🔍
+
+After researching, I found **several potential fixes** that don't require cloud services:
+
+#### Fix 1: HSA_OVERRIDE_GFX_VERSION (Most Common Solution)
+For RX 7900 series (RDNA3/gfx1100 architecture):
+```bash
+export HSA_OVERRIDE_GFX_VERSION=11.0.0
+```
+This tells ROCm to use kernel code compiled for gfx11.0.0. **Many users report this fixes HIP kernel errors.**
+
+**Sources:**
+- [Run ML on 7900XT/XTX PyTorch Guide](https://gist.github.com/AlkindiX/9c54d1155ba72415f3b585e26c9df6b3)
+- [ROCm RDNA3 Issues](https://github.com/ROCm/ROCm/issues/2974)
+- [Train SDXL LoRA on AMD GPU Guide 2025](https://apatero.com/blog/train-lora-sdxl-amd-gpu-guide-2025)
+
+#### Fix 2: Use ROCm-compatible bitsandbytes Fork
+Instead of the broken bitsandbytes, use ROCm-specific versions:
+- [Official ROCm/bitsandbytes](https://github.com/ROCm/bitsandbytes) (experimental)
+- [Lzy17/bitsandbytes-rocm](https://github.com/Lzy17/bitsandbytes-rocm) (includes 4-bit quantization)
+- [agrocylo/bitsandbytes-rocm](https://github.com/agrocylo/bitsandbytes-rocm)
+
+#### Fix 3: Additional Environment Variables
+```bash
+export HIP_LAUNCH_BLOCKING=1  # Synchronous execution for debugging
+export HIP_VISIBLE_DEVICES=0  # Use only discrete GPU (avoid integrated GPU)
+export PYTORCH_HIP_ALLOC_CONF=garbage_collection_threshold:0.6,max_split_size_mb:6144
+```
+
+#### Fix 4: Use AutoGPTQ Instead of bitsandbytes
+AutoGPTQ has better ROCm support with ExLlama-v2 kernels optimized for AMD GPUs.
+
+**New script created**: `train_with_fixes.sh` implements all these fixes.
 
 ### Free/Low-Cost Alternatives 💡
 
