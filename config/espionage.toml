@@ -52,3 +52,117 @@ effect_duration_turns = 1      # How long effects last
 
 # Detection failure penalties
 failed_espionage_prestige = -2  # When detected
+
+# ============================================================================
+# SCOUT/RAIDER DETECTION MECHANICS
+# Source: docs/specs/assets.md Sections 2.4.2 (Scouts) and 2.4.3 (Raiders)
+# ============================================================================
+
+[scout_detection]
+# BALANCE: Scout mesh network modifiers (assets.md line 347-352)
+mesh_2_3_scouts = 1                # +1 modifier for 2-3 scouts
+mesh_4_5_scouts = 2                # +2 modifier for 4-5 scouts
+mesh_6_plus_scouts = 3             # +3 modifier for 6+ scouts (maximum)
+
+# BALANCE: Starbase detection bonus (assets.md line 357)
+starbase_eli_bonus = 2             # +2 ELI modifier vs spy scouts
+
+# BALANCE: Tech level penalty threshold (assets.md line 392)
+dominant_tech_threshold = 0.50     # If >50% scouts are lower tech, -1 ELI penalty
+
+# MECHANIC: Maximum effective ELI level
+max_eli_level = 5                  # ELI5 is maximum
+
+[raider_detection]
+# BALANCE: Random threshold dice
+threshold_variance_dice = 3        # 1d3 roll for threshold selection within range
+
+# BALANCE: ELI level difference thresholds for threshold selection
+eli_advantage_major = 2            # ELI 2+ levels higher = use lower bound
+eli_advantage_minor = 1            # ELI equal or 1 higher = random threshold
+# ELI lower = use upper bound (implicit)
+
+# ============================================================================
+# SPY SCOUT DETECTION TABLE
+# Source: docs/specs/assets.md Section 2.4.2
+# Format: [detector_eli_level][spy_eli_level] = [min_threshold, max_threshold]
+# Roll 1d20, must exceed threshold. Roll 1d3 to pick value in range.
+# ============================================================================
+
+[spy_detection_table]
+# Detector ELI1 (rows in table)
+eli1_vs_spy_eli1 = [11, 13]
+eli1_vs_spy_eli2 = [15, 17]
+eli1_vs_spy_eli3 = [17, 19]
+eli1_vs_spy_eli4 = [18, 20]
+eli1_vs_spy_eli5 = [21, 21]  # NA - impossible
+
+# Detector ELI2
+eli2_vs_spy_eli1 = [6, 8]
+eli2_vs_spy_eli2 = [11, 13]
+eli2_vs_spy_eli3 = [15, 17]
+eli2_vs_spy_eli4 = [17, 19]
+eli2_vs_spy_eli5 = [18, 20]
+
+# Detector ELI3
+eli3_vs_spy_eli1 = [2, 4]
+eli3_vs_spy_eli2 = [6, 8]
+eli3_vs_spy_eli3 = [11, 13]
+eli3_vs_spy_eli4 = [15, 17]
+eli3_vs_spy_eli5 = [17, 19]
+
+# Detector ELI4
+eli4_vs_spy_eli1 = [0, 2]
+eli4_vs_spy_eli2 = [2, 4]
+eli4_vs_spy_eli3 = [6, 8]
+eli4_vs_spy_eli4 = [11, 13]
+eli4_vs_spy_eli5 = [15, 17]
+
+# Detector ELI5
+eli5_vs_spy_eli1 = [0, 1]
+eli5_vs_spy_eli2 = [0, 2]
+eli5_vs_spy_eli3 = [2, 4]
+eli5_vs_spy_eli4 = [6, 8]
+eli5_vs_spy_eli5 = [11, 13]
+
+# ============================================================================
+# RAIDER DETECTION TABLE
+# Source: docs/specs/assets.md Section 2.4.3
+# Format: [detector_eli_level][raider_clk_level] = [min_threshold, max_threshold]
+# ============================================================================
+
+[raider_detection_table]
+# Detector ELI1
+eli1_vs_clk1 = [14, 16]
+eli1_vs_clk2 = [17, 19]
+eli1_vs_clk3 = [21, 21]  # NA - impossible
+eli1_vs_clk4 = [21, 21]  # NA - impossible
+eli1_vs_clk5 = [21, 21]  # NA - impossible
+
+# Detector ELI2
+eli2_vs_clk1 = [10, 12]
+eli2_vs_clk2 = [14, 16]
+eli2_vs_clk3 = [17, 19]
+eli2_vs_clk4 = [21, 21]  # NA - impossible
+eli2_vs_clk5 = [21, 21]  # NA - impossible
+
+# Detector ELI3
+eli3_vs_clk1 = [6, 8]
+eli3_vs_clk2 = [10, 12]
+eli3_vs_clk3 = [14, 16]
+eli3_vs_clk4 = [17, 19]
+eli3_vs_clk5 = [21, 21]  # NA - impossible
+
+# Detector ELI4
+eli4_vs_clk1 = [3, 5]
+eli4_vs_clk2 = [6, 8]
+eli4_vs_clk3 = [10, 12]
+eli4_vs_clk4 = [14, 16]
+eli4_vs_clk5 = [17, 19]
+
+# Detector ELI5
+eli5_vs_clk1 = [1, 3]
+eli5_vs_clk2 = [3, 5]
+eli5_vs_clk3 = [6, 8]
+eli5_vs_clk4 = [10, 12]
+eli5_vs_clk5 = [14, 16]

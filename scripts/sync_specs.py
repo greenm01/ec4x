@@ -1152,6 +1152,66 @@ def generate_shield_effectiveness_table(combat_config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def generate_spy_detection_table(espionage_config: Dict[str, Any]) -> str:
+    """Generate spy scout detection table from espionage.toml."""
+    table = espionage_config.get('spy_detection_table', {})
+
+    lines = [
+        "| \\*Detect -> | ELI1   | ELI2   | ELI3   | ELI4   | ELI5  |",
+        "| -----------:|:------:|:------:|:------:|:------:|:-----:|",
+    ]
+
+    for spy_level in range(1, 6):  # Spy ELI1-ELI5
+        row = [f"| Spy ELI{spy_level}    "]
+
+        for detector_level in range(1, 6):  # Detector ELI1-ELI5
+            key = f"eli{detector_level}_vs_spy_eli{spy_level}"
+            thresholds = table.get(key, [21, 21])  # Default to NA (impossible)
+
+            if thresholds[0] >= 21:  # Impossible detection
+                row.append("| NA     ")
+            else:
+                row.append(f"| >{thresholds[0]}-{thresholds[1]} ")
+
+        row.append("|")
+        lines.append("".join(row))
+
+    lines.append("")
+    lines.append("*Source: config/espionage.toml [spy_detection_table] section*")
+
+    return "\n".join(lines)
+
+
+def generate_raider_detection_table(espionage_config: Dict[str, Any]) -> str:
+    """Generate raider detection table from espionage.toml."""
+    table = espionage_config.get('raider_detection_table', {})
+
+    lines = [
+        "| Detect | CLK1   | CLK2   | CLK3   | CLK4   | CLK5   |",
+        "| ------ |:------:|:------:|:------:|:------:|:------:|",
+    ]
+
+    for eli_level in range(1, 6):  # Detector ELI1-ELI5
+        row = [f"| ELI{eli_level}   "]
+
+        for clk_level in range(1, 6):  # Raider CLK1-CLK5
+            key = f"eli{eli_level}_vs_clk{clk_level}"
+            thresholds = table.get(key, [21, 21])  # Default to NA (impossible)
+
+            if thresholds[0] >= 21:  # Impossible detection
+                row.append("| NA     ")
+            else:
+                row.append(f"| >{thresholds[0]}-{thresholds[1]} ")
+
+        row.append("|")
+        lines.append("".join(row))
+
+    lines.append("")
+    lines.append("*Source: config/espionage.toml [raider_detection_table] section*")
+
+    return "\n".join(lines)
+
+
 def replace_inline_values(content: str, economy_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any], tech_config: Dict[str, Any]) -> str:
     """Replace inline marker values in prose with values from config."""
     import re
