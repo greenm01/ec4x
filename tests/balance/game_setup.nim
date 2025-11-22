@@ -1,218 +1,174 @@
 ## Game Setup Module for Balance Testing
 ##
 ## Creates balanced starting conditions for balance test scenarios
+## Uses existing engine initialization functions
 
-import std/[tables, options, random, strformat]
-import ../../src/engine/[gamestate, starmap, fleet, squadron, ship]
+import std/[tables, options, random, strformat, sequtils, strutils, algorithm]
+import ../../src/engine/[gamestate, starmap, fleet, squadron]
 import ../../src/common/types/[core, units, planets, tech]
 import ../../src/common/[hex, system]
-import ../../src/engine/config/[gameplay_config, tech_config, prestige_config]
-import ../../src/engine/research/types as res_types
-import ../../src/engine/espionage/types as esp_types
-import ../../src/engine/diplomacy/types as dip_types
 
-proc createBalancedStartingHouse*(houseId: HouseId): House =
-  ## Create a house with standard starting conditions
-  result = House(
-    id: houseId,
-    name: $houseId,
-    color: "blue",
-    eliminated: false,
-    treasury: 1000,  # Starting funds
-    prestige: globalPrestigeConfig.victory.starting_prestige,
-    techTree: res_types.initTechTree(),
-    negativePrestigeTurns: 0,
-    diplomaticRelations: dip_types.DiplomaticRelations(
-      relations: initTable[HouseId, dip_types.DiplomaticState]()
-    ),
-    violationHistory: dip_types.ViolationHistory(
-      violations: initTable[HouseId, seq[dip_types.PactViolation]]()
-    ),
-    espionageBudget: esp_types.EspionageBudget(
-      ebp: 0,
-      cip: 0
-    ),
-    dishonoredStatus: dip_types.DishonoredStatus(
-      active: false,
-      turnsRemaining: 0
-    ),
-    diplomaticIsolation: dip_types.DiplomaticIsolation(
-      active: false,
-      turnsRemaining: 0
-    ),
-    planetBreakerCount: 0
+export gamestate.initializeHouse, gamestate.createHomeColony
+export squadron.createSquadron
+
+proc generateBalancedStarMap*(numPlayers: int): StarMap =
+  ## Generate a balanced star map for testing using the engine's StarMap
+  result = newStarMap(numPlayers)
+
+proc createStartingFleet*(owner: HouseId, location: SystemId): Fleet =
+  ## Create a starting fleet with basic composition
+  ## 1 squadron with 1 destroyer (per standard starting conditions)
+
+  let squadron = createSquadron(
+    shipClass = ShipClass.Destroyer,
+    techLevel = 1,
+    id = (&"{owner}_sq1").SquadronId,
+    owner = owner,
+    location = location,
+    isCrippled = false
   )
-
-proc createStartingColony*(systemId: SystemId, owner: HouseId,
-                          planetClass: PlanetClass): Colony =
-  ## Create a starting colony with basic infrastructure
-  result = Colony(
-    systemId: systemId,
-    owner: owner,
-    populationUnits: 50,  # 50 million starting population
-    industrial: IndustrialUnits(units: 25),  # 50% industrial capacity
-    planetClass: planetClass,
-    resources: ResourceRating.Average,
-    production: 0,
-    underConstruction: none(ConstructionProject),
-    fighterSquadrons: @[],
-    capacityViolation: CapacityViolation(
-      active: false,
-      violationType: "",
-      turnsRemaining: 0,
-      violationTurn: 0
-    ),
-    starbases: @[],
-    spaceports: @[],
-    shipyards: @[],
-    planetaryShieldLevel: 0,
-    groundBatteries: 0,
-    armies: 5,  # Starting defense
-    marines: 0,
-    blockaded: false,
-    blockadedBy: @[],
-    blockadeTurns: 0
-  )
-
-proc createStartingFleet*(owner: HouseId, location: SystemId,
-                         fleetId: FleetId): Fleet =
-  ## Create a starting fleet with basic ships
-  var squadrons: seq[Squadron] = @[]
-
-  # Create starting squadron (3 Frigates)
-  let frigate = Ship(
-    class: ShipClass.Frigate,
-    stats: ShipStats(
-      attackStrength: 2,
-      defensiveStrength: 1,
-      hullPoints: 2,
-      armor: 0,
-      shields: 0,
-      size: 1,
-      cargo: 0,
-      fighterCapacity: 0
-    ),
-    isCrippled: false
-  )
-
-  squadrons.add(Squadron(
-    id: &"{fleetId}_sq1",
-    flagship: frigate,
-    escorts: @[frigate, frigate],  # 3 ships total
-    combinedStats: CombinedStats(
-      totalAS: 6,
-      totalDS: 3,
-      totalHP: 6
-    )
-  ))
 
   result = Fleet(
-    id: fleetId,
+    id: (&"{owner}_fleet1").FleetId,
     owner: owner,
     location: location,
-    squadrons: squadrons
+    squadrons: @[squadron]
   )
 
-proc generateStarMap*(numSystems: int, rng: var Rand): Table[SystemId, StarSystem] =
-  ## Generate a simple star map for testing
-  result = initTable[SystemId, StarSystem]()
-
-  for i in 0..<numSystems:
-    let systemId = (&"System{i+1}").SystemId
-    let position = Hex(q: int32(i mod 8), r: int32(i div 8))
-
-    # Vary planet classes
-    let planetClass = case i mod 7
-      of 0: PlanetClass.Ideal
-      of 1: PlanetClass.Normal
-      of 2: PlanetClass.Desert
-      of 3: PlanetClass.Tundra
-      of 4: PlanetClass.Oceanic
-      of 5: PlanetClass.Hostile
-      else: PlanetClass.Barren
-
-    result[systemId] = StarSystem(
-      id: systemId,
-      position: position,
-      planetClass: planetClass,
-      resources: ResourceRating.Average,
-      hasColony: false,
-      controlledBy: none(HouseId)
-    )
-
-proc createBalancedGame*(numHouses: int, mapSize: int): GameState =
+proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameState =
   ## Create a balanced game setup for testing
-  var rng = initRand(42)  # Deterministic for reproducibility
+  ## All houses start with equal conditions at different map positions
 
+  var rng = initRand(seed)
+
+  # Generate star map with player starting positions
+  var starMap = newStarMap(numHouses)
+  starMap.populate()
+
+  # Initialize empty game state
   result = GameState(
+    gameId: "balance_test",
     turn: 1,
     year: 2400,
     month: 1,
+    phase: GamePhase.Active,
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
-    systems: generateStarMap(mapSize, rng),
-    ongoingEffects: initTable[HouseId, seq[OngoingEffect]](),
-    diplomaticRelations: initTable[tuple[house1, house2: HouseId], DiplomaticRelation]()
+    starMap: starMap,
+    diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
+    turnDeadline: 0,
+    ongoingEffects: @[],
+    spyScouts: initTable[string, SpyScout]()
   )
 
-  # Create houses and assign starting positions
-  for i in 0..<numHouses:
-    let houseId = (&"House{i+1}").HouseId
-    result.houses[houseId] = createBalancedStartingHouse(houseId)
+  # House names and colors
+  const houseNames = ["Atreides", "Harkonnen", "Ordos", "Corrino",
+                      "Vernius", "Moritani", "Richese"]
+  const houseColors = ["blue", "red", "green", "gold",
+                       "purple", "orange", "cyan"]
 
-    # Assign home system (evenly spaced)
-    let homeSystemIdx = (i * (mapSize div numHouses))
-    let homeSystemId = (&"System{homeSystemIdx+1}").SystemId
+  # Create houses at player system positions
+  for i in 0..<numHouses:
+    let houseName = if i < houseNames.len: houseNames[i] else: &"House{i+1}"
+    let houseColor = if i < houseColors.len: houseColors[i] else: "white"
+    let houseId = (&"house-{houseName.toLower()}").HouseId
+
+    # Initialize house with standard starting conditions
+    result.houses[houseId] = initializeHouse(houseName, houseColor)
+
+    # Get player's starting system from star map
+    let homeSystemId = result.starMap.playerSystemIds[i]
 
     # Create home colony
-    let homeColony = createStartingColony(
-      homeSystemId,
-      houseId,
-      PlanetClass.Normal
-    )
-    result.colonies[homeSystemId] = homeColony
-    result.systems[homeSystemId].hasColony = true
-    result.systems[homeSystemId].controlledBy = some(houseId)
+    result.colonies[homeSystemId] = createHomeColony(homeSystemId, houseId)
 
-    # Create starting fleet at home
-    let fleetId = (&"{houseId}_Fleet1").FleetId
-    result.fleets[fleetId] = createStartingFleet(
+    # Create starting fleet at homeworld
+    result.fleets[(&"{houseId}_fleet1").FleetId] = createStartingFleet(
       houseId,
-      homeSystemId,
-      fleetId
+      homeSystemId
     )
 
-    # Initialize ongoing effects
-    result.ongoingEffects[houseId] = @[]
+  # Initialize diplomatic relations between all houses (all start neutral)
+  let houseIds = toSeq(result.houses.keys)
+  for i in 0..<houseIds.len:
+    for j in (i+1)..<houseIds.len:
+      let house1 = houseIds[i]
+      let house2 = houseIds[j]
+      result.diplomacy[(house1, house2)] = DiplomaticState.Neutral
 
-  # Initialize diplomatic relations (all neutral)
-  for i in 0..<numHouses:
-    for j in (i+1)..<numHouses:
-      let house1 = (&"House{i+1}").HouseId
-      let house2 = (&"House{j+1}").HouseId
-      result.diplomaticRelations[(house1, house2)] = DiplomaticRelation(
-        house1: house1,
-        house2: house2,
-        state: DiplomaticState.Neutral,
-        pactTurn: none(int),
-        dishonorTurns: 0,
-        isolationTurns: 0
-      )
-
-when isMainModule:
-  echo "Testing game setup..."
-  let game = createBalancedGame(4, 20)
-
-  echo &"Created game with {game.houses.len} houses"
-  echo &"Map size: {game.systems.len} systems"
+proc printGameSetup*(game: GameState) =
+  ## Print game setup summary for debugging
+  echo &"\n{repeat(\"=\", 70)}"
+  echo "Game Setup Summary"
+  echo &"{repeat(\"=\", 70)}"
+  echo &"Turn: {game.turn}, Year: {game.year}, Month: {game.month}"
+  echo &"Houses: {game.houses.len}"
+  echo &"Systems: {game.starMap.systems.len}"
   echo &"Colonies: {game.colonies.len}"
   echo &"Fleets: {game.fleets.len}"
+  echo &"Diplomatic Relations: {game.diplomacy.len}"
 
-  for houseId, house in game.houses:
-    echo &"\n{houseId}:"
+  echo &"\n{repeat(\"=\", 70)}"
+  echo "House Details"
+  echo &"{repeat(\"=\", 70)}"
+
+  for houseId in sorted(toSeq(game.houses.keys)):
+    let house = game.houses[houseId]
+    echo &"\n{house.name} ({houseId}):"
+    echo &"  Color: {house.color}"
     echo &"  Prestige: {house.prestige}"
-    echo &"  Treasury: {house.treasury}"
-    echo &"  Tech EL: {house.techTree.levels.energyLevel}"
+    echo &"  Treasury: {house.treasury} IU"
+    echo &"  Tech Levels:"
+    echo &"    EL: {house.techTree.levels.energyLevel}"
+    echo &"    SL: {house.techTree.levels.shieldLevel}"
+    echo &"    CST: {house.techTree.levels.constructionTech}"
+    echo &"    WEP: {house.techTree.levels.weaponsTech}"
 
-  echo "\nGame setup complete!"
+    # Find their colony
+    for systemId, colony in game.colonies:
+      if colony.owner == houseId:
+        echo &"  Homeworld: {systemId}"
+        echo &"    Population: {colony.population}M"
+        echo &"    Infrastructure: {colony.infrastructure}"
+        echo &"    Planet: {colony.planetClass}"
+        echo &"    Resources: {colony.resources}"
+
+    # Find their fleet
+    for fleetId, fleet in game.fleets:
+      if fleet.owner == houseId:
+        let totalAS = fleet.squadrons.mapIt(it.combatStrength()).foldl(a + b, 0)
+        echo &"  Fleet: {fleetId}"
+        echo &"    Location: {fleet.location}"
+        echo &"    Squadrons: {fleet.squadrons.len}"
+        echo &"    Total AS: {totalAS}"
+
+  echo &"\n{repeat(\"=\", 70)}"
+
+when isMainModule:
+  echo "Testing Game Setup Module"
+  echo repeat("=", 70)
+  echo ""
+
+  # Test with 4 houses
+  echo "Creating balanced game (4 houses)..."
+  let game = createBalancedGame(4, 4)
+
+  printGameSetup(game)
+
+  echo "\n✓ Game setup complete!"
+  echo "\nValidation:"
+  echo &"  ✓ {game.houses.len} houses initialized"
+  echo &"  ✓ {game.colonies.len} home colonies created"
+  echo &"  ✓ {game.fleets.len} starting fleets created"
+  echo &"  ✓ {game.diplomacy.len} diplomatic relations initialized"
+  echo &"  ✓ {game.starMap.systems.len} star systems generated"
+
+  # Verify each house has a homeworld and fleet
+  for houseId in game.houses.keys:
+    let hasColony = toSeq(game.colonies.values).anyIt(it.owner == houseId)
+    let hasFleet = toSeq(game.fleets.values).anyIt(it.owner == houseId)
+    if hasColony and hasFleet:
+      echo &"  ✓ {houseId}: homeworld and fleet confirmed"
+    else:
+      echo &"  ✗ {houseId}: MISSING homeworld or fleet!"
