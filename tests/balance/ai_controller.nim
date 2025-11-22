@@ -8,6 +8,7 @@ import ../../src/engine/[gamestate, orders, fleet, squadron, starmap]
 import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/research/types as res_types
+import ../../src/engine/diplomacy/types as dip_types
 
 type
   AIStrategy* {.pure.} = enum
@@ -169,6 +170,191 @@ proc findWeakestEnemyColony(state: GameState, houseId: HouseId, rng: var Rand): 
   return none(SystemId)
 
 # =============================================================================
+# Strategic Diplomacy Assessment
+# =============================================================================
+
+type
+  DiplomaticAssessment* = object
+    ## Assessment of diplomatic situation with target house
+    targetHouse*: HouseId
+    relativeMilitaryStrength*: float  # Our strength / their strength (1.0 = equal)
+    relativeEconomicStrength*: float  # Our economy / their economy (1.0 = equal)
+    mutualEnemies*: seq[HouseId]      # Houses both consider enemies
+    geographicProximity*: int         # Number of neighboring systems
+    violationRisk*: float             # 0.0-1.0: Risk they violate pact
+    currentState*: dip_types.DiplomaticState
+    recommendPact*: bool              # Should we propose/maintain pact?
+    recommendBreak*: bool             # Should we break existing pact?
+    recommendEnemy*: bool             # Should we declare enemy?
+
+proc calculateMilitaryStrength(state: GameState, houseId: HouseId): int =
+  ## Calculate total military strength for a house
+  result = 0
+  let fleets = getOwnedFleets(state, houseId)
+  for fleet in fleets:
+    result += getFleetStrength(fleet)
+
+proc calculateEconomicStrength(state: GameState, houseId: HouseId): int =
+  ## Calculate total economic strength for a house
+  result = 0
+  let house = state.houses[houseId]
+  let colonies = getOwnedColonies(state, houseId)
+
+  # Treasury value
+  result += house.treasury
+
+  # Colony production value
+  for colony in colonies:
+    result += colony.production * 10  # Weight production highly
+    result += colony.infrastructure * 5
+
+proc findMutualEnemies(state: GameState, houseA: HouseId, houseB: HouseId): seq[HouseId] =
+  ## Find houses that both houseA and houseB consider enemies
+  result = @[]
+  let houseAData = state.houses[houseA]
+  let houseBData = state.houses[houseB]
+
+  for otherHouse in state.houses.keys:
+    if otherHouse == houseA or otherHouse == houseB:
+      continue
+
+    let aIsEnemy = dip_types.isEnemy(houseAData.diplomaticRelations, otherHouse)
+    let bIsEnemy = dip_types.isEnemy(houseBData.diplomaticRelations, otherHouse)
+
+    if aIsEnemy and bIsEnemy:
+      result.add(otherHouse)
+
+proc estimateViolationRisk(state: GameState, targetHouse: HouseId): float =
+  ## Estimate risk that target house will violate a pact (0.0-1.0)
+  let targetData = state.houses[targetHouse]
+
+  # Check violation history
+  let recentViolations = dip_types.countRecentViolations(
+    targetData.violationHistory,
+    state.turn
+  )
+
+  # Base risk from history
+  var risk = float(recentViolations) * 0.2  # +20% per recent violation
+
+  # Check if dishonored
+  if targetData.violationHistory.dishonored.active:
+    risk += 0.3  # +30% if currently dishonored
+
+  return min(risk, 0.9)  # Cap at 90% risk
+
+proc assessDiplomaticSituation(controller: AIController, state: GameState,
+                               targetHouse: HouseId): DiplomaticAssessment =
+  ## Evaluate diplomatic relationship with target house
+  ## Returns strategic assessment for decision making
+  let myHouse = state.houses[controller.houseId]
+  let theirHouse = state.houses[targetHouse]
+  let p = controller.personality
+
+  result.targetHouse = targetHouse
+  result.currentState = dip_types.getDiplomaticState(
+    myHouse.diplomaticRelations,
+    targetHouse
+  )
+
+  # Calculate relative strengths
+  let myMilitary = calculateMilitaryStrength(state, controller.houseId)
+  let theirMilitary = calculateMilitaryStrength(state, targetHouse)
+  result.relativeMilitaryStrength = if theirMilitary > 0:
+    float(myMilitary) / float(theirMilitary)
+  else:
+    10.0  # They have no military
+
+  let myEconomy = calculateEconomicStrength(state, controller.houseId)
+  let theirEconomy = calculateEconomicStrength(state, targetHouse)
+  result.relativeEconomicStrength = if theirEconomy > 0:
+    float(myEconomy) / float(theirEconomy)
+  else:
+    10.0  # They have no economy
+
+  # Find mutual enemies
+  result.mutualEnemies = findMutualEnemies(state, controller.houseId, targetHouse)
+
+  # Estimate violation risk
+  result.violationRisk = estimateViolationRisk(state, targetHouse)
+
+  # Strategic recommendations based on personality
+  case result.currentState
+  of dip_types.DiplomaticState.Neutral:
+    # Should we propose a pact?
+    var pactScore = 0.0
+
+    # Stronger neighbor = want pact (defensive)
+    if result.relativeMilitaryStrength < 0.8:
+      pactScore += 0.3
+
+    # Mutual enemies = want pact (alliance)
+    pactScore += float(result.mutualEnemies.len) * 0.2
+
+    # High diplomacy value = more likely to seek pacts
+    pactScore += p.diplomacyValue * 0.4
+
+    # Low violation risk = more likely to trust
+    pactScore += (1.0 - result.violationRisk) * 0.2
+
+    result.recommendPact = pactScore > 0.5
+
+    # Should we declare enemy?
+    var enemyScore = 0.0
+
+    # Aggressive personality
+    enemyScore += p.aggression * 0.5
+
+    # Weaker target
+    if result.relativeMilitaryStrength > 1.5:
+      enemyScore += 0.3
+
+    # Low diplomacy value
+    enemyScore += (1.0 - p.diplomacyValue) * 0.3
+
+    result.recommendEnemy = enemyScore > 0.6
+
+  of dip_types.DiplomaticState.NonAggression:
+    # Should we break the pact?
+    var breakScore = 0.0
+
+    # Aggressive strategy willing to violate
+    if controller.strategy == AIStrategy.Aggressive:
+      breakScore += 0.4
+
+    # Much weaker target = tempting
+    if result.relativeMilitaryStrength > 2.0:
+      breakScore += 0.3
+
+    # Low diplomacy value = less concerned with reputation
+    breakScore += (1.0 - p.diplomacyValue) * 0.4
+
+    # High risk tolerance
+    breakScore += p.riskTolerance * 0.2
+
+    result.recommendBreak = breakScore > 0.7  # High threshold for violation
+
+  of dip_types.DiplomaticState.Enemy:
+    # Should we normalize relations?
+    var normalizeScore = 0.0
+
+    # Much stronger enemy = want peace
+    if result.relativeMilitaryStrength < 0.5:
+      normalizeScore += 0.5
+
+    # High diplomacy value
+    normalizeScore += p.diplomacyValue * 0.4
+
+    # Low aggression
+    normalizeScore += (1.0 - p.aggression) * 0.3
+
+    # Recommend neutral if score high enough
+    if normalizeScore > 0.6:
+      result.recommendEnemy = false
+    else:
+      result.recommendEnemy = true  # Stay enemies
+
+# =============================================================================
 # Order Generation
 # =============================================================================
 
@@ -317,25 +503,64 @@ proc generateResearchAllocation(controller: AIController, state: GameState): res
       result.economic = researchBudget
 
 proc generateDiplomaticActions(controller: AIController, state: GameState, rng: var Rand): seq[DiplomaticAction] =
-  ## Generate diplomatic actions based on strategy
+  ## Generate diplomatic actions based on strategic assessment
   result = @[]
   let p = controller.personality
+  let myHouse = state.houses[controller.houseId]
 
-  if p.diplomacyValue < 0.4:
-    return result  # Low diplomacy value, skip
-
-  # Find potential allies
+  # Assess all other houses
+  var assessments: seq[DiplomaticAssessment] = @[]
   for otherHouseId in state.houses.keys:
     if otherHouseId == controller.houseId:
       continue
+    assessments.add(assessDiplomaticSituation(controller, state, otherHouseId))
 
-    # Diplomatic AI seeks pacts
-    if controller.strategy == AIStrategy.Diplomatic and rng.rand(1.0) < 0.3:
-      result.add(DiplomaticAction(
-        targetHouse: otherHouseId,
-        actionType: DiplomaticActionType.ProposeNonAggressionPact
-      ))
-      break  # Only one diplomatic action per turn
+  # Priority 1: Break pacts if strategically advantageous (rare)
+  for assessment in assessments:
+    if assessment.recommendBreak and assessment.currentState == dip_types.DiplomaticState.NonAggression:
+      # Double-check with random roll to avoid too frequent violations
+      if rng.rand(1.0) < 0.2:  # Only 20% chance even when recommended
+        result.add(DiplomaticAction(
+          targetHouse: assessment.targetHouse,
+          actionType: DiplomaticActionType.BreakPact
+        ))
+        return result  # Only one action per turn
+
+  # Priority 2: Propose pacts with strategic partners
+  for assessment in assessments:
+    if assessment.recommendPact and assessment.currentState == dip_types.DiplomaticState.Neutral:
+      # Check if we can form pacts (not isolated)
+      if dip_types.canFormPact(myHouse.violationHistory):
+        # Check if we can reinstate with this specific house
+        if dip_types.canReinstatePact(myHouse.violationHistory, assessment.targetHouse, state.turn):
+          result.add(DiplomaticAction(
+            targetHouse: assessment.targetHouse,
+            actionType: DiplomaticActionType.ProposeNonAggressionPact
+          ))
+          return result  # Only one action per turn
+
+  # Priority 3: Declare enemy against weak/aggressive targets
+  for assessment in assessments:
+    if assessment.recommendEnemy and assessment.currentState == dip_types.DiplomaticState.Neutral:
+      # Aggressive strategies more likely to declare enemies
+      let declareChance = p.aggression * 0.5
+      if rng.rand(1.0) < declareChance:
+        result.add(DiplomaticAction(
+          targetHouse: assessment.targetHouse,
+          actionType: DiplomaticActionType.DeclareEnemy
+        ))
+        return result  # Only one action per turn
+
+  # Priority 4: Normalize relations with dangerous enemies
+  for assessment in assessments:
+    if not assessment.recommendEnemy and assessment.currentState == dip_types.DiplomaticState.Enemy:
+      # Only if we're significantly weaker
+      if assessment.relativeMilitaryStrength < 0.6:
+        result.add(DiplomaticAction(
+          targetHouse: assessment.targetHouse,
+          actionType: DiplomaticActionType.SetNeutral
+        ))
+        return result  # Only one action per turn
 
 proc generateEspionageAction(controller: AIController, state: GameState, rng: var Rand): Option[esp_types.EspionageAttempt] =
   ## Generate espionage action based on strategy
