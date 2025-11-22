@@ -8,7 +8,7 @@ import std/[tables, algorithm, options, random, strformat, sequtils, strutils, h
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap, squadron
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
-import research/[types as res_types, advancement]
+import research/[types as res_types, advancement, costs]
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
@@ -187,9 +187,9 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
           if result.srpStolen > 0:
             # Steal SRP from target
             if attempt.target in state.houses:
-              state.houses[attempt.target].techTree.researchPoints =
-                max(0, state.houses[attempt.target].techTree.researchPoints - result.srpStolen)
-              state.houses[attempt.attacker].techTree.researchPoints += result.srpStolen
+              state.houses[attempt.target].techTree.accumulated.science =
+                max(0, state.houses[attempt.target].techTree.accumulated.science - result.srpStolen)
+              state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
               echo "      Stole ", result.srpStolen, " SRP from ", attempt.target
 
         else:
@@ -370,17 +370,8 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
   # Convert GameState colonies to economy engine format
   var econColonies: seq[econ_types.Colony] = @[]
   for systemId, colony in state.colonies:
-    # Apply blockade penalty to production
-    # Per operations.md:6.2.6: "Colonies under blockade reduce their GCO by 60%"
-    let blockadePenalty = blockade_engine.getBlockadePenalty(colony)
-    let adjustedProduction = int(float(colony.production) * blockadePenalty)
-
-    if colony.blockaded:
-      let blockadersStr = colony.blockadedBy.join(", ")
-      echo "    Colony at system ", systemId, " blockaded by [", blockadersStr,
-           "]: GCO reduced from ", colony.production, " to ", adjustedProduction, " (-60%)"
-
     # Convert Colony to economy Colony type
+    # grossOutput starts at 0 and will be calculated by economy engine
     econColonies.add(econ_types.Colony(
       systemId: colony.systemId,
       owner: colony.owner,
@@ -389,10 +380,10 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       industrial: econ_types.IndustrialUnits(units: colony.infrastructure * 10),  # Map infrastructure to IU
       planetClass: colony.planetClass,
       resources: colony.resources,
-      grossOutput: adjustedProduction,  # Apply blockade penalty
+      grossOutput: 0,  # Will be calculated by economy engine
       taxRate: 50,  # TODO: Get from house tax policy
       underConstruction: none(econ_types.ConstructionProject),  # TODO: Convert construction
-      infrastructureDamage: 0.0  # TODO: Track damage from combat
+      infrastructureDamage: if colony.blockaded: 0.6 else: 0.0  # Blockade = 60% infrastructure damage
     ))
 
   # Build house tax policies (TODO: store in House)
@@ -426,6 +417,11 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
     state.houses[houseId].treasury = houseTreasuries[houseId]
     echo "    ", state.houses[houseId].name, ": +", houseReport.totalNet, " PP (Gross: ", houseReport.totalGross, ")"
 
+    # Update colony production fields from income reports
+    for colonyReport in houseReport.colonies:
+      if colonyReport.colonyId in state.colonies:
+        state.colonies[colonyReport.colonyId].production = colonyReport.grossOutput
+
     # Apply prestige events from economic activities
     for event in houseReport.prestigeEvents:
       state.houses[houseId].prestige += event.amount
@@ -442,10 +438,25 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       echo "      Prestige: ", blockadePenalty, " (", blockadedCount,
            " colonies under blockade) -> ", state.houses[houseId].prestige
 
-  # Apply research prestige from tech advancements (if any occurred)
-  # Note: Tech advancements are tracked separately and applied here
-  # TODO: Integrate with full research system when implemented
-  # For now, research prestige is embedded in advancement events
+  # Process research allocation
+  # Per economy.md:4.0: Players allocate PP to research each turn
+  # Research points accumulate in tech tree until spent on upgrades
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      let packet = orders[houseId]
+
+      # Process research allocation for each tech field
+      for field, ppAllocation in packet.researchAllocation:
+        if ppAllocation > 0:
+          # Add to accumulated research points
+          # TODO: Apply espionage effects (SRP reduction)
+          # TODO: Validate against available production (currently no validation)
+          if field notin state.houses[houseId].techTree.accumulated.technology:
+            state.houses[houseId].techTree.accumulated.technology[field] = 0
+          state.houses[houseId].techTree.accumulated.technology[field] += ppAllocation
+
+          echo "      ", houseId, " allocated ", ppAllocation, " PP to ", field,
+               " (total: ", state.houses[houseId].techTree.accumulated.technology[field], " RP)"
 
 ## Phase 3: Command
 
@@ -1491,6 +1502,35 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
       # Normal status report
       echo "    ", house.name, " - System ", systemId, ": ", current, "/", capacity,
            " FS (Pop: ", popCapacity, ", Infra: ", infraCapacity, ")"
+
+  # Process tech advancements on upgrade turns
+  # Per economy.md:4.1: Levels purchased on turns 1 and 7 (bi-annual)
+  if isUpgradeTurn(state.turn):
+    echo "  Tech Advancement (Upgrade Turn)"
+    for houseId, house in state.houses.mpairs:
+      # Try to advance each tech field with accumulated research
+      for field in [TechField.EnergyLevel, TechField.ShieldLevel,
+                    TechField.ConstructionTech, TechField.WeaponsTech,
+                    TechField.TerraformingTech, TechField.ElectronicIntelligence,
+                    TechField.CounterIntelligence]:
+        let advancement = attemptTechAdvancement(house.techTree, field)
+        if advancement.isSome:
+          let adv = advancement.get()
+          echo "    ", house.name, ": ", field, " ", adv.fromLevel, " → ", adv.toLevel,
+               " (spent ", adv.cost, " RP)"
+
+          # Apply prestige if available
+          if adv.prestigeEvent.isSome:
+            house.prestige += adv.prestigeEvent.get().amount
+            echo "      +", adv.prestigeEvent.get().amount, " prestige"
+
+          # Generate event
+          events.add(GameEvent(
+            eventType: GameEventType.TechAdvance,
+            houseId: houseId,
+            description: &"{field} advanced to level {adv.toLevel}",
+            systemId: none(SystemId)
+          ))
 
   # Check victory condition
   let victorOpt = state.checkVictoryCondition()
