@@ -49,8 +49,15 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - View game state (filtered by intel)
 - Submit orders
 - View turn history
+- Generate human-readable turn reports from structured data
 
 **Transport Support**: Auto-detects from game config
+
+**Report Generation**: Client-side formatting of TurnResult data
+- Engine sends structured TurnResult (events, combatReports)
+- Client generates formatted reports with hex coordinates
+- Different clients can format differently (CLI, web, mobile)
+- Minimizes network traffic (no formatted text sent over wire)
 
 ### Daemon (Turn Processor)
 **Binary**: `bin/daemon`
