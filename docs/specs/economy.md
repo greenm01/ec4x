@@ -318,8 +318,9 @@ What does NOT count (completely unlimited except money / existing rules):
   
 # 4.0 Research & Development
 
-**CRITICAL: All technology levels start at level 1, never 0.** Starting tech values are configured in `config/gameplay.toml` under the `[starting_tech]` section. This applies to ALL nine technology types:
+**CRITICAL: All technology levels start at level 1, never 0.** Starting tech values are configured in `config/tech.toml` under the `[starting_tech]` section. This applies to ALL nine technology types:
 
+<!-- STARTING_TECH_TABLE_START -->
 | Tech | Starting Level | Effect |
 |------|----------------|--------|
 | **EL** | 1 | Economic Level - 5% production bonus (GCO modifier) |
@@ -331,6 +332,9 @@ What does NOT count (completely unlimited except money / existing rules):
 | **CIC** | 1 | Counter-Intelligence - Base espionage detection |
 | **FD** | 1 | Fighter Doctrine I - 1.0x fighter capacity multiplier |
 | **ACO** | 1 | Advanced Carrier Operations I - CV=3FS, CX=5FS |
+
+*Source: config/tech.toml [starting_tech] section*
+<!-- STARTING_TECH_TABLE_END -->
 
 The starting tech configuration ensures consistent behavior across the engine. Game scenario files (e.g., `game_setup/standard.toml`) inherit these values. See [Section 9.11](#911-technology-research) for complete tech advancement tables.
 
