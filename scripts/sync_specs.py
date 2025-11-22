@@ -1145,10 +1145,10 @@ def replace_inline_values(content: str, economy_config: Dict[str, Any]) -> str:
         'SHIP_REPAIR_COST_DECIMAL': lambda: str(economy_config['construction']['ship_repair_cost_multiplier']),
     }
 
-    # Replace each inline marker
+    # Replace each inline marker with plain value (removes markers)
     for marker, value_func in replacements.items():
         pattern = f"<!-- {marker} -->.*?<!-- /{marker} -->"
-        replacement = f"<!-- {marker} -->{value_func()}<!-- /{marker} -->"
+        replacement = value_func()
         content = re.sub(pattern, replacement, content)
 
     return content
