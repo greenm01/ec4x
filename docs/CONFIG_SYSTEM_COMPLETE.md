@@ -115,7 +115,7 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ### 7. `ground_units_config.nim` ✅
 **Config File:** `config/ground_units.toml`
-**Status:** Ready for integration
+**Status:** Fully integrated
 **Lines:** 91 lines
 
 **Features:**
@@ -124,8 +124,11 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 - Army and marine division stats
 
 **Integration:**
-- ⏳ Future: Ground combat can use unit stats from config
-- ⏳ Future: Construction costs from config
+- ✅ `src/engine/combat/ground.nim:613` - createGroundBattery() uses config
+- ✅ `src/engine/combat/ground.nim:634` - createArmy() uses config
+- ✅ `src/engine/combat/ground.nim:652` - createMarine() uses config
+- ⏳ Future: Planetary shield stats from config
+- ⏳ Future: Construction costs and build times from config
 
 ---
 
@@ -229,21 +232,21 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ## Integration Status Summary
 
-### ✅ Fully Integrated (5/12)
+### ✅ Fully Integrated (6/12)
 1. **prestige_config.nim** - All prestige values from config
 2. **espionage_config.nim** - All espionage mechanics from config
 3. **combat_config.nim** - Ground combat CER tables and shields from config
 4. **economy_config.nim** - RAW material efficiency table from config
 5. **ships_config.nim** - All ship stats dynamically loaded from config
+6. **ground_units_config.nim** - All ground unit stats from config
 
 ### 🔄 Partially Integrated (1/12)
-6. **diplomacy_config.nim** - Accessor functions created, some usage in engine
+7. **diplomacy_config.nim** - Accessor functions created, some usage in engine
 
-### ⏳ Ready for Integration (6/12)
-7. gameplay_config.nim
-8. military_config.nim
-9. facilities_config.nim
-10. ground_units_config.nim
+### ⏳ Ready for Integration (5/12)
+8. gameplay_config.nim
+9. military_config.nim
+10. facilities_config.nim
 11. construction_config.nim
 12. tech_config.nim
 
