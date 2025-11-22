@@ -12,7 +12,7 @@ Production points settle near instantaneously on the inter-dimensional Phoenix n
 
 **Population Unit (PU)**: Represents a measure of economic production rather than raw population size.
 
-**Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately <!-- PTU_TO_SOULS -->50k<!-- /PTU_TO_SOULS --> souls. 
+**Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately 50k souls. 
 
 The relationship between PTU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
@@ -23,7 +23,7 @@ A high PTU to PU ratio is an advantage when transferring colonists from larger p
 The equations (in Python) for converting PU to PTU:
 
 ```
-  PTU = pu - 1 + np.exp(<!-- PU_TO_PTU_CONVERSION -->0.00657<!-- /PU_TO_PTU_CONVERSION --> * pu)
+  PTU = pu - 1 + np.exp(0.00657 * pu)
 ```
 
 Code for converting PTU back to PU:
@@ -90,7 +90,7 @@ Higher tax rates generate more immediate revenue but anger the population. Lower
 
 ### 3.2.1 High-Tax Prestige Penalty (Anti-Cycling Rule)
 
-Every Income Phase the game calculates the **average tax rate over the current turn + the previous five turns** (rolling <!-- TAX_WINDOW -->6<!-- /TAX_WINDOW -->-turn window) and applies the following prestige penalty if the average is above 50 %:
+Every Income Phase the game calculates the **average tax rate over the current turn + the previous five turns** (rolling 6-turn window) and applies the following prestige penalty if the average is above 50 %:
 
 <!-- TAX_PENALTY_TABLE_START -->
 | Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |
@@ -159,7 +159,7 @@ Refer to [Section 4.2](#42-economic-level-el) for cost and modifiers.
 
 ## 3.6 Population Growth
 
-Colonists are hard at work making babies for the House, and the PTU growth rate under normal conditions is <!-- PTU_GROWTH_RATE -->1.5%<!-- /PTU_GROWTH_RATE --> per turn.
+Colonists are hard at work making babies for the House, and the PTU growth rate under normal conditions is 1.5% per turn.
 
 A logistical growth function is used for the calculation. Each planet class has an upper bound on the population it can support. This gives a nice 's' curve distribution, and lends incentive to terraform less hospitable planets.
 
@@ -234,8 +234,8 @@ For every turn that a player misses payment for maintenance they lose prestige p
 - **Non-payment**: Squadrons disbanded (oldest first), no salvage value
 
 **Fighter Capacity Constraints:**
-- Max FS = floor(PU / <!-- FIGHTER_PU_DIVISOR -->100<!-- /FIGHTER_PU_DIVISOR -->) × FD Multiplier
-- Infrastructure requirement: 1 operational Starbase per <!-- STARBASE_PER_FS -->5<!-- /STARBASE_PER_FS --> FS (round up)
+- Max FS = floor(PU / 100) × FD Multiplier
+- Infrastructure requirement: 1 operational Starbase per 5 FS (round up)
 - Effective capacity = min(Population capacity, Infrastructure capacity)
 
 **Capacity Impact by Status:**
@@ -245,12 +245,12 @@ For every turn that a player misses payment for maintenance they lose prestige p
 
 **Capacity Violations:**
 
-Grace period: <!-- CAPACITY_GRACE_PERIOD -->2<!-- /CAPACITY_GRACE_PERIOD --> turns to resolve violations from:
+Grace period: 2 turns to resolve violations from:
 - Infrastructure loss (Starbase destroyed/crippled)
 - Population loss (bombardment, transfer)
 
 Resolution costs:
-- Repair Starbase: <!-- STARBASE_REPAIR_COST -->25%<!-- /STARBASE_REPAIR_COST --> of Starbase PC (1 turn)
+- Repair Starbase: 25% of Starbase PC (1 turn)
 - Build Starbase: Full Starbase PC (3 turns)
 - Transfer population: 4-15 PP per PTU (varies by planet class)
 - Disband excess fighters: 0 PP (no salvage, loses 20 PP asset value per squadron)
@@ -267,7 +267,7 @@ Upkeep is deducted automatically from the House treasury. If the treasury contai
 3. **Random fleet disbanding begins** until upkeep can be met:
    - The game randomly selects fleets (lowest ID first in case of ties).
    - Entire fleets are disbanded squadron-by-squadron.
-   - Ships are salvaged for **<!-- EMERGENCY_SALVAGE -->25 %<!-- /EMERGENCY_SALVAGE --> of their original Production Cost** (instead of the normal <!-- NORMAL_SALVAGE -->50 %<!-- /NORMAL_SALVAGE --> from Order 15 Salvage). Credits are added to the treasury immediately.
+   - Ships are salvaged for **25 % of their original Production Cost** (instead of the normal 50 % from Order 15 Salvage). Credits are added to the treasury immediately.
    - Disbanded fleets lose all orders and are removed from the map.
 4. If disbanding all fleets is still insufficient (extremely rare), planetary infrastructure is stripped in this order until upkeep is met:
    - Industrial Units are removed (1 IU = 1 PP value)
@@ -301,7 +301,7 @@ This ensures that running sustained deficits is catastrophic (as intended), whil
 
 ## 3.12 House Combat Squadron Limit
 
-Maximum Capital-Ship Squadrons + Carriers = Total House PU ÷ <!-- SQUADRON_PU_DIVISOR -->100<!-- /SQUADRON_PU_DIVISOR --> (round down, minimum <!-- SQUADRON_MINIMUM -->8<!-- /SQUADRON_MINIMUM -->)
+Maximum Capital-Ship Squadrons + Carriers = Total House PU ÷ 100 (round down, minimum 8)
 
 What counts:
 - Every squadron that has a capital-ship flagship (CT and larger, including Raiders) = 1 slot
@@ -340,8 +340,8 @@ Technological progress can experience sudden leaps due to unexpected Research Br
 
 Bi-Annual Roll (Turn 1 and Turn 7):
 - During the Income Phase of Turn 1 and Turn 7, the game system makes a 1d10 roll for each player per [Section 1.3.2](gameplay.md#132-income-phase).
-- The base chance for a breakthrough is <!-- BREAKTHROUGH_BASE -->10%<!-- /BREAKTHROUGH_BASE -->.
-- Players receive a +1% bonus for every <!-- BREAKTHROUGH_RP_PER_PERCENT -->50<!-- /BREAKTHROUGH_RP_PER_PERCENT --> RP invested during the previous six turns (including ERP, SRP, and TRP combined).
+- The base chance for a breakthrough is 10%.
+- Players receive a +1% bonus for every 50 RP invested during the previous six turns (including ERP, SRP, and TRP combined).
 - Breakthrough RP bonuses are immediately available for R&D purchases during the Command Phase of the same turn per [Section 1.3.3](gameplay.md#133-command-phase).
 
 **Breakthrough Types and Dice Roll**:
@@ -350,27 +350,27 @@ If the breakthrough is successful, a second 1d10 roll determines the type of bre
 
 | Dice Roll | Breakthrough Type           | Effect Description                                         |
 |:---------:| --------------------------- | ---------------------------------------------------------- |
-| 0-4       | **Minor Breakthrough**      | +<!-- MINOR_BREAKTHROUGH_BONUS -->10<!-- /MINOR_BREAKTHROUGH_BONUS --> ERP, SRP, or TRP based on the current investment focus |
-| 5-6       | **Moderate Breakthrough**   | <!-- MODERATE_BREAKTHROUGH_DISCOUNT -->20%<!-- /MODERATE_BREAKTHROUGH_DISCOUNT --> reduction in TRP cost for the next technology upgrade  |
+| 0-4       | **Minor Breakthrough**      | +10 ERP, SRP, or TRP based on the current investment focus |
+| 5-6       | **Moderate Breakthrough**   | 20% reduction in TRP cost for the next technology upgrade  |
 | 7-8       | **Major Breakthrough**      | Automatically advance the next SL or EL by 1 level         |
 | 9         | **Revolutionary Discovery** | Unlocks a unique technology or double-level advancement    |
 
 **Minor Breakthrough (0-4)**:
 
-The player gains an additional +<!-- MINOR_BREAKTHROUGH_BONUS -->10<!-- /MINOR_BREAKTHROUGH_BONUS --> points in ERP, SRP, or TRP, depending on their current investment focus (whichever has the highest allocation). This boosts research progress without direct cost.
+The player gains an additional +10 points in ERP, SRP, or TRP, depending on their current investment focus (whichever has the highest allocation). This boosts research progress without direct cost.
 
 **Moderate Breakthrough (5-6)**:
 
-The player receives a <!-- MODERATE_BREAKTHROUGH_DISCOUNT -->20%<!-- /MODERATE_BREAKTHROUGH_DISCOUNT --> reduction in TRP cost for the next technology upgrade, reflecting streamlined research processes. This provides a cost advantage in the upcoming tech level advancement.
+The player receives a 20% reduction in TRP cost for the next technology upgrade, reflecting streamlined research processes. This provides a cost advantage in the upcoming tech level advancement.
 
 **Major Breakthrough (7-8)**:
    
 The player automatically advances the next SL or EL by 1 level, skipping the usual SRP or ERP cost. This represents a significant leap in understanding, allowing rapid progression in core economic or scientific capabilities.
 
 **Revolutionary Discovery (9)**:
-- **Quantum Computing**: Permanently increases EL_MOD by <!-- REV_QUANTUM_BONUS -->10%<!-- /REV_QUANTUM_BONUS -->.
-- **Advanced Stealth Systems**: Grants Raiders an additional +<!-- REV_STEALTH_BONUS -->2<!-- /REV_STEALTH_BONUS --> detection difficulty.
-- **Terraforming Nexus**: Increases colony growth rate by an additional <!-- REV_TERRAFORMING_BONUS -->2%<!-- /REV_TERRAFORMING_BONUS --> per turn.
+- **Quantum Computing**: Permanently increases EL_MOD by 10%.
+- **Advanced Stealth Systems**: Grants Raiders an additional +2 detection difficulty.
+- **Terraforming Nexus**: Increases colony growth rate by an additional 2% per turn.
 - **Experimental Propulsion**: Allows crippled military ships to jump across **restricted lanes**, enhancing fleet mobility.
 
 Example:
@@ -388,22 +388,22 @@ A House's GHO benefits from EL upgrades by 5% per level, for a maximum of 50% at
 The formula for ERP in production points is:
 
 ```
-1 ERP = (<!-- ERP_BASE_COST -->5<!-- /ERP_BASE_COST --> + log(GHO)) PP
+1 ERP = (5 + log(GHO)) PP
 ```
 
 Example: to purchase 10 ERPs with a GHO of 500, the cost in production points is:
 
 ```
-10 ERP = 10(<!-- ERP_BASE_COST -->5<!-- /ERP_BASE_COST --> + log(500)) = 77 PP
+10 ERP = 10(5 + log(500)) = 77 PP
 ```
 
 For EL1 to EL5 The cost in ERP to advance one EL level is:
 
 ```
-ERP = <!-- EL_EARLY_BASE -->40<!-- /EL_EARLY_BASE --> + EL(<!-- EL_EARLY_INCREMENT -->10<!-- /EL_EARLY_INCREMENT -->)
+ERP = 40 + EL(10)
 ```
 
-After EL5 the cost increases linearly by <!-- EL_LATE_INCREMENT -->15<!-- /EL_LATE_INCREMENT --> points per EL level.
+After EL5 the cost increases linearly by 15 points per EL level.
 
 <!-- ECONOMIC_LEVEL_TABLE_START -->
 | EL  | ERP Cost | EL MOD |
@@ -432,22 +432,22 @@ Advancing to the next SL requires the House have previously developed an equival
 The cost of SRP is dependent upon the current SL.
 
 ```
-1 SRP = <!-- SRP_BASE_COST -->2<!-- /SRP_BASE_COST --> + SL(<!-- SRP_SL_MULTIPLIER -->0.5<!-- /SRP_SL_MULTIPLIER -->) PP
+1 SRP = 2 + SL(0.5) PP
 ```
 
 Example: To purchase 10 SRPs at SL2, the price in production points is:
 
 ```
-10 SRP = 10(<!-- SRP_BASE_COST -->2<!-- /SRP_BASE_COST --> + 2(<!-- SRP_SL_MULTIPLIER -->0.5<!-- /SRP_SL_MULTIPLIER -->)) = 30 PP
+10 SRP = 10(2 + 2(0.5)) = 30 PP
 ```
 
 For SL1 to SL5, the cost in SRP to advance one SL level is:
 
 ```
-SRP = <!-- SL_EARLY_BASE -->20<!-- /SL_EARLY_BASE --> + SL(<!-- SL_EARLY_INCREMENT -->5<!-- /SL_EARLY_INCREMENT -->)
+SRP = 20 + SL(5)
 ```
 
-After SL5, the cost increases linearly by <!-- SL_LATE_INCREMENT -->10<!-- /SL_LATE_INCREMENT --> per level.
+After SL5, the cost increases linearly by 10 per level.
 
 <!-- SCIENCE_LEVEL_TABLE_START -->
 | SL  | SRP Cost |
@@ -484,7 +484,7 @@ For example, to purchase 5 TRPs towards the development TER3 with a GHO of 500, 
 
 New engineering technologies are purchased directly with TRP.
 
-\* Starting at Science Level 1 (SL1), each subsequent level of technology requires an additional <!-- TRP_LEVEL_INCREMENT -->5<!-- /TRP_LEVEL_INCREMENT --> Technology Research Points (TRP) more than the previous level, with the initial cost being <!-- TRP_FIRST_LEVEL_COST -->25<!-- /TRP_FIRST_LEVEL_COST --> TRP for the first level.
+\* Starting at Science Level 1 (SL1), each subsequent level of technology requires an additional 5 Technology Research Points (TRP) more than the previous level, with the initial cost being 25 TRP for the first level.
 
 [^2]: **Game Designer Notes**:
 As players expand their colonies, their NHV will grow. The logarithmic scaling with GHO allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
@@ -499,7 +499,7 @@ Previously the formula used exp(GHO) * 0.0025 PP which grows the cost way too qu
 
 Upgrades improve the construction capability and capacity of planet based factories, Spaceports, Shipyards. Existing units are upgraded at zero cost.
 
-Construction capacity increases by <!-- CST_CAPACITY_INCREASE -->10%<!-- /CST_CAPACITY_INCREASE --> each level (round up).
+Construction capacity increases by 10% each level (round up).
 
 CST will open up new, larger hulled classes of combat ships.
 
@@ -519,9 +519,9 @@ The maximum construction level is CST10.
 
 ## 4.6 Weapons (WEP)
 
-Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by <!-- WEP_STAT_INCREASE -->10%<!-- /WEP_STAT_INCREASE --> for each Weapons level (rounded down).
+Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by 10% for each Weapons level (rounded down).
 
-For every WEP increase, Production Cost (PC) per unit increases by <!-- WEP_COST_INCREASE -->10%<!-- /WEP_COST_INCREASE -->.
+For every WEP increase, Production Cost (PC) per unit increases by 10%.
 
 Upgrades do not apply to preexisting ships; only new ships.
 
@@ -739,9 +739,9 @@ ACO technology affects carrier capacity only and does not modify fighter squadro
 
 Construction and repair of House assets is accomplished planet-side or in orbit, with restrictions. 
 
-The number of turns required to construct a Military ship is <!-- MILITARY_SHIP_TURNS -->two<!-- /MILITARY_SHIP_TURNS --> turns. Spacelift Command ships require <!-- SPACELIFT_SHIP_TURNS -->one<!-- /SPACELIFT_SHIP_TURNS --> turn.
+The number of turns required to construct a Military ship is two turns. Spacelift Command ships require one turn.
 
-The number of turns required to repair a crippled ship is <!-- SHIP_REPAIR_TURNS -->one<!-- /SHIP_REPAIR_TURNS --> turn. The ship's squadron must be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
+The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
 
 Newly commissioned ships, and repaired ships, will remain in their existing docs until ordered to join a squadron.
 
@@ -751,7 +751,7 @@ Spaceport and Shipyard construction capacity is limited by their CST tech.
 
 Ground units and fighter squadrons are produced via colony industry, distributed across the surface or in underground factories.
 
-Ships (excluding fighter squadrons) constructed planet-side incur a <!-- PLANETSIDE_CONSTRUCTION_PENALTY -->100%<!-- /PLANETSIDE_CONSTRUCTION_PENALTY --> PC increase due to the added cost of orbital launch, and require a spaceport to commission.
+Ships (excluding fighter squadrons) constructed planet-side incur a 100% PC increase due to the added cost of orbital launch, and require a spaceport to commission.
 
 ## 5.2 Planet-side Repair
 
@@ -763,15 +763,15 @@ Shipyard construction of a ship in orbit is the standard method of commissioning
 
 ## 5.4 Orbital Repair
 
-Ship repairs require a Shipyard. The cost of repair equals one quarter (<!-- SHIP_REPAIR_COST -->25%<!-- /SHIP_REPAIR_COST -->) of the unit's PC.
+Ship repairs require a Shipyard. The cost of repair equals one quarter (25%) of the unit's PC.
 
 Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 
 ```
-72.6 * <!-- SHIP_REPAIR_COST_DECIMAL -->0.25<!-- /SHIP_REPAIR_COST_DECIMAL --> = 18.15 PP.
+72.6 * 0.25 = 18.15 PP.
 ```
 
-The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn <!-- NORMAL_SALVAGE -->50 %<!-- /NORMAL_SALVAGE --> of the original PC back to the House treasury.
+The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50 % of the original PC back to the House treasury.
 
 
 
