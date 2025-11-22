@@ -57,6 +57,7 @@ spaceport_cost = 500
 shipyard_cost = 1000
 starbase_cost = 1200
 ground_battery_cost = 100
+fighter_squadron_cost = 20         # Cost per fighter squadron
 
 # Planetary shield costs by tech level
 planetary_shield_sld1_cost = 500
