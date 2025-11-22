@@ -32,6 +32,7 @@ default_tax_rate = 0.50             # Default tax rate (50%)
 
 [starting_tech]
 # Initial technology levels per gameplay.md:39
+# CRITICAL: ALL tech levels start at 1, not 0!
 economic_level = 1                  # EL1
 science_level = 1                   # SL1
 construction_tech = 1               # CST1
@@ -39,10 +40,10 @@ weapons_tech = 1                    # WEP1
 terraforming_tech = 1               # TER1
 electronic_intelligence = 1         # ELI1
 counter_intelligence = 1            # CIC1
-cloaking_tech = 0                   # CLK (not in spec, default 0)
-shield_tech = 0                     # SLD (not in spec, default 0)
-fighter_doctrine = 0                # FD (not in spec, default 0)
-advanced_carrier_ops = 0            # ACO (not in spec, default 0)
+cloaking_tech = 1                   # CLK1 (starts at level 1)
+shield_tech = 1                     # SLD1 (starts at level 1)
+fighter_doctrine = 1                # FD I (starts at level 1, 1.0x multiplier)
+advanced_carrier_ops = 1            # ACO I (starts at level 1, CV=3FS CX=5FS)
 
 [starting_fleet]
 # Initial fleet composition per gameplay.md:37
