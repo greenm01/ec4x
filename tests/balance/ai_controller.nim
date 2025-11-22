@@ -355,11 +355,207 @@ proc assessDiplomaticSituation(controller: AIController, state: GameState,
       result.recommendEnemy = true  # Stay enemies
 
 # =============================================================================
+# Strategic Military Assessment
+# =============================================================================
+
+type
+  CombatAssessment* = object
+    ## Assessment of combat situation for attacking a target system
+    targetSystem*: SystemId
+    targetOwner*: HouseId
+
+    # Fleet strengths
+    attackerFleetStrength*: int    # Our attack power
+    defenderFleetStrength*: int    # Enemy fleet defense at target
+
+    # Defensive installations
+    starbaseStrength*: int         # Starbase attack/defense
+    groundBatteryCount*: int       # Ground batteries
+    planetaryShieldLevel*: int     # Shield level (0-6)
+    groundForces*: int             # Armies + marines
+
+    # Combat odds
+    estimatedCombatOdds*: float    # 0.0-1.0: Probability of victory
+    expectedCasualties*: int       # Expected ship losses
+
+    # Strategic factors
+    violatesPact*: bool            # Would attack violate non-aggression pact?
+    strategicValue*: int           # Value of target (production, resources)
+
+    # Recommendations
+    recommendAttack*: bool         # Should we attack?
+    recommendReinforce*: bool      # Should we send reinforcements?
+    recommendRetreat*: bool        # Should we retreat from system?
+
+proc calculateDefensiveStrength(state: GameState, systemId: SystemId): int =
+  ## Calculate total defensive strength of a colony
+  if systemId notin state.colonies:
+    return 0
+
+  let colony = state.colonies[systemId]
+  result = 0
+
+  # Starbase strength (each starbase adds attack + defense strength)
+  for starbase in colony.starbases:
+    if not starbase.isCrippled:
+      # Starbases are powerful defensive assets
+      result += 100  # Simplified: each starbase worth 100 defense points
+
+  # Ground batteries
+  result += colony.groundBatteries * 20
+
+  # Planetary shields (reduce attacker effectiveness)
+  result += colony.planetaryShieldLevel * 15
+
+  # Ground forces (armies + marines)
+  result += (colony.armies + colony.marines) * 10
+
+proc calculateFleetStrengthAtSystem(state: GameState, systemId: SystemId,
+                                   houseId: HouseId): int =
+  ## Calculate fleet strength for a specific house at a system
+  result = 0
+  for fleet in state.fleets.values:
+    if fleet.owner == houseId and fleet.location == systemId:
+      result += getFleetStrength(fleet)
+
+proc estimateColonyValue(state: GameState, systemId: SystemId): int =
+  ## Estimate strategic value of a colony
+  if systemId notin state.colonies:
+    return 0
+
+  let colony = state.colonies[systemId]
+  result = 0
+
+  # Production value
+  result += colony.production * 10
+
+  # Infrastructure value
+  result += colony.infrastructure * 20
+
+  # Resource rating bonus
+  case colony.resources
+  of ResourceRating.VeryRich:
+    result += 70
+  of ResourceRating.Rich:
+    result += 50
+  of ResourceRating.Abundant:
+    result += 30
+  of ResourceRating.Poor:
+    result += 10
+  of ResourceRating.VeryPoor:
+    result += 0
+
+proc assessCombatSituation(controller: AIController, state: GameState,
+                          targetSystem: SystemId): CombatAssessment =
+  ## Evaluate combat situation for attacking a target system
+  ## Returns strategic assessment for attack decision
+
+  result.targetSystem = targetSystem
+
+  # Check if system has a colony
+  if targetSystem notin state.colonies:
+    result.recommendAttack = false
+    return
+
+  let targetColony = state.colonies[targetSystem]
+  result.targetOwner = targetColony.owner
+
+  # Don't attack our own colonies
+  if result.targetOwner == controller.houseId:
+    result.recommendAttack = false
+    return
+
+  # Check diplomatic status
+  let myHouse = state.houses[controller.houseId]
+  let dipState = dip_types.getDiplomaticState(
+    myHouse.diplomaticRelations,
+    result.targetOwner
+  )
+  result.violatesPact = dipState == dip_types.DiplomaticState.NonAggression
+
+  # Calculate military strengths
+  result.attackerFleetStrength = calculateFleetStrengthAtSystem(
+    state, targetSystem, controller.houseId
+  )
+  result.defenderFleetStrength = calculateFleetStrengthAtSystem(
+    state, targetSystem, result.targetOwner
+  )
+
+  # Calculate defensive installations
+  result.starbaseStrength = 0
+  result.groundBatteryCount = targetColony.groundBatteries
+  result.planetaryShieldLevel = targetColony.planetaryShieldLevel
+  result.groundForces = targetColony.armies + targetColony.marines
+
+  for starbase in targetColony.starbases:
+    if not starbase.isCrippled:
+      result.starbaseStrength += 100
+
+  # Total defensive strength
+  let totalDefense = result.defenderFleetStrength +
+                     calculateDefensiveStrength(state, targetSystem)
+
+  # Estimate combat odds
+  # Simple model: odds = attacker / (attacker + defender)
+  # Attacker needs advantage to have good odds
+  if result.attackerFleetStrength == 0:
+    result.estimatedCombatOdds = 0.0
+  elif totalDefense == 0:
+    result.estimatedCombatOdds = 1.0
+  else:
+    let ratio = float(result.attackerFleetStrength) / float(totalDefense)
+    # Apply sigmoid-like curve: need ~2:1 advantage for 75% odds
+    result.estimatedCombatOdds = ratio / (ratio + 0.8)
+    result.estimatedCombatOdds = min(result.estimatedCombatOdds, 0.95)
+
+  # Estimate casualties (% of attacker strength lost)
+  let expectedLossRate = 1.0 - result.estimatedCombatOdds
+  result.expectedCasualties = int(
+    float(result.attackerFleetStrength) * expectedLossRate * 0.3
+  )
+
+  # Calculate strategic value
+  result.strategicValue = estimateColonyValue(state, targetSystem)
+
+  # Make recommendations based on personality and odds
+  let p = controller.personality
+
+  # Attack recommendation
+  var attackThreshold = 0.6  # Base: 60% odds needed
+
+  # Adjust threshold by personality
+  if controller.strategy == AIStrategy.Aggressive:
+    attackThreshold = 0.4  # Aggressive: attack at 40% odds
+  elif p.riskTolerance > 0.7:
+    attackThreshold = 0.5  # High risk tolerance
+  elif p.aggression < 0.3:
+    attackThreshold = 0.8  # Cautious: need 80% odds
+
+  # Don't attack if it violates pact (unless we're deciding to break it)
+  if result.violatesPact:
+    result.recommendAttack = false
+  else:
+    result.recommendAttack = result.estimatedCombatOdds >= attackThreshold
+
+  # Reinforce recommendation (we have fleet there but odds not good enough)
+  result.recommendReinforce = (
+    result.attackerFleetStrength > 0 and
+    result.estimatedCombatOdds < attackThreshold and
+    result.estimatedCombatOdds > 0.2  # But not hopeless
+  )
+
+  # Retreat recommendation (we're outmatched)
+  result.recommendRetreat = (
+    result.attackerFleetStrength > 0 and
+    result.estimatedCombatOdds < 0.3  # Less than 30% odds
+  )
+
+# =============================================================================
 # Order Generation
 # =============================================================================
 
 proc generateFleetOrders(controller: AIController, state: GameState, rng: var Rand): seq[FleetOrder] =
-  ## Generate fleet orders based on strategy
+  ## Generate fleet orders based on strategic military assessment
   result = @[]
   let p = controller.personality
   let myFleets = getOwnedFleets(state, controller.houseId)
@@ -369,38 +565,94 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
     order.fleetId = fleet.id
     order.priority = 1
 
-    # Decide action based on personality
-    let aggressionRoll = rng.rand(1.0)
-    let expansionRoll = rng.rand(1.0)
+    # Check current location for combat situation
+    let currentCombat = assessCombatSituation(
+      controller, state, fleet.location
+    )
 
-    if aggressionRoll < p.aggression and p.aggression > 0.6:
-      # Attack enemy colony
-      let targetOpt = findWeakestEnemyColony(state, controller.houseId, rng)
-      if targetOpt.isSome:
+    # Priority 1: Retreat if we're in a losing battle
+    if currentCombat.recommendRetreat:
+      # Find nearest friendly colony to retreat to
+      var nearestFriendly: Option[SystemId] = none(SystemId)
+      for systemId, colony in state.colonies:
+        if colony.owner == controller.houseId and systemId != fleet.location:
+          nearestFriendly = some(systemId)
+          break
+
+      if nearestFriendly.isSome:
         order.orderType = FleetOrderType.Move
-        order.targetSystem = targetOpt
+        order.targetSystem = nearestFriendly
         order.targetFleet = none(FleetId)
-      else:
-        # No targets, patrol home
-        order.orderType = FleetOrderType.Patrol
-        order.targetSystem = some(fleet.location)
-        order.targetFleet = none(FleetId)
+        result.add(order)
+        continue
+      # If no friendly colonies, hold and hope for the best
+      order.orderType = FleetOrderType.Hold
+      order.targetSystem = none(SystemId)
+      order.targetFleet = none(FleetId)
+      result.add(order)
+      continue
 
-    elif expansionRoll < p.expansionDrive and p.expansionDrive > 0.6:
-      # Colonize new system
+    # Priority 2: Attack if we have good odds
+    if currentCombat.recommendAttack:
+      # We're already at an enemy system with good odds
+      # Stay and fight (patrol to maintain presence)
+      order.orderType = FleetOrderType.Patrol
+      order.targetSystem = some(fleet.location)
+      order.targetFleet = none(FleetId)
+      result.add(order)
+      continue
+
+    # Priority 3: Find targets to attack based on aggression
+    if p.aggression > 0.5:
+      # Look for vulnerable enemy colonies
+      var bestTarget: Option[SystemId] = none(SystemId)
+      var bestOdds = 0.0
+
+      for systemId, colony in state.colonies:
+        if colony.owner == controller.houseId:
+          continue  # Skip our own colonies
+
+        let combat = assessCombatSituation(controller, state, systemId)
+        if combat.recommendAttack and combat.estimatedCombatOdds > bestOdds:
+          bestOdds = combat.estimatedCombatOdds
+          bestTarget = some(systemId)
+
+      if bestTarget.isSome:
+        order.orderType = FleetOrderType.Move
+        order.targetSystem = bestTarget
+        order.targetFleet = none(FleetId)
+        result.add(order)
+        continue
+
+    # Priority 4: Expansion (colonize new systems)
+    if p.expansionDrive > 0.5:
       let targetOpt = findNearestUncolonizedSystem(state, fleet.location)
       if targetOpt.isSome:
         order.orderType = FleetOrderType.Move
         order.targetSystem = targetOpt
         order.targetFleet = none(FleetId)
-      else:
-        # No empty systems, hold position
-        order.orderType = FleetOrderType.Hold
-        order.targetSystem = none(SystemId)
-        order.targetFleet = none(FleetId)
+        result.add(order)
+        continue
 
+    # Priority 5: Defend home colonies (patrol)
+    # Find a colony that needs defense
+    var needsDefense: Option[SystemId] = none(SystemId)
+    for systemId, colony in state.colonies:
+      if colony.owner == controller.houseId:
+        # Check if there are enemy fleets nearby (simplified: just check this colony)
+        let hasEnemyFleets = calculateFleetStrengthAtSystem(
+          state, systemId, colony.owner
+        ) < getFleetStrength(fleet)
+        if hasEnemyFleets or colony.blockaded:
+          needsDefense = some(systemId)
+          break
+
+    if needsDefense.isSome:
+      order.orderType = FleetOrderType.Move
+      order.targetSystem = needsDefense
+      order.targetFleet = none(FleetId)
     else:
-      # Default: Patrol home system
+      # Default: Patrol current location
       order.orderType = FleetOrderType.Patrol
       order.targetSystem = some(fleet.location)
       order.targetFleet = none(FleetId)
@@ -408,19 +660,83 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
     result.add(order)
 
 proc generateBuildOrders(controller: AIController, state: GameState, rng: var Rand): seq[BuildOrder] =
-  ## Generate build orders based on strategy
+  ## Generate build orders based on strategic needs and combat assessment
   result = @[]
   let p = controller.personality
   let house = state.houses[controller.houseId]
   let myColonies = getOwnedColonies(state, controller.houseId)
 
-  # Determine what to build based on treasury and strategy
-  for colony in myColonies:
-    if house.treasury < 100:
-      continue  # Not enough funds
+  # Assess military situation
+  let myMilitaryStrength = calculateMilitaryStrength(state, controller.houseId)
+  var totalEnemyStrength = 0
+  for otherHouse in state.houses.keys:
+    if otherHouse != controller.houseId:
+      let dipState = dip_types.getDiplomaticState(
+        house.diplomaticRelations,
+        otherHouse
+      )
+      if dipState == dip_types.DiplomaticState.Enemy:
+        totalEnemyStrength += calculateMilitaryStrength(state, otherHouse)
 
-    # Build infrastructure if economic focus is high
-    if p.economicFocus > 0.6 and colony.infrastructure < 10:
+  let militaryRatio = if totalEnemyStrength > 0:
+    float(myMilitaryStrength) / float(totalEnemyStrength)
+  else:
+    2.0  # No enemies, we're doing fine
+
+  # Check for threatened colonies
+  var threatenedColonies = 0
+  for colony in myColonies:
+    let combat = assessCombatSituation(controller, state, colony.systemId)
+    if combat.recommendRetreat or combat.recommendReinforce:
+      threatenedColonies += 1
+
+  # Determine build priorities
+  let needMilitary = (
+    militaryRatio < 0.8 or  # Weaker than enemies
+    threatenedColonies > 0 or  # Colonies under threat
+    p.aggression > 0.6  # Aggressive strategy
+  )
+
+  # Build at most productive colonies first
+  var coloniesToBuild = myColonies
+  coloniesToBuild.sort(proc(a, b: Colony): int = cmp(b.production, a.production))
+
+  for colony in coloniesToBuild:
+    if house.treasury < 100:
+      break  # Not enough funds
+
+    # Check if colony has shipyard for ship construction
+    let hasShipyard = colony.shipyards.len > 0
+
+    # Priority 1: Build ships if we need military strength
+    if needMilitary and hasShipyard and house.treasury >= 200:
+      # Choose ship class based on strategy and treasury
+      var shipClass: ShipClass
+
+      if house.treasury > 1000 and p.aggression > 0.7:
+        # Rich and aggressive: build capital ships
+        shipClass = if rng.rand(1.0) > 0.5: ShipClass.Battlecruiser else: ShipClass.Battleship
+      elif house.treasury > 500:
+        # Medium wealth: build cruisers
+        shipClass = if rng.rand(1.0) > 0.5: ShipClass.Cruiser else: ShipClass.HeavyCruiser
+      else:
+        # Low funds: build lighter ships
+        shipClass = if rng.rand(1.0) > 0.5: ShipClass.Destroyer else: ShipClass.LightCruiser
+
+      result.add(BuildOrder(
+        colonySystem: colony.systemId,
+        buildType: BuildType.Ship,
+        quantity: 1,
+        shipClass: some(shipClass),
+        buildingType: none(string),
+        industrialUnits: 0
+      ))
+
+      # Only one ship build per turn (expensive)
+      break
+
+    # Priority 2: Build infrastructure for economic growth
+    elif p.economicFocus > 0.6 and colony.infrastructure < 10 and house.treasury >= 150:
       result.add(BuildOrder(
         colonySystem: colony.systemId,
         buildType: BuildType.Infrastructure,
@@ -430,17 +746,31 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         industrialUnits: 1
       ))
 
-    # Build military ships if aggression is high
-    elif p.aggression > 0.5:
-      let shipClass = if rng.rand(1.0) > 0.5: ShipClass.Destroyer else: ShipClass.Cruiser
+    # Priority 3: Build defenses for threatened colonies
+    elif threatenedColonies > 0 and house.treasury >= 200:
+      # Build ground batteries at threatened colony
+      if colony.groundBatteries < 5:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Building,
+          quantity: 1,
+          shipClass: none(ShipClass),
+          buildingType: some("GroundBattery"),
+          industrialUnits: 0
+        ))
+        break
+
+    # Priority 4: Build shipyards if we don't have them
+    elif not hasShipyard and house.treasury >= 300 and p.aggression > 0.4:
       result.add(BuildOrder(
         colonySystem: colony.systemId,
-        buildType: BuildType.Ship,
+        buildType: BuildType.Building,
         quantity: 1,
-        shipClass: some(shipClass),
-        buildingType: none(string),
+        shipClass: none(ShipClass),
+        buildingType: some("Shipyard"),
         industrialUnits: 0
       ))
+      break
 
 proc generateResearchAllocation(controller: AIController, state: GameState): res_types.ResearchAllocation =
   ## Allocate research PP based on strategy
