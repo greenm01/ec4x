@@ -71,6 +71,12 @@ type
     spaceports*: seq[Spaceport]               # Ground launch facilities
     shipyards*: seq[Shipyard]                 # Orbital construction facilities
 
+    # Ground defenses (assets.md:2.4.7, 2.4.9)
+    planetaryShieldLevel*: int                # 0=none, 1-6=SLD level
+    groundBatteries*: int                     # Count of ground batteries
+    armies*: int                              # Count of army divisions (AA)
+    marines*: int                             # Count of marine divisions (MD)
+
   ConstructionProject* = object
     projectType*: BuildingType
     turnsRemaining*: int
@@ -180,7 +186,11 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     ),
     starbases: @[],  # No starbases at start
     spaceports: @[],  # No spaceports at start
-    shipyards: @[]   # No shipyards at start
+    shipyards: @[],   # No shipyards at start
+    planetaryShieldLevel: 0,  # No shield at start
+    groundBatteries: 0,  # No batteries at start
+    armies: 0,  # No armies at start
+    marines: 0  # No marines at start
   )
 
 # Game state queries
@@ -349,6 +359,30 @@ proc getTotalConstructionDocks*(colony: Colony): int =
   for shipyard in colony.shipyards:
     if not shipyard.isCrippled:
       result += shipyard.docks
+
+# Ground defense management (assets.md:2.4.7, 2.4.9)
+
+proc hasPlanetaryShield*(colony: Colony): bool =
+  ## Check if colony has an active planetary shield
+  return colony.planetaryShieldLevel > 0
+
+proc getShieldBlockChance*(shieldLevel: int): float =
+  ## Get shield block chance from config
+  ## TODO: Load from ground_units_config.toml
+  ## Placeholder values
+  case shieldLevel
+  of 1: 0.30  # SLD1: 30%
+  of 2: 0.40  # SLD2: 40%
+  of 3: 0.50  # SLD3: 50%
+  of 4: 0.60  # SLD4: 60%
+  of 5: 0.70  # SLD5: 70%
+  of 6: 0.80  # SLD6: 80%
+  else: 0.0
+
+proc getTotalGroundDefense*(colony: Colony): int =
+  ## Calculate total ground defense strength
+  ## Ground batteries + armies + marines
+  return colony.groundBatteries + colony.armies + colony.marines
 
 # Victory condition checks
 
