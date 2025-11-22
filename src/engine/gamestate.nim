@@ -23,6 +23,12 @@ type
     id*: string                   # Unique identifier
     commissionedTurn*: int        # Turn when squadron was commissioned
 
+  Starbase* = object
+    ## Orbital fortress (assets.md:2.4.4)
+    id*: string                   # Unique identifier
+    commissionedTurn*: int        # Turn when built
+    isCrippled*: bool             # Combat state (crippled starbases provide no bonuses)
+
   CapacityViolation* = object
     ## Tracks fighter capacity violations and grace period
     active*: bool                 # Is there an active violation
@@ -44,6 +50,9 @@ type
     # Fighter squadrons (assets.md:2.4.1)
     fighterSquadrons*: seq[FighterSquadron]  # Colony-based fighters
     capacityViolation*: CapacityViolation     # Capacity violation tracking
+
+    # Starbases (assets.md:2.4.4)
+    starbases*: seq[Starbase]                 # Orbital fortresses
 
   ConstructionProject* = object
     projectType*: BuildingType
@@ -151,7 +160,8 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
       violationType: "",
       turnsRemaining: 0,
       violationTurn: 0
-    )
+    ),
+    starbases: @[]  # No starbases at start
   )
 
 # Game state queries
@@ -251,12 +261,15 @@ proc getFighterInfrastructureCapacity*(colony: Colony): int =
   ## Requires 1 operational Starbase per 5 FS
   ## Per military.toml: starbase_per_fighter_squadrons = 5
   let config = globalMilitaryConfig.fighter_mechanics
-  var operationalStarbases = 0
 
   # Count operational (non-crippled) starbases
-  # TODO: Need starbase tracking on colonies
-  # For now, return unlimited capacity (will implement starbase tracking later)
-  return 999
+  var operationalStarbases = 0
+  for starbase in colony.starbases:
+    if not starbase.isCrippled:
+      operationalStarbases += 1
+
+  # Each operational starbase supports 5 fighter squadrons
+  return operationalStarbases * config.starbase_per_fighter_squadrons
 
 proc getFighterCapacity*(colony: Colony, fdMultiplier: float): int =
   ## Get effective fighter capacity (minimum of population and infrastructure limits)
@@ -273,6 +286,22 @@ proc isOverFighterCapacity*(colony: Colony, fdMultiplier: float): bool =
   let current = getCurrentFighterCount(colony)
   let capacity = getFighterCapacity(colony, fdMultiplier)
   return current > capacity
+
+# Starbase management (assets.md:2.4.4)
+
+proc getOperationalStarbaseCount*(colony: Colony): int =
+  ## Count operational (non-crippled) starbases
+  result = 0
+  for starbase in colony.starbases:
+    if not starbase.isCrippled:
+      result += 1
+
+proc getStarbaseGrowthBonus*(colony: Colony): float =
+  ## Calculate population/IU growth bonus from starbases
+  ## Per assets.md:2.4.4: 5% per operational starbase, max 15% (3 starbases)
+  let operational = getOperationalStarbaseCount(colony)
+  let bonus = float(min(operational, 3)) * 0.05  # 5% per SB, max 3
+  return bonus
 
 # Victory condition checks
 
