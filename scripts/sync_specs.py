@@ -1291,6 +1291,33 @@ def replace_inline_values_operations(content: str, combat_config: Dict[str, Any]
     return content
 
 
+def replace_inline_values_assets(content: str, espionage_config: Dict[str, Any], construction_config: Dict[str, Any]) -> str:
+    """Replace inline marker values in assets.md with values from config."""
+    import re
+
+    # Define inline value replacements for assets.md
+    replacements = {
+        'MESH_2_3': lambda: str(espionage_config['scout_detection']['mesh_2_3_scouts']),
+        'MESH_4_5': lambda: str(espionage_config['scout_detection']['mesh_4_5_scouts']),
+        'MESH_6_PLUS': lambda: str(espionage_config['scout_detection']['mesh_6_plus_scouts']),
+        'STARBASE_ELI_BONUS': lambda: str(espionage_config['scout_detection']['starbase_eli_bonus']),
+        'DOMINANT_TECH_THRESHOLD': lambda: str(int(espionage_config['scout_detection']['dominant_tech_threshold'] * 100)),
+        'MAX_ELI': lambda: str(espionage_config['scout_detection']['max_eli_level']),
+        'THRESHOLD_DICE': lambda: str(espionage_config['raider_detection']['threshold_variance_dice']),
+        'ELI_ADVANTAGE_MAJOR': lambda: str(espionage_config['raider_detection']['eli_advantage_major']),
+        'ELI_ADVANTAGE_MINOR': lambda: str(espionage_config['raider_detection']['eli_advantage_minor']),
+        'FIGHTER_SQUADRON_COST': lambda: str(construction_config['costs']['fighter_squadron_cost']),
+    }
+
+    # Replace each inline marker with plain value (removes markers)
+    for marker, value_func in replacements.items():
+        pattern = f"<!-- {marker} -->.*?<!-- /{marker} -->"
+        replacement = value_func()
+        content = re.sub(pattern, replacement, content)
+
+    return content
+
+
 def update_operations_spec(shield_table: str, combat_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any]):
     """Update docs/specs/operations.md with generated tables and inline values."""
     spec_file = Path("docs/specs/operations.md")
@@ -1315,6 +1342,48 @@ def update_operations_spec(shield_table: str, combat_config: Dict[str, Any], con
         print("✓ Updated shield effectiveness table in operations.md")
     else:
         print("⚠ Shield effectiveness table markers not found in operations.md")
+
+    # Write updated content
+    spec_file.write_text(content)
+    print(f"✓ Successfully updated {spec_file}")
+
+
+def update_assets_spec(spy_detection_table: str, raider_detection_table: str, espionage_config: Dict[str, Any], construction_config: Dict[str, Any]):
+    """Update docs/specs/assets.md with generated tables and inline values."""
+    spec_file = Path("docs/specs/assets.md")
+
+    if not spec_file.exists():
+        print(f"⚠ {spec_file} not found, skipping assets.md update")
+        return
+
+    content = spec_file.read_text()
+
+    # Replace inline values first
+    content = replace_inline_values_assets(content, espionage_config, construction_config)
+
+    # Replace spy detection table
+    spy_start = "<!-- SPY_DETECTION_TABLE_START -->"
+    spy_end = "<!-- SPY_DETECTION_TABLE_END -->"
+
+    if spy_start in content and spy_end in content:
+        start_idx = content.index(spy_start) + len(spy_start)
+        end_idx = content.index(spy_end)
+        content = content[:start_idx] + "\n" + spy_detection_table + "\n" + content[end_idx:]
+        print("✓ Updated spy scout detection table in assets.md")
+    else:
+        print("⚠ Spy detection table markers not found in assets.md")
+
+    # Replace raider detection table
+    raider_start = "<!-- RAIDER_DETECTION_TABLE_START -->"
+    raider_end = "<!-- RAIDER_DETECTION_TABLE_END -->"
+
+    if raider_start in content and raider_end in content:
+        start_idx = content.index(raider_start) + len(raider_start)
+        end_idx = content.index(raider_end)
+        content = content[:start_idx] + "\n" + raider_detection_table + "\n" + content[end_idx:]
+        print("✓ Updated raider detection table in assets.md")
+    else:
+        print("⚠ Raider detection table markers not found in assets.md")
 
     # Write updated content
     spec_file.write_text(content)
@@ -1457,6 +1526,13 @@ def main():
     shield_table = generate_shield_effectiveness_table(combat_config)
     print("✓ Generated shield effectiveness table (6 levels)")
 
+    # Generate assets tables
+    spy_detection_table = generate_spy_detection_table(espionage_config)
+    print("✓ Generated spy scout detection table (5×5 matrix)")
+
+    raider_detection_table = generate_raider_detection_table(espionage_config)
+    print("✓ Generated raider detection table (5×5 matrix)")
+
     # Update spec files
     print("\nUpdating specification documents...")
     update_reference_spec(ships_table, ground_table, spacelift_table, prestige_table, morale_table, espionage_table, penalty_table)
@@ -1466,6 +1542,7 @@ def main():
                         ter_table, ter_upgrade_table, eli_table, clk_table, sld_table,
                         cic_tech_table, fd_table, aco_table, economy_config, construction_config, military_config, tech_config)
     update_operations_spec(shield_table, combat_config, construction_config, military_config)
+    update_assets_spec(spy_detection_table, raider_detection_table, espionage_config, construction_config)
 
     print("\n" + "=" * 50)
     print("Sync complete!")

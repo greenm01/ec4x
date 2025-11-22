@@ -165,7 +165,7 @@ To commission new fighter squadrons, a colony must:
 1. Have available capacity: `Current FS < Max FS`
 2. Meet infrastructure requirement: `Operational Starbases ≥ ceil((Current FS + New FS) / 5)`
 3. Have sufficient population capacity: `floor(PU / 100) × FD ≥ (Current FS + New FS)`
-4. Have sufficient treasury: `Available PP ≥ <!-- FIGHTER_SQUADRON_COST -->20<!-- /FIGHTER_SQUADRON_COST --> × New FS`
+4. Have sufficient treasury: `Available PP ≥ 20 × New FS`
 
 Colonies in capacity violation cannot commission new fighter squadrons until the violation is resolved.
 
@@ -347,14 +347,14 @@ For a fleet with Scouts of different ELI tech levels:
 | Number of Scouts | Mesh Network Modifier |
 |:----------------:| --------------------- |
 | 1                | NA                    |
-| 2-3              | +<!-- MESH_2_3 -->1<!-- /MESH_2_3 -->                    |
-| 4-5              | +<!-- MESH_4_5 -->2<!-- /MESH_4_5 -->                    |
-| 6+               | +<!-- MESH_6_PLUS -->3<!-- /MESH_6_PLUS --> (maximum)          |
+| 2-3              | +1                    |
+| 4-5              | +2                    |
+| 6+               | +3 (maximum)          |
 
 4. Final Effective ELI Level:
-    - Combine the effective ELI level with the tech penalty and mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI<!-- MAX_ELI -->5<!-- /MAX_ELI -->.
+    - Combine the effective ELI level with the tech penalty and mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
 
-**Starbases operate as independent ELI units and receive a +<!-- STARBASE_ELI_BONUS -->2<!-- /STARBASE_ELI_BONUS --> ELI modifier against spy scouts.**
+**Starbases operate as independent ELI units and receive a +2 ELI modifier against spy scouts.**
 
 **Step 2: Randomized Detection Roll Process**
 
@@ -363,16 +363,20 @@ For a fleet with Scouts of different ELI tech levels:
 
 **Spy Detection Table**
 
+<!-- SPY_DETECTION_TABLE_START -->
 | \*Detect -> | ELI1   | ELI2   | ELI3   | ELI4   | ELI5  |
 | -----------:|:------:|:------:|:------:|:------:|:-----:|
-| Spy ELI1    | >11-13 | >6-8   | >2-4   | >0-2   | >0-1  |
-| Spy ELI2    | >15-17 | >11-13 | >6-8   | >2-4   | >0-2  |
-| Spy ELI3    | >17-19 | >15-17 | >11-13 | >6-8   | >2-4  |
-| Spy ELI4    | >18-20 | >17-19 | >15-17 | >11-13 | >6-8  |
+| Spy ELI1    | >11-13 | >6-8 | >2-4 | >0-2 | >0-1 |
+| Spy ELI2    | >15-17 | >11-13 | >6-8 | >2-4 | >0-2 |
+| Spy ELI3    | >17-19 | >15-17 | >11-13 | >6-8 | >2-4 |
+| Spy ELI4    | >18-20 | >17-19 | >15-17 | >11-13 | >6-8 |
 | Spy ELI5    | NA     | >18-20 | >17-19 | >15-17 | >11-13 |
 
+*Source: config/espionage.toml [spy_detection_table] section*
+<!-- SPY_DETECTION_TABLE_END -->
+
 3. Random Threshold Determination:
-    - Roll 1D<!-- THRESHOLD_DICE -->3<!-- /THRESHOLD_DICE --> to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
+    - Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
     - This introduces slight variability to the detection roll, adding an element of unpredictability.
 4. Roll 1D20 for the detection attempt:
     - If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
@@ -389,7 +393,7 @@ Number of units: 5
 Weighted Average: 16 / 5 = 3.2 (Round up) → ELI4
 
 Dominant Tech Level Penalty:
-More than <!-- DOMINANT_TECH_THRESHOLD -->50<!-- /DOMINANT_TECH_THRESHOLD -->% of Scouts are ELI2 (lower tech, rounded up), so  reduce by 1 → ELI3
+More than 50% of Scouts are ELI2 (lower tech, rounded up), so  reduce by 1 → ELI3
 
 Mesh Network Modifier: +2 (for 4-5 Scouts)
 Final Effective ELI Level: ELI3 + 2 = ELI5 (capped at ELI5)
@@ -456,19 +460,23 @@ Determine the effective ELI level following the same method from Step 1 in [Sect
 **Step 2: Determine Detection Threshold**
 
 Compare the final effective ELI level with the CLK level of the Raider unit:
-- If the ELI level is <!-- ELI_ADVANTAGE_MAJOR -->2<!-- /ELI_ADVANTAGE_MAJOR -->+ levels higher than the CLK level, use the lower bound detection threshold from the table below.
-- If the ELI level is equal to or only <!-- ELI_ADVANTAGE_MINOR -->1<!-- /ELI_ADVANTAGE_MINOR --> level higher than the CLK level, introduce the Random Threshold Roll (1D3) to add unpredictability.
+- If the ELI level is 2+ levels higher than the CLK level, use the lower bound detection threshold from the table below.
+- If the ELI level is equal to or only 1 level higher than the CLK level, introduce the Random Threshold Roll (1D3) to add unpredictability.
 - If the ELI level is lower than the CLK level, use the higher bound threshold, reflecting the difficulty of detection.
 
 **Detection Table (With Random Threshold Roll)**
 
+<!-- RAIDER_DETECTION_TABLE_START -->
 | Detect | CLK1   | CLK2   | CLK3   | CLK4   | CLK5   |
 | ------ |:------:|:------:|:------:|:------:|:------:|
 | ELI1   | >14-16 | >17-19 | NA     | NA     | NA     |
 | ELI2   | >10-12 | >14-16 | >17-19 | NA     | NA     |
-| ELI3   | >6-8   | >10-12 | >14-16 | >17-19 | NA     |
-| ELI4   | >3-5   | >6-8   | >10-12 | >14-16 | >17-19 |
-| ELI5   | >1-3   | >3-5   | >6-8   | >10-12 | >14-16 |
+| ELI3   | >6-8 | >10-12 | >14-16 | >17-19 | NA     |
+| ELI4   | >3-5 | >6-8 | >10-12 | >14-16 | >17-19 |
+| ELI5   | >1-3 | >3-5 | >6-8 | >10-12 | >14-16 |
+
+*Source: config/espionage.toml [raider_detection_table] section*
+<!-- RAIDER_DETECTION_TABLE_END -->
 
 **Random Threshold Roll (1D3) Application**:
 
