@@ -17,41 +17,37 @@ The turn resolution system has a **well-designed 4-phase architecture** already 
 - ✅ Economy: M5 engine integration (income + maintenance)
 - ✅ Colonization: Full prestige-based colonization
 - ✅ Diplomacy: Status timers and elimination checks
-- ⏳ Combat: Battle resolution stubbed (TODO)
-- ⏳ Building: Construction orders stubbed (TODO)
+- ✅ Combat: Battle & bombardment resolution COMPLETE (2025-11-21)
+- ✅ Building: Construction orders COMPLETE (2025-11-21)
 - ⏳ Validation: Basic framework, needs expansion
 
 ---
 
 ## 4-Phase Turn Architecture
 
-### Phase 1: Conflict Phase ✅ Partial
+### Phase 1: Conflict Phase ✅ COMPLETE
 **Purpose:** Resolve all combat before other activities
 **Why First:** Destroyed infrastructure affects production in Phase 2
 
 **Implemented:**
-- System identification (finds hostile fleet encounters)
-- Bombardment order structure (resolve.nim:441-449)
-- Battle structure (resolve.nim:419-439)
-
-**TODO:**
-- ⚠️ `resolveBattle()` - Stub function (lines 424-429)
-  - Needs to gather fleets at system
-  - Group into attackers/defenders
-  - Build BattleContext with tech levels
-  - Call combat.resolveBattle()
-  - Apply ship losses to game state
-  - Generate combat reports
-- ⚠️ `resolveBombardment()` - Stub function (lines 441-449)
-  - Needs to validate fleet location
-  - Get fleet and colony data
-  - Call combat.resolveBombardment()
-  - Apply infrastructure damage
-  - Generate events
+- ✅ System identification (finds hostile fleet encounters)
+- ✅ `resolveBattle()` - FULLY IMPLEMENTED (resolve.nim:458-606)
+  - Gathers all fleets at system
+  - Groups into attackers/defenders by ownership
+  - Converts Fleet.squadrons → CombatSquadrons → TaskForces
+  - Calls combat_engine.resolveCombat()
+  - Applies losses to game state (updates crippled, removes destroyed)
+  - Generates accurate combat reports
+- ✅ `resolveBombardment()` - FULLY IMPLEMENTED (resolve.nim:622-691)
+  - Validates fleet location and colony existence
+  - Converts squadrons to CombatSquadrons
+  - Calls conductBombardment() from ground combat system
+  - Applies infrastructure damage to colonies
+  - Generates bombardment events
 
 **Dependencies:**
-- src/engine/combat/engine.nim (exists)
-- src/engine/combat/ground.nim (exists, integrated with config)
+- ✅ src/engine/combat/engine.nim (integrated)
+- ✅ src/engine/combat/ground.nim (integrated)
 
 ---
 
@@ -76,28 +72,29 @@ The turn resolution system has a **well-designed 4-phase architecture** already 
 
 ---
 
-### Phase 3: Command Phase ✅ Mostly Complete
+### Phase 3: Command Phase ✅ COMPLETE
 **Purpose:** Execute player orders
 **Why Third:** Orders execute after income generated
 
 **Implemented:**
-- ✅ Build order processing structure (lines 244-246)
+- ✅ `resolveBuildOrders()` - FULLY IMPLEMENTED (resolve.nim:272-365)
+  - Validates colony existence and ownership
+  - Checks for existing construction in progress
+  - Converts gamestate.Colony ↔ economy.Colony
+  - Creates construction projects (ships, buildings, infrastructure)
+  - Calls construction.startConstruction()
+  - Updates game state with construction progress
+  - Generates construction started events
 - ✅ Movement order priority sorting (lines 248-263)
-- ✅ Movement execution with pathfinding (lines 279-370)
+- ✅ Movement execution with pathfinding (lines 309-428)
   - Full lane traversal rules (2-jump major lanes, 1-jump minor/restricted)
   - Ownership-based speed bonuses
   - Fleet encounter detection
-- ✅ Colonization with prestige rewards (lines 371-415)
-
-**TODO:**
-- ⚠️ `resolveBuildOrders()` - Empty stub (lines 272-277)
-  - Call economy.startConstruction() for each order
-  - Validate against treasury and production capacity
-  - Generate construction started/completed events
+- ✅ Colonization with prestige rewards (lines 429-471)
 
 **Dependencies:**
-- src/engine/economy/ (exists, partially integrated)
-- construction_config.nim (exists, ready for integration)
+- ✅ src/engine/economy/construction.nim (integrated)
+- ⏳ construction_config.nim (exists, not yet integrated - uses hardcoded values)
 
 ---
 

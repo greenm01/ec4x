@@ -279,32 +279,90 @@ proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var s
       echo "      Build order failed: colony not found at system ", order.colonySystem
       continue
 
-    var colony = state.colonies[order.colonySystem]
+    # Validate colony ownership
+    let colony = state.colonies[order.colonySystem]
+    if colony.owner != packet.houseId:
+      echo "      Build order failed: colony not owned by ", packet.houseId
+      continue
 
     # Check if colony already has construction in progress
     if colony.underConstruction.isSome:
-      echo "      Build order failed: ", order.colonySystem, " already building something"
+      echo "      Build order failed: system ", order.colonySystem, " already building something"
       continue
 
+    # Convert gamestate.Colony to economy.Colony for construction functions
+    var econColony = econ_types.Colony(
+      systemId: colony.systemId,
+      owner: colony.owner,
+      populationUnits: colony.population,
+      populationTransferUnits: 0,
+      industrial: econ_types.IndustrialUnits(
+        units: colony.infrastructure,  # Map infrastructure to IU
+        investmentCost: 30  # Base cost
+      ),
+      planetClass: colony.planetClass,
+      resources: colony.resources,
+      underConstruction: none(econ_types.ConstructionProject)
+    )
+
     # Create construction project based on build type
+    var project: econ_types.ConstructionProject
+    var projectDesc: string
+
     case order.buildType
     of BuildType.Infrastructure:
       # Infrastructure investment (IU expansion)
-      # NOTE: construction module needs economy.Colony, need to convert
-      # For now, skip infrastructure construction until Colony types are unified
-      echo "      Infrastructure construction skipped (Colony type mismatch - gamestate.Colony vs economy.Colony)"
+      let units = order.industrialUnits
+      if units <= 0:
+        echo "      Infrastructure order failed: invalid unit count ", units
+        continue
+
+      project = construction.createIndustrialProject(econColony, units)
+      projectDesc = "Industrial expansion: " & $units & " IU"
 
     of BuildType.Ship:
-      # TODO: Ship construction requires knowing WHICH ship class
-      # BuildOrder needs to be extended with shipClass field
-      # For now, skip ship construction
-      echo "      Ship construction not yet implemented (BuildOrder needs shipClass field)"
+      # Ship construction
+      if order.shipClass.isNone:
+        echo "      Ship construction failed: no ship class specified"
+        continue
+
+      let shipClass = order.shipClass.get()
+      project = construction.createShipProject(shipClass)
+      projectDesc = "Ship construction: " & $shipClass
 
     of BuildType.Building:
-      # TODO: Building construction requires knowing WHICH building type
-      # BuildOrder needs to be extended with buildingType field
-      # For now, skip building construction
-      echo "      Building construction not yet implemented (BuildOrder needs buildingType field)"
+      # Building construction
+      if order.buildingType.isNone:
+        echo "      Building construction failed: no building type specified"
+        continue
+
+      let buildingType = order.buildingType.get()
+      project = construction.createBuildingProject(buildingType)
+      projectDesc = "Building construction: " & buildingType
+
+    # Start construction
+    if construction.startConstruction(econColony, project):
+      # Convert back and update game state
+      var updatedColony = colony
+      updatedColony.underConstruction = some(gamestate.ConstructionProject(
+        projectType: gamestate.BuildingType.Shipyard,  # Placeholder - BuildingType not aligned with construction types yet
+        turnsRemaining: project.turnsRemaining,
+        cost: project.costTotal
+      ))
+      state.colonies[order.colonySystem] = updatedColony
+
+      echo "      Started construction at system ", order.colonySystem, ": ", projectDesc
+      echo "        Cost: ", project.costTotal, " PP, Est. ", project.turnsRemaining, " turns"
+
+      # Generate event
+      events.add(GameEvent(
+        eventType: GameEventType.ColonyEstablished,  # TODO: Add ConstructionStarted event type
+        houseId: packet.houseId,
+        description: "Started " & projectDesc & " at system " & $order.colonySystem,
+        systemId: some(order.colonySystem)
+      ))
+    else:
+      echo "      Construction start failed at system ", order.colonySystem
 
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =
