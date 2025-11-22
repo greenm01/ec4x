@@ -187,8 +187,9 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
     let adjustedProduction = int(float(colony.production) * blockadePenalty)
 
     if colony.blockaded:
-      echo "    Colony at system ", systemId, " blockaded: GCO reduced from ",
-           colony.production, " to ", adjustedProduction, " (-60%)"
+      let blockadersStr = colony.blockadedBy.join(", ")
+      echo "    Colony at system ", systemId, " blockaded by [", blockadersStr,
+           "]: GCO reduced from ", colony.production, " to ", adjustedProduction, " (-60%)"
 
     # Convert Colony to economy Colony type
     econColonies.add(econ_types.Colony(
