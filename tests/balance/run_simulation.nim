@@ -7,6 +7,7 @@ import std/[json, times, strformat, random, sequtils, tables, algorithm, os]
 import game_setup, ai_controller
 import ../../src/engine/[gamestate, resolve, orders]
 import ../../src/common/types/core
+import ../../src/client/reports/turn_report
 
 proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], seed: int64 = 42): JsonNode =
   ## Run a full game simulation with AI players
@@ -34,11 +35,18 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
 
   # Track game progression
   var turnSnapshots = newJArray()
+  var turnReports = newJArray()  # Store all turn reports for audit trail
+
+  # Create output directory for turn reports
+  createDir("balance_results/simulation_reports")
 
   # Run simulation for specified turns
   for turn in 1..numTurns:
     if turn mod 10 == 0:
       echo &"Turn {turn}/{numTurns}..."
+
+    # Store old state for turn report generation
+    let oldState = game
 
     # Collect orders from all AI players
     var ordersTable = initTable[HouseId, OrderPacket]()
@@ -50,9 +58,41 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
     let turnResult = resolveTurn(game, ordersTable)
     game = turnResult.newState
 
+    # Generate turn reports for each house and update AI controllers
+    var turnReportData = %* {
+      "turn": turn,
+      "reports": {}
+    }
+
+    for i, controller in controllers.mpairs:
+      # Generate turn report from this house's perspective
+      let report = generateTurnReport(oldState, turnResult, controller.houseId)
+      let formattedReport = formatReport(report)
+
+      # Store report in controller for AI context
+      controller.lastTurnReport = formattedReport
+
+      # Save report to JSON for analysis
+      let houseName = game.houses[controller.houseId].name
+      turnReportData["reports"][$controller.houseId] = %* {
+        "house": houseName,
+        "strategy": $controller.strategy,
+        "report_text": formattedReport
+      }
+
+      # Save individual turn report to file for debugging
+      if turn mod 10 == 0:
+        let reportPath = &"balance_results/simulation_reports/{houseName}_turn_{turn}.txt"
+        writeFile(reportPath, formattedReport)
+
+    # Store turn reports in audit trail
+    turnReports.add(turnReportData)
+
     # Log any significant events
-    if turn mod 10 == 0 and turnResult.events.len > 0:
+    if turn mod 10 == 0:
       echo &"  Events: {turnResult.events.len} game events occurred"
+      if turnResult.combatReports.len > 0:
+        echo &"  Battles: {turnResult.combatReports.len} combat engagements"
 
     # Capture snapshot every 10 turns
     if turn mod 10 == 0 or turn == 1:
@@ -96,7 +136,9 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       "test_id": "full_simulation",
       "timestamp": $now(),
       "engine_version": "0.1.0",
-      "test_description": "Full game simulation with AI players"
+      "test_description": "Full game simulation with AI players",
+      "includes_turn_reports": true,
+      "audit_trail_enabled": true
     },
     "config": {
       "test_name": "ai_simulation",
@@ -106,6 +148,7 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       "seed": seed
     },
     "turn_snapshots": turnSnapshots,
+    "turn_reports": turnReports,
     "outcome": {
       "victor": $houseData[0].id,
       "victory_type": "prestige",
