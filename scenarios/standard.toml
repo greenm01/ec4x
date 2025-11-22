@@ -1,0 +1,66 @@
+# EC4X Standard Scenario Configuration
+# This is the default balanced game setup for 4-player games
+#
+# Moderators can create custom scenarios by copying this file and adjusting values.
+# The game engine loads: config/*.toml (balance/mechanics) + scenarios/*.toml (setup)
+
+[game_info]
+name = "Standard Balanced Game"
+description = "Default 4-player competitive game with balanced starting conditions"
+recommended_players = 4
+estimated_duration = "4-6 hours"
+
+[victory_conditions]
+# Victory condition types: conquest, prestige, tech, time, diplomatic
+primary_condition = "conquest"      # Eliminate all other houses
+prestige_threshold = 200            # Alternative: reach 200 prestige
+tech_threshold = 10                 # Alternative: reach tech level 10 in all fields
+turn_limit = 120                    # Alternative: highest prestige at turn 120
+
+[map]
+# Map generation settings
+size = "medium"                     # small, medium, large, huge
+systems = 40                        # Number of solar systems
+jump_lane_density = "normal"        # sparse, normal, dense
+starting_distance = "balanced"      # close, balanced, far
+
+[starting_resources]
+# What each player starts with
+treasury = 1000                     # Starting Production Points
+starting_population = 5             # Starting homeworld population (PU)
+starting_infrastructure = 3         # Starting infrastructure level
+
+[starting_tech]
+# Initial technology levels (all players start equal)
+economic_level = 1                  # EL1
+science_level = 1                   # SL1
+construction_tech = 1               # CST1
+weapons_tech = 1                    # WEP1
+terraforming_tech = 1               # TER1
+electronic_intelligence = 1         # ELI1
+counter_intelligence = 1            # CIC1
+
+[starting_military]
+# Initial fleet composition
+light_cruisers = 3                  # 3x CL
+destroyers = 2                      # 2x DD
+scouts = 1                          # 1x SC
+
+[starting_facilities]
+# Homeworld starting facilities
+spaceports = 1
+shipyards = 1
+starbases = 1
+
+[homeworld]
+# Homeworld characteristics
+planet_class = "benign"             # All players start on benign worlds
+raw_quality = "abundant"            # RAW material quality
+initial_iu = 10                     # Starting Industrial Units
+
+[optional_balance_overrides]
+# Moderator can override specific balance values for this scenario only
+# Examples (commented out by default):
+# natural_growth_rate = 0.03        # 3% instead of 2% for faster game
+# research_breakthrough_base_chance = 0.15  # 15% instead of 10%
+# blockade_production_penalty = 0.80  # Harsher blockades (80% instead of 60%)
