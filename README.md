@@ -38,34 +38,38 @@ EC4X supports **two transport modes** with the same game engine:
 
 See **[Architecture Documentation](docs/architecture/overview.md)** for complete system design and implementation details.
 
-## Development Approach
+## Development Status
 
-**Offline First:** Game engine is being developed for local/hotseat multiplayer before adding Nostr integration. This ensures solid gameplay mechanics before network complexity.
+**Engine Complete - AI Training Phase**
 
-**Current Status:**
+✅ **Complete Game Engine (13 Major Systems):**
+- Combat system (space battles, ground combat, starbases)
+- Economy system (production, construction, maintenance, salvage)
+- Research system (6 tech levels, exponential costs)
+- Prestige system (18 sources, morale modifiers)
+- Espionage system (7 actions, counter-intelligence)
+- Diplomacy system (non-aggression pacts, violations)
+- Colonization system (PTU requirements, ownership tracking)
+- Victory conditions (3 types: prestige, elimination, turn limit)
+- Morale system (7 levels based on prestige)
+- Turn resolution (4-phase turn structure)
+- Fleet management (movement, merge/split operations)
+- Star map generation (procedural, 2-12 players)
+- Configuration system (13 TOML files, 2000+ parameters)
 
-✅ **Working (Offline Playable Foundation):**
-- Robust starmap generation (2-12 players)
-- Hexagonal coordinate system with procedural lane generation
-- A* pathfinding with fleet traversal rules
-- Game state types and turn resolution framework
-- Order system (16 types defined, validation framework)
-- Comprehensive test suite (58 tests, 100% passing)
-- Build system and development environment
+**Test Coverage:** 91+ integration tests passing, all systems verified
 
-🚧 **Next Phase (Complete Offline Game):**
-- Combat resolution (ship damage, battles, casualties)
-- Economy system (production, construction, research)
-- Movement integration (pathfinding + turn rules)
-- Basic TUI for order entry
-- Hotseat multiplayer support
+🤖 **Current Phase - AI Development:**
+- ✅ Strategic AI implemented (diplomacy + military decision-making)
+- ✅ Training data generation system (parallel simulations)
+- ⏳ Generating 50+ game training dataset (10,000+ examples)
+- ⏳ Model training planned (Mistral-7B fine-tuning)
 
-🔮 **Future (Network Integration):**
-- Nostr protocol implementation (crypto, events, WebSocket client)
-- Daemon (subscriber/processor/publisher for Nostr events)
-- Desktop client network integration
-- PDF/SVG map generation for hybrid tabletop play
-- Production VPS deployment
+🔮 **Future Phases:**
+- LLM inference service (llama.cpp with ROCm GPU acceleration)
+- Nim integration (HTTP API for AI player decisions)
+- UI development (TUI for order entry, game visualization)
+- Network integration (Nostr protocol, decentralized multiplayer)
 
 ## Documentation
 

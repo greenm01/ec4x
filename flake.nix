@@ -12,21 +12,34 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            # Nim development
             nim
             nimble
+
+            # Python AI development
+            python311
+            python311Packages.pip
+            python311Packages.virtualenv
           ];
           shellHook = ''
             export IN_NIX_SHELL=1
+            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
 
-            echo "EC4X Nim development shell"
+            echo "EC4X Development Shell"
+            echo "======================"
             echo "Nim version: $(nim --version | head -1)"
             echo "Nimble version: $(nimble --version)"
+            echo "Python version: $(python3.11 --version)"
             echo ""
             echo "Available commands:"
             echo "  nimble install -d  - Install dependencies"
             echo "  nimble build       - Build all components"
             echo "  nimble test        - Run tests"
             echo "  nimble tasks       - Show all available tasks"
+            echo ""
+            echo "AI Training:"
+            echo "  cd ai_training && ./setup_amd_ml.sh  - Setup ML environment"
+            echo "  python3.11 training_daemon.py        - Start continuous training"
             echo ""
             echo "Quick start:"
             echo "  nimble build"

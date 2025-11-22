@@ -106,6 +106,49 @@ combat_stats.csv
 balance_results/
 tests/balance/*.json
 tests/balance/balance_results/
+
+# AI Training and Inference (DO NOT COMMIT LARGE DATA)
+# Training data from simulations
+ai_training/training_data/
+ai_training/raw_data/
+training_data/
+*.jsonl
+
+# Model files (large)
+ai_training/models/
+ai_inference/models/
+models/
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Python virtual environments
+ai_training/venv/
+ai_inference/venv/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Model training outputs
+ai_training/ec4x-mistral-*/
+ai_training/checkpoints/
+ai_training/runs/
+ai_training/logs/
+wandb/
+
+# llama.cpp build artifacts
+llama.cpp/build/
+llama.cpp/models/*.gguf
+llama.cpp/*.exe
+llama.cpp/*.dll
+llama.cpp/*.so
+llama.cpp/server
+llama.cpp/quantize
+llama.cpp/main
 tests/scenarios/balance/asymmetric_warfare
 tests/integration/test_fleet_movement
 src/engine/resolve
