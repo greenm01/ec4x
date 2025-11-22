@@ -56,13 +56,17 @@ suite "GCO Calculation (economy.md:3.1)":
     check gco >= 150
 
   test "Economic Level modifier effect":
-    # EL1 should give ~10% bonus
+    # EL1 should give 5% bonus (per economy.md:4.2 - "5% per level")
     let elMod1 = getEconomicLevelModifier(1)
-    check elMod1 > 1.0 and elMod1 <= 1.2
+    check elMod1 == 1.05
 
-    # EL5 should give ~50% bonus
+    # EL5 should give 25% bonus (5% × 5 levels = 25%)
     let elMod5 = getEconomicLevelModifier(5)
-    check elMod5 > 1.4 and elMod5 <= 1.6
+    check elMod5 == 1.25
+
+    # EL10 should give 50% bonus (maximum per spec)
+    let elMod10 = getEconomicLevelModifier(10)
+    check elMod10 == 1.50
 
   test "Tax rate affects productivity growth":
     # High tax (100%) should give negative growth

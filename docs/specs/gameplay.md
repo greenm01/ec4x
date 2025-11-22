@@ -36,7 +36,18 @@ Generate a star-map as described in [Section 2.1](assets.md#21-star-map) for the
 
 Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
 
-Tech levels start at: EL1, SL1, CST1, WEP1, TER1, ELI1, and CIC1.
+**CRITICAL: All technology levels start at level 1, not level 0.** Starting tech levels are:
+- **EL1** (Economic Level) - 5% production bonus
+- **SL1** (Shield Level) - Base defensive capability
+- **CST1** (Construction Tech) - Base shipyard capability
+- **WEP1** (Weapons Tech) - Base combat strength
+- **TER1** (Terraforming Tech) - Base terraforming capability
+- **ELI1** (Electronic Intelligence) - Base spy scout capability
+- **CIC1** (Counter-Intelligence) - Base espionage detection
+- **FD I** (Fighter Doctrine) - 1.0x fighter capacity multiplier
+- **ACO I** (Advanced Carrier Operations) - Base carrier capacity (CV=3FS, CX=5FS)
+
+See [Section 4.2](economy.md#42-economic-level-el) for EL modifiers, [Section 9.11](reference.md#911-technology-research) for tech advancement costs, and carrier capacity tables in economy.md for ACO details. Starting tech values are configured in `config/gameplay.toml`.
 
 ## 1.3 Turns
 
