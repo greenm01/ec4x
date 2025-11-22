@@ -1279,4 +1279,12 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   if victorOpt.isSome:
     let victorId = victorOpt.get()
     state.phase = GamePhase.Completed
-    echo "  *** ", state.houses[victorId].name, " has won the game! ***"
+
+    # Find victor by house id (handle case where table key != house.id)
+    var victorName = "Unknown"
+    for houseId, house in state.houses:
+      if house.id == victorId:
+        victorName = house.name
+        break
+
+    echo "  *** ", victorName, " has won the game! ***"
