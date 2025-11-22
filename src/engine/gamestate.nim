@@ -4,7 +4,7 @@ import std/[tables, options, strutils]
 import ../common/[hex, system]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
-import config/[prestige_config, military_config, gameplay_config]
+import config/[prestige_config, military_config, tech_config]
 import diplomacy/types as dip_types
 import espionage/types as esp_types
 
@@ -165,8 +165,8 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
 
 proc initializeHouse*(name: string, color: string): House =
   ## Create a new house with starting resources
-  ## Per gameplay.md:1.2: "Tech levels start at: EL1, SL1, CST1, WEP1, TER1, ELI1, and CIC1."
-  let startingTech = globalGameplayConfig.starting_tech
+  ## Per economy.md:4.0: "ALL technology levels start at level 1, never 0"
+  let startingTech = globalTechConfig.starting_tech
 
   result = House(
     id: "house-" & name.toLower(),
