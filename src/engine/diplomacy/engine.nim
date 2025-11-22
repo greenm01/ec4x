@@ -92,17 +92,17 @@ proc recordViolation*(history: var ViolationHistory, violator: HouseId,
 
   history.violations.add(result)
 
-  # Activate dishonored status (3 turns)
+  # Activate dishonored status
   history.dishonored = DishonoredStatus(
     active: true,
-    turnsRemaining: DISHONORED_DURATION,
+    turnsRemaining: dishonoredDuration(),
     violationTurn: turn
   )
 
-  # Activate diplomatic isolation (5 turns)
+  # Activate diplomatic isolation
   history.isolation = DiplomaticIsolation(
     active: true,
-    turnsRemaining: ISOLATION_DURATION,
+    turnsRemaining: isolationDuration(),
     violationTurn: turn
   )
 
@@ -112,17 +112,17 @@ proc applyViolationPenalties*(violator: HouseId, victim: HouseId,
   ## Per diplomacy.md:8.1.2
   var events: seq[PrestigeEvent] = @[]
 
-  # Base violation penalty: -5 prestige
+  # Base violation penalty
   events.add(createPrestigeEvent(
     PrestigeSource.PactViolation,
-    VIOLATION_PRESTIGE_PENALTY,
+    violationPrestigePenalty(),
     "Violated Non-Aggression Pact with " & $victim
   ))
 
-  # Repeat violation penalties: -3 per repeat within 10 turns
+  # Repeat violation penalties
   let repeatCount = countRecentViolations(history, turn) - 1  # -1 for current violation
   if repeatCount > 0:
-    let repeatPenalty = VIOLATION_PRESTIGE_REPEAT * repeatCount
+    let repeatPenalty = violationRepeatPenalty() * repeatCount
     events.add(createPrestigeEvent(
       PrestigeSource.PactViolation,
       repeatPenalty,
@@ -190,7 +190,7 @@ proc getDishonoredBonus*(attackerHouse: HouseId, defenderHouse: HouseId,
   if defenderHistory.dishonored.active:
     return some(createPrestigeEvent(
       PrestigeSource.CombatVictory,
-      DISHONORED_BONUS_PRESTIGE,
+      dishonoredBonusPrestige(),
       "Attacked dishonored house " & $defenderHouse
     ))
 

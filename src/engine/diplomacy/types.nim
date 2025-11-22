@@ -10,10 +10,12 @@
 import std/[tables, options]
 import ../../common/types/[core, diplomacy]
 import ../prestige
+import ../config/[prestige_config, diplomacy_config]
 
 export core.HouseId
 export diplomacy.DiplomaticState
 export prestige.PrestigeEvent
+export diplomacy_config.globalDiplomacyConfig
 
 type
   ## Diplomatic Relations
@@ -73,21 +75,36 @@ type
     events*: seq[DiplomaticEvent]
     violations*: seq[ViolationRecord]
 
-## Constants per diplomacy.md:8.1.2
+## Configuration accessors per diplomacy.md:8.1.2
+## Values loaded from diplomacy.toml and prestige.toml
 
-const
-  # Violation penalties
-  VIOLATION_PRESTIGE_PENALTY* = -5
-  VIOLATION_PRESTIGE_REPEAT* = -3
-  VIOLATION_REPEAT_WINDOW* = 10  # Turns
+proc dishonoredDuration*(): int =
+  ## Get dishonored status duration from config
+  globalDiplomacyConfig.pact_violations.dishonored_status_turns
 
-  # Dishonored status
-  DISHONORED_DURATION* = 3  # Turns
-  DISHONORED_BONUS_PRESTIGE* = 1  # For attacking dishonored house
+proc isolationDuration*(): int =
+  ## Get diplomatic isolation duration from config
+  globalDiplomacyConfig.pact_violations.diplomatic_isolation_turns
 
-  # Diplomatic isolation
-  ISOLATION_DURATION* = 5  # Turns
-  PACT_REINSTATEMENT_COOLDOWN* = 5  # Turns before can re-establish with same house
+proc pactReinstatementCooldown*(): int =
+  ## Get pact reinstatement cooldown from config
+  globalDiplomacyConfig.pact_violations.pact_reinstatement_cooldown
+
+proc violationRepeatWindow*(): int =
+  ## Get repeat violation window from config
+  globalDiplomacyConfig.pact_violations.repeat_violation_window
+
+proc violationPrestigePenalty*(): int =
+  ## Get violation prestige penalty from prestige config
+  globalPrestigeConfig.diplomacy.pact_violation
+
+proc violationRepeatPenalty*(): int =
+  ## Get repeat violation prestige penalty from prestige config
+  globalPrestigeConfig.diplomacy.repeat_violation
+
+proc dishonoredBonusPrestige*(): int =
+  ## Get dishonored bonus prestige from prestige config
+  globalPrestigeConfig.diplomacy.dishonored_bonus
 
 ## Helper Procs
 
@@ -145,13 +162,13 @@ proc canReinstatePact*(history: ViolationHistory, otherHouse: HouseId, currentTu
   for violation in history.violations:
     if violation.victim == otherHouse:
       let turnsSince = currentTurn - violation.turn
-      if turnsSince < PACT_REINSTATEMENT_COOLDOWN:
+      if turnsSince < pactReinstatementCooldown():
         return false
   return true
 
 proc countRecentViolations*(history: ViolationHistory, currentTurn: int): int =
-  ## Count violations within repeat window (10 turns)
+  ## Count violations within repeat window
   result = 0
   for violation in history.violations:
-    if currentTurn - violation.turn <= VIOLATION_REPEAT_WINDOW:
+    if currentTurn - violation.turn <= violationRepeatWindow():
       result += 1
