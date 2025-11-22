@@ -73,11 +73,11 @@ suite "Diplomacy System":
 
     # Check dishonored status activated
     check history.dishonored.active
-    check history.dishonored.turnsRemaining == DISHONORED_DURATION
+    check history.dishonored.turnsRemaining == dishonoredDuration()
 
     # Check isolation activated
     check history.isolation.active
-    check history.isolation.turnsRemaining == ISOLATION_DURATION
+    check history.isolation.turnsRemaining == isolationDuration()
 
   test "Pact violation applies prestige penalties":
     var history = initViolationHistory()
@@ -91,7 +91,7 @@ suite "Diplomacy System":
     # Should have at least base penalty
     check events.len >= 1
     check events[0].source == PrestigeSource.PactViolation
-    check events[0].amount == VIOLATION_PRESTIGE_PENALTY  # -5
+    check events[0].amount == violationPrestigePenalty()  # -5
 
   test "Repeat violations incur additional penalties":
     var history = initViolationHistory()
@@ -106,8 +106,8 @@ suite "Diplomacy System":
 
     # Should have base penalty + repeat penalty
     check events.len == 2
-    check events[0].amount == VIOLATION_PRESTIGE_PENALTY  # -5
-    check events[1].amount == VIOLATION_PRESTIGE_REPEAT   # -3 (1 repeat)
+    check events[0].amount == violationPrestigePenalty()  # -5
+    check events[1].amount == violationRepeatPenalty()   # -3 (1 repeat)
 
   test "Combat violation automatically converts to Enemy":
     var relations = initDiplomaticRelations()
@@ -147,7 +147,7 @@ suite "Diplomacy System":
 
     check bonusOpt.isSome
     let bonus = bonusOpt.get()
-    check bonus.amount == DISHONORED_BONUS_PRESTIGE  # +1
+    check bonus.amount == dishonoredBonusPrestige()  # +1
     check bonus.source == PrestigeSource.CombatVictory
 
   test "Diplomatic status updates each turn":
