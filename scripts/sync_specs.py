@@ -640,6 +640,50 @@ def generate_colonization_cost_table(economy_config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def generate_maintenance_shortfall_table(prestige_config: Dict[str, Any]) -> str:
+    """Generate maintenance shortfall prestige penalty table from prestige.toml."""
+    penalties = prestige_config.get('penalties', {})
+
+    base = penalties.get('maintenance_shortfall_base', -5)
+    increment = penalties.get('maintenance_shortfall_increment', -2)
+
+    lines = [
+        "| Consecutive Turns of Missed Full Upkeep | Prestige Loss This Turn | Cumulative Example |",
+        "|-----------------------------------------|-------------------------|--------------------|",
+    ]
+
+    # Calculate penalties for 4 rows
+    cumulative = 0
+    for turn in range(1, 5):
+        if turn == 1:
+            penalty = base
+            turn_label = "1st turn"
+        elif turn == 2:
+            penalty = base + (increment * (turn - 1))
+            turn_label = "2nd consecutive turn"
+        elif turn == 3:
+            penalty = base + (increment * (turn - 1))
+            turn_label = "3rd consecutive turn"
+        else:
+            penalty = base + (increment * (turn - 1))
+            turn_label = "4th+ consecutive turn"
+
+        cumulative += penalty
+
+        if turn == 4:
+            # For 4th+ show example progression
+            next_cumulative = cumulative + penalty
+            next_next = next_cumulative + penalty
+            lines.append(f"| {turn_label:<39} | {penalty:>23} per turn | –{abs(cumulative)}, –{abs(next_cumulative)}, etc. {' ':<6}|")
+        else:
+            lines.append(f"| {turn_label:<39} | {penalty:>23} | {cumulative:>18} |")
+
+    lines.append("")
+    lines.append("*Source: config/prestige.toml [penalties] section*")
+
+    return "\n".join(lines)
+
+
 # ============================================================================
 # Technology Table Generators
 # ============================================================================
@@ -996,10 +1040,10 @@ def update_diplomacy_spec(espionage_prestige_table: str, cic_modifier_table: str
 
 
 def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_table: str,
-                        iu_table: str, colonization_table: str, el_table: str, sl_table: str,
-                        cst_table: str, wep_table: str, ter_table: str, ter_upgrade_table: str,
-                        eli_table: str, clk_table: str, sld_table: str, cic_table: str,
-                        fd_table: str, aco_table: str):
+                        iu_table: str, colonization_table: str, maintenance_shortfall_table: str,
+                        el_table: str, sl_table: str, cst_table: str, wep_table: str,
+                        ter_table: str, ter_upgrade_table: str, eli_table: str, clk_table: str,
+                        sld_table: str, cic_table: str, fd_table: str, aco_table: str):
     """Update docs/specs/economy.md with generated tables."""
     spec_file = Path("docs/specs/economy.md")
 
@@ -1016,6 +1060,7 @@ def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_ta
         "TAX_INCENTIVE_TABLE": (tax_incentive_table, "tax incentive table"),
         "IU_INVESTMENT_TABLE": (iu_table, "IU investment table"),
         "COLONIZATION_COST_TABLE": (colonization_table, "colonization cost table"),
+        "MAINTENANCE_SHORTFALL_TABLE": (maintenance_shortfall_table, "maintenance shortfall penalty table"),
         "ECONOMIC_LEVEL_TABLE": (el_table, "Economic Level (EL) table"),
         "SCIENCE_LEVEL_TABLE": (sl_table, "Science Level (SL) table"),
         "CST_TABLE": (cst_table, "Construction (CST) table"),
@@ -1128,6 +1173,9 @@ def main():
     colonization_table = generate_colonization_cost_table(economy_config)
     print("✓ Generated colonization cost table (7 planet classes)")
 
+    maintenance_shortfall_table = generate_maintenance_shortfall_table(prestige_config)
+    print("✓ Generated maintenance shortfall penalty table (4 tiers)")
+
     # Generate tech tables
     el_table = generate_economic_level_table(tech_config)
     print("✓ Generated Economic Level (EL) table (11 levels)")
@@ -1170,8 +1218,9 @@ def main():
     update_reference_spec(ships_table, ground_table, spacelift_table, prestige_table, morale_table, espionage_table, penalty_table)
     update_diplomacy_spec(espionage_prestige_table, cic_modifier_table, cic_threshold_table)
     update_economy_spec(raw_table, tax_penalty_table, tax_incentive_table, iu_table, colonization_table,
-                        el_table, sl_table, cst_table, wep_table, ter_table, ter_upgrade_table,
-                        eli_table, clk_table, sld_table, cic_tech_table, fd_table, aco_table)
+                        maintenance_shortfall_table, el_table, sl_table, cst_table, wep_table,
+                        ter_table, ter_upgrade_table, eli_table, clk_table, sld_table,
+                        cic_tech_table, fd_table, aco_table)
 
     print("\n" + "=" * 50)
     print("Sync complete!")

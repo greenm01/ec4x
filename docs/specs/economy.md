@@ -275,15 +275,19 @@ Upkeep is deducted automatically from the House treasury. If the treasury contai
    - Starbases (salvaged for 25 % PC)
    - Ground defences and shields last
 
-**Prestige Penalties for Missing Maintenance**  
+**Prestige Penalties for Missing Maintenance**
 Missing full upkeep (i.e., any forced disbanding or asset stripping occurs) triggers escalating prestige losses applied at the end of the Maintenance Phase:
 
+<!-- MAINTENANCE_SHORTFALL_TABLE_START -->
 | Consecutive Turns of Missed Full Upkeep | Prestige Loss This Turn | Cumulative Example |
 |-----------------------------------------|-------------------------|--------------------|
-| 1st turn                                | –5                      | –5                 |
-| 2nd consecutive turn                    | –7                      | –12                |
-| 3rd consecutive turn                    | –9                      | –21                |
-| 4th+ consecutive turn                   | –11 per turn            | –32, –43, etc.     |
+| 1st turn                                |                      -5 |                 -5 |
+| 2nd consecutive turn                    |                      -7 |                -12 |
+| 3rd consecutive turn                    |                      -9 |                -21 |
+| 4th+ consecutive turn                   |                     -11 per turn | –32, –43, etc.       |
+
+*Source: config/prestige.toml [penalties] section*
+<!-- MAINTENANCE_SHORTFALL_TABLE_END -->
 
 The counter resets only after a turn of **full upkeep payment with no forced disbanding**.
 
