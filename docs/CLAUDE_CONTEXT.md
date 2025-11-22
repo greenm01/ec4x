@@ -57,19 +57,36 @@ tests/
 
 ## Configuration System
 
-**All game balance values come from TOML files:**
+**IMPORTANT:** See `docs/CONFIG_SYSTEM.md` for complete architecture details.
+
+**All game balance values come from TOML files (13 total):**
 - `config/prestige.toml` - Prestige event values
 - `config/espionage.toml` - Espionage costs, effects, detection
-- More configs as systems added
+- `config/economy.toml`, `config/tech.toml`, `config/combat.toml`, etc.
+- `game_setup/standard.toml` - Starting conditions (scenario files)
 
-**Code pattern:**
+**Config loaders use toml_serialization for type-safety:**
 ```nim
-# Load config
-let config = globalPrestigeConfig  # Auto-loads from TOML
+# Config loader (in src/engine/config/)
+import toml_serialization
 
-# Use config values
-result.prestige = config.techAdvancement  # NOT hardcoded +2
+type
+  PrestigeConfig* = object
+    victory*: VictoryConfig
+    economic*: EconomicPrestigeConfig
+    # ... nested structure matches TOML sections
+
+var globalPrestigeConfig* = loadPrestigeConfig()
+
+# Usage in engine code
+result.prestige = config.economic.tech_advancement  # NOT hardcoded +2
 ```
+
+**Key conventions:**
+- TOML field names use `snake_case`
+- Nim field names match TOML exactly (e.g., `tech_advancement*: int`)
+- Config structure is nested matching TOML sections
+- Global config instances auto-load at module import
 
 ---
 
