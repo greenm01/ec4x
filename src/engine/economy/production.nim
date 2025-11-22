@@ -14,30 +14,68 @@
 import std/math
 import types
 import ../../common/types/planets
+import ../config/economy_config
 
 export types.ProductionOutput
 
 ## RAW INDEX Table (economy.md:3.1)
 
-const RAW_INDEX_TABLE = [
-  # Format: [resource_rating][planet_class] = percentage (0.0-1.4)
-  # Rows: Very Poor, Poor, Abundant, Rich, Very Rich
-  # Cols: Extreme, Desolate, Hostile, Harsh, Benign, Lush, Eden
-  # (Enum order: Extreme=0, Desolate=1, ..., Eden=6)
-
-  [0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60],  # Very Poor
-  [0.62, 0.63, 0.64, 0.65, 0.70, 0.75, 0.80],  # Poor (reversed from spec)
-  [0.64, 0.66, 0.68, 0.70, 0.80, 0.90, 1.00],  # Abundant (reversed from spec)
-  [0.66, 0.69, 0.72, 0.75, 0.90, 1.05, 1.20],  # Rich (reversed from spec)
-  [0.68, 0.72, 0.76, 0.80, 1.00, 1.20, 1.40],  # Very Rich (reversed from spec)
-]
-
 proc getRawIndex*(planetClass: PlanetClass, resources: ResourceRating): float =
-  ## Get RAW INDEX modifier from table
+  ## Get RAW INDEX modifier from config
   ## Returns percentage modifier (0.60 - 1.40)
-  let resourceIdx = ord(resources)
-  let planetIdx = ord(planetClass)
-  return RAW_INDEX_TABLE[resourceIdx][planetIdx]
+  ##
+  ## Uses config/economy.toml raw_material_efficiency section
+  let cfg = globalEconomyConfig.raw_material_efficiency
+
+  # Map enum values to config fields
+  # ResourceRating: VeryPoor=0, Poor=1, Abundant=2, Rich=3, VeryRich=4
+  # PlanetClass: Extreme=0, Desolate=1, Hostile=2, Harsh=3, Benign=4, Lush=5, Eden=6
+  case resources
+  of ResourceRating.VeryPoor:
+    case planetClass
+    of PlanetClass.Extreme: return cfg.very_poor_extreme
+    of PlanetClass.Desolate: return cfg.very_poor_desolate
+    of PlanetClass.Hostile: return cfg.very_poor_hostile
+    of PlanetClass.Harsh: return cfg.very_poor_harsh
+    of PlanetClass.Benign: return cfg.very_poor_benign
+    of PlanetClass.Lush: return cfg.very_poor_lush
+    of PlanetClass.Eden: return cfg.very_poor_eden
+  of ResourceRating.Poor:
+    case planetClass
+    of PlanetClass.Extreme: return cfg.poor_extreme
+    of PlanetClass.Desolate: return cfg.poor_desolate
+    of PlanetClass.Hostile: return cfg.poor_hostile
+    of PlanetClass.Harsh: return cfg.poor_harsh
+    of PlanetClass.Benign: return cfg.poor_benign
+    of PlanetClass.Lush: return cfg.poor_lush
+    of PlanetClass.Eden: return cfg.poor_eden
+  of ResourceRating.Abundant:
+    case planetClass
+    of PlanetClass.Extreme: return cfg.abundant_extreme
+    of PlanetClass.Desolate: return cfg.abundant_desolate
+    of PlanetClass.Hostile: return cfg.abundant_hostile
+    of PlanetClass.Harsh: return cfg.abundant_harsh
+    of PlanetClass.Benign: return cfg.abundant_benign
+    of PlanetClass.Lush: return cfg.abundant_lush
+    of PlanetClass.Eden: return cfg.abundant_eden
+  of ResourceRating.Rich:
+    case planetClass
+    of PlanetClass.Extreme: return cfg.rich_extreme
+    of PlanetClass.Desolate: return cfg.rich_desolate
+    of PlanetClass.Hostile: return cfg.rich_hostile
+    of PlanetClass.Harsh: return cfg.rich_harsh
+    of PlanetClass.Benign: return cfg.rich_benign
+    of PlanetClass.Lush: return cfg.rich_lush
+    of PlanetClass.Eden: return cfg.rich_eden
+  of ResourceRating.VeryRich:
+    case planetClass
+    of PlanetClass.Extreme: return cfg.very_rich_extreme
+    of PlanetClass.Desolate: return cfg.very_rich_desolate
+    of PlanetClass.Hostile: return cfg.very_rich_hostile
+    of PlanetClass.Harsh: return cfg.very_rich_harsh
+    of PlanetClass.Benign: return cfg.very_rich_benign
+    of PlanetClass.Lush: return cfg.very_rich_lush
+    of PlanetClass.Eden: return cfg.very_rich_eden
 
 proc getEconomicLevelModifier*(techLevel: int): float =
   ## Get EL_MOD from tech level
