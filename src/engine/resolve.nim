@@ -8,7 +8,7 @@ import std/[tables, algorithm, options, random, strformat, sequtils, strutils, h
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap, squadron
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
-import research/[types as res_types, advancement, costs]
+import research/[types as res_types, advancement, costs as res_costs]
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
@@ -440,23 +440,45 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
   # Process research allocation
   # Per economy.md:4.0: Players allocate PP to research each turn
-  # Research points accumulate in tech tree until spent on upgrades
+  # PP is converted to ERP/SRP/TRP based on current tech levels and GHO
   for houseId in state.houses.keys:
     if houseId in orders:
       let packet = orders[houseId]
+      let allocation = packet.researchAllocation
 
-      # Process research allocation for each tech field
-      for field, ppAllocation in packet.researchAllocation:
-        if ppAllocation > 0:
-          # Add to accumulated research points
-          # TODO: Apply espionage effects (SRP reduction)
-          # TODO: Validate against available production (currently no validation)
-          if field notin state.houses[houseId].techTree.accumulated.technology:
-            state.houses[houseId].techTree.accumulated.technology[field] = 0
-          state.houses[houseId].techTree.accumulated.technology[field] += ppAllocation
+      # Calculate GHO for this house
+      var gho = 0
+      for colony in state.colonies.values:
+        if colony.owner == houseId:
+          gho += colony.production
 
-          echo "      ", houseId, " allocated ", ppAllocation, " PP to ", field,
-               " (total: ", state.houses[houseId].techTree.accumulated.technology[field], " RP)"
+      # Get current tech levels
+      let currentSL = state.houses[houseId].techTree.levels.shieldLevel  # Science Level
+
+      # Convert PP allocations to RP
+      let earnedRP = res_costs.allocateResearch(allocation, gho, currentSL)
+
+      # Accumulate RP
+      state.houses[houseId].techTree.accumulated.economic += earnedRP.economic
+      state.houses[houseId].techTree.accumulated.science += earnedRP.science
+
+      for field, trp in earnedRP.technology:
+        if field notin state.houses[houseId].techTree.accumulated.technology:
+          state.houses[houseId].techTree.accumulated.technology[field] = 0
+        state.houses[houseId].techTree.accumulated.technology[field] += trp
+
+      # Log allocations
+      if allocation.economic > 0:
+        echo "      ", houseId, " allocated ", allocation.economic, " PP → ", earnedRP.economic, " ERP",
+             " (total: ", state.houses[houseId].techTree.accumulated.economic, " ERP)"
+      if allocation.science > 0:
+        echo "      ", houseId, " allocated ", allocation.science, " PP → ", earnedRP.science, " SRP",
+             " (total: ", state.houses[houseId].techTree.accumulated.science, " SRP)"
+      for field, pp in allocation.technology:
+        if pp > 0 and field in earnedRP.technology:
+          let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
+          echo "      ", houseId, " allocated ", pp, " PP → ", earnedRP.technology[field], " TRP (", field, ")",
+               " (total: ", totalTRP, " TRP)"
 
 ## Phase 3: Command
 
@@ -1508,16 +1530,49 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   if isUpgradeTurn(state.turn):
     echo "  Tech Advancement (Upgrade Turn)"
     for houseId, house in state.houses.mpairs:
-      # Try to advance each tech field with accumulated research
-      for field in [TechField.EnergyLevel, TechField.ShieldLevel,
-                    TechField.ConstructionTech, TechField.WeaponsTech,
+      # Try to advance Economic Level (EL) with accumulated ERP
+      let currentEL = house.techTree.levels.energyLevel
+      let elAdv = attemptELAdvancement(house.techTree, currentEL)
+      if elAdv.isSome:
+        let adv = elAdv.get()
+        echo "    ", house.name, ": EL ", adv.fromLevel, " → ", adv.toLevel,
+             " (spent ", adv.cost, " ERP)"
+        if adv.prestigeEvent.isSome:
+          house.prestige += adv.prestigeEvent.get().amount
+          echo "      +", adv.prestigeEvent.get().amount, " prestige"
+        events.add(GameEvent(
+          eventType: GameEventType.TechAdvance,
+          houseId: houseId,
+          description: &"Economic Level advanced to {adv.toLevel}",
+          systemId: none(SystemId)
+        ))
+
+      # Try to advance Science Level (SL) with accumulated SRP
+      let currentSL = house.techTree.levels.shieldLevel
+      let slAdv = attemptSLAdvancement(house.techTree, currentSL)
+      if slAdv.isSome:
+        let adv = slAdv.get()
+        echo "    ", house.name, ": SL ", adv.fromLevel, " → ", adv.toLevel,
+             " (spent ", adv.cost, " SRP)"
+        if adv.prestigeEvent.isSome:
+          house.prestige += adv.prestigeEvent.get().amount
+          echo "      +", adv.prestigeEvent.get().amount, " prestige"
+        events.add(GameEvent(
+          eventType: GameEventType.TechAdvance,
+          houseId: houseId,
+          description: &"Science Level advanced to {adv.toLevel}",
+          systemId: none(SystemId)
+        ))
+
+      # Try to advance technology fields with accumulated TRP
+      for field in [TechField.ConstructionTech, TechField.WeaponsTech,
                     TechField.TerraformingTech, TechField.ElectronicIntelligence,
                     TechField.CounterIntelligence]:
         let advancement = attemptTechAdvancement(house.techTree, field)
         if advancement.isSome:
           let adv = advancement.get()
           echo "    ", house.name, ": ", field, " ", adv.fromLevel, " → ", adv.toLevel,
-               " (spent ", adv.cost, " RP)"
+               " (spent ", adv.cost, " TRP)"
 
           # Apply prestige if available
           if adv.prestigeEvent.isSome:

@@ -7,6 +7,7 @@ import std/[tables, options, random, sequtils, strformat, algorithm]
 import ../../src/engine/[gamestate, orders, fleet, squadron, starmap]
 import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
+import ../../src/engine/research/types as res_types
 
 type
   AIStrategy* {.pure.} = enum
@@ -255,10 +256,18 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         industrialUnits: 0
       ))
 
-proc generateResearchAllocation(controller: AIController, state: GameState): Table[TechField, int] =
-  ## Allocate research points based on strategy
-  ## Research costs PP (production), not IU (treasury)
-  result = initTable[TechField, int]()
+proc generateResearchAllocation(controller: AIController, state: GameState): res_types.ResearchAllocation =
+  ## Allocate research PP based on strategy
+  ## Per economy.md:4.0:
+  ##   - Economic Level (EL) purchased with ERP
+  ##   - Science Level (SL) purchased with SRP
+  ##   - Technologies (CST, WEP, etc.) purchased with TRP
+  result = res_types.ResearchAllocation(
+    economic: 0,
+    science: 0,
+    technology: initTable[TechField, int]()
+  )
+
   let p = controller.personality
   let house = state.houses[controller.houseId]
 
@@ -273,20 +282,39 @@ proc generateResearchAllocation(controller: AIController, state: GameState): Tab
   let researchBudget = int(float(totalProduction) * p.techPriority)
 
   if researchBudget > 0:
-    # Distribute research across fields based on strategy
+    # Distribute research budget across EL/SL/TRP based on strategy
     if p.techPriority > 0.6:
-      # Heavy research investment - distribute across multiple fields
-      result[TechField.EnergyLevel] = researchBudget div 3
-      result[TechField.WeaponsTech] = if p.aggression > 0.5: researchBudget div 3 else: researchBudget div 6
-      result[TechField.ShieldLevel] = researchBudget div 6
-      result[TechField.ConstructionTech] = researchBudget div 6
+      # Heavy research investment - balance across all three categories
+      result.economic = researchBudget div 3        # 33% to EL
+      result.science = researchBudget div 4         # 25% to SL
+
+      # Remaining ~42% to technologies
+      let techBudget = researchBudget - result.economic - result.science
+      if p.aggression > 0.5:
+        # Aggressive: focus on weapons
+        result.technology[TechField.WeaponsTech] = techBudget div 2
+        result.technology[TechField.ConstructionTech] = techBudget div 4
+        result.technology[TechField.ElectronicIntelligence] = techBudget div 4
+      else:
+        # Peaceful: focus on infrastructure
+        result.technology[TechField.ConstructionTech] = techBudget div 2
+        result.technology[TechField.TerraformingTech] = techBudget div 4
+        result.technology[TechField.CounterIntelligence] = techBudget div 4
+
     elif p.techPriority > 0.4:
-      # Moderate research - focus on key fields
-      result[TechField.EnergyLevel] = researchBudget div 2
-      result[TechField.WeaponsTech] = if p.aggression > 0.5: researchBudget div 2 else: 0
+      # Moderate research - focus on fundamentals (EL/SL)
+      result.economic = researchBudget div 2        # 50% to EL
+      result.science = researchBudget div 3         # 33% to SL
+
+      # Remaining ~17% to one key tech
+      let techBudget = researchBudget - result.economic - result.science
+      if p.aggression > 0.5:
+        result.technology[TechField.WeaponsTech] = techBudget
+      else:
+        result.technology[TechField.ConstructionTech] = techBudget
     else:
-      # Minimal research - just energy
-      result[TechField.EnergyLevel] = researchBudget
+      # Minimal research - just EL for economic growth
+      result.economic = researchBudget
 
 proc generateDiplomaticActions(controller: AIController, state: GameState, rng: var Rand): seq[DiplomaticAction] =
   ## Generate diplomatic actions based on strategy
