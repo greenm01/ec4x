@@ -524,8 +524,31 @@ proc executeSpyPlanetOrder(
     )
 
   # Deploy spy scout
-  # TODO: Add SpyScout to GameState tracking
   let targetSystem = order.targetSystem.get()
+
+  # Create spy scout and add to game state
+  let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
+  let spyScout = SpyScout(
+    id: spyId,
+    owner: fleet.owner,
+    location: targetSystem,
+    eliLevel: scoutELI,
+    mission: SpyMissionType.SpyOnPlanet,
+    commissionedTurn: state.turn,
+    detected: false
+  )
+
+  state.spyScouts[spyId] = spyScout
+
+  # Remove scout from fleet (it operates independently now)
+  var updatedFleet = fleet
+  for i in 0..<updatedFleet.squadrons.len:
+    if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
+      updatedFleet.squadrons.delete(i)
+      break
+
+  # Update fleet in game state
+  state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,
@@ -574,7 +597,30 @@ proc executeHackStarbaseOrder(
   let targetSystem = order.targetSystem.get()
 
   # TODO: Check starbase exists at target
-  # TODO: Add SpyScout to GameState tracking
+
+  # Create spy scout and add to game state
+  let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
+  let spyScout = SpyScout(
+    id: spyId,
+    owner: fleet.owner,
+    location: targetSystem,
+    eliLevel: scoutELI,
+    mission: SpyMissionType.HackStarbase,
+    commissionedTurn: state.turn,
+    detected: false
+  )
+
+  state.spyScouts[spyId] = spyScout
+
+  # Remove scout from fleet (it operates independently now)
+  var updatedFleet = fleet
+  for i in 0..<updatedFleet.squadrons.len:
+    if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
+      updatedFleet.squadrons.delete(i)
+      break
+
+  # Update fleet in game state
+  state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,
@@ -622,8 +668,29 @@ proc executeSpySystemOrder(
 
   let targetSystem = order.targetSystem.get()
 
-  # Deploy spy scout
-  # TODO: Add SpyScout to GameState tracking
+  # Create spy scout and add to game state
+  let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
+  let spyScout = SpyScout(
+    id: spyId,
+    owner: fleet.owner,
+    location: targetSystem,
+    eliLevel: scoutELI,
+    mission: SpyMissionType.SpyOnSystem,
+    commissionedTurn: state.turn,
+    detected: false
+  )
+
+  state.spyScouts[spyId] = spyScout
+
+  # Remove scout from fleet (it operates independently now)
+  var updatedFleet = fleet
+  for i in 0..<updatedFleet.squadrons.len:
+    if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
+      updatedFleet.squadrons.delete(i)
+      break
+
+  # Update fleet in game state
+  state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,

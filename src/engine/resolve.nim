@@ -4,7 +4,7 @@
 ## This module is designed to work standalone for local/hotseat multiplayer
 ## Network transport (Nostr) wraps around this engine without modifying it
 
-import std/[tables, algorithm, options, random, strformat, sequtils, strutils]
+import std/[tables, algorithm, options, random, strformat, sequtils, strutils, hashes]
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap, squadron
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
@@ -16,6 +16,7 @@ import combat/[engine as combat_engine, types as combat_types, ground]
 import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config]
 import commands/executor
 import blockade/engine as blockade_engine
+import intelligence/detection
 import prestige
 
 type
@@ -177,6 +178,97 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
           echo "    Starbase at system ", effect.targetSystem.get(), " is crippled"
 
   state.ongoingEffects = activeEffects
+
+  # Process spy scout detection and intelligence gathering
+  # Per assets.md:2.4.2: "For every turn that a spy Scout operates in unfriendly
+  # system occupied by rival ELI, the rival will roll on the Spy Detection Table"
+  var survivingScouts = initTable[string, SpyScout]()
+
+  for scoutId, scout in state.spyScouts:
+    if scout.detected:
+      # Scout was detected in a previous turn
+      continue
+
+    var wasDetected = false
+    let scoutLocation = scout.location
+
+    # Check if system has rival ELI units (fleets with scouts or starbases)
+    # Get all houses in the system (from fleets and colonies)
+    var housesInSystem: seq[HouseId] = @[]
+
+    # Check for colonies (starbases provide detection)
+    if scoutLocation in state.colonies:
+      let colony = state.colonies[scoutLocation]
+      if colony.owner != scout.owner:
+        housesInSystem.add(colony.owner)
+
+    # Check for fleets with scouts
+    for fleetId, fleet in state.fleets:
+      if fleet.location == scoutLocation and fleet.owner != scout.owner:
+        # Check if fleet has scouts
+        for squadron in fleet.squadrons:
+          if squadron.flagship.shipClass == ShipClass.Scout:
+            if not housesInSystem.contains(fleet.owner):
+              housesInSystem.add(fleet.owner)
+            break
+
+    # For each rival house in system, roll detection
+    for rivalHouse in housesInSystem:
+      # Build ELI unit from fleets
+      var detectorELI: seq[int] = @[]
+      var hasStarbase = false
+
+      # Check for colony with starbase
+      if scoutLocation in state.colonies:
+        let colony = state.colonies[scoutLocation]
+        if colony.owner == rivalHouse:
+          # TODO: Check for actual starbase presence in colony
+          # For now, assume all colonies have detection capability
+          hasStarbase = false  # Will be true when we track starbases
+
+      # Collect ELI from fleets
+      for fleetId, fleet in state.fleets:
+        if fleet.location == scoutLocation and fleet.owner == rivalHouse:
+          for squadron in fleet.squadrons:
+            if squadron.flagship.shipClass == ShipClass.Scout:
+              detectorELI.add(squadron.flagship.stats.techLevel)
+
+      # Attempt detection if there are ELI units
+      if detectorELI.len > 0:
+        let detectorUnit = ELIUnit(
+          eliLevels: detectorELI,
+          isStarbase: hasStarbase
+        )
+
+        # Roll detection with turn RNG
+        var rng = initRand(state.turn + scoutId.hash())
+        let detectionResult = detectSpyScout(detectorUnit, scout.eliLevel, rng)
+
+        if detectionResult.detected:
+          echo "    Spy scout ", scoutId, " detected by ", rivalHouse,
+               " (ELI ", detectionResult.effectiveELI, " vs ", scout.eliLevel,
+               ", rolled ", detectionResult.roll, " > ", detectionResult.threshold, ")"
+          wasDetected = true
+          break
+
+    if wasDetected:
+      # Scout is destroyed, don't add to surviving scouts
+      echo "    Spy scout ", scoutId, " destroyed"
+    else:
+      # Scout survives and gathers intelligence
+      # TODO: Generate intelligence reports based on mission type
+      survivingScouts[scoutId] = scout
+
+      case scout.mission
+      of SpyMissionType.SpyOnPlanet:
+        echo "    Spy scout ", scoutId, " gathering planetary intelligence at system ", scoutLocation
+      of SpyMissionType.HackStarbase:
+        echo "    Spy scout ", scoutId, " hacking starbase at system ", scoutLocation
+      of SpyMissionType.SpyOnSystem:
+        echo "    Spy scout ", scoutId, " conducting system surveillance at ", scoutLocation
+
+  # Update spy scouts in game state (remove detected ones)
+  state.spyScouts = survivingScouts
 
   # Convert GameState colonies to economy engine format
   var econColonies: seq[econ_types.Colony] = @[]
