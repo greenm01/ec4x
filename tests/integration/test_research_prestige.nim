@@ -36,7 +36,7 @@ suite "Research Prestige Integration":
 
     let prestigeEvent = adv.prestigeEvent.get()
     check prestigeEvent.source == PrestigeSource.TechAdvancement
-    check prestigeEvent.amount == globalPrestigeConfig.techAdvancement
+    check prestigeEvent.amount == globalPrestigeConfig.economic.tech_advancement
     check prestigeEvent.description.contains("Economic Level")
 
   test "Science Level advancement generates prestige":
@@ -65,7 +65,7 @@ suite "Research Prestige Integration":
 
     let prestigeEvent = adv.prestigeEvent.get()
     check prestigeEvent.source == PrestigeSource.TechAdvancement
-    check prestigeEvent.amount == globalPrestigeConfig.techAdvancement
+    check prestigeEvent.amount == globalPrestigeConfig.economic.tech_advancement
     check prestigeEvent.description.contains("Science Level")
 
   test "Tech field advancement generates prestige":
@@ -96,7 +96,7 @@ suite "Research Prestige Integration":
 
     let prestigeEvent = adv.prestigeEvent.get()
     check prestigeEvent.source == PrestigeSource.TechAdvancement
-    check prestigeEvent.amount == globalPrestigeConfig.techAdvancement
+    check prestigeEvent.amount == globalPrestigeConfig.economic.tech_advancement
     check prestigeEvent.description.contains("WeaponsTech")
 
   test "Multiple tech advancements accumulate prestige":
@@ -132,7 +132,7 @@ suite "Research Prestige Integration":
       totalPrestige += wepAdv.get().prestigeEvent.get().amount
 
     # Should have 3 advancements × 2 prestige each
-    check totalPrestige == config.techAdvancement * 3
+    check totalPrestige == config.economic.tech_advancement * 3
 
   test "No advancement when insufficient RP":
     var tree = initTechTree(TechLevel(
