@@ -870,6 +870,26 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
       # Reset counter when prestige recovers
       state.houses[houseId].negativePrestigeTurns = 0
 
+  # Check squadron limits (military.toml)
+  echo "  Checking squadron limits..."
+  for houseId, house in state.houses:
+    if house.eliminated:
+      continue
+
+    let current = state.getHouseSquadronCount(houseId)
+    let limit = state.getSquadronLimit(houseId)
+    let totalPU = state.getHousePopulationUnits(houseId)
+
+    if current > limit:
+      echo "    WARNING: ", house.name, " over squadron limit!"
+      echo "      Current: ", current, " squadrons, Limit: ", limit, " (", totalPU, " PU)"
+      # Note: In full implementation, this would trigger grace period timer
+      # and eventual auto-disband per military.toml:capacity_violation_grace_period
+    elif current == limit:
+      echo "    ", house.name, ": At squadron limit (", current, "/", limit, ")"
+    else:
+      echo "    ", house.name, ": ", current, "/", limit, " squadrons (", totalPU, " PU)"
+
   # Check victory condition
   let victorOpt = state.checkVictoryCondition()
   if victorOpt.isSome:
