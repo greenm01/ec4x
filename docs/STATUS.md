@@ -1,8 +1,8 @@
 # EC4X Implementation Status
 
-**Last Updated:** 2025-11-21
+**Last Updated:** 2025-11-22
 **Project Phase:** Core Engine Development
-**Test Coverage:** 76+ integration tests passing
+**Test Coverage:** 91+ integration tests passing
 
 ---
 
@@ -66,21 +66,35 @@ EC4X is a turn-based 4X space strategy game built in Nim. The project follows NE
 
 ### 3. Economy System
 **Status:** ✅ Complete and tested
-**Files:** `src/engine/economy/`
+**Files:** `src/engine/economy/`, `src/engine/salvage.nim`
 
 **Features:**
 - Production (PP) calculation from colonies
 - Income (IU) generation from systems
 - Construction project management
-- Maintenance cost tracking
-- Resource allocation
+- **Maintenance & Upkeep:**
+  - Ship upkeep from config (crippled ships +50%)
+  - Facility upkeep: Spaceports (5 PP), Shipyards (5 PP), Starbases (75 PP)
+  - Ground defense upkeep: Batteries (5 PP), Shields (50 PP)
+  - Ground units: Armies (1 PP), Marines (1 PP)
+  - Colony total upkeep calculator
+- **Salvage Operations:**
+  - Normal salvage: 50% of build cost (at own colonies)
+  - Emergency salvage: 25% of build cost (combat zones)
+  - Ownership validation (own systems only)
+- **Repair System:**
+  - Ship/starbase repair at 25% of build cost
+  - 1 turn repair time (configurable)
+  - Requires operational shipyard at OWN colony
+  - Validates ownership, funds, facility availability
 
 **Test Coverage:**
 - `tests/integration/test_m5_economy_integration.nim`
 - `tests/unit/test_economy.nim`
 - `tests/balance/test_economy_balance.nim`
+- `tests/test_salvage.nim` (15 tests) - Salvage, repair, upkeep operations
 
-**Config:** Economy values in code (candidate for TOML migration)
+**Config:** ✅ `config/economy.toml`, `config/military.toml`, `config/construction.toml`, `config/facilities.toml`, `config/ships.toml`, `config/ground_units.toml`
 
 ---
 
@@ -469,7 +483,7 @@ Temporary code may exist from development:
 
 ## 🧪 Test Coverage Summary
 
-### Integration Tests (13 files)
+### Integration Tests (14 files)
 
 1. ✅ `test_colonization.nim` (6 tests)
 2. ✅ `test_diplomacy.nim` (12 tests)
@@ -480,9 +494,10 @@ Temporary code may exist from development:
 7. ✅ `test_prestige.nim` (14 tests)
 8. ✅ `test_research_prestige.nim` (5 tests)
 9. ✅ `test_victory_conditions.nim` (9 tests)
-10. ✅ Additional combat and scenario tests
+10. ✅ `test_salvage.nim` (15 tests) - **NEW**
+11. ✅ Additional combat and scenario tests
 
-**Total:** 76+ integration tests passing
+**Total:** 91+ integration tests passing
 
 ### Unit Tests
 - Combat calculations
