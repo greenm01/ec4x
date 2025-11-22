@@ -190,7 +190,7 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ### 11. `ships_config.nim` ✅
 **Config File:** `config/ships.toml`
-**Status:** Ready for integration
+**Status:** Fully integrated
 **Lines:** 69 lines
 
 **Features:**
@@ -202,8 +202,10 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 - Optional fields (carry_limit, maintenance_percent)
 
 **Integration:**
-- ⏳ Future: Ship stats can be loaded from config at runtime
-- ⏳ Future: Dynamic ship balancing without recompilation
+- ✅ `src/engine/squadron.nim:49` - getShipStatsFromConfig() uses config
+- ✅ All ship stats loaded from globalShipsConfig at module init
+- ✅ Replaced parsecfg with toml_serialization system
+- ✅ WEP tech modifiers applied dynamically (+10% AS/DS per level)
 
 ---
 
@@ -227,22 +229,22 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ## Integration Status Summary
 
-### ✅ Fully Integrated (4/12)
+### ✅ Fully Integrated (5/12)
 1. **prestige_config.nim** - All prestige values from config
 2. **espionage_config.nim** - All espionage mechanics from config
 3. **combat_config.nim** - Ground combat CER tables and shields from config
 4. **economy_config.nim** - RAW material efficiency table from config
+5. **ships_config.nim** - All ship stats dynamically loaded from config
 
 ### 🔄 Partially Integrated (1/12)
-5. **diplomacy_config.nim** - Accessor functions created, some usage in engine
+6. **diplomacy_config.nim** - Accessor functions created, some usage in engine
 
-### ⏳ Ready for Integration (7/12)
-6. gameplay_config.nim
-7. military_config.nim
-8. facilities_config.nim
-9. ground_units_config.nim
-10. construction_config.nim
-11. ships_config.nim
+### ⏳ Ready for Integration (6/12)
+7. gameplay_config.nim
+8. military_config.nim
+9. facilities_config.nim
+10. ground_units_config.nim
+11. construction_config.nim
 12. tech_config.nim
 
 ---
@@ -264,8 +266,8 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
    - ⏳ Population growth rates from config
 
 3. **Ship Stats** (`ships_config.nim`)
-   - Load ship stats at runtime from config
-   - Dynamic WEP tech modifiers
+   - ✅ All ship stats loaded from config at runtime
+   - ✅ WEP tech modifiers applied dynamically
 
 ### Medium Priority (Quality of Life)
 4. **Construction System** (`construction_config.nim`)
