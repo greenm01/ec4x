@@ -4,7 +4,7 @@
 ## This module is designed to work standalone for local/hotseat multiplayer
 ## Network transport (Nostr) wraps around this engine without modifying it
 
-import std/[tables, algorithm, options, random, strformat]
+import std/[tables, algorithm, options, random, strformat, sequtils]
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap, squadron
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
@@ -12,7 +12,7 @@ import research/[types as res_types, advancement]
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
-import combat/[engine as combat, types as combat_types]
+import combat/[engine as combat_engine, types as combat_types, ground]
 import config/[prestige_config, espionage_config]
 import prestige
 
@@ -29,7 +29,7 @@ type
     systemId*: Option[SystemId]
 
   GameEventType* {.pure.} = enum
-    ColonyEstablished, SystemCaptured, BattleOccurred,
+    ColonyEstablished, SystemCaptured, BattleOccurred, Battle, Bombardment,
     TechAdvance, FleetDestroyed, HouseEliminated
 
   CombatReport* = object
@@ -446,6 +446,15 @@ proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: Fle
 
 ## Phase 1: Conflict (helper functions)
 
+proc getTargetBucket(shipClass: ShipClass): TargetBucket =
+  ## Determine target bucket from ship class
+  case shipClass
+  of ShipClass.Raider: TargetBucket.Raider
+  of ShipClass.Fighter: TargetBucket.Fighter
+  of ShipClass.Destroyer: TargetBucket.Destroyer
+  of ShipClass.Starbase: TargetBucket.Starbase
+  else: TargetBucket.Capital
+
 proc resolveBattle(state: var GameState, systemId: SystemId,
                   combatReports: var seq[CombatReport], events: var seq[GameEvent]) =
   ## Resolve space battle in a system
@@ -478,39 +487,132 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
   if houseFleets.len < 2:
     return
 
-  # 5. TODO: Build Task Forces for combat
-  # NOTE: Fleet system uses simple Ship type (ShipType: Military/Spacelift)
-  #       but combat system needs Squadron with EnhancedShip (ShipClass: Corvette, Cruiser, etc.)
-  #       This architectural mismatch needs to be resolved.
-  #
-  # Options:
-  #   A) Refactor Fleet to contain Squadrons instead of Ships
-  #   B) Create conversion layer from Ship -> Squadron (requires storing ShipClass data in Ship)
-  #   C) Skip battle resolution until fleet system is upgraded
-  #
-  # For now: Skip battles until fleet architecture is updated
-  echo "      Battle resolution skipped (fleet->squadron conversion not yet implemented)"
+  # 5. Build Task Forces for combat (Fleet now uses Squadrons!)
+  var taskForces: Table[HouseId, TaskForce] = initTable[HouseId, TaskForce]()
 
-  # Generate placeholder combat report
+  for houseId, fleets in houseFleets:
+    # Convert all house fleets to CombatSquadrons
+    var combatSquadrons: seq[CombatSquadron] = @[]
+
+    for fleet in fleets:
+      for squadron in fleet.squadrons:
+        # Wrap Squadron in CombatSquadron
+        let combatSq = CombatSquadron(
+          squadron: squadron,
+          state: if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+          damageThisTurn: 0,
+          crippleRound: 0,
+          bucket: getTargetBucket(squadron.flagship.shipClass),
+          targetWeight: 1.0
+        )
+        combatSquadrons.add(combatSq)
+
+    # Create TaskForce for this house
+    taskForces[houseId] = TaskForce(
+      house: houseId,
+      squadrons: combatSquadrons,
+      roe: 5,  # Default ROE
+      isCloaked: false,
+      moraleModifier: 0,
+      scoutBonus: false,
+      isDefendingHomeworld: false
+    )
+
+  # 6. Determine attacker and defender
   var attackerHouses: seq[HouseId] = @[]
   var defenderHouses: seq[HouseId] = @[]
 
-  # Classify attackers vs defenders based on system ownership
-  for houseId in houseFleets.keys:
+  for houseId in taskForces.keys:
     if systemOwner.isSome and systemOwner.get() == houseId:
       defenderHouses.add(houseId)
     else:
       attackerHouses.add(houseId)
 
+  # If no clear defender, first house is defender
+  if defenderHouses.len == 0 and attackerHouses.len > 0:
+    defenderHouses.add(attackerHouses[0])
+    attackerHouses.delete(0)
+
+  # 7. Create battle context and resolve
+  # Collect all task forces for battle
+  var allTaskForces: seq[TaskForce] = @[]
+  for houseId, tf in taskForces:
+    allTaskForces.add(tf)
+
+  var battleContext = BattleContext(
+    systemId: systemId,
+    taskForces: allTaskForces,
+    seed: 0,  # TODO: Use deterministic seed from game state
+    maxRounds: 20
+  )
+
+  # Execute battle
+  let outcome = combat_engine.resolveCombat(battleContext)
+
+  # 8. Apply losses to game state
+  # Collect surviving squadrons by ID
+  var survivingSquadronIds: Table[SquadronId, CombatSquadron] = initTable[SquadronId, CombatSquadron]()
+  for tf in outcome.survivors:
+    for combatSq in tf.squadrons:
+      survivingSquadronIds[combatSq.squadron.id] = combatSq
+
+  # Update or remove fleets based on survivors
+  for (fleetId, fleet) in fleetsAtSystem:
+    var updatedSquadrons: seq[Squadron] = @[]
+
+    for squadron in fleet.squadrons:
+      if squadron.id in survivingSquadronIds:
+        # Squadron survived - update crippled status
+        let survivorState = survivingSquadronIds[squadron.id]
+        var updatedSquadron = squadron
+        updatedSquadron.flagship.isCrippled = (survivorState.state == CombatState.Crippled)
+        updatedSquadrons.add(updatedSquadron)
+
+    # Update fleet with surviving squadrons, or remove if none survived
+    if updatedSquadrons.len > 0:
+      state.fleets[fleetId] = Fleet(
+        squadrons: updatedSquadrons,
+        id: fleet.id,
+        owner: fleet.owner,
+        location: fleet.location
+      )
+    else:
+      # Fleet destroyed
+      state.fleets.del(fleetId)
+
+  # 9. Count losses by house
+  var houseLosses: Table[HouseId, int] = initTable[HouseId, int]()
+  for houseId, fleets in houseFleets:
+    let totalSquadrons = fleets.mapIt(it.squadrons.len).foldl(a + b, 0)
+    let survivingSquadrons = outcome.survivors.filterIt(it.house == houseId)
+                                   .mapIt(it.squadrons.len).foldl(a + b, 0)
+    houseLosses[houseId] = totalSquadrons - survivingSquadrons
+
+  # 10. Generate combat report
+  let victor = outcome.victor
+  let attackerLosses = attackerHouses.mapIt(houseLosses.getOrDefault(it, 0)).foldl(a + b, 0)
+  let defenderLosses = defenderHouses.mapIt(houseLosses.getOrDefault(it, 0)).foldl(a + b, 0)
+
   let report = CombatReport(
     systemId: systemId,
     attackers: attackerHouses,
     defenders: defenderHouses,
-    attackerLosses: 0,
-    defenderLosses: 0,
-    victor: none(HouseId)
+    attackerLosses: attackerLosses,
+    defenderLosses: defenderLosses,
+    victor: victor
   )
   combatReports.add(report)
+
+  # Generate event
+  let victorName = if victor.isSome: state.houses[victor.get()].name else: "No one"
+  events.add(GameEvent(
+    eventType: GameEventType.Battle,
+    houseId: if victor.isSome: victor.get() else: "",
+    description: "Battle at " & $systemId & ". Victor: " & victorName,
+    systemId: some(systemId)
+  ))
+
+  echo "      Battle complete. Victor: ", victorName
 
 proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrder,
                        events: var seq[GameEvent]) =
@@ -540,14 +642,53 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
     echo "      Bombardment failed: no colony at target"
     return
 
-  # TODO: Once Fleet->Squadron conversion is complete:
-  # 1. Convert fleet.squadrons to seq[CombatSquadron]
-  # 2. Get colony's PlanetaryDefense
-  # 3. Call ground.conductBombardment()
-  # 4. Apply infrastructure damage to colony
-  # 5. Generate event for bombardment results
+  # Fleet now uses Squadrons - convert to CombatSquadrons
+  var combatSquadrons: seq[CombatSquadron] = @[]
+  for squadron in fleet.squadrons:
+    let combatSq = CombatSquadron(
+      squadron: squadron,
+      state: if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+      damageThisTurn: 0,
+      crippleRound: 0,
+      bucket: getTargetBucket(squadron.flagship.shipClass),
+      targetWeight: 1.0
+    )
+    combatSquadrons.add(combatSq)
 
-  echo "      Bombardment order received but skipped (needs squadron conversion)"
+  # Get colony's planetary defense
+  let colony = state.colonies[targetId]
+  # TODO: Build full PlanetaryDefense from colony data
+  var defense = PlanetaryDefense(
+    shields: none(ShieldLevel),
+    groundBatteries: @[],  # TODO: Get from colony
+    groundForces: @[],  # TODO: Get from colony military units
+    spaceport: false
+  )
+
+  # Conduct bombardment
+  let result = conductBombardment(combatSquadrons, defense, seed = 0, maxRounds = 3)
+
+  # Apply damage to colony
+  var updatedColony = colony
+  # Infrastructure damage from bombardment result
+  # Note: BombardmentResult returns detailed round-by-round data
+  # For now, count destroyed infrastructure units from final state
+  let infrastructureLoss = 1  # TODO: Calculate from result
+  updatedColony.infrastructure -= infrastructureLoss
+  if updatedColony.infrastructure < 0:
+    updatedColony.infrastructure = 0
+
+  state.colonies[targetId] = updatedColony
+
+  echo "      Bombardment at ", targetId, ": ", infrastructureLoss, " infrastructure destroyed"
+
+  # Generate event
+  events.add(GameEvent(
+    eventType: GameEventType.Bombardment,
+    houseId: houseId,
+    description: "Bombarded system " & $targetId & ", destroyed " & $infrastructureLoss & " infrastructure",
+    systemId: some(targetId)
+  ))
 
 ## Phase 4: Maintenance
 
@@ -608,9 +749,9 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   for houseId in state.houses.keys:
     houseFleetData[houseId] = @[]
     for fleet in state.getHouseFleets(houseId):
-      for ship in fleet.ships:
-        # TODO: Get actual ship class and crippled status
-        houseFleetData[houseId].add((ShipClass.Cruiser, false))
+      for squadron in fleet.squadrons:
+        # Get actual ship class and crippled status from squadron
+        houseFleetData[houseId].add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
 
   # Build house treasuries
   var houseTreasuries = initTable[HouseId, int]()

@@ -89,15 +89,16 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     # TODO: Check pathfinding - can fleet reach target?
 
   of FleetOrderType.Colonize:
-    # Check fleet has colony ship
+    # Check fleet has spacelift squadron
     var hasColonyShip = false
-    for ship in fleet.ships:
-      if ship.shipType == ShipType.Spacelift and not ship.isCrippled:
-        hasColonyShip = true
-        break
+    for squadron in fleet.squadrons:
+      if squadron.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
+        if not squadron.flagship.isCrippled:
+          hasColonyShip = true
+          break
 
     if not hasColonyShip:
-      return ValidationResult(valid: false, error: "Colonize requires functional spacelift ship")
+      return ValidationResult(valid: false, error: "Colonize requires functional spacelift squadron")
 
     if order.targetSystem.isNone:
       return ValidationResult(valid: false, error: "Colonize order requires target system")
@@ -105,15 +106,15 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     # TODO: Check if system already colonized
 
   of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
-    # Check fleet has military ships
+    # Check fleet has combat squadrons
     var hasMilitary = false
-    for ship in fleet.ships:
-      if ship.shipType == ShipType.Military and not ship.isCrippled:
+    for squadron in fleet.squadrons:
+      if squadron.flagship.stats.attackStrength > 0:
         hasMilitary = true
         break
 
     if not hasMilitary:
-      return ValidationResult(valid: false, error: "Combat order requires functional military ships")
+      return ValidationResult(valid: false, error: "Combat order requires combat-capable squadrons")
 
     if order.targetSystem.isNone:
       return ValidationResult(valid: false, error: "Combat order requires target system")
