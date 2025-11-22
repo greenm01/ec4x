@@ -4,7 +4,7 @@ import std/[tables, options, strutils]
 import ../common/[hex, system]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
-import config/[prestige_config, military_config]
+import config/[prestige_config, military_config, gameplay_config]
 import diplomacy/types as dip_types
 import espionage/types as esp_types
 
@@ -165,6 +165,9 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
 
 proc initializeHouse*(name: string, color: string): House =
   ## Create a new house with starting resources
+  ## Per gameplay.md:1.2: "Tech levels start at: EL1, SL1, CST1, WEP1, TER1, ELI1, and CIC1."
+  let startingTech = globalGameplayConfig.starting_tech
+
   result = House(
     id: "house-" & name.toLower(),
     name: name,
@@ -173,15 +176,15 @@ proc initializeHouse*(name: string, color: string): House =
     treasury: 1000,  # Starting treasury
     techTree: TechTree(
       levels: TechLevel(
-        energyLevel: 1,           # EL1 per gameplay.md:1.2
-        shieldLevel: 1,           # SL1 per gameplay.md:1.2
-        constructionTech: 1,      # CST1 per gameplay.md:1.2
-        weaponsTech: 1,           # WEP1 per gameplay.md:1.2
-        terraformingTech: 1,      # TER1 per gameplay.md:1.2
-        electronicIntelligence: 1, # ELI1 per gameplay.md:1.2
-        counterIntelligence: 1,   # CIC1 per gameplay.md:1.2
-        fighterDoctrine: 0,       # FD I (base 1.0x multiplier)
-        advancedCarrierOps: 0     # ACO I (base capacity)
+        energyLevel: startingTech.energy_level,
+        shieldLevel: startingTech.shield_level,
+        constructionTech: startingTech.construction_tech,
+        weaponsTech: startingTech.weapons_tech,
+        terraformingTech: startingTech.terraforming_tech,
+        electronicIntelligence: startingTech.electronic_intelligence,
+        counterIntelligence: startingTech.counter_intelligence,
+        fighterDoctrine: startingTech.fighter_doctrine,
+        advancedCarrierOps: startingTech.advanced_carrier_ops
       ),
       researchPoints: 0
     ),
@@ -299,15 +302,16 @@ proc isOverSquadronLimit*(state: GameState, houseId: HouseId): bool =
 
 proc getFighterDoctrineMultiplier*(techLevels: TechLevel): float =
   ## Get fighter doctrine multiplier from tech level
-  ## FD I = 1.0x, FD II = 1.5x, FD III = 2.0x
+  ## Per economy.md tech tables: FD I = 1.0x, FD II = 1.5x, FD III = 2.0x
+  ## CRITICAL: FD starts at level 1 (FD I), not 0! (gameplay.md:1.2)
   let fdLevel = techLevels.fighterDoctrine
   case fdLevel
-  of 0, 1:
-    return 1.0  # FD I (base)
+  of 1:
+    return 1.0  # FD I (base level, houses start here)
   of 2:
     return 1.5  # FD II
   else:
-    return 2.0  # FD III
+    return 2.0  # FD III+
 
 proc getFighterPopulationCapacity*(colony: Colony, fdMultiplier: float): int =
   ## Calculate fighter capacity based on population

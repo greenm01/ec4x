@@ -79,11 +79,14 @@ proc getRawIndex*(planetClass: PlanetClass, resources: ResourceRating): float =
 
 proc getEconomicLevelModifier*(techLevel: int): float =
   ## Get EL_MOD from tech level
-  ## Per economy.md:3.5 - tech increases productivity
+  ## Per economy.md:4.2 - "A House's GHO benefits from EL upgrades by 5% per level"
   ##
-  ## TODO: Implement proper EL_MOD scaling
-  ## Placeholder: +10% per tech level
-  result = 1.0 + (float(techLevel) * 0.10)
+  ## CRITICAL: Tech starts at EL1 (gameplay.md:1.2), so EL1 = 1.05 (5% bonus)
+  ## Formula: 1.0 + (techLevel × 0.05)
+  ## - EL1 = 1.05 (5% bonus)
+  ## - EL2 = 1.10 (10% bonus)
+  ## - EL10 = 1.50 (50% bonus maximum)
+  result = 1.0 + (float(techLevel) * 0.05)
 
 proc getProductivityGrowth*(taxRate: int): float =
   ## Get PROD_GROWTH from tax rate
