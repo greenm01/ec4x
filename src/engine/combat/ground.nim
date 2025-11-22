@@ -13,6 +13,7 @@ import types, cer
 import ../../common/types/[core, units, combat as commonCombat]
 import ../squadron
 import ../config/combat_config
+import ../config/ground_units_config
 
 export CombatState
 
@@ -614,18 +615,19 @@ proc createGroundBattery*(
   owner: HouseId,
   techLevel: int = 1
 ): GroundUnit =
-  ## Create a ground battery unit
-  ## Per reference.md:9.1 - Ground Battery has AS=0, DS=8, Cost=100 PP
+  ## Create a ground battery unit from config
+  ## Stats loaded from config/ground_units.toml
   ##
-  ## TODO M3: Load stats from config
   ## TODO M3: Apply tech modifiers if applicable
+
+  let cfg = globalGroundUnitsConfig.ground_battery
 
   result = GroundUnit(
     unitType: GroundUnitType.GroundBattery,
     id: id,
     owner: owner,
-    attackStrength: 0,  # Ground batteries don't attack (defense only)
-    defenseStrength: 8,
+    attackStrength: cfg.attack_strength,
+    defenseStrength: cfg.defense_strength,
     state: CombatState.Undamaged
   )
 
@@ -633,17 +635,17 @@ proc createArmy*(
   id: string,
   owner: HouseId
 ): GroundUnit =
-  ## Create an Army unit (garrison defense)
-  ## Per reference.md:9.2 - Army has AS=5, DS=2, Cost=20 PP
-  ##
-  ## TODO M3: Load stats from config
+  ## Create an Army unit (garrison defense) from config
+  ## Stats loaded from config/ground_units.toml
+
+  let cfg = globalGroundUnitsConfig.army
 
   result = GroundUnit(
     unitType: GroundUnitType.Army,
     id: id,
     owner: owner,
-    attackStrength: 5,
-    defenseStrength: 2,
+    attackStrength: cfg.attack_strength,
+    defenseStrength: cfg.defense_strength,
     state: CombatState.Undamaged
   )
 
@@ -651,17 +653,17 @@ proc createMarine*(
   id: string,
   owner: HouseId
 ): GroundUnit =
-  ## Create a Marine unit (invasion force)
-  ## Per reference.md:9.2 - Marine has AS=7, DS=2, Cost=30 PP
-  ##
-  ## TODO M3: Load stats from config
+  ## Create a Marine unit (invasion force) from config
+  ## Stats loaded from config/ground_units.toml
+
+  let cfg = globalGroundUnitsConfig.marine_division
 
   result = GroundUnit(
     unitType: GroundUnitType.Marine,
     id: id,
     owner: owner,
-    attackStrength: 7,
-    defenseStrength: 2,
+    attackStrength: cfg.attack_strength,
+    defenseStrength: cfg.defense_strength,
     state: CombatState.Undamaged
   )
 
