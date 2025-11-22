@@ -1,0 +1,21 @@
+# EC4X Model Training Requirements
+# PyTorch with ROCm support for AMD GPUs
+
+# Core training libraries
+torch>=2.1.0
+transformers>=4.36.0
+datasets>=2.14.0
+accelerate>=0.25.0
+
+# LoRA and quantization
+peft>=0.7.0
+bitsandbytes>=0.41.0
+
+# Utilities
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+numpy>=1.24.0
+tqdm>=4.66.0
+
+# Optional: Weights & Biases for experiment tracking
+# wandb>=0.16.0
