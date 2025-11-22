@@ -137,6 +137,66 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
   for systemId in combatSystems:
     resolveBattle(state, systemId, combatReports, events)
 
+  # Process espionage actions (per gameplay.md:1.3.1 - resolved in Conflict Phase)
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      let packet = orders[houseId]
+
+      # Process espionage action if present (max 1 per turn per diplomacy.md:8.2)
+      if packet.espionageAction.isSome:
+        let attempt = packet.espionageAction.get()
+
+        # Get target's CIC level from tech tree (starts at CIC1 per gameplay.md:1.2)
+        let targetCICLevel = case state.houses[attempt.target].techTree.levels.counterIntelligence
+          of 0: esp_types.CICLevel.CIC0
+          of 1: esp_types.CICLevel.CIC1
+          of 2: esp_types.CICLevel.CIC2
+          of 3: esp_types.CICLevel.CIC3
+          of 4: esp_types.CICLevel.CIC4
+          else: esp_types.CICLevel.CIC5
+        let targetCIP = if attempt.target in state.houses:
+                          state.houses[attempt.target].espionageBudget.cipPoints
+                        else:
+                          0
+
+        # Execute espionage action with detection roll
+        var rng = initRand(state.turn + attempt.attacker.hash() + attempt.target.hash())
+        let result = esp_engine.executeEspionage(
+          attempt,
+          targetCICLevel,
+          targetCIP,
+          rng
+        )
+
+        # Apply results
+        if result.success:
+          echo "    ", attempt.attacker, " espionage: ", result.description
+
+          # Apply prestige changes
+          for prestigeEvent in result.attackerPrestigeEvents:
+            state.houses[attempt.attacker].prestige += prestigeEvent.amount
+          for prestigeEvent in result.targetPrestigeEvents:
+            state.houses[attempt.target].prestige += prestigeEvent.amount
+
+          # Apply ongoing effects
+          if result.effect.isSome:
+            state.ongoingEffects.add(result.effect.get())
+
+          # Apply immediate effects (SRP theft, IU damage, etc.)
+          if result.srpStolen > 0:
+            # Steal SRP from target
+            if attempt.target in state.houses:
+              state.houses[attempt.target].techTree.researchPoints =
+                max(0, state.houses[attempt.target].techTree.researchPoints - result.srpStolen)
+              state.houses[attempt.attacker].techTree.researchPoints += result.srpStolen
+              echo "      Stole ", result.srpStolen, " SRP from ", attempt.target
+
+        else:
+          echo "    ", attempt.attacker, " espionage DETECTED by ", attempt.target
+          # Apply detection prestige penalties
+          for prestigeEvent in result.attackerPrestigeEvents:
+            state.houses[attempt.attacker].prestige += prestigeEvent.amount
+
   # Process bombardment orders (damages infrastructure before income phase)
   for houseId in state.houses.keys:
     if houseId in orders:
@@ -178,6 +238,42 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
           echo "    Starbase at system ", effect.targetSystem.get(), " is crippled"
 
   state.ongoingEffects = activeEffects
+
+  # Process EBP/CIP purchases (diplomacy.md:8.2)
+  # EBP and CIP cost 40 PP each
+  # Over-investment penalty: lose 1 prestige per 1% over 5% of turn budget
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      let packet = orders[houseId]
+
+      if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
+        let ebpCost = packet.ebpInvestment * globalEspionageConfig.costs.ebp_cost_pp
+        let cipCost = packet.cipInvestment * globalEspionageConfig.costs.cip_cost_pp
+        let totalCost = ebpCost + cipCost
+
+        # Deduct from treasury
+        if state.houses[houseId].treasury >= totalCost:
+          state.houses[houseId].treasury -= totalCost
+          state.houses[houseId].espionageBudget.ebpPoints += packet.ebpInvestment
+          state.houses[houseId].espionageBudget.cipPoints += packet.cipInvestment
+          state.houses[houseId].espionageBudget.ebpInvested = ebpCost
+          state.houses[houseId].espionageBudget.cipInvested = cipCost
+
+          echo "    ", houseId, " purchased ", packet.ebpInvestment, " EBP, ",
+               packet.cipInvestment, " CIP (", totalCost, " PP)"
+
+          # Check for over-investment penalty (> 5% of turn budget)
+          let turnBudget = state.houses[houseId].espionageBudget.turnBudget
+          if turnBudget > 0:
+            let totalInvestment = ebpCost + cipCost
+            let investmentPercent = (totalInvestment * 100) div turnBudget
+
+            if investmentPercent > 5:
+              let prestigePenalty = -(investmentPercent - 5)
+              state.houses[houseId].prestige += prestigePenalty
+              echo "      Over-investment penalty: ", prestigePenalty, " prestige"
+        else:
+          echo "    ", houseId, " insufficient funds for EBP/CIP purchase"
 
   # Process spy scout detection and intelligence gathering
   # Per assets.md:2.4.2: "For every turn that a spy Scout operates in unfriendly
@@ -362,6 +458,113 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   for houseId in state.houses.keys:
     if houseId in orders:
       resolveBuildOrders(state, orders[houseId], events)
+
+  # Process diplomatic actions (per gameplay.md:1.3.3 - Command Phase)
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      let packet = orders[houseId]
+
+      for action in packet.diplomaticActions:
+        case action.actionType
+        of DiplomaticActionType.ProposeNonAggressionPact:
+          # TODO: Implement pact proposal system (requires acceptance/rejection)
+          echo "    ", houseId, " proposed Non-Aggression Pact to ", action.targetHouse
+          # For now, auto-accept pacts (AI decision making deferred)
+          if action.targetHouse in state.houses and not state.houses[action.targetHouse].eliminated:
+            # Proposer establishes pact on their side
+            let eventOpt1 = dip_engine.proposePact(
+              state.houses[houseId].diplomaticRelations,
+              action.targetHouse,
+              state.houses[houseId].violationHistory,
+              state.turn
+            )
+            # Target accepts (auto-accept for now)
+            let eventOpt2 = dip_engine.proposePact(
+              state.houses[action.targetHouse].diplomaticRelations,
+              houseId,
+              state.houses[action.targetHouse].violationHistory,
+              state.turn
+            )
+            if eventOpt1.isSome and eventOpt2.isSome:
+              echo "      Pact established"
+            else:
+              echo "      Pact proposal failed (blocked by isolation or cooldown)"
+
+        of DiplomaticActionType.BreakPact:
+          # Breaking a pact triggers violation penalties (diplomacy.md:8.1.2)
+          echo "    ", houseId, " breaking pact with ", action.targetHouse
+
+          # Check if there's actually a pact to break
+          let currentState = dip_engine.getDiplomaticState(
+            state.houses[houseId].diplomaticRelations,
+            action.targetHouse
+          )
+
+          if currentState == dip_types.DiplomaticState.NonAggression:
+            # Record violation
+            let violation = dip_engine.recordViolation(
+              state.houses[houseId].violationHistory,
+              houseId,
+              action.targetHouse,
+              state.turn,
+              "Broke Non-Aggression Pact"
+            )
+
+            # Apply prestige penalties
+            let prestigeEvents = dip_engine.applyViolationPenalties(
+              houseId,
+              action.targetHouse,
+              state.houses[houseId].violationHistory,
+              state.turn
+            )
+
+            for event in prestigeEvents:
+              state.houses[houseId].prestige += event.amount
+              echo "      ", event.description, ": ", event.amount, " prestige"
+
+            # Apply dishonored status (3 turns per diplomacy.md:8.1.2)
+            state.houses[houseId].dishonoredStatus = dip_types.DishonoredStatus(
+              active: true,
+              turnsRemaining: 3,
+              violationTurn: state.turn
+            )
+            echo "      Dishonored for 3 turns"
+
+            # Apply diplomatic isolation (5 turns per diplomacy.md:8.1.2)
+            state.houses[houseId].diplomaticIsolation = dip_types.DiplomaticIsolation(
+              active: true,
+              turnsRemaining: 5,
+              violationTurn: state.turn
+            )
+            echo "      Isolated for 5 turns"
+
+            # Set status to Enemy
+            dip_engine.setDiplomaticState(
+              state.houses[houseId].diplomaticRelations,
+              action.targetHouse,
+              dip_types.DiplomaticState.Enemy,
+              state.turn
+            )
+          else:
+            echo "      No pact exists to break"
+
+        of DiplomaticActionType.DeclareEnemy:
+          echo "    ", houseId, " declared ", action.targetHouse, " as Enemy"
+          dip_engine.setDiplomaticState(
+            state.houses[houseId].diplomaticRelations,
+            action.targetHouse,
+            dip_types.DiplomaticState.Enemy,
+            state.turn
+          )
+
+        of DiplomaticActionType.SetNeutral:
+          echo "    ", houseId, " set ", action.targetHouse, " to Neutral"
+          dip_engine.setDiplomaticState(
+            state.houses[houseId].diplomaticRelations,
+            action.targetHouse,
+            dip_types.DiplomaticState.Neutral,
+            state.turn
+          )
 
   # Process all fleet orders (sorted by priority)
   var allFleetOrders: seq[(HouseId, FleetOrder)] = @[]
