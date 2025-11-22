@@ -999,6 +999,20 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
   )
   combatReports.add(report)
 
+  # Award prestige for combat
+  if victor.isSome:
+    let victorHouse = victor.get()
+    let victorPrestige = getPrestigeValue(PrestigeSource.CombatVictory)
+    state.houses[victorHouse].prestige += victorPrestige
+    echo "      ", state.houses[victorHouse].name, " victory (+", victorPrestige, " prestige)"
+
+    # Award prestige for squadrons destroyed
+    let enemyLosses = if victorHouse in attackerHouses: defenderLosses else: attackerLosses
+    if enemyLosses > 0:
+      let squadronPrestige = getPrestigeValue(PrestigeSource.SquadronDestroyed) * enemyLosses
+      state.houses[victorHouse].prestige += squadronPrestige
+      echo "      ", state.houses[victorHouse].name, " destroyed ", enemyLosses, " squadrons (+", squadronPrestige, " prestige)"
+
   # Generate event
   let victorName = if victor.isSome: state.houses[victor.get()].name else: "No one"
   events.add(GameEvent(
