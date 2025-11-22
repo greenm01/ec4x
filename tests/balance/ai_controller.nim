@@ -31,6 +31,7 @@ type
     houseId*: HouseId
     strategy*: AIStrategy
     personality*: AIPersonality
+    lastTurnReport*: string  ## Previous turn's report for context
 
 # =============================================================================
 # Strategy Profiles
@@ -324,6 +325,17 @@ proc generateEspionageAction(controller: AIController, state: GameState, rng: va
 
 proc generateAIOrders*(controller: AIController, state: GameState, rng: var Rand): OrderPacket =
   ## Generate complete order packet for an AI player
+  ##
+  ## Context available:
+  ## - controller.lastTurnReport: Previous turn's report (for AI learning)
+  ## - state: Current game state
+  ## - controller.personality: Strategic personality parameters
+  ##
+  ## Future enhancement: Parse lastTurnReport to:
+  ## - React to combat losses (build replacements, retreat)
+  ## - Respond to enemy fleet sightings (send reinforcements)
+  ## - Adjust strategy based on economic situation
+  ## - Learn from tech advances (prioritize synergistic research)
   let p = controller.personality
   let house = state.houses[controller.houseId]
 
