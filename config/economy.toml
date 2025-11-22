@@ -5,7 +5,7 @@
 # - BALANCE VARIABLES: Tunable gameplay parameters (adjust during playtesting)
 # - CORE MECHANICS: Fundamental game rules (mathematical formulas, type systems)
 #
-# Note: Starting resources and scenario setup are in scenarios/*.toml files
+# Note: Starting resources and scenario setup are in game_setup/*.toml files
 
 # ============================================================================
 # POPULATION MECHANICS
