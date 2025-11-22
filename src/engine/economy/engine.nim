@@ -15,7 +15,7 @@ export types.MaintenanceReport, types.CompletedProject
 
 ## Income Phase Resolution (gameplay.md:1.3.2)
 
-proc resolveIncomePhase*(colonies: var seq[Colony],
+proc resolveIncomePhase*(colonies: var seq[types.Colony],
                         houseTaxPolicies: Table[HouseId, TaxPolicy],
                         houseTechLevels: Table[HouseId, int],
                         houseTreasuries: var Table[HouseId, int]): IncomePhaseReport =
@@ -43,7 +43,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
   )
 
   # Group colonies by owner
-  var houseColonies = initTable[HouseId, seq[Colony]]()
+  var houseColonies = initTable[HouseId, seq[types.Colony]]()
   for colony in colonies:
     if colony.owner notin houseColonies:
       houseColonies[colony.owner] = @[]
@@ -84,7 +84,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
 
 ## Maintenance Phase Resolution (gameplay.md:1.3.4)
 
-proc resolveMaintenancePhase*(colonies: var seq[Colony],
+proc resolveMaintenancePhase*(colonies: var seq[types.Colony],
                              houseFleetData: Table[HouseId, seq[(ShipClass, bool)]],
                              houseTreasuries: var Table[HouseId, int]): MaintenanceReport =
   ## Resolve maintenance phase
