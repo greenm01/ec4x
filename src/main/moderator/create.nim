@@ -146,7 +146,7 @@ proc newGame*(gamePath: string): bool =
 
     # Load or create configuration
     var config: Config
-    let configPath = gamePath / CONFIG_FILE
+    let configPath = gamePath / configFile
 
     if fileExists(configPath):
       config = loadConfig(gamePath)

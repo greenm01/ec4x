@@ -113,7 +113,7 @@ proc createOfflineGame(players: int = 4, outputDir: string = ""): int =
   echo "Creating offline game with ", players, " players"
 
   if not validatePlayerCount(players):
-    echo "Error: Invalid player count. Must be between ", MIN_PLAYERS, " and ", MAX_PLAYERS
+    echo "Error: Invalid player count. Must be between ", minPlayers, " and ", maxPlayers
     return 1
 
   let gameDir = if outputDir.len > 0: outputDir else: "offline_game"

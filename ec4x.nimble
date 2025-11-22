@@ -5,6 +5,8 @@ author        = "Mason Austin Green"
 description   = "EC4X - Asynchronous turn-based 4X wargame"
 license       = "MIT"
 srcDir        = "src"
+binDir        = "bin"
+# Note: nimble will look for src/main/moderator.nim and src/main/client.nim
 bin           = @["main/moderator", "main/client"]  # daemon not ready yet (needs Nostr dependencies)
 
 # Dependencies
