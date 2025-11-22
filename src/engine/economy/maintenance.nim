@@ -3,45 +3,29 @@
 ## Fleet maintenance, infrastructure upkeep, repairs per economy.md:3.9
 ##
 ## Maintenance costs (economy.md:3.9):
-## - Ships have maintenance costs based on class/tech
-## - Buildings have upkeep
-## - Damaged infrastructure requires repair
+## - Ships have maintenance costs based on class/tech (ships.toml)
+## - Buildings have upkeep (construction.toml, facilities.toml)
+## - Damaged infrastructure requires repair (construction.toml)
 
 import std/tables
 import types
 import ../../common/types/[core, units]
+import ../config/[ships_config, construction_config, facilities_config, ground_units_config]
+import ../squadron, ../gamestate
 
 export types.MaintenanceReport
+export gamestate.Colony
 
 ## Ship Maintenance Costs (economy.md:3.9)
 
 proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool): int =
   ## Get maintenance cost for ship per turn
-  ## Per economy.md:3.9
+  ## Per economy.md:3.9 and ships.toml upkeep_cost field
   ##
-  ## TODO: Load from reference.md table
-  ## Placeholder costs
-  let baseCost = case shipClass
-    of ShipClass.Fighter:
-      1
-    of ShipClass.Scout:
-      1
-    of ShipClass.Raider:
-      2
-    of ShipClass.Destroyer:
-      3
-    of ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.HeavyCruiser:
-      4
-    of ShipClass.Carrier, ShipClass.SuperCarrier:
-      5
-    of ShipClass.Battleship, ShipClass.Battlecruiser, ShipClass.Dreadnought, ShipClass.SuperDreadnought:
-      6
-    of ShipClass.TroopTransport, ShipClass.ETAC:
-      3
-    of ShipClass.Starbase:
-      10
-    of ShipClass.PlanetBreaker:
-      50
+  ## Uses actual upkeep values from ships.toml config
+
+  let stats = getShipStats(shipClass)
+  let baseCost = stats.upkeepCost
 
   # Crippled ships cost 50% more to maintain
   if isCrippled:
@@ -56,24 +40,85 @@ proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int =
   for (shipClass, isCrippled) in ships:
     result += getShipMaintenanceCost(shipClass, isCrippled)
 
-## Building Maintenance
+## Building and Facility Maintenance
+
+proc getSpaceportUpkeep*(): int =
+  ## Get upkeep cost for spaceport per turn
+  ## Per facilities.toml and construction.toml
+  return globalFacilitiesConfig.spaceport.upkeep_cost
+
+proc getShipyardUpkeep*(): int =
+  ## Get upkeep cost for shipyard per turn
+  ## Per facilities.toml and construction.toml
+  return globalFacilitiesConfig.shipyard.upkeep_cost
+
+proc getStarbaseUpkeep*(): int =
+  ## Get upkeep cost for starbase per turn
+  ## Per construction.toml
+  return globalConstructionConfig.upkeep.starbase_upkeep
+
+proc getGroundBatteryUpkeep*(): int =
+  ## Get upkeep cost for ground battery per turn
+  ## Per construction.toml
+  return globalConstructionConfig.upkeep.ground_battery_upkeep
+
+proc getPlanetaryShieldUpkeep*(): int =
+  ## Get upkeep cost for planetary shield per turn
+  ## Per construction.toml (regardless of SLD level)
+  return globalConstructionConfig.upkeep.planetary_shield_upkeep
+
+proc getArmyUpkeep*(): int =
+  ## Get upkeep cost for army division per turn
+  ## Per ground_units.toml
+  return globalGroundUnitsConfig.army.upkeep_cost
+
+proc getMarineUpkeep*(): int =
+  ## Get upkeep cost for marine division per turn
+  ## Per ground_units.toml
+  return globalGroundUnitsConfig.marine_division.upkeep_cost
 
 proc getBuildingMaintenance*(buildingType: string): int =
-  ## Get maintenance cost for building
-  ##
-  ## TODO: Define building maintenance costs
-  ## Placeholder
+  ## Get maintenance cost for building (legacy compatibility)
+  ## Use specific functions above for new code
   case buildingType
   of "Shipyard":
-    return 5
+    return getShipyardUpkeep()
   of "Spaceport":
-    return 3
+    return getSpaceportUpkeep()
   of "ResearchLab":
-    return 4
+    return 4  # TODO: Add research labs to config
   of "Starbase":
-    return 10
+    return getStarbaseUpkeep()
   else:
     return 2
+
+proc calculateColonyUpkeep*(colony: gamestate.Colony): int =
+  ## Calculate total upkeep for all facilities and defenses at colony
+  ## Includes: spaceports, shipyards, starbases, ground batteries,
+  ##           planetary shields, armies, marines
+  result = 0
+
+  # Spaceports
+  result += colony.spaceports.len * getSpaceportUpkeep()
+
+  # Shipyards
+  result += colony.shipyards.len * getShipyardUpkeep()
+
+  # Starbases
+  result += colony.starbases.len * getStarbaseUpkeep()
+
+  # Ground batteries
+  result += colony.groundBatteries * getGroundBatteryUpkeep()
+
+  # Planetary shields (one per colony max)
+  if colony.planetaryShieldLevel > 0:
+    result += getPlanetaryShieldUpkeep()
+
+  # Armies
+  result += colony.armies * getArmyUpkeep()
+
+  # Marines
+  result += colony.marines * getMarineUpkeep()
 
 ## Infrastructure Repair
 
@@ -85,7 +130,7 @@ proc calculateRepairCost*(damage: float): int =
   ## TODO: Define proper repair cost formula
   return int(damage * 100.0)
 
-proc applyRepair*(colony: var Colony, repairPoints: int): float =
+proc applyRepair*(colony: var types.Colony, repairPoints: int): float =
   ## Apply repair points to damaged infrastructure
   ## Returns amount of damage repaired
   if colony.infrastructureDamage <= 0.0:
@@ -102,7 +147,7 @@ proc applyRepair*(colony: var Colony, repairPoints: int): float =
 
 ## Maintenance Shortfall (economy.md:3.11)
 
-proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int) =
+proc applyMaintenanceShortfall*(colony: var types.Colony, shortfall: int) =
   ## Apply consequences of maintenance shortfall
   ## Per economy.md:3.11
   ##
