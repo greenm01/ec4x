@@ -14,6 +14,7 @@ import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
 import combat/[engine as combat_engine, types as combat_types, ground]
 import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config]
+import commands/executor
 import prestige
 
 type
@@ -245,29 +246,45 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
     if houseId in orders:
       resolveBuildOrders(state, orders[houseId], events)
 
-  # Process movement orders (sorted by priority)
-  var allMovementOrders: seq[(HouseId, FleetOrder)] = @[]
+  # Process all fleet orders (sorted by priority)
+  var allFleetOrders: seq[(HouseId, FleetOrder)] = @[]
 
   for houseId in state.houses.keys:
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
-        if order.orderType in [FleetOrderType.Move, FleetOrderType.SeekHome, FleetOrderType.Patrol]:
-          allMovementOrders.add((houseId, order))
+        allFleetOrders.add((houseId, order))
 
   # Sort by priority
-  allMovementOrders.sort do (a, b: (HouseId, FleetOrder)) -> int:
+  allFleetOrders.sort do (a, b: (HouseId, FleetOrder)) -> int:
     cmp(a[1].priority, b[1].priority)
 
-  # Execute movement orders
-  for (houseId, order) in allMovementOrders:
-    resolveMovementOrder(state, houseId, order, events)
+  # Execute all fleet orders through the new executor
+  for (houseId, order) in allFleetOrders:
+    let result = executeFleetOrder(state, houseId, order)
 
-  # Process colonization orders
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      for order in orders[houseId].fleetOrders:
-        if order.orderType == FleetOrderType.Colonize:
-          resolveColonizationOrder(state, houseId, order, events)
+    if result.success:
+      echo "    [", $order.orderType, "] ", result.message
+      # Add events from order execution
+      for eventMsg in result.eventsGenerated:
+        events.add(GameEvent(
+          eventType: GameEventType.Battle,  # TODO: Add more specific event types
+          houseId: houseId,
+          description: eventMsg,
+          systemId: order.targetSystem
+        ))
+
+      # Some orders need additional processing after validation
+      case order.orderType
+      of FleetOrderType.Move, FleetOrderType.SeekHome, FleetOrderType.Patrol:
+        # Executor validates, this does actual pathfinding and movement
+        resolveMovementOrder(state, houseId, order, events)
+      of FleetOrderType.Colonize:
+        # Executor validates, this does actual colony creation
+        resolveColonizationOrder(state, houseId, order, events)
+      else:
+        discard  # Fully handled by executor
+    else:
+      echo "    [", $order.orderType, "] FAILED: ", result.message
 
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process construction orders for a house
