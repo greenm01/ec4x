@@ -31,7 +31,7 @@ proc loadConfig*(gamePath: string): Config =
   if not checkGamePath(gamePath):
     raise newException(IOError, "Invalid game path: " & gamePath)
 
-  let configPath = gamePath / CONFIG_FILE
+  let configPath = gamePath / configFile
 
   if not fileExists(configPath):
     raise newException(IOError, "Configuration file not found: " & configPath)
@@ -65,7 +65,7 @@ proc createDefaultConfig*(gamePath: string): Config =
     numEmpires: 4
   )
 
-  let configPath = gamePath / CONFIG_FILE
+  let configPath = gamePath / configFile
   let configContent = Toml.encode(config)
   writeFile(configPath, configContent)
 
