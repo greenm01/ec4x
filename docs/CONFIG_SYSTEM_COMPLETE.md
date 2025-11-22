@@ -59,8 +59,10 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 - Espionage effects on diplomacy
 
 **Integration:**
-- ✅ `src/engine/diplomacy/` - Pact violations use config
-- ✅ Accessor functions replace hardcoded constants
+- ✅ `src/engine/diplomacy/types.nim:81-107` - All accessor functions use config
+- ✅ `src/engine/diplomacy/engine.nim` - All diplomacy mechanics use accessors
+- ✅ Dishonored status, isolation, cooldowns all from config
+- ✅ Prestige penalties for violations from config
 
 ---
 
@@ -232,16 +234,14 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ## Integration Status Summary
 
-### ✅ Fully Integrated (6/12)
+### ✅ Fully Integrated (7/12)
 1. **prestige_config.nim** - All prestige values from config
 2. **espionage_config.nim** - All espionage mechanics from config
 3. **combat_config.nim** - Ground combat CER tables and shields from config
 4. **economy_config.nim** - RAW material efficiency table from config
 5. **ships_config.nim** - All ship stats dynamically loaded from config
 6. **ground_units_config.nim** - All ground unit stats from config
-
-### 🔄 Partially Integrated (1/12)
-7. **diplomacy_config.nim** - Accessor functions created, some usage in engine
+7. **diplomacy_config.nim** - All diplomacy mechanics from config
 
 ### ⏳ Ready for Integration (5/12)
 8. gameplay_config.nim
