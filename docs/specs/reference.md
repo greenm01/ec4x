@@ -79,9 +79,9 @@ CL = Carry Limit
 | Espionage Attempt Failed (penalty) | `EspionageFailure` | -2 |
 | Major Ship Destroyed (per ship) | `ShipDestroyed` | +1 |
 | Starbase Destroyed | `StarbaseDestroyed` | +5 |
-| Fleet Victory (per battle) | `FleetVictory` | +3 |
+| Fleet Victory (per battle) | `FleetVictory` | +0 |
 | Planet Conquered | `PlanetConquered` | +10 |
-| House Eliminated | `HouseEliminated` | +3 |
+| House Eliminated | `HouseEliminated` | +0 |
 | Victory Achieved | `VictoryAchieved` | +5 |
 
 *Source: config/prestige.toml [economic], [military], and [espionage] sections*

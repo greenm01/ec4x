@@ -1044,7 +1044,7 @@ def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_ta
                         el_table: str, sl_table: str, cst_table: str, wep_table: str,
                         ter_table: str, ter_upgrade_table: str, eli_table: str, clk_table: str,
                         sld_table: str, cic_table: str, fd_table: str, aco_table: str,
-                        economy_config: Dict[str, Any]):
+                        economy_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any], tech_config: Dict[str, Any]):
     """Update docs/specs/economy.md with generated tables and inline values."""
     spec_file = Path("docs/specs/economy.md")
 
@@ -1055,7 +1055,7 @@ def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_ta
     content = spec_file.read_text()
 
     # Replace inline values first
-    content = replace_inline_values(content, economy_config)
+    content = replace_inline_values(content, economy_config, construction_config, military_config, tech_config)
 
     # Define all markers for economy tables
     markers = {
@@ -1119,7 +1119,7 @@ def generate_shield_effectiveness_table(combat_config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def replace_inline_values(content: str, economy_config: Dict[str, Any]) -> str:
+def replace_inline_values(content: str, economy_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any], tech_config: Dict[str, Any]) -> str:
     """Replace inline marker values in prose with values from config."""
     import re
 
@@ -1130,14 +1130,14 @@ def replace_inline_values(content: str, economy_config: Dict[str, Any]) -> str:
         'TAX_WINDOW': lambda: str(economy_config['tax_mechanics']['tax_averaging_window_turns']),
         'NATURAL_GROWTH_RATE': lambda: f"{int(economy_config['population']['natural_growth_rate'] * 100)}%",
         'PTU_GROWTH_RATE': lambda: f"{economy_config['population']['ptu_growth_rate'] * 100:.1f}%",
-        'FIGHTER_PU_DIVISOR': lambda: str(economy_config['fighter_mechanics']['fighter_capacity_pu_divisor']),
-        'STARBASE_PER_FS': lambda: str(economy_config['fighter_mechanics']['starbase_per_fighter_squadrons']),
-        'CAPACITY_GRACE_PERIOD': lambda: str(economy_config['fighter_mechanics']['capacity_violation_grace_period']),
-        'STARBASE_REPAIR_COST': lambda: f"{int(economy_config['construction']['starbase_repair_cost_multiplier'] * 100)}%",
-        'EMERGENCY_SALVAGE': lambda: f"{int(economy_config['salvage']['emergency_salvage_multiplier'] * 100)} %",
-        'NORMAL_SALVAGE': lambda: f"{int(economy_config['salvage']['salvage_value_multiplier'] * 100)} %",
-        'SQUADRON_PU_DIVISOR': lambda: str(economy_config['squadron_limits']['squadron_limit_pu_divisor']),
-        'SQUADRON_MINIMUM': lambda: str(economy_config['squadron_limits']['squadron_limit_minimum']),
+        'FIGHTER_PU_DIVISOR': lambda: str(military_config['fighter_mechanics']['fighter_capacity_pu_divisor']),
+        'STARBASE_PER_FS': lambda: str(military_config['fighter_mechanics']['starbase_per_fighter_squadrons']),
+        'CAPACITY_GRACE_PERIOD': lambda: str(military_config['fighter_mechanics']['capacity_violation_grace_period']),
+        'STARBASE_REPAIR_COST': lambda: f"{int(construction_config['repair']['starbase_repair_cost_multiplier'] * 100)}%",
+        'EMERGENCY_SALVAGE': lambda: f"{int(military_config['salvage']['emergency_salvage_multiplier'] * 100)} %",
+        'NORMAL_SALVAGE': lambda: f"{int(military_config['salvage']['salvage_value_multiplier'] * 100)} %",
+        'SQUADRON_PU_DIVISOR': lambda: str(military_config['squadron_limits']['squadron_limit_pu_divisor']),
+        'SQUADRON_MINIMUM': lambda: str(military_config['squadron_limits']['squadron_limit_minimum']),
         'BREAKTHROUGH_BASE': lambda: f"{int(economy_config['research']['research_breakthrough_base_chance'] * 100)}%",
         'BREAKTHROUGH_RP_PER_PERCENT': lambda: str(economy_config['research']['research_breakthrough_rp_per_percent']),
         'MINOR_BREAKTHROUGH_BONUS': lambda: str(economy_config['research']['minor_breakthrough_bonus']),
@@ -1156,15 +1156,15 @@ def replace_inline_values(content: str, economy_config: Dict[str, Any]) -> str:
         'SL_LATE_INCREMENT': lambda: str(economy_config['research']['sl_late_increment']),
         'TRP_FIRST_LEVEL_COST': lambda: str(economy_config['research']['trp_first_level_cost']),
         'TRP_LEVEL_INCREMENT': lambda: str(economy_config['research']['trp_level_increment']),
-        'CST_CAPACITY_INCREASE': lambda: f"{int(economy_config['construction']['construction_capacity_increase_per_level'] * 100)}%",
-        'WEP_STAT_INCREASE': lambda: f"{int(economy_config['weapons_tech']['weapons_stat_increase_per_level'] * 100)}%",
-        'WEP_COST_INCREASE': lambda: f"{int(economy_config['weapons_tech']['weapons_cost_increase_per_level'] * 100)}%",
-        'MILITARY_SHIP_TURNS': lambda: "two" if economy_config['construction']['shipyard_turns'] == 2 else str(economy_config['construction']['shipyard_turns']),
-        'SPACELIFT_SHIP_TURNS': lambda: "one" if economy_config['construction']['spaceport_turns'] == 1 else str(economy_config['construction']['spaceport_turns']),
-        'SHIP_REPAIR_TURNS': lambda: "one" if economy_config['construction']['ship_repair_turns'] == 1 else str(economy_config['construction']['ship_repair_turns']),
-        'PLANETSIDE_CONSTRUCTION_PENALTY': lambda: f"{int((economy_config['construction']['planetside_construction_cost_multiplier'] - 1) * 100)}%",
-        'SHIP_REPAIR_COST': lambda: f"{int(economy_config['construction']['ship_repair_cost_multiplier'] * 100)}%",
-        'SHIP_REPAIR_COST_DECIMAL': lambda: str(economy_config['construction']['ship_repair_cost_multiplier']),
+        'CST_CAPACITY_INCREASE': lambda: f"{int(construction_config['modifiers']['construction_capacity_increase_per_level'] * 100)}%",
+        'WEP_STAT_INCREASE': lambda: f"{int(tech_config['weapons_tech']['weapons_stat_increase_per_level'] * 100)}%",
+        'WEP_COST_INCREASE': lambda: f"{int(tech_config['weapons_tech']['weapons_cost_increase_per_level'] * 100)}%",
+        'MILITARY_SHIP_TURNS': lambda: "two" if construction_config['construction']['shipyard_turns'] == 2 else str(construction_config['construction']['shipyard_turns']),
+        'SPACELIFT_SHIP_TURNS': lambda: "one" if construction_config['construction']['spaceport_turns'] == 1 else str(construction_config['construction']['spaceport_turns']),
+        'SHIP_REPAIR_TURNS': lambda: "one" if construction_config['repair']['ship_repair_turns'] == 1 else str(construction_config['repair']['ship_repair_turns']),
+        'PLANETSIDE_CONSTRUCTION_PENALTY': lambda: f"{int((construction_config['modifiers']['planetside_construction_cost_multiplier'] - 1) * 100)}%",
+        'SHIP_REPAIR_COST': lambda: f"{int(construction_config['repair']['ship_repair_cost_multiplier'] * 100)}%",
+        'SHIP_REPAIR_COST_DECIMAL': lambda: str(construction_config['repair']['ship_repair_cost_multiplier']),
     }
 
     # Replace each inline marker with plain value (removes markers)
@@ -1176,17 +1176,17 @@ def replace_inline_values(content: str, economy_config: Dict[str, Any]) -> str:
     return content
 
 
-def replace_inline_values_operations(content: str, economy_config: Dict[str, Any]) -> str:
+def replace_inline_values_operations(content: str, combat_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any]) -> str:
     """Replace inline marker values in operations.md with values from config."""
     import re
 
     # Define inline value replacements for operations.md
     replacements = {
-        'BLOCKADE_PENALTY': lambda: f"{int(economy_config['blockade']['blockade_production_penalty'] * 100)}%",
-        'BLOCKADE_PRESTIGE': lambda: str(economy_config['blockade']['blockade_prestige_penalty']),
-        'SALVAGE_VALUE': lambda: f"{int(economy_config['salvage']['salvage_value_multiplier'] * 100)}%",
-        'SHIP_REPAIR_COST': lambda: f"{int(economy_config['construction']['ship_repair_cost_multiplier'] * 100)}%",
-        'INVASION_IU_LOSS': lambda: f"{int(economy_config['invasion']['invasion_iu_loss'] * 100)}%",
+        'BLOCKADE_PENALTY': lambda: f"{int(combat_config['blockade']['blockade_production_penalty'] * 100)}%",
+        'BLOCKADE_PRESTIGE': lambda: str(combat_config['blockade']['blockade_prestige_penalty']),
+        'SALVAGE_VALUE': lambda: f"{int(military_config['salvage']['salvage_value_multiplier'] * 100)}%",
+        'SHIP_REPAIR_COST': lambda: f"{int(construction_config['repair']['ship_repair_cost_multiplier'] * 100)}%",
+        'INVASION_IU_LOSS': lambda: f"{int(combat_config['invasion']['invasion_iu_loss'] * 100)}%",
     }
 
     # Replace each inline marker with plain value (removes markers)
@@ -1198,7 +1198,7 @@ def replace_inline_values_operations(content: str, economy_config: Dict[str, Any
     return content
 
 
-def update_operations_spec(shield_table: str, economy_config: Dict[str, Any]):
+def update_operations_spec(shield_table: str, combat_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any]):
     """Update docs/specs/operations.md with generated tables and inline values."""
     spec_file = Path("docs/specs/operations.md")
 
@@ -1209,7 +1209,7 @@ def update_operations_spec(shield_table: str, economy_config: Dict[str, Any]):
     content = spec_file.read_text()
 
     # Replace inline values first
-    content = replace_inline_values_operations(content, economy_config)
+    content = replace_inline_values_operations(content, combat_config, construction_config, military_config)
 
     # Replace shield effectiveness table
     shield_start = "<!-- SHIELD_EFFECTIVENESS_TABLE_START -->"
@@ -1261,6 +1261,12 @@ def main():
 
     combat_config = load_toml(config_dir / "combat.toml")
     print(f"✓ Loaded {config_dir / 'combat.toml'}")
+
+    construction_config = load_toml(config_dir / "construction.toml")
+    print(f"✓ Loaded {config_dir / 'construction.toml'}")
+
+    military_config = load_toml(config_dir / "military.toml")
+    print(f"✓ Loaded {config_dir / 'military.toml'}")
 
     # Generate tables
     print("\nGenerating specification tables...")
@@ -1362,8 +1368,8 @@ def main():
     update_economy_spec(raw_table, tax_penalty_table, tax_incentive_table, iu_table, colonization_table,
                         maintenance_shortfall_table, el_table, sl_table, cst_table, wep_table,
                         ter_table, ter_upgrade_table, eli_table, clk_table, sld_table,
-                        cic_tech_table, fd_table, aco_table, economy_config)
-    update_operations_spec(shield_table, economy_config)
+                        cic_tech_table, fd_table, aco_table, economy_config, construction_config, military_config, tech_config)
+    update_operations_spec(shield_table, combat_config, construction_config, military_config)
 
     print("\n" + "=" * 50)
     print("Sync complete!")
