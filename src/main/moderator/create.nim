@@ -3,8 +3,10 @@
 ## This module handles the creation of new EC4X games, including
 ## star map generation, system setup, and initial game state.
 
-import std/[os, strutils, sequtils, tables, options]
+import std/[os, strutils, sequtils, tables, options, strformat]
 import ../../core
+import ../../engine/squadron  # For createFleetSquadrons
+import ../../common/types/units  # For ShipClass enum
 import config
 
 type
@@ -73,7 +75,21 @@ proc createInitialFleets*(starMap: StarMap): Table[uint, seq[Fleet]] =
   for system in starMap.systems.values:
     if system.player.isSome:
       let playerId = system.player.get
-      let homeFleet = mixedFleet(2, 1)  # 2 military, 1 spacelift
+
+      # Create initial squadrons: 2 destroyers + 1 spacelift
+      let squadrons = createFleetSquadrons(
+        @[(ShipClass.Destroyer, 2), (ShipClass.TroopTransport, 1)],
+        techLevel = 1,
+        owner = $playerId,
+        location = system.id
+      )
+
+      let homeFleet = newFleet(
+        squadrons,
+        id = &"fleet-{playerId}-home",
+        owner = $playerId,
+        location = system.id
+      )
 
       if playerId notin result:
         result[playerId] = @[]
@@ -191,8 +207,14 @@ proc genStarMap*(): bool =
     let starMap = starMap(playerCount)
 
     # Create a test fleet
-    let fleet = fleet(militaryShip(), spaceliftShip())
-    echo "Created test fleet: ", fleet
+    let testSquadrons = createFleetSquadrons(
+      @[(ShipClass.Destroyer, 1), (ShipClass.TroopTransport, 1)],
+      techLevel = 1,
+      owner = "test",
+      location = 0
+    )
+    let testFleet = newFleet(testSquadrons, id = "test-fleet", owner = "test", location = 0)
+    echo "Created test fleet: ", testFleet
 
     # Find player home systems
     let player0HomeSystems = starMap.playerSystems(0)
@@ -218,7 +240,14 @@ proc genStarMap*(): bool =
     if player0PathSystems.len > 0 and player1PathSystems.len > 0:
       let start = player0PathSystems[0]
       let goal = player1PathSystems[0]
-      let testFleet = fleet(militaryShip(), spaceliftShip())
+      # Create test fleet with squadrons
+      let testSquadrons = createFleetSquadrons(
+        @[(ShipClass.Destroyer, 1), (ShipClass.TroopTransport, 1)],
+        techLevel = 1,
+        owner = "test",
+        location = 0
+      )
+      let testFleet = newFleet(testSquadrons)
 
       echo "Testing path from Player 0 to Player 1..."
       let pathResult = findPath(starMap, start.id, goal.id, testFleet)
