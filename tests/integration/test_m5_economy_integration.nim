@@ -4,7 +4,8 @@
 
 import std/[unittest, tables, options]
 import ../../src/engine/[gamestate, resolve, orders, starmap]
-import ../../src/common/types/[core, planets, units]
+import ../../src/engine/research/types as res_types
+import ../../src/common/types/[core, planets, units, tech]
 
 suite "M5 Economy Integration with resolve.nim":
   test "Income phase runs with M5 economy":
@@ -41,7 +42,11 @@ suite "M5 Economy Integration with resolve.nim":
       turn: 1,
       buildOrders: @[],
       fleetOrders: @[],
-      researchAllocation: initTable[TechField, int]()
+      researchAllocation: res_types.ResearchAllocation(
+        economic: 0,
+        science: 0,
+        technology: initTable[TechField, int]()
+      )
     )
 
     # Resolve a turn
