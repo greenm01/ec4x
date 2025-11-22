@@ -554,9 +554,9 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
     if house.prestige < 0:
       state.houses[houseId].negativePrestigeTurns += 1
       echo "    ", house.name, " negative prestige: ", house.prestige,
-           " (", state.houses[houseId].negativePrestigeTurns, "/", config.collapseTurns, " turns)"
+           " (", state.houses[houseId].negativePrestigeTurns, "/", config.victory.defeat_consecutive_turns, " turns)"
 
-      if state.houses[houseId].negativePrestigeTurns >= config.collapseTurns:
+      if state.houses[houseId].negativePrestigeTurns >= config.victory.defeat_consecutive_turns:
         state.houses[houseId].eliminated = true
         events.add(GameEvent(
           eventType: GameEventType.HouseEliminated,

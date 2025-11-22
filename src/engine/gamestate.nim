@@ -192,7 +192,7 @@ proc checkVictoryCondition*(state: GameState): Option[HouseId] =
 
   # Prestige victory
   for house in activeHouses:
-    if house.prestige >= config.prestigeVictoryThreshold:
+    if house.prestige >= config.victory.prestige_victory:
       return some(house.id)
 
   return none(HouseId)
