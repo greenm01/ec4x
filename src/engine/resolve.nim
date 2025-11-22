@@ -15,6 +15,7 @@ import colonization/engine as col_engine
 import combat/[engine as combat_engine, types as combat_types, ground]
 import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config]
 import commands/executor
+import blockade/engine as blockade_engine
 import prestige
 
 type
@@ -150,6 +151,11 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
   ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
   echo "  [Income Phase]"
 
+  # Apply blockade status to all colonies
+  # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
+  # reduce GCO for that same turn's Income Phase calculation - there is no delay"
+  blockade_engine.applyBlockades(state)
+
   # Apply ongoing espionage effects to houses
   var activeEffects: seq[esp_types.OngoingEffect] = @[]
   for effect in state.ongoingEffects:
@@ -175,6 +181,15 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
   # Convert GameState colonies to economy engine format
   var econColonies: seq[econ_types.Colony] = @[]
   for systemId, colony in state.colonies:
+    # Apply blockade penalty to production
+    # Per operations.md:6.2.6: "Colonies under blockade reduce their GCO by 60%"
+    let blockadePenalty = blockade_engine.getBlockadePenalty(colony)
+    let adjustedProduction = int(float(colony.production) * blockadePenalty)
+
+    if colony.blockaded:
+      echo "    Colony at system ", systemId, " blockaded: GCO reduced from ",
+           colony.production, " to ", adjustedProduction, " (-60%)"
+
     # Convert Colony to economy Colony type
     econColonies.add(econ_types.Colony(
       systemId: colony.systemId,
@@ -184,7 +199,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       industrial: econ_types.IndustrialUnits(units: colony.infrastructure * 10),  # Map infrastructure to IU
       planetClass: colony.planetClass,
       resources: colony.resources,
-      grossOutput: colony.production,  # Use cached production
+      grossOutput: adjustedProduction,  # Apply blockade penalty
       taxRate: 50,  # TODO: Get from house tax policy
       underConstruction: none(econ_types.ConstructionProject),  # TODO: Convert construction
       infrastructureDamage: 0.0  # TODO: Track damage from combat
@@ -227,6 +242,15 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       echo "      Prestige: ",
            (if event.amount > 0: "+" else: ""), event.amount,
            " (", event.description, ") -> ", state.houses[houseId].prestige
+
+    # Apply blockade prestige penalties
+    # Per operations.md:6.2.6: "-2 prestige per colony under blockade"
+    let blockadePenalty = blockade_engine.calculateBlockadePrestigePenalty(state, houseId)
+    if blockadePenalty < 0:
+      let blockadedCount = blockade_engine.getBlockadedColonies(state, houseId).len
+      state.houses[houseId].prestige += blockadePenalty
+      echo "      Prestige: ", blockadePenalty, " (", blockadedCount,
+           " colonies under blockade) -> ", state.houses[houseId].prestige
 
   # Apply research prestige from tech advancements (if any occurred)
   # Note: Tech advancements are tracked separately and applied here

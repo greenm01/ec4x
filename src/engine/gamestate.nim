@@ -77,6 +77,11 @@ type
     armies*: int                              # Count of army divisions (AA)
     marines*: int                             # Count of marine divisions (MD)
 
+    # Blockade status (operations.md:6.2.6)
+    blockaded*: bool                          # Is colony currently under blockade
+    blockadedBy*: Option[HouseId]             # Which house is blockading (if any)
+    blockadeTurns*: int                       # Consecutive turns under blockade
+
   ConstructionProject* = object
     projectType*: BuildingType
     turnsRemaining*: int
@@ -196,7 +201,10 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     planetaryShieldLevel: 0,  # No shield at start
     groundBatteries: 0,  # No batteries at start
     armies: 0,  # No armies at start
-    marines: 0  # No marines at start
+    marines: 0,  # No marines at start
+    blockaded: false,
+    blockadedBy: none(HouseId),
+    blockadeTurns: 0
   )
 
 # Game state queries
