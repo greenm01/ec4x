@@ -71,7 +71,6 @@ type
     diplomatic_pact_formation*: int
     pact_violation*: int
     repeat_violation*: int
-    dishonored_expires*: int
     dishonored_bonus*: int
     declare_war*: int
     make_peace*: int

@@ -23,7 +23,7 @@ Attacking a Non-Aggression partner constitutes immediate pact violation. When a 
 
 **Penalties for Violating House:**
 - **Immediate Prestige Loss:** **PactViolation** penalty - see [Table 9.4](reference.md#94-prestige)
-- **Dishonored Status:** For 3 turns, other houses receive **DishonoredExpires** prestige bonus when they attack the violator (represents reputational damage) - see [Table 9.4](reference.md#94-prestige)
+- **Dishonored Status:** For 3 turns, other houses receive +1 prestige (**DishonoredBonus**) when they attack the violator (represents reputational damage) - see [Table 9.4](reference.md#94-prestige)
 - **Diplomatic Isolation:** Cannot establish new Non-Aggression Pacts with any house for 5 turns
 - **Repeat Violations:** Each subsequent violation within 10 turns incurs **RepeatViolation** penalty - see [Table 9.4](reference.md#94-prestige)
 
