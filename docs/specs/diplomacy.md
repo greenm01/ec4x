@@ -93,13 +93,13 @@ Espionage actions allow players to disrupt their rivals' operations and gain tac
 
 | Espionage Action         | Effect                                                  |
 | ------------------------ | ------------------------------------------------------- |
-| **Tech Theft**           | Steals **10 SRP** from the target’s research pool       |
-| **Low Impact Sabotage**  | Reduces target’s **1d6 Industrial Units (IU)**          |
-| **High Impact Sabotage** | Reduces target’s **1d20 Industrial Units (IU)**         |
-| **Assassination**        | Reduces target’s **SRP gain by 50%** for one turn       |
-| **Economic Disruption**  | Halves target’s **Net Colony Value (NCV)** for one turn |
-| **Propaganda Campaign**  | Reduces target’s **tax revenue by 25%** for one turn    |
-| **Cyber Attack**         | Cripples the target’s **Starbase**                      |
+| **Tech Theft**           | Steals **10 SRP** from the target's research pool       |
+| **Low Impact Sabotage**  | Reduces target's **1d6 Industrial Units (IU)**          |
+| **High Impact Sabotage** | Reduces target's **1d20 Industrial Units (IU)**         |
+| **Assassination**        | Reduces target's **SRP gain by 50%** for one turn       |
+| **Economic Disruption**  | Halves target's **Net Colony Value (NCV)** for one turn |
+| **Propaganda Campaign**  | Reduces target's **tax revenue by 25%** for one turn    |
+| **Cyber Attack**         | Cripples the target's **Starbase**                      |
 
 **Tech Theft**:
 In the dead of night, a covert team of elite hackers infiltrates the rival House's research network, siphoning critical data and blueprints. By the time their intrusion is detected, valuable research progress has already been uploaded and integrated into your own laboratories, giving your scientists a sudden leap forward.
