@@ -3,6 +3,22 @@
 # Edit this file to change tech costs and progression for all games
 
 # ============================================================================
+# Starting Technology Levels
+# CRITICAL: ALL tech levels start at 1, not 0! (economy.md section 4.0)
+# ============================================================================
+
+[starting_tech]
+energy_level = 1              # EL1 - 5% production bonus
+shield_level = 1              # SL1 - Base research capability
+construction_tech = 1         # CST1 - Base shipyard capacity
+weapons_tech = 1              # WEP1 - Base combat strength
+terraforming_tech = 1         # TER1 - Base terraforming capability
+electronic_intelligence = 1   # ELI1 - Base spy scout capability
+counter_intelligence = 1      # CIC1 - Base espionage detection
+fighter_doctrine = 1          # FD I - 1.0x fighter capacity multiplier
+advanced_carrier_ops = 1      # ACO I - CV=3FS, CX=5FS
+
+# ============================================================================
 # Economic Level (EL)
 # Source: Section 4.2
 # ============================================================================

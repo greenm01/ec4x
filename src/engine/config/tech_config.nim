@@ -2,33 +2,39 @@
 ##
 ## Loads technology research costs and effects from config/tech.toml
 ## Allows runtime configuration for all tech trees
-##
-## NOTE: This is a simplified loader that stores the raw TOML content.
-## Full structured parsing will be added when tech system is implemented.
 
 import std/[os]
+import toml_serialization
 
 type
+  StartingTechConfig* = object
+    ## Starting tech levels per economy.md:4.0
+    ## CRITICAL: ALL tech starts at level 1, not 0!
+    energy_level*: int              # EL1
+    shield_level*: int              # SL1
+    construction_tech*: int         # CST1
+    weapons_tech*: int              # WEP1
+    terraforming_tech*: int         # TER1
+    electronic_intelligence*: int   # ELI1
+    counter_intelligence*: int      # CIC1
+    fighter_doctrine*: int          # FD I (starts at 1)
+    advanced_carrier_ops*: int      # ACO I (starts at 1)
+
   TechConfig* = object
-    ## Technology configuration - currently stores raw TOML for future parsing
-    ## Full type-safe structures will be added during tech system implementation
-    configPath*: string
-    loaded*: bool
+    ## Technology configuration from tech.toml
+    starting_tech*: StartingTechConfig
 
 proc loadTechConfig*(configPath: string = "config/tech.toml"): TechConfig =
   ## Load technology configuration from TOML file
-  ## Currently validates file exists and will be parsed when tech system is integrated
+  ## Uses toml_serialization for type-safe parsing
 
   if not fileExists(configPath):
     raise newException(IOError, "Tech config not found: " & configPath)
 
-  result = TechConfig(
-    configPath: configPath,
-    loaded: true
-  )
+  let configContent = readFile(configPath)
+  result = Toml.decode(configContent, TechConfig)
 
-  echo "[Config] Located technology configuration at ", configPath
-  echo "[Config] Full tech config parsing will be implemented with tech system"
+  echo "[Config] Loaded technology configuration from ", configPath
 
 ## Global configuration instance
 
