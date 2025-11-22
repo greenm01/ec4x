@@ -227,6 +227,7 @@ def generate_prestige_table(config: Dict[str, Any]) -> str:
     economic = config.get('economic', {})
     military = config.get('military', {})
     espionage = config.get('espionage', {})
+    diplomacy = config.get('diplomacy', {})
 
     lines = [
         "| Prestige Source | Enum Name | Value |",
@@ -239,24 +240,24 @@ def generate_prestige_table(config: Dict[str, Any]) -> str:
         ("economic", "tech_advancement", "Tech Advancement", "TechAdvancement"),
         ("economic", "establish_colony", "Colony Establishment", "ColonyEstablishment"),
         ("military", "invade_planet", "System Capture", "SystemCapture"),
-        ("economic", "establish_colony", "Diplomatic Pact Formation", "DiplomaticPact"),
-        ("military", "lose_planet", "Pact Violation (penalty)", "PactViolation"),
-        ("military", "lose_planet", "Repeat Violation (penalty)", "RepeatViolation"),
-        ("military", "ambushed_by_cloak", "Dishonor Status Expires", "DishonoredExpires"),
+        ("diplomacy", "diplomatic_pact_formation", "Diplomatic Pact Formation", "DiplomaticPact"),
+        ("diplomacy", "pact_violation", "Pact Violation (penalty)", "PactViolation"),
+        ("diplomacy", "repeat_violation", "Repeat Violation (penalty)", "RepeatViolation"),
+        ("diplomacy", "dishonored_bonus", "Attack Dishonored House", "DishonoredBonus"),
         ("espionage", "tech_theft", "Tech Theft Success", "TechTheftSuccess"),
-        ("espionage", "failed_espionage", "Tech Theft Detected (penalty)", "TechTheftDetected"),
+        ("espionage", "tech_theft", "Tech Theft Detected (penalty)", "TechTheftDetected"),
         ("espionage", "assassination", "Assassination Success", "AssassinationSuccess"),
-        ("espionage", "failed_espionage", "Assassination Detected (penalty)", "AssassinationDetected"),
-        ("espionage", "failed_espionage", "Espionage Attempt Failed (penalty)", "EspionageFailure"),
+        ("espionage", "assassination", "Assassination Detected (penalty)", "AssassinationDetected"),
+        ("espionage", "low_impact_sabotage", "Espionage Attempt Failed (penalty)", "EspionageFailure"),
         ("military", "destroy_squadron", "Major Ship Destroyed (per ship)", "ShipDestroyed"),
         ("military", "destroy_starbase", "Starbase Destroyed", "StarbaseDestroyed"),
-        ("military", "destroy_task_force", "Fleet Victory (per battle)", "FleetVictory"),
+        ("military", "fleet_victory", "Fleet Victory (per battle)", "FleetVictory"),
         ("military", "invade_planet", "Planet Conquered", "PlanetConquered"),
-        ("military", "destroy_task_force", "House Eliminated", "HouseEliminated"),
+        ("military", "eliminate_house", "House Eliminated", "HouseEliminated"),
         ("economic", "establish_colony", "Victory Achieved", "VictoryAchieved"),
     ]
 
-    sections = {"economic": economic, "military": military, "espionage": espionage}
+    sections = {"economic": economic, "military": military, "espionage": espionage, "diplomacy": diplomacy}
 
     for section, toml_key, readable_name, enum_name in prestige_mapping:
         value = sections[section].get(toml_key, 0)
