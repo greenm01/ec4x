@@ -63,13 +63,17 @@ Where:
 
 **RAW INDEX Table**
 
+<!-- RAW_MATERIAL_TABLE_START -->
 | RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |
 | --------- |:----:|:----:|:------:|:-----:|:-------:|:--------:|:-------:|
-| Very Poor | 60%  | 60%  | 60%    | 60%   | 60%     | 60%      | 60%     |
-| Poor      | 80%  | 75%  | 70%    | 65%   | 64%     | 63%      | 62%     |
-| Abundant  | 100% | 90%  | 80%    | 70%   | 68%     | 66%      | 64%     |
-| Rich      | 120% | 105% | 90%    | 75%   | 72%     | 69%      | 66%     |
-| Very Rich | 140% | 120% | 100%   | 80%   | 76%     | 72%      | 68%     |
+| Very Poor | 60%  | 60%  |  60%   |  60%  |   60%   |   60%    |   60%   |
+| Poor      | 80%  | 75%  |  70%   |  65%  |   64%   |   63%    |   62%   |
+| Abundant  | 100% | 90%  |  80%   |  70%  |   68%   |   66%    |   64%   |
+| Rich      | 120% | 105% |  90%   |  75%  |   72%   |   69%    |   66%   |
+| Very Rich | 140% | 120% |  100%  |  80%  |   76%   |   72%    |   68%   |
+
+*Source: config/economy.toml [raw_material_efficiency] section*
+<!-- RAW_MATERIAL_TABLE_END -->
 
 Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habitable conditions.
 
@@ -88,14 +92,18 @@ Higher tax rates generate more immediate revenue but anger the population. Lower
 
 Every Income Phase the game calculates the **average tax rate over the current turn + the previous five turns** (rolling 6-turn window) and applies the following prestige penalty if the average is above 50 %:
 
+<!-- TAX_PENALTY_TABLE_START -->
 | Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |
 |---------------------------------|---------------------------|
-| ≤ 50 %                          | 0                         |
-| 51 – 60 %                       | –1                        |
-| 61 – 70 %                       | –2                        |
-| 71 – 80 %                       | –4                        |
-| 81 – 90 %                       | –7                        |
-| 91 – 100 %                      | –11                       |
+| ≤ 50 %                          |             0             |
+| 51 – 60 %                       |            -1             |
+| 61 – 70 %                       |            -2             |
+| 71 – 80 %                       |            -4             |
+| 81 – 90 %                       |            -7             |
+| 91 – 100 %                      |            -11            |
+
+*Source: config/economy.toml [tax_penalties] section*
+<!-- TAX_PENALTY_TABLE_END -->
 
 This penalty is applied every turn the qualifying average is met and cannot be avoided by short-term cycling.
 
@@ -103,13 +111,17 @@ This penalty is applied every turn the qualifying average is met and cannot be a
 
 To reward benevolent or populist rule, colonies grant bonuses in the same Income Phase based on the **tax rate set this turn**:
 
+<!-- TAX_INCENTIVE_TABLE_START -->
 | Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn |
 |--------------------|----------------------------------------------------------|-------------------------------------|
-| 41 – 50 %          | No bonus                                                 | –                                   |
-| 31 – 40 %          | ×1.05 (+5 %)                                             | –                                   |
-| 21 – 30 %          | ×1.10 (+10 %)                                            | +1                                  |
-| 11 – 20 %          | ×1.15 (+15 %)                                            | +2                                  |
-| 0 – 10 %           | ×1.20 (+20 %)                                            | +3                                  |
+| 41 – 50 %          | No bonus                                                 |                  –                  |
+| 31 – 40 %          | ×1.05 (+5 %)                                             |                  –                  |
+| 21 – 30 %          | ×1.10 (+10 %)                                            |                 +1                  |
+| 11 – 20 %          | ×1.15 (+14 %)                                            |                 +2                  |
+| 0 – 10 %           | ×1.20 (+19 %)                                            |                 +3                  |
+
+*Source: config/economy.toml [tax_incentives] section*
+<!-- TAX_INCENTIVE_TABLE_END -->
 
 With multiple big colonies, low taxes become a legitimate prestige-farming strategy that can outpace military victories in the late game.
 
@@ -127,6 +139,7 @@ Net House Value (NHV): The sum total of all NCVs across the player's colonies. N
 
 Investing in Industrial Units (IU) increases the manufacturing capacity of a colony, directly boosting GCO. The cost of IU investments scales based on the percentage of IU relative to the colony's PU.
 
+<!-- IU_INVESTMENT_TABLE_START -->
 | IU Investment (% of PU) | Cost Multiplier | PP  |
 | ----------------------- |:---------------:|:---:|
 | Up to 50%               | 1.0             | 30  |
@@ -134,6 +147,9 @@ Investing in Industrial Units (IU) increases the manufacturing capacity of a col
 | 76% - 100%              | 1.5             | 45  |
 | 101% - 150%             | 2.0             | 60  |
 | 151% and above          | 2.5             | 75  |
+
+*Source: config/economy.toml [industrial_investment] section*
+<!-- IU_INVESTMENT_TABLE_END -->
 
 ## 3.5 Economic Level Modifier
 
@@ -155,10 +171,11 @@ A logistical growth function is used for the calculation. Each planet class has 
 
 ETACs plant a flag in unoccupied Solar Systems and set the initial conditions for terraforming. Their capacity to move PTU is limited to one unit.
 
-The Space Guilds are contracted to transfer larger populations between existing Colonies in civilian Starliners. Passengers are kept in status to minimize living space, and all of their supplies and equipment for their new destination are tightly packed into the cargo hold. 
+The Space Guilds are contracted to transfer larger populations between existing Colonies in civilian Starliners. Passengers are kept in status to minimize living space, and all of their supplies and equipment for their new destination are tightly packed into the cargo hold.
 
 The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with [Section 6.1](operations.md#61-jump-lanes).
 
+<!-- COLONIZATION_COST_TABLE_START -->
 | Conditions | PP/PTU |
 | ---------- |:------:|
 | Eden       | 4      |
@@ -168,6 +185,9 @@ The cost is expensive and dependent upon the livable conditions of the destinati
 | Hostile    | 10     |
 | Desolate   | 12     |
 | Extreme    | 15     |
+
+*Source: config/economy.toml [colonization] section*
+<!-- COLONIZATION_COST_TABLE_END -->
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
@@ -381,19 +401,23 @@ ERP = 40 + EL(10)
 
 After EL5 the cost increases linearly by 15 points per EL level.
 
+<!-- ECONOMIC_LEVEL_TABLE_START -->
 | EL  | ERP Cost | EL MOD |
 |:---:|:--------:|:------:|
-| 01  | 50       | 0.05   |
-| 02  | 60       | 0.10   |
-| 03  | 70       | 0.15   |
-| 04  | 80       | 0.20   |
-| 05  | 90       | 0.25   |
-| 06  | 105      | 0.30   |
-| 07  | 120      | 0.35   |
-| 08  | 135      | 0.40   |
-| 09  | 150      | 0.45   |
-| 10  | 165      | 0.50   |
+| 01 | 50       | 0.05   |
+| 02 | 60       | 0.10   |
+| 03 | 70       | 0.15   |
+| 04 | 80       | 0.20   |
+| 05 | 90       | 0.25   |
+| 06 | 105      | 0.30   |
+| 07 | 120      | 0.35   |
+| 08 | 135      | 0.40   |
+| 09 | 150      | 0.45   |
+| 10 | 165      | 0.50   |
 | 11+ | 180+     | 0.50   |
+
+*Source: config/tech.toml [economic_level] section*
+<!-- ECONOMIC_LEVEL_TABLE_END -->
 
 ## 4.3 Science Level (SL)
 
@@ -421,16 +445,20 @@ SRP = 20 + SL(5)
 
 After SL5, the cost increases linearly by 10 per level.
 
+<!-- SCIENCE_LEVEL_TABLE_START -->
 | SL  | SRP Cost |
 |:---:|:--------:|
-| 01  | 25       |
-| 02  | 30       |
-| 03  | 35       |
-| 04  | 40       |
-| 05  | 45       |
-| 06  | 55       |
-| 07  | 65       |
+| 01 | 25       |
+| 02 | 30       |
+| 03 | 35       |
+| 04 | 40       |
+| 05 | 45       |
+| 06 | 55       |
+| 07 | 65       |
 | 08+ | 75+      |
+
+*Source: config/tech.toml [science_level] section*
+<!-- SCIENCE_LEVEL_TABLE_END -->
 
 ## 4.4 Technology Research Points (TRP)
 
@@ -471,13 +499,17 @@ Construction capacity increases by 10% each level (round up).
 
 CST will open up new, larger hulled classes of combat ships.
 
-| CST Level | SL  | TRP Cost |
+<!-- CST_TABLE_START -->
+| CONSTRUCTION_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
 | CST1      | 1   | 25       |
 | CST2      | 2   | 30       |
 | CST3      | 3   | 35       |
 | CST4      | 4   | 40       |
-| CST5+     | 5+  | \*45     |
+| CST5+     | 5   | \*45     |
+
+*Source: config/tech.toml [construction_tech] section*
+<!-- CST_TABLE_END -->
 
 The maximum construction level is CST10.
 
@@ -489,32 +521,41 @@ For every WEP increase, Production Cost (PC) per unit increases by 10%.
 
 Upgrades do not apply to preexisting ships; only new ships.
 
-| WEP Level | SL  | TRP Cost |
+<!-- WEP_TABLE_START -->
+| WEAPONS_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
 | WEP1      | 1   | 25       |
 | WEP2      | 2   | 30       |
 | WEP3      | 3   | 35       |
 | WEP4      | 4   | 40       |
-| WEP5+     | 5+  | 45       |
+| WEP5+     | 5   | \*45     |
+
+*Source: config/tech.toml [weapons_tech] section*
+<!-- WEP_TABLE_END -->
 
 The maximum WEP level is WEP10.
 
 ## 4.7 Terraforming (TER)
 
-Terraforming improve a planet's livable conditions, and thus the population limit. There are seven Terraforming levels that correspond directly with the planet classes.  
+Terraforming improve a planet's livable conditions, and thus the population limit. There are seven Terraforming levels that correspond directly with the planet classes.
 
-| TER Level | SL  | TRP Cost | Planet Class |
-|:---------:|:---:| -------- | ------------ |
-| TER1      | 1   | 25       | Extreme      |
-| TER2      | 2   | 30       | Desolate     |
-| TER3      | 3   | 35       | Hostile      |
-| TER4      | 4   | 40       | Harsh        |
-| TER5      | 5   | 45       | Benign       |
-| TER6      | 6   | 50       | Lush         |
-| TER7      | 7   | 55       | Eden         |
+<!-- TER_TABLE_START -->
+| TERRAFORMING_TECH Level | SL  | TRP Cost |
+|:---------:|:---:| -------- |
+| TER1      | 1   | 25       |
+| TER2      | 2   | 30       |
+| TER3      | 3   | 35       |
+| TER4      | 4   | 40       |
+| TER5      | 5   | 45       |
+| TER6      | 6   | 50       |
+| TER7      | 7   | 55       |
+
+*Source: config/tech.toml [terraforming_tech] section*
+<!-- TER_TABLE_END -->
 
 After the tech is achieved, the cost to upgrade a planet is as follows:
 
+<!-- TER_UPGRADE_COST_TABLE_START -->
 | Planet Class | Required TER | PU        | PP   |
 |:------------ |:------------:|:---------:|:----:|
 | Extreme      | TER1         | 1 - 20    | NA   |
@@ -523,7 +564,10 @@ After the tech is achieved, the cost to upgrade a planet is as follows:
 | Harsh        | TER4         | 181 - 500 | 500  |
 | Benign       | TER5         | 501- 1k   | 1000 |
 | Lush         | TER6         | 1k - 2k   | 1500 |
-| Eden         | TER7         | 2k+       | 2000 |
+| Eden         | TER7         | 2001+     | 2000 |
+
+*Source: config/tech.toml [terraforming_upgrade_costs] section*
+<!-- TER_UPGRADE_COST_TABLE_END -->
 
 Example: Upgrading from TER3 to TER4 requires 91 PP.
 
@@ -535,13 +579,17 @@ ELI technology enables the detection of cloaked Raiders and enemy Scouts, and th
 
 Upgrades do not apply to preexisting Starbases and Scouts.
 
-| ELI Level | SL  | TRP Cost |
+<!-- ELI_TABLE_START -->
+| ELECTRONIC_INTELLIGENCE Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
 | ELI1      | 1   | 25       |
 | ELI2      | 2   | 30       |
 | ELI3      | 3   | 35       |
 | ELI4      | 4   | 40       |
 | ELI5      | 5   | 45       |
+
+*Source: config/tech.toml [electronic_intelligence] section*
+<!-- ELI_TABLE_END -->
 
 The maximum ELI level is ELI5.
 
@@ -551,13 +599,17 @@ Cloaking enables Raiders to cloak their assigned fleets with increasing levels o
 
 Upgrades do not apply to preexisting Raiders.
 
-| CLK Level | SL  | TRP Cost |
+<!-- CLK_TABLE_START -->
+| CLOAKING_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
 | CLK1      | 3   | 35       |
 | CLK2      | 4   | 40       |
 | CLK3      | 5   | 45       |
 | CLK4      | 6   | 50       |
 | CLK5      | 7   | 55       |
+
+*Source: config/tech.toml [cloaking_tech] section*
+<!-- CLK_TABLE_END -->
 
 The maximum CLK level is CLK5.
 
@@ -567,7 +619,8 @@ Planetary Shields protect a colony from bombardment and invasion.
 
 Upgrades do not apply to preexisting shields. Salvage and build a new one.
 
-| SLD Level | SL  | TRP Cost |
+<!-- SLD_TABLE_START -->
+| SHIELD_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
 | SLD1      | 3   | 35       |
 | SLD2      | 4   | 40       |
@@ -575,19 +628,26 @@ Upgrades do not apply to preexisting shields. Salvage and build a new one.
 | SLD4      | 6   | 50       |
 | SLD5      | 7   | 55       |
 
+*Source: config/tech.toml [shield_tech] section*
+<!-- SLD_TABLE_END -->
+
 The maximum SLD level is SLD5.
 
 ## 4.11 Counter Intelligence Command (CIC)
 
 The CIC enhances security measures to shield the House from espionage threats posed by rivals.
 
-| CIC Level | SL  | TRP Cost |
+<!-- CIC_TABLE_START -->
+| COUNTER_INTELLIGENCE_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
 | CIC1      | 1   | 25       |
 | CIC2      | 2   | 30       |
 | CIC3      | 3   | 35       |
 | CIC4      | 4   | 40       |
 | CIC5      | 5   | 45       |
+
+*Source: config/tech.toml [counter_intelligence_tech] section*
+<!-- CIC_TABLE_END -->
 
 The maximum CIC level is CIC5.
 
@@ -597,11 +657,15 @@ Fighter Doctrine represents advancements in tactical coordination, pilot trainin
 
 **Research Progression:**
 
+<!-- FD_TABLE_START -->
 | Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier |
 |:----------:|--------------|:--------:|:-----------:|:-------------------:|
 | FD I       | None         | N/A      | 1           | 1.0x                |
 | FD II      | FD I         | 30       | 2           | 1.5x                |
 | FD III     | FD II        | 35       | 3           | 2.0x                |
+
+*Source: config/tech.toml [fighter_doctrine] section*
+<!-- FD_TABLE_END -->
 
 **FD I - Basic Fighter Operations**
 
@@ -631,11 +695,15 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater fighte
 
 **Research Progression:**
 
+<!-- ACO_TABLE_START -->
 | Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity |
 |:----------:|--------------|:--------:|:-----------:|:-----------:|:-----------:|
 | ACO I      | None         | N/A      | 1           | 3 FS        | 5 FS        |
 | ACO II     | ACO I        | 40       | 4           | 4 FS        | 6 FS        |
 | ACO III    | ACO II       | 45       | 5           | 5 FS        | 8 FS        |
+
+*Source: config/tech.toml [advanced_carrier_operations] section*
+<!-- ACO_TABLE_END -->
 
 **ACO I - Standard Carrier Operations**
 

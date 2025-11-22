@@ -134,3 +134,165 @@ psyops_campaign_cost = 3
 
 # Counter-intelligence detection cost
 detection_roll_cost = 1            # CIP cost per detection attempt
+
+# ============================================================================
+# RAW Material Efficiency Table
+# Source: docs/specs/economy.md Section 3.1
+# ============================================================================
+
+[raw_material_efficiency]
+# RAW INDEX by planet class (percentages as decimals)
+# Format: raw_quality_planetclass = efficiency
+
+# Very Poor
+very_poor_eden = 0.60
+very_poor_lush = 0.60
+very_poor_benign = 0.60
+very_poor_harsh = 0.60
+very_poor_hostile = 0.60
+very_poor_desolate = 0.60
+very_poor_extreme = 0.60
+
+# Poor
+poor_eden = 0.80
+poor_lush = 0.75
+poor_benign = 0.70
+poor_harsh = 0.65
+poor_hostile = 0.64
+poor_desolate = 0.63
+poor_extreme = 0.62
+
+# Abundant
+abundant_eden = 1.00
+abundant_lush = 0.90
+abundant_benign = 0.80
+abundant_harsh = 0.70
+abundant_hostile = 0.68
+abundant_desolate = 0.66
+abundant_extreme = 0.64
+
+# Rich
+rich_eden = 1.20
+rich_lush = 1.05
+rich_benign = 0.90
+rich_harsh = 0.75
+rich_hostile = 0.72
+rich_desolate = 0.69
+rich_extreme = 0.66
+
+# Very Rich
+very_rich_eden = 1.40
+very_rich_lush = 1.20
+very_rich_benign = 1.00
+very_rich_harsh = 0.80
+very_rich_hostile = 0.76
+very_rich_desolate = 0.72
+very_rich_extreme = 0.68
+
+# ============================================================================
+# Tax Rate Tables
+# Source: docs/specs/economy.md Sections 3.2.1 and 3.2.2
+# ============================================================================
+
+[tax_penalties]
+# High-tax prestige penalties (rolling 6-turn average)
+# Format: min_rate, max_rate, prestige_penalty
+tier_1_min = 0
+tier_1_max = 50
+tier_1_penalty = 0
+
+tier_2_min = 51
+tier_2_max = 60
+tier_2_penalty = -1
+
+tier_3_min = 61
+tier_3_max = 70
+tier_3_penalty = -2
+
+tier_4_min = 71
+tier_4_max = 80
+tier_4_penalty = -4
+
+tier_5_min = 81
+tier_5_max = 90
+tier_5_penalty = -7
+
+tier_6_min = 91
+tier_6_max = 100
+tier_6_penalty = -11
+
+[tax_incentives]
+# Low-tax incentives (applied same turn)
+# Format: min_rate, max_rate, population_growth_multiplier, prestige_bonus_per_colony
+tier_1_min = 41
+tier_1_max = 50
+tier_1_pop_multiplier = 1.0
+tier_1_prestige = 0
+
+tier_2_min = 31
+tier_2_max = 40
+tier_2_pop_multiplier = 1.05
+tier_2_prestige = 0
+
+tier_3_min = 21
+tier_3_max = 30
+tier_3_pop_multiplier = 1.10
+tier_3_prestige = 1
+
+tier_4_min = 11
+tier_4_max = 20
+tier_4_pop_multiplier = 1.15
+tier_4_prestige = 2
+
+tier_5_min = 0
+tier_5_max = 10
+tier_5_pop_multiplier = 1.20
+tier_5_prestige = 3
+
+# ============================================================================
+# Industrial Unit Investment Costs
+# Source: docs/specs/economy.md Section 3.4
+# ============================================================================
+
+[industrial_investment]
+# IU investment cost multipliers by percentage of PU
+# Base cost is 30 PP per IU
+base_cost = 30
+
+tier_1_max_percent = 50
+tier_1_multiplier = 1.0
+tier_1_pp = 30
+
+tier_2_min_percent = 51
+tier_2_max_percent = 75
+tier_2_multiplier = 1.2
+tier_2_pp = 36
+
+tier_3_min_percent = 76
+tier_3_max_percent = 100
+tier_3_multiplier = 1.5
+tier_3_pp = 45
+
+tier_4_min_percent = 101
+tier_4_max_percent = 150
+tier_4_multiplier = 2.0
+tier_4_pp = 60
+
+tier_5_min_percent = 151
+tier_5_multiplier = 2.5
+tier_5_pp = 75
+
+# ============================================================================
+# Colonization Costs
+# Source: docs/specs/economy.md Section 3.7
+# ============================================================================
+
+[colonization]
+# PP per PTU by planet class
+eden_pp_per_ptu = 4
+lush_pp_per_ptu = 5
+benign_pp_per_ptu = 6
+harsh_pp_per_ptu = 8
+hostile_pp_per_ptu = 10
+desolate_pp_per_ptu = 12
+extreme_pp_per_ptu = 15

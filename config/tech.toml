@@ -1,0 +1,344 @@
+# EC4X Technology Configuration
+# Source: docs/specs/economy.md Section 4.0 (Research & Development)
+# Edit this file to change tech costs and progression for all games
+
+# ============================================================================
+# Economic Level (EL)
+# Source: Section 4.2
+# ============================================================================
+
+[economic_level]
+# EL represents entrepreneurial skills and general education level
+# GHO benefits from EL upgrades by 5% per level, max 50% at EL10+
+
+level_1_erp = 50
+level_1_mod = 0.05
+
+level_2_erp = 60
+level_2_mod = 0.10
+
+level_3_erp = 70
+level_3_mod = 0.15
+
+level_4_erp = 80
+level_4_mod = 0.20
+
+level_5_erp = 90
+level_5_mod = 0.25
+
+level_6_erp = 105
+level_6_mod = 0.30
+
+level_7_erp = 120
+level_7_mod = 0.35
+
+level_8_erp = 135
+level_8_mod = 0.40
+
+level_9_erp = 150
+level_9_mod = 0.45
+
+level_10_erp = 165
+level_10_mod = 0.50
+
+level_11_erp = 180
+level_11_mod = 0.50
+
+# ============================================================================
+# Science Level (SL)
+# Source: Section 4.3
+# ============================================================================
+
+[science_level]
+# SL explores new knowledge through observation and experimentation
+# Requires equivalent EL level to advance
+
+level_1_srp = 25
+level_2_srp = 30
+level_3_srp = 35
+level_4_srp = 40
+level_5_srp = 45
+level_6_srp = 55
+level_7_srp = 65
+level_8_srp = 75
+
+# ============================================================================
+# Construction (CST)
+# Source: Section 4.5
+# ============================================================================
+
+[construction_tech]
+# Upgrades improve construction capability by 10% per level
+# Opens up new ship classes
+
+level_1_sl = 1
+level_1_trp = 25
+
+level_2_sl = 2
+level_2_trp = 30
+
+level_3_sl = 3
+level_3_trp = 35
+
+level_4_sl = 4
+level_4_trp = 40
+
+level_5_sl = 5
+level_5_trp = 45
+
+# Maximum construction level is CST10
+
+# ============================================================================
+# Weapons (WEP)
+# Source: Section 4.6
+# ============================================================================
+
+[weapons_tech]
+# Upgrades improve AS and DS by 10% per level (rounded down)
+# PC increases by 10% per WEP level
+# Upgrades apply to new ships only
+
+level_1_sl = 1
+level_1_trp = 25
+
+level_2_sl = 2
+level_2_trp = 30
+
+level_3_sl = 3
+level_3_trp = 35
+
+level_4_sl = 4
+level_4_trp = 40
+
+level_5_sl = 5
+level_5_trp = 45
+
+# Maximum WEP level is WEP10
+
+# ============================================================================
+# Terraforming (TER)
+# Source: Section 4.7
+# ============================================================================
+
+[terraforming_tech]
+# Terraforming improves planet livable conditions and population limit
+# 7 levels corresponding to planet classes
+
+level_1_sl = 1
+level_1_trp = 25
+level_1_planet_class = "Extreme"
+
+level_2_sl = 2
+level_2_trp = 30
+level_2_planet_class = "Desolate"
+
+level_3_sl = 3
+level_3_trp = 35
+level_3_planet_class = "Hostile"
+
+level_4_sl = 4
+level_4_trp = 40
+level_4_planet_class = "Harsh"
+
+level_5_sl = 5
+level_5_trp = 45
+level_5_planet_class = "Benign"
+
+level_6_sl = 6
+level_6_trp = 50
+level_6_planet_class = "Lush"
+
+level_7_sl = 7
+level_7_trp = 55
+level_7_planet_class = "Eden"
+
+# Terraforming upgrade costs (PP to upgrade a planet)
+[terraforming_upgrade_costs]
+extreme_ter = 1
+extreme_pu_min = 1
+extreme_pu_max = 20
+extreme_pp = 0  # NA - cannot upgrade from below Extreme
+
+desolate_ter = 2
+desolate_pu_min = 21
+desolate_pu_max = 60
+desolate_pp = 60
+
+hostile_ter = 3
+hostile_pu_min = 61
+hostile_pu_max = 180
+hostile_pp = 180
+
+harsh_ter = 4
+harsh_pu_min = 181
+harsh_pu_max = 500
+harsh_pp = 500
+
+benign_ter = 5
+benign_pu_min = 501
+benign_pu_max = 1000
+benign_pp = 1000
+
+lush_ter = 6
+lush_pu_min = 1001
+lush_pu_max = 2000
+lush_pp = 1500
+
+eden_ter = 7
+eden_pu_min = 2001
+eden_pu_max = 999999  # No max
+eden_pp = 2000
+
+# ============================================================================
+# Electronic Intelligence (ELI)
+# Source: Section 4.8
+# ============================================================================
+
+[electronic_intelligence]
+# Enables detection of cloaked Raiders and enemy Scouts
+# Upgrades apply to new Starbases and Scouts only
+
+level_1_sl = 1
+level_1_trp = 25
+
+level_2_sl = 2
+level_2_trp = 30
+
+level_3_sl = 3
+level_3_trp = 35
+
+level_4_sl = 4
+level_4_trp = 40
+
+level_5_sl = 5
+level_5_trp = 45
+
+# Maximum ELI level is ELI5
+
+# ============================================================================
+# Cloaking (CLK)
+# Source: Section 4.9
+# ============================================================================
+
+[cloaking_tech]
+# Enables Raiders to cloak assigned fleets with increasing probability
+# Upgrades apply to new Raiders only
+
+level_1_sl = 3
+level_1_trp = 35
+
+level_2_sl = 4
+level_2_trp = 40
+
+level_3_sl = 5
+level_3_trp = 45
+
+level_4_sl = 6
+level_4_trp = 50
+
+level_5_sl = 7
+level_5_trp = 55
+
+# Maximum CLK level is CLK5
+
+# ============================================================================
+# Planetary Shields (SLD)
+# Source: Section 4.10
+# ============================================================================
+
+[shield_tech]
+# Protects colonies from bombardment and invasion
+# Upgrades require salvage and rebuild
+
+level_1_sl = 3
+level_1_trp = 35
+
+level_2_sl = 4
+level_2_trp = 40
+
+level_3_sl = 5
+level_3_trp = 45
+
+level_4_sl = 6
+level_4_trp = 50
+
+level_5_sl = 7
+level_5_trp = 55
+
+# Maximum SLD level is SLD5
+
+# ============================================================================
+# Counter Intelligence Command (CIC)
+# Source: Section 4.11
+# ============================================================================
+
+[counter_intelligence_tech]
+# Enhances security measures against espionage threats
+
+level_1_sl = 1
+level_1_trp = 25
+
+level_2_sl = 2
+level_2_trp = 30
+
+level_3_sl = 3
+level_3_trp = 35
+
+level_4_sl = 4
+level_4_trp = 40
+
+level_5_sl = 5
+level_5_trp = 45
+
+# Maximum CIC level is CIC5
+
+# ============================================================================
+# Fighter Doctrine (FD)
+# Source: Section 4.12
+# ============================================================================
+
+[fighter_doctrine]
+# Advances tactical coordination and pilot training infrastructure
+# Applies house-wide immediately upon research completion
+
+level_1_sl = 1
+level_1_trp = 0  # Starting tech (NA)
+level_1_capacity_multiplier = 1.0
+level_1_description = "Basic Fighter Operations"
+
+level_2_sl = 2
+level_2_trp = 30
+level_2_capacity_multiplier = 1.5
+level_2_description = "Advanced Fighter Operations"
+
+level_3_sl = 3
+level_3_trp = 35
+level_3_capacity_multiplier = 2.0
+level_3_description = "Elite Fighter Operations"
+
+# ============================================================================
+# Advanced Carrier Operations (ACO)
+# Source: Section 4.13
+# ============================================================================
+
+[advanced_carrier_operations]
+# Improves carrier efficiency and fighter squadron capacity
+# Applies immediately to all carriers upon research completion
+
+level_1_sl = 1
+level_1_trp = 0  # Starting tech (NA)
+level_1_cv_capacity = 3
+level_1_cx_capacity = 5
+level_1_description = "Standard Carrier Operations"
+
+level_2_sl = 4
+level_2_trp = 40
+level_2_cv_capacity = 4
+level_2_cx_capacity = 6
+level_2_description = "Enhanced Carrier Operations"
+
+level_3_sl = 5
+level_3_trp = 45
+level_3_cv_capacity = 5
+level_3_cx_capacity = 8
+level_3_description = "Advanced Carrier Operations"
