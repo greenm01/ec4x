@@ -4,17 +4,17 @@
 ## This module is designed to work standalone for local/hotseat multiplayer
 ## Network transport (Nostr) wraps around this engine without modifying it
 
-import std/[tables, algorithm, options, random]
+import std/[tables, algorithm, options, random, strformat]
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
-import gamestate, orders, fleet, ship, starmap
+import gamestate, orders, fleet, ship, starmap, squadron
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import research/[types as res_types, advancement]
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
+import combat/[engine as combat, types as combat_types]
 import config/[prestige_config, espionage_config]
 import prestige
-# Note: Space combat via combat/engine module when needed
 
 type
   TurnResult* = object
@@ -271,10 +271,40 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process construction orders for a house
-  # TODO: Call economy.startConstruction() for each build order
-  # TODO: Validate orders against treasury and production capacity
-  # TODO: Generate events for construction started/completed
-  discard
+  echo "    Processing build orders for ", state.houses[packet.houseId].name
+
+  for order in packet.buildOrders:
+    # Validate colony exists
+    if order.colonySystem notin state.colonies:
+      echo "      Build order failed: colony not found at system ", order.colonySystem
+      continue
+
+    var colony = state.colonies[order.colonySystem]
+
+    # Check if colony already has construction in progress
+    if colony.underConstruction.isSome:
+      echo "      Build order failed: ", order.colonySystem, " already building something"
+      continue
+
+    # Create construction project based on build type
+    case order.buildType
+    of BuildType.Infrastructure:
+      # Infrastructure investment (IU expansion)
+      # NOTE: construction module needs economy.Colony, need to convert
+      # For now, skip infrastructure construction until Colony types are unified
+      echo "      Infrastructure construction skipped (Colony type mismatch - gamestate.Colony vs economy.Colony)"
+
+    of BuildType.Ship:
+      # TODO: Ship construction requires knowing WHICH ship class
+      # BuildOrder needs to be extended with shipClass field
+      # For now, skip ship construction
+      echo "      Ship construction not yet implemented (BuildOrder needs shipClass field)"
+
+    of BuildType.Building:
+      # TODO: Building construction requires knowing WHICH building type
+      # BuildOrder needs to be extended with buildingType field
+      # For now, skip building construction
+      echo "      Building construction not yet implemented (BuildOrder needs buildingType field)"
 
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =
@@ -421,17 +451,61 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
   ## Resolve space battle in a system
   echo "    Battle at ", systemId
 
-  # TODO: Gather all fleets at system
-  # TODO: Group into attacker/defender based on system ownership
-  # TODO: Build BattleContext with fleets and tech levels
-  # TODO: Call combat.resolveBattle()
-  # TODO: Apply results to game state (remove destroyed ships)
-  # TODO: Generate combat report and events
+  # 1. Gather all fleets at this system
+  var fleetsAtSystem: seq[(FleetId, Fleet)] = @[]
+  for fleetId, fleet in state.fleets:
+    if fleet.location == systemId:
+      fleetsAtSystem.add((fleetId, fleet))
+
+  if fleetsAtSystem.len < 2:
+    # Need at least 2 fleets for combat
+    return
+
+  # 2. Determine system ownership for attacker/defender grouping
+  let systemOwner = if systemId in state.colonies:
+                      some(state.colonies[systemId].owner)
+                    else:
+                      none(HouseId)
+
+  # 3. Group fleets by house (multiple fleets per house combine into one Task Force)
+  var houseFleets: Table[HouseId, seq[Fleet]] = initTable[HouseId, seq[Fleet]]()
+  for (fleetId, fleet) in fleetsAtSystem:
+    if fleet.owner notin houseFleets:
+      houseFleets[fleet.owner] = @[]
+    houseFleets[fleet.owner].add(fleet)
+
+  # 4. Check if there's actual conflict (need at least 2 different houses)
+  if houseFleets.len < 2:
+    return
+
+  # 5. TODO: Build Task Forces for combat
+  # NOTE: Fleet system uses simple Ship type (ShipType: Military/Spacelift)
+  #       but combat system needs Squadron with EnhancedShip (ShipClass: Corvette, Cruiser, etc.)
+  #       This architectural mismatch needs to be resolved.
+  #
+  # Options:
+  #   A) Refactor Fleet to contain Squadrons instead of Ships
+  #   B) Create conversion layer from Ship -> Squadron (requires storing ShipClass data in Ship)
+  #   C) Skip battle resolution until fleet system is upgraded
+  #
+  # For now: Skip battles until fleet architecture is updated
+  echo "      Battle resolution skipped (fleet->squadron conversion not yet implemented)"
+
+  # Generate placeholder combat report
+  var attackerHouses: seq[HouseId] = @[]
+  var defenderHouses: seq[HouseId] = @[]
+
+  # Classify attackers vs defenders based on system ownership
+  for houseId in houseFleets.keys:
+    if systemOwner.isSome and systemOwner.get() == houseId:
+      defenderHouses.add(houseId)
+    else:
+      attackerHouses.add(houseId)
 
   let report = CombatReport(
     systemId: systemId,
-    attackers: @[],
-    defenders: @[],
+    attackers: attackerHouses,
+    defenders: defenderHouses,
     attackerLosses: 0,
     defenderLosses: 0,
     victor: none(HouseId)
@@ -441,12 +515,39 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
 proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrder,
                        events: var seq[GameEvent]) =
   ## Process orbital bombardment order
-  # TODO: Validate fleet is at target system
-  # TODO: Get fleet and colony
-  # TODO: Call combat.resolveBombardment()
-  # TODO: Apply damage to colony
-  # TODO: Generate event
-  discard
+  # NOTE: Like resolveBattle(), this requires Squadron conversion
+  # Bombardment system (ground.nim:329) needs seq[CombatSquadron]
+  # Current Fleet has seq[Ship] without combat stats
+
+  if order.targetSystem.isNone:
+    return
+
+  let targetId = order.targetSystem.get()
+
+  # Validate fleet exists and is at target
+  let fleetOpt = state.getFleet(order.fleetId)
+  if fleetOpt.isNone:
+    echo "      Bombardment failed: fleet not found"
+    return
+
+  let fleet = fleetOpt.get()
+  if fleet.location != targetId:
+    echo "      Bombardment failed: fleet not at target system"
+    return
+
+  # Validate target colony exists
+  if targetId notin state.colonies:
+    echo "      Bombardment failed: no colony at target"
+    return
+
+  # TODO: Once Fleet->Squadron conversion is complete:
+  # 1. Convert fleet.squadrons to seq[CombatSquadron]
+  # 2. Get colony's PlanetaryDefense
+  # 3. Call ground.conductBombardment()
+  # 4. Apply infrastructure damage to colony
+  # 5. Generate event for bombardment results
+
+  echo "      Bombardment order received but skipped (needs squadron conversion)"
 
 ## Phase 4: Maintenance
 
