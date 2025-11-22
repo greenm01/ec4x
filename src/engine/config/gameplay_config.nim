@@ -2,24 +2,12 @@
 ##
 ## Loads gameplay mechanics from config/gameplay.toml using toml_serialization
 ## Allows runtime configuration for core game rules
+## NOTE: Starting tech levels are in config/tech.toml (see tech_config module)
 
 import std/[os]
 import toml_serialization
 
 type
-  StartingTechConfig* = object
-    ## Starting tech levels per gameplay.md:1.2 and economy.md tech tables
-    ## CRITICAL: ALL tech starts at level 1, not 0!
-    energy_level*: int              # EL1
-    shield_level*: int              # SL1
-    construction_tech*: int         # CST1
-    weapons_tech*: int              # WEP1
-    terraforming_tech*: int         # TER1
-    electronic_intelligence*: int   # ELI1
-    counter_intelligence*: int      # CIC1
-    fighter_doctrine*: int          # FD I (starts at 1)
-    advanced_carrier_ops*: int      # ACO I (starts at 1)
-
   EliminationConfig* = object
     defensive_collapse_turns*: int
     defensive_collapse_threshold*: int
@@ -51,7 +39,6 @@ type
 
   GameplayConfig* = object
     ## Complete gameplay configuration loaded from TOML
-    starting_tech*: StartingTechConfig
     elimination*: EliminationConfig
     autopilot*: AutopilotConfig
     autopilot_behavior*: AutopilotBehaviorConfig

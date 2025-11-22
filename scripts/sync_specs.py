@@ -888,6 +888,42 @@ def generate_aco_table(tech_config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def generate_starting_tech_table(tech_config: Dict[str, Any]) -> str:
+    """Generate starting technology levels table from tech.toml."""
+    starting_tech = tech_config.get('starting_tech', {})
+
+    lines = [
+        "| Tech | Starting Level | Effect |",
+        "|------|----------------|--------|",
+    ]
+
+    # Get FD and ACO capacity values from tech config
+    fd_capacity = tech_config.get('fighter_doctrine', {}).get('level_1_capacity_multiplier', 1.0)
+    aco_cv = tech_config.get('advanced_carrier_operations', {}).get('level_1_cv_capacity', 3)
+    aco_cx = tech_config.get('advanced_carrier_operations', {}).get('level_1_cx_capacity', 5)
+
+    # Define tech entries with their effects
+    tech_entries = [
+        ("**EL**", starting_tech.get('energy_level', 1), "Economic Level - 5% production bonus (GCO modifier)"),
+        ("**SL**", starting_tech.get('shield_level', 1), "Science Level - Base research capability"),
+        ("**CST**", starting_tech.get('construction_tech', 1), "Construction Tech - Base shipyard capacity"),
+        ("**WEP**", starting_tech.get('weapons_tech', 1), "Weapons Tech - Base combat strength (AS/DS)"),
+        ("**TER**", starting_tech.get('terraforming_tech', 1), "Terraforming Tech - Base terraforming capability"),
+        ("**ELI**", starting_tech.get('electronic_intelligence', 1), "Electronic Intelligence - Base spy scout capability"),
+        ("**CIC**", starting_tech.get('counter_intelligence', 1), "Counter-Intelligence - Base espionage detection"),
+        ("**FD**", starting_tech.get('fighter_doctrine', 1), f"Fighter Doctrine I - {fd_capacity}x fighter capacity multiplier"),
+        ("**ACO**", starting_tech.get('advanced_carrier_ops', 1), f"Advanced Carrier Operations I - CV={aco_cv}FS, CX={aco_cx}FS"),
+    ]
+
+    for tech_name, level, effect in tech_entries:
+        lines.append(f"| {tech_name} | {level} | {effect} |")
+
+    lines.append("")
+    lines.append("*Source: config/tech.toml [starting_tech] section*")
+
+    return "\n".join(lines)
+
+
 def update_reference_spec(ships_table: str, ground_table: str, spacelift_table: str, prestige_table: str, morale_table: str, espionage_table: str, penalty_table: str):
     """Update docs/specs/reference.md with generated tables."""
     spec_file = Path("docs/specs/reference.md")
@@ -1078,6 +1114,7 @@ def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_ta
                         el_table: str, sl_table: str, cst_table: str, wep_table: str,
                         ter_table: str, ter_upgrade_table: str, eli_table: str, clk_table: str,
                         sld_table: str, cic_table: str, fd_table: str, aco_table: str,
+                        starting_tech_table: str,
                         economy_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any], tech_config: Dict[str, Any]):
     """Update docs/specs/economy.md with generated tables and inline values."""
     spec_file = Path("docs/specs/economy.md")
@@ -1093,6 +1130,7 @@ def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_ta
 
     # Define all markers for economy tables
     markers = {
+        "STARTING_TECH_TABLE": (starting_tech_table, "starting technology table"),
         "RAW_MATERIAL_TABLE": (raw_table, "RAW material efficiency table"),
         "TAX_PENALTY_TABLE": (tax_penalty_table, "tax penalty table"),
         "TAX_INCENTIVE_TABLE": (tax_incentive_table, "tax incentive table"),
@@ -1592,6 +1630,9 @@ def main():
     aco_table = generate_aco_table(tech_config)
     print("✓ Generated Advanced Carrier Operations (ACO) table (3 levels)")
 
+    starting_tech_table = generate_starting_tech_table(tech_config)
+    print("✓ Generated starting technology table (9 tech types)")
+
     # Generate operations tables
     shield_table = generate_shield_effectiveness_table(combat_config)
     print("✓ Generated shield effectiveness table (6 levels)")
@@ -1610,7 +1651,8 @@ def main():
     update_economy_spec(raw_table, tax_penalty_table, tax_incentive_table, iu_table, colonization_table,
                         maintenance_shortfall_table, el_table, sl_table, cst_table, wep_table,
                         ter_table, ter_upgrade_table, eli_table, clk_table, sld_table,
-                        cic_tech_table, fd_table, aco_table, economy_config, construction_config, military_config, tech_config)
+                        cic_tech_table, fd_table, aco_table, starting_tech_table,
+                        economy_config, construction_config, military_config, tech_config)
     update_operations_spec(shield_table, combat_config, construction_config, military_config)
     update_assets_spec(spy_detection_table, raider_detection_table, espionage_config, construction_config, military_config)
     update_gameplay_spec(gameplay_config, game_setup_config)
