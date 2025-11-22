@@ -12,6 +12,7 @@ import std/[options, sequtils, math]
 import types, cer
 import ../../common/types/[core, units, combat as commonCombat]
 import ../squadron
+import ../config/combat_config
 
 export CombatState
 
@@ -72,59 +73,77 @@ type
 
 ## Bombardment CER Table (Section 7.5.1)
 
-const BombardmentCERTable* = [
-  # Roll 0-2: 0.25× (round up)
-  (minRoll: 0, maxRoll: 2, multiplier: 0.25),
-  # Roll 3-5: 0.50× (round up)
-  (minRoll: 3, maxRoll: 5, multiplier: 0.50),
-  # Roll 6-8: 1.00×
-  (minRoll: 6, maxRoll: 8, multiplier: 1.0),
-  # Roll 9: 1.00× (critical - affects attackers only)
-  (minRoll: 9, maxRoll: 9, multiplier: 1.0)
-]
-
 proc getBombardmentCER*(roll: int): (float, bool) =
-  ## Get bombardment CER multiplier and critical hit flag
+  ## Get bombardment CER multiplier and critical hit flag from config
   ## Returns (multiplier, isCritical)
-  for entry in BombardmentCERTable:
-    if roll >= entry.minRoll and roll <= entry.maxRoll:
-      let isCrit = (roll == 9)
-      return (entry.multiplier, isCrit)
-  # Fallback (should never happen)
-  return (0.25, false)
+  ##
+  ## Uses config/combat.toml bombardment thresholds
+  let cfg = globalCombatConfig.bombardment
+
+  if roll <= cfg.very_poor_max:
+    # Roll 0-2: 0.25× (round up)
+    return (0.25, false)
+  elif roll <= cfg.poor_max:
+    # Roll 3-5: 0.50× (round up)
+    return (0.50, false)
+  elif roll <= 8:
+    # Roll 6-8: 1.00×
+    return (1.0, false)
+  elif roll == 9:
+    # Roll 9: 1.00× (critical - affects attackers only)
+    return (1.0, true)
+  else:
+    # Fallback (should never happen)
+    return (0.25, false)
 
 ## Ground Combat CER Table (Section 7.6)
 
-const GroundCombatCERTable* = [
-  # Roll 0-2: 0.50× (round up)
-  (minRoll: 0, maxRoll: 2, multiplier: 0.5),
-  # Roll 3-6: 1.00×
-  (minRoll: 3, maxRoll: 6, multiplier: 1.0),
-  # Roll 7-8: 1.50× (round up)
-  (minRoll: 7, maxRoll: 8, multiplier: 1.5),
-  # Roll 9: 2.00×
-  (minRoll: 9, maxRoll: 9, multiplier: 2.0)
-]
-
 proc getGroundCombatCER*(roll: int): float =
-  ## Get ground combat CER multiplier (invasion/blitz)
-  for entry in GroundCombatCERTable:
-    if roll >= entry.minRoll and roll <= entry.maxRoll:
-      return entry.multiplier
-  # Fallback
-  return 0.5
+  ## Get ground combat CER multiplier (invasion/blitz) from config
+  ##
+  ## Uses config/combat.toml ground_combat thresholds
+  let cfg = globalCombatConfig.ground_combat
+
+  if roll <= cfg.poor_max:
+    # Roll 0-2: 0.50× (round up)
+    return 0.5
+  elif roll <= cfg.average_max:
+    # Roll 3-6: 1.00×
+    return 1.0
+  elif roll <= cfg.good_max:
+    # Roll 7-8: 1.50× (round up)
+    return 1.5
+  elif roll >= cfg.critical:
+    # Roll 9: 2.00×
+    return 2.0
+  else:
+    # Fallback
+    return 0.5
 
 ## Planetary Shield Mechanics (Section 7.5.2)
 
-const ShieldTable* = [
-  # SLD Level, Chance%, D20 Roll Needed, % Blocked
-  (level: 1, chance: 0.15, rollNeeded: 18, blockPct: 0.25),
-  (level: 2, chance: 0.30, rollNeeded: 15, blockPct: 0.30),
-  (level: 3, chance: 0.45, rollNeeded: 12, blockPct: 0.35),
-  (level: 4, chance: 0.60, rollNeeded: 9, blockPct: 0.40),
-  (level: 5, chance: 0.75, rollNeeded: 6, blockPct: 0.45),
-  (level: 6, chance: 0.90, rollNeeded: 3, blockPct: 0.50)
-]
+proc getShieldData*(shieldLevel: int): (int, float) =
+  ## Get shield data from config for given level (1-6)
+  ## Returns (rollNeeded, blockPct)
+  ##
+  ## Uses config/combat.toml planetary_shields section
+  let cfg = globalCombatConfig.planetary_shields
+
+  case shieldLevel
+  of 1:
+    return (cfg.sld1_roll, float(cfg.sld1_block) / 100.0)
+  of 2:
+    return (cfg.sld2_roll, float(cfg.sld2_block) / 100.0)
+  of 3:
+    return (cfg.sld3_roll, float(cfg.sld3_block) / 100.0)
+  of 4:
+    return (cfg.sld4_roll, float(cfg.sld4_block) / 100.0)
+  of 5:
+    return (cfg.sld5_roll, float(cfg.sld5_block) / 100.0)
+  of 6:
+    return (cfg.sld6_roll, float(cfg.sld6_block) / 100.0)
+  else:
+    return (20, 0.0)  # Invalid level - shield never activates
 
 proc rollShieldBlock*(shieldLevel: int, rng: var CombatRNG): (bool, float) =
   ## Roll to see if shields block damage
@@ -135,14 +154,14 @@ proc rollShieldBlock*(shieldLevel: int, rng: var CombatRNG): (bool, float) =
   if shieldLevel < 1 or shieldLevel > 6:
     return (false, 0.0)
 
-  let shieldData = ShieldTable[shieldLevel - 1]
+  let (rollNeeded, blockPct) = getShieldData(shieldLevel)
 
   # Roll 1d20 (extend RNG to support d20)
   # TODO: Add roll1d20() to CER module
   let roll = (rng.roll1d10() * 2) mod 20 + 1  # TEMP: Simulate d20
 
-  if roll >= shieldData.rollNeeded:
-    return (true, shieldData.blockPct)
+  if roll >= rollNeeded:
+    return (true, blockPct)
   else:
     return (false, 0.0)
 
