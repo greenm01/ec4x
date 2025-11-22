@@ -287,6 +287,39 @@ EC4X is a turn-based 4X space strategy game built in Nim. The project follows NE
 
 ---
 
+### 13. Configuration System
+**Status:** ✅ Complete and integrated
+**Files:** `src/engine/config/`, `config/*.toml`
+
+**Features:**
+- 12 type-safe TOML configuration loaders:
+  1. `prestige_config.nim` - All prestige point awards
+  2. `espionage_config.nim` - Espionage costs and effects
+  3. `diplomacy_config.nim` - Diplomatic mechanics
+  4. `gameplay_config.nim` - Elimination, autopilot, victory rules
+  5. `military_config.nim` - Squadron limits, salvage
+  6. `facilities_config.nim` - Spaceports, shipyards
+  7. `ground_units_config.nim` - Planetary defenses
+  8. `combat_config.nim` - Combat mechanics, CER tables
+  9. `construction_config.nim` - Build times, costs, repairs
+  10. `economy_config.nim` - Population, production, taxation
+  11. `ships_config.nim` - All 20 ship types with stats
+  12. `tech_config.nim` - Tech tree (placeholder)
+- `toml_serialization` for type-safe parsing
+- Global config instances auto-load at import
+- Documentation sync via `scripts/sync_specs.py`
+
+**Test Coverage:**
+- All config loaders compile and load successfully
+- Build verification via pre-commit hook
+- Integration tests validate config usage
+
+**Config:** 13 TOML files with 2000+ configurable parameters
+
+**Reference:** `docs/CLAUDE_CONTEXT.md` (Phase 3 complete)
+
+---
+
 ## 🚧 Incomplete Systems
 
 ### 1. Blockade Mechanics
@@ -582,7 +615,7 @@ python3 scripts/sync_specs.py
 5. ✅ **Turn Resolution:** 4-phase turn structure integrated
 6. ✅ **Victory & Morale:** Victory conditions and morale system
 7. ✅ **Config System:** 13 TOML files + documentation sync (1,625 line sync script)
-8. 🚧 **Engine Integration:** Update Nim loaders for all configs (current)
+8. ✅ **Engine Integration:** All 12 Nim config loaders implemented with toml_serialization
 
 ---
 
