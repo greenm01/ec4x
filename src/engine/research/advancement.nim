@@ -122,7 +122,7 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
     let config = globalPrestigeConfig
     let prestigeEvent = createPrestigeEvent(
       PrestigeSource.TechAdvancement,
-      config.techAdvancement,
+      config.economic.tech_advancement,
       "Economic Level " & $currentEL & " → " & $(currentEL + 1)
     )
 
@@ -155,7 +155,7 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[TechAdvan
     let config = globalPrestigeConfig
     let prestigeEvent = createPrestigeEvent(
       PrestigeSource.TechAdvancement,
-      config.techAdvancement,
+      config.economic.tech_advancement,
       "Science Level " & $currentSL & " → " & $(currentSL + 1)
     )
 
@@ -221,7 +221,7 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
   let fieldName = $field
   let prestigeEvent = createPrestigeEvent(
     PrestigeSource.TechAdvancement,
-    config.techAdvancement,
+    config.economic.tech_advancement,
     fieldName & " " & $currentLevel & " → " & $(currentLevel + 1)
   )
 
