@@ -858,6 +858,35 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           systemId: some(completed.colonyId)
         ))
 
+    # Special handling for starbases
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId == "Starbase":
+      # Commission starbase at colony
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Create new starbase
+        let starbase = Starbase(
+          id: $completed.colonyId & "-SB-" & $(colony.starbases.len + 1),
+          commissionedTurn: state.turn,
+          isCrippled: false
+        )
+
+        colony.starbases.add(starbase)
+        state.colonies[completed.colonyId] = colony
+
+        echo "      Commissioned starbase ", starbase.id, " at ", completed.colonyId
+        echo "        Total operational starbases: ", getOperationalStarbaseCount(colony)
+        echo "        Growth bonus: ", int(getStarbaseGrowthBonus(colony) * 100.0), "%"
+
+        # Generate event
+        events.add(GameEvent(
+          eventType: GameEventType.ColonyEstablished,  # TODO: Add StarbaseCommissioned event type
+          houseId: colony.owner,
+          description: "Starbase commissioned at " & $completed.colonyId,
+          systemId: some(completed.colonyId)
+        ))
+
   # Check for elimination and defensive collapse
   let gameplayConfig = globalGameplayConfig
   for houseId, house in state.houses:
