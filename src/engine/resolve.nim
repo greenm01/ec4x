@@ -887,6 +887,65 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           systemId: some(completed.colonyId)
         ))
 
+    # Special handling for spaceports
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId == "Spaceport":
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Create new spaceport (5 docks per facilities_config.toml)
+        let spaceport = Spaceport(
+          id: $completed.colonyId & "-SP-" & $(colony.spaceports.len + 1),
+          commissionedTurn: state.turn,
+          docks: 5  # From facilities_config: spaceport.docks
+        )
+
+        colony.spaceports.add(spaceport)
+        state.colonies[completed.colonyId] = colony
+
+        echo "      Commissioned spaceport ", spaceport.id, " at ", completed.colonyId
+        echo "        Total construction docks: ", getTotalConstructionDocks(colony)
+
+        events.add(GameEvent(
+          eventType: GameEventType.ColonyEstablished,
+          houseId: colony.owner,
+          description: "Spaceport commissioned at " & $completed.colonyId,
+          systemId: some(completed.colonyId)
+        ))
+
+    # Special handling for shipyards
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId == "Shipyard":
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Validate spaceport prerequisite
+        if not hasSpaceport(colony):
+          echo "      ERROR: Shipyard construction failed - no spaceport at ", completed.colonyId
+          # This shouldn't happen if build validation worked correctly
+          continue
+
+        # Create new shipyard (10 docks per facilities_config.toml)
+        let shipyard = Shipyard(
+          id: $completed.colonyId & "-SY-" & $(colony.shipyards.len + 1),
+          commissionedTurn: state.turn,
+          docks: 10,  # From facilities_config: shipyard.docks
+          isCrippled: false
+        )
+
+        colony.shipyards.add(shipyard)
+        state.colonies[completed.colonyId] = colony
+
+        echo "      Commissioned shipyard ", shipyard.id, " at ", completed.colonyId
+        echo "        Total construction docks: ", getTotalConstructionDocks(colony)
+
+        events.add(GameEvent(
+          eventType: GameEventType.ColonyEstablished,
+          houseId: colony.owner,
+          description: "Shipyard commissioned at " & $completed.colonyId,
+          systemId: some(completed.colonyId)
+        ))
+
   # Check for elimination and defensive collapse
   let gameplayConfig = globalGameplayConfig
   for houseId, house in state.houses:
