@@ -257,22 +257,36 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
 
 proc generateResearchAllocation(controller: AIController, state: GameState): Table[TechField, int] =
   ## Allocate research points based on strategy
+  ## Research costs PP (production), not IU (treasury)
   result = initTable[TechField, int]()
   let p = controller.personality
   let house = state.houses[controller.houseId]
 
-  # Calculate available research budget (simplified - use 10% of treasury)
-  let budget = house.treasury div 10
+  # Calculate available PP budget from production
+  # Get house's production from all colonies
+  var totalProduction = 0
+  for colony in state.colonies.values:
+    if colony.owner == controller.houseId:
+      totalProduction += colony.production
 
-  if p.techPriority > 0.6:
-    # Heavy research investment
-    result[TechField.EnergyLevel] = budget div 3
-    result[TechField.WeaponsTech] = if p.aggression > 0.5: budget div 2 else: budget div 4
-    result[TechField.ShieldLevel] = budget div 6
-  else:
-    # Minimal research
-    result[TechField.EnergyLevel] = budget div 4
-    result[TechField.WeaponsTech] = budget div 4
+  # Allocate percentage of production to research based on tech priority
+  let researchBudget = int(float(totalProduction) * p.techPriority)
+
+  if researchBudget > 0:
+    # Distribute research across fields based on strategy
+    if p.techPriority > 0.6:
+      # Heavy research investment - distribute across multiple fields
+      result[TechField.EnergyLevel] = researchBudget div 3
+      result[TechField.WeaponsTech] = if p.aggression > 0.5: researchBudget div 3 else: researchBudget div 6
+      result[TechField.ShieldLevel] = researchBudget div 6
+      result[TechField.ConstructionTech] = researchBudget div 6
+    elif p.techPriority > 0.4:
+      # Moderate research - focus on key fields
+      result[TechField.EnergyLevel] = researchBudget div 2
+      result[TechField.WeaponsTech] = if p.aggression > 0.5: researchBudget div 2 else: 0
+    else:
+      # Minimal research - just energy
+      result[TechField.EnergyLevel] = researchBudget
 
 proc generateDiplomaticActions(controller: AIController, state: GameState, rng: var Rand): seq[DiplomaticAction] =
   ## Generate diplomatic actions based on strategy

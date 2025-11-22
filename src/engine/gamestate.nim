@@ -7,6 +7,7 @@ import fleet, ship, starmap
 import config/[prestige_config, military_config, tech_config]
 import diplomacy/types as dip_types
 import espionage/types as esp_types
+import research/types as res_types
 
 # Re-export common types
 export core.HouseId, core.SystemId, core.FleetId
@@ -87,9 +88,8 @@ type
     turnsRemaining*: int
     cost*: int
 
-  TechTree* = object
-    levels*: TechLevel            # Tech levels for all fields
-    researchPoints*: int          # Available research points
+  # Re-export proper TechTree from research module
+  TechTree* = res_types.TechTree
 
   SpyMissionType* {.pure.} = enum
     ## Types of spy scout missions (operations.md:6.2.9-6.2.11)
@@ -174,20 +174,17 @@ proc initializeHouse*(name: string, color: string): House =
     color: color,
     prestige: globalPrestigeConfig.victory.starting_prestige,
     treasury: 1000,  # Starting treasury
-    techTree: TechTree(
-      levels: TechLevel(
-        energyLevel: startingTech.energy_level,
-        shieldLevel: startingTech.shield_level,
-        constructionTech: startingTech.construction_tech,
-        weaponsTech: startingTech.weapons_tech,
-        terraformingTech: startingTech.terraforming_tech,
-        electronicIntelligence: startingTech.electronic_intelligence,
-        counterIntelligence: startingTech.counter_intelligence,
-        fighterDoctrine: startingTech.fighter_doctrine,
-        advancedCarrierOps: startingTech.advanced_carrier_ops
-      ),
-      researchPoints: 0
-    ),
+    techTree: res_types.initTechTree(TechLevel(
+      energyLevel: startingTech.energy_level,
+      shieldLevel: startingTech.shield_level,
+      constructionTech: startingTech.construction_tech,
+      weaponsTech: startingTech.weapons_tech,
+      terraformingTech: startingTech.terraforming_tech,
+      electronicIntelligence: startingTech.electronic_intelligence,
+      counterIntelligence: startingTech.counter_intelligence,
+      fighterDoctrine: startingTech.fighter_doctrine,
+      advancedCarrierOps: startingTech.advanced_carrier_ops
+    )),
     eliminated: false,
     negativePrestigeTurns: 0,
     diplomaticRelations: dip_types.initDiplomaticRelations(),
