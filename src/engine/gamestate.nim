@@ -29,6 +29,19 @@ type
     commissionedTurn*: int        # Turn when built
     isCrippled*: bool             # Combat state (crippled starbases provide no bonuses)
 
+  Spaceport* = object
+    ## Ground-based launch facility (assets.md:2.3.2.1)
+    id*: string                   # Unique identifier
+    commissionedTurn*: int        # Turn when built
+    docks*: int                   # Construction docks (5 per spaceport)
+
+  Shipyard* = object
+    ## Orbital construction facility (assets.md:2.3.2.2)
+    id*: string                   # Unique identifier
+    commissionedTurn*: int        # Turn when built
+    docks*: int                   # Construction docks (10 per shipyard)
+    isCrippled*: bool             # Combat state (crippled shipyards can't build)
+
   CapacityViolation* = object
     ## Tracks fighter capacity violations and grace period
     active*: bool                 # Is there an active violation
@@ -53,6 +66,10 @@ type
 
     # Starbases (assets.md:2.4.4)
     starbases*: seq[Starbase]                 # Orbital fortresses
+
+    # Facilities (assets.md:2.3.2)
+    spaceports*: seq[Spaceport]               # Ground launch facilities
+    shipyards*: seq[Shipyard]                 # Orbital construction facilities
 
   ConstructionProject* = object
     projectType*: BuildingType
@@ -161,7 +178,9 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
       turnsRemaining: 0,
       violationTurn: 0
     ),
-    starbases: @[]  # No starbases at start
+    starbases: @[],  # No starbases at start
+    spaceports: @[],  # No spaceports at start
+    shipyards: @[]   # No shipyards at start
   )
 
 # Game state queries
@@ -302,6 +321,34 @@ proc getStarbaseGrowthBonus*(colony: Colony): float =
   let operational = getOperationalStarbaseCount(colony)
   let bonus = float(min(operational, 3)) * 0.05  # 5% per SB, max 3
   return bonus
+
+# Facility management (assets.md:2.3.2)
+
+proc hasSpaceport*(colony: Colony): bool =
+  ## Check if colony has at least one spaceport
+  return colony.spaceports.len > 0
+
+proc getOperationalShipyardCount*(colony: Colony): int =
+  ## Count operational (non-crippled) shipyards
+  result = 0
+  for shipyard in colony.shipyards:
+    if not shipyard.isCrippled:
+      result += 1
+
+proc hasOperationalShipyard*(colony: Colony): bool =
+  ## Check if colony has at least one operational shipyard
+  return getOperationalShipyardCount(colony) > 0
+
+proc getTotalConstructionDocks*(colony: Colony): int =
+  ## Calculate total construction docks from facilities
+  ## Spaceports: 5 docks each
+  ## Shipyards: 10 docks each (only operational ones)
+  result = 0
+  for spaceport in colony.spaceports:
+    result += spaceport.docks
+  for shipyard in colony.shipyards:
+    if not shipyard.isCrippled:
+      result += shipyard.docks
 
 # Victory condition checks
 
