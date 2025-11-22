@@ -987,8 +987,38 @@ def update_reference_spec(ships_table: str, ground_table: str, spacelift_table: 
     print(f"\n✓ Successfully updated {spec_file}")
 
 
-def update_diplomacy_spec(espionage_prestige_table: str, cic_modifier_table: str, cic_threshold_table: str):
-    """Update docs/specs/diplomacy.md with generated tables."""
+def replace_inline_values_diplomacy(content: str, diplomacy_config: Dict[str, Any]) -> str:
+    """Replace inline marker values in diplomacy.md with values from config."""
+    import re
+
+    # Define inline value replacements for diplomacy.md
+    replacements = {
+        'DISHONORED_TURNS': lambda: str(diplomacy_config['pact_violations']['dishonored_status_turns']),
+        'DIPLOMATIC_ISOLATION_TURNS': lambda: str(diplomacy_config['pact_violations']['diplomatic_isolation_turns']),
+        'REPEAT_VIOLATION_WINDOW': lambda: str(diplomacy_config['pact_violations']['repeat_violation_window']),
+        'PACT_REINSTATEMENT_TURNS': lambda: str(diplomacy_config['pact_violations']['pact_reinstatement_cooldown']),
+        'TECH_THEFT_SRP': lambda: str(diplomacy_config['espionage_effects']['tech_theft_srp_stolen']),
+        'LOW_SAB_DICE': lambda: diplomacy_config['espionage_effects']['low_sabotage_dice'],
+        'HIGH_SAB_DICE': lambda: diplomacy_config['espionage_effects']['high_sabotage_dice'],
+        'ASSASSIN_REDUCTION': lambda: str(int(diplomacy_config['espionage_effects']['assassination_srp_reduction'] * 100)),
+        'ASSASSIN_TURNS': lambda: "one" if diplomacy_config['espionage_effects']['assassination_duration_turns'] == 1 else str(diplomacy_config['espionage_effects']['assassination_duration_turns']),
+        'ECON_DISRUPT_TURNS': lambda: "one" if diplomacy_config['espionage_effects']['economic_disruption_duration_turns'] == 1 else str(diplomacy_config['espionage_effects']['economic_disruption_duration_turns']),
+        'PROPAGANDA_REDUCTION': lambda: str(int(diplomacy_config['espionage_effects']['propaganda_tax_reduction'] * 100)),
+        'PROPAGANDA_TURNS': lambda: "one" if diplomacy_config['espionage_effects']['propaganda_duration_turns'] == 1 else str(diplomacy_config['espionage_effects']['propaganda_duration_turns']),
+        'FAILED_ESPIONAGE_PRESTIGE': lambda: str(abs(diplomacy_config['detection']['failed_espionage_prestige_loss'])),
+    }
+
+    # Replace each inline marker with plain value (removes markers)
+    for marker, value_func in replacements.items():
+        pattern = f"<!-- {marker} -->.*?<!-- /{marker} -->"
+        replacement = value_func()
+        content = re.sub(pattern, replacement, content)
+
+    return content
+
+
+def update_diplomacy_spec(espionage_prestige_table: str, cic_modifier_table: str, cic_threshold_table: str, diplomacy_config: Dict[str, Any]):
+    """Update docs/specs/diplomacy.md with generated tables and inline values."""
     spec_file = Path("docs/specs/diplomacy.md")
 
     if not spec_file.exists():
@@ -996,6 +1026,9 @@ def update_diplomacy_spec(espionage_prestige_table: str, cic_modifier_table: str
         return
 
     content = spec_file.read_text()
+
+    # Replace inline values first
+    content = replace_inline_values_diplomacy(content, diplomacy_config)
 
     # Markers for table replacement
     esp_prestige_start = "<!-- ESPIONAGE_PRESTIGE_TABLE_START -->"
@@ -1268,6 +1301,9 @@ def main():
     military_config = load_toml(config_dir / "military.toml")
     print(f"✓ Loaded {config_dir / 'military.toml'}")
 
+    diplomacy_config = load_toml(config_dir / "diplomacy.toml")
+    print(f"✓ Loaded {config_dir / 'diplomacy.toml'}")
+
     # Generate tables
     print("\nGenerating specification tables...")
 
@@ -1364,7 +1400,7 @@ def main():
     # Update spec files
     print("\nUpdating specification documents...")
     update_reference_spec(ships_table, ground_table, spacelift_table, prestige_table, morale_table, espionage_table, penalty_table)
-    update_diplomacy_spec(espionage_prestige_table, cic_modifier_table, cic_threshold_table)
+    update_diplomacy_spec(espionage_prestige_table, cic_modifier_table, cic_threshold_table, diplomacy_config)
     update_economy_spec(raw_table, tax_penalty_table, tax_incentive_table, iu_table, colonization_table,
                         maintenance_shortfall_table, el_table, sl_table, cst_table, wep_table,
                         ter_table, ter_upgrade_table, eli_table, clk_table, sld_table,
