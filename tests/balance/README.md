@@ -1,0 +1,277 @@
+# EC4X Balance Testing Framework
+
+AI-powered game balance testing system that simulates full games and generates structured data for analysis.
+
+## Overview
+
+This framework enables data-driven balance testing by:
+1. Simulating complete games with various AI strategies
+2. Capturing detailed metrics at every turn
+3. Exporting structured JSON for AI analysis
+4. Receiving specific config recommendations
+5. Iterating until balance is achieved
+
+## Architecture
+
+```
+balance_framework.nim      # Core framework (JSON schema, capture, export)
+test_strategy_balance.nim  # Strategy comparison tests
+AI_ANALYSIS_PROMPT.md      # Template for AI analysis
+balance_results/           # Generated JSON files (gitignored)
+```
+
+## Quick Start
+
+### 1. Run Balance Tests
+
+```bash
+# Compile and run strategy balance tests
+nim c -r tests/balance/test_strategy_balance.nim
+
+# Creates JSON files in balance_results/
+```
+
+### 2. Analyze Results with AI
+
+```bash
+# Copy AI_ANALYSIS_PROMPT.md content
+# Attach balance_results/test_name.json
+# Ask AI to analyze the data
+```
+
+### 3. Implement Recommendations
+
+```bash
+# AI will suggest specific config changes like:
+# config/espionage.toml: tech_theft.srp_percentage = 20 → 30
+
+# Edit config files
+vim config/espionage.toml
+
+# Sync specs from config
+python3 scripts/sync_specs.py
+```
+
+### 4. Verify Improvements
+
+```bash
+# Re-run tests
+nim c -r tests/balance/test_strategy_balance.nim
+
+# Compare new results to previous
+# Iterate until balanced
+```
+
+## JSON Output Structure
+
+Each balance test generates a comprehensive JSON file with:
+
+### Metadata
+- Test ID, timestamp, engine version
+- Test configuration (houses, turns, strategies)
+- Execution time
+
+### Turn Snapshots
+- Complete game state for each turn
+- Per-house metrics:
+  - Prestige, treasury, economy (GCO/NCV)
+  - Fleet strength, colony count
+  - Tech levels, morale
+  - Cumulative statistics
+- Event logs:
+  - Combat: battles, losses, victories
+  - Economic: colonization, construction, tax changes
+  - Diplomatic: pacts, violations, status changes
+  - Espionage: actions, successes, detections
+
+### Game Outcome
+- Victor, victory type, victory turn
+- Final rankings with detailed stats
+- Peak performance metrics
+
+### Aggregate Metrics
+- Game length distribution
+- Win rate by strategy
+- Economic growth curves
+- Combat frequency
+- Espionage effectiveness
+- Balance indicators:
+  - Prestige volatility
+  - Leader changes
+  - Comeback rate
+  - Domination frequency
+  - Competitiveness score
+
+## Test Scenarios
+
+### Military vs Economic
+Tests if aggressive military and patient economic strategies are balanced.
+
+**Participants**: 2x Aggressive, 2x Economic
+**Duration**: 100 turns
+**Focus**: Early military vs late economic power
+
+### All Strategies
+Comprehensive test of all 7 AI strategies in direct competition.
+
+**Participants**: All strategies (7 houses)
+**Duration**: 150 turns
+**Focus**: Strategic diversity and counter-play
+
+### Early Aggression
+Tests if rush strategies are too strong or too weak.
+
+**Participants**: Aggressive, Turtle, Balanced
+**Duration**: 50 turns
+**Focus**: Timing windows and defensive viability
+
+## AI Strategies
+
+The framework supports 7 distinct AI personalities:
+
+| Strategy | Aggression | Economic Focus | Expansion | Description |
+|----------|-----------|----------------|-----------|-------------|
+| Aggressive | 0.9 | 0.3 | 0.7 | Heavy military, early attacks |
+| Economic | 0.2 | 0.9 | 0.5 | Growth and tech focused |
+| Espionage | 0.5 | 0.5 | 0.4 | Intelligence and sabotage |
+| Diplomatic | 0.3 | 0.6 | 0.5 | Pacts and manipulation |
+| Balanced | 0.5 | 0.5 | 0.5 | Mixed approach |
+| Turtle | 0.1 | 0.7 | 0.2 | Defensive consolidation |
+| Expansionist | 0.6 | 0.4 | 0.95 | Rapid colonization |
+
+## Balance Criteria
+
+### Strategic Viability
+✅ **Good**: All strategies win 20-40% of games
+❌ **Bad**: One strategy wins >60% or <10%
+
+### Game Dynamics
+✅ **Good**: Leadership changes 3-7 times
+❌ **Bad**: Turn 20 leader wins 90%+ of games
+
+### Comeback Potential
+✅ **Good**: Houses recover from -500 prestige
+❌ **Bad**: Last at turn 30 = eliminated by turn 50
+
+### Victory Diversity
+✅ **Good**: Prestige, military, and economic paths all viable
+❌ **Bad**: Only one victory type achieved
+
+### Competitive Games
+✅ **Good**: Close finishes, multiple contenders
+❌ **Bad**: Runaway leaders, early stalemates
+
+## Example AI Analysis
+
+```json
+{
+  "summary": "Military rush dominates early game, economic strategies non-viable",
+  "concerns": [
+    {
+      "severity": "high",
+      "category": "strategy",
+      "issue": "Aggressive AI wins 65% of games",
+      "evidence": "Average victory turn 45, Economic AI eliminated by turn 60 in 80% of losses",
+      "impact": "Game becomes pure military race, strategic diversity lost"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "high",
+      "config_file": "config/military.toml",
+      "parameter": "ships.fighter.build_cost",
+      "current_value": 10,
+      "suggested_value": 15,
+      "rationale": "Slow early military timing, give economic players defensive window",
+      "expected_impact": "Rush delayed ~10 turns, economic strategies viable"
+    }
+  ]
+}
+```
+
+## Adding New Tests
+
+### 1. Define Test Configuration
+
+```nim
+let config = BalanceTestConfig(
+  testName: "your_test_name",
+  description: "What this test evaluates",
+  numberOfHouses: 4,
+  numberOfTurns: 100,
+  mapSize: 50,
+  startingConditions: "equal",
+  aiStrategies: @["Strategy1", "Strategy2"],
+  tags: @["category", "focus-area"]
+)
+```
+
+### 2. Create Initial State
+
+```nim
+let initialState = createStandardTestGame(4, @[
+  AIStrategy.YourStrategy1,
+  AIStrategy.YourStrategy2,
+  AIStrategy.YourStrategy3,
+  AIStrategy.YourStrategy4
+])
+```
+
+### 3. Run Test
+
+```nim
+let result = runBalanceTest(config, initialState)
+exportBalanceTest(result, "balance_results/your_test.json")
+```
+
+## Current Status
+
+**Framework**: ✅ Complete
+**AI Strategies**: ⏳ In Progress (order generation TODO)
+**Test Scenarios**: ⏳ In Progress (game initialization TODO)
+**AI Analysis**: ✅ Prompt template ready
+
+## Next Steps
+
+1. **Complete AI order generation** - Implement full logic for all strategies
+2. **Implement game initialization** - Create balanced starting conditions
+3. **Run first test suite** - Generate initial balance data
+4. **AI analysis iteration** - Feed JSON to Claude/GPT, implement recommendations
+5. **Balance verification** - Re-test until criteria met
+
+## Files
+
+- `balance_framework.nim` - Core framework (490 lines)
+- `test_strategy_balance.nim` - Strategy tests (360 lines)
+- `AI_ANALYSIS_PROMPT.md` - AI analysis template (330 lines)
+- `README.md` - This file
+
+## Dependencies
+
+- EC4X engine modules (gamestate, resolve, orders)
+- Nim standard library (json, tables, times)
+- Python 3.x for spec sync (optional)
+
+## Configuration
+
+All game balance parameters are in `config/*.toml` files:
+- `config/military.toml` - Unit costs, salvage
+- `config/economy.toml` - Production, taxes, research
+- `config/espionage.toml` - Action costs, detection
+- `config/prestige.toml` - Prestige sources, morale
+- `config/combat.toml` - Combat mechanics
+- Plus 8 more config files with 2000+ parameters
+
+## Notes
+
+- JSON files can be large (10-100 MB for long games)
+- Balance results are gitignored (use for analysis only)
+- AI recommendations are specific to config parameters
+- Iterative process: test → analyze → adjust → repeat
+- Target: 80-120 turn competitive games with 20-40% win rates for all strategies
+
+---
+
+**Ready to start balance testing!**
+
+Once AI order generation is complete, we can run the first suite and begin data-driven balance iteration.
