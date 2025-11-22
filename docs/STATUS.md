@@ -353,19 +353,21 @@ grep -r "enum$" src/ --include="*.nim" | grep -v "{.pure.}"
 ---
 
 ### Hardcoded Constants
-**Status:** 🔍 Audit Needed
+**Status:** ✅ Config Files Complete, ⏳ Engine Integration Pending
 
-Some modules may have hardcoded game values instead of TOML configs.
+All game values extracted to 13 TOML config files:
 
-**Candidates for TOML Migration:**
-- Research costs and effects
-- Economy production/income rates
-- Colonization costs
-- Morale thresholds and modifiers
-- Victory condition thresholds
-- Combat modifiers
+**✅ Config Files Created:**
+- ✅ economy.toml - Production/income rates, colonization costs
+- ✅ tech.toml - Research costs and effects (all tech trees)
+- ✅ prestige.toml - Morale thresholds and modifiers
+- ✅ gameplay.toml - Victory condition thresholds
+- ✅ combat.toml - Combat modifiers, blockade, invasion
+- ✅ construction.toml, military.toml, diplomacy.toml, espionage.toml
+- ✅ ships.toml, ground_units.toml, facilities.toml
+- ✅ game_setup/standard.toml
 
-**Action Required:** Create TOML configs, update modules to load from config.
+**⏳ Action Required:** Update Nim config loaders to load all 13 files, replace hardcoded values in engine with config references.
 
 ---
 
@@ -412,23 +414,23 @@ Temporary code may exist from development:
 - ✅ `docs/PRESTIGE_IMPLEMENTATION_COMPLETE.md`
 - ✅ `docs/ESPIONAGE_COMPLETE.md`
 - ✅ `docs/TURN_RESOLUTION_COMPLETE.md`
+- ✅ `docs/CONFIG_AUDIT_COMPLETE.md` - Comprehensive config extraction audit
 
 **Architecture:**
 - ✅ `docs/architecture/combat-engine.md`
 - ✅ `docs/architecture/overview.md`
 - Various transport/storage/daemon docs
 
-### Documentation Issues
+### Documentation Status
 
 **Spec-Code Sync:**
-- Prestige values in specs may not match TOML
-- Morale values hardcoded in specs
-- Enum names inconsistent (pure vs. non-pure)
+- ✅ Created `scripts/sync_specs.py` (1,625 lines)
+- ✅ All 6 gameplay specs sync from TOML config
+- ✅ 26 tables auto-generated from config
+- ✅ 80+ inline values replaced from config
+- ✅ Single source of truth established
 
-**Action Required:**
-- Create `scripts/sync_specs.py` to generate tables from TOML
-- Update specs to use enum references
-- Remove hardcoded values from specs
+**Reference:** See `docs/CONFIG_SYSTEM.md` for sync architecture
 
 ---
 
@@ -466,48 +468,82 @@ Temporary code may exist from development:
 
 ## 🔧 Configuration Files
 
-### Existing TOML Configs
+### ✅ Complete TOML Configs (13 Files)
 
-1. ✅ `config/prestige.toml` - 18 prestige sources
-2. ✅ `config/espionage.toml` - 40+ espionage parameters
+**Core Mechanics & Balance (9 files):**
+1. ✅ `config/economy.toml` (278 lines) - Population, production, research, tax, colonization
+2. ✅ `config/construction.toml` (81 lines) - Building costs, times, repair, upkeep
+3. ✅ `config/military.toml` (27 lines) - Fighter squadrons, salvage, limits
+4. ✅ `config/combat.toml` (~150 lines) - Combat rules, blockade, invasion, shields
+5. ✅ `config/tech.toml` (~200 lines) - All tech trees (EL, SL, CST, WEP, TER, ELI, CLK, SLD, CIC, FD, ACO)
+6. ✅ `config/prestige.toml` (135 lines) - 18 prestige sources, morale, penalties
+7. ✅ `config/diplomacy.toml` (67 lines) - Pact violations, espionage effects, status durations
+8. ✅ `config/espionage.toml` (169 lines) - 40+ parameters, detection tables (5×5 matrices)
+9. ✅ `config/gameplay.toml` (47 lines) - Elimination rules, autopilot, victory conditions
 
-### Config Migrations Needed
+**Unit Statistics (3 files):**
+10. ✅ `config/ships.toml` (~400 lines) - 17 ship classes with full stats
+11. ✅ `config/ground_units.toml` (~100 lines) - 4 ground unit types
+12. ✅ `config/facilities.toml` (~50 lines) - Spaceport, Shipyard stats
 
-**Priority:**
-- `config/research.toml` - Tech costs, advancement effects
-- `config/economy.toml` - Production rates, income modifiers
-- `config/morale.toml` - Thresholds, tax/combat modifiers
-- `config/victory.toml` - Victory thresholds
-- `config/diplomacy.toml` - Pact penalties, status durations
-- `config/colonization.toml` - Colony costs, prestige awards
+**Game Setup (1 file):**
+13. ✅ `game_setup/standard.toml` (67 lines) - Starting conditions, victory, map generation
 
-**Organization:**
-- Move all configs from `data/` to `config/`
-- Update all config loader imports
-- Verify all tests compile after migration
+### ✅ Documentation Sync System
+
+**`scripts/sync_specs.py` (1,625 lines) - COMPLETE**
+
+**Features:**
+- Loads all 13 TOML config files
+- Generates 26 markdown tables from config data
+- Replaces 80+ inline markers in specs with config values
+- Single source of truth: config → specs sync
+
+**Synced Specs:**
+- ✅ `gameplay.md` - 21 inline values
+- ✅ `economy.md` - 30+ inline values, 13 tables
+- ✅ `operations.md` - 5 inline values, 1 table
+- ✅ `diplomacy.md` - 13 inline values, 3 tables
+- ✅ `assets.md` - 11 inline values, 2 tables
+- ✅ `reference.md` - 7 tables
+
+**Reference:** `docs/CONFIG_AUDIT_COMPLETE.md` - Full audit report
+
+**Workflow:**
+```bash
+# Edit config value
+vim config/economy.toml
+
+# Sync specs
+python3 scripts/sync_specs.py
+
+# All specs auto-update
+```
 
 ---
 
 ## 🚀 Next Steps
 
-### Immediate (Phase 1 - In Progress)
+### Immediate (Phase 1 - ✅ COMPLETE)
 1. ✅ Create `docs/CLAUDE_CONTEXT.md`
 2. ✅ Create `docs/STYLE_GUIDE.md`
 3. ✅ Create `docs/STATUS.md`
-4. ⏳ Reorganize documentation structure
+4. ✅ Reorganize documentation structure
 5. ✅ Remove binaries from git (.gitignore updates)
 
-### Short Term (Phase 2)
-1. Fix constant naming (UPPER_SNAKE → camelCase)
-2. Make all enums `{.pure.}`
-3. Consolidate config files (data/ → config/)
-4. Clean up placeholder code
+### Short Term (Phase 2 - ✅ COMPLETE)
+1. ✅ Consolidate config files (data/ → config/) - 13 files created
+2. ✅ Create `scripts/sync_specs.py` (TOML → spec tables) - 1,625 lines
+3. ✅ Extract all game values to TOML - 80+ inline markers
+4. ✅ Generate all spec tables from config - 26 tables
 
-### Medium Term (Phase 3)
-1. Create `scripts/sync_specs.py` (TOML → spec tables)
-2. Setup pre-commit git hooks (tests + build)
-3. Update specs with enum tables
-4. Verify all tests pass
+### Medium Term (Phase 3 - CURRENT)
+1. ⏳ Update Nim config loaders to load all 13 TOML files
+2. ⏳ Replace hardcoded values in Nim engine with config references
+3. ⏳ Fix constant naming (UPPER_SNAKE → camelCase)
+4. ⏳ Make all enums `{.pure.}`
+5. ⏳ Clean up placeholder code
+6. ⏳ Setup pre-commit git hooks (tests + build)
 
 ### Long Term (Future Milestones)
 1. Implement blockade mechanics
@@ -528,7 +564,7 @@ Temporary code may exist from development:
 **Module Count:**
 - Engine modules: 12 systems
 - Test suites: 13+ integration tests
-- Config files: 2 TOML (more needed)
+- Config files: 13 TOML files (complete)
 
 **Documentation:**
 - 50+ markdown files
@@ -545,7 +581,8 @@ Temporary code may exist from development:
 4. ✅ **Espionage:** 7 espionage actions with CIC system
 5. ✅ **Turn Resolution:** 4-phase turn structure integrated
 6. ✅ **Victory & Morale:** Victory conditions and morale system
-7. 🚧 **Code Health:** Documentation and standards (current)
+7. ✅ **Config System:** 13 TOML files + documentation sync (1,625 line sync script)
+8. 🚧 **Engine Integration:** Update Nim loaders for all configs (current)
 
 ---
 
