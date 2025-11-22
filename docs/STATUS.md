@@ -335,22 +335,21 @@ EC4X is a turn-based 4X space strategy game built in Nim. The project follows NE
 
 ---
 
-## 🚧 Incomplete Systems
+## ✅ Recently Completed Systems
 
 ### 1. Blockade Mechanics
-**Status:** ❌ Not Started
+**Status:** ✅ Complete
 **Priority:** High
 
-**Required:**
-- System blockade detection
-- Production/income penalties
-- Blockade breaking combat resolution
-- Integration with turn resolution
+**Implemented:**
+- ✅ System blockade detection (isSystemBlockaded)
+- ✅ Production/income penalties (60% GCO reduction)
+- ✅ Prestige penalties (-2 per blockaded colony)
+- ✅ Blockade breaking capability checks
+- ✅ Integration with turn resolution (Conflict Phase → Income Phase)
+- ✅ Multi-empire blockades supported
 
-**Design Notes:**
-- Blockades should affect income phase
-- Requires minimum fleet presence
-- Should integrate with pact violations
+**Files:** `src/engine/blockade/engine.nim`, `src/engine/resolve.nim` (lines 216-219, 373-392, 436-443)
 
 ---
 
@@ -582,11 +581,9 @@ python3 scripts/sync_specs.py
 6. ⏳ Setup pre-commit git hooks (tests + build)
 
 ### Long Term (Future Milestones)
-1. Implement blockade mechanics
-2. Implement espionage order execution
-3. Implement diplomatic action orders
-4. UI development (deferred)
-5. AI implementation (deferred)
+1. UI development (deferred)
+2. AI implementation (deferred)
+3. Advanced features (to be determined)
 
 ---
 
