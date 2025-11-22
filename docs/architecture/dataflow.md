@@ -456,25 +456,18 @@ For each house in game:
   5. Write to file:
      /var/ec4x/games/my_game/houses/house_alpha/turn_results/turn_42.json
 
-  6. Generate human-readable summary:
-     "Turn 42 Results for House Alpha
+  6. Structured data ready for client-side formatting:
+     - TurnResult contains events and combatReports
+     - Client can generate formatted reports on-demand
+     - No pre-formatted text files needed (saves storage)
 
-      Movement:
-      - Fleet Alpha-1 moved from Delta to Epsilon
-
-      Combat:
-      - Your fleet engaged enemy in Epsilon
-      - Victory! Enemy fleet destroyed with 2 ships lost
-
-      Intel:
-      - Enemy colony detected in System Gamma
-      "
-
-  7. Write summary:
-     /var/ec4x/games/my_game/houses/house_alpha/turn_results/turn_42.txt
-
-Public summary:
-  Write to: /var/ec4x/games/my_game/public/turn_summaries/turn_42.txt
+Note: Previous versions generated text summaries server-side.
+Current design: Clients format reports from structured TurnResult data
+using src/client/reports/turn_report.nim. This approach:
+  - Minimizes network traffic (structured data only)
+  - Allows different clients to format differently
+  - Enables hex coordinate display with proper formatting
+  - Supports customization per client type (CLI, web, mobile)
 ```
 
 ### Nostr Distribution
