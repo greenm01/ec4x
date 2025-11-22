@@ -63,7 +63,7 @@ suite "Espionage System":
     check result.detected == false
     check result.srpStolen == globalEspionageConfig.techTheftSRP
     check result.attackerPrestigeEvents.len > 0
-    check result.attackerPrestigeEvents[0].amount == globalPrestigeConfig.techTheft
+    check result.attackerPrestigeEvents[0].amount == globalPrestigeConfig.espionage.tech_theft
     check result.targetPrestigeEvents.len > 0
     check result.targetPrestigeEvents[0].amount < 0
 

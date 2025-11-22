@@ -19,6 +19,7 @@
 
 import std/tables
 import ../common/types/core
+import config/prestige_config
 
 export core.HouseId
 
