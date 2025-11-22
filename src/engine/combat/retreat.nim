@@ -11,7 +11,7 @@ export RetreatEvaluation
 
 ## ROE Evaluation (Section 7.1.1 and 7.3.4)
 
-const ROEThresholds* = [
+const roeThresholds* = [
   (roe: 0, threshold: 0.0, description: "Avoid all hostile forces"),
   (roe: 1, threshold: 999.0, description: "Engage only defenseless"),
   (roe: 2, threshold: 4.0, description: "Engage with 4:1 advantage"),
@@ -95,7 +95,7 @@ proc evaluateRetreat*(
     result.effectiveROE = 10
 
   # Get threshold for effective ROE
-  let threshold = ROEThresholds[result.effectiveROE].threshold
+  let threshold = roeThresholds[result.effectiveROE].threshold
 
   # Decide whether to retreat
   if result.strengthRatio < threshold:

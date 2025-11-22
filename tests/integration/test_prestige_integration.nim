@@ -221,16 +221,16 @@ suite "Prestige Integration":
     let config = globalPrestigeConfig
 
     # Simulate turns with negative prestige
-    for turn in 1..config.collapseTurns:
+    for turn in 1..config.victory.defeat_consecutive_turns:
       if house.prestige < 0:
         house.negativePrestigeTurns += 1
 
       # Should not collapse before threshold
-      if turn < config.collapseTurns:
-        check house.negativePrestigeTurns < config.collapseTurns
+      if turn < config.victory.defeat_consecutive_turns:
+        check house.negativePrestigeTurns < config.victory.defeat_consecutive_turns
 
     # At threshold, should be ready for collapse
-    check house.negativePrestigeTurns >= config.collapseTurns
+    check house.negativePrestigeTurns >= config.victory.defeat_consecutive_turns
 
     # If prestige becomes positive, counter resets
     house.prestige = 50

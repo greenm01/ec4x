@@ -249,11 +249,11 @@ proc awardTechPrestige*(houseId: HouseId, techField: string, level: int): Presti
 
 ## Victory Conditions (gameplay.md:1.1)
 
-const PRESTIGE_VICTORY_THRESHOLD* = 5000
+const prestigeVictoryThreshold* = 5000
 
 proc checkPrestigeVictory*(prestige: int): bool =
   ## Check if house achieved prestige victory
-  return prestige >= PRESTIGE_VICTORY_THRESHOLD
+  return prestige >= prestigeVictoryThreshold
 
 proc checkDefensiveCollapse*(prestige: int, turnsBelow: int): bool =
   ## Check if house enters defensive collapse

@@ -3,6 +3,7 @@
 **Last Updated:** 2025-11-22
 **Project Phase:** Core Engine Development
 **Test Coverage:** 91+ integration tests passing
+**Recent:** Tech level bug fixed, espionage/diplomatic order execution complete
 
 ---
 
@@ -354,55 +355,48 @@ EC4X is a turn-based 4X space strategy game built in Nim. The project follows NE
 ---
 
 ### 2. Espionage Order Execution
-**Status:** ❌ Not Started
+**Status:** ✅ Complete
 **Priority:** High
 
-**Required:**
-- Espionage orders in OrderPacket
-- Command phase execution
-- Detection roll integration
-- Effect application to ongoing effects
+**Implemented:**
+- ✅ Espionage orders in OrderPacket (espionageAction, ebpInvestment, cipInvestment)
+- ✅ Conflict Phase execution with detection rolls
+- ✅ EBP/CIP purchase in Income Phase
+- ✅ Over-investment penalty system
+- ✅ Effect application to ongoing effects
 
-**Design Notes:**
-- Espionage system (engine) is complete
-- Needs order system integration
-- AI decision making (deferred)
+**Files:** `src/engine/orders.nim`, `src/engine/resolve.nim` (lines 140-270)
 
 ---
 
 ### 3. Diplomatic Action Orders
-**Status:** ❌ Not Started
+**Status:** ✅ Complete
 **Priority:** Medium
 
-**Required:**
-- Propose pact orders
-- Break pact orders
-- Trade agreement orders (if in spec)
+**Implemented:**
+- ✅ DiplomaticAction in OrderPacket
+- ✅ ProposeNonAggressionPact (Command Phase)
+- ✅ BreakPact with violation tracking
+- ✅ DeclareEnemy and SetNeutral status changes
+- ✅ Integration with diplomacy engine
 
-**Design Notes:**
-- Diplomacy engine is complete
-- Needs order system integration
+**Files:** `src/engine/orders.nim`, `src/engine/resolve.nim` (lines 457-567)
 
 ---
 
 ## 📋 Code Health Issues
 
 ### Pure Enum Violations
-**Status:** 🔍 Audit Needed
+**Status:** ✅ Complete
 
-Some enums may not be `{.pure.}`. Run audit:
-```bash
-grep -r "enum$" src/ --include="*.nim" | grep -v "{.pure.}"
-```
-
-**Action Required:** Make all enums pure, update usage to fully qualified names.
+All enums in `src/` are `{.pure.}` and use fully qualified names. Audit confirmed no violations.
 
 ---
 
 ### Hardcoded Constants
-**Status:** ✅ Config Files Complete, ⏳ Engine Integration Pending
+**Status:** ✅ Config Files Complete, ✅ Engine Integration Complete
 
-All game values extracted to 13 TOML config files:
+All game values extracted to 13 TOML config files and integrated into engine:
 
 **✅ Config Files Created:**
 - ✅ economy.toml - Production/income rates, colonization costs
@@ -414,29 +408,23 @@ All game values extracted to 13 TOML config files:
 - ✅ ships.toml, ground_units.toml, facilities.toml
 - ✅ game_setup/standard.toml
 
-**⏳ Action Required:** Update Nim config loaders to load all 13 files, replace hardcoded values in engine with config references.
+**✅ Engine Integration:** All 12 Nim config loaders implemented with toml_serialization
 
 ---
 
 ### Constant Naming Conventions
-**Status:** ❌ Non-NEP-1 Compliant
+**Status:** ✅ Complete
 
-Some constants may use `UPPER_SNAKE_CASE` instead of `camelCase`.
-
-**Action Required:** Rename all constants to NEP-1 `camelCase`.
+All constants now follow NEP-1 `camelCase` convention. Fixed:
+- `ROEThresholds` → `roeThresholds` (combat/retreat.nim)
+- `PRESTIGE_VICTORY_THRESHOLD` → `prestigeVictoryThreshold` (prestige.nim)
 
 ---
 
 ### Placeholder Code
-**Status:** 🔍 Audit Needed
+**Status:** ✅ Clean
 
-Temporary code may exist from development:
-- `enhancedShip` mentions
-- M1/M5 milestone markers
-- TODO comments
-- Unused imports
-
-**Action Required:** Clean up all placeholder code and comments.
+No significant placeholder code found. Remaining TODOs are legitimate future work items documenting planned features.
 
 ---
 
@@ -585,12 +573,12 @@ python3 scripts/sync_specs.py
 3. ✅ Extract all game values to TOML - 80+ inline markers
 4. ✅ Generate all spec tables from config - 26 tables
 
-### Medium Term (Phase 3 - CURRENT)
-1. ⏳ Update Nim config loaders to load all 13 TOML files
-2. ⏳ Replace hardcoded values in Nim engine with config references
-3. ⏳ Fix constant naming (UPPER_SNAKE → camelCase)
-4. ⏳ Make all enums `{.pure.}`
-5. ⏳ Clean up placeholder code
+### Medium Term (Phase 3 - ✅ Complete)
+1. ✅ Update Nim config loaders to load all 13 TOML files
+2. ✅ Replace hardcoded values in Nim engine with config references
+3. ✅ Fix constant naming (UPPER_SNAKE → camelCase)
+4. ✅ Make all enums `{.pure.}`
+5. ✅ Clean up placeholder code
 6. ⏳ Setup pre-commit git hooks (tests + build)
 
 ### Long Term (Future Milestones)
