@@ -172,7 +172,7 @@ proc initializeHouse*(name: string, color: string): House =
     id: "house-" & name.toLower(),
     name: name,
     color: color,
-    prestige: 0,
+    prestige: globalPrestigeConfig.victory.starting_prestige,
     treasury: 1000,  # Starting treasury
     techTree: TechTree(
       levels: TechLevel(
