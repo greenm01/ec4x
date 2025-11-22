@@ -10,7 +10,7 @@
 import std/[options, tables]
 import types
 import ../../common/types/[core, units]
-import ../config/construction_config
+import ../config/[construction_config, facilities_config]
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
 
@@ -56,21 +56,52 @@ proc getShipBuildTime*(shipClass: ShipClass): int =
 
 proc getBuildingCost*(buildingType: string): int =
   ## Get construction cost for building type from config
-  let config = globalConstructionConfig.costs
+  ## Uses both construction_config and facilities_config
+  let constructionConfig = globalConstructionConfig.costs
+  let facilitiesConfig = globalFacilitiesConfig
 
   case buildingType
   of "Shipyard":
-    return config.shipyard_cost
+    return facilitiesConfig.shipyard.build_cost
   of "Spaceport":
-    return config.spaceport_cost
+    return facilitiesConfig.spaceport.build_cost
   of "Starbase":
-    return config.starbase_cost
+    return constructionConfig.starbase_cost
   of "GroundBattery":
-    return config.ground_battery_cost
+    return constructionConfig.ground_battery_cost
   of "FighterSquadron":
-    return config.fighter_squadron_cost
+    return constructionConfig.fighter_squadron_cost
   else:
     return 50  # Default for undefined buildings
+
+proc getBuildingTime*(buildingType: string): int =
+  ## Get construction time for building type from config
+  let constructionConfig = globalConstructionConfig.construction
+  let facilitiesConfig = globalFacilitiesConfig
+
+  case buildingType
+  of "Shipyard":
+    return facilitiesConfig.shipyard.build_time
+  of "Spaceport":
+    return facilitiesConfig.spaceport.build_time
+  of "Starbase":
+    return constructionConfig.starbase_turns
+  of "GroundBattery":
+    return constructionConfig.ground_battery_turns
+  of "FighterSquadron":
+    return 1
+  else:
+    return 1  # Default 1 turn
+
+proc requiresSpaceport*(buildingType: string): bool =
+  ## Check if building requires a spaceport
+  let facilitiesConfig = globalFacilitiesConfig
+
+  case buildingType
+  of "Shipyard":
+    return facilitiesConfig.shipyard.requires_spaceport
+  else:
+    return false
 
 ## Industrial Unit Investment (economy.md:3.4)
 
