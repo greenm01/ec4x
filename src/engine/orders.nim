@@ -4,6 +4,7 @@ import std/[options, tables]
 import ../common/[hex, types/core, types/units]
 import gamestate, fleet, ship
 import espionage/types as esp_types
+import research/types as res_types
 
 type
   FleetOrderType* {.pure.} = enum
@@ -37,7 +38,7 @@ type
     turn*: int
     fleetOrders*: seq[FleetOrder]
     buildOrders*: seq[BuildOrder]
-    researchAllocation*: Table[TechField, int]
+    researchAllocation*: res_types.ResearchAllocation  # PP allocation to ERP/SRP/TRP
     diplomaticActions*: seq[DiplomaticAction]
 
     # Espionage budget allocation (diplomacy.md:8.2)
@@ -220,7 +221,7 @@ proc newOrderPacket*(houseId: HouseId, turn: int): OrderPacket =
     turn: turn,
     fleetOrders: @[],
     buildOrders: @[],
-    researchAllocation: initTable[TechField, int](),
+    researchAllocation: res_types.initResearchAllocation(),
     diplomaticActions: @[]
   )
 
