@@ -48,7 +48,7 @@ suite "Colonization System":
     check result.prestigeEvent.isSome
     let prestigeEvent = result.prestigeEvent.get()
     check prestigeEvent.source == PrestigeSource.ColonyEstablished
-    check prestigeEvent.amount == globalPrestigeConfig.establishColony  # +5
+    check prestigeEvent.amount == globalPrestigeConfig.economic.establish_colony  # +5
 
   test "Colonization attempt succeeds on empty system":
     let attempt = ColonizationAttempt(
