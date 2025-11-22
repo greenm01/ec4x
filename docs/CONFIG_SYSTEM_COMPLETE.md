@@ -131,7 +131,7 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ### 8. `combat_config.nim` ✅
 **Config File:** `config/combat.toml`
-**Status:** Ready for integration
+**Status:** Partially integrated
 **Lines:** 112 lines
 
 **Features:**
@@ -142,10 +142,11 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 - Blockade and invasion mechanics
 
 **Integration:**
-- ⏳ Future: `src/engine/combat/ground.nim` - Bombardment/ground CER tables
-- ⏳ Future: `src/engine/combat/ground.nim` - Shield effectiveness table
-- ⏳ Future: `src/engine/combat/retreat.nim` - ROE thresholds
-- **Note:** Complex 2D table structures require careful refactoring
+- ✅ `src/engine/combat/ground.nim:76` - getBombardmentCER() uses config
+- ✅ `src/engine/combat/ground.nim:101` - getGroundCombatCER() uses config
+- ✅ `src/engine/combat/ground.nim:125` - getShieldData() uses config
+- ⏳ Future: `src/engine/combat/retreat.nim` - ROE thresholds (not yet in config)
+- ⏳ Future: Space combat CER table integration
 
 ---
 
@@ -226,19 +227,19 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ## Integration Status Summary
 
-### ✅ Fully Integrated (2/12)
+### ✅ Fully Integrated (3/12)
 1. **prestige_config.nim** - All prestige values from config
 2. **espionage_config.nim** - All espionage mechanics from config
+3. **combat_config.nim** - Ground combat CER tables and shields from config
 
 ### 🔄 Partially Integrated (1/12)
-3. **diplomacy_config.nim** - Accessor functions created, some usage in engine
+4. **diplomacy_config.nim** - Accessor functions created, some usage in engine
 
-### ⏳ Ready for Integration (9/12)
-4. gameplay_config.nim
-5. military_config.nim
-6. facilities_config.nim
-7. ground_units_config.nim
-8. combat_config.nim
+### ⏳ Ready for Integration (8/12)
+5. gameplay_config.nim
+6. military_config.nim
+7. facilities_config.nim
+8. ground_units_config.nim
 9. construction_config.nim
 10. economy_config.nim
 11. ships_config.nim
@@ -250,10 +251,11 @@ The EC4X configuration system provides type-safe, runtime-configurable game bala
 
 ### High Priority (Core Gameplay)
 1. **Combat System** (`combat_config.nim`)
-   - Replace `BombardmentCERTable` in `ground.nim:75`
-   - Replace `GroundCombatCERTable` in `ground.nim:98`
-   - Replace `ShieldTable` in `ground.nim:119`
-   - Replace `ROEThresholds` in `retreat.nim:14`
+   - ✅ Replaced `BombardmentCERTable` in `ground.nim:76` with config
+   - ✅ Replaced `GroundCombatCERTable` in `ground.nim:101` with config
+   - ✅ Replaced `ShieldTable` in `ground.nim:125` with config
+   - ⏳ Add `ROEThresholds` to config (currently hardcoded in `retreat.nim:14`)
+   - ⏳ Integrate space combat CER table from config
 
 2. **Economy System** (`economy_config.nim`)
    - Replace `RAW_INDEX_TABLE` in `production.nim:22`
