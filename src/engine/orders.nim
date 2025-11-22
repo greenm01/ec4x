@@ -3,6 +3,7 @@
 import std/[options, tables]
 import ../common/[hex, types/core, types/units]
 import gamestate, fleet, ship
+import espionage/types as esp_types
 
 type
   FleetOrderType* {.pure.} = enum
@@ -39,6 +40,11 @@ type
     researchAllocation*: Table[TechField, int]
     diplomaticActions*: seq[DiplomaticAction]
 
+    # Espionage budget allocation (diplomacy.md:8.2)
+    espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
+    ebpInvestment*: int      # EBP points to purchase (40 PP each)
+    cipInvestment*: int      # CIP points to purchase (40 PP each)
+
   BuildOrder* = object
     colonySystem*: SystemId
     buildType*: BuildType
@@ -53,10 +59,13 @@ type
   DiplomaticAction* = object
     targetHouse*: HouseId
     actionType*: DiplomaticActionType
-    message*: string
 
   DiplomaticActionType* {.pure.} = enum
-    ProposeAlliance, DeclarWar, SendMessage, BreakTreaty
+    ## Diplomatic actions per diplomacy.md:8.1
+    ProposeNonAggressionPact,  # Propose pact with another house
+    BreakPact,                 # Break existing non-aggression pact
+    DeclareEnemy,              # Set diplomatic status to Enemy
+    SetNeutral                 # Set diplomatic status to Neutral
 
   ValidationResult* = object
     valid*: bool

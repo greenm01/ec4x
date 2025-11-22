@@ -173,15 +173,15 @@ proc initializeHouse*(name: string, color: string): House =
     treasury: 1000,  # Starting treasury
     techTree: TechTree(
       levels: TechLevel(
-        energyLevel: 0,
-        shieldLevel: 0,
-        constructionTech: 0,
-        weaponsTech: 0,
-        terraformingTech: 0,
-        electronicIntelligence: 0,
-        counterIntelligence: 0,
-        fighterDoctrine: 0,  # FD I (base 1.0x multiplier)
-        advancedCarrierOps: 0  # ACO I (base capacity)
+        energyLevel: 1,           # EL1 per gameplay.md:1.2
+        shieldLevel: 1,           # SL1 per gameplay.md:1.2
+        constructionTech: 1,      # CST1 per gameplay.md:1.2
+        weaponsTech: 1,           # WEP1 per gameplay.md:1.2
+        terraformingTech: 1,      # TER1 per gameplay.md:1.2
+        electronicIntelligence: 1, # ELI1 per gameplay.md:1.2
+        counterIntelligence: 1,   # CIC1 per gameplay.md:1.2
+        fighterDoctrine: 0,       # FD I (base 1.0x multiplier)
+        advancedCarrierOps: 0     # ACO I (base capacity)
       ),
       researchPoints: 0
     ),
