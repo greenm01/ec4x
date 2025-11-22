@@ -17,7 +17,6 @@
 ## - Maintenance shortfalls
 ## - Military defeats
 
-import std/tables
 import ../common/types/core
 import config/prestige_config
 
@@ -53,19 +52,43 @@ type
     events*: seq[PrestigeEvent]
     endingPrestige*: int
 
-## Prestige Values (reference.md:9.4)
+## Prestige Values (loaded from config/prestige.toml)
 
-const PRESTIGE_VALUES* = {
-  PrestigeSource.CombatVictory: 1,
-  PrestigeSource.TaskForceDestroyed: 3,
-  PrestigeSource.FleetRetreated: 2,
-  PrestigeSource.SquadronDestroyed: 1,
-  PrestigeSource.ColonySeized: 10,
-  PrestigeSource.ColonyEstablished: 5,
-  PrestigeSource.TechAdvancement: 2,
-  PrestigeSource.BlockadePenalty: -2,  # Per turn per colony
-  PrestigeSource.Eliminated: -50,
-}.toTable
+proc getPrestigeValue*(source: PrestigeSource): int =
+  ## Get prestige value from configuration for given source
+  ## Maps PrestigeSource enum to config values
+  case source
+  of PrestigeSource.CombatVictory:
+    globalPrestigeConfig.military.fleet_victory
+  of PrestigeSource.TaskForceDestroyed:
+    # Task force destruction uses fleet_victory prestige
+    globalPrestigeConfig.military.fleet_victory
+  of PrestigeSource.FleetRetreated:
+    globalPrestigeConfig.military.force_retreat
+  of PrestigeSource.SquadronDestroyed:
+    globalPrestigeConfig.military.destroy_squadron
+  of PrestigeSource.ColonySeized:
+    globalPrestigeConfig.military.invade_planet
+  of PrestigeSource.ColonyEstablished:
+    globalPrestigeConfig.economic.establish_colony
+  of PrestigeSource.TechAdvancement:
+    globalPrestigeConfig.economic.tech_advancement
+  of PrestigeSource.BlockadePenalty:
+    globalPrestigeConfig.penalties.blockade_penalty
+  of PrestigeSource.Eliminated:
+    globalPrestigeConfig.military.eliminate_house
+  of PrestigeSource.LowTaxBonus:
+    # Low tax bonus calculated dynamically, not from this function
+    0
+  of PrestigeSource.HighTaxPenalty:
+    # High tax penalty calculated dynamically, not from this function
+    0
+  of PrestigeSource.MaintenanceShortfall:
+    # Maintenance shortfall calculated dynamically, not from this function
+    0
+  of PrestigeSource.PactViolation:
+    # Pact violation prestige from diplomacy config
+    globalPrestigeConfig.diplomacy.pact_violation
 
 ## Prestige Calculation
 
@@ -107,7 +130,7 @@ proc awardCombatPrestige*(victor: HouseId, defeated: HouseId,
   # Combat victory
   result.add(createPrestigeEvent(
     PrestigeSource.CombatVictory,
-    PRESTIGE_VALUES[PrestigeSource.CombatVictory],
+    getPrestigeValue(PrestigeSource.CombatVictory),
     $victor & " defeated " & $defeated
   ))
 
@@ -115,13 +138,13 @@ proc awardCombatPrestige*(victor: HouseId, defeated: HouseId,
   if taskForceDestroyed:
     result.add(createPrestigeEvent(
       PrestigeSource.TaskForceDestroyed,
-      PRESTIGE_VALUES[PrestigeSource.TaskForceDestroyed],
+      getPrestigeValue(PrestigeSource.TaskForceDestroyed),
       $victor & " destroyed " & $defeated & " task force"
     ))
 
   # Squadrons destroyed
   if squadronsDestroyed > 0:
-    let prestigeAmount = PRESTIGE_VALUES[PrestigeSource.SquadronDestroyed] * squadronsDestroyed
+    let prestigeAmount = getPrestigeValue(PrestigeSource.SquadronDestroyed) * squadronsDestroyed
     result.add(createPrestigeEvent(
       PrestigeSource.SquadronDestroyed,
       prestigeAmount,
@@ -132,7 +155,7 @@ proc awardCombatPrestige*(victor: HouseId, defeated: HouseId,
   if forcedRetreat:
     result.add(createPrestigeEvent(
       PrestigeSource.FleetRetreated,
-      PRESTIGE_VALUES[PrestigeSource.FleetRetreated],
+      getPrestigeValue(PrestigeSource.FleetRetreated),
       $victor & " forced " & $defeated & " to retreat"
     ))
 
@@ -145,7 +168,7 @@ proc awardColonyPrestige*(houseId: HouseId, colonyType: string): PrestigeEvent =
   else:
     PrestigeSource.ColonyEstablished
 
-  let amount = PRESTIGE_VALUES[source]
+  let amount = getPrestigeValue(source)
 
   return createPrestigeEvent(
     source,
@@ -204,7 +227,7 @@ proc applyHighTaxPenalty*(houseId: HouseId, avgTaxRate: int): PrestigeEvent =
 proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEvent =
   ## Apply prestige penalty for blockaded colonies
   ## Per operations.md:6.2.6: -2 prestige per blockaded colony per turn
-  let penalty = PRESTIGE_VALUES[PrestigeSource.BlockadePenalty] * blockadedColonies
+  let penalty = getPrestigeValue(PrestigeSource.BlockadePenalty) * blockadedColonies
 
   return createPrestigeEvent(
     PrestigeSource.BlockadePenalty,
@@ -216,7 +239,7 @@ proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEv
 
 proc awardTechPrestige*(houseId: HouseId, techField: string, level: int): PrestigeEvent =
   ## Award prestige for tech advancement
-  let amount = PRESTIGE_VALUES[PrestigeSource.TechAdvancement]
+  let amount = getPrestigeValue(PrestigeSource.TechAdvancement)
 
   return createPrestigeEvent(
     PrestigeSource.TechAdvancement,
