@@ -171,10 +171,10 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
   state.ongoingEffects = activeEffects
 
-  # Convert GameState colonies to M5 economy colonies
+  # Convert GameState colonies to economy engine format
   var econColonies: seq[econ_types.Colony] = @[]
   for systemId, colony in state.colonies:
-    # Convert old Colony to new M5 Colony
+    # Convert Colony to economy Colony type
     econColonies.add(econ_types.Colony(
       systemId: colony.systemId,
       owner: colony.owner,
@@ -207,7 +207,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
   for houseId, house in state.houses:
     houseTreasuries[houseId] = house.treasury
 
-  # Call M5 economy engine
+  # Call economy engine
   let incomeReport = econ_engine.resolveIncomePhase(
     econColonies,
     houseTaxPolicies,
@@ -785,7 +785,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         house.diplomaticIsolation.active = false
         echo "    ", house.name, " is no longer diplomatically isolated"
 
-  # Convert colonies for M5 maintenance
+  # Convert colonies for maintenance phase
   var econColonies: seq[econ_types.Colony] = @[]
   for systemId, colony in state.colonies:
     econColonies.add(econ_types.Colony(
@@ -816,7 +816,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   for houseId, house in state.houses:
     houseTreasuries[houseId] = house.treasury
 
-  # Call M5 maintenance engine
+  # Call maintenance engine
   let maintenanceReport = econ_engine.resolveMaintenancePhase(
     econColonies,
     houseFleetData,

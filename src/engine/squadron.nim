@@ -5,9 +5,6 @@
 ## of ships that can be assigned to the squadron.
 ##
 ## Fleet Hierarchy: Fleet → Squadron → Ship
-##
-## MILESTONE 2 - Squadron implementation
-## M1 uses direct Fleet→Ship for simplicity
 
 import std/[sequtils, strutils, options, math, strformat]
 import ship
@@ -20,7 +17,6 @@ export units.ShipType  # Use ShipType from types/units, not ship
 type
   EnhancedShip* = object
     ## Enhanced ship with class and stats
-    ## Replaces simple Ship type for M2+
     shipClass*: ShipClass
     shipType*: ShipType      # Military or Spacelift
     stats*: ShipStats
@@ -237,8 +233,7 @@ proc hasCombatShips*(sq: Squadron): bool =
 proc isDestroyed*(sq: Squadron): bool =
   ## Check if squadron is completely destroyed
   ## Squadron is destroyed if flagship is destroyed
-  ## For now, just check if flagship is crippled twice (conceptually)
-  ## TODO M2: Implement proper destruction tracking
+  ## TODO: Implement proper destruction tracking (requires health system beyond crippled state)
   false
 
 proc crippleShip*(sq: var Squadron, index: int): bool =
