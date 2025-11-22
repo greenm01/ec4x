@@ -327,6 +327,18 @@ Scouts (SC) are small drones outfitted with advanced sensors that assist with el
 
 Scouts are able to counter Raiders ([Section 2.4.3](#243-raiders)) and rival spy Scouts.  Multiple ELI assigned to the same unit operate as a mesh network, and their ELI capability is merged and magnified.
 
+**Scout Operational Modes:**
+
+Scouts operate in two distinct modes depending on their mission:
+
+1. **Intelligence Operations (Independent):** Scouts operate solo or in small groups for espionage, reconnaissance, and surveillance missions in enemy or neutral systems. Independent scouts are vulnerable to detection and destruction but provide critical intelligence gathering capability.
+
+2. **Fleet Operations (Embedded):** Scouts are assigned to squadrons commanded by larger ships (Destroyers, Cruisers, etc.) where they provide electronic warfare support, raider detection, and counter-intelligence capabilities. Embedded scouts benefit from the squadron's combined defensive strength during combat while maintaining their ELI detection capabilities.
+
+Per the Space Force table ([Section 9.1](reference.md#91-space-force-wep1)), Scouts have CC=1 (Command Cost) and CR=NA (Command Rating), meaning they can be commanded by other ships but cannot command ships themselves. For fleet operations, scouts must be part of squadrons led by ships with sufficient Command Rating.
+
+**Spy Scout Detection:**
+
 Scouts and Starbases are responsible for detecting rival Scouts performing espionage activities. The effectiveness of detection is influenced by the composition of the detecting units(s), which may include mixed ELI levels.
 
 For every turn that a spy Scout operates in unfriendly system occupied by rival ELI, the rival will roll on the Spy Detection Table below to determine if the spy Scout is detected *by each* fleet or Starbase(s). If the Scout is detected, it is destroyed. Rival units must contain at least one Scout or Starbase to detect.
