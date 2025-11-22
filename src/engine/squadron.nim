@@ -27,6 +27,11 @@ type
     isCrippled*: bool
     name*: string            # Optional ship name
 
+  CarrierFighter* = object
+    ## Fighter squadron embarked on carrier
+    id*: string                # Fighter squadron ID
+    commissionedTurn*: int     # When fighter was originally commissioned
+
   Squadron* = object
     ## A tactical unit of ships under flagship command
     id*: SquadronId
@@ -34,6 +39,9 @@ type
     ships*: seq[EnhancedShip]  # Ships under flagship command (excludes flagship)
     owner*: HouseId
     location*: SystemId
+
+    # Carrier fighter operations (assets.md:2.4.1.1)
+    embarkedFighters*: seq[CarrierFighter]  # Fighters aboard carriers (carrier-owned)
 
   SquadronFormation* {.pure.} = enum
     ## Formation roles for squadrons in fleet
@@ -144,7 +152,8 @@ proc newSquadron*(flagship: EnhancedShip, id: SquadronId = "",
     flagship: flagship,
     ships: @[],
     owner: owner,
-    location: location
+    location: location,
+    embarkedFighters: @[]
   )
 
 proc `$`*(sq: Squadron): string =
@@ -341,3 +350,49 @@ proc createFleetSquadrons*(
       )
       result.add(sq)
       counter += 1
+
+## Carrier Fighter Operations (assets.md:2.4.1.1)
+
+proc isCarrier*(sq: Squadron): bool =
+  ## Check if squadron flagship is a carrier (CV or CX)
+  return sq.flagship.shipClass in [ShipClass.Carrier, ShipClass.SuperCarrier]
+
+proc getCarrierCapacity*(sq: Squadron, acoLevel: int): int =
+  ## Get carrier hangar capacity based on ship class and ACO tech level
+  ## Per assets.md:2.4.1.1:
+  ## - CV: 3 FS (base), 4 FS (ACO II), 5 FS (ACO III)
+  ## - CX: 5 FS (base), 6 FS (ACO II), 8 FS (ACO III)
+  ## ACO tech applies house-wide instantly
+
+  if not sq.isCarrier:
+    return 0
+
+  case sq.flagship.shipClass
+  of ShipClass.Carrier:
+    case acoLevel
+    of 0, 1: 3  # ACO I (base)
+    of 2: 4     # ACO II
+    else: 5     # ACO III+
+  of ShipClass.SuperCarrier:
+    case acoLevel
+    of 0, 1: 5  # ACO I (base)
+    of 2: 6     # ACO II
+    else: 8     # ACO III+
+  else:
+    0
+
+proc getEmbarkedFighterCount*(sq: Squadron): int =
+  ## Get number of fighters currently embarked on carrier
+  return sq.embarkedFighters.len
+
+proc hasAvailableHangarSpace*(sq: Squadron, acoLevel: int): bool =
+  ## Check if carrier has available hangar space
+  let capacity = sq.getCarrierCapacity(acoLevel)
+  let current = sq.getEmbarkedFighterCount()
+  return current < capacity
+
+proc canLoadFighters*(sq: Squadron, acoLevel: int, count: int): bool =
+  ## Check if carrier can load specified number of fighters
+  let capacity = sq.getCarrierCapacity(acoLevel)
+  let current = sq.getEmbarkedFighterCount()
+  return (current + count) <= capacity
