@@ -69,6 +69,8 @@ Order a fleet to block hostile forces from approaching a planet.
 
 Colonies under blockade reduce their GCO by 60%. Blockade effects apply immediately during the Income Phase per [Section 1.3.2](gameplay.md#132-income-phase). Blockades established during the Conflict Phase reduce GCO for that same turn's Income Phase calculation - there is no delay. Lifting a blockade immediately restores full GCO for the following turn's Income Phase.
 
+**Multiple Blockaders:** Multiple houses can blockade the same colony simultaneously. The 60% GCO reduction applies regardless of the number of blockading fleets (blockade is binary: either blocked or not). All blockading houses are tracked for combat resolution purposes.
+
 **Prestige Penalty:** House Prestige is reduced by 2 points for each turn if the colony begins the income phase under blockade.
 
 ### 6.2.7 Bombard a Planet (06):
