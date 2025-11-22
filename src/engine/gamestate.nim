@@ -91,6 +91,23 @@ type
     levels*: TechLevel            # Tech levels for all fields
     researchPoints*: int          # Available research points
 
+  SpyMissionType* {.pure.} = enum
+    ## Types of spy scout missions (operations.md:6.2.9-6.2.11)
+    SpyOnPlanet     # Order 09: Gather planet intelligence
+    HackStarbase    # Order 10: Infiltrate starbase network
+    SpyOnSystem     # Order 11: System reconnaissance
+
+  SpyScout* = object
+    ## Independent spy scout on intelligence mission
+    ## Per assets.md:2.4.2
+    id*: string                   # Unique scout identifier
+    owner*: HouseId               # House that deployed the scout
+    location*: SystemId           # Current system location
+    eliLevel*: int                # ELI tech level (1-5)
+    mission*: SpyMissionType      # Type of intelligence mission
+    commissionedTurn*: int        # Turn scout was deployed
+    detected*: bool               # Has scout been detected and destroyed
+
   House* = object
     id*: HouseId
     name*: string
@@ -125,6 +142,7 @@ type
     diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
     turnDeadline*: int64          # Unix timestamp
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
+    spyScouts*: Table[string, SpyScout]  # Active spy scouts on intelligence missions
 
 # Initialization
 
@@ -141,7 +159,8 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
-    ongoingEffects: @[]
+    ongoingEffects: @[],
+    spyScouts: initTable[string, SpyScout]()
   )
 
 proc initializeHouse*(name: string, color: string): House =
