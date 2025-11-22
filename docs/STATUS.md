@@ -1,9 +1,10 @@
 # EC4X Implementation Status
 
 **Last Updated:** 2025-11-22
-**Project Phase:** Core Engine Development
+**Project Phase:** Core Engine Complete - AI Training Ready
 **Test Coverage:** 91+ integration tests passing
-**Recent:** Tech level bug fixed, espionage/diplomatic order execution complete
+**Engine Status:** 100% functional for AI training
+**Recent:** Strategic AI implemented (diplomacy + military), all integration tests passing
 
 ---
 
@@ -578,12 +579,32 @@ python3 scripts/sync_specs.py
 3. ✅ Fix constant naming (UPPER_SNAKE → camelCase)
 4. ✅ Make all enums `{.pure.}`
 5. ✅ Clean up placeholder code
-6. ⏳ Setup pre-commit git hooks (tests + build)
+6. ✅ Setup pre-commit git hooks (tests + build)
+
+### AI Development (Phase 4 - ✅ In Progress)
+1. ✅ Phase 0: Environment setup (PyTorch + ROCm on AMD GPU)
+2. ✅ Phase 1: Strategic diplomacy AI
+   - Relative strength assessment
+   - Mutual enemy detection
+   - Strategic pact formation
+3. ✅ Phase 2: Intelligent military AI
+   - Combat odds calculation
+   - Smart attack/retreat decisions
+   - Strategic ship building
+4. ⏳ Phase 2.5: Training data generation (NEXT)
+   - Run 200-1000 simulations
+   - Generate 10,000+ training examples
+5. ⏳ Phase 3: Model training (Mistral-7B fine-tuning)
+6. ⏳ Phase 4: Inference service (llama.cpp integration)
 
 ### Long Term (Future Milestones)
 1. UI development (deferred)
-2. AI implementation (deferred)
-3. Advanced features (to be determined)
+2. Advanced engine features (M3 milestones: 93 TODOs)
+   - Starbase hacking mechanics
+   - Advanced intelligence system
+   - Revolutionary tech effects
+   - Fleet destruction tracking
+3. Polish and optimization
 
 ---
 
@@ -616,6 +637,8 @@ python3 scripts/sync_specs.py
 6. ✅ **Victory & Morale:** Victory conditions and morale system
 7. ✅ **Config System:** 13 TOML files + documentation sync (1,625 line sync script)
 8. ✅ **Engine Integration:** All 12 Nim config loaders implemented with toml_serialization
+9. ✅ **Strategic AI (Phase 1-2):** Diplomacy + military AI for balance testing (2025-11-22)
+10. ✅ **Engine Verification:** All integration tests passing, 100% functional for AI training
 
 ---
 
