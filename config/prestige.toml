@@ -12,9 +12,9 @@
 [victory]
 # BALANCE: Victory and defeat thresholds
 prestige_victory = 5000            # Reach 5000 prestige to win
-starting_prestige = 50             # All houses start with 50 prestige
+starting_prestige = 50             # NOTE: Game setup defines this in game_setup/standard.toml
 defeat_threshold = 0               # Below 0 for consecutive turns = surrender
-defeat_consecutive_turns = 3       # Turns below 0 before forced surrender
+defeat_consecutive_turns = 3       # NOTE: Elimination mechanics in config/gameplay.toml
 
 # ============================================================================
 # MORALE SYSTEM (GAME CONSTANTS)

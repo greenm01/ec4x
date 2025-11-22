@@ -1,21 +1,21 @@
 # EC4X Standard Scenario Configuration
-# This is the default balanced game setup for 4-player games
+# This is the canonical game setup matching docs/specs/gameplay.md Section 1.2
 #
 # Moderators can create custom scenarios by copying this file and adjusting values.
-# The game engine loads: config/*.toml (balance/mechanics) + scenarios/*.toml (setup)
+# The game engine loads: config/*.toml (balance/mechanics) + game_setup/*.toml (scenario)
 
 [game_info]
-name = "Standard Balanced Game"
-description = "Default 4-player competitive game with balanced starting conditions"
+name = "Standard Game"
+description = "Canonical EC4X game matching official specification (gameplay.md:1.2)"
 recommended_players = 4
-estimated_duration = "4-6 hours"
+estimated_duration = "Variable - depends on player strategy"
 
 [victory_conditions]
-# Victory condition types: conquest, prestige, tech, time, diplomatic
-primary_condition = "conquest"      # Eliminate all other houses
-prestige_threshold = 200            # Alternative: reach 200 prestige
-tech_threshold = 10                 # Alternative: reach tech level 10 in all fields
-turn_limit = 120                    # Alternative: highest prestige at turn 120
+# Victory condition types per gameplay.md:1.4.3
+primary_condition = "prestige"      # Victory by prestige threshold
+secondary_condition = "elimination" # Victory by being last active player
+prestige_threshold = 5000           # First to 5000 prestige wins (prestige.toml)
+# NOTE: Defensive Collapse and Autopilot rules defined in config/gameplay.toml
 
 [map]
 # Map generation settings
@@ -25,13 +25,13 @@ jump_lane_density = "normal"        # sparse, normal, dense
 starting_distance = "balanced"      # close, balanced, far
 
 [starting_resources]
-# What each player starts with
-treasury = 1000                     # Starting Production Points
-starting_population = 5             # Starting homeworld population (PU)
-starting_infrastructure = 3         # Starting infrastructure level
+# What each player starts with (gameplay.md:37)
+treasury = 420                      # Starting Production Points (PP)
+starting_prestige = 50              # Starting prestige points (gameplay.md:21)
+default_tax_rate = 0.50             # Default tax rate (50%)
 
 [starting_tech]
-# Initial technology levels (all players start equal)
+# Initial technology levels per gameplay.md:39
 economic_level = 1                  # EL1
 science_level = 1                   # SL1
 construction_tech = 1               # CST1
@@ -39,24 +39,33 @@ weapons_tech = 1                    # WEP1
 terraforming_tech = 1               # TER1
 electronic_intelligence = 1         # ELI1
 counter_intelligence = 1            # CIC1
+cloaking_tech = 0                   # CLK (not in spec, default 0)
+shield_tech = 0                     # SLD (not in spec, default 0)
+fighter_doctrine = 0                # FD (not in spec, default 0)
+advanced_carrier_ops = 0            # ACO (not in spec, default 0)
 
-[starting_military]
-# Initial fleet composition
-light_cruisers = 3                  # 3x CL
-destroyers = 2                      # 2x DD
-scouts = 1                          # 1x SC
+[starting_fleet]
+# Initial fleet composition per gameplay.md:37
+etac = 1                            # 1 ETAC (fully loaded)
+light_cruiser = 1                   # 1 Light Cruiser
+destroyer = 2                       # 2 Destroyers
+scout = 2                           # 2 Scouts
+# All other ship types: 0 (not listed in spec)
 
 [starting_facilities]
-# Homeworld starting facilities
-spaceports = 1
-shipyards = 1
-starbases = 1
+# Homeworld starting facilities per gameplay.md:37
+spaceports = 1                      # 1 Spaceport
+shipyards = 1                       # 1 Shipyard
+starbases = 0                       # 0 Starbases (not in spec)
+ground_batteries = 0                # 0 Ground Batteries (not in spec)
+planetary_shields = 0               # 0 Planetary Shields (not in spec)
 
 [homeworld]
-# Homeworld characteristics
-planet_class = "benign"             # All players start on benign worlds
-raw_quality = "abundant"            # RAW material quality
-initial_iu = 10                     # Starting Industrial Units
+# Homeworld characteristics per gameplay.md:37
+planet_class = "Eden"               # Abundant Eden planet
+raw_quality = "Abundant"            # Abundant quality
+colony_level = 5                    # Level V colony
+population_units = 840              # 840 PU
 
 [optional_balance_overrides]
 # Moderator can override specific balance values for this scenario only
