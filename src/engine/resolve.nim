@@ -13,7 +13,7 @@ import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
 import combat/[engine as combat_engine, types as combat_types, ground]
-import config/[prestige_config, espionage_config]
+import config/[prestige_config, espionage_config, gameplay_config, construction_config]
 import prestige
 
 type
@@ -833,7 +833,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
     echo "    Completed: ", completed.projectType
 
   # Check for elimination and defensive collapse
-  let config = globalPrestigeConfig
+  let gameplayConfig = globalGameplayConfig
   for houseId, house in state.houses:
     # Standard elimination: no colonies and no fleets
     let colonies = state.getHouseColonies(houseId)
@@ -850,13 +850,14 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
       echo "    ", house.name, " eliminated!"
       continue
 
-    # Defensive collapse: prestige < 0 for consecutive turns
-    if house.prestige < 0:
+    # Defensive collapse: prestige < threshold for consecutive turns
+    if house.prestige < gameplayConfig.elimination.defensive_collapse_threshold:
       state.houses[houseId].negativePrestigeTurns += 1
-      echo "    ", house.name, " negative prestige: ", house.prestige,
-           " (", state.houses[houseId].negativePrestigeTurns, "/", config.victory.defeat_consecutive_turns, " turns)"
+      echo "    ", house.name, " at risk: prestige ", house.prestige,
+           " (", state.houses[houseId].negativePrestigeTurns, "/",
+           gameplayConfig.elimination.defensive_collapse_turns, " turns until elimination)"
 
-      if state.houses[houseId].negativePrestigeTurns >= config.victory.defeat_consecutive_turns:
+      if state.houses[houseId].negativePrestigeTurns >= gameplayConfig.elimination.defensive_collapse_turns:
         state.houses[houseId].eliminated = true
         events.add(GameEvent(
           eventType: GameEventType.HouseEliminated,
@@ -864,9 +865,9 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           description: house.name & " has collapsed from negative prestige!",
           systemId: none(SystemId)
         ))
-        echo "    ", house.name, " collapsed from negative prestige!"
+        echo "    ", house.name, " eliminated by defensive collapse!"
     else:
-      # Reset counter when prestige becomes positive
+      # Reset counter when prestige recovers
       state.houses[houseId].negativePrestigeTurns = 0
 
   # Check victory condition

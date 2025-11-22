@@ -10,6 +10,7 @@
 import std/[options, tables]
 import types
 import ../../common/types/[core, units]
+import ../config/construction_config
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
 
@@ -54,21 +55,22 @@ proc getShipBuildTime*(shipClass: ShipClass): int =
 ## Building Construction Costs
 
 proc getBuildingCost*(buildingType: string): int =
-  ## Get construction cost for building type
-  ##
-  ## TODO: Define building costs
-  ## Placeholder
+  ## Get construction cost for building type from config
+  let config = globalConstructionConfig.costs
+
   case buildingType
   of "Shipyard":
-    return 100
+    return config.shipyard_cost
   of "Spaceport":
-    return 80
-  of "ResearchLab":
-    return 120
+    return config.spaceport_cost
   of "Starbase":
-    return 200
+    return config.starbase_cost
+  of "GroundBattery":
+    return config.ground_battery_cost
+  of "FighterSquadron":
+    return config.fighter_squadron_cost
   else:
-    return 50
+    return 50  # Default for undefined buildings
 
 ## Industrial Unit Investment (economy.md:3.4)
 
