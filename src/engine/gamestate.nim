@@ -79,7 +79,7 @@ type
 
     # Blockade status (operations.md:6.2.6)
     blockaded*: bool                          # Is colony currently under blockade
-    blockadedBy*: Option[HouseId]             # Which house is blockading (if any)
+    blockadedBy*: seq[HouseId]                # Which houses are blockading (can be multiple)
     blockadeTurns*: int                       # Consecutive turns under blockade
 
   ConstructionProject* = object
@@ -203,7 +203,7 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     armies: 0,  # No armies at start
     marines: 0,  # No marines at start
     blockaded: false,
-    blockadedBy: none(HouseId),
+    blockadedBy: @[],
     blockadeTurns: 0
   )
 
