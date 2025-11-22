@@ -24,8 +24,9 @@ requires "toml_serialization >= 0.2.0"
 task test, "Run the complete test suite":
   echo "Running EC4X test suite..."
   exec "nim c -r tests/test_core.nim"
-  exec "nim c -r tests/test_starmap_robust.nim"
-  exec "nim c -r tests/test_starmap_validation.nim"
+  # TODO: Add back when tests are created:
+  # exec "nim c -r tests/test_starmap_robust.nim"
+  # exec "nim c -r tests/test_starmap_validation.nim"
   echo "All tests completed successfully!"
 
 task testCore, "Run core functionality tests":
