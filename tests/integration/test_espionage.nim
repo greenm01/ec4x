@@ -38,22 +38,22 @@ suite "Espionage System":
     check noPenalty == 0
 
   test "Action costs from config":
-    check getActionCost(EspionageAction.TechTheft) == globalEspionageConfig.techTheftEBP
-    check getActionCost(EspionageAction.SabotageLow) == globalEspionageConfig.sabotageLowEBP
-    check getActionCost(EspionageAction.Assassination) == globalEspionageConfig.assassinationEBP
+    check getActionCost(EspionageAction.TechTheft) == globalEspionageConfig.costs.tech_theft_ebp
+    check getActionCost(EspionageAction.SabotageLow) == globalEspionageConfig.costs.sabotage_low_ebp
+    check getActionCost(EspionageAction.Assassination) == globalEspionageConfig.costs.assassination_ebp
 
   test "Detection thresholds from config":
-    check getDetectionThreshold(CICLevel.CIC0) == globalEspionageConfig.cic0Threshold
-    check getDetectionThreshold(CICLevel.CIC3) == globalEspionageConfig.cic3Threshold
-    check getDetectionThreshold(CICLevel.CIC5) == globalEspionageConfig.cic5Threshold
+    check getDetectionThreshold(CICLevel.CIC0) == globalEspionageConfig.detection.cic0_threshold
+    check getDetectionThreshold(CICLevel.CIC3) == globalEspionageConfig.detection.cic3_threshold
+    check getDetectionThreshold(CICLevel.CIC5) == globalEspionageConfig.detection.cic5_threshold
 
   test "CIP modifiers from config":
     let config = globalEspionageConfig
-    check getCIPModifier(0) == config.cip0Modifier
-    check getCIPModifier(3) == config.cip15Modifier
-    check getCIPModifier(8) == config.cip610Modifier
-    check getCIPModifier(12) == config.cip1115Modifier
-    check getCIPModifier(25) == config.cip21PlusModifier
+    check getCIPModifier(0) == config.detection.cip_0_modifier
+    check getCIPModifier(3) == config.detection.cip_1_5_modifier
+    check getCIPModifier(8) == config.detection.cip_6_10_modifier
+    check getCIPModifier(12) == config.detection.cip_11_15_modifier
+    check getCIPModifier(25) == config.detection.cip_21_plus_modifier
 
   test "Tech theft successful (not detected)":
     var rng = initRand(12345)
@@ -61,7 +61,7 @@ suite "Espionage System":
 
     check result.success == true
     check result.detected == false
-    check result.srpStolen == globalEspionageConfig.techTheftSRP
+    check result.srpStolen == globalEspionageConfig.effects.tech_theft_srp
     check result.attackerPrestigeEvents.len > 0
     check result.attackerPrestigeEvents[0].amount == globalPrestigeConfig.espionage.tech_theft
     check result.targetPrestigeEvents.len > 0
@@ -74,7 +74,7 @@ suite "Espionage System":
     check result.detected == true
     check result.srpStolen == 0
     check result.attackerPrestigeEvents.len > 0
-    check result.attackerPrestigeEvents[0].amount == globalEspionageConfig.failedEspionagePrestige
+    check result.attackerPrestigeEvents[0].amount == globalEspionageConfig.effects.failed_espionage_prestige
 
   test "Sabotage low successful":
     var rng = initRand(54321)
@@ -82,7 +82,7 @@ suite "Espionage System":
 
     check result.success == true
     check result.iuDamage > 0
-    check result.iuDamage <= globalEspionageConfig.sabotageLowDice
+    check result.iuDamage <= globalEspionageConfig.effects.sabotage_low_dice
     check result.attackerPrestigeEvents.len > 0
 
   test "Sabotage high successful":
@@ -91,7 +91,7 @@ suite "Espionage System":
 
     check result.success == true
     check result.iuDamage > 0
-    check result.iuDamage <= globalEspionageConfig.sabotageHighDice
+    check result.iuDamage <= globalEspionageConfig.effects.sabotage_high_dice
     check result.attackerPrestigeEvents.len > 0
 
   test "Assassination creates SRP reduction effect":
@@ -103,8 +103,8 @@ suite "Espionage System":
     let effect = result.effect.get()
     check effect.effectType == EffectType.SRPReduction
     check effect.targetHouse == "house2".HouseId
-    check effect.turnsRemaining == globalEspionageConfig.effectDurationTurns
-    check effect.magnitude == (globalEspionageConfig.assassinationSRPReduction.float / 100.0)
+    check effect.turnsRemaining == globalEspionageConfig.effects.effect_duration_turns
+    check effect.magnitude == (globalEspionageConfig.effects.assassination_srp_reduction.float / 100.0)
 
   test "Cyber attack creates starbase crippled effect":
     let result = executeCyberAttack("house1".HouseId, "house2".HouseId, 50.SystemId, detected = false)
@@ -125,7 +125,7 @@ suite "Espionage System":
 
     let effect = result.effect.get()
     check effect.effectType == EffectType.NCVReduction
-    check effect.magnitude == (globalEspionageConfig.economicNCVReduction.float / 100.0)
+    check effect.magnitude == (globalEspionageConfig.effects.economic_ncv_reduction.float / 100.0)
 
   test "Psyops campaign creates tax reduction effect":
     let result = executePsyopsCampaign("house1".HouseId, "house2".HouseId, detected = false)
@@ -135,7 +135,7 @@ suite "Espionage System":
 
     let effect = result.effect.get()
     check effect.effectType == EffectType.TaxReduction
-    check effect.magnitude == (globalEspionageConfig.psyopsTaxReduction.float / 100.0)
+    check effect.magnitude == (globalEspionageConfig.effects.psyops_tax_reduction.float / 100.0)
 
   test "Detection system: CIC0 always fails":
     var rng = initRand(99999)
@@ -162,8 +162,8 @@ suite "Espionage System":
     # So virtually guaranteed
     let result = attemptDetection(attempt, rng)
     # Can't guarantee but very high probability
-    check result.threshold == globalEspionageConfig.cic5Threshold
-    check result.modifier == globalEspionageConfig.cip21PlusModifier
+    check result.threshold == globalEspionageConfig.detection.cic5_threshold
+    check result.modifier == globalEspionageConfig.detection.cip_21_plus_modifier
 
   test "Execute espionage with detection":
     var rng = initRand(77777)
