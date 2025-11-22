@@ -466,6 +466,377 @@ def generate_penalty_mechanics_table(config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+# ============================================================================
+# Economy Table Generators
+# ============================================================================
+
+def generate_raw_material_table(economy_config: Dict[str, Any]) -> str:
+    """Generate RAW material efficiency table from economy.toml."""
+    raw = economy_config.get('raw_material_efficiency', {})
+
+    lines = [
+        "| RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |",
+        "| --------- |:----:|:----:|:------:|:-----:|:-------:|:--------:|:-------:|",
+    ]
+
+    # RAW quality levels
+    qualities = [
+        ("very_poor", "Very Poor"),
+        ("poor", "Poor"),
+        ("abundant", "Abundant"),
+        ("rich", "Rich"),
+        ("very_rich", "Very Rich"),
+    ]
+
+    planets = ["eden", "lush", "benign", "harsh", "hostile", "desolate", "extreme"]
+
+    for quality_key, quality_name in qualities:
+        values = []
+        for planet in planets:
+            key = f"{quality_key}_{planet}"
+            efficiency = raw.get(key, 0)
+            # Convert decimal to percentage string
+            percent_str = f"{int(efficiency * 100)}%"
+            values.append(percent_str)
+
+        line = f"| {quality_name:<9} | {values[0]:^4} | {values[1]:^4} | {values[2]:^6} | {values[3]:^5} | {values[4]:^7} | {values[5]:^8} | {values[6]:^7} |"
+        lines.append(line)
+
+    lines.append("")
+    lines.append("*Source: config/economy.toml [raw_material_efficiency] section*")
+
+    return "\n".join(lines)
+
+
+def generate_tax_penalty_table(economy_config: Dict[str, Any]) -> str:
+    """Generate high-tax prestige penalty table from economy.toml."""
+    tax_penalties = economy_config.get('tax_penalties', {})
+
+    lines = [
+        "| Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |",
+        "|---------------------------------|---------------------------|",
+    ]
+
+    # Process 6 tiers
+    for tier_num in range(1, 7):
+        min_rate = tax_penalties.get(f'tier_{tier_num}_min', 0)
+        max_rate = tax_penalties.get(f'tier_{tier_num}_max', 0)
+        penalty = tax_penalties.get(f'tier_{tier_num}_penalty', 0)
+
+        if tier_num == 1:
+            range_str = f"≤ {max_rate} %"
+        else:
+            range_str = f"{min_rate} – {max_rate} %"
+
+        lines.append(f"| {range_str:<31} | {penalty:^25} |")
+
+    lines.append("")
+    lines.append("*Source: config/economy.toml [tax_penalties] section*")
+
+    return "\n".join(lines)
+
+
+def generate_tax_incentive_table(economy_config: Dict[str, Any]) -> str:
+    """Generate low-tax incentive table from economy.toml."""
+    tax_incentives = economy_config.get('tax_incentives', {})
+
+    lines = [
+        "| Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn |",
+        "|--------------------|----------------------------------------------------------|-------------------------------------|",
+    ]
+
+    # Process 5 tiers (reverse order - highest rates first)
+    for tier_num in range(1, 6):
+        min_rate = tax_incentives.get(f'tier_{tier_num}_min', 0)
+        max_rate = tax_incentives.get(f'tier_{tier_num}_max', 0)
+        multiplier = tax_incentives.get(f'tier_{tier_num}_pop_multiplier', 1.0)
+        prestige = tax_incentives.get(f'tier_{tier_num}_prestige', 0)
+
+        range_str = f"{min_rate} – {max_rate} %"
+
+        if tier_num == 1:
+            bonus_str = "No bonus"
+        else:
+            bonus_pct = int((multiplier - 1.0) * 100)
+            bonus_str = f"×{multiplier:.2f} (+{bonus_pct} %)"
+
+        prestige_str = "–" if prestige == 0 else f"+{prestige}"
+
+        lines.append(f"| {range_str:<18} | {bonus_str:<56} | {prestige_str:^35} |")
+
+    lines.append("")
+    lines.append("*Source: config/economy.toml [tax_incentives] section*")
+
+    return "\n".join(lines)
+
+
+def generate_iu_investment_table(economy_config: Dict[str, Any]) -> str:
+    """Generate IU investment cost multiplier table from economy.toml."""
+    iu_inv = economy_config.get('industrial_investment', {})
+
+    lines = [
+        "| IU Investment (% of PU) | Cost Multiplier | PP  |",
+        "| ----------------------- |:---------------:|:---:|",
+    ]
+
+    # Tier 1: Up to 50%
+    tier_1_mult = iu_inv.get('tier_1_multiplier', 1.0)
+    tier_1_pp = iu_inv.get('tier_1_pp', 30)
+    lines.append(f"| Up to 50%               | {tier_1_mult}             | {tier_1_pp}  |")
+
+    # Tiers 2-4: ranges
+    for tier_num in range(2, 5):
+        min_pct = iu_inv.get(f'tier_{tier_num}_min_percent', 0)
+        max_pct = iu_inv.get(f'tier_{tier_num}_max_percent', 0)
+        mult = iu_inv.get(f'tier_{tier_num}_multiplier', 1.0)
+        pp = iu_inv.get(f'tier_{tier_num}_pp', 0)
+
+        range_str = f"{min_pct}% - {max_pct}%"
+        lines.append(f"| {range_str:<23} | {mult}             | {pp:<3} |")
+
+    # Tier 5: 151% and above
+    tier_5_mult = iu_inv.get('tier_5_multiplier', 2.5)
+    tier_5_pp = iu_inv.get('tier_5_pp', 75)
+    lines.append(f"| 151% and above          | {tier_5_mult}             | {tier_5_pp}  |")
+
+    lines.append("")
+    lines.append("*Source: config/economy.toml [industrial_investment] section*")
+
+    return "\n".join(lines)
+
+
+def generate_colonization_cost_table(economy_config: Dict[str, Any]) -> str:
+    """Generate colonization costs table from economy.toml."""
+    colonization = economy_config.get('colonization', {})
+
+    lines = [
+        "| Conditions | PP/PTU |",
+        "| ---------- |:------:|",
+    ]
+
+    planets = [
+        ("Eden", "eden"),
+        ("Lush", "lush"),
+        ("Benign", "benign"),
+        ("Harsh", "harsh"),
+        ("Hostile", "hostile"),
+        ("Desolate", "desolate"),
+        ("Extreme", "extreme"),
+    ]
+
+    for display_name, key in planets:
+        pp_per_ptu = colonization.get(f'{key}_pp_per_ptu', 0)
+        lines.append(f"| {display_name:<10} | {pp_per_ptu:<6} |")
+
+    lines.append("")
+    lines.append("*Source: config/economy.toml [colonization] section*")
+
+    return "\n".join(lines)
+
+
+# ============================================================================
+# Technology Table Generators
+# ============================================================================
+
+def generate_economic_level_table(tech_config: Dict[str, Any]) -> str:
+    """Generate Economic Level (EL) table from tech.toml."""
+    el = tech_config.get('economic_level', {})
+
+    lines = [
+        "| EL  | ERP Cost | EL MOD |",
+        "|:---:|:--------:|:------:|",
+    ]
+
+    for level in range(1, 12):
+        erp = el.get(f'level_{level}_erp', 0)
+        mod = el.get(f'level_{level}_mod', 0.0)
+
+        el_str = f"{level:02d}" if level < 11 else "11+"
+        erp_str = str(erp) if level < 11 else f"{erp}+"
+        mod_str = f"{mod:.2f}"
+
+        lines.append(f"| {el_str} | {erp_str:<8} | {mod_str:<6} |")
+
+    lines.append("")
+    lines.append("*Source: config/tech.toml [economic_level] section*")
+
+    return "\n".join(lines)
+
+
+def generate_science_level_table(tech_config: Dict[str, Any]) -> str:
+    """Generate Science Level (SL) table from tech.toml."""
+    sl = tech_config.get('science_level', {})
+
+    lines = [
+        "| SL  | SRP Cost |",
+        "|:---:|:--------:|",
+    ]
+
+    for level in range(1, 9):
+        srp = sl.get(f'level_{level}_srp', 0)
+
+        sl_str = f"{level:02d}" if level < 8 else "08+"
+        srp_str = str(srp) if level < 8 else f"{srp}+"
+
+        lines.append(f"| {sl_str} | {srp_str:<8} |")
+
+    lines.append("")
+    lines.append("*Source: config/tech.toml [science_level] section*")
+
+    return "\n".join(lines)
+
+
+def generate_tech_level_table(tech_config: Dict[str, Any], tech_name: str, max_levels: int = 5) -> str:
+    """Generate a generic tech level table (CST, WEP, TER, ELI, CLK, SLD, CIC)."""
+    tech_section = tech_config.get(tech_name, {})
+
+    lines = [
+        f"| {tech_name.upper()} Level | SL  | TRP Cost |",
+        "|:---------:|:---:| -------- |",
+    ]
+
+    # Handle special case for terraforming which has 7 levels
+    if 'terraforming' in tech_name:
+        max_levels = 7
+
+    for level in range(1, max_levels + 1):
+        sl = tech_section.get(f'level_{level}_sl', 0)
+        trp = tech_section.get(f'level_{level}_trp', 0)
+
+        # Format level string (e.g., CST1, WEP1)
+        if tech_name == 'construction_tech':
+            prefix = 'CST'
+        elif tech_name == 'weapons_tech':
+            prefix = 'WEP'
+        elif tech_name == 'terraforming_tech':
+            prefix = 'TER'
+        elif tech_name == 'electronic_intelligence':
+            prefix = 'ELI'
+        elif tech_name == 'cloaking_tech':
+            prefix = 'CLK'
+        elif tech_name == 'shield_tech':
+            prefix = 'SLD'
+        elif tech_name == 'counter_intelligence_tech':
+            prefix = 'CIC'
+        else:
+            prefix = 'XXX'
+
+        level_str = f"{prefix}{level}"
+        if level == max_levels and tech_name in ['construction_tech', 'weapons_tech']:
+            level_str += "+"
+
+        trp_str = f"\\*{trp}" if level == max_levels and tech_name in ['construction_tech', 'weapons_tech'] else str(trp)
+
+        lines.append(f"| {level_str:<9} | {sl:<3} | {trp_str:<8} |")
+
+    lines.append("")
+    lines.append(f"*Source: config/tech.toml [{tech_name}] section*")
+
+    return "\n".join(lines)
+
+
+def generate_terraforming_upgrade_cost_table(tech_config: Dict[str, Any]) -> str:
+    """Generate terraforming planet upgrade cost table from tech.toml."""
+    ter_costs = tech_config.get('terraforming_upgrade_costs', {})
+
+    lines = [
+        "| Planet Class | Required TER | PU        | PP   |",
+        "|:------------ |:------------:|:---------:|:----:|",
+    ]
+
+    planets = [
+        ("Extreme", "extreme"),
+        ("Desolate", "desolate"),
+        ("Hostile", "hostile"),
+        ("Harsh", "harsh"),
+        ("Benign", "benign"),
+        ("Lush", "lush"),
+        ("Eden", "eden"),
+    ]
+
+    for display_name, key in planets:
+        ter_level = ter_costs.get(f'{key}_ter', 0)
+        pu_min = ter_costs.get(f'{key}_pu_min', 0)
+        pu_max = ter_costs.get(f'{key}_pu_max', 0)
+        pp = ter_costs.get(f'{key}_pp', 0)
+
+        ter_str = f"TER{ter_level}"
+
+        # Format PU range
+        if pu_max >= 999999:
+            pu_str = f"{pu_min}+"
+        elif pu_max >= 1000:
+            if pu_min >= 1000:
+                pu_str = f"{pu_min//1000}k - {pu_max//1000}k"
+            else:
+                pu_str = f"{pu_min}- {pu_max//1000}k"
+        else:
+            pu_str = f"{pu_min} - {pu_max}"
+
+        pp_str = "NA" if pp == 0 else str(pp)
+
+        lines.append(f"| {display_name:<12} | {ter_str:<12} | {pu_str:<9} | {pp_str:<4} |")
+
+    lines.append("")
+    lines.append("*Source: config/tech.toml [terraforming_upgrade_costs] section*")
+
+    return "\n".join(lines)
+
+
+def generate_fighter_doctrine_table(tech_config: Dict[str, Any]) -> str:
+    """Generate Fighter Doctrine (FD) table from tech.toml."""
+    fd = tech_config.get('fighter_doctrine', {})
+
+    lines = [
+        "| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier |",
+        "|:----------:|--------------|:--------:|:-----------:|:-------------------:|",
+    ]
+
+    for level in range(1, 4):
+        sl_req = fd.get(f'level_{level}_sl', 0)
+        trp = fd.get(f'level_{level}_trp', 0)
+        capacity = fd.get(f'level_{level}_capacity_multiplier', 1.0)
+
+        level_str = ["FD I", "FD II", "FD III"][level - 1]
+        prereq = "None" if level == 1 else ["", "FD I", "FD II"][level - 1]
+        trp_str = "N/A" if trp == 0 else str(trp)
+        capacity_str = f"{capacity}x"
+
+        lines.append(f"| {level_str:<10} | {prereq:<12} | {trp_str:<8} | {sl_req:<11} | {capacity_str:<19} |")
+
+    lines.append("")
+    lines.append("*Source: config/tech.toml [fighter_doctrine] section*")
+
+    return "\n".join(lines)
+
+
+def generate_aco_table(tech_config: Dict[str, Any]) -> str:
+    """Generate Advanced Carrier Operations (ACO) table from tech.toml."""
+    aco = tech_config.get('advanced_carrier_operations', {})
+
+    lines = [
+        "| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity |",
+        "|:----------:|--------------|:--------:|:-----------:|:-----------:|:-----------:|",
+    ]
+
+    for level in range(1, 4):
+        sl_req = aco.get(f'level_{level}_sl', 0)
+        trp = aco.get(f'level_{level}_trp', 0)
+        cv_cap = aco.get(f'level_{level}_cv_capacity', 0)
+        cx_cap = aco.get(f'level_{level}_cx_capacity', 0)
+
+        level_str = ["ACO I", "ACO II", "ACO III"][level - 1]
+        prereq = "None" if level == 1 else ["", "ACO I", "ACO II"][level - 1]
+        trp_str = "N/A" if trp == 0 else str(trp)
+
+        lines.append(f"| {level_str:<10} | {prereq:<12} | {trp_str:<8} | {sl_req:<11} | {cv_cap} FS        | {cx_cap} FS        |")
+
+    lines.append("")
+    lines.append("*Source: config/tech.toml [advanced_carrier_operations] section*")
+
+    return "\n".join(lines)
+
+
 def update_reference_spec(ships_table: str, ground_table: str, spacelift_table: str, prestige_table: str, morale_table: str, espionage_table: str, penalty_table: str):
     """Update docs/specs/reference.md with generated tables."""
     spec_file = Path("docs/specs/reference.md")
@@ -618,6 +989,59 @@ def update_diplomacy_spec(espionage_prestige_table: str, cic_modifier_table: str
     print(f"✓ Successfully updated {spec_file}")
 
 
+def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_table: str,
+                        iu_table: str, colonization_table: str, el_table: str, sl_table: str,
+                        cst_table: str, wep_table: str, ter_table: str, ter_upgrade_table: str,
+                        eli_table: str, clk_table: str, sld_table: str, cic_table: str,
+                        fd_table: str, aco_table: str):
+    """Update docs/specs/economy.md with generated tables."""
+    spec_file = Path("docs/specs/economy.md")
+
+    if not spec_file.exists():
+        print(f"⚠ {spec_file} not found, skipping economy.md update")
+        return
+
+    content = spec_file.read_text()
+
+    # Define all markers for economy tables
+    markers = {
+        "RAW_MATERIAL_TABLE": (raw_table, "RAW material efficiency table"),
+        "TAX_PENALTY_TABLE": (tax_penalty_table, "tax penalty table"),
+        "TAX_INCENTIVE_TABLE": (tax_incentive_table, "tax incentive table"),
+        "IU_INVESTMENT_TABLE": (iu_table, "IU investment table"),
+        "COLONIZATION_COST_TABLE": (colonization_table, "colonization cost table"),
+        "ECONOMIC_LEVEL_TABLE": (el_table, "Economic Level (EL) table"),
+        "SCIENCE_LEVEL_TABLE": (sl_table, "Science Level (SL) table"),
+        "CST_TABLE": (cst_table, "Construction (CST) table"),
+        "WEP_TABLE": (wep_table, "Weapons (WEP) table"),
+        "TER_TABLE": (ter_table, "Terraforming (TER) table"),
+        "TER_UPGRADE_COST_TABLE": (ter_upgrade_table, "Terraforming upgrade cost table"),
+        "ELI_TABLE": (eli_table, "Electronic Intelligence (ELI) table"),
+        "CLK_TABLE": (clk_table, "Cloaking (CLK) table"),
+        "SLD_TABLE": (sld_table, "Shield (SLD) table"),
+        "CIC_TABLE": (cic_table, "Counter Intelligence (CIC) table"),
+        "FD_TABLE": (fd_table, "Fighter Doctrine (FD) table"),
+        "ACO_TABLE": (aco_table, "Advanced Carrier Operations (ACO) table"),
+    }
+
+    # Replace each table if markers exist
+    for marker_name, (table_content, display_name) in markers.items():
+        start_marker = f"<!-- {marker_name}_START -->"
+        end_marker = f"<!-- {marker_name}_END -->"
+
+        if start_marker in content and end_marker in content:
+            start_idx = content.index(start_marker) + len(start_marker)
+            end_idx = content.index(end_marker)
+            content = content[:start_idx] + "\n" + table_content + "\n" + content[end_idx:]
+            print(f"✓ Updated {display_name} in economy.md")
+        else:
+            print(f"⚠ {display_name} markers not found in economy.md")
+
+    # Write updated content
+    spec_file.write_text(content)
+    print(f"✓ Successfully updated {spec_file}")
+
+
 def main():
     """Main script entry point."""
     print("EC4X Specification Sync")
@@ -642,6 +1066,12 @@ def main():
 
     espionage_config = load_toml(config_dir / "espionage.toml")
     print(f"✓ Loaded {config_dir / 'espionage.toml'}")
+
+    economy_config = load_toml(config_dir / "economy.toml")
+    print(f"✓ Loaded {config_dir / 'economy.toml'}")
+
+    tech_config = load_toml(config_dir / "tech.toml")
+    print(f"✓ Loaded {config_dir / 'tech.toml'}")
 
     # Generate tables
     print("\nGenerating specification tables...")
@@ -676,15 +1106,71 @@ def main():
     cic_threshold_table = generate_cic_detection_thresholds_table(espionage_config)
     print("✓ Generated CIC detection thresholds table (5 levels)")
 
+    # Generate economy tables
+    raw_table = generate_raw_material_table(economy_config)
+    print("✓ Generated RAW material efficiency table (5 qualities × 7 planet classes)")
+
+    tax_penalty_table = generate_tax_penalty_table(economy_config)
+    print("✓ Generated tax penalty table (6 tiers)")
+
+    tax_incentive_table = generate_tax_incentive_table(economy_config)
+    print("✓ Generated tax incentive table (5 tiers)")
+
+    iu_table = generate_iu_investment_table(economy_config)
+    print("✓ Generated IU investment table (5 tiers)")
+
+    colonization_table = generate_colonization_cost_table(economy_config)
+    print("✓ Generated colonization cost table (7 planet classes)")
+
+    # Generate tech tables
+    el_table = generate_economic_level_table(tech_config)
+    print("✓ Generated Economic Level (EL) table (11 levels)")
+
+    sl_table = generate_science_level_table(tech_config)
+    print("✓ Generated Science Level (SL) table (8+ levels)")
+
+    cst_table = generate_tech_level_table(tech_config, 'construction_tech')
+    print("✓ Generated Construction (CST) table (5+ levels)")
+
+    wep_table = generate_tech_level_table(tech_config, 'weapons_tech')
+    print("✓ Generated Weapons (WEP) table (5+ levels)")
+
+    ter_table = generate_tech_level_table(tech_config, 'terraforming_tech', 7)
+    print("✓ Generated Terraforming (TER) table (7 levels)")
+
+    ter_upgrade_table = generate_terraforming_upgrade_cost_table(tech_config)
+    print("✓ Generated Terraforming upgrade cost table (7 planet classes)")
+
+    eli_table = generate_tech_level_table(tech_config, 'electronic_intelligence')
+    print("✓ Generated Electronic Intelligence (ELI) table (5 levels)")
+
+    clk_table = generate_tech_level_table(tech_config, 'cloaking_tech')
+    print("✓ Generated Cloaking (CLK) table (5 levels)")
+
+    sld_table = generate_tech_level_table(tech_config, 'shield_tech')
+    print("✓ Generated Shield (SLD) table (5 levels)")
+
+    cic_tech_table = generate_tech_level_table(tech_config, 'counter_intelligence_tech')
+    print("✓ Generated Counter Intelligence (CIC) table (5 levels)")
+
+    fd_table = generate_fighter_doctrine_table(tech_config)
+    print("✓ Generated Fighter Doctrine (FD) table (3 levels)")
+
+    aco_table = generate_aco_table(tech_config)
+    print("✓ Generated Advanced Carrier Operations (ACO) table (3 levels)")
+
     # Update spec files
     print("\nUpdating specification documents...")
     update_reference_spec(ships_table, ground_table, spacelift_table, prestige_table, morale_table, espionage_table, penalty_table)
     update_diplomacy_spec(espionage_prestige_table, cic_modifier_table, cic_threshold_table)
+    update_economy_spec(raw_table, tax_penalty_table, tax_incentive_table, iu_table, colonization_table,
+                        el_table, sl_table, cst_table, wep_table, ter_table, ter_upgrade_table,
+                        eli_table, clk_table, sld_table, cic_tech_table, fd_table, aco_table)
 
     print("\n" + "=" * 50)
     print("Sync complete!")
     print("\nNext steps:")
-    print("1. Review changes in docs/specs/reference.md")
+    print("1. Review changes in docs/specs/reference.md and docs/specs/economy.md")
     print("2. Commit updated specifications")
     print("3. Ensure all references use enum names, not hardcoded values")
 
