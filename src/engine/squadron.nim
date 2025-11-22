@@ -9,9 +9,10 @@
 ## MILESTONE 2 - Squadron implementation
 ## M1 uses direct Fleet→Ship for simplicity
 
-import std/[sequtils, strutils, options, parsecfg, tables, os, math]
+import std/[sequtils, strutils, options, math]
 import ship
 import ../common/types/[core, units]
+import config/ships_config
 
 export HouseId, FleetId, SystemId, SquadronId, ShipClass, ShipStats
 export units.ShipType  # Use ShipType from types/units, not ship
@@ -45,80 +46,60 @@ type
 ## Ship class statistics
 ## Based on EC4X specifications
 
-var shipConfigCache: Table[ShipClass, ShipStats]
-var configLoaded = false
+proc getShipStatsFromConfig(shipClass: ShipClass): ShipStats =
+  ## Get base ship stats from config/ships.toml
+  ## Uses globalShipsConfig loaded at module initialization
 
-proc shipClassToConfigKey(shipClass: ShipClass): string =
-  ## Convert ShipClass enum to config file key
-  case shipClass
-  of ShipClass.Fighter: "fighter"
-  of ShipClass.Scout: "scout"
-  of ShipClass.Raider: "raider"
-  of ShipClass.Destroyer: "destroyer"
-  of ShipClass.Cruiser: "cruiser"
-  of ShipClass.LightCruiser: "light_cruiser"
-  of ShipClass.HeavyCruiser: "heavy_cruiser"
-  of ShipClass.Battlecruiser: "battlecruiser"
-  of ShipClass.Battleship: "battleship"
-  of ShipClass.Dreadnought: "dreadnought"
-  of ShipClass.SuperDreadnought: "super_dreadnought"
-  of ShipClass.Carrier: "carrier"
-  of ShipClass.SuperCarrier: "super_carrier"
-  of ShipClass.Starbase: "starbase"
-  of ShipClass.ETAC: "etac"
-  of ShipClass.TroopTransport: "troop_transport"
-  of ShipClass.PlanetBreaker: "planet_breaker"
+  let cfg = globalShipsConfig
 
-proc loadShipConfig(configPath: string = "config/ships.toml") =
-  ## Load ship stats from config file
-  ## Caches results for subsequent calls
+  # Map ShipClass enum to config struct field
+  let configStats = case shipClass
+    of ShipClass.Fighter: cfg.fighter
+    of ShipClass.Scout: cfg.scout
+    of ShipClass.Raider: cfg.raider
+    of ShipClass.Destroyer: cfg.destroyer
+    of ShipClass.Cruiser: cfg.cruiser
+    of ShipClass.LightCruiser: cfg.light_cruiser
+    of ShipClass.HeavyCruiser: cfg.heavy_cruiser
+    of ShipClass.Battlecruiser: cfg.battlecruiser
+    of ShipClass.Battleship: cfg.battleship
+    of ShipClass.Dreadnought: cfg.dreadnought
+    of ShipClass.SuperDreadnought: cfg.super_dreadnought
+    of ShipClass.Carrier: cfg.carrier
+    of ShipClass.SuperCarrier: cfg.supercarrier
+    of ShipClass.Starbase: cfg.starbase
+    of ShipClass.ETAC: cfg.etac
+    of ShipClass.TroopTransport: cfg.troop_transport
+    of ShipClass.PlanetBreaker: cfg.planetbreaker
 
-  if configLoaded:
-    return
-
-  if not fileExists(configPath):
-    raise newException(IOError, "Ship config file not found: " & configPath)
-
-  let config = loadConfig(configPath)
-  shipConfigCache = initTable[ShipClass, ShipStats]()
-
-  for shipClass in ShipClass:
-    let key = shipClassToConfigKey(shipClass)
-
-    let stats = ShipStats(
-      attackStrength: config.getSectionValue(key, "attack_strength", "0").parseInt(),
-      defenseStrength: config.getSectionValue(key, "defense_strength", "0").parseInt(),
-      commandCost: config.getSectionValue(key, "command_cost", "0").parseInt(),
-      commandRating: config.getSectionValue(key, "command_rating", "0").parseInt(),
-      techLevel: config.getSectionValue(key, "tech_level", "0").parseInt(),
-      buildCost: config.getSectionValue(key, "build_cost", "0").parseInt(),
-      upkeepCost: config.getSectionValue(key, "upkeep_cost", "0").parseInt(),
-      specialCapability: config.getSectionValue(key, "special_capability", "")
-    )
-
-    shipConfigCache[shipClass] = stats
-
-  configLoaded = true
+  # Convert config format to ShipStats format
+  result = ShipStats(
+    name: configStats.name,
+    class: configStats.class,
+    attackStrength: configStats.attack_strength,
+    defenseStrength: configStats.defense_strength,
+    commandCost: configStats.command_cost,
+    commandRating: configStats.command_rating,
+    techLevel: configStats.tech_level,
+    buildCost: configStats.build_cost,
+    upkeepCost: configStats.upkeep_cost,
+    specialCapability: configStats.special_capability,
+    carryLimit: if configStats.carry_limit.isSome: configStats.carry_limit.get else: 0
+  )
 
 proc getShipStats*(shipClass: ShipClass, techLevel: int = 0, configPath: string = ""): ShipStats =
-  ## Get stats for a ship class from config file
+  ## Get stats for a ship class from config
   ## Stats may be modified by tech level (WEP)
   ##
-  ## Loads from config/ships.toml (or configPath if specified)
-  ## Game-specific overrides from game_config.toml not yet implemented
+  ## Uses config/ships.toml loaded at module initialization
+  ## configPath parameter ignored (kept for API compatibility)
   ##
   ## Per economy.md Section 4.6: "Upgrades improve the Attack Strength (AS)
   ## and Defense Strength (DS) of combat ships by 10% for each Weapons level
   ## (rounded down)."
-  ##
-  ## TODO M3: Support game-specific overrides
 
-  let path = if configPath.len > 0: configPath else: "config/ships.toml"
-
-  if not configLoaded:
-    loadShipConfig(path)
-
-  result = shipConfigCache[shipClass]
+  # Get base stats from config
+  result = getShipStatsFromConfig(shipClass)
 
   # Apply WEP tech level modifiers (AS and DS only)
   # Base tech is WEP1 (techLevel = 1), each upgrade adds 10%
