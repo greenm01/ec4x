@@ -478,7 +478,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       resources: colony.resources,
       grossOutput: 0,  # Will be calculated by economy engine
       taxRate: currentTaxRate,  # Get from house tax policy
-      underConstruction: none(econ_types.ConstructionProject),  # TODO: Convert construction
+      underConstruction: colony.underConstruction,  # Pass through construction state
       infrastructureDamage: if colony.blockaded: 0.6 else: 0.0  # Blockade = 60% infrastructure damage
     ))
 
