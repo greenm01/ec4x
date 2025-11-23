@@ -2,7 +2,7 @@
 
 import std/[options, tables]
 import ../common/[hex, types/core, types/units]
-import gamestate, fleet, ship
+import gamestate, fleet, ship, spacelift
 import espionage/types as esp_types
 import research/types as res_types
 
@@ -50,6 +50,20 @@ type
     squadronId*: Option[string]          # Squadron to assign
     targetFleetId*: Option[FleetId]      # Fleet to assign to (or create new)
 
+  CargoManagementAction* {.pure.} = enum
+    ## Cargo loading/unloading actions at colonies
+    LoadCargo      # Load marines or colonists onto spacelift ships
+    UnloadCargo    # Unload cargo from spacelift ships
+
+  CargoManagementOrder* = object
+    ## Order to load/unload cargo on spacelift ships at colonies
+    houseId*: HouseId
+    colonySystem*: SystemId              # Colony where action takes place
+    action*: CargoManagementAction
+    fleetId*: FleetId                    # Fleet containing spacelift ships
+    cargoType*: Option[CargoType]        # Type of cargo (Marines, Colonists)
+    quantity*: Option[int]               # Amount to load/unload (0 = all available)
+
   FleetOrder* = object
     fleetId*: FleetId
     orderType*: FleetOrderType
@@ -66,6 +80,7 @@ type
     diplomaticActions*: seq[DiplomaticAction]
     populationTransfers*: seq[PopulationTransferOrder]  # Space Guild transfers
     squadronManagement*: seq[SquadronManagementOrder]    # Ship commissioning and squadron formation
+    cargoManagement*: seq[CargoManagementOrder]          # Cargo loading/unloading at colonies
 
     # Espionage budget allocation (diplomacy.md:8.2)
     espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
@@ -272,7 +287,8 @@ proc newOrderPacket*(houseId: HouseId, turn: int): OrderPacket =
     buildOrders: @[],
     researchAllocation: res_types.initResearchAllocation(),
     diplomaticActions: @[],
-    squadronManagement: @[]
+    squadronManagement: @[],
+    cargoManagement: @[]
   )
 
 proc addFleetOrder*(packet: var OrderPacket, order: FleetOrder) =
