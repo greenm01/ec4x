@@ -17,7 +17,7 @@ psyops_campaign_ebp = 3
 
 [investment]
 # Over-investment penalties
-threshold_percentage = 5  # 5% of turn budget
+threshold_percentage = 20  # 20% of turn budget (allows viable espionage-focused strategies)
 penalty_per_percent = -1  # -1 prestige per 1% over threshold
 
 [detection]
