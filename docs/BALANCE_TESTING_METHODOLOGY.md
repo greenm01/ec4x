@@ -1,6 +1,6 @@
 # EC4X Balance Testing Methodology
 
-**Last Updated:** 2025-11-22
+**Last Updated:** 2025-11-23
 
 ## Overview
 
@@ -183,25 +183,125 @@ Post-fix testing shows espionage is now viable but intentionally not dominant:
 
 ---
 
+## Variable Player Count Testing Strategy
+
+### Phased Approach
+
+The game supports 2-12 players, but balance characteristics change dramatically with player count. We use a phased testing approach:
+
+#### Phase 1: Fixed 4-Player Tuning (Current)
+**Goal:** Establish stable baseline with all strategies viable
+
+**Setup:**
+- Fixed 4 players per game
+- Each house assigned specific strategy (Aggressive, Economic, Balanced, Turtle)
+- 10 games per test run for statistical sampling
+- Fast iteration on personality parameters
+
+**Success Criteria:**
+- All strategies achieve >0% win rate
+- No systematic collapses (negative prestige)
+- Competitive games (win rates between 20-40%)
+- Clear strategy differentiation maintained
+
+**Testing Method:**
+```bash
+python3 run_balance_test.py  # 10 games, 4 players each
+```
+
+#### Phase 2: Variable Player Count Scaling (Next)
+**Goal:** Identify how strategies scale with different player counts
+
+**Why player count matters:**
+- **Diplomacy:** 4 players = 3 potential allies, 12 players = 11 (complex webs)
+- **Resources:** 4 players = ~7 colonies each, 12 players = ~2 colonies each
+- **Military:** Squadron limits scale with PU (affected by colony count)
+- **Espionage:** More players = more targets, higher value for intel
+
+**Test Configuration:**
+```python
+PLAYER_COUNTS = [4, 6, 8, 10, 12]
+GAMES_PER_COUNT = 5  # 25 total games
+```
+
+**Analysis Focus:**
+- Strategy win rates at each player count
+- Resource competition patterns
+- Diplomatic strategy viability scaling
+- Identify strategies that don't scale well
+
+#### Phase 3: Full Randomization (Future)
+**Goal:** Universal balance across all configurations
+
+**Setup:**
+- Random player counts 4-12 per game
+- Random strategy assignments
+- Large sample size (100+ games)
+
+**Success Criteria:**
+- No strategy dominates at any player count
+- Smooth scaling from small (4) to large (12) games
+- Variety in outcomes regardless of player count
+
+### Current Status
+
+**✅ Phase 1 Progress:**
+- Aggressive strategy: STABLE (was 5/10 collapses, now 0/10)
+- Economic strategy: STABLE (was 1/10 collapse, now 0/10)
+- Balanced strategy: NEEDS TUNING (0% win rate, 1/10 collapse)
+- Turtle strategy: NEEDS TUNING (10% win rate, 1/10 collapse)
+
+**⏳ Phase 2:** Blocked until Phase 1 complete (all 6-7 strategies viable at 4 players)
+
+**⏳ Phase 3:** Blocked until Phase 2 validates scaling behavior
+
+### Implementation Notes
+
+**What needs to change for Phase 2:**
+
+1. **run_balance_test.py:**
+   ```python
+   for player_count in [4, 6, 8, 10, 12]:
+       for game in range(GAMES_PER_COUNT):
+           run_game(player_count, strategies)
+   ```
+
+2. **Strategy assignment:**
+   - 4 players: [Aggressive, Economic, Balanced, Turtle]
+   - 6 players: Add [Espionage, Diplomatic]
+   - 8+ players: Repeat strategies or random assignment
+
+3. **Analysis updates:**
+   - Track performance by player count
+   - Generate per-count win rate tables
+   - Identify scaling issues
+
+**Already supported:**
+- `createBalancedGame(numHouses, numSystems, seed)` handles variable player counts
+- Engine supports 2-12 players without modification
+
+---
+
 ## Future Improvements
 
 ### Short Term
-1. Implement diversity preservation mechanisms (species distance metrics)
-2. Add adaptive mutation rates (higher early, lower late)
+1. Complete Phase 1: Tune Balanced and Turtle strategies
+2. Implement remaining strategies (Espionage, Diplomatic, Expansionist)
 3. Track counter-strategy effectiveness (which species beats which)
 4. Generate heat maps of strategy matchups
 
 ### Medium Term
-1. Multi-objective fitness (balance win rate with diversity)
-2. Island model evolution (multiple isolated populations, periodic migration)
-3. Automated balance parameter tuning (meta-optimization)
+1. Implement Phase 2: Variable player count testing (4, 6, 8, 10, 12)
+2. Add adaptive mutation rates (higher early, lower late)
+3. Multi-objective fitness (balance win rate with diversity)
 4. Real-time visualization of evolution progress
 
 ### Long Term
-1. Neural network policy evolution (replace utility AI)
-2. Transfer learning from evolved strategies to LLM fine-tuning
-3. Player behavior incorporation (human vs AI coevolution)
-4. Dynamic balance adjustment based on meta trends
+1. Implement Phase 3: Full randomization testing
+2. Neural network policy evolution (replace utility AI)
+3. Transfer learning from evolved strategies to LLM fine-tuning
+4. Player behavior incorporation (human vs AI coevolution)
+5. Dynamic balance adjustment based on meta trends
 
 ---
 
