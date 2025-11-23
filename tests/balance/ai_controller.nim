@@ -2357,6 +2357,95 @@ proc generateEspionageAction(controller: AIController, state: GameState, rng: va
 # Main Order Generation
 # =============================================================================
 
+proc generatePopulationTransfers(controller: AIController, state: GameState, rng: var Rand): seq[PopulationTransferOrder] =
+  ## Generate Space Guild population transfer orders
+  ## Per config/population.toml and economy.md:3.7
+  result = @[]
+  let p = controller.personality
+  let house = state.houses[controller.houseId]
+
+  # Only economically-focused AI uses population transfers
+  if p.economicFocus < 0.5 or p.expansionDrive < 0.4:
+    return result
+
+  # Need minimum treasury (transfers are expensive)
+  if house.treasury < 500:
+    return result
+
+  # Find overpopulated source colonies and underpopulated destinations
+  var sources: seq[tuple[systemId: SystemId, pop: int]] = @[]
+  var destinations: seq[tuple[systemId: SystemId, pop: int]] = @[]
+
+  for systemId, colony in state.colonies:
+    if colony.owner == controller.houseId:
+      if colony.population > 15:  # Overpopulated
+        sources.add((systemId, colony.population))
+      elif colony.population < 10 and colony.population > 0:  # Growing colony
+        destinations.add((systemId, colony.population))
+
+  if sources.len == 0 or destinations.len == 0:
+    return result
+
+  # Transfer from highest pop source to lowest pop destination
+  sources.sort(proc(a, b: auto): int = b.pop - a.pop)
+  destinations.sort(proc(a, b: auto): int = a.pop - b.pop)
+
+  # One transfer per turn (they're expensive)
+  result.add(PopulationTransferOrder(
+    sourceColony: sources[0].systemId,
+    destColony: destinations[0].systemId,
+    ptuAmount: 1  # Conservative: 1 PTU at a time
+  ))
+
+proc generateSquadronManagement(controller: AIController, state: GameState, rng: var Rand): seq[SquadronManagementOrder] =
+  ## Generate squadron management orders (commissioning and fleet assignment)
+  ## The engine auto-commissions ships, but AI can manually manage squadrons if needed
+  result = @[]
+
+  # Currently the engine handles auto-commissioning well
+  # AI can add manual squadron management here if needed for advanced tactics
+  # For now, rely on engine's automatic squadron formation
+
+proc generateCargoManagement(controller: AIController, state: GameState, rng: var Rand): seq[CargoManagementOrder] =
+  ## Generate cargo loading/unloading orders for spacelift operations
+  ## Load marines for invasions, colonists for colonization
+  result = @[]
+  let p = controller.personality
+
+  # Aggressive AI loads marines for invasions
+  if p.aggression < 0.4:
+    return result
+
+  # Find fleets with spacelift capability at colonies
+  for systemId, colony in state.colonies:
+    if colony.owner != controller.houseId:
+      continue
+
+    # Check if we have fleets here with spacelift ships
+    for fleetId, fleet in state.fleets:
+      if fleet.owner == controller.houseId and fleet.location == systemId:
+        # Check if fleet has spacelift capability
+        var hasSpacelift = false
+        for squadron in fleet.squadrons:
+          if squadron.flagship.shipClass in [ShipClass.Transport, ShipClass.Destroyer]:
+            hasSpacelift = true
+            break
+
+        if hasSpacelift:
+          # Load marines if we have them and fleet isn't full
+          if colony.marines > 5:
+            result.add(CargoManagementOrder(
+              houseId: controller.houseId,
+              colonySystem: systemId,
+              action: CargoManagementAction.LoadCargo,
+              fleetId: fleetId,
+              cargoType: some(CargoType.Marines),
+              quantity: some(3)  # Load 3 marine units
+            ))
+            return result  # One cargo operation per turn
+
+  return result
+
 proc generateAIOrders*(controller: var AIController, state: GameState, rng: var Rand): OrderPacket =
   ## Generate complete order packet for an AI player
   ##
@@ -2398,6 +2487,9 @@ proc generateAIOrders*(controller: var AIController, state: GameState, rng: var 
     buildOrders: generateBuildOrders(controller, state, rng),
     researchAllocation: generateResearchAllocation(controller, state),
     diplomaticActions: generateDiplomaticActions(controller, state, rng),
+    populationTransfers: generatePopulationTransfers(controller, state, rng),
+    squadronManagement: generateSquadronManagement(controller, state, rng),
+    cargoManagement: generateCargoManagement(controller, state, rng),
     espionageAction: generateEspionageAction(controller, state, rng),
     ebpInvestment: 0,
     cipInvestment: 0
