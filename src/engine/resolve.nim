@@ -140,10 +140,30 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
         housesPresent.add(fleet.owner)
 
     if housesPresent.len > 1:
-      # Check if any are at war
-      # TODO: Check diplomatic relations
-      # For now, assume all non-allied fleets fight
-      combatSystems.add(systemId)
+      # Check if any pairs of houses are at war (Enemy status)
+      var combatDetected = false
+      for i in 0..<housesPresent.len:
+        for j in (i+1)..<housesPresent.len:
+          let house1 = housesPresent[i]
+          let house2 = housesPresent[j]
+
+          # Check diplomatic state between these two houses
+          let relation = dip_types.getDiplomaticState(
+            state.houses[house1].diplomaticRelations,
+            house2
+          )
+
+          # Combat occurs if houses are enemies OR neutral (no pact protection)
+          # NonAggression pacts prevent combat
+          if relation == dip_types.DiplomaticState.Enemy or
+             relation == dip_types.DiplomaticState.Neutral:
+            combatDetected = true
+            break
+        if combatDetected:
+          break
+
+      if combatDetected:
+        combatSystems.add(systemId)
 
   # Resolve battles in each system
   for systemId in combatSystems:
