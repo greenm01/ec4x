@@ -58,6 +58,22 @@ When an issue is fixed, check it off and update STATUS.md.
 
 **Status:** Phase 2/3 complete and ready for balance testing
 
+### Phase 4: Ground Force Management
+- [x] Marine garrison planning (maintain garrisons at important colonies)
+- [x] Transport loading logic (identify transports needing marines)
+- [ ] Army construction for defensive depth (not yet implemented)
+- [ ] Ground force budget allocation (using treasury checks)
+- [x] Proactive garrison buildup at frontier colonies
+
+### Phase 5: Economic Intelligence
+- [x] Track enemy production capacity
+- [x] Identify high-value economic targets
+- [x] Economic warfare (blockade high-production colonies)
+- [x] Resource denial strategy (target rich resource colonies)
+- [x] Economic strength assessment for targeting
+
+**Status:** Phase 4/5 core features complete and integrated (2025-11-23)
+
 **Files Affected:**
 - `tests/balance/ai_controller.nim` - All Phase 2/3 features implemented and compiling
 

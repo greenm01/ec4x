@@ -607,6 +607,180 @@ proc respondToThreats*(controller: var AIController, state: GameState): seq[tupl
         break  # One threat per reserve per turn
 
 # =============================================================================
+# Phase 4: Ground Force Management
+# =============================================================================
+
+type
+  GarrisonPlan* = object
+    ## Plan for maintaining marine garrisons
+    systemId*: SystemId
+    currentMarines*: int
+    targetMarines*: int
+    priority*: float  # Higher = more important to defend
+
+proc assessGarrisonNeeds*(controller: AIController, state: GameState): seq[GarrisonPlan] =
+  ## Identify colonies that need marine garrisons
+  result = @[]
+
+  for systemId, colony in state.colonies:
+    if colony.owner != controller.houseId:
+      continue
+
+    # Calculate current marine count (from colony data)
+    let currentMarines = colony.marines
+
+    # Determine target garrison size based on importance
+    var targetMarines = 0
+    var priority = 0.0
+
+    # Important colonies need larger garrisons
+    # Detect homeworld heuristically (high infrastructure + population)
+    let isLikelyHomeworld = colony.infrastructure >= 7 and colony.population >= 50
+
+    if isLikelyHomeworld:
+      targetMarines = 8  # Homeworld - maximum defense
+      priority = 15.0
+    elif colony.production >= 50:
+      targetMarines = 5  # Major production center
+      priority = 10.0
+    elif colony.resources in [ResourceRating.Rich, ResourceRating.VeryRich]:
+      targetMarines = 4  # Valuable resources
+      priority = 8.0
+    else:
+      targetMarines = 2  # Standard colony
+      priority = 5.0
+
+    # Frontier colonies (near enemy territory) need extra defense
+    var isFrontier = false
+    let systemCoords = state.starMap.systems[systemId].coords
+    for enemySystemId, enemyColony in state.colonies:
+      if enemyColony.owner == controller.houseId:
+        continue
+      let enemyCoords = state.starMap.systems[enemySystemId].coords
+      let dx = abs(enemyCoords.q - systemCoords.q)
+      let dy = abs(enemyCoords.r - systemCoords.r)
+      let dz = abs((enemyCoords.q + enemyCoords.r) - (systemCoords.q + systemCoords.r))
+      let dist = (dx + dy + dz) div 2
+      if dist <= 2:
+        isFrontier = true
+        break
+
+    if isFrontier:
+      targetMarines += 2
+      priority += 5.0
+
+    # Only add to plan if we need more marines
+    if currentMarines < targetMarines:
+      result.add(GarrisonPlan(
+        systemId: systemId,
+        currentMarines: currentMarines,
+        targetMarines: targetMarines,
+        priority: priority
+      ))
+
+proc shouldBuildMarines*(controller: AIController, state: GameState, colony: Colony): bool =
+  ## Check if this colony should build marines based on garrison needs
+  let plans = controller.assessGarrisonNeeds(state)
+
+  for plan in plans:
+    if plan.systemId == colony.systemId and colony.marines < plan.targetMarines:
+      return true
+
+  return false
+
+proc ensureTransportsLoaded*(controller: var AIController, state: GameState): seq[tuple[transportId: string, needsMarines: int]] =
+  ## Identify transports that need marines loaded
+  ## Returns list of transports and how many marines they need
+  result = @[]
+
+  for fleet in state.fleets.values:
+    if fleet.owner != controller.houseId:
+      continue
+
+    for transport in fleet.spaceLiftShips:
+      if transport.shipClass == ShipClass.TroopTransport:
+        # Check if transport is empty or not fully loaded
+        if transport.cargo.quantity < transport.cargo.capacity:
+          let needed = transport.cargo.capacity - transport.cargo.quantity
+          result.add((transportId: transport.id, needsMarines: needed))
+
+# =============================================================================
+# Phase 5: Economic Intelligence
+# =============================================================================
+
+type
+  EconomicIntelligence* = object
+    ## Economic assessment of enemy houses
+    targetHouse*: HouseId
+    estimatedProduction*: int      # Total PP across all visible colonies
+    highValueTargets*: seq[SystemId]  # Colonies with production >= 50
+    economicStrength*: float        # Relative strength vs us (1.0 = equal)
+
+proc gatherEconomicIntelligence*(controller: var AIController, state: GameState): seq[EconomicIntelligence] =
+  ## Assess enemy economic strength for targeting
+  result = @[]
+
+  let ourHouse = state.houses[controller.houseId]
+  var ourProduction = 0
+  for systemId, colony in state.colonies:
+    if colony.owner == controller.houseId:
+      ourProduction += colony.production
+
+  for targetHouse in state.houses.keys:
+    if targetHouse == controller.houseId:
+      continue
+
+    var intel = EconomicIntelligence(
+      targetHouse: targetHouse,
+      estimatedProduction: 0,
+      highValueTargets: @[],
+      economicStrength: 0.0
+    )
+
+    # Gather data from visible colonies
+    for systemId, colony in state.colonies:
+      if colony.owner != targetHouse:
+        continue
+
+      intel.estimatedProduction += colony.production
+
+      # Identify high-value economic targets
+      if colony.production >= 50:
+        intel.highValueTargets.add(systemId)
+
+    # Calculate relative strength
+    if ourProduction > 0:
+      intel.economicStrength = float(intel.estimatedProduction) / float(ourProduction)
+
+    result.add(intel)
+
+proc identifyEconomicTargets*(controller: var AIController, state: GameState): seq[tuple[systemId: SystemId, value: float]] =
+  ## Find best targets for economic warfare (blockades, raids)
+  result = @[]
+
+  let econIntel = controller.gatherEconomicIntelligence(state)
+
+  for intel in econIntel:
+    # Target high-value colonies of economically strong enemies
+    if intel.economicStrength > 0.8:  # Only target if they're competitive
+      for systemId in intel.highValueTargets:
+        let colony = state.colonies[systemId]
+        var value = float(colony.production)
+
+        # Bonus for rich resources (denying them is valuable)
+        if colony.resources in [ResourceRating.VeryRich, ResourceRating.Rich]:
+          value *= 1.5
+
+        result.add((systemId: systemId, value: value))
+
+  # Sort by value (highest first)
+  result.sort(proc(a, b: tuple[systemId: SystemId, value: float]): int =
+    if b.value > a.value: 1
+    elif b.value < a.value: -1
+    else: 0
+  )
+
+# =============================================================================
 # Strategic Diplomacy Assessment
 # =============================================================================
 
@@ -1295,14 +1469,32 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       var bestTarget: Option[SystemId] = none(SystemId)
       var bestOdds = 0.0
 
-      for systemId, colony in state.colonies:
-        if colony.owner == controller.houseId:
-          continue  # Skip our own colonies
+      # PHASE 5: Economic Warfare - prioritize high-value economic targets
+      # if we're economically focused (lower aggression, higher economic focus)
+      if p.economicFocus > 0.6 and p.aggression < 0.6:
+        # Get economic targets for warfare
+        let econTargets = controller.identifyEconomicTargets(state)
 
-        let combat = assessCombatSituation(controller, state, systemId)
-        if combat.recommendAttack and combat.estimatedCombatOdds > bestOdds:
-          bestOdds = combat.estimatedCombatOdds
-          bestTarget = some(systemId)
+        # Find best economic target we can reach
+        for target in econTargets:
+          let combat = assessCombatSituation(controller, state, target.systemId)
+          # For economic warfare, we prefer blockades over invasions
+          # Target high-value economies even with moderate odds
+          if combat.estimatedCombatOdds > 0.4:  # Lower threshold for economic targets
+            bestTarget = some(target.systemId)
+            bestOdds = combat.estimatedCombatOdds
+            break  # Take first viable economic target (already sorted by value)
+
+      # If no economic target found (or not economically focused), use standard military targeting
+      if bestTarget.isNone:
+        for systemId, colony in state.colonies:
+          if colony.owner == controller.houseId:
+            continue  # Skip our own colonies
+
+          let combat = assessCombatSituation(controller, state, systemId)
+          if combat.recommendAttack and combat.estimatedCombatOdds > bestOdds:
+            bestOdds = combat.estimatedCombatOdds
+            bestTarget = some(systemId)
 
       if bestTarget.isSome:
         # ARCHITECTURE FIX: Check if fleet has troop transports (spacelift ships)
@@ -1748,6 +1940,22 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
             industrialUnits: 0
           ))
           break
+
+    # ------------------------------------------------------------------------
+    # PHASE 4: Marine Garrison Management
+    # ------------------------------------------------------------------------
+    if controller.shouldBuildMarines(state, colony):
+      # This colony needs more marines for garrison
+      if house.treasury >= 30:  # Cost of marines (TODO: get from config)
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Building,
+          quantity: 1,
+          shipClass: none(ShipClass),
+          buildingType: some("Marines"),
+          industrialUnits: 0
+        ))
+        break  # Build marines, then check next colony
 
     # ------------------------------------------------------------------------
     # EARLY GAME: Initial exploration and expansion
