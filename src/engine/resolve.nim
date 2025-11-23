@@ -503,9 +503,22 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       for action in packet.diplomaticActions:
         case action.actionType
         of DiplomaticActionType.ProposeNonAggressionPact:
-          # TODO: Implement pact proposal system (requires acceptance/rejection)
+          # TODO: Implement pact proposal system for multiplayer
+          # See docs/specs/diplomacy_proposals.md for full design
+          #
+          # Current behavior: Auto-accept (works for AI/offline games)
+          # Multiplayer needs: Pending proposals, accept/reject actions, notifications
+          #
+          # Implementation phases:
+          # 1. Add PendingProposal type to GameState
+          # 2. Create proposal instead of immediate pact
+          # 3. Add AcceptProposal/RejectProposal actions
+          # 4. Implement proposal expiration in maintenance phase
+          # 5. Add AI response logic (accept/reject based on strategy)
+          # 6. Add notification system for players
+          #
           echo "    ", houseId, " proposed Non-Aggression Pact to ", action.targetHouse
-          # For now, auto-accept pacts (AI decision making deferred)
+          # For now, auto-accept pacts (works fine for AI vs AI)
           if action.targetHouse in state.houses and not state.houses[action.targetHouse].eliminated:
             # Proposer establishes pact on their side
             let eventOpt1 = dip_engine.proposePact(
