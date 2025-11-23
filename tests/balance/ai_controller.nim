@@ -1113,18 +1113,26 @@ proc generateAIOrders*(controller: AIController, state: GameState, rng: var Rand
   # Use riskTolerance + (1-aggression) as proxy for espionage focus
   let espionageFocus = (p.riskTolerance + (1.0 - p.aggression)) / 2.0
 
+  # Invest percentage of treasury, not absolute amounts
+  # This prevents over-investment early game and scales with economy
+  let ebpCost = 15  # PP per EBP (from config/espionage.toml)
+  let cipCost = 15  # PP per CIP (from config/espionage.toml)
+
   if espionageFocus > 0.6:
-    # High espionage focus - invest heavily
-    result.ebpInvestment = min(house.treasury div 8, 250)
-    result.cipInvestment = min(house.treasury div 16, 125)
+    # High espionage focus - invest up to 15% of treasury
+    let budget = house.treasury * 15 div 100
+    result.ebpInvestment = min(budget div ebpCost, 50)
+    result.cipInvestment = min(budget div (ebpCost * 2), 25)
   elif espionageFocus > 0.4:
-    # Moderate espionage focus
-    result.ebpInvestment = min(house.treasury div 15, 100)
-    result.cipInvestment = min(house.treasury div 25, 50)
+    # Moderate espionage focus - invest up to 8% of treasury
+    let budget = house.treasury * 8 div 100
+    result.ebpInvestment = min(budget div ebpCost, 20)
+    result.cipInvestment = min(budget div (ebpCost * 2), 10)
   else:
-    # Low espionage focus - minimal investment
-    result.ebpInvestment = min(house.treasury div 40, 25)
-    result.cipInvestment = min(house.treasury div 40, 25)
+    # Low espionage focus - invest up to 3% of treasury
+    let budget = house.treasury * 3 div 100
+    result.ebpInvestment = min(budget div ebpCost, 10)
+    result.cipInvestment = min(budget div (ebpCost * 2), 10)
 
 # =============================================================================
 # Export
