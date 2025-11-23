@@ -2,9 +2,9 @@
 # Per diplomacy.md:8.2 - All espionage mechanics for balance tuning
 
 [costs]
-# EBP/CIP costs in PP
-ebp_cost_pp = 40
-cip_cost_pp = 40
+# EBP/CIP costs in PP (reduced from 40 to make early-game espionage viable)
+ebp_cost_pp = 15
+cip_cost_pp = 15
 
 # Action costs in EBP
 tech_theft_ebp = 5
