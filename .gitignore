@@ -7,6 +7,11 @@ example_game/
 data/games/
 data/snapshots/
 
+# Test and tuning directories (temporary workspaces)
+test_*/
+balance_tuning/
+*_tuning/
+
 # Build artifacts
 bin/
 build/
