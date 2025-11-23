@@ -504,7 +504,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
         case action.actionType
         of DiplomaticActionType.ProposeNonAggressionPact:
           # TODO: Implement pact proposal system for multiplayer
-          # See docs/specs/diplomacy_proposals.md for full design
+          # See docs/architecture/diplomacy_proposals.md for full design
           #
           # Current behavior: Auto-accept (works for AI/offline games)
           # Multiplayer needs: Pending proposals, accept/reject actions, notifications
