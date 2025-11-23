@@ -2021,9 +2021,10 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
   # Apply damage to colony
   var updatedColony = colony
   # Infrastructure damage from bombardment result
-  # Note: BombardmentResult returns detailed round-by-round data
-  # For now, count destroyed infrastructure units from final state
-  let infrastructureLoss = 1  # TODO: Calculate from result
+  # BombardmentResult.infrastructureDamage contains excess hits after destroying all defenses
+  # Colony infrastructure is stored as 0-10, but game uses Industrial Units (IU)
+  # 1 infrastructure level = 10 IU (per economy mapping)
+  let infrastructureLoss = result.infrastructureDamage div 10  # Convert IU damage to infrastructure levels
   updatedColony.infrastructure -= infrastructureLoss
   if updatedColony.infrastructure < 0:
     updatedColony.infrastructure = 0
