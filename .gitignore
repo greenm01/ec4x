@@ -81,13 +81,9 @@ src/engine/gamestate
 src/engine/prestige
 src/engine/**/types
 src/engine/**/engine
-src/engine/**/production
-src/engine/**/income
-src/engine/**/construction
-src/engine/**/maintenance
-src/engine/**/costs
-src/engine/**/advancement
-src/engine/**/effects
+# NOTE: Module binaries (types, engine, etc.) should not be compiled standalone
+# They are library modules meant to be imported, not executables
+# If you see compiled binaries here, they're build artifacts and should be cleaned
 
 # Combat test results (large files)
 combat_test_results.json
