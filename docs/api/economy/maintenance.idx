@@ -1,0 +1,15 @@
+nimTitle	maintenance	economy/maintenance.html	module src/engine/economy/maintenance		0
+nim	getShipMaintenanceCost	economy/maintenance.html#getShipMaintenanceCost,ShipClass,bool	proc getShipMaintenanceCost(shipClass: ShipClass; isCrippled: bool): int		21
+nim	calculateFleetMaintenance	economy/maintenance.html#calculateFleetMaintenance,seq[]	proc calculateFleetMaintenance(ships: seq[(ShipClass, bool)]): int		36
+nim	getSpaceportUpkeep	economy/maintenance.html#getSpaceportUpkeep	proc getSpaceportUpkeep(): int		45
+nim	getShipyardUpkeep	economy/maintenance.html#getShipyardUpkeep	proc getShipyardUpkeep(): int		50
+nim	getStarbaseUpkeep	economy/maintenance.html#getStarbaseUpkeep	proc getStarbaseUpkeep(): int		55
+nim	getGroundBatteryUpkeep	economy/maintenance.html#getGroundBatteryUpkeep	proc getGroundBatteryUpkeep(): int		60
+nim	getPlanetaryShieldUpkeep	economy/maintenance.html#getPlanetaryShieldUpkeep	proc getPlanetaryShieldUpkeep(): int		65
+nim	getArmyUpkeep	economy/maintenance.html#getArmyUpkeep	proc getArmyUpkeep(): int		70
+nim	getMarineUpkeep	economy/maintenance.html#getMarineUpkeep	proc getMarineUpkeep(): int		75
+nim	getBuildingMaintenance	economy/maintenance.html#getBuildingMaintenance,string	proc getBuildingMaintenance(buildingType: string): int		80
+nim	calculateColonyUpkeep	economy/maintenance.html#calculateColonyUpkeep	proc calculateColonyUpkeep(colony: gamestate.Colony): int		95
+nim	calculateRepairCost	economy/maintenance.html#calculateRepairCost,float	proc calculateRepairCost(damage: float): int		125
+nim	applyRepair	economy/maintenance.html#applyRepair,,int	proc applyRepair(colony: var types.Colony; repairPoints: int): float		133
+nim	applyMaintenanceShortfall	economy/maintenance.html#applyMaintenanceShortfall,,int	proc applyMaintenanceShortfall(colony: var types.Colony; shortfall: int)		150

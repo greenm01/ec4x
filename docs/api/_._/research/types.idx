@@ -1,0 +1,20 @@
+nimTitle	types	_._/research/types.html	module src/engine/research/types		0
+nim	ResearchCategory	_._/research/types.html#ResearchCategory	enum ResearchCategory		23
+nim	ResearchAllocation	_._/research/types.html#ResearchAllocation	object ResearchAllocation		28
+nim	ResearchPoints	_._/research/types.html#ResearchPoints	object ResearchPoints		34
+nim	TechTree	_._/research/types.html#TechTree	object TechTree		42
+nim	BreakthroughType	_._/research/types.html#BreakthroughType	enum BreakthroughType		50
+nim	RevolutionaryTech	_._/research/types.html#RevolutionaryTech	enum RevolutionaryTech		56
+nim	BreakthroughEvent	_._/research/types.html#BreakthroughEvent	object BreakthroughEvent		62
+nim	TechAdvancement	_._/research/types.html#TechAdvancement	object TechAdvancement		75
+nim	ResearchReport	_._/research/types.html#ResearchReport	object ResearchReport		84
+nim	RESEARCH_UPGRADE_TURNS	_._/research/types.html#RESEARCH_UPGRADE_TURNS	const RESEARCH_UPGRADE_TURNS		95
+nim	BASE_BREAKTHROUGH_CHANCE	_._/research/types.html#BASE_BREAKTHROUGH_CHANCE	const BASE_BREAKTHROUGH_CHANCE		98
+nim	BREAKTHROUGH_BONUS_PER_50RP	_._/research/types.html#BREAKTHROUGH_BONUS_PER_50RP	const BREAKTHROUGH_BONUS_PER_50RP		99
+nim	EL_BASE_COST	_._/research/types.html#EL_BASE_COST	const EL_BASE_COST		102
+nim	EL_COST_INCREMENT	_._/research/types.html#EL_COST_INCREMENT	const EL_COST_INCREMENT		103
+nim	EL_COST_INCREMENT_HIGH	_._/research/types.html#EL_COST_INCREMENT_HIGH	const EL_COST_INCREMENT_HIGH		104
+nim	EL_MODIFIER_PER_LEVEL	_._/research/types.html#EL_MODIFIER_PER_LEVEL	const EL_MODIFIER_PER_LEVEL		105
+nim	EL_MAX_MODIFIER	_._/research/types.html#EL_MAX_MODIFIER	const EL_MAX_MODIFIER		106
+nim	initTechTree	_._/research/types.html#initTechTree,TechLevel	proc initTechTree(startingLevels: TechLevel): TechTree		110
+nim	initResearchAllocation	_._/research/types.html#initResearchAllocation	proc initResearchAllocation(): ResearchAllocation		122

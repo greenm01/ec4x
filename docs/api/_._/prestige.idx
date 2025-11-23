@@ -1,0 +1,19 @@
+nimTitle	prestige	_._/prestige.html	module src/engine/prestige		0
+nim	PrestigeSource	_._/prestige.html#PrestigeSource	enum PrestigeSource		26
+nim	PrestigeEvent	_._/prestige.html#PrestigeEvent	object PrestigeEvent		42
+nim	PrestigeReport	_._/prestige.html#PrestigeReport	object PrestigeReport		48
+nim	getPrestigeValue	_._/prestige.html#getPrestigeValue,PrestigeSource	proc getPrestigeValue(source: PrestigeSource): int		57
+nim	createPrestigeEvent	_._/prestige.html#createPrestigeEvent,PrestigeSource,int,string	proc createPrestigeEvent(source: PrestigeSource; amount: int; description: string): PrestigeEvent		95
+nim	calculatePrestigeChange	_._/prestige.html#calculatePrestigeChange,seq[PrestigeEvent]	proc calculatePrestigeChange(events: seq[PrestigeEvent]): int		103
+nim	createPrestigeReport	_._/prestige.html#createPrestigeReport,HouseId,int,seq[PrestigeEvent]	proc createPrestigeReport(houseId: HouseId; startingPrestige: int;\n                     events: seq[PrestigeEvent]): PrestigeReport		109
+nim	awardCombatPrestige	_._/prestige.html#awardCombatPrestige,HouseId,HouseId,bool,int,bool	proc awardCombatPrestige(victor: HouseId; defeated: HouseId;\n                    taskForceDestroyed: bool; squadronsDestroyed: int;\n                    forcedRetreat: bool): seq[PrestigeEvent]		123
+nim	awardColonyPrestige	_._/prestige.html#awardColonyPrestige,HouseId,string	proc awardColonyPrestige(houseId: HouseId; colonyType: string): PrestigeEvent		164
+nim	applyTaxPrestige	_._/prestige.html#applyTaxPrestige,HouseId,int,int	proc applyTaxPrestige(houseId: HouseId; colonyCount: int; taxRate: int): PrestigeEvent		179
+nim	applyHighTaxPenalty	_._/prestige.html#applyHighTaxPenalty,HouseId,int	proc applyHighTaxPenalty(houseId: HouseId; avgTaxRate: int): PrestigeEvent		203
+nim	applyBlockadePenalty	_._/prestige.html#applyBlockadePenalty,HouseId,int	proc applyBlockadePenalty(houseId: HouseId; blockadedColonies: int): PrestigeEvent		227
+nim	awardTechPrestige	_._/prestige.html#awardTechPrestige,HouseId,string,int	proc awardTechPrestige(houseId: HouseId; techField: string; level: int): PrestigeEvent		240
+nim	prestigeVictoryThreshold	_._/prestige.html#prestigeVictoryThreshold	const prestigeVictoryThreshold		252
+nim	checkPrestigeVictory	_._/prestige.html#checkPrestigeVictory,int	proc checkPrestigeVictory(prestige: int): bool		254
+nim	checkDefensiveCollapse	_._/prestige.html#checkDefensiveCollapse,int,int	proc checkDefensiveCollapse(prestige: int; turnsBelow: int): bool		258
+nim	getMoraleROEModifier	_._/prestige.html#getMoraleROEModifier,int	proc getMoraleROEModifier(prestige: int): int		265
+nim	getMoraleCERModifier	_._/prestige.html#getMoraleCERModifier,int	proc getMoraleCERModifier(prestige: int): int		279

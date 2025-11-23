@@ -1,0 +1,16 @@
+nimTitle	espionage_config	_._/config/espionage_config.html	module src/engine/config/espionage_config		0
+nim	ThresholdRange	_._/config/espionage_config.html#ThresholdRange	type ThresholdRange		10
+nim	EspionageCostsConfig	_._/config/espionage_config.html#EspionageCostsConfig	object EspionageCostsConfig		12
+nim	EspionageInvestmentConfig	_._/config/espionage_config.html#EspionageInvestmentConfig	object EspionageInvestmentConfig		23
+nim	EspionageDetectionConfig	_._/config/espionage_config.html#EspionageDetectionConfig	object EspionageDetectionConfig		27
+nim	EspionageEffectsConfig	_._/config/espionage_config.html#EspionageEffectsConfig	object EspionageEffectsConfig		42
+nim	ScoutDetectionConfig	_._/config/espionage_config.html#ScoutDetectionConfig	object ScoutDetectionConfig		52
+nim	RaiderDetectionConfig	_._/config/espionage_config.html#RaiderDetectionConfig	object RaiderDetectionConfig		60
+nim	SpyDetectionTable	_._/config/espionage_config.html#SpyDetectionTable	object SpyDetectionTable		65
+nim	RaiderDetectionTable	_._/config/espionage_config.html#RaiderDetectionTable	object RaiderDetectionTable		93
+nim	EspionageConfig	_._/config/espionage_config.html#EspionageConfig	object EspionageConfig		121
+nim	loadEspionageConfig	_._/config/espionage_config.html#loadEspionageConfig,string	proc loadEspionageConfig(configPath: string = "config/espionage.toml"): EspionageConfig		132
+nim	globalEspionageConfig	_._/config/espionage_config.html#globalEspionageConfig	var globalEspionageConfig		146
+nim	reloadEspionageConfig	_._/config/espionage_config.html#reloadEspionageConfig	proc reloadEspionageConfig()		150
+nim	getSpyDetectionThreshold	_._/config/espionage_config.html#getSpyDetectionThreshold,int,int	proc getSpyDetectionThreshold(detectorELI: int; spyELI: int): ThresholdRange		156
+nim	getRaiderDetectionThreshold	_._/config/espionage_config.html#getRaiderDetectionThreshold,int,int	proc getRaiderDetectionThreshold(detectorELI: int; cloakLevel: int): ThresholdRange		209

@@ -1,0 +1,8 @@
+nimTitle	military_config	_._/config/military_config.html	module src/engine/config/military_config		0
+nim	FighterMechanicsConfig	_._/config/military_config.html#FighterMechanicsConfig	object FighterMechanicsConfig		10
+nim	SquadronLimitsConfig	_._/config/military_config.html#SquadronLimitsConfig	object SquadronLimitsConfig		15
+nim	SalvageConfig	_._/config/military_config.html#SalvageConfig	object SalvageConfig		19
+nim	MilitaryConfig	_._/config/military_config.html#MilitaryConfig	object MilitaryConfig		23
+nim	loadMilitaryConfig	_._/config/military_config.html#loadMilitaryConfig,string	proc loadMilitaryConfig(configPath: string = "config/military.toml"): MilitaryConfig		29
+nim	globalMilitaryConfig	_._/config/military_config.html#globalMilitaryConfig	var globalMilitaryConfig		43
+nim	reloadMilitaryConfig	_._/config/military_config.html#reloadMilitaryConfig	proc reloadMilitaryConfig()		47

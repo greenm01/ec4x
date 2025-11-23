@@ -1,0 +1,3 @@
+nimTitle	engine	economy/engine.html	module src/engine/economy/engine		0
+nim	resolveIncomePhase	economy/engine.html#resolveIncomePhase,seq[],Table[HouseId,TaxPolicy],Table[HouseId,int],Table[HouseId,int]	proc resolveIncomePhase(colonies: var seq[types.Colony];\n                   houseTaxPolicies: Table[HouseId, TaxPolicy];\n                   houseTechLevels: Table[HouseId, int];\n                   houseTreasuries: var Table[HouseId, int]): IncomePhaseReport		18
+nim	resolveMaintenancePhase	economy/engine.html#resolveMaintenancePhase,seq[],Table[HouseId,seq[]],Table[HouseId,int]	proc resolveMaintenancePhase(colonies: var seq[types.Colony]; houseFleetData: Table[\n    HouseId, seq[(ShipClass, bool)]]; houseTreasuries: var Table[HouseId, int]): MaintenanceReport		87

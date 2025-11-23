@@ -1,0 +1,25 @@
+nimTitle	types	combat/types.html	module src/engine/combat/types		0
+nim	CombatPhase	combat/types.html#CombatPhase	enum CombatPhase		19
+nim	CERModifier	combat/types.html#CERModifier	enum CERModifier		27
+nim	CERRoll	combat/types.html#CERRoll	object CERRoll		33
+nim	TargetBucket	combat/types.html#TargetBucket	enum TargetBucket		42
+nim	CombatSquadron	combat/types.html#CombatSquadron	object CombatSquadron		51
+nim	TaskForce	combat/types.html#TaskForce	object TaskForce		60
+nim	RoundResult	combat/types.html#RoundResult	object RoundResult		70
+nim	AttackResult	combat/types.html#AttackResult	object AttackResult		76
+nim	StateChange	combat/types.html#StateChange	object StateChange		84
+nim	RetreatEvaluation	combat/types.html#RetreatEvaluation	object RetreatEvaluation		91
+nim	CombatResult	combat/types.html#CombatResult	object CombatResult		101
+nim	BattleContext	combat/types.html#BattleContext	object BattleContext		112
+nim	getCurrentAS	combat/types.html#getCurrentAS,CombatSquadron	proc getCurrentAS(cs: CombatSquadron): int		120
+nim	getCurrentDS	combat/types.html#getCurrentDS,CombatSquadron	proc getCurrentDS(cs: CombatSquadron): int		129
+nim	isAlive	combat/types.html#isAlive,CombatSquadron	proc isAlive(cs: CombatSquadron): bool		133
+nim	canBeTargeted	combat/types.html#canBeTargeted,CombatSquadron	proc canBeTargeted(cs: CombatSquadron): bool		137
+nim	totalAS	combat/types.html#totalAS,TaskForce	proc totalAS(tf: TaskForce): int		143
+nim	aliveSquadrons	combat/types.html#aliveSquadrons,TaskForce	proc aliveSquadrons(tf: TaskForce): seq[CombatSquadron]		149
+nim	isEliminated	combat/types.html#isEliminated,TaskForce	proc isEliminated(tf: TaskForce): bool		156
+nim	lookupCER	combat/types.html#lookupCER,int	proc lookupCER(modifiedRoll: int): float		165
+nim	isCritical	combat/types.html#isCritical,int	proc isCritical(naturalRoll: int): bool		177
+nim	classifyBucket	combat/types.html#classifyBucket,Squadron	proc classifyBucket(sq: Squadron): TargetBucket		184
+nim	baseWeight	combat/types.html#baseWeight,TargetBucket	proc baseWeight(bucket: TargetBucket): float		204
+nim	calculateTargetWeight	combat/types.html#calculateTargetWeight,CombatSquadron	proc calculateTargetWeight(cs: CombatSquadron): float		213

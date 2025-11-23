@@ -1,0 +1,20 @@
+nimTitle	types	_._/economy/types.html	module src/engine/economy/types		0
+nim	ProductionOutput	_._/economy/types.html#ProductionOutput	object ProductionOutput		22
+nim	IndustrialUnits	_._/economy/types.html#IndustrialUnits	object IndustrialUnits		31
+nim	Colony	_._/economy/types.html#Colony	object Colony		36
+nim	ConstructionType	_._/economy/types.html#ConstructionType	enum ConstructionType		65
+nim	ConstructionProject	_._/economy/types.html#ConstructionProject	object ConstructionProject		71
+nim	CompletedProject	_._/economy/types.html#CompletedProject	object CompletedProject		79
+nim	TaxPolicy	_._/economy/types.html#TaxPolicy	object TaxPolicy		87
+nim	TreasuryTransaction	_._/economy/types.html#TreasuryTransaction	object TreasuryTransaction		92
+nim	TransactionCategory	_._/economy/types.html#TransactionCategory	enum TransactionCategory		98
+nim	ColonyIncomeReport	_._/economy/types.html#ColonyIncomeReport	object ColonyIncomeReport		109
+nim	HouseIncomeReport	_._/economy/types.html#HouseIncomeReport	object HouseIncomeReport		120
+nim	IncomePhaseReport	_._/economy/types.html#IncomePhaseReport	object IncomePhaseReport		135
+nim	MaintenanceReport	_._/economy/types.html#MaintenanceReport	object MaintenanceReport		142
+nim	TAX_HIGH_THRESHOLD	_._/economy/types.html#TAX_HIGH_THRESHOLD	const TAX_HIGH_THRESHOLD		153
+nim	BASE_POPULATION_GROWTH	_._/economy/types.html#BASE_POPULATION_GROWTH	const BASE_POPULATION_GROWTH		156
+nim	BASE_IU_COST	_._/economy/types.html#BASE_IU_COST	const BASE_IU_COST		159
+nim	calculatePTU	_._/economy/types.html#calculatePTU,int	proc calculatePTU(pu: int): int		163
+nim	calculatePU	_._/economy/types.html#calculatePU,int	proc calculatePU(ptu: int): int		171
+nim	initColony	_._/economy/types.html#initColony,SystemId,HouseId,PlanetClass,ResourceRating,int	proc initColony(systemId: SystemId; owner: HouseId; planetClass: PlanetClass;\n           resources: ResourceRating; startingPU: int): Colony		179
