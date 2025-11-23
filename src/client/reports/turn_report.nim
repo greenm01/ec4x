@@ -245,13 +245,13 @@ proc generateTechnologySection(oldState: GameState, newState: GameState, perspec
   let newLevels = newHouse.techTree.levels
 
   # Show current tech levels
-  result.lines.add(&"Energy: {newLevels.energyLevel}, Shield: {newLevels.shieldLevel}")
+  result.lines.add(&"Energy: {newLevels.economicLevel}, Shield: {newLevels.shieldLevel}")
   result.lines.add(&"Construction: {newLevels.constructionTech}, Weapons: {newLevels.weaponsTech}")
   result.lines.add(&"Terraforming: {newLevels.terraformingTech}, ELI: {newLevels.electronicIntelligence}, CIC: {newLevels.counterIntelligence}")
 
   # Highlight tech advances
-  if newLevels.energyLevel > oldLevels.energyLevel:
-    result.lines.add(&"! Energy advanced to level {newLevels.energyLevel}")
+  if newLevels.economicLevel > oldLevels.economicLevel:
+    result.lines.add(&"! Energy advanced to level {newLevels.economicLevel}")
     result.priority = ReportPriority.Important
   if newLevels.shieldLevel > oldLevels.shieldLevel:
     result.lines.add(&"! Shield advanced to level {newLevels.shieldLevel}")

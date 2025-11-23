@@ -69,7 +69,7 @@ suite "Tech Advancement (economy.md:4.1)":
 
   test "EL advancement requires enough ERP":
     var tree = initTechTree(TechLevel(
-      energyLevel: 1,
+      economicLevel: 1,
       shieldLevel: 1,
       constructionTech: 1,
       weaponsTech: 1,
@@ -91,7 +91,7 @@ suite "Tech Advancement (economy.md:4.1)":
 
   test "Tech advancement requires enough TRP":
     var tree = initTechTree(TechLevel(
-      energyLevel: 1,
+      economicLevel: 1,
       shieldLevel: 1,
       constructionTech: 1,
       weaponsTech: 1,

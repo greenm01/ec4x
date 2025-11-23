@@ -106,7 +106,7 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
           "house_id": $houseId,
           "prestige": house.prestige,
           "treasury": house.treasury,
-          "tech_level": house.techTree.levels.energyLevel,
+          "tech_level": house.techTree.levels.economicLevel,
           "colonies": game.colonies.values.toSeq.filterIt(it.owner == houseId).len,
           "fleet_count": game.fleets.values.toSeq.filterIt(it.owner == houseId).len
         })

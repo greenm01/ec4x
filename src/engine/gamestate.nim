@@ -184,7 +184,7 @@ proc initializeHouse*(name: string, color: string): House =
     prestige: globalPrestigeConfig.victory.starting_prestige,
     treasury: 1000,  # Starting treasury
     techTree: res_types.initTechTree(TechLevel(
-      energyLevel: startingTech.energy_level,
+      economicLevel: startingTech.energy_level,
       shieldLevel: startingTech.shield_level,
       constructionTech: startingTech.construction_tech,
       weaponsTech: startingTech.weapons_tech,

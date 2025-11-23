@@ -90,7 +90,7 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
   of BreakthroughType.Major:
     # Auto-advance EL or SL
     if allocation.economic > allocation.science:
-      tree.levels.energyLevel += 1  # TODO: Should be EL not energy
+      tree.levels.economicLevel += 1  # TODO: Should be EL not energy
       result.category = ResearchCategory.Economic
     else:
       tree.levels.shieldLevel += 1  # TODO: Should be SL not shield
@@ -115,8 +115,8 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
     tree.accumulated.economic -= cost
 
     # Advance level
-    # TODO: Proper EL field (currently using energyLevel as placeholder)
-    tree.levels.energyLevel = currentEL + 1
+    # TODO: Proper EL field (currently using economicLevel as placeholder)
+    tree.levels.economicLevel = currentEL + 1
 
     # Create prestige event
     let config = globalPrestigeConfig
@@ -128,7 +128,7 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
 
     return some(TechAdvancement(
       houseId: "",  # Set by caller
-      field: TechField.EnergyLevel,  # TODO: Separate EL from tech fields
+      field: TechField.EconomicLevel,  # TODO: Separate EL from tech fields
       fromLevel: currentEL,
       toLevel: currentEL + 1,
       cost: cost,
@@ -175,8 +175,8 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
   ## Returns advancement if successful
 
   let currentLevel = case field
-    of TechField.EnergyLevel:
-      tree.levels.energyLevel
+    of TechField.EconomicLevel:
+      tree.levels.economicLevel
     of TechField.ShieldLevel:
       tree.levels.shieldLevel
     of TechField.ConstructionTech:
@@ -201,8 +201,8 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
 
   # Advance level
   case field
-  of TechField.EnergyLevel:
-    tree.levels.energyLevel += 1
+  of TechField.EconomicLevel:
+    tree.levels.economicLevel += 1
   of TechField.ShieldLevel:
     tree.levels.shieldLevel += 1
   of TechField.ConstructionTech:
