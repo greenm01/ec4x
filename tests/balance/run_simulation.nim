@@ -50,9 +50,11 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
 
     # Collect orders from all AI players
     var ordersTable = initTable[HouseId, OrderPacket]()
-    for controller in controllers:
+    for i in 0..<controllers.len:
+      var controller = controllers[i]
       let orders = generateAIOrders(controller, game, rng)
       ordersTable[controller.houseId] = orders
+      controllers[i] = controller
 
     # Resolve turn with actual game engine
     let turnResult = resolveTurn(game, ordersTable)

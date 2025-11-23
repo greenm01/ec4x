@@ -2427,7 +2427,7 @@ proc generateCargoManagement(controller: AIController, state: GameState, rng: va
         # Check if fleet has spacelift capability
         var hasSpacelift = false
         for squadron in fleet.squadrons:
-          if squadron.flagship.shipClass in [ShipClass.Transport, ShipClass.Destroyer]:
+          if squadron.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
             hasSpacelift = true
             break
 
