@@ -207,6 +207,60 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
         if order.orderType == FleetOrderType.Bombard:
           resolveBombardment(state, houseId, order, events)
 
+## Helper: Auto-balance unassigned squadrons to fleets at colony
+
+proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId) =
+  ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
+  ## Only assigns to stationary fleets (those with Hold orders or no orders)
+  if colony.unassignedSquadrons.len == 0:
+    return
+
+  # Find all stationary fleets at this system owned by colony owner
+  var stationaryFleets: seq[FleetId] = @[]
+  for fleetId, fleet in state.fleets:
+    if fleet.location == systemId and fleet.owner == colony.owner:
+      # Check if fleet has movement orders
+      var hasMovementOrder = false
+      # TODO: Check orders to see if fleet is moving (need access to orders here)
+      # For now, assume all fleets at colony are stationary
+      if not hasMovementOrder:
+        stationaryFleets.add(fleetId)
+
+  # If no fleets exist at colony, create one
+  if stationaryFleets.len == 0:
+    let newFleetId = colony.owner & "_fleet_" & $systemId & "_" & $state.turn
+    state.fleets[newFleetId] = Fleet(
+      id: newFleetId,
+      owner: colony.owner,
+      location: systemId,
+      squadrons: @[]
+    )
+    stationaryFleets.add(newFleetId)
+    echo "      Created new fleet ", newFleetId, " for auto-assignment"
+
+  # Distribute unassigned squadrons to balance fleet strength
+  # Assign each squadron to the weakest fleet (by total attack strength)
+  while colony.unassignedSquadrons.len > 0:
+    let squadron = colony.unassignedSquadrons[0]
+    colony.unassignedSquadrons.delete(0)
+
+    # Find fleet with lowest total attack strength
+    var weakestFleetId = stationaryFleets[0]
+    var lowestStrength = 0
+    for fleetId in stationaryFleets:
+      var fleetStrength = 0
+      for sq in state.fleets[fleetId].squadrons:
+        fleetStrength += sq.flagship.stats.attackStrength
+        for ship in sq.ships:
+          fleetStrength += ship.stats.attackStrength
+
+      if fleetId == stationaryFleets[0] or fleetStrength < lowestStrength:
+        lowestStrength = fleetStrength
+        weakestFleetId = fleetId
+
+    state.fleets[weakestFleetId].squadrons.add(squadron)
+    echo "      Auto-assigned squadron ", squadron.id, " to fleet ", weakestFleetId, " (strength balancing)"
+
 ## Phase 2: Income
 
 proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket]) =
@@ -453,16 +507,15 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
         case project.projectType
         of econ_types.ConstructionType.Ship:
-          # Commission ship from Spaceport/Shipyard with intelligent squadron assignment
+          # Commission ship from Spaceport/Shipyard into unassigned squadrons at colony
           let shipClass = parseEnum[ShipClass](project.itemId)
           let techLevel = state.houses[colony.owner].techTree.levels.constructionTech
           let newShip = newEnhancedShip(shipClass, techLevel)
 
-          # Intelligent tactical squadron assignment for battle readiness
-          # Capital ships → new squadron (they're flagships)
-          # Escorts/screens → add to existing squadrons for protection
+          # Intelligent tactical squadron assignment
+          # Try to add escorts to existing unassigned squadrons first (battle-ready groups)
+          # Capital ships always create new squadrons (they're flagships)
           var addedToSquadron = false
-          var targetFleetId: Option[FleetId] = none(FleetId)
 
           let isCapitalShip = shipClass in [
             ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
@@ -475,65 +528,40 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
             ShipClass.Corvette, ShipClass.LightCruiser
           ]
 
-          # Escorts join existing squadrons for balanced combat groups
-          # Priority: capital ship squadrons first, then other escort squadrons
+          # Escorts try to join existing unassigned squadrons for balanced combat groups
           if isEscort:
-            # First pass: try to join capital ship squadrons
-            for fleetId, fleet in state.fleets.mpairs:
-              if fleet.location == systemId and fleet.owner == colony.owner:
-                for squadron in fleet.squadrons.mitems:
-                  let flagshipIsCapital = squadron.flagship.shipClass in [
-                    ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
-                    ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
-                    ShipClass.HeavyCruiser, ShipClass.Cruiser
-                  ]
-                  if flagshipIsCapital and squadron.canAddShip(newShip):
-                    squadron.ships.add(newShip)
-                    echo "      Commissioned ", shipClass, " and added to capital squadron ", squadron.id
-                    addedToSquadron = true
-                    break
-                if addedToSquadron:
+            # Try to join unassigned capital ship squadrons first
+            for squadron in colony.unassignedSquadrons.mitems:
+              let flagshipIsCapital = squadron.flagship.shipClass in [
+                ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
+                ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
+                ShipClass.HeavyCruiser, ShipClass.Cruiser
+              ]
+              if flagshipIsCapital and squadron.canAddShip(newShip):
+                squadron.ships.add(newShip)
+                echo "      Commissioned ", shipClass, " and added to unassigned capital squadron ", squadron.id
+                addedToSquadron = true
+                break
+
+            # If no capital squadrons, try joining escort squadrons
+            if not addedToSquadron:
+              for squadron in colony.unassignedSquadrons.mitems:
+                if squadron.flagship.shipClass == shipClass and squadron.canAddShip(newShip):
+                  squadron.ships.add(newShip)
+                  echo "      Commissioned ", shipClass, " and added to unassigned escort squadron ", squadron.id
+                  addedToSquadron = true
                   break
 
-            # Second pass: join other escort squadrons if no capitals available
-            if not addedToSquadron:
-              for fleetId, fleet in state.fleets.mpairs:
-                if fleet.location == systemId and fleet.owner == colony.owner:
-                  for squadron in fleet.squadrons.mitems:
-                    # Join escort squadrons of similar class
-                    if squadron.flagship.shipClass == shipClass and squadron.canAddShip(newShip):
-                      squadron.ships.add(newShip)
-                      echo "      Commissioned ", shipClass, " and added to escort squadron ", squadron.id
-                      addedToSquadron = true
-                      break
-                  if addedToSquadron:
-                    break
-
-          # Capital ships and unassigned escorts create new squadrons
+          # Capital ships and unassigned escorts create new squadrons at colony
           if not addedToSquadron:
             let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
             let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+            colony.unassignedSquadrons.add(newSquadron)
+            echo "      Commissioned ", shipClass, " into new unassigned squadron at ", systemId
 
-            # Find existing fleet at this system or create new one
-            for fleetId, fleet in state.fleets:
-              if fleet.location == systemId and fleet.owner == colony.owner:
-                targetFleetId = some(fleetId)
-                break
-
-            if targetFleetId.isNone:
-              # Create new fleet at this colony
-              let newFleetId = colony.owner & "_fleet_" & $systemId
-              state.fleets[newFleetId] = Fleet(
-                id: newFleetId,
-                owner: colony.owner,
-                location: systemId,
-                squadrons: @[newSquadron]
-              )
-              echo "      Commissioned ", shipClass, " into new squadron and fleet at ", systemId
-            else:
-              # Add squadron to existing fleet
-              state.fleets[targetFleetId.get()].squadrons.add(newSquadron)
-              echo "      Commissioned ", shipClass, " into new squadron in fleet ", targetFleetId.get()
+          # If colony has auto-assign enabled, balance unassigned squadrons to fleets
+          if colony.autoAssignFleets and colony.unassignedSquadrons.len > 0:
+            autoBalanceSquadronsToFleets(state, colony, systemId)
 
         of econ_types.ConstructionType.Building:
           # Add building to colony
@@ -907,60 +935,6 @@ proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events
       continue
 
     case order.action
-    of SquadronManagementAction.FormSquadron:
-      # Create new squadron from commissioned ships
-      if order.shipIndices.len == 0:
-        echo "    FormSquadron failed: No ships selected"
-        continue
-
-      # Validate ship indices
-      for idx in order.shipIndices:
-        if idx < 0 or idx >= colony.commissionedShips.len:
-          echo "    FormSquadron failed: Invalid ship index ", idx
-          continue
-
-      # Extract ships from commissioning pool
-      var ships: seq[EnhancedShip] = @[]
-      for idx in order.shipIndices.sorted(Descending):
-        ships.add(colony.commissionedShips[idx])
-        colony.commissionedShips.delete(idx)
-
-      # Create squadron with first ship as flagship
-      let flagship = ships[0]
-      let squadronId = if order.newSquadronId.isSome:
-        order.newSquadronId.get()
-      else:
-        packet.houseId & "_sq_" & $order.colonySystem & "_" & $state.turn
-
-      var newSquadron = newSquadron(flagship, squadronId, packet.houseId, order.colonySystem)
-
-      # Add additional ships to squadron
-      for i in 1 ..< ships.len:
-        newSquadron.ships.add(ships[i])
-
-      # For now, automatically assign squadron to a fleet at this system
-      # Find existing fleet at this system or create new one
-      var targetFleet: Option[FleetId] = none(FleetId)
-      for fleetId, fleet in state.fleets:
-        if fleet.location == order.colonySystem and fleet.owner == packet.houseId:
-          targetFleet = some(fleetId)
-          break
-
-      if targetFleet.isNone:
-        # Create new fleet at this colony
-        let newFleetId = packet.houseId & "_fleet_" & $order.colonySystem
-        state.fleets[newFleetId] = Fleet(
-          id: newFleetId,
-          owner: packet.houseId,
-          location: order.colonySystem,
-          squadrons: @[newSquadron]
-        )
-        echo "    Formed squadron ", squadronId, " and assigned to new fleet ", newFleetId
-      else:
-        # Add squadron to existing fleet
-        state.fleets[targetFleet.get()].squadrons.add(newSquadron)
-        echo "    Formed squadron ", squadronId, " and assigned to fleet ", targetFleet.get()
-
     of SquadronManagementAction.TransferShip:
       # Transfer ship between squadrons at this colony
       # TODO: Implement ship transfer logic
