@@ -464,11 +464,15 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
     # Convert Colony to economy Colony type
     # grossOutput starts at 0 and will be calculated by economy engine
+
+    # Calculate PTU from exact souls count (1 PTU = 50k souls)
+    let ptuCount = colony.souls div DEFAULT_SOULS_PER_PTU
+
     econColonies.add(econ_types.Colony(
       systemId: colony.systemId,
       owner: colony.owner,
       populationUnits: colony.population,  # Map population (millions) to PU
-      populationTransferUnits: 0,  # TODO: Track PTU separately
+      populationTransferUnits: ptuCount,  # Calculate from exact souls count
       industrial: econ_types.IndustrialUnits(units: colony.infrastructure * 10),  # Map infrastructure to IU
       planetClass: colony.planetClass,
       resources: colony.resources,
