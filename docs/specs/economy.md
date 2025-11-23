@@ -189,6 +189,44 @@ The cost is expensive and dependent upon the livable conditions of the destinati
 *Source: config/economy.toml [colonization] section*
 <!-- COLONIZATION_COST_TABLE_END -->
 
+### Space Guild Population Transfer
+
+The Space Guilds provide civilian Starliner services to transfer established populations between existing colonies. This service is separate from initial ETAC colonization and reflects the logistics of moving large populations with their equipment and supplies across interstellar distances.
+
+**Transfer Costs:**
+
+<!-- POPULATION_TRANSFER_COST_TABLE_START -->
+| Planet Class | Base Cost (PP/PTU) | Cost per Jump* |
+|:-------------|:------------------:|:---------------|
+| Eden         | 4                  | Base × (1 + 0.2 × jumps) |
+| Lush         | 5                  | Base × (1 + 0.2 × jumps) |
+| Benign       | 6                  | Base × (1 + 0.2 × jumps) |
+| Harsh        | 8                  | Base × (1 + 0.2 × jumps) |
+| Hostile      | 10                 | Base × (1 + 0.2 × jumps) |
+| Desolate     | 12                 | Base × (1 + 0.2 × jumps) |
+| Extreme      | 15                 | Base × (1 + 0.2 × jumps) |
+
+*Distance modifier: +20% per jump beyond first
+
+*Source: config/population.toml [transfer_costs] and [transfer_modifiers] sections*
+<!-- POPULATION_TRANSFER_COST_TABLE_END -->
+
+**Transfer Mechanics:**
+
+<!-- POPULATION_TRANSFER_MECHANICS_TABLE_START -->
+| Mechanic | Value | Description |
+|:---------|:------|:------------|
+| **Transit Time** | 1 turn/jump | Minimum 1 turn even within same system |
+| **Minimum PTU** | 1 PTU | Smallest transferable unit |
+| **Source Reserve** | 1 PU | Source colony must retain at least this |
+| **Concurrent Limit** | 5 transfers | Maximum active transfers per house |
+| **Source Conquered** | Continue | Transfer proceeds (Guild is neutral) |
+| **Dest Conquered** | Lost | PTUs lost (refugees disperse) |
+| **Dest Blockaded** | Return | PTUs return to source |
+
+*Source: config/population.toml [transfer_time], [transfer_limits], and [transfer_risks] sections*
+<!-- POPULATION_TRANSFER_MECHANICS_TABLE_END -->
+
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
 ## 3.8 Expenditures

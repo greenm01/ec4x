@@ -40,6 +40,7 @@ type
     buildOrders*: seq[BuildOrder]
     researchAllocation*: res_types.ResearchAllocation  # PP allocation to ERP/SRP/TRP
     diplomaticActions*: seq[DiplomaticAction]
+    populationTransfers*: seq[PopulationTransferOrder]  # Space Guild transfers
 
     # Espionage budget allocation (diplomacy.md:8.2)
     espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
@@ -67,6 +68,13 @@ type
     BreakPact,                 # Break existing non-aggression pact
     DeclareEnemy,              # Set diplomatic status to Enemy
     SetNeutral                 # Set diplomatic status to Neutral
+
+  PopulationTransferOrder* = object
+    ## Space Guild population transfer between colonies
+    ## Source: economy.md:3.7, config/population.toml
+    sourceColony*: SystemId
+    destColony*: SystemId
+    ptuAmount*: int
 
   ValidationResult* = object
     valid*: bool

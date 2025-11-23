@@ -641,6 +641,79 @@ def generate_colonization_cost_table(economy_config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def generate_population_transfer_cost_table(population_config: Dict[str, Any]) -> str:
+    """Generate population transfer cost table from population.toml."""
+    transfer_costs = population_config.get('transfer_costs', {})
+    transfer_modifiers = population_config.get('transfer_modifiers', {})
+
+    lines = [
+        "| Planet Class | Base Cost (PP/PTU) | Cost per Jump* |",
+        "|:-------------|:------------------:|:---------------|",
+    ]
+
+    planets = [
+        ("Eden", "eden_cost"),
+        ("Lush", "lush_cost"),
+        ("Benign", "benign_cost"),
+        ("Harsh", "harsh_cost"),
+        ("Hostile", "hostile_cost"),
+        ("Desolate", "desolate_cost"),
+        ("Extreme", "extreme_cost"),
+    ]
+
+    distance_modifier = transfer_modifiers.get('cost_increase_per_jump', 0.20)
+
+    for display_name, key in planets:
+        base_cost = transfer_costs.get(key, 0)
+        lines.append(f"| {display_name:<12} | {base_cost:<18} | Base × (1 + {distance_modifier} × jumps) |")
+
+    lines.append("")
+    lines.append(f"*Distance modifier: +{int(distance_modifier * 100)}% per jump beyond first")
+    lines.append("")
+    lines.append("*Source: config/population.toml [transfer_costs] and [transfer_modifiers] sections*")
+
+    return "\n".join(lines)
+
+
+def generate_population_transfer_mechanics_table(population_config: Dict[str, Any]) -> str:
+    """Generate population transfer mechanics table from population.toml."""
+    transfer_time = population_config.get('transfer_time', {})
+    transfer_limits = population_config.get('transfer_limits', {})
+    transfer_risks = population_config.get('transfer_risks', {})
+
+    lines = [
+        "| Mechanic | Value | Description |",
+        "|:---------|:------|:------------|",
+    ]
+
+    # Transit time
+    turns_per_jump = transfer_time.get('turns_per_jump', 1)
+    min_turns = transfer_time.get('minimum_turns', 1)
+    lines.append(f"| **Transit Time** | {turns_per_jump} turn/jump | Minimum {min_turns} turn even within same system |")
+
+    # Transfer limits
+    min_ptu = transfer_limits.get('min_ptu_transfer', 1)
+    min_source = transfer_limits.get('min_source_pu_remaining', 1)
+    max_concurrent = transfer_limits.get('max_concurrent_transfers', 5)
+    lines.append(f"| **Minimum PTU** | {min_ptu} PTU | Smallest transferable unit |")
+    lines.append(f"| **Source Reserve** | {min_source} PU | Source colony must retain at least this |")
+    lines.append(f"| **Concurrent Limit** | {max_concurrent} transfers | Maximum active transfers per house |")
+
+    # Risk behaviors
+    source_behavior = transfer_risks.get('source_conquered_behavior', 'continue')
+    dest_behavior = transfer_risks.get('dest_conquered_behavior', 'lost')
+    blockade_behavior = transfer_risks.get('dest_blockaded_behavior', 'return')
+
+    lines.append(f"| **Source Conquered** | {source_behavior.title()} | Transfer proceeds (Guild is neutral) |")
+    lines.append(f"| **Dest Conquered** | {dest_behavior.title()} | PTUs lost (refugees disperse) |")
+    lines.append(f"| **Dest Blockaded** | {blockade_behavior.title()} | PTUs return to source |")
+
+    lines.append("")
+    lines.append("*Source: config/population.toml [transfer_time], [transfer_limits], and [transfer_risks] sections*")
+
+    return "\n".join(lines)
+
+
 def generate_maintenance_shortfall_table(prestige_config: Dict[str, Any]) -> str:
     """Generate maintenance shortfall prestige penalty table from prestige.toml."""
     penalties = prestige_config.get('penalties', {})
@@ -1111,6 +1184,7 @@ def update_diplomacy_spec(espionage_prestige_table: str, cic_modifier_table: str
 
 def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_table: str,
                         iu_table: str, colonization_table: str, maintenance_shortfall_table: str,
+                        pop_transfer_cost_table: str, pop_transfer_mechanics_table: str,
                         el_table: str, sl_table: str, cst_table: str, wep_table: str,
                         ter_table: str, ter_upgrade_table: str, eli_table: str, clk_table: str,
                         sld_table: str, cic_table: str, fd_table: str, aco_table: str,
@@ -1137,6 +1211,8 @@ def update_economy_spec(raw_table: str, tax_penalty_table: str, tax_incentive_ta
         "IU_INVESTMENT_TABLE": (iu_table, "IU investment table"),
         "COLONIZATION_COST_TABLE": (colonization_table, "colonization cost table"),
         "MAINTENANCE_SHORTFALL_TABLE": (maintenance_shortfall_table, "maintenance shortfall penalty table"),
+        "POPULATION_TRANSFER_COST_TABLE": (pop_transfer_cost_table, "population transfer cost table"),
+        "POPULATION_TRANSFER_MECHANICS_TABLE": (pop_transfer_mechanics_table, "population transfer mechanics table"),
         "ECONOMIC_LEVEL_TABLE": (el_table, "Economic Level (EL) table"),
         "SCIENCE_LEVEL_TABLE": (sl_table, "Science Level (SL) table"),
         "CST_TABLE": (cst_table, "Construction (CST) table"),
@@ -1541,6 +1617,9 @@ def main():
     game_setup_config = load_toml(Path("game_setup/standard.toml"))
     print(f"✓ Loaded game_setup/standard.toml")
 
+    population_config = load_toml(config_dir / "population.toml")
+    print(f"✓ Loaded {config_dir / 'population.toml'}")
+
     # Generate tables
     print("\nGenerating specification tables...")
 
@@ -1592,6 +1671,13 @@ def main():
 
     maintenance_shortfall_table = generate_maintenance_shortfall_table(prestige_config)
     print("✓ Generated maintenance shortfall penalty table (4 tiers)")
+
+    # Generate population transfer tables
+    pop_transfer_cost_table = generate_population_transfer_cost_table(population_config)
+    print("✓ Generated population transfer cost table (7 planet classes)")
+
+    pop_transfer_mechanics_table = generate_population_transfer_mechanics_table(population_config)
+    print("✓ Generated population transfer mechanics table")
 
     # Generate tech tables
     el_table = generate_economic_level_table(tech_config)
@@ -1649,7 +1735,8 @@ def main():
     update_reference_spec(ships_table, ground_table, spacelift_table, prestige_table, morale_table, espionage_table, penalty_table)
     update_diplomacy_spec(espionage_prestige_table, cic_modifier_table, cic_threshold_table, diplomacy_config)
     update_economy_spec(raw_table, tax_penalty_table, tax_incentive_table, iu_table, colonization_table,
-                        maintenance_shortfall_table, el_table, sl_table, cst_table, wep_table,
+                        maintenance_shortfall_table, pop_transfer_cost_table, pop_transfer_mechanics_table,
+                        el_table, sl_table, cst_table, wep_table,
                         ter_table, ter_upgrade_table, eli_table, clk_table, sld_table,
                         cic_tech_table, fd_table, aco_table, starting_tech_table,
                         economy_config, construction_config, military_config, tech_config)
