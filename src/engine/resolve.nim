@@ -1373,6 +1373,81 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           systemId: some(completed.colonyId)
         ))
 
+    # Handle ship construction
+    elif completed.projectType == econ_types.ConstructionType.Ship:
+      if completed.colonyId in state.colonies:
+        let colony = state.colonies[completed.colonyId]
+        let owner = colony.owner
+
+        # Parse ship class from itemId
+        try:
+          let shipClass = parseEnum[ShipClass](completed.itemId)
+          let techLevel = state.houses[owner].techTree.levels.weaponsTech
+
+          # Create the ship
+          let ship = newEnhancedShip(shipClass, techLevel)
+
+          # Find squadrons at this system belonging to this house
+          var assignedSquadron: SquadronId = ""
+          for fleetId, fleet in state.fleets:
+            if fleet.owner == owner and fleet.location == completed.colonyId:
+              for squadron in fleet.squadrons:
+                if canAddShip(squadron, ship):
+                  # Found a squadron with capacity
+                  assignedSquadron = squadron.id
+                  break
+              if assignedSquadron != "":
+                break
+
+          # Add ship to existing squadron or create new one
+          if assignedSquadron != "":
+            # Add to existing squadron
+            for fleetId, fleet in state.fleets.mpairs:
+              if fleet.owner == owner:
+                for squadron in fleet.squadrons.mitems:
+                  if squadron.id == assignedSquadron:
+                    discard addShip(squadron, ship)
+                    echo "      Commissioned ", shipClass, " and assigned to squadron ", squadron.id
+                    break
+
+          else:
+            # Create new squadron with this ship as flagship
+            let newSquadronId = $owner & "_sq_" & $state.fleets.len & "_" & $state.turn
+            let newSq = newSquadron(ship, newSquadronId, owner, completed.colonyId)
+
+            # Find or create fleet at this location
+            var targetFleetId = ""
+            for fleetId, fleet in state.fleets:
+              if fleet.owner == owner and fleet.location == completed.colonyId:
+                targetFleetId = fleetId
+                break
+
+            if targetFleetId == "":
+              # Create new fleet at colony
+              targetFleetId = $owner & "_fleet" & $(state.fleets.len + 1)
+              state.fleets[targetFleetId] = Fleet(
+                id: targetFleetId,
+                owner: owner,
+                location: completed.colonyId,
+                squadrons: @[newSq]
+              )
+              echo "      Commissioned ", shipClass, " in new fleet ", targetFleetId
+            else:
+              # Add squadron to existing fleet
+              state.fleets[targetFleetId].squadrons.add(newSq)
+              echo "      Commissioned ", shipClass, " in new squadron ", newSq.id
+
+          # Generate event
+          events.add(GameEvent(
+            eventType: GameEventType.ColonyEstablished,
+            houseId: owner,
+            description: $shipClass & " commissioned at " & $completed.colonyId,
+            systemId: some(completed.colonyId)
+          ))
+
+        except ValueError:
+          echo "      ERROR: Invalid ship class: ", completed.itemId
+
   # Check for elimination and defensive collapse
   let gameplayConfig = globalGameplayConfig
   for houseId, house in state.houses:
