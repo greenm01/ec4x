@@ -438,6 +438,10 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
   # Convert GameState colonies to economy engine format
   var econColonies: seq[econ_types.Colony] = @[]
   for systemId, colony in state.colonies:
+    # Get owner's current tax rate
+    let ownerHouse = state.houses[colony.owner]
+    let currentTaxRate = ownerHouse.taxPolicy.currentRate
+
     # Convert Colony to economy Colony type
     # grossOutput starts at 0 and will be calculated by economy engine
     econColonies.add(econ_types.Colony(
@@ -449,18 +453,15 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       planetClass: colony.planetClass,
       resources: colony.resources,
       grossOutput: 0,  # Will be calculated by economy engine
-      taxRate: 50,  # TODO: Get from house tax policy
+      taxRate: currentTaxRate,  # Get from house tax policy
       underConstruction: none(econ_types.ConstructionProject),  # TODO: Convert construction
       infrastructureDamage: if colony.blockaded: 0.6 else: 0.0  # Blockade = 60% infrastructure damage
     ))
 
-  # Build house tax policies (TODO: store in House)
+  # Build house tax policies from House state
   var houseTaxPolicies = initTable[HouseId, econ_types.TaxPolicy]()
-  for houseId in state.houses.keys:
-    houseTaxPolicies[houseId] = econ_types.TaxPolicy(
-      currentRate: 50,  # Default
-      history: @[50]
-    )
+  for houseId, house in state.houses:
+    houseTaxPolicies[houseId] = house.taxPolicy
 
   # Build house tech levels (Economic Level = economicLevel field)
   var houseTechLevels = initTable[HouseId, int]()
@@ -1970,13 +1971,49 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
 
   # Get colony's planetary defense
   let colony = state.colonies[targetId]
-  # TODO: Build full PlanetaryDefense from colony data
-  var defense = PlanetaryDefense(
-    shields: none(ShieldLevel),
-    groundBatteries: @[],  # TODO: Get from colony
-    groundForces: @[],  # TODO: Get from colony military units
-    spaceport: false
-  )
+
+  # Build full PlanetaryDefense from colony data
+  var defense = PlanetaryDefense()
+
+  # Shields: Convert colony shield level to ShieldLevel object
+  if colony.planetaryShieldLevel > 0:
+    let (rollNeeded, blockPct) = getShieldData(colony.planetaryShieldLevel)
+    defense.shields = some(ShieldLevel(
+      level: colony.planetaryShieldLevel,
+      blockChance: float(rollNeeded) / 20.0,  # Convert d20 roll to probability
+      blockPercentage: blockPct
+    ))
+  else:
+    defense.shields = none(ShieldLevel)
+
+  # Ground Batteries: Create GroundUnit objects from colony count
+  defense.groundBatteries = @[]
+  for i in 0 ..< colony.groundBatteries:
+    let battery = createGroundBattery(
+      id = $targetId & "_GB" & $i,
+      owner = colony.owner,
+      techLevel = 1  # TODO M3: Use actual CST level from colony owner's tech
+    )
+    defense.groundBatteries.add(battery)
+
+  # Ground Forces: Create GroundUnit objects from armies and marines
+  defense.groundForces = @[]
+  for i in 0 ..< colony.armies:
+    let army = createArmy(
+      id = $targetId & "_AA" & $i,
+      owner = colony.owner
+    )
+    defense.groundForces.add(army)
+
+  for i in 0 ..< colony.marines:
+    let marine = createMarine(
+      id = $targetId & "_MD" & $i,
+      owner = colony.owner
+    )
+    defense.groundForces.add(marine)
+
+  # Spaceports: Check if colony has any operational spaceports
+  defense.spaceport = colony.spaceports.len > 0
 
   # Conduct bombardment
   let result = conductBombardment(combatSquadrons, defense, seed = 0, maxRounds = 3)

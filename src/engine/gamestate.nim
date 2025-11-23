@@ -129,6 +129,7 @@ type
     espionageBudget*: esp_types.EspionageBudget  # EBP/CIP points
     dishonoredStatus*: dip_types.DishonoredStatus  # Pact violation penalty
     diplomaticIsolation*: dip_types.DiplomaticIsolation  # Pact violation penalty
+    taxPolicy*: econ_types.TaxPolicy  # Current tax rate and 6-turn history
 
     # Planet-Breaker tracking (assets.md:2.4.8)
     planetBreakerCount*: int  # Current PB count (max = current colony count)
@@ -201,6 +202,7 @@ proc initializeHouse*(name: string, color: string): House =
     espionageBudget: esp_types.initEspionageBudget(),
     dishonoredStatus: dip_types.DishonoredStatus(active: false, turnsRemaining: 0, violationTurn: 0),
     diplomaticIsolation: dip_types.DiplomaticIsolation(active: false, turnsRemaining: 0, violationTurn: 0),
+    taxPolicy: econ_types.TaxPolicy(currentRate: 50, history: @[50]),  # Default 50% tax rate
     planetBreakerCount: 0
   )
 
