@@ -44,6 +44,7 @@ import sys
 import shutil
 from pathlib import Path
 from collections import defaultdict
+from datetime import datetime
 
 # Configuration
 NUM_GAMES = 10
@@ -85,6 +86,45 @@ def run_game(game_num):
 
     return rankings
 
+def archive_old_results():
+    """Archive existing balance results to restic backup with date-based organization"""
+    balance_results_dir = Path("/home/niltempus/dev/ec4x/balance_results")
+    if not balance_results_dir.exists():
+        return
+
+    # Create restic repo if it doesn't exist
+    restic_repo = Path.home() / ".ec4x_test_data"
+    restic_repo.mkdir(exist_ok=True)
+
+    env = {
+        "RESTIC_REPOSITORY": str(restic_repo),
+        "RESTIC_PASSWORD": ""  # No password for local test data
+    }
+
+    # Initialize repo if needed (will fail silently if already initialized)
+    subprocess.run(["restic", "init"], env=env, capture_output=True)
+
+    # Archive with current date tag
+    date_tag = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    print(f"\nArchiving existing results to restic with tag: {date_tag}")
+
+    result = subprocess.run(
+        ["restic", "backup", str(balance_results_dir), "--tag", date_tag],
+        env=env,
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode == 0:
+        print(f"✓ Results archived to {restic_repo}")
+        # Clean up after successful archive
+        shutil.rmtree(balance_results_dir)
+        print("✓ Old results removed")
+    else:
+        print(f"⚠ Archive failed: {result.stderr}")
+        print("  Removing old results anyway...")
+        shutil.rmtree(balance_results_dir)
+
 def main():
     print("="*70)
     print("EC4X M3+ Balance Test")
@@ -93,12 +133,8 @@ def main():
     print(f"Strategies: {', '.join(STRATEGIES)}")
     print("="*70)
 
-    # Clean up old balance results to prevent junk accumulation
-    balance_results_dir = Path("/home/niltempus/dev/ec4x/balance_results")
-    if balance_results_dir.exists():
-        print(f"\nCleaning up old balance results from {balance_results_dir}...")
-        shutil.rmtree(balance_results_dir)
-        print("✓ Old results removed")
+    # Archive old results with date-based organization using restic
+    archive_old_results()
 
     print()
 
