@@ -77,7 +77,7 @@ eden_pu_min = 2001
 research_cost_base = 1000          # Base cost for level 1
 research_cost_exponent = 2         # Quadratic scaling (level^2)
 
-# Tech fields: EnergyLevel, ShieldLevel, ConstructionTech, WeaponsTech,
+# Tech fields: EconomicLevel, ShieldLevel, ConstructionTech, WeaponsTech,
 #              TerraformingTech, ElectronicIntelligence, CounterIntelligence
 #              (all hardcoded in engine)
 
