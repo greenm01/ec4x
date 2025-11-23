@@ -161,7 +161,8 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
                           0
 
         # Execute espionage action with detection roll
-        var rng = initRand(state.turn + attempt.attacker.hash() + attempt.target.hash())
+        # Use XOR instead of + to avoid overflow when combining hashes
+        var rng = initRand(int64(state.turn) xor attempt.attacker.hash() xor attempt.target.hash())
         let result = esp_engine.executeEspionage(
           attempt,
           targetCICLevel,
