@@ -34,6 +34,31 @@ CL = Carry Limit
 *Source: config/ships.toml*
 <!-- SPACE_FORCE_TABLE_END -->
 
+## 9.1.1 Ship Construction Times
+
+Base construction times by hull class (modified by CST tech per [Section 4.5](economy.md#45-construction-cst)):
+
+<!-- CONSTRUCTION_TIMES_TABLE_START -->
+| Hull Class | Ships | Base Time | CST1 | CST5 | CST10 |
+|------------|-------|-----------|------|------|-------|
+| Spacelift  | ET, TT | 1 turn | 1 | 1 | 1 |
+| Small      | CT, FG, DD, SC | 1 turn | 1 | 1 | 1 |
+| Medium     | CL, CA | 2 turns | 2 | 1 | 1 |
+| Large      | BC, BB, CV, RR | 3 turns | 3 | 2 | 1 |
+| Capital    | DN, SD, CX | 4 turns | 4 | 3 | 1 |
+| Super-Capital | PB | 5 turns | 5 | 3 | 1 |
+
+**Construction Time Formula:**
+```
+actual_time = ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))
+minimum: 1 turn
+```
+
+**Example:** A Battleship (3 turns base) at CST5 takes `ceiling(3 × 0.6)` = 2 turns
+
+*Source: config/ships.toml [construction] section*
+<!-- CONSTRUCTION_TIMES_TABLE_END -->
+
 ## 9.2 Ground Units (WEP1)
 
 <!-- GROUND_UNITS_TABLE_START -->

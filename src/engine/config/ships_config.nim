@@ -21,9 +21,33 @@ type
     maintenance_percent*: Option[int]
     special_capability*: string
 
+  ConstructionTimesConfig* = object
+    ## Base construction times for each ship class
+    ## Modified by CST tech: ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))
+    etac_base_time*: int
+    troop_transport_base_time*: int
+    corvette_base_time*: int
+    frigate_base_time*: int
+    destroyer_base_time*: int
+    scout_base_time*: int
+    cruiser_base_time*: int
+    light_cruiser_base_time*: int
+    heavy_cruiser_base_time*: int
+    battlecruiser_base_time*: int
+    battleship_base_time*: int
+    carrier_base_time*: int
+    raider_base_time*: int
+    dreadnought_base_time*: int
+    super_dreadnought_base_time*: int
+    supercarrier_base_time*: int
+    planetbreaker_base_time*: int
+    fighter_base_time*: int
+    starbase_base_time*: int
+
   ShipsConfig* = object
     ## Complete ships configuration loaded from TOML
     ## WEP modifiers (+10% AS/DS per level) are applied by the engine
+    construction*: ConstructionTimesConfig
     corvette*: ShipStatsConfig
     frigate*: ShipStatsConfig
     destroyer*: ShipStatsConfig

@@ -8,6 +8,49 @@
 # These are base stats at WEP1
 
 # ============================================================================
+# Construction Times
+# Source: docs/specs/reference.md Section 9.1.1
+# ============================================================================
+
+[construction]
+# Base construction times in turns (modified by CST tech)
+# Formula: actual_time = ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))
+# Minimum: 1 turn
+
+# Spacelift Command ships
+etac_base_time = 1
+troop_transport_base_time = 1
+
+# Small hull ships (CT, FG, DD, SC)
+corvette_base_time = 1
+frigate_base_time = 1
+destroyer_base_time = 1
+scout_base_time = 1
+
+# Medium hull ships (CL, CA)
+cruiser_base_time = 2
+light_cruiser_base_time = 2
+heavy_cruiser_base_time = 2
+
+# Large hull ships (BC, BB, CV, RR)
+battlecruiser_base_time = 3
+battleship_base_time = 3
+carrier_base_time = 3
+raider_base_time = 3
+
+# Capital hull ships (DN, SD, CX)
+dreadnought_base_time = 4
+super_dreadnought_base_time = 4
+supercarrier_base_time = 4
+
+# Super-Capital ships (PB)
+planetbreaker_base_time = 5
+
+# Special
+fighter_base_time = 1
+starbase_base_time = 3
+
+# ============================================================================
 # Capital Ships
 # ============================================================================
 
