@@ -87,13 +87,13 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
       aggression: 0.9,
       riskTolerance: 0.8,
       economicFocus: 0.3,
-      expansionDrive: 0.7,
+      expansionDrive: 0.5,  # Reduced from 0.7 - prevents over-expansion into worthless colonies
       diplomacyValue: 0.2,
       techPriority: 0.4
     )
   of AIStrategy.Economic:
     AIPersonality(
-      aggression: 0.2,
+      aggression: 0.3,  # Increased from 0.2 - needs basic defense capability
       riskTolerance: 0.3,
       economicFocus: 0.9,
       expansionDrive: 0.5,
