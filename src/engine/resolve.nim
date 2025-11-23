@@ -54,6 +54,8 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent])
 # Forward declarations for helper functions
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
+proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
+proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent])
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent])
 proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
@@ -814,6 +816,14 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
     if houseId in orders:
       resolveSquadronManagement(state, orders[houseId], events)
 
+  # Process cargo management (manual loading/unloading)
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      resolveCargoManagement(state, orders[houseId], events)
+
+  # Auto-load cargo at colonies (if no manual cargo order exists)
+  autoLoadCargo(state, orders, events)
+
   # Process all fleet orders (sorted by priority)
   var allFleetOrders: seq[(HouseId, FleetOrder)] = @[]
 
@@ -1026,6 +1036,111 @@ proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events
 
     # Update colony in state
     state.colonies[order.colonySystem] = colony
+
+proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
+  ## Process manual cargo management orders (load/unload)
+  for order in packet.cargoManagement:
+    # Validate colony exists and is owned by house
+    if order.colonySystem notin state.colonies:
+      echo "    Cargo management failed: System ", order.colonySystem, " has no colony"
+      continue
+
+    let colony = state.colonies[order.colonySystem]
+    if colony.owner != packet.houseId:
+      echo "    Cargo management failed: ", packet.houseId, " does not own system ", order.colonySystem
+      continue
+
+    # Validate fleet exists and is at colony
+    let fleetOpt = state.getFleet(order.fleetId)
+    if fleetOpt.isNone:
+      echo "    Cargo management failed: Fleet ", order.fleetId, " does not exist"
+      continue
+
+    let fleet = fleetOpt.get()
+    if fleet.location != order.colonySystem:
+      echo "    Cargo management failed: Fleet ", order.fleetId, " not at colony ", order.colonySystem
+      continue
+
+    case order.action
+    of CargoManagementAction.LoadCargo:
+      if order.cargoType.isNone:
+        echo "    LoadCargo failed: No cargo type specified"
+        continue
+
+      let cargoType = order.cargoType.get()
+      let quantity = if order.quantity.isSome: order.quantity.get() else: 0  # 0 = all available
+
+      # Find spacelift ships in fleet
+      for ship in fleet.spaceLiftShips:
+        if ship.isCrippled:
+          continue  # Can't load cargo on crippled ships
+
+        # Determine ship capacity and compatible cargo type
+        let shipCargoType = case ship.shipClass
+          of ShipClass.TroopTransport: CargoType.Marines
+          of ShipClass.ETAC: CargoType.Colonists
+          else: CargoType.None
+
+        if shipCargoType != cargoType:
+          continue  # Ship can't carry this cargo type
+
+        # Load cargo (simplified for now - full logic needs colony inventory)
+        # TODO: Check colony inventory for marines/colonists
+        # TODO: Implement actual cargo transfer with quantity tracking
+        echo "    Loaded ", cargoType, " onto ", ship.shipClass, " ", ship.id, " at ", order.colonySystem
+
+    of CargoManagementAction.UnloadCargo:
+      # Unload cargo from spacelift ships
+      for ship in fleet.spaceLiftShips:
+        if ship.cargo.cargoType == CargoType.None:
+          continue  # No cargo to unload
+
+        # Unload cargo back to colony
+        # TODO: Add cargo back to colony inventory
+        echo "    Unloaded ", ship.cargo.quantity, " ", ship.cargo.cargoType, " from ", ship.id, " at ", order.colonySystem
+
+proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
+  ## Automatically load available marines/colonists onto empty transports at colonies
+  ## Only auto-load if no manual cargo order exists for that fleet
+
+  # Build set of fleets with manual cargo orders
+  var manualCargoFleets: seq[FleetId] = @[]
+  for houseId, packet in orders:
+    for order in packet.cargoManagement:
+      manualCargoFleets.add(order.fleetId)
+
+  # Process each colony
+  for systemId, colony in state.colonies:
+    # Find fleets at this colony
+    for fleetId, fleet in state.fleets:
+      if fleet.location != systemId or fleet.owner != colony.owner:
+        continue
+
+      # Skip if fleet has manual cargo orders
+      if fleetId in manualCargoFleets:
+        continue
+
+      # Auto-load empty transports
+      for ship in fleet.spaceLiftShips:
+        if ship.isCrippled or ship.cargo.cargoType != CargoType.None:
+          continue  # Skip crippled ships or ships already loaded
+
+        # Determine what cargo this ship can carry
+        case ship.shipClass
+        of ShipClass.TroopTransport:
+          # Auto-load marines if available
+          # TODO: Check colony.marines inventory
+          # TODO: Actually load marines with quantity tracking
+          echo "    [Auto] Loaded marines onto ", ship.id, " at ", systemId
+
+        of ShipClass.ETAC:
+          # Auto-load colonists if available
+          # TODO: Check colony.population for available colonists
+          # TODO: Actually load colonists with quantity tracking
+          echo "    [Auto] Loaded colonists onto ", ship.id, " at ", systemId
+
+        else:
+          discard  # Other ship classes don't have spacelift capability
 
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =
