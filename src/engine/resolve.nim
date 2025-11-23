@@ -440,6 +440,100 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       echo "      Prestige: ", blockadePenalty, " (", blockadedCount,
            " colonies under blockade) -> ", state.houses[houseId].prestige
 
+  # Process construction completion - decrement turns and complete projects
+  for systemId, colony in state.colonies.mpairs:
+    if colony.underConstruction.isSome:
+      var project = colony.underConstruction.get()
+      project.turnsRemaining -= 1
+
+      if project.turnsRemaining <= 0:
+        # Construction complete!
+        echo "    Construction completed at system ", systemId, ": ", project.itemId
+
+        case project.projectType
+        of econ_types.ConstructionType.Ship:
+          # Commission ship from Spaceport/Shipyard
+          # Ships are commissioned and need to be manually assigned to squadrons/fleets
+          # For now: Auto-form single-ship squadrons for AI testing
+          let shipClass = parseEnum[ShipClass](project.itemId)
+          let techLevel = state.houses[colony.owner].techTree.levels.constructionTech
+
+          # Create new ship with current tech level
+          let newShip = newEnhancedShip(shipClass, techLevel)
+
+          # Form single-ship squadron (flagship only)
+          let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
+          let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+
+          # Find existing fleet at this system or create new one
+          var targetFleet: Option[FleetId] = none(FleetId)
+          for fleetId, fleet in state.fleets:
+            if fleet.location == systemId and fleet.owner == colony.owner:
+              targetFleet = some(fleetId)
+              break
+
+          if targetFleet.isNone:
+            # Create new fleet at this colony
+            let newFleetId = colony.owner & "_fleet_" & $systemId
+            state.fleets[newFleetId] = Fleet(
+              id: newFleetId,
+              owner: colony.owner,
+              location: systemId,
+              squadrons: @[newSquadron]
+            )
+            echo "      Commissioned ", shipClass, " into new fleet ", newFleetId
+          else:
+            # Add squadron to existing fleet
+            state.fleets[targetFleet.get()].squadrons.add(newSquadron)
+            echo "      Commissioned ", shipClass, " into fleet ", targetFleet.get()
+
+        of econ_types.ConstructionType.Building:
+          # Add building to colony
+          if project.itemId == "Spaceport":
+            let spaceportId = colony.owner & "_spaceport_" & $systemId & "_" & $state.turn
+            let spaceport = Spaceport(
+              id: spaceportId,
+              commissionedTurn: state.turn,
+              docks: 5  # 5 construction docks per spaceport
+            )
+            colony.spaceports.add(spaceport)
+            echo "      Added Spaceport to system ", systemId
+
+          elif project.itemId == "Shipyard":
+            let shipyardId = colony.owner & "_shipyard_" & $systemId & "_" & $state.turn
+            let shipyard = Shipyard(
+              id: shipyardId,
+              commissionedTurn: state.turn,
+              docks: 10  # 10 construction docks per shipyard
+            )
+            colony.shipyards.add(shipyard)
+            echo "      Added Shipyard to system ", systemId
+
+          elif project.itemId == "GroundBattery":
+            colony.groundBatteries += 1
+            echo "      Added Ground Battery to system ", systemId
+
+          elif project.itemId == "PlanetaryShield":
+            # Set planetary shield level based on house's SLD tech
+            colony.planetaryShieldLevel = state.houses[colony.owner].techTree.levels.shieldLevel
+            echo "      Added Planetary Shield (SLD", colony.planetaryShieldLevel, ") to system ", systemId
+
+        of econ_types.ConstructionType.Industrial:
+          # IU investment - industrial capacity was added when project started
+          # Just log completion
+          echo "      Industrial expansion completed at system ", systemId
+
+        of econ_types.ConstructionType.Infrastructure:
+          # Infrastructure was already added during creation
+          # Just log completion
+          echo "      Infrastructure expansion completed at system ", systemId
+
+        # Clear construction slot
+        colony.underConstruction = none(econ_types.ConstructionProject)
+      else:
+        # Still under construction
+        colony.underConstruction = some(project)
+
   # Process research allocation
   # Per economy.md:4.0: Players allocate PP to research each turn
   # PP is converted to ERP/SRP/TRP based on current tech levels and GHO
