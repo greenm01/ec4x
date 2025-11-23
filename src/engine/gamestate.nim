@@ -62,6 +62,9 @@ type
     production*: int              # Current turn production
     underConstruction*: Option[ConstructionProject]
 
+    # Commissioned ships awaiting squadron assignment
+    commissionedShips*: seq[EnhancedShip]    # Ships commissioned but not yet in squadrons
+
     # Fighter squadrons (assets.md:2.4.1)
     fighterSquadrons*: seq[FighterSquadron]  # Colony-based fighters
     capacityViolation*: CapacityViolation     # Capacity violation tracking
