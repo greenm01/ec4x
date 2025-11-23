@@ -88,19 +88,6 @@ src/engine/**/maintenance
 src/engine/**/costs
 src/engine/**/advancement
 src/engine/**/effects
-src/engine/config/prestige_config
-src/engine/config/espionage_config
-src/engine/config/diplomacy_config
-src/engine/config/gameplay_config
-src/engine/config/military_config
-src/engine/config/facilities_config
-src/engine/config/ground_units_config
-src/engine/config/combat_config
-src/engine/config/construction_config
-src/engine/config/economy_config
-src/engine/config/ships_config
-src/engine/config/tech_config
-
 
 # Combat test results (large files)
 combat_test_results.json
