@@ -213,6 +213,35 @@ nimble build
 
 **Test coverage:** 76+ integration tests must pass
 
+### Balance Testing
+
+**IMPORTANT:** Always use the balance test runner script for AI testing:
+
+```bash
+# Correct: Run full 10-game test suite
+python3 run_balance_test.py
+
+# Incorrect: Don't run individual simulations
+# ./tests/balance/run_simulation 100 42  # NO - use script instead
+```
+
+**Why use run_balance_test.py:**
+- Runs 10 games with unique seeds for statistical significance
+- Automatically archives old results to restic backup (before tests)
+- Provides comprehensive win rate and prestige analysis
+- Ensures consistent testing methodology
+
+**The script flow:**
+1. Archives existing `balance_results/` to `~/.ec4x_test_data/` (restic backup with date tag)
+2. Cleans up old results directory
+3. Runs 10 games with strategies: Aggressive, Economic, Balanced, Turtle
+4. Aggregates results showing win counts and average prestige per strategy
+
+**Analysis workflow:**
+1. Run: `python3 run_balance_test.py > /tmp/balance_test_full.log`
+2. Analyze: Review win rates, prestige trends, and turn snapshots in balance_results/
+3. Archive: Script handles this automatically before next run
+
 ---
 
 ## When Compacting Context

@@ -57,7 +57,9 @@ def run_game(game_num):
     print(f"Running Game {game_num}/{NUM_GAMES}")
     print(f"{'='*70}")
 
-    cmd = ["./tests/balance/run_simulation", str(TURNS_PER_GAME)]
+    # Use unique seed for each game to ensure variance
+    seed = 1000 + game_num
+    cmd = ["./tests/balance/run_simulation", str(TURNS_PER_GAME), str(seed)]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd="/home/niltempus/dev/ec4x")
 
     if result.returncode != 0:
