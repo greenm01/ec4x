@@ -45,7 +45,7 @@ class TrainingConfig:
     # Memory optimizations
     gradient_checkpointing: bool = True  # Trade compute for memory
     fp16: bool = False  # Disabled - causes gradient unscaling errors on ROCm
-    bf16: bool = False  # BF16 not well supported on ROCm yet
+    bf16: bool = True  # BF16 is supported and more stable than FP16 on ROCm
 
     # Checkpointing
     save_steps: int = 200

@@ -115,6 +115,14 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy): AIController =
     personality: getStrategyPersonality(strategy)
   )
 
+proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality): AIController =
+  ## Create a new AI controller with a custom personality (for genetic algorithm)
+  AIController(
+    houseId: houseId,
+    strategy: AIStrategy.Balanced,  # Strategy field is unused with custom personality
+    personality: personality
+  )
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -140,16 +148,27 @@ proc getFleetStrength(fleet: Fleet): int =
     result += squadron.combatStrength()
 
 proc findNearestUncolonizedSystem(state: GameState, fromSystem: SystemId): Option[SystemId] =
-  ## Find nearest uncolonized system (simplified - just checks if colonized)
-  var candidates: seq[SystemId] = @[]
+  ## Find nearest uncolonized system using cube distance
+  ## Returns closest uncolonized system to avoid all AIs targeting the same one
+  type SystemDist = tuple[systemId: SystemId, distance: int]
+  var candidates: seq[SystemDist] = @[]
 
-  for systemId in state.starMap.systems.keys:
+  let fromCoords = state.starMap.systems[fromSystem].coords
+
+  for systemId, system in state.starMap.systems:
     if systemId notin state.colonies:
-      candidates.add(systemId)
+      # Calculate cube distance (Manhattan distance in hex coordinates)
+      let dx = abs(system.coords.q - fromCoords.q)
+      let dy = abs(system.coords.r - fromCoords.r)
+      let dz = abs((system.coords.q + system.coords.r) - (fromCoords.q + fromCoords.r))
+      let distance = (dx + dy + dz) div 2
+      let item: SystemDist = (systemId: systemId, distance: distance)
+      candidates.add(item)
 
   if candidates.len > 0:
-    # Return first candidate (TODO: actual distance calculation)
-    return some(candidates[0])
+    # Sort by distance and return closest
+    candidates.sort(proc(a, b: SystemDist): int = cmp(a.distance, b.distance))
+    return some(candidates[0].systemId)
 
   return none(SystemId)
 
@@ -625,8 +644,29 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
         result.add(order)
         continue
 
-    # Priority 4: Expansion (colonize new systems)
-    if p.expansionDrive > 0.5:
+    # Priority 4: Expansion and Exploration
+    # Check if this fleet has an ETAC (colony ship)
+    var hasETAC = false
+    for squadron in fleet.squadrons:
+      if squadron.flagship.shipClass == ShipClass.ETAC:
+        hasETAC = true
+        break
+      for ship in squadron.ships:
+        if ship.shipClass == ShipClass.ETAC:
+          hasETAC = true
+          break
+
+    if hasETAC:
+      # ETAC fleets: Always seek uncolonized systems
+      let targetOpt = findNearestUncolonizedSystem(state, fleet.location)
+      if targetOpt.isSome:
+        order.orderType = FleetOrderType.Move
+        order.targetSystem = targetOpt
+        order.targetFleet = none(FleetId)
+        result.add(order)
+        continue
+    elif p.expansionDrive > 0.3:
+      # Non-ETAC fleets with expansion drive: Scout uncolonized systems
       let targetOpt = findNearestUncolonizedSystem(state, fleet.location)
       if targetOpt.isSome:
         order.orderType = FleetOrderType.Move
@@ -653,6 +693,17 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
       order.targetSystem = needsDefense
       order.targetFleet = none(FleetId)
     else:
+      # Priority 6: Exploration - send fleets to unknown systems
+      # Instead of sitting idle, explore uncolonized systems
+      if p.expansionDrive > 0.2 or rng.rand(1.0) < 0.3:
+        let exploreTarget = findNearestUncolonizedSystem(state, fleet.location)
+        if exploreTarget.isSome:
+          order.orderType = FleetOrderType.Move
+          order.targetSystem = exploreTarget
+          order.targetFleet = none(FleetId)
+          result.add(order)
+          continue
+
       # Default: Patrol current location
       order.orderType = FleetOrderType.Patrol
       order.targetSystem = some(fleet.location)
@@ -661,11 +712,44 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
     result.add(order)
 
 proc generateBuildOrders(controller: AIController, state: GameState, rng: var Rand): seq[BuildOrder] =
-  ## Generate build orders based on strategic needs and combat assessment
+  ## Generate build orders based on 4X strategic needs and combat assessment
+  ## Intelligently builds: Scouts, ETACs, Transports, and Military ships
   result = @[]
   let p = controller.personality
   let house = state.houses[controller.houseId]
   let myColonies = getOwnedColonies(state, controller.houseId)
+
+  # Count what ships we already have
+  var scoutCount = 0
+  var etacCount = 0
+  var transportCount = 0
+  var militaryCount = 0
+
+  for fleet in state.fleets.values:
+    if fleet.owner == controller.houseId:
+      for squadron in fleet.squadrons:
+        case squadron.flagship.shipClass:
+        of ShipClass.Scout:
+          scoutCount += 1
+        of ShipClass.ETAC:
+          etacCount += 1
+        of ShipClass.TroopTransport:
+          transportCount += 1
+        else:
+          if squadron.flagship.shipType == ShipType.Military:
+            militaryCount += 1
+
+        for ship in squadron.ships:
+          case ship.shipClass:
+          of ShipClass.Scout:
+            scoutCount += 1
+          of ShipClass.ETAC:
+            etacCount += 1
+          of ShipClass.TroopTransport:
+            transportCount += 1
+          else:
+            if ship.shipType == ShipType.Military:
+              militaryCount += 1
 
   # Assess military situation
   let myMilitaryStrength = calculateMilitaryStrength(state, controller.houseId)
@@ -691,11 +775,16 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
     if combat.recommendRetreat or combat.recommendReinforce:
       threatenedColonies += 1
 
-  # Determine build priorities
+  # 4X PRIORITIES: What does this AI need right now?
+  let needScouts = scoutCount < 1  # Always need at least 1 scout for exploration
+  let needETACs = (etacCount < 1 and p.expansionDrive > 0.3 and
+                   findNearestUncolonizedSystem(state, myColonies[0].systemId).isSome)
+  let needTransports = (transportCount < 1 and p.aggression > 0.5 and militaryCount > 2)
   let needMilitary = (
     militaryRatio < 0.8 or  # Weaker than enemies
     threatenedColonies > 0 or  # Colonies under threat
-    p.aggression > 0.6  # Aggressive strategy
+    p.aggression > 0.6 or  # Aggressive strategy
+    militaryCount < 2  # Minimum defense force
   )
 
   # Build at most productive colonies first
@@ -703,14 +792,64 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
   coloniesToBuild.sort(proc(a, b: Colony): int = cmp(b.production, a.production))
 
   for colony in coloniesToBuild:
-    if house.treasury < 100:
+    if house.treasury < 50:
       break  # Not enough funds
 
     # Check if colony has shipyard for ship construction
     let hasShipyard = colony.shipyards.len > 0
 
-    # Priority 1: Build ships if we need military strength
-    if needMilitary and hasShipyard:
+    if not hasShipyard:
+      # Can't build ships without shipyard
+      continue
+
+    # ========================================================================
+    # 4X SHIP BUILDING PRIORITIES
+    # ========================================================================
+
+    # Priority 1: EXPLORE - Build scouts for exploration
+    if needScouts:
+      let scoutCost = getShipConstructionCost(ShipClass.Scout)
+      if house.treasury >= scoutCost:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Scout),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        break  # One ship per turn
+
+    # Priority 2: EXPAND - Build colony ships (ETACs)
+    elif needETACs:
+      let etacCost = getShipConstructionCost(ShipClass.ETAC)
+      if house.treasury >= etacCost:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.ETAC),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        break  # One ship per turn
+
+    # Priority 3: EXTERMINATE - Build troop transports for invasion
+    elif needTransports:
+      let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
+      if house.treasury >= transportCost:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.TroopTransport),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        break  # One ship per turn
+
+    # Priority 4: COMBAT - Build military ships
+    elif needMilitary:
       # Choose ship class based on strategy and treasury
       # Per economy.md:5.0 - must have FULL upfront cost in treasury
       var shipClass: ShipClass
@@ -741,7 +880,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         break
       # else: Not enough funds for this ship, try other priorities
 
-    # Priority 2: Build infrastructure for economic growth
+    # Priority 5: EXPLOIT - Build infrastructure for economic growth
     elif p.economicFocus > 0.6 and colony.infrastructure < 10 and house.treasury >= 150:
       result.add(BuildOrder(
         colonySystem: colony.systemId,
@@ -752,7 +891,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         industrialUnits: 1
       ))
 
-    # Priority 3: Build defenses for threatened colonies
+    # Priority 6: Build defenses for threatened colonies
     elif threatenedColonies > 0:
       # Build ground batteries at threatened colony
       if colony.groundBatteries < 5:
@@ -768,7 +907,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
           ))
           break
 
-    # Priority 4: Build shipyards if we don't have them
+    # Priority 7: Build shipyards if we don't have them (CRITICAL)
     elif not hasShipyard and p.aggression > 0.4:
       let shipyardCost = getBuildingCost("Shipyard")
       if house.treasury >= shipyardCost:
@@ -903,8 +1042,20 @@ proc generateDiplomaticActions(controller: AIController, state: GameState, rng: 
         return result  # Only one action per turn
 
 proc generateEspionageAction(controller: AIController, state: GameState, rng: var Rand): Option[esp_types.EspionageAttempt] =
-  ## Generate espionage action based on strategy
-  if controller.strategy != AIStrategy.Espionage:
+  ## Generate espionage action based on strategy and personality
+  ## Use personality weights to determine if we should use espionage
+  let p = controller.personality
+  let house = state.houses[controller.houseId]
+
+  # Check if we have EBP to use espionage (need at least 40 EBP for basic actions)
+  if house.espionageBudget.ebpPoints < 40:
+    return none(esp_types.EspionageAttempt)
+
+  # Use espionage based on personality rather than strategy enum
+  # High risk tolerance + low aggression = espionage focus
+  let espionageChance = p.riskTolerance * 0.5 + (1.0 - p.aggression) * 0.3 + p.techPriority * 0.2
+
+  if rng.rand(1.0) > espionageChance:
     return none(esp_types.EspionageAttempt)
 
   # Find a target house
@@ -958,14 +1109,20 @@ proc generateAIOrders*(controller: AIController, state: GameState, rng: var Rand
     cipInvestment: 0
   )
 
-  # Set espionage budget based on strategy
-  case controller.strategy
-  of AIStrategy.Espionage:
-    result.ebpInvestment = min(house.treasury div 10, 200)
-    result.cipInvestment = min(house.treasury div 20, 100)
-  of AIStrategy.Aggressive:
-    result.ebpInvestment = min(house.treasury div 20, 50)
+  # Set espionage budget based on personality (not strategy enum)
+  # Use riskTolerance + (1-aggression) as proxy for espionage focus
+  let espionageFocus = (p.riskTolerance + (1.0 - p.aggression)) / 2.0
+
+  if espionageFocus > 0.6:
+    # High espionage focus - invest heavily
+    result.ebpInvestment = min(house.treasury div 8, 250)
+    result.cipInvestment = min(house.treasury div 16, 125)
+  elif espionageFocus > 0.4:
+    # Moderate espionage focus
+    result.ebpInvestment = min(house.treasury div 15, 100)
+    result.cipInvestment = min(house.treasury div 25, 50)
   else:
+    # Low espionage focus - minimal investment
     result.ebpInvestment = min(house.treasury div 40, 25)
     result.cipInvestment = min(house.treasury div 40, 25)
 

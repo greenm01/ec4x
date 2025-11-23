@@ -1,10 +1,10 @@
 # EC4X Implementation Status
 
 **Last Updated:** 2025-11-22
-**Project Phase:** Core Engine Complete - AI Training Ready
+**Project Phase:** Core Engine Complete - AI Balance Testing
 **Test Coverage:** 91+ integration tests passing
 **Engine Status:** 100% functional for AI training
-**Recent:** Strategic AI implemented (diplomacy + military), all integration tests passing
+**Recent:** Fixed espionage balance (5% → 20% budget threshold), AI personality-based espionage logic, 5-species coevolution testing
 
 ---
 
@@ -591,11 +591,20 @@ python3 scripts/sync_specs.py
    - Combat odds calculation
    - Smart attack/retreat decisions
    - Strategic ship building
-4. ⏳ Phase 2.5: Training data generation (NEXT)
+4. ✅ Phase 2.5: Coevolution balance testing (CURRENT)
+   - Genetic algorithm framework for AI evolution
+   - 5-species competitive coevolution (Economic, Military, Diplomatic, Tech, Espionage)
+   - GNU Parallel for concurrent testing (4x speedup)
+   - Comprehensive balance analysis reports
+   - **Fixed espionage viability:**
+     - AI controller now uses personality weights instead of strategy enum
+     - Increased budget threshold from 5% to 20% (was making espionage impossible)
+     - Adjusted Espionage personality (low aggression 0.1-0.4, high risk 0.7-1.0)
+5. ⏳ Phase 3: Training data generation
    - Run 200-1000 simulations
    - Generate 10,000+ training examples
-5. ⏳ Phase 3: Model training (Mistral-7B fine-tuning)
-6. ⏳ Phase 4: Inference service (llama.cpp integration)
+6. ⏳ Phase 4: Model training (Mistral-7B fine-tuning)
+7. ⏳ Phase 5: Inference service (llama.cpp integration)
 
 ### Long Term (Future Milestones)
 1. UI development (deferred)
