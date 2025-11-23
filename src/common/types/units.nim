@@ -8,8 +8,10 @@
 type
   ShipClass* {.pure.} = enum
     ## All hardcoded ship classes in EC4X
-    ## 17 ship types total - no custom ships allowed
+    ## 19 ship types total - no custom ships allowed
     Fighter
+    Corvette
+    Frigate
     Scout
     Raider
     Destroyer
