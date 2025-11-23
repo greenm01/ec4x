@@ -331,11 +331,13 @@ Scouts are able to counter Raiders ([Section 2.4.3](#243-raiders)) and rival spy
 
 Scouts operate in two distinct modes depending on their mission:
 
-1. **Intelligence Operations (Independent):** Scouts operate solo or in small groups for espionage, reconnaissance, and surveillance missions in enemy or neutral systems. Independent scouts are vulnerable to detection and destruction but provide critical intelligence gathering capability.
+1. **Intelligence Operations (Single-Squadron):** Scouts in single-ship squadrons conduct espionage, reconnaissance, and surveillance missions in enemy or neutral systems. Single-scout squadrons minimize detection risk but are vulnerable if discovered.
 
-2. **Fleet Operations (Embedded):** Scouts are assigned to squadrons commanded by larger ships (Destroyers, Cruisers, etc.) where they provide electronic warfare support, raider detection, and counter-intelligence capabilities. Embedded scouts benefit from the squadron's combined defensive strength during combat while maintaining their ELI detection capabilities.
+2. **Fleet Operations (Multi-Ship Squadron):** Scouts automatically join mixed squadrons with capital ships or other escorts (per auto-commissioning rules in [Section 6.2](operations.md#62-squadron-commissioning)) where they provide electronic warfare support, raider detection, and counter-intelligence capabilities. Embedded scouts benefit from the squadron's combined defensive strength during combat while maintaining their ELI detection capabilities.
 
-Per the Space Force table ([Section 9.1](reference.md#91-space-force-wep1)), Scouts have CC=1 (Command Cost) and CR=NA (Command Rating), meaning they can be commanded by other ships but cannot command ships themselves. For fleet operations, scouts must be part of squadrons led by ships with sufficient Command Rating.
+Per the Space Force table ([Section 9.1](reference.md#91-space-force-wep1)), Scouts have CC=1 (Command Cost) and CR=NA (Command Rating), meaning they can be commanded by other ships but cannot command ships themselves.
+
+**⚠️ Espionage Tactical Note:** For covert operations, players should manually reorganize scouts into single-ship squadrons before deploying on spy missions. Multi-ship squadrons significantly increase detection risk during intelligence operations.
 
 **Spy Scout Detection:**
 
