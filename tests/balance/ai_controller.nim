@@ -1047,8 +1047,8 @@ proc generateEspionageAction(controller: AIController, state: GameState, rng: va
   let p = controller.personality
   let house = state.houses[controller.houseId]
 
-  # Check if we have EBP to use espionage (need at least 40 EBP for basic actions)
-  if house.espionageBudget.ebpPoints < 40:
+  # Check if we have EBP to use espionage (need at least 5 EBP for basic actions)
+  if house.espionageBudget.ebpPoints < 5:
     return none(esp_types.EspionageAttempt)
 
   # Use espionage based on personality rather than strategy enum
