@@ -9,6 +9,7 @@ import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/diplomacy/types as dip_types
+import ../../src/engine/economy/construction
 
 type
   AIStrategy* {.pure.} = enum
@@ -709,8 +710,9 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
     let hasShipyard = colony.shipyards.len > 0
 
     # Priority 1: Build ships if we need military strength
-    if needMilitary and hasShipyard and house.treasury >= 200:
+    if needMilitary and hasShipyard:
       # Choose ship class based on strategy and treasury
+      # Per economy.md:5.0 - must have FULL upfront cost in treasury
       var shipClass: ShipClass
 
       if house.treasury > 1000 and p.aggression > 0.7:
@@ -723,17 +725,21 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         # Low funds: build lighter ships
         shipClass = if rng.rand(1.0) > 0.5: ShipClass.Destroyer else: ShipClass.LightCruiser
 
-      result.add(BuildOrder(
-        colonySystem: colony.systemId,
-        buildType: BuildType.Ship,
-        quantity: 1,
-        shipClass: some(shipClass),
-        buildingType: none(string),
-        industrialUnits: 0
-      ))
+      # Check if we can actually afford this ship (upfront payment model)
+      let shipCost = getShipConstructionCost(shipClass)
+      if house.treasury >= shipCost:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(shipClass),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
 
-      # Only one ship build per turn (expensive)
-      break
+        # Only one ship build per turn (expensive)
+        break
+      # else: Not enough funds for this ship, try other priorities
 
     # Priority 2: Build infrastructure for economic growth
     elif p.economicFocus > 0.6 and colony.infrastructure < 10 and house.treasury >= 150:
@@ -747,30 +753,34 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
       ))
 
     # Priority 3: Build defenses for threatened colonies
-    elif threatenedColonies > 0 and house.treasury >= 200:
+    elif threatenedColonies > 0:
       # Build ground batteries at threatened colony
       if colony.groundBatteries < 5:
+        let batteryCost = getBuildingCost("GroundBattery")
+        if house.treasury >= batteryCost:
+          result.add(BuildOrder(
+            colonySystem: colony.systemId,
+            buildType: BuildType.Building,
+            quantity: 1,
+            shipClass: none(ShipClass),
+            buildingType: some("GroundBattery"),
+            industrialUnits: 0
+          ))
+          break
+
+    # Priority 4: Build shipyards if we don't have them
+    elif not hasShipyard and p.aggression > 0.4:
+      let shipyardCost = getBuildingCost("Shipyard")
+      if house.treasury >= shipyardCost:
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Building,
           quantity: 1,
           shipClass: none(ShipClass),
-          buildingType: some("GroundBattery"),
+          buildingType: some("Shipyard"),
           industrialUnits: 0
         ))
         break
-
-    # Priority 4: Build shipyards if we don't have them
-    elif not hasShipyard and house.treasury >= 300 and p.aggression > 0.4:
-      result.add(BuildOrder(
-        colonySystem: colony.systemId,
-        buildType: BuildType.Building,
-        quantity: 1,
-        shipClass: none(ShipClass),
-        buildingType: some("Shipyard"),
-        industrialUnits: 0
-      ))
-      break
 
 proc generateResearchAllocation(controller: AIController, state: GameState): res_types.ResearchAllocation =
   ## Allocate research PP based on strategy
