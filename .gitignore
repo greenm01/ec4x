@@ -45,6 +45,9 @@ Thumbs.db
 *.log
 logs/
 
+# Nix flake lock file (dependency lock)
+flake.lock
+
 # Temporary files
 *.tmp
 *.temp
@@ -71,6 +74,15 @@ tests/unit/test_*[!.nim]
 tests/integration/test_*[!.nim]
 tests/balance/test_*[!.nim]
 tests/scenarios/**/[!.]*[!.nim]
+
+# All balance test binaries (no extension)
+tests/balance/ai_controller
+tests/balance/analyze_results
+tests/balance/coevolution
+tests/balance/evolve_ai
+tests/balance/game_setup
+tests/balance/generate_training_data
+tests/balance/run_simulation
 
 # Nim-compiled executables (no extension on Linux)
 # Specific binary artifacts that might be generated during development
