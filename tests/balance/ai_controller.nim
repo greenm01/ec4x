@@ -1249,18 +1249,16 @@ proc assessInvasionViability(controller: AIController, state: GameState,
   # Ground Combat Assessment
   # =============================================================================
   # Can we overcome ground forces (marines + armies + ground batteries)?
-  # Cargo system integration pending: transports don't track loaded marines yet
-  # Current assumption: each transport carries 1 MD (Marine Division)
-
   result.defenderGroundForces = combat.groundForces + combat.groundBatteryCount
 
-  # ARCHITECTURE FIX: Count spacelift ships (TroopTransports carry 1 MD each)
-  var transportCount = 0
+  # Count loaded marines from cargo system
+  var marineCount = 0
   for spaceLiftShip in fleet.spaceLiftShips:
-    if spaceLiftShip.shipClass == ShipClass.TroopTransport:
-      transportCount += 1
+    if spaceLiftShip.shipClass == ShipClass.TroopTransport and not spaceLiftShip.isCrippled:
+      if spaceLiftShip.cargo.cargoType == CargoType.Marines:
+        marineCount += spaceLiftShip.cargo.quantity
 
-  result.attackerGroundForces = transportCount  # 1 MD per transport
+  result.attackerGroundForces = marineCount
 
   if result.defenderGroundForces == 0:
     result.groundOdds = 1.0
