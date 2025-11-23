@@ -263,14 +263,15 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
           echo "    ", houseId, " purchased ", packet.ebpInvestment, " EBP, ",
                packet.cipInvestment, " CIP (", totalCost, " PP)"
 
-          # Check for over-investment penalty (> 5% of turn budget)
+          # Check for over-investment penalty (configurable threshold from espionage.toml)
           let turnBudget = state.houses[houseId].espionageBudget.turnBudget
           if turnBudget > 0:
             let totalInvestment = ebpCost + cipCost
             let investmentPercent = (totalInvestment * 100) div turnBudget
+            let threshold = globalEspionageConfig.investment.threshold_percentage
 
-            if investmentPercent > 5:
-              let prestigePenalty = -(investmentPercent - 5)
+            if investmentPercent > threshold:
+              let prestigePenalty = -(investmentPercent - threshold) * globalEspionageConfig.investment.penalty_per_percent
               state.houses[houseId].prestige += prestigePenalty
               echo "      Over-investment penalty: ", prestigePenalty, " prestige"
         else:
