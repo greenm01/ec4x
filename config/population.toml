@@ -6,6 +6,13 @@
 # the logistical complexity of moving thousands of people with equipment across
 # interstellar distances.
 
+[ptu_definition]
+# Population Transfer Unit (PTU) definition
+# One PTU is approximately 50k souls = 0.05 million people
+# Used for both ETAC colonization and Space Guild transfers
+souls_per_ptu = 50000        # Number of people in 1 PTU
+ptu_size_millions = 0.05     # PTU size in millions (for colony.population field)
+
 [transfer_costs]
 # Base cost per PTU by planet class (PP per PTU)
 # Lower cost = easier living conditions = less equipment needed

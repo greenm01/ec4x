@@ -13,11 +13,16 @@ import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
 import combat/[engine as combat_engine, types as combat_types, ground]
+import population/[types as pop_types]
 import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config]
 import commands/executor
 import blockade/engine as blockade_engine
 import intelligence/detection
 import prestige
+
+# TODO: Load from config/population.toml at startup
+# For now using default from docs/specs/economy.md
+const DEFAULT_PTU_SIZE_MILLIONS = 0.05  # 1 PTU = 50k souls = 0.05 million people
 
 type
   TurnResult* = object
@@ -1078,7 +1083,9 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
       # Check colony inventory based on cargo type
       var availableUnits = case cargoType
         of CargoType.Marines: colony.marines
-        of CargoType.Colonists: 1  # ETACs carry exactly 1 PTU for colonization
+        of CargoType.Colonists:
+          # Check if colony has enough population for 1 PTU
+          if colony.population.float >= DEFAULT_PTU_SIZE_MILLIONS: 1 else: 0
         else: 0
 
       if availableUnits <= 0:
@@ -1128,9 +1135,14 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
         of CargoType.Marines:
           colony.marines -= totalLoaded
         of CargoType.Colonists:
-          # Colonists come from population, not stored inventory
-          # ETAC loading is a commitment to transport 1 PTU
-          discard
+          # Colonists come from population: 1 PTU = DEFAULT_PTU_SIZE_MILLIONS
+          # Check if colony has enough population to transfer
+          let populationNeeded = totalLoaded.float * DEFAULT_PTU_SIZE_MILLIONS
+          if colony.population.float >= populationNeeded:
+            colony.population = (colony.population.float - populationNeeded).int
+            echo "    Removed ", populationNeeded, " million population (", totalLoaded, " PTU) from colony"
+          else:
+            echo "    WARNING: Colony population too low for ", totalLoaded, " PTU transfer"
         else:
           discard
 
@@ -1166,8 +1178,10 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
           colony.marines += quantity
           echo "    Unloaded ", quantity, " Marines from ", ship.id, " to colony"
         of CargoType.Colonists:
-          # Colonists are delivered to population, not stored as inventory
-          echo "    Unloaded ", quantity, " Colonists from ", ship.id, " (delivered to population)"
+          # Colonists are delivered to population: 1 PTU = DEFAULT_PTU_SIZE_MILLIONS
+          let populationAdded = quantity.float * DEFAULT_PTU_SIZE_MILLIONS
+          colony.population = (colony.population.float + populationAdded).int
+          echo "    Unloaded ", quantity, " PTU (", populationAdded, " million people) from ", ship.id, " to colony"
         else:
           discard
 

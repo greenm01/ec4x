@@ -25,6 +25,10 @@ type
 
   PopulationTransferConfig* = object
     ## Configuration loaded from config/population.toml
+    # PTU definition
+    soulsPerPtu*: int  # Number of people in 1 PTU (default 50000)
+    ptuSizeMillions*: float  # PTU size in millions for colony.population field (default 0.05)
+
     # Transfer costs by planet class (PP per PTU)
     edenCost*: int
     lushCost*: int
