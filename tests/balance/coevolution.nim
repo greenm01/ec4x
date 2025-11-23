@@ -111,7 +111,7 @@ proc initializeSpecies*(speciesType: SpeciesType, popSize: int): Species =
 # Inter-Species Competition
 # ============================================================================
 
-proc runSpeciesCompetition(champions: seq[AIGenome], speciesTypes: seq[SpeciesType], seed: int64): Table[SpeciesType, tuple[won: bool, colonies: int, military: int]] =
+proc runSpeciesCompetition(champions: seq[AIGenome], speciesTypes: seq[SpeciesType], seed: int64): Table[SpeciesType, tuple[won: bool, colonies: int, military: int, prestige: int]] =
   ## Run a 4-way competition between species champions
   ## Takes any 4 species (to allow 5-species rotation)
   ## Returns results for each species
@@ -126,13 +126,13 @@ proc runSpeciesCompetition(champions: seq[AIGenome], speciesTypes: seq[SpeciesTy
   var genomeToSpecies: Table[int, SpeciesType]
   for i in 0 ..< min(4, champions.len):
     genomeToSpecies[champions[i].id] = speciesTypes[i]
-    let controller = newAIControllerWithPersonality(houseIds[i], champions[i].genes)
+    var controller = newAIControllerWithPersonality(houseIds[i], champions[i].genes)
     controllers.add(controller)
 
   # Run 100-turn game
   for turn in 1 .. 100:
     var ordersTable = initTable[HouseId, OrderPacket]()
-    for controller in controllers:
+    for controller in controllers.mitems:
       let orders = generateAIOrders(controller, game, rng)
       ordersTable[controller.houseId] = orders
 
@@ -152,17 +152,19 @@ proc runSpeciesCompetition(champions: seq[AIGenome], speciesTypes: seq[SpeciesTy
   let winnerIdx = scores[0].idx
 
   # Build results table
-  result = initTable[SpeciesType, tuple[won: bool, colonies: int, military: int]]()
+  result = initTable[SpeciesType, tuple[won: bool, colonies: int, military: int, prestige: int]]()
   for i in 0 ..< 4:
     let house = game.houses[houseIds[i]]
     let colonyCount = game.colonies.values.toSeq.filterIt(it.owner == houseIds[i]).len
     let militaryScore = game.fleets.values.toSeq.filterIt(it.owner == houseIds[i]).len
+    let prestigeScore = house.prestige
     let speciesType = genomeToSpecies[champions[i].id]
 
     result[speciesType] = (
       won: i == winnerIdx,
       colonies: colonyCount,
-      military: militaryScore
+      military: militaryScore,
+      prestige: prestigeScore
     )
 
 proc evaluateSpecies(species: var Species, config: CoevolutionConfig) =
@@ -170,9 +172,9 @@ proc evaluateSpecies(species: var Species, config: CoevolutionConfig) =
   echo &"  [{species.speciesType}] Evaluating {species.individuals.len} individuals..."
 
   # Track performance
-  var performance = initTable[int, tuple[games: int, wins: int, colonies: int, military: int]]()
+  var performance = initTable[int, tuple[games: int, wins: int, colonies: int, military: int, prestige: int]]()
   for genome in species.individuals:
-    performance[genome.id] = (games: 0, wins: 0, colonies: 0, military: 0)
+    performance[genome.id] = (games: 0, wins: 0, colonies: 0, military: 0, prestige: 0)
 
   # Run internal species tournaments (members compete against each other)
   let internalGames = config.speciesPopSize  # Each member plays ~1 game
@@ -190,13 +192,13 @@ proc evaluateSpecies(species: var Species, config: CoevolutionConfig) =
 
     var controllers: seq[AIController] = @[]
     for i in 0 ..< 4:
-      let controller = newAIControllerWithPersonality(houseIds[i], gameAIs[i].genes)
+      var controller = newAIControllerWithPersonality(houseIds[i], gameAIs[i].genes)
       controllers.add(controller)
 
     # Simulate game
     for turn in 1 .. 100:
       var ordersTable = initTable[HouseId, OrderPacket]()
-      for controller in controllers:
+      for controller in controllers.mitems:
         let orders = generateAIOrders(controller, game, rng)
         ordersTable[controller.houseId] = orders
 
@@ -220,19 +222,21 @@ proc evaluateSpecies(species: var Species, config: CoevolutionConfig) =
       let house = game.houses[houseIds[i]]
       let colonyCount = game.colonies.values.toSeq.filterIt(it.owner == houseIds[i]).len
       let militaryScore = game.fleets.values.toSeq.filterIt(it.owner == houseIds[i]).len
+      let prestigeScore = house.prestige
       let p = performance[gameAIs[i].id]
       performance[gameAIs[i].id] = (
         games: p.games + 1,
         wins: p.wins + (if i == winnerIdx: 1 else: 0),
         colonies: p.colonies + colonyCount,
-        military: p.military + militaryScore
+        military: p.military + militaryScore,
+        prestige: p.prestige + prestigeScore
       )
 
   # Calculate fitness
   for genome in species.individuals.mitems:
     let p = performance[genome.id]
     if p.games > 0:
-      evaluateFitness(genome, p.games, p.wins, p.colonies, p.military)
+      evaluateFitness(genome, p.games, p.wins, p.colonies, p.military, p.prestige)
     else:
       genome.fitness = 0.0
 

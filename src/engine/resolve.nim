@@ -6,7 +6,7 @@
 
 import std/[tables, algorithm, options, random, strformat, sequtils, strutils, hashes]
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
-import gamestate, orders, fleet, ship, starmap, squadron
+import gamestate, orders, fleet, ship, starmap, squadron, spacelift
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import research/[types as res_types, advancement, costs as res_costs]
 import espionage/[types as esp_types, engine as esp_engine]
@@ -507,61 +507,85 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
         case project.projectType
         of econ_types.ConstructionType.Ship:
-          # Commission ship from Spaceport/Shipyard into unassigned squadrons at colony
+          # Commission ship from Spaceport/Shipyard
           let shipClass = parseEnum[ShipClass](project.itemId)
           let techLevel = state.houses[colony.owner].techTree.levels.constructionTech
-          let newShip = newEnhancedShip(shipClass, techLevel)
 
-          # Intelligent tactical squadron assignment
-          # Try to add escorts to existing unassigned squadrons first (battle-ready groups)
-          # Capital ships always create new squadrons (they're flagships)
-          var addedToSquadron = false
+          # ARCHITECTURE FIX: Check if this is a spacelift ship (NOT a combat squadron)
+          let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
-          let isCapitalShip = shipClass in [
-            ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
-            ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
-            ShipClass.HeavyCruiser, ShipClass.Cruiser
-          ]
+          if isSpaceLift:
+            # Create SpaceLiftShip (individual unit, not squadron)
+            let shipId = colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
+            let spaceLiftShip = newSpaceLiftShip(shipId, shipClass, colony.owner, systemId)
+            colony.unassignedSpaceLiftShips.add(spaceLiftShip)
+            echo "      Commissioned ", shipClass, " spacelift ship at ", systemId
 
-          let isEscort = shipClass in [
-            ShipClass.Scout, ShipClass.Frigate, ShipClass.Destroyer,
-            ShipClass.Corvette, ShipClass.LightCruiser
-          ]
+            # Auto-assign to fleets if enabled
+            if colony.autoAssignFleets and colony.unassignedSpaceLiftShips.len > 0:
+              # Find stationary fleets at this system
+              for fleetId, fleet in state.fleets.mpairs:
+                if fleet.location == systemId and fleet.owner == colony.owner:
+                  # Transfer spacelift ship to fleet
+                  fleet.spaceLiftShips.add(spaceLiftShip)
+                  colony.unassignedSpaceLiftShips.setLen(colony.unassignedSpaceLiftShips.len - 1)
+                  echo "      Auto-assigned ", shipClass, " to fleet ", fleetId
+                  break
 
-          # Escorts try to join existing unassigned squadrons for balanced combat groups
-          if isEscort:
-            # Try to join unassigned capital ship squadrons first
-            for squadron in colony.unassignedSquadrons.mitems:
-              let flagshipIsCapital = squadron.flagship.shipClass in [
-                ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
-                ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
-                ShipClass.HeavyCruiser, ShipClass.Cruiser
-              ]
-              if flagshipIsCapital and squadron.canAddShip(newShip):
-                squadron.ships.add(newShip)
-                echo "      Commissioned ", shipClass, " and added to unassigned capital squadron ", squadron.id
-                addedToSquadron = true
-                break
+          else:
+            # Combat ship - create squadron as normal
+            let newShip = newEnhancedShip(shipClass, techLevel)
 
-            # If no capital squadrons, try joining escort squadrons
-            if not addedToSquadron:
+            # Intelligent tactical squadron assignment
+            # Try to add escorts to existing unassigned squadrons first (battle-ready groups)
+            # Capital ships always create new squadrons (they're flagships)
+            var addedToSquadron = false
+
+            let isCapitalShip = shipClass in [
+              ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
+              ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
+              ShipClass.HeavyCruiser, ShipClass.Cruiser
+            ]
+
+            let isEscort = shipClass in [
+              ShipClass.Scout, ShipClass.Frigate, ShipClass.Destroyer,
+              ShipClass.Corvette, ShipClass.LightCruiser
+            ]
+
+            # Escorts try to join existing unassigned squadrons for balanced combat groups
+            if isEscort:
+              # Try to join unassigned capital ship squadrons first
               for squadron in colony.unassignedSquadrons.mitems:
-                if squadron.flagship.shipClass == shipClass and squadron.canAddShip(newShip):
+                let flagshipIsCapital = squadron.flagship.shipClass in [
+                  ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
+                  ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
+                  ShipClass.HeavyCruiser, ShipClass.Cruiser
+                ]
+                if flagshipIsCapital and squadron.canAddShip(newShip):
                   squadron.ships.add(newShip)
-                  echo "      Commissioned ", shipClass, " and added to unassigned escort squadron ", squadron.id
+                  echo "      Commissioned ", shipClass, " and added to unassigned capital squadron ", squadron.id
                   addedToSquadron = true
                   break
 
-          # Capital ships and unassigned escorts create new squadrons at colony
-          if not addedToSquadron:
-            let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
-            let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
-            colony.unassignedSquadrons.add(newSquadron)
-            echo "      Commissioned ", shipClass, " into new unassigned squadron at ", systemId
+              # If no capital squadrons, try joining escort squadrons
+              if not addedToSquadron:
+                for squadron in colony.unassignedSquadrons.mitems:
+                  if squadron.flagship.shipClass == shipClass and squadron.canAddShip(newShip):
+                    squadron.ships.add(newShip)
+                    echo "      Commissioned ", shipClass, " and added to unassigned escort squadron ", squadron.id
+                    addedToSquadron = true
+                    break
 
-          # If colony has auto-assign enabled, balance unassigned squadrons to fleets
-          if colony.autoAssignFleets and colony.unassignedSquadrons.len > 0:
-            autoBalanceSquadronsToFleets(state, colony, systemId)
+            # Capital ships and unassigned escorts create new squadrons at colony
+            if not addedToSquadron:
+              let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
+              let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+              colony.unassignedSquadrons.add(newSquadron)
+              echo "      Commissioned ", shipClass, " into new unassigned squadron at ", systemId
+
+            # If colony has auto-assign enabled, balance unassigned squadrons to fleets
+            if colony.autoAssignFleets and colony.unassignedSquadrons.len > 0:
+              autoBalanceSquadronsToFleets(state, colony, systemId)
 
         of econ_types.ConstructionType.Building:
           # Add building to colony

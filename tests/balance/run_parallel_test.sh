@@ -83,3 +83,17 @@ echo ""
 echo "✅ Test complete!"
 echo "Results in: $RESULTS_DIR/"
 echo "Report:     $RESULTS_DIR/ANALYSIS_REPORT.md"
+echo ""
+
+# Auto-archive results (optional, set AUTO_ARCHIVE=1 to enable)
+if [ "${AUTO_ARCHIVE:-0}" = "1" ]; then
+    echo "======================================================================="
+    echo "Auto-archiving results..."
+    echo "======================================================================="
+    if [ -f "./tests/balance/archive_results.sh" ]; then
+        ./tests/balance/archive_results.sh --label "auto-gen${GENS}-pop${POP}"
+        echo "Archived results saved to balance_results/archive/"
+    else
+        echo "Note: archive_results.sh not found, skipping auto-archive"
+    fi
+fi

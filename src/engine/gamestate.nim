@@ -15,6 +15,7 @@ export core.HouseId, core.SystemId, core.FleetId
 export planets.PlanetClass, planets.ResourceRating
 export tech.TechField, tech.TechLevel
 export diplomacy.DiplomaticState
+export fleet.SpaceLiftShip, fleet.SpaceLiftCargo, fleet.CargoType  # ARCHITECTURE FIX
 
 type
   BuildingType* {.pure.} = enum
@@ -63,8 +64,9 @@ type
     underConstruction*: Option[ConstructionProject]
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
-    unassignedSquadrons*: seq[Squadron]      # Squadrons at colony, not in any fleet
-    autoAssignFleets*: bool                   # If true, auto-balance squadrons to fleets at colony
+    unassignedSquadrons*: seq[Squadron]          # Combat squadrons at colony, not in any fleet
+    unassignedSpaceLiftShips*: seq[SpaceLiftShip] # ARCHITECTURE FIX: Spacelift ships separate
+    autoAssignFleets*: bool                       # If true, auto-balance squadrons to fleets at colony
 
     # Fighter squadrons (assets.md:2.4.1)
     fighterSquadrons*: seq[FighterSquadron]  # Colony-based fighters

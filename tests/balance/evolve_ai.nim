@@ -14,7 +14,7 @@ import ../../src/common/types/core
 # Tournament Simulation
 # ============================================================================
 
-proc runTournamentGame(genomes: array[4, AIGenome], turns: int, seed: int64): Table[int, tuple[won: bool, colonies: int, military: int]] =
+proc runTournamentGame(genomes: array[4, AIGenome], turns: int, seed: int64): Table[int, tuple[won: bool, colonies: int, military: int, prestige: int]] =
   ## Run a single 4-player game with given AI genomes
   ## Returns performance stats for each genome
 
@@ -43,7 +43,7 @@ proc runTournamentGame(genomes: array[4, AIGenome], turns: int, seed: int64): Ta
     game = turnResult.newState
 
   # Calculate results
-  result = initTable[int, tuple[won: bool, colonies: int, military: int]]()
+  result = initTable[int, tuple[won: bool, colonies: int, military: int, prestige: int]]()
 
   # Find winner (most prestige + colony count)
   var scores: seq[tuple[id: int, score: float]] = @[]
@@ -67,7 +67,8 @@ proc runTournamentGame(genomes: array[4, AIGenome], turns: int, seed: int64): Ta
     result[genomes[i].id] = (
       won: i == winnerId,
       colonies: colonyCount,
-      military: militaryScore
+      military: militaryScore,
+      prestige: house.prestige
     )
 
 proc evaluatePopulation(pop: var Population) =
@@ -77,9 +78,9 @@ proc evaluatePopulation(pop: var Population) =
   echo &"[Gen {pop.generation}] Evaluating {pop.individuals.len} AI personalities..."
 
   # Track performance for each genome
-  var performance = initTable[int, tuple[games: int, wins: int, colonies: int, military: int]]()
+  var performance = initTable[int, tuple[games: int, wins: int, colonies: int, military: int, prestige: int]]()
   for genome in pop.individuals:
-    performance[genome.id] = (games: 0, wins: 0, colonies: 0, military: 0)
+    performance[genome.id] = (games: 0, wins: 0, colonies: 0, military: 0, prestige: 0)
 
   # Run tournaments
   let totalGames = (pop.individuals.len * pop.config.gamesPerIndividual) div 4
@@ -109,7 +110,8 @@ proc evaluatePopulation(pop: var Population) =
         games: p.games + 1,
         wins: p.wins + (if result.won: 1 else: 0),
         colonies: p.colonies + result.colonies,
-        military: p.military + result.military
+        military: p.military + result.military,
+        prestige: p.prestige + result.prestige
       )
 
     gamesPlayed.inc
@@ -117,7 +119,7 @@ proc evaluatePopulation(pop: var Population) =
   # Calculate fitness for each genome
   for genome in pop.individuals.mitems:
     let p = performance[genome.id]
-    evaluateFitness(genome, p.games, p.wins, p.colonies, p.military)
+    evaluateFitness(genome, p.games, p.wins, p.colonies, p.military, p.prestige)
     let winRate = if p.games > 0: (p.wins.float / p.games.float * 100.0) else: 0.0
     echo &"    ID {genome.id:3}: Fitness={genome.fitness:.3f} WinRate={winRate:5.1f}% Strategy={categorizeStrategy(genome.genes)}"
 

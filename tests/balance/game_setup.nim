@@ -82,6 +82,8 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
 
     # Create home colony
     result.colonies[homeSystemId] = createHomeColony(homeSystemId, houseId)
+    # BALANCE FIX: Enable auto-assign so new ships join fleets automatically
+    result.colonies[homeSystemId].autoAssignFleets = true
 
     # Create starting fleet at homeworld
     result.fleets[(&"{houseId}_fleet1").FleetId] = createStartingFleet(
