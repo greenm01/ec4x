@@ -1,0 +1,7 @@
+nimTitle	proposals	proposals.html	module src/engine/diplomacy/proposals		0
+nim	ProposalType	proposals.html#ProposalType	enum ProposalType		13
+nim	ProposalStatus	proposals.html#ProposalStatus	enum ProposalStatus		19
+nim	PendingProposal	proposals.html#PendingProposal	object PendingProposal		26
+nim	generateProposalId	proposals.html#generateProposalId,int,HouseId,HouseId	proc generateProposalId(turn: int; proposer: HouseId; target: HouseId): string		36
+nim	findProposal	proposals.html#findProposal,seq[PendingProposal],string	proc findProposal(proposals: seq[PendingProposal]; proposalId: string): Option[\n    PendingProposal]		40
+nim	findProposalIndex	proposals.html#findProposalIndex,seq[PendingProposal],string	proc findProposalIndex(proposals: seq[PendingProposal]; proposalId: string): int		47
