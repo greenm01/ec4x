@@ -447,8 +447,8 @@ proc identifyInvasionOpportunities*(controller: var AIController, state: GameSta
 
     # Estimate defense strength (ground forces + starbase + nearby fleets)
     var defenseStrength = 0
-    if systemId in state.starbases:
-      defenseStrength += 100  # Starbase adds significant defense
+    if colony.starbases.len > 0:
+      defenseStrength += 100 * colony.getOperationalStarbaseCount()  # Each starbase adds significant defense
 
     # Check for defending fleets
     for fleet in state.fleets.values:
@@ -577,6 +577,34 @@ proc manageStrategicReserves*(controller: var AIController, state: GameState) =
 
     if bestFleet.isSome:
       controller.assignStrategicReserve(bestFleet.get(), some(systemId), 3)
+
+proc respondToThreats*(controller: var AIController, state: GameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]] =
+  ## Check for enemy fleets near protected systems and return reserve/threat pairs
+  ## Strategic reserves should move to intercept nearby threats
+  result = @[]
+
+  for reserve in controller.reserves:
+    if reserve.assignedTo.isNone:
+      continue
+
+    let protectedSystem = reserve.assignedTo.get()
+    let protectedCoords = state.starMap.systems[protectedSystem].coords
+
+    # Look for enemy fleets within response radius
+    for fleet in state.fleets.values:
+      if fleet.owner == controller.houseId or fleet.combatStrength() == 0:
+        continue
+
+      let fleetCoords = state.starMap.systems[fleet.location].coords
+      let dx = abs(fleetCoords.q - protectedCoords.q)
+      let dy = abs(fleetCoords.r - protectedCoords.r)
+      let dz = abs((fleetCoords.q + fleetCoords.r) - (protectedCoords.q + protectedCoords.r))
+      let dist = (dx + dy + dz) div 2
+
+      if dist <= reserve.responseRadius:
+        # Threat detected - reserve should respond
+        result.add((reserveFleet: reserve.fleetId, threatSystem: fleet.location))
+        break  # One threat per reserve per turn
 
 # =============================================================================
 # Strategic Diplomacy Assessment
@@ -1206,6 +1234,23 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
           order.targetFleet = none(FleetId)
           result.add(order)
           continue
+
+    # Priority 0.75: PHASE 3 - Strategic Reserve Threat Response
+    # Check if this fleet is a reserve responding to a nearby threat
+    let threats = controller.respondToThreats(state)
+    var isRespondingToThreat = false
+    for threat in threats:
+      if threat.reserveFleet == fleet.id:
+        # Reserve fleet should move to intercept threat
+        order.orderType = FleetOrderType.Move
+        order.targetSystem = some(threat.threatSystem)
+        order.targetFleet = none(FleetId)
+        result.add(order)
+        isRespondingToThreat = true
+        break
+
+    if isRespondingToThreat:
+      continue
 
     # Priority 1: Retreat if we're in a losing battle
     if currentCombat.recommendRetreat:
@@ -2092,6 +2137,20 @@ proc generateAIOrders*(controller: var AIController, state: GameState, rng: var 
   ## - Learn from tech advances (prioritize synergistic research)
   let p = controller.personality
   let house = state.houses[controller.houseId]
+
+  # PHASE 3: Strategic planning before generating orders
+  # Update operation status (check which fleets have reached assembly points)
+  controller.updateOperationStatus(state)
+
+  # Manage strategic reserves (assign fleets to defend important colonies)
+  controller.manageStrategicReserves(state)
+
+  # Plan new coordinated operations if aggressive personality and have free fleets
+  if p.aggression > 0.5 and controller.countAvailableFleets(state) >= 2:
+    let opportunities = controller.identifyInvasionOpportunities(state)
+    if opportunities.len > 0:
+      # Plan invasion of highest-value target
+      controller.planCoordinatedInvasion(state, opportunities[0], state.turn)
 
   result = OrderPacket(
     houseId: controller.houseId,
