@@ -108,7 +108,7 @@ When an issue is fixed, check it off and update STATUS.md.
 **Priority:** LOW
 
 - [x] API documentation system created (2025-11-23)
-- [ ] Regenerate API docs after cargo system implementation
+- [x] Regenerate API docs after cargo system implementation (completed 2025-11-23)
 - [ ] Add more examples to STYLE_GUIDE.md
 - [ ] Update operations.md with cargo mechanics once implemented
 
