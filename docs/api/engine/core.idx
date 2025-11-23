@@ -1,0 +1,6 @@
+nimTitle	core	core.html	module src/common/types/core		0
+nim	HouseId	core.html#HouseId	type HouseId		9
+nim	FleetId	core.html#FleetId	type FleetId		10
+nim	SystemId	core.html#SystemId	type SystemId		11
+nim	SquadronId	core.html#SquadronId	type SquadronId		12
+nim	ColonyId	core.html#ColonyId	type ColonyId		13

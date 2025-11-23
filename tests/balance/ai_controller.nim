@@ -30,11 +30,49 @@ type
     diplomacyValue*: float   # 0.0-1.0: Value placed on alliances
     techPriority*: float     # 0.0-1.0: Research investment priority
 
+  IntelligenceReport* = object
+    ## Intelligence gathered about a system
+    systemId*: SystemId
+    lastUpdated*: int         # Turn number of last intel
+    hasColony*: bool          # Is system colonized?
+    owner*: Option[HouseId]   # Who owns the colony?
+    estimatedFleetStrength*: int  # Estimated military strength
+    estimatedDefenses*: int   # Starbases, ground batteries
+    planetClass*: Option[PlanetClass]
+    resources*: Option[ResourceRating]
+    confidenceLevel*: float   # 0.0-1.0: How reliable is this intel?
+
+  OperationType* {.pure.} = enum
+    ## Types of coordinated operations
+    Invasion,      # Multi-fleet invasion of enemy colony
+    Defense,       # Multiple fleets defending important system
+    Raid,          # Quick strike with concentrated force
+    Blockade       # Economic warfare with fleet support
+
+  CoordinatedOperation* = object
+    ## Planned multi-fleet operation
+    operationType*: OperationType
+    targetSystem*: SystemId
+    assemblyPoint*: SystemId  # Where fleets rendezvous
+    requiredFleets*: seq[FleetId]  # Fleets assigned to operation
+    readyFleets*: seq[FleetId]     # Fleets that have arrived at assembly
+    turnScheduled*: int            # When operation was planned
+    executionTurn*: Option[int]    # When to execute (after assembly)
+
+  StrategicReserve* = object
+    ## Fleet designated as strategic reserve
+    fleetId*: FleetId
+    assignedTo*: Option[SystemId]  # System assigned to defend
+    responseRadius*: int           # How far can respond (in jumps)
+
   AIController* = object
     houseId*: HouseId
     strategy*: AIStrategy
     personality*: AIPersonality
     lastTurnReport*: string  ## Previous turn's report for context
+    intelligence*: Table[SystemId, IntelligenceReport]  ## Gathered intel on systems
+    operations*: seq[CoordinatedOperation]  ## PHASE 3: Planned multi-fleet operations
+    reserves*: seq[StrategicReserve]        ## PHASE 3: Strategic reserve fleets
 
 # =============================================================================
 # Strategy Profiles
@@ -112,7 +150,10 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy): AIController =
   AIController(
     houseId: houseId,
     strategy: strategy,
-    personality: getStrategyPersonality(strategy)
+    personality: getStrategyPersonality(strategy),
+    intelligence: initTable[SystemId, IntelligenceReport](),
+    operations: @[],
+    reserves: @[]
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality): AIController =
@@ -120,7 +161,10 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
   AIController(
     houseId: houseId,
     strategy: AIStrategy.Balanced,  # Strategy field is unused with custom personality
-    personality: personality
+    personality: personality,
+    intelligence: initTable[SystemId, IntelligenceReport](),
+    operations: @[],
+    reserves: @[]
   )
 
 # =============================================================================
@@ -188,6 +232,351 @@ proc findWeakestEnemyColony(state: GameState, houseId: HouseId, rng: var Rand): 
     return some(targets[0].systemId)
 
   return none(SystemId)
+
+# =============================================================================
+# Intelligence Gathering (Phase 2)
+# =============================================================================
+
+proc updateIntelligence*(controller: var AIController, state: GameState, systemId: SystemId,
+                         turn: int, confidenceLevel: float = 1.0) =
+  ## Update intelligence report for a system
+  ## Called when scouts gather intel or when we have direct visibility
+  var report = IntelligenceReport(
+    systemId: systemId,
+    lastUpdated: turn,
+    hasColony: systemId in state.colonies,
+    confidenceLevel: confidenceLevel
+  )
+
+  if report.hasColony:
+    let colony = state.colonies[systemId]
+    report.owner = some(colony.owner)
+    report.planetClass = some(colony.planetClass)
+    report.resources = some(colony.resources)
+
+    # Estimate defenses (starbases, ground batteries)
+    report.estimatedDefenses = colony.starbases.len * 10 + colony.groundBatteries * 5
+
+  # Estimate fleet strength at this system
+  var totalStrength = 0
+  for fleet in state.fleets.values:
+    if fleet.location == systemId:
+      for squadron in fleet.squadrons:
+        totalStrength += squadron.combatStrength()
+  report.estimatedFleetStrength = totalStrength
+
+  controller.intelligence[systemId] = report
+
+proc getIntelAge*(controller: AIController, systemId: SystemId, currentTurn: int): Option[int] =
+  ## Get how many turns old our intelligence is for a system
+  if systemId in controller.intelligence:
+    return some(currentTurn - controller.intelligence[systemId].lastUpdated)
+  return none(int)
+
+proc needsReconnaissance*(controller: AIController, systemId: SystemId, currentTurn: int): bool =
+  ## Check if a system needs reconnaissance
+  ## Returns true if we have no intel or intel is stale (>5 turns old)
+  if systemId notin controller.intelligence:
+    return true
+
+  let age = currentTurn - controller.intelligence[systemId].lastUpdated
+  return age > 5  # Intel becomes stale after 5 turns
+
+proc findBestColonizationTarget*(controller: var AIController, state: GameState,
+                                  fromSystem: SystemId): Option[SystemId] =
+  ## Find best colonization target using intelligence
+  ## Prioritizes: Eden/Abundant > Strategic > Nearby > Unknown
+  type TargetScore = tuple[systemId: SystemId, score: float, distance: int]
+  var candidates: seq[TargetScore] = @[]
+
+  let fromCoords = state.starMap.systems[fromSystem].coords
+
+  for systemId, system in state.starMap.systems:
+    if systemId notin state.colonies:
+      var score = 0.0
+
+      # Calculate distance
+      let dx = abs(system.coords.q - fromCoords.q)
+      let dy = abs(system.coords.r - fromCoords.r)
+      let dz = abs((system.coords.q + system.coords.r) - (fromCoords.q + fromCoords.r))
+      let distance = (dx + dy + dz) div 2
+
+      # Distance penalty (prefer nearby, but not overwhelmingly)
+      score -= float(distance) * 0.5
+
+      # Use intelligence if available
+      if systemId in controller.intelligence:
+        let intel = controller.intelligence[systemId]
+
+        # Planet quality bonus (per spec: Extreme/Desolate/Hostile/Harsh/Benign/Lush/Eden)
+        if intel.planetClass.isSome:
+          case intel.planetClass.get()
+          of PlanetClass.Eden:
+            score += 25.0  # Highest priority (Level VII: 2k+ PU)
+          of PlanetClass.Lush:
+            score += 20.0  # Level VI: 1k-2k PU
+          of PlanetClass.Benign:
+            score += 15.0  # Level V: 501-1000 PU
+          of PlanetClass.Harsh:
+            score += 10.0  # Level IV: 181-500 PU
+          of PlanetClass.Hostile:
+            score += 5.0   # Level III: 61-180 PU
+          of PlanetClass.Desolate:
+            score += 2.0   # Level II: 21-60 PU
+          of PlanetClass.Extreme:
+            score += 1.0   # Level I: 1-20 PU (still colonize if close)
+
+        # Resource bonus
+        if intel.resources.isSome:
+          case intel.resources.get()
+          of ResourceRating.VeryRich:
+            score += 20.0  # Exceptional resources
+          of ResourceRating.Rich:
+            score += 15.0  # Excellent resources
+          of ResourceRating.Abundant:
+            score += 10.0  # Good resources
+          of ResourceRating.Poor:
+            score += 3.0   # Minimal resources
+          of ResourceRating.VeryPoor:
+            score += 0.0   # Worst resources
+
+        # Confidence modifier (prefer systems we've scouted)
+        score *= intel.confidenceLevel
+      else:
+        # Unknown system - small bonus for exploration
+        score += 2.0
+
+      let item: TargetScore = (systemId: systemId, score: score, distance: distance)
+      candidates.add(item)
+
+  if candidates.len > 0:
+    # Sort by score (highest first)
+    candidates.sort(proc(a, b: TargetScore): int =
+      if b.score > a.score: 1
+      elif b.score < a.score: -1
+      else: 0
+    )
+    return some(candidates[0].systemId)
+
+  return none(SystemId)
+
+# =============================================================================
+# Fleet Coordination (Phase 3)
+# =============================================================================
+
+proc planCoordinatedOperation*(controller: var AIController, state: GameState,
+                                opType: OperationType, target: SystemId,
+                                fleets: seq[FleetId], assembly: SystemId, turn: int) =
+  ## Plan a multi-fleet coordinated operation
+  let operation = CoordinatedOperation(
+    operationType: opType,
+    targetSystem: target,
+    assemblyPoint: assembly,
+    requiredFleets: fleets,
+    readyFleets: @[],
+    turnScheduled: turn,
+    executionTurn: none(int)
+  )
+  controller.operations.add(operation)
+
+proc updateOperationStatus*(controller: var AIController, state: GameState) =
+  ## Update status of ongoing coordinated operations
+  ## Check which fleets have arrived at assembly points
+  for op in controller.operations.mitems:
+    op.readyFleets.setLen(0)  # Reset ready fleets
+    for fleetId in op.requiredFleets:
+      if fleetId in state.fleets:
+        let fleet = state.fleets[fleetId]
+        if fleet.location == op.assemblyPoint:
+          op.readyFleets.add(fleetId)
+
+    # If all fleets ready and not yet executed, set execution for next turn
+    if op.readyFleets.len == op.requiredFleets.len and op.executionTurn.isNone:
+      op.executionTurn = some(state.turn + 1)
+
+proc shouldExecuteOperation*(controller: AIController, op: CoordinatedOperation, turn: int): bool =
+  ## Check if operation should execute this turn
+  if op.executionTurn.isSome and op.executionTurn.get() <= turn:
+    return op.readyFleets.len == op.requiredFleets.len
+  return false
+
+proc removeCompletedOperations*(controller: var AIController, turn: int) =
+  ## Remove operations that are too old or completed
+  controller.operations = controller.operations.filterIt(
+    it.executionTurn.isNone or it.executionTurn.get() >= turn - 2
+  )
+
+proc identifyImportantColonies*(controller: AIController, state: GameState): seq[SystemId] =
+  ## Identify colonies that need defense-in-depth
+  ## Important = high production or abundant resources
+  result = @[]
+  for systemId, colony in state.colonies:
+    if colony.owner == controller.houseId:
+      # High production colonies (important industrial centers)
+      if colony.production >= 50:
+        result.add(systemId)
+      # Abundant/Rich resource colonies (strategic value)
+      elif colony.resources in [ResourceRating.Rich, ResourceRating.VeryRich, ResourceRating.Abundant]:
+        result.add(systemId)
+
+proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,
+                              assignedSystem: Option[SystemId], radius: int = 3) =
+  ## Designate a fleet as strategic reserve
+  let reserve = StrategicReserve(
+    fleetId: fleetId,
+    assignedTo: assignedSystem,
+    responseRadius: radius
+  )
+  controller.reserves.add(reserve)
+
+proc getReserveForSystem*(controller: AIController, systemId: SystemId): Option[FleetId] =
+  ## Get strategic reserve assigned to defend a system
+  for reserve in controller.reserves:
+    if reserve.assignedTo.isSome and reserve.assignedTo.get() == systemId:
+      return some(reserve.fleetId)
+  return none(FleetId)
+
+proc identifyInvasionOpportunities*(controller: var AIController, state: GameState): seq[SystemId] =
+  ## Identify enemy colonies that warrant coordinated invasion
+  ## Criteria: valuable target, requires multiple fleets, within reach
+  result = @[]
+
+  for systemId, colony in state.colonies:
+    if colony.owner == controller.houseId:
+      continue
+
+    # Estimate defense strength (ground forces + starbase + nearby fleets)
+    var defenseStrength = 0
+    if systemId in state.starbases:
+      defenseStrength += 100  # Starbase adds significant defense
+
+    # Check for defending fleets
+    for fleet in state.fleets.values:
+      if fleet.owner == colony.owner and fleet.location == systemId:
+        defenseStrength += fleet.combatStrength()
+
+    # High-value targets (production >= 50 or rich resources)
+    let isValuable = colony.production >= 50 or
+                     colony.resources in [ResourceRating.Rich, ResourceRating.VeryRich]
+
+    # Requires coordinated attack if defense > 150
+    if isValuable and defenseStrength > 150:
+      result.add(systemId)
+
+proc countAvailableFleets*(controller: AIController, state: GameState): int =
+  ## Count fleets not currently in operations
+  result = 0
+  for fleet in state.fleets.values:
+    if fleet.owner != controller.houseId:
+      continue
+
+    # Check if fleet is already in an operation
+    var inOperation = false
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        inOperation = true
+        break
+
+    if not inOperation and fleet.combatStrength() > 0:
+      result += 1
+
+proc planCoordinatedInvasion*(controller: var AIController, state: GameState,
+                                target: SystemId, turn: int) =
+  ## Plan multi-fleet invasion of a high-value target
+  ## Assembles at nearby friendly system, then attacks together
+
+  # Find nearby friendly system as assembly point
+  var assemblyPoint: Option[SystemId] = none(SystemId)
+  var minDist = 999
+
+  let targetCoords = state.starMap.systems[target].coords
+
+  for systemId, colony in state.colonies:
+    if colony.owner != controller.houseId:
+      continue
+
+    let coords = state.starMap.systems[systemId].coords
+    let dx = abs(coords.q - targetCoords.q)
+    let dy = abs(coords.r - targetCoords.r)
+    let dz = abs((coords.q + coords.r) - (targetCoords.q + targetCoords.r))
+    let dist = (dx + dy + dz) div 2
+
+    if dist < minDist and dist > 0:
+      minDist = dist
+      assemblyPoint = some(systemId)
+
+  if assemblyPoint.isNone:
+    return
+
+  # Identify fleets for invasion force (need 2-3 combat fleets)
+  var selectedFleets: seq[FleetId] = @[]
+  for fleet in state.fleets.values:
+    if fleet.owner == controller.houseId and fleet.combatStrength() > 0:
+      # Skip fleets already in operations
+      var inOperation = false
+      for op in controller.operations:
+        if fleet.id in op.requiredFleets:
+          inOperation = true
+          break
+
+      if not inOperation:
+        selectedFleets.add(fleet.id)
+        if selectedFleets.len >= 3:
+          break
+
+  if selectedFleets.len >= 2:
+    controller.planCoordinatedOperation(
+      state,
+      OperationType.Invasion,
+      target,
+      selectedFleets,
+      assemblyPoint.get(),
+      turn
+    )
+
+proc manageStrategicReserves*(controller: var AIController, state: GameState) =
+  ## Assign fleets as strategic reserves for important colonies
+  ## Defense-in-depth: keep reserves positioned near key systems
+
+  let importantSystems = controller.identifyImportantColonies(state)
+
+  # Assign one reserve per important system (if available)
+  for systemId in importantSystems:
+    if controller.getReserveForSystem(systemId).isSome:
+      continue  # Already has reserve
+
+    # Find nearby idle fleet
+    let systemCoords = state.starMap.systems[systemId].coords
+    var bestFleet: Option[FleetId] = none(FleetId)
+    var minDist = 999
+
+    for fleet in state.fleets.values:
+      if fleet.owner != controller.houseId or fleet.combatStrength() == 0:
+        continue
+
+      # Check if already assigned as reserve
+      var isReserve = false
+      for reserve in controller.reserves:
+        if reserve.fleetId == fleet.id:
+          isReserve = true
+          break
+
+      if isReserve:
+        continue
+
+      # Check distance
+      let fleetCoords = state.starMap.systems[fleet.location].coords
+      let dx = abs(fleetCoords.q - systemCoords.q)
+      let dy = abs(fleetCoords.r - systemCoords.r)
+      let dz = abs((fleetCoords.q + fleetCoords.r) - (systemCoords.q + systemCoords.r))
+      let dist = (dx + dy + dz) div 2
+
+      if dist < minDist and dist <= 3:
+        minDist = dist
+        bestFleet = some(fleet.id)
+
+    if bestFleet.isSome:
+      controller.assignStrategicReserve(bestFleet.get(), some(systemId), 3)
 
 # =============================================================================
 # Strategic Diplomacy Assessment
@@ -407,6 +796,31 @@ type
     recommendReinforce*: bool      # Should we send reinforcements?
     recommendRetreat*: bool        # Should we retreat from system?
 
+  InvasionViability* = object
+    ## 3-phase invasion assessment (Phase 1 improvement)
+    ## Per docs/specs/operations.md: Invasions have 3 phases
+
+    # Phase 1: Space Combat
+    canWinSpaceCombat*: bool       # Can defeat enemy fleets?
+    spaceOdds*: float              # Space combat victory odds
+
+    # Phase 2: Starbase Assault
+    canDestroyStarbases*: bool     # Can destroy defensive starbases?
+    starbaseOdds*: float           # Starbase destruction odds
+
+    # Phase 3: Ground Invasion
+    canWinGroundCombat*: bool      # Can overcome ground forces?
+    groundOdds*: float             # Ground combat victory odds
+    attackerGroundForces*: int     # Marines available (NOTE: engine doesn't track loading!)
+    defenderGroundForces*: int     # Enemy marines + armies + batteries
+
+    # Overall assessment
+    invasionViable*: bool          # All 3 phases passable?
+    recommendInvade*: bool         # Full invasion recommended?
+    recommendBlitz*: bool          # Blitz (skip ground) recommended?
+    recommendBlockade*: bool       # Too strong - blockade instead?
+    strategicValue*: int           # Value of target (production, resources)
+
 proc calculateDefensiveStrength(state: GameState, systemId: SystemId): int =
   ## Calculate total defensive strength of a colony
   if systemId notin state.colonies:
@@ -537,6 +951,11 @@ proc assessCombatSituation(controller: AIController, state: GameState,
   # Calculate strategic value
   result.strategicValue = estimateColonyValue(state, targetSystem)
 
+  # PRESTIGE OPTIMIZATION: Starbase destruction gives +5 prestige
+  # Boost strategic value if target has starbases
+  if result.starbaseStrength > 0:
+    result.strategicValue += 50  # Starbase destruction is high-value target
+
   # Make recommendations based on personality and odds
   let p = controller.personality
 
@@ -550,6 +969,10 @@ proc assessCombatSituation(controller: AIController, state: GameState,
     attackThreshold = 0.5  # High risk tolerance
   elif p.aggression < 0.3:
     attackThreshold = 0.8  # Cautious: need 80% odds
+
+  # PRESTIGE OPTIMIZATION: Lower threshold for starbase targets (+5 prestige)
+  if result.starbaseStrength > 0 and attackThreshold > 0.5:
+    attackThreshold -= 0.1  # More willing to attack starbase targets
 
   # Don't attack if it violates pact (unless we're deciding to break it)
   if result.violatesPact:
@@ -570,15 +993,159 @@ proc assessCombatSituation(controller: AIController, state: GameState,
     result.estimatedCombatOdds < 0.3  # Less than 30% odds
   )
 
+proc assessInvasionViability(controller: AIController, state: GameState,
+                             fleet: Fleet, targetSystem: SystemId): InvasionViability =
+  ## PHASE 1 IMPROVEMENT: 3-phase invasion viability assessment
+  ## Invasions require winning 3 sequential battles:
+  ##   1. Space Combat - Defeat enemy fleets
+  ##   2. Starbase Assault - Destroy defensive installations
+  ##   3. Ground Invasion - Overcome marines, armies, ground batteries
+  ##
+  ## Per docs/specs/operations.md:
+  ## - Invasion: Full planetary assault (all 3 phases)
+  ## - Blitz: Skip ground combat, just destroy orbital defenses
+  ## - Blockade: If too strong to invade, starve them economically (-60% GCO)
+
+  # Get basic combat assessment first
+  let combat = assessCombatSituation(controller, state, targetSystem)
+  let targetColony = state.colonies[targetSystem]
+  let p = controller.personality
+
+  # =============================================================================
+  # PHASE 1: Space Combat Assessment
+  # =============================================================================
+  # Can we defeat enemy fleets in the system?
+
+  let spaceAttackStrength = fleet.squadrons.foldl(a + b.combatStrength(), 0)
+  let spaceDefenseStrength = combat.defenderFleetStrength
+
+  if spaceDefenseStrength == 0:
+    result.spaceOdds = 1.0
+    result.canWinSpaceCombat = true
+  else:
+    let spaceRatio = float(spaceAttackStrength) / float(spaceDefenseStrength)
+    result.spaceOdds = spaceRatio / (spaceRatio + 0.8)
+    result.canWinSpaceCombat = result.spaceOdds >= 0.5  # Need 50%+ odds
+
+  # =============================================================================
+  # PHASE 2: Starbase Assault Assessment
+  # =============================================================================
+  # Can we destroy defensive starbases?
+  # NOTE: Starbases have both attack and defense, must be destroyed before landing
+
+  if combat.starbaseStrength == 0:
+    result.starbaseOdds = 1.0
+    result.canDestroyStarbases = true
+  else:
+    # Starbases are tough - assume ~100 AS each
+    # Need sufficient firepower to overcome them
+    let starbaseRatio = float(spaceAttackStrength) / float(combat.starbaseStrength)
+    result.starbaseOdds = starbaseRatio / (starbaseRatio + 1.2)  # Harder than space combat
+    result.canDestroyStarbases = result.starbaseOdds >= 0.4  # Can take more losses here
+
+  # =============================================================================
+  # PHASE 3: Ground Combat Assessment
+  # =============================================================================
+  # Can we overcome ground forces (marines + armies + ground batteries)?
+  #
+  # ENGINE LIMITATION: Transports don't actually track loaded marines yet!
+  # TODO: This will need updating when cargo system is implemented
+  # For now: ASSUME transports are loaded with 1 MD (Marine Division) each
+
+  result.defenderGroundForces = combat.groundForces + combat.groundBatteryCount
+
+  # ARCHITECTURE FIX: Count spacelift ships (TroopTransports carry 1 MD each)
+  var transportCount = 0
+  for spaceLiftShip in fleet.spaceLiftShips:
+    if spaceLiftShip.shipClass == ShipClass.TroopTransport:
+      transportCount += 1
+
+  result.attackerGroundForces = transportCount  # 1 MD per transport
+
+  if result.defenderGroundForces == 0:
+    result.groundOdds = 1.0
+    result.canWinGroundCombat = true
+  elif result.attackerGroundForces == 0:
+    result.groundOdds = 0.0
+    result.canWinGroundCombat = false
+  else:
+    # Ground combat requires ~2:1 advantage typically
+    let groundRatio = float(result.attackerGroundForces) / float(result.defenderGroundForces)
+    result.groundOdds = groundRatio / (groundRatio + 1.5)  # Need advantage
+    result.canWinGroundCombat = result.groundOdds >= 0.5
+
+  # =============================================================================
+  # Overall Assessment
+  # =============================================================================
+
+  # Invasion is only viable if we can pass all 3 phases
+  result.invasionViable = (
+    result.canWinSpaceCombat and
+    result.canDestroyStarbases and
+    result.canWinGroundCombat
+  )
+
+  # Strategic value (for prestige/resource gain)
+  result.strategicValue = combat.strategicValue
+
+  # =============================================================================
+  # Decision: Invade, Blitz, Blockade, or Move?
+  # =============================================================================
+
+  # Personality modifiers
+  let invasionThreshold = if p.riskTolerance > 0.6: 0.5 else: 0.65
+  let blitzThreshold = if p.aggression > 0.6: 0.4 else: 0.5
+
+  if result.invasionViable:
+    # Full invasion possible - gives +10 prestige (highest!)
+    result.recommendInvade = true
+    result.recommendBlitz = false
+    result.recommendBlockade = false
+
+  elif result.canWinSpaceCombat and result.canDestroyStarbases:
+    # Can't win ground combat, but can destroy orbital defenses
+    # Blitz gives +5 prestige for starbase destruction
+    result.recommendInvade = false
+    result.recommendBlitz = true
+    result.recommendBlockade = false
+
+  elif result.canWinSpaceCombat and result.spaceOdds >= 0.6:
+    # Strong in space but can't overcome starbases
+    # Consider blockade for economic warfare (-60% GCO)
+    result.recommendInvade = false
+    result.recommendBlitz = false
+    result.recommendBlockade = (p.aggression < 0.5)  # Cautious AIs prefer blockade
+
+  else:
+    # Too weak - don't attempt invasion
+    result.recommendInvade = false
+    result.recommendBlitz = false
+    result.recommendBlockade = false
+
 # =============================================================================
 # Order Generation
 # =============================================================================
 
-proc generateFleetOrders(controller: AIController, state: GameState, rng: var Rand): seq[FleetOrder] =
+proc generateFleetOrders(controller: var AIController, state: GameState, rng: var Rand): seq[FleetOrder] =
   ## Generate fleet orders based on strategic military assessment
+  ## PHASE 2: Now updates intelligence when making decisions
   result = @[]
   let p = controller.personality
   let myFleets = getOwnedFleets(state, controller.houseId)
+
+  # PHASE 2: Update intelligence for systems we have visibility on
+  # (Our colonies + systems with our fleets = automatic intel)
+  for systemId, colony in state.colonies:
+    if colony.owner == controller.houseId:
+      controller.updateIntelligence(state, systemId, state.turn, 1.0)
+
+  for fleet in myFleets:
+    # Fleets give us visibility into their current system
+    controller.updateIntelligence(state, fleet.location, state.turn, 0.8)
+
+  # PHASE 3: Update coordinated operations status
+  controller.updateOperationStatus(state)
+  controller.removeCompletedOperations(state.turn)
 
   for fleet in myFleets:
     var order: FleetOrder
@@ -589,6 +1156,56 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
     let currentCombat = assessCombatSituation(
       controller, state, fleet.location
     )
+
+    # BALANCE FIX: Priority 0 - Stay at colony to absorb unassigned squadrons
+    # If at a friendly colony with unassigned squadrons, hold position so auto-assign works
+    if fleet.location in state.colonies:
+      let colony = state.colonies[fleet.location]
+      if colony.owner == controller.houseId and colony.unassignedSquadrons.len > 0:
+        # Stay at colony to pick up newly built ships
+        order.orderType = FleetOrderType.Hold
+        order.targetSystem = some(fleet.location)
+        order.targetFleet = none(FleetId)
+        result.add(order)
+        continue
+
+    # Priority 0.5: PHASE 3 - Coordinated Operations
+    # Check if this fleet is part of a coordinated operation
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        # Fleet is part of coordinated operation
+        if fleet.location != op.assemblyPoint:
+          # Not at assembly point - issue Rendezvous order
+          order.orderType = FleetOrderType.Rendezvous
+          order.targetSystem = some(op.assemblyPoint)
+          order.targetFleet = none(FleetId)
+          result.add(order)
+          continue
+        elif controller.shouldExecuteOperation(op, state.turn):
+          # At assembly point and ready to execute
+          case op.operationType
+          of OperationType.Invasion:
+            order.orderType = FleetOrderType.Invade
+            order.targetSystem = some(op.targetSystem)
+          of OperationType.Raid:
+            order.orderType = FleetOrderType.Blitz
+            order.targetSystem = some(op.targetSystem)
+          of OperationType.Blockade:
+            order.orderType = FleetOrderType.BlockadePlanet
+            order.targetSystem = some(op.targetSystem)
+          of OperationType.Defense:
+            order.orderType = FleetOrderType.Patrol
+            order.targetSystem = some(op.targetSystem)
+          order.targetFleet = none(FleetId)
+          result.add(order)
+          continue
+        else:
+          # At assembly but not ready - hold position
+          order.orderType = FleetOrderType.Hold
+          order.targetSystem = some(fleet.location)
+          order.targetFleet = none(FleetId)
+          result.add(order)
+          continue
 
     # Priority 1: Retreat if we're in a losing battle
     if currentCombat.recommendRetreat:
@@ -622,8 +1239,13 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
       result.add(order)
       continue
 
-    # Priority 3: Find targets to attack based on aggression
-    if p.aggression > 0.5:
+    # Priority 3: Find targets to attack based on aggression OR military focus
+    # BALANCE FIX: Lowered aggression from 0.5 to 0.3 to enable more combat
+    # BALANCE FIX: Added military-focused AIs always seek targets (even if low aggression)
+    let militaryFocus = 1.0 - p.economicFocus
+    let shouldSeekTargets = p.aggression > 0.3 or militaryFocus > 0.7
+
+    if shouldSeekTargets:
       # Look for vulnerable enemy colonies
       var bestTarget: Option[SystemId] = none(SystemId)
       var bestOdds = 0.0
@@ -638,26 +1260,131 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
           bestTarget = some(systemId)
 
       if bestTarget.isSome:
-        order.orderType = FleetOrderType.Move
+        # ARCHITECTURE FIX: Check if fleet has troop transports (spacelift ships)
+        var hasTransports = false
+        for spaceLiftShip in fleet.spaceLiftShips:
+          if spaceLiftShip.shipClass == ShipClass.TroopTransport:
+            hasTransports = true
+            break
+
+        # PHASE 1 IMPROVEMENT: Use 3-phase invasion viability assessment
+        # Invasions give +10 prestige (highest reward!) - prioritize them
+        if hasTransports:
+          # Perform comprehensive 3-phase invasion assessment
+          let invasion = assessInvasionViability(controller, state, fleet, bestTarget.get)
+
+          if invasion.recommendInvade:
+            # Full invasion - can win all 3 phases (space, starbase, ground)
+            order.orderType = FleetOrderType.Invade
+          elif invasion.recommendBlitz:
+            # Blitz - can win space + starbase, but not ground
+            # Still gets +5 prestige for starbase destruction
+            order.orderType = FleetOrderType.Blitz
+          elif invasion.recommendBlockade:
+            # Too strong to invade, use economic warfare
+            order.orderType = FleetOrderType.BlockadePlanet
+          else:
+            # Not viable - just do space combat
+            order.orderType = FleetOrderType.Move
+        else:
+          # No transports, just move to attack (space combat only)
+          order.orderType = FleetOrderType.Move
+
         order.targetSystem = bestTarget
         order.targetFleet = none(FleetId)
         result.add(order)
         continue
 
+    # Priority 3.5: PHASE 2 - Scout Reconnaissance Missions
+    # Check if this is a scout-only fleet (single squadron with scouts)
+    var isScoutFleet = false
+    var hasOnlyScouts = false
+    if fleet.squadrons.len == 1:
+      let squadron = fleet.squadrons[0]
+      # Single-squadron scout fleets are ideal for spy missions (per operations.md:45)
+      if squadron.flagship.shipClass == ShipClass.Scout and squadron.ships.len == 0:
+        isScoutFleet = true
+        hasOnlyScouts = true
+
+    if isScoutFleet and (p.techPriority > 0.4 or p.expansionDrive > 0.5):
+      # PHASE 2: Intelligence operations for scouts
+      # Priority: Pre-colonization recon > Pre-invasion intel > Strategic positioning
+
+      # A) Pre-colonization reconnaissance - scout systems before sending ETACs
+      if p.expansionDrive > 0.4:
+        # Find uncolonized systems that need scouting
+        var needsRecon: seq[SystemId] = @[]
+        for systemId, system in state.starMap.systems:
+          if systemId notin state.colonies and
+             controller.needsReconnaissance(systemId, state.turn):
+            needsRecon.add(systemId)
+
+        if needsRecon.len > 0:
+          # Pick closest system needing recon
+          var closest: Option[SystemId] = none(SystemId)
+          var minDist = 999
+          let fromCoords = state.starMap.systems[fleet.location].coords
+          for sysId in needsRecon:
+            let coords = state.starMap.systems[sysId].coords
+            let dx = abs(coords.q - fromCoords.q)
+            let dy = abs(coords.r - fromCoords.r)
+            let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+            let dist = (dx + dy + dz) div 2
+            if dist < minDist:
+              minDist = dist
+              closest = some(sysId)
+
+          if closest.isSome:
+            # Issue spy mission to gather planetary intelligence
+            order.orderType = FleetOrderType.SpyPlanet
+            order.targetSystem = closest
+            order.targetFleet = none(FleetId)
+            result.add(order)
+            continue
+
+      # B) Pre-invasion intelligence - scout enemy colonies before invasion
+      if p.aggression > 0.4:
+        # Find enemy colonies that need updated intelligence
+        var needsIntel: seq[SystemId] = @[]
+        for systemId, colony in state.colonies:
+          if colony.owner != controller.houseId and
+             controller.needsReconnaissance(systemId, state.turn):
+            needsIntel.add(systemId)
+
+        if needsIntel.len > 0:
+          # Pick closest enemy colony needing intel
+          var closest: Option[SystemId] = none(SystemId)
+          var minDist = 999
+          let fromCoords = state.starMap.systems[fleet.location].coords
+          for sysId in needsIntel:
+            let coords = state.starMap.systems[sysId].coords
+            let dx = abs(coords.q - fromCoords.q)
+            let dy = abs(coords.r - fromCoords.r)
+            let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+            let dist = (dx + dy + dz) div 2
+            if dist < minDist:
+              minDist = dist
+              closest = some(sysId)
+
+          if closest.isSome:
+            # Issue spy mission to gather defense intelligence
+            order.orderType = FleetOrderType.SpySystem
+            order.targetSystem = closest
+            order.targetFleet = none(FleetId)
+            result.add(order)
+            continue
+
     # Priority 4: Expansion and Exploration
-    # Check if this fleet has an ETAC (colony ship)
+    # ARCHITECTURE FIX: Check if fleet has ETAC (spacelift ship for colonization)
     var hasETAC = false
-    for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass == ShipClass.ETAC:
+    for spaceLiftShip in fleet.spaceLiftShips:
+      if spaceLiftShip.shipClass == ShipClass.ETAC:
         hasETAC = true
         break
-      for ship in squadron.ships:
-        if ship.shipClass == ShipClass.ETAC:
-          hasETAC = true
-          break
 
     if hasETAC:
-      # ETAC fleets: Colonize if at uncolonized system, otherwise move to one
+      # PHASE 2: Intelligence-driven colonization
+      # ETAC fleets: Colonize if at uncolonized system, otherwise move to best target
       if fleet.location notin state.colonies:
         # At uncolonized system - COLONIZE IT!
         order.orderType = FleetOrderType.Colonize
@@ -666,8 +1393,8 @@ proc generateFleetOrders(controller: AIController, state: GameState, rng: var Ra
         result.add(order)
         continue
       else:
-        # At colonized system - seek uncolonized systems
-        let targetOpt = findNearestUncolonizedSystem(state, fleet.location)
+        # At colonized system - seek BEST uncolonized system (using intel)
+        let targetOpt = findBestColonizationTarget(controller, state, fleet.location)
         if targetOpt.isSome:
           order.orderType = FleetOrderType.Move
           order.targetSystem = targetOpt
@@ -746,8 +1473,11 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
   var capitalShipCount = 0  # BB, BC, DN, SD
   var starbaseCount = 0
 
+  # BALANCE FIX: Count squadrons in fleets AND unassigned squadrons
+  # ARCHITECTURE FIX: Count spacelift ships separately (NOT in squadrons)
   for fleet in state.fleets.values:
     if fleet.owner == controller.houseId:
+      # Count combat squadrons
       for squadron in fleet.squadrons:
         case squadron.flagship.shipClass:
         of ShipClass.Scout:
@@ -758,10 +1488,6 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
           carrierCount += 1
         of ShipClass.Fighter:
           fighterCount += 1
-        of ShipClass.ETAC:
-          etacCount += 1
-        of ShipClass.TroopTransport:
-          transportCount += 1
         of ShipClass.Battleship, ShipClass.Battlecruiser,
            ShipClass.Dreadnought, ShipClass.SuperDreadnought:
           capitalShipCount += 1
@@ -780,13 +1506,52 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
             raiderCount += 1
           of ShipClass.Fighter:
             fighterCount += 1
-          of ShipClass.ETAC:
-            etacCount += 1
-          of ShipClass.TroopTransport:
-            transportCount += 1
           else:
             if ship.shipType == ShipType.Military:
               militaryCount += 1
+
+      # ARCHITECTURE FIX: Count spacelift ships separately
+      for spaceLiftShip in fleet.spaceLiftShips:
+        case spaceLiftShip.shipClass:
+        of ShipClass.ETAC:
+          etacCount += 1
+        of ShipClass.TroopTransport:
+          transportCount += 1
+        else:
+          discard  # Shouldn't happen, spacelift ships are only ETAC/TroopTransport
+
+  # BALANCE FIX: Also count unassigned squadrons and spacelift ships at colonies
+  for colony in myColonies:
+    # Count unassigned combat squadrons
+    for squadron in colony.unassignedSquadrons:
+      case squadron.flagship.shipClass:
+      of ShipClass.Scout:
+        scoutCount += 1
+      of ShipClass.Raider:
+        raiderCount += 1
+      of ShipClass.Carrier, ShipClass.SuperCarrier:
+        carrierCount += 1
+      of ShipClass.Fighter:
+        fighterCount += 1
+      of ShipClass.Battleship, ShipClass.Battlecruiser,
+         ShipClass.Dreadnought, ShipClass.SuperDreadnought:
+        capitalShipCount += 1
+        militaryCount += 1
+      of ShipClass.Starbase:
+        starbaseCount += 1
+      else:
+        if squadron.flagship.shipType == ShipType.Military:
+          militaryCount += 1
+
+    # ARCHITECTURE FIX: Count unassigned spacelift ships
+    for spaceLiftShip in colony.unassignedSpaceLiftShips:
+      case spaceLiftShip.shipClass:
+      of ShipClass.ETAC:
+        etacCount += 1
+      of ShipClass.TroopTransport:
+        transportCount += 1
+      else:
+        discard
 
   # ==========================================================================
   # STRATEGIC ASSESSMENT - What does this AI need?
@@ -824,22 +1589,37 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
   # Strategic needs assessment (FIXED: scouts only needed initially)
   let needScouts = scoutCount < 2  # Need 2-3 scouts for exploration/ELI
   let needMoreScouts = scoutCount < 3 and p.techPriority > 0.5 and militaryCount > 5
-  let needETACs = (etacCount < 1 and p.expansionDrive > 0.3 and
+  # PRESTIGE OPTIMIZATION: Colonization gives +5 prestige
+  # Expand aggressively when uncolonized systems available
+  let needETACs = (etacCount < 2 and p.expansionDrive > 0.3 and
                    findNearestUncolonizedSystem(state, myColonies[0].systemId).isSome)
-  let needTransports = (transportCount < 1 and p.aggression > 0.5 and militaryCount > 3)
 
-  # Military needs - MUCH more nuanced
-  let needMilitary = (
-    militaryRatio < 0.8 or  # Weaker than enemies
-    threatenedColonies > 0 or  # Colonies under threat
-    (p.aggression > 0.6 and militaryCount < 10) or  # Aggressive build-up
-    militaryCount < 3  # Minimum defense force
+  # PRESTIGE OPTIMIZATION: Invasions give +10 prestige (highest single gain)
+  # Build transports for aggressive AIs to enable invasions
+  let needTransports = (
+    transportCount < 1 and
+    (p.aggression > 0.4 or p.expansionDrive > 0.6) and  # Lower threshold
+    militaryCount > 3
   )
 
+  # Military needs - MUCH more nuanced
+  # BALANCE FIX: Made military building more aggressive to enable combat
+  let militaryFocus = 1.0 - p.economicFocus
+  let needMilitary = (
+    militaryRatio < 1.0 or  # Was: 0.8 - now build until parity or better
+    threatenedColonies > 0 or  # Colonies under threat
+    (p.aggression > 0.4 and militaryCount < 8) or  # Was: 0.6 & 10 - more aggressive
+    (militaryFocus > 0.6 and militaryCount < 12) or  # Military-focused: build big fleet
+    militaryCount < 2  # Was: 3 - minimum defense lower to prioritize offense
+  )
+
+  # PRESTIGE OPTIMIZATION: Starbases give +5 prestige when destroyed (enemy)
+  # Losing starbases costs -5 prestige. Build for all important colonies.
   let needDefenses = (
     threatenedColonies > 0 or  # Under attack
     starbaseCount < myColonies.len or  # Starbases for all colonies
-    (hasEnemies and militaryCount < 5)  # Enemies exist but weak military
+    (hasEnemies and militaryCount < 5) or  # Enemies exist but weak military
+    (starbaseCount == 0 and myColonies.len > 0)  # Always have at least one starbase
   )
 
   let needRaiders = (
@@ -1029,6 +1809,59 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         ))
         break
 
+    # PHASE 1 IMPROVEMENT: Proactive garrison management
+    # Build marine garrisons BEFORE invasions threaten, not after
+    #
+    # Strategic priorities:
+    # - Homeworld: 5+ marine garrison (critical)
+    # - Important colonies: 3+ marines (high production, resources)
+    # - Frontier colonies: 1-2 marines (minimum defense)
+    # - Prepare marines for loading onto transports for invasions
+
+    let isHomeworld = (colony.systemId == state.starMap.playerSystemIds[0])  # Assume homeworld
+    let isImportant = (colony.production >= 50 or colony.resources == ResourceRating.Abundant)
+    let isFrontier = (threatenedColonies > 0)  # Near enemies
+
+    var targetGarrison = 0
+    if isHomeworld:
+      targetGarrison = 5  # Homeworld: strong garrison
+    elif isImportant:
+      targetGarrison = 3  # Important: medium garrison
+    elif hasEnemies:
+      targetGarrison = 2  # Any colony when enemies exist: minimum garrison
+    else:
+      targetGarrison = 1  # Peacetime: minimal garrison
+
+    # Build marines proactively if below target
+    if colony.marines < targetGarrison:
+      let marineCost = getBuildingCost("Marines")
+      if house.treasury >= marineCost:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Building,
+          quantity: 1,
+          shipClass: none(ShipClass),
+          buildingType: some("Marines"),
+          industrialUnits: 0
+        ))
+        break
+
+    # PHASE 1: Build extra marines for invasion preparation
+    # If we have transports but they're not loaded (engine limitation!),
+    # at least ensure colonies have spare marines available
+    if needTransports and transportCount > 0 and colony.marines < targetGarrison + 2:
+      let marineCost = getBuildingCost("Marines")
+      if house.treasury >= marineCost:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Building,
+          quantity: 1,
+          shipClass: none(ShipClass),
+          buildingType: some("Marines"),
+          industrialUnits: 0
+        ))
+        break
+
     # ------------------------------------------------------------------------
     # LATE GAME: Specialized assets and optimization
     # ------------------------------------------------------------------------
@@ -1147,9 +1980,10 @@ proc generateDiplomaticActions(controller: AIController, state: GameState, rng: 
     assessments.add(assessDiplomaticSituation(controller, state, otherHouseId))
 
   # Priority 1: Break pacts if strategically advantageous (rare)
+  # PRESTIGE OPTIMIZATION: Pact violations cost -10 prestige - avoid unless huge advantage
   for assessment in assessments:
     if assessment.recommendBreak and assessment.currentState == dip_types.DiplomaticState.NonAggression:
-      # Double-check with random roll to avoid too frequent violations
+      # Double-check with random roll to avoid too frequent violations (-10 prestige penalty)
       if rng.rand(1.0) < 0.2:  # Only 20% chance even when recommended
         result.add(DiplomaticAction(
           targetHouse: assessment.targetHouse,
@@ -1158,17 +1992,23 @@ proc generateDiplomaticActions(controller: AIController, state: GameState, rng: 
         return result  # Only one action per turn
 
   # Priority 2: Propose pacts with strategic partners
+  # PRESTIGE OPTIMIZATION: Forming pacts gives +5 prestige - pursue actively
+  # BALANCE FIX: Don't form pacts too aggressively - creates peaceful meta
   for assessment in assessments:
     if assessment.recommendPact and assessment.currentState == dip_types.DiplomaticState.Neutral:
       # Check if we can form pacts (not isolated)
       if dip_types.canFormPact(myHouse.violationHistory):
         # Check if we can reinstate with this specific house
         if dip_types.canReinstatePact(myHouse.violationHistory, assessment.targetHouse, state.turn):
-          result.add(DiplomaticAction(
-            targetHouse: assessment.targetHouse,
-            actionType: DiplomaticActionType.ProposeNonAggressionPact
-          ))
-          return result  # Only one action per turn
+          # BALANCE FIX: Only form pacts if diplomatic-focused OR random chance
+          # This prevents everyone from pacting with everyone
+          let pactChance = if p.diplomacyValue > 0.6: 0.6 else: 0.2
+          if rng.rand(1.0) < pactChance:
+            result.add(DiplomaticAction(
+              targetHouse: assessment.targetHouse,
+              actionType: DiplomaticActionType.ProposeNonAggressionPact
+            ))
+            return result  # Only one action per turn
 
   # Priority 3: Declare enemy against weak/aggressive targets
   for assessment in assessments:
@@ -1233,13 +2073,17 @@ proc generateEspionageAction(controller: AIController, state: GameState, rng: va
 # Main Order Generation
 # =============================================================================
 
-proc generateAIOrders*(controller: AIController, state: GameState, rng: var Rand): OrderPacket =
+proc generateAIOrders*(controller: var AIController, state: GameState, rng: var Rand): OrderPacket =
   ## Generate complete order packet for an AI player
+  ##
+  ## PHASE 2/3: Controller is now `var` to support intelligence updates
   ##
   ## Context available:
   ## - controller.lastTurnReport: Previous turn's report (for AI learning)
   ## - state: Current game state
   ## - controller.personality: Strategic personality parameters
+  ## - controller.intelligence: System intelligence reports (Phase 2)
+  ## - controller.operations: Coordinated operations (Phase 3)
   ##
   ## Future enhancement: Parse lastTurnReport to:
   ## - React to combat losses (build replacements, retreat)
