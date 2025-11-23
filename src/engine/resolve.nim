@@ -2294,9 +2294,10 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         echo "    Proposal ", proposal.id, " expired (", proposal.proposer, " -> ", proposal.target, ")"
 
   # Clean up old proposals (keep 10 turn history)
+  let currentTurn = state.turn
   state.pendingProposals.keepIf(proc(p: dip_proposals.PendingProposal): bool =
     p.status == dip_proposals.ProposalStatus.Pending or
-    (state.turn - p.submittedTurn) < 10
+    (currentTurn - p.submittedTurn) < 10
   )
 
   # Process Space Guild population transfers arriving this turn
