@@ -62,8 +62,9 @@ type
     production*: int              # Current turn production
     underConstruction*: Option[ConstructionProject]
 
-    # Commissioned ships awaiting squadron assignment
-    commissionedShips*: seq[EnhancedShip]    # Ships commissioned but not yet in squadrons
+    # Squadrons awaiting fleet assignment (auto-commissioned from construction)
+    unassignedSquadrons*: seq[Squadron]      # Squadrons at colony, not in any fleet
+    autoAssignFleets*: bool                   # If true, auto-balance squadrons to fleets at colony
 
     # Fighter squadrons (assets.md:2.4.1)
     fighterSquadrons*: seq[FighterSquadron]  # Colony-based fighters

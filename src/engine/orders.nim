@@ -28,7 +28,6 @@ type
 
   SquadronManagementAction* {.pure.} = enum
     ## Squadron and ship management actions at colonies
-    FormSquadron      # Create new squadron from commissioned ships pool
     TransferShip      # Move ship directly between squadrons at colony
     AssignToFleet     # Assign squadron to fleet (new or existing)
 
@@ -165,6 +164,22 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
 
     if order.targetSystem.isNone:
       return ValidationResult(valid: false, error: "Combat order requires target system")
+
+  of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
+    # Spy missions require single-scout squadrons for stealth
+    # Multi-ship squadrons significantly increase detection risk
+    if fleet.squadrons.len != 1:
+      return ValidationResult(valid: false, error: "Spy missions require single squadron")
+
+    let squadron = fleet.squadrons[0]
+    if squadron.flagship.shipClass != ShipClass.Scout:
+      return ValidationResult(valid: false, error: "Spy missions require Scout squadron")
+
+    if squadron.ships.len > 0:
+      return ValidationResult(valid: false, error: "Spy missions require single-scout squadron (no additional ships)")
+
+    if order.targetSystem.isNone:
+      return ValidationResult(valid: false, error: "Spy mission requires target system")
 
   of FleetOrderType.JoinFleet:
     if order.targetFleet.isNone:
