@@ -1068,12 +1068,39 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
         continue
 
       let cargoType = order.cargoType.get()
-      let quantity = if order.quantity.isSome: order.quantity.get() else: 0  # 0 = all available
+      var requestedQty = if order.quantity.isSome: order.quantity.get() else: 0  # 0 = all available
 
-      # Find spacelift ships in fleet
+      # Get mutable colony and fleet
+      var colony = state.colonies[order.colonySystem]
+      var fleet = fleetOpt.get()
+      var totalLoaded = 0
+
+      # Check colony inventory based on cargo type
+      var availableUnits = case cargoType
+        of CargoType.Marines: colony.marines
+        of CargoType.Colonists: 1  # ETACs carry exactly 1 PTU for colonization
+        else: 0
+
+      if availableUnits <= 0:
+        echo "    LoadCargo failed: No ", cargoType, " available at ", order.colonySystem
+        continue
+
+      # If quantity = 0, load all available
+      if requestedQty == 0:
+        requestedQty = availableUnits
+
+      # Load cargo onto compatible spacelift ships
+      var remainingToLoad = min(requestedQty, availableUnits)
+      var modifiedShips: seq[SpaceLiftShip] = @[]
+
       for ship in fleet.spaceLiftShips:
+        if remainingToLoad <= 0:
+          modifiedShips.add(ship)
+          continue
+
         if ship.isCrippled:
-          continue  # Can't load cargo on crippled ships
+          modifiedShips.add(ship)
+          continue
 
         # Determine ship capacity and compatible cargo type
         let shipCargoType = case ship.shipClass
@@ -1082,22 +1109,76 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
           else: CargoType.None
 
         if shipCargoType != cargoType:
+          modifiedShips.add(ship)
           continue  # Ship can't carry this cargo type
 
-        # Load cargo (simplified for now - full logic needs colony inventory)
-        # TODO: Check colony inventory for marines/colonists
-        # TODO: Implement actual cargo transfer with quantity tracking
-        echo "    Loaded ", cargoType, " onto ", ship.shipClass, " ", ship.id, " at ", order.colonySystem
+        # Try to load cargo onto this ship
+        var mutableShip = ship
+        let loadAmount = min(remainingToLoad, mutableShip.cargo.capacity - mutableShip.cargo.quantity)
+        if mutableShip.loadCargo(cargoType, loadAmount):
+          totalLoaded += loadAmount
+          remainingToLoad -= loadAmount
+          echo "    Loaded ", loadAmount, " ", cargoType, " onto ", ship.shipClass, " ", ship.id
+
+        modifiedShips.add(mutableShip)
+
+      # Update colony inventory
+      if totalLoaded > 0:
+        case cargoType
+        of CargoType.Marines:
+          colony.marines -= totalLoaded
+        of CargoType.Colonists:
+          # Colonists come from population, not stored inventory
+          # ETAC loading is a commitment to transport 1 PTU
+          discard
+        else:
+          discard
+
+        # Write back modified state
+        fleet.spaceLiftShips = modifiedShips
+        state.fleets[order.fleetId] = fleet
+        state.colonies[order.colonySystem] = colony
+        echo "    Successfully loaded ", totalLoaded, " ", cargoType, " at ", order.colonySystem
 
     of CargoManagementAction.UnloadCargo:
+      # Get mutable colony and fleet
+      var colony = state.colonies[order.colonySystem]
+      var fleet = fleetOpt.get()
+      var modifiedShips: seq[SpaceLiftShip] = @[]
+      var totalUnloaded = 0
+      var unloadedType = CargoType.None
+
       # Unload cargo from spacelift ships
       for ship in fleet.spaceLiftShips:
-        if ship.cargo.cargoType == CargoType.None:
+        var mutableShip = ship
+
+        if mutableShip.cargo.cargoType == CargoType.None:
+          modifiedShips.add(mutableShip)
           continue  # No cargo to unload
 
-        # Unload cargo back to colony
-        # TODO: Add cargo back to colony inventory
-        echo "    Unloaded ", ship.cargo.quantity, " ", ship.cargo.cargoType, " from ", ship.id, " at ", order.colonySystem
+        # Unload cargo back to colony inventory
+        let (cargoType, quantity) = mutableShip.unloadCargo()
+        totalUnloaded += quantity
+        unloadedType = cargoType
+
+        case cargoType
+        of CargoType.Marines:
+          colony.marines += quantity
+          echo "    Unloaded ", quantity, " Marines from ", ship.id, " to colony"
+        of CargoType.Colonists:
+          # Colonists are delivered to population, not stored as inventory
+          echo "    Unloaded ", quantity, " Colonists from ", ship.id, " (delivered to population)"
+        else:
+          discard
+
+        modifiedShips.add(mutableShip)
+
+      # Write back modified state
+      if totalUnloaded > 0:
+        fleet.spaceLiftShips = modifiedShips
+        state.fleets[order.fleetId] = fleet
+        state.colonies[order.colonySystem] = colony
+        echo "    Successfully unloaded ", totalUnloaded, " ", unloadedType, " at ", order.colonySystem
 
 proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
   ## Automatically load available marines/colonists onto empty transports at colonies
@@ -1120,27 +1201,47 @@ proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], ev
       if fleetId in manualCargoFleets:
         continue
 
-      # Auto-load empty transports
+      # Auto-load empty transports if colony has inventory
+      var colony = state.colonies[systemId]
+      var fleet = state.fleets[fleetId]
+      var modifiedShips: seq[SpaceLiftShip] = @[]
+      var modified = false
+
       for ship in fleet.spaceLiftShips:
+        var mutableShip = ship
+
         if ship.isCrippled or ship.cargo.cargoType != CargoType.None:
+          modifiedShips.add(mutableShip)
           continue  # Skip crippled ships or ships already loaded
 
         # Determine what cargo this ship can carry
         case ship.shipClass
         of ShipClass.TroopTransport:
           # Auto-load marines if available
-          # TODO: Check colony.marines inventory
-          # TODO: Actually load marines with quantity tracking
-          echo "    [Auto] Loaded marines onto ", ship.id, " at ", systemId
+          if colony.marines > 0:
+            let loadAmount = min(1, colony.marines)  # TroopTransport capacity = 1 MD
+            if mutableShip.loadCargo(CargoType.Marines, loadAmount):
+              colony.marines -= loadAmount
+              modified = true
+              echo "    [Auto] Loaded ", loadAmount, " Marines onto ", ship.id, " at ", systemId
 
         of ShipClass.ETAC:
-          # Auto-load colonists if available
-          # TODO: Check colony.population for available colonists
-          # TODO: Actually load colonists with quantity tracking
-          echo "    [Auto] Loaded colonists onto ", ship.id, " at ", systemId
+          # Auto-load colonists if available (1 PTU commitment)
+          # ETACs carry exactly 1 PTU for colonization missions
+          if mutableShip.loadCargo(CargoType.Colonists, 1):
+            modified = true
+            echo "    [Auto] Loaded 1 PTU onto ", ship.id, " at ", systemId
 
         else:
           discard  # Other ship classes don't have spacelift capability
+
+        modifiedShips.add(mutableShip)
+
+      # Write back modified state if any cargo was loaded
+      if modified:
+        fleet.spaceLiftShips = modifiedShips
+        state.fleets[fleetId] = fleet
+        state.colonies[systemId] = colony
 
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =

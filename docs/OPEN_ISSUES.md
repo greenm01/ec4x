@@ -9,8 +9,8 @@ When an issue is fixed, check it off and update STATUS.md.
 
 ## Engine - Spacelift Cargo System
 
-**Priority:** HIGH
-**Status:** Core functionality complete (2025-11-23), inventory tracking pending
+**Priority:** COMPLETE
+**Status:** ✅ Fully implemented (2025-11-23)
 
 - [x] Separate SpaceLiftShip type from Squadron (completed 2025-11-23)
 - [x] Update Fleet to track squadrons and spacelift separately (completed 2025-11-23)
@@ -20,21 +20,23 @@ When an issue is fixed, check it off and update STATUS.md.
 - [x] Add cargo validation to invasion orders (must have loaded marines) (completed 2025-11-23)
 - [x] Add cargo validation to colonize orders (must have loaded PTU) (completed 2025-11-23)
 - [x] Decide: auto-load at colonies or manual orders? (BOTH - dual system) (completed 2025-11-23)
-- [ ] Implement colony inventory tracking (marines, colonists available)
-- [ ] Implement actual cargo transfer with quantity tracking
+- [x] Implement colony inventory tracking (marines, colonists available) (completed 2025-11-23)
+- [x] Implement actual cargo transfer with quantity tracking (completed 2025-11-23)
 
 **Files Affected:**
-- `src/engine/spacelift.nim` - Architecture complete
-- `src/engine/fleet.nim` - Architecture complete
+- `src/engine/spacelift.nim` - Complete with loadCargo/unloadCargo procs
+- `src/engine/fleet.nim` - Complete
 - `src/engine/orders.nim` - CargoManagementOrder complete
-- `src/engine/resolve.nim` - Cargo resolution complete (TODO: inventory)
+- `src/engine/resolve.nim` - Full cargo transfer with inventory tracking implemented
 - `src/engine/commands/executor.nim` - Validation complete
 
-**Notes:**
-- Cargo loading framework complete, but TODO items remain for colony inventory checks
-- Auto-load and manual cargo orders both functional
-- AI can now issue cargo orders, but currently logs placeholder messages
-- Next: Implement Colony inventory fields for marines/colonists tracking
+**Implementation Details:**
+- Manual cargo loading/unloading with colony.marines inventory tracking (resolve.nim:1065-1141)
+- Automatic cargo loading with inventory checks (resolve.nim:1183-1244)
+- LoadCargo: decrements colony.marines, loads onto TroopTransport ships
+- UnloadCargo: unloads from ships, increments colony.marines
+- ETAC ships load 1 PTU (colonist) for colonization missions
+- Armies (colony.armies) remain at colonies for ground defense, not loaded on ships
 
 ---
 
