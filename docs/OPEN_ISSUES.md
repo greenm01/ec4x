@@ -10,27 +10,31 @@ When an issue is fixed, check it off and update STATUS.md.
 ## Engine - Spacelift Cargo System
 
 **Priority:** HIGH
-**Status:** Architecture fixed (Phase 1), cargo loading not yet implemented
+**Status:** Core functionality complete (2025-11-23), inventory tracking pending
 
 - [x] Separate SpaceLiftShip type from Squadron (completed 2025-11-23)
 - [x] Update Fleet to track squadrons and spacelift separately (completed 2025-11-23)
-- [ ] Implement LoadCargo fleet order (marines/colonists)
-- [ ] Implement UnloadCargo fleet order
-- [ ] Add cargo validation to invasion orders (must have loaded marines)
-- [ ] Add cargo validation to colonize orders (must have loaded PTU)
-- [ ] Decide: auto-load at colonies or manual orders?
+- [x] Implement cargo management as colony orders (CargoManagementOrder) (completed 2025-11-23)
+- [x] Implement manual cargo order resolution (resolveCargoManagement) (completed 2025-11-23)
+- [x] Implement auto-load functionality (autoLoadCargo) (completed 2025-11-23)
+- [x] Add cargo validation to invasion orders (must have loaded marines) (completed 2025-11-23)
+- [x] Add cargo validation to colonize orders (must have loaded PTU) (completed 2025-11-23)
+- [x] Decide: auto-load at colonies or manual orders? (BOTH - dual system) (completed 2025-11-23)
+- [ ] Implement colony inventory tracking (marines, colonists available)
+- [ ] Implement actual cargo transfer with quantity tracking
 
 **Files Affected:**
 - `src/engine/spacelift.nim` - Architecture complete
 - `src/engine/fleet.nim` - Architecture complete
-- `src/engine/orders.nim` - Need LoadCargo/UnloadCargo
-- `src/engine/resolve.nim` - Need cargo transfer logic
-- `src/engine/commands/executor.nim` - Need validation updates
+- `src/engine/orders.nim` - CargoManagementOrder complete
+- `src/engine/resolve.nim` - Cargo resolution complete (TODO: inventory)
+- `src/engine/commands/executor.nim` - Validation complete
 
 **Notes:**
-- For now, AI testing assumes transports auto-load (workaround)
-- After cargo system implemented, re-test AI invasion logic
-- See spacelift.nim header comments for architecture details
+- Cargo loading framework complete, but TODO items remain for colony inventory checks
+- Auto-load and manual cargo orders both functional
+- AI can now issue cargo orders, but currently logs placeholder messages
+- Next: Implement Colony inventory fields for marines/colonists tracking
 
 ---
 

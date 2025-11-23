@@ -422,9 +422,13 @@ proc executeInvadeOrder(
     if squadron.flagship.stats.attackStrength > 0:
       hasCombatShips = true
 
-    if squadron.flagship.shipClass == ShipClass.TroopTransport:
-      # TODO: Check if transport has Marines loaded
+  # Check spacelift ships for loaded marines
+  for ship in fleet.spaceLiftShips:
+    if ship.shipClass == ShipClass.TroopTransport and
+       ship.cargo.cargoType == CargoType.Marines and
+       ship.cargo.quantity > 0:
       hasLoadedTransports = true
+      break
 
   if not hasCombatShips:
     return OrderExecutionResult(
@@ -721,18 +725,20 @@ proc executeColonizeOrder(
       eventsGenerated: @[]
     )
 
-  # Check fleet has ETAC
-  var hasETAC = false
+  # Check fleet has ETAC with loaded colonists
+  var hasLoadedETAC = false
 
-  for squadron in fleet.squadrons:
-    if squadron.flagship.shipClass == ShipClass.ETAC:
-      hasETAC = true
+  for ship in fleet.spaceLiftShips:
+    if ship.shipClass == ShipClass.ETAC and
+       ship.cargo.cargoType == CargoType.Colonists and
+       ship.cargo.quantity > 0:
+      hasLoadedETAC = true
       break
 
-  if not hasETAC:
+  if not hasLoadedETAC:
     return OrderExecutionResult(
       success: false,
-      message: "Colonize requires ETAC",
+      message: "Colonize requires ETAC with loaded colonists (PTU)",
       eventsGenerated: @[]
     )
 
