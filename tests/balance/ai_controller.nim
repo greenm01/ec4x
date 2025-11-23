@@ -72,8 +72,8 @@ type
     personality*: AIPersonality
     lastTurnReport*: string  ## Previous turn's report for context
     intelligence*: Table[SystemId, IntelligenceReport]  ## Gathered intel on systems
-    operations*: seq[CoordinatedOperation]  ## PHASE 3: Planned multi-fleet operations
-    reserves*: seq[StrategicReserve]        ## PHASE 3: Strategic reserve fleets
+    operations*: seq[CoordinatedOperation]  ## Planned multi-fleet operations
+    reserves*: seq[StrategicReserve]        ## Strategic reserve fleets
 
 # =============================================================================
 # Strategy Profiles
@@ -235,7 +235,7 @@ proc findWeakestEnemyColony(state: GameState, houseId: HouseId, rng: var Rand): 
   return none(SystemId)
 
 # =============================================================================
-# Intelligence Gathering (Phase 2)
+# Intelligence Gathering
 # =============================================================================
 
 proc updateIntelligence*(controller: var AIController, state: GameState, systemId: SystemId,
@@ -362,7 +362,7 @@ proc findBestColonizationTarget*(controller: var AIController, state: GameState,
   return none(SystemId)
 
 # =============================================================================
-# Fleet Coordination (Phase 3)
+# Fleet Coordination
 # =============================================================================
 
 proc planCoordinatedOperation*(controller: var AIController, state: GameState,
@@ -1000,7 +1000,7 @@ type
     recommendRetreat*: bool        # Should we retreat from system?
 
   InvasionViability* = object
-    ## 3-phase invasion assessment (Phase 1 improvement)
+    ## 3-phase invasion assessment
     ## Per docs/specs/operations.md: Invasions have 3 phases
 
     # Phase 1: Space Combat
@@ -1014,7 +1014,7 @@ type
     # Phase 3: Ground Invasion
     canWinGroundCombat*: bool      # Can overcome ground forces?
     groundOdds*: float             # Ground combat victory odds
-    attackerGroundForces*: int     # Marines available (NOTE: engine doesn't track loading!)
+    attackerGroundForces*: int     # Marines available (engine doesn't track loading!)
     defenderGroundForces*: int     # Enemy marines + armies + batteries
 
     # Overall assessment
@@ -1198,13 +1198,12 @@ proc assessCombatSituation(controller: AIController, state: GameState,
 
 proc assessInvasionViability(controller: AIController, state: GameState,
                              fleet: Fleet, targetSystem: SystemId): InvasionViability =
-  ## PHASE 1 IMPROVEMENT: 3-phase invasion viability assessment
+  ## IMPROVEMENT: 3-phase invasion viability assessment
   ## Invasions require winning 3 sequential battles:
-  ##   1. Space Combat - Defeat enemy fleets
-  ##   2. Starbase Assault - Destroy defensive installations
-  ##   3. Ground Invasion - Overcome marines, armies, ground batteries
-  ##
-  ## Per docs/specs/operations.md:
+  ## 1. Space Combat - Defeat enemy fleets
+  ## 2. Starbase Assault - Destroy defensive installations
+  ## 3. Ground Invasion - Overcome marines, armies, ground batteries
+  ## ## Per docs/specs/operations.md:
   ## - Invasion: Full planetary assault (all 3 phases)
   ## - Blitz: Skip ground combat, just destroy orbital defenses
   ## - Blockade: If too strong to invade, starve them economically (-60% GCO)
@@ -1215,7 +1214,7 @@ proc assessInvasionViability(controller: AIController, state: GameState,
   let p = controller.personality
 
   # =============================================================================
-  # PHASE 1: Space Combat Assessment
+  # Space Combat Assessment
   # =============================================================================
   # Can we defeat enemy fleets in the system?
 
@@ -1231,10 +1230,10 @@ proc assessInvasionViability(controller: AIController, state: GameState,
     result.canWinSpaceCombat = result.spaceOdds >= 0.5  # Need 50%+ odds
 
   # =============================================================================
-  # PHASE 2: Starbase Assault Assessment
+  # Starbase Assault Assessment
   # =============================================================================
   # Can we destroy defensive starbases?
-  # NOTE: Starbases have both attack and defense, must be destroyed before landing
+  # Starbases have both attack and defense, must be destroyed before landing
 
   if combat.starbaseStrength == 0:
     result.starbaseOdds = 1.0
@@ -1247,13 +1246,11 @@ proc assessInvasionViability(controller: AIController, state: GameState,
     result.canDestroyStarbases = result.starbaseOdds >= 0.4  # Can take more losses here
 
   # =============================================================================
-  # PHASE 3: Ground Combat Assessment
+  # Ground Combat Assessment
   # =============================================================================
   # Can we overcome ground forces (marines + armies + ground batteries)?
-  #
-  # ENGINE LIMITATION: Transports don't actually track loaded marines yet!
-  # TODO: This will need updating when cargo system is implemented
-  # For now: ASSUME transports are loaded with 1 MD (Marine Division) each
+  # Cargo system integration pending: transports don't track loaded marines yet
+  # Current assumption: each transport carries 1 MD (Marine Division)
 
   result.defenderGroundForces = combat.groundForces + combat.groundBatteryCount
 
@@ -1331,12 +1328,12 @@ proc assessInvasionViability(controller: AIController, state: GameState,
 
 proc generateFleetOrders(controller: var AIController, state: GameState, rng: var Rand): seq[FleetOrder] =
   ## Generate fleet orders based on strategic military assessment
-  ## PHASE 2: Now updates intelligence when making decisions
+  ## Now updates intelligence when making decisions
   result = @[]
   let p = controller.personality
   let myFleets = getOwnedFleets(state, controller.houseId)
 
-  # PHASE 2: Update intelligence for systems we have visibility on
+  # Update intelligence for systems we have visibility on
   # (Our colonies + systems with our fleets = automatic intel)
   for systemId, colony in state.colonies:
     if colony.owner == controller.houseId:
@@ -1346,7 +1343,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
     # Fleets give us visibility into their current system
     controller.updateIntelligence(state, fleet.location, state.turn, 0.8)
 
-  # PHASE 3: Update coordinated operations status
+  # Update coordinated operations status
   controller.updateOperationStatus(state)
   controller.removeCompletedOperations(state.turn)
 
@@ -1372,7 +1369,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         result.add(order)
         continue
 
-    # Priority 0.5: PHASE 3 - Coordinated Operations
+    # Priority 0.5: Coordinated Operations
     # Check if this fleet is part of a coordinated operation
     for op in controller.operations:
       if fleet.id in op.requiredFleets:
@@ -1410,7 +1407,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
           result.add(order)
           continue
 
-    # Priority 0.75: PHASE 3 - Strategic Reserve Threat Response
+    # Priority 0.75: Strategic Reserve Threat Response
     # Check if this fleet is a reserve responding to a nearby threat
     let threats = controller.respondToThreats(state)
     var isRespondingToThreat = false
@@ -1470,7 +1467,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       var bestTarget: Option[SystemId] = none(SystemId)
       var bestOdds = 0.0
 
-      # PHASE 5: Economic Warfare - prioritize high-value economic targets
+      # Economic Warfare - prioritize high-value economic targets
       # if we're economically focused (lower aggression, higher economic focus)
       if p.economicFocus > 0.6 and p.aggression < 0.6:
         # Get economic targets for warfare
@@ -1505,7 +1502,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
             hasTransports = true
             break
 
-        # PHASE 1 IMPROVEMENT: Use 3-phase invasion viability assessment
+        # IMPROVEMENT: Use 3-phase invasion viability assessment
         # Invasions give +10 prestige (highest reward!) - prioritize them
         if hasTransports:
           # Perform comprehensive 3-phase invasion assessment
@@ -1533,7 +1530,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         result.add(order)
         continue
 
-    # Priority 3.5: PHASE 2 - Scout Reconnaissance Missions
+    # Priority 3.5: Scout Reconnaissance Missions
     # Check if this is a scout-only fleet (single squadron with scouts)
     var isScoutFleet = false
     var hasOnlyScouts = false
@@ -1545,7 +1542,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         hasOnlyScouts = true
 
     if isScoutFleet and (p.techPriority > 0.4 or p.expansionDrive > 0.5):
-      # PHASE 2: Intelligence operations for scouts
+      # Intelligence operations for scouts
       # Priority: Pre-colonization recon > Pre-invasion intel > Strategic positioning
 
       # A) Pre-colonization reconnaissance - scout systems before sending ETACs
@@ -1621,7 +1618,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         break
 
     if hasETAC:
-      # PHASE 2: Intelligence-driven colonization
+      # Intelligence-driven colonization
       # ETAC fleets: Colonize if at uncolonized system, otherwise move to best target
       if fleet.location notin state.colonies:
         # At uncolonized system - COLONIZE IT!
@@ -1943,11 +1940,11 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
           break
 
     # ------------------------------------------------------------------------
-    # PHASE 4: Marine Garrison Management
+    # Marine Garrison Management
     # ------------------------------------------------------------------------
     if controller.shouldBuildMarines(state, colony):
       # This colony needs more marines for garrison
-      if house.treasury >= 30:  # Cost of marines (TODO: get from config)
+      if house.treasury >= 30:  # Cost of marines
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Building,
@@ -2063,10 +2060,9 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         ))
         break
 
-    # PHASE 1 IMPROVEMENT: Proactive garrison management
+    # IMPROVEMENT: Proactive garrison management
     # Build marine garrisons BEFORE invasions threaten, not after
-    #
-    # Strategic priorities:
+    # # Strategic priorities:
     # - Homeworld: 5+ marine garrison (critical)
     # - Important colonies: 3+ marines (high production, resources)
     # - Frontier colonies: 1-2 marines (minimum defense)
@@ -2100,7 +2096,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         ))
         break
 
-    # PHASE 1: Build extra marines for invasion preparation
+    # Build extra marines for invasion preparation
     # If we have transports but they're not loaded (engine limitation!),
     # at least ensure colonies have spare marines available
     if needTransports and transportCount > 0 and colony.marines < targetGarrison + 2:
@@ -2163,9 +2159,9 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
 proc generateResearchAllocation(controller: AIController, state: GameState): res_types.ResearchAllocation =
   ## Allocate research PP based on strategy
   ## Per economy.md:4.0:
-  ##   - Economic Level (EL) purchased with ERP
-  ##   - Science Level (SL) purchased with SRP
-  ##   - Technologies (CST, WEP, etc.) purchased with TRP
+  ## - Economic Level (EL) purchased with ERP
+  ## - Science Level (SL) purchased with SRP
+  ## - Technologies (CST, WEP, etc.) purchased with TRP
   result = res_types.ResearchAllocation(
     economic: 0,
     science: 0,
@@ -2448,17 +2444,14 @@ proc generateCargoManagement(controller: AIController, state: GameState, rng: va
 
 proc generateAIOrders*(controller: var AIController, state: GameState, rng: var Rand): OrderPacket =
   ## Generate complete order packet for an AI player
-  ##
-  ## PHASE 2/3: Controller is now `var` to support intelligence updates
-  ##
-  ## Context available:
+  ## ## 3: Controller is now `var` to support intelligence updates
+  ## ## Context available:
   ## - controller.lastTurnReport: Previous turn's report (for AI learning)
   ## - state: Current game state
   ## - controller.personality: Strategic personality parameters
-  ## - controller.intelligence: System intelligence reports (Phase 2)
-  ## - controller.operations: Coordinated operations (Phase 3)
-  ##
-  ## Future enhancement: Parse lastTurnReport to:
+  ## - controller.intelligence: System intelligence reports
+  ## - controller.operations: Coordinated operations
+  ## ## Future enhancement: Parse lastTurnReport to:
   ## - React to combat losses (build replacements, retreat)
   ## - Respond to enemy fleet sightings (send reinforcements)
   ## - Adjust strategy based on economic situation
@@ -2466,7 +2459,7 @@ proc generateAIOrders*(controller: var AIController, state: GameState, rng: var 
   let p = controller.personality
   let house = state.houses[controller.houseId]
 
-  # PHASE 3: Strategic planning before generating orders
+  # Strategic planning before generating orders
   # Update operation status (check which fleets have reached assembly points)
   controller.updateOperationStatus(state)
 
