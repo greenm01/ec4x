@@ -715,11 +715,7 @@ proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var s
     if construction.startConstruction(econColony, project):
       # Convert back and update game state
       var updatedColony = colony
-      updatedColony.underConstruction = some(gamestate.ConstructionProject(
-        projectType: gamestate.BuildingType.Shipyard,  # Placeholder - BuildingType not aligned with construction types yet
-        turnsRemaining: project.turnsRemaining,
-        cost: project.costTotal
-      ))
+      updatedColony.underConstruction = some(project)
       state.colonies[order.colonySystem] = updatedColony
 
       echo "      Started construction at system ", order.colonySystem, ": ", projectDesc
@@ -1121,15 +1117,31 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
   if updatedColony.infrastructure < 0:
     updatedColony.infrastructure = 0
 
+  # Ships-in-dock destruction (economy.md:5.0)
+  # If infrastructure is damaged, ships under construction can be destroyed
+  var shipsDestroyedInDock = false
+  if infrastructureLoss > 0 and updatedColony.underConstruction.isSome:
+    let project = updatedColony.underConstruction.get()
+    if project.projectType == econ_types.ConstructionType.Ship:
+      # Ship under construction is destroyed with NO refund (per economy.md:5.0)
+      # Full cost was paid upfront, funds are lost when ship is destroyed
+      updatedColony.underConstruction = none(econ_types.ConstructionProject)
+      shipsDestroyedInDock = true
+      echo "      Ship under construction destroyed in bombardment!"
+
   state.colonies[targetId] = updatedColony
 
   echo "      Bombardment at ", targetId, ": ", infrastructureLoss, " infrastructure destroyed"
 
   # Generate event
+  var eventDesc = "Bombarded system " & $targetId & ", destroyed " & $infrastructureLoss & " infrastructure"
+  if shipsDestroyedInDock:
+    eventDesc &= " (ship under construction destroyed)"
+
   events.add(GameEvent(
     eventType: GameEventType.Bombardment,
     houseId: houseId,
-    description: "Bombarded system " & $targetId & ", destroyed " & $infrastructureLoss & " infrastructure",
+    description: eventDesc,
     systemId: some(targetId)
   ))
 
