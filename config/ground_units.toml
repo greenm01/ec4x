@@ -39,6 +39,7 @@ defense_strength = 5
 description = "Garrison forces that defend colonies"
 build_time = 1  # turns
 max_per_planet = -1  # unlimited
+population_cost = 15000  # souls recruited (realistic army division size)
 
 [marine_division]
 name = "Space Marine Division"
@@ -53,3 +54,4 @@ description = "Elite invasion forces that capture rival planets"
 build_time = 1  # turns
 max_per_planet = -1  # unlimited
 requires_transport = true  # Must be loaded on Troop Transports
+population_cost = 18000  # souls recruited (realistic marine division size)

@@ -12,7 +12,7 @@ suite "Research Prestige Integration":
 
   test "Economic Level advancement generates prestige":
     var tree = initTechTree(TechLevel(
-      energyLevel: 1,
+      economicLevel: 1,
       shieldLevel: 1,
       constructionTech: 0,
       weaponsTech: 0,
@@ -41,7 +41,7 @@ suite "Research Prestige Integration":
 
   test "Science Level advancement generates prestige":
     var tree = initTechTree(TechLevel(
-      energyLevel: 1,
+      economicLevel: 1,
       shieldLevel: 1,
       constructionTech: 0,
       weaponsTech: 0,
@@ -70,7 +70,7 @@ suite "Research Prestige Integration":
 
   test "Tech field advancement generates prestige":
     var tree = initTechTree(TechLevel(
-      energyLevel: 1,
+      economicLevel: 1,
       shieldLevel: 1,
       constructionTech: 0,
       weaponsTech: 0,
@@ -101,7 +101,7 @@ suite "Research Prestige Integration":
 
   test "Multiple tech advancements accumulate prestige":
     var tree = initTechTree(TechLevel(
-      energyLevel: 1,
+      economicLevel: 1,
       shieldLevel: 1,
       constructionTech: 0,
       weaponsTech: 0,
@@ -136,7 +136,7 @@ suite "Research Prestige Integration":
 
   test "No advancement when insufficient RP":
     var tree = initTechTree(TechLevel(
-      energyLevel: 1,
+      economicLevel: 1,
       shieldLevel: 1,
       constructionTech: 0,
       weaponsTech: 0,

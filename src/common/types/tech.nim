@@ -8,7 +8,7 @@
 type
   TechField* {.pure.} = enum
     ## Seven tech fields in EC4X (hardcoded)
-    EnergyLevel              # EL
+    EconomicLevel            # EL
     ShieldLevel              # SL
     ConstructionTech         # CST
     WeaponsTech              # WEP
@@ -18,7 +18,7 @@ type
 
   TechLevel* = object
     ## Tech levels for all fields
-    energyLevel*: int              # EL (0-10)
+    economicLevel*: int            # EL (0-10)
     shieldLevel*: int              # SL (0-10)
     constructionTech*: int         # CST (0-10)
     weaponsTech*: int              # WEP (0-10)

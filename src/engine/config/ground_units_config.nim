@@ -45,6 +45,7 @@ type
     description*: string
     build_time*: int
     max_per_planet*: int
+    population_cost*: int  # Souls recruited per division
 
   MarineDivisionConfig* = object
     name*: string
@@ -59,6 +60,7 @@ type
     build_time*: int
     max_per_planet*: int
     requires_transport*: bool
+    population_cost*: int  # Souls recruited per division
 
   GroundUnitsConfig* = object
     ## Complete ground units configuration loaded from TOML

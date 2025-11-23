@@ -384,7 +384,7 @@ proc captureHouseSnapshot*(state: GameState, houseId: HouseId,
 
   # Build tech levels table
   var techLevels = initTable[string, int]()
-  techLevels["EL"] = house.techTree.levels.energyLevel
+  techLevels["EL"] = house.techTree.levels.economicLevel
   techLevels["SL"] = house.techTree.levels.scienceLevel
   techLevels["CST"] = house.techTree.levels.constructionLevel
   techLevels["WEP"] = house.techTree.levels.weaponsLevel

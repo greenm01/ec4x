@@ -14,7 +14,7 @@ import diplomacy/[types as dip_types, engine as dip_engine]
 import colonization/engine as col_engine
 import combat/[engine as combat_engine, types as combat_types, ground]
 import population/[types as pop_types]
-import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config]
+import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config, ground_units_config]
 import commands/executor
 import blockade/engine as blockade_engine
 import intelligence/detection
@@ -462,10 +462,10 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       history: @[50]
     )
 
-  # Build house tech levels
+  # Build house tech levels (Economic Level = economicLevel field)
   var houseTechLevels = initTable[HouseId, int]()
   for houseId, house in state.houses:
-    houseTechLevels[houseId] = house.techTree.levels.energyLevel  # TODO: Use actual EL
+    houseTechLevels[houseId] = house.techTree.levels.economicLevel  # EL = economicLevel (confusing naming)
 
   # Build house treasuries
   var houseTreasuries = initTable[HouseId, int]()
@@ -2262,6 +2262,70 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           systemId: some(completed.colonyId)
         ))
 
+    # Special handling for Marines (MD)
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId == "Marine":
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Get population cost from config
+        let marinePopCost = globalGroundUnitsConfig.marine_division.population_cost
+        const minViablePopulation = 1_000_000  # 1 PU minimum for colony viability
+
+        if colony.souls < marinePopCost:
+          echo "      WARNING: Colony ", completed.colonyId, " lacks population to recruit Marines (",
+               colony.souls, " souls < ", marinePopCost, ")"
+        elif colony.souls - marinePopCost < minViablePopulation:
+          echo "      WARNING: Colony ", completed.colonyId, " cannot recruit Marines - would leave colony below minimum viable size (",
+               colony.souls - marinePopCost, " < ", minViablePopulation, " souls)"
+        else:
+          colony.marines += 1  # Add 1 Marine Division
+          colony.souls -= marinePopCost  # Deduct recruited souls
+          colony.population = colony.souls div 1_000_000  # Update display population
+          state.colonies[completed.colonyId] = colony
+
+          echo "      Recruited Marine Division at ", completed.colonyId
+          echo "        Total Marines: ", colony.marines, " MD (", colony.souls, " souls remaining)"
+
+          events.add(GameEvent(
+            eventType: GameEventType.ColonyEstablished,
+            houseId: colony.owner,
+            description: "Marine Division recruited at " & $completed.colonyId & " (total: " & $colony.marines & " MD)",
+            systemId: some(completed.colonyId)
+          ))
+
+    # Special handling for Armies (AA)
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId == "Army":
+      if completed.colonyId in state.colonies:
+        var colony = state.colonies[completed.colonyId]
+
+        # Get population cost from config
+        let armyPopCost = globalGroundUnitsConfig.army.population_cost
+        const minViablePopulation = 1_000_000  # 1 PU minimum for colony viability
+
+        if colony.souls < armyPopCost:
+          echo "      WARNING: Colony ", completed.colonyId, " lacks population to muster Army (",
+               colony.souls, " souls < ", armyPopCost, ")"
+        elif colony.souls - armyPopCost < minViablePopulation:
+          echo "      WARNING: Colony ", completed.colonyId, " cannot muster Army - would leave colony below minimum viable size (",
+               colony.souls - armyPopCost, " < ", minViablePopulation, " souls)"
+        else:
+          colony.armies += 1  # Add 1 Army Division
+          colony.souls -= armyPopCost  # Deduct recruited souls
+          colony.population = colony.souls div 1_000_000  # Update display population
+          state.colonies[completed.colonyId] = colony
+
+          echo "      Mustered Army Division at ", completed.colonyId
+          echo "        Total Armies: ", colony.armies, " AA (", colony.souls, " souls remaining)"
+
+          events.add(GameEvent(
+            eventType: GameEventType.ColonyEstablished,
+            houseId: colony.owner,
+            description: "Army Division mustered at " & $completed.colonyId & " (total: " & $colony.armies & " AA)",
+            systemId: some(completed.colonyId)
+          ))
+
     # Handle ship construction
     elif completed.projectType == econ_types.ConstructionType.Ship:
       if completed.colonyId in state.colonies:
@@ -2495,7 +2559,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
     echo "  Tech Advancement (Upgrade Turn)"
     for houseId, house in state.houses.mpairs:
       # Try to advance Economic Level (EL) with accumulated ERP
-      let currentEL = house.techTree.levels.energyLevel
+      let currentEL = house.techTree.levels.economicLevel
       let elAdv = attemptELAdvancement(house.techTree, currentEL)
       if elAdv.isSome:
         let adv = elAdv.get()
