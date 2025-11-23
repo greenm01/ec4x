@@ -1,0 +1,8 @@
+nimTitle	units	units.html	module src/common/types/units		0
+nim	ShipClass	units.html#ShipClass	enum ShipClass		9
+nim	ShipStats	units.html#ShipStats	object ShipStats		32
+nim	ShipType	units.html#ShipType	enum ShipType		46
+nim	GroundUnitType	units.html#GroundUnitType	enum GroundUnitType		56
+nim	GroundUnitStats	units.html#GroundUnitStats	object GroundUnitStats		64
+nim	FacilityType	units.html#FacilityType	enum FacilityType		81
+nim	FacilityStats	units.html#FacilityStats	object FacilityStats		87

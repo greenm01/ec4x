@@ -136,22 +136,31 @@ proc categorizeStrategy*(personality: AIPersonality): string =
 
   result = maxTrait[0]
 
-proc evaluateFitness*(genome: var AIGenome, gamesPlayed: int, wins: int, colonies: int, militaryScore: int) =
+proc evaluateFitness*(genome: var AIGenome, gamesPlayed: int, wins: int, colonies: int, militaryScore: int, prestige: int) =
   ## Calculate fitness based on game performance
   ## Fitness = weighted combination of:
-  ## - Win rate (most important)
-  ## - Colony count (expansion success)
-  ## - Military score (combat effectiveness)
+  ## - Win rate (elimination victory or highest prestige at end)
+  ## - Prestige (direct victory path - highest prestige wins)
+  ## - Colony count (expansion enables prestige generation)
+  ## - Military score (combat effectiveness for elimination)
+  ##
+  ## Victory conditions:
+  ## 1. Elimination: Last house standing
+  ## 2. Prestige: Highest prestige at game end
+  ##
+  ## Therefore prestige and win rate are equally important (40%/40%)
 
   let winRate = if gamesPlayed > 0: wins.float / gamesPlayed.float else: 0.0
   let avgColonies = if gamesPlayed > 0: colonies.float / gamesPlayed.float else: 0.0
   let avgMilitary = if gamesPlayed > 0: militaryScore.float / gamesPlayed.float else: 0.0
+  let avgPrestige = if gamesPlayed > 0: prestige.float / gamesPlayed.float else: 0.0
 
-  # Weighted fitness (prioritize winning, but reward expansion/military)
+  # Weighted fitness (prestige and winning are equally important)
   genome.fitness = (
-    winRate * 0.7 +                   # 70% weight on winning
-    (avgColonies / 10.0) * 0.2 +      # 20% weight on expansion (normalize by ~10 colonies)
-    (avgMilitary / 100.0) * 0.1       # 10% weight on military (normalize by ~100 strength)
+    winRate * 0.40 +                   # 40% weight on winning (elimination or prestige)
+    (avgPrestige / 1000.0) * 0.40 +    # 40% weight on prestige (direct victory condition)
+    (avgColonies / 10.0) * 0.10 +      # 10% weight on expansion (enables prestige generation)
+    (avgMilitary / 100.0) * 0.10       # 10% weight on military (enables elimination victory)
   )
 
 # ============================================================================

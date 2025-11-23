@@ -17,6 +17,62 @@
 4. **Update STATUS.md** after completing milestones
 5. **Run tests before committing** - all tests must pass
 
+## File Organization Rules (CRITICAL - Read First!)
+
+**NEVER create scattered markdown files.** Follow this strict hierarchy:
+
+### Where Things Go:
+
+1. **Architecture/Implementation Notes** → Source code doc comments (shows in API docs)
+   ```nim
+   ## Module: spacelift.nim
+   ##
+   ## ARCHITECTURE: Spacelift ships are individual units NOT squadrons
+   ## Per operations.md:1036, they travel with fleets but separately
+   ```
+
+2. **Current System Status** → `docs/STATUS.md` (single source of truth)
+   - What's complete, what's in progress, what's next
+   - Test coverage status
+   - Recent changes
+
+3. **Open Issues/Gaps** → `docs/OPEN_ISSUES.md` (single file, organized by system)
+   - Known bugs
+   - Missing features
+   - Architecture debt
+   - Delete after fixing
+
+4. **Balance Testing Results** → `balance_results/` directory
+   - ONLY generated reports (ANALYSIS_REPORT.md from tests)
+   - Archives are auto-managed
+   - DO NOT create manual markdown files here
+
+5. **Session Context** → This file (CLAUDE_CONTEXT.md)
+   - Rules and conventions
+   - Quick reference
+   - NOT a dumping ground
+
+### What NOT To Do:
+
+❌ DO NOT create `ENGINE_GAPS_SPACELIFT.md`
+✅ Add architecture notes to `src/engine/spacelift.nim` header
+
+❌ DO NOT create `AI_STRATEGIC_GAPS.md`
+✅ Add to `docs/OPEN_ISSUES.md` under "AI System" section
+
+❌ DO NOT create `SESSION_SUMMARY_*.md`
+✅ Update `docs/STATUS.md` with changes
+
+❌ DO NOT create random markdown files anywhere
+✅ Use the hierarchy above
+
+### When You Need To Track Something:
+
+1. **Bug/gap found?** → Add to `docs/OPEN_ISSUES.md` with [ ] checkbox
+2. **Feature complete?** → Update `docs/STATUS.md`, remove from OPEN_ISSUES.md
+3. **Architecture explanation?** → Add as doc comment in source file
+4. **Balance test result?** → Auto-generated, already in balance_results/
+
 ---
 
 ## Project Architecture Quick Reference
@@ -45,7 +101,8 @@ docs/
 ├── specs/           # Game design specifications
 ├── architecture/    # Technical design docs
 ├── milestones/      # Historical completion reports
-└── guides/          # How-tos and standards
+├── guides/          # How-tos and standards
+└── api/             # Generated API documentation (HTML)
 
 tests/
 ├── unit/            # Unit tests
@@ -107,6 +164,39 @@ let level = MoraleLevel.High  # NOT just "High"
 ```markdown
 When morale is High, tax efficiency increases by 10%.
 ```
+
+---
+
+## API Documentation
+
+**IMPORTANT:** Complete API reference available at `docs/api/engine/index.html`
+
+**Use API docs to:**
+- Verify correct enum values (PlanetClass, ResourceRating, ShipClass, etc.)
+- Check function signatures before writing code
+- Understand module architecture and relationships
+- Prevent compilation errors from wrong type names
+
+**Regenerate docs after API changes:**
+```bash
+cd docs/api
+./generate_docs.sh
+```
+
+**Key modules documented:**
+- `core.html` - Base types (HouseId, SystemId, FleetId)
+- `units.html` - Ship classes and weapon systems
+- `planets.html` - Planet/resource enums
+- `spacelift.html` - Spacelift ships (individual units, NOT squadrons)
+- `fleet.html` - Fleet management with separated squadrons/spacelift
+- `squadron.html` - Combat squadrons with CR/CC
+- `gamestate.html` - Complete game state structure
+
+**Architecture reminder:**
+```
+Fleet → Squadrons (combat) + SpaceLiftShips (transport/colonization)
+```
+Spacelift ships are individual units per operations.md:1036, NOT squadrons.
 
 ---
 
