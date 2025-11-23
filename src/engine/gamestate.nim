@@ -9,6 +9,7 @@ import diplomacy/types as dip_types
 import espionage/types as esp_types
 import research/types as res_types
 import economy/types as econ_types
+import population/types as pop_types
 
 # Re-export common types
 export core.HouseId, core.SystemId, core.FleetId
@@ -55,7 +56,8 @@ type
   Colony* = object
     systemId*: SystemId
     owner*: HouseId
-    population*: int              # Population in millions
+    population*: int              # Population in millions (display field)
+    souls*: int                   # Exact population count (for PTU transfers)
     infrastructure*: int          # Infrastructure level (0-10)
     planetClass*: PlanetClass
     resources*: ResourceRating
@@ -148,6 +150,7 @@ type
     turnDeadline*: int64          # Unix timestamp
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
     spyScouts*: Table[string, SpyScout]  # Active spy scouts on intelligence missions
+    populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
 
 # Initialization
 
@@ -165,7 +168,8 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     fleets: initTable[FleetId, Fleet](),
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     ongoingEffects: @[],
-    spyScouts: initTable[string, SpyScout]()
+    spyScouts: initTable[string, SpyScout](),
+    populationInTransit: @[]
   )
 
 proc initializeHouse*(name: string, color: string): House =
@@ -205,13 +209,17 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
   result = Colony(
     systemId: systemId,
     owner: owner,
-    population: 5,  # Starting population
+    population: 5,  # Starting population in millions (display field)
+    souls: 5_000_000,  # Exact population count: 5M souls
     infrastructure: 3,  # Starting infrastructure
     planetClass: PlanetClass.Eden,  # Homeworlds are Abundant Eden per specs
     resources: ResourceRating.Abundant,  # Abundant resources
     buildings: @[BuildingType.Shipyard],  # Start with basic shipyard
     production: 0,
     underConstruction: none(ConstructionProject),
+    unassignedSquadrons: @[],  # No unassigned squadrons
+    unassignedSpaceLiftShips: @[],  # No unassigned spacelift ships
+    autoAssignFleets: true,  # Auto-assign by default
     fighterSquadrons: @[],  # No fighters at start
     capacityViolation: CapacityViolation(
       active: false,
@@ -231,6 +239,41 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     groundBatteries: 0,  # No batteries at start
     armies: 0,  # No armies at start
     marines: 0,  # No marines at start
+    blockaded: false,
+    blockadedBy: @[],
+    blockadeTurns: 0
+  )
+
+proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetClass, resources: ResourceRating): Colony =
+  ## Create a new ETAC-colonized system with 1 PTU (50k souls)
+  result = Colony(
+    systemId: systemId,
+    owner: owner,
+    population: 0,  # 50k souls = 0.05M, truncates to 0 in display
+    souls: 50_000,  # Exactly 1 PTU worth of colonists
+    infrastructure: 0,  # No infrastructure yet
+    planetClass: planetClass,
+    resources: resources,
+    buildings: @[],  # No buildings yet
+    production: 0,
+    underConstruction: none(ConstructionProject),
+    unassignedSquadrons: @[],
+    unassignedSpaceLiftShips: @[],
+    autoAssignFleets: true,
+    fighterSquadrons: @[],
+    capacityViolation: CapacityViolation(
+      active: false,
+      violationType: "",
+      turnsRemaining: 0,
+      violationTurn: 0
+    ),
+    starbases: @[],
+    spaceports: @[],
+    shipyards: @[],  # No shipyards yet
+    planetaryShieldLevel: 0,
+    groundBatteries: 0,
+    armies: 0,
+    marines: 0,
     blockaded: false,
     blockadedBy: @[],
     blockadeTurns: 0
