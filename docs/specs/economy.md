@@ -535,6 +535,17 @@ CST will open up new, larger hulled classes of combat ships.
 
 The maximum construction level is CST10.
 
+### Construction Speed Bonus
+
+CST tech reduces ship construction time by 10% per level:
+- **Formula:** `ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))`
+- **Minimum:** 1 turn (construction never completes faster than 1 turn)
+- **Example:** A Battleship (3 turns base) at CST5 takes `ceiling(3 × 0.6)` = 2 turns
+
+This creates meaningful progression from early game (capitals take 4-5 turns) to late game (CST10 enables rapid construction of even the largest ships).
+
+See [Section 9.1.1](reference.md#911-ship-construction-times) for complete construction time table.
+
 ## 4.6 Weapons (WEP)
 
 Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by 10% for each Weapons level (rounded down).
@@ -757,13 +768,38 @@ ACO technology affects carrier capacity only and does not modify fighter squadro
 
 Construction and repair of House assets is accomplished planet-side or in orbit, with restrictions. 
 
-The number of turns required to construct a Military ship is two turns. Spacelift Command ships require one turn.
+## 5.0 Ship Construction
+
+The number of turns required to construct a ship varies by hull class and CST tech level per [Section 9.1.1](reference.md#911-ship-construction-times).
+
+**Payment Model:**
+- Full PC cost must be paid **upfront** from house treasury when construction begins
+- Construction cannot start if house lacks sufficient PP in treasury
+- If construction is cancelled, 50% of PC is refunded to treasury
+
+**Construction Vulnerability:**
+
+Ships under construction in docks can be destroyed during the Conflict Phase if:
+- The shipyard/spaceport is destroyed by orbital bombardment
+- The facility is crippled by combat damage
+
+Destroyed ships-in-construction provide no salvage value. The house loses the full PC investment.
+
+**Completion and Commissioning:**
+
+Ships complete during the Maintenance Phase and are immediately commissioned:
+- Ship is created with current house tech levels
+- Automatically assigned to existing squadron at facility location (if capacity available)
+- Otherwise, new squadron is created with ship as flagship
+- If no fleet exists at location, new fleet is created
+
+**Ship Repairs:**
 
 The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
 
-Newly commissioned ships, and repaired ships, will remain in their existing docs until ordered to join a squadron.
+**Dock Management:**
 
-Spaceport and Shipyard construction capacity is limited by their CST tech.
+Spaceport and Shipyard construction capacity is limited by their CST tech level per [Section 4.5](economy.md#45-construction-cst).
 
 ## 5.1 Planet-side Construction
 
