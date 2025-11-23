@@ -1,0 +1,151 @@
+## Intelligence Report Generation
+##
+## Generates intelligence reports from successful spy scout missions
+## Per intel.md and operations.md specifications
+
+import std/[tables, options, sequtils]
+import types as intel_types
+import ../gamestate
+
+proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.ColonyIntelReport] =
+  ## Generate colony intelligence report from SpyOnPlanet mission
+  ## Per intel.md:107-121
+
+  if targetSystem notin state.colonies:
+    return none(intel_types.ColonyIntelReport)
+
+  let colony = state.colonies[targetSystem]
+
+  # Don't spy on your own colonies
+  if colony.owner == scoutOwner:
+    return none(intel_types.ColonyIntelReport)
+
+  var report = intel_types.ColonyIntelReport(
+    colonyId: targetSystem,
+    targetOwner: colony.owner,
+    gatheredTurn: state.turn,
+    quality: quality,
+    population: colony.population,
+    industry: colony.infrastructure,  # Infrastructure level (0-10)
+    defenses: colony.armies + colony.marines + colony.groundBatteries,  # Total ground defenses
+    starbaseLevel: colony.starbases.len,
+    constructionQueue: @[]
+  )
+
+  # Construction project visible if spy quality is high enough
+  if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
+    # Add current construction project info
+    if colony.underConstruction.isSome:
+      report.constructionQueue.add(colony.underConstruction.get().itemId)
+
+  return some(report)
+
+proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.SystemIntelReport] =
+  ## Generate system intelligence report from SpyOnSystem mission
+  ## Per intel.md:96-105
+
+  var fleetIntels: seq[intel_types.FleetIntel] = @[]
+
+  # Find all fleets in this system that are not owned by the scout owner
+  for fleetId, fleet in state.fleets:
+    if fleet.location == targetSystem and fleet.owner != scoutOwner:
+      var fleetIntel = intel_types.FleetIntel(
+        fleetId: fleetId,
+        owner: fleet.owner,
+        location: targetSystem,
+        shipCount: fleet.squadrons.len
+      )
+
+      # Detailed squadron info only for high quality intel
+      if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
+        var squadDetails: seq[intel_types.SquadronIntel] = @[]
+        for squadron in fleet.squadrons:
+          let squadIntel = intel_types.SquadronIntel(
+            squadronId: squadron.id,
+            shipClass: $squadron.flagship.shipClass,
+            shipCount: 1 + squadron.ships.len,  # Flagship + other ships
+            techLevel: squadron.flagship.stats.techLevel,
+            hullIntegrity: if squadron.flagship.isCrippled: some(50) else: some(100)  # Simplified: 100% or 50% (crippled)
+          )
+          squadDetails.add(squadIntel)
+        fleetIntel.squadronDetails = some(squadDetails)
+
+      fleetIntels.add(fleetIntel)
+
+  if fleetIntels.len == 0:
+    return none(intel_types.SystemIntelReport)
+
+  return some(intel_types.SystemIntelReport(
+    systemId: targetSystem,
+    gatheredTurn: state.turn,
+    quality: quality,
+    detectedFleets: fleetIntels
+  ))
+
+proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.StarbaseIntelReport] =
+  ## Generate starbase intelligence report from HackStarbase mission
+  ## Per intel.md and operations.md:6.2.11 - "economic and R&D intelligence"
+
+  if targetSystem notin state.colonies:
+    return none(intel_types.StarbaseIntelReport)
+
+  let colony = state.colonies[targetSystem]
+
+  # Don't hack your own starbases
+  if colony.owner == scoutOwner:
+    return none(intel_types.StarbaseIntelReport)
+
+  # No starbase to hack
+  if colony.starbases.len == 0:
+    return none(intel_types.StarbaseIntelReport)
+
+  # Get target house data
+  let targetHouse = state.houses[colony.owner]
+
+  var report = intel_types.StarbaseIntelReport(
+    systemId: targetSystem,
+    targetOwner: colony.owner,
+    gatheredTurn: state.turn,
+    quality: quality
+  )
+
+  # Economic intelligence - always available from starbase hack
+  report.treasuryBalance = some(targetHouse.treasury)
+  report.taxRate = some(targetHouse.taxPolicy.currentRate.float)
+
+  # Calculate gross and net income (if available from recent turn)
+  # This would ideally come from the last income report
+  # For now, provide treasury as a proxy
+  report.grossIncome = none(int)  # TODO: Track income per turn
+  report.netIncome = none(int)    # TODO: Track income per turn
+
+  # R&D intelligence - tech tree data
+  report.techLevels = some(targetHouse.techTree.levels)
+
+  # Research allocations (from accumulated research)
+  # Calculate total TRP across all fields
+  var totalTRP = 0
+  for field, points in targetHouse.techTree.accumulated.technology:
+    totalTRP += points
+
+  report.researchAllocations = some((
+    erp: targetHouse.techTree.accumulated.economic,
+    srp: targetHouse.techTree.accumulated.science,
+    trp: totalTRP
+  ))
+
+  # Current research focus (most accumulated type)
+  let maxAccum = max([
+    targetHouse.techTree.accumulated.economic,
+    targetHouse.techTree.accumulated.science,
+    totalTRP
+  ])
+
+  if maxAccum == targetHouse.techTree.accumulated.economic:
+    report.currentResearch = some("Economic")
+  elif maxAccum == targetHouse.techTree.accumulated.science:
+    report.currentResearch = some("Science")
+  else:
+    report.currentResearch = some("Technology")
+
+  return some(report)
