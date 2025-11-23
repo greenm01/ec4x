@@ -52,12 +52,14 @@ When an issue is fixed, check it off and update STATUS.md.
 - [x] Task force assembly with Rendezvous orders
 - [x] Strategic reserve system
 - [x] FIX: Mutability error in generateFleetOrders (fixed - generateAIOrders now takes `var AIController`)
-- [ ] Heuristics to plan coordinated operations
-- [ ] Defense-in-depth fleet positioning
-- [ ] Strategic reserve response logic
+- [x] Heuristics to plan coordinated operations (identifyInvasionOpportunities, planCoordinatedInvasion)
+- [x] Defense-in-depth fleet positioning (manageStrategicReserves assigns reserves to important colonies)
+- [x] Strategic reserve response logic (respondToThreats moves reserves to intercept nearby enemies)
+
+**Status:** Phase 2/3 complete and ready for balance testing
 
 **Files Affected:**
-- `tests/balance/ai_controller.nim` - Phase 2/3 implementations complete, compiles successfully
+- `tests/balance/ai_controller.nim` - All Phase 2/3 features implemented and compiling
 
 ---
 
