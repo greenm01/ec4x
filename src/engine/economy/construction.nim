@@ -14,43 +14,111 @@ import ../config/[construction_config, facilities_config]
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
 
-## Ship Construction Costs (reference.md:9.2)
+## Ship Construction Costs and Times (reference.md:9.1 and 9.1.1)
+
+import ../config/ships_config
+import math
 
 proc getShipConstructionCost*(shipClass: ShipClass): int =
-  ## Get construction cost for ship class
-  ## Per reference.md:9.2
-  ##
-  ## TODO: Load from reference.md table
-  ## Placeholder costs
+  ## Get construction cost (PC) for ship class from ships.toml
+  ## Per reference.md:9.1
+  let shipsConfig = globalShipsConfig
+
   case shipClass
   of ShipClass.Fighter:
-    return 5
+    return shipsConfig.fighter.build_cost
+  of ShipClass.Corvette:
+    return shipsConfig.corvette.build_cost
+  of ShipClass.Frigate:
+    return shipsConfig.frigate.build_cost
   of ShipClass.Raider:
-    return 15
+    return shipsConfig.raider.build_cost
   of ShipClass.Destroyer:
-    return 25
-  of ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.HeavyCruiser:
-    return 40
-  of ShipClass.Carrier, ShipClass.SuperCarrier:
-    return 50
-  of ShipClass.Battleship, ShipClass.Battlecruiser, ShipClass.Dreadnought, ShipClass.SuperDreadnought:
-    return 60
-  of ShipClass.TroopTransport, ShipClass.ETAC:
-    return 30
+    return shipsConfig.destroyer.build_cost
+  of ShipClass.Cruiser:
+    return shipsConfig.cruiser.build_cost
+  of ShipClass.LightCruiser:
+    return shipsConfig.light_cruiser.build_cost
+  of ShipClass.HeavyCruiser:
+    return shipsConfig.heavy_cruiser.build_cost
+  of ShipClass.Carrier:
+    return shipsConfig.carrier.build_cost
+  of ShipClass.SuperCarrier:
+    return shipsConfig.supercarrier.build_cost
+  of ShipClass.Battleship:
+    return shipsConfig.battleship.build_cost
+  of ShipClass.Battlecruiser:
+    return shipsConfig.battlecruiser.build_cost
+  of ShipClass.Dreadnought:
+    return shipsConfig.dreadnought.build_cost
+  of ShipClass.SuperDreadnought:
+    return shipsConfig.super_dreadnought.build_cost
+  of ShipClass.TroopTransport:
+    return shipsConfig.troop_transport.build_cost
+  of ShipClass.ETAC:
+    return shipsConfig.etac.build_cost
   of ShipClass.Scout:
-    return 10
+    return shipsConfig.scout.build_cost
   of ShipClass.Starbase:
-    return 200
+    return shipsConfig.starbase.build_cost
   of ShipClass.PlanetBreaker:
-    return 1000
+    return shipsConfig.planetbreaker.build_cost
 
-proc getShipBuildTime*(shipClass: ShipClass): int =
-  ## Get construction time in turns
-  ## Per reference.md:9.2
+proc getShipBaseBuildTime*(shipClass: ShipClass): int =
+  ## Get base construction time (before CST modifier) from ships.toml
+  ## Per reference.md:9.1.1
+  let constructionConfig = globalShipsConfig.construction
+
+  case shipClass
+  of ShipClass.Fighter:
+    return constructionConfig.fighter_base_time
+  of ShipClass.Corvette:
+    return constructionConfig.corvette_base_time
+  of ShipClass.Frigate:
+    return constructionConfig.frigate_base_time
+  of ShipClass.Raider:
+    return constructionConfig.raider_base_time
+  of ShipClass.Destroyer:
+    return constructionConfig.destroyer_base_time
+  of ShipClass.Cruiser:
+    return constructionConfig.cruiser_base_time
+  of ShipClass.LightCruiser:
+    return constructionConfig.light_cruiser_base_time
+  of ShipClass.HeavyCruiser:
+    return constructionConfig.heavy_cruiser_base_time
+  of ShipClass.Carrier:
+    return constructionConfig.carrier_base_time
+  of ShipClass.SuperCarrier:
+    return constructionConfig.supercarrier_base_time
+  of ShipClass.Battleship:
+    return constructionConfig.battleship_base_time
+  of ShipClass.Battlecruiser:
+    return constructionConfig.battlecruiser_base_time
+  of ShipClass.Dreadnought:
+    return constructionConfig.dreadnought_base_time
+  of ShipClass.SuperDreadnought:
+    return constructionConfig.super_dreadnought_base_time
+  of ShipClass.TroopTransport:
+    return constructionConfig.troop_transport_base_time
+  of ShipClass.ETAC:
+    return constructionConfig.etac_base_time
+  of ShipClass.Scout:
+    return constructionConfig.scout_base_time
+  of ShipClass.Starbase:
+    return constructionConfig.starbase_base_time
+  of ShipClass.PlanetBreaker:
+    return constructionConfig.planetbreaker_base_time
+
+proc getShipBuildTime*(shipClass: ShipClass, cstLevel: int): int =
+  ## Get actual construction time in turns with CST modifier
+  ## Per reference.md:9.1.1
   ##
-  ## TODO: Load from reference.md table
-  ## Placeholder: 1 turn per 10 PP cost
-  return max(1, getShipConstructionCost(shipClass) div 10)
+  ## Formula: ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))
+  ## Minimum: 1 turn
+  let baseTime = getShipBaseBuildTime(shipClass)
+  let modifier = 1.0 - (float(cstLevel - 1) * 0.10)
+  let actualTime = ceil(float(baseTime) * modifier).int
+  return max(1, actualTime)
 
 ## Building Construction Costs
 
@@ -145,19 +213,20 @@ proc startConstruction*(colony: var Colony, project: ConstructionProject): bool 
   colony.underConstruction = some(project)
   return true
 
-proc advanceConstruction*(colony: var Colony, productionPoints: int): Option[CompletedProject] =
-  ## Apply production points to construction
+proc advanceConstruction*(colony: var Colony): Option[CompletedProject] =
+  ## Advance construction by one turn (upfront payment model)
   ## Returns completed project if finished
+  ## Per economy.md:5.0 - full cost paid upfront, construction tracks turns
   if colony.underConstruction.isNone:
     return none(CompletedProject)
 
   var project = colony.underConstruction.get()
 
-  # Apply production
-  project.costPaid += productionPoints
+  # Decrement turns remaining
+  project.turnsRemaining -= 1
 
   # Check if complete
-  if project.costPaid >= project.costTotal:
+  if project.turnsRemaining <= 0:
     let completed = CompletedProject(
       colonyId: colony.systemId,
       projectType: project.projectType,
@@ -170,19 +239,19 @@ proc advanceConstruction*(colony: var Colony, productionPoints: int): Option[Com
     return some(completed)
 
   # Update progress
-  project.turnsRemaining = max(1, (project.costTotal - project.costPaid) div max(1, productionPoints))
   colony.underConstruction = some(project)
 
   return none(CompletedProject)
 
 proc cancelConstruction*(colony: var Colony): int =
-  ## Cancel construction and return refund (50% of invested PP)
+  ## Cancel construction and return refund (50% of total cost)
   ## Returns refunded PP amount
+  ## Per economy.md:5.0 - 50% refund on cancellation
   if colony.underConstruction.isNone:
     return 0
 
   let project = colony.underConstruction.get()
-  let refund = project.costPaid div 2
+  let refund = project.costTotal div 2
 
   colony.underConstruction = none(ConstructionProject)
 
@@ -190,33 +259,38 @@ proc cancelConstruction*(colony: var Colony): int =
 
 ## Construction Queue Helpers
 
-proc createShipProject*(shipClass: ShipClass): ConstructionProject =
-  ## Create ship construction project
+proc createShipProject*(shipClass: ShipClass, cstLevel: int = 1): ConstructionProject =
+  ## Create ship construction project with upfront payment model
+  ## Requires CST level to calculate actual build time
+  ## Per economy.md:5.0 - full cost must be paid upfront
   let cost = getShipConstructionCost(shipClass)
-  let turns = getShipBuildTime(shipClass)
+  let turns = getShipBuildTime(shipClass, cstLevel)
 
   result = ConstructionProject(
     projectType: ConstructionType.Ship,
     itemId: $shipClass,
     costTotal: cost,
-    costPaid: 0,
+    costPaid: cost,  # Full upfront payment
     turnsRemaining: turns
   )
 
 proc createBuildingProject*(buildingType: string): ConstructionProject =
-  ## Create building construction project
+  ## Create building construction project with upfront payment
+  ## Per economy.md:5.0 - full cost must be paid upfront
   let cost = getBuildingCost(buildingType)
+  let turns = getBuildingTime(buildingType)
 
   result = ConstructionProject(
     projectType: ConstructionType.Building,
     itemId: buildingType,
     costTotal: cost,
-    costPaid: 0,
-    turnsRemaining: cost div 10  # Estimate
+    costPaid: cost,  # Full upfront payment
+    turnsRemaining: turns
   )
 
 proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
-  ## Create IU investment project
+  ## Create IU investment project with upfront payment
+  ## Per economy.md:5.0 - full cost must be paid upfront
   let costPerUnit = getIndustrialUnitCost(colony)
   let totalCost = costPerUnit * units
 
@@ -224,6 +298,6 @@ proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
     projectType: ConstructionType.Industrial,
     itemId: $units & " IU",
     costTotal: totalCost,
-    costPaid: 0,
+    costPaid: totalCost,  # Full upfront payment
     turnsRemaining: 1  # IU investment completes in 1 turn
   )
