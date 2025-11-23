@@ -132,14 +132,12 @@ proc resolveMaintenancePhase*(colonies: var seq[types.Colony],
             applyMaintenanceShortfall(colony, shortfall)
             break
 
-  # Advance construction
+  # Advance construction (upfront payment model - no PP allocation needed)
   for colony in colonies.mitems:
     if colony.underConstruction.isSome:
-      # TODO: Determine how much production to allocate
-      # For now, allocate 10% of colony GCO
-      let productionAllocation = colony.grossOutput div 10
-
-      let completed = advanceConstruction(colony, productionAllocation)
+      # Construction advances one turn per maintenance phase
+      # Payment was already made upfront when construction started
+      let completed = advanceConstruction(colony)
       if completed.isSome:
         result.completedProjects.add(completed.get())
 

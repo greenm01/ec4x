@@ -59,6 +59,8 @@ proc getShipStatsFromConfig(shipClass: ShipClass): ShipStats =
   # Map ShipClass enum to config struct field
   let configStats = case shipClass
     of ShipClass.Fighter: cfg.fighter
+    of ShipClass.Corvette: cfg.corvette
+    of ShipClass.Frigate: cfg.frigate
     of ShipClass.Scout: cfg.scout
     of ShipClass.Raider: cfg.raider
     of ShipClass.Destroyer: cfg.destroyer
