@@ -138,17 +138,23 @@ proc categorizeStrategy*(personality: AIPersonality): string =
 
 proc evaluateFitness*(genome: var AIGenome, gamesPlayed: int, wins: int, colonies: int, militaryScore: int, prestige: int) =
   ## Calculate fitness based on game performance
-  ## Fitness = weighted combination of:
-  ## - Win rate (elimination victory or highest prestige at end)
-  ## - Prestige (direct victory path - highest prestige wins)
-  ## - Colony count (expansion enables prestige generation)
-  ## - Military score (combat effectiveness for elimination)
   ##
-  ## Victory conditions:
-  ## 1. Elimination: Last house standing
-  ## 2. Prestige: Highest prestige at game end
+  ## VICTORY CONDITIONS (per victory.md):
+  ## 1. Elimination Victory: Be the last house standing
+  ## 2. Prestige Victory: Highest prestige at turn limit (default 200 turns)
   ##
-  ## Therefore prestige and win rate are equally important (40%/40%)
+  ## Prestige Sources:
+  ## - Colony control (+1 per turn per colony)
+  ## - High population
+  ## - Tech advancement
+  ## - Diplomatic relations
+  ## - Military strength
+  ##
+  ## FITNESS FORMULA:
+  ## - Win rate: 40% (elimination or prestige victory)
+  ## - Prestige: 40% (direct victory condition)
+  ## - Colonies: 10% (enables prestige generation)
+  ## - Military: 10% (enables elimination victory)
 
   let winRate = if gamesPlayed > 0: wins.float / gamesPlayed.float else: 0.0
   let avgColonies = if gamesPlayed > 0: colonies.float / gamesPlayed.float else: 0.0
