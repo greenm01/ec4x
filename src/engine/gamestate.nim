@@ -216,7 +216,12 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     ),
     starbases: @[],  # No starbases at start
     spaceports: @[],  # No spaceports at start
-    shipyards: @[],   # No shipyards at start
+    shipyards: @[Shipyard(
+      id: $systemId & "_shipyard1",
+      commissionedTurn: 1,
+      docks: 10,
+      isCrippled: false
+    )],  # Start with one shipyard
     planetaryShieldLevel: 0,  # No shield at start
     groundBatteries: 0,  # No batteries at start
     armies: 0,  # No armies at start
