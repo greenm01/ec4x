@@ -6,10 +6,12 @@ import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
 import config/[prestige_config, military_config, tech_config]
 import diplomacy/types as dip_types
+import diplomacy/proposals as dip_proposals
 import espionage/types as esp_types
 import research/types as res_types
 import economy/types as econ_types
 import population/types as pop_types
+import intelligence/types as intel_types
 
 # Re-export common types
 export core.HouseId, core.SystemId, core.FleetId
@@ -134,6 +136,9 @@ type
     # Planet-Breaker tracking (assets.md:2.4.8)
     planetBreakerCount*: int  # Current PB count (max = current colony count)
 
+    # Intelligence database (intel.md)
+    intelligence*: intel_types.IntelligenceDatabase  # Gathered intelligence reports
+
   GamePhase* {.pure.} = enum
     Setup, Active, Paused, Completed
 
@@ -152,6 +157,7 @@ type
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
     spyScouts*: Table[string, SpyScout]  # Active spy scouts on intelligence missions
     populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
+    pendingProposals*: seq[dip_proposals.PendingProposal]  # Pending diplomatic proposals
 
 # Initialization
 
@@ -170,7 +176,8 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     ongoingEffects: @[],
     spyScouts: initTable[string, SpyScout](),
-    populationInTransit: @[]
+    populationInTransit: @[],
+    pendingProposals: @[]
   )
 
 proc initializeHouse*(name: string, color: string): House =
@@ -203,7 +210,8 @@ proc initializeHouse*(name: string, color: string): House =
     dishonoredStatus: dip_types.DishonoredStatus(active: false, turnsRemaining: 0, violationTurn: 0),
     diplomaticIsolation: dip_types.DiplomaticIsolation(active: false, turnsRemaining: 0, violationTurn: 0),
     taxPolicy: econ_types.TaxPolicy(currentRate: 50, history: @[50]),  # Default 50% tax rate
-    planetBreakerCount: 0
+    planetBreakerCount: 0,
+    intelligence: intel_types.newIntelligenceDatabase()
   )
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =

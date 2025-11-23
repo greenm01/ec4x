@@ -9,6 +9,7 @@ import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/diplomacy/types as dip_types
+import ../../src/engine/diplomacy/proposals as dip_proposals
 import ../../src/engine/economy/construction
 
 type
@@ -2224,6 +2225,36 @@ proc generateDiplomaticActions(controller: AIController, state: GameState, rng: 
   result = @[]
   let p = controller.personality
   let myHouse = state.houses[controller.houseId]
+
+  # Priority 0: Respond to pending proposals
+  # AI must respond to proposals before proposing new actions
+  for proposal in state.pendingProposals:
+    if proposal.target == controller.houseId and proposal.status == dip_proposals.ProposalStatus.Pending:
+      # Assess the proposer
+      let assessment = assessDiplomaticSituation(controller, state, proposal.proposer)
+
+      # Decision logic: Accept if beneficial, reject if enemy, wait if uncertain
+      if assessment.recommendPact and not assessment.recommendEnemy:
+        # Accept proposal
+        result.add(DiplomaticAction(
+          targetHouse: proposal.proposer,
+          actionType: DiplomaticActionType.AcceptProposal,
+          proposalId: some(proposal.id),
+          message: none(string)
+        ))
+        return result  # Only one action per turn
+
+      elif assessment.recommendEnemy or proposal.expiresIn <= 1:
+        # Reject if enemy or about to expire
+        result.add(DiplomaticAction(
+          targetHouse: proposal.proposer,
+          actionType: DiplomaticActionType.RejectProposal,
+          proposalId: some(proposal.id),
+          message: none(string)
+        ))
+        return result  # Only one action per turn
+
+      # Otherwise wait and think about it (let it pend)
 
   # Assess all other houses
   var assessments: seq[DiplomaticAssessment] = @[]

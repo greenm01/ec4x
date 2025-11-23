@@ -101,10 +101,15 @@ type
   DiplomaticAction* = object
     targetHouse*: HouseId
     actionType*: DiplomaticActionType
+    proposalId*: Option[string]  # For accept/reject/withdraw actions
+    message*: Option[string]     # Optional diplomatic message
 
   DiplomaticActionType* {.pure.} = enum
     ## Diplomatic actions per diplomacy.md:8.1
     ProposeNonAggressionPact,  # Propose pact with another house
+    AcceptProposal,            # Accept pending proposal
+    RejectProposal,            # Reject pending proposal
+    WithdrawProposal,          # Cancel own proposal
     BreakPact,                 # Break existing non-aggression pact
     DeclareEnemy,              # Set diplomatic status to Enemy
     SetNeutral                 # Set diplomatic status to Neutral

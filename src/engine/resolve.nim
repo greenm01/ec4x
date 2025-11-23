@@ -10,21 +10,19 @@ import gamestate, orders, fleet, ship, starmap, squadron, spacelift
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import research/[types as res_types, advancement, costs as res_costs]
 import espionage/[types as esp_types, engine as esp_engine]
-import diplomacy/[types as dip_types, engine as dip_engine]
+import diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_proposals]
 import colonization/engine as col_engine
 import combat/[engine as combat_engine, types as combat_types, ground]
 import population/[types as pop_types]
-import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config, ground_units_config]
+import config/[prestige_config, espionage_config, gameplay_config, construction_config, military_config, ground_units_config, population_config]
 import commands/executor
 import blockade/engine as blockade_engine
-import intelligence/detection
+import intelligence/[detection, types as intel_types, generator as intel_gen]
 import prestige
 
-# TODO: Load from config/population.toml at startup
-# For now using defaults from docs/specs/economy.md and config/population.toml
-const
-  DEFAULT_SOULS_PER_PTU = 50000  # 1 PTU = 50k souls (exact integer count)
-  DEFAULT_PTU_SIZE_MILLIONS = 0.05  # For population display field conversion
+# Population config loaded from config/population.toml via population_config module
+# Access via soulsPerPtu()
+# No more hardcoded constants
 
 type
   TurnResult* = object
@@ -240,7 +238,7 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
 
 ## Helper: Auto-balance unassigned squadrons to fleets at colony
 
-proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId) =
+proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
   ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
   ## Only assigns to stationary fleets (those with Hold orders or no orders)
   if colony.unassignedSquadrons.len == 0:
@@ -252,8 +250,11 @@ proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Co
     if fleet.location == systemId and fleet.owner == colony.owner:
       # Check if fleet has movement orders
       var hasMovementOrder = false
-      # TODO: Check orders to see if fleet is moving (need access to orders here)
-      # For now, assume all fleets at colony are stationary
+      if colony.owner in orders:
+        for order in orders[colony.owner].fleetOrders:
+          if order.fleetId == fleetId and order.orderType == FleetOrderType.Move:
+            hasMovementOrder = true
+            break
       if not hasMovementOrder:
         stationaryFleets.add(fleetId)
 
@@ -407,9 +408,8 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       if scoutLocation in state.colonies:
         let colony = state.colonies[scoutLocation]
         if colony.owner == rivalHouse:
-          # TODO: Check for actual starbase presence in colony
-          # For now, assume all colonies have detection capability
-          hasStarbase = false  # Will be true when we track starbases
+          # Check for actual starbase presence
+          hasStarbase = colony.starbases.len > 0
 
       # Collect ELI from fleets
       for fleetId, fleet in state.fleets:
@@ -441,16 +441,30 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       echo "    Spy scout ", scoutId, " destroyed"
     else:
       # Scout survives and gathers intelligence
-      # TODO: Generate intelligence reports based on mission type
       survivingScouts[scoutId] = scout
 
+      # Generate intelligence reports based on mission type
       case scout.mission
       of SpyMissionType.SpyOnPlanet:
         echo "    Spy scout ", scoutId, " gathering planetary intelligence at system ", scoutLocation
+        let report = intel_gen.generateColonyIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
+        if report.isSome:
+          state.houses[scout.owner].intelligence.addColonyReport(report.get())
+          echo "      Intel: Colony has ", report.get().population, " pop, ", report.get().industry, " IU, ", report.get().defenses, " ground units"
+
       of SpyMissionType.HackStarbase:
         echo "    Spy scout ", scoutId, " hacking starbase at system ", scoutLocation
+        let report = intel_gen.generateStarbaseIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
+        if report.isSome:
+          state.houses[scout.owner].intelligence.addStarbaseReport(report.get())
+          echo "      Intel: Treasury ", report.get().treasuryBalance.get(0), " PP, Tax rate ", report.get().taxRate.get(0.0), "%"
+
       of SpyMissionType.SpyOnSystem:
         echo "    Spy scout ", scoutId, " conducting system surveillance at ", scoutLocation
+        let report = intel_gen.generateSystemIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
+        if report.isSome:
+          state.houses[scout.owner].intelligence.addSystemReport(report.get())
+          echo "      Intel: Detected ", report.get().detectedFleets.len, " enemy fleets"
 
   # Update spy scouts in game state (remove detected ones)
   state.spyScouts = survivingScouts
@@ -466,7 +480,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
     # grossOutput starts at 0 and will be calculated by economy engine
 
     # Calculate PTU from exact souls count (1 PTU = 50k souls)
-    let ptuCount = colony.souls div DEFAULT_SOULS_PER_PTU
+    let ptuCount = colony.souls div soulsPerPtu()
 
     econColonies.add(econ_types.Colony(
       systemId: colony.systemId,
@@ -621,7 +635,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
             # If colony has auto-assign enabled, balance unassigned squadrons to fleets
             if colony.autoAssignFleets and colony.unassignedSquadrons.len > 0:
-              autoBalanceSquadronsToFleets(state, colony, systemId)
+              autoBalanceSquadronsToFleets(state, colony, systemId, orders)
 
         of econ_types.ConstructionType.Building:
           # Add building to colony
@@ -738,41 +752,129 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       for action in packet.diplomaticActions:
         case action.actionType
         of DiplomaticActionType.ProposeNonAggressionPact:
-          # TODO: Implement pact proposal system for multiplayer
-          # See docs/architecture/diplomacy_proposals.md for full design
-          #
-          # Current behavior: Auto-accept (works for AI/offline games)
-          # Multiplayer needs: Pending proposals, accept/reject actions, notifications
-          #
-          # Implementation phases:
-          # 1. Add PendingProposal type to GameState
-          # 2. Create proposal instead of immediate pact
-          # 3. Add AcceptProposal/RejectProposal actions
-          # 4. Implement proposal expiration in maintenance phase
-          # 5. Add AI response logic (accept/reject based on strategy)
-          # 6. Add notification system for players
-          #
+          # Pact proposal system per docs/architecture/diplomacy_proposals.md
+          # Creates pending proposal that target must accept/reject
           echo "    ", houseId, " proposed Non-Aggression Pact to ", action.targetHouse
-          # For now, auto-accept pacts (works fine for AI vs AI)
+
           if action.targetHouse in state.houses and not state.houses[action.targetHouse].eliminated:
-            # Proposer establishes pact on their side
-            let eventOpt1 = dip_engine.proposePact(
-              state.houses[houseId].diplomaticRelations,
-              action.targetHouse,
-              state.houses[houseId].violationHistory,
-              state.turn
-            )
-            # Target accepts (auto-accept for now)
-            let eventOpt2 = dip_engine.proposePact(
-              state.houses[action.targetHouse].diplomaticRelations,
-              houseId,
-              state.houses[action.targetHouse].violationHistory,
-              state.turn
-            )
-            if eventOpt1.isSome and eventOpt2.isSome:
-              echo "      Pact established"
+            # Check if proposer can form pacts (not isolated)
+            if not dip_types.canFormPact(state.houses[houseId].violationHistory):
+              echo "      Proposal blocked: proposer is diplomatically isolated"
             else:
-              echo "      Pact proposal failed (blocked by isolation or cooldown)"
+              # Create pending proposal
+              let proposal = dip_proposals.PendingProposal(
+                id: dip_proposals.generateProposalId(state.turn, houseId, action.targetHouse),
+                proposer: houseId,
+                target: action.targetHouse,
+                proposalType: dip_proposals.ProposalType.NonAggressionPact,
+                submittedTurn: state.turn,
+                expiresIn: 3,  # 3 turns to respond
+                status: dip_proposals.ProposalStatus.Pending,
+                message: action.message.get("")
+              )
+              state.pendingProposals.add(proposal)
+              echo "      Proposal created (expires in 3 turns)"
+
+        of DiplomaticActionType.AcceptProposal:
+          # Accept pending proposal
+          if action.proposalId.isNone:
+            echo "    ERROR: AcceptProposal missing proposalId"
+            continue
+
+          let proposalId = action.proposalId.get()
+          let proposalIndex = dip_proposals.findProposalIndex(state.pendingProposals, proposalId)
+
+          if proposalIndex < 0:
+            echo "    ERROR: Proposal ", proposalId, " not found"
+            continue
+
+          var proposal = state.pendingProposals[proposalIndex]
+
+          if proposal.target != houseId:
+            echo "    ERROR: ", houseId, " cannot accept proposal not targeted at them"
+            continue
+
+          if proposal.status != dip_proposals.ProposalStatus.Pending:
+            echo "    ERROR: Proposal ", proposalId, " is not pending (status: ", proposal.status, ")"
+            continue
+
+          echo "    ", houseId, " accepted Non-Aggression Pact from ", proposal.proposer
+
+          # Establish pact for both houses
+          let eventOpt1 = dip_engine.proposePact(
+            state.houses[proposal.proposer].diplomaticRelations,
+            houseId,
+            state.houses[proposal.proposer].violationHistory,
+            state.turn
+          )
+
+          let eventOpt2 = dip_engine.proposePact(
+            state.houses[houseId].diplomaticRelations,
+            proposal.proposer,
+            state.houses[houseId].violationHistory,
+            state.turn
+          )
+
+          if eventOpt1.isSome and eventOpt2.isSome:
+            proposal.status = dip_proposals.ProposalStatus.Accepted
+            state.pendingProposals[proposalIndex] = proposal
+            echo "      Pact established"
+          else:
+            echo "      Pact establishment failed (blocked)"
+
+        of DiplomaticActionType.RejectProposal:
+          # Reject pending proposal
+          if action.proposalId.isNone:
+            echo "    ERROR: RejectProposal missing proposalId"
+            continue
+
+          let proposalId = action.proposalId.get()
+          let proposalIndex = dip_proposals.findProposalIndex(state.pendingProposals, proposalId)
+
+          if proposalIndex < 0:
+            echo "    ERROR: Proposal ", proposalId, " not found"
+            continue
+
+          var proposal = state.pendingProposals[proposalIndex]
+
+          if proposal.target != houseId:
+            echo "    ERROR: ", houseId, " cannot reject proposal not targeted at them"
+            continue
+
+          if proposal.status != dip_proposals.ProposalStatus.Pending:
+            echo "    ERROR: Proposal ", proposalId, " is not pending (status: ", proposal.status, ")"
+            continue
+
+          echo "    ", houseId, " rejected Non-Aggression Pact from ", proposal.proposer
+          proposal.status = dip_proposals.ProposalStatus.Rejected
+          state.pendingProposals[proposalIndex] = proposal
+
+        of DiplomaticActionType.WithdrawProposal:
+          # Withdraw own proposal
+          if action.proposalId.isNone:
+            echo "    ERROR: WithdrawProposal missing proposalId"
+            continue
+
+          let proposalId = action.proposalId.get()
+          let proposalIndex = dip_proposals.findProposalIndex(state.pendingProposals, proposalId)
+
+          if proposalIndex < 0:
+            echo "    ERROR: Proposal ", proposalId, " not found"
+            continue
+
+          var proposal = state.pendingProposals[proposalIndex]
+
+          if proposal.proposer != houseId:
+            echo "    ERROR: ", houseId, " cannot withdraw proposal from ", proposal.proposer
+            continue
+
+          if proposal.status != dip_proposals.ProposalStatus.Pending:
+            echo "    ERROR: Proposal ", proposalId, " is not pending (status: ", proposal.status, ")"
+            continue
+
+          echo "    ", houseId, " withdrew Non-Aggression Pact proposal to ", proposal.target
+          proposal.status = dip_proposals.ProposalStatus.Withdrawn
+          state.pendingProposals[proposalIndex] = proposal
 
         of DiplomaticActionType.BreakPact:
           # Breaking a pact triggers violation penalties (diplomacy.md:8.1.2)
@@ -884,7 +986,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       # Add events from order execution
       for eventMsg in result.eventsGenerated:
         events.add(GameEvent(
-          eventType: GameEventType.Battle,  # TODO: Add more specific event types
+          eventType: GameEventType.Battle,
           houseId: houseId,
           description: eventMsg,
           systemId: order.targetSystem
@@ -986,7 +1088,7 @@ proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var s
 
       # Generate event
       events.add(GameEvent(
-        eventType: GameEventType.ColonyEstablished,  # TODO: Add ConstructionStarted event type
+        eventType: GameEventType.ColonyEstablished,  # Construction start - could use dedicated event type
         houseId: packet.houseId,
         description: "Started " & projectDesc & " at system " & $order.colonySystem,
         systemId: some(order.colonySystem)
@@ -1010,8 +1112,80 @@ proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events
     case order.action
     of SquadronManagementAction.TransferShip:
       # Transfer ship between squadrons at this colony
-      # TODO: Implement ship transfer logic
-      echo "    TransferShip not yet implemented"
+      if order.sourceSquadronId.isNone or order.shipIndex.isNone:
+        echo "    TransferShip failed: Missing source squadron or ship index"
+        continue
+
+      if order.targetSquadronId.isNone:
+        echo "    TransferShip failed: Missing target squadron"
+        continue
+
+      # Find source and target squadrons in fleets at this colony
+      var sourceFleet: Option[FleetId] = none(FleetId)
+      var targetFleet: Option[FleetId] = none(FleetId)
+      var sourceSquadIndex: int = -1
+      var targetSquadIndex: int = -1
+
+      # Locate source squadron
+      for fleetId, fleet in state.fleets:
+        if fleet.location == order.colonySystem and fleet.owner == packet.houseId:
+          for i, squad in fleet.squadrons:
+            if squad.id == order.sourceSquadronId.get():
+              sourceFleet = some(fleetId)
+              sourceSquadIndex = i
+              break
+          if sourceFleet.isSome:
+            break
+
+      if sourceFleet.isNone:
+        echo "    TransferShip failed: Source squadron ", order.sourceSquadronId.get(), " not found"
+        continue
+
+      # Locate target squadron
+      for fleetId, fleet in state.fleets:
+        if fleet.location == order.colonySystem and fleet.owner == packet.houseId:
+          for i, squad in fleet.squadrons:
+            if squad.id == order.targetSquadronId.get():
+              targetFleet = some(fleetId)
+              targetSquadIndex = i
+              break
+          if targetFleet.isSome:
+            break
+
+      if targetFleet.isNone:
+        echo "    TransferShip failed: Target squadron ", order.targetSquadronId.get(), " not found"
+        continue
+
+      # Remove ship from source squadron
+      let shipIndex = order.shipIndex.get()
+      var sourceSquad = state.fleets[sourceFleet.get()].squadrons[sourceSquadIndex]
+
+      if shipIndex < 0 or shipIndex >= sourceSquad.ships.len:
+        echo "    TransferShip failed: Invalid ship index ", shipIndex, " (squadron has ", sourceSquad.ships.len, " ships)"
+        continue
+
+      let shipOpt = sourceSquad.removeShip(shipIndex)
+      if shipOpt.isNone:
+        echo "    TransferShip failed: Could not remove ship from source squadron"
+        continue
+
+      let ship = shipOpt.get()
+
+      # Add ship to target squadron
+      var targetSquad = state.fleets[targetFleet.get()].squadrons[targetSquadIndex]
+
+      if not targetSquad.addShip(ship):
+        echo "    TransferShip failed: Could not add ship to target squadron (may be full or incompatible)"
+        # Put ship back in source squadron
+        discard sourceSquad.addShip(ship)
+        state.fleets[sourceFleet.get()].squadrons[sourceSquadIndex] = sourceSquad
+        continue
+
+      # Update both squadrons in state
+      state.fleets[sourceFleet.get()].squadrons[sourceSquadIndex] = sourceSquad
+      state.fleets[targetFleet.get()].squadrons[targetSquadIndex] = targetSquad
+
+      echo "    Transferred ship from ", order.sourceSquadronId.get(), " to ", order.targetSquadronId.get()
 
     of SquadronManagementAction.AssignToFleet:
       # Assign existing squadron to fleet (move between fleets or create new fleet)
@@ -1128,7 +1302,7 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
             0  # Cannot load any PTUs, colony at minimum viable population
           else:
             let availableSouls = colony.souls - minSoulsToKeep
-            let maxPTUs = availableSouls div DEFAULT_SOULS_PER_PTU
+            let maxPTUs = availableSouls div soulsPerPtu()
             maxPTUs
         else: 0
 
@@ -1181,11 +1355,11 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
         of CargoType.Colonists:
           # Colonists come from population: 1 PTU = 50k souls
           # Use souls field for exact counting (no rounding errors)
-          let soulsToLoad = totalLoaded * DEFAULT_SOULS_PER_PTU
+          let soulsToLoad = totalLoaded * soulsPerPtu()
           colony.souls -= soulsToLoad
           # Update display field (population in millions)
           colony.population = colony.souls div 1_000_000
-          echo "    Removed ", totalLoaded, " PTU (", soulsToLoad, " souls, ", totalLoaded.float * DEFAULT_PTU_SIZE_MILLIONS, "M) from colony"
+          echo "    Removed ", totalLoaded, " PTU (", soulsToLoad, " souls, ", totalLoaded.float * ptuSizeMillions(), "M) from colony"
         else:
           discard
 
@@ -1223,11 +1397,11 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
         of CargoType.Colonists:
           # Colonists are delivered to population: 1 PTU = 50k souls
           # Use souls field for exact counting (no rounding errors)
-          let soulsToUnload = quantity * DEFAULT_SOULS_PER_PTU
+          let soulsToUnload = quantity * soulsPerPtu()
           colony.souls += soulsToUnload
           # Update display field (population in millions)
           colony.population = colony.souls div 1_000_000
-          echo "    Unloaded ", quantity, " PTU (", soulsToUnload, " souls, ", quantity.float * DEFAULT_PTU_SIZE_MILLIONS, "M) from ", ship.id, " to colony"
+          echo "    Unloaded ", quantity, " PTU (", soulsToUnload, " souls, ", quantity.float * ptuSizeMillions(), "M) from ", ship.id, " to colony"
         else:
           discard
 
@@ -1380,13 +1554,13 @@ proc resolvePopulationTransfers(state: var GameState, packet: OrderPacket, event
       continue
 
     # Critical validation: Destination must have ≥1 PTU (50k souls) to be a functional colony
-    if destColony.souls < DEFAULT_SOULS_PER_PTU:
+    if destColony.souls < soulsPerPtu():
       echo "      Transfer failed: destination colony ", transfer.destColony, " has only ", destColony.souls,
-           " souls (needs ≥", DEFAULT_SOULS_PER_PTU, " to accept transfers)"
+           " souls (needs ≥", soulsPerPtu(), " to accept transfers)"
       continue
 
     # Convert PTU amount to souls for exact transfer
-    let soulsToTransfer = transfer.ptuAmount * DEFAULT_SOULS_PER_PTU
+    let soulsToTransfer = transfer.ptuAmount * soulsPerPtu()
 
     # Validate source has enough souls (can transfer any amount, even fractional PTU)
     if sourceColony.souls < soulsToTransfer:
@@ -1459,7 +1633,7 @@ proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent])
     if transfer.arrivalTurn != state.turn:
       continue  # Not arriving this turn
 
-    let soulsToDeliver = transfer.ptuAmount * DEFAULT_SOULS_PER_PTU
+    let soulsToDeliver = transfer.ptuAmount * soulsPerPtu()
 
     # Check destination status
     if transfer.destSystem notin state.colonies:
@@ -1515,7 +1689,7 @@ proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent])
       continue
 
     # Check if destination below minimum viable (< 1 PTU)
-    if destColony.souls < DEFAULT_SOULS_PER_PTU:
+    if destColony.souls < soulsPerPtu():
       # Destination colony collapsed below functional threshold
       # Return to source if possible
       if transfer.sourceSystem in state.colonies:
@@ -1602,9 +1776,9 @@ proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], ev
           # ETACs carry exactly 1 PTU for colonization missions
           # Per config/population.toml [transfer_limits] min_source_pu_remaining = 1
           let minSoulsToKeep = 1_000_000  # 1 PU minimum
-          if colony.souls > minSoulsToKeep + DEFAULT_SOULS_PER_PTU:
+          if colony.souls > minSoulsToKeep + soulsPerPtu():
             if mutableShip.loadCargo(CargoType.Colonists, 1):
-              colony.souls -= DEFAULT_SOULS_PER_PTU
+              colony.souls -= soulsPerPtu()
               colony.population = colony.souls div 1_000_000
               modified = true
               echo "    [Auto] Loaded 1 PTU onto ", ship.id, " at ", systemId
@@ -2016,11 +2190,12 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
 
   # Ground Batteries: Create GroundUnit objects from colony count
   defense.groundBatteries = @[]
+  let ownerCSTLevel = state.houses[colony.owner].techTree.levels.constructionTech
   for i in 0 ..< colony.groundBatteries:
     let battery = createGroundBattery(
       id = $targetId & "_GB" & $i,
       owner = colony.owner,
-      techLevel = 1  # TODO M3: Use actual CST level from colony owner's tech
+      techLevel = ownerCSTLevel  # Use colony owner's actual CST level
     )
     defense.groundBatteries.add(battery)
 
@@ -2109,6 +2284,21 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
   state.ongoingEffects = remainingEffects
 
+  # Expire pending diplomatic proposals
+  for proposal in state.pendingProposals.mitems:
+    if proposal.status == dip_proposals.ProposalStatus.Pending:
+      proposal.expiresIn -= 1
+
+      if proposal.expiresIn <= 0:
+        proposal.status = dip_proposals.ProposalStatus.Expired
+        echo "    Proposal ", proposal.id, " expired (", proposal.proposer, " -> ", proposal.target, ")"
+
+  # Clean up old proposals (keep 10 turn history)
+  state.pendingProposals.keepIf(proc(p: dip_proposals.PendingProposal): bool =
+    p.status == dip_proposals.ProposalStatus.Pending or
+    (state.turn - p.submittedTurn) < 10
+  )
+
   # Process Space Guild population transfers arriving this turn
   resolvePopulationArrivals(state, events)
 
@@ -2195,7 +2385,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
         # Generate event
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,  # TODO: Add FighterCommissioned event type
+          eventType: GameEventType.ColonyEstablished,  # Fighter commissioned - could use dedicated event type
           houseId: colony.owner,
           description: "Fighter Squadron commissioned at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2224,7 +2414,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
         # Generate event
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,  # TODO: Add StarbaseCommissioned event type
+          eventType: GameEventType.ColonyEstablished,  # Starbase commissioned - could use dedicated event type
           houseId: colony.owner,
           description: "Starbase commissioned at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2602,7 +2792,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
           # Generate event
           events.add(GameEvent(
-            eventType: GameEventType.ColonyEstablished,  # TODO: Add FighterDisbanded event type
+            eventType: GameEventType.ColonyEstablished,  # Fighter disbanded - could use dedicated event type
             houseId: colony.owner,
             description: $excess & " fighter squadrons auto-disbanded at " & $systemId & " (capacity violation)",
             systemId: some(systemId)
