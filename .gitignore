@@ -73,17 +73,15 @@ tests/balance/test_*[!.nim]
 tests/scenarios/**/[!.]*[!.nim]
 
 # Nim-compiled executables (no extension on Linux)
-# Match files without extensions in common binary locations
+# Specific binary artifacts that might be generated during development
 src/engine/combat/starbase
 src/engine/combat/ground
 src/engine/resolve
 src/engine/gamestate
 src/engine/prestige
-src/engine/**/types
-src/engine/**/engine
-# NOTE: Module binaries (types, engine, etc.) should not be compiled standalone
-# They are library modules meant to be imported, not executables
-# If you see compiled binaries here, they're build artifacts and should be cleaned
+# NOTE: Do NOT use wildcards like src/engine/**/types or src/engine/**/engine
+# Those would block .nim source files from being tracked
+# Library modules should not be compiled standalone anyway
 
 # Combat test results (large files)
 combat_test_results.json
