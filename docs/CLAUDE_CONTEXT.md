@@ -4,6 +4,7 @@
 ```
 @docs/STYLE_GUIDE.md
 @docs/STATUS.md
+@docs/BALANCE_TESTING_METHODOLOGY.md (if working on AI/balance)
 ```
 
 ---
