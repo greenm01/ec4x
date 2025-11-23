@@ -2321,11 +2321,19 @@ proc generateEspionageAction(controller: AIController, state: GameState, rng: va
   if house.espionageBudget.ebpPoints < 5:
     return none(esp_types.EspionageAttempt)
 
+  # CRITICAL: Don't do espionage if prestige is low
+  # Detection costs -2 prestige, victims lose -1 to -7 prestige
+  # If prestige < 20, focus on prestige-safe activities (expansion, tech, economy)
+  if house.prestige < 20:
+    return none(esp_types.EspionageAttempt)
+
   # Use espionage based on personality rather than strategy enum
   # High risk tolerance + low aggression = espionage focus
   let espionageChance = p.riskTolerance * 0.5 + (1.0 - p.aggression) * 0.3 + p.techPriority * 0.2
 
-  if rng.rand(1.0) > espionageChance:
+  # Reduce espionage frequency dramatically - it's a prestige drain
+  # Even with high espionage personality, only 20% chance per turn
+  if rng.rand(1.0) > (espionageChance * 0.2):
     return none(esp_types.EspionageAttempt)
 
   # Find a target house
