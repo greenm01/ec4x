@@ -1,0 +1,23 @@
+nimTitle	orders	_._/orders.html	module src/engine/orders		0
+nim	FleetOrderType	_._/orders.html#FleetOrderType	enum FleetOrderType		10
+nim	SquadronManagementAction	_._/orders.html#SquadronManagementAction	enum SquadronManagementAction		29
+nim	SquadronManagementOrder	_._/orders.html#SquadronManagementOrder	object SquadronManagementOrder		34
+nim	CargoManagementAction	_._/orders.html#CargoManagementAction	enum CargoManagementAction		53
+nim	CargoManagementOrder	_._/orders.html#CargoManagementOrder	object CargoManagementOrder		58
+nim	FleetOrder	_._/orders.html#FleetOrder	object FleetOrder		67
+nim	OrderPacket	_._/orders.html#OrderPacket	object OrderPacket		74
+nim	BuildOrder	_._/orders.html#BuildOrder	object BuildOrder		90
+nim	BuildType	_._/orders.html#BuildType	enum BuildType		98
+nim	DiplomaticAction	_._/orders.html#DiplomaticAction	object DiplomaticAction		101
+nim	DiplomaticActionType	_._/orders.html#DiplomaticActionType	enum DiplomaticActionType		105
+nim	PopulationTransferOrder	_._/orders.html#PopulationTransferOrder	object PopulationTransferOrder		112
+nim	ValidationResult	_._/orders.html#ValidationResult	object ValidationResult		119
+nim	validateFleetOrder	_._/orders.html#validateFleetOrder,FleetOrder,GameState	proc validateFleetOrder(order: FleetOrder; state: GameState): ValidationResult		125
+nim	validateOrderPacket	_._/orders.html#validateOrderPacket,OrderPacket,GameState	proc validateOrderPacket(packet: OrderPacket; state: GameState): ValidationResult		213
+nim	createMoveOrder	_._/orders.html#createMoveOrder,FleetId,SystemId,int	proc createMoveOrder(fleetId: FleetId; targetSystem: SystemId; priority: int = 0): FleetOrder		239
+nim	createColonizeOrder	_._/orders.html#createColonizeOrder,FleetId,SystemId,int	proc createColonizeOrder(fleetId: FleetId; targetSystem: SystemId; priority: int = 0): FleetOrder		249
+nim	createAttackOrder	_._/orders.html#createAttackOrder,FleetId,SystemId,FleetOrderType,int	proc createAttackOrder(fleetId: FleetId; targetSystem: SystemId;\n                  attackType: FleetOrderType; priority: int = 0): FleetOrder		259
+nim	createHoldOrder	_._/orders.html#createHoldOrder,FleetId,int	proc createHoldOrder(fleetId: FleetId; priority: int = 0): FleetOrder		269
+nim	newOrderPacket	_._/orders.html#newOrderPacket,HouseId,int	proc newOrderPacket(houseId: HouseId; turn: int): OrderPacket		281
+nim	addFleetOrder	_._/orders.html#addFleetOrder,OrderPacket,FleetOrder	proc addFleetOrder(packet: var OrderPacket; order: FleetOrder)		294
+nim	addBuildOrder	_._/orders.html#addBuildOrder,OrderPacket,BuildOrder	proc addBuildOrder(packet: var OrderPacket; order: BuildOrder)		298

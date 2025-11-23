@@ -1,0 +1,15 @@
+nimTitle	combat_config	_._/config/combat_config.html	module src/engine/config/combat_config		0
+nim	CombatMechanicsConfig	_._/config/combat_config.html#CombatMechanicsConfig	object CombatMechanicsConfig		10
+nim	CerModifiersConfig	_._/config/combat_config.html#CerModifiersConfig	object CerModifiersConfig		16
+nim	CerTableConfig	_._/config/combat_config.html#CerTableConfig	object CerTableConfig		21
+nim	BombardmentConfig	_._/config/combat_config.html#BombardmentConfig	object BombardmentConfig		27
+nim	GroundCombatConfig	_._/config/combat_config.html#GroundCombatConfig	object GroundCombatConfig		33
+nim	PlanetaryShieldsConfig	_._/config/combat_config.html#PlanetaryShieldsConfig	object PlanetaryShieldsConfig		39
+nim	DamageRulesConfig	_._/config/combat_config.html#DamageRulesConfig	object DamageRulesConfig		59
+nim	RetreatRulesConfig	_._/config/combat_config.html#RetreatRulesConfig	object RetreatRulesConfig		64
+nim	BlockadeConfig	_._/config/combat_config.html#BlockadeConfig	object BlockadeConfig		69
+nim	InvasionConfig	_._/config/combat_config.html#InvasionConfig	object InvasionConfig		73
+nim	CombatConfig	_._/config/combat_config.html#CombatConfig	object CombatConfig		77
+nim	loadCombatConfig	_._/config/combat_config.html#loadCombatConfig,string	proc loadCombatConfig(configPath: string = "config/combat.toml"): CombatConfig		90
+nim	globalCombatConfig	_._/config/combat_config.html#globalCombatConfig	var globalCombatConfig		104
+nim	reloadCombatConfig	_._/config/combat_config.html#reloadCombatConfig	proc reloadCombatConfig()		108

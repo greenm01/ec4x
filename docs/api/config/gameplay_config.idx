@@ -1,0 +1,10 @@
+nimTitle	gameplay_config	config/gameplay_config.html	module src/engine/config/gameplay_config		0
+nim	EliminationConfig	config/gameplay_config.html#EliminationConfig	object EliminationConfig		11
+nim	AutopilotConfig	config/gameplay_config.html#AutopilotConfig	object AutopilotConfig		15
+nim	AutopilotBehaviorConfig	config/gameplay_config.html#AutopilotBehaviorConfig	object AutopilotBehaviorConfig		18
+nim	DefensiveCollapseBehaviorConfig	config/gameplay_config.html#DefensiveCollapseBehaviorConfig	object DefensiveCollapseBehaviorConfig		26
+nim	VictoryConfig	config/gameplay_config.html#VictoryConfig	object VictoryConfig		34
+nim	GameplayConfig	config/gameplay_config.html#GameplayConfig	object GameplayConfig		40
+nim	loadGameplayConfig	config/gameplay_config.html#loadGameplayConfig,string	proc loadGameplayConfig(configPath: string = "config/gameplay.toml"): GameplayConfig		48
+nim	globalGameplayConfig	config/gameplay_config.html#globalGameplayConfig	var globalGameplayConfig		62
+nim	reloadGameplayConfig	config/gameplay_config.html#reloadGameplayConfig	proc reloadGameplayConfig()		66

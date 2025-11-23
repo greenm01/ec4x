@@ -1,0 +1,6 @@
+nimTitle	engine	colonization/engine.html	module src/engine/colonization/engine		0
+nim	ColonizationAttempt	colonization/engine.html#ColonizationAttempt	object ColonizationAttempt		21
+nim	ColonizationResult	colonization/engine.html#ColonizationResult	object ColonizationResult		28
+nim	canColonize	colonization/engine.html#canColonize,SystemId,seq[]	proc canColonize(systemId: SystemId; existingColonies: seq[econ_types.Colony]): bool		37
+nim	establishColony	colonization/engine.html#establishColony,HouseId,SystemId,PlanetClass,ResourceRating,int	proc establishColony(houseId: HouseId; systemId: SystemId; planetClass: PlanetClass;\n                resources: ResourceRating; startingPTU: int): ColonizationResult		45
+nim	attemptColonization	colonization/engine.html#attemptColonization,ColonizationAttempt,seq[],PlanetClass,ResourceRating	proc attemptColonization(attempt: ColonizationAttempt;\n                    existingColonies: seq[econ_types.Colony];\n                    planetClass: PlanetClass; resources: ResourceRating): ColonizationResult		76
