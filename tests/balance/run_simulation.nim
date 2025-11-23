@@ -38,6 +38,7 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
   var turnReports = newJArray()  # Store all turn reports for audit trail
 
   # Create output directory for turn reports
+  # NOTE: balance_results/ is in .gitignore and cleaned by run_balance_test.py
   createDir("balance_results/simulation_reports")
 
   # Run simulation for specified turns
