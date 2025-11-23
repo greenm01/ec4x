@@ -12,6 +12,7 @@
 # Used for both ETAC colonization and Space Guild transfers
 souls_per_ptu = 50000        # Number of people in 1 PTU
 ptu_size_millions = 0.05     # PTU size in millions (for colony.population field)
+min_population_remaining = 0 # Minimum population after PTU transfer (0 = allow evacuation)
 
 [transfer_costs]
 # Base cost per PTU by planet class (PP per PTU)

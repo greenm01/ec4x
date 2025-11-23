@@ -4,7 +4,7 @@
 ## This module is designed to work standalone for local/hotseat multiplayer
 ## Network transport (Nostr) wraps around this engine without modifying it
 
-import std/[tables, algorithm, options, random, strformat, sequtils, strutils, hashes]
+import std/[tables, algorithm, options, random, strformat, sequtils, strutils, hashes, math]
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap, squadron, spacelift
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
@@ -21,8 +21,10 @@ import intelligence/detection
 import prestige
 
 # TODO: Load from config/population.toml at startup
-# For now using default from docs/specs/economy.md
-const DEFAULT_PTU_SIZE_MILLIONS = 0.05  # 1 PTU = 50k souls = 0.05 million people
+# For now using defaults from docs/specs/economy.md and config/population.toml
+const
+  DEFAULT_SOULS_PER_PTU = 50000  # 1 PTU = 50k souls (exact integer count)
+  DEFAULT_PTU_SIZE_MILLIONS = 0.05  # For population display field conversion
 
 type
   TurnResult* = object
@@ -38,7 +40,7 @@ type
 
   GameEventType* {.pure.} = enum
     ColonyEstablished, SystemCaptured, BattleOccurred, Battle, Bombardment,
-    TechAdvance, FleetDestroyed, HouseEliminated
+    TechAdvance, FleetDestroyed, HouseEliminated, PopulationTransfer
 
   CombatReport* = object
     systemId*: SystemId
@@ -61,6 +63,8 @@ proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var s
 proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent])
+proc resolvePopulationTransfers(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
+proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent])
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent])
 proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
@@ -696,6 +700,11 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
     if houseId in orders:
       resolveBuildOrders(state, orders[houseId], events)
 
+  # Process Space Guild population transfers
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      resolvePopulationTransfers(state, orders[houseId], events)
+
   # Process diplomatic actions (per gameplay.md:1.3.3 - Command Phase)
   for houseId in state.houses.keys:
     if houseId in orders:
@@ -1084,8 +1093,18 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
       var availableUnits = case cargoType
         of CargoType.Marines: colony.marines
         of CargoType.Colonists:
-          # Check if colony has enough population for 1 PTU
-          if colony.population.float >= DEFAULT_PTU_SIZE_MILLIONS: 1 else: 0
+          # Calculate how many complete PTUs can be loaded from exact population
+          # Using souls field for accurate counting (no float rounding errors)
+          # Per config/population.toml [ptu_definition] min_population_remaining = 0 (allow evacuation)
+          # However, per [transfer_limits] min_source_pu_remaining = 1 (must keep 1 PU minimum)
+          # This prevents total evacuation while allowing near-complete evacuation
+          let minSoulsToKeep = 1_000_000  # 1 PU = 1 million souls (config/population.toml)
+          if colony.souls <= minSoulsToKeep:
+            0  # Cannot load any PTUs, colony at minimum viable population
+          else:
+            let availableSouls = colony.souls - minSoulsToKeep
+            let maxPTUs = availableSouls div DEFAULT_SOULS_PER_PTU
+            maxPTUs
         else: 0
 
       if availableUnits <= 0:
@@ -1135,14 +1154,13 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
         of CargoType.Marines:
           colony.marines -= totalLoaded
         of CargoType.Colonists:
-          # Colonists come from population: 1 PTU = DEFAULT_PTU_SIZE_MILLIONS
-          # Check if colony has enough population to transfer
-          let populationNeeded = totalLoaded.float * DEFAULT_PTU_SIZE_MILLIONS
-          if colony.population.float >= populationNeeded:
-            colony.population = (colony.population.float - populationNeeded).int
-            echo "    Removed ", populationNeeded, " million population (", totalLoaded, " PTU) from colony"
-          else:
-            echo "    WARNING: Colony population too low for ", totalLoaded, " PTU transfer"
+          # Colonists come from population: 1 PTU = 50k souls
+          # Use souls field for exact counting (no rounding errors)
+          let soulsToLoad = totalLoaded * DEFAULT_SOULS_PER_PTU
+          colony.souls -= soulsToLoad
+          # Update display field (population in millions)
+          colony.population = colony.souls div 1_000_000
+          echo "    Removed ", totalLoaded, " PTU (", soulsToLoad, " souls, ", totalLoaded.float * DEFAULT_PTU_SIZE_MILLIONS, "M) from colony"
         else:
           discard
 
@@ -1178,10 +1196,13 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
           colony.marines += quantity
           echo "    Unloaded ", quantity, " Marines from ", ship.id, " to colony"
         of CargoType.Colonists:
-          # Colonists are delivered to population: 1 PTU = DEFAULT_PTU_SIZE_MILLIONS
-          let populationAdded = quantity.float * DEFAULT_PTU_SIZE_MILLIONS
-          colony.population = (colony.population.float + populationAdded).int
-          echo "    Unloaded ", quantity, " PTU (", populationAdded, " million people) from ", ship.id, " to colony"
+          # Colonists are delivered to population: 1 PTU = 50k souls
+          # Use souls field for exact counting (no rounding errors)
+          let soulsToUnload = quantity * DEFAULT_SOULS_PER_PTU
+          colony.souls += soulsToUnload
+          # Update display field (population in millions)
+          colony.population = colony.souls div 1_000_000
+          echo "    Unloaded ", quantity, " PTU (", soulsToUnload, " souls, ", quantity.float * DEFAULT_PTU_SIZE_MILLIONS, "M) from ", ship.id, " to colony"
         else:
           discard
 
@@ -1193,6 +1214,318 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
         state.fleets[order.fleetId] = fleet
         state.colonies[order.colonySystem] = colony
         echo "    Successfully unloaded ", totalUnloaded, " ", unloadedType, " at ", order.colonySystem
+
+proc hasVisibilityOn(state: GameState, systemId: SystemId, houseId: HouseId): bool =
+  ## Check if a house has visibility on a system (fog of war)
+  ## A house can see a system if:
+  ## - They own a colony there
+  ## - They have a fleet present
+  ## - They have a spy scout present
+
+  # Check if house owns colony in this system
+  if systemId in state.colonies:
+    if state.colonies[systemId].owner == houseId:
+      return true
+
+  # Check if house has any fleets in this system
+  for fleetId, fleet in state.fleets:
+    if fleet.owner == houseId and fleet.location == systemId:
+      return true
+
+  # Check if house has spy scouts in this system
+  for scoutId, scout in state.spyScouts:
+    if scout.owner == houseId and scout.location == systemId and not scout.detected:
+      return true
+
+  return false
+
+proc canGuildTraversePath(state: GameState, path: seq[SystemId], transferringHouse: HouseId): bool =
+  ## Check if Space Guild can traverse a path for a given house
+  ## Guild validates path using the house's known intel (fog of war)
+  ## Returns false if:
+  ## - Path crosses system the house has no visibility on (intel leak prevention)
+  ## - Path crosses enemy-controlled system (blockade)
+  for systemId in path:
+    # Player must have visibility on this system (prevents intel leak exploit)
+    if not hasVisibilityOn(state, systemId, transferringHouse):
+      return false
+
+    # If system has a colony, it must be friendly (not enemy-controlled)
+    if systemId in state.colonies:
+      let colony = state.colonies[systemId]
+      if colony.owner != transferringHouse:
+        # Enemy-controlled system - Guild cannot pass through
+        return false
+
+  return true
+
+proc calculateTransitTime(state: GameState, sourceSystem: SystemId, destSystem: SystemId, houseId: HouseId): tuple[turns: int, jumps: int] =
+  ## Calculate Space Guild transit time and jump distance
+  ## Per config/population.toml: turns_per_jump = 1, minimum_turns = 1
+  ## Uses pathfinding to calculate actual jump lane distance
+  ## Returns (turns: -1, jumps: 0) if path crosses enemy territory (Guild cannot complete transfer)
+  if sourceSystem == destSystem:
+    return (turns: 1, jumps: 0)  # Minimum 1 turn even for same system, 0 jumps
+
+  # Space Guild civilian transports can use all lanes (not restricted by fleet composition)
+  # Create a dummy fleet that can traverse all lanes
+  let dummyFleet = Fleet(
+    id: "transit_calc",
+    owner: "GUILD".HouseId,
+    location: sourceSystem,
+    squadrons: @[],
+    spaceliftShips: @[]
+  )
+
+  # Use starmap pathfinding to get actual jump distance
+  let pathResult = state.starMap.findPath(sourceSystem, destSystem, dummyFleet)
+
+  if pathResult.found:
+    # Check if path crosses enemy territory
+    if not canGuildTraversePath(state, pathResult.path, houseId):
+      return (turns: -1, jumps: 0)  # Cannot traverse enemy territory
+
+    # Path length - 1 = number of jumps (e.g., [A, B, C] = 2 jumps)
+    # 1 turn per jump per config/population.toml
+    let jumps = pathResult.path.len - 1
+    return (turns: max(1, jumps), jumps: jumps)
+  else:
+    # No valid path found (shouldn't happen on a connected map, but handle gracefully)
+    # Fall back to hex distance as approximation
+    if sourceSystem in state.starMap.systems and destSystem in state.starMap.systems:
+      let source = state.starMap.systems[sourceSystem]
+      let dest = state.starMap.systems[destSystem]
+      let hexDist = distance(source.coords, dest.coords)
+      let jumps = hexDist.int
+      return (turns: max(1, jumps), jumps: jumps)
+    else:
+      return (turns: 1, jumps: 0)  # Ultimate fallback
+
+proc calculateTransferCost(planetClass: PlanetClass, ptuAmount: int, jumps: int): int =
+  ## Calculate Space Guild transfer cost per config/population.toml
+  ## Formula: base_cost_per_ptu × ptu_amount × (1 + (jumps - 1) × 0.20)
+  ## Source: docs/specs/economy.md Section 3.7, config/population.toml [transfer_costs]
+
+  # Base cost per PTU by planet class (config/population.toml)
+  let baseCostPerPTU = case planetClass
+    of PlanetClass.Eden: 4
+    of PlanetClass.Lush: 5
+    of PlanetClass.Benign: 6
+    of PlanetClass.Harsh: 8
+    of PlanetClass.Hostile: 10
+    of PlanetClass.Desolate: 12
+    of PlanetClass.Extreme: 15
+
+  # Distance modifier: +20% per jump beyond first (config/population.toml [transfer_modifiers])
+  # First jump has no modifier, subsequent jumps add 20% each
+  let distanceMultiplier = if jumps > 0:
+    1.0 + (float(jumps - 1) * 0.20)
+  else:
+    1.0  # Same system, no distance penalty
+
+  # Total cost = base × ptu × distance_modifier (rounded up)
+  let totalCost = ceil(float(baseCostPerPTU * ptuAmount) * distanceMultiplier).int
+
+  return totalCost
+
+proc resolvePopulationTransfers(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
+  ## Process Space Guild population transfers between colonies
+  ## Source: docs/specs/economy.md Section 3.7, config/population.toml
+  echo "    Processing population transfers for ", state.houses[packet.houseId].name
+
+  for transfer in packet.populationTransfers:
+    # Validate source colony exists and is owned by house
+    if transfer.sourceColony notin state.colonies:
+      echo "      Transfer failed: source colony ", transfer.sourceColony, " not found"
+      continue
+
+    var sourceColony = state.colonies[transfer.sourceColony]
+    if sourceColony.owner != packet.houseId:
+      echo "      Transfer failed: source colony ", transfer.sourceColony, " not owned by ", packet.houseId
+      continue
+
+    # Validate destination colony exists and is owned by house
+    if transfer.destColony notin state.colonies:
+      echo "      Transfer failed: destination colony ", transfer.destColony, " not found"
+      continue
+
+    var destColony = state.colonies[transfer.destColony]
+    if destColony.owner != packet.houseId:
+      echo "      Transfer failed: destination colony ", transfer.destColony, " not owned by ", packet.houseId
+      continue
+
+    # Critical validation: Destination must have ≥1 PTU (50k souls) to be a functional colony
+    if destColony.souls < DEFAULT_SOULS_PER_PTU:
+      echo "      Transfer failed: destination colony ", transfer.destColony, " has only ", destColony.souls,
+           " souls (needs ≥", DEFAULT_SOULS_PER_PTU, " to accept transfers)"
+      continue
+
+    # Convert PTU amount to souls for exact transfer
+    let soulsToTransfer = transfer.ptuAmount * DEFAULT_SOULS_PER_PTU
+
+    # Validate source has enough souls (can transfer any amount, even fractional PTU)
+    if sourceColony.souls < soulsToTransfer:
+      echo "      Transfer failed: source colony ", transfer.sourceColony, " has only ", sourceColony.souls,
+           " souls (needs ", soulsToTransfer, " for ", transfer.ptuAmount, " PTU)"
+      continue
+
+    # Calculate transit time and jump distance
+    let (transitTime, jumps) = calculateTransitTime(state, transfer.sourceColony, transfer.destColony, packet.houseId)
+
+    # Check if Guild can complete the transfer (path must be known and not blocked)
+    if transitTime < 0:
+      echo "      Transfer failed: No safe Guild route between ",
+           transfer.sourceColony, " and ", transfer.destColony,
+           " (requires scouted path through friendly/neutral territory)"
+      continue
+
+    let arrivalTurn = state.turn + transitTime
+
+    # Calculate transfer cost based on destination planet class and jump distance
+    # Per config/population.toml and docs/specs/economy.md Section 3.7
+    let cost = calculateTransferCost(destColony.planetClass, transfer.ptuAmount, jumps)
+
+    # Check house treasury and deduct cost
+    var house = state.houses[packet.houseId]
+    if house.treasury < cost:
+      echo "      Transfer failed: Insufficient funds (need ", cost, " PP, have ", house.treasury, " PP)"
+      continue
+
+    # Deduct cost from treasury
+    house.treasury -= cost
+    state.houses[packet.houseId] = house
+
+    # Deduct souls from source colony immediately (they've departed)
+    sourceColony.souls -= soulsToTransfer
+    sourceColony.population = sourceColony.souls div 1_000_000
+    state.colonies[transfer.sourceColony] = sourceColony
+
+    # Create in-transit entry
+    let transferId = $packet.houseId & "_" & $transfer.sourceColony & "_" & $transfer.destColony & "_" & $state.turn
+    let inTransit = pop_types.PopulationInTransit(
+      id: transferId,
+      houseId: packet.houseId,
+      sourceSystem: transfer.sourceColony,
+      destSystem: transfer.destColony,
+      ptuAmount: transfer.ptuAmount,
+      costPaid: cost,
+      arrivalTurn: arrivalTurn
+    )
+    state.populationInTransit.add(inTransit)
+
+    echo "      Space Guild transporting ", transfer.ptuAmount, " PTU (", soulsToTransfer, " souls) from ",
+         transfer.sourceColony, " to ", transfer.destColony, " (arrives turn ", arrivalTurn, ", cost: ", cost, " PP)"
+
+    events.add(GameEvent(
+      eventType: GameEventType.PopulationTransfer,
+      houseId: packet.houseId,
+      description: "Space Guild transporting " & $transfer.ptuAmount & " PTU from " & $transfer.sourceColony & " to " & $transfer.destColony & " (ETA: turn " & $arrivalTurn & ", cost: " & $cost & " PP)",
+      systemId: some(transfer.sourceColony)
+    ))
+
+proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent]) =
+  ## Process Space Guild population transfers that arrive this turn
+  ## Implements risk handling per config/population.toml [transfer_risks]
+  echo "  [Processing Space Guild Arrivals]"
+
+  var arrivedTransfers: seq[int] = @[]  # Indices to remove after processing
+
+  for idx, transfer in state.populationInTransit:
+    if transfer.arrivalTurn != state.turn:
+      continue  # Not arriving this turn
+
+    let soulsToDeliver = transfer.ptuAmount * DEFAULT_SOULS_PER_PTU
+
+    # Check destination status
+    if transfer.destSystem notin state.colonies:
+      # Destination colony no longer exists
+      echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination colony destroyed"
+      arrivedTransfers.add(idx)
+      events.add(GameEvent(
+        eventType: GameEventType.PopulationTransfer,
+        houseId: transfer.houseId,
+        description: $transfer.ptuAmount & " PTU lost - destination " & $transfer.destSystem & " destroyed",
+        systemId: some(transfer.destSystem)
+      ))
+      continue
+
+    var destColony = state.colonies[transfer.destSystem]
+
+    # Check if destination conquered (no longer owned by originating house)
+    if destColony.owner != transfer.houseId:
+      # dest_conquered_behavior = "lost"
+      echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination conquered by ", destColony.owner
+      arrivedTransfers.add(idx)
+      events.add(GameEvent(
+        eventType: GameEventType.PopulationTransfer,
+        houseId: transfer.houseId,
+        description: $transfer.ptuAmount & " PTU lost - destination " & $transfer.destSystem & " conquered",
+        systemId: some(transfer.destSystem)
+      ))
+      continue
+
+    # Check if destination blockaded
+    if destColony.blockaded:
+      # dest_blockaded_behavior = "return"
+      # Return PTUs to source colony if it still exists and is owned
+      if transfer.sourceSystem in state.colonies:
+        var sourceColony = state.colonies[transfer.sourceSystem]
+        if sourceColony.owner == transfer.houseId:
+          sourceColony.souls += soulsToDeliver
+          sourceColony.population = sourceColony.souls div 1_000_000
+          state.colonies[transfer.sourceSystem] = sourceColony
+          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU RETURNED to ", transfer.sourceSystem, " - destination blockaded"
+          events.add(GameEvent(
+            eventType: GameEventType.PopulationTransfer,
+            houseId: transfer.houseId,
+            description: $transfer.ptuAmount & " PTU returned from " & $transfer.destSystem & " (blockaded) to " & $transfer.sourceSystem,
+            systemId: some(transfer.sourceSystem)
+          ))
+        else:
+          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination blockaded, source conquered"
+      else:
+        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination blockaded, source destroyed"
+
+      arrivedTransfers.add(idx)
+      continue
+
+    # Check if destination below minimum viable (< 1 PTU)
+    if destColony.souls < DEFAULT_SOULS_PER_PTU:
+      # Destination colony collapsed below functional threshold
+      # Return to source if possible
+      if transfer.sourceSystem in state.colonies:
+        var sourceColony = state.colonies[transfer.sourceSystem]
+        if sourceColony.owner == transfer.houseId:
+          sourceColony.souls += soulsToDeliver
+          sourceColony.population = sourceColony.souls div 1_000_000
+          state.colonies[transfer.sourceSystem] = sourceColony
+          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU RETURNED to ", transfer.sourceSystem, " - destination below minimum viable"
+        else:
+          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination collapsed, source conquered"
+      else:
+        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination collapsed, source destroyed"
+
+      arrivedTransfers.add(idx)
+      continue
+
+    # Successful delivery!
+    destColony.souls += soulsToDeliver
+    destColony.population = destColony.souls div 1_000_000
+    state.colonies[transfer.destSystem] = destColony
+
+    echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU arrived at ", transfer.destSystem, " (", soulsToDeliver, " souls)"
+    events.add(GameEvent(
+      eventType: GameEventType.PopulationTransfer,
+      houseId: transfer.houseId,
+      description: $transfer.ptuAmount & " PTU arrived at " & $transfer.destSystem & " from " & $transfer.sourceSystem,
+      systemId: some(transfer.destSystem)
+    ))
+
+    arrivedTransfers.add(idx)
+
+  # Remove processed transfers (in reverse order to preserve indices)
+  for idx in countdown(arrivedTransfers.len - 1, 0):
+    state.populationInTransit.del(arrivedTransfers[idx])
 
 proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
   ## Automatically load available marines/colonists onto empty transports at colonies
@@ -1242,9 +1575,14 @@ proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], ev
         of ShipClass.ETAC:
           # Auto-load colonists if available (1 PTU commitment)
           # ETACs carry exactly 1 PTU for colonization missions
-          if mutableShip.loadCargo(CargoType.Colonists, 1):
-            modified = true
-            echo "    [Auto] Loaded 1 PTU onto ", ship.id, " at ", systemId
+          # Per config/population.toml [transfer_limits] min_source_pu_remaining = 1
+          let minSoulsToKeep = 1_000_000  # 1 PU minimum
+          if colony.souls > minSoulsToKeep + DEFAULT_SOULS_PER_PTU:
+            if mutableShip.loadCargo(CargoType.Colonists, 1):
+              colony.souls -= DEFAULT_SOULS_PER_PTU
+              colony.population = colony.souls div 1_000_000
+              modified = true
+              echo "    [Auto] Loaded 1 PTU onto ", ship.id, " at ", systemId
 
         else:
           discard  # Other ship classes don't have spacelift capability
@@ -1366,8 +1704,18 @@ proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: Fle
   if fleetOpt.isNone:
     return
 
-  # Get colony info from game state
-  let colony = createHomeColony(targetId, houseId)
+  # Check system exists
+  if targetId notin state.starMap.systems:
+    echo "    System ", targetId, " not found in starMap"
+    return
+
+  # TODO: Planet class and resources should be pre-generated or determined by system properties
+  # For now, assume ETAC scouts found a benign world with abundant resources
+  let planetClass = PlanetClass.Benign
+  let resources = ResourceRating.Abundant
+
+  # Create ETAC colony with 1 PTU (50k souls)
+  let colony = createETACColony(targetId, houseId, planetClass, resources)
 
   # Use colonization engine to establish with prestige
   let result = col_engine.establishColony(
@@ -1375,7 +1723,7 @@ proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: Fle
     targetId,
     colony.planetClass,
     colony.resources,
-    50  # Starting PTU
+    1  # ETAC carries exactly 1 PTU
   )
 
   if result.success:
@@ -1691,6 +2039,9 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
       echo "    Effect on ", updatedEffect.targetHouse, " has expired"
 
   state.ongoingEffects = remainingEffects
+
+  # Process Space Guild population transfers arriving this turn
+  resolvePopulationArrivals(state, events)
 
   # Update diplomatic status timers for all houses
   for houseId, house in state.houses.mpairs:
