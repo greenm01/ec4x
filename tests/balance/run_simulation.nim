@@ -3,7 +3,7 @@
 ## Executes a complete game simulation with AI players
 ## and generates balance analysis report
 
-import std/[json, times, strformat, random, sequtils, tables, algorithm, os]
+import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils]
 import game_setup, ai_controller
 import ../../src/engine/[gamestate, resolve, orders]
 import ../../src/common/types/core
@@ -169,6 +169,16 @@ when isMainModule:
   echo repeat("=", 70)
   echo ""
 
+  # Parse command line arguments: turns [seed]
+  var numTurns = 100
+  var seed: int64 = 42
+
+  if paramCount() >= 1:
+    numTurns = parseInt(paramStr(1))
+
+  if paramCount() >= 2:
+    seed = parseBiggestInt(paramStr(2))
+
   # Run a 4-player simulation with different strategies
   let strategies = @[
     AIStrategy.Aggressive,
@@ -177,7 +187,7 @@ when isMainModule:
     AIStrategy.Turtle
   ]
 
-  let report = runSimulation(4, 100, strategies, 42)
+  let report = runSimulation(4, numTurns, strategies, seed)
 
   # Export report
   import std/os

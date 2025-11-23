@@ -680,11 +680,43 @@ proc assessGarrisonNeeds*(controller: AIController, state: GameState): seq[Garri
       ))
 
 proc shouldBuildMarines*(controller: AIController, state: GameState, colony: Colony): bool =
-  ## Check if this colony should build marines based on garrison needs
-  let plans = controller.assessGarrisonNeeds(state)
+  ## Marines are for INVASIONS, not garrison defense (see ground_units.toml:53)
+  ## Build marines when planning invasions and have/building transports
+  ## Armies handle garrison duty (ground_units.toml:39)
 
-  for plan in plans:
-    if plan.systemId == colony.systemId and colony.marines < plan.targetMarines:
+  let p = controller.personality
+  let house = state.houses[controller.houseId]
+
+  # Only aggressive AIs build marines for invasion
+  if p.aggression < 0.4:
+    return false
+
+  # Count existing transports and marines
+  var transportCount = 0
+  var totalTransportCapacity = 0
+  var loadedMarines = 0
+
+  for fleet in state.fleets.values:
+    if fleet.owner != controller.houseId:
+      continue
+    for transport in fleet.spaceLiftShips:
+      if transport.shipClass == ShipClass.TroopTransport:
+        transportCount += 1
+        totalTransportCapacity += transport.cargo.capacity
+        loadedMarines += transport.cargo.quantity
+
+  # If we have transports, build marines to fill them (invasion prep)
+  if transportCount > 0:
+    let marinesNeeded = totalTransportCapacity - loadedMarines
+    if marinesNeeded > 0:
+      return true
+
+  # If we're building transports, prepare marines in advance
+  # Check if transport is in build queue (aggressive prep)
+  if p.aggression > 0.6 and transportCount > 0:
+    # Keep building a small stockpile for future invasions
+    let totalMarines = colony.marines
+    if totalMarines < 3:  # Small invasion force stockpile
       return true
 
   return false
@@ -1787,6 +1819,45 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         discard
 
   # ==========================================================================
+  # RESOURCE MANAGEMENT - Calculate maintenance affordability
+  # ==========================================================================
+
+  # Calculate total production across all colonies
+  var totalProduction = 0
+  for colony in myColonies:
+    totalProduction += colony.production
+
+  # Estimate current maintenance costs (approximate from squadron/spacelift counts)
+  # Average maintenance: ~2 PP per squadron, ~1 PP per spacelift ship
+  let totalSquadrons = militaryCount + scoutCount + raiderCount + carrierCount + fighterCount + starbaseCount
+  let totalSpaceLift = etacCount + transportCount
+  let estimatedMaintenance = (totalSquadrons * 2) + totalSpaceLift
+
+  # Calculate maintenance buffer - how much production is left after maintenance
+  let maintenanceBuffer = totalProduction - estimatedMaintenance
+  let maintenanceRatio = if totalProduction > 0:
+    float(estimatedMaintenance) / float(totalProduction)
+  else:
+    0.0
+
+  # CRITICAL: AI should NOT build new ships if maintenance is already consuming too much
+  # Target: Keep maintenance under 40% of production to allow for growth/colonization
+  # This prevents death spirals where maintenance consumes all production
+  # Formula: Allow building if (maintenance < 40% of production) AND (buffer > 20 PP)
+  let canAffordMoreShips = maintenanceRatio < 0.4 and maintenanceBuffer > 20
+
+  # Check squadron limit based on actual PU level
+  # Formula from military.toml: House PU / 100 (min 8)
+  # Calculate total PU from colonies
+  var totalPU = 0
+  for colony in myColonies:
+    totalPU += colony.population  # Population units = PU
+
+  let squadronLimit = max(8, totalPU div 100)
+  # Add 1-squadron buffer to account for ships completing from previous builds
+  let atSquadronLimit = totalSquadrons >= (squadronLimit - 1)
+
+  # ==========================================================================
   # STRATEGIC ASSESSMENT - What does this AI need?
   # ==========================================================================
 
@@ -1938,23 +2009,8 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
           break
 
     # ------------------------------------------------------------------------
-    # Marine Garrison Management
-    # ------------------------------------------------------------------------
-    if controller.shouldBuildMarines(state, colony):
-      # This colony needs more marines for garrison
-      if house.treasury >= 30:  # Cost of marines
-        result.add(BuildOrder(
-          colonySystem: colony.systemId,
-          buildType: BuildType.Building,
-          quantity: 1,
-          shipClass: none(ShipClass),
-          buildingType: some("Marines"),
-          industrialUnits: 0
-        ))
-        break  # Build marines, then check next colony
-
-    # ------------------------------------------------------------------------
     # EARLY GAME: Initial exploration and expansion
+    # CRITICAL: ETACs must come BEFORE marines to enable colonization
     # ------------------------------------------------------------------------
     if needScouts:
       let scoutCost = getShipConstructionCost(ShipClass.Scout)
@@ -1983,11 +2039,29 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
         break
 
     # ------------------------------------------------------------------------
+    # Marine Garrison Management
+    # MOVED AFTER ETACs: Marines are defensive, colonization is strategic
+    # ------------------------------------------------------------------------
+    if controller.shouldBuildMarines(state, colony):
+      # This colony needs more marines for garrison
+      if house.treasury >= 30:  # Cost of marines
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Building,
+          quantity: 1,
+          shipClass: none(ShipClass),
+          buildingType: some("Marines"),
+          industrialUnits: 0
+        ))
+        break  # Build marines, then check next colony
+
+    # ------------------------------------------------------------------------
     # MID GAME: Military buildup and defense
     # ------------------------------------------------------------------------
 
     # Starbases for defense (before expensive military buildup)
-    if needDefenses and not hasStarbase and house.treasury >= 300:
+    # RESOURCE MANAGEMENT: Starbases also have maintenance, check affordability
+    if needDefenses and not hasStarbase and house.treasury >= 300 and canAffordMoreShips and not atSquadronLimit:
       result.add(BuildOrder(
         colonySystem: colony.systemId,
         buildType: BuildType.Ship,
@@ -1999,7 +2073,8 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
       break
 
     # Military ships - COMPREHENSIVE SHIP SELECTION
-    if needMilitary:
+    # RESOURCE MANAGEMENT: Only build if we can afford maintenance
+    if needMilitary and canAffordMoreShips and not atSquadronLimit:
       var shipClass: ShipClass
       var shipCost: int
 
@@ -2498,26 +2573,31 @@ proc generateAIOrders*(controller: var AIController, state: GameState, rng: var 
   # Use riskTolerance + (1-aggression) as proxy for espionage focus
   let espionageFocus = (p.riskTolerance + (1.0 - p.aggression)) / 2.0
 
-  # Invest percentage of treasury, not absolute amounts
-  # This prevents over-investment early game and scales with economy
+  # CRITICAL: Base investment on PRODUCTION (PP), not treasury (IU)
+  # This prevents catastrophic over-investment penalties
   let ebpCost = 15  # PP per EBP (from config/espionage.toml)
   let cipCost = 15  # PP per CIP (from config/espionage.toml)
+  let safeThreshold = 10  # Stay at 10% threshold (from config/espionage.toml)
+  let turnProduction = house.espionageBudget.turnBudget  # Actual production this turn
+
+  # Calculate maximum safe budget that won't trigger penalties
+  let maxSafeBudget = turnProduction * safeThreshold div 100
 
   if espionageFocus > 0.6:
-    # High espionage focus - invest up to 15% of treasury
-    let budget = house.treasury * 15 div 100
+    # High espionage focus - invest up to 10% of production (at threshold)
+    let budget = maxSafeBudget
     result.ebpInvestment = min(budget div ebpCost, 50)
-    result.cipInvestment = min(budget div (ebpCost * 2), 25)
+    result.cipInvestment = min((budget - (result.ebpInvestment * ebpCost)) div cipCost, 25)
   elif espionageFocus > 0.4:
-    # Moderate espionage focus - invest up to 8% of treasury
-    let budget = house.treasury * 8 div 100
+    # Moderate espionage focus - invest up to 6% of production (below threshold)
+    let budget = turnProduction * 6 div 100
     result.ebpInvestment = min(budget div ebpCost, 20)
-    result.cipInvestment = min(budget div (ebpCost * 2), 10)
+    result.cipInvestment = min((budget - (result.ebpInvestment * ebpCost)) div cipCost, 10)
   else:
-    # Low espionage focus - invest up to 3% of treasury
-    let budget = house.treasury * 3 div 100
+    # Low espionage focus - invest up to 3% of production (well below threshold)
+    let budget = turnProduction * 3 div 100
     result.ebpInvestment = min(budget div ebpCost, 10)
-    result.cipInvestment = min(budget div (ebpCost * 2), 10)
+    result.cipInvestment = min((budget - (result.ebpInvestment * ebpCost)) div cipCost, 5)
 
 # =============================================================================
 # Export
