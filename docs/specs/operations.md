@@ -8,7 +8,24 @@ Fleets move between solar systems via jump lanes:
 - If jumping into an unexplored or rival system, the maximum number of jumps is one.
 - Fleets containing crippled ships or Spacelift Command ships can not jump across restricted lanes.
 
-## 6.2 Fleet Orders
+## 6.2 Squadron Commissioning
+
+When ships complete construction at Spaceports or Shipyards, they are automatically commissioned into squadrons using intelligent tactical assignment:
+
+**Auto-Assignment Priority**:
+1. **Capital Ships** (Battleships, Carriers, Cruisers, etc.) → Create new squadron as flagship
+2. **Escort Ships** (Scouts, Frigates, Destroyers) → Join existing squadrons in this priority:
+   - First: Join capital ship squadrons (if command capacity available)
+   - Second: Join escort squadrons of same class (if no capitals available)
+   - Third: Create new squadron (if no suitable squadrons exist)
+
+**Result**: Battle-ready mixed squadrons form automatically without micromanagement. Early game escort squadrons (e.g., scout packs) naturally merge into balanced combat groups as capital ships are commissioned.
+
+**Manual Reorganization**: Players can later transfer ships between squadrons and reorganize fleets as needed for specific tactical situations (e.g., creating single-scout squadrons for espionage missions).
+
+**⚠️ Espionage Caution**: Scouts used for spy missions should be kept in single-ship squadrons. Multi-ship squadrons significantly increase detection risk during covert operations (see Spy Mission requirements in Section 6.3).
+
+## 6.3 Fleet Orders
 
 | No.  | Mission                 | Requirements                             |
 | ---- | ----------------------- | ---------------------------------------- |
@@ -21,9 +38,9 @@ Fleets move between solar systems via jump lanes:
 | 06   | Bombard a Planet        | Combat ship(s)                           |
 | 07   | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
 | 08   | Blitz a Planet          | Loaded Troop Transports                  |
-| 09   | Spy on a Planet         | One Scout ship                           |
-| 10\* | Hack a Starbase         | One Scout ship                           |
-| 11   | Spy on a System         | One Scout ship                           |
+| 09   | Spy on a Planet         | Scout squadron                           |
+| 10\* | Hack a Starbase         | Scout squadron                           |
+| 11   | Spy on a System         | Scout squadron                           |
 | 12   | Colonize a Planet       | One ETAC                                 |
 | 13   | Join another Fleet      | None                                     |
 | 14   | Rendezvous at System    | None                                     |
@@ -97,15 +114,21 @@ Because this form of attack is so fast, there is less damage to the planet since
 
 ### 6.2.10 Spy on a Planet (09):
 
-This mission is reserved for solo operating Scouts. The Scout will attempt to hide itself in orbit as a civilian satellite and collect military intelligence from the surface.
+This mission is reserved for Scout squadrons. The squadron will attempt to hide itself in orbit as a civilian satellite and collect military intelligence from the surface.
+
+**Stealth Consideration**: Single-scout squadrons are recommended for spy missions to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
 
 ### 6.2.11 Hack a Starbase (10):
 
-This mission is reserved for solo operating Scouts. The Scout will disguise itself as a civilian satellite and hack into a rival's Starbase network for the purpose of collecting economic and R&D intelligence.
+This mission is reserved for Scout squadrons. The squadron will disguise itself as a civilian satellite and hack into a rival's Starbase network for the purpose of collecting economic and R&D intelligence.
+
+**Stealth Consideration**: Single-scout squadrons are recommended for hacking missions to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
 
 ### 6.2.12 Spy on a System (11):
 
-This mission is reserved for solo operating Scouts. The Scout will loiter in the solar system and collect military asset intelligence.
+This mission is reserved for Scout squadrons. The squadron will loiter in the solar system and collect military asset intelligence.
+
+**Stealth Consideration**: Single-scout squadrons are recommended for system reconnaissance to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
 
 ### 6.2.13 Colonize a Planet (12):
 

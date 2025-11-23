@@ -26,6 +26,31 @@ type
     Rendezvous        # Coordinate movement with fleet
     Salvage           # Recover wreckage
 
+  SquadronManagementAction* {.pure.} = enum
+    ## Squadron and ship management actions at colonies
+    FormSquadron      # Create new squadron from commissioned ships pool
+    TransferShip      # Move ship directly between squadrons at colony
+    AssignToFleet     # Assign squadron to fleet (new or existing)
+
+  SquadronManagementOrder* = object
+    ## Order to form squadrons, transfer ships, or assign to fleets at colonies
+    houseId*: HouseId
+    colonySystem*: SystemId              # Colony where action takes place
+    action*: SquadronManagementAction
+
+    # For FormSquadron: select ships from commissioning pool
+    shipIndices*: seq[int]               # Indices into colony.commissionedShips
+    newSquadronId*: Option[string]       # Optional custom squadron ID
+
+    # For TransferShip: move ship between squadrons
+    sourceSquadronId*: Option[string]    # Squadron to transfer from
+    targetSquadronId*: Option[string]    # Squadron to transfer to (or create new)
+    shipIndex*: Option[int]              # Index of ship in source squadron
+
+    # For AssignToFleet: assign squadron to fleet
+    squadronId*: Option[string]          # Squadron to assign
+    targetFleetId*: Option[FleetId]      # Fleet to assign to (or create new)
+
   FleetOrder* = object
     fleetId*: FleetId
     orderType*: FleetOrderType
@@ -41,6 +66,7 @@ type
     researchAllocation*: res_types.ResearchAllocation  # PP allocation to ERP/SRP/TRP
     diplomaticActions*: seq[DiplomaticAction]
     populationTransfers*: seq[PopulationTransferOrder]  # Space Guild transfers
+    squadronManagement*: seq[SquadronManagementOrder]    # Ship commissioning and squadron formation
 
     # Espionage budget allocation (diplomacy.md:8.2)
     espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
@@ -230,7 +256,8 @@ proc newOrderPacket*(houseId: HouseId, turn: int): OrderPacket =
     fleetOrders: @[],
     buildOrders: @[],
     researchAllocation: res_types.initResearchAllocation(),
-    diplomaticActions: @[]
+    diplomaticActions: @[],
+    squadronManagement: @[]
   )
 
 proc addFleetOrder*(packet: var OrderPacket, order: FleetOrder) =
