@@ -53,6 +53,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent])
 
 # Forward declarations for helper functions
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
+proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent])
 proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
@@ -452,40 +453,87 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
         case project.projectType
         of econ_types.ConstructionType.Ship:
-          # Commission ship from Spaceport/Shipyard
-          # Ships are commissioned and need to be manually assigned to squadrons/fleets
-          # For now: Auto-form single-ship squadrons for AI testing
+          # Commission ship from Spaceport/Shipyard with intelligent squadron assignment
           let shipClass = parseEnum[ShipClass](project.itemId)
           let techLevel = state.houses[colony.owner].techTree.levels.constructionTech
-
-          # Create new ship with current tech level
           let newShip = newEnhancedShip(shipClass, techLevel)
 
-          # Form single-ship squadron (flagship only)
-          let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
-          let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+          # Intelligent tactical squadron assignment for battle readiness
+          # Capital ships → new squadron (they're flagships)
+          # Escorts/screens → add to existing squadrons for protection
+          var addedToSquadron = false
+          var targetFleetId: Option[FleetId] = none(FleetId)
 
-          # Find existing fleet at this system or create new one
-          var targetFleet: Option[FleetId] = none(FleetId)
-          for fleetId, fleet in state.fleets:
-            if fleet.location == systemId and fleet.owner == colony.owner:
-              targetFleet = some(fleetId)
-              break
+          let isCapitalShip = shipClass in [
+            ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
+            ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
+            ShipClass.HeavyCruiser, ShipClass.Cruiser
+          ]
 
-          if targetFleet.isNone:
-            # Create new fleet at this colony
-            let newFleetId = colony.owner & "_fleet_" & $systemId
-            state.fleets[newFleetId] = Fleet(
-              id: newFleetId,
-              owner: colony.owner,
-              location: systemId,
-              squadrons: @[newSquadron]
-            )
-            echo "      Commissioned ", shipClass, " into new fleet ", newFleetId
-          else:
-            # Add squadron to existing fleet
-            state.fleets[targetFleet.get()].squadrons.add(newSquadron)
-            echo "      Commissioned ", shipClass, " into fleet ", targetFleet.get()
+          let isEscort = shipClass in [
+            ShipClass.Scout, ShipClass.Frigate, ShipClass.Destroyer,
+            ShipClass.Corvette, ShipClass.LightCruiser
+          ]
+
+          # Escorts join existing squadrons for balanced combat groups
+          # Priority: capital ship squadrons first, then other escort squadrons
+          if isEscort:
+            # First pass: try to join capital ship squadrons
+            for fleetId, fleet in state.fleets.mpairs:
+              if fleet.location == systemId and fleet.owner == colony.owner:
+                for squadron in fleet.squadrons.mitems:
+                  let flagshipIsCapital = squadron.flagship.shipClass in [
+                    ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
+                    ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
+                    ShipClass.HeavyCruiser, ShipClass.Cruiser
+                  ]
+                  if flagshipIsCapital and squadron.canAddShip(newShip):
+                    squadron.ships.add(newShip)
+                    echo "      Commissioned ", shipClass, " and added to capital squadron ", squadron.id
+                    addedToSquadron = true
+                    break
+                if addedToSquadron:
+                  break
+
+            # Second pass: join other escort squadrons if no capitals available
+            if not addedToSquadron:
+              for fleetId, fleet in state.fleets.mpairs:
+                if fleet.location == systemId and fleet.owner == colony.owner:
+                  for squadron in fleet.squadrons.mitems:
+                    # Join escort squadrons of similar class
+                    if squadron.flagship.shipClass == shipClass and squadron.canAddShip(newShip):
+                      squadron.ships.add(newShip)
+                      echo "      Commissioned ", shipClass, " and added to escort squadron ", squadron.id
+                      addedToSquadron = true
+                      break
+                  if addedToSquadron:
+                    break
+
+          # Capital ships and unassigned escorts create new squadrons
+          if not addedToSquadron:
+            let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
+            let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+
+            # Find existing fleet at this system or create new one
+            for fleetId, fleet in state.fleets:
+              if fleet.location == systemId and fleet.owner == colony.owner:
+                targetFleetId = some(fleetId)
+                break
+
+            if targetFleetId.isNone:
+              # Create new fleet at this colony
+              let newFleetId = colony.owner & "_fleet_" & $systemId
+              state.fleets[newFleetId] = Fleet(
+                id: newFleetId,
+                owner: colony.owner,
+                location: systemId,
+                squadrons: @[newSquadron]
+              )
+              echo "      Commissioned ", shipClass, " into new squadron and fleet at ", systemId
+            else:
+              # Add squadron to existing fleet
+              state.fleets[targetFleetId.get()].squadrons.add(newSquadron)
+              echo "      Commissioned ", shipClass, " into new squadron in fleet ", targetFleetId.get()
 
         of econ_types.ConstructionType.Building:
           # Add building to colony
@@ -709,6 +757,11 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             state.turn
           )
 
+  # Process squadron management orders (form squadrons, transfer ships, assign to fleets)
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      resolveSquadronManagement(state, orders[houseId], events)
+
   # Process all fleet orders (sorted by priority)
   var allFleetOrders: seq[(HouseId, FleetOrder)] = @[]
 
@@ -839,6 +892,142 @@ proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var s
       ))
     else:
       echo "      Construction start failed at system ", order.colonySystem
+
+proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
+  ## Process squadron management orders: form squadrons, transfer ships, assign to fleets
+  for order in packet.squadronManagement:
+    # Validate colony exists and is owned by house
+    if order.colonySystem notin state.colonies:
+      echo "    Squadron management failed: System ", order.colonySystem, " has no colony"
+      continue
+
+    var colony = state.colonies[order.colonySystem]
+    if colony.owner != packet.houseId:
+      echo "    Squadron management failed: ", packet.houseId, " does not own system ", order.colonySystem
+      continue
+
+    case order.action
+    of SquadronManagementAction.FormSquadron:
+      # Create new squadron from commissioned ships
+      if order.shipIndices.len == 0:
+        echo "    FormSquadron failed: No ships selected"
+        continue
+
+      # Validate ship indices
+      for idx in order.shipIndices:
+        if idx < 0 or idx >= colony.commissionedShips.len:
+          echo "    FormSquadron failed: Invalid ship index ", idx
+          continue
+
+      # Extract ships from commissioning pool
+      var ships: seq[EnhancedShip] = @[]
+      for idx in order.shipIndices.sorted(Descending):
+        ships.add(colony.commissionedShips[idx])
+        colony.commissionedShips.delete(idx)
+
+      # Create squadron with first ship as flagship
+      let flagship = ships[0]
+      let squadronId = if order.newSquadronId.isSome:
+        order.newSquadronId.get()
+      else:
+        packet.houseId & "_sq_" & $order.colonySystem & "_" & $state.turn
+
+      var newSquadron = newSquadron(flagship, squadronId, packet.houseId, order.colonySystem)
+
+      # Add additional ships to squadron
+      for i in 1 ..< ships.len:
+        newSquadron.ships.add(ships[i])
+
+      # For now, automatically assign squadron to a fleet at this system
+      # Find existing fleet at this system or create new one
+      var targetFleet: Option[FleetId] = none(FleetId)
+      for fleetId, fleet in state.fleets:
+        if fleet.location == order.colonySystem and fleet.owner == packet.houseId:
+          targetFleet = some(fleetId)
+          break
+
+      if targetFleet.isNone:
+        # Create new fleet at this colony
+        let newFleetId = packet.houseId & "_fleet_" & $order.colonySystem
+        state.fleets[newFleetId] = Fleet(
+          id: newFleetId,
+          owner: packet.houseId,
+          location: order.colonySystem,
+          squadrons: @[newSquadron]
+        )
+        echo "    Formed squadron ", squadronId, " and assigned to new fleet ", newFleetId
+      else:
+        # Add squadron to existing fleet
+        state.fleets[targetFleet.get()].squadrons.add(newSquadron)
+        echo "    Formed squadron ", squadronId, " and assigned to fleet ", targetFleet.get()
+
+    of SquadronManagementAction.TransferShip:
+      # Transfer ship between squadrons at this colony
+      # TODO: Implement ship transfer logic
+      echo "    TransferShip not yet implemented"
+
+    of SquadronManagementAction.AssignToFleet:
+      # Assign existing squadron to fleet (move between fleets or create new fleet)
+      if order.squadronId.isNone:
+        echo "    AssignToFleet failed: No squadron ID specified"
+        continue
+
+      # Find squadron in existing fleets at this colony
+      var foundSquadron: Option[Squadron] = none(Squadron)
+      var sourceFleetId: Option[FleetId] = none(FleetId)
+
+      for fleetId, fleet in state.fleets:
+        if fleet.location == order.colonySystem and fleet.owner == packet.houseId:
+          for i, squad in fleet.squadrons:
+            if squad.id == order.squadronId.get():
+              foundSquadron = some(squad)
+              sourceFleetId = some(fleetId)
+              break
+          if foundSquadron.isSome:
+            break
+
+      if foundSquadron.isNone:
+        echo "    AssignToFleet failed: Squadron ", order.squadronId.get(), " not found at system"
+        continue
+
+      let squadron = foundSquadron.get()
+
+      # Remove squadron from source fleet
+      if sourceFleetId.isSome:
+        let srcFleet = state.fleets[sourceFleetId.get()]
+        var newSquadrons: seq[Squadron] = @[]
+        for squad in srcFleet.squadrons:
+          if squad.id != order.squadronId.get():
+            newSquadrons.add(squad)
+        state.fleets[sourceFleetId.get()].squadrons = newSquadrons
+
+        # If source fleet is now empty, remove it
+        if newSquadrons.len == 0:
+          state.fleets.del(sourceFleetId.get())
+          echo "    Removed empty fleet ", sourceFleetId.get()
+
+      # Add squadron to target fleet or create new one
+      if order.targetFleetId.isSome:
+        # Assign to existing fleet
+        let targetId = order.targetFleetId.get()
+        if targetId in state.fleets:
+          state.fleets[targetId].squadrons.add(squadron)
+          echo "    Assigned squadron ", squadron.id, " to fleet ", targetId
+        else:
+          echo "    AssignToFleet failed: Target fleet ", targetId, " does not exist"
+      else:
+        # Create new fleet
+        let newFleetId = packet.houseId & "_fleet_" & $order.colonySystem & "_" & $state.turn
+        state.fleets[newFleetId] = Fleet(
+          id: newFleetId,
+          owner: packet.houseId,
+          location: order.colonySystem,
+          squadrons: @[squadron]
+        )
+        echo "    Created new fleet ", newFleetId, " with squadron ", squadron.id
+
+    # Update colony in state
+    state.colonies[order.colonySystem] = colony
 
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =
