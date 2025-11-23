@@ -8,22 +8,41 @@ Fleets move between solar systems via jump lanes:
 - If jumping into an unexplored or rival system, the maximum number of jumps is one.
 - Fleets containing crippled ships or Spacelift Command ships can not jump across restricted lanes.
 
-## 6.2 Squadron Commissioning
+## 6.2 Squadron Commissioning and Fleet Assignment
 
-When ships complete construction at Spaceports or Shipyards, they are automatically commissioned into squadrons using intelligent tactical assignment:
+When ships complete construction at Spaceports or Shipyards, they are automatically commissioned into **unassigned squadrons** at the colony using intelligent tactical grouping:
 
-**Auto-Assignment Priority**:
-1. **Capital Ships** (Battleships, Carriers, Cruisers, etc.) → Create new squadron as flagship
-2. **Escort Ships** (Scouts, Frigates, Destroyers) → Join existing squadrons in this priority:
-   - First: Join capital ship squadrons (if command capacity available)
-   - Second: Join escort squadrons of same class (if no capitals available)
+### Ship-to-Squadron Auto-Commissioning
+
+**Priority for Squadron Formation**:
+1. **Capital Ships** (Battleships, Carriers, Cruisers, etc.) → Always create new squadron as flagship
+2. **Escort Ships** (Scouts, Frigates, Destroyers) → Join existing unassigned squadrons in this priority:
+   - First: Join capital ship squadrons at colony (if command capacity available)
+   - Second: Join escort squadrons of same class at colony (if no capitals available)
    - Third: Create new squadron (if no suitable squadrons exist)
 
-**Result**: Battle-ready mixed squadrons form automatically without micromanagement. Early game escort squadrons (e.g., scout packs) naturally merge into balanced combat groups as capital ships are commissioned.
+**Result**: Battle-ready mixed squadrons form automatically at the colony without player micromanagement.
 
-**Manual Reorganization**: Players can later transfer ships between squadrons and reorganize fleets as needed for specific tactical situations (e.g., creating single-scout squadrons for espionage missions).
+### Squadron-to-Fleet Assignment
 
-**⚠️ Espionage Caution**: Scouts used for spy missions should be kept in single-ship squadrons. Multi-ship squadrons significantly increase detection risk during covert operations (see Spy Mission requirements in Section 6.3).
+**Default Behavior**: Squadrons remain **unassigned** at the colony until players manually assign them to fleets using squadron management orders. This prevents interference with carefully organized player fleets and avoids assigning to fleets that are just passing through the system.
+
+**Optional Auto-Assignment**: Players can enable per-colony **Auto-Assign Fleet Management** toggle:
+- When enabled, unassigned squadrons automatically distribute to balance combat strength across all stationary fleets at the colony
+- Each squadron assigns to the weakest fleet (by total attack strength) to maintain balanced defensive forces
+- If no fleets exist, creates a new fleet
+- Only assigns to stationary fleets (not fleets with movement orders)
+- Useful for frontier colonies where defensive fleet composition matters less
+- Core strategic worlds typically keep auto-assign disabled for manual fleet control
+
+### Manual Fleet Organization
+
+Players use **Squadron Management Orders** to:
+- Transfer ships between squadrons (only at colonies)
+- Assign squadrons to specific fleets (new or existing)
+- Reorganize for tactical situations (e.g., single-scout squadrons for espionage)
+
+**⚠️ Espionage Requirement**: Spy missions (SpyPlanet, SpySystem, HackStarbase) **require** single-scout squadrons. The game validates and rejects spy orders from multi-ship squadrons to prevent detection risk.
 
 ## 6.3 Fleet Orders
 
