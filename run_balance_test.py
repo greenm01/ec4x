@@ -3,22 +3,36 @@
 Simple balance test runner for EC4X M3+ features
 Runs multiple games with different strategy matchups
 
-VICTORY CONDITIONS (per victory.md):
-1. Elimination Victory: Be the last house standing (all others eliminated)
-2. Prestige Victory: Have highest prestige at turn limit (default 200 turns)
+VICTORY CONDITIONS (config/prestige.toml):
+1. Elimination Victory: Be the last house standing
+2. Prestige Victory: Highest prestige at turn limit (or reach 5000)
 
-Prestige is gained by:
-- Controlling colonies (+1 per turn per colony)
-- Having high population
-- Technological advancement
-- Diplomatic relations
-- Military strength
+PRESTIGE GAINS (config/prestige.toml):
+Economic:
+- Colony established (+5), max population (+3), IU milestones (+1 to +5)
+- Tech advancement (+2), terraform planet (+5)
+- Low tax rates (+1 to +3 per colony for 0-30% tax)
 
-Prestige is lost by:
-- Treaty violations
-- Losing colonies
-- Being diplomatically isolated
-- Failed invasions
+Military:
+- Invade planet (+10), system capture (+10), eliminate house (+3)
+- Fleet victory (+3), force retreat (+2), destroy starbase (+5)
+- Destroy squadron (+1 per ship)
+
+Espionage:
+- Scout missions (+1 to +2), successful operations (+1 to +5)
+
+Diplomacy:
+- Form non-aggression pact (+5), attack dishonored house (+1)
+
+PRESTIGE LOSSES (config/prestige.toml):
+- Lose planet (-10), lose starbase (-5)
+- Pact violation (-10), repeat violation (-10 additional)
+- Failed espionage (-2), scout destroyed (-3)
+- Being espionage victim (-1 to -7 depending on operation)
+- High tax rates (-1 to -11 per turn for 51-100% tax)
+- Maintenance shortfall (-5 turn 1, increasing by -2 each turn)
+- Blockaded colonies (-2 per colony per turn)
+- Espionage over-investment (-1 per 1% over 5% threshold)
 
 The genetic algorithm evolves AI personalities based on win rate and prestige
 performance, since those directly determine victory.
@@ -27,6 +41,7 @@ performance, since those directly determine victory.
 import subprocess
 import json
 import sys
+import shutil
 from pathlib import Path
 from collections import defaultdict
 
@@ -77,6 +92,15 @@ def main():
     print(f"Running {NUM_GAMES} games with {TURNS_PER_GAME} turns each")
     print(f"Strategies: {', '.join(STRATEGIES)}")
     print("="*70)
+
+    # Clean up old balance results to prevent junk accumulation
+    balance_results_dir = Path("/home/niltempus/dev/ec4x/balance_results")
+    if balance_results_dir.exists():
+        print(f"\nCleaning up old balance results from {balance_results_dir}...")
+        shutil.rmtree(balance_results_dir)
+        print("✓ Old results removed")
+
+    print()
 
     # Track results
     win_counts = defaultdict(int)
