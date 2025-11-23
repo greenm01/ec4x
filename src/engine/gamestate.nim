@@ -8,6 +8,7 @@ import config/[prestige_config, military_config, tech_config]
 import diplomacy/types as dip_types
 import espionage/types as esp_types
 import research/types as res_types
+import economy/types as econ_types
 
 # Re-export common types
 export core.HouseId, core.SystemId, core.FleetId
@@ -83,10 +84,8 @@ type
     blockadedBy*: seq[HouseId]                # Which houses are blockading (can be multiple)
     blockadeTurns*: int                       # Consecutive turns under blockade
 
-  ConstructionProject* = object
-    projectType*: BuildingType
-    turnsRemaining*: int
-    cost*: int
+  # Use the proper ConstructionProject from economy module
+  ConstructionProject* = econ_types.ConstructionProject
 
   # Re-export proper TechTree from research module
   TechTree* = res_types.TechTree
