@@ -1863,10 +1863,14 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
   for houseId, tf in taskForces:
     allTaskForces.add(tf)
 
+  # Generate deterministic seed from game state
+  # Combine turn number and system ID hash for reproducible combat results
+  let deterministicSeed = hash((state.turn, systemId)).int64
+
   var battleContext = BattleContext(
     systemId: systemId,
     taskForces: allTaskForces,
-    seed: 0,  # TODO: Use deterministic seed from game state
+    seed: deterministicSeed,  # Deterministic seed ensures same inputs = same results
     maxRounds: 20
   )
 
@@ -2039,8 +2043,11 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
   # Spaceports: Check if colony has any operational spaceports
   defense.spaceport = colony.spaceports.len > 0
 
+  # Generate deterministic seed for bombardment (turn + target system)
+  let bombardmentSeed = hash((state.turn, targetId)).int64
+
   # Conduct bombardment
-  let result = conductBombardment(combatSquadrons, defense, seed = 0, maxRounds = 3)
+  let result = conductBombardment(combatSquadrons, defense, seed = bombardmentSeed, maxRounds = 3)
 
   # Apply damage to colony
   var updatedColony = colony
