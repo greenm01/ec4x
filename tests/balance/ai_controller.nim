@@ -1571,11 +1571,48 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         isScoutFleet = true
         hasOnlyScouts = true
 
-    if isScoutFleet and (p.techPriority > 0.4 or p.expansionDrive > 0.5):
+    # PHASE 2G: Enhanced espionage mission targeting
+    # Scouts should actively gather intelligence, not just for colonization/invasion
+    if isScoutFleet:
       # Intelligence operations for scouts
-      # Priority: Pre-colonization recon > Pre-invasion intel > Strategic positioning
+      # Priority: Strategic intel > Pre-colonization recon > Pre-invasion intel
 
-      # A) Pre-colonization reconnaissance - scout systems before sending ETACs
+      # A) Strategic intelligence gathering - HackStarbase on enemy production centers
+      # Target: Enemy colonies with high production or shipyards
+      if p.techPriority > 0.3 or (1.0 - p.economicFocus) > 0.5:
+        var highValueTargets: seq[SystemId] = @[]
+        for systemId, colony in state.colonies:
+          if colony.owner != controller.houseId:
+            # High-value targets: production > 50 OR has shipyards
+            if colony.production > 50 or colony.shipyards.len > 0:
+              # Check if we need fresh intel (data older than 10 turns)
+              if controller.needsReconnaissance(systemId, state.turn):
+                highValueTargets.add(systemId)
+
+        if highValueTargets.len > 0:
+          # Pick closest high-value target
+          var closest: Option[SystemId] = none(SystemId)
+          var minDist = 999
+          let fromCoords = state.starMap.systems[fleet.location].coords
+          for sysId in highValueTargets:
+            let coords = state.starMap.systems[sysId].coords
+            let dx = abs(coords.q - fromCoords.q)
+            let dy = abs(coords.r - fromCoords.r)
+            let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+            let dist = (dx + dy + dz) div 2
+            if dist < minDist:
+              minDist = dist
+              closest = some(sysId)
+
+          if closest.isSome:
+            # Issue HackStarbase mission to gather production/fleet intel
+            order.orderType = FleetOrderType.HackStarbase
+            order.targetSystem = closest
+            order.targetFleet = none(FleetId)
+            result.add(order)
+            continue
+
+      # B) Pre-colonization reconnaissance - scout systems before sending ETACs
       if p.expansionDrive > 0.4:
         # Find uncolonized systems that need scouting
         var needsRecon: seq[SystemId] = @[]
@@ -1607,8 +1644,9 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
             result.add(order)
             continue
 
-      # B) Pre-invasion intelligence - scout enemy colonies before invasion
-      if p.aggression > 0.4:
+      # C) Pre-invasion intelligence - SpySystem on enemy colonies before invasion
+      # Lowered threshold from 0.4 to 0.2 to enable more intelligence gathering
+      if p.aggression > 0.2 or (1.0 - p.economicFocus) > 0.4:
         # Find enemy colonies that need updated intelligence
         var needsIntel: seq[SystemId] = @[]
         for systemId, colony in state.colonies:
