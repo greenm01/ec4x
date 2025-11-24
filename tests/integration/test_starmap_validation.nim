@@ -6,10 +6,10 @@
 
 import unittest
 import std/[options, tables, math, random, times]
-import ../src/engine/starmap
-import ../src/engine/[fleet, ship]
-import ../src/common/[hex, system]
-import ../src/common/types/combat
+import ../../src/engine/starmap
+import ../../src/engine/[fleet, squadron]
+import ../../src/common/[hex, system]
+import ../../src/common/types/[combat, units]
 
 # Expected behavior based on EC4X game specification
 proc expectedGameBehavior(playerCount: int): tuple[
@@ -200,9 +200,22 @@ suite "EC4X Game Specification Validation":
     let starMap = starMap(4)
 
     # Test different fleet types according to game rules
-    let normalFleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: false)])
-    let crippledFleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: true)])
-    let spaceliftFleet = Fleet(ships: @[Ship(shipType: ShipType.Spacelift, isCrippled: false)])
+
+    # Normal combat fleet
+    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    var normalSq = newSquadron(destroyer1)
+    let normalFleet = newFleet(squadrons = @[normalSq])
+
+    # Crippled fleet
+    var crippledDestroyer = newEnhancedShip(ShipClass.Destroyer)
+    crippledDestroyer.isCrippled = true
+    var crippledSq = newSquadron(crippledDestroyer)
+    let crippledFleet = newFleet(squadrons = @[crippledSq])
+
+    # Spacelift fleet (TroopTransport can't traverse restricted)
+    let troopTransport = newEnhancedShip(ShipClass.TroopTransport)
+    var spaceliftSq = newSquadron(troopTransport)
+    let spaceliftFleet = newFleet(squadrons = @[spaceliftSq])
 
     # Find two distant systems for pathfinding
     let hubId = starMap.hubId
@@ -237,7 +250,9 @@ suite "EC4X Game Specification Validation":
 
       # Test reachability from hub to all systems
       let hubId = starMap.hubId
-      let normalFleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: false)])
+      let destroyer = newEnhancedShip(ShipClass.Destroyer)
+      var sq = newSquadron(destroyer)
+      let normalFleet = newFleet(squadrons = @[sq])
 
       var reachableCount = 0
       for systemId in starMap.systems.keys:

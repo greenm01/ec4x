@@ -8,10 +8,10 @@
 
 import unittest
 import std/[options, tables, sequtils, sets, algorithm, math, random, times, strutils]
-import ../src/engine/starmap
-import ../src/engine/[fleet, ship]
-import ../src/common/[hex, system]
-import ../src/common/types/combat
+import ../../src/engine/starmap
+import ../../src/engine/[fleet, squadron]
+import ../../src/common/[hex, system]
+import ../../src/common/types/[combat, units]
 
 suite "Robust Starmap Tests":
 
@@ -153,10 +153,23 @@ suite "Robust Starmap Tests":
         check system.id in backNeighbors
 
   test "fleet lane traversal rules":
-    # Create different fleet types
-    let normalFleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: false)])
-    let crippledFleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: true)])
-    let spaceliftFleet = Fleet(ships: @[Ship(shipType: ShipType.Spacelift, isCrippled: false)])
+    # Create different fleet types using the new squadron system
+
+    # Normal combat fleet
+    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var normalSq = newSquadron(destroyer)
+    let normalFleet = newFleet(squadrons = @[normalSq])
+
+    # Crippled fleet
+    var crippledDestroyer = newEnhancedShip(ShipClass.Destroyer)
+    crippledDestroyer.isCrippled = true
+    var crippledSq = newSquadron(crippledDestroyer)
+    let crippledFleet = newFleet(squadrons = @[crippledSq])
+
+    # Spacelift fleet (using TroopTransport which can't traverse restricted)
+    let troopTransport = newEnhancedShip(ShipClass.TroopTransport)
+    var spaceliftSq = newSquadron(troopTransport)
+    let spaceliftFleet = newFleet(squadrons = @[spaceliftSq])
 
     # Normal fleet can traverse all lane types
     check canFleetTraverseLane(normalFleet, LaneType.Major)
@@ -183,7 +196,9 @@ suite "Robust Starmap Tests":
       let goal = playerSystems[1]
 
       # Normal fleet should find path
-      let normalFleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: false)])
+      let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+      var normalSq1 = newSquadron(destroyer1)
+      let normalFleet = newFleet(squadrons = @[normalSq1])
       let normalPath = findPath(starMap, start, goal, normalFleet)
       check normalPath.found
       check normalPath.path.len > 0
@@ -191,7 +206,10 @@ suite "Robust Starmap Tests":
       check normalPath.path[^1] == goal
 
       # Crippled fleet path might be different (avoiding restricted lanes)
-      let crippledFleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: true)])
+      var crippledDestroyer = newEnhancedShip(ShipClass.Destroyer)
+      crippledDestroyer.isCrippled = true
+      var crippledSq = newSquadron(crippledDestroyer)
+      let crippledFleet = newFleet(squadrons = @[crippledSq])
       let crippledPath = findPath(starMap, start, goal, crippledFleet)
       check crippledPath.found  # Should still find a path
 
@@ -271,7 +289,9 @@ suite "Robust Starmap Tests":
 
   test "pathfinding performance":
     let starMap = starMap(8)
-    let fleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: false)])
+    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var sq = newSquadron(destroyer)
+    let fleet = newFleet(squadrons = @[sq])
 
     # Test pathfinding between various system pairs
     let systems = starMap.systems.keys.toSeq()
@@ -296,7 +316,9 @@ suite "Robust Starmap Tests":
   test "error handling":
     # Test invalid pathfinding requests
     let starMap = starMap(4)
-    let fleet = Fleet(ships: @[Ship(shipType: ShipType.Military, isCrippled: false)])
+    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var sq = newSquadron(destroyer)
+    let fleet = newFleet(squadrons = @[sq])
 
     # Non-existent systems
     let invalidPath = findPath(starMap, 99999, 99998, fleet)

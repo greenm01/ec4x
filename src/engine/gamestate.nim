@@ -361,9 +361,13 @@ proc getSquadronLimit*(state: GameState, houseId: HouseId): int =
 
 proc getHouseSquadronCount*(state: GameState, houseId: HouseId): int =
   ## Count total squadrons for a house across all fleets
+  ## Scouts are exempt from squadron limits per reference.md:9.5
   result = 0
   for fleet in state.getHouseFleets(houseId):
-    result += fleet.squadrons.len
+    for squadron in fleet.squadrons:
+      # Scouts don't count toward squadron limit
+      if squadron.flagship.shipClass != ShipClass.Scout:
+        result += 1
 
 proc isOverSquadronLimit*(state: GameState, houseId: HouseId): bool =
   ## Check if house has exceeded squadron limit
