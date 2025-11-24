@@ -216,11 +216,13 @@ proc initializeHouse*(name: string, color: string): House =
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
   ## Create a starting homeworld colony
+  ## ACCELERATION: Homeworld starts with 100M population to match original EC's
+  ## ~100 PP/year baseline production. At 2 PP per 10M, this gives ~20 PP/turn.
   result = Colony(
     systemId: systemId,
     owner: owner,
-    population: 5,  # Starting population in millions (display field)
-    souls: 5_000_000,  # Exact population count: 5M souls
+    population: 100,  # Starting population in millions (was 5M, now 100M for EC parity)
+    souls: 100_000_000,  # Exact population count: 100M souls
     infrastructure: 3,  # Starting infrastructure
     planetClass: PlanetClass.Eden,  # Homeworlds are Abundant Eden per specs
     resources: ResourceRating.Abundant,  # Abundant resources

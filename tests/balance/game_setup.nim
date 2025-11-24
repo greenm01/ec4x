@@ -5,6 +5,7 @@
 
 import std/[tables, options, random, strformat, sequtils, strutils, algorithm]
 import ../../src/engine/[gamestate, starmap, fleet, squadron, spacelift]
+import ../../src/engine/config/prestige_multiplier
 import ../../src/common/types/[core, units, planets, tech]
 import ../../src/common/[hex, system]
 
@@ -109,6 +110,9 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
   # Generate star map with player starting positions
   var starMap = newStarMap(numHouses)
   starMap.populate()
+
+  # Initialize dynamic prestige multiplier based on map size
+  initializePrestigeMultiplier(starMap.systems.len, numHouses)
 
   # Initialize empty game state
   result = GameState(

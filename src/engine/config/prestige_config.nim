@@ -13,6 +13,15 @@ type
     defeat_threshold*: int
     defeat_consecutive_turns*: int
 
+  DynamicScalingConfig* = object
+    enabled*: bool
+    base_multiplier*: float
+    baseline_turns*: int
+    baseline_systems_per_player*: int
+    turn_scaling_factor*: float
+    min_multiplier*: float
+    max_multiplier*: float
+
   MoraleConfig* = object
     crisis_max*: int
     low_max*: int
@@ -131,6 +140,7 @@ type
   PrestigeConfig* = object
     ## Complete prestige configuration loaded from TOML
     victory*: VictoryConfig
+    dynamic_scaling*: DynamicScalingConfig
     morale*: MoraleConfig
     economic*: EconomicPrestigeConfig
     military*: MilitaryPrestigeConfig
@@ -164,3 +174,38 @@ var globalPrestigeConfig* = loadPrestigeConfig()
 proc reloadPrestigeConfig*() =
   ## Reload configuration from file
   globalPrestigeConfig = loadPrestigeConfig()
+
+## Dynamic Prestige Multiplier Calculation
+
+proc calculateDynamicMultiplier*(numSystems: int, numPlayers: int): float =
+  ## Calculate dynamic prestige multiplier based on map size and player count
+  ##
+  ## Formula:
+  ##   systems_per_player = numSystems / numPlayers
+  ##   target_turns = baseline_turns + (systems_per_player - baseline_ratio) * turn_scaling_factor
+  ##   multiplier = base_multiplier * (baseline_turns / target_turns)
+  ##   multiplier = clamp(multiplier, min_multiplier, max_multiplier)
+  ##
+  ## This ensures:
+  ## - Small maps (few systems per player): Higher multiplier = faster games
+  ## - Large maps (many systems per player): Lower multiplier = longer games
+  ## - Victory threshold (5000 prestige) stays constant regardless of map size
+
+  let config = globalPrestigeConfig.dynamic_scaling
+
+  # If dynamic scaling is disabled, return base multiplier
+  if not config.enabled:
+    return config.base_multiplier
+
+  # Calculate systems per player
+  let systemsPerPlayer = float(numSystems) / float(numPlayers)
+
+  # Calculate target turns based on map density
+  let systemDiff = systemsPerPlayer - float(config.baseline_systems_per_player)
+  let targetTurns = float(config.baseline_turns) + (systemDiff * config.turn_scaling_factor)
+
+  # Calculate multiplier (inverse relationship: more turns = lower multiplier)
+  let multiplier = config.base_multiplier * (float(config.baseline_turns) / targetTurns)
+
+  # Clamp to reasonable bounds
+  result = max(config.min_multiplier, min(config.max_multiplier, multiplier))
