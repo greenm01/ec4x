@@ -87,6 +87,31 @@ minimum: 1 turn
 
 ## 9.4 Prestige
 
+**IMPORTANT: Dynamic Prestige Scaling**
+
+All prestige values in this section are **BASE** values. The actual prestige awarded in-game is calculated as:
+
+```
+actual_prestige = base_value × dynamic_multiplier
+```
+
+The dynamic multiplier is calculated at game start based on map size and player count:
+
+```
+systems_per_player = total_systems / num_players
+target_turns = baseline_turns + (systems_per_player - baseline_ratio) × turn_scaling_factor
+dynamic_multiplier = base_multiplier × (baseline_turns / target_turns)
+```
+
+This ensures game length scales naturally with map size:
+- **Small maps** (7-10 systems/player): 6-8x multiplier → ~25-30 turn games
+- **Medium maps** (15 systems/player): 3-4x multiplier → ~40 turn games
+- **Large maps** (30+ systems/player): 2-3x multiplier → ~70+ turn games
+
+*Configuration: config/prestige.toml [dynamic_scaling] section*
+
+### Base Prestige Values
+
 <!-- PRESTIGE_TABLE_START -->
 | Prestige Source | Enum Name | Value |
 |-----------------|-----------|-------|
