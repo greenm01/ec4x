@@ -7,6 +7,11 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Fog-of-War System Implemented (2025-11-24)**
+  - Core FoW filtering system complete in src/engine/fog_of_war.nim
+  - FilteredGameState enforces limited visibility for AI
+  - Integration with intelligence database for stale intel
+  - Ready for Phase 2 RBA improvements
 - ✅ **Architecture Revision: Removed LLM approach, added neural network self-play training (2025-11-24)**
   - Removed Mistral-7B/llama.cpp/prompt engineering
   - Added AlphaZero-style reinforcement learning
@@ -167,11 +172,25 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 ### Phase 2: Rule-Based AI Enhancements 🔄 IN PROGRESS
 **Status:** 🔄 In Progress
 **Goal:** Maximize bootstrap training data quality
-**Files:** `tests/balance/ai_controller.nim`
+**Files:** `tests/balance/ai_controller.nim`, `src/engine/fog_of_war.nim`
+
+**Prerequisites:**
+- ✅ Fog-of-war system implemented (2025-11-24)
+- ⏳ Integrate FoW with ai_controller.nim (~800 lines to refactor)
 
 **Target Improvements:**
 
-**2a. Fighter/Carrier Ownership System** ⏳ HIGH PRIORITY
+**2a. FoW Integration with RBA** ⏳ **CRITICAL - BLOCKING ALL OTHER PHASE 2 WORK**
+- Refactor `generateAIOrders()` to accept `FilteredGameState` instead of `GameState`
+- Update 25+ helper functions to use filtered views
+- Handle incomplete information gracefully (Option[T] returns)
+- Add intelligence-gathering behavior (scouting priorities, espionage targeting)
+- Test FoW integration with existing balance tests
+
+**Estimated Effort:** High complexity (~1,100 lines affected/added, 20 tests)
+**Documentation:** See `docs/FOG_OF_WAR_INTEGRATION.md` for detailed plan
+
+**2b. Fighter/Carrier Ownership System** ⏳ HIGH PRIORITY (After FoW integration)
 - Track colony-owned vs carrier-owned fighters separately
 - Detect capacity violations (population + infrastructure)
 - Resolve violations proactively (carrier loading, starbase construction)
@@ -179,7 +198,7 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** High complexity (~400 lines, 15 tests)
 
-**2b. Scout Operational Modes** ⏳ MEDIUM PRIORITY
+**2c. Scout Operational Modes** ⏳ MEDIUM PRIORITY (After FoW + fighters)
 - Single-scout squadrons for espionage missions
 - Multi-scout squadrons for ELI mesh networks
 - Manual reorganization workflow
@@ -187,7 +206,7 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Medium complexity (~300 lines, 10 tests)
 
-**2c. ELI/CLK Arms Race Dynamics** ⏳ MEDIUM PRIORITY
+**2d. ELI/CLK Arms Race Dynamics** ⏳ MEDIUM PRIORITY (After FoW + scouts)
 - ELI mesh network coordination (2-3 scouts: +1, 4-5: +2, 6+: +3)
 - CLK research for Raiders (offensive tech)
 - ELI research for Scouts (defensive tech)
@@ -195,7 +214,7 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Medium complexity (~250 lines, 8 tests)
 
-**2d. Fighter Doctrine & ACO Research** ⏳ MEDIUM PRIORITY
+**2e. Fighter Doctrine & ACO Research** ⏳ MEDIUM PRIORITY (After FoW + ELI/CLK)
 - FD research timing (capacity utilization > 70%)
 - ACO synergy with FD investment
 - Starbase infrastructure requirements (1 per 5 fighters)
@@ -203,7 +222,7 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Medium complexity (~200 lines, 7 tests)
 
-**2e. Defense Layering Strategy** ⏳ LOW-MEDIUM PRIORITY
+**2f. Defense Layering Strategy** ⏳ LOW-MEDIUM PRIORITY (After FoW + FD/ACO)
 - Patrol orders (space combat, mobile defense)
 - Guard orders (orbital combat, fixed defense)
 - Reserve fleets (50% maintenance, 50% combat effectiveness)
@@ -211,7 +230,9 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Low-medium complexity (~150 lines, 5 tests)
 
-**Overall Phase 2 Deliverable:** Enhanced ai_controller.nim with ~1,300 lines added, 45+ new tests
+**Overall Phase 2 Deliverable:** Enhanced ai_controller.nim with ~2,400 lines added/modified, 65+ new tests
+
+**Critical Path:** FoW integration (2a) blocks all other Phase 2 work - must be completed first!
 
 ---
 
@@ -412,11 +433,23 @@ All passing ✅
 
 ### PRIORITY TODO(s) ###
 
-#### 1. Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parellal or single. Remove old files.
+#### 1. ✅ **DONE** - Implement fog of war for AI (Core System Complete - 2025-11-24)
 
-#### 2. Implement fog of war for AI:
+**Status:** Core fog-of-war system implemented in `src/engine/fog_of_war.nim`
 
-##### 1. Fog of War – Mandatory for Both AIs
+**Completed:**
+- `FilteredGameState` type for AI-specific game views
+- `createFogOfWarView()` function to filter full GameState
+- Visibility levels: Owned, Occupied, Scouted, Adjacent, None
+- Integration with intelligence database for stale intel
+- Helper functions: `canSeeColonyDetails()`, `canSeeFleets()`, `getIntelStaleness()`
+
+**Next Steps:** See `docs/FOG_OF_WAR_INTEGRATION.md` for full integration plan
+- Refactor ai_controller.nim to use FilteredGameState (~800 lines)
+- Add intelligence-gathering behavior to RBA (~300 lines)
+- Test FoW integration with balance tests
+
+##### Fog of War – Mandatory for Both AIs (RBA and NNA)
 | Question                                 | Final Decision                                   |
 |------------------------------------------|--------------------------------------------------|
 | Should AI have full map knowledge?       | No — never (except explicit “cheat” mode)       |
@@ -447,6 +480,8 @@ Add ~50–80 dims for last-seen values, stale intel, estimated enemy tech, detec
 
 Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
 
+#### 2. Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parallel or single. Remove old files.
+
 #### 3. Read and consider Grok's feedback for AI architecture into phase 2+: ec4x/docs/architecture/2025-11-24-grok-ec4x-ai-feedback.md
 
 #### 4. Incorporate gap analyses into phase 2+: ec4x/docs/architecture/2025-11-24-grok_EC4X_Bootstrap_Gap_Analysis.md
@@ -454,8 +489,6 @@ Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
 #### 5. Remove old LLM related files and folders from project
 
 #### 6. Remove and exclude json files from repo and db if possible.
-
-#### 7. Update CLAUDE_CONTEXT.md and TODO.md after reading this.
 
 ### General Notes
 
