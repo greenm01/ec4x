@@ -84,6 +84,8 @@ src/
 │   ├── research/
 │   ├── victory/
 │   ├── morale/
+│   ├── intelligence/  # Intel reports & fog-of-war
+│   ├── fog_of_war.nim # FoW filtering system (NEW - 2025-11-24)
 │   └── config/      # TOML config loaders
 ├── client/          # Client-side code
 └── main.nim         # Entry point
@@ -96,14 +98,21 @@ config/              # TOML configuration files
 docs/
 ├── specs/           # Game design specifications
 ├── architecture/    # Technical design docs
+│   ├── intel.md     # Fog-of-war specification
+│   └── 2025-11-24-grok-ec4x-ai-feedback.md  # AI architecture review
 ├── milestones/      # Historical completion reports
 ├── guides/          # How-tos and standards
-└── api/             # Generated API documentation (HTML)
+├── api/             # Generated API documentation (HTML)
+├── FOG_OF_WAR_INTEGRATION.md  # FoW integration plan (NEW)
+└── AI_CONTROLLER_IMPROVEMENTS.md  # Phase 2 implementation plan
 
 tests/
 ├── unit/            # Unit tests
-├── integration/     # Integration tests
-├── balance/         # Balance testing
+├── integration/     # Integration tests (101+ tests)
+├── balance/         # Balance testing + AI controller (RBA)
+│   ├── ai_controller.nim  # Rule-Based AI (2,800+ lines)
+│   ├── run_simulation.nim # Balance test runner
+│   └── game_setup.nim     # Test game initialization
 └── scenarios/       # Scenario tests
 ```
 
@@ -243,12 +252,58 @@ python3 run_balance_test_parallel.py
 
 ---
 
+## Fog-of-War System (NEW - 2025-11-24)
+
+**Critical for AI development:** FoW is MANDATORY for both RBA and NNA.
+
+**Module:** `src/engine/fog_of_war.nim`
+
+**Key types:**
+```nim
+type
+  FilteredGameState* = object
+    ## AI-specific view with limited visibility
+    viewingHouse*: HouseId
+    ownColonies*: seq[Colony]      # Full details
+    ownFleets*: seq[Fleet]         # Full details
+    visibleSystems*: Table[SystemId, VisibleSystem]  # Filtered view
+    visibleColonies*: seq[VisibleColony]  # Enemy colonies (if visible)
+    visibleFleets*: seq[VisibleFleet]     # Enemy fleets (if detected)
+
+  VisibilityLevel* {.pure.} = enum
+    Owned, Occupied, Scouted, Adjacent, None
+```
+
+**Usage:**
+```nim
+# In simulation runner or AI interface
+let filteredView = createFogOfWarView(gameState, houseId)
+let orders = aiController.generateAIOrders(filteredView, rng)
+```
+
+**Visibility rules:**
+- **Owned**: Full details where house has colonies
+- **Occupied**: Full details where house has fleets
+- **Scouted**: Stale intel from intelligence database
+- **Adjacent**: System awareness only, no details
+- **None**: System not visible
+
+**Integration status:**
+- ✅ Core system complete
+- ⏳ ai_controller.nim refactoring pending (~800 lines)
+- ⏳ Intelligence-gathering behavior pending (~300 lines)
+
+**Documentation:** See `docs/FOG_OF_WAR_INTEGRATION.md` for full integration plan
+
+---
+
 ## When Compacting Context
 
 **Include in summary:**
 - "Project follows STYLE_GUIDE.md (NEP-1 + pure enums)"
 - "All balance values in TOML configs"
-- "91+ integration tests passing"
+- "101+ integration tests passing"
+- "Fog-of-war system implemented (mandatory for AI)"
 - Current system status from TODO.md
 
 ---
@@ -302,8 +357,12 @@ bash scripts/run_all_tests.sh
 - Phase 1: Fixed 4-player balance testing (parallel infrastructure)
 
 🔄 **In Progress:**
-- Phase 2: Act-by-Act Analysis
+- Phase 2: Rule-Based AI (RBA) Enhancements
+  - ✅ Fog-of-war core system complete (2025-11-24)
+  - ⏳ FoW integration with ai_controller.nim (~800 lines to refactor)
+  - ⏳ Fighter/carrier ownership system
+  - ⏳ Scout operational modes & ELI/CLK arms race
 - Multi-generational timeline validation (1 turn = 5-10 years)
 - 4-act game structure testing
 
-**Test Coverage:** 91+ integration tests passing
+**Test Coverage:** 101+ integration tests passing
