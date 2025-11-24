@@ -1,0 +1,8 @@
+nimTitle	facilities_config	config/facilities_config.html	module src/engine/config/facilities_config		0
+nim	SpaceportConfig	config/facilities_config.html#SpaceportConfig	object SpaceportConfig		10
+nim	ShipyardConfig	config/facilities_config.html#ShipyardConfig	object ShipyardConfig		24
+nim	ConstructionConfig	config/facilities_config.html#ConstructionConfig	object ConstructionConfig		39
+nim	FacilitiesConfig	config/facilities_config.html#FacilitiesConfig	object FacilitiesConfig		44
+nim	loadFacilitiesConfig	config/facilities_config.html#loadFacilitiesConfig,string	proc loadFacilitiesConfig(configPath: string = "config/facilities.toml"): FacilitiesConfig		50
+nim	globalFacilitiesConfig	config/facilities_config.html#globalFacilitiesConfig	var globalFacilitiesConfig		64
+nim	reloadFacilitiesConfig	config/facilities_config.html#reloadFacilitiesConfig	proc reloadFacilitiesConfig()		68

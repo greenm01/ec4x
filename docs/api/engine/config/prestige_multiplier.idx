@@ -1,0 +1,5 @@
+nimTitle	prestige_multiplier	config/prestige_multiplier.html	module src/engine/config/prestige_multiplier		0
+nim	currentMultiplier	config/prestige_multiplier.html#currentMultiplier	var currentMultiplier		9
+nim	initializePrestigeMultiplier	config/prestige_multiplier.html#initializePrestigeMultiplier,int,int	proc initializePrestigeMultiplier(numSystems: int; numPlayers: int)		11
+nim	getPrestigeMultiplier	config/prestige_multiplier.html#getPrestigeMultiplier	proc getPrestigeMultiplier(): float		18
+nim	applyMultiplier	config/prestige_multiplier.html#applyMultiplier,int	proc applyMultiplier(baseValue: int): int		25

@@ -56,15 +56,18 @@
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#TechField" title="TechField {.pure.} = enum
-  EnergyLevel, ShieldLevel, ConstructionTech, WeaponsTech, TerraformingTech,
-  ElectronicIntelligence, CounterIntelligence">TechField</a></li>
+  EconomicLevel, ScienceLevel, ConstructionTech, WeaponsTech, TerraformingTech,
+  ElectronicIntelligence, CloakingTech, ShieldTech, CounterIntelligence,
+  FighterDoctrine, AdvancedCarrierOps">TechField</a></li>
 <li><a class="reference" href="#TechLevel" title="TechLevel = object
-  energyLevel*: int
-  shieldLevel*: int
+  economicLevel*: int
+  scienceLevel*: int
   constructionTech*: int
   weaponsTech*: int
   terraformingTech*: int
   electronicIntelligence*: int
+  cloakingTech*: int
+  shieldTech*: int
   counterIntelligence*: int
   fighterDoctrine*: int
   advancedCarrierOps*: int">TechLevel</a></li>
@@ -77,7 +80,9 @@
 
   </div>
   <div class="nine columns" id="content">
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/common/types/tech.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/common/types/tech.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
     <div id="tocRoot"></div>
     
     <p class="module-desc">EC4X Technology Types Tech fields and level definitions</p>
@@ -86,29 +91,36 @@
   <dl class="item">
     <div id="TechField">
   <dt><pre><a href="tech.html#TechField"><span class="Identifier">TechField</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
-  <span class="Identifier">EnergyLevel</span><span class="Other">,</span> <span class="Identifier">ShieldLevel</span><span class="Other">,</span> <span class="Identifier">ConstructionTech</span><span class="Other">,</span> <span class="Identifier">WeaponsTech</span><span class="Other">,</span> <span class="Identifier">TerraformingTech</span><span class="Other">,</span>
-  <span class="Identifier">ElectronicIntelligence</span><span class="Other">,</span> <span class="Identifier">CounterIntelligence</span></pre></dt>
+  <span class="Identifier">EconomicLevel</span><span class="Other">,</span> <span class="Identifier">ScienceLevel</span><span class="Other">,</span> <span class="Identifier">ConstructionTech</span><span class="Other">,</span> <span class="Identifier">WeaponsTech</span><span class="Other">,</span> <span class="Identifier">TerraformingTech</span><span class="Other">,</span>
+  <span class="Identifier">ElectronicIntelligence</span><span class="Other">,</span> <span class="Identifier">CloakingTech</span><span class="Other">,</span> <span class="Identifier">ShieldTech</span><span class="Other">,</span> <span class="Identifier">CounterIntelligence</span><span class="Other">,</span>
+  <span class="Identifier">FighterDoctrine</span><span class="Other">,</span> <span class="Identifier">AdvancedCarrierOps</span></pre></dt>
   <dd>
     
-    Seven tech fields in EC4X (hardcoded)
-    
+    Eleven tech fields in EC4X (economy.md:4.0)
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/common/types/tech.nim#L9" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/common/types/tech.nim#L9" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="TechLevel">
   <dt><pre><a href="tech.html#TechLevel"><span class="Identifier">TechLevel</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">energyLevel</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">shieldLevel</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">economicLevel</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">scienceLevel</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">constructionTech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">weaponsTech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">terraformingTech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">electronicIntelligence</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">cloakingTech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">shieldTech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">counterIntelligence</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">fighterDoctrine</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">advancedCarrierOps</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
   <dd>
     
     Tech levels for all fields
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/common/types/tech.nim#L23" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/common/types/tech.nim#L23" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 

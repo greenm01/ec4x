@@ -63,7 +63,10 @@
   squadrons*: seq[Squadron]
   spaceLiftShips*: seq[SpaceLiftShip]
   owner*: HouseId
-  location*: SystemId">Fleet</a></li>
+  location*: SystemId
+  status*: FleetStatus">Fleet</a></li>
+<li><a class="reference" href="#FleetStatus" title="FleetStatus {.pure.} = enum
+  Active, Reserve, Mothballed">FleetStatus</a></li>
 
     </ul>
   </details>
@@ -125,11 +128,13 @@
 
 </ul>
 <ul class="simple nested-toc-section">newFleet
-  <li><a class="reference" href="#newFleet%2Cseq%5BSquadron%5D%2Cseq%5BSpaceLiftShip%5D%2CFleetId%2CHouseId%2CSystemId" title="newFleet(squadrons: seq[Squadron] = @[];
+  <li><a class="reference" href="#newFleet%2Cseq%5BSquadron%5D%2Cseq%5BSpaceLiftShip%5D%2CFleetId%2CHouseId%2CSystemId%2CFleetStatus" title="newFleet(squadrons: seq[Squadron] = @[];
          spaceLiftShips: seq[SpaceLiftShip] = @[]; id: FleetId = &quot;&quot;;
-         owner: HouseId = &quot;&quot;; location: SystemId = 0): Fleet">newFleet(squadrons: seq[Squadron] = @[];
+         owner: HouseId = &quot;&quot;; location: SystemId = 0;
+         status: FleetStatus = FleetStatus.Active): Fleet">newFleet(squadrons: seq[Squadron] = @[];
          spaceLiftShips: seq[SpaceLiftShip] = @[]; id: FleetId = &quot;&quot;;
-         owner: HouseId = &quot;&quot;; location: SystemId = 0): Fleet</a></li>
+         owner: HouseId = &quot;&quot;; location: SystemId = 0;
+         status: FleetStatus = FleetStatus.Active): Fleet</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">remove
@@ -160,7 +165,9 @@
 
   </div>
   <div class="nine columns" id="content">
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
     <div id="tocRoot"></div>
     
     <p class="module-desc"><p>Fleet management for EC4X</p>
@@ -186,11 +193,25 @@
   <span class="Identifier">squadrons</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="squadron.html#Squadron"><span class="Identifier">Squadron</span></a><span class="Other">]</span>
   <span class="Identifier">spaceLiftShips</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="spacelift.html#SpaceLiftShip"><span class="Identifier">SpaceLiftShip</span></a><span class="Other">]</span>
   <span class="Identifier">owner</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
-  <span class="Identifier">location</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a></pre></dt>
+  <span class="Identifier">location</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
+  <span class="Identifier">status</span><span class="Operator">*</span><span class="Other">:</span> <a href="fleet.html#FleetStatus"><span class="Identifier">FleetStatus</span></a></pre></dt>
   <dd>
     
     A collection of squadrons and spacelift ships that move together
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L26" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L26" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="FleetStatus">
+  <dt><pre><a href="fleet.html#FleetStatus"><span class="Identifier">FleetStatus</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">Active</span><span class="Other">,</span> <span class="Identifier">Reserve</span><span class="Other">,</span> <span class="Identifier">Mothballed</span></pre></dt>
+  <dd>
     
+    Fleet operational status per economy.md:3.9
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L20" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L20" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -205,7 +226,9 @@
   <dd>
     
     String representation of a fleet
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L42" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L42" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -216,7 +239,9 @@
   <dd>
     
     Add a squadron to the fleet
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L72" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L72" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -228,7 +253,9 @@
   <dd>
     
     Check if the fleet can traverse a specific type of jump lane Per operations.md:9 &quot;Fleets containing crippled ships or Spacelift Command ships can not jump across restricted lanes&quot;
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L85" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L85" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -239,7 +266,9 @@
   <dd>
     
     Remove all squadrons from the fleet
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L81" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L81" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -251,7 +280,9 @@
   <dd>
     
     Get all combat-capable squadrons
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L133" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L133" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -262,7 +293,9 @@
   <dd>
     
     Calculate the total attack strength of the fleet
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L104" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L104" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -274,7 +307,9 @@
   <dd>
     
     Get all squadrons with crippled flagships
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L145" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L145" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -286,7 +321,9 @@
   <dd>
     
     Get all squadrons with non-crippled flagships
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L152" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L152" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -297,7 +334,9 @@
   <dd>
     
     Check if the fleet has any combat-capable squadrons
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L118" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L118" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -308,7 +347,9 @@
   <dd>
     
     Check if the fleet has any operational spacelift ships ARCHITECTURE FIX: Spacelift ships are now separate from squadrons
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L125" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L125" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -319,7 +360,9 @@
   <dd>
     
     Check if the fleet has no squadrons
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L68" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L68" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -330,7 +373,9 @@
   <dd>
     
     Get the number of squadrons in the fleet
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L64" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L64" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -341,21 +386,26 @@
   <dd>
     
     Merge another fleet into this one ARCHITECTURE FIX: Merge both squadrons and spacelift ships
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L159" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L159" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
 </div>
 <div id="newFleet-procs-all">
-  <div id="newFleet,seq[Squadron],seq[SpaceLiftShip],FleetId,HouseId,SystemId">
-  <dt><pre><span class="Keyword">proc</span> <a href="#newFleet%2Cseq%5BSquadron%5D%2Cseq%5BSpaceLiftShip%5D%2CFleetId%2CHouseId%2CSystemId"><span class="Identifier">newFleet</span></a><span class="Other">(</span><span class="Identifier">squadrons</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="squadron.html#Squadron"><span class="Identifier">Squadron</span></a><span class="Other">]</span> <span class="Other">=</span> <span class="Operator">@</span><span class="Other">[</span><span class="Other">]</span><span class="Other">;</span>
+  <div id="newFleet,seq[Squadron],seq[SpaceLiftShip],FleetId,HouseId,SystemId,FleetStatus">
+  <dt><pre><span class="Keyword">proc</span> <a href="#newFleet%2Cseq%5BSquadron%5D%2Cseq%5BSpaceLiftShip%5D%2CFleetId%2CHouseId%2CSystemId%2CFleetStatus"><span class="Identifier">newFleet</span></a><span class="Other">(</span><span class="Identifier">squadrons</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="squadron.html#Squadron"><span class="Identifier">Squadron</span></a><span class="Other">]</span> <span class="Other">=</span> <span class="Operator">@</span><span class="Other">[</span><span class="Other">]</span><span class="Other">;</span>
               <span class="Identifier">spaceLiftShips</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="spacelift.html#SpaceLiftShip"><span class="Identifier">SpaceLiftShip</span></a><span class="Other">]</span> <span class="Other">=</span> <span class="Operator">@</span><span class="Other">[</span><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">id</span><span class="Other">:</span> <a href="_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">;</span>
-              <span class="Identifier">owner</span><span class="Other">:</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">;</span> <span class="Identifier">location</span><span class="Other">:</span> <a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a> <span class="Other">=</span> <span class="DecNumber">0</span><span class="Other">)</span><span class="Other">:</span> <a href="fleet.html#Fleet"><span class="Identifier">Fleet</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+              <span class="Identifier">owner</span><span class="Other">:</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">;</span> <span class="Identifier">location</span><span class="Other">:</span> <a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a> <span class="Other">=</span> <span class="DecNumber">0</span><span class="Other">;</span>
+              <span class="Identifier">status</span><span class="Other">:</span> <a href="fleet.html#FleetStatus"><span class="Identifier">FleetStatus</span></a> <span class="Other">=</span> <a href="fleet.html#FleetStatus"><span class="Identifier">FleetStatus</span></a><span class="Other">.</span><span class="Identifier">Active</span><span class="Other">)</span><span class="Other">:</span> <a href="fleet.html#Fleet"><span class="Identifier">Fleet</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Create a new fleet with the given squadrons and spacelift ships
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L35" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L35" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -366,7 +416,9 @@
   <dd>
     
     Remove a squadron at the given index
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L76" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L76" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -378,7 +430,9 @@
   <dd>
     
     Get all spacelift ships ARCHITECTURE FIX: Renamed from transportSquadrons, returns SpaceLiftShips not Squadrons
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L140" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L140" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -390,7 +444,9 @@
   <dd>
     
     Split off squadrons at the given indices into a new fleet
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L165" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L165" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -401,7 +457,9 @@
   <dd>
     
     Calculate the number of operational spacelift ships ARCHITECTURE FIX: Spacelift ships are now separate from squadrons
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/fleet.nim#L110" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/fleet.nim#L110" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 

@@ -1,0 +1,3 @@
+nimTitle	executor	commands/executor.html	module src/engine/commands/executor		0
+nim	OrderExecutionResult	commands/executor.html#OrderExecutionResult	object OrderExecutionResult		11
+nim	executeFleetOrder	commands/executor.html#executeFleetOrder,GameState,HouseId,FleetOrder	proc executeFleetOrder(state: var GameState; houseId: HouseId; order: FleetOrder): OrderExecutionResult		45

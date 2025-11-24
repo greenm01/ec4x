@@ -1,48 +1,50 @@
 nimTitle	gamestate	gamestate.html	module src/engine/gamestate		0
-nim	BuildingType	gamestate.html#BuildingType	enum BuildingType		21
-nim	FighterSquadron	gamestate.html#FighterSquadron	object FighterSquadron		24
-nim	Starbase	gamestate.html#Starbase	object Starbase		29
-nim	Spaceport	gamestate.html#Spaceport	object Spaceport		35
-nim	Shipyard	gamestate.html#Shipyard	object Shipyard		41
-nim	CapacityViolation	gamestate.html#CapacityViolation	object CapacityViolation		48
-nim	Colony	gamestate.html#Colony	object Colony		55
-nim	ConstructionProject	gamestate.html#ConstructionProject	type ConstructionProject		94
-nim	TechTree	gamestate.html#TechTree	type TechTree		97
-nim	SpyMissionType	gamestate.html#SpyMissionType	enum SpyMissionType		99
-nim	SpyScout	gamestate.html#SpyScout	object SpyScout		105
-nim	House	gamestate.html#House	object House		116
-nim	GamePhase	gamestate.html#GamePhase	enum GamePhase		134
-nim	GameState	gamestate.html#GameState	object GameState		137
-nim	newGameState	gamestate.html#newGameState,string,int,StarMap	proc newGameState(gameId: string; playerCount: int; starMap: StarMap): GameState		154
-nim	initializeHouse	gamestate.html#initializeHouse,string,string	proc initializeHouse(name: string; color: string): House		171
-nim	createHomeColony	gamestate.html#createHomeColony,SystemId,HouseId	proc createHomeColony(systemId: SystemId; owner: HouseId): Colony		203
-nim	getHouse	gamestate.html#getHouse,GameState,HouseId	proc getHouse(state: GameState; houseId: HouseId): Option[House]		241
-nim	getColony	gamestate.html#getColony,GameState,SystemId	proc getColony(state: GameState; systemId: SystemId): Option[Colony]		247
-nim	getFleet	gamestate.html#getFleet,GameState,FleetId	proc getFleet(state: GameState; fleetId: FleetId): Option[Fleet]		253
-nim	getActiveHouses	gamestate.html#getActiveHouses,GameState	proc getActiveHouses(state: GameState): seq[House]		259
-nim	getHouseColonies	gamestate.html#getHouseColonies,GameState,HouseId	proc getHouseColonies(state: GameState; houseId: HouseId): seq[Colony]		266
-nim	getHouseFleets	gamestate.html#getHouseFleets,GameState,HouseId	proc getHouseFleets(state: GameState; houseId: HouseId): seq[Fleet]		273
-nim	getHousePopulationUnits	gamestate.html#getHousePopulationUnits,GameState,HouseId	proc getHousePopulationUnits(state: GameState; houseId: HouseId): int		282
-nim	getSquadronLimit	gamestate.html#getSquadronLimit,GameState,HouseId	proc getSquadronLimit(state: GameState; houseId: HouseId): int		288
-nim	getHouseSquadronCount	gamestate.html#getHouseSquadronCount,GameState,HouseId	proc getHouseSquadronCount(state: GameState; houseId: HouseId): int		296
-nim	isOverSquadronLimit	gamestate.html#isOverSquadronLimit,GameState,HouseId	proc isOverSquadronLimit(state: GameState; houseId: HouseId): bool		302
-nim	getFighterDoctrineMultiplier	gamestate.html#getFighterDoctrineMultiplier,TechLevel	proc getFighterDoctrineMultiplier(techLevels: TechLevel): float		310
-nim	getFighterPopulationCapacity	gamestate.html#getFighterPopulationCapacity,Colony,float	proc getFighterPopulationCapacity(colony: Colony; fdMultiplier: float): int		323
-nim	getFighterInfrastructureCapacity	gamestate.html#getFighterInfrastructureCapacity,Colony	proc getFighterInfrastructureCapacity(colony: Colony): int		331
-nim	getFighterCapacity	gamestate.html#getFighterCapacity,Colony,float	proc getFighterCapacity(colony: Colony; fdMultiplier: float): int		346
-nim	getCurrentFighterCount	gamestate.html#getCurrentFighterCount,Colony	proc getCurrentFighterCount(colony: Colony): int		352
-nim	isOverFighterCapacity	gamestate.html#isOverFighterCapacity,Colony,float	proc isOverFighterCapacity(colony: Colony; fdMultiplier: float): bool		356
-nim	getOperationalStarbaseCount	gamestate.html#getOperationalStarbaseCount,Colony	proc getOperationalStarbaseCount(colony: Colony): int		364
-nim	getStarbaseGrowthBonus	gamestate.html#getStarbaseGrowthBonus,Colony	proc getStarbaseGrowthBonus(colony: Colony): float		371
-nim	hasSpaceport	gamestate.html#hasSpaceport,Colony	proc hasSpaceport(colony: Colony): bool		380
-nim	getOperationalShipyardCount	gamestate.html#getOperationalShipyardCount,Colony	proc getOperationalShipyardCount(colony: Colony): int		384
-nim	hasOperationalShipyard	gamestate.html#hasOperationalShipyard,Colony	proc hasOperationalShipyard(colony: Colony): bool		391
-nim	getTotalConstructionDocks	gamestate.html#getTotalConstructionDocks,Colony	proc getTotalConstructionDocks(colony: Colony): int		395
-nim	hasPlanetaryShield	gamestate.html#hasPlanetaryShield,Colony	proc hasPlanetaryShield(colony: Colony): bool		408
-nim	getShieldBlockChance	gamestate.html#getShieldBlockChance,int	proc getShieldBlockChance(shieldLevel: int): float		412
-nim	getTotalGroundDefense	gamestate.html#getTotalGroundDefense,Colony	proc getTotalGroundDefense(colony: Colony): int		425
-nim	getPlanetBreakerLimit	gamestate.html#getPlanetBreakerLimit,GameState,HouseId	proc getPlanetBreakerLimit(state: GameState; houseId: HouseId): int		432
-nim	canBuildPlanetBreaker	gamestate.html#canBuildPlanetBreaker,GameState,HouseId	proc canBuildPlanetBreaker(state: GameState; houseId: HouseId): bool		437
-nim	calculatePrestige	gamestate.html#calculatePrestige,GameState,HouseId	proc calculatePrestige(state: GameState; houseId: HouseId): int		445
-nim	checkVictoryCondition	gamestate.html#checkVictoryCondition,GameState	proc checkVictoryCondition(state: GameState): Option[HouseId]		450
-nim	advanceTurn	gamestate.html#advanceTurn,GameState	proc advanceTurn(state: var GameState)		470
+nim	BuildingType	gamestate.html#BuildingType	enum BuildingType		24
+nim	FighterSquadron	gamestate.html#FighterSquadron	object FighterSquadron		27
+nim	Starbase	gamestate.html#Starbase	object Starbase		32
+nim	Spaceport	gamestate.html#Spaceport	object Spaceport		38
+nim	Shipyard	gamestate.html#Shipyard	object Shipyard		44
+nim	CapacityViolation	gamestate.html#CapacityViolation	object CapacityViolation		51
+nim	TerraformProject	gamestate.html#TerraformProject	object TerraformProject		58
+nim	Colony	gamestate.html#Colony	object Colony		66
+nim	ConstructionProject	gamestate.html#ConstructionProject	type ConstructionProject		107
+nim	TechTree	gamestate.html#TechTree	type TechTree		110
+nim	SpyMissionType	gamestate.html#SpyMissionType	enum SpyMissionType		112
+nim	SpyScout	gamestate.html#SpyScout	object SpyScout		118
+nim	House	gamestate.html#House	object House		129
+nim	GamePhase	gamestate.html#GamePhase	enum GamePhase		151
+nim	GameState	gamestate.html#GameState	object GameState		154
+nim	newGameState	gamestate.html#newGameState,string,int,StarMap	proc newGameState(gameId: string; playerCount: int; starMap: StarMap): GameState		173
+nim	initializeHouse	gamestate.html#initializeHouse,string,string	proc initializeHouse(name: string; color: string): House		192
+nim	createHomeColony	gamestate.html#createHomeColony,SystemId,HouseId	proc createHomeColony(systemId: SystemId; owner: HouseId): Colony		228
+nim	createETACColony	gamestate.html#createETACColony,SystemId,HouseId,PlanetClass,ResourceRating	proc createETACColony(systemId: SystemId; owner: HouseId; planetClass: PlanetClass;\n                 resources: ResourceRating): Colony		270
+nim	getHouse	gamestate.html#getHouse,GameState,HouseId	proc getHouse(state: GameState; houseId: HouseId): Option[House]		307
+nim	getColony	gamestate.html#getColony,GameState,SystemId	proc getColony(state: GameState; systemId: SystemId): Option[Colony]		313
+nim	getFleet	gamestate.html#getFleet,GameState,FleetId	proc getFleet(state: GameState; fleetId: FleetId): Option[Fleet]		319
+nim	getActiveHouses	gamestate.html#getActiveHouses,GameState	proc getActiveHouses(state: GameState): seq[House]		325
+nim	getHouseColonies	gamestate.html#getHouseColonies,GameState,HouseId	proc getHouseColonies(state: GameState; houseId: HouseId): seq[Colony]		332
+nim	getHouseFleets	gamestate.html#getHouseFleets,GameState,HouseId	proc getHouseFleets(state: GameState; houseId: HouseId): seq[Fleet]		339
+nim	getHousePopulationUnits	gamestate.html#getHousePopulationUnits,GameState,HouseId	proc getHousePopulationUnits(state: GameState; houseId: HouseId): int		348
+nim	getSquadronLimit	gamestate.html#getSquadronLimit,GameState,HouseId	proc getSquadronLimit(state: GameState; houseId: HouseId): int		354
+nim	getHouseSquadronCount	gamestate.html#getHouseSquadronCount,GameState,HouseId	proc getHouseSquadronCount(state: GameState; houseId: HouseId): int		362
+nim	isOverSquadronLimit	gamestate.html#isOverSquadronLimit,GameState,HouseId	proc isOverSquadronLimit(state: GameState; houseId: HouseId): bool		372
+nim	getFighterDoctrineMultiplier	gamestate.html#getFighterDoctrineMultiplier,TechLevel	proc getFighterDoctrineMultiplier(techLevels: TechLevel): float		380
+nim	getFighterPopulationCapacity	gamestate.html#getFighterPopulationCapacity,Colony,float	proc getFighterPopulationCapacity(colony: Colony; fdMultiplier: float): int		393
+nim	getFighterInfrastructureCapacity	gamestate.html#getFighterInfrastructureCapacity,Colony	proc getFighterInfrastructureCapacity(colony: Colony): int		401
+nim	getFighterCapacity	gamestate.html#getFighterCapacity,Colony,float	proc getFighterCapacity(colony: Colony; fdMultiplier: float): int		416
+nim	getCurrentFighterCount	gamestate.html#getCurrentFighterCount,Colony	proc getCurrentFighterCount(colony: Colony): int		422
+nim	isOverFighterCapacity	gamestate.html#isOverFighterCapacity,Colony,float	proc isOverFighterCapacity(colony: Colony; fdMultiplier: float): bool		426
+nim	getOperationalStarbaseCount	gamestate.html#getOperationalStarbaseCount,Colony	proc getOperationalStarbaseCount(colony: Colony): int		434
+nim	getStarbaseGrowthBonus	gamestate.html#getStarbaseGrowthBonus,Colony	proc getStarbaseGrowthBonus(colony: Colony): float		441
+nim	hasSpaceport	gamestate.html#hasSpaceport,Colony	proc hasSpaceport(colony: Colony): bool		450
+nim	getOperationalShipyardCount	gamestate.html#getOperationalShipyardCount,Colony	proc getOperationalShipyardCount(colony: Colony): int		454
+nim	hasOperationalShipyard	gamestate.html#hasOperationalShipyard,Colony	proc hasOperationalShipyard(colony: Colony): bool		461
+nim	getTotalConstructionDocks	gamestate.html#getTotalConstructionDocks,Colony	proc getTotalConstructionDocks(colony: Colony): int		465
+nim	hasPlanetaryShield	gamestate.html#hasPlanetaryShield,Colony	proc hasPlanetaryShield(colony: Colony): bool		478
+nim	getShieldBlockChance	gamestate.html#getShieldBlockChance,int	proc getShieldBlockChance(shieldLevel: int): float		482
+nim	getTotalGroundDefense	gamestate.html#getTotalGroundDefense,Colony	proc getTotalGroundDefense(colony: Colony): int		495
+nim	getPlanetBreakerLimit	gamestate.html#getPlanetBreakerLimit,GameState,HouseId	proc getPlanetBreakerLimit(state: GameState; houseId: HouseId): int		502
+nim	canBuildPlanetBreaker	gamestate.html#canBuildPlanetBreaker,GameState,HouseId	proc canBuildPlanetBreaker(state: GameState; houseId: HouseId): bool		507
+nim	calculatePrestige	gamestate.html#calculatePrestige,GameState,HouseId	proc calculatePrestige(state: GameState; houseId: HouseId): int		515
+nim	checkVictoryCondition	gamestate.html#checkVictoryCondition,GameState	proc checkVictoryCondition(state: GameState): Option[HouseId]		520
+nim	advanceTurn	gamestate.html#advanceTurn,GameState	proc advanceTurn(state: var GameState)		540

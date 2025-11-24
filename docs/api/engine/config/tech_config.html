@@ -56,12 +56,14 @@
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
       <li><a class="reference" href="#StartingTechConfig" title="StartingTechConfig = object
-  energy_level*: int
-  shield_level*: int
+  economic_level*: int
+  science_level*: int
   construction_tech*: int
   weapons_tech*: int
   terraforming_tech*: int
   electronic_intelligence*: int
+  cloaking_tech*: int
+  shield_tech*: int
   counter_intelligence*: int
   fighter_doctrine*: int
   advanced_carrier_ops*: int">StartingTechConfig</a></li>
@@ -101,7 +103,9 @@
 
   </div>
   <div class="nine columns" id="content">
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
     <div id="tocRoot"></div>
     
     <p class="module-desc"><p>Technology Configuration Loader</p>
@@ -112,19 +116,23 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dl class="item">
     <div id="StartingTechConfig">
   <dt><pre><a href="tech_config.html#StartingTechConfig"><span class="Identifier">StartingTechConfig</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">energy_level</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">shield_level</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">economic_level</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">science_level</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">construction_tech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">weapons_tech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">terraforming_tech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">electronic_intelligence</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">cloaking_tech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">shield_tech</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">counter_intelligence</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">fighter_doctrine</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">advanced_carrier_ops</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
   <dd>
     
     Starting tech levels per economy.md:4.0 CRITICAL: ALL tech starts at level 1, not 0!
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L10" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L10" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="TechConfig">
@@ -133,7 +141,9 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dd>
     
     Technology configuration from tech.toml
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L25" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L25" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -147,7 +157,9 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dd>
     
     
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L43" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L43" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -164,7 +176,9 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dd>
     
     Load technology configuration from TOML file Uses toml_serialization for type-safe parsing
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L29" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L29" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -177,7 +191,9 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dd>
     
     Reload configuration from file
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L47" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L47" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 

@@ -69,12 +69,14 @@
   systemId*: SystemId
   owner*: HouseId
   population*: int
+  souls*: int
   infrastructure*: int
   planetClass*: PlanetClass
   resources*: ResourceRating
   buildings*: seq[BuildingType]
   production*: int
   underConstruction*: Option[ConstructionProject]
+  activeTerraforming*: Option[TerraformProject]
   unassignedSquadrons*: seq[Squadron]
   unassignedSpaceLiftShips*: seq[SpaceLiftShip]
   autoAssignFleets*: bool
@@ -109,7 +111,9 @@
   diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
   turnDeadline*: int64
   ongoingEffects*: seq[esp_types.OngoingEffect]
-  spyScouts*: Table[string, SpyScout]">GameState</a></li>
+  spyScouts*: Table[string, SpyScout]
+  populationInTransit*: seq[pop_types.PopulationInTransit]
+  pendingProposals*: seq[dip_proposals.PendingProposal]">GameState</a></li>
 <li><a class="reference" href="#House" title="House = object
   id*: HouseId
   name*: string
@@ -124,7 +128,9 @@
   espionageBudget*: esp_types.EspionageBudget
   dishonoredStatus*: dip_types.DishonoredStatus
   diplomaticIsolation*: dip_types.DiplomaticIsolation
-  planetBreakerCount*: int">House</a></li>
+  taxPolicy*: econ_types.TaxPolicy
+  planetBreakerCount*: int
+  intelligence*: intel_types.IntelligenceDatabase">House</a></li>
 <li><a class="reference" href="#Shipyard" title="Shipyard = object
   id*: string
   commissionedTurn*: int
@@ -149,6 +155,12 @@
   commissionedTurn*: int
   isCrippled*: bool">Starbase</a></li>
 <li><a class="reference" href="#TechTree" title="TechTree = res_types.TechTree">TechTree</a></li>
+<li><a class="reference" href="#TerraformProject" title="TerraformProject = object
+  startTurn*: int
+  turnsRemaining*: int
+  targetClass*: int
+  ppCost*: int
+  ppPaid*: int">TerraformProject</a></li>
 
     </ul>
   </details>
@@ -171,6 +183,12 @@
 </ul>
 <ul class="simple nested-toc-section">checkVictoryCondition
   <li><a class="reference" href="#checkVictoryCondition%2CGameState" title="checkVictoryCondition(state: GameState): Option[HouseId]">checkVictoryCondition(state: GameState): Option[HouseId]</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">createETACColony
+  <li><a class="reference" href="#createETACColony%2CSystemId%2CHouseId%2CPlanetClass%2CResourceRating" title="createETACColony(systemId: SystemId; owner: HouseId; planetClass: PlanetClass;
+                 resources: ResourceRating): Colony">createETACColony(systemId: SystemId; owner: HouseId; planetClass: PlanetClass;
+                 resources: ResourceRating): Colony</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">createHomeColony
@@ -301,14 +319,16 @@
 
   </div>
   <div class="nine columns" id="content">
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
     <div id="tocRoot"></div>
     
     <p class="module-desc">Core game state representation for EC4X</p>
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="_._/common/hex.html">../common/hex</a>, <a class="reference external" href="_._/common/system.html">../common/system</a>, <a class="reference external" href="_._/common/types/core.html">../common/types/core</a>, <a class="reference external" href="_._/common/types/planets.html">../common/types/planets</a>, <a class="reference external" href="_._/common/types/tech.html">../common/types/tech</a>, <a class="reference external" href="_._/common/types/diplomacy.html">../common/types/diplomacy</a>, <a class="reference external" href="fleet.html">fleet</a>, <a class="reference external" href="ship.html">ship</a>, <a class="reference external" href="starmap.html">starmap</a>, <a class="reference external" href="config/prestige_config.html">config/prestige_config</a>, <a class="reference external" href="config/military_config.html">config/military_config</a>, <a class="reference external" href="config/tech_config.html">config/tech_config</a>, <a class="reference external" href="diplomacy/types.html">diplomacy/types</a>, <a class="reference external" href="espionage/types.html">espionage/types</a>, <a class="reference external" href="research/types.html">research/types</a>, <a class="reference external" href="economy/types.html">economy/types</a>
+    <a class="reference external" href="_._/common/hex.html">../common/hex</a>, <a class="reference external" href="_._/common/system.html">../common/system</a>, <a class="reference external" href="_._/common/types/core.html">../common/types/core</a>, <a class="reference external" href="_._/common/types/planets.html">../common/types/planets</a>, <a class="reference external" href="_._/common/types/tech.html">../common/types/tech</a>, <a class="reference external" href="_._/common/types/diplomacy.html">../common/types/diplomacy</a>, <a class="reference external" href="fleet.html">fleet</a>, <a class="reference external" href="ship.html">ship</a>, <a class="reference external" href="starmap.html">starmap</a>, <a class="reference external" href="config/prestige_config.html">config/prestige_config</a>, <a class="reference external" href="config/military_config.html">config/military_config</a>, <a class="reference external" href="config/tech_config.html">config/tech_config</a>, <a class="reference external" href="diplomacy/types.html">diplomacy/types</a>, <a class="reference external" href="diplomacy/proposals.html">diplomacy/proposals</a>, <a class="reference external" href="espionage/types.html">espionage/types</a>, <a class="reference external" href="research/types.html">research/types</a>, <a class="reference external" href="economy/types.html">economy/types</a>, <a class="reference external" href="population/types.html">population/types</a>, <a class="reference external" href="intelligence/types.html">intelligence/types</a>
   </dl>
 </div>
 <div class="section" id="7">
@@ -320,7 +340,9 @@
   <dd>
     
     
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L24" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L24" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="CapacityViolation">
@@ -332,7 +354,9 @@
   <dd>
     
     Tracks fighter capacity violations and grace period
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L51" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L51" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="Colony">
@@ -340,12 +364,14 @@
   <span class="Identifier">systemId</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
   <span class="Identifier">owner</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
   <span class="Identifier">population</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">souls</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">infrastructure</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">planetClass</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/planets.html#PlanetClass"><span class="Identifier">PlanetClass</span></a>
   <span class="Identifier">resources</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/planets.html#ResourceRating"><span class="Identifier">ResourceRating</span></a>
   <span class="Identifier">buildings</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="gamestate.html#BuildingType"><span class="Identifier">BuildingType</span></a><span class="Other">]</span>
   <span class="Identifier">production</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">underConstruction</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="gamestate.html#ConstructionProject"><span class="Identifier">ConstructionProject</span></a><span class="Other">]</span>
+  <span class="Identifier">activeTerraforming</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="gamestate.html#TerraformProject"><span class="Identifier">TerraformProject</span></a><span class="Other">]</span>
   <span class="Identifier">unassignedSquadrons</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="squadron.html#Squadron"><span class="Identifier">Squadron</span></a><span class="Other">]</span>
   <span class="Identifier">unassignedSpaceLiftShips</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="spacelift.html#SpaceLiftShip"><span class="Identifier">SpaceLiftShip</span></a><span class="Other">]</span>
   <span class="Identifier">autoAssignFleets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
@@ -364,7 +390,9 @@
   <dd>
     
     
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L66" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L66" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="ConstructionProject">
@@ -372,7 +400,9 @@
   <dd>
     
     
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L107" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L107" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="FighterSquadron">
@@ -382,7 +412,9 @@
   <dd>
     
     Colony-based fighter squadron
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L27" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L27" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="GamePhase">
@@ -391,7 +423,9 @@
   <dd>
     
     
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L151" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L151" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="GameState">
@@ -408,11 +442,15 @@
   <span class="Identifier">diplomacy</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Other">(</span><a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">,</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">)</span><span class="Other">,</span> <a href="_._/common/types/diplomacy.html#DiplomaticState"><span class="Identifier">DiplomaticState</span></a><span class="Other">]</span>
   <span class="Identifier">turnDeadline</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int64</span>
   <span class="Identifier">ongoingEffects</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">esp_types</span><span class="Other">.</span><span class="Identifier">OngoingEffect</span><span class="Other">]</span>
-  <span class="Identifier">spyScouts</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="gamestate.html#SpyScout"><span class="Identifier">SpyScout</span></a><span class="Other">]</span></pre></dt>
+  <span class="Identifier">spyScouts</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <a href="gamestate.html#SpyScout"><span class="Identifier">SpyScout</span></a><span class="Other">]</span>
+  <span class="Identifier">populationInTransit</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">pop_types</span><span class="Other">.</span><span class="Identifier">PopulationInTransit</span><span class="Other">]</span>
+  <span class="Identifier">pendingProposals</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">dip_proposals</span><span class="Other">.</span><span class="Identifier">PendingProposal</span><span class="Other">]</span></pre></dt>
   <dd>
     
     
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L154" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L154" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="House">
@@ -430,11 +468,15 @@
   <span class="Identifier">espionageBudget</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">esp_types</span><span class="Other">.</span><span class="Identifier">EspionageBudget</span>
   <span class="Identifier">dishonoredStatus</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">dip_types</span><span class="Other">.</span><span class="Identifier">DishonoredStatus</span>
   <span class="Identifier">diplomaticIsolation</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">dip_types</span><span class="Other">.</span><span class="Identifier">DiplomaticIsolation</span>
-  <span class="Identifier">planetBreakerCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <span class="Identifier">taxPolicy</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">econ_types</span><span class="Other">.</span><span class="Identifier">TaxPolicy</span>
+  <span class="Identifier">planetBreakerCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">intelligence</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">intel_types</span><span class="Other">.</span><span class="Identifier">IntelligenceDatabase</span></pre></dt>
   <dd>
     
     
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L129" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L129" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="Shipyard">
@@ -446,7 +488,9 @@
   <dd>
     
     Orbital construction facility (assets.md:2.3.2.2)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L44" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L44" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="Spaceport">
@@ -457,7 +501,9 @@
   <dd>
     
     Ground-based launch facility (assets.md:2.3.2.1)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L38" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L38" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="SpyMissionType">
@@ -466,7 +512,9 @@
   <dd>
     
     Types of spy scout missions (operations.md:6.2.9-6.2.11)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L112" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L112" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="SpyScout">
@@ -481,7 +529,9 @@
   <dd>
     
     Independent spy scout on intelligence mission Per assets.md:2.4.2
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L118" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L118" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="Starbase">
@@ -492,7 +542,9 @@
   <dd>
     
     Orbital fortress (assets.md:2.4.4)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L32" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L32" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 <div id="TechTree">
@@ -500,7 +552,24 @@
   <dd>
     
     
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L110" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L110" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="TerraformProject">
+  <dt><pre><a href="gamestate.html#TerraformProject"><span class="Identifier">TerraformProject</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">startTurn</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">turnsRemaining</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">targetClass</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">ppCost</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">ppPaid</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <dd>
     
+    Active terraforming project on a colony
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L58" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L58" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -515,7 +584,9 @@
   <dd>
     
     Advance to next turn, updating year/month
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L540" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L540" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -527,7 +598,9 @@
   <dd>
     
     Return current prestige for a house Prestige is tracked via events and stored in House.prestige
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L515" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L515" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -539,7 +612,9 @@
   <dd>
     
     Check if house can build another Planet-Breaker
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L507" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L507" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -551,7 +626,24 @@
   <dd>
     
     Check if any house has won the game Victory: prestige threshold (configurable) or last house standing
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L520" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L520" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="createETACColony-procs-all">
+  <div id="createETACColony,SystemId,HouseId,PlanetClass,ResourceRating">
+  <dt><pre><span class="Keyword">proc</span> <a href="#createETACColony%2CSystemId%2CHouseId%2CPlanetClass%2CResourceRating"><span class="Identifier">createETACColony</span></a><span class="Other">(</span><span class="Identifier">systemId</span><span class="Other">:</span> <a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">;</span> <span class="Identifier">owner</span><span class="Other">:</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span>
+                      <span class="Identifier">planetClass</span><span class="Other">:</span> <a href="_._/common/types/planets.html#PlanetClass"><span class="Identifier">PlanetClass</span></a><span class="Other">;</span> <span class="Identifier">resources</span><span class="Other">:</span> <a href="_._/common/types/planets.html#ResourceRating"><span class="Identifier">ResourceRating</span></a><span class="Other">)</span><span class="Other">:</span> <a href="gamestate.html#Colony"><span class="Identifier">Colony</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
     
+    Create a new ETAC-colonized system with 1 PTU (50k souls)
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L270" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L270" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -562,8 +654,10 @@
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Create a starting homeworld colony
-    
+    Create a starting homeworld colony ACCELERATION: Homeworld starts with 100M population to match original EC's ~100 PP/year baseline production. At 2 PP per 10M, this gives ~20 PP/turn.
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L228" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L228" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -575,7 +669,9 @@
   <dd>
     
     Get all non-eliminated houses
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L325" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L325" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -587,7 +683,9 @@
   <dd>
     
     Get colony by system ID
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L313" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L313" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -599,7 +697,9 @@
   <dd>
     
     Get current number of fighter squadrons at colony
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L422" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L422" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -611,7 +711,9 @@
   <dd>
     
     Get effective fighter capacity (minimum of population and infrastructure limits)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L416" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L416" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -623,7 +725,9 @@
   <dd>
     
     Get fighter doctrine multiplier from tech level Per economy.md tech tables: FD I = 1.0x, FD II = 1.5x, FD III = 2.0x CRITICAL: FD starts at level 1 (FD I), not 0! (gameplay.md:1.2)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L380" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L380" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -635,7 +739,9 @@
   <dd>
     
     Calculate fighter capacity based on starbases Requires 1 operational Starbase per 5 FS Per military.toml: starbase_per_fighter_squadrons = 5
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L401" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L401" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -647,7 +753,9 @@
   <dd>
     
     Calculate fighter capacity based on population Max FS = floor(PU / 100) × FD Multiplier Per military.toml: fighter_capacity_pu_divisor = 100
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L393" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L393" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -659,7 +767,9 @@
   <dd>
     
     Get fleet by ID
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L319" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L319" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -671,7 +781,9 @@
   <dd>
     
     Get house by ID
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L307" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L307" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -683,7 +795,9 @@
   <dd>
     
     Get all colonies owned by a house
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L332" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L332" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -695,7 +809,9 @@
   <dd>
     
     Get all fleets owned by a house
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L339" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L339" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -707,7 +823,9 @@
   <dd>
     
     Get total population units for a house across all colonies
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L348" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L348" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -718,8 +836,10 @@
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Count total squadrons for a house across all fleets
-    
+    Count total squadrons for a house across all fleets Scouts are exempt from squadron limits per reference.md:9.5
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L362" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L362" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -731,7 +851,9 @@
   <dd>
     
     Count operational (non-crippled) shipyards
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L454" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L454" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -743,7 +865,9 @@
   <dd>
     
     Count operational (non-crippled) starbases
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L434" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L434" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -755,7 +879,9 @@
   <dd>
     
     Get maximum Planet-Breakers allowed for house Limit = current colony count (homeworld counts)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L502" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L502" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -767,7 +893,9 @@
   <dd>
     
     Get shield block chance from config TODO: Load from ground_units_config.toml Placeholder values
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L482" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L482" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -779,7 +907,9 @@
   <dd>
     
     Calculate squadron limit for a house based on population Per military.toml: Squadron limit = Total PU ÷ 100 (minimum 8)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L354" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L354" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -791,7 +921,9 @@
   <dd>
     
     Calculate population/IU growth bonus from starbases Per assets.md:2.4.4: 5% per operational starbase, max 15% (3 starbases)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L441" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L441" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -803,7 +935,9 @@
   <dd>
     
     Calculate total construction docks from facilities Spaceports: 5 docks each Shipyards: 10 docks each (only operational ones)
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L465" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L465" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -815,7 +949,9 @@
   <dd>
     
     Calculate total ground defense strength Ground batteries + armies + marines
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L495" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L495" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -827,7 +963,9 @@
   <dd>
     
     Check if colony has at least one operational shipyard
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L461" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L461" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -839,7 +977,9 @@
   <dd>
     
     Check if colony has an active planetary shield
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L478" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L478" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -850,7 +990,9 @@
   <dd>
     
     Check if colony has at least one spaceport
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L450" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L450" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -862,7 +1004,9 @@
   <dd>
     
     Create a new house with starting resources Per economy.md:4.0: &quot;ALL technology levels start at level 1, never 0&quot;
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L192" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L192" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -874,7 +1018,9 @@
   <dd>
     
     Check if colony has exceeded fighter capacity
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L426" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L426" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -886,7 +1032,9 @@
   <dd>
     
     Check if house has exceeded squadron limit
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L372" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L372" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
@@ -898,7 +1046,9 @@
   <dd>
     
     Create initial game state with map and player houses
-    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/gamestate.nim#L173" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/gamestate.nim#L173" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
   </dd>
 </div>
 
