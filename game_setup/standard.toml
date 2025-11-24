@@ -47,12 +47,12 @@ fighter_doctrine = 1                # FD I (starts at level 1, 1.0x multiplier)
 advanced_carrier_ops = 1            # ACO I (starts at level 1, CV=3FS CX=5FS)
 
 [starting_fleet]
-# Initial fleet composition per gameplay.md:37
-# ACCELERATION: Increased ETACs for 30-turn multi-generational timeline
-etac = 5                            # 5 ETACs (fully loaded) - enables aggressive parallel colonization
-light_cruiser = 1                   # 1 Light Cruiser
-destroyer = 2                       # 2 Destroyers
-scout = 2                           # 2 Scouts
+# Initial fleet composition matching original Esterian Conquest
+# Original EC: 2 fleets (ETAC+Cruiser), 2 fleets (Destroyer)
+etac = 2                            # 2 ETACs (fully loaded with PTUs)
+light_cruiser = 2                   # 2 Light Cruisers (one with each ETAC)
+destroyer = 2                       # 2 Destroyers (scout/exploration fleets)
+scout = 0                           # 0 Scouts (not in original EC starting fleet)
 # All other ship types: 0 (not listed in spec)
 
 [starting_facilities]
