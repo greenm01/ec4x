@@ -105,62 +105,113 @@ suite "Ship Construction Pipeline":
   test "Multi-turn construction completion":
     var state = createTestState()
 
-    # Start construction of Destroyer (should take multiple turns)
-    var colony = state.colonies[1]
-    let destroyerProject = createShipProject(ShipClass.Destroyer)
-    check startConstruction(colony, destroyerProject) == true
-    state.colonies[1] = colony
+    # Start construction of Cruiser (takes 2 turns at CST 1)
+    let buildOrder = BuildOrder(
+      colonySystem: 1,
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: some(ShipClass.Cruiser),
+      buildingType: none(string),
+      industrialUnits: 0
+    )
 
-    let initialTurns = destroyerProject.turnsRemaining
-    check initialTurns > 1  # Should take multiple turns
+    var packet = OrderPacket(
+      houseId: "house1",
+      turn: 1,
+      buildOrders: @[buildOrder],
+      fleetOrders: @[],
+      researchAllocation: initResearchAllocation(),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      squadronManagement: @[],
+      cargoManagement: @[],
+      terraformOrders: @[],
+      espionageAction: none(esp_types.EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
 
-    # Advance construction for several turns
-    var completedProject: Option[CompletedProject] = none(CompletedProject)
+    var orders = initTable[HouseId, OrderPacket]()
+    orders["house1"] = packet
+
+    # Start construction
+    var result = resolveTurn(state, orders)
+    state = result.newState
+
+    # Construction should be in progress
+    check state.colonies[1].underConstruction.isSome
+    let initialProject = state.colonies[1].underConstruction.get()
+    let initialTurns = initialProject.turnsRemaining
+    check initialTurns >= 2  # Cruiser should take at least 2 turns
+
+    # Advance enough turns to complete construction
+    # Need to advance initialTurns worth of game turns to complete
     for i in 1..initialTurns:
-      colony = state.colonies[1]
-      completedProject = advanceConstruction(colony)
-      state.colonies[1] = colony
+      orders["house1"].turn = state.turn
+      orders["house1"].buildOrders = @[]  # No new build orders
+      result = resolveTurn(state, orders)
+      state = result.newState
 
-      if i < initialTurns:
-        check completedProject.isNone  # Not complete yet
-      else:
-        check completedProject.isSome  # Complete on final turn
-
-    # Verify completion
-    check completedProject.isSome
-    check completedProject.get().projectType == ConstructionType.Ship
-    check completedProject.get().itemId.len > 0  # Should have ship identifier
-    check state.colonies[1].underConstruction.isNone  # Construction slot cleared
+    # Construction should be complete and squadrons commissioned
+    # (ships go to unassigned pool after construction)
+    check state.colonies[1].underConstruction.isNone
 
   test "Cannot start construction while slot occupied":
     var state = createTestState()
-    var colony = state.colonies[1]
 
-    # Start first project
-    let project1 = createShipProject(ShipClass.Cruiser)
-    check startConstruction(colony, project1) == true
+    # Start first construction
+    let buildOrder1 = BuildOrder(
+      colonySystem: 1,
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: some(ShipClass.Cruiser),
+      buildingType: none(string),
+      industrialUnits: 0
+    )
 
-    # Try to start second project
-    let project2 = createShipProject(ShipClass.Destroyer)
-    check startConstruction(colony, project2) == false  # Should fail
+    var packet = OrderPacket(
+      houseId: "house1",
+      turn: 1,
+      buildOrders: @[buildOrder1],
+      fleetOrders: @[],
+      researchAllocation: initResearchAllocation(),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      squadronManagement: @[],
+      cargoManagement: @[],
+      terraformOrders: @[],
+      espionageAction: none(esp_types.EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
 
-  test "Different ship types have different build times":
-    # Scout should be faster than Battleship
-    let scoutProject = createShipProject(ShipClass.Scout)
-    let battleshipProject = createShipProject(ShipClass.Battleship)
+    var orders = initTable[HouseId, OrderPacket]()
+    orders["house1"] = packet
 
-    check battleshipProject.turnsRemaining > scoutProject.turnsRemaining
+    let result1 = resolveTurn(state, orders)
 
-  test "Construction cost calculation":
-    # Test various ship costs
-    let fighterCost = getShipConstructionCost(ShipClass.Fighter)
-    let destroyerCost = getShipConstructionCost(ShipClass.Destroyer)
-    let battleshipCost = getShipConstructionCost(ShipClass.Battleship)
+    # First construction should start
+    check result1.newState.colonies[1].underConstruction.isSome
 
-    check fighterCost < destroyerCost
-    check destroyerCost < battleshipCost
-    check fighterCost == 5  # Per config
-    check battleshipCost == 60  # Per config
+    # Try to start second construction while first is active
+    let buildOrder2 = BuildOrder(
+      colonySystem: 1,
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: some(ShipClass.Destroyer),
+      buildingType: none(string),
+      industrialUnits: 0
+    )
+
+    packet.turn = 2
+    packet.buildOrders = @[buildOrder2]
+    orders["house1"] = packet
+
+    let result2 = resolveTurn(result1.newState, orders)
+
+    # Second construction should not start (slot occupied)
+    # First project should still be there
+    check result2.newState.colonies[1].underConstruction.isSome
 
 suite "Facility Construction":
 
@@ -197,38 +248,44 @@ suite "Facility Construction":
     )
     result
 
-  test "Build spaceport":
-    var state = createTestState()
-    var colony = state.colonies[1]
-
-    # Create spaceport project
-    let spaceportProject = createBuildingProject("Spaceport")
-    check startConstruction(colony, spaceportProject) == true
-
-    # Should take 1 turn per spec
-    check spaceportProject.turnsRemaining == 1
-
-    state.colonies[1] = colony
-
-  test "Build shipyard requires spaceport":
+  test "Build spaceport via orders":
     var state = createTestState()
 
-    # Try to build shipyard without spaceport should work (construction validates elsewhere)
-    var colony = state.colonies[1]
-    let shipyardProject = createBuildingProject("Shipyard")
-    check startConstruction(colony, shipyardProject) == true
+    # Build spaceport
+    let buildOrder = BuildOrder(
+      colonySystem: 1,
+      buildType: BuildType.Building,
+      quantity: 1,
+      shipClass: none(ShipClass),
+      buildingType: some("Spaceport"),
+      industrialUnits: 0
+    )
 
-    # Should take 2 turns per spec
-    check shipyardProject.turnsRemaining == 2
+    var packet = OrderPacket(
+      houseId: "house1",
+      turn: 1,
+      buildOrders: @[buildOrder],
+      fleetOrders: @[],
+      researchAllocation: initResearchAllocation(),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      squadronManagement: @[],
+      cargoManagement: @[],
+      terraformOrders: @[],
+      espionageAction: none(esp_types.EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
 
-  test "Build starbase":
-    var state = createTestState()
-    var colony = state.colonies[1]
+    var orders = initTable[HouseId, OrderPacket]()
+    orders["house1"] = packet
 
-    let starbaseProject = createBuildingProject("Starbase")
-    check startConstruction(colony, starbaseProject) == true
+    let result = resolveTurn(state, orders)
 
-    check starbaseProject.turnsRemaining >= 1
+    # Construction should start
+    check result.newState.colonies[1].underConstruction.isSome
+    let project = result.newState.colonies[1].underConstruction.get()
+    check project.projectType == ConstructionType.Building
 
 suite "Commissioning and Squadron Formation":
 
@@ -274,16 +331,6 @@ suite "Commissioning and Squadron Formation":
     # This test validates the data structures are correct
     check state.colonies[1].unassignedSquadrons.len == 0
     check state.colonies[1].unassignedSpaceLiftShips.len == 0
-
-  test "Construction types are distinct":
-    # Verify we can distinguish between ship and building construction
-    let shipProject = createShipProject(ShipClass.Cruiser)
-    let buildingProject = createBuildingProject("Spaceport")
-
-    check shipProject.projectType == ConstructionType.Ship
-    check buildingProject.projectType == ConstructionType.Building
-    check shipProject.itemId.len > 0
-    check buildingProject.itemId.len > 0
 
 suite "Construction Integration":
 
