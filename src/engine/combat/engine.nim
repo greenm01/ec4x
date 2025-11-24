@@ -56,7 +56,8 @@ proc resolveCombat*(context: BattleContext): CombatResult =
 
   # Create std/random Rand from CombatRNG state for detection system
   # Detection uses std/random.Rand, combat uses CombatRNG
-  var detectionRng = initRand(int64(rng.state))
+  # Cast uint64 to int64 to avoid range errors
+  var detectionRng = initRand(cast[int64](rng.state))
 
   # Mark pre-detected houses as detected
   for targetIdx, targetTF in taskForces.mpairs:

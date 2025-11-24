@@ -34,7 +34,7 @@ type
 
     # Tech levels
     economicLevel*: int
-    shieldLevel*: int
+    scienceLevel*: int
     weaponsTech*: int
 
     # Diplomatic relations
@@ -126,7 +126,7 @@ proc captureGameState*(state: GameState, houseId: HouseId, controller: AIControl
     colonyCount: colonyCount,
     fleetCount: fleetCount,
     economicLevel: house.techTree.levels.economicLevel,
-    shieldLevel: house.techTree.levels.shieldLevel,
+    scienceLevel: house.techTree.levels.scienceLevel,
     weaponsTech: house.techTree.levels.weaponsTech,
     diplomaticStates: dipStates,
     ownMilitaryStrength: ownMilitary,
@@ -220,7 +220,7 @@ proc exportTrainingExample*(example: TrainingExample): JsonNode =
       "fleet_count": example.gameState.fleetCount,
       "tech": {
         "energy_level": example.gameState.economicLevel,
-        "shield_level": example.gameState.shieldLevel,
+        "science_level": example.gameState.scienceLevel,
         "weapons_tech": example.gameState.weaponsTech
       },
       "military": {

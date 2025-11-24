@@ -194,7 +194,7 @@ proc printGameSetup*(game: GameState) =
     echo &"  Treasury: {house.treasury} IU"
     echo &"  Tech Levels:"
     echo &"    EL: {house.techTree.levels.economicLevel}"
-    echo &"    SL: {house.techTree.levels.shieldLevel}"
+    echo &"    SL: {house.techTree.levels.scienceLevel}"
     echo &"    CST: {house.techTree.levels.constructionTech}"
     echo &"    WEP: {house.techTree.levels.weaponsTech}"
 
