@@ -4,12 +4,13 @@ Parallel balance test runner for EC4X
 Runs multiple game simulations in parallel for maximum CPU utilization
 
 Usage:
-    python3 run_balance_test_parallel.py [num_parallel] [games_per_run]
+    python3 run_balance_test_parallel.py [--workers N] [--games N] [--turns N]
 
 Examples:
-    python3 run_balance_test_parallel.py 4 25    # 4 parallel runs of 25 games = 100 total
-    python3 run_balance_test_parallel.py 8 10    # 8 parallel runs of 10 games = 80 total
-    python3 run_balance_test_parallel.py 10 50   # 10 parallel runs of 50 games = 500 total
+    python3 run_balance_test_parallel.py --workers 4 --games 100 --turns 7    # Phase 2A: Act 1
+    python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 15   # Phase 2B: Act 2
+    python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 25   # Phase 2C: Act 3
+    python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 30   # Phase 2D: Full game
 """
 
 import subprocess
@@ -20,16 +21,17 @@ from pathlib import Path
 from collections import defaultdict
 from datetime import datetime
 import time
+import argparse
 
-# Configuration
-DEFAULT_PARALLEL = 4
-DEFAULT_GAMES = 25
-TURNS_PER_GAME = 100
+# Configuration defaults
+DEFAULT_WORKERS = 8
+DEFAULT_GAMES = 200
+DEFAULT_TURNS = 100
 STRATEGIES = ["Aggressive", "Economic", "Balanced", "Turtle"]
 
-def run_single_game(seed):
+def run_single_game(seed, turns_per_game):
     """Run a single game simulation with given seed"""
-    cmd = ["./tests/balance/run_simulation", str(TURNS_PER_GAME), str(seed)]
+    cmd = ["./tests/balance/run_simulation", str(turns_per_game), str(seed)]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd="/home/niltempus/dev/ec4x")
 
     if result.returncode != 0:
@@ -59,14 +61,15 @@ def run_single_game(seed):
 
     return rankings if len(rankings) == 4 else None
 
-def run_game_batch(batch_id, games_per_batch, start_seed):
+def run_game_batch(args):
     """Run a batch of games in this worker process"""
+    batch_id, games_per_batch, start_seed, turns_per_game = args
     print(f"Batch {batch_id}: Starting {games_per_batch} games (seeds {start_seed}-{start_seed+games_per_batch-1})")
 
     results = []
     for i in range(games_per_batch):
         seed = start_seed + i
-        rankings = run_single_game(seed)
+        rankings = run_single_game(seed, turns_per_game)
         if rankings:
             results.append(rankings)
 
@@ -161,17 +164,27 @@ def print_summary(stats):
 
 def main():
     # Parse command line arguments
-    num_parallel = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_PARALLEL
-    games_per_run = int(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_GAMES
+    parser = argparse.ArgumentParser(description='EC4X Parallel Balance Test Runner')
+    parser.add_argument('--workers', type=int, default=DEFAULT_WORKERS,
+                        help=f'Number of parallel workers (default: {DEFAULT_WORKERS})')
+    parser.add_argument('--games', type=int, default=DEFAULT_GAMES,
+                        help=f'Total number of games to run (default: {DEFAULT_GAMES})')
+    parser.add_argument('--turns', type=int, default=DEFAULT_TURNS,
+                        help=f'Number of turns per game (default: {DEFAULT_TURNS})')
+    args = parser.parse_args()
 
-    total_games = num_parallel * games_per_run
+    num_parallel = args.workers
+    total_games = args.games
+    turns_per_game = args.turns
+    games_per_worker = total_games // num_parallel
 
     print("="*70)
     print("EC4X PARALLEL BALANCE TEST")
     print("="*70)
     print(f"Parallel workers: {num_parallel}")
-    print(f"Games per worker: {games_per_run}")
+    print(f"Games per worker: {games_per_worker}")
     print(f"Total games: {total_games}")
+    print(f"Turns per game: {turns_per_game}")
     print(f"Strategies: {', '.join(STRATEGIES)}")
     print("="*70)
     print()
@@ -183,13 +196,13 @@ def main():
     batches = []
     for i in range(num_parallel):
         batch_id = i + 1
-        start_seed = base_seed + (i * games_per_run)
-        batches.append((batch_id, games_per_run, start_seed))
+        start_seed = base_seed + (i * games_per_worker)
+        batches.append((batch_id, games_per_worker, start_seed, turns_per_game))
 
     # Run batches in parallel using multiprocessing
     print(f"Starting {num_parallel} parallel workers...\n")
     with mp.Pool(processes=num_parallel) as pool:
-        batch_results = pool.starmap(run_game_batch, batches)
+        batch_results = pool.map(run_game_batch, batches)
 
     # Flatten results from all batches
     all_results = []
@@ -218,8 +231,9 @@ def main():
         'metadata': {
             'timestamp': timestamp,
             'num_parallel': num_parallel,
-            'games_per_worker': games_per_run,
+            'games_per_worker': games_per_worker,
             'total_games': total_games,
+            'turns_per_game': turns_per_game,
             'elapsed_seconds': elapsed_time,
             'strategies': STRATEGIES
         },
