@@ -410,13 +410,13 @@ All passing ✅
 
 ## 📝 Notes
 
-**PRIORITY TODO(s)**
+### PRIORITY TODO(s) ###
 
-1) Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parellal or single. Remove old files.
+#### 1. Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parellal or single. Remove old files.
 
-2) Implement fog of war AI:
+#### 2. Implement fog of war for AI:
 
-## 1. Fog of War – Mandatory for Both AIs
+##### 1. Fog of War – Mandatory for Both AIs
 | Question                                 | Final Decision                                   |
 |------------------------------------------|--------------------------------------------------|
 | Should AI have full map knowledge?       | No — never (except explicit “cheat” mode)       |
@@ -433,7 +433,7 @@ All passing ✅
 **State encoding impact**  
 Add ~50–80 dims for last-seen values, stale intel, estimated enemy tech, detection risk, etc.
 
-## 2. Official Three-Letter Acronyms
+##### 2. Official Three-Letter Acronyms
 | AI Type                  | Acronym | Full Name                        | Flavor / Usage                              |
 |--------------------------|---------|----------------------------------|---------------------------------------------|
 | Rule-based AI            | RBA     | Rule-Based Advisor               | “The Codex of the Great Houses”             |
@@ -446,6 +446,8 @@ Add ~50–80 dims for last-seen values, stale intel, estimated enemy tech, detec
 - Nightmare → NNA v10
 
 Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
+
+### General Notes
 
 **Design Philosophy:**
 - Event-based architecture
