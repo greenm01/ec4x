@@ -4,7 +4,7 @@
 ## Uses existing engine initialization functions
 
 import std/[tables, options, random, strformat, sequtils, strutils, algorithm]
-import ../../src/engine/[gamestate, starmap, fleet, squadron]
+import ../../src/engine/[gamestate, starmap, fleet, squadron, spacelift]
 import ../../src/common/types/[core, units, planets, tech]
 import ../../src/common/[hex, system]
 
@@ -17,7 +17,7 @@ proc generateBalancedStarMap*(numPlayers: int): StarMap =
 
 proc createStartingFleet*(owner: HouseId, location: SystemId): Fleet =
   ## Create a starting fleet with basic composition
-  ## 1 squadron with 1 destroyer (per standard starting conditions)
+  ## 1 squadron with 1 destroyer + 5 ETACs (for 30-turn acceleration)
 
   let squadron = createSquadron(
     shipClass = ShipClass.Destroyer,
@@ -28,11 +28,22 @@ proc createStartingFleet*(owner: HouseId, location: SystemId): Fleet =
     isCrippled = false
   )
 
+  # Create 5 ETACs for parallel colonization (30-turn acceleration)
+  var etacs: seq[SpaceLiftShip] = @[]
+  for i in 1..5:
+    etacs.add(newSpaceLiftShip(
+      id = &"{owner}_ETAC_{location.int}_{i}",
+      shipClass = ShipClass.ETAC,
+      owner = owner,
+      location = location
+    ))
+
   result = Fleet(
     id: (&"{owner}_fleet1").FleetId,
     owner: owner,
     location: location,
-    squadrons: @[squadron]
+    squadrons: @[squadron],
+    spaceLiftShips: etacs
   )
 
 proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameState =
