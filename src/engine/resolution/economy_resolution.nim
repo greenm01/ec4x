@@ -1997,6 +1997,10 @@ proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Co
   var candidateFleets: seq[FleetId] = @[]
   for fleetId, fleet in state.fleets:
     if fleet.owner == colony.owner and fleet.location == systemId:
+      # Only consider Active fleets (exclude Reserve and Mothballed)
+      if fleet.status != FleetStatus.Active:
+        continue
+
       # Check if fleet has stationary orders (Hold or no orders)
       var isStationary = true
 
@@ -2013,6 +2017,19 @@ proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Co
         candidateFleets.add(fleetId)
 
   if candidateFleets.len == 0:
+    # No existing stationary fleets - create new fleets for unassigned squadrons
+    # Group squadrons by type to create role-specific fleets
+    while colony.unassignedSquadrons.len > 0:
+      let squadron = colony.unassignedSquadrons[0]
+      let newFleetId = colony.owner & "_fleet_" & $systemId & "_" & $state.turn & "_" & squadron.id
+      state.fleets[newFleetId] = Fleet(
+        id: newFleetId,
+        owner: colony.owner,
+        location: systemId,
+        squadrons: @[squadron]
+      )
+      colony.unassignedSquadrons.delete(0)
+      echo "    Auto-created fleet ", newFleetId, " for unassigned squadron ", squadron.id
     return
 
   # Calculate target squadron count per fleet (balanced distribution)
