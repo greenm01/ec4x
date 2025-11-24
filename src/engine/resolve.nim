@@ -1841,9 +1841,42 @@ proc resolvePopulationTransfers(state: var GameState, packet: OrderPacket, event
       systemId: some(transfer.sourceColony)
     ))
 
+proc findClosestOwnedColony(state: GameState, fromSystem: SystemId, houseId: HouseId): Option[SystemId] =
+  ## Find the closest owned colony for a house, excluding the fromSystem
+  ## Returns None if house has no colonies
+  ## Used by Space Guild to find alternative delivery destination
+
+  var closestColony: Option[SystemId] = none(SystemId)
+  var shortestDistance = int.high
+
+  # Iterate through all colonies owned by this house
+  for systemId, colony in state.colonies:
+    if colony.owner == houseId and systemId != fromSystem:
+      # Calculate distance (jump count) to this colony
+      # Create dummy fleet for pathfinding
+      let dummyFleet = Fleet(
+        id: "temp",
+        owner: houseId,
+        location: fromSystem,
+        squadrons: @[],
+        spaceLiftShips: @[],
+        status: FleetStatus.Active
+      )
+
+      let pathResult = state.starMap.findPath(fromSystem, systemId, dummyFleet)
+      if pathResult.path.len > 0:
+        let distance = pathResult.path.len - 1  # Number of jumps
+        if distance < shortestDistance:
+          shortestDistance = distance
+          closestColony = some(systemId)
+
+  return closestColony
+
 proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent]) =
   ## Process Space Guild population transfers that arrive this turn
   ## Implements risk handling per config/population.toml [transfer_risks]
+  ## Per config: dest_blockaded_behavior = "closest_owned"
+  ## Per config: dest_collapsed_behavior = "closest_owned"
   echo "  [Processing Space Guild Arrivals]"
 
   var arrivedTransfers: seq[int] = @[]  # Indices to remove after processing
@@ -1882,46 +1915,48 @@ proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent])
       ))
       continue
 
-    # Check if destination blockaded
+    # Check if destination blockaded or collapsed
+    # Per config/population.toml: dest_blockaded_behavior = "closest_owned"
+    # Per config/population.toml: dest_collapsed_behavior = "closest_owned"
+    var needsAlternativeDestination = false
+    var alternativeReason = ""
+
     if destColony.blockaded:
-      # dest_blockaded_behavior = "return"
-      # Return PTUs to source colony if it still exists and is owned
-      if transfer.sourceSystem in state.colonies:
-        var sourceColony = state.colonies[transfer.sourceSystem]
-        if sourceColony.owner == transfer.houseId:
-          sourceColony.souls += soulsToDeliver
-          sourceColony.population = sourceColony.souls div 1_000_000
-          state.colonies[transfer.sourceSystem] = sourceColony
-          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU RETURNED to ", transfer.sourceSystem, " - destination blockaded"
-          events.add(GameEvent(
-            eventType: GameEventType.PopulationTransfer,
-            houseId: transfer.houseId,
-            description: $transfer.ptuAmount & " PTU returned from " & $transfer.destSystem & " (blockaded) to " & $transfer.sourceSystem,
-            systemId: some(transfer.sourceSystem)
-          ))
-        else:
-          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination blockaded, source conquered"
-      else:
-        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination blockaded, source destroyed"
+      needsAlternativeDestination = true
+      alternativeReason = "blockaded"
+    elif destColony.souls < soulsPerPtu():
+      needsAlternativeDestination = true
+      alternativeReason = "collapsed below minimum viable population"
 
-      arrivedTransfers.add(idx)
-      continue
+    if needsAlternativeDestination:
+      # Space Guild attempts to deliver to closest owned colony
+      let alternativeDest = findClosestOwnedColony(state, transfer.destSystem, transfer.houseId)
 
-    # Check if destination below minimum viable (< 1 PTU)
-    if destColony.souls < soulsPerPtu():
-      # Destination colony collapsed below functional threshold
-      # Return to source if possible
-      if transfer.sourceSystem in state.colonies:
-        var sourceColony = state.colonies[transfer.sourceSystem]
-        if sourceColony.owner == transfer.houseId:
-          sourceColony.souls += soulsToDeliver
-          sourceColony.population = sourceColony.souls div 1_000_000
-          state.colonies[transfer.sourceSystem] = sourceColony
-          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU RETURNED to ", transfer.sourceSystem, " - destination below minimum viable"
-        else:
-          echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination collapsed, source conquered"
+      if alternativeDest.isSome:
+        # Deliver to alternative colony
+        let altSystemId = alternativeDest.get()
+        var altColony = state.colonies[altSystemId]
+        altColony.souls += soulsToDeliver
+        altColony.population = altColony.souls div 1_000_000
+        state.colonies[altSystemId] = altColony
+
+        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU redirected to ", altSystemId,
+             " - original destination ", transfer.destSystem, " ", alternativeReason
+        events.add(GameEvent(
+          eventType: GameEventType.PopulationTransfer,
+          houseId: transfer.houseId,
+          description: $transfer.ptuAmount & " PTU redirected from " & $transfer.destSystem & " (" & alternativeReason & ") to " & $altSystemId,
+          systemId: some(altSystemId)
+        ))
       else:
-        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination collapsed, source destroyed"
+        # No owned colonies - colonists are lost
+        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination ", alternativeReason, ", no owned colonies available"
+        events.add(GameEvent(
+          eventType: GameEventType.PopulationTransfer,
+          houseId: transfer.houseId,
+          description: $transfer.ptuAmount & " PTU lost - " & $transfer.destSystem & " " & alternativeReason & ", no owned colonies for delivery",
+          systemId: some(transfer.destSystem)
+        ))
 
       arrivedTransfers.add(idx)
       continue

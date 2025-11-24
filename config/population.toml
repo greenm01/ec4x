@@ -43,7 +43,7 @@ max_concurrent_transfers = 5   # Max active transfers per house (prevent spam)
 
 [transfer_risks]
 # What happens when colonies change hands mid-transfer
-# Possible values: "continue", "lost", "return", "cancelled"
+# The Space Guild is neutral and attempts to deliver colonists somewhere safe
 
 # Source conquered: Transfer continues (already paid, Guild is neutral)
 source_conquered_behavior = "continue"
@@ -51,8 +51,13 @@ source_conquered_behavior = "continue"
 # Destination conquered: PTUs lost (refugees disperse, chaos)
 dest_conquered_behavior = "lost"
 
-# Destination blockaded at arrival: PTUs return to source (wasted cost and time)
-dest_blockaded_behavior = "return"
+# Destination blockaded at arrival: Deliver to closest owned colony
+# If no owned colonies exist, colonists are lost
+dest_blockaded_behavior = "closest_owned"
+
+# Destination collapsed (< 1 PTU): Deliver to closest owned colony
+# If no owned colonies exist, colonists are lost
+dest_collapsed_behavior = "closest_owned"
 
 [ai_strategy]
 # AI decision making for population transfers
