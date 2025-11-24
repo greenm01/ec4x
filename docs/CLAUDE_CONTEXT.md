@@ -3,7 +3,7 @@
 **Load these files at the start of EVERY session:**
 ```
 @docs/STYLE_GUIDE.md
-@docs/STATUS.md
+@docs/TODO.md
 @docs/BALANCE_TESTING_METHODOLOGY.md (if working on AI/balance)
 ```
 
@@ -14,7 +14,7 @@
 1. **All enums MUST be `{.pure.}`** in code
 2. **No hardcoded game balance values** - use TOML config files
 3. **Follow NEP-1 Nim conventions** - see STYLE_GUIDE.md
-4. **Update STATUS.md** after completing milestones
+4. **Update TODO.md** after completing milestones
 5. **Run tests before committing** - all tests must pass
 
 ## File Organization Rules (CRITICAL - Read First!)
@@ -31,10 +31,11 @@
    ## Per operations.md:1036, they travel with fleets but separately
    ```
 
-2. **Current System Status** → `docs/STATUS.md` (single source of truth)
+2. **Current System Status** → `docs/TODO.md` (single source of truth)
    - What's complete, what's in progress, what's next
    - Test coverage status
    - Recent changes
+   - Task tracking and milestones
 
 3. **Open Issues/Gaps** → `docs/OPEN_ISSUES.md` (single file, organized by system)
    - Known bugs
@@ -61,7 +62,7 @@
 ✅ Add to `docs/OPEN_ISSUES.md` under "AI System" section
 
 ❌ DO NOT create `SESSION_SUMMARY_*.md`
-✅ Update `docs/STATUS.md` with changes
+✅ Update `docs/TODO.md` with changes
 
 ❌ DO NOT create random markdown files anywhere
 ✅ Use the hierarchy above
@@ -69,7 +70,7 @@
 ### When You Need To Track Something:
 
 1. **Bug/gap found?** → Add to `docs/OPEN_ISSUES.md` with [ ] checkbox
-2. **Feature complete?** → Update `docs/STATUS.md`, remove from OPEN_ISSUES.md
+2. **Feature complete?** → Update `docs/TODO.md`, remove from OPEN_ISSUES.md
 3. **Architecture explanation?** → Add as doc comment in source file
 4. **Balance test result?** → Auto-generated, already in balance_results/
 
@@ -249,8 +250,8 @@ python3 run_balance_test.py
 **Include in summary:**
 - "Project follows STYLE_GUIDE.md (NEP-1 + pure enums)"
 - "All balance values in TOML configs"
-- "76+ integration tests passing"
-- Current system status from STATUS.md
+- "91+ integration tests passing"
+- Current system status from TODO.md
 
 ---
 
@@ -261,7 +262,7 @@ python3 run_balance_test.py
 - [ ] Tests pass: `nim c -r tests/integration/test_*.nim`
 - [ ] Project builds: `nimble build`
 - [ ] No binaries committed
-- [ ] Updated STATUS.md if milestone complete
+- [ ] Updated TODO.md if milestone complete
 - [ ] Followed NEP-1 naming conventions
 
 ---
@@ -289,20 +290,21 @@ bash scripts/run_all_tests.sh
 
 ## Current State (Brief)
 
-**See STATUS.md for full details**
+**See TODO.md for full details**
 
 ✅ **Complete:**
+- Core engine (100% functional)
 - Prestige system (fully integrated)
 - Espionage (7 actions, configurable)
 - Diplomacy (pacts, violations)
-- Colonization (prestige awards)
 - Victory conditions (3 types)
 - Morale system (7 levels)
 - Turn resolution integration
+- Phase 1: Fixed 4-player balance testing (parallel infrastructure)
 
-📋 **Next Up:**
-- Blockade mechanics
-- Espionage order execution
-- Documentation cleanup (in progress)
+🔄 **In Progress:**
+- Phase 2: Act-by-Act Analysis
+- Multi-generational timeline validation (1 turn = 5-10 years)
+- 4-act game structure testing
 
-**Test Coverage:** 76+ integration tests passing
+**Test Coverage:** 91+ integration tests passing

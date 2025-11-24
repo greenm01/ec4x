@@ -1,7 +1,7 @@
-# EC4X Implementation Status
+# EC4X TODO & Implementation Status
 
 **Last Updated:** 2025-11-23
-**Project Phase:** Core Engine Complete - AI Balance Testing & Strategic Improvements
+**Project Phase:** Phase 2 - Act-by-Act Balance Testing
 **Test Coverage:** 91+ integration tests passing
 **Engine Status:** 100% functional for AI training
 **Recent:**
@@ -588,7 +588,7 @@ python3 scripts/sync_specs.py
 5. ✅ Clean up placeholder code
 6. ✅ Setup pre-commit git hooks (tests + build)
 
-### AI Development (Phase 4 - ✅ In Progress)
+### AI Development (Phase 4 - 🔄 In Progress)
 1. ✅ Phase 0: Environment setup (PyTorch + ROCm on AMD GPU)
 2. ✅ Phase 1: Strategic diplomacy AI
    - Relative strength assessment
@@ -598,20 +598,37 @@ python3 scripts/sync_specs.py
    - Combat odds calculation
    - Smart attack/retreat decisions
    - Strategic ship building
-4. ✅ Phase 2.5: Coevolution balance testing (CURRENT)
-   - Genetic algorithm framework for AI evolution
-   - 5-species competitive coevolution (Economic, Military, Diplomatic, Tech, Espionage)
-   - GNU Parallel for concurrent testing (4x speedup)
-   - Comprehensive balance analysis reports
-   - **Fixed espionage viability:**
-     - AI controller now uses personality weights instead of strategy enum
-     - Increased budget threshold from 5% to 20% (was making espionage impossible)
-     - Adjusted Espionage personality (low aggression 0.1-0.4, high risk 0.7-1.0)
-5. ⏳ Phase 3: Training data generation
-   - Run 200-1000 simulations
-   - Generate 10,000+ training examples
-6. ⏳ Phase 4: Model training (Mistral-7B fine-tuning)
-7. ⏳ Phase 5: Inference service (llama.cpp integration)
+4. ✅ Phase 1: Fixed 4-Player Balance Testing (COMPLETE)
+   - Parallel testing infrastructure (8 workers, 60+ games/second)
+   - Fixed Aggressive collapse issue (expansionDrive 0.7→0.5)
+   - Fixed Economic defense capability (aggression 0.2→0.3)
+   - Fixed Turtle passivity (expansionDrive 0.2→0.4, riskTolerance 0.2→0.3)
+   - Fixed espionage over-investment bug
+   - Fixed colonization bug (ETACs prioritized)
+   - **Results (200 games):**
+     - Aggressive: 41.5% win rate (OVERPOWERED)
+     - Turtle: 21.5% win rate (BALANCED)
+     - Economic: 30.0% win rate (SLIGHTLY HIGH)
+     - Balanced: 7.0% win rate (BROKEN)
+5. 🔄 Phase 2: Act-by-Act Analysis (CURRENT)
+   - **Multi-generational timeline:** 1 turn = 5-10 years (30 turns = 150-300 years)
+   - **4-Act structure:** Land Grab → Rising Tensions → Total War → Endgame
+   - **Phase 2A (NEXT):** Act 1 - 7 turns (200 games)
+     - Target: 5-8 colonies, 50-150 prestige
+     - Validate: Expansion working? Economy established?
+   - **Phase 2B:** Act 2 - 15 turns (200 games)
+     - Target: 10-15 colonies, 150-500 prestige, first wars
+     - Validate: Conflicts emerging? Leaders appearing?
+   - **Phase 2C:** Act 3 - 25 turns (200 games)
+     - Target: Clear leaders (1000+), eliminations
+     - Validate: Decisive phase? Victory in sight?
+   - **Phase 2D:** Full Game - 30 turns (200 games)
+     - Target: Winner emerges naturally
+     - Validate: 4-act dramatic arc complete?
+6. ⏳ Phase 3: Variable Player Count Testing (2-12 players)
+7. ⏳ Phase 4: Training data generation (200-1000 simulations)
+8. ⏳ Phase 5: Model training (Mistral-7B fine-tuning)
+9. ⏳ Phase 6: Inference service (llama.cpp integration)
 
 ### Long Term (Future Milestones)
 1. UI development (deferred)

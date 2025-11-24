@@ -209,7 +209,57 @@ The game supports 2-12 players, but balance characteristics change dramatically 
 python3 run_balance_test.py  # 10 games, 4 players each
 ```
 
-#### Phase 2: Variable Player Count Scaling (Next)
+#### Phase 2: Act-by-Act Analysis (Current)
+**Goal:** Validate 4-act game structure and identify where balance breaks down
+
+**Rationale:**
+- 30-turn games span 150-300 years in-game (5-10 years per turn)
+- Each act should have distinct characteristics and natural transitions
+- Need to understand progression curves, not just final outcomes
+- Enables targeted tuning (fix Act 1 issues before testing Act 3)
+
+**Test Configuration:**
+```bash
+# Phase 2A: Act 1 - The Land Grab (7 turns = 35-70 years)
+python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 7
+
+# Phase 2B: Act 2 - Rising Tensions (15 turns = 75-150 years)
+python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 15
+
+# Phase 2C: Act 3 - Total War (25 turns = 125-250 years)
+python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 25
+
+# Phase 2D: Full Game - Endgame (30 turns = 150-300 years)
+python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 30
+```
+
+**Analysis Focus per Act:**
+
+**Act 1 (Turn 7):**
+- Colony expansion working? (Target: 5-8 colonies)
+- Economic foundations established? (Target: 50-150 prestige)
+- Early game collapses?
+- Differentiation visible between strategies?
+
+**Act 2 (Turn 15):**
+- Conflicts emerging? (First wars, territory disputes)
+- Tech advantages appearing? (Level 2-3)
+- Leaders and laggards clear? (Target: 150-500 prestige range)
+- Strategy effectiveness diverging?
+
+**Act 3 (Turn 25):**
+- Decisive phase working? (Clear winners, eliminations)
+- Prestige leaders pulling ahead? (Target: 1000+ for leaders)
+- Total war dynamics present?
+- Victory in sight for someone?
+
+**Act 4 (Turn 30):**
+- Winner emerges naturally?
+- Satisfying conclusion or arbitrary cutoff?
+- 4-act dramatic arc complete?
+- Prestige victory threshold appropriate?
+
+#### Phase 3: Variable Player Count Scaling (Future)
 **Goal:** Identify how strategies scale with different player counts
 
 **Why player count matters:**
@@ -230,7 +280,7 @@ GAMES_PER_COUNT = 5  # 25 total games
 - Diplomatic strategy viability scaling
 - Identify strategies that don't scale well
 
-#### Phase 3: Full Randomization (Future)
+#### Phase 4: Full Randomization (Future)
 **Goal:** Universal balance across all configurations
 
 **Setup:**
@@ -245,7 +295,7 @@ GAMES_PER_COUNT = 5  # 25 total games
 
 ### Current Status (as of 2025-11-23)
 
-**✅ Phase 1 Progress:**
+**✅ Phase 1 Complete:**
 - Aggressive strategy: STABLE (0.5% collapse rate in 200 games, but 41.5% win rate - overpowered)
 - Economic strategy: STABLE (6% collapse rate in 200 games, 30% win rate - vulnerable to dominant Aggressive)
 - Turtle strategy: PERFECT (0% collapse rate in 200 games, 21.5% win rate - ideal balance)
@@ -256,7 +306,14 @@ GAMES_PER_COUNT = 5  # 25 total games
 - 200-game test completes in ~3.3 seconds
 - 7.45x speedup vs sequential (near-ideal 8x scaling)
 
-**⏳ Phase 2:** Blocked until Phase 1 complete (all 6-7 strategies viable at 4 players)
+**✅ Multi-Generational Timeline Framework:**
+- Documented 4-act game structure (Land Grab → Rising Tensions → Total War → Endgame)
+- Each turn = 5-10 years in-game (30 turns = 150-300 years)
+- Current mechanics appropriate for multi-generational timeline
+
+**🔄 Phase 2 In Progress: Act-by-Act Analysis**
+- **Next:** Phase 2A - Act 1 analysis (7-turn games, 200 samples)
+- **Goal:** Validate early game balance and 4-act structure
 
 **⏳ Phase 3:** Blocked until Phase 2 validates scaling behavior
 
