@@ -68,10 +68,12 @@ proc filterHostileSquadrons*(
   attacker: TaskForce,
   allTaskForces: seq[TaskForce],
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId]
+  systemOwner: Option[HouseId],
+  allowStarbaseTargeting: bool = true
 ): seq[CombatSquadron] =
   ## Get all squadrons from hostile Task Forces
   ## Filters out destroyed squadrons and friendly forces
+  ## If allowStarbaseTargeting=false, starbases are screened and cannot be targeted
   result = @[]
 
   for tf in allTaskForces:
@@ -91,6 +93,10 @@ proc filterHostileSquadrons*(
 
     if isHostileHouse:
       for sq in tf.squadrons:
+        # Skip starbases if they're screened (space combat)
+        if not allowStarbaseTargeting and sq.bucket == TargetBucket.Starbase:
+          continue
+
         if sq.canBeTargeted():
           result.add(sq)
 
@@ -179,18 +185,21 @@ proc selectTargetForAttack*(
   allTaskForces: seq[TaskForce],
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
-  rng: var CombatRNG
+  rng: var CombatRNG,
+  allowStarbaseTargeting: bool = true
 ): Option[SquadronId] =
   ## Complete target selection process for one attacking squadron
   ##
   ## Returns: Selected target squadron ID, or none if no valid targets
+  ## If allowStarbaseTargeting=false, starbases are screened and cannot be targeted
 
   # Step 1: Diplomatic filtering
   let hostileSquadrons = filterHostileSquadrons(
     attackerTF,
     allTaskForces,
     diplomaticRelations,
-    systemOwner
+    systemOwner,
+    allowStarbaseTargeting
   )
 
   if hostileSquadrons.len == 0:

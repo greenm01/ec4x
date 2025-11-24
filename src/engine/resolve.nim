@@ -8,7 +8,7 @@ import std/[tables, algorithm, options, random, strformat, sequtils, strutils, h
 import ../common/[hex, types/core, types/combat, types/tech, types/units]
 import gamestate, orders, fleet, ship, starmap, squadron, spacelift
 import economy/[types as econ_types, engine as econ_engine, construction, maintenance]
-import research/[types as res_types, advancement, costs as res_costs]
+import research/[types as res_types, advancement, costs as res_costs, effects as res_effects]
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_proposals]
 import colonization/engine as col_engine
@@ -37,8 +37,14 @@ type
     systemId*: Option[SystemId]
 
   GameEventType* {.pure.} = enum
-    ColonyEstablished, SystemCaptured, BattleOccurred, Battle, Bombardment,
-    TechAdvance, FleetDestroyed, HouseEliminated, PopulationTransfer
+    # Colony events
+    ColonyEstablished, SystemCaptured, ColonyCaptured, TerraformComplete
+    # Combat events
+    Battle, BattleOccurred, Bombardment, FleetDestroyed, InvasionRepelled
+    # Construction events
+    ConstructionStarted, ShipCommissioned, BuildingCompleted, UnitRecruited, UnitDisbanded
+    # Diplomatic/Strategic events
+    TechAdvance, HouseEliminated, PopulationTransfer
 
   CombatReport* = object
     systemId*: SystemId
@@ -60,6 +66,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent])
 proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
+proc resolveTerraformOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc autoLoadCargo(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent])
 proc resolvePopulationTransfers(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])
 proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent])
@@ -68,6 +75,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 proc resolveColonizationOrder(state: var GameState, houseId: HouseId, order: FleetOrder,
                               events: var seq[GameEvent])
 proc resolveBattle(state: var GameState, systemId: SystemId,
+                  orders: Table[HouseId, OrderPacket],
                   combatReports: var seq[CombatReport], events: var seq[GameEvent])
 proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrder,
                        events: var seq[GameEvent])
@@ -163,9 +171,13 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
       if combatDetected:
         combatSystems.add(systemId)
 
-  # Resolve battles in each system
+  # Resolve combat in each system (operations.md:7.0)
+  # Combat progresses linearly:
+  # 1. Space Combat - mobile fleets not on guard duty
+  # 2. Orbital Combat - guard fleets, reserve fleets, starbases
+  # 3. Planetary Combat - bombardment/invasion (via orders below)
   for systemId in combatSystems:
-    resolveBattle(state, systemId, combatReports, events)
+    resolveBattle(state, systemId, orders, combatReports, events)
 
   # Process espionage actions (per gameplay.md:1.3.1 - resolved in Conflict Phase)
   for houseId in state.houses.keys:
@@ -229,12 +241,22 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
           for prestigeEvent in result.attackerPrestigeEvents:
             state.houses[attempt.attacker].prestige += prestigeEvent.amount
 
-  # Process bombardment orders (damages infrastructure before income phase)
+  # Process planetary combat orders (operations.md:7.5, 7.6)
+  # These execute after space/orbital combat in linear progression
   for houseId in state.houses.keys:
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
-        if order.orderType == FleetOrderType.Bombard:
+        case order.orderType
+        of FleetOrderType.Bombard:
           resolveBombardment(state, houseId, order, events)
+        of FleetOrderType.Invade:
+          # TODO: Implement resolveInvasion
+          discard # resolveInvasion(state, houseId, order, events)
+        of FleetOrderType.Blitz:
+          # TODO: Implement resolveBlitz
+          discard # resolveBlitz(state, houseId, order, events)
+        else:
+          discard
 
 ## Helper: Auto-balance unassigned squadrons to fleets at colony
 
@@ -324,7 +346,18 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
              int(effect.magnitude * 100), "%)"
       of esp_types.EffectType.StarbaseCrippled:
         if effect.targetSystem.isSome:
-          echo "    Starbase at system ", effect.targetSystem.get(), " is crippled"
+          let systemId = effect.targetSystem.get()
+          echo "    Starbase at system ", systemId, " is crippled"
+
+          # Apply crippled state to starbase in colony
+          if systemId in state.colonies:
+            var colony = state.colonies[systemId]
+            if colony.owner == effect.targetHouse:
+              for starbase in colony.starbases.mitems:
+                if not starbase.isCrippled:
+                  starbase.isCrippled = true
+                  echo "      Applied crippled state to starbase ", starbase.id
+              state.colonies[systemId] = colony
 
   state.ongoingEffects = activeEffects
 
@@ -408,8 +441,11 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
       if scoutLocation in state.colonies:
         let colony = state.colonies[scoutLocation]
         if colony.owner == rivalHouse:
-          # Check for actual starbase presence
-          hasStarbase = colony.starbases.len > 0
+          # Check for operational starbase presence (not crippled)
+          for starbase in colony.starbases:
+            if not starbase.isCrippled:
+              hasStarbase = true
+              break
 
       # Collect ELI from fleets
       for fleetId, fleet in state.fleets:
@@ -965,6 +1001,11 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # Auto-load cargo at colonies (if no manual cargo order exists)
   autoLoadCargo(state, orders, events)
 
+  # Process terraforming orders
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      resolveTerraformOrders(state, orders[houseId], events)
+
   # Process all fleet orders (sorted by priority)
   var allFleetOrders: seq[(HouseId, FleetOrder)] = @[]
 
@@ -1000,6 +1041,91 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       of FleetOrderType.Colonize:
         # Executor validates, this does actual colony creation
         resolveColonizationOrder(state, houseId, order, events)
+      of FleetOrderType.Reserve:
+        # Place fleet on reserve status
+        # Per economy.md:3.9 - ships auto-join colony's single reserve fleet
+        if order.fleetId in state.fleets:
+          var fleet = state.fleets[order.fleetId]
+          let colonySystem = fleet.location
+
+          # Check if colony already has a reserve fleet
+          var reserveFleetId: Option[FleetId] = none(FleetId)
+          for fleetId, existingFleet in state.fleets:
+            if existingFleet.owner == fleet.owner and
+               existingFleet.location == colonySystem and
+               existingFleet.status == FleetStatus.Reserve and
+               fleetId != order.fleetId:
+              reserveFleetId = some(fleetId)
+              break
+
+          if reserveFleetId.isSome:
+            # Merge this fleet into existing reserve fleet
+            let targetId = reserveFleetId.get()
+            var targetFleet = state.fleets[targetId]
+
+            # Transfer all squadrons to reserve fleet
+            for squadron in fleet.squadrons:
+              targetFleet.squadrons.add(squadron)
+
+            # Transfer spacelift ships if any
+            for ship in fleet.spaceLiftShips:
+              targetFleet.spaceLiftShips.add(ship)
+
+            state.fleets[targetId] = targetFleet
+
+            # Remove the now-empty fleet
+            state.fleets.del(order.fleetId)
+
+            echo "    [Reserve] Fleet ", order.fleetId, " merged into colony reserve fleet ", targetId
+          else:
+            # Create new reserve fleet at this colony
+            state.fleets[order.fleetId].status = FleetStatus.Reserve
+            echo "    [Reserve] Fleet ", order.fleetId, " is now colony reserve fleet (50% maint, half AS/DS)"
+      of FleetOrderType.Mothball:
+        # Mothball fleet
+        # Per economy.md:3.9 - ships auto-join colony's single mothballed fleet
+        if order.fleetId in state.fleets:
+          var fleet = state.fleets[order.fleetId]
+          let colonySystem = fleet.location
+
+          # Check if colony already has a mothballed fleet
+          var mothballedFleetId: Option[FleetId] = none(FleetId)
+          for fleetId, existingFleet in state.fleets:
+            if existingFleet.owner == fleet.owner and
+               existingFleet.location == colonySystem and
+               existingFleet.status == FleetStatus.Mothballed and
+               fleetId != order.fleetId:
+              mothballedFleetId = some(fleetId)
+              break
+
+          if mothballedFleetId.isSome:
+            # Merge this fleet into existing mothballed fleet
+            let targetId = mothballedFleetId.get()
+            var targetFleet = state.fleets[targetId]
+
+            # Transfer all squadrons to mothballed fleet
+            for squadron in fleet.squadrons:
+              targetFleet.squadrons.add(squadron)
+
+            # Transfer spacelift ships if any
+            for ship in fleet.spaceLiftShips:
+              targetFleet.spaceLiftShips.add(ship)
+
+            state.fleets[targetId] = targetFleet
+
+            # Remove the now-empty fleet
+            state.fleets.del(order.fleetId)
+
+            echo "    [Mothball] Fleet ", order.fleetId, " merged into colony mothballed fleet ", targetId
+          else:
+            # Create new mothballed fleet at this colony
+            state.fleets[order.fleetId].status = FleetStatus.Mothballed
+            echo "    [Mothball] Fleet ", order.fleetId, " is now colony mothballed fleet (0% maint, offline)"
+      of FleetOrderType.Reactivate:
+        # Reactivate fleet
+        if order.fleetId in state.fleets:
+          state.fleets[order.fleetId].status = FleetStatus.Active
+          echo "    [Reactivate] Fleet ", order.fleetId, " returned to active duty"
       else:
         discard  # Fully handled by executor
     else:
@@ -1088,7 +1214,7 @@ proc resolveBuildOrders(state: var GameState, packet: OrderPacket, events: var s
 
       # Generate event
       events.add(GameEvent(
-        eventType: GameEventType.ColonyEstablished,  # Construction start - could use dedicated event type
+        eventType: GameEventType.ConstructionStarted,
         houseId: packet.houseId,
         description: "Started " & projectDesc & " at system " & $order.colonySystem,
         systemId: some(order.colonySystem)
@@ -1413,6 +1539,86 @@ proc resolveCargoManagement(state: var GameState, packet: OrderPacket, events: v
         state.fleets[order.fleetId] = fleet
         state.colonies[order.colonySystem] = colony
         echo "    Successfully unloaded ", totalUnloaded, " ", unloadedType, " at ", order.colonySystem
+
+proc resolveTerraformOrders(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
+  ## Process terraforming orders - initiate new terraforming projects
+  ## Per economy.md Section 4.7
+  for order in packet.terraformOrders:
+    # Validate colony exists and is owned by house
+    if order.colonySystem notin state.colonies:
+      echo "    Terraforming failed: System ", order.colonySystem, " has no colony"
+      continue
+
+    var colony = state.colonies[order.colonySystem]
+    if colony.owner != packet.houseId:
+      echo "    Terraforming failed: ", packet.houseId, " does not own system ", order.colonySystem
+      continue
+
+    # Check if already terraforming
+    if colony.activeTerraforming.isSome:
+      echo "    Terraforming failed: ", order.colonySystem, " already has active terraforming project"
+      continue
+
+    # Get house tech level
+    if packet.houseId notin state.houses:
+      echo "    Terraforming failed: House ", packet.houseId, " not found"
+      continue
+
+    let house = state.houses[packet.houseId]
+    let terLevel = house.techTree.levels.terraformingTech
+
+    # Validate TER level requirement
+    let currentClass = ord(colony.planetClass) + 1  # Convert enum to class number (1-7)
+    if not res_effects.canTerraform(currentClass, terLevel):
+      let targetClass = currentClass + 1
+      echo "    Terraforming failed: TER level ", terLevel, " insufficient for class ", currentClass, " -> ", targetClass, " (requires TER ", targetClass, ")"
+      continue
+
+    # Calculate costs and duration
+    let targetClass = currentClass + 1
+    let ppCost = res_effects.getTerraformingBaseCost(currentClass)
+    let turnsRequired = res_effects.getTerraformingSpeed(terLevel)
+
+    # Check house treasury has sufficient PP
+    if house.treasury < ppCost:
+      echo "    Terraforming failed: Insufficient PP (need ", ppCost, ", have ", house.treasury, ")"
+      continue
+
+    # Deduct PP cost from house treasury
+    state.houses[packet.houseId].treasury -= ppCost
+
+    # Create terraforming project
+    let project = TerraformProject(
+      startTurn: state.turn,
+      turnsRemaining: turnsRequired,
+      targetClass: targetClass,
+      ppCost: ppCost,
+      ppPaid: ppCost
+    )
+
+    colony.activeTerraforming = some(project)
+    state.colonies[order.colonySystem] = colony
+
+    let className = case targetClass
+      of 1: "Extreme"
+      of 2: "Desolate"
+      of 3: "Hostile"
+      of 4: "Harsh"
+      of 5: "Benign"
+      of 6: "Lush"
+      of 7: "Eden"
+      else: "Unknown"
+
+    echo "    ", house.name, " initiated terraforming of ", order.colonySystem,
+         " to ", className, " (class ", targetClass, ") - Cost: ", ppCost, " PP, Duration: ", turnsRequired, " turns"
+
+    events.add(GameEvent(
+      eventType: GameEventType.TerraformComplete,
+      houseId: packet.houseId,
+      description: house.name & " initiated terraforming of colony " & $order.colonySystem &
+                  " to " & className & " (cost: " & $ppCost & " PP, duration: " & $turnsRequired & " turns)",
+      systemId: some(order.colonySystem)
+    ))
 
 proc hasVisibilityOn(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a house has visibility on a system (fog of war)
@@ -1953,39 +2159,37 @@ proc getTargetBucket(shipClass: ShipClass): TargetBucket =
   of ShipClass.Starbase: TargetBucket.Starbase
   else: TargetBucket.Capital
 
-proc resolveBattle(state: var GameState, systemId: SystemId,
-                  combatReports: var seq[CombatReport], events: var seq[GameEvent]) =
-  ## Resolve space battle in a system
-  echo "    Battle at ", systemId
+proc executeCombat(
+  state: var GameState,
+  systemId: SystemId,
+  fleetsInCombat: seq[(FleetId, Fleet)],
+  systemOwner: Option[HouseId],
+  includeStarbases: bool,
+  includeUnassignedSquadrons: bool,
+  combatPhase: string,
+  preDetectedHouses: seq[HouseId] = @[]
+): tuple[outcome: CombatResult, fleetsAtSystem: seq[(FleetId, Fleet)], detectedHouses: seq[HouseId]] =
+  ## Helper function to execute a combat phase
+  ## Returns combat outcome, fleets that participated, and newly detected cloaked houses
+  ## preDetectedHouses: Houses already detected in previous combat phase
 
-  # 1. Gather all fleets at this system
-  var fleetsAtSystem: seq[(FleetId, Fleet)] = @[]
-  for fleetId, fleet in state.fleets:
-    if fleet.location == systemId:
-      fleetsAtSystem.add((fleetId, fleet))
+  if fleetsInCombat.len < 2:
+    return (CombatResult(), @[], @[])
 
-  if fleetsAtSystem.len < 2:
-    # Need at least 2 fleets for combat
-    return
+  echo "        ", combatPhase, " - ", fleetsInCombat.len, " fleets engaged"
 
-  # 2. Determine system ownership for attacker/defender grouping
-  let systemOwner = if systemId in state.colonies:
-                      some(state.colonies[systemId].owner)
-                    else:
-                      none(HouseId)
-
-  # 3. Group fleets by house (multiple fleets per house combine into one Task Force)
+  # Group fleets by house
   var houseFleets: Table[HouseId, seq[Fleet]] = initTable[HouseId, seq[Fleet]]()
-  for (fleetId, fleet) in fleetsAtSystem:
+  for (fleetId, fleet) in fleetsInCombat:
     if fleet.owner notin houseFleets:
       houseFleets[fleet.owner] = @[]
     houseFleets[fleet.owner].add(fleet)
 
-  # 4. Check if there's actual conflict (need at least 2 different houses)
+  # Check if there's actual conflict (need at least 2 different houses)
   if houseFleets.len < 2:
-    return
+    return (CombatResult(), @[], @[])
 
-  # 5. Build Task Forces for combat (Fleet now uses Squadrons!)
+  # Build Task Forces for combat
   var taskForces: Table[HouseId, TaskForce] = initTable[HouseId, TaskForce]()
 
   for houseId, fleets in houseFleets:
@@ -1993,17 +2197,87 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
     var combatSquadrons: seq[CombatSquadron] = @[]
 
     for fleet in fleets:
+      # Mothballed ships are screened during combat and cannot fight
+      if fleet.status == FleetStatus.Mothballed:
+        echo "          Fleet ", fleet.id, " is mothballed - screened from combat"
+        continue
+
       for squadron in fleet.squadrons:
-        # Wrap Squadron in CombatSquadron
         let combatSq = CombatSquadron(
           squadron: squadron,
           state: if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+          fleetStatus: fleet.status,
           damageThisTurn: 0,
           crippleRound: 0,
           bucket: getTargetBucket(squadron.flagship.shipClass),
           targetWeight: 1.0
         )
         combatSquadrons.add(combatSq)
+
+    # Add unassigned squadrons from colony if this is orbital combat
+    if includeUnassignedSquadrons and systemOwner.isSome and systemOwner.get() == houseId:
+      if systemId in state.colonies:
+        let colony = state.colonies[systemId]
+        for squadron in colony.unassignedSquadrons:
+          let combatSq = CombatSquadron(
+            squadron: squadron,
+            state: if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+            fleetStatus: FleetStatus.Active,  # Unassigned squadrons fight at full strength
+            damageThisTurn: 0,
+            crippleRound: 0,
+            bucket: getTargetBucket(squadron.flagship.shipClass),
+            targetWeight: 1.0
+          )
+          combatSquadrons.add(combatSq)
+        if colony.unassignedSquadrons.len > 0:
+          echo "          Added ", colony.unassignedSquadrons.len, " unassigned squadron(s) to orbital defense"
+
+    # Add starbases for system owner (always included for detection)
+    # Starbases are ALWAYS included in task forces for detection purposes
+    # In space combat: Starbases detect but don't fight (controlled by allowStarbaseCombat flag)
+    # In orbital combat: Starbases detect AND fight
+    if systemOwner.isSome and systemOwner.get() == houseId:
+      if systemId in state.colonies:
+        let colony = state.colonies[systemId]
+        for starbase in colony.starbases:
+          # Convert Starbase to Squadron-like structure for combat
+          # Starbases are treated as special squadrons with fixed installations
+          # Create EnhancedShip from Starbase using stats from config/ships.toml
+          # TODO: Load stats from config instead of hardcoding (requires GameConfig in GameState)
+          let starbaseShip = EnhancedShip(
+            shipClass: ShipClass.Starbase,
+            shipType: ShipType.Military,
+            stats: ShipStats(
+              attackStrength: 45,   # From config/ships.toml [starbase]
+              defenseStrength: 50,  # From config/ships.toml [starbase]
+              commandCost: 0,
+              commandRating: 0
+            ),
+            isCrippled: starbase.isCrippled,
+            name: "Starbase-" & starbase.id
+          )
+
+          let starbaseSquadron = Squadron(
+            id: starbase.id,
+            flagship: starbaseShip,
+            ships: @[],  # Starbases have no escort ships
+            owner: houseId,
+            location: systemId,
+            embarkedFighters: @[]
+          )
+          let combatSq = CombatSquadron(
+            squadron: starbaseSquadron,
+            state: if starbase.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+            fleetStatus: FleetStatus.Active,  # Always active for detection
+            damageThisTurn: 0,
+            crippleRound: 0,
+            bucket: TargetBucket.Starbase,
+            targetWeight: 1.0
+          )
+          combatSquadrons.add(combatSq)
+        if colony.starbases.len > 0:
+          let combatRole = if includeStarbases: "defense and detection" else: "detection only"
+          echo "          Added ", colony.starbases.len, " starbase(s) for ", combatRole
 
     # Create TaskForce for this house
     taskForces[houseId] = TaskForce(
@@ -2016,42 +2290,209 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
       isDefendingHomeworld: false
     )
 
-  # 6. Determine attacker and defender
-  var attackerHouses: seq[HouseId] = @[]
-  var defenderHouses: seq[HouseId] = @[]
-
-  for houseId in taskForces.keys:
-    if systemOwner.isSome and systemOwner.get() == houseId:
-      defenderHouses.add(houseId)
-    else:
-      attackerHouses.add(houseId)
-
-  # If no clear defender, first house is defender
-  if defenderHouses.len == 0 and attackerHouses.len > 0:
-    defenderHouses.add(attackerHouses[0])
-    attackerHouses.delete(0)
-
-  # 7. Create battle context and resolve
   # Collect all task forces for battle
   var allTaskForces: seq[TaskForce] = @[]
   for houseId, tf in taskForces:
     allTaskForces.add(tf)
 
-  # Generate deterministic seed from game state
-  # Combine turn number and system ID hash for reproducible combat results
-  let deterministicSeed = hash((state.turn, systemId)).int64
+  # Generate deterministic seed
+  let deterministicSeed = hash((state.turn, systemId, combatPhase)).int64
+
+  # Determine if ambush bonuses and starbase combat apply
+  # Ambush (+4 CER) only in space combat, NOT orbital combat
+  # Starbases can fight only in orbital combat, NOT space combat (but always detect)
+  let allowAmbush = (combatPhase == "Space Combat")
+  let allowStarbaseCombat = (combatPhase == "Orbital Combat" or includeStarbases)
 
   var battleContext = BattleContext(
     systemId: systemId,
     taskForces: allTaskForces,
-    seed: deterministicSeed,  # Deterministic seed ensures same inputs = same results
-    maxRounds: 20
+    seed: deterministicSeed,
+    maxRounds: 20,
+    allowAmbush: allowAmbush,
+    allowStarbaseCombat: allowStarbaseCombat,
+    preDetectedHouses: preDetectedHouses
   )
 
   # Execute battle
   let outcome = combat_engine.resolveCombat(battleContext)
 
-  # 8. Apply losses to game state
+  # Track detected houses (any that were cloaked but are now detected)
+  var detectedHouses: seq[HouseId] = @[]
+  for tf in outcome.survivors:
+    # If house had Raiders but is no longer cloaked, they were detected
+    if not tf.isCloaked:
+      detectedHouses.add(tf.house)
+
+  return (outcome, fleetsInCombat, detectedHouses)
+
+proc resolveBattle(state: var GameState, systemId: SystemId,
+                  orders: Table[HouseId, OrderPacket],
+                  combatReports: var seq[CombatReport], events: var seq[GameEvent]) =
+  ## Resolve combat at a system with linear progression (operations.md:7.0)
+  ## Phase 1: Space Combat - non-guard mobile fleets fight first
+  ## Phase 2: Orbital Combat - if attackers survive, fight guard/reserve fleets + starbases
+  ## Uses orders to determine which fleets are on guard duty
+  echo "    Combat at ", systemId
+
+  # 1. Determine system ownership
+  let systemOwner = if systemId in state.colonies: some(state.colonies[systemId].owner) else: none(HouseId)
+
+  # 2. Gather all fleets at this system and classify by role
+  var fleetsAtSystem: seq[(FleetId, Fleet)] = @[]
+  var orbitalDefenders: seq[(FleetId, Fleet)] = @[]  # Guard/Reserve/Mothballed (orbital defense only)
+  var attackingFleets: seq[(FleetId, Fleet)] = @[]   # Non-owner fleets (must fight through)
+  var mobileDefenders: seq[(FleetId, Fleet)] = @[]   # Owner's mobile fleets (space combat)
+
+  for fleetId, fleet in state.fleets:
+    if fleet.location == systemId:
+      fleetsAtSystem.add((fleetId, fleet))
+
+      # Classify fleet based on ownership and orders
+      let isDefender = systemOwner.isSome and systemOwner.get() == fleet.owner
+
+      if isDefender:
+        # Defender fleet classification
+        var isOrbitalOnly = false
+
+        # Check for guard orders
+        if fleet.owner in orders:
+          for order in orders[fleet.owner].fleetOrders:
+            if order.fleetId == fleetId and
+               (order.orderType == FleetOrderType.GuardStarbase or
+                order.orderType == FleetOrderType.GuardPlanet):
+              isOrbitalOnly = true
+              break
+
+        # Reserve and mothballed fleets only defend in orbital combat
+        if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
+          isOrbitalOnly = true
+
+        if isOrbitalOnly:
+          orbitalDefenders.add((fleetId, fleet))
+        else:
+          mobileDefenders.add((fleetId, fleet))
+      else:
+        # All non-owner fleets are attackers (must fight through space combat first)
+        attackingFleets.add((fleetId, fleet))
+
+  if fleetsAtSystem.len < 2:
+    # Need at least 2 fleets for combat
+    return
+
+  # 3. PHASE 1: Space Combat (attackers vs mobile defenders)
+  # All attacking fleets must fight through mobile defending fleets first
+  # Mobile defenders = owner's active fleets without guard orders
+  echo "      Phase 1: Space Combat"
+  var spaceCombatOutcome: CombatResult
+  var spaceCombatFleets: seq[(FleetId, Fleet)] = @[]
+  var spaceCombatSurvivors: seq[HouseId] = @[]  # Houses that survived space combat
+  var detectedInSpace: seq[HouseId] = @[]  # Houses detected during space combat
+
+  # Check if there are attackers and mobile defenders
+  if attackingFleets.len > 0 and mobileDefenders.len > 0:
+    # Space combat: attackers must fight mobile defenders
+    var spaceCombatParticipants = attackingFleets & mobileDefenders
+    let (outcome, fleets, detected) = executeCombat(
+      state, systemId, spaceCombatParticipants, systemOwner,
+      includeStarbases = false,
+      includeUnassignedSquadrons = false,
+      "Space Combat",
+      preDetectedHouses = @[]  # No pre-detection in space combat (first phase)
+    )
+    spaceCombatOutcome = outcome
+    spaceCombatFleets = fleets
+    detectedInSpace = detected
+
+    # Track which attacker houses survived
+    for tf in outcome.survivors:
+      if tf.house != systemOwner.get() and tf.house notin spaceCombatSurvivors:
+        spaceCombatSurvivors.add(tf.house)
+
+    echo "          Space combat complete - ", spaceCombatOutcome.totalRounds, " rounds"
+    echo "          ", spaceCombatSurvivors.len, " attacking house(s) survived"
+    if detectedInSpace.len > 0:
+      echo "          ", detectedInSpace.len, " cloaked house(s) detected"
+  elif attackingFleets.len > 0:
+    # No mobile defenders - attackers proceed directly to orbital combat
+    echo "          No space combat (no mobile defenders)"
+    # All attackers advance to orbital combat
+    for (fleetId, fleet) in attackingFleets:
+      if fleet.owner notin spaceCombatSurvivors:
+        spaceCombatSurvivors.add(fleet.owner)
+  else:
+    echo "          No space combat (no attackers)"
+
+  # 4. PHASE 2: Orbital Combat (surviving attackers vs orbital defenders)
+  # Only attackers who survived space combat can engage orbital defenders
+  # Orbital defenders = guard fleets + reserve + starbases + unassigned squadrons
+  var orbitalCombatOutcome: CombatResult
+  var orbitalCombatFleets: seq[(FleetId, Fleet)] = @[]
+
+  # Only run if there's a colony with defenders and surviving attackers
+  if systemOwner.isSome and spaceCombatSurvivors.len > 0:
+    # Check if there are orbital defenders
+    var hasOrbitalDefenders = orbitalDefenders.len > 0
+    if systemId in state.colonies:
+      let colony = state.colonies[systemId]
+      if colony.starbases.len > 0 or colony.unassignedSquadrons.len > 0:
+        hasOrbitalDefenders = true
+
+    if hasOrbitalDefenders:
+      echo "      Phase 2: Orbital Combat"
+
+      # Gather surviving attacker fleets
+      var survivingAttackerFleets: seq[(FleetId, Fleet)] = @[]
+      for (fleetId, fleet) in fleetsAtSystem:
+        if fleet.owner in spaceCombatSurvivors and fleet.owner != systemOwner.get():
+          survivingAttackerFleets.add((fleetId, fleet))
+
+      if survivingAttackerFleets.len > 0:
+        # Combine orbital defenders and surviving attackers
+        var orbitalFleets = orbitalDefenders & survivingAttackerFleets
+        let (outcome, fleets, detected) = executeCombat(
+          state, systemId, orbitalFleets, systemOwner,
+          includeStarbases = true,
+          includeUnassignedSquadrons = true,
+          "Orbital Combat",
+          preDetectedHouses = detectedInSpace  # Pass detection state from space combat
+        )
+        orbitalCombatOutcome = outcome
+        orbitalCombatFleets = fleets
+        echo "          Orbital combat complete - ", orbitalCombatOutcome.totalRounds, " rounds"
+        if detected.len > detectedInSpace.len:
+          echo "          ", (detected.len - detectedInSpace.len), " additional house(s) detected in orbital phase"
+      else:
+        echo "          No surviving attacker fleets for orbital combat"
+    else:
+      echo "      Phase 2: No orbital combat (no orbital defenders)"
+      # Attackers achieved orbital supremacy without a fight
+  elif systemOwner.isSome and spaceCombatSurvivors.len == 0:
+    echo "      Phase 2: No orbital combat (attackers eliminated in space combat)"
+  else:
+    echo "      Phase 2: No orbital combat (no colony)"
+
+  # 5. Apply losses to game state
+  # Combine outcomes from both combat phases
+  var allCombatFleets = spaceCombatFleets & orbitalCombatFleets
+  var combinedOutcome: CombatResult
+  if spaceCombatOutcome.totalRounds > 0:
+    combinedOutcome = spaceCombatOutcome
+  if orbitalCombatOutcome.totalRounds > 0:
+    # Merge outcomes
+    combinedOutcome.totalRounds += orbitalCombatOutcome.totalRounds
+    for survivor in orbitalCombatOutcome.survivors:
+      combinedOutcome.survivors.add(survivor)
+    for retreated in orbitalCombatOutcome.retreated:
+      if retreated notin combinedOutcome.retreated:
+        combinedOutcome.retreated.add(retreated)
+    for eliminated in orbitalCombatOutcome.eliminated:
+      if eliminated notin combinedOutcome.eliminated:
+        combinedOutcome.eliminated.add(eliminated)
+    if orbitalCombatOutcome.victor.isSome:
+      combinedOutcome.victor = orbitalCombatOutcome.victor
+
+  let outcome = combinedOutcome
   # Collect surviving squadrons by ID
   var survivingSquadronIds: Table[SquadronId, CombatSquadron] = initTable[SquadronId, CombatSquadron]()
   for tf in outcome.survivors:
@@ -2060,6 +2501,10 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
 
   # Update or remove fleets based on survivors
   for (fleetId, fleet) in fleetsAtSystem:
+    # Mothballed fleets didn't participate in combat - handle separately
+    if fleet.status == FleetStatus.Mothballed:
+      continue
+
     var updatedSquadrons: seq[Squadron] = @[]
 
     for squadron in fleet.squadrons:
@@ -2076,24 +2521,131 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
         squadrons: updatedSquadrons,
         id: fleet.id,
         owner: fleet.owner,
-        location: fleet.location
+        location: fleet.location,
+        status: fleet.status  # Preserve status (Active/Reserve)
       )
     else:
       # Fleet destroyed
       state.fleets.del(fleetId)
 
-  # 9. Count losses by house
+  # Check if all defenders eliminated - if so, destroy mothballed ships
+  # Per economy.md:3.9 - mothballed ships are vulnerable if no Task Force defends them
+  if systemOwner.isSome:
+    let defendingHouse = systemOwner.get()
+
+    # Check if defending house has any surviving active/reserve squadrons
+    var defenderHasSurvivors = false
+    for tf in outcome.survivors:
+      if tf.house == defendingHouse and tf.squadrons.len > 0:
+        defenderHasSurvivors = true
+        break
+
+    # If no defenders survived at friendly colony, destroy screened units
+    # Per operations.md - mothballed ships and spacelift ships vulnerable if no orbital units defend them
+    if not defenderHasSurvivors:
+      var mothballedFleetsDestroyed = 0
+      var mothballedSquadronsDestroyed = 0
+      var spaceliftShipsDestroyed = 0
+
+      for (fleetId, fleet) in fleetsAtSystem:
+        if fleet.owner == defendingHouse:
+          # Destroy mothballed ships
+          if fleet.status == FleetStatus.Mothballed:
+            mothballedSquadronsDestroyed += fleet.squadrons.len
+            mothballedFleetsDestroyed += 1
+            # Destroy the fleet by removing all squadrons
+            state.fleets[fleetId] = Fleet(
+              squadrons: @[],  # Empty fleet
+              spaceLiftShips: @[],
+              id: fleet.id,
+              owner: fleet.owner,
+              location: fleet.location,
+              status: FleetStatus.Mothballed
+            )
+
+          # Destroy spacelift ships in any fleet (they were screened by orbital units)
+          if fleet.spaceLiftShips.len > 0:
+            spaceliftShipsDestroyed += fleet.spaceLiftShips.len
+            # Remove spacelift ships from fleet
+            var updatedFleet = state.fleets[fleetId]
+            updatedFleet.spaceLiftShips = @[]
+            state.fleets[fleetId] = updatedFleet
+
+      if mothballedFleetsDestroyed > 0:
+        echo "      ", mothballedSquadronsDestroyed, " mothballed squadron(s) in ",
+             mothballedFleetsDestroyed, " fleet(s) destroyed - no orbital defense remains"
+
+      if spaceliftShipsDestroyed > 0:
+        echo "      ", spaceliftShipsDestroyed, " spacelift ship(s) destroyed - no orbital defense remains"
+
+  # Update starbases at colony based on survivors
+  if systemOwner.isSome and systemId in state.colonies:
+    var colony = state.colonies[systemId]
+    var survivingStarbases: seq[Starbase] = @[]
+    for starbase in colony.starbases:
+      if starbase.id in survivingSquadronIds:
+        # Starbase survived - update crippled status
+        let survivorState = survivingSquadronIds[starbase.id]
+        var updatedStarbase = starbase
+        updatedStarbase.isCrippled = (survivorState.state == CombatState.Crippled)
+        survivingStarbases.add(updatedStarbase)
+    colony.starbases = survivingStarbases
+    state.colonies[systemId] = colony
+
+  # Update unassigned squadrons at colony based on survivors
+  if systemOwner.isSome and systemId in state.colonies:
+    var colony = state.colonies[systemId]
+    var survivingUnassigned: seq[Squadron] = @[]
+    for squadron in colony.unassignedSquadrons:
+      if squadron.id in survivingSquadronIds:
+        # Squadron survived - update crippled status
+        let survivorState = survivingSquadronIds[squadron.id]
+        var updatedSquadron = squadron
+        updatedSquadron.flagship.isCrippled = (survivorState.state == CombatState.Crippled)
+        survivingUnassigned.add(updatedSquadron)
+    colony.unassignedSquadrons = survivingUnassigned
+    state.colonies[systemId] = colony
+
+  # 6. Determine attacker and defender houses for reporting
+  var attackerHouses: seq[HouseId] = @[]
+  var defenderHouses: seq[HouseId] = @[]
+  var allHouses: seq[HouseId] = @[]
+
+  for (fleetId, fleet) in fleetsAtSystem:
+    if fleet.owner notin allHouses:
+      allHouses.add(fleet.owner)
+      if systemOwner.isSome and systemOwner.get() == fleet.owner:
+        defenderHouses.add(fleet.owner)
+      else:
+        attackerHouses.add(fleet.owner)
+
+  # 7. Count losses by house
   var houseLosses: Table[HouseId, int] = initTable[HouseId, int]()
-  for houseId, fleets in houseFleets:
-    let totalSquadrons = fleets.mapIt(it.squadrons.len).foldl(a + b, 0)
+  # Count total squadrons before combat (all fleets at system)
+  for houseId in allHouses:
+    var totalSquadrons = 0
+    for (fleetId, fleet) in fleetsAtSystem:
+      if fleet.owner == houseId:
+        totalSquadrons += fleet.squadrons.len
+
+    # Add starbases and unassigned squadrons to defender's total
+    if systemOwner.isSome and systemOwner.get() == houseId and systemId in state.colonies:
+      let colony = state.colonies[systemId]
+      totalSquadrons += colony.starbases.len
+      totalSquadrons += colony.unassignedSquadrons.len
+
     let survivingSquadrons = outcome.survivors.filterIt(it.house == houseId)
                                    .mapIt(it.squadrons.len).foldl(a + b, 0)
     houseLosses[houseId] = totalSquadrons - survivingSquadrons
 
-  # 10. Generate combat report
+  # 8. Generate combat report
   let victor = outcome.victor
-  let attackerLosses = attackerHouses.mapIt(houseLosses.getOrDefault(it, 0)).foldl(a + b, 0)
-  let defenderLosses = defenderHouses.mapIt(houseLosses.getOrDefault(it, 0)).foldl(a + b, 0)
+  let attackerLosses = if attackerHouses.len > 0:
+                         attackerHouses.mapIt(houseLosses.getOrDefault(it, 0)).foldl(a + b, 0)
+                       else: 0
+  let defenderLosses = if defenderHouses.len > 0:
+                         defenderHouses.mapIt(houseLosses.getOrDefault(it, 0)).foldl(a + b, 0)
+                       else: 0
 
   let report = CombatReport(
     systemId: systemId,
@@ -2132,10 +2684,11 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
 
 proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrder,
                        events: var seq[GameEvent]) =
-  ## Process orbital bombardment order
+  ## Process planetary bombardment order (operations.md:7.5)
+  ## Phase 2 of planetary combat - requires orbital supremacy
+  ## Attacks planetary shields, ground batteries, and infrastructure
   # NOTE: Like resolveBattle(), this requires Squadron conversion
   # Bombardment system (ground.nim:329) needs seq[CombatSquadron]
-  # Current Fleet has seq[Ship] without combat stats
 
   if order.targetSystem.isNone:
     return
@@ -2164,6 +2717,7 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
     let combatSq = CombatSquadron(
       squadron: squadron,
       state: if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+      fleetStatus: fleet.status,  # Pass fleet status for reserve AS/DS penalty
       damageThisTurn: 0,
       crippleRound: 0,
       bucket: getTargetBucket(squadron.flagship.shipClass),
@@ -2247,6 +2801,10 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
       shipsDestroyedInDock = true
       echo "      Ship under construction destroyed in bombardment!"
 
+  # Note: Spaceports are NOT damaged by bombardment
+  # They are only vulnerable during orbital combat (when starbases/defending fleets are destroyed)
+  # Mothballed ships are vulnerable when all defending active/reserve fleets are eliminated in orbital combat
+
   state.colonies[targetId] = updatedColony
 
   echo "      Bombardment at ", targetId, ": ", infrastructureLoss, " infrastructure destroyed"
@@ -2263,7 +2821,436 @@ proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrde
     systemId: some(targetId)
   ))
 
+proc resolveInvasion(state: var GameState, houseId: HouseId, order: FleetOrder,
+                    events: var seq[GameEvent]) =
+  ## Process planetary invasion order (operations.md:7.6)
+  ## Phase 3 of planetary combat - requires all ground batteries destroyed
+  ## Marines attack ground forces to capture colony
+
+  if order.targetSystem.isNone:
+    return
+
+  let targetId = order.targetSystem.get()
+
+  # Validate fleet exists and is at target
+  let fleetOpt = state.getFleet(order.fleetId)
+  if fleetOpt.isNone:
+    echo "      Invasion failed: fleet not found"
+    return
+
+  let fleet = fleetOpt.get()
+  if fleet.location != targetId:
+    echo "      Invasion failed: fleet not at target system"
+    return
+
+  # Validate target colony exists
+  if targetId notin state.colonies:
+    echo "      Invasion failed: no colony at target"
+    return
+
+  let colony = state.colonies[targetId]
+
+  # Check if colony belongs to attacker (can't invade your own colony)
+  if colony.owner == houseId:
+    echo "      Invasion failed: cannot invade your own colony"
+    return
+
+  # Build attacking ground forces from spacelift ships (marines only)
+  var attackingForces: seq[GroundUnit] = @[]
+  for ship in fleet.spaceLiftShips:
+    if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
+      for i in 0 ..< ship.cargo.quantity:
+        let marine = createMarine(
+          id = $houseId & "_MD_" & $targetId & "_" & $i,
+          owner = houseId
+        )
+        attackingForces.add(marine)
+
+  if attackingForces.len == 0:
+    echo "      Invasion failed: no marines in fleet"
+    return
+
+  # Build defending ground forces
+  var defendingForces: seq[GroundUnit] = @[]
+  for i in 0 ..< colony.armies:
+    let army = createArmy(
+      id = $targetId & "_AA_" & $i,
+      owner = colony.owner
+    )
+    defendingForces.add(army)
+
+  for i in 0 ..< colony.marines:
+    let marine = createMarine(
+      id = $targetId & "_MD_" & $i,
+      owner = colony.owner
+    )
+    defendingForces.add(marine)
+
+  # Build planetary defense
+  var defense = PlanetaryDefense()
+
+  # Shields
+  if colony.planetaryShieldLevel > 0:
+    let (rollNeeded, blockPct) = getShieldData(colony.planetaryShieldLevel)
+    defense.shields = some(ShieldLevel(
+      level: colony.planetaryShieldLevel,
+      blockChance: float(rollNeeded) / 20.0,
+      blockPercentage: blockPct
+    ))
+
+  # Ground Batteries (must be destroyed for invasion to proceed)
+  let ownerCSTLevel = state.houses[colony.owner].techTree.levels.constructionTech
+  for i in 0 ..< colony.groundBatteries:
+    let battery = createGroundBattery(
+      id = $targetId & "_GB" & $i,
+      owner = colony.owner,
+      techLevel = ownerCSTLevel
+    )
+    defense.groundBatteries.add(battery)
+
+  # Check prerequisite: all ground batteries must be destroyed
+  # Per operations.md:7.6, invasion requires bombardment to destroy ground batteries first
+  if defense.groundBatteries.len > 0:
+    echo "      Invasion failed: ", defense.groundBatteries.len, " ground batteries still operational (bombardment required first)"
+    return
+
+  # Ground forces already added above
+  defense.groundForces = defendingForces
+
+  # Spaceport
+  defense.spaceport = colony.spaceports.len > 0
+
+  # Generate deterministic seed
+  let invasionSeed = hash((state.turn, targetId, houseId)).int64
+
+  # Conduct invasion
+  let result = conductInvasion(attackingForces, defendingForces, defense, invasionSeed)
+
+  # Apply results
+  var updatedColony = colony
+
+  if result.success:
+    # Invasion succeeded - colony captured
+    echo "      Invasion SUCCESS: ", houseId, " captured ", targetId, " from ", colony.owner
+
+    # Transfer ownership
+    updatedColony.owner = houseId
+
+    # Apply infrastructure damage (50% destroyed per operations.md:7.6.2)
+    updatedColony.infrastructure = updatedColony.infrastructure div 2
+
+    # Shields and spaceports destroyed on landing (per spec)
+    updatedColony.planetaryShieldLevel = 0
+    updatedColony.spaceports = @[]
+
+    # Update ground forces
+    # Attacker marines that survived become garrison
+    let survivingMarines = attackingForces.len - result.attackerCasualties.len
+    updatedColony.marines = survivingMarines
+    updatedColony.armies = 0  # Defender armies all destroyed/disbanded
+
+    # Unload marines from spacelift ships (they've landed)
+    var updatedFleet = state.fleets[order.fleetId]
+    for ship in updatedFleet.spaceLiftShips.mitems:
+      if ship.cargo.cargoType == CargoType.Marines:
+        discard ship.unloadCargo()
+    state.fleets[order.fleetId] = updatedFleet
+
+    # Prestige changes
+    let attackerPrestige = getPrestigeValue(PrestigeSource.ColonySeized)
+    state.houses[houseId].prestige += attackerPrestige
+    echo "      ", houseId, " gains ", attackerPrestige, " prestige for capturing colony"
+
+    # Defender loses prestige for colony loss
+    let defenderPenalty = -attackerPrestige  # Equal but opposite
+    state.houses[colony.owner].prestige += defenderPenalty
+    echo "      ", colony.owner, " loses ", -defenderPenalty, " prestige for losing colony"
+
+    # Generate event
+    events.add(GameEvent(
+      eventType: GameEventType.SystemCaptured,
+      houseId: houseId,
+      description: houseId & " captured colony at " & $targetId & " from " & colony.owner,
+      systemId: some(targetId)
+    ))
+  else:
+    # Invasion failed
+    echo "      Invasion FAILED: ", colony.owner, " repelled ", houseId, " invasion at ", targetId
+
+    # Update defender ground forces
+    let survivingDefenders = defendingForces.len - result.defenderCasualties.len
+    # Simplified: assume casualties distributed evenly between armies and marines
+    let totalDefenders = colony.armies + colony.marines
+    if totalDefenders > 0:
+      let armyFraction = float(colony.armies) / float(totalDefenders)
+      updatedColony.armies = int(float(survivingDefenders) * armyFraction)
+      updatedColony.marines = survivingDefenders - updatedColony.armies
+
+    # Attacker marines destroyed/retreated - unload survivors from spacelift ships
+    let survivingAttackers = attackingForces.len - result.attackerCasualties.len
+    var updatedFleet = state.fleets[order.fleetId]
+    var marinesRemaining = survivingAttackers
+    for ship in updatedFleet.spaceLiftShips.mitems:
+      if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
+        let unloaded = min(ship.cargo.quantity, marinesRemaining)
+        ship.cargo.quantity -= unloaded
+        marinesRemaining -= unloaded
+        if ship.cargo.quantity == 0:
+          ship.cargo.cargoType = CargoType.None
+    state.fleets[order.fleetId] = updatedFleet
+
+    # Generate event
+    events.add(GameEvent(
+      eventType: GameEventType.InvasionRepelled,
+      houseId: colony.owner,
+      description: colony.owner & " repelled " & houseId & " invasion at " & $targetId,
+      systemId: some(targetId)
+    ))
+
+  state.colonies[targetId] = updatedColony
+
+proc resolveBlitz(state: var GameState, houseId: HouseId, order: FleetOrder,
+                 events: var seq[GameEvent]) =
+  ## Process planetary blitz order (operations.md:7.6.2)
+  ## Fast insertion variant - seizes assets intact but marines get 0.5x AS penalty
+  ## Transports vulnerable to ground batteries during insertion
+
+  if order.targetSystem.isNone:
+    return
+
+  let targetId = order.targetSystem.get()
+
+  # Validate fleet exists and is at target
+  let fleetOpt = state.getFleet(order.fleetId)
+  if fleetOpt.isNone:
+    echo "      Blitz failed: fleet not found"
+    return
+
+  let fleet = fleetOpt.get()
+  if fleet.location != targetId:
+    echo "      Blitz failed: fleet not at target system"
+    return
+
+  # Validate target colony exists
+  if targetId notin state.colonies:
+    echo "      Blitz failed: no colony at target"
+    return
+
+  let colony = state.colonies[targetId]
+
+  # Check if colony belongs to attacker
+  if colony.owner == houseId:
+    echo "      Blitz failed: cannot blitz your own colony"
+    return
+
+  # Build attacking fleet (squadrons needed for blitz vs ground batteries)
+  var attackingFleet: seq[CombatSquadron] = @[]
+  for squadron in fleet.squadrons:
+    let combatSq = CombatSquadron(
+      squadron: squadron,
+      state: if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+      fleetStatus: fleet.status,
+      damageThisTurn: 0,
+      crippleRound: 0,
+      bucket: getTargetBucket(squadron.flagship.shipClass),
+      targetWeight: 1.0
+    )
+    attackingFleet.add(combatSq)
+
+  # Build attacking ground forces from spacelift ships (marines only)
+  var attackingForces: seq[GroundUnit] = @[]
+  for ship in fleet.spaceLiftShips:
+    if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
+      for i in 0 ..< ship.cargo.quantity:
+        let marine = createMarine(
+          id = $houseId & "_MD_" & $targetId & "_" & $i,
+          owner = houseId
+        )
+        attackingForces.add(marine)
+
+  if attackingForces.len == 0:
+    echo "      Blitz failed: no marines in fleet"
+    return
+
+  # Build defending ground forces
+  var defendingForces: seq[GroundUnit] = @[]
+  for i in 0 ..< colony.armies:
+    let army = createArmy(
+      id = $targetId & "_AA_" & $i,
+      owner = colony.owner
+    )
+    defendingForces.add(army)
+
+  for i in 0 ..< colony.marines:
+    let marine = createMarine(
+      id = $targetId & "_MD_" & $i,
+      owner = colony.owner
+    )
+    defendingForces.add(marine)
+
+  # Build planetary defense
+  var defense = PlanetaryDefense()
+
+  # Shields
+  if colony.planetaryShieldLevel > 0:
+    let (rollNeeded, blockPct) = getShieldData(colony.planetaryShieldLevel)
+    defense.shields = some(ShieldLevel(
+      level: colony.planetaryShieldLevel,
+      blockChance: float(rollNeeded) / 20.0,
+      blockPercentage: blockPct
+    ))
+
+  # Ground Batteries (blitz fights through them unlike invasion)
+  let ownerCSTLevel = state.houses[colony.owner].techTree.levels.constructionTech
+  for i in 0 ..< colony.groundBatteries:
+    let battery = createGroundBattery(
+      id = $targetId & "_GB" & $i,
+      owner = colony.owner,
+      techLevel = ownerCSTLevel
+    )
+    defense.groundBatteries.add(battery)
+
+  # Ground forces
+  defense.groundForces = defendingForces
+
+  # Spaceport
+  defense.spaceport = colony.spaceports.len > 0
+
+  # Generate deterministic seed
+  let blitzSeed = hash((state.turn, targetId, houseId, "blitz")).int64
+
+  # Conduct blitz
+  let result = conductBlitz(attackingFleet, attackingForces, defense, blitzSeed)
+
+  # Apply results
+  var updatedColony = colony
+
+  if result.success:
+    # Blitz succeeded - colony captured with assets intact
+    echo "      Blitz SUCCESS: ", houseId, " captured ", targetId, " from ", colony.owner, " (assets seized)"
+
+    # Transfer ownership
+    updatedColony.owner = houseId
+
+    # NO infrastructure damage on blitz (assets seized intact per operations.md:7.6.2)
+    # Shields, spaceports, ground batteries all seized intact
+
+    # Update ground forces
+    let survivingMarines = attackingForces.len - result.attackerCasualties.len
+    updatedColony.marines = survivingMarines
+    updatedColony.armies = 0
+
+    # Unload marines from spacelift ships
+    var updatedFleet = state.fleets[order.fleetId]
+    for ship in updatedFleet.spaceLiftShips.mitems:
+      if ship.cargo.cargoType == CargoType.Marines:
+        discard ship.unloadCargo()
+    state.fleets[order.fleetId] = updatedFleet
+
+    # Prestige changes (blitz gets same prestige as invasion)
+    let attackerPrestige = getPrestigeValue(PrestigeSource.ColonySeized)
+    state.houses[houseId].prestige += attackerPrestige
+    echo "      ", houseId, " gains ", attackerPrestige, " prestige for blitzing colony"
+
+    # Defender loses prestige for colony loss
+    let defenderPenalty = -attackerPrestige
+    state.houses[colony.owner].prestige += defenderPenalty
+    echo "      ", colony.owner, " loses ", -defenderPenalty, " prestige for losing colony"
+
+    # Generate event
+    events.add(GameEvent(
+      eventType: GameEventType.ColonyCaptured,
+      houseId: houseId,
+      description: houseId & " blitzed colony at " & $targetId & " from " & colony.owner & " (assets seized)",
+      systemId: some(targetId)
+    ))
+  else:
+    # Blitz failed
+    echo "      Blitz FAILED: ", colony.owner, " repelled ", houseId, " blitz at ", targetId
+
+    # Update defender ground forces
+    let survivingDefenders = defendingForces.len - result.defenderCasualties.len
+    let totalDefenders = colony.armies + colony.marines
+    if totalDefenders > 0:
+      let armyFraction = float(colony.armies) / float(totalDefenders)
+      updatedColony.armies = int(float(survivingDefenders) * armyFraction)
+      updatedColony.marines = survivingDefenders - updatedColony.armies
+
+    # Update ground batteries (some may have been destroyed)
+    # TODO: Track which batteries were destroyed in blitz result
+
+    # Attacker marines casualties - unload survivors
+    let survivingAttackers = attackingForces.len - result.attackerCasualties.len
+    var updatedFleet = state.fleets[order.fleetId]
+    var marinesRemaining = survivingAttackers
+    for ship in updatedFleet.spaceLiftShips.mitems:
+      if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
+        let unloaded = min(ship.cargo.quantity, marinesRemaining)
+        ship.cargo.quantity -= unloaded
+        marinesRemaining -= unloaded
+        if ship.cargo.quantity == 0:
+          ship.cargo.cargoType = CargoType.None
+    state.fleets[order.fleetId] = updatedFleet
+
+    # Generate event
+    events.add(GameEvent(
+      eventType: GameEventType.InvasionRepelled,
+      houseId: colony.owner,
+      description: colony.owner & " repelled " & houseId & " blitz at " & $targetId,
+      systemId: some(targetId)
+    ))
+
+  state.colonies[targetId] = updatedColony
+
 ## Phase 4: Maintenance
+
+proc processTerraformingProjects(state: var GameState, events: var seq[GameEvent]) =
+  ## Process active terraforming projects for all houses
+  ## Per economy.md Section 4.7
+
+  for colonyId, colony in state.colonies.mpairs:
+    if colony.activeTerraforming.isNone:
+      continue
+
+    let houseId = colony.owner
+    if houseId notin state.houses:
+      continue
+
+    let house = state.houses[houseId]
+    var project = colony.activeTerraforming.get()
+    project.turnsRemaining -= 1
+
+    if project.turnsRemaining <= 0:
+      # Terraforming complete!
+      # Convert int class number (1-7) back to PlanetClass enum (0-6)
+      colony.planetClass = PlanetClass(project.targetClass - 1)
+      colony.activeTerraforming = none(TerraformProject)
+
+      let className = case project.targetClass
+        of 1: "Extreme"
+        of 2: "Desolate"
+        of 3: "Hostile"
+        of 4: "Harsh"
+        of 5: "Benign"
+        of 6: "Lush"
+        of 7: "Eden"
+        else: "Unknown"
+
+      echo "    ", house.name, " completed terraforming of ", colonyId,
+           " to ", className, " (class ", project.targetClass, ")"
+
+      events.add(GameEvent(
+        eventType: GameEventType.TerraformComplete,
+        houseId: houseId,
+        description: house.name & " completed terraforming colony " & $colonyId &
+                    " to " & className,
+        systemId: some(colonyId)
+      ))
+    else:
+      echo "    ", house.name, " terraforming ", colonyId,
+           ": ", project.turnsRemaining, " turn(s) remaining"
+      # Update project
+      colony.activeTerraforming = some(project)
 
 proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
@@ -2302,6 +3289,9 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
   # Process Space Guild population transfers arriving this turn
   resolvePopulationArrivals(state, events)
+
+  # Process active terraforming projects
+  processTerraformingProjects(state, events)
 
   # Update diplomatic status timers for all houses
   for houseId, house in state.houses.mpairs:
@@ -2386,7 +3376,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
         # Generate event
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,  # Fighter commissioned - could use dedicated event type
+          eventType: GameEventType.ShipCommissioned,
           houseId: colony.owner,
           description: "Fighter Squadron commissioned at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2415,7 +3405,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
         # Generate event
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,  # Starbase commissioned - could use dedicated event type
+          eventType: GameEventType.ShipCommissioned,
           houseId: colony.owner,
           description: "Starbase commissioned at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2441,7 +3431,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         echo "        Total construction docks: ", getTotalConstructionDocks(colony)
 
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,
+          eventType: GameEventType.BuildingCompleted,
           houseId: colony.owner,
           description: "Spaceport commissioned at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2474,7 +3464,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         echo "        Total construction docks: ", getTotalConstructionDocks(colony)
 
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,
+          eventType: GameEventType.BuildingCompleted,
           houseId: colony.owner,
           description: "Shipyard commissioned at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2494,7 +3484,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         echo "        Total ground defenses: ", getTotalGroundDefense(colony)
 
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,
+          eventType: GameEventType.BuildingCompleted,
           houseId: colony.owner,
           description: "Ground battery deployed at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2516,7 +3506,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         echo "        Block chance: ", int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0), "%"
 
         events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,
+          eventType: GameEventType.BuildingCompleted,
           houseId: colony.owner,
           description: "Planetary Shield SLD" & $colony.planetaryShieldLevel & " deployed at " & $completed.colonyId,
           systemId: some(completed.colonyId)
@@ -2548,7 +3538,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           echo "        Total Marines: ", colony.marines, " MD (", colony.souls, " souls remaining)"
 
           events.add(GameEvent(
-            eventType: GameEventType.ColonyEstablished,
+            eventType: GameEventType.UnitRecruited,
             houseId: colony.owner,
             description: "Marine Division recruited at " & $completed.colonyId & " (total: " & $colony.marines & " MD)",
             systemId: some(completed.colonyId)
@@ -2580,7 +3570,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
           echo "        Total Armies: ", colony.armies, " AA (", colony.souls, " souls remaining)"
 
           events.add(GameEvent(
-            eventType: GameEventType.ColonyEstablished,
+            eventType: GameEventType.UnitRecruited,
             houseId: colony.owner,
             description: "Army Division mustered at " & $completed.colonyId & " (total: " & $colony.armies & " AA)",
             systemId: some(completed.colonyId)
@@ -2652,7 +3642,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
           # Generate event
           events.add(GameEvent(
-            eventType: GameEventType.ColonyEstablished,
+            eventType: GameEventType.ShipCommissioned,
             houseId: owner,
             description: $shipClass & " commissioned at " & $completed.colonyId,
             systemId: some(completed.colonyId)
@@ -2793,7 +3783,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
 
           # Generate event
           events.add(GameEvent(
-            eventType: GameEventType.ColonyEstablished,  # Fighter disbanded - could use dedicated event type
+            eventType: GameEventType.UnitDisbanded,
             houseId: colony.owner,
             description: $excess & " fighter squadrons auto-disbanded at " & $systemId & " (capacity violation)",
             systemId: some(systemId)

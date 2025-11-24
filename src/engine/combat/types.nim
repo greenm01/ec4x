@@ -7,15 +7,17 @@
 
 import std/[tables, options]
 import ../../common/types/[core, units, combat as commonCombat, diplomacy]
-import ../squadron
+import ../squadron, ../fleet
 
 export HouseId, SystemId, FleetId, SquadronId
 export Squadron, EnhancedShip, ShipClass
 export commonCombat.CombatState  # Use existing CombatState from common
 export diplomacy.DiplomaticState
+export fleet.FleetStatus
 
 type
-  ## Combat Phases (Section 7.3.1)
+  ## Tactical Combat Phases (Section 7.3.1)
+  ## Used for both Space Combat and Orbital Combat
   CombatPhase* {.pure.} = enum
     PreCombat,      # Detection rolls, Task Force formation
     Ambush,         # Phase 1: Undetected Raiders
@@ -51,6 +53,7 @@ type
   CombatSquadron* = object
     squadron*: Squadron
     state*: CombatState
+    fleetStatus*: FleetStatus  # Fleet operational status (Active/Reserve/Mothballed)
     damageThisTurn*: int     # Track damage for destruction protection
     crippleRound*: int       # Round when crippled (for destruction protection)
     bucket*: TargetBucket
@@ -116,21 +119,39 @@ type
     taskForces*: seq[TaskForce]
     seed*: int64              # For deterministic PRNG
     maxRounds*: int           # Default 20 (stalemate)
+    allowAmbush*: bool        # If true, undetected Raiders get +4 CER ambush bonus
+    allowStarbaseCombat*: bool  # If true, starbases can fight; if false, they only detect
+    preDetectedHouses*: seq[HouseId]  # Houses already detected in previous combat phase
 
 ## Helper procs for combat squadrons
 
 proc getCurrentAS*(cs: CombatSquadron): int =
-  ## Get current attack strength (reduced if crippled)
+  ## Get current attack strength (reduced if crippled or reserve status)
+  ## Per economy.md:3.9 - Reserve fleets have AS reduced by half
+  var baseAS: int
   if cs.state == CombatState.Crippled:
-    return cs.squadron.combatStrength() div 2
+    baseAS = cs.squadron.combatStrength() div 2
   elif cs.state == CombatState.Destroyed:
     return 0
   else:
-    return cs.squadron.combatStrength()
+    baseAS = cs.squadron.combatStrength()
+
+  # Apply reserve status penalty (half AS/DS)
+  if cs.fleetStatus == FleetStatus.Reserve:
+    return baseAS div 2
+  else:
+    return baseAS
 
 proc getCurrentDS*(cs: CombatSquadron): int =
-  ## Get defense strength (doesn't change when crippled)
-  return cs.squadron.defenseStrength()
+  ## Get defense strength (doesn't change when crippled, but reduced if reserve)
+  ## Per economy.md:3.9 - Reserve fleets have DS reduced by half
+  let baseDS = cs.squadron.defenseStrength()
+
+  # Apply reserve status penalty (half AS/DS)
+  if cs.fleetStatus == FleetStatus.Reserve:
+    return baseDS div 2
+  else:
+    return baseDS
 
 proc isAlive*(cs: CombatSquadron): bool =
   ## Check if squadron can still fight

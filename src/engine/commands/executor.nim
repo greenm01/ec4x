@@ -34,6 +34,9 @@ proc executeColonizeOrder(state: var GameState, fleet: Fleet, order: FleetOrder)
 proc executeJoinFleetOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
 proc executeRendezvousOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
 proc executeSalvageOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
+proc executeReserveOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
+proc executeMothballOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
+proc executeReactivateOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
 
 # =============================================================================
 # Order Execution Dispatcher
@@ -102,6 +105,12 @@ proc executeFleetOrder*(
     result = executeRendezvousOrder(state, fleet, order)
   of FleetOrderType.Salvage:
     result = executeSalvageOrder(state, fleet, order)
+  of FleetOrderType.Reserve:
+    result = executeReserveOrder(state, fleet, order)
+  of FleetOrderType.Mothball:
+    result = executeMothballOrder(state, fleet, order)
+  of FleetOrderType.Reactivate:
+    result = executeReactivateOrder(state, fleet, order)
 
 # =============================================================================
 # Order 00: Hold Position
@@ -133,6 +142,21 @@ proc executeMoveOrder(
   ## Order 01: Move to new system and hold position
   ## Movement logic handled by resolveMovementOrder in resolve.nim
   ## This proc marks the order as executed
+
+  # Per economy.md:3.9 - Reserve and Mothballed fleets cannot move
+  if fleet.status == FleetStatus.Reserve:
+    return OrderExecutionResult(
+      success: false,
+      message: "Reserve fleets cannot move - must be reactivated first",
+      eventsGenerated: @[]
+    )
+
+  if fleet.status == FleetStatus.Mothballed:
+    return OrderExecutionResult(
+      success: false,
+      message: "Mothballed fleets cannot move - must be reactivated first",
+      eventsGenerated: @[]
+    )
 
   if order.targetSystem.isNone:
     return OrderExecutionResult(
@@ -892,4 +916,90 @@ proc executeSalvageOrder(
       "Fleet salvaged",
       "Recovered " & $salvageValue & " PP"
     ]
+  )
+
+# =============================================================================
+# Reserve / Mothball / Reactivate Orders
+# =============================================================================
+
+proc executeReserveOrder(
+  state: var GameState,
+  fleet: Fleet,
+  order: FleetOrder
+): OrderExecutionResult =
+  ## Place fleet on reserve status
+  ## Per economy.md:3.9 - 50% maintenance, half AS/DS, can't move, must be at colony
+
+  # Validate fleet is at a colony
+  if fleet.location notin state.colonies:
+    return OrderExecutionResult(
+      success: false,
+      message: "Fleet must be at a colony to be placed on reserve"
+    )
+
+  let colony = state.colonies[fleet.location]
+  if colony.owner != fleet.owner:
+    return OrderExecutionResult(
+      success: false,
+      message: "Fleet must be at a friendly colony to be placed on reserve"
+    )
+
+  result = OrderExecutionResult(
+    success: true,
+    message: "Fleet " & $fleet.id & " placed on reserve (50% maint, half AS/DS)",
+    eventsGenerated: @["Fleet placed on reserve status"]
+  )
+
+proc executeMothballOrder(
+  state: var GameState,
+  fleet: Fleet,
+  order: FleetOrder
+): OrderExecutionResult =
+  ## Mothball fleet
+  ## Per economy.md:3.9 - 0% maintenance, offline, screened in combat, must be at colony with spaceport
+
+  # Validate fleet is at a colony
+  if fleet.location notin state.colonies:
+    return OrderExecutionResult(
+      success: false,
+      message: "Fleet must be at a colony to be mothballed"
+    )
+
+  let colony = state.colonies[fleet.location]
+  if colony.owner != fleet.owner:
+    return OrderExecutionResult(
+      success: false,
+      message: "Fleet must be at a friendly colony to be mothballed"
+    )
+
+  # Per spec: mothballed ships stored at spaceport
+  if colony.spaceports.len == 0:
+    return OrderExecutionResult(
+      success: false,
+      message: "Colony must have a spaceport to mothball ships"
+    )
+
+  result = OrderExecutionResult(
+    success: true,
+    message: "Fleet " & $fleet.id & " mothballed (0% maint, offline)",
+    eventsGenerated: @["Fleet mothballed"]
+  )
+
+proc executeReactivateOrder(
+  state: var GameState,
+  fleet: Fleet,
+  order: FleetOrder
+): OrderExecutionResult =
+  ## Return reserve or mothballed fleet to active duty
+
+  if fleet.status == FleetStatus.Active:
+    return OrderExecutionResult(
+      success: false,
+      message: "Fleet is already on active duty"
+    )
+
+  result = OrderExecutionResult(
+    success: true,
+    message: "Fleet " & $fleet.id & " returned to active duty",
+    eventsGenerated: @["Fleet reactivated"]
   )
