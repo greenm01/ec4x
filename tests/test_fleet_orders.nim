@@ -17,15 +17,15 @@ proc createTestGameState(): GameState =
   var testMap = StarMap()
   testMap.systems[1] = System(
     id: 1,
-    position: HexCoord(q: 0, r: 0),
-    planets: @[],
-    controlledBy: none(HouseId)
+    coords: Hex(q: 0, r: 0),
+    ring: 0,
+    player: none(uint)
   )
   testMap.systems[2] = System(
     id: 2,
-    position: HexCoord(q: 1, r: 0),
-    planets: @[],
-    controlledBy: none(HouseId)
+    coords: Hex(q: 1, r: 0),
+    ring: 1,
+    player: none(uint)
   )
 
   result = newGameState("test_game", 2, testMap)
@@ -763,3 +763,261 @@ suite "Order Validation":
 
     check result.success == false
     check result.message.contains("combat-capable")
+
+# =============================================================================
+# Order 16: Reserve Fleet Tests
+# =============================================================================
+
+suite "Order 16: Reserve Fleet":
+  test "Reserve order at friendly colony succeeds":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Reserve,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == true
+    check result.message.contains("reserve")
+    check result.message.contains("50% maint")
+    check result.eventsGenerated.len > 0
+
+  test "Reserve order without colony fails":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    # Remove colony at sys2
+    state.colonies.del(2)
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Reserve,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("must be at a colony")
+
+  test "Reserve order at enemy colony fails":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Reserve,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("friendly colony")
+
+# =============================================================================
+# Order 17: Mothball Fleet Tests
+# =============================================================================
+
+suite "Order 17: Mothball Fleet":
+  test "Mothball order at friendly colony with spaceport succeeds":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    # Add spaceport to colony
+    state.colonies[1].spaceports.add(Spaceport(level: 1, crippled: false))
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Mothball,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == true
+    check result.message.contains("mothballed")
+    check result.message.contains("0% maint")
+    check result.eventsGenerated.len > 0
+
+  test "Mothball order without spaceport fails":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Mothball,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("spaceport")
+
+  test "Mothball order without colony fails":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    # Remove colony
+    state.colonies.del(2)
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Mothball,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("must be at a colony")
+
+  test "Mothball order at enemy colony fails":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    # Add spaceport to enemy colony
+    state.colonies[2].spaceports.add(Spaceport(level: 1, crippled: false))
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Mothball,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("friendly colony")
+
+# =============================================================================
+# Order 18: Reactivate Fleet Tests
+# =============================================================================
+
+suite "Order 18: Reactivate Fleet":
+  test "Reactivate reserve fleet succeeds":
+    var state = createTestGameState()
+    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    fleet.status = FleetStatus.Reserve
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Reactivate,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == true
+    check result.message.contains("active duty")
+    check result.eventsGenerated.len > 0
+
+  test "Reactivate mothballed fleet succeeds":
+    var state = createTestGameState()
+    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    fleet.status = FleetStatus.Mothballed
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Reactivate,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == true
+    check result.message.contains("active duty")
+    check result.eventsGenerated.len > 0
+
+  test "Reactivate active fleet fails":
+    var state = createTestGameState()
+    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Reactivate,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("already on active duty")
+
+# =============================================================================
+# Fleet Status Restriction Tests
+# =============================================================================
+
+suite "Fleet Status Movement Restrictions":
+  test "Reserve fleet cannot move":
+    var state = createTestGameState()
+    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    fleet.status = FleetStatus.Reserve
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Move,
+      targetSystem: some(SystemId("sys2")),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("Reserve fleets cannot move")
+
+  test "Mothballed fleet cannot move":
+    var state = createTestGameState()
+    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    fleet.status = FleetStatus.Mothballed
+    state.fleets[fleet.id] = fleet
+
+    let order = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Move,
+      targetSystem: some(SystemId("sys2")),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
+
+    let result = executeFleetOrder(state, "house1", order)
+
+    check result.success == false
+    check result.message.contains("Mothballed fleets cannot move")
