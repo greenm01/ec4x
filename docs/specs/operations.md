@@ -64,6 +64,11 @@ Players use **Squadron Management Orders** to:
 | 13   | Join another Fleet      | None                                     |
 | 14   | Rendezvous at System    | None                                     |
 | 15   | Salvage                 | Friendly Colony System                   |
+| 16   | Place on Reserve        | At friendly colony                       |
+| 17   | Mothball Fleet          | At friendly colony with Spaceport        |
+| 18   | Reactivate Fleet        | Reserve or Mothballed fleet              |
+
+**Note:** Fleet operational status (Active, Reserve, Mothballed) affects maintenance costs and combat capability. See [Section 3.9](economy.md#39-maintenance-costs) for detailed information on Reserve and Mothballed fleets.
 
 ### 6.2.1 Hold Position (00):
 
@@ -93,15 +98,21 @@ Patrol operations automatically gather intelligence on all foreign forces encoun
 
 ### 6.2.5 Guard a Starbase (04):
 
-Order a fleet to protect a Starbase, and join in a combined Task Force, when confronting hostile ships with orders 05 to 08.
+Order a fleet to protect a Starbase and join in a combined Task Force for Orbital Combat when confronting hostile ships with orders 05 to 08.
+
+**Guard Behavior:**
+- Fleets with guard orders do NOT participate in Space Combat
+- Guard fleets only engage in Orbital Combat (defending the colony directly)
+- Allows defense layering: mobile fleets fight in space, guard fleets defend in orbit
+- Guard fleets may contain Raiders (maintains cloaking ability until orbital phase)
 
 ### 6.2.6 Guard/Blockade a Planet (05):
 
 Order a fleet to block hostile forces from approaching a planet.
 
-**Guard**: Fleets on guard duty are held in rear guard to protect a colony and do not join Space Combat unless confronted by hostile ships with orders 05 to 08. Guarding fleets may contain Raiders and do not auto-join a Starbase's Task Force, which would compromise their cloaking ability. Not all planets will have a functional Starbase.
+**Guard**: Fleets on guard duty are held in rear guard to protect a colony and do NOT participate in Space Combat. Guard fleets only engage in Orbital Combat when attackers attempt to assault the colony (orders 05 to 08). Guarding fleets may contain Raiders and maintain cloaking ability until Orbital Combat begins. Not all planets will have a functional Starbase.
 
-**Blockade**: Fleets are ordered to blockade an enemy planet and do not engage in Space Combat unless confronted by enemy ships under order 05.
+**Blockade**: Fleets are ordered to blockade an enemy planet and do NOT engage in Space Combat unless confronted by enemy ships under order 05 (counter-blockade).
 
 Colonies under blockade reduce their GCO by 60%. Blockade effects apply immediately during the Income Phase per [Section 1.3.2](gameplay.md#132-income-phase). Blockades established during the Conflict Phase reduce GCO for that same turn's Income Phase calculation - there is no delay. Lifting a blockade immediately restores full GCO for the following turn's Income Phase.
 
@@ -171,7 +182,112 @@ Move to the specified system and merge with any other fleets ordered to rendezvo
 
 Salvage a fleet at the closest colony. The fleet will disband and all the ships are salvaged for 50% of their PC.
 
+### 6.2.17 Place on Reserve (16):
+
+Place a fleet on reserve status to reduce maintenance costs while maintaining defensive capability. The fleet must be at a friendly colony.
+
+**Mechanics:**
+- Fleet automatically merges into the colony's single reserve fleet
+- All squadrons from the ordered fleet join the reserve garrison
+- Each colony is limited to **one reserve fleet** - additional fleets automatically merge
+- Reserve fleets automatically guard their colony (Order 05)
+- Fleet becomes immobile - cannot execute movement orders
+
+**Economic Impact:**
+- Maintenance cost reduced to 50% of base upkeep
+- Provides cost-effective planetary defense
+
+**Combat Capability:**
+- AS and DS reduced to 50% of normal values
+- Can defend colony if attacked
+- Cannot move or engage in offensive operations
+
+See [Section 3.9](economy.md#39-maintenance-costs) for complete details on reserve fleet economics and strategy.
+
+### 6.2.18 Mothball Fleet (17):
+
+Mothball a fleet for long-term storage, eliminating all maintenance costs. The fleet must be at a friendly colony with a Spaceport.
+
+**Requirements:**
+- Fleet must be at friendly colony
+- Colony must have an operational Spaceport
+- Fleet becomes completely offline
+
+**Mechanics:**
+- Fleet enters storage orbit at colony
+- All maintenance costs eliminated (0% upkeep)
+- Fleet cannot fight - screened during combat
+- Vulnerable to destruction if no active Task Force defends them
+- Must use Reactivate order before fleet can operate again
+
+**Best For:**
+- Long-term storage of excess fleets
+- Preserving ships during economic hardship
+- Strategic reserves for future conflicts
+
+See [Section 3.9](economy.md#39-maintenance-costs) for mothballed fleet economics and vulnerability details.
+
+### 6.2.19 Reactivate Fleet (18):
+
+Return a reserve or mothballed fleet to active duty status.
+
+**Mechanics:**
+- Immediately restores fleet to active status
+- Fleet can receive new orders next turn
+- Maintenance costs return to 100% of base upkeep
+- Combat capability restored to full AS/DS
+- Movement restrictions lifted
+
+**Use Cases:**
+- Mobilize reserve forces for offensive operations
+- Reactivate mothballed ships when needed
+- Convert defensive garrisons to mobile forces
+
 # 7.0 Combat
+
+Combat in EC4X occurs across three distinct combat theaters. When fleets execute invasion or blitz orders against an enemy colony, they must fight progressively through each theater to capture the planet.
+
+## Three-Phase Combat Progression
+
+**Progressive Combat Requirement:**
+
+Attacking forces must successfully win each combat phase before advancing to the next:
+
+**Phase 1: Space Combat** ([Section 7.3](#73-space-combat))
+- Fleet vs fleet engagements in deep space
+- Mobile task forces fighting for space superiority
+- Determined by fleet composition, tactics, and technology
+- Occurs FIRST when attackers enter a system with mobile defenders
+- Attackers must defeat or force retreat of mobile defenders to proceed to orbital combat
+- Detection mechanics apply: ELI-equipped scouts can detect cloaked Raiders
+- Ambush advantage (+4 CER): Undetected Raiders strike first with bonus in space combat only
+
+**Phase 2: Orbital Combat** ([Section 7.4](#74-orbital-combat))
+- Attacks on defended colonies after space superiority achieved
+- Combines guard fleets, reserve fleets, starbases, and unassigned squadrons
+- Protects screened units (mothballed ships, spacelift vessels)
+- Occurs SECOND after attackers win space combat (or if no mobile defenders present)
+- Attackers must defeat orbital defenses to proceed to planetary bombardment
+- Detection mechanics apply: ELI-equipped scouts and starbases can detect cloaked Raiders
+- NO ambush advantage: Raiders detected in space remain detected; newly encountered Raiders get no +4 bonus
+- Orbital defenses cannot be "surprised" but detection still determines initiative
+
+**Phase 3: Planetary Combat** ([Section 7.5](#75-planetary-bombardment) & [Section 7.6](#76-planetary-invasion--blitz))
+- Surface warfare after orbital supremacy achieved
+- Bombardment, invasion, and blitz operations
+- Planetary shields, ground batteries, and ground forces defend
+- Occurs THIRD after attackers win orbital combat
+- Final phase before colony capture
+
+**Combat Sequence Example:**
+
+An invasion fleet entering an enemy system:
+1. Fights mobile defenders in space combat (if present)
+2. If victorious, proceeds to orbital combat against guard fleets, reserve, starbases
+3. If victorious, proceeds to planetary bombardment and invasion
+4. Only after clearing all three phases can troop transports land
+
+Attackers cannot skip phases. Guard orders mean fleets defend in orbital combat only, not space combat.
 
 ## 7.1 Principles
 
@@ -221,13 +337,51 @@ Fighter squadrons skip the crippled combat state due to their lightweight constr
 - Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed)
 - Fighter squadrons follow binary state transition (undamaged → destroyed)
 
-### 7.1.3 Cloaking
+### 7.1.3 Cloaking and Detection
 
-Undetected cloaked units strike first in combat initiative per [Section 7.3.1.1](#7311-phase-1-undetected-raiders-ambush-phase).
+Cloaked Raiders have two distinct advantages that are tracked separately:
 
-Scouts and Starbases present in opposing forces have the opportunity to counter for cloaking. Roll for detection in accordance with [Section 2.4.3](assets.md#243-raiders).
+**Detection State:**
+- Determines which combat phase Raiders attack in
+- Undetected Raiders attack in Phase 1 (before all other units)
+- Detected Raiders lose initiative and attack in Phase 3 (with capital ships)
+- Detection state persists across combat phases within the same engagement
 
-If cloaked fleets on all sides pass undetected from one another, the player defending their solar system wins initiative. If opposing forces are meeting in neutral territory and all pass undetected, they carry on with movement orders and combat is cancelled.
+**Ambush Bonus (+4 CER):**
+- Only applies in Space Combat ([Section 7.3](#73-space-combat))
+- Undetected Raiders in space combat receive +4 CER modifier on first round
+- Does NOT apply in Orbital Combat ([Section 7.4](#74-orbital-combat))
+- Rationale: Cannot ambush stationary orbital defenses
+
+**Pre-Combat Detection:**
+
+Before combat begins, ELI-equipped units (scouts and starbases) attempt to detect cloaked Raiders:
+- Roll for detection per [Section 2.4.3](assets.md#243-raiders)
+- Scouts use house ELI technology level
+- Starbases receive +2 ELI modifier for detection rolls
+- Multiple scouts form mesh network (use effective ELI calculation)
+- If detected, Raider loses initiative advantage and attacks in Phase 3
+
+**Detection State Persistence:**
+
+Once a house's Raiders are detected in Space Combat, they remain detected in subsequent Orbital Combat:
+- No new detection rolls for already-detected houses
+- Detection state tracked per house across combat phases
+- New Raiders encountering defenders for the first time get fresh detection rolls
+
+**Starbase Detection Participation:**
+
+Starbases assist in pre-combat detection regardless of which combat phase is being resolved:
+- **Space Combat**: Starbases detect cloaked Raiders but are screened and cannot fight or be targeted
+- **Orbital Combat**: Starbases detect cloaked Raiders AND participate in combat as defenders
+- Starbases at a colony contribute their detection capability (+2 ELI bonus) to all combat phases
+- Rationale: Advanced sensors on starbases provide detection support to all friendly forces in the system
+
+**Multi-Faction Cloaking:**
+
+If cloaked fleets on all sides pass undetected from one another:
+- In owned systems: Defender wins initiative
+- In neutral territory: Forces avoid engagement and continue with movement orders (combat cancelled)
 
 ### 7.1.4 Morale
 
@@ -318,7 +472,7 @@ Within each phase, when multiple units attack simultaneously (same initiative ti
 
 #### 7.3.1.1 Phase 1: Undetected Raiders (Ambush Phase)
 
-Cloaked Raider fleets that successfully evaded ELI detection during the pre-combat detection phase strike first with full ambush advantage.
+Cloaked Raider fleets that successfully evaded ELI detection during the pre-combat detection phase strike first with initiative advantage.
 
 **Pre-Combat Detection:**
 
@@ -326,19 +480,31 @@ Before combat begins, all ELI-equipped units (Scouts and Starbases) in the defen
 
 For each defending ELI unit:
 - Calculate effective ELI level (weighted average, dominant tech penalty, mesh network modifier)
-- Starbases receive +2 ELI modifier for detection rolls
+- Starbases receive +2 ELI modifier for detection rolls in all combat phases
+- Starbases participate in detection for both Space Combat and Orbital Combat
+- In Space Combat, starbases detect but cannot fight or be targeted (screened)
 - Roll detection against each attacking cloaked fleet's highest CLK rating
-- If detected, the Raider fleet loses ambush advantage and attacks in Phase 3 instead
+- If detected, the Raider fleet loses initiative advantage and attacks in Phase 3 instead
+
+**Detection State Tracking:**
+
+Detection state is tracked per house and persists across combat phases:
+- Raiders detected in Space Combat remain detected in subsequent Orbital Combat
+- No new detection rolls for already-detected houses in Orbital Combat
+- New Raiders (not present in Space Combat) get fresh detection rolls in Orbital Combat
 
 **Ambush Resolution:**
 
 Undetected Raiders attack before any defending units can respond:
-- Raiders receive +4 die roll modifier on CER roll (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
+- **Space Combat Only:** Raiders receive +4 die roll modifier on CER roll (ambush bonus)
+- **Orbital Combat:** Raiders attack in Phase 1 but do NOT receive +4 ambush bonus (cannot ambush prepared defenses)
 - Each Raider squadron independently selects targets using [Section 7.3.2](#732-target-priority-rules)
 - All Raider squadrons select targets, then all damage is applied simultaneously
 - All state transitions are evaluated after all damage is applied
 - Destroyed targets do not return fire
 - Multiple undetected Raider squadrons attack simultaneously in this phase
+
+See [Section 7.3.3](#733-combat-effectiveness-rating-cer) for full CER modifier details.
 
 #### 7.3.1.2 Phase 2: Fighter Squadrons (Intercept Phase)
 
@@ -534,7 +700,11 @@ Each squadron rolls once for CER and applies CER × (squadron total AS).
 | Scouts   | +1    | Maximum benefit for all Scouts in Task Force | All CER phases |
 | Morale   | -1 to +2 | Per turn morale check (see [Section 7.1.4](#714-morale)) | All CER phases |
 | Surprise | +3    | First round only                       | Phase 1 only      |
-| Ambush   | +4    | First round only                       | Phase 1 only      |
+| Ambush   | +4    | First round only, Space Combat ONLY    | Phase 1 (Space Combat only) |
+
+**Ambush Modifier Restriction:**
+
+The +4 Ambush modifier applies ONLY in Space Combat. In Orbital Combat, undetected Raiders still attack in Phase 1 (initiative advantage) but do NOT receive the +4 CER bonus. Rationale: Cannot ambush stationary orbital defenses waiting in prepared defensive positions.
 
 **CER Application:**
 
@@ -882,20 +1052,69 @@ Prestige is awarded after combat resolution:
 - **DishonoredExpires** penalty for being ambushed by a cloaked fleet (if Raiders achieved surprise in Phase 1) - see [Table 9.4](reference.md#94-prestige)
 - No prestige awarded or lost for mutual withdrawal, forced stalemate, or forced post-combat withdrawal
 
-## 7.4 Starbase Combat
+## 7.4 Orbital Combat
 
-Starbases serve as the primary defense if a hostile fleet aims to blockade, bombard, invade, or blitz a colony. They form a combined Task Force as per [Section 7.2](#72-task-force-assignment).
+Orbital combat occurs when hostile fleets attack a defended colony after winning Space Combat (or if no mobile defenders were present). The defending house combines all available orbital forces into a unified defense.
 
-Fleets with orders to guard the Starbase (Fleet Orders 04) also join the Task Force.
+**Attacker Composition:**
+- Only fleets that survived Space Combat (if it occurred)
+- Attackers with invasion/blitz orders (07, 08) must win Orbital Combat to proceed to planetary assault
 
-Combat will proceed in a similar fashion to [Section 7.3](#73-space-combat), with the following special rules:
+**Orbital Defenders Include:**
+- **Guard Fleets:** Active fleets with orders 04 or 05 (did not fight in space combat)
+- **Reserve Fleets:** Orbital garrison with 50% AS/DS (per [Section 3.9](economy.md#39-maintenance-costs))
+- **Mothballed Fleets:** Partially reactivated, 50% AS/DS (per [Section 3.9](economy.md#39-maintenance-costs))
+- **Starbases:** Fixed defensive installations with special combat bonuses
+- **Unassigned Squadrons:** Ships at colony not yet assigned to fleets
+- **Screened Units (Non-Combatants):**
+  - Spacelift ships (transport/colonization vessels)
 
+Orbital defenders form a unified Task Force per [Section 7.2](#72-task-force-assignment).
+
+### 7.4.1 Combat Resolution
+
+Orbital combat uses the same mechanics as [Section 7.3](#73-space-combat) with these key differences:
+
+**Detection vs Ambush:**
+- **Detection Rolls:** ELI-equipped scouts and starbases attempt to detect cloaked Raiders (per [Section 7.1.3](#713-cloaking-and-detection))
+- **Detection State Persistence:** Raiders detected in Space Combat remain detected (no new detection roll)
+- **NO Ambush Bonus:** Undetected Raiders attack in Phase 1 but do NOT receive +4 CER modifier
+- **Rationale:** Cannot ambush stationary orbital defenses waiting in prepared positions
+
+**Reserve and Mothballed Fleet Penalties:**
+- Reserve fleets fight at 50% of their normal AS/DS values
+- Mothballed fleets fight at 50% of their normal AS/DS values (partial emergency reactivation)
+- Still provide valuable defensive capability at reduced maintenance cost
+
+**Starbase Special Rules:**
 1. **Critical Hit Protection:** If a player rolls a critical hit against a Starbase on the first attempt, re-roll a second time. The second roll stands regardless of result.
 2. **Starbase Bonus:** Starbases receive an extra +2 die roll modifier on all CER rolls.
-3. **Starbase State Transitions:** Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed) as defined in [Section 7.1.2](#712-combat-state).
-4. **Starbase Targeting:** Starbases are assigned to bucket 5 and can be targeted using the rules in [Section 7.3.2](#732-target-priority-rules). Crippled Starbases receive the 2x targeting weight modifier.
+3. **Starbase Detection Bonus:** Starbases receive +2 ELI modifier for pre-combat detection rolls against cloaked Raiders.
+4. **Starbase State Transitions:** Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed) as defined in [Section 7.1.2](#712-combat-state).
+5. **Starbase Targeting:** Starbases are assigned to bucket 5 and can be targeted using the rules in [Section 7.3.2](#732-target-priority-rules). Crippled Starbases receive the 2x targeting weight modifier.
 
 Starbases are fortified with superior AI and sensors, making them formidable defensive platforms with high defensive capabilities.
+
+### 7.4.2 Screened Unit Vulnerability
+
+Spacelift ships do not participate in orbital combat - they are screened behind defending forces.
+
+**Mothballed Fleet Emergency Reactivation:**
+
+When orbital combat begins, mothballed fleets undergo emergency partial reactivation:
+- Mothballed fleets fight at 50% AS/DS (same as reserve status)
+- Emergency reactivation is automatic and immediate (no turn delay)
+- After combat, surviving mothballed fleets return to mothballed status
+- Allows desperate defense using stored ships without full reactivation cost
+
+**If all orbital defenders are destroyed:**
+- All spacelift ships at the colony are destroyed
+- Spaceports become vulnerable to attack
+- Colony is undefended and vulnerable to bombardment/invasion
+
+**If any defenders survive:**
+- Screened spacelift units remain safe
+- Colony maintains orbital defense
 
 ## 7.5 Planetary Bombardment
 

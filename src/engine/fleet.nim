@@ -17,6 +17,12 @@ export Squadron, EnhancedShip, ShipClass  # Export for fleet users
 export SpaceLiftShip, SpaceLiftCargo, CargoType  # Export spacelift types
 
 type
+  FleetStatus* {.pure.} = enum
+    ## Fleet operational status per economy.md:3.9
+    Active,      # Normal active duty (100% maintenance)
+    Reserve,     # Reserve status (50% maintenance, half AS/DS, can't move)
+    Mothballed   # Mothballed (0% maintenance, offline, screened in combat)
+
   Fleet* = object
     ## A collection of squadrons and spacelift ships that move together
     id*: FleetId                       # Unique fleet identifier
@@ -24,12 +30,14 @@ type
     spaceLiftShips*: seq[SpaceLiftShip] # Spacelift ships (separate)
     owner*: HouseId                    # House that owns this fleet
     location*: SystemId                # Current system location
+    status*: FleetStatus               # Operational status (active/reserve/mothballed)
 
 proc newFleet*(squadrons: seq[Squadron] = @[], spaceLiftShips: seq[SpaceLiftShip] = @[],
-               id: FleetId = "", owner: HouseId = "", location: SystemId = 0): Fleet =
+               id: FleetId = "", owner: HouseId = "", location: SystemId = 0,
+               status: FleetStatus = FleetStatus.Active): Fleet =
   ## Create a new fleet with the given squadrons and spacelift ships
   Fleet(id: id, squadrons: squadrons, spaceLiftShips: spaceLiftShips,
-        owner: owner, location: location)
+        owner: owner, location: location, status: status)
 
 proc `$`*(f: Fleet): string =
   ## String representation of a fleet

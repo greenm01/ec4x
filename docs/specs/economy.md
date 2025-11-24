@@ -248,13 +248,86 @@ Each turn, the Duke can allocate Treasury funds as follows:
 
 At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](reference.md#90-data-tables).
 
-Players are able to reduce maintenance costs by placing active duty ships on either reserve status or mothballing them:
+### Fleet Operational Status
 
-Maintenance costs for reserve ships is reduced by half, are auto-assigned into squadrons, and join a reserve fleet with orders 05 to guard the closest planet. Reserve ships have their AS and DS reduced by half, but do not change combat state. Reserve fleets can not be moved, and ships must already be located at a colony in order to place them in reserve. Colonies are allotted a single fleet for reserve duty.
+Every fleet operates in one of three states, each with different maintenance costs and capabilities. Fleets remain in the game's fleet roster regardless of status - they are not stored in the colony object, but tracked by their location and status:
 
-The maintenance cost for mothballed ships is zero. Mothballed ships are placed in orbit around a colony and taken offline. They are screened during combat and are unable to join the fight. Mothballed ships are vulnerable to destruction if there is no Task Force present to screen them.
+**Colony Fleet Organization:**
+- Each colony can have multiple active fleets (unrestricted)
+- Each colony has **one reserve fleet** (all reserve squadrons auto-merge into this fleet)
+- Each colony can have multiple mothballed fleets (stored in orbit at Spaceport)
+- Reserve and mothballed fleets coexist - a colony can have both simultaneously
 
-The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
+#### Active Fleets (Full Operations)
+- **Maintenance Cost:** 100% of base upkeep
+- **Combat Capability:** Full AS/DS, can engage in all combat operations
+- **Movement:** Unrestricted - can move anywhere, execute any orders
+- **Best For:** Frontline forces, offensive operations, rapid response
+
+#### Reserve Fleets (Defensive Garrisons)
+- **Maintenance Cost:** 50% of base upkeep (**significant savings**)
+- **Combat Capability:** Reduced to 50% AS/DS, but still combat-ready
+- **Movement:** **Cannot move** - permanently stationed at colony
+- **Colony Limit:** Each colony is allotted **one reserve fleet**
+- **Auto-Assignment:** When a fleet is placed on reserve, it automatically merges into the colony's reserve fleet. All squadrons combine into a single defensive garrison.
+- **Orders:** Automatically guards the colony - can only defend against attacks
+- **Requirements:** Fleet must be at a friendly colony to go on reserve
+- **Best For:** Defensive garrisons, cost reduction during peacetime, protecting key colonies with reduced budget
+
+**Advantages:**
+- Cut maintenance costs in half
+- Still combat-ready (can defend if colony attacked)
+- Ideal for establishing cheap planetary defense
+
+**Disadvantages:**
+- Cannot leave colony (immobile)
+- Fight at half strength (50% AS/DS)
+- All reserve ships at colony merge into single fleet
+
+#### Mothballed Fleets (Long-Term Storage)
+- **Maintenance Cost:** 0% (**zero maintenance** - maximum savings)
+- **Combat Capability:** **None** - completely offline, cannot fight
+- **Movement:** **Cannot move** - stored in orbit at Spaceport
+- **Storage:** Requires a **Spaceport** at the colony to store mothballed ships in orbit
+- **Vulnerability:** Screened during combat but **can be destroyed** if no active Task Force defends them
+- **Requirements:** Fleet must be at a friendly colony with an operational Spaceport
+- **Best For:** Long-term storage of excess fleets, preserving ships during economic hardship, strategic reserves
+- **Note:** Ships remain in their fleet but are taken offline and stored in orbit around the Spaceport
+
+**Advantages:**
+- Zero maintenance cost (complete elimination of upkeep)
+- Preserve ships for future reactivation
+- Free up budget for other priorities
+
+**Disadvantages:**
+- Cannot fight at all (completely offline)
+- Vulnerable to destruction if colony attacked without defenders
+- Requires Spaceport infrastructure
+- Must be reactivated before use (takes an order)
+
+### Reactivating Fleets
+
+Fleets on reserve or mothballed status can be returned to active duty using the **Reactivate** order. Reactivation takes effect immediately and the fleet can receive new orders next turn.
+
+### Crippled Ships
+
+Ships in a crippled combat state (per [Section 7.1.2](operations.md#712-combat-state)) have reduced maintenance costs of 50% of their base upkeep regardless of fleet status. Damaged systems consume fewer resources but ships still require life support and basic operations. Crippled ships in reserve fleets pay 50% maintenance (not 25%).
+
+### Strategic Considerations
+
+**Reserve Fleets** are powerful economic tools often overlooked by new players:
+- A reserve fleet provides 50% defensive capability for 50% cost - excellent value
+- Ideal for protecting core worlds, backline colonies, or strategic chokepoints
+- Can quickly respond to local threats without expensive active fleets
+- Multiple colonies with reserve fleets create a layered defense network
+
+**Mothballed Fleets** offer maximum flexibility:
+- Store captured enemy ships until you can afford to crew them
+- Preserve obsolete units for emergency reinforcement
+- Build large fleets during peacetime, mothball during budget constraints
+- Maintain strategic reserves without bankrupting your economy
+
+**Warning:** The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
 
 For every turn that a player misses payment for maintenance they lose prestige points; refer to [Section 9.4](reference.md#94-prestige).
 

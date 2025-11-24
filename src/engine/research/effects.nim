@@ -68,7 +68,8 @@ proc getELIDetectionBonus*(eliLevel: int): int =
   ## Get detection bonus for scouts
   ## Per economy.md:4.8
   ##
-  ## TODO: Define proper ELI detection mechanics
+  ## NOTE: Full ELI detection system implemented in intelligence/detection.nim
+  ## This function returns basic level for simple calculations
   result = eliLevel
 
 proc getELICounterCloakBonus*(eliLevel: int): int =
@@ -77,22 +78,39 @@ proc getELICounterCloakBonus*(eliLevel: int): int =
 
 ## Terraforming Effects (economy.md:4.7)
 
-proc getTerraformingCost*(terLevel: int, planetClass: int): int =
-  ## Get cost to terraform planet
-  ## Higher TER = lower cost
+proc getTerraformingBaseCost*(currentClass: int): int =
+  ## Get base PP cost for terraforming to next class
+  ## Per economy.md Section 4.7 and config/tech.toml
   ##
-  ## TODO: Define proper terraforming costs
-  ## Placeholder
-  let baseCost = 1000
-  let reduction = float(terLevel) * 0.10
-  result = int(float(baseCost) * (1.0 - reduction))
+  ## Costs by target class:
+  ## Extreme (1) -> Desolate (2): 60 PP
+  ## Desolate (2) -> Hostile (3): 180 PP
+  ## Hostile (3) -> Harsh (4): 500 PP
+  ## Harsh (4) -> Benign (5): 1000 PP
+  ## Benign (5) -> Lush (6): 1500 PP
+  ## Lush (6) -> Eden (7): 2000 PP
+  case currentClass
+  of 1: 60    # Extreme -> Desolate
+  of 2: 180   # Desolate -> Hostile
+  of 3: 500   # Hostile -> Harsh
+  of 4: 1000  # Harsh -> Benign
+  of 5: 1500  # Benign -> Lush
+  of 6: 2000  # Lush -> Eden
+  else: 0     # Already Eden or invalid
 
 proc getTerraformingSpeed*(terLevel: int): int =
   ## Get turns required for terraforming
   ## Higher TER = faster terraforming
-  ##
-  ## TODO: Define proper terraforming speed
+  ## Per spec: 10 - TER_level turns (minimum 1)
   result = max(1, 10 - terLevel)
+
+proc canTerraform*(currentClass: int, terLevel: int): bool =
+  ## Check if colony can be terraformed with current TER level
+  ## Must have TER level equal to target class
+  let targetClass = currentClass + 1
+  if targetClass > 7:
+    return false  # Already Eden
+  return terLevel >= targetClass
 
 ## Cloaking Effects (economy.md:4.9)
 
@@ -100,7 +118,8 @@ proc getCloakingDetectionDifficulty*(clkLevel: int): int =
   ## Get detection difficulty for cloaked ships
   ## Higher CLK = harder to detect
   ##
-  ## TODO: Define proper cloaking mechanics
+  ## NOTE: Full cloaking system implemented in intelligence/detection.nim
+  ## Formula: d20 + ELI_total vs (10 + CLK_level)
   result = 10 + clkLevel
 
 ## Planetary Shields Effects (economy.md:4.10)

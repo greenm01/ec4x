@@ -20,14 +20,18 @@ proc resolvePhase1_Ambush*(
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
   rng: var CombatRNG,
-  desperationBonus: int = 0
+  desperationBonus: int = 0,
+  allowAmbush: bool = true,
+  allowStarbaseTargeting: bool = true
 ): RoundResult =
   ## Phase 1: Undetected Raiders attack with ambush bonus
   ## Section 7.3.1.1
   ##
   ## - Only undetected cloaked Raiders attack
-  ## - +4 CER modifier (+ desperation bonus if applicable)
+  ## - +4 CER modifier (+ desperation bonus if applicable) - only if allowAmbush=true
   ## - Simultaneous attacks within phase
+  ## - allowAmbush: If false, Raiders get initiative but NO +4 ambush bonus (orbital defense)
+  ## - allowStarbaseTargeting: If false, starbases are screened and cannot be targeted
 
   result = RoundResult(
     phase: CombatPhase.Ambush,
@@ -64,13 +68,15 @@ proc resolvePhase1_Ambush*(
       taskForces,
       diplomaticRelations,
       systemOwner,
-      rng
+      rng,
+      allowStarbaseTargeting
     )
 
     if targetId.isNone():
       continue
 
     # Roll for CER with ambush bonus (and desperation if applicable)
+    # Ambush bonus only applies if allowAmbush=true (space combat, not orbital)
     let cerRoll = rollCER(
       rng,
       CombatPhase.Ambush,
@@ -78,7 +84,7 @@ proc resolvePhase1_Ambush*(
       hasScouts = taskForces[tfIdx].scoutBonus,
       moraleModifier = taskForces[tfIdx].moraleModifier,
       isSurprise = (roundNumber == 1),
-      isAmbush = true,  # +4 bonus
+      isAmbush = allowAmbush,  # +4 bonus only in space combat
       desperationBonus = desperationBonus
     )
 
@@ -122,7 +128,8 @@ proc resolvePhase2_Fighters*(
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
   rng: var CombatRNG,
-  desperationBonus: int = 0  # Not used by fighters (no CER), but kept for consistency
+  desperationBonus: int = 0,  # Not used by fighters (no CER), but kept for consistency
+  allowStarbaseTargeting: bool = true
 ): RoundResult =
   ## Phase 2: All fighter squadrons attack simultaneously
   ## Section 7.3.1.2
@@ -131,6 +138,7 @@ proc resolvePhase2_Fighters*(
   ## - All fighters attack at once
   ## - Fighters have binary state (undamaged → destroyed, no crippled)
   ## - Note: desperationBonus does not apply to fighters (they always use full AS)
+  ## - allowStarbaseTargeting: If false, starbases are screened and cannot be targeted
 
   result = RoundResult(
     phase: CombatPhase.Intercept,
@@ -164,7 +172,8 @@ proc resolvePhase2_Fighters*(
       taskForces,
       diplomaticRelations,
       systemOwner,
-      rng
+      rng,
+      allowStarbaseTargeting
     )
 
     if targetId.isNone():
@@ -211,7 +220,8 @@ proc resolveCRTier(
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
   rng: var CombatRNG,
-  desperationBonus: int = 0
+  desperationBonus: int = 0,
+  allowStarbaseTargeting: bool = true
 ): RoundResult
 
 proc resolvePhase3_CapitalShips*(
@@ -220,7 +230,8 @@ proc resolvePhase3_CapitalShips*(
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
   rng: var CombatRNG,
-  desperationBonus: int = 0
+  desperationBonus: int = 0,
+  allowStarbaseCombat: bool = true
 ): RoundResult =
   ## Phase 3: Capital ships attack by CR order
   ## Section 7.3.1.3
@@ -228,6 +239,7 @@ proc resolvePhase3_CapitalShips*(
   ## - Attack order by flagship CR (highest first)
   ## - Simultaneous attacks within same CR tier
   ## - CER rolls per squadron (with desperation bonus if applicable)
+  ## - If allowStarbaseCombat=false, starbases are screened and cannot fight
 
   result = RoundResult(
     phase: CombatPhase.MainEngagement,
@@ -242,6 +254,10 @@ proc resolvePhase3_CapitalShips*(
 
   for tfIdx, tf in taskForces:
     for sqIdx, sq in tf.squadrons:
+      # Skip starbases if they're not allowed to fight (space combat screening)
+      if not allowStarbaseCombat and sq.bucket == TargetBucket.Starbase:
+        continue
+
       if sq.isAlive() and sq.bucket != TargetBucket.Fighter:
         let cr = sq.squadron.flagship.stats.commandRating
         capitals.add((tfIdx, sqIdx, cr))
@@ -260,7 +276,7 @@ proc resolvePhase3_CapitalShips*(
     if cap.cr != currentCR:
       # New CR tier - resolve previous tier first
       if crTier.len > 0:
-        let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
+        let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
         result.attacks.add(tierResult.attacks)
         result.stateChanges.add(tierResult.stateChanges)
 
@@ -272,7 +288,7 @@ proc resolvePhase3_CapitalShips*(
 
   # Resolve final tier
   if crTier.len > 0:
-    let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
+    let tierResult = resolveCRTier(crTier, taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
     result.attacks.add(tierResult.attacks)
     result.stateChanges.add(tierResult.stateChanges)
 
@@ -283,10 +299,12 @@ proc resolveCRTier(
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
   rng: var CombatRNG,
-  desperationBonus: int = 0
+  desperationBonus: int = 0,
+  allowStarbaseTargeting: bool = true
 ): RoundResult =
   ## Resolve all attacks for squadrons with same CR
   ## All attacks in tier are simultaneous
+  ## allowStarbaseTargeting: If false, starbases are screened and cannot be targeted
 
   result = RoundResult(
     phase: CombatPhase.MainEngagement,
@@ -310,7 +328,8 @@ proc resolveCRTier(
       taskForces,
       diplomaticRelations,
       systemOwner,
-      rng
+      rng,
+      allowStarbaseTargeting
     )
 
     if targetId.isNone():
@@ -369,28 +388,32 @@ proc resolveRound*(
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
   systemOwner: Option[HouseId],
   rng: var CombatRNG,
-  desperationBonus: int = 0  # Bonus CER modifier for desperation rounds
+  desperationBonus: int = 0,  # Bonus CER modifier for desperation rounds
+  allowAmbush: bool = true,   # If false, Raiders get initiative but NO +4 ambush bonus
+  allowStarbaseCombat: bool = true  # If false, starbases detect but don't fight
 ): seq[RoundResult] =
   ## Resolve complete combat round (all 3 phases)
   ## Returns results from each phase
   ##
   ## desperationBonus: Additional CER modifier applied when combat stalls
   ## (both sides gain this bonus for one final attack attempt)
+  ## allowAmbush: If false, undetected Raiders attack in Phase 1 but without +4 CER bonus (orbital combat)
+  ## allowStarbaseCombat: If false, starbases participate in detection but are screened from combat (space combat)
 
   result = @[]
 
   # Phase 1: Undetected Raiders (Ambush)
-  let phase1 = resolvePhase1_Ambush(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
+  let phase1 = resolvePhase1_Ambush(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowAmbush, allowStarbaseCombat)
   if phase1.attacks.len > 0:
     result.add(phase1)
 
   # Phase 2: Fighter Squadrons (Intercept)
-  let phase2 = resolvePhase2_Fighters(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
+  let phase2 = resolvePhase2_Fighters(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
   if phase2.attacks.len > 0:
     result.add(phase2)
 
   # Phase 3: Capital Ships (Main Engagement)
-  let phase3 = resolvePhase3_CapitalShips(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus)
+  let phase3 = resolvePhase3_CapitalShips(taskForces, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
   if phase3.attacks.len > 0:
     result.add(phase3)
 

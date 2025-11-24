@@ -11,25 +11,39 @@ import std/tables
 import types
 import ../../common/types/[core, units]
 import ../config/[ships_config, construction_config, facilities_config, ground_units_config]
-import ../squadron, ../gamestate
+import ../squadron, ../gamestate, ../fleet
 
 export types.MaintenanceReport
 export gamestate.Colony
+export fleet.FleetStatus
 
 ## Ship Maintenance Costs (economy.md:3.9)
 
-proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool): int =
+proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool, fleetStatus: FleetStatus = FleetStatus.Active): int =
   ## Get maintenance cost for ship per turn
   ## Per economy.md:3.9 and ships.toml upkeep_cost field
   ##
   ## Uses actual upkeep values from ships.toml config
+  ## Crippled maintenance multiplier: combat.toml [damage_rules] crippled_maintenance_multiplier = 0.5
+  ## Fleet status modifiers:
+  ##   - Active: 100% maintenance (or 50% if crippled)
+  ##   - Reserve: 50% maintenance
+  ##   - Mothballed: 0% maintenance
 
   let stats = getShipStats(shipClass)
   let baseCost = stats.upkeepCost
 
-  # Crippled ships cost 50% more to maintain
+  # Mothballed ships have zero maintenance
+  if fleetStatus == FleetStatus.Mothballed:
+    return 0
+
+  # Reserve ships cost half to maintain
+  if fleetStatus == FleetStatus.Reserve:
+    return baseCost div 2
+
+  # Active ships: full cost unless crippled
   if isCrippled:
-    return baseCost + (baseCost div 2)
+    return baseCost div 2  # TODO: Load from combat.toml instead of hardcoding
   else:
     return baseCost
 
