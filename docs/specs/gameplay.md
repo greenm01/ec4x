@@ -103,6 +103,8 @@ Player databases will be updated and customized reports issued for each player. 
 
 ### 1.4.1 Prestige Failure (Defensive Collapse)
 
+⚠️ *AI BEHAVIOR NOT YET IMPLEMENTED - Elimination tracking functional, AI autopilot pending*
+
 If a House's prestige drops and stays below zero for three consecutive turns, the empire enters **Defensive Collapse** and the player is permanently eliminated.
 
 **Defensive Collapse Behavior:**
@@ -117,6 +119,8 @@ If a House's prestige drops and stays below zero for three consecutive turns, th
 The collapsed empire remains on the map as a defensive AI target. Other players can conquer colonies and destroy fleets for prestige as normal. Defensive Collapse is permanent - eliminated players cannot rejoin the game.
 
 ### 1.4.2 MIA Autopilot
+
+⚠️ *NOT YET IMPLEMENTED - Turn tracking functional, AI behavior pending*
 
 If a player fails to submit orders for three consecutive turns, the empire automatically enters **Autopilot** mode. Unlike Defensive Collapse, autopilot is temporary and allows the player to rejoin at any time.
 
