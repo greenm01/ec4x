@@ -423,7 +423,7 @@ The player receives a 20% reduction in TRP cost for the next technology upgrade,
    
 The player automatically advances the next SL or EL by 1 level, skipping the usual SRP or ERP cost. This represents a significant leap in understanding, allowing rapid progression in core economic or scientific capabilities.
 
-**Revolutionary Discovery (9)**:
+**Revolutionary Discovery (9)**: ⚠️ *NOT YET IMPLEMENTED - Documented for future development*
 - **Quantum Computing**: Permanently increases EL_MOD by 10%.
 - **Advanced Stealth Systems**: Grants Raiders an additional +2 detection difficulty.
 - **Terraforming Nexus**: Increases colony growth rate by an additional 2% per turn.
