@@ -4,7 +4,18 @@
 **Project Phase:** Phase 2 - Balance Testing COMPLETE
 **Test Coverage:** 91+ integration tests passing
 **Engine Status:** 100% functional with dynamic prestige scaling
+**Config Status:** ✅ **CLEAN** - Comprehensive audit complete ([see CONFIG_AUDIT.md](CONFIG_AUDIT.md))
+
 **Recent:**
+- ✅ **CRITICAL: Fixed tech field naming confusion (SL vs SLD, EL vs energy)**
+  - Corrected ShieldLevel → ScienceLevel throughout codebase
+  - Added missing tech fields (CLK, SLD, FD, ACO)
+  - All 11 tech fields now properly defined
+- ✅ **Config audit complete** - All config files verified clean
+  - 200+ "unused" fields are actually used by spec sync system
+  - Single source of truth architecture validated
+  - No cleanup needed - system working as designed
+- ✅ **Spec documentation enhanced** - Added NOT YET IMPLEMENTED markers
 - ✅ **MAJOR: Implemented dynamic prestige scaling system**
   - Fixed production bottleneck (5M → 100M homeworld population)
   - 10x base prestige values (optimized for small maps)
@@ -13,7 +24,6 @@
   - Perfect 4-act pacing: 30 turns (small), 40-50 turns (medium), 60-80 turns (large)
 - ✅ Completed AI Phase 2/3 strategic improvements (intelligence + fleet coordination)
 - ✅ Phase 2 balance testing complete across all map sizes
-- ✅ Added map size parameter to balance testing infrastructure
 
 ---
 
@@ -390,6 +400,72 @@ EC4X is a turn-based 4X space strategy game built in Nim. The project follows NE
 - ✅ Integration with diplomacy engine
 
 **Files:** `src/engine/orders.nim`, `src/engine/resolve.nim` (lines 457-567)
+
+---
+
+## ⚠️ Not Yet Implemented Features
+
+These features are **documented in specs** and **configured in TOML files**, but the engine implementation is pending. All features below have complete specifications and config values ready.
+
+### 1. AI Autopilot Behavior
+**Status:** ⚠️ NOT YET IMPLEMENTED
+**Priority:** Medium
+**Spec Location:** docs/specs/gameplay.md Section 1.4.2
+
+**What's Done:**
+- ✅ Turn tracking for missed orders
+- ✅ Config values in config/gameplay.toml
+- ✅ Complete spec documentation
+
+**What's Pending:**
+- ❌ AI decision-making for autopilot empires
+- ❌ Standing order execution
+- ❌ Defensive construction priorities
+- ❌ Patrol and defense logic
+
+**Files Affected:** src/engine/resolve.nim (AI behavior), src/engine/ai/ (new autopilot module)
+
+---
+
+### 2. Defensive Collapse AI Behavior
+**Status:** ⚠️ PARTIAL - Elimination tracking complete, AI behavior pending
+**Priority:** Medium
+**Spec Location:** docs/specs/gameplay.md Section 1.4.1
+
+**What's Done:**
+- ✅ Prestige tracking and elimination detection
+- ✅ Config values in config/gameplay.toml
+- ✅ Complete spec documentation
+- ✅ House.eliminated flag
+
+**What's Pending:**
+- ❌ Fleet retreat to home systems
+- ❌ Defensive-only AI behavior
+- ❌ Economy shutdown (no income/R&D)
+- ❌ Diplomatic status freeze
+
+**Files Affected:** src/engine/resolve.nim (defensive AI)
+
+---
+
+### 3. Revolutionary Tech Breakthrough Effects
+**Status:** ⚠️ PARTIAL - Roll system complete, effect application pending
+**Priority:** Low
+**Spec Location:** docs/specs/economy.md Section 4.1.1
+
+**What's Done:**
+- ✅ Breakthrough roll system (Minor/Moderate/Major/Revolutionary)
+- ✅ Config values in config/economy.toml
+- ✅ Complete spec documentation
+- ✅ Revolutionary tech enum defined
+
+**What's Pending:**
+- ❌ Quantum Computing: +10% EL_MOD permanently
+- ❌ Advanced Stealth: +2 Raider detection difficulty
+- ❌ Terraforming Nexus: +2% colony growth
+- ❌ Experimental Propulsion: Crippled ships cross restricted lanes
+
+**Files Affected:** src/engine/research/advancement.nim (revolutionary effects)
 
 ---
 
