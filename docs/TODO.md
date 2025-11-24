@@ -451,6 +451,10 @@ Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
 
 #### 4. Incorporate gap analyses into plan: ec4x/docs/architecture/2025-11-24-grok_EC4X_Bootstrap_Gap_Analysis.md
 
+#### 5. Remove old LLM related files and folders from project
+
+#### 6. Remove and exclude json files from repo and db if possible.
+
 ### General Notes
 
 **Design Philosophy:**
