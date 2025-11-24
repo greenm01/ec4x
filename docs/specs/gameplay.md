@@ -22,7 +22,7 @@ Players start the game with 50 prestige points.
 
 If a House's prestige drops and stays below zero for three consecutive turns, the empire enters Defensive Collapse and the player is permanently eliminated. See [Section 1.4](#14-player-elimination--autopilot) for full elimination and autopilot mechanics.
 
-**Dynamic Prestige Scaling:** All prestige awards and penalties are dynamically scaled based on map size and player count to ensure game length matches the strategic depth of the map. Larger maps with more territory to conquer result in longer games with proportionally lower prestige multipliers, while smaller maps accelerate prestige accumulation for faster-paced games. Base prestige values and scaling formulas are documented in [Section 9.4](reference.md#94-prestige).
+**Dynamic Prestige Scaling:** All prestige awards and penalties are dynamically scaled based on map size and player count. Small maps (8-10 systems per player) use the baseline 5x multiplier for ~30 turn games. Larger maps scale DOWN from this baseline - medium maps use 3-4x multipliers (~40-50 turns), and large maps use 2-2.5x multipliers (~60-80 turns). This ensures game length naturally matches the amount of territory to conquer while maintaining the same 5000 prestige victory threshold. See [Section 9.4](reference.md#94-prestige) for detailed formulas.
 
 ## 1.2 Game Setup
 
