@@ -47,7 +47,8 @@ advanced_carrier_ops = 1            # ACO I (starts at level 1, CV=3FS CX=5FS)
 
 [starting_fleet]
 # Initial fleet composition per gameplay.md:37
-etac = 1                            # 1 ETAC (fully loaded)
+# ACCELERATION: Increased ETACs for 30-turn multi-generational timeline
+etac = 5                            # 5 ETACs (fully loaded) - enables aggressive parallel colonization
 light_cruiser = 1                   # 1 Light Cruiser
 destroyer = 2                       # 2 Destroyers
 scout = 2                           # 2 Scouts
