@@ -58,6 +58,7 @@ type
 
   DamageRulesConfig* = object
     crippled_as_multiplier*: float
+    crippled_maintenance_multiplier*: float
     squadron_fights_as_unit*: bool
     destroy_after_all_crippled*: bool
 
