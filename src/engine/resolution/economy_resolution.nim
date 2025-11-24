@@ -52,8 +52,9 @@ import ../colonization/engine as col_engine
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony
 
-# Forward declaration
+# Forward declarations
 proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
+proc autoLoadFightersToCarriers(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
 
 proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process construction orders for a house
@@ -921,7 +922,7 @@ proc processTerraformingProjects(state: var GameState, events: var seq[GameEvent
       # Update project
       colony.activeTerraforming = some(project)
 
-proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent]) =
+proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], orders: Table[HouseId, OrderPacket]) =
   ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
   echo "  [Maintenance Phase]"
 
@@ -1039,9 +1040,16 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent]) 
         )
 
         colony.fighterSquadrons.add(fighterSq)
-        state.colonies[completed.colonyId] = colony
 
         echo "      Commissioned fighter squadron ", fighterSq.id, " at ", completed.colonyId
+
+        # Auto-load fighters to carriers: Complete the fighter production pipeline
+        # Fighter → Colony → Carrier (if available carriers exist at colony)
+        # This prevents newly-commissioned fighters from sitting idle when carriers need them
+        if colony.autoAssignFleets:
+          autoLoadFightersToCarriers(state, colony, completed.colonyId, orders)
+
+        state.colonies[completed.colonyId] = colony
 
         # Generate event
         events.add(GameEvent(
@@ -2100,3 +2108,92 @@ proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Co
       fleet.squadrons.add(squadron)
       colony.unassignedSquadrons.delete(0)
     state.fleets[fleetId] = fleet
+
+proc autoLoadFightersToCarriers(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
+  ## Auto-load colony-based fighters onto available carriers at colony
+  ##
+  ## **Purpose:** When fighters are commissioned or released from carrier ownership,
+  ## automatically load them onto available carriers rather than leaving them at the colony.
+  ##
+  ## **Behavior:**
+  ## 1. Find Active carriers at colony with available hangar capacity
+  ## 2. Only consider stationary carriers (Hold orders or no orders)
+  ## 3. Load fighters onto carriers until capacity is reached
+  ## 4. Fighters remain at colony if no suitable carriers available
+  ##
+  ## **Carrier Requirements:**
+  ## - Must be `FleetStatus.Active` (excludes Reserve/Mothballed)
+  ## - Must have available hangar space (based on ACO tech level)
+  ## - Must be stationary (Hold orders or no movement orders)
+  ## - Must be at the colony location
+  ##
+  ## **Why This Matters:**
+  ## Empty carriers represent wasted operational capacity. Auto-loading ensures
+  ## carriers maintain their tactical effectiveness without requiring manual
+  ## micromanagement. This is especially important for:
+  ## - Newly commissioned fighters going directly to defense fleets
+  ## - Fighters released after carrier capacity violations
+  ## - Maintaining carrier readiness at defensive positions
+  if colony.fighterSquadrons.len == 0:
+    return
+
+  # Get house's ACO tech level for carrier capacity calculation
+  let house = state.houses.getOrDefault(colony.owner)
+  let acoLevel = house.techTree.levels.advancedCarrierOps
+
+  # Find all Active carriers at colony with available capacity
+  var candidateCarriers: seq[tuple[fleetId: FleetId, squadronIdx: int]] = @[]
+
+  for fleetId, fleet in state.fleets:
+    if fleet.owner == colony.owner and fleet.location == systemId:
+      # Only consider Active fleets
+      if fleet.status != FleetStatus.Active:
+        continue
+
+      # Check if fleet has stationary orders (Hold or no orders)
+      var isStationary = true
+      if colony.owner in orders:
+        for order in orders[colony.owner].fleetOrders:
+          if order.fleetId == fleetId:
+            # Fleet has orders - only stationary if Hold
+            if order.orderType != FleetOrderType.Hold:
+              isStationary = false
+            break
+
+      if not isStationary:
+        continue
+
+      # Find carrier squadrons with available capacity
+      for idx, squadron in fleet.squadrons:
+        if squadron.flagship.shipClass == ShipClass.Carrier:
+          if squadron.hasAvailableHangarSpace(acoLevel):
+            candidateCarriers.add((fleetId, idx))
+
+  if candidateCarriers.len == 0:
+    return
+
+  # Load fighters onto carriers with available space
+  var loadedCount = 0
+  for carrier in candidateCarriers:
+    if colony.fighterSquadrons.len == 0:
+      break
+
+    var fleet = state.fleets[carrier.fleetId]
+    var squadron = fleet.squadrons[carrier.squadronIdx]
+
+    # Load fighters until carrier is full
+    while squadron.hasAvailableHangarSpace(acoLevel) and colony.fighterSquadrons.len > 0:
+      let fighter = colony.fighterSquadrons[0]
+      squadron.embarkedFighters.add(CarrierFighter(
+        id: fighter.id,
+        commissionedTurn: fighter.commissionedTurn
+      ))
+      colony.fighterSquadrons.delete(0)
+      loadedCount += 1
+
+    # Update squadron and fleet in state
+    fleet.squadrons[carrier.squadronIdx] = squadron
+    state.fleets[carrier.fleetId] = fleet
+
+  if loadedCount > 0:
+    echo "    Auto-loaded ", loadedCount, " fighters to carriers at ", systemId
