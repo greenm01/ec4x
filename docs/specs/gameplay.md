@@ -24,7 +24,7 @@ If a House's prestige drops and stays below zero for three consecutive turns, th
 
 ### Dynamic Prestige Scaling
 
-**The Problem:** Victory requires 5000 prestige. If prestige awards are fixed, small maps finish too fast and large maps take forever.
+**The Problem:** Victory requires 2500 prestige. If prestige awards are fixed, small maps finish too fast and large maps take forever.
 
 **The Solution:** Prestige awards automatically adjust based on map size.
 
@@ -32,9 +32,9 @@ If a House's prestige drops and stays below zero for three consecutive turns, th
 - **Small maps** (8-10 systems per player): You get the **full** prestige values listed in the tables → games last ~30 turns
 - **Large maps** (30+ systems per player): You get **less** prestige per action (automatically scaled down) → games last ~60-80 turns
 
-**Why?** More territory = more turns needed to conquer everything. Lower prestige per action means you need more victories to hit 5000, which perfectly matches the longer conquest time.
+**Why?** More territory = more turns needed to conquer everything. Lower prestige per action means you need more victories to hit 2500, which perfectly matches the longer conquest time.
 
-**Example:** On a small map, colonizing a planet gives you 25 prestige. On a large map, the same action might only give 8 prestige. This way, both maps reach 5000 prestige around the time all territory is conquered.
+**Example:** On a small map, colonizing a planet gives you 50 prestige. On a large map, the same action might only give 20 prestige. This way, both maps reach 2500 prestige around the time all territory is conquered.
 
 **For Players:** You don't need to do anything - the game calculates this automatically when the map is created. Just know that larger maps = longer campaigns!
 
@@ -50,7 +50,7 @@ Communicating with other players over email or in a dedicated chat room is recom
 
 Generate a star-map as described in [Section 2.1](assets.md#21-star-map) for the selected number of players. Resources will be provided in the GitHub repo to spawn a map.
 
-Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 420 production points (PP) in the treasury, one spaceport, one shipyard, one fully loaded ETAC, a Light Cruiser, two Destroyers, and two Scouts. The tax rate is set to 50% by default.
+Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 1000 production points (PP) in the treasury, one spaceport, one shipyard, two fully loaded ETAC, 2 Light Cruiser, two Destroyers, and 0 Scouts. The tax rate is set to 50% by default.
 
 **All technology levels start at level 1** (EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I). See [Section 4.0](economy.md#40-research--development) for complete starting tech details and effects, and [Section 9.11](reference.md#911-technology-research) for tech advancement tables.
 
@@ -140,7 +140,7 @@ When the player returns and submits new orders, the empire immediately exits aut
 
 ### 1.4.3 Victory Conditions
 
-Victory is achieved by reaching a prestige threshold or by being the last active player in the game.
+Victory is achieved by reaching 2500 prestige or by being the last active player in the game.
 
 - **Active Players**: Players submitting orders (not in autopilot or defensive collapse)
 - **Autopilot Players**: Count as active and can return to win

@@ -142,11 +142,11 @@ Investing in Industrial Units (IU) increases the manufacturing capacity of a col
 <!-- IU_INVESTMENT_TABLE_START -->
 | IU Investment (% of PU) | Cost Multiplier | PP  |
 | ----------------------- |:---------------:|:---:|
-| Up to 50%               | 1.0             | 30  |
-| 51% - 75%               | 1.2             | 36  |
-| 76% - 100%              | 1.5             | 45  |
-| 101% - 150%             | 2.0             | 60  |
-| 151% and above          | 2.5             | 75  |
+| Up to 50%               | 1.0             | 15  |
+| 51% - 75%               | 1.2             | 18  |
+| 76% - 100%              | 1.5             | 23  |
+| 101% - 150%             | 2.0             | 30  |
+| 151% and above          | 2.5             | 38  |
 
 *Source: config/economy.toml [industrial_investment] section*
 <!-- IU_INVESTMENT_TABLE_END -->
@@ -319,10 +319,10 @@ Missing full upkeep (i.e., any forced disbanding or asset stripping occurs) trig
 <!-- MAINTENANCE_SHORTFALL_TABLE_START -->
 | Consecutive Turns of Missed Full Upkeep | Prestige Loss This Turn | Cumulative Example |
 |-----------------------------------------|-------------------------|--------------------|
-| 1st turn                                |                      -5 |                 -5 |
-| 2nd consecutive turn                    |                      -7 |                -12 |
-| 3rd consecutive turn                    |                      -9 |                -21 |
-| 4th+ consecutive turn                   |                     -11 per turn | –32, –43, etc.       |
+| 1st turn                                |                      -8 |                 -8 |
+| 2nd consecutive turn                    |                     -11 |                -19 |
+| 3rd consecutive turn                    |                     -14 |                -33 |
+| 4th+ consecutive turn                   |                     -17 per turn | –50, –67, etc.       |
 
 *Source: config/prestige.toml [penalties] section*
 <!-- MAINTENANCE_SHORTFALL_TABLE_END -->
@@ -464,17 +464,17 @@ After EL5 the cost increases linearly by 15 points per EL level.
 <!-- ECONOMIC_LEVEL_TABLE_START -->
 | EL  | ERP Cost | EL MOD |
 |:---:|:--------:|:------:|
-| 01 | 50       | 0.05   |
-| 02 | 60       | 0.10   |
-| 03 | 70       | 0.15   |
-| 04 | 80       | 0.20   |
-| 05 | 90       | 0.25   |
-| 06 | 105      | 0.30   |
-| 07 | 120      | 0.35   |
-| 08 | 135      | 0.40   |
-| 09 | 150      | 0.45   |
-| 10 | 165      | 0.50   |
-| 11+ | 180+     | 0.50   |
+| 01 | 25       | 0.05   |
+| 02 | 30       | 0.10   |
+| 03 | 35       | 0.15   |
+| 04 | 40       | 0.20   |
+| 05 | 45       | 0.25   |
+| 06 | 52       | 0.30   |
+| 07 | 60       | 0.35   |
+| 08 | 67       | 0.40   |
+| 09 | 75       | 0.45   |
+| 10 | 82       | 0.50   |
+| 11+ | 90+      | 0.50   |
 
 *Source: config/tech.toml [economic_level] section*
 <!-- ECONOMIC_LEVEL_TABLE_END -->
@@ -508,14 +508,14 @@ After SL5, the cost increases linearly by 10 per level.
 <!-- SCIENCE_LEVEL_TABLE_START -->
 | SL  | SRP Cost |
 |:---:|:--------:|
-| 01 | 25       |
-| 02 | 30       |
-| 03 | 35       |
-| 04 | 40       |
-| 05 | 45       |
-| 06 | 55       |
-| 07 | 65       |
-| 08+ | 75+      |
+| 01 | 12       |
+| 02 | 15       |
+| 03 | 17       |
+| 04 | 20       |
+| 05 | 22       |
+| 06 | 27       |
+| 07 | 32       |
+| 08+ | 37+      |
 
 *Source: config/tech.toml [science_level] section*
 <!-- SCIENCE_LEVEL_TABLE_END -->
@@ -562,11 +562,11 @@ CST will open up new, larger hulled classes of combat ships.
 <!-- CST_TABLE_START -->
 | CONSTRUCTION_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| CST1      | 1   | 25       |
-| CST2      | 2   | 30       |
-| CST3      | 3   | 35       |
-| CST4      | 4   | 40       |
-| CST5+     | 5   | \*45     |
+| CST1      | 1   | 12       |
+| CST2      | 2   | 15       |
+| CST3      | 3   | 17       |
+| CST4      | 4   | 20       |
+| CST5+     | 5   | \*22     |
 
 *Source: config/tech.toml [construction_tech] section*
 <!-- CST_TABLE_END -->
@@ -595,11 +595,11 @@ Upgrades do not apply to preexisting ships; only new ships.
 <!-- WEP_TABLE_START -->
 | WEAPONS_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| WEP1      | 1   | 25       |
-| WEP2      | 2   | 30       |
-| WEP3      | 3   | 35       |
-| WEP4      | 4   | 40       |
-| WEP5+     | 5   | \*45     |
+| WEP1      | 1   | 12       |
+| WEP2      | 2   | 15       |
+| WEP3      | 3   | 17       |
+| WEP4      | 4   | 20       |
+| WEP5+     | 5   | \*22     |
 
 *Source: config/tech.toml [weapons_tech] section*
 <!-- WEP_TABLE_END -->
@@ -613,13 +613,13 @@ Terraforming improve a planet's livable conditions, and thus the population limi
 <!-- TER_TABLE_START -->
 | TERRAFORMING_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| TER1      | 1   | 25       |
-| TER2      | 2   | 30       |
-| TER3      | 3   | 35       |
-| TER4      | 4   | 40       |
-| TER5      | 5   | 45       |
-| TER6      | 6   | 50       |
-| TER7      | 7   | 55       |
+| TER1      | 1   | 12       |
+| TER2      | 2   | 15       |
+| TER3      | 3   | 17       |
+| TER4      | 4   | 20       |
+| TER5      | 5   | 22       |
+| TER6      | 6   | 25       |
+| TER7      | 7   | 27       |
 
 *Source: config/tech.toml [terraforming_tech] section*
 <!-- TER_TABLE_END -->
@@ -653,11 +653,11 @@ Upgrades do not apply to preexisting Starbases and Scouts.
 <!-- ELI_TABLE_START -->
 | ELECTRONIC_INTELLIGENCE Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| ELI1      | 1   | 25       |
-| ELI2      | 2   | 30       |
-| ELI3      | 3   | 35       |
-| ELI4      | 4   | 40       |
-| ELI5      | 5   | 45       |
+| ELI1      | 1   | 12       |
+| ELI2      | 2   | 15       |
+| ELI3      | 3   | 17       |
+| ELI4      | 4   | 20       |
+| ELI5      | 5   | 22       |
 
 *Source: config/tech.toml [electronic_intelligence] section*
 <!-- ELI_TABLE_END -->
@@ -673,11 +673,11 @@ Upgrades do not apply to preexisting Raiders.
 <!-- CLK_TABLE_START -->
 | CLOAKING_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| CLK1      | 3   | 35       |
-| CLK2      | 4   | 40       |
-| CLK3      | 5   | 45       |
-| CLK4      | 6   | 50       |
-| CLK5      | 7   | 55       |
+| CLK1      | 3   | 17       |
+| CLK2      | 4   | 20       |
+| CLK3      | 5   | 22       |
+| CLK4      | 6   | 25       |
+| CLK5      | 7   | 27       |
 
 *Source: config/tech.toml [cloaking_tech] section*
 <!-- CLK_TABLE_END -->
@@ -693,11 +693,11 @@ Upgrades do not apply to preexisting shields. Salvage and build a new one.
 <!-- SLD_TABLE_START -->
 | SHIELD_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| SLD1      | 3   | 35       |
-| SLD2      | 4   | 40       |
-| SLD3      | 5   | 45       |
-| SLD4      | 6   | 50       |
-| SLD5      | 7   | 55       |
+| SLD1      | 3   | 17       |
+| SLD2      | 4   | 20       |
+| SLD3      | 5   | 22       |
+| SLD4      | 6   | 25       |
+| SLD5      | 7   | 27       |
 
 *Source: config/tech.toml [shield_tech] section*
 <!-- SLD_TABLE_END -->
@@ -711,11 +711,11 @@ The CIC enhances security measures to shield the House from espionage threats po
 <!-- CIC_TABLE_START -->
 | COUNTER_INTELLIGENCE_TECH Level | SL  | TRP Cost |
 |:---------:|:---:| -------- |
-| CIC1      | 1   | 25       |
-| CIC2      | 2   | 30       |
-| CIC3      | 3   | 35       |
-| CIC4      | 4   | 40       |
-| CIC5      | 5   | 45       |
+| CIC1      | 1   | 12       |
+| CIC2      | 2   | 15       |
+| CIC3      | 3   | 17       |
+| CIC4      | 4   | 20       |
+| CIC5      | 5   | 22       |
 
 *Source: config/tech.toml [counter_intelligence_tech] section*
 <!-- CIC_TABLE_END -->
@@ -732,8 +732,8 @@ Fighter Doctrine represents advancements in tactical coordination, pilot trainin
 | Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier |
 |:----------:|--------------|:--------:|:-----------:|:-------------------:|
 | FD I       | None         | N/A      | 1           | 1.0x                |
-| FD II      | FD I         | 30       | 2           | 1.5x                |
-| FD III     | FD II        | 35       | 3           | 2.0x                |
+| FD II      | FD I         | 15       | 2           | 1.5x                |
+| FD III     | FD II        | 17       | 3           | 2.0x                |
 
 *Source: config/tech.toml [fighter_doctrine] section*
 <!-- FD_TABLE_END -->
@@ -770,8 +770,8 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater fighte
 | Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity |
 |:----------:|--------------|:--------:|:-----------:|:-----------:|:-----------:|
 | ACO I      | None         | N/A      | 1           | 3 FS        | 5 FS        |
-| ACO II     | ACO I        | 40       | 4           | 4 FS        | 6 FS        |
-| ACO III    | ACO II       | 45       | 5           | 5 FS        | 8 FS        |
+| ACO II     | ACO I        | 20       | 4           | 4 FS        | 6 FS        |
+| ACO III    | ACO II       | 22       | 5           | 5 FS        | 8 FS        |
 
 *Source: config/tech.toml [advanced_carrier_operations] section*
 <!-- ACO_TABLE_END -->
