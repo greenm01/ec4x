@@ -7,6 +7,12 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete ([see CONFIG_AUDIT.md](CONFIG_AUDIT.md))
 
 **Recent:**
+- ✅ **NEW: Refactored resolve.nim into modular architecture (2025-11-24)**
+  - Split 4,102 line monolith into 5 focused modules (89.7% reduction in main orchestrator)
+  - Created resolution/ subdirectory: types, fleet_orders, combat_resolution, economy_resolution, diplomatic_resolution
+  - All 101 integration tests passing ✅
+  - Improved maintainability and code organization
+  - See "Code Organization & Refactoring" section for details
 - ✅ **NEW: Automated Seek Home (Order 02) Implementation**
   - Pre-order execution retreat (strategic): ETAC, guard, blockade, patrol orders
   - Post-combat retreat (tactical): ROE-based tactical withdrawal auto-assigns Seek Home
@@ -514,42 +520,53 @@ These features are **documented in specs** and **configured in TOML files**, but
 ## 📋 Code Health Issues
 
 ### Code Organization & Refactoring
-**Status:** ⚠️ Needs Attention
-**Priority:** Medium
+**Status:** ✅ **COMPLETE** (resolve.nim refactored 2025-11-24)
+**Priority:** ~~Medium~~ DONE
 
-**Issue:** Core engine files growing too large for maintainability:
-- `src/engine/resolve.nim` - 4,102 lines (47 procs)
-- `tests/balance/*.nim` - ~10,691 total lines
-
-**Recommended Refactoring:**
+**Completed Refactoring (2025-11-24):**
 
 **resolve.nim → Modular Resolution System:**
 ```
 src/engine/
-├── resolve.nim              # Main orchestrator (~400 lines)
+├── resolve.nim              # Main orchestrator (424 lines) ✅ 89.7% reduction from 4,102 lines
 │   └── resolveTurn() - coordinates phases
 ├── resolution/
-│   ├── fleet_orders.nim     # Fleet movement, patrol, colonize (~800 lines)
-│   │   ├── resolveMovementOrder()
-│   │   ├── resolvePatrolOrder()
-│   │   ├── resolveColonizeOrder()
+│   ├── types.nim            # Common resolution types (25 lines) ✅
+│   ├── fleet_orders.nim     # Fleet movement, colonization, seek home (371 lines) ✅
 │   │   ├── findClosestOwnedColony()
 │   │   ├── isSystemHostile()
-│   │   └── shouldAutoSeekHome()
-│   ├── combat_resolution.nim # Battle resolution, retreat logic (~1200 lines)
-│   │   ├── resolveSpaceBattles()
-│   │   ├── resolveOrbitalBombardment()
-│   │   ├── resolveGroundInvasions()
-│   │   └── Post-combat retreat processing
-│   ├── economy_resolution.nim # Income, construction, maintenance (~600 lines)
-│   │   ├── Colony production calculations
-│   │   ├── Construction processing
-│   │   ├── Maintenance costs
-│   │   └── Treasury updates
-│   └── diplomatic_resolution.nim # Treaty processing, relations (~300 lines)
+│   │   ├── shouldAutoSeekHome()
+│   │   ├── resolveMovementOrder()
+│   │   ├── resolveColonizationOrder()
+│   │   └── autoLoadCargo()
+│   ├── combat_resolution.nim # Battle, bombardment, invasion, blitz (1,097 lines) ✅
+│   │   ├── resolveBattle()
+│   │   ├── resolveBombardment()
+│   │   ├── resolveInvasion()
+│   │   ├── resolveBlitz()
+│   │   └── executeCombat()
+│   ├── economy_resolution.nim # Income, construction, maintenance (2,029 lines) ✅
+│   │   ├── resolveIncomePhase()
+│   │   ├── resolveMaintenancePhase()
+│   │   ├── resolveBuildOrders()
+│   │   ├── resolveSquadronManagement()
+│   │   ├── resolveCargoManagement()
+│   │   ├── resolveTerraformOrders()
+│   │   ├── resolvePopulationTransfers()
+│   │   └── resolvePopulationArrivals()
+│   └── diplomatic_resolution.nim # Diplomatic actions (221 lines) ✅
+│       └── resolveDiplomaticActions()
 ```
 
-**Balance Tests → Modular Simulation System:**
+**Results:**
+- **Main orchestrator:** 424 lines (from 4,102) - 89.7% reduction ✅
+- **Modular structure:** 5 focused modules with clear responsibilities ✅
+- **All 101 integration tests passing** ✅
+- **Compilation successful:** nimble build works ✅
+- **Backward compatibility:** All exports maintained ✅
+
+**Balance Tests Refactoring:**
+**Status:** ⏳ Not yet started (tests work but could be modularized)
 ```
 tests/balance/
 ├── runner.nim           # Main simulation loop
@@ -558,12 +575,12 @@ tests/balance/
 └── metrics.nim          # Prestige tracking, win conditions
 ```
 
-**Benefits:**
-- **Maintainability:** Easier to locate specific mechanics
-- **Cognitive Load:** Smaller files, clearer boundaries
-- **Code Reviews:** Changes isolated to specific modules
-- **Parallel Development:** Multiple systems can be modified independently
-- **Testing:** More granular test coverage per module
+**Benefits Achieved:**
+- ✅ **Maintainability:** Easier to locate specific mechanics
+- ✅ **Cognitive Load:** Smaller files (avg 600 lines vs 4,102), clearer boundaries
+- ✅ **Code Reviews:** Changes isolated to specific modules
+- ✅ **Parallel Development:** Multiple systems can be modified independently
+- ✅ **Testing:** More granular test coverage per module possible
 
 ---
 
