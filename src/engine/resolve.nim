@@ -79,6 +79,9 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
                   combatReports: var seq[CombatReport], events: var seq[GameEvent])
 proc resolveBombardment(state: var GameState, houseId: HouseId, order: FleetOrder,
                        events: var seq[GameEvent])
+proc findClosestOwnedColony(state: GameState, fromSystem: SystemId, houseId: HouseId): Option[SystemId]
+proc isSystemHostile(state: GameState, systemId: SystemId, houseId: HouseId): bool
+proc shouldAutoSeekHome(state: GameState, fleet: Fleet, order: FleetOrder): bool
 
 ## Main Turn Resolution
 
@@ -1020,24 +1023,60 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
   # Execute all fleet orders through the new executor
   for (houseId, order) in allFleetOrders:
-    let result = executeFleetOrder(state, houseId, order)
+    # Check if fleet should automatically seek home due to dangerous situation
+    let fleetOpt = state.getFleet(order.fleetId)
+    var actualOrder = order
+
+    if fleetOpt.isSome:
+      let fleet = fleetOpt.get()
+      if shouldAutoSeekHome(state, fleet, order):
+        # Override order with automated Seek Home
+        let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
+        if safeDestination.isSome:
+          actualOrder = FleetOrder(
+            fleetId: order.fleetId,
+            orderType: FleetOrderType.SeekHome,
+            targetSystem: safeDestination,
+            targetFleet: none(FleetId),
+            priority: order.priority
+          )
+          echo "    [AUTO SEEK HOME] Fleet ", order.fleetId, " aborting ", $order.orderType,
+               " - destination hostile, retreating to system ", safeDestination.get()
+          events.add(GameEvent(
+            eventType: GameEventType.Battle,
+            houseId: houseId,
+            description: "Fleet " & order.fleetId & " aborted mission - automatic retreat to safe territory",
+            systemId: some(fleet.location)
+          ))
+        else:
+          echo "    [AUTO SEEK HOME] Fleet ", order.fleetId, " has no safe destination - holding position"
+          # No safe destination - fleet holds in place
+          actualOrder = FleetOrder(
+            fleetId: order.fleetId,
+            orderType: FleetOrderType.Hold,
+            targetSystem: none(SystemId),
+            targetFleet: none(FleetId),
+            priority: order.priority
+          )
+
+    let result = executeFleetOrder(state, houseId, actualOrder)
 
     if result.success:
-      echo "    [", $order.orderType, "] ", result.message
+      echo "    [", $actualOrder.orderType, "] ", result.message
       # Add events from order execution
       for eventMsg in result.eventsGenerated:
         events.add(GameEvent(
           eventType: GameEventType.Battle,
           houseId: houseId,
           description: eventMsg,
-          systemId: order.targetSystem
+          systemId: actualOrder.targetSystem
         ))
 
       # Some orders need additional processing after validation
-      case order.orderType
+      case actualOrder.orderType
       of FleetOrderType.Move, FleetOrderType.SeekHome, FleetOrderType.Patrol:
         # Executor validates, this does actual pathfinding and movement
-        resolveMovementOrder(state, houseId, order, events)
+        resolveMovementOrder(state, houseId, actualOrder, events)
       of FleetOrderType.Colonize:
         # Executor validates, this does actual colony creation
         resolveColonizationOrder(state, houseId, order, events)
@@ -1845,6 +1884,7 @@ proc findClosestOwnedColony(state: GameState, fromSystem: SystemId, houseId: Hou
   ## Find the closest owned colony for a house, excluding the fromSystem
   ## Returns None if house has no colonies
   ## Used by Space Guild to find alternative delivery destination
+  ## Also used for automated Seek Home behavior for stranded fleets
 
   var closestColony: Option[SystemId] = none(SystemId)
   var shortestDistance = int.high
@@ -1871,6 +1911,82 @@ proc findClosestOwnedColony(state: GameState, fromSystem: SystemId, houseId: Hou
           closestColony = some(systemId)
 
   return closestColony
+
+proc isSystemHostile(state: GameState, systemId: SystemId, houseId: HouseId): bool =
+  ## Check if a system is hostile to a house
+  ## System is hostile if:
+  ## 1. Colonized by an enemy house (diplomatic status: Enemy)
+  ## 2. Enemy fleets are present
+
+  # Check if system has enemy colony
+  if systemId in state.colonies:
+    let colony = state.colonies[systemId]
+    if colony.owner != houseId:
+      # Check diplomatic status
+      let house = state.houses[houseId]
+      if house.diplomaticRelations.isEnemy(colony.owner):
+        return true
+
+  # Check for enemy fleets at system
+  for fleetId, fleet in state.fleets:
+    if fleet.location == systemId and fleet.owner != houseId:
+      let house = state.houses[houseId]
+      if house.diplomaticRelations.isEnemy(fleet.owner):
+        return true
+
+  return false
+
+proc shouldAutoSeekHome(state: GameState, fleet: Fleet, order: FleetOrder): bool =
+  ## Determine if a fleet should automatically seek home due to dangerous situation
+  ## Triggers for:
+  ## - ETAC/colonization missions where target becomes hostile
+  ## - Guard/blockade orders where system becomes hostile
+  ## - Fleets stranded in now-hostile territory
+
+  # Check if fleet is executing an order that becomes invalid due to hostility
+  case order.orderType
+  of FleetOrderType.Colonize:
+    # ETAC missions abort if destination becomes enemy-controlled
+    if order.targetSystem.isSome:
+      let targetId = order.targetSystem.get()
+      if isSystemHostile(state, targetId, fleet.owner):
+        return true
+
+  of FleetOrderType.GuardStarbase, FleetOrderType.GuardPlanet, FleetOrderType.BlockadePlanet:
+    # Guard/blockade orders abort if system lost to enemy
+    if order.targetSystem.isSome:
+      let targetId = order.targetSystem.get()
+      if targetId in state.colonies:
+        let colony = state.colonies[targetId]
+        # If colony ownership changed to enemy, abort
+        if colony.owner != fleet.owner:
+          let house = state.houses[fleet.owner]
+          if house.diplomaticRelations.isEnemy(colony.owner):
+            return true
+      else:
+        # Colony destroyed - abort
+        return true
+
+  of FleetOrderType.Patrol:
+    # Patrols abort if their patrol zone becomes enemy territory
+    # Check if current location is hostile
+    if fleet.location in state.colonies:
+      let colony = state.colonies[fleet.location]
+      if colony.owner != fleet.owner:
+        let house = state.houses[fleet.owner]
+        if house.diplomaticRelations.isEnemy(colony.owner):
+          return true
+
+    # Also check if patrol target destination is hostile
+    if order.targetSystem.isSome:
+      let targetId = order.targetSystem.get()
+      if isSystemHostile(state, targetId, fleet.owner):
+        return true
+
+  else:
+    discard
+
+  return false
 
 proc resolvePopulationArrivals(state: var GameState, events: var seq[GameEvent]) =
   ## Process Space Guild population transfers that arrive this turn
@@ -2653,6 +2769,52 @@ proc resolveBattle(state: var GameState, systemId: SystemId,
         survivingUnassigned.add(updatedSquadron)
     colony.unassignedSquadrons = survivingUnassigned
     state.colonies[systemId] = colony
+
+  # 5.5. Process retreated fleets - auto-assign Seek Home orders
+  # Fleets that retreated from combat automatically receive Order 02 (Seek Home)
+  # to find the nearest friendly colony and regroup
+  if outcome.retreated.len > 0:
+    echo "      Processing retreated fleets - auto-assigning Seek Home orders"
+
+    for houseId in outcome.retreated:
+      # Find all fleets belonging to this house at the battle location
+      for fleetId, fleet in state.fleets:
+        if fleet.owner == houseId and fleet.location == systemId:
+          # Find closest owned colony for retreat destination
+          let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
+
+          if safeDestination.isSome:
+            echo "        Fleet ", fleetId, " (", houseId, ") retreated - auto-assigning Seek Home to system ", safeDestination.get()
+
+            # Create Seek Home order for this fleet
+            # NOTE: This creates an "in-flight" movement that will be processed immediately
+            # The fleet will begin its retreat movement in the same turn
+            let seekHomeOrder = FleetOrder(
+              fleetId: fleetId,
+              orderType: FleetOrderType.SeekHome,
+              targetSystem: safeDestination,
+              targetFleet: none(FleetId),
+              priority: 0
+            )
+
+            # Execute the seek home movement immediately (fleet retreats in same turn)
+            resolveMovementOrder(state, houseId, seekHomeOrder, events)
+
+            events.add(GameEvent(
+              eventType: GameEventType.Battle,
+              houseId: houseId,
+              description: "Fleet " & fleetId & " retreated from combat - seeking nearest friendly system " & $safeDestination.get(),
+              systemId: some(systemId)
+            ))
+          else:
+            echo "        Fleet ", fleetId, " (", houseId, ") retreated but has no safe destination - holding position"
+            # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
+            events.add(GameEvent(
+              eventType: GameEventType.Battle,
+              houseId: houseId,
+              description: "Fleet " & fleetId & " retreated from combat but has no friendly colonies - holding position",
+              systemId: some(systemId)
+            ))
 
   # 6. Determine attacker and defender houses for reporting
   var attackerHouses: seq[HouseId] = @[]

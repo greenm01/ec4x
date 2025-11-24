@@ -1,12 +1,18 @@
 # EC4X TODO & Implementation Status
 
-**Last Updated:** 2025-11-23
+**Last Updated:** 2025-11-24
 **Project Phase:** Phase 2 - Balance Testing COMPLETE
-**Test Coverage:** 91+ integration tests passing
+**Test Coverage:** 101 integration tests passing
 **Engine Status:** 100% functional with dynamic prestige scaling
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete ([see CONFIG_AUDIT.md](CONFIG_AUDIT.md))
 
 **Recent:**
+- ✅ **NEW: Automated Seek Home (Order 02) Implementation**
+  - Pre-order execution retreat (strategic): ETAC, guard, blockade, patrol orders
+  - Post-combat retreat (tactical): ROE-based tactical withdrawal auto-assigns Seek Home
+  - Pathfinding through enemy territory (finds shortest safe route)
+  - 10 comprehensive integration tests (tests/integration/test_auto_seek_home.nim)
+  - Documentation updated (docs/specs/operations.md Order 02)
 - ✅ **CRITICAL: Fixed tech field naming confusion (SL vs SLD, EL vs energy)**
   - Corrected ShieldLevel → ScienceLevel throughout codebase
   - Added missing tech fields (CLK, SLD, FD, ACO)
@@ -290,19 +296,26 @@ EC4X is a turn-based 4X space strategy game built in Nim. The project follows NE
 
 ---
 
-### 11. Fleet Management
+### 11. Fleet Management & Automated Retreat
 **Status:** ✅ Complete and tested
-**Files:** `src/engine/squadron.nim`, `src/engine/fleet.nim`
+**Files:** `src/engine/squadron.nim`, `src/engine/fleet.nim`, `src/engine/resolve.nim`
 
 **Features:**
 - Fleet composition and movement
 - Squadron organization
 - Fleet merge/split operations
 - Movement order validation
+- **Automated Seek Home (Order 02):**
+  - Pre-order execution retreat (strategic): Aborts invalid orders (ETAC, guard, blockade, patrol)
+  - Post-combat retreat (tactical): Auto-assigns Seek Home after ROE-based withdrawal
+  - Pathfinding through enemy territory
+  - Fallback to Hold when no safe colonies exist
 
 **Test Coverage:**
 - `tests/integration/test_fleet_movement.nim`
+- `tests/integration/test_auto_seek_home.nim` (10 tests)
 - Fleet operations validated
+- All retreat scenarios tested
 
 ---
 
@@ -585,7 +598,7 @@ No significant placeholder code found. Remaining TODOs are legitimate future wor
 
 ## 🧪 Test Coverage Summary
 
-### Integration Tests (14 files)
+### Integration Tests (15 files)
 
 1. ✅ `test_colonization.nim` (6 tests)
 2. ✅ `test_diplomacy.nim` (12 tests)
@@ -596,10 +609,11 @@ No significant placeholder code found. Remaining TODOs are legitimate future wor
 7. ✅ `test_prestige.nim` (14 tests)
 8. ✅ `test_research_prestige.nim` (5 tests)
 9. ✅ `test_victory_conditions.nim` (9 tests)
-10. ✅ `test_salvage.nim` (15 tests) - **NEW**
-11. ✅ Additional combat and scenario tests
+10. ✅ `test_salvage.nim` (15 tests)
+11. ✅ `test_auto_seek_home.nim` (10 tests) - **NEW**
+12. ✅ Additional combat and scenario tests
 
-**Total:** 91+ integration tests passing
+**Total:** 101 integration tests passing
 
 ### Unit Tests
 - Combat calculations
