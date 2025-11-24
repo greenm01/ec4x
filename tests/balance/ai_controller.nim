@@ -120,21 +120,21 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
     )
   of AIStrategy.Balanced:
     AIPersonality(
-      aggression: 0.5,
-      riskTolerance: 0.5,
-      economicFocus: 0.5,
-      expansionDrive: 0.5,
-      diplomacyValue: 0.5,
-      techPriority: 0.5
+      aggression: 0.4,       # Defensive but reactive - won't overcommit to military
+      riskTolerance: 0.5,    # Moderate - calculated risks
+      economicFocus: 0.7,    # Economic foundation first (like Turtle)
+      expansionDrive: 0.5,   # Controlled expansion (same as Aggressive/Economic)
+      diplomacyValue: 0.6,   # Can leverage alliances when beneficial
+      techPriority: 0.5      # Keeps up but doesn't prioritize
     )
   of AIStrategy.Turtle:
     AIPersonality(
-      aggression: 0.1,
-      riskTolerance: 0.2,
-      economicFocus: 0.7,
-      expansionDrive: 0.2,
-      diplomacyValue: 0.7,
-      techPriority: 0.7
+      aggression: 0.1,       # Stay defensive - only fight when necessary
+      riskTolerance: 0.3,    # Increased from 0.2 - willing to expand into safe areas
+      economicFocus: 0.7,    # Keep high economic focus
+      expansionDrive: 0.4,   # Increased from 0.2 - "defensive expansion" not "no expansion"
+      diplomacyValue: 0.7,   # Keep high diplomacy for safety
+      techPriority: 0.7      # Keep high tech priority
     )
   of AIStrategy.Expansionist:
     AIPersonality(

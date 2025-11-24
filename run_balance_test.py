@@ -47,7 +47,7 @@ from collections import defaultdict
 from datetime import datetime
 
 # Configuration
-NUM_GAMES = 10
+NUM_GAMES = 10  # Standard test size (use run_balance_test_parallel.py for larger tests)
 TURNS_PER_GAME = 100
 STRATEGIES = ["Aggressive", "Economic", "Balanced", "Turtle"]
 
