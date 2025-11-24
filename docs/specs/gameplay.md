@@ -22,7 +22,7 @@ Players start the game with 50 prestige points.
 
 If a House's prestige drops and stays below zero for three consecutive turns, the empire enters Defensive Collapse and the player is permanently eliminated. See [Section 1.4](#14-player-elimination--autopilot) for full elimination and autopilot mechanics.
 
-### Dynamic Prestige Scaling (Simple Explanation)
+### Dynamic Prestige Scaling
 
 **The Problem:** Victory requires 5000 prestige. If prestige awards are fixed, small maps finish too fast and large maps take forever.
 
