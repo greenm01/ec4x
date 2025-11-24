@@ -3,9 +3,9 @@
 ## Tests for planetary bombardment, invasion, and blitz mechanics
 
 import std/[sequtils, options, strformat]
-import ../src/engine/combat/[types, cer, ground, engine]
-import ../src/engine/squadron
-import ../src/common/types/[core, units, combat]
+import ../../src/engine/combat/[types, cer, ground, engine]
+import ../../src/engine/squadron
+import ../../src/common/types/[core, units, combat]
 
 ## Test Scenarios
 

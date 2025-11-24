@@ -2974,8 +2974,9 @@ proc resolveInvasion(state: var GameState, houseId: HouseId, order: FleetOrder,
       systemId: some(targetId)
     ))
   else:
-    # Invasion failed
+    # Invasion failed - ALL attacking marines destroyed (no retreat from ground combat)
     echo "      Invasion FAILED: ", colony.owner, " repelled ", houseId, " invasion at ", targetId
+    echo "      All ", attackingForces.len, " attacking marine divisions destroyed"
 
     # Update defender ground forces
     let survivingDefenders = defendingForces.len - result.defenderCasualties.len
@@ -2986,24 +2987,19 @@ proc resolveInvasion(state: var GameState, houseId: HouseId, order: FleetOrder,
       updatedColony.armies = int(float(survivingDefenders) * armyFraction)
       updatedColony.marines = survivingDefenders - updatedColony.armies
 
-    # Attacker marines destroyed/retreated - unload survivors from spacelift ships
-    let survivingAttackers = attackingForces.len - result.attackerCasualties.len
+    # All attacker marines destroyed - unload ALL marines from spacelift ships
+    # Marines cannot retreat once they've landed on the planet
     var updatedFleet = state.fleets[order.fleetId]
-    var marinesRemaining = survivingAttackers
     for ship in updatedFleet.spaceLiftShips.mitems:
-      if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
-        let unloaded = min(ship.cargo.quantity, marinesRemaining)
-        ship.cargo.quantity -= unloaded
-        marinesRemaining -= unloaded
-        if ship.cargo.quantity == 0:
-          ship.cargo.cargoType = CargoType.None
+      if ship.cargo.cargoType == CargoType.Marines:
+        discard ship.unloadCargo()  # Remove all marines (destroyed in combat)
     state.fleets[order.fleetId] = updatedFleet
 
     # Generate event
     events.add(GameEvent(
       eventType: GameEventType.InvasionRepelled,
       houseId: colony.owner,
-      description: colony.owner & " repelled " & houseId & " invasion at " & $targetId,
+      description: colony.owner & " repelled " & houseId & " invasion at " & $targetId & " - all attacking marines destroyed",
       systemId: some(targetId)
     ))
 
@@ -3165,8 +3161,9 @@ proc resolveBlitz(state: var GameState, houseId: HouseId, order: FleetOrder,
       systemId: some(targetId)
     ))
   else:
-    # Blitz failed
+    # Blitz failed - ALL attacking marines destroyed (no retreat from ground combat)
     echo "      Blitz FAILED: ", colony.owner, " repelled ", houseId, " blitz at ", targetId
+    echo "      All ", attackingForces.len, " attacking marine divisions destroyed"
 
     # Update defender ground forces
     let survivingDefenders = defendingForces.len - result.defenderCasualties.len
@@ -3179,24 +3176,19 @@ proc resolveBlitz(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Update ground batteries (some may have been destroyed)
     # TODO: Track which batteries were destroyed in blitz result
 
-    # Attacker marines casualties - unload survivors
-    let survivingAttackers = attackingForces.len - result.attackerCasualties.len
+    # All attacker marines destroyed - unload ALL marines from spacelift ships
+    # Marines cannot retreat once they've landed on the planet
     var updatedFleet = state.fleets[order.fleetId]
-    var marinesRemaining = survivingAttackers
     for ship in updatedFleet.spaceLiftShips.mitems:
-      if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
-        let unloaded = min(ship.cargo.quantity, marinesRemaining)
-        ship.cargo.quantity -= unloaded
-        marinesRemaining -= unloaded
-        if ship.cargo.quantity == 0:
-          ship.cargo.cargoType = CargoType.None
+      if ship.cargo.cargoType == CargoType.Marines:
+        discard ship.unloadCargo()  # Remove all marines (destroyed in combat)
     state.fleets[order.fleetId] = updatedFleet
 
     # Generate event
     events.add(GameEvent(
       eventType: GameEventType.InvasionRepelled,
       houseId: colony.owner,
-      description: colony.owner & " repelled " & houseId & " blitz at " & $targetId,
+      description: colony.owner & " repelled " & houseId & " blitz at " & $targetId & " - all attacking marines destroyed",
       systemId: some(targetId)
     ))
 
