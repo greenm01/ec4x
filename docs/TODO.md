@@ -410,7 +410,7 @@ All passing ✅
 
 ## 📝 Notes
 
-TODO: before additional bootstrap AI training: implement archive_old_results() in run_balance_test_parallel.py
+PRIORITY TODO: Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parellal or single. Remove old files.
 
 **Design Philosophy:**
 - Event-based architecture
