@@ -104,11 +104,14 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
 proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameState =
   ## Create a balanced game setup for testing
   ## All houses start with equal conditions at different map positions
+  ## mapSize parameter controls number of rings (systems = roughly 3 × rings²)
 
   var rng = initRand(seed)
 
   # Generate star map with player starting positions
   var starMap = newStarMap(numHouses)
+  # Override numRings based on mapSize parameter
+  starMap.numRings = mapSize.uint32
   starMap.populate()
 
   # Initialize dynamic prestige multiplier based on map size
