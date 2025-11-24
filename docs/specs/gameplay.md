@@ -142,13 +142,40 @@ When the player returns and submits new orders, the empire immediately exits aut
 - Autopilot orders are executed during the Command Phase per [Section 1.3.3](#133-command-phase)
 - Player can resume control in any subsequent turn by submitting orders
 
-### 1.4.3 Victory Conditions
+### 1.4.3 Standard Elimination & Last-Stand Invasions
+
+A House is eliminated from the game when they lose all colonies AND have no invasion capability remaining.
+
+**Elimination Triggers:**
+
+1. **Total Defeat**: No colonies AND no fleets
+2. **Hopeless Position**: No colonies AND no marines for reconquest
+
+**Last-Stand Invasion Capability:**
+
+Houses that lose all their colonies but retain fleets with loaded marine divisions can attempt desperate reconquest operations:
+
+- **Invasion Orders**: Can target enemy colonies per [Section 7.6](operations.md#76-planetary-invasion)
+- **Blitz Operations**: Can execute high-risk planetary assaults per [Section 7.6.2](operations.md#762-blitz)
+- **No Elimination**: House remains active as long as marines exist on transports
+- **Empty Transports**: Houses with only empty transports or non-combat ships are eliminated
+
+**Example Last-Stand Scenario:**
+
+House Atreides controls 15 systems. House Harkonnen launches a massive offensive and conquers all 15 colonies in a single turn. However, three Atreides troop transports carrying marine divisions survive the onslaught in deep space.
+
+**Result:** House Atreides is NOT eliminated. On the next turn, they can attempt invasion/blitz operations with their surviving marines. If they successfully recapture even one colony, they're back in the game. If all marines are killed in failed invasions, THEN they're eliminated.
+
+This creates dramatic comeback opportunities and rewards players who maintain mobile invasion forces even when losing territory.
+
+### 1.4.4 Victory Conditions
 
 Victory is achieved by reaching 2500 prestige or by being the last active player in the game.
 
 - **Active Players**: Players submitting orders (not in autopilot or defensive collapse)
 - **Autopilot Players**: Count as active and can return to win
 - **Defensive Collapse Players**: Eliminated, do not count toward victory
+- **Last-Stand Players**: Count as active until final elimination
 
 A player in autopilot can still win through prestige accumulation if their empire's defensive economy generates sufficient prestige growth.
 

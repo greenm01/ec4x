@@ -222,10 +222,29 @@ The Space Guilds provide civilian Starliner services to transfer established pop
 | **Concurrent Limit** | 5 transfers | Maximum active transfers per house |
 | **Source Conquered** | Continue | Transfer proceeds (Guild is neutral) |
 | **Dest Conquered** | Lost | PTUs lost (refugees disperse) |
-| **Dest Blockaded** | Return | PTUs return to source |
+| **Dest Blockaded** | Smart Delivery | PTUs redirected to closest owned colony |
+| **Dest Collapsed** | Smart Delivery | PTUs redirected to closest owned colony |
 
 *Source: config/population.toml [transfer_time], [transfer_limits], and [transfer_risks] sections*
 <!-- POPULATION_TRANSFER_MECHANICS_TABLE_END -->
+
+**Space Guild Smart Delivery:**
+
+The Space Guild is a neutral third-party service that operates across all house territories. When colonists arrive at a destination that cannot accept them (blockaded or collapsed below minimum viable population), the Guild attempts intelligent delivery:
+
+1. **Find Alternative**: Guild seeks the closest owned colony via jump lane pathfinding
+2. **Redirect Transfer**: If found, colonists delivered to alternative destination
+3. **No Options**: If no owned colonies exist, colonists are lost (Guild cannot deliver to nowhere)
+
+This makes the Guild more player-friendly while maintaining realistic constraints. Houses that lose all their colonies during transit will lose in-transit populations (nowhere to deliver them).
+
+**Example Smart Delivery Scenario:**
+
+House Corrino initiates a 10 PTU transfer from System A to System B (3 jumps away). During the 3-turn transit, House Harkonnen blockades System B with a fleet.
+
+**Without Smart Delivery** (old behavior): Colonists return to System A, wasting 3 turns and full cost.
+
+**With Smart Delivery** (current behavior): Guild pathfinds and discovers System C (2 jumps from B) is owned by Corrino and unblockaded. Guild redirects the transport there instead. Colonists arrive safely at System C, though not the original destination.
 
 Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
 
