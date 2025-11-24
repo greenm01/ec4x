@@ -5,8 +5,9 @@
 ##
 ## Pure game logic - no I/O, works with typed data
 
-import std/[options, tables, sequtils, strutils]
+import std/[options, tables, sequtils, strutils, strformat, random]
 import types, cer, resolution, retreat, damage, ../squadron
+import ../intelligence/detection
 
 export BattleContext, CombatResult, TaskForce, CombatSquadron
 
@@ -45,6 +46,66 @@ proc resolveCombat*(context: BattleContext): CombatResult =
 
   # System owner (would come from game state)
   let systemOwner = none(HouseId)  # Placeholder
+
+  # PRE-COMBAT DETECTION PHASE (Section 7.3.1.1)
+  # Scouts and Starbases attempt to detect cloaked Raiders before combat begins
+  # If detected, Raiders lose ambush advantage and attack in Phase 3 instead
+
+  # Create std/random Rand from CombatRNG state for detection system
+  # Detection uses std/random.Rand, combat uses CombatRNG
+  var detectionRng = initRand(int64(rng.state))
+
+  for detectorIdx, detectorTF in taskForces.mpairs:
+    # Skip if this task force has no ELI capability (no scouts)
+    let detectorSquadrons = detectorTF.squadrons.mapIt(it.squadron)
+    if not hasELICapability(detectorSquadrons):
+      continue
+
+    # Check each opposing task force for cloaked raiders
+    for targetIdx, targetTF in taskForces.mpairs:
+      # Skip self and non-cloaked task forces
+      if detectorIdx == targetIdx or not targetTF.isCloaked:
+        continue
+
+      # Check diplomatic relations - only detect enemies
+      let dipState = diplomaticRelations.getOrDefault((detectorTF.house, targetTF.house), DiplomaticState.Enemy)
+      if dipState != DiplomaticState.Enemy:
+        continue
+
+      # Create ELI unit using house ELI level, not ship stats
+      # Count scouts for mesh network bonus
+      var scoutCount = 0
+      var hasStarbase = false
+      for sq in detectorTF.squadrons:
+        if sq.squadron.flagship.shipClass == ShipClass.Starbase:
+          hasStarbase = true
+        if sq.squadron.scoutShips().len > 0:
+          scoutCount += sq.squadron.scoutShips().len
+
+      # Build ELI levels array for mesh network calculation
+      # All scouts have the house's ELI tech level
+      var eliLevels: seq[int] = @[]
+      for i in 0..<scoutCount:
+        eliLevels.add(detectorTF.eliLevel)
+
+      let detectorUnit = ELIUnit(
+        eliLevels: eliLevels,
+        isStarbase: hasStarbase
+      )
+
+      # Use target's house CLK level
+      let targetCloakLevel = targetTF.clkLevel
+
+      if targetCloakLevel > 0 and eliLevels.len > 0:
+        # Attempt detection
+        let detectionResult = detectRaider(detectorUnit, targetCloakLevel, detectionRng)
+
+        when defined(debugDetection):
+          echo fmt"[Detection] {detectorTF.house} (ELI{detectorTF.eliLevel}, {scoutCount} scouts) detecting {targetTF.house} (CLK{targetCloakLevel}): effective ELI{detectionResult.effectiveELI}, rolled {detectionResult.roll} vs threshold {detectionResult.threshold} = {detectionResult.detected}"
+
+        if detectionResult.detected:
+          # Raiders detected! Remove ambush advantage
+          taskForces[targetIdx].isCloaked = false
 
   # Track stalemate
   var consecutiveRoundsNoChange = 0
@@ -199,7 +260,9 @@ proc initializeTaskForce*(
   squadrons: seq[Squadron],
   roe: int,
   prestige: int = 50,
-  isHomeworld: bool = false
+  isHomeworld: bool = false,
+  eliLevel: int = 1,
+  clkLevel: int = 1
 ): TaskForce =
   ## Create Task Force from squadrons
   ##
@@ -209,6 +272,8 @@ proc initializeTaskForce*(
   ##   roe: Rules of Engagement (0-10)
   ##   prestige: House prestige for morale (default 50)
   ##   isHomeworld: Defending homeworld (never retreat)
+  ##   eliLevel: House ELI tech level (for scout detection)
+  ##   clkLevel: House CLK tech level (for raider cloaking)
 
   result = TaskForce(
     house: house,
@@ -217,7 +282,9 @@ proc initializeTaskForce*(
     isCloaked: false,
     moraleModifier: 0,
     scoutBonus: false,
-    isDefendingHomeworld: isHomeworld
+    isDefendingHomeworld: isHomeworld,
+    eliLevel: eliLevel,
+    clkLevel: clkLevel
   )
 
   # Convert squadrons
