@@ -455,6 +455,8 @@ Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
 
 #### 6. Remove and exclude json files from repo and db if possible.
 
+#### 7. Update CLAUDE_CONTEXT.md and TODO.md after reading this.
+
 ### General Notes
 
 **Design Philosophy:**
