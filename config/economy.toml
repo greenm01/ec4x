@@ -30,7 +30,8 @@ pu_to_ptu_conversion = 0.00657     # PU to PTU conversion constant (exponential 
 
 [production]
 # BALANCE VARIABLES - Production distribution
-production_per_10_population = 1   # 1 production per 10 million population
+# ACCELERATION: Doubled production for 30-turn multi-generational timeline
+production_per_10_population = 2   # 2 production per 10 million population (was 1)
 production_split_credits = 0.33    # 1/3 of production → credits
 production_split_production = 0.33 # 1/3 of production → industrial units
 production_split_research = 0.33   # 1/3 of production → research points
