@@ -3694,20 +3694,39 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
   # Check for elimination and defensive collapse
   let gameplayConfig = globalGameplayConfig
   for houseId, house in state.houses:
-    # Standard elimination: no colonies and no fleets
+    # Standard elimination: no colonies and no invasion capability
     let colonies = state.getHouseColonies(houseId)
     let fleets = state.getHouseFleets(houseId)
 
-    if colonies.len == 0 and fleets.len == 0:
-      state.houses[houseId].eliminated = true
-      events.add(GameEvent(
-        eventType: GameEventType.HouseEliminated,
-        houseId: houseId,
-        description: house.name & " has been eliminated!",
-        systemId: none(SystemId)
-      ))
-      echo "    ", house.name, " eliminated!"
-      continue
+    if colonies.len == 0:
+      # No colonies - check if house has invasion capability (marines on transports)
+      var hasInvasionCapability = false
+
+      for fleet in fleets:
+        for transport in fleet.spaceLiftShips:
+          if transport.cargo.cargoType == CargoType.Marines and transport.cargo.quantity > 0:
+            hasInvasionCapability = true
+            break
+        if hasInvasionCapability:
+          break
+
+      # Eliminate if no fleets OR no loaded transports with marines
+      if fleets.len == 0 or not hasInvasionCapability:
+        state.houses[houseId].eliminated = true
+
+        let reason = if fleets.len == 0:
+          "no remaining forces"
+        else:
+          "no marines for reconquest"
+
+        events.add(GameEvent(
+          eventType: GameEventType.HouseEliminated,
+          houseId: houseId,
+          description: house.name & " has been eliminated - " & reason & "!",
+          systemId: none(SystemId)
+        ))
+        echo "    ", house.name, " eliminated! (", reason, ")"
+        continue
 
     # Defensive collapse: prestige < threshold for consecutive turns
     if house.prestige < gameplayConfig.elimination.defensive_collapse_threshold:
