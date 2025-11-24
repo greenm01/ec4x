@@ -448,7 +448,36 @@ These features are **documented in specs** and **configured in TOML files**, but
 
 ---
 
-### 3. Revolutionary Tech Breakthrough Effects
+### 3. Terraforming Tech (TER) Operations
+**Status:** ❌ **CRITICAL** - Functions defined but never called, provides ZERO gameplay benefit
+**Priority:** **HIGH** - This is a resource trap for players
+**Spec Location:** docs/specs/economy.md Sections 4.7, 5.2
+**Verification:** [TECH_VERIFICATION.md](TECH_VERIFICATION.md#5-terraforming-tech-ter--broken)
+
+**What's Done:**
+- ✅ TER tech level tracked and advances
+- ✅ Cost formula: 10% reduction per TER level
+- ✅ Speed formula: 10 - TER_level turns
+- ✅ Functions exist in src/engine/research/effects.nim
+
+**What's Broken:**
+- ❌ getTerraformingCost() is NEVER CALLED
+- ❌ getTerraformingSpeed() is NEVER CALLED
+- ❌ No terraforming operations exist
+- ❌ No colonization integration
+- ❌ ETAC doesn't use TER bonuses
+- ❌ PP invested in TER research provides zero benefit
+
+**Impact:** Players researching TER are wasting PP on a non-functional tech. This is a critical game balance issue.
+
+**Files Affected:**
+- src/engine/colonization/engine.nim (needs creation)
+- src/engine/resolve.nim (integrate terraforming orders)
+- src/engine/economy/orders.nim (add terraforming order type)
+
+---
+
+### 4. Revolutionary Tech Breakthrough Effects
 **Status:** ⚠️ PARTIAL - Roll system complete, effect application pending
 **Priority:** Low
 **Spec Location:** docs/specs/economy.md Section 4.1.1
