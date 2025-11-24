@@ -7,11 +7,16 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
-- ✅ **Fog-of-War System Implemented (2025-11-24)**
-  - Core FoW filtering system complete in src/engine/fog_of_war.nim
-  - FilteredGameState enforces limited visibility for AI
-  - Integration with intelligence database for stale intel
-  - Ready for Phase 2 RBA improvements
+- ✅ **Phase 2a Complete: FoW Integration with RBA (2025-11-24)**
+  - Core FoW filtering system in src/engine/fog_of_war.nim
+  - Bridge pattern integration with ai_controller.nim
+  - AI receives FilteredGameState (limited visibility enforced)
+  - Balance tests running with FoW active
+  - Ready for Phase 2b+ improvements
+- ✅ **Gap Analysis Complete (2025-11-24)**
+  - Identified 5 critical missing features (espionage, fallback, etc)
+  - Diagnostic infrastructure plan created
+  - Phase 2 priorities revised based on Grok feedback
 - ✅ **Architecture Revision: Removed LLM approach, added neural network self-play training (2025-11-24)**
   - Removed Mistral-7B/llama.cpp/prompt engineering
   - Added AlphaZero-style reinforcement learning
@@ -176,11 +181,22 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Prerequisites:**
 - ✅ Fog-of-war system implemented (2025-11-24)
-- ⏳ Integrate FoW with ai_controller.nim (~800 lines to refactor)
+- ✅ FoW integrated with ai_controller.nim (bridge pattern, 2025-11-24)
+- ⏳ **NEXT:** Diagnostic infrastructure (before any Phase 2 tasks!)
+
+**Critical Insight from Grok Gap Analysis:**
+> "Run diagnostics. Let the numbers tell you exactly what's missing. Every flaw you fix now compounds through every self-play iteration later."
+
+**Diagnostic Infrastructure** (Milestone 1 - IMMEDIATE)
+- Add per-house, per-turn metric logging to run_simulation.nim
+- Run 2,000 diagnostic games (small maps, 50-turn limit)
+- Generate gap analysis dashboard (CSV → analysis script)
+- **Key metrics:** Capacity violations, espionage usage, Raider success, mothball usage
+- **Estimated effort:** ~300 lines, 5 tests
 
 **Target Improvements:**
 
-**2a. FoW Integration with RBA** ⏳ **CRITICAL - BLOCKING ALL OTHER PHASE 2 WORK**
+**2a. FoW Integration with RBA** ✅ **COMPLETE** (2025-11-24)
 - Refactor `generateAIOrders()` to accept `FilteredGameState` instead of `GameState`
 - Update 25+ helper functions to use filtered views
 - Handle incomplete information gracefully (Option[T] returns)
@@ -190,7 +206,7 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 **Estimated Effort:** High complexity (~1,100 lines affected/added, 20 tests)
 **Documentation:** See `docs/FOG_OF_WAR_INTEGRATION.md` for detailed plan
 
-**2b. Fighter/Carrier Ownership System** ⏳ HIGH PRIORITY (After FoW integration)
+**2b. Fighter/Carrier Ownership System** ⏳ **NEXT UP** (After diagnostics)
 - Track colony-owned vs carrier-owned fighters separately
 - Detect capacity violations (population + infrastructure)
 - Resolve violations proactively (carrier loading, starbase construction)
@@ -222,7 +238,7 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Medium complexity (~200 lines, 7 tests)
 
-**2f. Defense Layering Strategy** ⏳ LOW-MEDIUM PRIORITY (After FoW + FD/ACO)
+**2f. Defense Layering Strategy** ⏳ MEDIUM PRIORITY (After FoW + FD/ACO)
 - Patrol orders (space combat, mobile defense)
 - Guard orders (orbital combat, fixed defense)
 - Reserve fleets (50% maintenance, 50% combat effectiveness)
@@ -230,9 +246,48 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Low-medium complexity (~150 lines, 5 tests)
 
-**Overall Phase 2 Deliverable:** Enhanced ai_controller.nim with ~2,400 lines added/modified, 65+ new tests
+**2g. Espionage Mission Targeting** ⏳ **HIGH PRIORITY** (NEW - from gap analysis)
+- Problem: AI never uses SpyPlanet/HackStarbase missions
+- Red-flag metric: 0 espionage missions in entire games
+- Implementation: `identifySpyTargets()`, `identifyHackTargets()`, `prioritizeEspionageActions()`
+- Integration with FoW: Target systems with stale/no intel
 
-**Critical Path:** FoW integration (2a) blocks all other Phase 2 work - must be completed first!
+**Estimated Effort:** Medium complexity (~250 lines, 8 tests)
+
+**2h. Fallback System Designation** ⏳ **HIGH PRIORITY** (NEW - from gap analysis)
+- Problem: Fleets fight to death with no retreat target
+- Red-flag metric: Fleet destruction without retreat attempts
+- Implementation: `designateFallbackSystem()`, `updateFallbackOnLoss()`
+- Integration with auto-seek-home system
+
+**Estimated Effort:** Medium complexity (~200 lines, 6 tests)
+
+**2i. Multi-player Threat Assessment** ⏳ MEDIUM PRIORITY (NEW - from gap analysis)
+- Problem: Attacks strongest instead of weakest player
+- Implementation: `assessRelativeStrength()`, `identifyVulnerableTargets()`
+
+**Estimated Effort:** Medium complexity (~200 lines, 6 tests)
+
+**2j. Blockade & Economic Warfare** ⏳ LOW PRIORITY (NEW - from gap analysis)
+- Problem: Ignores enemy supply lanes
+- Implementation: `identifyBlockadeTargets()`, `generateBlockadeOrders()`
+
+**Estimated Effort:** Low complexity (~150 lines, 5 tests)
+
+**2k. Prestige Victory Path** ⏳ LOW PRIORITY (NEW - from gap analysis)
+- Problem: Never pursues prestige-focused strategies
+- Implementation: `assessPrestigeOpportunities()`, `prioritizePrestigeActions()`
+
+**Estimated Effort:** Low complexity (~150 lines, 5 tests)
+
+**Overall Phase 2 Deliverable:** Enhanced ai_controller.nim with ~2,850 lines added/modified, 85+ new tests
+
+**Critical Path:**
+1. ✅ FoW integration (2a) - COMPLETE
+2. ⏳ Diagnostic infrastructure - IMMEDIATE NEXT
+3. ⏳ Critical fixes (2b, 2g, 2h, 2c, 2d) based on diagnostic results
+
+**See:** `docs/PHASE_2_PRIORITIES_ANALYSIS.md` for full gap analysis and implementation order
 
 ---
 
