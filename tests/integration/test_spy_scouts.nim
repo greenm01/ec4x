@@ -55,8 +55,8 @@ suite "Spy Scout Intelligence Operations":
     # Create a fleet with one Scout
     # TODO: ELI level should come from house tech tree, not ship techLevel
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)
-    let squadron = newSquadron(scout, "sq1", "house1", 0u)
-    var fleet = newFleet(@[squadron], "fleet1", "house1", 0u)
+    var squadron = newSquadron(scout, "sq1", "house1", 0u)
+    var fleet = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
 
     state.fleets["fleet1"] = fleet
 
@@ -89,8 +89,8 @@ suite "Spy Scout Intelligence Operations":
   test "Order 10: Deploy scout to hack starbase":
     # Create a fleet with one Scout
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)
-    let squadron = newSquadron(scout, "sq1", "house1", 0u)
-    var fleet = newFleet(@[squadron], "fleet1", "house1", 0u)
+    var squadron = newSquadron(scout, "sq1", "house1", 0u)
+    var fleet = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
 
     state.fleets["fleet1"] = fleet
 
@@ -123,8 +123,8 @@ suite "Spy Scout Intelligence Operations":
   test "Order 11: Deploy scout for system surveillance":
     # Create a fleet with one Scout
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)
-    let squadron = newSquadron(scout, "sq1", "house1", 0u)
-    var fleet = newFleet(@[squadron], "fleet1", "house1", 0u)
+    var squadron = newSquadron(scout, "sq1", "house1", 0u)
+    var fleet = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
 
     state.fleets["fleet1"] = fleet
 
@@ -158,9 +158,9 @@ suite "Spy Scout Intelligence Operations":
     # Create a fleet with two scouts
     let scout1 = newEnhancedShip(ShipClass.Scout, techLevel = 2)
     let scout2 = newEnhancedShip(ShipClass.Scout, techLevel = 2)
-    let squadron1 = newSquadron(scout1, "sq1", "house1", 0u)
-    let squadron2 = newSquadron(scout2, "sq2", "house1", 0u)
-    var fleet = newFleet(@[squadron1, squadron2], "fleet1", "house1", 0u)
+    var squadron1 = newSquadron(scout1, "sq1", "house1", 0u)
+    var squadron2 = newSquadron(scout2, "sq2", "house1", 0u)
+    var fleet = newFleet(squadrons = @[squadron1, squadron2], id = "fleet1", owner = "house1", location = 0u)
 
     state.fleets["fleet1"] = fleet
 
@@ -182,8 +182,8 @@ suite "Spy Scout Intelligence Operations":
   test "Spy scout detection by rival fleet with scouts":
     # Deploy a spy scout from house1
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
-    let squadron = newSquadron(scout, "sq1", "house1", 0u)
-    var fleet1 = newFleet(@[squadron], "fleet1", "house1", 0u)
+    var squadron = newSquadron(scout, "sq1", "house1", 0u)
+    var fleet1 = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
     state.fleets["fleet1"] = fleet1
 
     let order = FleetOrder(
@@ -198,9 +198,9 @@ suite "Spy Scout Intelligence Operations":
     # Create a house2 fleet at the target system with higher ELI scouts
     let detector1 = newEnhancedShip(ShipClass.Scout, techLevel = 4)
     let detector2 = newEnhancedShip(ShipClass.Scout, techLevel = 4)
-    let detectorSq1 = newSquadron(detector1, "sq2", "house2", 1u)
-    let detectorSq2 = newSquadron(detector2, "sq3", "house2", 1u)
-    var fleet2 = newFleet(@[detectorSq1, detectorSq2], "fleet2", "house2", 1u)
+    var detectorSq1 = newSquadron(detector1, "sq2", "house2", 1u)
+    var detectorSq2 = newSquadron(detector2, "sq3", "house2", 1u)
+    var fleet2 = newFleet(squadrons = @[detectorSq1, detectorSq2], id = "fleet2", owner = "house2", location = 1u)
     state.fleets["fleet2"] = fleet2
 
     # Resolve turn - should attempt detection
@@ -215,8 +215,8 @@ suite "Spy Scout Intelligence Operations":
   test "Spy scout survives when no rival ELI present":
     # Deploy a spy scout from house1
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
-    let squadron = newSquadron(scout, "sq1", "house1", 0u)
-    var fleet1 = newFleet(@[squadron], "fleet1", "house1", 0u)
+    var squadron = newSquadron(scout, "sq1", "house1", 0u)
+    var fleet1 = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
     state.fleets["fleet1"] = fleet1
 
     let order = FleetOrder(
@@ -242,8 +242,8 @@ suite "Spy Scout Intelligence Operations":
     # Deploy two spy scouts from house1
     for i in 0..1:
       let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
-      let squadron = newSquadron(scout, "sq" & $i, "house1", 0u)
-      var fleet = newFleet(@[squadron], "fleet" & $i, "house1", 0u)
+      var squadron = newSquadron(scout, "sq" & $i, "house1", 0u)
+      var fleet = newFleet(squadrons = @[squadron], id = "fleet" & $i, owner = "house1", location = 0u)
       state.fleets["fleet" & $i] = fleet
 
       let order = FleetOrder(

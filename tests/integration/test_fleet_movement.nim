@@ -92,8 +92,10 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create fleet at system 1
+    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var sq = newSquadron(destroyer)
     let testFleet = newFleet(
-      ships = @[newShip(ShipType.Military)],
+      squadrons = @[sq],
       id = "fleet-1",
       owner = "house-alpha",
       location = 1
@@ -103,7 +105,7 @@ suite "Fleet Movement Integration":
     # Create movement order to system 2
     let order = FleetOrder(
       fleetId: "fleet-1",
-      orderType: foMove,
+      orderType: FleetOrderType.Move,
       targetSystem: some(2u),
       targetFleet: none(FleetId),
       priority: 1
@@ -119,8 +121,10 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create fleet at system 1
+    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var sq = newSquadron(destroyer)
     let testFleet = newFleet(
-      ships = @[newShip(ShipType.Military)],
+      squadrons = @[sq],
       id = "fleet-1",
       owner = "house-alpha",
       location = 1
@@ -130,7 +134,7 @@ suite "Fleet Movement Integration":
     # Order to system 3 (2 jumps away, all friendly)
     let order = FleetOrder(
       fleetId: "fleet-1",
-      orderType: foMove,
+      orderType: FleetOrderType.Move,
       targetSystem: some(3u),
       targetFleet: none(FleetId),
       priority: 1
@@ -146,8 +150,10 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create fleet at system 3 (Alpha's border)
+    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var sq = newSquadron(destroyer)
     let testFleet = newFleet(
-      ships = @[newShip(ShipType.Military)],
+      squadrons = @[sq],
       id = "fleet-1",
       owner = "house-alpha",
       location = 3
@@ -157,7 +163,7 @@ suite "Fleet Movement Integration":
     # Order to system 5 (2 jumps away, but through enemy territory)
     let order = FleetOrder(
       fleetId: "fleet-1",
-      orderType: foMove,
+      orderType: FleetOrderType.Move,
       targetSystem: some(5u),
       targetFleet: none(FleetId),
       priority: 1
@@ -172,8 +178,10 @@ suite "Fleet Movement Integration":
   test "Fleet already at destination":
     var state = createTestGameState()
 
+    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var sq = newSquadron(destroyer)
     let testFleet = newFleet(
-      ships = @[newShip(ShipType.Military)],
+      squadrons = @[sq],
       id = "fleet-1",
       owner = "house-alpha",
       location = 2
@@ -183,7 +191,7 @@ suite "Fleet Movement Integration":
     # Order to same location
     let order = FleetOrder(
       fleetId: "fleet-1",
-      orderType: foMove,
+      orderType: FleetOrderType.Move,
       targetSystem: some(2u),
       targetFleet: none(FleetId),
       priority: 1
@@ -218,8 +226,10 @@ suite "Fleet Movement Integration":
     state.starMap.adjacency[3] = @[2u]
 
     # Create fleet with spacelift ship at system 2
+    let troopTransport = newEnhancedShip(ShipClass.TroopTransport)
+    var sq = newSquadron(troopTransport)
     let testFleet = newFleet(
-      ships = @[newShip(ShipType.Spacelift)],
+      squadrons = @[sq],
       id = "fleet-1",
       owner = "house-alpha",
       location = 2
@@ -229,7 +239,7 @@ suite "Fleet Movement Integration":
     # Order to system 3 (across restricted lane)
     let order = FleetOrder(
       fleetId: "fleet-1",
-      orderType: foMove,
+      orderType: FleetOrderType.Move,
       targetSystem: some(3u),
       targetFleet: none(FleetId),
       priority: 1
@@ -245,8 +255,10 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create Alpha fleet at system 1
+    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    var sq1 = newSquadron(destroyer1)
     let fleet1 = newFleet(
-      ships = @[newShip(ShipType.Military)],
+      squadrons = @[sq1],
       id = "fleet-alpha",
       owner = "house-alpha",
       location = 1
@@ -254,8 +266,10 @@ suite "Fleet Movement Integration":
     state.fleets["fleet-alpha"] = fleet1
 
     # Create Beta fleet at system 2
+    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    var sq2 = newSquadron(destroyer2)
     let fleet2 = newFleet(
-      ships = @[newShip(ShipType.Military)],
+      squadrons = @[sq2],
       id = "fleet-beta",
       owner = "house-beta",
       location = 2
@@ -265,7 +279,7 @@ suite "Fleet Movement Integration":
     # Alpha fleet moves to system 2
     let order = FleetOrder(
       fleetId: "fleet-alpha",
-      orderType: foMove,
+      orderType: FleetOrderType.Move,
       targetSystem: some(2u),
       targetFleet: none(FleetId),
       priority: 1
