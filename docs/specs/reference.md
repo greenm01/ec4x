@@ -103,10 +103,10 @@ target_turns = baseline_turns + (systems_per_player - baseline_ratio) × turn_sc
 dynamic_multiplier = base_multiplier × (baseline_turns / target_turns)
 ```
 
-This ensures game length scales naturally with map size:
-- **Small maps** (7-10 systems/player): 6-8x multiplier → ~25-30 turn games
-- **Medium maps** (15 systems/player): 3-4x multiplier → ~40 turn games
-- **Large maps** (30+ systems/player): 2-3x multiplier → ~70+ turn games
+Small maps (8-10 systems/player) use the baseline multiplier. Larger maps scale DOWN to extend game length:
+- **Small maps** (8-10 systems/player): 5.0x multiplier (baseline) → ~30 turn games
+- **Medium maps** (15-20 systems/player): 3.0-4.0x multiplier (scaled down) → ~40-50 turn games
+- **Large maps** (30+ systems/player): 2.0-2.5x multiplier (scaled down) → ~60-80 turn games
 
 *Configuration: config/prestige.toml [dynamic_scaling] section*
 
