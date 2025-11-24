@@ -70,12 +70,16 @@ suite "Tech Advancement (economy.md:4.1)":
   test "EL advancement requires enough ERP":
     var tree = initTechTree(TechLevel(
       economicLevel: 1,
-      shieldLevel: 1,
+      scienceLevel: 1,
       constructionTech: 1,
       weaponsTech: 1,
       terraformingTech: 1,
       electronicIntelligence: 1,
-      counterIntelligence: 1
+      cloakingTech: 1,
+      shieldTech: 1,
+      counterIntelligence: 1,
+      fighterDoctrine: 1,
+      advancedCarrierOps: 1
     ))
 
     # Not enough ERP (need 50 for EL1->EL2)
@@ -92,12 +96,16 @@ suite "Tech Advancement (economy.md:4.1)":
   test "Tech advancement requires enough TRP":
     var tree = initTechTree(TechLevel(
       economicLevel: 1,
-      shieldLevel: 1,
+      scienceLevel: 1,
       constructionTech: 1,
       weaponsTech: 1,
       terraformingTech: 1,
       electronicIntelligence: 1,
-      counterIntelligence: 1
+      cloakingTech: 1,
+      shieldTech: 1,
+      counterIntelligence: 1,
+      fighterDoctrine: 1,
+      advancedCarrierOps: 1
     ))
 
     # Add some TRP for WEP
@@ -152,10 +160,8 @@ suite "Research Allocation":
     )
 
     let rp = allocateResearch(
-      ppBudget = 225,
       allocation = allocation,
       gho = 1000,
-      elLevel = 1,
       slLevel = 1
     )
 
