@@ -10,12 +10,14 @@ type
   StartingTechConfig* = object
     ## Starting tech levels per economy.md:4.0
     ## CRITICAL: ALL tech starts at level 1, not 0!
-    energy_level*: int              # EL1
-    shield_level*: int              # SL1
+    economic_level*: int            # EL1
+    science_level*: int             # SL1
     construction_tech*: int         # CST1
     weapons_tech*: int              # WEP1
     terraforming_tech*: int         # TER1
     electronic_intelligence*: int   # ELI1
+    cloaking_tech*: int             # CLK1
+    shield_tech*: int               # SLD1 (Planetary Shields)
     counter_intelligence*: int      # CIC1
     fighter_doctrine*: int          # FD I (starts at 1)
     advanced_carrier_ops*: int      # ACO I (starts at 1)

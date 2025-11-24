@@ -9,12 +9,14 @@
 # ============================================================================
 
 [starting_tech]
-energy_level = 1              # EL1 - 5% production bonus
-shield_level = 1              # SL1 - Base research capability
+economic_level = 1            # EL1 - 5% production bonus
+science_level = 1             # SL1 - Base research capability
 construction_tech = 1         # CST1 - Base shipyard capacity
 weapons_tech = 1              # WEP1 - Base combat strength
 terraforming_tech = 1         # TER1 - Base terraforming capability
 electronic_intelligence = 1   # ELI1 - Base spy scout capability
+cloaking_tech = 1             # CLK1 - Base cloaking capability
+shield_tech = 1               # SLD1 - Planetary shield technology
 counter_intelligence = 1      # CIC1 - Base espionage detection
 fighter_doctrine = 1          # FD I - 1.0x fighter capacity multiplier
 advanced_carrier_ops = 1      # ACO I - CV=3FS, CX=5FS
