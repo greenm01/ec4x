@@ -79,7 +79,7 @@ minimum: 1 turn
 |:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
 | SP        | Spaceport        | 1   | 100 | 5%  | 5   | 50  |
 | SY        | Shipyard         | 1   | 150 | 3%  | 10  | 70  |
-| ET        | ETAC             | 1   | 50  | 3%  | 1   | 10  |
+| ET        | ETAC             | 1   | 25  | 3%  | 1   | 10  |
 | TT        | Troop Transports | 1   | 30  | 3%  | 1   | 15  |
 
 *Source: config/facilities.toml and config/ships.toml*
@@ -115,24 +115,24 @@ Small maps (8-10 systems/player) use the baseline multiplier. Larger maps scale 
 <!-- PRESTIGE_TABLE_START -->
 | Prestige Source | Enum Name | Value |
 |-----------------|-----------|-------|
-| Tech Advancement | `TechAdvancement` | +2 |
-| Colony Establishment | `ColonyEstablishment` | +5 |
-| System Capture | `SystemCapture` | +10 |
-| Diplomatic Pact Formation | `DiplomaticPact` | +5 |
-| Pact Violation (penalty) | `PactViolation` | -10 |
-| Repeat Violation (penalty) | `RepeatViolation` | -10 |
-| Attack Dishonored House | `DishonoredBonus` | +1 |
-| Tech Theft Success | `TechTheftSuccess` | +2 |
-| Tech Theft Detected (penalty) | `TechTheftDetected` | +2 |
-| Assassination Success | `AssassinationSuccess` | +5 |
-| Assassination Detected (penalty) | `AssassinationDetected` | +5 |
-| Espionage Attempt Failed (penalty) | `EspionageFailure` | +1 |
-| Major Ship Destroyed (per ship) | `ShipDestroyed` | +1 |
-| Starbase Destroyed | `StarbaseDestroyed` | +5 |
-| Fleet Victory (per battle) | `FleetVictory` | +3 |
-| Planet Conquered | `PlanetConquered` | +10 |
-| House Eliminated | `HouseEliminated` | +3 |
-| Victory Achieved | `VictoryAchieved` | +5 |
+| Tech Advancement | `TechAdvancement` | +20 |
+| Colony Establishment | `ColonyEstablishment` | +50 |
+| System Capture | `SystemCapture` | +100 |
+| Diplomatic Pact Formation | `DiplomaticPact` | +50 |
+| Pact Violation (penalty) | `PactViolation` | -100 |
+| Repeat Violation (penalty) | `RepeatViolation` | -100 |
+| Attack Dishonored House | `DishonoredBonus` | +10 |
+| Tech Theft Success | `TechTheftSuccess` | +20 |
+| Tech Theft Detected (penalty) | `TechTheftDetected` | +20 |
+| Assassination Success | `AssassinationSuccess` | +50 |
+| Assassination Detected (penalty) | `AssassinationDetected` | +50 |
+| Espionage Attempt Failed (penalty) | `EspionageFailure` | +10 |
+| Major Ship Destroyed (per ship) | `ShipDestroyed` | +10 |
+| Starbase Destroyed | `StarbaseDestroyed` | +50 |
+| Fleet Victory (per battle) | `FleetVictory` | +30 |
+| Planet Conquered | `PlanetConquered` | +100 |
+| House Eliminated | `HouseEliminated` | +30 |
+| Victory Achieved | `VictoryAchieved` | +50 |
 
 *Source: config/prestige.toml [economic], [military], and [espionage] sections*
 <!-- PRESTIGE_TABLE_END -->
@@ -144,10 +144,12 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 <!-- PENALTY_MECHANICS_START -->
 | Penalty Type | Condition | Prestige Impact | Frequency | Config Keys |
 |--------------|-----------|-----------------|-----------|-------------|
-| High Tax Rate | Rolling 6-turn avg 51-65% | -1 prestige | Every 3 consecutive turns | `high_tax_*` |
+| High Tax Rate | Rolling 6-turn avg 51-65% | -2 prestige | Every 3 consecutive turns | `high_tax_*` |
 | Very High Tax Rate | Rolling 6-turn avg >66% | -2 prestige | Every 5 consecutive turns | `very_high_tax_*` |
-| Maintenance Shortfall | Missed maintenance payment | -5 turn 1, escalates by -2/turn | Per turn missed | `maintenance_shortfall_*` |
-| Blockade | Colony under blockade at Income Phase | -2 prestige | Per turn per colony | `blockade_penalty` |
+| Maintenance Shortfall | Missed maintenance payment | -8 turn 1, escalates by -3/turn | Per turn missed | `maintenance_shortfall_*` |
+| Blockade | Colony under blockade at Income Phase | -3 prestige | Per turn per colony | `blockade_penalty` |
+| Espionage Over-Investment | EBP spending >5% of budget | -2 prestige per 1% over threshold | Per turn | `over_invest_espionage` |
+| Counter-Intel Over-Investment | CIP spending >5% of budget | -2 prestige per 1% over threshold | Per turn | `over_invest_counter_intel` |
 
 *Source: config/prestige.toml [penalties] section*
 <!-- PENALTY_MECHANICS_END -->

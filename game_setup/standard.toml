@@ -14,7 +14,7 @@ estimated_duration = "Variable - depends on player strategy"
 # Victory condition types per gameplay.md:1.4.3
 primary_condition = "prestige"      # Victory by prestige threshold
 secondary_condition = "elimination" # Victory by being last active player
-prestige_threshold = 5000           # First to 5000 prestige wins (prestige.toml)
+prestige_threshold = 2500           # First to 2500 prestige wins (prestige.toml)
 # NOTE: Defensive Collapse and Autopilot rules defined in config/gameplay.toml
 
 [map]
