@@ -1333,6 +1333,19 @@ proc resolveSquadronManagement(state: var GameState, packet: OrderPacket, events
           if foundSquadron.isSome:
             break
 
+      # If not found in fleets, check unassigned squadrons at colony
+      if foundSquadron.isNone:
+        for i, squad in colony.unassignedSquadrons:
+          if squad.id == order.squadronId.get():
+            foundSquadron = some(squad)
+            # Remove from unassigned list
+            var newUnassigned: seq[Squadron] = @[]
+            for j, s in colony.unassignedSquadrons:
+              if j != i:
+                newUnassigned.add(s)
+            colony.unassignedSquadrons = newUnassigned
+            break
+
       if foundSquadron.isNone:
         echo "    AssignToFleet failed: Squadron ", order.squadronId.get(), " not found at system"
         continue
