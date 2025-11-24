@@ -82,6 +82,50 @@ Move to a new solar system and hold position (00).
 
 Order a fleet to seek the closest friendly solar system and hold position (00). Should that planet be taken over by an enemy, the fleet will move to the next closest planet you own.
 
+**Automated Seek Home (Self-Preservation Protocol)**:
+
+The game engine automatically triggers Seek Home behavior when fleets encounter situations where their orders become invalid or dangerous due to changing battlefield conditions. This prevents fleets from being stranded in hostile territory or attempting impossible missions.
+
+**Automatic Retreat Triggers:**
+
+The following situations automatically override fleet orders with Seek Home:
+
+1. **ETAC Colonization Missions (Order 12)**: When an ETAC fleet's destination system becomes enemy-controlled before arrival, the colonization mission aborts and the fleet retreats to the closest owned colony.
+
+2. **Guard Orders (Orders 04-05)**: When a fleet on guard duty (guarding starbases or planets) loses the system to enemy conquest, the fleet automatically retreats rather than remaining stranded in hostile territory.
+
+3. **Blockade Operations (Order 05)**: When a blockaded planet changes ownership to an enemy house, the blockading fleet automatically retreats to avoid encirclement.
+
+4. **Patrol Operations (Order 03)**: When a patrol zone becomes enemy-controlled territory (colony conquered), patrolling fleets automatically retreat to friendly space.
+
+**Retreat Destination Selection:**
+
+- Uses the same pathfinding logic as manual Seek Home orders
+- Selects the **closest owned colony** by jump distance from the fleet's current location
+- If no owned colonies exist (house has lost all territory), the fleet executes Hold (Order 00) at its current position
+
+**Automated Retreat vs. Post-Combat Retreat:**
+
+Automated Seek Home occurs in two distinct scenarios:
+
+1. **Pre-Order Execution Retreat**: Occurs **before** order execution when orders become strategically invalid due to territorial changes (e.g., destination colonized by enemy). This prevents fleets from executing impossible or suicidal orders.
+
+2. **Post-Combat Retreat** (per [Section 7.4](operations.md#74-space-combat)): Occurs **after** battle resolution when fleets suffer heavy damage or losses and trigger ROE-based tactical withdrawal. Retreating fleets are **automatically assigned Seek Home orders** and immediately begin movement toward the nearest friendly colony in the same turn. This ensures retreated fleets don't remain stranded at the battle site awaiting new orders.
+
+**Example Scenarios:**
+
+*Scenario 1 - ETAC Mission Abort*:
+House Atreides sends an ETAC fleet to colonize system 47. During the same turn, House Harkonnen conquers system 47. The ETAC fleet automatically aborts the colonization mission and retreats to the nearest Atreides-controlled colony instead of attempting to land in enemy territory.
+
+*Scenario 2 - Stranded Guard Fleet*:
+House Corrino has a fleet guarding a frontier colony at system 12. Enemy forces conquer the colony in a surprise invasion. Instead of the guard fleet remaining stranded deep in now-hostile territory, it automatically retreats to the nearest Corrino system.
+
+*Scenario 3 - Lost Patrol*:
+A patrol fleet at system 88 continues its patrol route. During the turn, the system is captured by an enemy house. The patrol fleet automatically aborts its patrol mission and seeks the nearest friendly colony rather than continuing to patrol enemy space.
+
+*Scenario 4 - Post-Combat Retreat*:
+House Ordos attacks a House Harkonnen colony with a fleet of 5 cruisers. The battle goes poorly - 3 cruisers are destroyed and the remaining 2 are crippled. The fleet's ROE (Rules of Engagement) threshold is exceeded, triggering tactical withdrawal. The game immediately assigns Seek Home orders to the surviving 2 cruisers, and they begin retreating to the nearest Ordos-controlled system in the same turn, rather than remaining at the battle site.
+
 ### 6.2.4 Patrol a System (03):
 
 Actively patrol a solar system, engaging hostile forces that enter the space.
