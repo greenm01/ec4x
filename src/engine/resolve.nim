@@ -665,7 +665,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
 
           elif project.itemId == "PlanetaryShield":
             # Set planetary shield level based on house's SLD tech
-            colony.planetaryShieldLevel = state.houses[colony.owner].techTree.levels.shieldLevel
+            colony.planetaryShieldLevel = state.houses[colony.owner].techTree.levels.shieldTech
             echo "      Added Planetary Shield (SLD", colony.planetaryShieldLevel, ") to system ", systemId
 
         of econ_types.ConstructionType.Industrial:
@@ -699,7 +699,7 @@ proc resolveIncomePhase(state: var GameState, orders: Table[HouseId, OrderPacket
           gho += colony.production
 
       # Get current tech levels
-      let currentSL = state.houses[houseId].techTree.levels.shieldLevel  # Science Level
+      let currentSL = state.houses[houseId].techTree.levels.scienceLevel  # Science Level
 
       # Convert PP allocations to RP
       let earnedRP = res_costs.allocateResearch(allocation, gho, currentSL)
@@ -2836,7 +2836,7 @@ proc resolveMaintenancePhase(state: var GameState, events: var seq[GameEvent]) =
         ))
 
       # Try to advance Science Level (SL) with accumulated SRP
-      let currentSL = house.techTree.levels.shieldLevel
+      let currentSL = house.techTree.levels.scienceLevel
       let slAdv = attemptSLAdvancement(house.techTree, currentSL)
       if slAdv.isSome:
         let adv = slAdv.get()

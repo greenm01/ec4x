@@ -90,10 +90,10 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
   of BreakthroughType.Major:
     # Auto-advance EL or SL
     if allocation.economic > allocation.science:
-      tree.levels.economicLevel += 1  # TODO: Should be EL not energy
+      tree.levels.economicLevel += 1
       result.category = ResearchCategory.Economic
     else:
-      tree.levels.shieldLevel += 1  # TODO: Should be SL not shield
+      tree.levels.scienceLevel += 1
       result.category = ResearchCategory.Science
     result.autoAdvance = true
 
@@ -148,8 +148,7 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[TechAdvan
     tree.accumulated.science -= cost
 
     # Advance level
-    # TODO: Proper SL field (currently using shieldLevel as placeholder)
-    tree.levels.shieldLevel = currentSL + 1
+    tree.levels.scienceLevel = currentSL + 1
 
     # Create prestige event
     let config = globalPrestigeConfig
@@ -161,7 +160,7 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[TechAdvan
 
     return some(TechAdvancement(
       houseId: "",  # Set by caller
-      field: TechField.ShieldLevel,  # TODO: Separate SL from tech fields
+      field: TechField.ScienceLevel,
       fromLevel: currentSL,
       toLevel: currentSL + 1,
       cost: cost,
@@ -177,8 +176,8 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
   let currentLevel = case field
     of TechField.EconomicLevel:
       tree.levels.economicLevel
-    of TechField.ShieldLevel:
-      tree.levels.shieldLevel
+    of TechField.ScienceLevel:
+      tree.levels.scienceLevel
     of TechField.ConstructionTech:
       tree.levels.constructionTech
     of TechField.WeaponsTech:
@@ -187,8 +186,16 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
       tree.levels.terraformingTech
     of TechField.ElectronicIntelligence:
       tree.levels.electronicIntelligence
+    of TechField.CloakingTech:
+      tree.levels.cloakingTech
+    of TechField.ShieldTech:
+      tree.levels.shieldTech
     of TechField.CounterIntelligence:
       tree.levels.counterIntelligence
+    of TechField.FighterDoctrine:
+      tree.levels.fighterDoctrine
+    of TechField.AdvancedCarrierOps:
+      tree.levels.advancedCarrierOps
 
   let cost = getTechUpgradeCost(field, currentLevel)
 
@@ -203,8 +210,8 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
   case field
   of TechField.EconomicLevel:
     tree.levels.economicLevel += 1
-  of TechField.ShieldLevel:
-    tree.levels.shieldLevel += 1
+  of TechField.ScienceLevel:
+    tree.levels.scienceLevel += 1
   of TechField.ConstructionTech:
     tree.levels.constructionTech += 1
   of TechField.WeaponsTech:
@@ -213,8 +220,16 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
     tree.levels.terraformingTech += 1
   of TechField.ElectronicIntelligence:
     tree.levels.electronicIntelligence += 1
+  of TechField.CloakingTech:
+    tree.levels.cloakingTech += 1
+  of TechField.ShieldTech:
+    tree.levels.shieldTech += 1
   of TechField.CounterIntelligence:
     tree.levels.counterIntelligence += 1
+  of TechField.FighterDoctrine:
+    tree.levels.fighterDoctrine += 1
+  of TechField.AdvancedCarrierOps:
+    tree.levels.advancedCarrierOps += 1
 
   # Create prestige event
   let config = globalPrestigeConfig

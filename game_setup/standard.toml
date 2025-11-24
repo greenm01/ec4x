@@ -40,11 +40,11 @@ construction_tech = 2               # CST2 - Faster ship building (was CST1)
 weapons_tech = 1                    # WEP1 - Keep at baseline
 terraforming_tech = 1               # TER1
 electronic_intelligence = 1         # ELI1
+cloaking_tech = 1                   # CLK1
+shield_tech = 1                     # SLD1 - Planetary shield technology
 counter_intelligence = 1            # CIC1
-cloaking_tech = 1                   # CLK1 (starts at level 1)
-shield_tech = 1                     # SLD1 (starts at level 1)
-fighter_doctrine = 1                # FD I (starts at level 1, 1.0x multiplier)
-advanced_carrier_ops = 1            # ACO I (starts at level 1, CV=3FS CX=5FS)
+fighter_doctrine = 1                # FD I (1.0x multiplier)
+advanced_carrier_ops = 1            # ACO I (CV=3FS, CX=5FS)
 
 [starting_fleet]
 # Initial fleet composition matching original Esterian Conquest
