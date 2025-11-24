@@ -410,6 +410,8 @@ All passing ✅
 
 ## 📝 Notes
 
+TODO: before additional bootstrap AI training: implement archive_old_results() in run_balance_test_parallel.py
+
 **Design Philosophy:**
 - Event-based architecture
 - Minimal coupling between systems
