@@ -4,7 +4,7 @@
 ## Per Grok gap analysis: "Run diagnostics. Let the numbers tell you exactly what's missing."
 
 import std/[tables, strformat, streams, options]
-import ../../src/engine/[gamestate, fleet, squadron]
+import ../../src/engine/[gamestate, fleet, squadron, orders]
 import ../../src/common/types/[core, units]
 
 type
@@ -224,7 +224,8 @@ proc collectIntelMetrics(state: GameState, houseId: HouseId): DiagnosticMetrics 
   result.invasionFleetsWithoutELIMesh = invasionsWithoutMesh
   result.totalInvasions = totalInvasions
 
-  # TODO: Track espionage missions from order history
+  # Espionage missions tracked separately (passed from orders)
+  # These are set by the caller when passing order data
   result.spyPlanetMissions = 0
   result.hackStarbaseMissions = 0
   result.totalEspionageMissions = 0
@@ -261,8 +262,24 @@ proc collectDefenseMetrics(state: GameState, houseId: HouseId): DiagnosticMetric
   result.mothballedFleetsUsed = 0
   result.mothballedFleetsTotal = 0
 
+proc countEspionageMissions*(orders: OrderPacket): tuple[spyPlanet: int, hackStarbase: int, spySystem: int] =
+  ## Count espionage-related fleet orders in an order packet
+  result = (spyPlanet: 0, hackStarbase: 0, spySystem: 0)
+
+  for order in orders.fleetOrders:
+    case order.orderType
+    of FleetOrderType.SpyPlanet:
+      result.spyPlanet += 1
+    of FleetOrderType.HackStarbase:
+      result.hackStarbase += 1
+    of FleetOrderType.SpySystem:
+      result.spySystem += 1
+    else:
+      discard
+
 proc collectDiagnostics*(state: GameState, houseId: HouseId,
-                        prevMetrics: Option[DiagnosticMetrics] = none(DiagnosticMetrics)): DiagnosticMetrics =
+                        prevMetrics: Option[DiagnosticMetrics] = none(DiagnosticMetrics),
+                        orders: Option[OrderPacket] = none(OrderPacket)): DiagnosticMetrics =
   ## Collect all diagnostic metrics for a house at current turn
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -296,9 +313,17 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.invasionFleetsWithoutELIMesh = intel.invasionFleetsWithoutELIMesh
   result.totalInvasions = intel.totalInvasions
   result.clkResearchedNoRaiders = intel.clkResearchedNoRaiders
-  result.spyPlanetMissions = intel.spyPlanetMissions
-  result.hackStarbaseMissions = intel.hackStarbaseMissions
-  result.totalEspionageMissions = intel.totalEspionageMissions
+
+  # Track espionage missions from orders (if provided)
+  if orders.isSome:
+    let espCounts = countEspionageMissions(orders.get)
+    result.spyPlanetMissions = espCounts.spyPlanet
+    result.hackStarbaseMissions = espCounts.hackStarbase
+    result.totalEspionageMissions = espCounts.spyPlanet + espCounts.hackStarbase + espCounts.spySystem
+  else:
+    result.spyPlanetMissions = 0
+    result.hackStarbaseMissions = 0
+    result.totalEspionageMissions = 0
 
   result.coloniesWithoutDefense = def.coloniesWithoutDefense
   result.totalColonies = def.totalColonies
