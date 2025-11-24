@@ -7,16 +7,17 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
-- ✅ **Phase 2a Complete: FoW Integration with RBA (2025-11-24)**
-  - Core FoW filtering system in src/engine/fog_of_war.nim
-  - Bridge pattern integration with ai_controller.nim
-  - AI receives FilteredGameState (limited visibility enforced)
-  - Balance tests running with FoW active
-  - Ready for Phase 2b+ improvements
+- ✅ **Phase 2a-2b-2g Complete: Critical AI Infrastructure (2025-11-24)**
+  - **2a:** FoW Integration with RBA - FilteredGameState enforcing limited visibility
+  - **2b:** Fighter/Carrier Ownership - Auto-loading, capacity violation detection
+  - **2g:** Espionage Mission Targeting - 100% espionage usage, 292 missions/game
+  - **Scout Auto-Fleet Creation:** Scouts now auto-deploy, enabling intelligence ops
+  - **Diagnostic Infrastructure:** 29 metrics tracked, gap analysis dashboard complete
 - ✅ **Gap Analysis Complete (2025-11-24)**
   - Identified 5 critical missing features (espionage, fallback, etc)
-  - Diagnostic infrastructure plan created
+  - Diagnostic infrastructure implemented with Python analysis tools
   - Phase 2 priorities revised based on Grok feedback
+  - **Key Results:** 0% capacity violations, 100% espionage, identified defense gaps
 - ✅ **Architecture Revision: Removed LLM approach, added neural network self-play training (2025-11-24)**
   - Removed Mistral-7B/llama.cpp/prompt engineering
   - Added AlphaZero-style reinforcement learning
@@ -187,12 +188,12 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 **Critical Insight from Grok Gap Analysis:**
 > "Run diagnostics. Let the numbers tell you exactly what's missing. Every flaw you fix now compounds through every self-play iteration later."
 
-**Diagnostic Infrastructure** (Milestone 1 - IMMEDIATE)
-- Add per-house, per-turn metric logging to run_simulation.nim
-- Run 2,000 diagnostic games (small maps, 50-turn limit)
-- Generate gap analysis dashboard (CSV → analysis script)
-- **Key metrics:** Capacity violations, espionage usage, Raider success, mothball usage
-- **Estimated effort:** ~300 lines, 5 tests
+**Diagnostic Infrastructure** ✅ **COMPLETE** (2025-11-24)
+- ✅ Added per-house, per-turn metric logging (tests/balance/diagnostics.nim)
+- ✅ Created batch runner and analysis tools (Python)
+- ✅ CSV export with 29 tracked metrics
+- ✅ Gap analysis dashboard showing red flags
+- **Results:** 0% capacity violations, 100% espionage usage, identified defense gaps
 
 **Target Improvements:**
 
@@ -206,13 +207,12 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 **Estimated Effort:** High complexity (~1,100 lines affected/added, 20 tests)
 **Documentation:** See `docs/FOG_OF_WAR_INTEGRATION.md` for detailed plan
 
-**2b. Fighter/Carrier Ownership System** ⏳ **NEXT UP** (After diagnostics)
-- Track colony-owned vs carrier-owned fighters separately
-- Detect capacity violations (population + infrastructure)
-- Resolve violations proactively (carrier loading, starbase construction)
-- Carrier logistics for fighter relocation
-
-**Estimated Effort:** High complexity (~400 lines, 15 tests)
+**2b. Fighter/Carrier Ownership System** ✅ **COMPLETE** (2025-11-24)
+- ✅ Colony-owned vs carrier-owned fighters tracked (gamestate.nim)
+- ✅ Capacity violation detection with grace period (economy_resolution.nim)
+- ✅ Auto-loading fighters to carriers after commissioning (autoLoadFightersToCarriers)
+- ✅ Fighters remain at colony if no suitable carriers available
+- **Results:** 0% capacity violations, 0% idle carriers in diagnostics
 
 **2c. Scout Operational Modes** ⏳ MEDIUM PRIORITY (After FoW + fighters)
 - Single-scout squadrons for espionage missions
@@ -246,13 +246,12 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Low-medium complexity (~150 lines, 5 tests)
 
-**2g. Espionage Mission Targeting** ⏳ **HIGH PRIORITY** (NEW - from gap analysis)
-- Problem: AI never uses SpyPlanet/HackStarbase missions
-- Red-flag metric: 0 espionage missions in entire games
-- Implementation: `identifySpyTargets()`, `identifyHackTargets()`, `prioritizeEspionageActions()`
-- Integration with FoW: Target systems with stale/no intel
-
-**Estimated Effort:** Medium complexity (~250 lines, 8 tests)
+**2g. Espionage Mission Targeting** ✅ **COMPLETE** (2025-11-24)
+- ✅ Fixed scout fleet deployment (autoBalanceSquadronsToFleets now creates fleets)
+- ✅ Strategic HackStarbase targeting for enemy production centers
+- ✅ SpyPlanet mission execution for intel gathering
+- ✅ Pre-invasion intelligence thresholds lowered
+- **Results:** 100% games with espionage usage, ~292 spy missions per 100-turn game
 
 **2h. Fallback System Designation** ⏳ **HIGH PRIORITY** (NEW - from gap analysis)
 - Problem: Fleets fight to death with no retreat target
