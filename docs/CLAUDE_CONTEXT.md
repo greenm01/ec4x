@@ -259,7 +259,7 @@ python3 run_balance_test_parallel.py
 - [ ] No hardcoded game values (check TOML)
 - [ ] Tests pass: `nim c -r tests/integration/test_*.nim`
 - [ ] Project builds: `nimble build`
-- [ ] No binaries or generated data files committed
+- [ ] No binaries or generated data files (json, etc) committed
 - [ ] Updated TODO.md if milestone complete
 - [ ] Followed NEP-1 naming conventions
 - [ ] Update OPEN_ISSUES.md
