@@ -50,10 +50,18 @@ proc resolveCombat*(context: BattleContext): CombatResult =
   # PRE-COMBAT DETECTION PHASE (Section 7.3.1.1)
   # Scouts and Starbases attempt to detect cloaked Raiders before combat begins
   # If detected, Raiders lose ambush advantage and attack in Phase 3 instead
+  #
+  # Pre-detected houses: Houses already detected in previous combat phase (e.g., space combat)
+  # remain detected in subsequent phases (e.g., orbital combat)
 
   # Create std/random Rand from CombatRNG state for detection system
   # Detection uses std/random.Rand, combat uses CombatRNG
   var detectionRng = initRand(int64(rng.state))
+
+  # Mark pre-detected houses as detected
+  for targetIdx, targetTF in taskForces.mpairs:
+    if targetTF.house in context.preDetectedHouses:
+      taskForces[targetIdx].isCloaked = false
 
   for detectorIdx, detectorTF in taskForces.mpairs:
     # Skip if this task force has no ELI capability (no scouts)
@@ -128,7 +136,10 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       roundNum,
       diplomaticRelations,
       systemOwner,
-      rng
+      rng,
+      desperationBonus = 0,
+      allowAmbush = context.allowAmbush,
+      allowStarbaseCombat = context.allowStarbaseCombat
     )
 
     result.rounds.add(roundResults)
@@ -154,7 +165,9 @@ proc resolveCombat*(context: BattleContext): CombatResult =
         diplomaticRelations,
         systemOwner,
         rng,
-        desperationBonus = 2  # +2 CER to all attacks
+        desperationBonus = 2,  # +2 CER to all attacks
+        allowAmbush = context.allowAmbush,
+        allowStarbaseCombat = context.allowStarbaseCombat
       )
 
       result.rounds.add(desperationResults)

@@ -76,6 +76,7 @@ sld6_block = 50
 [damage_rules]
 # Combat damage mechanics
 crippled_as_multiplier = 0.5       # Crippled ships have AS * 0.5 (round up)
+crippled_maintenance_multiplier = 0.5  # Crippled ships have 50% maintenance cost
 squadron_fights_as_unit = true     # Squadron total AS/DS, not individual ships
 destroy_after_all_crippled = true  # Don't destroy until all others crippled
 

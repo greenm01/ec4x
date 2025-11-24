@@ -3,7 +3,7 @@
 ## Per specification (operations.md:1036, operations.md:288):
 ## - Spacelift ships are "individual units" NOT squadrons
 ## - Travel with fleets but separate from combat squadrons
-## - Screened behind task force during space/starbase combat
+## - Screened behind task force during orbital combat
 ## - Participate in ground combat phase (can be destroyed by ground batteries)
 ##
 ## Architecture: Fleet → Squadrons (combat) + SpaceLiftShips (separate)

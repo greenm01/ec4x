@@ -471,6 +471,8 @@ end
 
 Determine the effective ELI level following the same method from Step 1 in [Section 2.4.2](#242-scouts).
 
+**Starbase Detection Bonus**: If the detecting unit is a Starbase or includes a Starbase, add +2 to the final effective ELI level before consulting the detection table. This reflects the superior sensor arrays and dedicated detection systems installed on orbital fortresses.
+
 **Step 2: Determine Detection Threshold**
 
 Compare the final effective ELI level with the CLK level of the Raider unit:
@@ -552,7 +554,20 @@ Starbases (SB) are powerful orbital fortresses that facilitate planetary defense
 
 Starbases require three months (three turns) to construct and require a shipyard. They remain in orbit and do not move out of their home solar systems.
 
+**Detection Capabilities:**
+
 Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in [Section 2.4.2](#242-scouts) and Raider Detection Table in [Section 2.4.3](#243-raiders) respectively.
+
+Starbases receive a **+2 ELI modifier** for all detection rolls, reflecting their superior sensor arrays and dedicated detection systems.
+
+**Combat Participation:**
+
+Starbases participate in detection for ALL combat phases occurring in their system:
+- **Space Combat** (operations.md:7.3): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
+- **Orbital Combat** (operations.md:7.4): Starbases detect AND fight as primary orbital defenders
+- **Rationale**: Advanced sensors provide system-wide detection support; physical weapons only engage threats to the colony itself
+
+**Economic Benefits:**
 
 Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% every turn, up to a max of 15% (three Starbases).
 

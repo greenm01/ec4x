@@ -55,6 +55,14 @@ type
     turnsRemaining*: int          # Grace period turns left (starts at 2)
     violationTurn*: int           # Turn when violation began
 
+  TerraformProject* = object
+    ## Active terraforming project on a colony
+    startTurn*: int           # Turn when started
+    turnsRemaining*: int      # Turns until completion
+    targetClass*: int         # Target planet class (current + 1)
+    ppCost*: int              # Total PP cost
+    ppPaid*: int              # PP already invested
+
   Colony* = object
     systemId*: SystemId
     owner*: HouseId
@@ -66,6 +74,7 @@ type
     buildings*: seq[BuildingType]
     production*: int              # Current turn production
     underConstruction*: Option[ConstructionProject]
+    activeTerraforming*: Option[TerraformProject]  # Active terraforming project
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
     unassignedSquadrons*: seq[Squadron]          # Combat squadrons at colony, not in any fleet

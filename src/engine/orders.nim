@@ -2,7 +2,7 @@
 
 import std/[options, tables]
 import ../common/[hex, types/core, types/units]
-import gamestate, fleet, ship, spacelift
+import gamestate, fleet, ship, spacelift, starmap
 import espionage/types as esp_types
 import research/types as res_types
 
@@ -25,6 +25,9 @@ type
     JoinFleet         # Merge with another fleet
     Rendezvous        # Coordinate movement with fleet
     Salvage           # Recover wreckage
+    Reserve           # Place fleet on reserve status (50% maint, half AS/DS, can't move)
+    Mothball          # Mothball fleet (0% maint, offline, screened in combat)
+    Reactivate        # Return reserve/mothballed fleet to active duty
 
   SquadronManagementAction* {.pure.} = enum
     ## Squadron and ship management actions at colonies
@@ -71,6 +74,15 @@ type
     targetFleet*: Option[FleetId]
     priority*: int  # Execution order within turn
 
+  TerraformOrder* = object
+    ## Order to terraform a planet to next class
+    ## Per economy.md Section 4.7
+    colonySystem*: SystemId
+    startTurn*: int           # Turn when terraforming started
+    turnsRemaining*: int      # Turns until completion (based on TER level)
+    ppCost*: int              # Total PP cost for upgrade
+    targetClass*: int         # Target planet class (current + 1)
+
   OrderPacket* = object
     houseId*: HouseId
     turn*: int
@@ -81,6 +93,7 @@ type
     populationTransfers*: seq[PopulationTransferOrder]  # Space Guild transfers
     squadronManagement*: seq[SquadronManagementOrder]    # Ship commissioning and squadron formation
     cargoManagement*: seq[CargoManagementOrder]          # Cargo loading/unloading at colonies
+    terraformOrders*: seq[TerraformOrder]                # Terraforming projects
 
     # Espionage budget allocation (diplomacy.md:8.2)
     espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
@@ -152,7 +165,10 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     if not state.starMap.systems.hasKey(targetId):
       return ValidationResult(valid: false, error: "Target system does not exist")
 
-    # TODO: Check pathfinding - can fleet reach target?
+    # Check pathfinding - can fleet reach target?
+    let pathResult = state.starMap.findPath(fleet.location, targetId, fleet)
+    if not pathResult.found:
+      return ValidationResult(valid: false, error: "No valid path to target system")
 
   of FleetOrderType.Colonize:
     # Check fleet has spacelift squadron
@@ -169,7 +185,10 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     if order.targetSystem.isNone:
       return ValidationResult(valid: false, error: "Colonize order requires target system")
 
-    # TODO: Check if system already colonized
+    # Check if system already colonized
+    let targetId = order.targetSystem.get()
+    if targetId in state.colonies:
+      return ValidationResult(valid: false, error: "Target system is already colonized")
 
   of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
     # Check fleet has combat squadrons
@@ -209,7 +228,10 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
     if targetFleetOpt.isNone:
       return ValidationResult(valid: false, error: "Target fleet does not exist")
 
-    # TODO: Check fleets are in same location
+    # Check fleets are in same location
+    let targetFleet = targetFleetOpt.get()
+    if fleet.location != targetFleet.location:
+      return ValidationResult(valid: false, error: "Fleets must be in same system to join")
 
   else:
     # Other order types - basic validation only for now
@@ -233,9 +255,45 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
     if not orderResult.valid:
       return orderResult
 
-  # TODO: Validate build orders (check resources, production capacity)
-  # TODO: Validate research allocation (check total points available)
-  # TODO: Validate diplomatic actions (check diplomatic state)
+  # Validate build orders (check colony ownership, production capacity)
+  for order in packet.buildOrders:
+    # Check colony exists and is owned by house
+    if order.colonySystem notin state.colonies:
+      return ValidationResult(valid: false, error: "Build order: Colony does not exist at system " & $order.colonySystem)
+
+    let colony = state.colonies[order.colonySystem]
+    if colony.owner != packet.houseId:
+      return ValidationResult(valid: false, error: "Build order: House does not own colony at system " & $order.colonySystem)
+
+    # Check for duplicate build orders at same colony (can only build one thing at a time)
+    if colony.underConstruction.isSome:
+      return ValidationResult(valid: false, error: "Build order: Colony at system " & $order.colonySystem & " already has active construction")
+
+  # Validate research allocation (check total points available)
+  let house = state.houses[packet.houseId]
+  # Note: Actual PP availability check happens during resolution (after income phase)
+  # Here we just validate structure - allocation can't be negative
+  if packet.researchAllocation.economic < 0 or packet.researchAllocation.science < 0:
+    return ValidationResult(valid: false, error: "Research allocation: Cannot allocate negative PP")
+
+  # Validate technology allocations (per-field)
+  for field, amount in packet.researchAllocation.technology:
+    if amount < 0:
+      return ValidationResult(valid: false, error: "Research allocation: Cannot allocate negative PP to " & $field)
+
+  # Validate diplomatic actions (check diplomatic state and constraints)
+  for action in packet.diplomaticActions:
+    # Check target house exists
+    if action.targetHouse notin state.houses:
+      return ValidationResult(valid: false, error: "Diplomatic action: Target house does not exist")
+
+    # Can't take diplomatic actions against eliminated houses
+    if state.houses[action.targetHouse].eliminated:
+      return ValidationResult(valid: false, error: "Diplomatic action: Target house is eliminated")
+
+    # Can't target self
+    if action.targetHouse == packet.houseId:
+      return ValidationResult(valid: false, error: "Diplomatic action: Cannot target own house")
 
   result = ValidationResult(valid: true, error: "")
 
