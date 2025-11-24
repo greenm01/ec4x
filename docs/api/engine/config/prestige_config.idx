@@ -1,17 +1,19 @@
 nimTitle	prestige_config	config/prestige_config.html	module src/engine/config/prestige_config		0
 nim	VictoryConfig	config/prestige_config.html#VictoryConfig	object VictoryConfig		10
-nim	MoraleConfig	config/prestige_config.html#MoraleConfig	object MoraleConfig		16
-nim	EconomicPrestigeConfig	config/prestige_config.html#EconomicPrestigeConfig	object EconomicPrestigeConfig		23
-nim	MilitaryPrestigeConfig	config/prestige_config.html#MilitaryPrestigeConfig	object MilitaryPrestigeConfig		33
-nim	EspionagePrestigeConfig	config/prestige_config.html#EspionagePrestigeConfig	object EspionagePrestigeConfig		46
-nim	EspionageVictimPrestigeConfig	config/prestige_config.html#EspionageVictimPrestigeConfig	object EspionageVictimPrestigeConfig		56
-nim	ScoutPrestigeConfig	config/prestige_config.html#ScoutPrestigeConfig	object ScoutPrestigeConfig		65
-nim	DiplomacyPrestigeConfig	config/prestige_config.html#DiplomacyPrestigeConfig	object DiplomacyPrestigeConfig		70
-nim	VictoryAchievementConfig	config/prestige_config.html#VictoryAchievementConfig	object VictoryAchievementConfig		78
-nim	PenaltiesPrestigeConfig	config/prestige_config.html#PenaltiesPrestigeConfig	object PenaltiesPrestigeConfig		81
-nim	TaxPenaltiesTier	config/prestige_config.html#TaxPenaltiesTier	object TaxPenaltiesTier		94
-nim	TaxIncentivesTier	config/prestige_config.html#TaxIncentivesTier	object TaxIncentivesTier		114
-nim	PrestigeConfig	config/prestige_config.html#PrestigeConfig	object PrestigeConfig		131
-nim	loadPrestigeConfig	config/prestige_config.html#loadPrestigeConfig,string	proc loadPrestigeConfig(configPath: string = "config/prestige.toml"): PrestigeConfig		146
-nim	globalPrestigeConfig	config/prestige_config.html#globalPrestigeConfig	var globalPrestigeConfig		160
-nim	reloadPrestigeConfig	config/prestige_config.html#reloadPrestigeConfig	proc reloadPrestigeConfig()		164
+nim	DynamicScalingConfig	config/prestige_config.html#DynamicScalingConfig	object DynamicScalingConfig		16
+nim	MoraleConfig	config/prestige_config.html#MoraleConfig	object MoraleConfig		25
+nim	EconomicPrestigeConfig	config/prestige_config.html#EconomicPrestigeConfig	object EconomicPrestigeConfig		32
+nim	MilitaryPrestigeConfig	config/prestige_config.html#MilitaryPrestigeConfig	object MilitaryPrestigeConfig		42
+nim	EspionagePrestigeConfig	config/prestige_config.html#EspionagePrestigeConfig	object EspionagePrestigeConfig		55
+nim	EspionageVictimPrestigeConfig	config/prestige_config.html#EspionageVictimPrestigeConfig	object EspionageVictimPrestigeConfig		65
+nim	ScoutPrestigeConfig	config/prestige_config.html#ScoutPrestigeConfig	object ScoutPrestigeConfig		74
+nim	DiplomacyPrestigeConfig	config/prestige_config.html#DiplomacyPrestigeConfig	object DiplomacyPrestigeConfig		79
+nim	VictoryAchievementConfig	config/prestige_config.html#VictoryAchievementConfig	object VictoryAchievementConfig		87
+nim	PenaltiesPrestigeConfig	config/prestige_config.html#PenaltiesPrestigeConfig	object PenaltiesPrestigeConfig		90
+nim	TaxPenaltiesTier	config/prestige_config.html#TaxPenaltiesTier	object TaxPenaltiesTier		103
+nim	TaxIncentivesTier	config/prestige_config.html#TaxIncentivesTier	object TaxIncentivesTier		123
+nim	PrestigeConfig	config/prestige_config.html#PrestigeConfig	object PrestigeConfig		140
+nim	loadPrestigeConfig	config/prestige_config.html#loadPrestigeConfig,string	proc loadPrestigeConfig(configPath: string = "config/prestige.toml"): PrestigeConfig		156
+nim	globalPrestigeConfig	config/prestige_config.html#globalPrestigeConfig	var globalPrestigeConfig		170
+nim	reloadPrestigeConfig	config/prestige_config.html#reloadPrestigeConfig	proc reloadPrestigeConfig()		174
+nim	calculateDynamicMultiplier	config/prestige_config.html#calculateDynamicMultiplier,int,int	proc calculateDynamicMultiplier(numSystems: int; numPlayers: int): float		180
