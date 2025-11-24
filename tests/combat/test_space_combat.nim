@@ -4,9 +4,9 @@
 ## Combines space combat, starbase defense, and ground combat
 
 import std/[sequtils, options, strformat, tables]
-import ../src/engine/combat/[types, cer, ground, engine, starbase]
-import ../src/engine/squadron
-import ../src/common/types/[core, units, combat, diplomacy]
+import ../../src/engine/combat/[types, cer, ground, engine, starbase]
+import ../../src/engine/squadron
+import ../../src/common/types/[core, units, combat, diplomacy]
 
 ## Helper: Create a fleet with multiple squadrons
 proc createFleet(house: HouseId, location: SystemId, ships: seq[(ShipClass, int)]): seq[CombatSquadron] =

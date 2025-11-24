@@ -94,7 +94,8 @@ proc filterHostileSquadrons*(
     if isHostileHouse:
       for sq in tf.squadrons:
         # Skip starbases if they're screened (space combat)
-        if not allowStarbaseTargeting and sq.bucket == TargetBucket.Starbase:
+        # Note: Starbases use Capital bucket but need special screening logic
+        if not allowStarbaseTargeting and sq.squadron.flagship.shipClass == ShipClass.Starbase:
           continue
 
         if sq.canBeTargeted():
