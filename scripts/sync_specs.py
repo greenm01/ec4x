@@ -461,6 +461,21 @@ def generate_penalty_mechanics_table(config: Dict[str, Any]) -> str:
         f"`blockade_penalty` |"
     )
 
+    # Over-investment penalties
+    over_invest_esp = penalties.get('over_invest_espionage', -1)
+    over_invest_cic = penalties.get('over_invest_counter_intel', -1)
+
+    lines.append(
+        f"| Espionage Over-Investment | EBP spending >5% of budget | "
+        f"{over_invest_esp} prestige per 1% over threshold | Per turn | "
+        f"`over_invest_espionage` |"
+    )
+    lines.append(
+        f"| Counter-Intel Over-Investment | CIP spending >5% of budget | "
+        f"{over_invest_cic} prestige per 1% over threshold | Per turn | "
+        f"`over_invest_counter_intel` |"
+    )
+
     lines.append("")
     lines.append("*Source: config/prestige.toml [penalties] section*")
 
@@ -1518,6 +1533,7 @@ def replace_inline_values_gameplay(content: str, gameplay_config: Dict[str, Any]
     # Define inline value replacements for gameplay.md
     replacements = {
         'STARTING_PRESTIGE': lambda: str(game_setup_config['starting_resources']['starting_prestige']),
+        'VICTORY_PRESTIGE': lambda: str(game_setup_config['victory_conditions']['prestige_threshold']),
         'DEFENSIVE_COLLAPSE_TURNS': lambda: num_to_word(gameplay_config['elimination']['defensive_collapse_turns']),
         'MIA_TURNS': lambda: num_to_word(gameplay_config['autopilot']['mia_turns_threshold']),
         'HOMEWORLD_QUALITY': lambda: game_setup_config['homeworld']['raw_quality'],
@@ -1566,6 +1582,41 @@ def update_gameplay_spec(gameplay_config: Dict[str, Any], game_setup_config: Dic
     # Write updated content
     spec_file.write_text(content)
     print(f"✓ Successfully updated {spec_file}")
+
+
+def update_index_and_glossary(gameplay_config: Dict[str, Any], game_setup_config: Dict[str, Any]):
+    """Update index.md and glossary.md with inline values from config."""
+    import re
+
+    # Get the actual values
+    collapse_turns = gameplay_config['elimination']['defensive_collapse_turns']
+    victory_prestige = game_setup_config['victory_conditions']['prestige_threshold']
+
+    # Update index.md
+    index_file = Path("docs/specs/index.md")
+    if index_file.exists():
+        content = index_file.read_text()
+        # Replace "Below 0 prestige for 3 consecutive turns"
+        content = re.sub(
+            r'Below 0 prestige for \d+ consecutive turns',
+            f'Below 0 prestige for {collapse_turns} consecutive turns',
+            content
+        )
+        index_file.write_text(content)
+        print(f"✓ Successfully updated {index_file}")
+
+    # Update glossary.md
+    glossary_file = Path("docs/specs/glossary.md")
+    if glossary_file.exists():
+        content = glossary_file.read_text()
+        # Replace "prestige ≤ 0 for 3 consecutive turns"
+        content = re.sub(
+            r'prestige ≤ 0 for \d+ consecutive turns',
+            f'prestige ≤ 0 for {collapse_turns} consecutive turns',
+            content
+        )
+        glossary_file.write_text(content)
+        print(f"✓ Successfully updated {glossary_file}")
 
 
 def main():
@@ -1743,6 +1794,7 @@ def main():
     update_operations_spec(shield_table, combat_config, construction_config, military_config)
     update_assets_spec(spy_detection_table, raider_detection_table, espionage_config, construction_config, military_config)
     update_gameplay_spec(gameplay_config, game_setup_config)
+    update_index_and_glossary(gameplay_config, game_setup_config)
 
     print("\n" + "=" * 50)
     print("Sync complete!")

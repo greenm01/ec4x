@@ -76,13 +76,13 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 <!-- ESPIONAGE_PRESTIGE_TABLE_START -->
 | Espionage Action | Cost in EBPs | Description | Prestige Change for Player | Prestige Change for Target |
 |------------------|:------------:|-------------|----------------------------|----------------------------|
-| Tech Theft | 5 | Attempt to steal critical R&D tech. | +2 | -3 |
-| Sabotage (Low Impact) | 2 | Small-scale sabotage to a colony's industry. | +1 | -1 |
-| Sabotage (High Impact) | 7 | Major sabotage to a colony's industry. | +3 | -5 |
-| Assassination | 10 | Attempt to eliminate a key figures within the target House. | +5 | -7 |
-| Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +2 | -3 |
-| Economic Manipulation | 6 | Influence markets to harm the target's economy | +3 | -4 |
-| Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +1 | -2 |
+| Tech Theft | 5 | Attempt to steal critical R&D tech. | +20 | -30 |
+| Sabotage (Low Impact) | 2 | Small-scale sabotage to a colony's industry. | +10 | -10 |
+| Sabotage (High Impact) | 7 | Major sabotage to a colony's industry. | +30 | -50 |
+| Assassination | 10 | Attempt to eliminate a key figures within the target House. | +50 | -70 |
+| Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +20 | -30 |
+| Economic Manipulation | 6 | Influence markets to harm the target's economy | +30 | -7 |
+| Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +10 | -3 |
 
 *Source: config/prestige.toml [espionage] and [espionage_victim] sections; config/espionage.toml [costs]*
 <!-- ESPIONAGE_PRESTIGE_TABLE_END -->
@@ -202,7 +202,9 @@ Excessive espionage may trigger rival Houses to adopt aggressive countermeasures
 
 Investing too much in espionage can erode the prestige of your House over time, creating a long-term disadvantage. The aristocracy views shadowy tactics as a sign of desperation rather than strength, leading to the perception that your House is incapable of achieving its goals through legitimate means.
 
-Each turn that espionage investments exceed 5% of your budget, your House loses 1 prestige point for every additional 1% invested over the 5% threshold. This penalty reflects the growing skepticism of your peers and the erosion of your House’s noble reputation.
+Each turn that espionage investments exceed 5% of your budget, your House loses 2 prestige points for every additional 1% invested over the 5% threshold. This penalty reflects the growing skepticism of your peers and the erosion of your House's noble reputation.
+
+*Configuration: `over_invest_espionage = -2` in config/prestige.toml [penalties] section*
 
 Repeated over-investment in espionage actions compounds the loss of prestige, as the Empire’s nobility becomes increasingly suspicious of your methods. Over time, this can severely impact your standing, making it difficult to assert dominance and achieve key diplomatic or military objectives.
 
