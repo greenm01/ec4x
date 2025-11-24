@@ -447,9 +447,9 @@ Add ~50–80 dims for last-seen values, stale intel, estimated enemy tech, detec
 
 Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
 
-#### 3. Read and consider Grok's feedback for AI architecture: ec4x/docs/architecture/2025-11-24-grok-ec4x-ai-feedback.md
+#### 3. Read and consider Grok's feedback for AI architecture into phase 2+: ec4x/docs/architecture/2025-11-24-grok-ec4x-ai-feedback.md
 
-#### 4. Incorporate gap analyses into plan: ec4x/docs/architecture/2025-11-24-grok_EC4X_Bootstrap_Gap_Analysis.md
+#### 4. Incorporate gap analyses into phase 2+: ec4x/docs/architecture/2025-11-24-grok_EC4X_Bootstrap_Gap_Analysis.md
 
 #### 5. Remove old LLM related files and folders from project
 
