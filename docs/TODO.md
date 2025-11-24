@@ -817,10 +817,37 @@ python3 scripts/sync_specs.py
    - **Phase 2D:** Full Game - 30 turns (200 games)
      - Target: Winner emerges naturally
      - Validate: 4-act dramatic arc complete?
-6. ⏳ Phase 3: Variable Player Count Testing (2-12 players)
-7. ⏳ Phase 4: Training data generation (200-1000 simulations)
-8. ⏳ Phase 5: Model training (Mistral-7B fine-tuning)
-9. ⏳ Phase 6: Inference service (llama.cpp integration)
+6. ⏳ **Phase 3: AI Strategic & Tactical Improvements** (PRIORITY)
+   - **Special Unit Employment:**
+     - Fighters: Optimal squadron sizing, carrier deployment strategies
+     - Carriers: Mobile reserve tactics, assault operations, capacity management
+     - Scouts: Single-ship espionage missions vs fleet ELI support
+     - Raiders: Cloaking advantage, ambush tactics, CLK vs ELI assessment
+   - **Tech Tree Utilization:**
+     - Full 11-tech research prioritization (EL, SL, CST, WEP, TER, ELI, CLK, SLD, CIC, FD, ACO)
+     - Fighter Doctrine (FD) for capacity multiplication (1x → 1.5x → 2x)
+     - Advanced Carrier Ops (ACO) for hangar expansion (CV: 3→4→5 FS, CX: 5→6→8 FS)
+     - Cloaking Tech (CLK) research timing and raider deployment
+     - Electronic Intelligence (ELI) counter-raider and scout detection
+     - Shield Tech (SLD) for planetary defense optimization
+   - **Force Composition:**
+     - Squadron composition with Scouts for ELI mesh networks
+     - Flagship selection based on CR/CC optimization
+     - Mixed task force effectiveness (capital ships + fighters + scouts)
+   - **Tactical Decision-Making:**
+     - Raider detection probability assessment (ELI vs CLK levels)
+     - Fighter deployment timing (Phase 2 first strike)
+     - Scout mesh network coordination
+     - Carrier force projection risk/reward
+   - **Strategic Planning:**
+     - Starbase construction for fighter infrastructure (1 per 5 FS)
+     - Capacity violation management (2-turn grace period)
+     - Fighter relocation via carriers for capacity management
+     - Reserve vs assault carrier doctrine selection
+7. ⏳ Phase 4: Variable Player Count Testing (2-12 players)
+8. ⏳ Phase 5: Training data generation (200-1000 simulations)
+9. ⏳ Phase 6: Model training (Mistral-7B fine-tuning)
+10. ⏳ Phase 7: Inference service (llama.cpp integration)
 
 ### Long Term (Future Milestones)
 1. UI development (deferred)
