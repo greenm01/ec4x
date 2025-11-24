@@ -4,7 +4,7 @@
 ## to enable realistic game simulations
 
 import std/[tables, options, random, sequtils, strformat, algorithm]
-import ../../src/engine/[gamestate, orders, fleet, squadron, starmap]
+import ../../src/engine/[gamestate, orders, fleet, squadron, starmap, fog_of_war]
 import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/research/types as res_types
@@ -2523,22 +2523,72 @@ proc generateCargoManagement(controller: AIController, state: GameState, rng: va
 
   return result
 
-proc generateAIOrders*(controller: var AIController, state: GameState, rng: var Rand): OrderPacket =
-  ## Generate complete order packet for an AI player
-  ## ## 3: Controller is now `var` to support intelligence updates
-  ## ## Context available:
+proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): OrderPacket =
+  ## Generate complete order packet for an AI player using fog-of-war filtered view
+  ##
+  ## IMPORTANT: AI receives FilteredGameState, NOT full GameState
+  ## This enforces limited visibility - AI only sees:
+  ## - Own assets (full detail)
+  ## - Enemy assets in occupied/owned systems
+  ## - Stale intel from intelligence database
+  ##
+  ## Context available:
   ## - controller.lastTurnReport: Previous turn's report (for AI learning)
-  ## - state: Current game state
+  ## - filtered: Fog-of-war filtered game state for this house
   ## - controller.personality: Strategic personality parameters
   ## - controller.intelligence: System intelligence reports
   ## - controller.operations: Coordinated operations
-  ## ## Future enhancement: Parse lastTurnReport to:
-  ## - React to combat losses (build replacements, retreat)
-  ## - Respond to enemy fleet sightings (send reinforcements)
-  ## - Adjust strategy based on economic situation
-  ## - Learn from tech advances (prioritize synergistic research)
+  ##
+  ## TODO: Gradually refactor helper functions to use FilteredGameState directly
+  ## For now, we create a temporary GameState-like structure for compatibility
+
   let p = controller.personality
-  let house = state.houses[controller.houseId]
+  let house = filtered.ownHouse
+
+  # TEMPORARY BRIDGE: Create compatibility GameState structure
+  # This allows existing helper functions to work while we refactor them
+  # TODO: Remove this once all helpers use FilteredGameState directly
+  var state = GameState(
+    gameId: "temp",
+    turn: filtered.turn,
+    year: filtered.year,
+    month: filtered.month,
+    phase: GamePhase.Active,
+    starMap: filtered.starMap,
+    houses: initTable[HouseId, House](),
+    colonies: initTable[SystemId, Colony](),
+    fleets: initTable[FleetId, Fleet](),
+    diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
+    ongoingEffects: @[],
+    spyScouts: initTable[string, SpyScout](),
+    populationInTransit: @[],
+    pendingProposals: @[]
+  )
+
+  # Populate with own assets (full details available)
+  state.houses[controller.houseId] = filtered.ownHouse
+  for colony in filtered.ownColonies:
+    state.colonies[colony.systemId] = colony
+  for fleet in filtered.ownFleets:
+    state.fleets[fleet.id] = fleet
+
+  # Add visible enemy houses (prestige/diplomacy only)
+  for houseId, prestige in filtered.housePrestige:
+    if houseId != controller.houseId:
+      var enemyHouse = House(
+        id: houseId,
+        name: houseId,  # Don't have actual name
+        color: "unknown",
+        prestige: prestige,
+        treasury: 0,  # Unknown
+        eliminated: filtered.houseEliminated.getOrDefault(houseId, false)
+      )
+      state.houses[houseId] = enemyHouse
+
+  # Add diplomacy info
+  for key, dipState in filtered.houseDiplomacy:
+    let (house1, house2) = key
+    state.diplomacy[(house1, house2)] = dipState
 
   # Strategic planning before generating orders
   # Update operation status (check which fleets have reached assembly points)

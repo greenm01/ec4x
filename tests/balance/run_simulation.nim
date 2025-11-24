@@ -5,7 +5,7 @@
 
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils]
 import game_setup, ai_controller
-import ../../src/engine/[gamestate, resolve, orders]
+import ../../src/engine/[gamestate, resolve, orders, fog_of_war]
 import ../../src/common/types/core
 import ../../src/client/reports/turn_report
 
@@ -51,11 +51,13 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
     # Store old state for turn report generation
     let oldState = game
 
-    # Collect orders from all AI players
+    # Collect orders from all AI players with fog-of-war filtering
     var ordersTable = initTable[HouseId, OrderPacket]()
     for i in 0..<controllers.len:
       var controller = controllers[i]
-      let orders = generateAIOrders(controller, game, rng)
+      # Apply fog-of-war filtering - AI only sees what it should
+      let filteredView = createFogOfWarView(game, controller.houseId)
+      let orders = generateAIOrders(controller, filteredView, rng)
       ordersTable[controller.houseId] = orders
       controllers[i] = controller
 
