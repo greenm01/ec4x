@@ -22,7 +22,23 @@ Players start the game with 50 prestige points.
 
 If a House's prestige drops and stays below zero for three consecutive turns, the empire enters Defensive Collapse and the player is permanently eliminated. See [Section 1.4](#14-player-elimination--autopilot) for full elimination and autopilot mechanics.
 
-**Dynamic Prestige Scaling:** All prestige awards and penalties are dynamically scaled based on map size and player count. Small maps (8-10 systems per player) use the baseline 5x multiplier for ~30 turn games. Larger maps scale DOWN from this baseline - medium maps use 3-4x multipliers (~40-50 turns), and large maps use 2-2.5x multipliers (~60-80 turns). This ensures game length naturally matches the amount of territory to conquer while maintaining the same 5000 prestige victory threshold. See [Section 9.4](reference.md#94-prestige) for detailed formulas.
+### Dynamic Prestige Scaling (Simple Explanation)
+
+**The Problem:** Victory requires 5000 prestige. If prestige awards are fixed, small maps finish too fast and large maps take forever.
+
+**The Solution:** Prestige awards automatically adjust based on map size.
+
+**How it works:**
+- **Small maps** (8-10 systems per player): You get the **full** prestige values listed in the tables → games last ~30 turns
+- **Large maps** (30+ systems per player): You get **less** prestige per action (automatically scaled down) → games last ~60-80 turns
+
+**Why?** More territory = more turns needed to conquer everything. Lower prestige per action means you need more victories to hit 5000, which perfectly matches the longer conquest time.
+
+**Example:** On a small map, colonizing a planet gives you 25 prestige. On a large map, the same action might only give 8 prestige. This way, both maps reach 5000 prestige around the time all territory is conquered.
+
+**For Players:** You don't need to do anything - the game calculates this automatically when the map is created. Just know that larger maps = longer campaigns!
+
+See [Section 9.4](reference.md#94-prestige) for the mathematical details.
 
 ## 1.2 Game Setup
 
