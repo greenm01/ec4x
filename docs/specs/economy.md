@@ -367,6 +367,8 @@ What does NOT count (completely unlimited except money / existing rules):
 | **WEP** | 1 | Weapons Tech - Base combat strength (AS/DS) |
 | **TER** | 1 | Terraforming Tech - Base terraforming capability |
 | **ELI** | 1 | Electronic Intelligence - Base spy scout capability |
+| **CLK** | 1 | Cloaking Tech - Stealth and detection avoidance |
+| **SLD** | 1 | Shield Tech - Planetary shield technology (bombardment defense) |
 | **CIC** | 1 | Counter-Intelligence - Base espionage detection |
 | **FD** | 1 | Fighter Doctrine I - 1.0x fighter capacity multiplier |
 | **ACO** | 1 | Advanced Carrier Operations I - CV=3FS, CX=5FS |
