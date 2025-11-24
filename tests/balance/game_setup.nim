@@ -15,36 +15,90 @@ proc generateBalancedStarMap*(numPlayers: int): StarMap =
   ## Generate a balanced star map for testing using the engine's StarMap
   result = newStarMap(numPlayers)
 
-proc createStartingFleet*(owner: HouseId, location: SystemId): Fleet =
-  ## Create a starting fleet with basic composition
-  ## 1 squadron with 1 destroyer + 5 ETACs (for 30-turn acceleration)
+proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
+  ## Create starting fleets matching original EC
+  ## Original EC: 2 fleets (ETAC+Cruiser), 2 fleets (Destroyer)
+  result = @[]
 
-  let squadron = createSquadron(
-    shipClass = ShipClass.Destroyer,
+  # Fleet 1: ETAC + Light Cruiser
+  let cruiser1 = createSquadron(
+    shipClass = ShipClass.LightCruiser,
     techLevel = 1,
-    id = (&"{owner}_sq1").SquadronId,
+    id = (&"{owner}_cruiser_sq1").SquadronId,
     owner = owner,
     location = location,
     isCrippled = false
   )
-
-  # Create 5 ETACs for parallel colonization (30-turn acceleration)
-  var etacs: seq[SpaceLiftShip] = @[]
-  for i in 1..5:
-    etacs.add(newSpaceLiftShip(
-      id = &"{owner}_ETAC_{location.int}_{i}",
-      shipClass = ShipClass.ETAC,
-      owner = owner,
-      location = location
-    ))
-
-  result = Fleet(
+  let etac1 = newSpaceLiftShip(
+    id = &"{owner}_ETAC_1",
+    shipClass = ShipClass.ETAC,
+    owner = owner,
+    location = location
+  )
+  result.add(Fleet(
     id: (&"{owner}_fleet1").FleetId,
     owner: owner,
     location: location,
-    squadrons: @[squadron],
-    spaceLiftShips: etacs
+    squadrons: @[cruiser1],
+    spaceLiftShips: @[etac1]
+  ))
+
+  # Fleet 2: ETAC + Light Cruiser
+  let cruiser2 = createSquadron(
+    shipClass = ShipClass.LightCruiser,
+    techLevel = 1,
+    id = (&"{owner}_cruiser_sq2").SquadronId,
+    owner = owner,
+    location = location,
+    isCrippled = false
   )
+  let etac2 = newSpaceLiftShip(
+    id = &"{owner}_ETAC_2",
+    shipClass = ShipClass.ETAC,
+    owner = owner,
+    location = location
+  )
+  result.add(Fleet(
+    id: (&"{owner}_fleet2").FleetId,
+    owner: owner,
+    location: location,
+    squadrons: @[cruiser2],
+    spaceLiftShips: @[etac2]
+  ))
+
+  # Fleet 3: Destroyer
+  let destroyer1 = createSquadron(
+    shipClass = ShipClass.Destroyer,
+    techLevel = 1,
+    id = (&"{owner}_destroyer_sq1").SquadronId,
+    owner = owner,
+    location = location,
+    isCrippled = false
+  )
+  result.add(Fleet(
+    id: (&"{owner}_fleet3").FleetId,
+    owner: owner,
+    location: location,
+    squadrons: @[destroyer1],
+    spaceLiftShips: @[]
+  ))
+
+  # Fleet 4: Destroyer
+  let destroyer2 = createSquadron(
+    shipClass = ShipClass.Destroyer,
+    techLevel = 1,
+    id = (&"{owner}_destroyer_sq2").SquadronId,
+    owner = owner,
+    location = location,
+    isCrippled = false
+  )
+  result.add(Fleet(
+    id: (&"{owner}_fleet4").FleetId,
+    owner: owner,
+    location: location,
+    squadrons: @[destroyer2],
+    spaceLiftShips: @[]
+  ))
 
 proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameState =
   ## Create a balanced game setup for testing
@@ -96,11 +150,10 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     # BALANCE FIX: Enable auto-assign so new ships join fleets automatically
     result.colonies[homeSystemId].autoAssignFleets = true
 
-    # Create starting fleet at homeworld
-    result.fleets[(&"{houseId}_fleet1").FleetId] = createStartingFleet(
-      houseId,
-      homeSystemId
-    )
+    # Create starting fleets at homeworld (4 fleets matching original EC)
+    let startingFleets = createStartingFleets(houseId, homeSystemId)
+    for fleet in startingFleets:
+      result.fleets[fleet.id] = fleet
 
   # Initialize diplomatic relations between all houses (all start neutral)
   let houseIds = toSeq(result.houses.keys)
