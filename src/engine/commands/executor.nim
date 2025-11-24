@@ -494,14 +494,16 @@ proc executeBlitzOrder(
       eventsGenerated: @[]
     )
 
-  # Check for loaded troop transports
+  # Check for loaded troop transports (spacelift ships, NOT squadrons)
+  # Per ARCHITECTURE FIX 2025-11-23: Spacelift ships are separate from squadrons
   var hasLoadedTransports = false
 
-  for squadron in fleet.squadrons:
-    if squadron.flagship.shipClass == ShipClass.TroopTransport:
-      # TODO: Check if transport has Marines loaded
-      hasLoadedTransports = true
-      break
+  for spaceliftShip in fleet.spaceLiftShips:
+    if spaceliftShip.shipClass == ShipClass.TroopTransport:
+      # Check if transport has Marines loaded
+      if spaceliftShip.cargo.cargoType == CargoType.Marines and spaceliftShip.cargo.quantity > 0:
+        hasLoadedTransports = true
+        break
 
   if not hasLoadedTransports:
     return OrderExecutionResult(
