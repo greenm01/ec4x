@@ -3,8 +3,8 @@
 ## Executes a complete game simulation with AI players
 ## and generates balance analysis report
 
-import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils]
-import game_setup, ai_controller
+import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
+import game_setup, ai_controller, diagnostics
 import ../../src/engine/[gamestate, resolve, orders, fog_of_war]
 import ../../src/common/types/core
 import ../../src/client/reports/turn_report
@@ -39,9 +39,14 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
   var turnSnapshots = newJArray()
   var turnReports = newJArray()  # Store all turn reports for audit trail
 
-  # Create output directory for turn reports
+  # Diagnostic metrics collection
+  var allDiagnostics: seq[DiagnosticMetrics] = @[]
+  var prevMetrics = initTable[HouseId, DiagnosticMetrics]()
+
+  # Create output directory for turn reports and diagnostics
   # NOTE: balance_results/ is in .gitignore and cleaned by run_balance_test.py
   createDir("balance_results/simulation_reports")
+  createDir("balance_results/diagnostics")
 
   # Run simulation for specified turns
   for turn in 1..numTurns:
@@ -64,6 +69,13 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
     # Resolve turn with actual game engine
     let turnResult = resolveTurn(game, ordersTable)
     game = turnResult.newState
+
+    # Collect diagnostic metrics after turn resolution
+    for houseId in houseIds:
+      let prevOpt = if houseId in prevMetrics: some(prevMetrics[houseId]) else: none(DiagnosticMetrics)
+      let metrics = collectDiagnostics(game, houseId, prevOpt)
+      allDiagnostics.add(metrics)
+      prevMetrics[houseId] = metrics
 
     # Generate turn reports for each house and update AI controllers
     var turnReportData = %* {
@@ -121,6 +133,10 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       turnSnapshots.add(snapshot)
 
   echo &"\nSimulation complete! Ran {numTurns} turns"
+
+  # Write diagnostic metrics to CSV
+  let diagnosticFilename = &"balance_results/diagnostics/game_{seed}.csv"
+  writeDiagnosticsCSV(diagnosticFilename, allDiagnostics)
 
   # Calculate final rankings
   var rankings = newJArray()
