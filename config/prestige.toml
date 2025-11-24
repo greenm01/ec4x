@@ -12,7 +12,7 @@
 
 [victory]
 # BALANCE: Victory and defeat thresholds
-prestige_victory = 5000            # Reach 5000 prestige to win
+prestige_victory = 2500            # Reach 2500 prestige to win (adjusted for 10x base prestige)
 starting_prestige = 50             # NOTE: Game setup defines this in game_setup/standard.toml
 defeat_threshold = 0               # Below 0 for consecutive turns = surrender
 defeat_consecutive_turns = 3       # NOTE: Elimination mechanics in config/gameplay.toml
@@ -40,7 +40,7 @@ defeat_consecutive_turns = 3       # NOTE: Elimination mechanics in config/gamep
 enabled = true                     # Enable dynamic scaling (false = use base_multiplier for all maps)
 base_multiplier = 5.0              # Prestige multiplier for small maps (baseline)
 baseline_turns = 30                # Target game length for baseline small maps
-baseline_systems_per_player = 10   # Systems per player that defines "small map" baseline
+baseline_systems_per_player = 8    # Systems per player that defines "small map" baseline (adjusted from 10)
 turn_scaling_factor = 2.0          # Additional turns per extra system (scales game length linearly)
 min_multiplier = 1.5               # Minimum multiplier floor (for massive maps)
 max_multiplier = 8.0               # Maximum multiplier ceiling (for tiny maps)
@@ -68,56 +68,56 @@ high_max = 80         # 61-80: High (+1 CER + critical auto-success if >9)
 # BALANCE: Economic achievement rewards
 # NOTE: Values optimized for small maps (8-10 systems/player, ~30 turn games)
 # Larger maps automatically scale DOWN via dynamic multiplier to extend game length
-tech_advancement = 10               # Advance to new tech level
-establish_colony = 25              # New colony established
-max_population = 15                # Colony reaches max PU (base: 3, 5x = 15)
-iu_milestone_50 = 5                # Reach 50% IU of PU (was 1)
-iu_milestone_75 = 10                # Reach 75% IU of PU (was 2)
-iu_milestone_100 = 15               # Reach 100% IU of PU (was 3)
-iu_milestone_150 = 25              # Reach 150% IU of PU (was 5)
-terraform_planet = 25              # Upgrade planet class via terraforming (was 5)
+tech_advancement = 20               # Advance to new tech level
+establish_colony = 50              # New colony established
+max_population = 30                # Colony reaches max PU (base: 3, 5x = 15)
+iu_milestone_50 = 10                # Reach 50% IU of PU (was 1)
+iu_milestone_75 = 20                # Reach 75% IU of PU (was 2)
+iu_milestone_100 = 30               # Reach 100% IU of PU (was 3)
+iu_milestone_150 = 50              # Reach 150% IU of PU (was 5)
+terraform_planet = 50              # Upgrade planet class via terraforming (was 5)
 
 [military]
 # BALANCE: Military victory rewards
 # NOTE: Values optimized for small maps. Larger maps scale DOWN automatically.
-destroy_squadron = 5               # Per major ship destroyed (base: 1, 5x = 5)
-destroy_starbase = 25              # Destroy enemy starbase (base: 5, 5x = 25)
-fleet_victory = 15                 # Win fleet battle (base: 3, 5x = 15)
-invade_planet = 50                 # Successfully invade/blitz planet (base: 10, 5x = 50)
-eliminate_house = 15               # Eliminate rival house (base: 3, 5x = 15)
-system_capture = 50                # Capture star system (base: 10, 5x = 50)
+destroy_squadron = 10               # Per major ship destroyed (base: 1, 5x = 5)
+destroy_starbase = 50              # Destroy enemy starbase (base: 5, 5x = 25)
+fleet_victory = 30                 # Win fleet battle (base: 3, 5x = 15)
+invade_planet = 100                 # Successfully invade/blitz planet (base: 10, 5x = 50)
+eliminate_house = 30               # Eliminate rival house (base: 3, 5x = 15)
+system_capture = 100                # Capture star system (base: 10, 5x = 50)
 
 # BALANCE: Military defeat penalties
 # ACCELERATION: Tripled all penalties to maintain relative balance
-lose_planet = -50                  # Lose colony to enemy (was -10)
-lose_starbase = -25                # Starbase destroyed (was -5)
-ambushed_by_cloak = -5             # Ambushed by cloaked fleet (was -1)
-force_retreat = 10                  # Force enemy to retreat (was 2)
-scout_destroyed = -15               # Scout detected and destroyed (was -3)
+lose_planet = -100                  # Lose colony to enemy (was -10)
+lose_starbase = -50                # Starbase destroyed (was -5)
+ambushed_by_cloak = -10             # Ambushed by cloaked fleet (was -1)
+force_retreat = 20                  # Force enemy to retreat (was 2)
+scout_destroyed = -30               # Scout detected and destroyed (was -3)
 
 [espionage]
 # BALANCE: Espionage success rewards
 # NOTE: Values optimized for small maps. Larger maps scale DOWN automatically.
-tech_theft = 10                     # Successful tech theft (was 2)
-low_impact_sabotage = 5            # Low-impact sabotage success (was 1)
-high_impact_sabotage = 15           # High-impact sabotage success (was 3)
-assassination = 25                 # Successful assassination (was 5)
-cyber_attack = 10                   # Successful cyber attack (was 2)
-economic_manipulation = 15          # Successful economic manipulation (was 3)
-psyops_campaign = 5                # Successful psyops (was 1)
+tech_theft = 20                     # Successful tech theft (was 2)
+low_impact_sabotage = 10            # Low-impact sabotage success (was 1)
+high_impact_sabotage = 30           # High-impact sabotage success (was 3)
+assassination = 50                 # Successful assassination (was 5)
+cyber_attack = 20                   # Successful cyber attack (was 2)
+economic_manipulation = 30          # Successful economic manipulation (was 3)
+psyops_campaign = 10                # Successful psyops (was 1)
 
 # BALANCE: Espionage failure/detection penalties
 # ACCELERATION: Tripled penalty
-failed_espionage = -10              # Espionage detected and prevented (was -2)
+failed_espionage = -20              # Espionage detected and prevented (was -2)
 
 [espionage_victim]
 # BALANCE: Prestige penalties for being targeted by espionage
 # NOTE: Values optimized for small maps. Larger maps scale DOWN automatically.
-tech_theft_victim = -15             # Victim of tech theft (was -3)
-low_impact_sabotage_victim = -5    # Victim of low sabotage (was -1)
-high_impact_sabotage_victim = -25  # Victim of high sabotage (was -5)
-assassination_victim = -35         # Leader assassinated (was -7)
-cyber_attack_victim = -15           # Victim of cyber attack (was -3)
+tech_theft_victim = -30             # Victim of tech theft (was -3)
+low_impact_sabotage_victim = -10    # Victim of low sabotage (was -1)
+high_impact_sabotage_victim = -50  # Victim of high sabotage (was -5)
+assassination_victim = -70         # Leader assassinated (was -7)
+cyber_attack_victim = -30           # Victim of cyber attack (was -3)
 economic_manipulation_victim = -7  # Victim of economic manipulation
 psyops_campaign_victim = -3        # Victim of psyops
 
@@ -130,10 +130,10 @@ spy_on_system = 2                  # Successful system reconnaissance
 [diplomacy]
 # BALANCE: Diplomatic action prestige impacts
 # NOTE: Values optimized for small maps. Larger maps scale DOWN automatically.
-diplomatic_pact_formation = 25     # Form diplomatic pact (was 5)
-pact_violation = -50               # Break non-aggression pact (was -10)
-repeat_violation = -50             # Repeat violation (dishonored status) (was -10)
-dishonored_bonus = 5               # Bonus for attacking dishonored house (was 1)
+diplomatic_pact_formation = 50     # Form diplomatic pact (was 5)
+pact_violation = -100               # Break non-aggression pact (was -10)
+repeat_violation = -100             # Repeat violation (dishonored status) (was -10)
+dishonored_bonus = 10               # Bonus for attacking dishonored house (was 1)
 declare_war = 0                    # No inherent penalty
 make_peace = 0                     # No inherent bonus
 
