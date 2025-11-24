@@ -513,6 +513,60 @@ These features are **documented in specs** and **configured in TOML files**, but
 
 ## 📋 Code Health Issues
 
+### Code Organization & Refactoring
+**Status:** ⚠️ Needs Attention
+**Priority:** Medium
+
+**Issue:** Core engine files growing too large for maintainability:
+- `src/engine/resolve.nim` - 4,102 lines (47 procs)
+- `tests/balance/*.nim` - ~10,691 total lines
+
+**Recommended Refactoring:**
+
+**resolve.nim → Modular Resolution System:**
+```
+src/engine/
+├── resolve.nim              # Main orchestrator (~400 lines)
+│   └── resolveTurn() - coordinates phases
+├── resolution/
+│   ├── fleet_orders.nim     # Fleet movement, patrol, colonize (~800 lines)
+│   │   ├── resolveMovementOrder()
+│   │   ├── resolvePatrolOrder()
+│   │   ├── resolveColonizeOrder()
+│   │   ├── findClosestOwnedColony()
+│   │   ├── isSystemHostile()
+│   │   └── shouldAutoSeekHome()
+│   ├── combat_resolution.nim # Battle resolution, retreat logic (~1200 lines)
+│   │   ├── resolveSpaceBattles()
+│   │   ├── resolveOrbitalBombardment()
+│   │   ├── resolveGroundInvasions()
+│   │   └── Post-combat retreat processing
+│   ├── economy_resolution.nim # Income, construction, maintenance (~600 lines)
+│   │   ├── Colony production calculations
+│   │   ├── Construction processing
+│   │   ├── Maintenance costs
+│   │   └── Treasury updates
+│   └── diplomatic_resolution.nim # Treaty processing, relations (~300 lines)
+```
+
+**Balance Tests → Modular Simulation System:**
+```
+tests/balance/
+├── runner.nim           # Main simulation loop
+├── scenarios.nim        # Setup different game scenarios
+├── analysis.nim         # Statistical analysis, reporting
+└── metrics.nim          # Prestige tracking, win conditions
+```
+
+**Benefits:**
+- **Maintainability:** Easier to locate specific mechanics
+- **Cognitive Load:** Smaller files, clearer boundaries
+- **Code Reviews:** Changes isolated to specific modules
+- **Parallel Development:** Multiple systems can be modified independently
+- **Testing:** More granular test coverage per module
+
+---
+
 ### Pure Enum Violations
 **Status:** ✅ Complete
 
