@@ -410,7 +410,42 @@ All passing ✅
 
 ## 📝 Notes
 
-PRIORITY TODO: Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parellal or single. Remove old files.
+**PRIORITY TODO(s)**
+
+1) Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parellal or single. Remove old files.
+
+2) Implement fog of war AI:
+
+## 1. Fog of War – Mandatory for Both AIs
+| Question                                 | Final Decision                                   |
+|------------------------------------------|--------------------------------------------------|
+| Should AI have full map knowledge?       | No — never (except explicit “cheat” mode)       |
+| Rule-based AI (RBA)                      | Must use same fog-of-war view as human player   |
+| Neural network AI (NNA)                  | Must train and play with fog-of-war only         |
+| Self-play training                       | Each empire receives its own private FoW view    |
+
+**Why**  
+- Perfect information breaks scouting, ELI/CLK, espionage, and Raider mechanics  
+- Creates domain shift between training and deployment  
+- Forces the neural net to learn information-gathering (the heart of 4X strategy)  
+- Matches real imperfect-information research (MuZero hidden state, Libratus, etc.)
+
+**State encoding impact**  
+Add ~50–80 dims for last-seen values, stale intel, estimated enemy tech, detection risk, etc.
+
+## 2. Official Three-Letter Acronyms
+| AI Type                  | Acronym | Full Name                        | Flavor / Usage                              |
+|--------------------------|---------|----------------------------------|---------------------------------------------|
+| Rule-based AI            | RBA     | Rule-Based Advisor               | “The Codex of the Great Houses”             |
+| Neural network AI        | NNA     | Neural Network Autarch           | “The Mind that Devours Galaxies”            |
+
+**UI / Difficulty example**  
+- Easy  → RBA (Economic)  
+- Normal → RBA (Balanced)  
+- Hard  → NNA v5  
+- Nightmare → NNA v10
+
+Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
 
 **Design Philosophy:**
 - Event-based architecture
