@@ -178,8 +178,8 @@ suite "Ship Construction Costs":
     check battleshipCost == 60
 
   test "Build time scales with cost":
-    let scoutTime = getShipBuildTime(ShipClass.Scout)
-    let carrierTime = getShipBuildTime(ShipClass.Carrier)
+    let scoutTime = getShipBuildTime(ShipClass.Scout, cstLevel = 1)
+    let carrierTime = getShipBuildTime(ShipClass.Carrier, cstLevel = 1)
 
     check carrierTime >= scoutTime
 
