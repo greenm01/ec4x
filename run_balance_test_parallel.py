@@ -29,9 +29,11 @@ DEFAULT_GAMES = 200
 DEFAULT_TURNS = 100
 STRATEGIES = ["Aggressive", "Economic", "Balanced", "Turtle"]
 
-def run_single_game(seed, turns_per_game):
+def run_single_game(seed, turns_per_game, map_rings=0):
     """Run a single game simulation with given seed"""
     cmd = ["./tests/balance/run_simulation", str(turns_per_game), str(seed)]
+    if map_rings > 0:
+        cmd.append(str(map_rings))
     result = subprocess.run(cmd, capture_output=True, text=True, cwd="/home/niltempus/dev/ec4x")
 
     if result.returncode != 0:
@@ -63,13 +65,13 @@ def run_single_game(seed, turns_per_game):
 
 def run_game_batch(args):
     """Run a batch of games in this worker process"""
-    batch_id, games_per_batch, start_seed, turns_per_game = args
+    batch_id, games_per_batch, start_seed, turns_per_game, map_rings = args
     print(f"Batch {batch_id}: Starting {games_per_batch} games (seeds {start_seed}-{start_seed+games_per_batch-1})")
 
     results = []
     for i in range(games_per_batch):
         seed = start_seed + i
-        rankings = run_single_game(seed, turns_per_game)
+        rankings = run_single_game(seed, turns_per_game, map_rings)
         if rankings:
             results.append(rankings)
 
@@ -171,11 +173,14 @@ def main():
                         help=f'Total number of games to run (default: {DEFAULT_GAMES})')
     parser.add_argument('--turns', type=int, default=DEFAULT_TURNS,
                         help=f'Number of turns per game (default: {DEFAULT_TURNS})')
+    parser.add_argument('--rings', type=int, default=0,
+                        help='Number of hex rings for map size (0=default to player count, 3=small, 4=medium, 5=large)')
     args = parser.parse_args()
 
     num_parallel = args.workers
     total_games = args.games
     turns_per_game = args.turns
+    map_rings = args.rings
     games_per_worker = total_games // num_parallel
 
     print("="*70)
@@ -197,7 +202,7 @@ def main():
     for i in range(num_parallel):
         batch_id = i + 1
         start_seed = base_seed + (i * games_per_worker)
-        batches.append((batch_id, games_per_worker, start_seed, turns_per_game))
+        batches.append((batch_id, games_per_worker, start_seed, turns_per_game, map_rings))
 
     # Run batches in parallel using multiprocessing
     print(f"Starting {num_parallel} parallel workers...\n")

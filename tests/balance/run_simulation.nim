@@ -9,8 +9,9 @@ import ../../src/engine/[gamestate, resolve, orders]
 import ../../src/common/types/core
 import ../../src/client/reports/turn_report
 
-proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], seed: int64 = 42): JsonNode =
+proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 0): JsonNode =
   ## Run a full game simulation with AI players
+  ## mapRings: number of hex rings (0 = use numHouses as default)
   echo &"Starting simulation: {numHouses} houses, {numTurns} turns"
   echo &"Strategies: {strategies}"
 
@@ -18,7 +19,8 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
 
   # Create balanced starting game
   echo "\nInitializing game state..."
-  var game = createBalancedGame(numHouses, numHouses, seed)
+  let rings = if mapRings > 0: mapRings else: numHouses
+  var game = createBalancedGame(numHouses, rings, seed)
 
   # Create AI controllers for each house
   var controllers: seq[AIController] = @[]
@@ -169,15 +171,19 @@ when isMainModule:
   echo repeat("=", 70)
   echo ""
 
-  # Parse command line arguments: turns [seed]
+  # Parse command line arguments: turns [seed] [mapRings]
   var numTurns = 100
   var seed: int64 = 42
+  var mapRings = 0  # 0 = default to player count
 
   if paramCount() >= 1:
     numTurns = parseInt(paramStr(1))
 
   if paramCount() >= 2:
     seed = parseBiggestInt(paramStr(2))
+
+  if paramCount() >= 3:
+    mapRings = parseInt(paramStr(3))
 
   # Run a 4-player simulation with different strategies
   let strategies = @[
@@ -187,7 +193,7 @@ when isMainModule:
     AIStrategy.Turtle
   ]
 
-  let report = runSimulation(4, numTurns, strategies, seed)
+  let report = runSimulation(4, numTurns, strategies, seed, mapRings)
 
   # Export report
   import std/os
