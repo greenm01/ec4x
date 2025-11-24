@@ -11,7 +11,7 @@
 import std/[options]
 import ../../common/types/[core, planets]
 import ../prestige
-import ../config/prestige_config
+import ../config/[prestige_config, prestige_multiplier]
 import ../economy/types as econ_types
 
 export core.HouseId, core.SystemId
@@ -59,10 +59,11 @@ proc establishColony*(houseId: HouseId, systemId: SystemId,
     startingPTU
   )
 
-  # Create prestige event
+  # Create prestige event with dynamic scaling
+  let prestigeAmount = applyMultiplier(config.economic.establish_colony)
   let prestigeEvent = createPrestigeEvent(
     PrestigeSource.ColonyEstablished,
-    config.economic.establish_colony,
+    prestigeAmount,
     "Established colony at system " & $systemId
   )
 

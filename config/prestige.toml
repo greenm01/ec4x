@@ -4,6 +4,7 @@
 # This file contains:
 # - BALANCE VARIABLES: Prestige values (tunable during playtesting)
 # - GAME CONSTANTS: Victory thresholds, morale tiers
+# - DYNAMIC SCALING: Map-size based prestige multipliers for game pacing
 
 # ============================================================================
 # VICTORY CONDITIONS
@@ -15,6 +16,28 @@ prestige_victory = 5000            # Reach 5000 prestige to win
 starting_prestige = 50             # NOTE: Game setup defines this in game_setup/standard.toml
 defeat_threshold = 0               # Below 0 for consecutive turns = surrender
 defeat_consecutive_turns = 3       # NOTE: Elimination mechanics in config/gameplay.toml
+
+# ============================================================================
+# DYNAMIC PRESTIGE SCALING (BALANCE SYSTEM)
+# ============================================================================
+
+[dynamic_scaling]
+# BALANCE: Map-size based prestige scaling for optimal game pacing
+# Formula: multiplier = base_multiplier * (baseline_turns / target_turns)
+# Target turns = baseline_turns + (systems_per_player - baseline_ratio) * turn_scaling_factor
+#
+# This ensures:
+# - Small maps (few systems per player): Faster games (~30 turns)
+# - Large maps (many systems per player): Longer games (~60-90 turns)
+# - Victory threshold remains 5000 prestige regardless of map size
+
+enabled = true                     # Enable dynamic scaling (false = use base values only)
+base_multiplier = 5.0              # Base prestige multiplier (all values in this file)
+baseline_turns = 30                # Target turns for baseline map size
+baseline_systems_per_player = 10   # Systems per player for baseline (40 systems / 4 players)
+turn_scaling_factor = 2.0          # Additional turns per system above baseline (2 turns per extra system)
+min_multiplier = 2.0               # Minimum multiplier (for huge maps)
+max_multiplier = 10.0              # Maximum multiplier (for tiny maps)
 
 # ============================================================================
 # MORALE SYSTEM (GAME CONSTANTS)
@@ -37,73 +60,74 @@ high_max = 80         # 61-80: High (+1 CER + critical auto-success if >9)
 
 [economic]
 # BALANCE: Economic achievement rewards
-# ACCELERATION: Tripled all values for 30-turn multi-generational timeline
-tech_advancement = 6               # Advance to new tech level (was 2)
-establish_colony = 15              # New colony established (was 5)
-max_population = 9                 # Colony reaches max PU (was 3)
-iu_milestone_50 = 3                # Reach 50% IU of PU (was 1)
-iu_milestone_75 = 6                # Reach 75% IU of PU (was 2)
-iu_milestone_100 = 9               # Reach 100% IU of PU (was 3)
-iu_milestone_150 = 15              # Reach 150% IU of PU (was 5)
-terraform_planet = 15              # Upgrade planet class via terraforming (was 5)
+# NOTE: These are BASE values. Dynamic multiplier applied at runtime based on map size.
+# With dynamic scaling enabled, actual awards = base * calculateDynamicMultiplier(numSystems, numPlayers)
+tech_advancement = 2               # Advance to new tech level (base value)
+establish_colony = 5              # New colony established (base value)
+max_population = 3                # Colony reaches max PU (base: 3, 5x = 15)
+iu_milestone_50 = 1                # Reach 50% IU of PU (was 1)
+iu_milestone_75 = 2                # Reach 75% IU of PU (was 2)
+iu_milestone_100 = 3               # Reach 100% IU of PU (was 3)
+iu_milestone_150 = 5              # Reach 150% IU of PU (was 5)
+terraform_planet = 5              # Upgrade planet class via terraforming (was 5)
 
 [military]
 # BALANCE: Military victory rewards
-# ACCELERATION: Tripled all values for 30-turn multi-generational timeline
-destroy_squadron = 3               # Per major ship destroyed (was 1)
-destroy_starbase = 15              # Destroy enemy starbase (was 5)
-fleet_victory = 9                  # Win fleet battle (was 3)
-invade_planet = 30                 # Successfully invade/blitz planet (was 10)
-eliminate_house = 9                # Eliminate rival house (was 3)
-system_capture = 30                # Capture star system (was 10)
+# NOTE: These are BASE values. Dynamic multiplier applied at runtime based on map size.
+destroy_squadron = 1               # Per major ship destroyed (base: 1, 5x = 5)
+destroy_starbase = 5              # Destroy enemy starbase (base: 5, 5x = 25)
+fleet_victory = 3                 # Win fleet battle (base: 3, 5x = 15)
+invade_planet = 10                 # Successfully invade/blitz planet (base: 10, 5x = 50)
+eliminate_house = 3               # Eliminate rival house (base: 3, 5x = 15)
+system_capture = 10                # Capture star system (base: 10, 5x = 50)
 
 # BALANCE: Military defeat penalties
 # ACCELERATION: Tripled all penalties to maintain relative balance
-lose_planet = -30                  # Lose colony to enemy (was -10)
-lose_starbase = -15                # Starbase destroyed (was -5)
-ambushed_by_cloak = -3             # Ambushed by cloaked fleet (was -1)
-force_retreat = 6                  # Force enemy to retreat (was 2)
-scout_destroyed = -9               # Scout detected and destroyed (was -3)
+lose_planet = -10                  # Lose colony to enemy (was -10)
+lose_starbase = -5                # Starbase destroyed (was -5)
+ambushed_by_cloak = -1             # Ambushed by cloaked fleet (was -1)
+force_retreat = 2                  # Force enemy to retreat (was 2)
+scout_destroyed = -3               # Scout detected and destroyed (was -3)
 
 [espionage]
 # BALANCE: Espionage success rewards
-# ACCELERATION: Tripled all values for 30-turn multi-generational timeline
-tech_theft = 6                     # Successful tech theft (was 2)
-low_impact_sabotage = 3            # Low-impact sabotage success (was 1)
-high_impact_sabotage = 9           # High-impact sabotage success (was 3)
-assassination = 15                 # Successful assassination (was 5)
-cyber_attack = 6                   # Successful cyber attack (was 2)
-economic_manipulation = 9          # Successful economic manipulation (was 3)
-psyops_campaign = 3                # Successful psyops (was 1)
+# NOTE: These are BASE values. Dynamic multiplier applied at runtime based on map size.
+tech_theft = 2                     # Successful tech theft (was 2)
+low_impact_sabotage = 1            # Low-impact sabotage success (was 1)
+high_impact_sabotage = 3           # High-impact sabotage success (was 3)
+assassination = 5                 # Successful assassination (was 5)
+cyber_attack = 2                   # Successful cyber attack (was 2)
+economic_manipulation = 3          # Successful economic manipulation (was 3)
+psyops_campaign = 1                # Successful psyops (was 1)
 
 # BALANCE: Espionage failure/detection penalties
 # ACCELERATION: Tripled penalty
-failed_espionage = -6              # Espionage detected and prevented (was -2)
+failed_espionage = -2              # Espionage detected and prevented (was -2)
 
 [espionage_victim]
 # BALANCE: Prestige penalties for being targeted by espionage
-# ACCELERATION: Tripled all penalties for 30-turn multi-generational timeline
-tech_theft_victim = -9             # Victim of tech theft (was -3)
-low_impact_sabotage_victim = -3    # Victim of low sabotage (was -1)
-high_impact_sabotage_victim = -15  # Victim of high sabotage (was -5)
-assassination_victim = -21         # Leader assassinated (was -7)
-cyber_attack_victim = -9           # Victim of cyber attack (was -3)
-economic_manipulation_victim = -4  # Victim of economic manipulation
-psyops_campaign_victim = -2        # Victim of psyops
+# NOTE: These are BASE values. Dynamic multiplier applied at runtime based on map size.
+tech_theft_victim = -3             # Victim of tech theft (was -3)
+low_impact_sabotage_victim = -1    # Victim of low sabotage (was -1)
+high_impact_sabotage_victim = -5  # Victim of high sabotage (was -5)
+assassination_victim = -7         # Leader assassinated (was -7)
+cyber_attack_victim = -3           # Victim of cyber attack (was -3)
+economic_manipulation_victim = -7  # Victim of economic manipulation
+psyops_campaign_victim = -3        # Victim of psyops
 
 [scout]
 # BALANCE: Scout mission rewards
-spy_on_planet = 1                  # Successful planet espionage
-hack_starbase = 2                  # Successful starbase hack
-spy_on_system = 1                  # Successful system reconnaissance
+spy_on_planet = 2                  # Successful planet espionage
+hack_starbase = 3                  # Successful starbase hack
+spy_on_system = 2                  # Successful system reconnaissance
 
 [diplomacy]
 # BALANCE: Diplomatic action prestige impacts
-# ACCELERATION: Tripled all values for 30-turn multi-generational timeline
-diplomatic_pact_formation = 15     # Form diplomatic pact (was 5)
-pact_violation = -30               # Break non-aggression pact (was -10)
-repeat_violation = -30             # Repeat violation (dishonored status) (was -10)
-dishonored_bonus = 3               # Bonus for attacking dishonored house (was 1)
+# NOTE: These are BASE values. Dynamic multiplier applied at runtime based on map size.
+diplomatic_pact_formation = 5     # Form diplomatic pact (was 5)
+pact_violation = -10               # Break non-aggression pact (was -10)
+repeat_violation = -10             # Repeat violation (dishonored status) (was -10)
+dishonored_bonus = 1               # Bonus for attacking dishonored house (was 1)
 declare_war = 0                    # No inherent penalty
 make_peace = 0                     # No inherent bonus
 
@@ -120,23 +144,23 @@ victory_achieved = 5               # Game victory bonus
 # BALANCE: Tax penalties (old system - reference.md spec)
 # These use simple thresholds, not rolling averages
 high_tax_threshold = 51            # >51% triggers penalty
-high_tax_penalty = -1              # -1 prestige
+high_tax_penalty = -2              # -1 prestige
 high_tax_frequency = 3             # Every 3 consecutive turns
 
 very_high_tax_threshold = 66       # >66% triggers higher penalty
-very_high_tax_penalty = -2         # -2 prestige
+very_high_tax_penalty = -3         # -2 prestige
 very_high_tax_frequency = 5        # Every 5 consecutive turns
 
 # BALANCE: Maintenance shortfall escalation
-maintenance_shortfall_base = -5    # -5 turn 1
-maintenance_shortfall_increment = -2  # Increases by -2 each turn (-5, -7, -9...)
+maintenance_shortfall_base = -8    # -5 turn 1
+maintenance_shortfall_increment = -3  # Increases by -2 each turn (-5, -7, -9...)
 
 # BALANCE: Blockade penalty
-blockade_penalty = -2              # -2 prestige per turn per colony
+blockade_penalty = -3              # -2 prestige per turn per colony
 
 # BALANCE: Over-investment penalties (espionage/counter-intel)
-over_invest_espionage = -1         # -1 per 1% over 5% threshold
-over_invest_counter_intel = -1     # -1 per 1% over 5% threshold
+over_invest_espionage = -2         # -1 per 1% over 5% threshold
+over_invest_counter_intel = -2     # -1 per 1% over 5% threshold
 
 # ============================================================================
 # TAX PENALTIES (NEW SYSTEM - economy.md spec)
