@@ -243,13 +243,18 @@ GAMES_PER_COUNT = 5  # 25 total games
 - Smooth scaling from small (4) to large (12) games
 - Variety in outcomes regardless of player count
 
-### Current Status
+### Current Status (as of 2025-11-23)
 
 **✅ Phase 1 Progress:**
-- Aggressive strategy: STABLE (was 5/10 collapses, now 0/10)
-- Economic strategy: STABLE (was 1/10 collapse, now 0/10)
-- Balanced strategy: NEEDS TUNING (0% win rate, 1/10 collapse)
-- Turtle strategy: NEEDS TUNING (10% win rate, 1/10 collapse)
+- Aggressive strategy: STABLE (0.5% collapse rate in 200 games, but 41.5% win rate - overpowered)
+- Economic strategy: STABLE (6% collapse rate in 200 games, 30% win rate - vulnerable to dominant Aggressive)
+- Turtle strategy: PERFECT (0% collapse rate in 200 games, 21.5% win rate - ideal balance)
+- Balanced strategy: BROKEN (12.5% collapse rate in 200 games, 7% win rate - needs rework)
+
+**✅ Parallel Testing Infrastructure:**
+- 8-worker parallel testing achieves 60+ games/second
+- 200-game test completes in ~3.3 seconds
+- 7.45x speedup vs sequential (near-ideal 8x scaling)
 
 **⏳ Phase 2:** Blocked until Phase 1 complete (all 6-7 strategies viable at 4 players)
 
@@ -279,6 +284,225 @@ GAMES_PER_COUNT = 5  # 25 total games
 **Already supported:**
 - `createBalancedGame(numHouses, numSystems, seed)` handles variable player counts
 - Engine supports 2-12 players without modification
+
+---
+
+## Game Pacing Design: The 30-Day Game
+
+### Design Philosophy
+
+EC4X is designed for **daily turn-based multiplayer** with a target game length of **30 days** (30 turns). This creates a compelling 1-month commitment with natural story progression and achievable victory conditions.
+
+### The 4-Act Structure
+
+A well-paced 30-turn game follows a dramatic arc with clear phases:
+
+#### Act 1: The Land Grab (Days 1-7)
+**Objective:** Establish your empire's foundation
+
+**Key Milestones:**
+- Expand to 5-8 colonies
+- Scout neighboring territories
+- Establish initial production base (50-100 PP/turn)
+- Make first contact with rivals
+- Form early alliances or identify threats
+
+**Player Experience:**
+- High activity - lots of decisions
+- Exploration and discovery
+- Setting strategic direction
+- Minimal conflict (everyone expanding)
+
+**Expected Prestige Range:** 50-150
+
+#### Act 2: Rising Tensions (Days 8-15)
+**Objective:** Establish dominance in your region
+
+**Key Milestones:**
+- Reach 10-15 colonies
+- First military engagements
+- Tech level 2-3 in key areas
+- Resource conflicts emerge
+- First invasions/territory disputes
+- Alliances tested by proximity
+
+**Player Experience:**
+- Strategic pivots based on neighbors
+- First major fleet battles
+- Diplomatic maneuvering
+- Economic vs military tradeoffs
+
+**Expected Prestige Range:** 150-500
+
+#### Act 3: Total War (Days 16-25)
+**Objective:** Push for victory or survive elimination
+
+**Key Milestones:**
+- Peak empire size (15-25 colonies)
+- Tech level 3-4 advantages decisive
+- Major wars with clear winners/losers
+- Prestige leaders pull ahead (1000-1500)
+- Desperate alliances form
+- First player eliminations possible
+
+**Player Experience:**
+- High-stakes battles every turn
+- Territory changing hands
+- Clear leaders emerge
+- Comeback mechanics matter
+- Every decision critical
+
+**Expected Prestige Range:** 500-1500
+
+#### Act 4: Endgame (Days 26-30)
+**Objective:** Secure victory or orchestrate comeback
+
+**Key Milestones:**
+- Prestige victory possible (2000-3000 threshold)
+- Elimination victories (last house standing)
+- Final desperate alliances
+- Last-minute betrayals
+- Dominant players consolidate or get overwhelmed
+
+**Player Experience:**
+- Intense finale
+- Victory within reach or fighting for survival
+- Social drama peaks
+- Satisfying conclusion
+
+**Expected Prestige Range:** 1000-3000 (winner)
+
+### Pacing Requirements: Multi-Generational Timeline
+
+**CRITICAL INSIGHT:** Each player turn represents **5-10 years of in-game time**. This means:
+
+- **30 player turns = 150-300 years in-game**
+- **Multi-generational empire building**
+- Population growth happens over decades
+- Technology advances over generations
+- Colonies mature over lifetimes
+
+This creates an **epic scope** where players make strategic decisions across centuries while experiencing a 30-day game commitment.
+
+#### Timeline Options
+
+**Option 2: 1 turn = 5 years (recommended for faster pace)**
+- 30 turns = 150 years
+- 2-3 generations of leaders
+- Colonies grow from settlements to core worlds in 50-100 years
+- Technology advances over decades (reasonable)
+
+**Option 3: 1 turn = 10 years (recommended for epic scale)**
+- 30 turns = 300 years
+- 5-6 generations of leaders
+- Colonies develop over centuries
+- Technology evolution feels generational
+- Greater sense of dynasty building
+
+#### Current Mechanics Already Appropriate
+
+**NO artificial acceleration needed** - the mechanics are designed for multi-year turns:
+
+- **Population growth per turn**: Reasonable over 5-10 years
+- **Tech research**: Advancement over decades makes sense
+- **Colony development**: Growing from outpost to thriving world over generations
+- **Fleet construction**: Building armadas over years, not days
+- **Prestige accumulation**: Dynasty reputation built across lifetimes
+
+### Configuration Philosophy
+
+Rather than speeding up mechanics, we tune for **meaningful progression within the multi-generational timeline**:
+
+#### 1. Colony Development Over Decades
+```toml
+# Population growth per turn = growth over 5-10 years
+# New colonies need 5-10 turns (25-100 years) to reach maturity
+# Rationale: Building civilizations takes generations
+```
+
+#### 2. Technology Over Generations
+```toml
+# Tech advancement = generational progress
+# Major tech breakthroughs every 3-5 turns (15-50 years)
+# Rationale: Scientific revolutions span decades
+```
+
+#### 3. Military Buildup Over Years
+```toml
+# Fleet construction = multi-year industrial effort
+# Building armada over 5-10 turns = 25-100 years of preparation
+# Rationale: Military supremacy requires sustained investment
+```
+
+#### 4. Prestige = Dynastic Legacy
+```toml
+# Prestige accumulation = historical reputation over centuries
+# Victory threshold = legendary dynasty status
+# Rationale: Great houses earn prestige across generations
+```
+
+### Testing Implications
+
+#### For AI Balance Testing (Current Phase)
+- **Test length:** 30-turn games (full game lifecycle)
+- **Timeline scale:** Testing with current mechanics (no acceleration)
+- **Victory conditions:** Prestige victory OR elimination OR turn 30 limit
+- **Focus:**
+  - Does balance hold across all 4 acts?
+  - Do AI strategies complete the 4-act dramatic arc?
+  - Is prestige progression appropriate for multi-generational timeline?
+  - Are victories achievable by turn 25-30?
+
+#### For Human Playtesting (Future)
+- **Test length:** 30-turn games (1 month commitment)
+- **Victory conditions:** Prestige threshold OR elimination OR turn 30
+- **Focus:**
+  - Is each act engaging with multi-generational framing?
+  - Does timeline feel epic (centuries passing)?
+  - Do players feel they're building dynasties?
+  - Is 1-turn-per-day pacing satisfying?
+
+#### Validation Metrics (Multi-Generational Timeline)
+
+These targets assume **1 turn = 5-10 years in-game**:
+
+- **Act 1 (T7 = 35-70 years):**
+  - Empire establishment phase (first generation)
+  - Target: 5-8 colonies, 50-150 prestige
+  - Validation: Did expansion happen? Are foundations laid?
+
+- **Act 2 (T15 = 75-150 years):**
+  - Regional dominance phase (second generation)
+  - Target: 10-15 colonies, 150-500 prestige, first wars
+  - Validation: Are conflicts emerging? Tech advantages appearing?
+
+- **Act 3 (T25 = 125-250 years):**
+  - Total war phase (third generation+)
+  - Target: Clear leaders (1000+), active eliminations, major battles
+  - Validation: Are decisive moments happening? Victory in sight?
+
+- **Act 4 (T30 = 150-300 years):**
+  - Endgame resolution (dynastic conclusion)
+  - Target: Winner emerges OR elimination victory
+  - Validation: Was game satisfying? Did 4-act structure work?
+
+#### Key Testing Questions
+
+**Q: What prestige threshold makes sense for 150-300 year dynasties?**
+- Current: 5000 prestige victory
+- Question: Is this achievable in 30 turns with current mechanics?
+- Testing: Track max prestige achieved in 30-turn games
+
+**Q: Do current mechanics create the 4-act dramatic arc?**
+- Act transitions should feel natural
+- Mid-game (T15) should see clear leaders and wars
+- Late-game (T25) should be decisive
+- Testing: Analyze prestige progression curves across acts
+
+**Q: Should timeline be 5 years/turn or 10 years/turn?**
+- 5 years = faster-paced dynasties (150 years total)
+- 10 years = epic generational saga (300 years total)
+- Testing: Does current AI progression feel right for either?
 
 ---
 
