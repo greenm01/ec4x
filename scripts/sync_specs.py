@@ -992,12 +992,14 @@ def generate_starting_tech_table(tech_config: Dict[str, Any]) -> str:
 
     # Define tech entries with their effects
     tech_entries = [
-        ("**EL**", starting_tech.get('energy_level', 1), "Economic Level - 5% production bonus (GCO modifier)"),
-        ("**SL**", starting_tech.get('shield_level', 1), "Science Level - Base research capability"),
+        ("**EL**", starting_tech.get('economic_level', 1), "Economic Level - 5% production bonus (GCO modifier)"),
+        ("**SL**", starting_tech.get('science_level', 1), "Science Level - Base research capability"),
         ("**CST**", starting_tech.get('construction_tech', 1), "Construction Tech - Base shipyard capacity"),
         ("**WEP**", starting_tech.get('weapons_tech', 1), "Weapons Tech - Base combat strength (AS/DS)"),
         ("**TER**", starting_tech.get('terraforming_tech', 1), "Terraforming Tech - Base terraforming capability"),
         ("**ELI**", starting_tech.get('electronic_intelligence', 1), "Electronic Intelligence - Base spy scout capability"),
+        ("**CLK**", starting_tech.get('cloaking_tech', 1), "Cloaking Tech - Stealth and detection avoidance"),
+        ("**SLD**", starting_tech.get('shield_tech', 1), "Shield Tech - Planetary shield technology (bombardment defense)"),
         ("**CIC**", starting_tech.get('counter_intelligence', 1), "Counter-Intelligence - Base espionage detection"),
         ("**FD**", starting_tech.get('fighter_doctrine', 1), f"Fighter Doctrine I - {fd_capacity}x fighter capacity multiplier"),
         ("**ACO**", starting_tech.get('advanced_carrier_ops', 1), f"Advanced Carrier Operations I - CV={aco_cv}FS, CX={aco_cx}FS"),
