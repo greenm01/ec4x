@@ -171,10 +171,11 @@ when isMainModule:
   echo repeat("=", 70)
   echo ""
 
-  # Parse command line arguments: turns [seed] [mapRings]
+  # Parse command line arguments: turns [seed] [mapRings] [numPlayers]
   var numTurns = 100
   var seed: int64 = 42
   var mapRings = 0  # 0 = default to player count
+  var numPlayers = 4  # Default to 4 players
 
   if paramCount() >= 1:
     numTurns = parseInt(paramStr(1))
@@ -185,15 +186,17 @@ when isMainModule:
   if paramCount() >= 3:
     mapRings = parseInt(paramStr(3))
 
-  # Run a 4-player simulation with different strategies
-  let strategies = @[
-    AIStrategy.Aggressive,
-    AIStrategy.Economic,
-    AIStrategy.Balanced,
-    AIStrategy.Turtle
-  ]
+  if paramCount() >= 4:
+    numPlayers = parseInt(paramStr(4))
 
-  let report = runSimulation(4, numTurns, strategies, seed, mapRings)
+  # Create strategies for the specified number of players
+  # Cycle through strategy types
+  var strategies: seq[AIStrategy] = @[]
+  let strategyTypes = [AIStrategy.Aggressive, AIStrategy.Economic, AIStrategy.Balanced, AIStrategy.Turtle]
+  for i in 0..<numPlayers:
+    strategies.add(strategyTypes[i mod strategyTypes.len])
+
+  let report = runSimulation(numPlayers, numTurns, strategies, seed, mapRings)
 
   # Export report
   import std/os
