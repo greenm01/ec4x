@@ -8,6 +8,34 @@
 ## - Population transfers via Space Guild
 ## - Terraforming operations
 ## - Maintenance phase with upkeep and effect tracking
+##
+## **Construction & Commissioning Phase Architecture**
+##
+## This module handles construction and commissioning because these operations
+## represent the economic/industrial workflow of turning treasury resources
+## into operational military units. The flow is:
+##
+## 1. **Build Phase** (`resolveBuildOrders`):
+##    - Houses spend treasury on construction projects
+##    - Progress tracks toward completion over multiple turns
+##    - Represents shipyard/factory industrial capacity
+##
+## 2. **Commissioning Phase** (within construction completion):
+##    - Completed ships are added to `colony.unassignedSquadrons`
+##    - Represents the "delivery" of industrial output
+##
+## 3. **Fleet Organization Phase** (`autoBalanceSquadronsToFleets`):
+##    - Unassigned squadrons are organized into operational fleets
+##    - New fleets are created if no stationary fleets exist
+##    - Only Active fleets are considered (excludes Reserve/Mothballed)
+##    - Represents the transition from industrial output to military readiness
+##
+## This architecture keeps the economic turn resolution (treasury → ships → fleets)
+## separate from tactical fleet operations (movement, combat, espionage) which are
+## handled in fleet_orders.nim and combat_resolution.nim.
+##
+## The auto-fleet creation here enables newly-built units (especially scouts)
+## to immediately begin operational duties without requiring explicit player orders.
 
 import std/[tables, algorithm, options, random, sequtils, hashes, math, strutils, strformat]
 import ../../common/[hex, types/core, types/combat, types/units, types/tech]
@@ -1891,7 +1919,10 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               colony.unassignedSquadrons.add(newSquadron)
               echo "      Commissioned ", shipClass, " into new unassigned squadron at ", systemId
 
-            # If colony has auto-assign enabled, balance unassigned squadrons to fleets
+            # Fleet Organization: Automatically organize newly-commissioned squadrons into fleets
+            # This completes the economic production pipeline: Treasury → Construction → Commissioning → Fleet
+            # Without this step, units remain in unassignedSquadrons and cannot execute operational orders
+            # (e.g., scouts cannot perform espionage, carriers cannot deploy to defensive positions)
             if colony.autoAssignFleets and colony.unassignedSquadrons.len > 0:
               autoBalanceSquadronsToFleets(state, colony, systemId, orders)
 
@@ -1989,7 +2020,31 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
 proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
   ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
-  ## Only assigns to stationary fleets (those with Hold orders or no orders)
+  ##
+  ## **Purpose:** Automatically organize newly-commissioned ships into operational fleets
+  ## during the Construction & Commissioning phase of economy resolution.
+  ##
+  ## **Behavior:**
+  ## 1. Looks for Active stationary fleets at colony (Hold orders or no orders)
+  ## 2. If candidate fleets exist: distributes unassigned squadrons evenly across them
+  ## 3. If NO candidate fleets exist: creates new single-squadron fleets for each unassigned squadron
+  ##
+  ## **Fleet Status Filtering:**
+  ## - Only considers `FleetStatus.Active` fleets for auto-assignment
+  ## - Excludes `FleetStatus.Reserve` (50% maintenance, reduced combat effectiveness)
+  ## - Excludes `FleetStatus.Mothballed` (0% maintenance, offline storage)
+  ##
+  ## **Why This Matters:**
+  ## This function is critical for AI operational effectiveness. Without it, newly-built
+  ## units (especially scouts) remain in `colony.unassignedSquadrons` indefinitely and
+  ## never execute their intended missions. For example, scouts cannot perform espionage
+  ## missions unless they are organized into fleets.
+  ##
+  ## **Architecture Note:**
+  ## This function lives in economy_resolution.nim because fleet organization from
+  ## newly-commissioned ships is part of the industrial → military transition, not
+  ## tactical fleet operations. It represents the final step in the economic production
+  ## pipeline: Treasury → Construction → Commissioning → Fleet Organization.
   if colony.unassignedSquadrons.len == 0:
     return
 
