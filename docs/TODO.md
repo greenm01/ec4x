@@ -338,7 +338,7 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 **Standards:**
 - ✅ `docs/CLAUDE_CONTEXT.md`
 - ✅ `docs/STYLE_GUIDE.md`
-- ✅ `docs/STATUS.md`
+- ✅ `docs/TODO.md`
 
 **AI Architecture:**
 - ✅ `docs/architecture/ai-system.md` (neural network approach)
@@ -431,8 +431,8 @@ All passing ✅
 - No binaries in version control
 
 **Session Continuity:**
-- Load `@docs/STYLE_GUIDE.md` and `@docs/STATUS.md` at session start
-- Update STATUS.md after completing milestones
+- Load `@docs/STYLE_GUIDE.md` and `@docs/TODO.md` at session start
+- Update TODO.md after completing milestones
 - Document major changes in completion reports
 
 ---
