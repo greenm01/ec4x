@@ -14,8 +14,9 @@
 1. **All enums MUST be `{.pure.}`** in code
 2. **No hardcoded game balance values** - use TOML config files
 3. **Follow NEP-1 Nim conventions** - see STYLE_GUIDE.md
-4. **Update TODO.md** after completing milestones
+4. **Update TODO.md** after completing milestones 
 5. **Run tests before committing** - all tests must pass
+6. **Don't create new markdown docs without explicit permission
 
 ## File Organization Rules (CRITICAL - Read First!)
 
@@ -55,14 +56,8 @@
 
 ### What NOT To Do:
 
-❌ DO NOT create `ENGINE_GAPS_SPACELIFT.md`
+❌ DO NOT create new markdown docs without explicit permission
 ✅ Add architecture notes to `src/engine/spacelift.nim` header
-
-❌ DO NOT create `AI_STRATEGIC_GAPS.md`
-✅ Add to `docs/OPEN_ISSUES.md` under "AI System" section
-
-❌ DO NOT create `SESSION_SUMMARY_*.md`
-✅ Update `docs/TODO.md` with changes
 
 ❌ DO NOT create random markdown files anywhere
 ✅ Use the hierarchy above
@@ -216,11 +211,14 @@ nimble build
 
 ### Balance Testing
 
-**IMPORTANT:** Always use the balance test runner script for AI testing:
+**IMPORTANT:** Always use the balance test runner scripts for AI testing:
 
 ```bash
 # Correct: Run full 10-game test suite
 python3 run_balance_test.py
+
+Or for parallel tests:
+python3 run_balance_test_parallel.py
 
 # Incorrect: Don't run individual simulations
 # ./tests/balance/run_simulation 100 42  # NO - use script instead
@@ -261,9 +259,10 @@ python3 run_balance_test.py
 - [ ] No hardcoded game values (check TOML)
 - [ ] Tests pass: `nim c -r tests/integration/test_*.nim`
 - [ ] Project builds: `nimble build`
-- [ ] No binaries committed
+- [ ] No binaries or generated data files committed
 - [ ] Updated TODO.md if milestone complete
 - [ ] Followed NEP-1 naming conventions
+- [ ] Update OPEN_ISSUES.md
 
 ---
 
