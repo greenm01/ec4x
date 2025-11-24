@@ -15,10 +15,11 @@
 
 [population]
 # BALANCE VARIABLES - Tunable growth rates
-natural_growth_rate = 0.02         # 2% natural birth rate per turn
-growth_rate_per_starbase = 0.05    # +5% per starbase (max 3 starbases)
-max_starbase_bonus = 0.15          # Maximum 15% bonus (3 starbases)
-ptu_growth_rate = 0.015            # 1.5% per turn under normal conditions
+# ACCELERATION: Increased for 30-turn multi-generational timeline
+natural_growth_rate = 0.05         # 5% natural birth rate per turn (was 2%)
+growth_rate_per_starbase = 0.10    # +10% per starbase (was 5%, max 3 starbases)
+max_starbase_bonus = 0.30          # Maximum 30% bonus (was 15%, 3 starbases)
+ptu_growth_rate = 0.04             # 4% per turn under normal conditions (was 1.5%)
 
 # GAME CONSTANTS - Mathematical formulas
 ptu_to_souls = 50000               # One PTU is approximately 50k souls (scale constant)
@@ -236,31 +237,32 @@ tier_5_pop_multiplier = 1.20
 
 [industrial_investment]
 # IU investment cost multipliers by percentage of PU
-# Base cost is 30 PP per IU
-base_cost = 30
+# ACCELERATION: Reduced for faster colony development in 30-turn timeline
+# Base cost is 15 PP per IU (was 30)
+base_cost = 15
 
 tier_1_max_percent = 50
 tier_1_multiplier = 1.0
-tier_1_pp = 30
+tier_1_pp = 15  # base_cost * 1.0 (was 30)
 
 tier_2_min_percent = 51
 tier_2_max_percent = 75
 tier_2_multiplier = 1.2
-tier_2_pp = 36
+tier_2_pp = 18  # base_cost * 1.2 (was 36)
 
 tier_3_min_percent = 76
 tier_3_max_percent = 100
 tier_3_multiplier = 1.5
-tier_3_pp = 45
+tier_3_pp = 23  # base_cost * 1.5 (was 45, rounded up)
 
 tier_4_min_percent = 101
 tier_4_max_percent = 150
 tier_4_multiplier = 2.0
-tier_4_pp = 60
+tier_4_pp = 30  # base_cost * 2.0 (was 60)
 
 tier_5_min_percent = 151
 tier_5_multiplier = 2.5
-tier_5_pp = 75
+tier_5_pp = 38  # base_cost * 2.5 (was 75, rounded up)
 
 # ============================================================================
 # Colonization Costs
