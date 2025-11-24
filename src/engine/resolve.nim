@@ -56,7 +56,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   resolveCommandPhase(result.newState, orders, result.events)
 
   # Phase 4: Maintenance (upkeep, effect decrements, status updates)
-  resolveMaintenancePhase(result.newState, result.events)
+  resolveMaintenancePhase(result.newState, result.events, orders)
 
   # Advance to next turn
   result.newState.turn += 1
