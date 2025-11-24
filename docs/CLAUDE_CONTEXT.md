@@ -14,9 +14,10 @@
 1. **All enums MUST be `{.pure.}`** in code
 2. **No hardcoded game balance values** - use TOML config files
 3. **Follow NEP-1 Nim conventions** - see STYLE_GUIDE.md
-4. **Update TODO.md** after completing milestones 
+4. **Update TODO.md** after completing milestones
 5. **Run tests before committing** - all tests must pass
-6. **Don't create new markdown docs without explicit permission
+6. **Don't create new markdown docs without explicit permission**
+7. **Add comprehensive API documentation** - whenever touching engine code, add doc comments explaining purpose, behavior, and architectural decisions
 
 ## File Organization Rules (CRITICAL - Read First!)
 
