@@ -74,8 +74,9 @@ type
     resources*: ResourceRating
     buildings*: seq[BuildingType]
     production*: int              # Current turn production
-    underConstruction*: Option[ConstructionProject]
-    activeTerraforming*: Option[TerraformProject]  # Active terraforming project
+    underConstruction*: Option[ConstructionProject]  # DEPRECATED: Legacy single-project field
+    constructionQueue*: seq[ConstructionProject]     # NEW: Multi-project build queue
+    activeTerraforming*: Option[TerraformProject]    # Active terraforming project
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
     unassignedSquadrons*: seq[Squadron]          # Combat squadrons at colony, not in any fleet
@@ -163,6 +164,9 @@ type
     # Intelligence database (intel.md)
     intelligence*: intel_types.IntelligenceDatabase  # Gathered intelligence reports
 
+    # Economic reports (for intelligence gathering)
+    latestIncomeReport*: Option[econ_types.HouseIncomeReport]  # Last turn's income report
+
     # Safe retreat routes (automatic seek-home behavior)
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference
@@ -239,6 +243,7 @@ proc initializeHouse*(name: string, color: string): House =
     taxPolicy: econ_types.TaxPolicy(currentRate: 50, history: @[50]),  # Default 50% tax rate
     planetBreakerCount: 0,
     intelligence: intel_types.newIntelligenceDatabase(),
+    latestIncomeReport: none(econ_types.HouseIncomeReport),  # No income report at game start
     fallbackRoutes: @[],  # Initialize empty, populated by AI strategy
     autoRetreatPolicy: AutoRetreatPolicy.MissionsOnly  # Default: abort missions when target lost
   )
@@ -258,6 +263,7 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     buildings: @[BuildingType.Shipyard],  # Start with basic shipyard
     production: 0,
     underConstruction: none(ConstructionProject),
+    constructionQueue: @[],  # NEW: Empty build queue
     unassignedSquadrons: @[],  # No unassigned squadrons
     unassignedSpaceLiftShips: @[],  # No unassigned spacelift ships
     autoAssignFleets: true,  # Auto-assign by default
@@ -293,6 +299,7 @@ proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetCl
     buildings: @[],  # No buildings yet
     production: 0,
     underConstruction: none(ConstructionProject),
+    constructionQueue: @[],  # NEW: Empty build queue
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
     autoAssignFleets: true,
@@ -547,6 +554,28 @@ proc checkVictoryCondition*(state: GameState): Option[HouseId] =
       return some(house.id)
 
   return none(HouseId)
+
+# Construction queue helpers
+
+proc getConstructionDockCapacity*(colony: Colony): int =
+  ## Calculate total construction dock capacity
+  ## Uses actual dock counts from facilities
+  result = 0
+  for spaceport in colony.spaceports:
+    result += spaceport.docks  # Usually 5 per spaceport
+  for shipyard in colony.shipyards:
+    if not shipyard.isCrippled:  # Crippled shipyards can't build
+      result += shipyard.docks  # Usually 10 per shipyard
+
+proc getActiveConstructionProjects*(colony: Colony): int =
+  ## Count how many projects are currently active in the queue
+  result = colony.constructionQueue.len
+
+proc canAcceptMoreProjects*(colony: Colony): bool =
+  ## Check if colony has dock capacity for more construction projects
+  let capacity = colony.getConstructionDockCapacity()
+  let active = colony.getActiveConstructionProjects()
+  result = active < capacity
 
 # Turn advancement
 
