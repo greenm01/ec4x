@@ -7,7 +7,7 @@
 ## REFACTORED: Main orchestrator that coordinates resolution phases
 ## Individual phase logic has been extracted to resolution/* modules
 
-import std/[tables, algorithm, options, random, sequtils, hashes]
+import std/[tables, algorithm, options, random, sequtils, hashes, sets]
 import ../common/[hex, types/core, types/combat]
 import gamestate, orders, fleet
 import espionage/[types as esp_types, engine as esp_engine]
@@ -36,6 +36,8 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnResult =
   ## Resolve a complete game turn
   ## Returns new game state and events that occurred
+  when not defined(release):
+    echo "\n[RESOLVE TURN CALLED] Turn ", state.turn, " starting resolution"
 
   result.newState = state  # Start with current state
   result.events = @[]
@@ -271,29 +273,104 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       resolveTerraformOrders(state, orders[houseId], events)
 
   # Process all fleet orders (sorted by priority)
+  # PERSISTENCE: Fleet orders continue across turns until completed or overridden
   var allFleetOrders: seq[(HouseId, FleetOrder)] = @[]
+  var newOrdersThisTurn = initHashSet[FleetId]()  # Track which fleets got new orders
 
+  when not defined(release):
+    echo "  [COMMAND PHASE FLEET ORDER PROCESSING - START]"
+
+  # Step 1: Collect NEW orders from this turn's OrderPackets
+  # These will override any persistent orders for the same fleet
   for houseId in state.houses.keys:
     if houseId in orders:
+      when not defined(release):
+        echo "  [NEW ORDERS - COMMAND PHASE] ", $houseId, ": ", orders[houseId].fleetOrders.len, " new orders"
       for order in orders[houseId].fleetOrders:
         allFleetOrders.add((houseId, order))
+        newOrdersThisTurn.incl(order.fleetId)
+        # Store new order as persistent (will execute next turn if not completed)
+        state.fleetOrders[order.fleetId] = order
+
+  # Step 2: Add PERSISTENT orders from previous turns (not overridden this turn)
+  when not defined(release):
+    echo "  [PERSISTENT ORDERS] Checking ", state.fleetOrders.len, " persistent orders from previous turns"
+  for fleetId, persistentOrder in state.fleetOrders:
+    # Skip if this fleet got a new order this turn (new order overrides persistent)
+    if fleetId in newOrdersThisTurn:
+      when not defined(release):
+        echo "    [OVERRIDE] Fleet ", fleetId, " persistent order overridden by new order"
+      continue
+
+    # Verify fleet still exists
+    if fleetId notin state.fleets:
+      when not defined(release):
+        echo "    [STALE] Fleet ", fleetId, " no longer exists, dropping persistent order"
+      continue
+
+    # Add persistent order to execution queue
+    let fleet = state.fleets[fleetId]
+    allFleetOrders.add((fleet.owner, persistentOrder))
+    when not defined(release):
+      echo "    [PERSISTENT] Fleet ", fleetId, " continuing order: ", $persistentOrder.orderType
+
+  when not defined(release):
+    echo "  [TOTAL - COMMAND PHASE] ", allFleetOrders.len, " total fleet orders across all houses"
 
   # Sort by priority
   allFleetOrders.sort do (a, b: (HouseId, FleetOrder)) -> int:
     cmp(a[1].priority, b[1].priority)
 
-  # Execute all fleet orders through the new executor
-  for (houseId, order) in allFleetOrders:
-    # Check if fleet should automatically seek home due to dangerous situation
-    let fleetOpt = state.getFleet(order.fleetId)
-    var actualOrder = order
+  # CRITICAL: Enforce one order per fleet per turn
+  # Track which fleets have already executed orders this turn
+  var fleetsProcessed = initHashSet[FleetId]()
 
-    if fleetOpt.isSome:
-      let fleet = fleetOpt.get()
-      if shouldAutoSeekHome(state, fleet, order):
-        # Override order with automated Seek Home
-        let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
+  # Execute all fleet orders through the new executor
+  when not defined(release):
+    var processCount = 0
+  for (houseId, order) in allFleetOrders:
+    # Skip if this fleet already executed an order this turn
+    # ROBUSTNESS: Prevent duplicate orders for same fleet (from buggy AI or malicious input)
+    when not defined(release):
+      processCount += 1
+      echo "    [DEDUP CHECK #", processCount, "] Fleet ", order.fleetId, " - already in set: ", (order.fleetId in fleetsProcessed), " - set size: ", fleetsProcessed.len
+    if order.fleetId in fleetsProcessed:
+      echo "    [SKIPPED] Fleet ", order.fleetId, " (", $order.orderType, ") - already executed an order this turn"
+      continue
+
+    fleetsProcessed.incl(order.fleetId)
+    when not defined(release):
+      echo "    [ADDED TO SET] Fleet ", order.fleetId, " - set size now: ", fleetsProcessed.len
+    when not defined(release):
+      echo "    [PROCESSING] Fleet ", order.fleetId, " order: ", $order.orderType
+
+    # PRE-EXECUTION VALIDATION: Check if order target is still valid
+    # If destination became hostile, abort mission and seek home
+    var shouldAbortMission = false
+    if order.targetSystem.isSome:
+      let targetSystem = order.targetSystem.get()
+
+      # Check if target system is now enemy-controlled
+      if targetSystem in state.colonies:
+        let colony = state.colonies[targetSystem]
+        if colony.owner != houseId:
+          let house = state.houses[houseId]
+          if house.diplomaticRelations.isEnemy(colony.owner):
+            # Target is now enemy territory - abort mission
+            shouldAbortMission = true
+            when not defined(release):
+              echo "    [MISSION ABORT] Target system ", targetSystem, " is enemy-controlled - aborting"
+
+    # If mission should abort, replace with Seek Home order
+    var actualOrder = order
+    if shouldAbortMission:
+      # Find closest friendly colony for retreat
+      if order.fleetId in state.fleets:
+        let fleet = state.fleets[order.fleetId]
+        let safeDestination = findClosestOwnedColony(state, fleet.location, houseId)
+
         if safeDestination.isSome:
+          # Replace order with Seek Home
           actualOrder = FleetOrder(
             fleetId: order.fleetId,
             orderType: FleetOrderType.SeekHome,
@@ -301,46 +378,60 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             targetFleet: none(FleetId),
             priority: order.priority
           )
-          echo "    [AUTO SEEK HOME] Fleet ", order.fleetId, " aborting ", $order.orderType,
-               " - destination hostile, retreating to system ", safeDestination.get()
-          events.add(GameEvent(
-            eventType: GameEventType.Battle,
-            houseId: houseId,
-            description: "Fleet " & order.fleetId & " aborted mission - automatic retreat to safe territory",
-            systemId: some(fleet.location)
-          ))
+          # Update persistent order
+          state.fleetOrders[order.fleetId] = actualOrder
+          echo "    [MISSION ABORT] Fleet ", order.fleetId, " seeking home to system ", safeDestination.get()
         else:
-          echo "    [AUTO SEEK HOME] Fleet ", order.fleetId, " has no safe destination - holding position"
-          # No safe destination - fleet holds in place
+          # No safe destination - assign Hold at current position
           actualOrder = FleetOrder(
             fleetId: order.fleetId,
             orderType: FleetOrderType.Hold,
-            targetSystem: none(SystemId),
+            targetSystem: some(fleet.location),
             targetFleet: none(FleetId),
             priority: order.priority
           )
+          state.fleetOrders[order.fleetId] = actualOrder
+          echo "    [MISSION ABORT] Fleet ", order.fleetId, " has no safe destination - holding position"
 
+    # Execute the validated order
     let result = executeFleetOrder(state, houseId, actualOrder)
 
     if result.success:
-      echo "    [", $actualOrder.orderType, "] ", result.message
+      echo "    [", $order.orderType, "] ", result.message
       # Add events from order execution
       for eventMsg in result.eventsGenerated:
         events.add(GameEvent(
           eventType: GameEventType.Battle,
           houseId: houseId,
           description: eventMsg,
-          systemId: actualOrder.targetSystem
+          systemId: order.targetSystem
         ))
 
-      # Some orders need additional processing after validation
-      case actualOrder.orderType
+      # UNIVERSAL PATTERN: All fleet orders follow "Move-to-ACTION"
+      # 1. Move fleet to target (if needed)
+      # 2. Execute action at target
+      case order.orderType
       of FleetOrderType.Move, FleetOrderType.SeekHome, FleetOrderType.Patrol:
-        # Executor validates, this does actual pathfinding and movement
-        resolveMovementOrder(state, houseId, actualOrder, events)
+        # Pure movement orders - just move
+        resolveMovementOrder(state, houseId, order, events)
+
       of FleetOrderType.Colonize:
-        # Executor validates, this does actual colony creation
+        # Move-to-Colonize: Fleet moves to target then colonizes
+        when not defined(release):
+          echo "    [BEFORE COLONIZE CALL] About to call resolveColonizationOrder for fleet ", order.fleetId
         resolveColonizationOrder(state, houseId, order, events)
+        when not defined(release):
+          echo "    [AFTER COLONIZE CALL] resolveColonizationOrder returned for fleet ", order.fleetId
+
+      of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
+        # TODO: Move-to-Attack pattern
+        # These are handled in Conflict Phase
+        discard
+
+      of FleetOrderType.SpySystem:
+        # TODO: Move-to-Spy pattern
+        # Handled in Conflict Phase
+        discard
       of FleetOrderType.Reserve:
         # Place fleet on reserve status
         # Per economy.md:3.9 - ships auto-join colony's single reserve fleet
@@ -381,6 +472,17 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             # Create new reserve fleet at this colony
             state.fleets[order.fleetId].status = FleetStatus.Reserve
             echo "    [Reserve] Fleet ", order.fleetId, " is now colony reserve fleet (50% maint, half AS/DS)"
+
+            # Assign permanent GuardPlanet order (reserve fleets can't be moved)
+            let guardOrder = FleetOrder(
+              fleetId: order.fleetId,
+              orderType: FleetOrderType.GuardPlanet,
+              targetSystem: some(colonySystem),
+              targetFleet: none(FleetId),
+              priority: 1
+            )
+            state.fleetOrders[order.fleetId] = guardOrder
+            echo "    [Reserve] Assigned permanent GuardPlanet order (can't be moved)"
       of FleetOrderType.Mothball:
         # Mothball fleet
         # Per economy.md:3.9 - ships auto-join colony's single mothballed fleet
@@ -421,7 +523,72 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             # Create new mothballed fleet at this colony
             state.fleets[order.fleetId].status = FleetStatus.Mothballed
             echo "    [Mothball] Fleet ", order.fleetId, " is now mothballed (0% maint, no combat)"
+
+            # Assign permanent Hold order (mothballed fleets can't be moved)
+            let holdOrder = FleetOrder(
+              fleetId: order.fleetId,
+              orderType: FleetOrderType.Hold,
+              targetSystem: some(colonySystem),
+              targetFleet: none(FleetId),
+              priority: 1
+            )
+            state.fleetOrders[order.fleetId] = holdOrder
+            echo "    [Mothball] Assigned permanent Hold (00) order (can't be moved)"
       else:
         discard
+
+      # Check if order is completed and should be cleared
+      var orderCompleted = false
+      case order.orderType
+      of FleetOrderType.Colonize:
+        # Colonize completes when colony is established at target
+        if order.targetSystem.isSome:
+          if order.targetSystem.get() in state.colonies:
+            orderCompleted = true
+      of FleetOrderType.Move, FleetOrderType.SeekHome:
+        # Movement completes when fleet reaches destination
+        if order.fleetId in state.fleets and order.targetSystem.isSome:
+          if state.fleets[order.fleetId].location == order.targetSystem.get():
+            orderCompleted = true
+      of FleetOrderType.Hold:
+        # Hold never completes - continues indefinitely
+        # SPECIAL: Mothballed fleets have permanent Hold (can't be changed)
+        discard
+      of FleetOrderType.GuardPlanet, FleetOrderType.GuardStarbase:
+        # Guard orders never complete - continue indefinitely
+        # SPECIAL: Reserve fleets have permanent Guard (can't be changed)
+        discard
+      of FleetOrderType.Reserve, FleetOrderType.Mothball:
+        # Status change orders complete immediately (but assign permanent follow-up order)
+        orderCompleted = true
+      else:
+        # Other orders (Patrol, Blockade, etc.) continue indefinitely
+        discard
+
+      if orderCompleted:
+        # Assign Hold order so fleet maintains position until commanded otherwise
+        # Exception: Reserve/Mothball already assigned permanent orders (don't override)
+        if order.orderType notin [FleetOrderType.Reserve, FleetOrderType.Mothball]:
+          # Clear completed order
+          state.fleetOrders.del(order.fleetId)
+          # Verify fleet still exists (might have been merged or destroyed)
+          if order.fleetId in state.fleets:
+            let holdOrder = FleetOrder(
+              fleetId: order.fleetId,
+              orderType: FleetOrderType.Hold,
+              targetSystem: some(state.fleets[order.fleetId].location),
+              targetFleet: none(FleetId),
+              priority: 1
+            )
+            state.fleetOrders[order.fleetId] = holdOrder
+            when not defined(release):
+              echo "    [ORDER COMPLETED] Fleet ", order.fleetId, " order ", $order.orderType, " completed → assigned Hold order"
+        else:
+          when not defined(release):
+            echo "    [ORDER COMPLETED] Fleet ", order.fleetId, " order ", $order.orderType, " completed (status changed)"
+
     else:
-      echo "    [", $actualOrder.orderType, "] FAILED: ", result.message
+      echo "    [", $order.orderType, "] FAILED: ", result.message
+
+  when not defined(release):
+    echo "  [COMMAND PHASE FLEET ORDER PROCESSING - END] Processed ", processCount, " orders total"

@@ -70,61 +70,112 @@ Players use **Squadron Management Orders** to:
 
 **Note:** Fleet operational status (Active, Reserve, Mothballed) affects maintenance costs and combat capability. See [Section 3.9](economy.md#39-maintenance-costs) for detailed information on Reserve and Mothballed fleets.
 
-### 6.2.1 Hold Position (00):
+### 6.3.1 Order Persistence and Lifecycle
+
+**Persistent Orders**: Fleet orders continue executing across turns until completed or explicitly changed by the player. Players issue orders once, and fleets autonomously execute them until the mission is accomplished.
+
+**Order Lifecycle:**
+
+1. **Order Issued**: Player submits fleet order during Command Phase
+2. **Order Persists**: Order stored and continues executing each turn
+3. **Mission Execution**: Fleet moves toward target and performs action
+4. **Auto-Completion**: Order automatically completes when objective achieved
+5. **Hold Assignment**: Fleet receives Hold (00) order after completion
+
+**Completion Criteria:**
+
+- **Move (01)**: Completes when fleet reaches destination → Auto-assigned Hold (00)
+- **Seek Home (02)**: Completes when fleet reaches friendly colony → Auto-assigned Hold (00)
+- **Colonize (12)**: Completes when colony established → Auto-assigned Hold (00)
+- **Hold (00)**: Never completes, continues indefinitely until changed
+- **Patrol/Guard/Blockade (03-05)**: Never complete, continue indefinitely until changed
+- **Reserve (16)**: Completes immediately → Auto-assigned **permanent GuardPlanet** (can't be changed)
+- **Mothball (17)**: Completes immediately → Auto-assigned **permanent Hold (00)** (can't be changed)
+
+**Override Behavior:**
+
+- Players can change fleet orders **anytime during Command Phase**
+- New orders immediately override persistent orders
+- **Exception**: Reserve/Mothball fleets have locked orders and can't be moved
+  - Reserve fleets permanently guard their colony (use Reactivate to return to active duty)
+  - Mothballed fleets permanently hold position (use Reactivate to return to active duty)
+
+**Move-to-ACTION Pattern:**
+
+All action orders (Colonize, Invade, Bombard, etc.) follow Move-to-ACTION pattern:
+- Fleet automatically moves toward target each turn
+- Action executes **immediately upon arrival** (same turn)
+- No "wait after arrival" behavior
+
+**Example - Colonization Mission:**
+```
+Turn 1: Player issues "Colonize System 15" (3 jumps away)
+        → Fleet moves 1 jump closer
+        → Order persists
+Turn 2: Order continues automatically
+        → Fleet moves 1 jump closer
+        → Order persists
+Turn 3: Order continues automatically
+        → Fleet arrives at System 15 and colonizes SAME TURN
+        → Order completes, fleet assigned Hold (00)
+Turn 4: Fleet has Hold order (stays at colony)
+        → Waits for new player orders
+```
+
+### 6.3.2 Hold Position (00):
 
 Fleets are ordered to hold position and standby for new orders.
 
-### 6.2.2 Move Fleet (01):
+### 6.3.3 Move Fleet (01):
 
 Move to a new solar system and hold position (00).
 
-### 6.2.3 Seek home (02):
+### 6.3.4 Seek Home (02):
 
-Order a fleet to seek the closest friendly solar system and hold position (00). Should that planet be taken over by an enemy, the fleet will move to the next closest planet you own.
+Order a fleet to seek the closest friendly solar system and hold position (00).
 
-**Automated Seek Home (Self-Preservation Protocol)**:
+**Manual vs. Automated Seek Home:**
 
-The game engine automatically triggers Seek Home behavior when fleets encounter situations where their orders become invalid or dangerous due to changing battlefield conditions. This prevents fleets from being stranded in hostile territory or attempting impossible missions.
+- **Manual**: Players can issue Seek Home orders anytime during Command Phase
+- **Automated**: Game engine ONLY triggers automatic Seek Home during **combat retreat**
 
-**Automatic Retreat Triggers:**
+**Automated Seek Home (Combat Retreat Only)**:
 
-The following situations automatically override fleet orders with Seek Home:
+The game engine automatically assigns Seek Home orders **exclusively during tactical withdrawal from combat**. This occurs in the **Conflict Phase** after battle resolution when fleets suffer heavy damage and trigger ROE (Rules of Engagement) withdrawal thresholds.
 
-1. **ETAC Colonization Missions (Order 12)**: When an ETAC fleet's destination system becomes enemy-controlled before arrival, the colonization mission aborts and the fleet retreats to the closest owned colony.
+**Automatic Retreat Trigger:**
 
-2. **Guard Orders (Orders 04-05)**: When a fleet on guard duty (guarding starbases or planets) loses the system to enemy conquest, the fleet automatically retreats rather than remaining stranded in hostile territory.
-
-3. **Blockade Operations (Order 05)**: When a blockaded planet changes ownership to an enemy house, the blockading fleet automatically retreats to avoid encirclement.
-
-4. **Patrol Operations (Order 03)**: When a patrol zone becomes enemy-controlled territory (colony conquered), patrolling fleets automatically retreat to friendly space.
+**Post-Combat Retreat** (per [Section 7.4](operations.md#74-space-combat)): When a fleet's damage exceeds ROE thresholds during battle, the fleet automatically retreats. The game immediately:
+1. Assigns Seek Home order to retreating fleet
+2. Calculates path to nearest friendly colony
+3. Begins retreat movement **in the same turn** (doesn't wait for next turn)
 
 **Retreat Destination Selection:**
 
-- Uses the same pathfinding logic as manual Seek Home orders
-- Selects the **closest owned colony** by jump distance from the fleet's current location
-- If no owned colonies exist (house has lost all territory), the fleet executes Hold (Order 00) at its current position
+- Uses pathfinding to find **closest owned colony** by jump distance
+- Considers path safety (avoids known enemy systems when possible)
+- If no owned colonies exist (house lost all territory), fleet holds at current position
 
-**Automated Retreat vs. Post-Combat Retreat:**
+**Important**: Fleets do NOT automatically seek home when:
+- Orders become strategically invalid (target destroyed, system captured, etc.)
+- Stationed in hostile territory
+- Completing missions in enemy space
 
-Automated Seek Home occurs in two distinct scenarios:
+Players retain full control over fleet positioning except during combat retreat. Fleets with invalid orders will continue executing them or hold position based on order type.
 
-1. **Pre-Order Execution Retreat**: Occurs **before** order execution when orders become strategically invalid due to territorial changes (e.g., destination colonized by enemy). This prevents fleets from executing impossible or suicidal orders.
+**Example Scenario - Post-Combat Retreat**:
 
-2. **Post-Combat Retreat** (per [Section 7.4](operations.md#74-space-combat)): Occurs **after** battle resolution when fleets suffer heavy damage or losses and trigger ROE-based tactical withdrawal. Retreating fleets are **automatically assigned Seek Home orders** and immediately begin movement toward the nearest friendly colony in the same turn. This ensures retreated fleets don't remain stranded at the battle site awaiting new orders.
+House Ordos attacks House Harkonnen colony with fleet of 5 cruisers. Battle goes poorly:
+- 3 cruisers destroyed
+- 2 cruisers crippled
+- ROE threshold exceeded → Tactical withdrawal triggered
 
-**Example Scenarios:**
-
-*Scenario 1 - ETAC Mission Abort*:
-House Atreides sends an ETAC fleet to colonize system 47. During the same turn, House Harkonnen conquers system 47. The ETAC fleet automatically aborts the colonization mission and retreats to the nearest Atreides-controlled colony instead of attempting to land in enemy territory.
-
-*Scenario 2 - Stranded Guard Fleet*:
-House Corrino has a fleet guarding a frontier colony at system 12. Enemy forces conquer the colony in a surprise invasion. Instead of the guard fleet remaining stranded deep in now-hostile territory, it automatically retreats to the nearest Corrino system.
-
-*Scenario 3 - Lost Patrol*:
-A patrol fleet at system 88 continues its patrol route. During the turn, the system is captured by an enemy house. The patrol fleet automatically aborts its patrol mission and seeks the nearest friendly colony rather than continuing to patrol enemy space.
-
-*Scenario 4 - Post-Combat Retreat*:
-House Ordos attacks a House Harkonnen colony with a fleet of 5 cruisers. The battle goes poorly - 3 cruisers are destroyed and the remaining 2 are crippled. The fleet's ROE (Rules of Engagement) threshold is exceeded, triggering tactical withdrawal. The game immediately assigns Seek Home orders to the surviving 2 cruisers, and they begin retreating to the nearest Ordos-controlled system in the same turn, rather than remaining at the battle site.
+Game automatically:
+1. Assigns Seek Home order to surviving 2 cruisers
+2. Finds nearest Ordos colony (4 jumps away)
+3. Cruisers begin retreating same turn (move 1 jump toward safety)
+4. Order persists across turns until fleet reaches safety
+5. Upon arrival, fleet assigned Hold (00) at safe colony
 
 ### 6.2.4 Patrol a System (03):
 

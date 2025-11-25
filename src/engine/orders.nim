@@ -3,32 +3,14 @@
 import std/[options, tables]
 import ../common/[hex, types/core, types/units]
 import gamestate, fleet, ship, spacelift, starmap
+import order_types  # Import and re-export fleet order types
 import espionage/types as esp_types
 import research/types as res_types
 
-type
-  FleetOrderType* {.pure.} = enum
-    Hold              # Hold position, do nothing
-    Move              # Navigate to target system
-    SeekHome          # Find closest friendly system
-    Patrol            # Defend and intercept in system
-    GuardStarbase     # Protect orbital installation
-    GuardPlanet       # Planetary defense
-    BlockadePlanet    # Planetary siege
-    Bombard           # Orbital bombardment
-    Invade            # Ground assault
-    Blitz             # Combined bombardment + invasion
-    Colonize          # Establish colony
-    SpyPlanet         # Intelligence gathering on planet
-    SpySystem         # Reconnaissance of system
-    HackStarbase      # Electronic warfare
-    JoinFleet         # Merge with another fleet
-    Rendezvous        # Coordinate movement with fleet
-    Salvage           # Recover wreckage
-    Reserve           # Place fleet on reserve status (50% maint, half AS/DS, can't move)
-    Mothball          # Mothball fleet (0% maint, offline, screened in combat)
-    Reactivate        # Return reserve/mothballed fleet to active duty
+# Re-export order types
+export order_types.FleetOrderType, order_types.FleetOrder
 
+type
   SquadronManagementAction* {.pure.} = enum
     ## Squadron and ship management actions at colonies
     TransferShip      # Move ship directly between squadrons at colony
@@ -66,13 +48,6 @@ type
     fleetId*: FleetId                    # Fleet containing spacelift ships
     cargoType*: Option[CargoType]        # Type of cargo (Marines, Colonists)
     quantity*: Option[int]               # Amount to load/unload (0 = all available)
-
-  FleetOrder* = object
-    fleetId*: FleetId
-    orderType*: FleetOrderType
-    targetSystem*: Option[SystemId]
-    targetFleet*: Option[FleetId]
-    priority*: int  # Execution order within turn
 
   TerraformOrder* = object
     ## Order to terraform a planet to next class
