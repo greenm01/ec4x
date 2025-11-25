@@ -44,7 +44,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Initialize RNG for this turn (use turn number as seed for reproducibility)
   var rng = initRand(state.turn)
 
-  echo "Resolving turn ", state.turn, " (Year ", state.year, ", Month ", state.month, ")"
+  echo "Resolving strategic cycle ", state.turn
 
   # Phase 1: Conflict (combat, infrastructure damage, espionage)
   resolveConflictPhase(result.newState, orders, result.combatReports, result.events)
@@ -60,10 +60,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 
   # Advance to next turn
   result.newState.turn += 1
-  result.newState.month += 1
-  if result.newState.month > 12:
-    result.newState.month = 1
-    result.newState.year += 1
+  # Advance strategic cycle (handled by advanceTurn)
 
   return result
 

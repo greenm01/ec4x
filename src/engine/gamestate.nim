@@ -172,8 +172,6 @@ type
   GameState* = object
     gameId*: string
     turn*: int
-    year*: int                    # Game year (starts at 2001)
-    month*: int                   # Game month (1-13)
     phase*: GamePhase
     starMap*: StarMap
     houses*: Table[HouseId, House]
@@ -193,8 +191,6 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
   result = GameState(
     gameId: gameId,
     turn: 0,
-    year: 2001,
-    month: 1,
     phase: GamePhase.Setup,
     starMap: starMap,
     houses: initTable[HouseId, House](),
@@ -558,10 +554,5 @@ proc checkVictoryCondition*(state: GameState): Option[HouseId] =
 # Turn advancement
 
 proc advanceTurn*(state: var GameState) =
-  ## Advance to next turn, updating year/month
+  ## Advance to next strategic cycle
   state.turn += 1
-  state.month += 1
-
-  if state.month > 13:
-    state.month = 1
-    state.year += 1

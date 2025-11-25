@@ -121,8 +121,6 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
   result = GameState(
     gameId: "balance_test",
     turn: 1,
-    year: 2400,
-    month: 1,
     phase: GamePhase.Active,
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
@@ -175,7 +173,7 @@ proc printGameSetup*(game: GameState) =
   echo &"\n{repeat(\"=\", 70)}"
   echo "Game Setup Summary"
   echo &"{repeat(\"=\", 70)}"
-  echo &"Turn: {game.turn}, Year: {game.year}, Month: {game.month}"
+  echo &"Strategic Cycle: {game.turn}"
   echo &"Houses: {game.houses.len}"
   echo &"Systems: {game.starMap.systems.len}"
   echo &"Colonies: {game.colonies.len}"

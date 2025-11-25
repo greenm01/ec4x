@@ -194,8 +194,6 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
 
   result.viewingHouse = houseId
   result.turn = state.turn
-  result.year = state.year
-  result.month = state.month
   result.starMap = state.starMap
 
   # Get visibility sets
