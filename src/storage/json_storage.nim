@@ -31,8 +31,6 @@ proc saveGameState*(state: GameState, filePath: string): bool =
     let jsonObj = %* {
       "gameId": state.gameId,
       "turn": state.turn,
-      "year": state.year,
-      "month": state.month,
       "phase": $state.phase,
       "houses": {},
       "colonies": {},
@@ -88,8 +86,6 @@ proc loadGameState*(filePath: string): Option[GameState] =
     var state = GameState(
       gameId: jsonData["gameId"].getStr(),
       turn: jsonData["turn"].getInt(),
-      year: jsonData["year"].getInt(),
-      month: jsonData["month"].getInt(),
       phase: GamePhase.Active,  # TODO: parse from string
       starMap: StarMap(
         systems: initTable[uint, System](),

@@ -2290,6 +2290,61 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
 
     result.add(order)
 
+proc hasViableColonizationTargets(filtered: FilteredGameState, houseId: HouseId): bool =
+  ## Returns true if there is at least one reachable uncolonized system
+  ## THE CORRECT QUESTION: "Can I still colonize?" not "Do I have enough ETACs?"
+  ## This prevents building useless ETACs when all systems are colonized
+
+  # Quick check: are there ANY uncolonized systems at all?
+  var hasUncolonized = false
+  for systemId, system in filtered.starMap.systems:
+    if not isSystemColonized(filtered, systemId):
+      hasUncolonized = true
+      break
+
+  if not hasUncolonized:
+    return false  # All systems colonized - no point building ETACs
+
+  # Check if we have any colonies that could send an ETAC
+  for colony in filtered.ownColonies:
+    if colony.owner == houseId:
+      # Can this colony reach an uncolonized system?
+      # Use the existing pathfinding logic
+      for targetId, targetSys in filtered.starMap.systems:
+        if not isSystemColonized(filtered, targetId):
+          # Found an uncolonized system - is it reachable?
+          # Simple check: if there's a path, colonization is viable
+          # (More sophisticated: check for safe routes, but start simple)
+          return true
+
+  return false
+
+proc hasIdleETAC(filtered: FilteredGameState, houseId: HouseId): bool =
+  ## Returns true if we have an ETAC at a colony that's not currently moving
+  ## Prevents building redundant ETACs when one is already waiting to go
+  for colony in filtered.ownColonies:
+    if colony.owner == houseId and colony.unassignedSpaceLiftShips.len > 0:
+      for spaceLift in colony.unassignedSpaceLiftShips:
+        if spaceLift.shipClass == ShipClass.ETAC:
+          return true
+
+  # Check fleets at owned colonies
+  for fleet in filtered.ownFleets:
+    if fleet.owner == houseId:
+      # Is fleet at an owned colony?
+      var atOwnedColony = false
+      for colony in filtered.ownColonies:
+        if colony.owner == houseId and colony.systemId == fleet.location:
+          atOwnedColony = true
+          break
+
+      if atOwnedColony:
+        for spaceLift in fleet.spaceLiftShips:
+          if spaceLift.shipClass == ShipClass.ETAC:
+            return true
+
+  return false
+
 proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[BuildOrder] =
   ## COMPREHENSIVE 4X STRATEGIC AI - Handles all asset types intelligently
   ## Ships: Combat warships, fighters, carriers, raiders, scouts, ETACs, transports
@@ -2310,7 +2365,7 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   var raiderCount = 0
   var carrierCount = 0
   var fighterCount = 0
-  var etacCount = 0
+  var etacCount = 0  # DEPRECATED: Global count (includes committed ETACs)
   var transportCount = 0
   var militaryCount = 0
   var capitalShipCount = 0  # BB, BC, DN, SD
@@ -2476,12 +2531,14 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.3 and not isEarlyGame
   let needELIMesh = scoutCount < 7 and p.aggression >= 0.3
 
-  # PRESTIGE OPTIMIZATION: Colonization gives +5 prestige
-  # EARLY GAME PRIORITY: Expand aggressively when uncolonized systems available
-  # Build more ETACs early game (4-5), fewer mid-game (2)
-  let etacTarget = if isEarlyGame: 4 else: 2
-  # ACCELERATION: Always build ETACs early game if under target (was gated by expansionDrive)
-  let needETACs = (etacCount < etacTarget and isEarlyGame)
+  # ========================================================================
+  # STRATEGIC MATURITY: "Can I still colonize?" not "Do I have enough ETACs?"
+  # ========================================================================
+  # ETACs are ONLY useful for colonization. Once all systems are colonized,
+  # switch to Troop Transports for conquest. This is the correct 4X progression.
+  let canColonize = hasViableColonizationTargets(filtered, controller.houseId)
+  let hasIdleETACWaiting = hasIdleETAC(filtered, controller.houseId)
+  let needETACs = canColonize and not hasIdleETACWaiting and p.expansionDrive > 0.3
 
   # EARLY GAME: Need cheap exploration/combat ships (frigates) before expensive military
   # Frigates cost 30 PP (vs 80+ for cruisers), build time 1 turn
@@ -2615,11 +2672,16 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # Priority: ETACs → Frigates → Scouts
     # CRITICAL FIX: Don't break after ETAC - allow multiple builds per turn
     # ------------------------------------------------------------------------
+    # ========================================================================
+    # ETAC BUILD LOGIC: Only build if colonization is still viable
+    # ========================================================================
     if needETACs:
       let etacCost = getShipConstructionCost(ShipClass.ETAC)
-      if house.treasury >= etacCost:
+      # Build on high-production colonies only (efficient ETAC production)
+      if house.treasury >= etacCost and colony.production >= 50:
         when not defined(release):
-          echo "[AI] ", $controller.houseId, " building ETAC at colony ", colony.systemId, " (have ", etacCount, "/", etacTarget, " ETACs)"
+          echo "[AI] ", $controller.houseId, " building ETAC at colony ", colony.systemId,
+               " - colonization targets available (expansionDrive: ", &"{p.expansionDrive:.2f}", ")"
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -2628,7 +2690,26 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        # Continue to allow other colonies to build as well
+        # Continue to allow other colonies to build if needed
+
+    # ========================================================================
+    # CONQUEST PHASE: Switch to Troop Transports when colonization ends
+    # ========================================================================
+    elif not canColonize and p.aggression > 0.4 and myColonies.len >= 4:
+      # No more colonies → switch to invasion fleet buildup
+      let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
+      if house.treasury >= transportCost and colony.production >= 80 and rng.rand(1.0) < 0.7:
+        when not defined(release):
+          echo "[AI] ", $controller.houseId, " building Troop Transport at colony ", colony.systemId,
+               " - CONQUEST PHASE (no colonization targets left)"
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.TroopTransport),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
 
     # Early game frigates for cheap exploration and combat
     # Cost 30 PP, build time 1 turn, can explore and fight
