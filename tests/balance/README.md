@@ -2,36 +2,138 @@
 
 AI-powered game balance testing system that simulates full games and generates structured data for analysis.
 
-## ⭐ ONE SOURCE OF TRUTH - Unified Testing Workflow ⭐
+## ⭐ ONE SOURCE OF TRUTH - Nimble Task Workflow ⭐
 
-**ALWAYS use this unified test runner for balance testing:**
+**ALWAYS use nimble tasks for balance testing to ensure build/test alignment:**
+
+### Standard Balance Tests
 
 ```bash
-# Act 1 validation (7 turns, 100 games)
-./tests/balance/run_test.sh --turns 7 --games 100
+# Quick validation during development (7 turns, 20 games, ~10 seconds)
+nimble testBalanceQuick
 
-# Act 2 validation (15 turns, 100 games)
-./tests/balance/run_test.sh --turns 15 --games 100
+# Build only (without running tests)
+nimble buildBalance
 
-# Full game test (30 turns, 100 games)
-./tests/balance/run_test.sh --turns 30 --games 100
+# Clean all balance test artifacts
+nimble cleanBalance
+```
 
-# Force clean rebuild before testing
-./tests/balance/run_test.sh --rebuild --turns 30
+### 4-Act Structure Testing
+
+```bash
+# Individual act validation (100 games each)
+nimble testBalanceAct1    # Act 1: Land Grab (7 turns)
+nimble testBalanceAct2    # Act 2: Rising Tensions (15 turns)
+nimble testBalanceAct3    # Act 3: Total War (25 turns)
+nimble testBalanceAct4    # Act 4: Endgame (30 turns)
+
+# Test all 4 acts in sequence (400 games total, ~15 minutes)
+nimble testBalanceAll4Acts
+```
+
+### Unknown-Unknowns Detection (Phase 2 RBA / Phase 3 NNA)
+
+```bash
+# Unknown-unknowns detection suite (200 games with auto-analysis)
+nimble testUnknownUnknowns
+
+# Diagnostic tests with CSV output (50 games, 30 turns)
+nimble testBalanceDiagnostics
+
+# Analyze existing diagnostic CSV files
+nimble analyzeDiagnostics
+
+# Analyze 4-act progression patterns
+nimble analyzeProgression
+```
+
+### Stress Testing
+
+```bash
+# AI behavior stress test (1000 games, identifies edge cases)
+nimble testStressAI
+
+# Engine stability stress test (100k games, crash detection)
+nimble testStress
+
+# Map size scaling tests (4, 8, 12 players)
+nimble testMapSizes
 ```
 
 ### Why This Matters
 
-The `run_test.sh` script ensures:
-- ✅ **Build Alignment**: Source code → Binary always in sync
-- ✅ **Script Alignment**: All tools use the same binary
-- ✅ **No Stale Binaries**: Clean builds prevent version mismatches
+The nimble task workflow ensures:
+- ✅ **Build Alignment**: Source code → Binary always in sync (nimble handles compilation)
+- ✅ **Script Alignment**: All tools use the same binary compiled by nimble
+- ✅ **No Stale Binaries**: Tasks force recompilation before testing
 - ✅ **Consistent Results**: Repeatable testing workflow
+- ✅ **Cross-Platform**: Works on Linux, macOS, Windows
+- ✅ **Fast Development Cycle**: Quick task for rapid iteration
 
-### Supporting Scripts
+### Task Definitions (from ec4x.nimble)
 
-- `build.sh` - Clean rebuild (called automatically by run_test.sh)
-- `sim` - Manual testing wrapper: `./tests/balance/sim 30 88888 4 4`
+```nim
+task buildBalance, "Build balance test simulation binary":
+  exec "nim c -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+
+task testBalanceQuick, "Quick balance validation (7 turns, 20 games)":
+  exec "nim c -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "python3 run_balance_test_parallel.py --workers 8 --games 20 --turns 7"
+
+task testBalance, "Run balance tests (7 turn Act 1 validation)":
+  exec "nim c -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
+
+task testBalanceAct2, "Run Act 2 balance tests (15 turns)":
+  exec "nim c -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 15"
+
+task testBalanceFull, "Run full game balance tests (30 turns)":
+  exec "nim c -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
+
+task cleanBalance, "Clean balance test artifacts":
+  exec "rm -f tests/balance/run_simulation"
+  exec "rm -rf balance_results/*"
+```
+
+### Alternative Testing Approaches
+
+EC4X uses **two complementary testing methodologies**:
+
+#### 1. Fixed Strategy Testing (Current - Phase 2)
+**Purpose:** Validate game balance with fixed AI strategies (Act-by-Act analysis)
+
+**Primary tool:** Nimble tasks (see above)
+
+**Manual single-game testing:**
+```bash
+# Build first, then run simulation directly with custom parameters
+nimble buildBalance
+./tests/balance/run_simulation 30 88888 4 4  # 30 turns, seed 88888, 4 rings, 4 players
+```
+
+**Custom multi-game configurations:**
+```bash
+# Call Python directly for non-standard parameters
+python3 run_balance_test_parallel.py --workers 32 --games 500 --turns 25
+```
+
+#### 2. Genetic Coevolution Testing
+**Purpose:** Evolve AI personalities through competitive coevolution
+
+**Shell scripts for genetic algorithm testing:**
+- `./tests/balance/run_parallel_test.sh` - Run coevolution experiments
+- `./tests/balance/archive_results.sh` - Archive coevolution results
+
+**Example coevolution test:**
+```bash
+# 4 parallel runs, 10 generations, 8 population, 5 games/gen
+./tests/balance/run_parallel_test.sh 4 10 8 5
+```
+
+See `docs/BALANCE_TESTING_METHODOLOGY.md` for full details on both approaches.
 
 ## Overview
 

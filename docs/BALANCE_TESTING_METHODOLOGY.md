@@ -206,7 +206,8 @@ The game supports 2-12 players, but balance characteristics change dramatically 
 
 **Testing Method:**
 ```bash
-python3 run_balance_test.py  # 10 games, 4 players each
+nimble testBalanceQuick  # Quick validation (20 games)
+nimble testBalanceAct1   # Act 1 validation (100 games)
 ```
 
 #### Phase 2: Act-by-Act Analysis (Current)
@@ -218,19 +219,22 @@ python3 run_balance_test.py  # 10 games, 4 players each
 - Need to understand progression curves, not just final outcomes
 - Enables targeted tuning (fix Act 1 issues before testing Act 3)
 
-**Test Configuration:**
+**Test Configuration (use nimble tasks):**
 ```bash
 # Phase 2A: Act 1 - The Land Grab (7 turns = 35-70 years)
-python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 7
+nimble testBalanceAct1
 
 # Phase 2B: Act 2 - Rising Tensions (15 turns = 75-150 years)
-python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 15
+nimble testBalanceAct2
 
 # Phase 2C: Act 3 - Total War (25 turns = 125-250 years)
-python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 25
+nimble testBalanceAct3
 
 # Phase 2D: Full Game - Endgame (30 turns = 150-300 years)
-python3 run_balance_test_parallel.py --workers 8 --games 200 --turns 30
+nimble testBalanceAct4
+
+# Run all 4 acts sequentially (400 games)
+nimble testBalanceAll4Acts
 ```
 
 **Analysis Focus per Act:**
