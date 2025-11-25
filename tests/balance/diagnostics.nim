@@ -50,9 +50,35 @@ type
     mothballedFleetsUsed*: int    # Times mothballed fleets activated
     mothballedFleetsTotal*: int   # Current mothballed fleet count
 
-    # Orders
+    # Orders (ENHANCED for unknown-unknowns detection)
     invalidOrders*: int           # Cumulative invalid/rejected orders
     totalOrders*: int             # Cumulative valid orders issued
+    fleetOrdersSubmitted*: int    # Fleet movement orders this turn
+    buildOrdersSubmitted*: int    # Construction orders this turn
+    colonizeOrdersSubmitted*: int # Colonization attempts this turn
+
+    # Build Queue (NEW - track construction pipeline)
+    totalBuildQueueDepth*: int    # Sum of all colony queue depths
+    etacInConstruction*: int      # ETACs currently being built
+    shipsUnderConstruction*: int  # Ship squadrons in construction
+    buildingsUnderConstruction*: int  # Starbases/facilities building
+
+    # Commissioning (NEW - track ship output)
+    shipsCommissionedThisTurn*: int
+    etacCommissionedThisTurn*: int
+    squadronsCommissionedThisTurn*: int
+
+    # Fleet Activity (NEW - detect stuck fleets)
+    fleetsMoved*: int             # Fleets that changed systems this turn
+    systemsColonized*: int        # Successful colonizations this turn
+    failedColonizationAttempts*: int  # Colonization orders rejected
+    fleetsWithOrders*: int        # Fleets with active orders
+    stuckFleets*: int             # Fleets with orders but didn't move (pathfinding fail?)
+
+    # ETAC Specific (NEW - critical for colonization)
+    totalETACs*: int              # Current ETAC count
+    etacsWithoutOrders*: int      # ETACs sitting idle (not colonizing)
+    etacsInTransit*: int          # ETACs moving to targets
 
   DiagnosticSession* = object
     ## Collection of all diagnostics for a game session
