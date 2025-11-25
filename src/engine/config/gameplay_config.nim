@@ -8,6 +8,9 @@ import std/[os]
 import toml_serialization
 
 type
+  ThemeConfig* = object
+    active_theme*: string
+
   EliminationConfig* = object
     defensive_collapse_turns*: int
     defensive_collapse_threshold*: int
@@ -39,6 +42,7 @@ type
 
   GameplayConfig* = object
     ## Complete gameplay configuration loaded from TOML
+    theme*: ThemeConfig
     elimination*: EliminationConfig
     autopilot*: AutopilotConfig
     autopilot_behavior*: AutopilotBehaviorConfig
