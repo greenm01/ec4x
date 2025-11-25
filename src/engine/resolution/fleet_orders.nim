@@ -6,9 +6,9 @@
 ## - Automated Seek Home behavior for stranded fleets
 ## - Helper functions for path finding and hostility detection
 
-import std/[tables, options, sequtils]
+import std/[tables, options, sequtils, strformat]
 import ../../common/[hex, types/core, types/combat, types/units]
-import ../gamestate, ../orders, ../fleet, ../starmap, ../spacelift
+import ../gamestate, ../orders, ../fleet, ../starmap, ../spacelift, ../logger
 import ../colonization/engine as col_engine
 import ../diplomacy/[types as dip_types]
 import ../config/[prestige_config, population_config]
@@ -196,7 +196,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   # Detect infinite recursion
   movementCallDepth += 1
   if movementCallDepth > 100:
-    echo "ERROR: resolveMovementOrder recursion depth > 100! Infinite loop detected!"
+    logFatal(LogCategory.lcFleet, "resolveMovementOrder recursion depth > 100! Infinite loop detected!")
     quit(1)
 
   defer:
@@ -215,20 +215,20 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
   # Already at destination
   if startId == targetId:
-    echo "    Fleet ", order.fleetId, " already at destination"
+    logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} already at destination")
     return
 
-  echo "    Fleet ", order.fleetId, " moving from ", startId, " to ", targetId
+  logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} moving from {startId} to {targetId}")
 
   # Find path to destination (operations.md:6.1)
   let pathResult = state.starMap.findPath(startId, targetId, fleet)
 
   if not pathResult.found:
-    echo "      No valid path found (blocked by restricted lanes or terrain)"
+    logWarn(LogCategory.lcFleet, &"Fleet {order.fleetId}: No valid path found (blocked by restricted lanes or terrain)")
     return
 
   if pathResult.path.len < 2:
-    echo "      Invalid path"
+    logError(LogCategory.lcFleet, &"Fleet {order.fleetId}: Invalid path")
     return
 
   # Determine how many jumps the fleet can make this turn
@@ -274,14 +274,14 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   fleet.location = newLocation
   state.fleets[order.fleetId] = fleet
 
-  echo "      Moved ", actualJumps, " jump(s) to system ", newLocation
+  logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
 
   # Check for fleet encounters at destination
   # Find other fleets at the same location
   for otherFleetId, otherFleet in state.fleets:
     if otherFleetId != order.fleetId and otherFleet.location == newLocation:
       if otherFleet.owner != houseId:
-        echo "      Encountered fleet ", otherFleetId, " (", otherFleet.owner, ") at ", newLocation
+        logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
         # Combat will be resolved in conflict phase next turn
         # This just logs the encounter
 
@@ -295,7 +295,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
 
   # Check if system already colonized
   if targetId in state.colonies:
-    echo "    System ", targetId, " already colonized"
+    logWarn(LogCategory.lcColonization, &"Fleet {order.fleetId}: System {targetId} already colonized")
     return
 
   let fleetOpt = state.getFleet(order.fleetId)
@@ -304,14 +304,14 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
 
   # Check system exists
   if targetId notin state.starMap.systems:
-    echo "    System ", targetId, " not found in starMap"
+    logError(LogCategory.lcColonization, &"Fleet {order.fleetId}: System {targetId} not found in starMap")
     return
 
   var fleet = fleetOpt.get()
 
   # If fleet not at target, move there first
   if fleet.location != targetId:
-    echo "    Fleet not at target - moving there first (from ", fleet.location, " to ", targetId, ")"
+    logDebug(LogCategory.lcColonization, &"Fleet {order.fleetId} not at target - moving from {fleet.location} to {targetId}")
     # Create temporary movement order to get fleet to destination
     let moveOrder = FleetOrder(
       fleetId: order.fleetId,
@@ -320,9 +320,9 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
       targetFleet: none(FleetId),
       priority: order.priority
     )
-    echo "    Calling resolveMovementOrder..."
+    logDebug(LogCategory.lcColonization, &"Calling resolveMovementOrder for fleet {order.fleetId}")
     resolveMovementOrder(state, houseId, moveOrder, events)
-    echo "    resolveMovementOrder returned"
+    logDebug(LogCategory.lcColonization, &"resolveMovementOrder returned for fleet {order.fleetId}")
 
     # Reload fleet after movement
     let movedFleetOpt = state.getFleet(order.fleetId)
@@ -332,7 +332,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
 
     # Check if fleet reached destination (might be multiple jumps away)
     if fleet.location != targetId:
-      echo "    Fleet still not at target after movement (too far)"
+      logWarn(LogCategory.lcColonization, &"Fleet {order.fleetId} still not at target after movement (too far)")
       return
 
   # Check fleet has colonists
@@ -343,7 +343,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
       break
 
   if not hasColonists:
-    echo "    No colonists in fleet"
+    logError(LogCategory.lcColonization, &"Fleet {order.fleetId} has no colonists (PTU) - colonization failed")
     return
 
   # Establish colony using system's actual planet properties
@@ -352,7 +352,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   let planetClass = system.planetClass
   let resources = system.resourceRating
 
-  echo "    Colonizing ", $planetClass, " world with ", $resources, " resources"
+  logInfo(LogCategory.lcColonization, &"Fleet {order.fleetId} colonizing {planetClass} world with {resources} resources at {targetId}")
 
   # Create ETAC colony with 1 PTU (50k souls)
   let colony = createETACColony(targetId, houseId, planetClass, resources)
@@ -367,7 +367,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   )
 
   if not result.success:
-    echo "    Failed to establish colony at ", targetId
+    logError(LogCategory.lcColonization, &"Failed to establish colony at {targetId}")
     return
 
   state.colonies[targetId] = colony
@@ -384,8 +384,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   if result.prestigeEvent.isSome:
     let prestigeEvent = result.prestigeEvent.get()
     state.houses[houseId].prestige += prestigeEvent.amount
-    echo "    ", state.houses[houseId].name, " colonized system ", targetId,
-         " (+", prestigeEvent.amount, " prestige)"
+    logInfo(LogCategory.lcColonization, &"{state.houses[houseId].name} colonized system {targetId} (+{prestigeEvent.amount} prestige)")
 
   # Generate event
   events.add(GameEvent(
@@ -438,7 +437,7 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
             if mutableShip.loadCargo(CargoType.Marines, loadAmount):
               colony.marines -= loadAmount
               modified = true
-              echo "    [Auto] Loaded ", loadAmount, " Marines onto ", ship.id, " at ", systemId
+              logInfo(LogCategory.lcFleet, &"Auto-loaded {loadAmount} Marines onto {ship.id} at {systemId}")
 
         of ShipClass.ETAC:
           # Auto-load colonists if available (1 PTU commitment)
@@ -450,7 +449,7 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
               colony.souls -= soulsPerPtu()
               colony.population = colony.souls div 1_000_000
               modified = true
-              echo "    [Auto] Loaded 1 PTU onto ", ship.id, " at ", systemId
+              logInfo(LogCategory.lcColonization, &"Auto-loaded 1 PTU onto {ship.id} at {systemId}")
 
         else:
           discard  # Other ship classes don't have spacelift capability
