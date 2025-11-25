@@ -7,6 +7,12 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Engine-Level Safe Fallback Routes with Auto-Retreat Policy (2025-11-24)**
+  - Integrated AI-planned fallback routes into engine's automatic seek-home system
+  - Routes validate safe paths avoiding enemy territory using pathfinding
+  - Added AutoRetreatPolicy (Never/MissionsOnly/Conservative/Aggressive)
+  - findClosestOwnedColony() prioritizes safe routes, uses fallback routes first
+  - Syncs AI controller routes to engine state after order generation
 - ✅ **Phase 2d+2f+2h Complete: Tactical AI Improvements (2025-11-24)**
   - **2d - ELI/CLK:** Aggressive AI researches CLK, builds Raiders with ambush (+4 CER)
   - **2f - Defense Layering:** Priority 2.5 defends colonies before offense (74.7% → 38.2% undefended)
