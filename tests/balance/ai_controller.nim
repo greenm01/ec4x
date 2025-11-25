@@ -90,8 +90,8 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
     AIPersonality(
       aggression: 0.9,
       riskTolerance: 0.8,
-      economicFocus: 0.3,
-      expansionDrive: 0.8,  # Increased from 0.5 - aggressive expansion, avoids SpyPlanet threshold (0.6)
+      economicFocus: 0.5,  # Increased from 0.3 - prevents military build starvation of ETACs
+      expansionDrive: 0.8,  # Aggressive expansion, then pivot to conquest
       diplomacyValue: 0.2,
       techPriority: 0.4
     )
