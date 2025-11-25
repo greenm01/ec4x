@@ -66,6 +66,10 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       ordersTable[controller.houseId] = orders
       controllers[i] = controller
 
+    # Sync AI controller fallback routes to engine (for automatic seek-home behavior)
+    for i in 0..<controllers.len:
+      controllers[i].syncFallbackRoutesToEngine(game)
+
     # Resolve turn with actual game engine
     let turnResult = resolveTurn(game, ordersTable)
     game = turnResult.newState
