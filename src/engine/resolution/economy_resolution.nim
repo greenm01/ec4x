@@ -1898,7 +1898,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                 if fleet.location == systemId and fleet.owner == colony.owner:
                   # Transfer spacelift ship to fleet
                   fleet.spaceLiftShips.add(spaceLiftShip)
-                  colony.unassignedSpaceLiftShips.setLen(colony.unassignedSpaceLiftShips.len - 1)
+                  # Remove the spacelift ship we just assigned (it's the last one we added)
+                  colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
                   echo "      Auto-assigned ", shipClass, " to fleet ", fleetId
                   break
 
