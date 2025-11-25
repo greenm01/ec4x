@@ -40,12 +40,27 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
     defenses: colony.armies + colony.marines + colony.groundBatteries,  # Total ground defenses
     starbaseLevel: colony.starbases.len,
     constructionQueue: @[],
+    grossOutput: none(int),
+    taxRevenue: none(int),
     # Orbital defenses (visible when approaching for orbital missions)
     unassignedSquadronCount: colony.unassignedSquadrons.len,
     reserveFleetCount: reserveFleets,
     mothballedFleetCount: mothballedFleets,
     shipyardCount: colony.shipyards.len  # Space-based construction only, NOT spaceports
   )
+
+  # Economic intelligence visible if spy quality is high enough
+  if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
+    # Get colony economic data from latest income report
+    let targetHouse = state.houses[colony.owner]
+    if targetHouse.latestIncomeReport.isSome:
+      let incomeReport = targetHouse.latestIncomeReport.get()
+      # Find this colony's data in the house income report
+      for colonyReport in incomeReport.colonies:
+        if colonyReport.colonyId == targetSystem:
+          report.grossOutput = some(colonyReport.grossOutput)
+          report.taxRevenue = some(colonyReport.netValue)
+          break
 
   # Construction queue visible if spy quality is high enough
   if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
@@ -133,11 +148,14 @@ proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetS
   report.treasuryBalance = some(targetHouse.treasury)
   report.taxRate = some(targetHouse.taxPolicy.currentRate.float)
 
-  # Calculate gross and net income (if available from recent turn)
-  # This would ideally come from the last income report
-  # For now, provide treasury as a proxy
-  report.grossIncome = none(int)  # TODO: Track income per turn
-  report.netIncome = none(int)    # TODO: Track income per turn
+  # Gross and net income from latest income report (if available)
+  if targetHouse.latestIncomeReport.isSome:
+    let incomeReport = targetHouse.latestIncomeReport.get()
+    report.grossIncome = some(incomeReport.totalGross)
+    report.netIncome = some(incomeReport.totalNet)
+  else:
+    report.grossIncome = none(int)
+    report.netIncome = none(int)
 
   # R&D intelligence - tech tree data
   report.techLevels = some(targetHouse.techTree.levels)

@@ -29,6 +29,10 @@ type
     starbaseLevel*: int          # 0 if no starbase
     constructionQueue*: seq[string]  # Item IDs in construction (if successful spy)
 
+    # Economic intelligence (Spy quality or higher)
+    grossOutput*: Option[int]    # GCO (Gross Colonial Output)
+    taxRevenue*: Option[int]     # NCV (Net Colonial Value) after tax
+
     # Orbital defenses (visible when approaching colony for orbital missions)
     unassignedSquadronCount*: int    # Combat squadrons at colony not in fleets
     reserveFleetCount*: int          # Reserve fleets at colony (visible, half AS/DS)
