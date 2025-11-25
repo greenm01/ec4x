@@ -12,7 +12,7 @@ EC4X is an asynchronous turn-based wargame of the classic eXplore, eXpand, eXplo
 
 Upstart Houses battle over a small region of space to dominate usurpers and seize the imperial throne. Your role is to serve as House Duke and lead your people to greatness.
 
-The game begins at the dawn of the third imperium in the year 2001. Each turn comprises one month of a thirteen month [Terran Computational Calendar](https://www.terrancalendar.com/ "Terran Computational Calendar").
+The game begins at the dawn of the third imperium in the year 2001. Strategic cycles operate on the Cipher Ledger - a quantum-entangled network embedded in jump lane stabilizers enabling instantaneous cryptographic settlement across interstellar space. Each cycle represents the time required to gather intelligence, coordinate operations, and consolidate control across your territory. In tight regional conflicts, cycles pass quickly (1-2 years); sprawling multi-sector campaigns unfold over decades (10-15 years per cycle).
 
 Turns cycle as soon as all players have completed their turns, or generally a maximum of one day In Real Life (IRL) time. EC4X is intentionally slow burn.
 

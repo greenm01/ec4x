@@ -29,8 +29,6 @@ type
   TurnReport* = object
     ## Complete turn report for a player
     turn*: int
-    year*: int
-    month*: int
     houseId*: HouseId
     sections*: seq[ReportSection]
 
@@ -347,8 +345,8 @@ proc generateTurnReport*(oldState: GameState, turnResult: TurnResult, perspectiv
 
   result = TurnReport(
     turn: newState.turn,
-    year: newState.year,
-    month: newState.month,
+    
+    
     houseId: perspective,
     sections: @[]
   )
@@ -386,7 +384,7 @@ proc formatReport*(report: TurnReport): string =
 
   result = ""
   result.add(repeat("=", 70) & "\n")
-  result.add(&"Turn {report.turn} Report (Year {report.year}, Month {report.month})\n")
+  result.add(&"Turn {report.turn} Report \n")
   result.add(repeat("=", 70) & "\n\n")
 
   for section in report.sections:

@@ -19,10 +19,9 @@ export types.TechAdvancement, types.BreakthroughEvent, types.TechTree
 ## Upgrade Cycles (economy.md:4.1)
 
 proc isUpgradeTurn*(turn: int): bool =
-  ## Check if current turn is an upgrade turn
-  ## Per economy.md:4.1: Turns 1 and 7 of each year (months 1 and 7)
-  let month = ((turn - 1) mod 13) + 1
-  return month in RESEARCH_UPGRADE_TURNS
+  ## Check if current turn is a research breakthrough cycle
+  ## Breakthroughs occur every 6 strategic cycles
+  return (turn mod 6) == 0
 
 ## Research Breakthroughs (economy.md:4.1.1)
 

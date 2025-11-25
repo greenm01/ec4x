@@ -2,11 +2,11 @@
 
 Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity. 
 
-The standard unit of account in EC4X the Production Point (PP).
+The standard unit of account in EC4X is the Production Point (PP).
 
 The economic power of a House is fueled by productivity, industrial capacity, and technological growth. Strategic decisions around taxation, industrial investment, and research & development (R&D) will directly impact a player's economic output and military strength.
 
-Production points settle near instantaneously on the inter-dimensional Phoenix network. (All comms and data transfers are instantaneous).
+Production points settle instantaneously through the Cipher Ledger - a cryptographic network operating on quantum-entangled nodes embedded in jump lane stabilizers. Houses mint blind-signature PP tokens that route through secure lane channels, enabling instant private settlement while maintaining complete opacity to rival intelligence agencies.
 
 ## 3.1 Principles
 
@@ -473,7 +473,7 @@ The starting tech configuration ensures consistent behavior across the engine. G
 ## 4.1 Research Points (RP)
 
 Each turn, players can invest production points in RP to further their R&D efforts.
-R&D upgrades will be purchased in the first and seventh months of the Terran calendar, i.e. the first and seventh turns of each game year. Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle.
+R&D upgrades occur during bi-annual breakthrough cycles (turns 1 and 7 of each year-equivalent period). Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle. The Cipher Ledger batches research coordination across Houses' academic networks during these synchronized windows.
 
 There are three areas of investment:
 - Economic RP (ERP)

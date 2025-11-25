@@ -2411,8 +2411,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   # Strategic needs assessment - Phase 2c: Scout Operational Modes
   # Need 5-7 scouts: 2-3 for espionage missions, 3+ for ELI mesh on invasions
   let needScouts = scoutCount < 3  # Minimum for basic espionage
-  let needMoreScouts = scoutCount < 5 and p.techPriority > 0.4 and militaryCount > 3
-  let needELIMesh = scoutCount < 7 and p.aggression > 0.5 and militaryCount > 5  # For invasion support
+  let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.4 and militaryCount > 2  # Lowered military threshold
+  let needELIMesh = scoutCount < 7 and p.aggression >= 0.4 and militaryCount > 3  # Lowered thresholds for broader adoption
   # PRESTIGE OPTIMIZATION: Colonization gives +5 prestige
   # Expand aggressively when uncolonized systems available
   let needETACs = (etacCount < 2 and p.expansionDrive > 0.3 and
@@ -2454,6 +2454,15 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
 
   let needCarriers = (
     fighterCount > 3 and carrierCount == 0 and house.treasury > 150
+  )
+
+  # Phase 2e: Fighter build strategy
+  # Build fighters for aggressive/military-focused AIs
+  # Start with small number even without carriers (they stay at colonies until carriers built)
+  let needFighters = (
+    p.aggression > 0.4 and fighterCount < 8 and
+    militaryCount > 2 and  # Have basic military first
+    house.treasury > 80  # Can afford fighter + maintenance
   )
 
   # ==========================================================================
@@ -2580,6 +2589,20 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # ------------------------------------------------------------------------
     # MID GAME: Military buildup and defense
     # ------------------------------------------------------------------------
+
+    # Phase 2e: Fighter squadrons for aggressive AIs
+    if needFighters:
+      let fighterCost = getShipConstructionCost(ShipClass.Fighter)
+      if house.treasury >= fighterCost and canAffordMoreShips and not atSquadronLimit:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Fighter),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        break  # One at a time to avoid treasury depletion
 
     # Phase 2e: Starbases for fighter capacity (1 per 5 fighters rule)
     # Per assets.md:2.4.1: "Requires 1 operational Starbase per 5 FS (ceil)"
