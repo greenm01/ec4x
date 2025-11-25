@@ -63,23 +63,29 @@ ls docs/*.md | wc -l  # Should be 7
 # Standard tests
 nimble test                    # All integration tests
 nimble testBalanceQuick        # Quick validation (20 games, ~10s)
-nimble buildBalance            # Build balance binary
-nimble cleanBalance            # Clean artifacts
 
 # 4-Act testing
-nimble testBalanceAct1         # Act 1 (7 turns)
-nimble testBalanceAct2         # Act 2 (15 turns)
-nimble testBalanceAct3         # Act 3 (25 turns)
-nimble testBalanceAct4         # Act 4 (30 turns)
+nimble testBalanceAct1         # Act 1 (7 turns, 100 games)
+nimble testBalanceAct2         # Act 2 (15 turns, 100 games)
+nimble testBalanceAct3         # Act 3 (25 turns, 100 games)
+nimble testBalanceAct4         # Act 4 (30 turns, 100 games)
 nimble testBalanceAll4Acts     # All 4 acts (400 games)
+
+# AI Optimization (separate from testing)
+nimble buildAITuning           # Build genetic algorithm tools
+nimble evolveAIQuick           # Quick 10-gen test (~5 min)
+nimble evolveAI                # Full 50-gen evolution (~2-4 hours)
+nimble coevolveAI              # Competitive co-evolution
+nimble tuneAIDiagnostics       # 100 games + analysis
 
 # Unknown-unknowns detection
 nimble testUnknownUnknowns     # 200 games + analysis
 nimble analyzeDiagnostics      # Analyze Phase 2 gaps
 
-# Stress testing
-nimble testStressAI            # 1000 games
-nimble testStress              # 100k games
+# Cleanup
+nimble buildBalance            # Build balance binary
+nimble cleanBalance            # Clean balance artifacts
+nimble cleanAITuning           # Clean AI tuning artifacts
 ```
 
 ### Why Nimble?
@@ -159,23 +165,40 @@ result.prestige = globalPrestigeConfig.economic.tech_advancement
 ## Architecture Quick Reference
 
 ```
-src/engine/          # 13 major systems (combat, economy, etc.)
-  └─ fog_of_war.nim  # FoW filtering (mandatory for AI)
+src/
+├── engine/              # 13 major systems (combat, economy, etc.)
+│   └── fog_of_war.nim   # FoW filtering (mandatory for AI)
+├── ai/rba/              # Rule-Based Advisor (modular AI)
+│   ├── player.nim       # Public API
+│   ├── controller.nim   # Strategy profiles
+│   ├── intelligence.nim # Intel gathering
+│   ├── diplomacy.nim    # Diplomatic assessment
+│   ├── tactical.nim     # Fleet operations
+│   ├── strategic.nim    # Combat assessment
+│   └── budget.nim       # Budget allocation
 
-tests/balance/       # AI testing + diagnostics
-  ├─ ai_controller.nim        # Rule-Based AI (2,800+ lines)
-  ├─ run_simulation.nim       # Test binary
-  └─ diagnostics.nim          # Metric logging
+tests/balance/           # Balance testing (regression)
+│   ├── ai_controller.nim # Thin wrapper (imports src/ai/rba/)
+│   ├── run_simulation.nim # Test binary
+│   └── diagnostics.nim   # Metric logging
 
-balance_results/diagnostics/  # CSV output (gitignored)
+tools/ai_tuning/         # AI optimization (genetic algorithms)
+│   ├── evolve_ai.nim     # Evolution runner
+│   ├── coevolution.nim   # Competitive co-evolution
+│   └── *.py              # Analysis scripts
 
 docs/
-  ├─ architecture/   # Vision (**PRESERVE**)
-  ├─ specs/          # Rules (**PRESERVE**)
-  └─ archive/        # Old docs
+├── ai/                  # AI system documentation
+├── testing/             # Testing methodology
+├── architecture/        # System design (**PRESERVE**)
+├── specs/               # Game rules (**PRESERVE**)
+└── archive/             # Obsolete docs
 ```
 
 **Key principle:** Fleet → Squadrons (combat) + SpaceLift ships (individual units, NOT squadrons)
+
+**AI Documentation:** See [docs/ai/README.md](ai/README.md)
+**Testing Documentation:** See [docs/testing/README.md](testing/README.md)
 
 ---
 
