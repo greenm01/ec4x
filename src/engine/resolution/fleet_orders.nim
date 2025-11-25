@@ -16,28 +16,53 @@ import ../prestige
 import ./types  # Common resolution types
 
 proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
-  ## Check if a system is hostile to a house
-  ## System is hostile if:
-  ## 1. Colonized by an enemy house (diplomatic status: Enemy)
-  ## 2. Enemy fleets are present
+  ## Check if a system is hostile to a house based on known intel (fog-of-war)
+  ## System is hostile if player KNOWS it contains:
+  ## 1. Enemy colony (from intelligence database or visibility)
+  ## 2. Enemy fleets (from intelligence database or visibility)
+  ## IMPORTANT: This respects fog-of-war - only uses information available to the house
 
-  # Check if system has enemy colony
+  let house = state.houses[houseId]
+
+  # Check if system has enemy colony (visible or from intel database)
   if systemId in state.colonies:
     let colony = state.colonies[systemId]
     if colony.owner != houseId:
       # Check diplomatic status
-      let house = state.houses[houseId]
       if house.diplomaticRelations.isEnemy(colony.owner):
+        # Player can see this colony - it's hostile
         return true
 
-  # Check for enemy fleets at system
+  # Check intelligence database for known enemy colonies
+  if systemId in house.intelligence.colonyReports:
+    let colonyIntel = house.intelligence.colonyReports[systemId]
+    if colonyIntel.targetOwner != houseId and house.diplomaticRelations.isEnemy(colonyIntel.targetOwner):
+      return true
+
+  # Check for enemy fleets at system (visible or from intel)
   for fleetId, fleet in state.fleets:
     if fleet.location == systemId and fleet.owner != houseId:
-      let house = state.houses[houseId]
       if house.diplomaticRelations.isEnemy(fleet.owner):
         return true
 
   return false
+
+proc estimatePathRisk*(state: GameState, path: seq[SystemId], houseId: HouseId): int =
+  ## Estimate risk level of a path (0 = safe, higher = more risky)
+  ## Uses fog-of-war information available to the house
+  result = 0
+
+  for systemId in path:
+    if isSystemHostile(state, systemId, houseId):
+      result += 10  # Known enemy system - high risk
+    elif systemId in state.colonies:
+      let colony = state.colonies[systemId]
+      if colony.owner != houseId:
+        # Foreign but not enemy (neutral/ally) - moderate risk
+        result += 3
+    else:
+      # Unexplored or empty - low risk
+      result += 1
 
 proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: HouseId): Option[SystemId] =
   ## Find the closest owned colony for a house, excluding the fromSystem
@@ -58,12 +83,10 @@ proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: Ho
            state.colonies[route.fallbackSystem].owner == houseId:
           return some(route.fallbackSystem)
 
-  # Fallback: Calculate closest colony by pathfinding distance
-  # IMPORTANT: Prioritize safe routes (avoiding enemy systems)
-  var closestSafeColony: Option[SystemId] = none(SystemId)
-  var closestAnyColony: Option[SystemId] = none(SystemId)
-  var shortestSafeDistance = int.high
-  var shortestAnyDistance = int.high
+  # Fallback: Calculate best retreat route balancing distance and risk
+  # IMPORTANT: Uses fog-of-war information only (player's knowledge)
+  var bestColony: Option[SystemId] = none(SystemId)
+  var bestScore = int.high  # Lower is better (combines distance and risk)
 
   # Iterate through all colonies owned by this house
   for systemId, colony in state.colonies:
@@ -83,28 +106,19 @@ proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: Ho
       if pathResult.path.len > 0:
         let distance = pathResult.path.len - 1  # Number of jumps
 
-        # Check if path goes through enemy territory
-        var pathIsSafe = true
-        for pathSystemId in pathResult.path:
-          if pathSystemId != fromSystem and isSystemHostile(state, pathSystemId, houseId):
-            pathIsSafe = false
-            break
+        # Calculate path risk using fog-of-war intel
+        let risk = estimatePathRisk(state, pathResult.path, houseId)
 
-        # Track closest safe route (preferred)
-        if pathIsSafe and distance < shortestSafeDistance:
-          shortestSafeDistance = distance
-          closestSafeColony = some(systemId)
+        # Score combines distance and risk
+        # Risk is weighted heavily (x3) to strongly prefer safer routes
+        # But will accept risky routes if they're much shorter
+        let score = distance + (risk * 3)
 
-        # Also track closest route overall (fallback if no safe route exists)
-        if distance < shortestAnyDistance:
-          shortestAnyDistance = distance
-          closestAnyColony = some(systemId)
+        if score < bestScore:
+          bestScore = score
+          bestColony = some(systemId)
 
-  # Prefer safe routes, but use any route if no safe option exists
-  if closestSafeColony.isSome:
-    return closestSafeColony
-  else:
-    return closestAnyColony
+  return bestColony
 
 proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, order: FleetOrder): bool =
   ## Determine if a fleet should automatically seek home due to dangerous situation
