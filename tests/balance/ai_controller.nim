@@ -2581,6 +2581,24 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # MID GAME: Military buildup and defense
     # ------------------------------------------------------------------------
 
+    # Phase 2e: Starbases for fighter capacity (1 per 5 fighters rule)
+    # Per assets.md:2.4.1: "Requires 1 operational Starbase per 5 FS (ceil)"
+    let fightersAtColony = colony.fighterSquadrons.len
+    let requiredStarbases = (fightersAtColony + 4) div 5  # Ceiling division
+    let currentStarbases = colony.starbases.len
+    if fightersAtColony > 0 and currentStarbases < requiredStarbases:
+      # Need more starbases to support fighter capacity
+      if house.treasury >= 300 and canAffordMoreShips and not atSquadronLimit:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Starbase),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        break
+
     # Starbases for defense (before expensive military buildup)
     # RESOURCE MANAGEMENT: Starbases also have maintenance, check affordability
     if needDefenses and not hasStarbase and house.treasury >= 300 and canAffordMoreShips and not atSquadronLimit:
@@ -2751,6 +2769,26 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       ))
       break
 
+proc calculateFighterCapacityUtilization(filtered: FilteredGameState, houseId: HouseId): float =
+  ## Calculate percentage of fighter capacity currently used
+  ## Phase 2e: Used to determine when to research Fighter Doctrine
+  var totalFighters = 0
+  var totalCapacity = 0
+
+  for colony in filtered.ownColonies:
+    if colony.owner == houseId:
+      totalFighters += colony.fighterSquadrons.len
+      # Calculate max capacity: floor(PU / 100) × FD multiplier
+      let baseCapacity = colony.production div 100
+      # FD multiplier from tech level (engine handles this, but we estimate)
+      let fdMultiplier = filtered.ownHouse.techTree.levels.fighterDoctrine
+      totalCapacity += baseCapacity * fdMultiplier
+
+  if totalCapacity == 0:
+    return 0.0
+
+  return float(totalFighters) / float(totalCapacity)
+
 proc generateResearchAllocation(controller: AIController, filtered: FilteredGameState): res_types.ResearchAllocation =
   ## Allocate research PP based on strategy
   ## Per economy.md:4.0:
@@ -2785,12 +2823,29 @@ proc generateResearchAllocation(controller: AIController, filtered: FilteredGame
 
       # Remaining ~42% to technologies
       let techBudget = researchBudget - result.economic - result.science
+
+      # Phase 2e: Check if we should prioritize Fighter Doctrine/ACO
+      let capacityUtil = calculateFighterCapacityUtilization(filtered, controller.houseId)
+      let needFD = capacityUtil > 0.7  # Research FD when >70% capacity used
+      let fdLevel = house.techTree.levels.fighterDoctrine
+      let acoLevel = house.techTree.levels.advancedCarrierOps
+
       if p.aggression > 0.5:
-        # Aggressive: weapons + cloaking for Raiders (Phase 2d)
-        result.technology[TechField.WeaponsTech] = techBudget * 2 div 5  # 40%
-        result.technology[TechField.CloakingTech] = techBudget div 5     # 20% (for Raider ambush)
-        result.technology[TechField.ConstructionTech] = techBudget div 5 # 20%
-        result.technology[TechField.ElectronicIntelligence] = techBudget div 5  # 20%
+        # Aggressive: weapons + cloaking for Raiders (Phase 2d) + fighters (Phase 2e)
+        if needFD and fdLevel < 3:
+          # High capacity utilization - prioritize FD to expand fighter capacity
+          result.technology[TechField.FighterDoctrine] = techBudget div 4     # 25%
+          result.technology[TechField.AdvancedCarrierOps] = techBudget div 5  # 20% (synergy)
+          result.technology[TechField.WeaponsTech] = techBudget div 4          # 25%
+          result.technology[TechField.CloakingTech] = techBudget div 10        # 10%
+          result.technology[TechField.ConstructionTech] = techBudget div 10    # 10%
+          result.technology[TechField.ElectronicIntelligence] = techBudget div 10  # 10%
+        else:
+          # Standard aggressive research allocation
+          result.technology[TechField.WeaponsTech] = techBudget * 2 div 5  # 40%
+          result.technology[TechField.CloakingTech] = techBudget div 5     # 20% (for Raider ambush)
+          result.technology[TechField.ConstructionTech] = techBudget div 5 # 20%
+          result.technology[TechField.ElectronicIntelligence] = techBudget div 5  # 20%
       else:
         # Peaceful: infrastructure + counter-intel for defense
         result.technology[TechField.ConstructionTech] = techBudget div 2
