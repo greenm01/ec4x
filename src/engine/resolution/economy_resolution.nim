@@ -1829,6 +1829,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
   # Apply results back to game state
   for houseId, houseReport in incomeReport.houseReports:
     state.houses[houseId].treasury = houseTreasuries[houseId]
+    # Store income report for intelligence gathering (HackStarbase missions)
+    state.houses[houseId].latestIncomeReport = some(houseReport)
     echo "    ", state.houses[houseId].name, ": +", houseReport.totalNet, " PP (Gross: ", houseReport.totalGross, ")"
 
     # Update colony production fields from income reports

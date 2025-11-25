@@ -112,6 +112,8 @@ proc generateScoutColonyObservation*(
     defenses: colony.armies + colony.marines + colony.groundBatteries,
     starbaseLevel: colony.starbases.len,
     constructionQueue: @[],
+    grossOutput: none(int),
+    taxRevenue: none(int),
     unassignedSquadronCount: colony.unassignedSquadrons.len,
     reserveFleetCount: 0,
     mothballedFleetCount: 0,
@@ -125,6 +127,17 @@ proc generateScoutColonyObservation*(
         colonyIntel.reserveFleetCount += 1
       elif fleet.status == FleetStatus.Mothballed:
         colonyIntel.mothballedFleetCount += 1
+
+  # Get economic data from latest income report (scouts get PERFECT intel)
+  let targetHouse = state.houses[colony.owner]
+  if targetHouse.latestIncomeReport.isSome:
+    let incomeReport = targetHouse.latestIncomeReport.get()
+    # Find this colony's data in the house income report
+    for colonyReport in incomeReport.colonies:
+      if colonyReport.colonyId == systemId:
+        colonyIntel.grossOutput = some(colonyReport.grossOutput)
+        colonyIntel.taxRevenue = some(colonyReport.netValue)
+        break
 
   # Get construction queue (scouts get perfect intel on all queued projects)
   for project in colony.constructionQueue:
