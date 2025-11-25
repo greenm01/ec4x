@@ -138,11 +138,13 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     spyScouts: initTable[string, SpyScout]()
   )
 
-  # House names and colors
+  # House names and colors (12 max players)
   const houseNames = ["Atreides", "Harkonnen", "Ordos", "Corrino",
-                      "Vernius", "Moritani", "Richese"]
+                      "Vernius", "Moritani", "Richese", "Ginaz",
+                      "Ecaz", "Tleilax", "Ixian", "Bene-Gesserit"]
   const houseColors = ["blue", "red", "green", "gold",
-                       "purple", "orange", "cyan"]
+                       "purple", "orange", "cyan", "white",
+                       "pink", "brown", "silver", "maroon"]
 
   # Create houses at player system positions
   for i in 0..<numHouses:

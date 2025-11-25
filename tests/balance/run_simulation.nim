@@ -23,13 +23,29 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
   var game = createBalancedGame(numHouses, rings, seed)
 
   # Create AI controllers for each house
-  var controllers: seq[AIController] = @[]
-  let houseIds = toSeq(game.houses.keys)
+  # Map houses to their thematic strategies
+  let houseStrategyMap = {
+    "house-atreides": AIStrategy.Balanced,
+    "house-harkonnen": AIStrategy.Aggressive,
+    "house-ordos": AIStrategy.Espionage,
+    "house-corrino": AIStrategy.Diplomatic,
+    "house-vernius": AIStrategy.TechRush,
+    "house-moritani": AIStrategy.Raider,
+    "house-richese": AIStrategy.Economic,
+    "house-ginaz": AIStrategy.MilitaryIndustrial,
+    "house-ecaz": AIStrategy.Opportunistic,
+    "house-tleilax": AIStrategy.Isolationist,
+    "house-ixian": AIStrategy.Expansionist,
+    "house-bene-gesserit": AIStrategy.Turtle
+  }.toTable
 
-  for i in 0..<numHouses:
-    if i < houseIds.len and i < strategies.len:
-      controllers.add(newAIController(houseIds[i], strategies[i]))
-      echo &"  {houseIds[i]}: {strategies[i]}"
+  var controllers: seq[AIController] = @[]
+  var houseIds: seq[HouseId] = @[]  # Keep for diagnostic collection
+  for houseId in game.houses.keys:
+    let strategy = if $houseId in houseStrategyMap: houseStrategyMap[$houseId] else: AIStrategy.Balanced
+    controllers.add(newAIController(houseId, strategy))
+    houseIds.add(houseId)
+    echo &"  {houseId}: {strategy}"
 
   echo &"\nGame initialized with {game.houses.len} houses"
   echo &"Star map: {game.starMap.systems.len} systems"
@@ -214,9 +230,23 @@ when isMainModule:
     numPlayers = parseInt(paramStr(4))
 
   # Create strategies for the specified number of players
-  # Cycle through strategy types
+  # All 12 strategy types mapped to thematic Dune houses
+  # IMPORTANT: Order must match houseNames array in game_setup.nim:142
   var strategies: seq[AIStrategy] = @[]
-  let strategyTypes = [AIStrategy.Aggressive, AIStrategy.Economic, AIStrategy.Balanced, AIStrategy.Turtle]
+  let strategyTypes = [
+    AIStrategy.Balanced,            # 0.  house-atreides (noble, honorable, balanced)
+    AIStrategy.Aggressive,          # 1.  house-harkonnen (brutal military oppression)
+    AIStrategy.Espionage,           # 2.  house-ordos (secretive, sabotage, deviousness)
+    AIStrategy.Diplomatic,          # 3.  house-corrino (Emperor - political manipulation)
+    AIStrategy.TechRush,            # 4.  house-vernius (Ix - technological masters)
+    AIStrategy.Raider,              # 5.  house-moritani (assassins, hit-and-run)
+    AIStrategy.Economic,            # 6.  house-richese (wealthy merchants)
+    AIStrategy.MilitaryIndustrial,  # 7.  house-ginaz (swordmasters - military training)
+    AIStrategy.Opportunistic,       # 8.  house-ecaz (flexible, adaptable)
+    AIStrategy.Isolationist,        # 9.  house-tleilax (xenophobic genetic manipulators)
+    AIStrategy.Expansionist,        # 10. house-ixian (alternate Ix house - rapid expansion)
+    AIStrategy.Turtle               # 11. house-bene-gesserit (patient, long-term planning)
+  ]
   for i in 0..<numPlayers:
     strategies.add(strategyTypes[i mod strategyTypes.len])
 
