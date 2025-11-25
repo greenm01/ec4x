@@ -110,8 +110,8 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       let report = generateTurnReport(oldState, turnResult, controller.houseId)
       let formattedReport = formatReport(report)
 
-      # Store report in controller for AI context
-      controller.lastTurnReport = formattedReport
+      # Note: lastTurnReport removed from production AIController
+      # Report context not needed for balance testing
 
       # Save report to JSON for analysis
       let houseName = game.houses[controller.houseId].name
