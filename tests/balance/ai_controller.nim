@@ -178,19 +178,30 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
 # Helper Functions
 # =============================================================================
 
-proc getOwnedColonies(state: GameState, houseId: HouseId): seq[Colony] =
-  ## Get all colonies owned by a house
-  result = @[]
-  for colony in state.colonies.values:
-    if colony.owner == houseId:
-      result.add(colony)
+proc isSystemColonized(filtered: FilteredGameState, systemId: SystemId): bool =
+  ## Check if a system is colonized (own or visible enemy colony)
+  ## RESPECTS FOG-OF-WAR: Only checks known colonies
+  for colony in filtered.ownColonies:
+    if colony.systemId == systemId:
+      return true
+  for visCol in filtered.visibleColonies:
+    if visCol.systemId == systemId:
+      return true
+  return false
 
-proc getOwnedFleets(state: GameState, houseId: HouseId): seq[Fleet] =
+proc getOwnedColonies(filtered: FilteredGameState, houseId: HouseId): seq[Colony] =
+  ## Get all colonies owned by a house
+  ## RESPECTS FOG-OF-WAR: Only returns own colonies
+  if houseId != filtered.viewingHouse:
+    return @[]  # Can't see other houses' colonies
+  return filtered.ownColonies
+
+proc getOwnedFleets(filtered: FilteredGameState, houseId: HouseId): seq[Fleet] =
   ## Get all fleets owned by a house
-  result = @[]
-  for fleet in state.fleets.values:
-    if fleet.owner == houseId:
-      result.add(fleet)
+  ## RESPECTS FOG-OF-WAR: Only returns own fleets
+  if houseId != filtered.viewingHouse:
+    return @[]  # Can't see other houses' fleets
+  return filtered.ownFleets
 
 proc getFleetStrength(fleet: Fleet): int =
   ## Calculate total attack strength of a fleet
@@ -198,23 +209,27 @@ proc getFleetStrength(fleet: Fleet): int =
   for squadron in fleet.squadrons:
     result += squadron.combatStrength()
 
-proc findNearestUncolonizedSystem(state: GameState, fromSystem: SystemId): Option[SystemId] =
+proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: SystemId): Option[SystemId] =
   ## Find nearest uncolonized system using cube distance
   ## Returns closest uncolonized system to avoid all AIs targeting the same one
+  ## RESPECTS FOG-OF-WAR: Only considers visible systems
   type SystemDist = tuple[systemId: SystemId, distance: int]
   var candidates: seq[SystemDist] = @[]
 
-  let fromCoords = state.starMap.systems[fromSystem].coords
+  let fromCoords = filtered.starMap.systems[fromSystem].coords
 
-  for systemId, system in state.starMap.systems:
-    if systemId notin state.colonies:
-      # Calculate cube distance (Manhattan distance in hex coordinates)
-      let dx = abs(system.coords.q - fromCoords.q)
-      let dy = abs(system.coords.r - fromCoords.r)
-      let dz = abs((system.coords.q + system.coords.r) - (fromCoords.q + fromCoords.r))
-      let distance = (dx + dy + dz) div 2
-      let item: SystemDist = (systemId: systemId, distance: distance)
-      candidates.add(item)
+  for systemId, system in filtered.starMap.systems:
+    # Only check visible systems
+    if systemId in filtered.visibleSystems:
+      # Check if not colonized
+      if not isSystemColonized(filtered, systemId):
+        # Calculate cube distance (Manhattan distance in hex coordinates)
+        let dx = abs(system.coords.q - fromCoords.q)
+        let dy = abs(system.coords.r - fromCoords.r)
+        let dz = abs((system.coords.q + system.coords.r) - (fromCoords.q + fromCoords.r))
+        let distance = (dx + dy + dz) div 2
+        let item: SystemDist = (systemId: systemId, distance: distance)
+        candidates.add(item)
 
   if candidates.len > 0:
     # Sort by distance and return closest
@@ -223,15 +238,17 @@ proc findNearestUncolonizedSystem(state: GameState, fromSystem: SystemId): Optio
 
   return none(SystemId)
 
-proc findWeakestEnemyColony(state: GameState, houseId: HouseId, rng: var Rand): Option[SystemId] =
+proc findWeakestEnemyColony(filtered: FilteredGameState, houseId: HouseId, rng: var Rand): Option[SystemId] =
   ## Find an enemy colony to attack (prefer weaker targets)
+  ## RESPECTS FOG-OF-WAR: Only considers visible enemy colonies
   var targets: seq[tuple[systemId: SystemId, strength: int]] = @[]
 
-  for systemId, colony in state.colonies:
-    if colony.owner != houseId:
-      # Calculate defensive strength (simplified)
-      let defenseStr = colony.infrastructure * 10 + colony.groundBatteries * 20
-      targets.add((systemId, defenseStr))
+  # Check visible enemy colonies
+  for visCol in filtered.visibleColonies:
+    if visCol.owner != houseId:
+      # Calculate defensive strength from intel (may be incomplete)
+      let defenseStr = visCol.estimatedDefenses.get(0)
+      targets.add((visCol.systemId, defenseStr))
 
   if targets.len > 0:
     # Sort by strength (weakest first)
@@ -244,32 +261,51 @@ proc findWeakestEnemyColony(state: GameState, houseId: HouseId, rng: var Rand): 
 # Intelligence Gathering
 # =============================================================================
 
-proc updateIntelligence*(controller: var AIController, state: GameState, systemId: SystemId,
+proc updateIntelligence*(controller: var AIController, filtered: FilteredGameState, systemId: SystemId,
                          turn: int, confidenceLevel: float = 1.0) =
   ## Update intelligence report for a system
   ## Called when scouts gather intel or when we have direct visibility
+  ## RESPECTS FOG-OF-WAR: Updates based on visible/scouted information
   var report = IntelligenceReport(
     systemId: systemId,
     lastUpdated: turn,
-    hasColony: systemId in state.colonies,
+    hasColony: isSystemColonized(filtered, systemId),
     confidenceLevel: confidenceLevel
   )
 
   if report.hasColony:
-    let colony = state.colonies[systemId]
-    report.owner = some(colony.owner)
-    report.planetClass = some(colony.planetClass)
-    report.resources = some(colony.resources)
+    # Check if it's our colony (full details)
+    var foundOwn = false
+    for colony in filtered.ownColonies:
+      if colony.systemId == systemId:
+        report.owner = some(colony.owner)
+        report.planetClass = some(colony.planetClass)
+        report.resources = some(colony.resources)
+        report.estimatedDefenses = colony.starbases.len * 10 + colony.groundBatteries * 5
+        foundOwn = true
+        break
 
-    # Estimate defenses (starbases, ground batteries)
-    report.estimatedDefenses = colony.starbases.len * 10 + colony.groundBatteries * 5
+    # Otherwise check visible enemy colonies (limited intel)
+    if not foundOwn:
+      for visCol in filtered.visibleColonies:
+        if visCol.systemId == systemId:
+          report.owner = some(visCol.owner)
+          report.planetClass = visCol.planetClass
+          report.resources = visCol.resources
+          report.estimatedDefenses = visCol.estimatedDefenses.get(0)
+          break
 
-  # Estimate fleet strength at this system
+  # Estimate fleet strength at this system (only visible fleets)
   var totalStrength = 0
-  for fleet in state.fleets.values:
+  for fleet in filtered.ownFleets:
     if fleet.location == systemId:
       for squadron in fleet.squadrons:
         totalStrength += squadron.combatStrength()
+  for visFleet in filtered.visibleFleets:
+    if visFleet.location == systemId:
+      # Rough estimate based on ship count
+      totalStrength += visFleet.estimatedShipCount.get(0) * 20
+
   report.estimatedFleetStrength = totalStrength
 
   controller.intelligence[systemId] = report
@@ -289,17 +325,17 @@ proc needsReconnaissance*(controller: AIController, systemId: SystemId, currentT
   let age = currentTurn - controller.intelligence[systemId].lastUpdated
   return age > 5  # Intel becomes stale after 5 turns
 
-proc findBestColonizationTarget*(controller: var AIController, state: GameState,
+proc findBestColonizationTarget*(controller: var AIController, filtered: FilteredGameState,
                                   fromSystem: SystemId): Option[SystemId] =
   ## Find best colonization target using intelligence
   ## Prioritizes: Eden/Abundant > Strategic > Nearby > Unknown
   type TargetScore = tuple[systemId: SystemId, score: float, distance: int]
   var candidates: seq[TargetScore] = @[]
 
-  let fromCoords = state.starMap.systems[fromSystem].coords
+  let fromCoords = filtered.starMap.systems[fromSystem].coords
 
-  for systemId, system in state.starMap.systems:
-    if systemId notin state.colonies:
+  for systemId, system in filtered.starMap.systems:
+    if not isSystemColonized(filtered, systemId):
       var score = 0.0
 
       # Calculate distance
@@ -371,7 +407,7 @@ proc findBestColonizationTarget*(controller: var AIController, state: GameState,
 # Fleet Coordination
 # =============================================================================
 
-proc planCoordinatedOperation*(controller: var AIController, state: GameState,
+proc planCoordinatedOperation*(controller: var AIController, filtered: FilteredGameState,
                                 opType: OperationType, target: SystemId,
                                 fleets: seq[FleetId], assembly: SystemId, turn: int) =
   ## Plan a multi-fleet coordinated operation
@@ -386,20 +422,22 @@ proc planCoordinatedOperation*(controller: var AIController, state: GameState,
   )
   controller.operations.add(operation)
 
-proc updateOperationStatus*(controller: var AIController, state: GameState) =
+proc updateOperationStatus*(controller: var AIController, filtered: FilteredGameState) =
   ## Update status of ongoing coordinated operations
   ## Check which fleets have arrived at assembly points
   for op in controller.operations.mitems:
     op.readyFleets.setLen(0)  # Reset ready fleets
     for fleetId in op.requiredFleets:
-      if fleetId in state.fleets:
-        let fleet = state.fleets[fleetId]
-        if fleet.location == op.assemblyPoint:
-          op.readyFleets.add(fleetId)
+      # Find fleet in ownFleets
+      for fleet in filtered.ownFleets:
+        if fleet.id == fleetId:
+          if fleet.location == op.assemblyPoint:
+            op.readyFleets.add(fleetId)
+          break
 
     # If all fleets ready and not yet executed, set execution for next turn
     if op.readyFleets.len == op.requiredFleets.len and op.executionTurn.isNone:
-      op.executionTurn = some(state.turn + 1)
+      op.executionTurn = some(filtered.turn + 1)
 
 proc shouldExecuteOperation*(controller: AIController, op: CoordinatedOperation, turn: int): bool =
   ## Check if operation should execute this turn
@@ -413,7 +451,7 @@ proc removeCompletedOperations*(controller: var AIController, turn: int) =
     it.executionTurn.isNone or it.executionTurn.get() >= turn - 2
   )
 
-proc identifyImportantColonies*(controller: AIController, state: GameState): seq[SystemId] =
+proc identifyImportantColonies*(controller: AIController, filtered: FilteredGameState): seq[SystemId] =
   ## Identify colonies that need defense-in-depth
   ## Important = high production OR strategic resources
   ##
@@ -426,7 +464,7 @@ proc identifyImportantColonies*(controller: AIController, state: GameState): seq
   ## proactive defense logic to never trigger. Lowering to 30 ensures medium+
   ## production colonies get defended.
   result = @[]
-  for systemId, colony in state.colonies:
+  for systemId, colony in filtered.colonies:
     if colony.owner == controller.houseId:
       # Medium+ production colonies (lowered from 50 to 30 for early-game relevance)
       if colony.production >= 30:
@@ -445,17 +483,18 @@ proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,
   )
   controller.reserves.add(reserve)
 
-proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
+proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameState) =
   ## Phase 2h: Update fallback/retreat routes for all colonies
   ## Call this periodically to refresh safe retreat destinations
+  ## RESPECTS FOG-OF-WAR: Uses visible systems and intelligence
 
-  let myColonies = getOwnedColonies(state, controller.houseId)
+  let myColonies = getOwnedColonies(filtered, controller.houseId)
   if myColonies.len == 0:
     return
 
   # Clear stale routes (>20 turns old)
   controller.fallbackRoutes = controller.fallbackRoutes.filterIt(
-    state.turn - it.lastUpdated < 20
+    filtered.turn - it.lastUpdated < 20
   )
 
   # For each colony, find nearest safe colony as fallback
@@ -463,7 +502,7 @@ proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
     # Skip if we already have a recent route for this region
     var hasRecentRoute = false
     for route in controller.fallbackRoutes:
-      if route.region == colony.systemId and state.turn - route.lastUpdated < 10:
+      if route.region == colony.systemId and filtered.turn - route.lastUpdated < 10:
         hasRecentRoute = true
         break
 
@@ -482,7 +521,7 @@ proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
       var isSafe = otherColony.starbases.len > 0
       if not isSafe:
         var fleetStrength = 0
-        for fleet in state.fleets.values:
+        for fleet in filtered.ownFleets:
           if fleet.owner == controller.houseId and fleet.location == otherColony.systemId:
             fleetStrength += fleet.squadrons.len
         isSafe = fleetStrength >= 2
@@ -501,18 +540,18 @@ proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
         status: FleetStatus.Active
       )
 
-      let pathResult = state.starMap.findPath(colony.systemId, otherColony.systemId, dummyFleet)
+      let pathResult = filtered.starMap.findPath(colony.systemId, otherColony.systemId, dummyFleet)
       if pathResult.path.len == 0:
         continue  # No valid path
 
       # Verify path doesn't go through enemy systems
       var pathIsSafe = true
       for pathSystemId in pathResult.path:
-        if pathSystemId != colony.systemId and pathSystemId in state.colonies:
-          let pathColony = state.colonies[pathSystemId]
+        if pathSystemId != colony.systemId and pathSystemId in filtered.colonies:
+          let pathColony = filtered.colonies[pathSystemId]
           if pathColony.owner != controller.houseId:
             # Check diplomatic status
-            let house = state.houses[controller.houseId]
+            let house = filtered.ownHouse
             if house.diplomaticRelations.isEnemy(pathColony.owner):
               pathIsSafe = false
               break
@@ -537,14 +576,14 @@ proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
       controller.fallbackRoutes.add(FallbackRoute(
         region: colony.systemId,
         fallbackSystem: bestFallback.get(),
-        lastUpdated: state.turn
+        lastUpdated: filtered.turn
       ))
 
 proc syncFallbackRoutesToEngine*(controller: AIController, state: var GameState) =
   ## Sync AI controller's fallback routes to engine's House state
   ## This allows engine's automatic seek-home behavior to use AI-planned routes
-  if controller.houseId in state.houses:
-    state.houses[controller.houseId].fallbackRoutes = controller.fallbackRoutes
+  if controller.houseId in filtered.houses:
+    filtered.ownHouse.fallbackRoutes = controller.fallbackRoutes
 
 proc findFallbackSystem*(controller: AIController, currentSystem: SystemId): Option[SystemId] =
   ## Phase 2h: Find designated fallback system for a region
@@ -637,7 +676,7 @@ proc identifyVulnerableTargets*(controller: var AIController, filtered: Filtered
   # Sort by relative strength (weakest first)
   result.sort(proc(a, b: auto): int = cmp(a.relativeStrength, b.relativeStrength))
 
-proc identifyInvasionOpportunities*(controller: var AIController, state: GameState): seq[SystemId] =
+proc identifyInvasionOpportunities*(controller: var AIController, filtered: FilteredGameState): seq[SystemId] =
   ## Identify enemy colonies that warrant coordinated invasion
   ## Phase 2i: Now prioritizes weaker players instead of strongest
   ## Criteria: valuable target, requires multiple fleets, within reach
@@ -648,7 +687,7 @@ proc identifyInvasionOpportunities*(controller: var AIController, state: GameSta
 
   for target in vulnerableTargets:
     let systemId = target.systemId
-    let colony = state.colonies[systemId]
+    let colony = filtered.colonies[systemId]
 
     # Estimate defense strength (ground forces + starbase + nearby fleets)
     var defenseStrength = 0
@@ -656,7 +695,7 @@ proc identifyInvasionOpportunities*(controller: var AIController, state: GameSta
       defenseStrength += 100 * colony.getOperationalStarbaseCount()  # Each starbase adds significant defense
 
     # Check for defending fleets
-    for fleet in state.fleets.values:
+    for fleet in filtered.ownFleets:
       if fleet.owner == colony.owner and fleet.location == systemId:
         defenseStrength += fleet.combatStrength()
 
@@ -673,10 +712,10 @@ proc identifyInvasionOpportunities*(controller: var AIController, state: GameSta
     if preferTarget and defenseStrength > 150:
       result.add(systemId)
 
-proc countAvailableFleets*(controller: AIController, state: GameState): int =
+proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState): int =
   ## Count fleets not currently in operations
   result = 0
-  for fleet in state.fleets.values:
+  for fleet in filtered.ownFleets:
     if fleet.owner != controller.houseId:
       continue
 
@@ -690,7 +729,7 @@ proc countAvailableFleets*(controller: AIController, state: GameState): int =
     if not inOperation and fleet.combatStrength() > 0:
       result += 1
 
-proc planCoordinatedInvasion*(controller: var AIController, state: GameState,
+proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGameState,
                                 target: SystemId, turn: int) =
   ## Plan multi-fleet invasion of a high-value target
   ## Assembles at nearby friendly system, then attacks together
@@ -699,13 +738,13 @@ proc planCoordinatedInvasion*(controller: var AIController, state: GameState,
   var assemblyPoint: Option[SystemId] = none(SystemId)
   var minDist = 999
 
-  let targetCoords = state.starMap.systems[target].coords
+  let targetCoords = filtered.starMap.systems[target].coords
 
-  for systemId, colony in state.colonies:
+  for systemId, colony in filtered.colonies:
     if colony.owner != controller.houseId:
       continue
 
-    let coords = state.starMap.systems[systemId].coords
+    let coords = filtered.starMap.systems[systemId].coords
     let dx = abs(coords.q - targetCoords.q)
     let dy = abs(coords.r - targetCoords.r)
     let dz = abs((coords.q + coords.r) - (targetCoords.q + targetCoords.r))
@@ -720,7 +759,7 @@ proc planCoordinatedInvasion*(controller: var AIController, state: GameState,
 
   # Identify fleets for invasion force (need 2-3 combat fleets)
   var selectedFleets: seq[FleetId] = @[]
-  for fleet in state.fleets.values:
+  for fleet in filtered.ownFleets:
     if fleet.owner == controller.houseId and fleet.combatStrength() > 0:
       # Skip fleets already in operations
       var inOperation = false
@@ -736,7 +775,7 @@ proc planCoordinatedInvasion*(controller: var AIController, state: GameState,
 
   if selectedFleets.len >= 2:
     controller.planCoordinatedOperation(
-      state,
+      filtered,
       OperationType.Invasion,
       target,
       selectedFleets,
@@ -744,7 +783,7 @@ proc planCoordinatedInvasion*(controller: var AIController, state: GameState,
       turn
     )
 
-proc manageStrategicReserves*(controller: var AIController, state: GameState) =
+proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGameState) =
   ## Assign fleets as strategic reserves for important colonies
   ## Defense-in-depth: keep reserves positioned near key systems
 
@@ -756,11 +795,11 @@ proc manageStrategicReserves*(controller: var AIController, state: GameState) =
       continue  # Already has reserve
 
     # Find nearby idle fleet
-    let systemCoords = state.starMap.systems[systemId].coords
+    let systemCoords = filtered.starMap.systems[systemId].coords
     var bestFleet: Option[FleetId] = none(FleetId)
     var minDist = 999
 
-    for fleet in state.fleets.values:
+    for fleet in filtered.ownFleets:
       if fleet.owner != controller.houseId or fleet.combatStrength() == 0:
         continue
 
@@ -775,7 +814,7 @@ proc manageStrategicReserves*(controller: var AIController, state: GameState) =
         continue
 
       # Check distance
-      let fleetCoords = state.starMap.systems[fleet.location].coords
+      let fleetCoords = filtered.starMap.systems[fleet.location].coords
       let dx = abs(fleetCoords.q - systemCoords.q)
       let dy = abs(fleetCoords.r - systemCoords.r)
       let dz = abs((fleetCoords.q + fleetCoords.r) - (systemCoords.q + systemCoords.r))
@@ -788,7 +827,7 @@ proc manageStrategicReserves*(controller: var AIController, state: GameState) =
     if bestFleet.isSome:
       controller.assignStrategicReserve(bestFleet.get(), some(systemId), 3)
 
-proc respondToThreats*(controller: var AIController, state: GameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]] =
+proc respondToThreats*(controller: var AIController, filtered: FilteredGameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]] =
   ## Check for enemy fleets near protected systems and return reserve/threat pairs
   ## Strategic reserves should move to intercept nearby threats
   result = @[]
@@ -798,14 +837,14 @@ proc respondToThreats*(controller: var AIController, state: GameState): seq[tupl
       continue
 
     let protectedSystem = reserve.assignedTo.get()
-    let protectedCoords = state.starMap.systems[protectedSystem].coords
+    let protectedCoords = filtered.starMap.systems[protectedSystem].coords
 
     # Look for enemy fleets within response radius
-    for fleet in state.fleets.values:
+    for fleet in filtered.ownFleets:
       if fleet.owner == controller.houseId or fleet.combatStrength() == 0:
         continue
 
-      let fleetCoords = state.starMap.systems[fleet.location].coords
+      let fleetCoords = filtered.starMap.systems[fleet.location].coords
       let dx = abs(fleetCoords.q - protectedCoords.q)
       let dy = abs(fleetCoords.r - protectedCoords.r)
       let dz = abs((fleetCoords.q + fleetCoords.r) - (protectedCoords.q + protectedCoords.r))
@@ -828,11 +867,11 @@ type
     targetMarines*: int
     priority*: float  # Higher = more important to defend
 
-proc assessGarrisonNeeds*(controller: AIController, state: GameState): seq[GarrisonPlan] =
+proc assessGarrisonNeeds*(controller: AIController, filtered: FilteredGameState): seq[GarrisonPlan] =
   ## Identify colonies that need marine garrisons
   result = @[]
 
-  for systemId, colony in state.colonies:
+  for systemId, colony in filtered.colonies:
     if colony.owner != controller.houseId:
       continue
 
@@ -862,11 +901,11 @@ proc assessGarrisonNeeds*(controller: AIController, state: GameState): seq[Garri
 
     # Frontier colonies (near enemy territory) need extra defense
     var isFrontier = false
-    let systemCoords = state.starMap.systems[systemId].coords
-    for enemySystemId, enemyColony in state.colonies:
+    let systemCoords = filtered.starMap.systems[systemId].coords
+    for enemySystemId, enemyColony in filtered.colonies:
       if enemyColony.owner == controller.houseId:
         continue
-      let enemyCoords = state.starMap.systems[enemySystemId].coords
+      let enemyCoords = filtered.starMap.systems[enemySystemId].coords
       let dx = abs(enemyCoords.q - systemCoords.q)
       let dy = abs(enemyCoords.r - systemCoords.r)
       let dz = abs((enemyCoords.q + enemyCoords.r) - (systemCoords.q + systemCoords.r))
@@ -888,13 +927,13 @@ proc assessGarrisonNeeds*(controller: AIController, state: GameState): seq[Garri
         priority: priority
       ))
 
-proc shouldBuildMarines*(controller: AIController, state: GameState, colony: Colony): bool =
+proc shouldBuildMarines*(controller: AIController, filtered: FilteredGameState, colony: Colony): bool =
   ## Marines are for INVASIONS, not garrison defense (see ground_units.toml:53)
   ## Build marines when planning invasions and have/building transports
   ## Armies handle garrison duty (ground_units.toml:39)
 
   let p = controller.personality
-  let house = state.houses[controller.houseId]
+  let house = filtered.ownHouse
 
   # Only aggressive AIs build marines for invasion
   if p.aggression < 0.4:
@@ -905,7 +944,7 @@ proc shouldBuildMarines*(controller: AIController, state: GameState, colony: Col
   var totalTransportCapacity = 0
   var loadedMarines = 0
 
-  for fleet in state.fleets.values:
+  for fleet in filtered.ownFleets:
     if fleet.owner != controller.houseId:
       continue
     for transport in fleet.spaceLiftShips:
@@ -930,12 +969,12 @@ proc shouldBuildMarines*(controller: AIController, state: GameState, colony: Col
 
   return false
 
-proc ensureTransportsLoaded*(controller: var AIController, state: GameState): seq[tuple[transportId: string, needsMarines: int]] =
+proc ensureTransportsLoaded*(controller: var AIController, filtered: FilteredGameState): seq[tuple[transportId: string, needsMarines: int]] =
   ## Identify transports that need marines loaded
   ## Returns list of transports and how many marines they need
   result = @[]
 
-  for fleet in state.fleets.values:
+  for fleet in filtered.ownFleets:
     if fleet.owner != controller.houseId:
       continue
 
@@ -958,17 +997,17 @@ type
     highValueTargets*: seq[SystemId]  # Colonies with production >= 50
     economicStrength*: float        # Relative strength vs us (1.0 = equal)
 
-proc gatherEconomicIntelligence*(controller: var AIController, state: GameState): seq[EconomicIntelligence] =
+proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): seq[EconomicIntelligence] =
   ## Assess enemy economic strength for targeting
   result = @[]
 
-  let ourHouse = state.houses[controller.houseId]
+  let ourHouse = filtered.ownHouse
   var ourProduction = 0
-  for systemId, colony in state.colonies:
+  for systemId, colony in filtered.colonies:
     if colony.owner == controller.houseId:
       ourProduction += colony.production
 
-  for targetHouse in state.houses.keys:
+  for targetHouse in filtered.houses.keys:
     if targetHouse == controller.houseId:
       continue
 
@@ -980,7 +1019,7 @@ proc gatherEconomicIntelligence*(controller: var AIController, state: GameState)
     )
 
     # Gather data from visible colonies
-    for systemId, colony in state.colonies:
+    for systemId, colony in filtered.colonies:
       if colony.owner != targetHouse:
         continue
 
@@ -996,7 +1035,7 @@ proc gatherEconomicIntelligence*(controller: var AIController, state: GameState)
 
     result.add(intel)
 
-proc identifyEconomicTargets*(controller: var AIController, state: GameState): seq[tuple[systemId: SystemId, value: float]] =
+proc identifyEconomicTargets*(controller: var AIController, filtered: FilteredGameState): seq[tuple[systemId: SystemId, value: float]] =
   ## Find best targets for economic warfare (blockades, raids)
   result = @[]
 
@@ -1006,7 +1045,7 @@ proc identifyEconomicTargets*(controller: var AIController, state: GameState): s
     # Target high-value colonies of economically strong enemies
     if intel.economicStrength > 0.8:  # Only target if they're competitive
       for systemId in intel.highValueTargets:
-        let colony = state.colonies[systemId]
+        let colony = filtered.colonies[systemId]
         var value = float(colony.production)
 
         # Bonus for rich resources (denying them is valuable)
@@ -1040,18 +1079,18 @@ type
     recommendBreak*: bool             # Should we break existing pact?
     recommendEnemy*: bool             # Should we declare enemy?
 
-proc calculateMilitaryStrength(state: GameState, houseId: HouseId): int =
+proc calculateMilitaryStrength(filtered: FilteredGameState, houseId: HouseId): int =
   ## Calculate total military strength for a house
   result = 0
-  let fleets = getOwnedFleets(state, houseId)
+  let fleets = getOwnedFleets(filtered, houseId)
   for fleet in fleets:
     result += getFleetStrength(fleet)
 
-proc calculateEconomicStrength(state: GameState, houseId: HouseId): int =
+proc calculateEconomicStrength(filtered: FilteredGameState, houseId: HouseId): int =
   ## Calculate total economic strength for a house
   result = 0
-  let house = state.houses[houseId]
-  let colonies = getOwnedColonies(state, houseId)
+  let house = filtered.houses[houseId]
+  let colonies = getOwnedColonies(filtered, houseId)
 
   # Treasury value
   result += house.treasury
@@ -1061,13 +1100,13 @@ proc calculateEconomicStrength(state: GameState, houseId: HouseId): int =
     result += colony.production * 10  # Weight production highly
     result += colony.infrastructure * 5
 
-proc findMutualEnemies(state: GameState, houseA: HouseId, houseB: HouseId): seq[HouseId] =
+proc findMutualEnemies(filtered: FilteredGameState, houseA: HouseId, houseB: HouseId): seq[HouseId] =
   ## Find houses that both houseA and houseB consider enemies
   result = @[]
-  let houseAData = state.houses[houseA]
-  let houseBData = state.houses[houseB]
+  let houseAData = filtered.houses[houseA]
+  let houseBData = filtered.houses[houseB]
 
-  for otherHouse in state.houses.keys:
+  for otherHouse in filtered.houses.keys:
     if otherHouse == houseA or otherHouse == houseB:
       continue
 
@@ -1077,14 +1116,14 @@ proc findMutualEnemies(state: GameState, houseA: HouseId, houseB: HouseId): seq[
     if aIsEnemy and bIsEnemy:
       result.add(otherHouse)
 
-proc estimateViolationRisk(state: GameState, targetHouse: HouseId): float =
+proc estimateViolationRisk(filtered: FilteredGameState, targetHouse: HouseId): float =
   ## Estimate risk that target house will violate a pact (0.0-1.0)
-  let targetData = state.houses[targetHouse]
+  let targetData = filtered.houses[targetHouse]
 
   # Check violation history
   let recentViolations = dip_types.countRecentViolations(
     targetData.violationHistory,
-    state.turn
+    filtered.turn
   )
 
   # Base risk from history
@@ -1096,12 +1135,12 @@ proc estimateViolationRisk(state: GameState, targetHouse: HouseId): float =
 
   return min(risk, 0.9)  # Cap at 90% risk
 
-proc assessDiplomaticSituation(controller: AIController, state: GameState,
+proc assessDiplomaticSituation(controller: AIController, filtered: FilteredGameState,
                                targetHouse: HouseId): DiplomaticAssessment =
   ## Evaluate diplomatic relationship with target house
   ## Returns strategic assessment for decision making
-  let myHouse = state.houses[controller.houseId]
-  let theirHouse = state.houses[targetHouse]
+  let myHouse = filtered.ownHouse
+  let theirHouse = filtered.houses[targetHouse]
   let p = controller.personality
 
   result.targetHouse = targetHouse
@@ -1111,25 +1150,25 @@ proc assessDiplomaticSituation(controller: AIController, state: GameState,
   )
 
   # Calculate relative strengths
-  let myMilitary = calculateMilitaryStrength(state, controller.houseId)
-  let theirMilitary = calculateMilitaryStrength(state, targetHouse)
+  let myMilitary = calculateMilitaryStrength(filtered, controller.houseId)
+  let theirMilitary = calculateMilitaryStrength(filtered, targetHouse)
   result.relativeMilitaryStrength = if theirMilitary > 0:
     float(myMilitary) / float(theirMilitary)
   else:
     10.0  # They have no military
 
-  let myEconomy = calculateEconomicStrength(state, controller.houseId)
-  let theirEconomy = calculateEconomicStrength(state, targetHouse)
+  let myEconomy = calculateEconomicStrength(filtered, controller.houseId)
+  let theirEconomy = calculateEconomicStrength(filtered, targetHouse)
   result.relativeEconomicStrength = if theirEconomy > 0:
     float(myEconomy) / float(theirEconomy)
   else:
     10.0  # They have no economy
 
   # Find mutual enemies
-  result.mutualEnemies = findMutualEnemies(state, controller.houseId, targetHouse)
+  result.mutualEnemies = findMutualEnemies(filtered, controller.houseId, targetHouse)
 
   # Estimate violation risk
-  result.violationRisk = estimateViolationRisk(state, targetHouse)
+  result.violationRisk = estimateViolationRisk(filtered, targetHouse)
 
   # Strategic recommendations based on personality
   case result.currentState
@@ -1265,12 +1304,12 @@ type
     recommendBlockade*: bool       # Too strong - blockade instead?
     strategicValue*: int           # Value of target (production, resources)
 
-proc calculateDefensiveStrength(state: GameState, systemId: SystemId): int =
+proc calculateDefensiveStrength(filtered: FilteredGameState, systemId: SystemId): int =
   ## Calculate total defensive strength of a colony
-  if systemId notin state.colonies:
+  if systemId notin filtered.colonies:
     return 0
 
-  let colony = state.colonies[systemId]
+  let colony = filtered.colonies[systemId]
   result = 0
 
   # Starbase strength (each starbase adds attack + defense strength)
@@ -1288,20 +1327,20 @@ proc calculateDefensiveStrength(state: GameState, systemId: SystemId): int =
   # Ground forces (armies + marines)
   result += (colony.armies + colony.marines) * 10
 
-proc calculateFleetStrengthAtSystem(state: GameState, systemId: SystemId,
+proc calculateFleetStrengthAtSystem(filtered: FilteredGameState, systemId: SystemId,
                                    houseId: HouseId): int =
   ## Calculate fleet strength for a specific house at a system
   result = 0
-  for fleet in state.fleets.values:
+  for fleet in filtered.ownFleets:
     if fleet.owner == houseId and fleet.location == systemId:
       result += getFleetStrength(fleet)
 
-proc estimateColonyValue(state: GameState, systemId: SystemId): int =
+proc estimateColonyValue(filtered: FilteredGameState, systemId: SystemId): int =
   ## Estimate strategic value of a colony
-  if systemId notin state.colonies:
+  if systemId notin filtered.colonies:
     return 0
 
-  let colony = state.colonies[systemId]
+  let colony = filtered.colonies[systemId]
   result = 0
 
   # Production value
@@ -1323,7 +1362,7 @@ proc estimateColonyValue(state: GameState, systemId: SystemId): int =
   of ResourceRating.VeryPoor:
     result += 0
 
-proc assessCombatSituation(controller: AIController, state: GameState,
+proc assessCombatSituation(controller: AIController, filtered: FilteredGameState,
                           targetSystem: SystemId): CombatAssessment =
   ## Evaluate combat situation for attacking a target system
   ## Returns strategic assessment for attack decision
@@ -1331,11 +1370,11 @@ proc assessCombatSituation(controller: AIController, state: GameState,
   result.targetSystem = targetSystem
 
   # Check if system has a colony
-  if targetSystem notin state.colonies:
+  if targetSystem notin filtered.colonies:
     result.recommendAttack = false
     return
 
-  let targetColony = state.colonies[targetSystem]
+  let targetColony = filtered.colonies[targetSystem]
   result.targetOwner = targetColony.owner
 
   # Don't attack our own colonies
@@ -1344,7 +1383,7 @@ proc assessCombatSituation(controller: AIController, state: GameState,
     return
 
   # Check diplomatic status
-  let myHouse = state.houses[controller.houseId]
+  let myHouse = filtered.ownHouse
   let dipState = dip_types.getDiplomaticState(
     myHouse.diplomaticRelations,
     result.targetOwner
@@ -1353,10 +1392,10 @@ proc assessCombatSituation(controller: AIController, state: GameState,
 
   # Calculate military strengths
   result.attackerFleetStrength = calculateFleetStrengthAtSystem(
-    state, targetSystem, controller.houseId
+    filtered, targetSystem, controller.houseId
   )
   result.defenderFleetStrength = calculateFleetStrengthAtSystem(
-    state, targetSystem, result.targetOwner
+    filtered, targetSystem, result.targetOwner
   )
 
   # Calculate defensive installations
@@ -1371,7 +1410,7 @@ proc assessCombatSituation(controller: AIController, state: GameState,
 
   # Total defensive strength
   let totalDefense = result.defenderFleetStrength +
-                     calculateDefensiveStrength(state, targetSystem)
+                     calculateDefensiveStrength(filtered, targetSystem)
 
   # Estimate combat odds
   # Simple model: odds = attacker / (attacker + defender)
@@ -1393,7 +1432,7 @@ proc assessCombatSituation(controller: AIController, state: GameState,
   )
 
   # Calculate strategic value
-  result.strategicValue = estimateColonyValue(state, targetSystem)
+  result.strategicValue = estimateColonyValue(filtered, targetSystem)
 
   # PRESTIGE OPTIMIZATION: Starbase destruction gives +5 prestige
   # Boost strategic value if target has starbases
@@ -1437,7 +1476,7 @@ proc assessCombatSituation(controller: AIController, state: GameState,
     result.estimatedCombatOdds < 0.3  # Less than 30% odds
   )
 
-proc assessInvasionViability(controller: AIController, state: GameState,
+proc assessInvasionViability(controller: AIController, filtered: FilteredGameState,
                              fleet: Fleet, targetSystem: SystemId): InvasionViability =
   ## IMPROVEMENT: 3-phase invasion viability assessment
   ## Invasions require winning 3 sequential battles:
@@ -1450,8 +1489,8 @@ proc assessInvasionViability(controller: AIController, state: GameState,
   ## - Blockade: If too strong to invade, starve them economically (-60% GCO)
 
   # Get basic combat assessment first
-  let combat = assessCombatSituation(controller, state, targetSystem)
-  let targetColony = state.colonies[targetSystem]
+  let combat = assessCombatSituation(controller, filtered, targetSystem)
+  let targetColony = filtered.colonies[targetSystem]
   let p = controller.personality
 
   # =============================================================================
@@ -1565,26 +1604,26 @@ proc assessInvasionViability(controller: AIController, state: GameState,
 # Order Generation
 # =============================================================================
 
-proc generateFleetOrders(controller: var AIController, state: GameState, rng: var Rand): seq[FleetOrder] =
+proc generateFleetOrders(controller: var AIController, filtered: FilteredGameState, rng: var Rand): seq[FleetOrder] =
   ## Generate fleet orders based on strategic military assessment
   ## Now updates intelligence when making decisions
   result = @[]
   let p = controller.personality
-  let myFleets = getOwnedFleets(state, controller.houseId)
+  let myFleets = getOwnedFleets(filtered, controller.houseId)
 
   # Update intelligence for systems we have visibility on
   # (Our colonies + systems with our fleets = automatic intel)
-  for systemId, colony in state.colonies:
+  for systemId, colony in filtered.colonies:
     if colony.owner == controller.houseId:
-      controller.updateIntelligence(state, systemId, state.turn, 1.0)
+      controller.updateIntelligence(filtered, systemId, filtered.turn, 1.0)
 
   for fleet in myFleets:
     # Fleets give us visibility into their current system
-    controller.updateIntelligence(state, fleet.location, state.turn, 0.8)
+    controller.updateIntelligence(filtered, fleet.location, filtered.turn, 0.8)
 
   # Update coordinated operations status
   controller.updateOperationStatus(state)
-  controller.removeCompletedOperations(state.turn)
+  controller.removeCompletedOperations(filtered.turn)
 
   for fleet in myFleets:
     var order: FleetOrder
@@ -1593,13 +1632,13 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
 
     # Check current location for combat situation
     let currentCombat = assessCombatSituation(
-      controller, state, fleet.location
+      controller, filtered, fleet.location
     )
 
     # BALANCE FIX: Priority 0 - Stay at colony to absorb unassigned squadrons
     # If at a friendly colony with unassigned squadrons, hold position so auto-assign works
-    if fleet.location in state.colonies:
-      let colony = state.colonies[fleet.location]
+    if fleet.location in filtered.colonies:
+      let colony = filtered.colonies[fleet.location]
       if colony.owner == controller.houseId and colony.unassignedSquadrons.len > 0:
         # Stay at colony to pick up newly built ships
         order.orderType = FleetOrderType.Hold
@@ -1620,7 +1659,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
           order.targetFleet = none(FleetId)
           result.add(order)
           continue
-        elif controller.shouldExecuteOperation(op, state.turn):
+        elif controller.shouldExecuteOperation(op, filtered.turn):
           # At assembly point and ready to execute
           case op.operationType
           of OperationType.Invasion:
@@ -1671,10 +1710,10 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       # Fallback: Find nearest friendly colony
       if retreatTarget.isNone:
         var minDist = 999
-        let fromCoords = state.starMap.systems[fleet.location].coords
-        for systemId, colony in state.colonies:
+        let fromCoords = filtered.starMap.systems[fleet.location].coords
+        for systemId, colony in filtered.colonies:
           if colony.owner == controller.houseId and systemId != fleet.location:
-            let toCoords = state.starMap.systems[systemId].coords
+            let toCoords = filtered.starMap.systems[systemId].coords
             let dx = abs(toCoords.q - fromCoords.q)
             let dy = abs(toCoords.r - fromCoords.r)
             let dz = abs((toCoords.q + toCoords.r) - (fromCoords.q + fromCoords.r))
@@ -1718,7 +1757,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         if otherFleet.location == systemId and otherFleet.id != fleet.id:
           hasDefense = true
           break
-      let colony = state.colonies[systemId]
+      let colony = filtered.colonies[systemId]
       if colony.starbases.len > 0:
         hasDefense = true
       if not hasDefense:
@@ -1727,13 +1766,13 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
 
     # Second: Check frontier colonies (adjacent to enemy territory)
     if undefendedColony.isNone:
-      for systemId, colony in state.colonies:
+      for systemId, colony in filtered.colonies:
         if colony.owner != controller.houseId:
           continue
         var isFrontier = false
-        let adjacentIds = state.starMap.getAdjacentSystems(systemId)
+        let adjacentIds = filtered.starMap.getAdjacentSystems(systemId)
         for neighborId in adjacentIds:
-          if neighborId in state.colonies and state.colonies[neighborId].owner != controller.houseId:
+          if neighborId in filtered.colonies and filtered.colonies[neighborId].owner != controller.houseId:
             isFrontier = true
             break
         if isFrontier:
@@ -1777,7 +1816,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
 
         # Find best economic target we can reach
         for target in econTargets:
-          let combat = assessCombatSituation(controller, state, target.systemId)
+          let combat = assessCombatSituation(controller, filtered, target.systemId)
           # For economic warfare, we prefer blockades over invasions
           # Target high-value economies even with moderate odds
           if combat.estimatedCombatOdds > 0.4:  # Lower threshold for economic targets
@@ -1787,11 +1826,11 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
 
       # If no economic target found (or not economically focused), use standard military targeting
       if bestTarget.isNone:
-        for systemId, colony in state.colonies:
+        for systemId, colony in filtered.colonies:
           if colony.owner == controller.houseId:
             continue  # Skip our own colonies
 
-          let combat = assessCombatSituation(controller, state, systemId)
+          let combat = assessCombatSituation(controller, filtered, systemId)
           if combat.recommendAttack and combat.estimatedCombatOdds > bestOdds:
             bestOdds = combat.estimatedCombatOdds
             bestTarget = some(systemId)
@@ -1808,7 +1847,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         # Invasions give +10 prestige (highest reward!) - prioritize them
         if hasTransports:
           # Perform comprehensive 3-phase invasion assessment
-          let invasion = assessInvasionViability(controller, state, fleet, bestTarget.get)
+          let invasion = assessInvasionViability(controller, filtered, fleet, bestTarget.get)
 
           if invasion.recommendInvade:
             # Full invasion - can win all 3 phases (space, starbase, ground)
@@ -1853,21 +1892,21 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       # Target: Enemy colonies with high production or shipyards
       if p.techPriority > 0.3 or (1.0 - p.economicFocus) > 0.5:
         var highValueTargets: seq[SystemId] = @[]
-        for systemId, colony in state.colonies:
+        for systemId, colony in filtered.colonies:
           if colony.owner != controller.houseId:
             # High-value targets: production > 50 OR has shipyards
             if colony.production > 50 or colony.shipyards.len > 0:
               # Check if we need fresh intel (data older than 10 turns)
-              if controller.needsReconnaissance(systemId, state.turn):
+              if controller.needsReconnaissance(systemId, filtered.turn):
                 highValueTargets.add(systemId)
 
         if highValueTargets.len > 0:
           # Pick closest high-value target
           var closest: Option[SystemId] = none(SystemId)
           var minDist = 999
-          let fromCoords = state.starMap.systems[fleet.location].coords
+          let fromCoords = filtered.starMap.systems[fleet.location].coords
           for sysId in highValueTargets:
-            let coords = state.starMap.systems[sysId].coords
+            let coords = filtered.starMap.systems[sysId].coords
             let dx = abs(coords.q - fromCoords.q)
             let dy = abs(coords.r - fromCoords.r)
             let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
@@ -1888,18 +1927,18 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       if p.expansionDrive > 0.4:
         # Find uncolonized systems that need scouting
         var needsRecon: seq[SystemId] = @[]
-        for systemId, system in state.starMap.systems:
-          if systemId notin state.colonies and
-             controller.needsReconnaissance(systemId, state.turn):
+        for systemId, system in filtered.starMap.systems:
+          if systemId notin filtered.colonies and
+             controller.needsReconnaissance(systemId, filtered.turn):
             needsRecon.add(systemId)
 
         if needsRecon.len > 0:
           # Pick closest system needing recon
           var closest: Option[SystemId] = none(SystemId)
           var minDist = 999
-          let fromCoords = state.starMap.systems[fleet.location].coords
+          let fromCoords = filtered.starMap.systems[fleet.location].coords
           for sysId in needsRecon:
-            let coords = state.starMap.systems[sysId].coords
+            let coords = filtered.starMap.systems[sysId].coords
             let dx = abs(coords.q - fromCoords.q)
             let dy = abs(coords.r - fromCoords.r)
             let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
@@ -1921,18 +1960,18 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       if p.aggression > 0.2 or (1.0 - p.economicFocus) > 0.4:
         # Find enemy colonies that need updated intelligence
         var needsIntel: seq[SystemId] = @[]
-        for systemId, colony in state.colonies:
+        for systemId, colony in filtered.colonies:
           if colony.owner != controller.houseId and
-             controller.needsReconnaissance(systemId, state.turn):
+             controller.needsReconnaissance(systemId, filtered.turn):
             needsIntel.add(systemId)
 
         if needsIntel.len > 0:
           # Pick closest enemy colony needing intel
           var closest: Option[SystemId] = none(SystemId)
           var minDist = 999
-          let fromCoords = state.starMap.systems[fleet.location].coords
+          let fromCoords = filtered.starMap.systems[fleet.location].coords
           for sysId in needsIntel:
-            let coords = state.starMap.systems[sysId].coords
+            let coords = filtered.starMap.systems[sysId].coords
             let dx = abs(coords.q - fromCoords.q)
             let dy = abs(coords.r - fromCoords.r)
             let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
@@ -1960,7 +1999,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
     if hasETAC:
       # Intelligence-driven colonization
       # ETAC fleets: Colonize if at uncolonized system, otherwise move to best target
-      if fleet.location notin state.colonies:
+      if fleet.location notin filtered.colonies:
         # At uncolonized system - COLONIZE IT!
         order.orderType = FleetOrderType.Colonize
         order.targetSystem = some(fleet.location)
@@ -1969,7 +2008,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
         continue
       else:
         # At colonized system - seek BEST uncolonized system (using intel)
-        let targetOpt = findBestColonizationTarget(controller, state, fleet.location)
+        let targetOpt = findBestColonizationTarget(controller, filtered, fleet.location)
         if targetOpt.isSome:
           order.orderType = FleetOrderType.Move
           order.targetSystem = targetOpt
@@ -1978,7 +2017,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
           continue
     elif p.expansionDrive > 0.3:
       # Non-ETAC fleets with expansion drive: Scout uncolonized systems
-      let targetOpt = findNearestUncolonizedSystem(state, fleet.location)
+      let targetOpt = findNearestUncolonizedSystem(filtered, fleet.location)
       if targetOpt.isSome:
         order.orderType = FleetOrderType.Move
         order.targetSystem = targetOpt
@@ -1989,11 +2028,11 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
     # Priority 5: Defend home colonies (patrol)
     # Find a colony that needs defense
     var needsDefense: Option[SystemId] = none(SystemId)
-    for systemId, colony in state.colonies:
+    for systemId, colony in filtered.colonies:
       if colony.owner == controller.houseId:
         # Check if there are enemy fleets nearby (simplified: just check this colony)
         let hasEnemyFleets = calculateFleetStrengthAtSystem(
-          state, systemId, colony.owner
+          filtered, systemId, colony.owner
         ) < getFleetStrength(fleet)
         if hasEnemyFleets or colony.blockaded:
           needsDefense = some(systemId)
@@ -2025,8 +2064,8 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       let importantColonies = controller.identifyImportantColonies(state)
 
       # DEBUG logging (Phase 2f)
-      if importantColonies.len > 0 and state.turn mod 10 == 0:
-        echo "  [DEBUG] ", controller.houseId, " Turn ", state.turn, ": ", importantColonies.len, " important colonies found"
+      if importantColonies.len > 0 and filtered.turn mod 10 == 0:
+        echo "  [DEBUG] ", controller.houseId, " Turn ", filtered.turn, ": ", importantColonies.len, " important colonies found"
 
       for systemId in importantColonies:
         # Check if colony has any defensive fleet
@@ -2037,7 +2076,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
             break
 
         # Check if colony has starbase
-        let colony = state.colonies[systemId]
+        let colony = filtered.colonies[systemId]
         if colony.starbases.len > 0:
           hasDefense = true
 
@@ -2047,16 +2086,16 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
 
       # If no important colony needs defense, check frontier colonies
       if undefendedColony.isNone:
-        for systemId, colony in state.colonies:
+        for systemId, colony in filtered.colonies:
           if colony.owner != controller.houseId:
             continue
 
           # Check if this is a frontier colony (adjacent to enemy territory)
           var isFrontier = false
-          let adjacentIds = state.starMap.getAdjacentSystems(systemId)
+          let adjacentIds = filtered.starMap.getAdjacentSystems(systemId)
           for neighborId in adjacentIds:
-            if neighborId in state.colonies:
-              let neighbor = state.colonies[neighborId]
+            if neighborId in filtered.colonies:
+              let neighbor = filtered.colonies[neighborId]
               if neighbor.owner != controller.houseId:
                 isFrontier = true
                 break
@@ -2092,7 +2131,7 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       # Priority 6: Exploration - send fleets to unknown systems
       # Instead of sitting idle, explore uncolonized systems
       if p.expansionDrive > 0.2 or rng.rand(1.0) < 0.3:
-        let exploreTarget = findNearestUncolonizedSystem(state, fleet.location)
+        let exploreTarget = findNearestUncolonizedSystem(filtered, fleet.location)
         if exploreTarget.isSome:
           order.orderType = FleetOrderType.Move
           order.targetSystem = exploreTarget
@@ -2107,15 +2146,15 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
 
     result.add(order)
 
-proc generateBuildOrders(controller: AIController, state: GameState, rng: var Rand): seq[BuildOrder] =
+proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[BuildOrder] =
   ## COMPREHENSIVE 4X STRATEGIC AI - Handles all asset types intelligently
   ## Ships: Combat warships, fighters, carriers, raiders, scouts, ETACs, transports
   ## Defenses: Starbases, planetary shields, ground batteries, armies, marines
   ## Facilities: Spaceports, shipyards, infrastructure
   result = @[]
   let p = controller.personality
-  let house = state.houses[controller.houseId]
-  let myColonies = getOwnedColonies(state, controller.houseId)
+  let house = filtered.ownHouse
+  let myColonies = getOwnedColonies(filtered, controller.houseId)
 
   if myColonies.len == 0:
     return  # No colonies, can't build
@@ -2135,7 +2174,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
 
   # BALANCE FIX: Count squadrons in fleets AND unassigned squadrons
   # ARCHITECTURE FIX: Count spacelift ships separately (NOT in squadrons)
-  for fleet in state.fleets.values:
+  for fleet in filtered.ownFleets:
     if fleet.owner == controller.houseId:
       # Count combat squadrons
       for squadron in fleet.squadrons:
@@ -2257,17 +2296,17 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
   # ==========================================================================
 
   # Assess military situation
-  let myMilitaryStrength = calculateMilitaryStrength(state, controller.houseId)
+  let myMilitaryStrength = calculateMilitaryStrength(filtered, controller.houseId)
   var totalEnemyStrength = 0
   var hasEnemies = false
-  for otherHouse in state.houses.keys:
+  for otherHouse in filtered.houses.keys:
     if otherHouse != controller.houseId:
       let dipState = dip_types.getDiplomaticState(
         house.diplomaticRelations,
         otherHouse
       )
       if dipState == dip_types.DiplomaticState.Enemy:
-        totalEnemyStrength += calculateMilitaryStrength(state, otherHouse)
+        totalEnemyStrength += calculateMilitaryStrength(filtered, otherHouse)
         hasEnemies = true
 
   let militaryRatio = if totalEnemyStrength > 0:
@@ -2279,7 +2318,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
   var threatenedColonies = 0
   var criticalThreat = false
   for colony in myColonies:
-    let combat = assessCombatSituation(controller, state, colony.systemId)
+    let combat = assessCombatSituation(controller, filtered, colony.systemId)
     if combat.recommendRetreat or combat.recommendReinforce:
       threatenedColonies += 1
       if combat.recommendRetreat:
@@ -2291,7 +2330,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
   # PRESTIGE OPTIMIZATION: Colonization gives +5 prestige
   # Expand aggressively when uncolonized systems available
   let needETACs = (etacCount < 2 and p.expansionDrive > 0.3 and
-                   findNearestUncolonizedSystem(state, myColonies[0].systemId).isSome)
+                   findNearestUncolonizedSystem(filtered, myColonies[0].systemId).isSome)
 
   # PRESTIGE OPTIMIZATION: Invasions give +10 prestige (highest single gain)
   # Build transports for aggressive AIs to enable invasions
@@ -2381,7 +2420,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
     # CRISIS RESPONSE: Critical threats get immediate defense
     # ------------------------------------------------------------------------
     if criticalThreat:
-      let combat = assessCombatSituation(controller, state, colony.systemId)
+      let combat = assessCombatSituation(controller, filtered, colony.systemId)
       if combat.recommendRetreat:
         # This colony is under critical attack - emergency defenses
         if not hasStarbase and house.treasury >= 300:
@@ -2439,7 +2478,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
     # Marine Garrison Management
     # MOVED AFTER ETACs: Marines are defensive, colonization is strategic
     # ------------------------------------------------------------------------
-    if controller.shouldBuildMarines(state, colony):
+    if controller.shouldBuildMarines(filtered, colony):
       # This colony needs more marines for garrison
       if house.treasury >= 30:  # Cost of marines
         result.add(BuildOrder(
@@ -2538,7 +2577,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
     # - Frontier colonies: 1-2 marines (minimum defense)
     # - Prepare marines for loading onto transports for invasions
 
-    let isHomeworld = (colony.systemId == state.starMap.playerSystemIds[0])  # Assume homeworld
+    let isHomeworld = (colony.systemId == filtered.starMap.playerSystemIds[0])  # Assume homeworld
     let isImportant = (colony.production >= 50 or colony.resources == ResourceRating.Abundant)
     let isFrontier = (threatenedColonies > 0)  # Near enemies
 
@@ -2626,7 +2665,7 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
       ))
       break
 
-proc generateResearchAllocation(controller: AIController, state: GameState): res_types.ResearchAllocation =
+proc generateResearchAllocation(controller: AIController, filtered: FilteredGameState): res_types.ResearchAllocation =
   ## Allocate research PP based on strategy
   ## Per economy.md:4.0:
   ## - Economic Level (EL) purchased with ERP
@@ -2639,12 +2678,12 @@ proc generateResearchAllocation(controller: AIController, state: GameState): res
   )
 
   let p = controller.personality
-  let house = state.houses[controller.houseId]
+  let house = filtered.ownHouse
 
   # Calculate available PP budget from production
   # Get house's production from all colonies
   var totalProduction = 0
-  for colony in state.colonies.values:
+  for colony in filtered.colonies.values:
     if colony.owner == controller.houseId:
       totalProduction += colony.production
 
@@ -2689,18 +2728,18 @@ proc generateResearchAllocation(controller: AIController, state: GameState): res
       # Minimal research - just EL for economic growth
       result.economic = researchBudget
 
-proc generateDiplomaticActions(controller: AIController, state: GameState, rng: var Rand): seq[DiplomaticAction] =
+proc generateDiplomaticActions(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[DiplomaticAction] =
   ## Generate diplomatic actions based on strategic assessment
   result = @[]
   let p = controller.personality
-  let myHouse = state.houses[controller.houseId]
+  let myHouse = filtered.ownHouse
 
   # Priority 0: Respond to pending proposals
   # AI must respond to proposals before proposing new actions
-  for proposal in state.pendingProposals:
+  for proposal in filtered.pendingProposals:
     if proposal.target == controller.houseId and proposal.status == dip_proposals.ProposalStatus.Pending:
       # Assess the proposer
-      let assessment = assessDiplomaticSituation(controller, state, proposal.proposer)
+      let assessment = assessDiplomaticSituation(controller, filtered, proposal.proposer)
 
       # Decision logic: Accept if beneficial, reject if enemy, wait if uncertain
       if assessment.recommendPact and not assessment.recommendEnemy:
@@ -2727,10 +2766,10 @@ proc generateDiplomaticActions(controller: AIController, state: GameState, rng: 
 
   # Assess all other houses
   var assessments: seq[DiplomaticAssessment] = @[]
-  for otherHouseId in state.houses.keys:
+  for otherHouseId in filtered.houses.keys:
     if otherHouseId == controller.houseId:
       continue
-    assessments.add(assessDiplomaticSituation(controller, state, otherHouseId))
+    assessments.add(assessDiplomaticSituation(controller, filtered, otherHouseId))
 
   # Priority 1: Break pacts if strategically advantageous (rare)
   # PRESTIGE OPTIMIZATION: Pact violations cost -10 prestige - avoid unless huge advantage
@@ -2752,7 +2791,7 @@ proc generateDiplomaticActions(controller: AIController, state: GameState, rng: 
       # Check if we can form pacts (not isolated)
       if dip_types.canFormPact(myHouse.violationHistory):
         # Check if we can reinstate with this specific house
-        if dip_types.canReinstatePact(myHouse.violationHistory, assessment.targetHouse, state.turn):
+        if dip_types.canReinstatePact(myHouse.violationHistory, assessment.targetHouse, filtered.turn):
           # BALANCE FIX: Only form pacts if diplomatic-focused OR random chance
           # This prevents everyone from pacting with everyone
           let pactChance = if p.diplomacyValue > 0.6: 0.6 else: 0.2
@@ -2786,11 +2825,11 @@ proc generateDiplomaticActions(controller: AIController, state: GameState, rng: 
         ))
         return result  # Only one action per turn
 
-proc generateEspionageAction(controller: AIController, state: GameState, rng: var Rand): Option[esp_types.EspionageAttempt] =
+proc generateEspionageAction(controller: AIController, filtered: FilteredGameState, rng: var Rand): Option[esp_types.EspionageAttempt] =
   ## Generate espionage action based on strategy and personality
   ## Use personality weights to determine if we should use espionage
   let p = controller.personality
-  let house = state.houses[controller.houseId]
+  let house = filtered.ownHouse
 
   # Check if we have EBP to use espionage (need at least 5 EBP for basic actions)
   if house.espionageBudget.ebpPoints < 5:
@@ -2813,7 +2852,7 @@ proc generateEspionageAction(controller: AIController, state: GameState, rng: va
 
   # Find a target house
   var targetHouses: seq[HouseId] = @[]
-  for houseId in state.houses.keys:
+  for houseId in filtered.houses.keys:
     if houseId != controller.houseId:
       targetHouses.add(houseId)
 
@@ -2834,12 +2873,12 @@ proc generateEspionageAction(controller: AIController, state: GameState, rng: va
 # Main Order Generation
 # =============================================================================
 
-proc generatePopulationTransfers(controller: AIController, state: GameState, rng: var Rand): seq[PopulationTransferOrder] =
+proc generatePopulationTransfers(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[PopulationTransferOrder] =
   ## Generate Space Guild population transfer orders
   ## Per config/population.toml and economy.md:3.7
   result = @[]
   let p = controller.personality
-  let house = state.houses[controller.houseId]
+  let house = filtered.ownHouse
 
   # Only economically-focused AI uses population transfers
   if p.economicFocus < 0.5 or p.expansionDrive < 0.4:
@@ -2853,7 +2892,7 @@ proc generatePopulationTransfers(controller: AIController, state: GameState, rng
   var sources: seq[tuple[systemId: SystemId, pop: int]] = @[]
   var destinations: seq[tuple[systemId: SystemId, pop: int]] = @[]
 
-  for systemId, colony in state.colonies:
+  for systemId, colony in filtered.colonies:
     if colony.owner == controller.houseId:
       if colony.population > 15:  # Overpopulated
         sources.add((systemId, colony.population))
@@ -2874,7 +2913,7 @@ proc generatePopulationTransfers(controller: AIController, state: GameState, rng
     ptuAmount: 1  # Conservative: 1 PTU at a time
   ))
 
-proc generateSquadronManagement(controller: AIController, state: GameState, rng: var Rand): seq[SquadronManagementOrder] =
+proc generateSquadronManagement(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[SquadronManagementOrder] =
   ## Generate squadron management orders (commissioning and fleet assignment)
   ## The engine auto-commissions ships, but AI can manually manage squadrons if needed
   result = @[]
@@ -2883,7 +2922,7 @@ proc generateSquadronManagement(controller: AIController, state: GameState, rng:
   # AI can add manual squadron management here if needed for advanced tactics
   # For now, rely on engine's automatic squadron formation
 
-proc generateCargoManagement(controller: AIController, state: GameState, rng: var Rand): seq[CargoManagementOrder] =
+proc generateCargoManagement(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[CargoManagementOrder] =
   ## Generate cargo loading/unloading orders for spacelift operations
   ## Load marines for invasions, colonists for colonization
   result = @[]
@@ -2894,12 +2933,12 @@ proc generateCargoManagement(controller: AIController, state: GameState, rng: va
     return result
 
   # Find fleets with spacelift capability at colonies
-  for systemId, colony in state.colonies:
+  for systemId, colony in filtered.colonies:
     if colony.owner != controller.houseId:
       continue
 
     # Check if we have fleets here with spacelift ships
-    for fleetId, fleet in state.fleets:
+    for fleet in filtered.ownFleets:
       if fleet.owner == controller.houseId and fleet.location == systemId:
         # Check if fleet has spacelift capability
         var hasSpacelift = false
@@ -2945,80 +2984,35 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let p = controller.personality
   let house = filtered.ownHouse
 
-  # TEMPORARY BRIDGE: Create compatibility GameState structure
-  # This allows existing helper functions to work while we refactor them
-  # TODO: Remove this once all helpers use FilteredGameState directly
-  var state = GameState(
-    gameId: "temp",
-    turn: filtered.turn,
-    year: filtered.year,
-    month: filtered.month,
-    phase: GamePhase.Active,
-    starMap: filtered.starMap,
-    houses: initTable[HouseId, House](),
-    colonies: initTable[SystemId, Colony](),
-    fleets: initTable[FleetId, Fleet](),
-    diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
-    ongoingEffects: @[],
-    spyScouts: initTable[string, SpyScout](),
-    populationInTransit: @[],
-    pendingProposals: @[]
-  )
-
-  # Populate with own assets (full details available)
-  state.houses[controller.houseId] = filtered.ownHouse
-  for colony in filtered.ownColonies:
-    state.colonies[colony.systemId] = colony
-  for fleet in filtered.ownFleets:
-    state.fleets[fleet.id] = fleet
-
-  # Add visible enemy houses (prestige/diplomacy only)
-  for houseId, prestige in filtered.housePrestige:
-    if houseId != controller.houseId:
-      var enemyHouse = House(
-        id: houseId,
-        name: houseId,  # Don't have actual name
-        color: "unknown",
-        prestige: prestige,
-        treasury: 0,  # Unknown
-        eliminated: filtered.houseEliminated.getOrDefault(houseId, false)
-      )
-      state.houses[houseId] = enemyHouse
-
-  # Add diplomacy info
-  for key, dipState in filtered.houseDiplomacy:
-    let (house1, house2) = key
-    state.diplomacy[(house1, house2)] = dipState
-
   # Strategic planning before generating orders
   # Update operation status (check which fleets have reached assembly points)
-  controller.updateOperationStatus(state)
+  controller.updateOperationStatus(filtered)
 
   # Phase 2h: Update fallback routes (every 5 turns)
-  if state.turn mod 5 == 0:
-    controller.updateFallbackRoutes(state)
+  if filtered.turn mod 5 == 0:
+    controller.updateFallbackRoutes(filtered)
 
   # Manage strategic reserves (assign fleets to defend important colonies)
-  controller.manageStrategicReserves(state)
+  controller.manageStrategicReserves(filtered)
 
   # Plan new coordinated operations if aggressive personality and have free fleets
-  if p.aggression > 0.5 and controller.countAvailableFleets(state) >= 2:
-    let opportunities = controller.identifyInvasionOpportunities(state)
+  if p.aggression > 0.5 and controller.countAvailableFleets(filtered) >= 2:
+    let opportunities = controller.identifyInvasionOpportunities(filtered)
     if opportunities.len > 0:
       # Plan invasion of highest-value target
-      controller.planCoordinatedInvasion(state, opportunities[0], state.turn)
+      controller.planCoordinatedInvasion(filtered, opportunities[0], filtered.turn)
 
   result = OrderPacket(
     houseId: controller.houseId,
-    turn: state.turn,
-    fleetOrders: generateFleetOrders(controller, state, rng),
-    buildOrders: generateBuildOrders(controller, state, rng),
+    turn: filtered.turn,
+    fleetOrders: generateFleetOrders(controller, filtered, rng),
+    buildOrders: generateBuildOrders(controller, filtered, rng),
     researchAllocation: generateResearchAllocation(controller, state),
-    diplomaticActions: generateDiplomaticActions(controller, state, rng),
-    populationTransfers: generatePopulationTransfers(controller, state, rng),
-    squadronManagement: generateSquadronManagement(controller, state, rng),
-    cargoManagement: generateCargoManagement(controller, state, rng),
-    espionageAction: generateEspionageAction(controller, state, rng),
+    diplomaticActions: generateDiplomaticActions(controller, filtered, rng),
+    populationTransfers: generatePopulationTransfers(controller, filtered, rng),
+    squadronManagement: generateSquadronManagement(controller, filtered, rng),
+    cargoManagement: generateCargoManagement(controller, filtered, rng),
+    espionageAction: generateEspionageAction(controller, filtered, rng),
     ebpInvestment: 0,
     cipInvestment: 0
   )
