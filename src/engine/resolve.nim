@@ -9,10 +9,11 @@
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets]
 import ../common/[hex, types/core, types/combat]
-import gamestate, orders, fleet
+import gamestate, orders, fleet, squadron
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
 import commands/executor
+import intelligence/espionage_intel
 # Import resolution modules
 import resolution/[types as res_types, fleet_orders, combat_resolution, economy_resolution, diplomatic_resolution]
 
@@ -80,12 +81,17 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
   for systemId, system in state.starMap.systems:
     # Check if multiple houses have fleets here
     var housesPresent: seq[HouseId] = @[]
+    var houseFleets: Table[HouseId, seq[Fleet]] = initTable[HouseId, seq[Fleet]]()
+
     for fleet in state.fleets.values:
-      if fleet.location == systemId and fleet.owner notin housesPresent:
-        housesPresent.add(fleet.owner)
+      if fleet.location == systemId:
+        if fleet.owner notin housesPresent:
+          housesPresent.add(fleet.owner)
+          houseFleets[fleet.owner] = @[]
+        houseFleets[fleet.owner].add(fleet)
 
     if housesPresent.len > 1:
-      # Check if any pairs of houses are at war (Enemy status)
+      # Check if any pairs of houses are at war AND can detect each other
       var combatDetected = false
       for i in 0..<housesPresent.len:
         for j in (i+1)..<housesPresent.len:
@@ -99,11 +105,26 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
           )
 
           # Combat occurs if houses are enemies OR neutral (no pact protection)
-          # NonAggression pacts prevent combat
+          # BUT: Cloaked fleets can remain hidden unless detected
           if relation == dip_types.DiplomaticState.Enemy or
              relation == dip_types.DiplomaticState.Neutral:
-            combatDetected = true
-            break
+
+            # STEALTH DETECTION CHECK
+            # Check if either side is cloaked and undetected
+            let house1Cloaked = houseFleets[house1].anyIt(it.isCloaked())
+            let house2Cloaked = houseFleets[house2].anyIt(it.isCloaked())
+            let house1HasScouts = houseFleets[house1].anyIt(it.squadrons.anyIt(it.hasScouts()))
+            let house2HasScouts = houseFleets[house2].anyIt(it.squadrons.anyIt(it.hasScouts()))
+
+            # Combat only triggers if both sides can detect each other
+            # If house1 is cloaked, house2 needs scouts to detect them
+            # If house2 is cloaked, house1 needs scouts to detect them
+            let house1Detected = not house1Cloaked or house2HasScouts
+            let house2Detected = not house2Cloaked or house1HasScouts
+
+            if house1Detected and house2Detected:
+              combatDetected = true
+              break
         if combatDetected:
           break
 
@@ -173,6 +194,9 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
           # Apply detection prestige penalties
           for prestigeEvent in result.attackerPrestigeEvents:
             state.houses[attempt.attacker].prestige += prestigeEvent.amount
+
+        # Generate intelligence reports for espionage operation
+        espionage_intel.generateEspionageIntelligence(state, result, state.turn)
 
   # Process planetary combat orders (operations.md:7.5, 7.6)
   # These execute after space/orbital combat in linear progression
