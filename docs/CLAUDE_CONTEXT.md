@@ -18,7 +18,7 @@
 5. **Run tests before committing** - all tests must pass
 6. **Don't create new markdown docs without explicit permission**
 7. **Add focused API documentation** - when touching engine code, add concise doc comments explaining purpose and key behavior. Prioritize maintainability over comprehensiveness. Avoid verbose explanations or rationale unless architecturally critical.
-8. **ALWAYS respect fog-of-war** - Engine automatic behavior (retreats, pathfinding, AI decisions) must ONLY use information available to the player/house. Never use omniscient game state. Check intelligence database (house.intelligence) and visible systems only.
+8. **Engine respects fog-of-war** - Never use omniscient game state. Only use intelligence database (house.intelligence) and visible systems.
 
 ## File Organization Rules (CRITICAL - Read First!)
 
@@ -321,7 +321,7 @@ let orders = aiController.generateAIOrders(filteredView, rng)
 - [ ] Updated TODO.md if milestone complete
 - [ ] Followed NEP-1 naming conventions
 - [ ] Update OPEN_ISSUES.md
-- [ ] Engine automatic behavior respects fog-of-war (uses house.intelligence only)
+- [ ] Engine respects fog-of-war (uses house.intelligence only)
 
 ---
 
