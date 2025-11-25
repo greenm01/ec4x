@@ -172,3 +172,4 @@ tests/unit/test_economy
 tests/unit/test_research
 tests/balance/test_economy_balance
 tests/balance/run_simulation
+tests/balance/.build_git_hash

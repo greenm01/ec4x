@@ -61,15 +61,25 @@ nimble testStress
 nimble testMapSizes
 ```
 
-### Why This Matters
+### Why This Matters - Regression Testing Safeguards
 
 The nimble task workflow ensures:
-- ✅ **Build Alignment**: Source code → Binary always in sync (nimble handles compilation)
-- ✅ **Script Alignment**: All tools use the same binary compiled by nimble
-- ✅ **No Stale Binaries**: Tasks force recompilation before testing
+- ✅ **No Stale Binaries**: Uses `--forceBuild` flag - ALWAYS full recompilation
+- ✅ **Git Hash Tracking**: Records git hash to `.build_git_hash` for traceability
+- ✅ **Build Alignment**: Source code → Binary always in sync
+- ✅ **Regression Safety**: Binary matches current code, not old cached version
 - ✅ **Consistent Results**: Repeatable testing workflow
 - ✅ **Cross-Platform**: Works on Linux, macOS, Windows
 - ✅ **Fast Development Cycle**: Quick task for rapid iteration
+
+**The Stale Binary Problem (SOLVED):**
+Previously, running tests with old binaries caused hours of confusion:
+- AI appeared to ignore code changes
+- Test results didn't match expectations
+- Log analysis showed outdated behavior
+
+**Now:** Every nimble task uses `nim c --forceBuild` + git hash tracking.
+You'll see: `Git hash: abc1234` in output - verify it matches `git rev-parse --short HEAD`
 
 ### Task Definitions (from ec4x.nimble)
 
