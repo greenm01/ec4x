@@ -4,7 +4,7 @@
 ## to enable realistic game simulations
 
 import std/[tables, options, random, sequtils, strformat, algorithm, hashes]
-import ../../src/engine/[gamestate, orders, fleet, squadron, starmap, fog_of_war]
+import ../../src/engine/[gamestate, orders, fleet, squadron, starmap, fog_of_war, logger]
 import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/research/types as res_types
@@ -1726,12 +1726,12 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
   ## Generate fleet orders based on strategic military assessment
   ## Now updates intelligence when making decisions
   when not defined(release):
-    echo "[AI] ", $controller.houseId, " generateFleetOrders called for turn ", filtered.turn
+    logDebug(LogCategory.lcAI, &"{controller.houseId} generateFleetOrders called for turn {filtered.turn}")
   result = @[]
   let p = controller.personality
   let myFleets = getOwnedFleets(filtered, controller.houseId)
   when not defined(release):
-    echo "[AI] ", $controller.houseId, " has ", myFleets.len, " fleets"
+    logDebug(LogCategory.lcAI, &"{controller.houseId} has {myFleets.len} fleets")
 
   # Update intelligence for systems we have visibility on
   # (Our colonies + systems with our fleets = automatic intel)
@@ -2130,7 +2130,13 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
       let targetOpt = findBestColonizationTarget(controller, filtered, fleet.location, fleet.id)
       if targetOpt.isSome:
         when not defined(release):
-          echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " issuing colonize order for system ", targetOpt.get()
+          # Count PTUs in fleet
+          var ptuCount = 0
+          for spaceLift in fleet.spaceLiftShips:
+            if spaceLift.cargo.cargoType == CargoType.Colonists:
+              ptuCount += spaceLift.cargo.quantity
+          logInfo(LogCategory.lcAI, &"{controller.houseId} ETAC fleet {fleet.id} issuing colonize order for system {targetOpt.get()} " &
+                  &"(location: {fleet.location}, ETACs: {fleet.spaceLiftShips.len}, PTUs: {ptuCount})")
         order.orderType = FleetOrderType.Colonize
         order.targetSystem = targetOpt
         order.targetFleet = none(FleetId)
@@ -2138,7 +2144,8 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
         continue
       else:
         when not defined(release):
-          echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " has NO colonization target (all systems colonized?)"
+          logWarn(LogCategory.lcAI, &"{controller.houseId} ETAC fleet {fleet.id} has NO colonization target " &
+                  &"(location: {fleet.location}, all systems colonized?)")
     elif p.expansionDrive > 0.3:
       # Non-ETAC fleets with expansion drive: Scout uncolonized systems
       let targetOpt = findNearestUncolonizedSystem(filtered, fleet.location, fleet.id)
@@ -2287,10 +2294,10 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
 
     # SHOULD NEVER REACH HERE - all priorities should end with continue or result.add+continue
     when not defined(release):
-      echo "[AI WARNING] Fleet ", fleet.id, " reached end of order generation without being handled!"
+      logWarn(LogCategory.lcAI, &"Fleet {fleet.id} reached end of order generation without being handled!")
 
   when not defined(release):
-    echo "[AI] ", $controller.houseId, " generated ", result.len, " fleet orders"
+    logDebug(LogCategory.lcAI, &"{controller.houseId} generated {result.len} fleet orders")
 
 proc hasViableColonizationTargets(filtered: FilteredGameState, houseId: HouseId): bool =
   ## Returns true if there is at least one reachable uncolonized system
@@ -2682,8 +2689,9 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       # Build on high-production colonies only (efficient ETAC production)
       if house.treasury >= etacCost and colony.production >= 50:
         when not defined(release):
-          echo "[AI] ", $controller.houseId, " building ETAC at colony ", colony.systemId,
-               " - colonization targets available (expansionDrive: ", &"{p.expansionDrive:.2f}", ")"
+          logInfo(LogCategory.lcAI, &"{controller.houseId} building ETAC at colony {colony.systemId} - " &
+                  &"colonization targets available (expansionDrive: {p.expansionDrive:.2f}, " &
+                  &"treasury: {house.treasury} PP, production: {colony.production} PU)")
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -2693,6 +2701,22 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           industrialUnits: 0
         ))
         # Continue to allow other colonies to build if needed
+      else:
+        when not defined(release):
+          if house.treasury < etacCost:
+            logDebug(LogCategory.lcAI, &"{controller.houseId} cannot build ETAC at {colony.systemId} - " &
+                     &"insufficient funds (need {etacCost} PP, have {house.treasury} PP)")
+          elif colony.production < 50:
+            logDebug(LogCategory.lcAI, &"{controller.houseId} skipping ETAC build at {colony.systemId} - " &
+                     &"low production ({colony.production} PU, need 50+ PU)")
+    else:
+      when not defined(release):
+        if not canColonize:
+          logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - no viable colonization targets")
+        elif hasIdleETACWaiting:
+          logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - idle ETAC already available")
+        elif p.expansionDrive <= 0.3:
+          logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - low expansionDrive ({p.expansionDrive:.2f})")
 
     # ========================================================================
     # CONQUEST PHASE: Switch to Troop Transports when colonization ends
@@ -2702,8 +2726,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
       if house.treasury >= transportCost and colony.production >= 80 and rng.rand(1.0) < 0.7:
         when not defined(release):
-          echo "[AI] ", $controller.houseId, " building Troop Transport at colony ", colony.systemId,
-               " - CONQUEST PHASE (no colonization targets left)"
+          logInfo(LogCategory.lcAI, &"{controller.houseId} building Troop Transport at colony {colony.systemId} - " &
+                  &"CONQUEST PHASE (no colonization targets left, aggression: {p.aggression:.2f})")
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
