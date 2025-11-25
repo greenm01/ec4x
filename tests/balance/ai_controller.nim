@@ -17,14 +17,19 @@ export gamestate.FallbackRoute
 
 type
   AIStrategy* {.pure.} = enum
-    ## Different AI play styles for balance testing
-    Aggressive,      # Heavy military, early attacks
-    Economic,        # Focus on growth and tech
-    Espionage,       # Intelligence and sabotage
-    Diplomatic,      # Pacts and manipulation
-    Balanced,        # Mixed approach
-    Turtle,          # Defensive, slow expansion
-    Expansionist     # Rapid colonization
+    ## Different AI play styles for balance testing (12 max for max players)
+    Aggressive,          # Heavy military, early attacks
+    Economic,            # Focus on growth and tech
+    Espionage,           # Intelligence and sabotage
+    Diplomatic,          # Pacts and manipulation
+    Balanced,            # Mixed approach
+    Turtle,              # Defensive, slow expansion
+    Expansionist,        # Rapid colonization
+    TechRush,            # Maximum tech priority, minimal military
+    Raider,              # Hit-and-run, harassment focus
+    MilitaryIndustrial,  # Balanced military + economy
+    Opportunistic,       # Flexible, adapts to circumstances
+    Isolationist         # Minimal interaction, self-sufficient
 
   AIPersonality* = object
     aggression*: float       # 0.0-1.0: How likely to attack
@@ -148,6 +153,51 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
       expansionDrive: 0.95,
       diplomacyValue: 0.3,
       techPriority: 0.3
+    )
+  of AIStrategy.TechRush:
+    AIPersonality(
+      aggression: 0.2,  # Minimal military early
+      riskTolerance: 0.4,
+      economicFocus: 0.8,  # Strong economy to fund research
+      expansionDrive: 0.4,  # Moderate expansion for research facilities
+      diplomacyValue: 0.7,  # Need allies for protection
+      techPriority: 0.95  # Maximum tech investment
+    )
+  of AIStrategy.Raider:
+    AIPersonality(
+      aggression: 0.85,  # Very aggressive
+      riskTolerance: 0.9,  # High risk, high reward
+      economicFocus: 0.4,  # Moderate economy
+      expansionDrive: 0.6,  # Expand to find targets
+      diplomacyValue: 0.1,  # Minimal diplomacy
+      techPriority: 0.5  # Need tech for fast ships
+    )
+  of AIStrategy.MilitaryIndustrial:
+    AIPersonality(
+      aggression: 0.7,  # Aggressive but calculated
+      riskTolerance: 0.5,  # Moderate risk
+      economicFocus: 0.75,  # Strong industrial base
+      expansionDrive: 0.6,  # Expand for resources
+      diplomacyValue: 0.3,  # Minimal diplomacy
+      techPriority: 0.6  # Need tech for advanced weapons
+    )
+  of AIStrategy.Opportunistic:
+    AIPersonality(
+      aggression: 0.5,  # Flexible - attack when advantageous
+      riskTolerance: 0.6,  # Willing to take calculated risks
+      economicFocus: 0.6,  # Balanced economy
+      expansionDrive: 0.6,  # Expand opportunistically
+      diplomacyValue: 0.5,  # Use diplomacy when beneficial
+      techPriority: 0.5  # Balanced tech investment
+    )
+  of AIStrategy.Isolationist:
+    AIPersonality(
+      aggression: 0.15,  # Defensive only
+      riskTolerance: 0.2,  # Very risk-averse
+      economicFocus: 0.85,  # Maximum self-sufficiency
+      expansionDrive: 0.3,  # Minimal expansion
+      diplomacyValue: 0.2,  # Avoid entanglements
+      techPriority: 0.75  # Tech for defense & efficiency
     )
 
 proc newAIController*(houseId: HouseId, strategy: AIStrategy): AIController =
@@ -2539,9 +2589,10 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
 
   # Strategic needs assessment - Phase 2c: Scout Operational Modes
   # Need 5-7 scouts: 2-3 for espionage missions, 3+ for ELI mesh on invasions
-  # EARLY GAME PRIORITY: Build scouts ONLY after colonization phase (after turn 10 or have 3+ colonies)
-  let isEarlyGame = filtered.turn < 10 or myColonies.len < 3
-  let needScouts = scoutCount < 2 and not isEarlyGame  # Start with 2 scouts mid-game for intel
+  # EARLY GAME: Delay scouts until economy established (turn 5+ AND 3+ colonies)
+  # Changed from "or" to "and" logic - was blocking ALL scout builds in 7-turn tests
+  let isEarlyGame = filtered.turn < 5 and myColonies.len < 3
+  let needScouts = scoutCount < 2 and not isEarlyGame  # Start with 2 scouts for intel
   let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.3 and not isEarlyGame
   let needELIMesh = scoutCount < 7 and p.aggression >= 0.3
 

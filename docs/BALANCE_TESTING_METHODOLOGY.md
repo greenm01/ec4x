@@ -293,7 +293,20 @@ GAMES_PER_COUNT = 5  # 25 total games
 - Smooth scaling from small (4) to large (12) games
 - Variety in outcomes regardless of player count
 
-### Current Status (as of 2025-11-23)
+### Current Status (as of 2025-11-25)
+
+**✅ CRITICAL FIX: Colonization Deadlock Resolved**
+- **Issue:** AI expansion stopped at 3-5 colonies after turn 1
+- **Root Cause:** `hasIdleETAC()` checked ship class but not PTU cargo
+- **Fix:** Added cargo validation - empty ETACs no longer block new builds
+- **Impact:** Late-game expansion now works, enables designed 30-turn structure
+- **Evidence:** Post-fix testing shows continued colonization through turn 4+
+
+**✅ Structured Logging Infrastructure:**
+- ConsoleLogger with buffer flushing (`flushThreshold = lvlAll`)
+- Comprehensive AI, Fleet, Colonization, Economy logging
+- Format: `[HH:MM:SS] [LEVEL] [CATEGORY] message`
+- Regression testing framework established
 
 **✅ Phase 1 Complete:**
 - Aggressive strategy: STABLE (0.5% collapse rate in 200 games, but 41.5% win rate - overpowered)
@@ -308,12 +321,13 @@ GAMES_PER_COUNT = 5  # 25 total games
 
 **✅ Multi-Generational Timeline Framework:**
 - Documented 4-act game structure (Land Grab → Rising Tensions → Total War → Endgame)
-- Each turn = 5-10 years in-game (30 turns = 150-300 years)
+- Abstract strategic cycles (scale with map size: 1-15 years per cycle)
 - Current mechanics appropriate for multi-generational timeline
 
-**🔄 Phase 2 In Progress: Act-by-Act Analysis**
+**🔄 Phase 2 In Progress: Act-by-Act Analysis (Post-Fix)**
 - **Next:** Phase 2A - Act 1 analysis (7-turn games, 200 samples)
-- **Goal:** Validate early game balance and 4-act structure
+- **Goal:** Validate early game balance with working colonization
+- **Priority:** Verify expansion now reaches 5-8 colonies as designed
 
 **⏳ Phase 3:** Blocked until Phase 2 validates scaling behavior
 
