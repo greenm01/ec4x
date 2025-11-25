@@ -7,6 +7,15 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- 🔄 **Unknown-Unknowns Testing Infrastructure - IN PROGRESS (2025-11-25)**
+  - ✅ Documented "Stale Binary" meta-bug discovery (4 hours lost to cached binary)
+  - ✅ Added logging rules to CLAUDE_CONTEXT.md (use std/logging not echo)
+  - ✅ Added unknown-unknowns testing rules to CLAUDE_CONTEXT.md
+  - 🔄 Enhanced diagnostics with comprehensive metrics (partial implementation)
+  - ⏳ Fix test script to force recompile (prevent stale binaries)
+  - ⏳ Implement std/logging in engine (replace echo statements)
+  - ⏳ Run fresh 100-game validation test
+  - **Impact:** Prevents testing infrastructure bugs, catches AI failures immediately
 - ✅ **Persistent Fleet Orders + Intelligence Bug Fix - COMPLETE (2025-11-25)**
   - Implemented persistent fleet order system (state.fleetOrders table)
   - Fixed critical intelligence report persistence bug (3 spy mission types)
