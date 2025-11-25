@@ -282,11 +282,21 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
   # Step 1: Collect NEW orders from this turn's OrderPackets
   # These will override any persistent orders for the same fleet
+  # EXCEPT for Reserve/Mothball fleets which have locked permanent orders
   for houseId in state.houses.keys:
     if houseId in orders:
       when not defined(release):
         echo "  [NEW ORDERS - COMMAND PHASE] ", $houseId, ": ", orders[houseId].fleetOrders.len, " new orders"
       for order in orders[houseId].fleetOrders:
+        # Check if this fleet has a locked permanent order (Reserve/Mothball)
+        if order.fleetId in state.fleets:
+          let fleet = state.fleets[order.fleetId]
+          if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
+            # Skip new orders for Reserve/Mothball fleets (orders are locked)
+            when not defined(release):
+              echo "    [LOCKED] Fleet ", order.fleetId, " has locked permanent order (status: ", fleet.status, "), ignoring new order"
+            continue
+
         allFleetOrders.add((houseId, order))
         newOrdersThisTurn.incl(order.fleetId)
         # Store new order as persistent (will execute next turn if not completed)
