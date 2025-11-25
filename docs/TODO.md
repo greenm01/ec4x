@@ -7,11 +7,11 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
-- ✅ **Phase 2d+2f Complete: Defense & Raider Tactics (2025-11-24)**
-  - **2d - ELI/CLK Arms Race:** Aggressive AI now researches CLK, builds Raiders with ambush tactics
-  - **2f - Defense Layering:** Priority 2.5 check defends colonies before offense
-  - **Results:** 74.7% → 38.2% undefended colonies (48% reduction)
-  - **Raider Logic:** Build when CLK researched (aggression > 0.4, treasury > 100 PP)
+- ✅ **Phase 2d+2f+2h Complete: Tactical AI Improvements (2025-11-24)**
+  - **2d - ELI/CLK:** Aggressive AI researches CLK, builds Raiders with ambush (+4 CER)
+  - **2f - Defense Layering:** Priority 2.5 defends colonies before offense (74.7% → 38.2% undefended)
+  - **2h - Fallback Routes:** Smart retreat system finds nearest safe colony (starbase/2+ squadrons)
+  - **Results:** Improved tactical decision-making, safer fleet positioning
 - ✅ **Phase 2a-2b-2g Complete: Critical AI Infrastructure (2025-11-24)**
   - **2a:** FoW Integration with RBA - FilteredGameState enforcing limited visibility
   - **2b:** Fighter/Carrier Ownership - Auto-loading, capacity violation detection
@@ -258,13 +258,13 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 - ✅ Pre-invasion intelligence thresholds lowered
 - **Results:** 100% games with espionage usage, ~292 spy missions per 100-turn game
 
-**2h. Fallback System Designation** ⏳ **HIGH PRIORITY** (NEW - from gap analysis)
-- Problem: Fleets fight to death with no retreat target
-- Red-flag metric: Fleet destruction without retreat attempts
-- Implementation: `designateFallbackSystem()`, `updateFallbackOnLoss()`
-- Integration with auto-seek-home system
-
-**Estimated Effort:** Medium complexity (~200 lines, 6 tests)
+**2h. Fallback System Designation** ✅ **COMPLETE** (2025-11-24)
+- ✅ Added `FallbackRoute` type to track safe retreat destinations
+- ✅ Implemented `updateFallbackRoutes()` - finds nearest safe colony (starbase or 2+ squadrons)
+- ✅ Implemented `findFallbackSystem()` - lookup pre-planned retreat route
+- ✅ Enhanced Priority 1 retreat logic to use fallback system (with hex distance calculation)
+- ✅ Routes auto-expire after 20 turns, refreshed every 5 turns
+- **Integration:** Works with engine's automatic seek-home system (`shouldAutoSeekHome`)
 
 **2i. Multi-player Threat Assessment** ⏳ MEDIUM PRIORITY (NEW - from gap analysis)
 - Problem: Attacks strongest instead of weakest player

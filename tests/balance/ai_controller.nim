@@ -66,6 +66,12 @@ type
     assignedTo*: Option[SystemId]  # System assigned to defend
     responseRadius*: int           # How far can respond (in jumps)
 
+  FallbackRoute* = object
+    ## Designated safe retreat route for a region
+    region*: SystemId           # Region anchor (usually a colony)
+    fallbackSystem*: SystemId   # Safe retreat destination
+    lastUpdated*: int           # Turn when route was validated
+
   AIController* = object
     houseId*: HouseId
     strategy*: AIStrategy
@@ -74,6 +80,7 @@ type
     intelligence*: Table[SystemId, IntelligenceReport]  ## Gathered intel on systems
     operations*: seq[CoordinatedOperation]  ## Planned multi-fleet operations
     reserves*: seq[StrategicReserve]        ## Strategic reserve fleets
+    fallbackRoutes*: seq[FallbackRoute]     ## Phase 2h: Safe retreat routes
 
 # =============================================================================
 # Strategy Profiles
@@ -154,7 +161,8 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy): AIController =
     personality: getStrategyPersonality(strategy),
     intelligence: initTable[SystemId, IntelligenceReport](),
     operations: @[],
-    reserves: @[]
+    reserves: @[],
+    fallbackRoutes: @[]
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality): AIController =
@@ -165,7 +173,8 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     personality: personality,
     intelligence: initTable[SystemId, IntelligenceReport](),
     operations: @[],
-    reserves: @[]
+    reserves: @[],
+    fallbackRoutes: @[]
   )
 
 # =============================================================================
@@ -438,6 +447,80 @@ proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,
     responseRadius: radius
   )
   controller.reserves.add(reserve)
+
+proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
+  ## Phase 2h: Update fallback/retreat routes for all colonies
+  ## Call this periodically to refresh safe retreat destinations
+
+  let myColonies = getOwnedColonies(state, controller.houseId)
+  if myColonies.len == 0:
+    return
+
+  # Clear stale routes (>20 turns old)
+  controller.fallbackRoutes = controller.fallbackRoutes.filterIt(
+    state.turn - it.lastUpdated < 20
+  )
+
+  # For each colony, find nearest safe colony as fallback
+  for colony in myColonies:
+    # Skip if we already have a recent route for this region
+    var hasRecentRoute = false
+    for route in controller.fallbackRoutes:
+      if route.region == colony.systemId and state.turn - route.lastUpdated < 10:
+        hasRecentRoute = true
+        break
+
+    if hasRecentRoute:
+      continue
+
+    # Find nearest safe colony (not under threat)
+    var bestFallback: Option[SystemId] = none(SystemId)
+    var minDist = 999
+
+    for otherColony in myColonies:
+      if otherColony.systemId == colony.systemId:
+        continue
+
+      # Calculate hex distance
+      let fromCoords = state.starMap.systems[colony.systemId].coords
+      let toCoords = state.starMap.systems[otherColony.systemId].coords
+      let dx = abs(toCoords.q - fromCoords.q)
+      let dy = abs(toCoords.r - fromCoords.r)
+      let dz = abs((toCoords.q + toCoords.r) - (fromCoords.q + fromCoords.r))
+      let dist = (dx + dy + dz) div 2
+
+      # Check if destination is safe (has starbase or strong fleet presence)
+      var isSafe = otherColony.starbases.len > 0
+      if not isSafe:
+        var fleetStrength = 0
+        for fleet in state.fleets.values:
+          if fleet.owner == controller.houseId and fleet.location == otherColony.systemId:
+            fleetStrength += fleet.squadrons.len
+        isSafe = fleetStrength >= 2
+
+      if isSafe and dist < minDist:
+        minDist = dist
+        bestFallback = some(otherColony.systemId)
+
+    # Add or update fallback route
+    if bestFallback.isSome:
+      # Remove old route for this region
+      controller.fallbackRoutes = controller.fallbackRoutes.filterIt(
+        it.region != colony.systemId
+      )
+      # Add new route
+      controller.fallbackRoutes.add(FallbackRoute(
+        region: colony.systemId,
+        fallbackSystem: bestFallback.get(),
+        lastUpdated: state.turn
+      ))
+
+proc findFallbackSystem*(controller: AIController, currentSystem: SystemId): Option[SystemId] =
+  ## Phase 2h: Find designated fallback system for a region
+  for route in controller.fallbackRoutes:
+    if route.region == currentSystem:
+      return some(route.fallbackSystem)
+  return none(SystemId)
 
 proc getReserveForSystem*(controller: AIController, systemId: SystemId): Option[FleetId] =
   ## Get strategic reserve assigned to defend a system
@@ -1465,16 +1548,27 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
 
     # Priority 1: Retreat if we're in a losing battle
     if currentCombat.recommendRetreat:
-      # Find nearest friendly colony to retreat to
-      var nearestFriendly: Option[SystemId] = none(SystemId)
-      for systemId, colony in state.colonies:
-        if colony.owner == controller.houseId and systemId != fleet.location:
-          nearestFriendly = some(systemId)
-          break
+      # Phase 2h: Use designated fallback system if available
+      var retreatTarget = controller.findFallbackSystem(fleet.location)
 
-      if nearestFriendly.isSome:
+      # Fallback: Find nearest friendly colony
+      if retreatTarget.isNone:
+        var minDist = 999
+        let fromCoords = state.starMap.systems[fleet.location].coords
+        for systemId, colony in state.colonies:
+          if colony.owner == controller.houseId and systemId != fleet.location:
+            let toCoords = state.starMap.systems[systemId].coords
+            let dx = abs(toCoords.q - fromCoords.q)
+            let dy = abs(toCoords.r - fromCoords.r)
+            let dz = abs((toCoords.q + toCoords.r) - (fromCoords.q + fromCoords.r))
+            let dist = (dx + dy + dz) div 2
+            if dist < minDist:
+              minDist = dist
+              retreatTarget = some(systemId)
+
+      if retreatTarget.isSome:
         order.orderType = FleetOrderType.Move
-        order.targetSystem = nearestFriendly
+        order.targetSystem = retreatTarget
         order.targetFleet = none(FleetId)
         result.add(order)
         continue
@@ -2782,6 +2876,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Strategic planning before generating orders
   # Update operation status (check which fleets have reached assembly points)
   controller.updateOperationStatus(state)
+
+  # Phase 2h: Update fallback routes (every 5 turns)
+  if state.turn mod 5 == 0:
+    controller.updateFallbackRoutes(state)
 
   # Manage strategic reserves (assign fleets to defend important colonies)
   controller.manageStrategicReserves(state)
