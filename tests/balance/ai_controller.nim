@@ -1078,6 +1078,15 @@ proc shouldBuildMarines*(controller: AIController, filtered: FilteredGameState, 
   let p = controller.personality
   let house = filtered.ownHouse
 
+  # PHASE 2B FIX: Don't build marines in early game - prioritize colonization
+  # Early game = less than 1/3 of available systems colonized (scales with map size)
+  # Approximate formula: ~30% of map colonized = mid-game transition
+  let totalSystems = filtered.starMap.systems.len
+  let targetColonies = max(5, totalSystems div 6)  # At least 5, or ~17% of systems
+  let isEarlyGame = filtered.ownColonies.len < targetColonies
+  if isEarlyGame:
+    return false
+
   # Only aggressive AIs build marines for invasion
   if p.aggression < 0.4:
     return false
@@ -2379,33 +2388,44 @@ proc hasViableColonizationTargets(filtered: FilteredGameState, houseId: HouseId)
   return false
 
 proc hasIdleETAC(filtered: FilteredGameState, houseId: HouseId): bool =
-  ## Returns true if we have an ETAC with PTU at a colony that's not currently moving
-  ## CRITICAL FIX: Must check for loaded PTU - empty ETACs can't colonize!
-  ## Prevents building redundant ETACs when one is already waiting to go
+  ## Returns true if we have an ETAC with PTU at a HIGH-PRODUCTION colony ready to colonize
+  ## PHASE 2B FIX: Only count ETACs at productive colonies (50+ PU) - prevents blocking
+  ## when ETAC is at remote low-production colony
+
+  # Only check unassigned ETACs at high-production colonies
   for colony in filtered.ownColonies:
-    if colony.owner == houseId and colony.unassignedSpaceLiftShips.len > 0:
+    if colony.owner != houseId:
+      continue
+
+    # PHASE 2B: Only count as "idle" if at high-production colony (can build replacement fast)
+    if colony.production < 50:
+      continue
+
+    if colony.unassignedSpaceLiftShips.len > 0:
       for spaceLift in colony.unassignedSpaceLiftShips:
         if spaceLift.shipClass == ShipClass.ETAC:
-          # CRITICAL: Check if ETAC has colonist cargo loaded
+          # Check if ETAC has colonist cargo loaded
           if spaceLift.cargo.cargoType == CargoType.Colonists and spaceLift.cargo.quantity > 0:
             return true
 
-  # Check fleets at owned colonies
+  # Check fleets at high-production owned colonies
   for fleet in filtered.ownFleets:
-    if fleet.owner == houseId:
-      # Is fleet at an owned colony?
-      var atOwnedColony = false
-      for colony in filtered.ownColonies:
-        if colony.owner == houseId and colony.systemId == fleet.location:
-          atOwnedColony = true
-          break
+    if fleet.owner != houseId:
+      continue
 
-      if atOwnedColony:
-        for spaceLift in fleet.spaceLiftShips:
-          if spaceLift.shipClass == ShipClass.ETAC:
-            # CRITICAL: Check if ETAC has colonist cargo loaded
-            if spaceLift.cargo.cargoType == CargoType.Colonists and spaceLift.cargo.quantity > 0:
-              return true
+    # Is fleet at a high-production owned colony?
+    var atHighProdColony = false
+    for colony in filtered.ownColonies:
+      if colony.owner == houseId and colony.systemId == fleet.location and colony.production >= 50:
+        atHighProdColony = true
+        break
+
+    if atHighProdColony:
+      for spaceLift in fleet.spaceLiftShips:
+        if spaceLift.shipClass == ShipClass.ETAC:
+          # Check if ETAC has colonist cargo loaded
+          if spaceLift.cargo.cargoType == CargoType.Colonists and spaceLift.cargo.quantity > 0:
+            return true
 
   return false
 
