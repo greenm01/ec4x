@@ -7,6 +7,11 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Phase 2 (2i, 2j, 2k) - ALREADY COMPLETE - Documentation Updated (2025-11-24)**
+  - **2i:** Multi-player threat assessment with `assessRelativeStrength()`, `identifyVulnerableTargets()`
+  - **2j:** Blockade & economic warfare via `assessInvasionViability()` recommendations
+  - **2k:** Prestige victory path optimization embedded throughout AI (colonization, invasion, diplomacy)
+  - **Impact:** All Phase 2 tactical improvements already implemented and tested
 - ✅ **Phase 2e Complete: Fighter Doctrine & ACO Research Strategy (2025-11-24)**
   - Implemented FD research timing based on capacity utilization (>70% trigger)
   - Added ACO synergy research alongside FD for carrier efficiency
@@ -295,23 +300,29 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 - ✅ Routes auto-expire after 20 turns, refreshed every 5 turns
 - **Integration:** Works with engine's automatic seek-home system (`shouldAutoSeekHome`)
 
-**2i. Multi-player Threat Assessment** ⏳ MEDIUM PRIORITY (NEW - from gap analysis)
-- Problem: Attacks strongest instead of weakest player
-- Implementation: `assessRelativeStrength()`, `identifyVulnerableTargets()`
+**2i. Multi-player Threat Assessment** ✅ **COMPLETE** (2025-11-24)
+- ✅ Implemented `assessRelativeStrength()` - calculates relative power (prestige 50%, colonies 30%, fleets 20%)
+- ✅ Implemented `identifyVulnerableTargets()` - prioritizes weaker players for invasion
+- ✅ Fog-of-war compliant - uses only public prestige and intelligence database
+- ✅ Invasion planning now targets weakest players first (sorted by relative strength)
+- **Results:** AI attacks vulnerable targets instead of strongest players
 
-**Estimated Effort:** Medium complexity (~200 lines, 6 tests)
+**2j. Blockade & Economic Warfare** ✅ **COMPLETE** (2025-11-24)
+- ✅ Blockade assessment in `assessInvasionViability()` - recommends blockade when too strong to invade
+- ✅ BlockadePlanet orders generated (Priority 3 offensive operations)
+- ✅ Coordinated blockade operations via OperationType.Blockade
+- ✅ Economic warfare strategy (-60% GCO penalty to blockaded colonies)
+- **Results:** AI uses blockades as alternative to failed invasions, cautious AIs prefer blockades
 
-**2j. Blockade & Economic Warfare** ⏳ LOW PRIORITY (NEW - from gap analysis)
-- Problem: Ignores enemy supply lanes
-- Implementation: `identifyBlockadeTargets()`, `generateBlockadeOrders()`
-
-**Estimated Effort:** Low complexity (~150 lines, 5 tests)
-
-**2k. Prestige Victory Path** ⏳ LOW PRIORITY (NEW - from gap analysis)
-- Problem: Never pursues prestige-focused strategies
-- Implementation: `assessPrestigeOpportunities()`, `prioritizePrestigeActions()`
-
-**Estimated Effort:** Low complexity (~150 lines, 5 tests)
+**2k. Prestige Victory Path** ✅ **COMPLETE** (2025-11-24)
+- ✅ Prestige optimization embedded throughout AI decision-making
+- ✅ Colonization priority (+50 prestige per colony)
+- ✅ Invasion priority (+100 prestige per conquest)
+- ✅ Starbase targeting (+50 prestige per destruction)
+- ✅ Diplomatic pact formation (+50 prestige)
+- ✅ Avoids pact violations (-100 prestige penalty)
+- ✅ Fleet combat optimization (+30 prestige per victory)
+- **Results:** AI naturally pursues prestige through all actions, optimized for 2500 prestige victory
 
 **Overall Phase 2 Deliverable:** Enhanced ai_controller.nim with ~2,850 lines added/modified, 85+ new tests
 
