@@ -2411,8 +2411,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   # Strategic needs assessment - Phase 2c: Scout Operational Modes
   # Need 5-7 scouts: 2-3 for espionage missions, 3+ for ELI mesh on invasions
   let needScouts = scoutCount < 3  # Minimum for basic espionage
-  let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.4 and militaryCount > 2  # Lowered military threshold
-  let needELIMesh = scoutCount < 7 and p.aggression >= 0.4 and militaryCount > 3  # Lowered thresholds for broader adoption
+  let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.3  # Removed military requirement - scouts are cheap!
+  let needELIMesh = scoutCount < 7 and p.aggression >= 0.3  # Removed military requirement
   # PRESTIGE OPTIMIZATION: Colonization gives +5 prestige
   # Expand aggressively when uncolonized systems available
   let needETACs = (etacCount < 2 and p.expansionDrive > 0.3 and
@@ -2460,9 +2460,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   # Build fighters for aggressive/military-focused AIs
   # Start with small number even without carriers (they stay at colonies until carriers built)
   let needFighters = (
-    p.aggression > 0.4 and fighterCount < 8 and
-    militaryCount > 2 and  # Have basic military first
-    house.treasury > 80  # Can afford fighter + maintenance
+    p.aggression >= 0.3 and fighterCount < 8 and
+    house.treasury > 60  # Can afford fighter + maintenance (fighter cost = 20 PP)
   )
 
   # ==========================================================================
