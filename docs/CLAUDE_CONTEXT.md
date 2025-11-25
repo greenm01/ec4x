@@ -508,10 +508,18 @@ nimble testMapSizes
 - **Archives:** `~/.ec4x_test_data/` (restic backup with date tags)
 
 **Why use nimble tasks:**
-- Ensures binary is always compiled from latest source (prevents stale binary bug)
-- Consistent workflow across all developers
-- Self-documenting (`nimble tasks` shows everything)
-- Cross-platform compatibility
+- **Prevents stale binary bugs**: Uses `--forceBuild` flag to force full recompilation
+- **Git hash tracking**: Records git hash to `.build_git_hash` file for verification
+- **Regression testing safe**: Binary always matches current source code
+- **Consistent workflow** across all developers
+- **Self-documenting** (`nimble tasks` shows everything)
+- **Cross-platform compatibility**
+
+**Regression Testing Safeguards:**
+- Every test task uses `nim c --forceBuild` (never incremental compilation)
+- Git hash saved to `tests/balance/.build_git_hash` for traceability
+- Output shows git hash: verify binary matches your current code
+- No chance of testing old AI logic with new expectations
 
 ---
 
