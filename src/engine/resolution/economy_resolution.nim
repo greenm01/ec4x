@@ -1867,7 +1867,16 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           if isSpaceLift:
             # Create SpaceLiftShip (individual unit, not squadron)
             let shipId = colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
-            let spaceLiftShip = newSpaceLiftShip(shipId, shipClass, colony.owner, systemId)
+            var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, colony.owner, systemId)
+
+            # Auto-load PTU onto ETAC at commissioning (quality-of-life feature)
+            # TODO: Add strategic cost based on PU→PTU exponential ratio (larger colonies spare PTUs cheaper)
+            # See docs/specs/economy.md for PTU mechanics
+            if shipClass == ShipClass.ETAC and colony.population > 1:
+              spaceLiftShip.cargo.cargoType = CargoType.Colonists
+              spaceLiftShip.cargo.quantity = 1
+              echo "      [Auto] Loaded 1 PTU onto ", shipId, " at ", systemId
+
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
             echo "      Commissioned ", shipClass, " spacelift ship at ", systemId
 

@@ -30,12 +30,15 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     location = location,
     isCrippled = false
   )
-  let etac1 = newSpaceLiftShip(
+  var etac1 = newSpaceLiftShip(
     id = &"{owner}_ETAC_1",
     shipClass = ShipClass.ETAC,
     owner = owner,
     location = location
   )
+  # Load starting PTU for colonization
+  etac1.cargo.cargoType = CargoType.Colonists
+  etac1.cargo.quantity = 1
   result.add(Fleet(
     id: (&"{owner}_fleet1").FleetId,
     owner: owner,
@@ -53,12 +56,15 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     location = location,
     isCrippled = false
   )
-  let etac2 = newSpaceLiftShip(
+  var etac2 = newSpaceLiftShip(
     id = &"{owner}_ETAC_2",
     shipClass = ShipClass.ETAC,
     owner = owner,
     location = location
   )
+  # Load starting PTU for colonization
+  etac2.cargo.cargoType = CargoType.Colonists
+  etac2.cargo.quantity = 1
   result.add(Fleet(
     id: (&"{owner}_fleet2").FleetId,
     owner: owner,
