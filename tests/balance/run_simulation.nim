@@ -211,6 +211,21 @@ when isMainModule:
   echo repeat("=", 70)
   echo ""
 
+  # Check for --help flag
+  if paramCount() >= 1 and paramStr(1) in ["--help", "-h", "help"]:
+    echo "Usage: run_simulation TURNS [SEED] [MAP_RINGS] [NUM_PLAYERS]"
+    echo ""
+    echo "Arguments:"
+    echo "  TURNS       Number of game turns to simulate (required)"
+    echo "  SEED        Random seed for map generation (default: 42)"
+    echo "  MAP_RINGS   Number of hex rings for map (default: NUM_PLAYERS)"
+    echo "  NUM_PLAYERS Number of AI players (default: 4)"
+    echo ""
+    echo "Examples:"
+    echo "  run_simulation 30 88888 4 4    # 30 turns, seed 88888, 4 rings, 4 players"
+    echo "  run_simulation 7 12345         # 7 turns, seed 12345, defaults for rest"
+    quit(0)
+
   # Parse command line arguments: turns [seed] [mapRings] [numPlayers]
   var numTurns = 100
   var seed: int64 = 42

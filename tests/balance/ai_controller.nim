@@ -16,6 +16,14 @@ import ../../src/engine/economy/construction
 export gamestate.FallbackRoute
 
 type
+  GameAct* {.pure.} = enum
+    ## 4-Act game structure that scales with map size
+    ## Each act has different strategic priorities
+    Act1_LandGrab,      # Turns 1-7: Rapid colonization, exploration
+    Act2_RisingTensions, # Turns 8-15: Consolidation, military buildup, diplomacy
+    Act3_TotalWar,      # Turns 16-25: Major conflicts, invasions
+    Act4_Endgame        # Turns 26-30: Final push for victory
+
   AIStrategy* {.pure.} = enum
     ## Different AI play styles for balance testing (12 max for max players)
     Aggressive,          # Heavy military, early attacks
@@ -87,6 +95,18 @@ type
 # =============================================================================
 # Strategy Profiles
 # =============================================================================
+
+proc getCurrentGameAct*(turn: int): GameAct =
+  ## Determine which act of the game we're in based on turn number
+  ## Acts are fixed regardless of map size - the 30-turn structure is consistent
+  if turn <= 7:
+    GameAct.Act1_LandGrab
+  elif turn <= 15:
+    GameAct.Act2_RisingTensions
+  elif turn <= 25:
+    GameAct.Act3_TotalWar
+  else:
+    GameAct.Act4_Endgame
 
 proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
   ## Get personality parameters for a strategy
@@ -2607,47 +2627,108 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       if combat.recommendRetreat:
         criticalThreat = true
 
-  # Strategic needs assessment - Phase 2c: Scout Operational Modes
-  # Need 5-7 scouts: 2-3 for espionage missions, 3+ for ELI mesh on invasions
-  # EARLY GAME: Delay scouts until economy established (turn 5+ AND 3+ colonies)
-  # Changed from "or" to "and" logic - was blocking ALL scout builds in 7-turn tests
-  let isEarlyGame = filtered.turn < 5 and myColonies.len < 3
-  let needScouts = scoutCount < 2 and not isEarlyGame  # Start with 2 scouts for intel
-  let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.3 and not isEarlyGame
-  let needELIMesh = scoutCount < 7 and p.aggression >= 0.3
-
   # ========================================================================
-  # STRATEGIC MATURITY: "Can I still colonize?" not "Do I have enough ETACs?"
+  # HYBRID STRATEGIC PLANNING: Phase Guidelines + Dynamic Tactical Responses
   # ========================================================================
-  # ETACs are ONLY useful for colonization. Once all systems are colonized,
-  # switch to Troop Transports for conquest. This is the correct 4X progression.
-  let canColonize = hasViableColonizationTargets(filtered, controller.houseId)
-  let hasIdleETACWaiting = hasIdleETAC(filtered, controller.houseId)
-  let needETACs = canColonize and not hasIdleETACWaiting and p.expansionDrive > 0.3
+  # The 4-act structure provides production *defaults*, but tactical needs
+  # (threats, opportunities, military balance) override these guidelines
 
-  # EARLY GAME: Need cheap exploration/combat ships (frigates) before expensive military
-  # Frigates cost 30 PP (vs 80+ for cruisers), build time 1 turn
-  # Build 3-5 frigates early for exploration and basic defense
-  let needFrigates = isEarlyGame and militaryCount < 5 and p.expansionDrive > 0.3
+  let currentAct = getCurrentGameAct(filtered.turn)
+  let totalSystems = filtered.starMap.systems.len
+  let colonizationProgress = float(myColonies.len) / float(totalSystems)
 
-  # PRESTIGE OPTIMIZATION: Invasions give +10 prestige (highest single gain)
-  # Build transports for aggressive AIs to enable invasions
-  let needTransports = (
-    transportCount < 1 and
-    (p.aggression > 0.4 or p.expansionDrive > 0.6) and  # Lower threshold
-    militaryCount > 3
-  )
-
-  # Military needs - MUCH more nuanced
-  # BALANCE FIX: Made military building more aggressive to enable combat
+  # Dynamic state assessment
+  let isUnderThreat = threatenedColonies > 0 or criticalThreat
+  let isMilitaryWeak = militaryRatio < 0.8  # Weaker than enemies
+  let hasOpenMap = colonizationProgress < 0.5  # Still room to expand
   let militaryFocus = 1.0 - p.economicFocus
-  let needMilitary = (
-    militaryRatio < 1.0 or  # Was: 0.8 - now build until parity or better
-    threatenedColonies > 0 or  # Colonies under threat
-    (p.aggression > 0.4 and militaryCount < 8) or  # Was: 0.6 & 10 - more aggressive
-    (militaryFocus > 0.6 and militaryCount < 12) or  # Military-focused: build big fleet
-    militaryCount < 2  # Was: 3 - minimum defense lower to prioritize offense
-  )
+
+  # ETAC PRODUCTION: Driven by colonization opportunities, not just phase
+  # Stop building ETACs when: (1) no targets OR (2) map mostly full (>50%)
+  let canColonize = hasViableColonizationTargets(filtered, controller.houseId)
+  let needETACs =
+    if not canColonize or colonizationProgress > 0.5:
+      # No colonization targets or map saturated - switch to conquest
+      false
+    elif isUnderThreat and militaryCount < 3:
+      # Under threat with weak military - prioritize defense over expansion
+      false
+    elif currentAct == GameAct.Act1_LandGrab:
+      # Act 1: Aggressive colonization (cap at 8 ETACs)
+      etacCount < 8 and p.expansionDrive > 0.2
+    elif currentAct == GameAct.Act2_RisingTensions and hasOpenMap:
+      # Act 2: Opportunistic colonization if map still open
+      etacCount < 5 and p.expansionDrive > 0.4
+    else:
+      # Act 3-4 or map full: No more ETACs
+      false
+
+  # SCOUT PRODUCTION: Scales with intelligence needs and map knowledge
+  # More scouts = better intel = better tactical decisions
+  let needScouts =
+    if currentAct == GameAct.Act1_LandGrab:
+      # Act 1: Basic scouts (2) for exploration
+      scoutCount < 2 and p.techPriority >= 0.3
+    elif currentAct == GameAct.Act2_RisingTensions or hasEnemies:
+      # Act 2 or at war: Intelligence network (5 scouts)
+      scoutCount < 5 and p.techPriority >= 0.3
+    else:
+      # Act 3-4: ELI mesh for invasion support (7 scouts)
+      scoutCount < 7 and p.aggression >= 0.3
+
+  let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.4
+  let needELIMesh = scoutCount < 7 and p.aggression >= 0.4 and hasEnemies
+
+  # FRIGATE PRODUCTION: Act 1 only - cheap ships for early defense/exploration
+  let needFrigates = currentAct == GameAct.Act1_LandGrab and
+                     militaryCount < 5 and
+                     p.expansionDrive > 0.3
+
+  # TRANSPORT PRODUCTION: For conquest (invasions), not colonization
+  # Build when: (1) have military strength AND (2) aggressive posture
+  let needTransports =
+    if currentAct == GameAct.Act1_LandGrab:
+      # Act 1: No transports - colonize not conquer
+      false
+    elif isMilitaryWeak:
+      # Military weak - build warships first, transports later
+      false
+    elif hasEnemies and militaryCount >= 5:
+      # At war with adequate military - build invasion capability
+      transportCount < 3 and (p.aggression > 0.3 or hasOpenMap == false)
+    elif currentAct in {GameAct.Act3_TotalWar, GameAct.Act4_Endgame}:
+      # Late game - conquest phase
+      transportCount < 3 and p.aggression > 0.3
+    else:
+      false
+
+  # MILITARY PRODUCTION: Dynamic response to threats and opportunities
+  # Overrides phase guidelines when under threat or facing opportunities
+  let needMilitary =
+    if isUnderThreat:
+      # TACTICAL OVERRIDE: Always build when under threat
+      true
+    elif isMilitaryWeak and hasEnemies:
+      # TACTICAL OVERRIDE: Build to parity when enemies exist
+      true
+    elif currentAct == GameAct.Act1_LandGrab:
+      # Act 1 DEFAULT: Minimal military (3 ships) unless threatened
+      militaryCount < 3
+    elif currentAct == GameAct.Act2_RisingTensions:
+      # Act 2 DEFAULT: Build military to 8-12 ships
+      militaryRatio < 1.0 or
+      (p.aggression > 0.4 and militaryCount < 8) or
+      (militaryFocus > 0.6 and militaryCount < 12) or
+      militaryCount < 5
+    elif currentAct == GameAct.Act3_TotalWar:
+      # Act 3 DEFAULT: Large military for conquest
+      militaryRatio < 1.2 or
+      (p.aggression > 0.4 and militaryCount < 15) or
+      (militaryFocus > 0.6 and militaryCount < 20) or
+      militaryCount < 8
+    else:  # Act 4 Endgame
+      # Act 4 DEFAULT: Maximum pressure
+      militaryRatio < 1.5 or militaryCount < 12
 
   # PRESTIGE OPTIMIZATION: Starbases give +5 prestige when destroyed (enemy)
   # Losing starbases costs -5 prestige. Build for all important colonies.
@@ -2789,8 +2870,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       # ALWAYS LOG: Critical for understanding expansion strategy
       if not canColonize:
         logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - no viable colonization targets")
-      elif hasIdleETACWaiting:
-        logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - idle ETAC already available")
+      elif not needETACs:
+        logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - phase-aware logic says no (Act: {currentAct}, colonies: {myColonies.len})")
       elif p.expansionDrive <= 0.3:
         logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - low expansionDrive ({p.expansionDrive:.2f})")
 
