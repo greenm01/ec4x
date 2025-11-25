@@ -4,6 +4,7 @@
 import std/[tables, options]
 import ../../common/types/core
 import ../gamestate, ../fleet
+import ../intelligence/blockade_intel
 
 # =============================================================================
 # Blockade Detection
@@ -61,20 +62,39 @@ proc applyBlockades*(state: var GameState) =
 
     if isBlockaded:
       if not colony.blockaded:
-        # Blockade just established
+        # Blockade just established - generate intelligence reports
         colony.blockaded = true
         colony.blockadedBy = blockaders
         colony.blockadeTurns = 1
+
+        # Both defender and blockaders receive intelligence
+        blockade_intel.generateBlockadeEstablishedIntel(
+          state,
+          systemId,
+          colony.owner,
+          blockaders,
+          state.turn
+        )
       else:
         # Blockade continues (update blockading houses list)
         colony.blockadedBy = blockaders
         colony.blockadeTurns += 1
     else:
       if colony.blockaded:
-        # Blockade lifted
+        # Blockade lifted - generate intelligence reports
+        let previousBlockaders = colony.blockadedBy
         colony.blockaded = false
         colony.blockadedBy = @[]
         colony.blockadeTurns = 0
+
+        # Both defender and former blockaders receive intelligence
+        blockade_intel.generateBlockadeLiftedIntel(
+          state,
+          systemId,
+          colony.owner,
+          previousBlockaders,
+          state.turn
+        )
 
 # =============================================================================
 # Blockade Effects

@@ -5,7 +5,7 @@
 
 import std/[tables, options, sequtils]
 import types as intel_types
-import ../gamestate
+import ../gamestate, ../fleet  # Need FleetStatus from fleet module
 
 proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.ColonyIntelReport] =
   ## Generate colony intelligence report from SpyOnPlanet mission
@@ -20,6 +20,16 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
   if colony.owner == scoutOwner:
     return none(intel_types.ColonyIntelReport)
 
+  # Count reserve and mothballed fleets at this system (orbital assets)
+  var reserveFleets = 0
+  var mothballedFleets = 0
+  for fleet in state.fleets.values:
+    if fleet.owner == colony.owner and fleet.location == targetSystem:
+      if fleet.status == FleetStatus.Reserve:
+        reserveFleets += 1
+      elif fleet.status == FleetStatus.Mothballed:
+        mothballedFleets += 1
+
   var report = intel_types.ColonyIntelReport(
     colonyId: targetSystem,
     targetOwner: colony.owner,
@@ -29,7 +39,12 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
     industry: colony.infrastructure,  # Infrastructure level (0-10)
     defenses: colony.armies + colony.marines + colony.groundBatteries,  # Total ground defenses
     starbaseLevel: colony.starbases.len,
-    constructionQueue: @[]
+    constructionQueue: @[],
+    # Orbital defenses (visible when approaching for orbital missions)
+    unassignedSquadronCount: colony.unassignedSquadrons.len,
+    reserveFleetCount: reserveFleets,
+    mothballedFleetCount: mothballedFleets,
+    shipyardCount: colony.shipyards.len  # Space-based construction only, NOT spaceports
   )
 
   # Construction project visible if spy quality is high enough
