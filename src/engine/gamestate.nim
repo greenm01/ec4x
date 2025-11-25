@@ -126,6 +126,20 @@ type
     commissionedTurn*: int        # Turn scout was deployed
     detected*: bool               # Has scout been detected and destroyed
 
+  FallbackRoute* = object
+    ## Designated safe retreat route for a region
+    ## Planned retreat destinations updated by AI strategy or automatic safety checks
+    region*: SystemId           # Region anchor (usually a colony)
+    fallbackSystem*: SystemId   # Safe retreat destination
+    lastUpdated*: int           # Turn when route was validated
+
+  AutoRetreatPolicy* {.pure.} = enum
+    ## Player setting for automatic fleet retreats
+    Never,              # Never auto-retreat (player always controls)
+    MissionsOnly,       # Only abort missions (ETAC, Guard, Blockade) when target lost
+    ConservativeLosing, # Retreat fleets when clearly losing combat
+    AggressiveSurvival  # Retreat any fleet at risk of destruction
+
   House* = object
     id*: HouseId
     name*: string
@@ -147,6 +161,10 @@ type
 
     # Intelligence database (intel.md)
     intelligence*: intel_types.IntelligenceDatabase  # Gathered intelligence reports
+
+    # Safe retreat routes (automatic seek-home behavior)
+    fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
+    autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference
 
   GamePhase* {.pure.} = enum
     Setup, Active, Paused, Completed
@@ -222,7 +240,9 @@ proc initializeHouse*(name: string, color: string): House =
     diplomaticIsolation: dip_types.DiplomaticIsolation(active: false, turnsRemaining: 0, violationTurn: 0),
     taxPolicy: econ_types.TaxPolicy(currentRate: 50, history: @[50]),  # Default 50% tax rate
     planetBreakerCount: 0,
-    intelligence: intel_types.newIntelligenceDatabase()
+    intelligence: intel_types.newIntelligenceDatabase(),
+    fallbackRoutes: @[],  # Initialize empty, populated by AI strategy
+    autoRetreatPolicy: AutoRetreatPolicy.MissionsOnly  # Default: abort missions when target lost
   )
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
