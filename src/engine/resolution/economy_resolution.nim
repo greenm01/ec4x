@@ -1869,13 +1869,24 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             let shipId = colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
             var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, colony.owner, systemId)
 
-            # Auto-load PTU onto ETAC at commissioning (quality-of-life feature)
-            # TODO: Add strategic cost based on PU→PTU exponential ratio (larger colonies spare PTUs cheaper)
-            # See docs/specs/economy.md for PTU mechanics
+            # Auto-load PTU onto ETAC at commissioning with extraction cost
+            # Larger colonies spare PTUs more cheaply due to exponential PU→PTU relationship
+            # Formula: extraction_cost = 1.0 / (1.0 + 0.00657 * pu)
+            # Examples: 100 PU colony loses 0.60 PU, 1000 PU colony loses only 0.13 PU
+            # Note: Space Guild transfers will have ADDITIONAL costs beyond just extraction
+            # See docs/specs/economy.md:15-27 for PTU mechanics
             if shipClass == ShipClass.ETAC and colony.population > 1:
+              # Calculate extraction cost (PU lost from colony to create 1 PTU)
+              let extractionCost = 1.0 / (1.0 + 0.00657 * colony.population.float)
+
+              # Apply cost by reducing colony population (affects future GCO/production)
+              let newPopulation = colony.population.float - extractionCost
+              colony.population = max(1, newPopulation.int)
+
+              # Load PTU onto ETAC
               spaceLiftShip.cargo.cargoType = CargoType.Colonists
               spaceLiftShip.cargo.quantity = 1
-              echo "      [Auto] Loaded 1 PTU onto ", shipId, " at ", systemId
+              echo &"      [Auto] Loaded 1 PTU onto {shipId} (extraction: {extractionCost:.2f} PU from {systemId})"
 
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
             echo "      Commissioned ", shipClass, " spacelift ship at ", systemId
