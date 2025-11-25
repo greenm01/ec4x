@@ -6,7 +6,7 @@
 import std/[logging, strformat, times, os]
 
 type
-  LogCategory* = enum
+  LogCategory* {.pure.} = enum
     ## Log categories for filtering and organization
     lcGeneral = "GENERAL"
     lcEconomy = "ECONOMY"
@@ -42,7 +42,7 @@ proc initEngineLogger*(logDir: string = "", enableFileLogging: bool = false) =
       createDir(logDir)
 
     # Create timestamped log file
-    let timestamp = now().format("yyyyMMdd_HHmmss")
+    let timestamp = now().format("yyyyMMddHHmmss")
     currentLogFile = logDir / &"ec4x_engine_{timestamp}.log"
 
     fileLogger = newFileLogger(

@@ -39,7 +39,7 @@
 
 import std/[tables, algorithm, options, random, sequtils, hashes, math, strutils, strformat]
 import ../../common/[hex, types/core, types/combat, types/units, types/tech]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../ship, ../spacelift, ../starmap
+import ../gamestate, ../orders, ../fleet, ../squadron, ../ship, ../spacelift, ../starmap, ../logger
 import ../economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import ../research/[types as res_types, costs as res_costs, effects as res_effects, advancement]
 import ../espionage/[types as esp_types, engine as esp_engine]
@@ -1886,10 +1886,10 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               # Load PTU onto ETAC
               spaceLiftShip.cargo.cargoType = CargoType.Colonists
               spaceLiftShip.cargo.quantity = 1
-              echo &"      [Auto] Loaded 1 PTU onto {shipId} (extraction: {extractionCost:.2f} PU from {systemId})"
+              logInfo(LogCategory.lcEconomy, &"Loaded 1 PTU onto {shipId} (extraction: {extractionCost:.2f} PU from {systemId})")
 
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
-            echo "      Commissioned ", shipClass, " spacelift ship at ", systemId
+            logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} spacelift ship at {systemId}")
 
             # Auto-assign to fleets if enabled
             if colony.autoAssignFleets and colony.unassignedSpaceLiftShips.len > 0:
@@ -1900,7 +1900,13 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                   fleet.spaceLiftShips.add(spaceLiftShip)
                   # Remove the spacelift ship we just assigned (it's the last one we added)
                   colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
-                  echo "      Auto-assigned ", shipClass, " to fleet ", fleetId
+
+                  # WARN if ETAC assigned without PTU (potential colonization failure)
+                  if shipClass == ShipClass.ETAC and
+                     (spaceLiftShip.cargo.cargoType != CargoType.Colonists or spaceLiftShip.cargo.quantity == 0):
+                    logWarn(LogCategory.lcFleet, &"Empty ETAC {shipId} assigned to fleet {fleetId} - colonization will fail!")
+
+                  logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {fleetId}")
                   break
 
           else:
