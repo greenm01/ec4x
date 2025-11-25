@@ -10,7 +10,7 @@ data/snapshots/
 # Test and tuning directories (temporary workspaces)
 test_*/
 balance_tuning/
-*_tuning/
+# Note: tools/ai_tuning/ is tracked (permanent tools)
 
 # Build artifacts
 bin/
