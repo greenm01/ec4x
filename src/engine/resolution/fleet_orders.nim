@@ -15,38 +15,6 @@ import ../config/[prestige_config, population_config]
 import ../prestige
 import ./types  # Common resolution types
 
-proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: HouseId): Option[SystemId] =
-  ## Find the closest owned colony for a house, excluding the fromSystem
-  ## Returns None if house has no colonies
-  ## Used by Space Guild to find alternative delivery destination
-  ## Also used for automated Seek Home behavior for stranded fleets
-
-  var closestColony: Option[SystemId] = none(SystemId)
-  var shortestDistance = int.high
-
-  # Iterate through all colonies owned by this house
-  for systemId, colony in state.colonies:
-    if colony.owner == houseId and systemId != fromSystem:
-      # Calculate distance (jump count) to this colony
-      # Create dummy fleet for pathfinding
-      let dummyFleet = Fleet(
-        id: "temp",
-        owner: houseId,
-        location: fromSystem,
-        squadrons: @[],
-        spaceLiftShips: @[],
-        status: FleetStatus.Active
-      )
-
-      let pathResult = state.starMap.findPath(fromSystem, systemId, dummyFleet)
-      if pathResult.path.len > 0:
-        let distance = pathResult.path.len - 1  # Number of jumps
-        if distance < shortestDistance:
-          shortestDistance = distance
-          closestColony = some(systemId)
-
-  return closestColony
-
 proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a system is hostile to a house
   ## System is hostile if:
@@ -71,14 +39,91 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
 
   return false
 
+proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: HouseId): Option[SystemId] =
+  ## Find the closest owned colony for a house, excluding the fromSystem
+  ## Returns None if house has no colonies
+  ## Used by Space Guild to find alternative delivery destination
+  ## Also used for automated Seek Home behavior for stranded fleets
+  ##
+  ## INTEGRATION: Checks house's pre-planned fallback routes first for optimal retreat paths
+
+  # Check if house has a pre-planned fallback route from this region
+  if houseId in state.houses:
+    let house = state.houses[houseId]
+    for route in house.fallbackRoutes:
+      # Route is valid if it matches our region and hasn't expired (< 20 turns old)
+      if route.region == fromSystem and state.turn - route.lastUpdated < 20:
+        # Verify fallback system still exists and is owned
+        if route.fallbackSystem in state.colonies and
+           state.colonies[route.fallbackSystem].owner == houseId:
+          return some(route.fallbackSystem)
+
+  # Fallback: Calculate closest colony by pathfinding distance
+  # IMPORTANT: Prioritize safe routes (avoiding enemy systems)
+  var closestSafeColony: Option[SystemId] = none(SystemId)
+  var closestAnyColony: Option[SystemId] = none(SystemId)
+  var shortestSafeDistance = int.high
+  var shortestAnyDistance = int.high
+
+  # Iterate through all colonies owned by this house
+  for systemId, colony in state.colonies:
+    if colony.owner == houseId and systemId != fromSystem:
+      # Calculate distance (jump count) to this colony
+      # Create dummy fleet for pathfinding
+      let dummyFleet = Fleet(
+        id: "temp",
+        owner: houseId,
+        location: fromSystem,
+        squadrons: @[],
+        spaceLiftShips: @[],
+        status: FleetStatus.Active
+      )
+
+      let pathResult = state.starMap.findPath(fromSystem, systemId, dummyFleet)
+      if pathResult.path.len > 0:
+        let distance = pathResult.path.len - 1  # Number of jumps
+
+        # Check if path goes through enemy territory
+        var pathIsSafe = true
+        for pathSystemId in pathResult.path:
+          if pathSystemId != fromSystem and isSystemHostile(state, pathSystemId, houseId):
+            pathIsSafe = false
+            break
+
+        # Track closest safe route (preferred)
+        if pathIsSafe and distance < shortestSafeDistance:
+          shortestSafeDistance = distance
+          closestSafeColony = some(systemId)
+
+        # Also track closest route overall (fallback if no safe route exists)
+        if distance < shortestAnyDistance:
+          shortestAnyDistance = distance
+          closestAnyColony = some(systemId)
+
+  # Prefer safe routes, but use any route if no safe option exists
+  if closestSafeColony.isSome:
+    return closestSafeColony
+  else:
+    return closestAnyColony
+
 proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, order: FleetOrder): bool =
   ## Determine if a fleet should automatically seek home due to dangerous situation
-  ## Triggers for:
-  ## - ETAC/colonization missions where target becomes hostile
-  ## - Guard/blockade orders where system becomes hostile
-  ## - Fleets stranded in now-hostile territory
+  ## Respects house's auto-retreat policy setting
+  ## Triggers based on policy:
+  ## - Never: Never auto-retreat
+  ## - MissionsOnly: Abort missions (ETAC, Guard, Blockade) when target lost
+  ## - ConservativeLosing: Also retreat fleets clearly losing combat
+  ## - AggressiveSurvival: Also retreat any fleet at risk
+
+  # Check house's auto-retreat policy
+  let house = state.houses[fleet.owner]
+
+  # Never policy: player always controls retreats
+  if house.autoRetreatPolicy == AutoRetreatPolicy.Never:
+    return false
 
   # Check if fleet is executing an order that becomes invalid due to hostility
+  # (MissionsOnly and higher policies)
   case order.orderType
   of FleetOrderType.Colonize:
     # ETAC missions abort if destination becomes enemy-controlled

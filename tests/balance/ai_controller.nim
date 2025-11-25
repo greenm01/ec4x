@@ -12,6 +12,9 @@ import ../../src/engine/diplomacy/types as dip_types
 import ../../src/engine/diplomacy/proposals as dip_proposals
 import ../../src/engine/economy/construction
 
+# Export FallbackRoute from gamestate for use in this module
+export gamestate.FallbackRoute
+
 type
   AIStrategy* {.pure.} = enum
     ## Different AI play styles for balance testing
@@ -65,12 +68,6 @@ type
     fleetId*: FleetId
     assignedTo*: Option[SystemId]  # System assigned to defend
     responseRadius*: int           # How far can respond (in jumps)
-
-  FallbackRoute* = object
-    ## Designated safe retreat route for a region
-    region*: SystemId           # Region anchor (usually a colony)
-    fallbackSystem*: SystemId   # Safe retreat destination
-    lastUpdated*: int           # Turn when route was validated
 
   AIController* = object
     houseId*: HouseId
@@ -481,14 +478,6 @@ proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
       if otherColony.systemId == colony.systemId:
         continue
 
-      # Calculate hex distance
-      let fromCoords = state.starMap.systems[colony.systemId].coords
-      let toCoords = state.starMap.systems[otherColony.systemId].coords
-      let dx = abs(toCoords.q - fromCoords.q)
-      let dy = abs(toCoords.r - fromCoords.r)
-      let dz = abs((toCoords.q + toCoords.r) - (fromCoords.q + fromCoords.r))
-      let dist = (dx + dy + dz) div 2
-
       # Check if destination is safe (has starbase or strong fleet presence)
       var isSafe = otherColony.starbases.len > 0
       if not isSafe:
@@ -498,7 +487,43 @@ proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
             fleetStrength += fleet.squadrons.len
         isSafe = fleetStrength >= 2
 
-      if isSafe and dist < minDist:
+      # Skip if destination isn't safe
+      if not isSafe:
+        continue
+
+      # Check if path to destination avoids hostile territory
+      let dummyFleet = Fleet(
+        id: "temp",
+        owner: controller.houseId,
+        location: colony.systemId,
+        squadrons: @[],
+        spaceLiftShips: @[],
+        status: FleetStatus.Active
+      )
+
+      let pathResult = state.starMap.findPath(colony.systemId, otherColony.systemId, dummyFleet)
+      if pathResult.path.len == 0:
+        continue  # No valid path
+
+      # Verify path doesn't go through enemy systems
+      var pathIsSafe = true
+      for pathSystemId in pathResult.path:
+        if pathSystemId != colony.systemId and pathSystemId in state.colonies:
+          let pathColony = state.colonies[pathSystemId]
+          if pathColony.owner != controller.houseId:
+            # Check diplomatic status
+            let house = state.houses[controller.houseId]
+            if house.diplomaticRelations.isEnemy(pathColony.owner):
+              pathIsSafe = false
+              break
+
+      if not pathIsSafe:
+        continue  # Skip routes through enemy territory
+
+      # Calculate actual pathfinding distance (safer than hex distance)
+      let dist = pathResult.path.len - 1
+
+      if dist < minDist:
         minDist = dist
         bestFallback = some(otherColony.systemId)
 
@@ -514,6 +539,12 @@ proc updateFallbackRoutes*(controller: var AIController, state: GameState) =
         fallbackSystem: bestFallback.get(),
         lastUpdated: state.turn
       ))
+
+proc syncFallbackRoutesToEngine*(controller: AIController, state: var GameState) =
+  ## Sync AI controller's fallback routes to engine's House state
+  ## This allows engine's automatic seek-home behavior to use AI-planned routes
+  if controller.houseId in state.houses:
+    state.houses[controller.houseId].fallbackRoutes = controller.fallbackRoutes
 
 proc findFallbackSystem*(controller: AIController, currentSystem: SystemId): Option[SystemId] =
   ## Phase 2h: Find designated fallback system for a region
