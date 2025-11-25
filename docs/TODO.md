@@ -7,6 +7,21 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Cipher Ledger Timeline System - COMPLETE (2025-11-24)**
+  - Replaced rigid 13-month calendar with abstract strategic cycles that scale with map size
+  - Small maps: 1 cycle = 1-2 years → 30 turns = 30-60 years
+  - Medium maps: 1 cycle = 5-7 years → 30 turns = 150-210 years
+  - Large maps: 1 cycle = 10-15 years → 30 turns = 300-450 years
+  - Replaced "Phoenix Network" with "Cipher Ledger" (quantum-entangled cryptographic network)
+  - Explains instant PP settlement via blind-signature tokens embedded in jump lane stabilizers
+  - Research breakthroughs now every 6 strategic cycles (was month-based)
+  - **Impact:** Narrative and mechanics unified, timeline scales properly for empire building
+- ✅ **Parallel Diagnostic Infrastructure - COMPLETE (2025-11-24)**
+  - Created `tests/balance/run_parallel_diagnostics.py` utilizing 16-core 7950X3D
+  - Created `tests/balance/analyze_phase2_gaps.py` using Polars for fast analysis
+  - Performance: 50 games in <1s, 3,000 games/minute throughput
+  - Automatic compilation checking and restic archiving integration
+  - **Impact:** Rapid iteration cycle (~10s from code change to results)
 - ✅ **Phase 2 (2i, 2j, 2k) - ALREADY COMPLETE - Documentation Updated (2025-11-24)**
   - **2i:** Multi-player threat assessment with `assessRelativeStrength()`, `identifyVulnerableTargets()`
   - **2j:** Blockade & economic warfare via `assessInvasionViability()` recommendations
@@ -259,8 +274,11 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 - ✅ Enhanced build strategy: 5-7 scouts instead of 2-3
 - ✅ Invasion planning attaches up to 4 scouts for strong ELI mesh
 - ✅ Added scout_count diagnostic metric for future analysis
+- ✅ Lowered build thresholds (techPriority 0.4→0.3, aggression 0.4→0.3, removed military requirements)
 - **Bonus:** Fixed 11 fog-of-war Option.get() bugs that could crash AI
 - **Results:** Scout operational modes implemented, ELI mesh coordination active
+- ⚠️ **Architectural Limitation:** Build queue single-threading (1 unit/colony/turn) prevents reaching 5-7 scout target
+- **See:** `docs/KNOWN_ISSUES.md` for build queue refactor design
 
 **2d. ELI/CLK Arms Race Dynamics** ✅ **COMPLETE** (2025-11-24)
 - ✅ CLK research in heavy tech path (20% allocation) and moderate path (33%)
