@@ -249,8 +249,7 @@ proc viewCmd(dir: string): int =
   echo "EC4X GAME STATE"
   echo "=".repeat(50)
   echo "Game ID: ", state.gameId
-  echo "Turn: ", state.turn
-  echo "Year: ", state.year, "/", state.month
+  echo "Turn: ", state.turn, " (Strategic Cycle ", state.turn, ")"
   echo "Phase: ", state.phase
   echo "Houses: ", state.houses.len()
   echo "Colonies: ", state.colonies.len()
