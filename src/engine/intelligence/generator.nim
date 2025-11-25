@@ -47,11 +47,16 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
     shipyardCount: colony.shipyards.len  # Space-based construction only, NOT spaceports
   )
 
-  # Construction project visible if spy quality is high enough
+  # Construction queue visible if spy quality is high enough
   if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
-    # Add current construction project info
+    # Add all construction projects in queue (NEW multi-project system)
+    for project in colony.constructionQueue:
+      report.constructionQueue.add(project.itemId)
+    # Also check legacy underConstruction field for backward compatibility
     if colony.underConstruction.isSome:
-      report.constructionQueue.add(colony.underConstruction.get().itemId)
+      let legacyItem = colony.underConstruction.get().itemId
+      if legacyItem notin report.constructionQueue:
+        report.constructionQueue.add(legacyItem)
 
   return some(report)
 

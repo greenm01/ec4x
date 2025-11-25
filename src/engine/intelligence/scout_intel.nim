@@ -126,9 +126,14 @@ proc generateScoutColonyObservation*(
       elif fleet.status == FleetStatus.Mothballed:
         colonyIntel.mothballedFleetCount += 1
 
-  # Get construction queue
+  # Get construction queue (scouts get perfect intel on all queued projects)
+  for project in colony.constructionQueue:
+    colonyIntel.constructionQueue.add(project.itemId)
+  # Also check legacy underConstruction field for backward compatibility
   if colony.underConstruction.isSome:
-    colonyIntel.constructionQueue.add(colony.underConstruction.get().itemId)
+    let legacyItem = colony.underConstruction.get().itemId
+    if legacyItem notin colonyIntel.constructionQueue:
+      colonyIntel.constructionQueue.add(legacyItem)
 
   let description = &"Scout {scoutId} surveyed colony at system {systemId} (owner: {colony.owner})"
 
