@@ -616,23 +616,21 @@ proc assessRelativeStrength*(controller: AIController, filtered: FilteredGameSta
     return 1.0  # Assume target is stronger if we have no strength
   return targetStrength / (targetStrength + myStrength)
 
-proc identifyVulnerableTargets*(controller: var AIController, filtered: FilteredGameState): seq[tuple[systemId: SystemId, owner: HouseId, relativeStrength: float]] =
+proc identifyVulnerableTargets*(controller: var AIController, state: GameState): seq[tuple[systemId: SystemId, owner: HouseId, relativeStrength: float]] =
   ## Phase 2i: Identify colonies owned by weaker players
   ## Returns targets sorted by vulnerability (weakest first)
-  ## RESPECTS FOG-OF-WAR: Only considers visible enemy colonies
   result = @[]
 
-  # Check visible enemy colonies from fog-of-war view
-  for visCol in filtered.visibleColonies:
-    if visCol.owner == controller.houseId:
+  for systemId, colony in state.colonies:
+    if colony.owner == controller.houseId:
       continue
 
     # Assess relative strength of colony owner
-    let strength = controller.assessRelativeStrength(filtered, visCol.owner)
+    let strength = controller.assessRelativeStrength(state, colony.owner)
 
     # Prefer targets that are weaker than us (strength < 0.5)
     # But also consider targets slightly stronger if valuable
-    result.add((visCol.systemId, visCol.owner, strength))
+    result.add((systemId, colony.owner, strength))
 
   # Sort by relative strength (weakest first)
   result.sort(proc(a, b: auto): int = cmp(a.relativeStrength, b.relativeStrength))
