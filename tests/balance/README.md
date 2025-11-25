@@ -2,6 +2,37 @@
 
 AI-powered game balance testing system that simulates full games and generates structured data for analysis.
 
+## ⭐ ONE SOURCE OF TRUTH - Unified Testing Workflow ⭐
+
+**ALWAYS use this unified test runner for balance testing:**
+
+```bash
+# Act 1 validation (7 turns, 100 games)
+./tests/balance/run_test.sh --turns 7 --games 100
+
+# Act 2 validation (15 turns, 100 games)
+./tests/balance/run_test.sh --turns 15 --games 100
+
+# Full game test (30 turns, 100 games)
+./tests/balance/run_test.sh --turns 30 --games 100
+
+# Force clean rebuild before testing
+./tests/balance/run_test.sh --rebuild --turns 30
+```
+
+### Why This Matters
+
+The `run_test.sh` script ensures:
+- ✅ **Build Alignment**: Source code → Binary always in sync
+- ✅ **Script Alignment**: All tools use the same binary
+- ✅ **No Stale Binaries**: Clean builds prevent version mismatches
+- ✅ **Consistent Results**: Repeatable testing workflow
+
+### Supporting Scripts
+
+- `build.sh` - Clean rebuild (called automatically by run_test.sh)
+- `sim` - Manual testing wrapper: `./tests/balance/sim 30 88888 4 4`
+
 ## Overview
 
 This framework enables data-driven balance testing by:
