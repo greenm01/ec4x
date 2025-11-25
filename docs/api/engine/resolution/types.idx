@@ -1,0 +1,4 @@
+nimTitle	types	resolution/types.html	module src/engine/resolution/types		0
+nim	GameEvent	resolution/types.html#GameEvent	object GameEvent		7
+nim	GameEventType	resolution/types.html#GameEventType	enum GameEventType		13
+nim	CombatReport	resolution/types.html#CombatReport	object CombatReport		19

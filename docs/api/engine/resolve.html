@@ -58,27 +58,10 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#CombatReport" title="CombatReport = object
-  systemId*: SystemId
-  attackers*: seq[HouseId]
-  defenders*: seq[HouseId]
-  attackerLosses*: int
-  defenderLosses*: int
-  victor*: Option[HouseId]">CombatReport</a></li>
-<li><a class="reference" href="#GameEvent" title="GameEvent = object
-  eventType*: GameEventType
-  houseId*: HouseId
-  description*: string
-  systemId*: Option[SystemId]">GameEvent</a></li>
-<li><a class="reference" href="#GameEventType" title="GameEventType {.pure.} = enum
-  ColonyEstablished, SystemCaptured, ColonyCaptured, TerraformComplete, Battle,
-  BattleOccurred, Bombardment, FleetDestroyed, InvasionRepelled,
-  ConstructionStarted, ShipCommissioned, BuildingCompleted, UnitRecruited,
-  UnitDisbanded, TechAdvance, HouseEliminated, PopulationTransfer">GameEventType</a></li>
-<li><a class="reference" href="#TurnResult" title="TurnResult = object
+      <li><a class="reference" href="#TurnResult" title="TurnResult = object
   newState*: GameState
-  events*: seq[GameEvent]
-  combatReports*: seq[CombatReport]">TurnResult</a></li>
+  events*: seq[res_types.GameEvent]
+  combatReports*: seq[res_types.CombatReport]">TurnResult</a></li>
 
     </ul>
   </details>
@@ -87,13 +70,7 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#12" id="62">Procs</a></summary>
     <ul class="simple simple-toc-section">
-      <ul class="simple nested-toc-section">resolveMovementOrder
-  <li><a class="reference" href="#resolveMovementOrder%2CGameState%2CHouseId%2CFleetOrder%2Cseq%5BGameEvent%5D" title="resolveMovementOrder(state: var GameState; houseId: HouseId; order: FleetOrder;
-                     events: var seq[GameEvent])">resolveMovementOrder(state: var GameState; houseId: HouseId; order: FleetOrder;
-                     events: var seq[GameEvent])</a></li>
-
-</ul>
-<ul class="simple nested-toc-section">resolveTurn
+      <ul class="simple nested-toc-section">resolveTurn
   <li><a class="reference" href="#resolveTurn%2CGameState%2CTable%5BHouseId%2COrderPacket%5D" title="resolveTurn(state: GameState; orders: Table[HouseId, OrderPacket]): TurnResult">resolveTurn(state: GameState; orders: Table[HouseId, OrderPacket]): TurnResult</a></li>
 
 </ul>
@@ -101,82 +78,42 @@
     </ul>
   </details>
 </li>
+<li>
+  <a class="reference reference-toplevel" href="#19" id="69">Exports</a>
+</li>
 
 </ul>
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolve.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolve.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolve.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolve.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
     <p class="module-desc"><p>Turn resolution engine - the heart of EC4X gameplay</p>
 <p>OFFLINE GAMEPLAY SYSTEM - No network dependencies This module is designed to work standalone for local/hotseat multiplayer Network transport (Nostr) wraps around this engine without modifying it</p>
-Main Turn ResolutionPhase 1: ConflictHelper: Auto-balance unassigned squadrons to fleets at colonyPhase 2: IncomePhase 3: CommandPhase 1: Conflict (helper functions)Phase 4: Maintenance</p>
+<p>REFACTORED: Main orchestrator that coordinates resolution phases Individual phase logic has been extracted to resolution/* modules</p>
+Main Turn ResolutionPhase 1: ConflictHelper: Auto-balance unassigned squadrons to fleets at colonyPhase 3: Command</p>
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="_._/common/hex.html">../common/hex</a>, <a class="reference external" href="_._/common/types/core.html">../common/types/core</a>, <a class="reference external" href="_._/common/types/combat.html">../common/types/combat</a>, <a class="reference external" href="_._/common/types/tech.html">../common/types/tech</a>, <a class="reference external" href="_._/common/types/units.html">../common/types/units</a>, <a class="reference external" href="gamestate.html">gamestate</a>, <a class="reference external" href="orders.html">orders</a>, <a class="reference external" href="fleet.html">fleet</a>, <a class="reference external" href="ship.html">ship</a>, <a class="reference external" href="starmap.html">starmap</a>, <a class="reference external" href="squadron.html">squadron</a>, <a class="reference external" href="spacelift.html">spacelift</a>, <a class="reference external" href="economy/types.html">economy/types</a>, <a class="reference external" href="economy/engine.html">economy/engine</a>, <a class="reference external" href="economy/construction.html">economy/construction</a>, <a class="reference external" href="economy/maintenance.html">economy/maintenance</a>, <a class="reference external" href="research/types.html">research/types</a>, <a class="reference external" href="research/advancement.html">research/advancement</a>, <a class="reference external" href="research/costs.html">research/costs</a>, <a class="reference external" href="research/effects.html">research/effects</a>, <a class="reference external" href="espionage/types.html">espionage/types</a>, <a class="reference external" href="espionage/engine.html">espionage/engine</a>, <a class="reference external" href="diplomacy/types.html">diplomacy/types</a>, <a class="reference external" href="diplomacy/engine.html">diplomacy/engine</a>, <a class="reference external" href="diplomacy/proposals.html">diplomacy/proposals</a>, <a class="reference external" href="colonization/engine.html">colonization/engine</a>, <a class="reference external" href="combat/engine.html">combat/engine</a>, <a class="reference external" href="combat/types.html">combat/types</a>, <a class="reference external" href="combat/ground.html">combat/ground</a>, <a class="reference external" href="population/types.html">population/types</a>, <a class="reference external" href="config/prestige_config.html">config/prestige_config</a>, <a class="reference external" href="config/espionage_config.html">config/espionage_config</a>, <a class="reference external" href="config/gameplay_config.html">config/gameplay_config</a>, <a class="reference external" href="config/construction_config.html">config/construction_config</a>, <a class="reference external" href="config/military_config.html">config/military_config</a>, <a class="reference external" href="config/ground_units_config.html">config/ground_units_config</a>, <a class="reference external" href="config/population_config.html">config/population_config</a>, <a class="reference external" href="commands/executor.html">commands/executor</a>, <a class="reference external" href="blockade/engine.html">blockade/engine</a>, <a class="reference external" href="intelligence/detection.html">intelligence/detection</a>, <a class="reference external" href="intelligence/types.html">intelligence/types</a>, <a class="reference external" href="intelligence/generator.html">intelligence/generator</a>, <a class="reference external" href="prestige.html">prestige</a>
+    <a class="reference external" href="_._/common/hex.html">../common/hex</a>, <a class="reference external" href="_._/common/types/core.html">../common/types/core</a>, <a class="reference external" href="_._/common/types/combat.html">../common/types/combat</a>, <a class="reference external" href="gamestate.html">gamestate</a>, <a class="reference external" href="orders.html">orders</a>, <a class="reference external" href="fleet.html">fleet</a>, <a class="reference external" href="espionage/types.html">espionage/types</a>, <a class="reference external" href="espionage/engine.html">espionage/engine</a>, <a class="reference external" href="diplomacy/types.html">diplomacy/types</a>, <a class="reference external" href="commands/executor.html">commands/executor</a>, <a class="reference external" href="resolution/types.html">resolution/types</a>, <a class="reference external" href="resolution/fleet_orders.html">resolution/fleet_orders</a>, <a class="reference external" href="resolution/combat_resolution.html">resolution/combat_resolution</a>, <a class="reference external" href="resolution/economy_resolution.html">resolution/economy_resolution</a>, <a class="reference external" href="resolution/diplomatic_resolution.html">resolution/diplomatic_resolution</a>
   </dl>
 </div>
 <div class="section" id="7">
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
-    <div id="CombatReport">
-  <dt><pre><a href="resolve.html#CombatReport"><span class="Identifier">CombatReport</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">systemId</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
-  <span class="Identifier">attackers</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">]</span>
-  <span class="Identifier">defenders</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">]</span>
-  <span class="Identifier">attackerLosses</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">defenderLosses</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">victor</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">]</span></pre></dt>
-  <dd>
-    
-    
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolve.nim#L49" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolve.nim#L49" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
-
-  </dd>
-</div>
-<div id="GameEvent">
-  <dt><pre><a href="resolve.html#GameEvent"><span class="Identifier">GameEvent</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">eventType</span><span class="Operator">*</span><span class="Other">:</span> <a href="resolve.html#GameEventType"><span class="Identifier">GameEventType</span></a>
-  <span class="Identifier">houseId</span><span class="Operator">*</span><span class="Other">:</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
-  <span class="Identifier">description</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
-  <span class="Identifier">systemId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span></pre></dt>
-  <dd>
-    
-    
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolve.nim#L33" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolve.nim#L33" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
-
-  </dd>
-</div>
-<div id="GameEventType">
-  <dt><pre><a href="resolve.html#GameEventType"><span class="Identifier">GameEventType</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
-  <span class="Identifier">ColonyEstablished</span><span class="Other">,</span> <span class="Identifier">SystemCaptured</span><span class="Other">,</span> <span class="Identifier">ColonyCaptured</span><span class="Other">,</span> <span class="Identifier">TerraformComplete</span><span class="Other">,</span> <span class="Identifier">Battle</span><span class="Other">,</span>
-  <span class="Identifier">BattleOccurred</span><span class="Other">,</span> <span class="Identifier">Bombardment</span><span class="Other">,</span> <span class="Identifier">FleetDestroyed</span><span class="Other">,</span> <span class="Identifier">InvasionRepelled</span><span class="Other">,</span>
-  <span class="Identifier">ConstructionStarted</span><span class="Other">,</span> <span class="Identifier">ShipCommissioned</span><span class="Other">,</span> <span class="Identifier">BuildingCompleted</span><span class="Other">,</span> <span class="Identifier">UnitRecruited</span><span class="Other">,</span>
-  <span class="Identifier">UnitDisbanded</span><span class="Other">,</span> <span class="Identifier">TechAdvance</span><span class="Other">,</span> <span class="Identifier">HouseEliminated</span><span class="Other">,</span> <span class="Identifier">PopulationTransfer</span></pre></dt>
-  <dd>
-    
-    
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolve.nim#L39" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolve.nim#L39" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
-
-  </dd>
-</div>
-<div id="TurnResult">
+    <div id="TurnResult">
   <dt><pre><a href="resolve.html#TurnResult"><span class="Identifier">TurnResult</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
   <span class="Identifier">newState</span><span class="Operator">*</span><span class="Other">:</span> <a href="gamestate.html#GameState"><span class="Identifier">GameState</span></a>
-  <span class="Identifier">events</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="resolve.html#GameEvent"><span class="Identifier">GameEvent</span></a><span class="Other">]</span>
-  <span class="Identifier">combatReports</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="resolve.html#CombatReport"><span class="Identifier">CombatReport</span></a><span class="Other">]</span></pre></dt>
+  <span class="Identifier">events</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">res_types</span><span class="Other">.</span><span class="Identifier">GameEvent</span><span class="Other">]</span>
+  <span class="Identifier">combatReports</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">res_types</span><span class="Other">.</span><span class="Identifier">CombatReport</span><span class="Other">]</span></pre></dt>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolve.nim#L28" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolve.nim#L28" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolve.nim#L23" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolve.nim#L23" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -186,36 +123,27 @@ Main Turn ResolutionPhase 1: ConflictHelper: Auto-balance unassigned squadrons t
 <div class="section" id="12">
   <h1><a class="toc-backref" href="#12">Procs</a></h1>
   <dl class="item">
-    <div id="resolveMovementOrder-procs-all">
-  <div id="resolveMovementOrder,GameState,HouseId,FleetOrder,seq[GameEvent]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#resolveMovementOrder%2CGameState%2CHouseId%2CFleetOrder%2Cseq%5BGameEvent%5D"><span class="Identifier">resolveMovementOrder</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">;</span> <span class="Identifier">houseId</span><span class="Other">:</span> <a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span>
-                          <span class="Identifier">order</span><span class="Other">:</span> <a href="orders.html#FleetOrder"><span class="Identifier">FleetOrder</span></a><span class="Other">;</span> <span class="Identifier">events</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="resolve.html#GameEvent"><span class="Identifier">GameEvent</span></a><span class="Other">]</span><span class="Other">)</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
-  <dd>
-    
-    
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolve.nim#L73" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolve.nim#L73" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
-
-  </dd>
-</div>
-
-</div>
-<div id="resolveTurn-procs-all">
+    <div id="resolveTurn-procs-all">
   <div id="resolveTurn,GameState,Table[HouseId,OrderPacket]">
   <dt><pre><span class="Keyword">proc</span> <a href="#resolveTurn%2CGameState%2CTable%5BHouseId%2COrderPacket%5D"><span class="Identifier">resolveTurn</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <a href="gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">;</span> <span class="Identifier">orders</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">,</span> <a href="orders.html#OrderPacket"><span class="Identifier">OrderPacket</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="resolve.html#TurnResult"><span class="Identifier">TurnResult</span></a> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Resolve a complete game turn Returns new game state and events that occurred
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolve.nim#L85" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolve.nim#L85" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolve.nim#L36" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolve.nim#L36" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
 
 </div>
 
+  </dl>
+</div>
+<div class="section" id="19">
+  <h1><a class="toc-backref" href="#19">Exports</a></h1>
+  <dl class="item">
+    <a href="resolution/types.html#GameEvent"><span class="Identifier">GameEvent</span></a>, <a href="resolution/types.html#GameEventType"><span class="Identifier">GameEventType</span></a>, <a href="resolution/types.html#CombatReport"><span class="Identifier">CombatReport</span></a>
   </dl>
 </div>
 

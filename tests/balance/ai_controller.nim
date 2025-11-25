@@ -3,7 +3,7 @@
 ## Implements strategic decision-making for different AI personalities
 ## to enable realistic game simulations
 
-import std/[tables, options, random, sequtils, strformat, algorithm]
+import std/[tables, options, random, sequtils, strformat, algorithm, hashes]
 import ../../src/engine/[gamestate, orders, fleet, squadron, starmap, fog_of_war]
 import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
@@ -91,7 +91,7 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
       aggression: 0.9,
       riskTolerance: 0.8,
       economicFocus: 0.3,
-      expansionDrive: 0.5,  # Reduced from 0.7 - prevents over-expansion into worthless colonies
+      expansionDrive: 0.8,  # Increased from 0.5 - aggressive expansion, avoids SpyPlanet threshold (0.6)
       diplomacyValue: 0.2,
       techPriority: 0.4
     )
@@ -109,7 +109,7 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
       aggression: 0.5,
       riskTolerance: 0.6,
       economicFocus: 0.5,
-      expansionDrive: 0.4,
+      expansionDrive: 0.65,  # Increased from 0.4 - aggressive expansion even with spy focus
       diplomacyValue: 0.4,
       techPriority: 0.6
     )
@@ -243,11 +243,13 @@ proc getAvailableSingleScouts(filtered: FilteredGameState, houseId: HouseId): se
       if isSingleScoutSquadron(fleet.squadrons[0]):
         result.add(fleet)
 
-proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: SystemId): Option[SystemId] =
+proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: SystemId, fleetId: FleetId): Option[SystemId] =
   ## Find nearest uncolonized system using cube distance
   ## Returns closest uncolonized system to avoid all AIs targeting the same one
   ## EXPLORATION: Considers ALL systems (players know the star map exists)
   ## Only colonization status is checked (not visible due to fog-of-war)
+  ## NOTE: "uncolonized" includes UNKNOWN systems - fog-of-war means we don't know if they're colonized
+  ## ETACs will discover on arrival if a system is already taken (realistic exploration)
   type SystemDist = tuple[systemId: SystemId, distance: int]
   var candidates: seq[SystemDist] = @[]
 
@@ -258,6 +260,7 @@ proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: Syste
     # Don't restrict to visibleSystems - that prevents exploration!
     # In classic EC, you could see the star map and send fleets anywhere
     if not isSystemColonized(filtered, systemId):
+      # Not colonized = either truly empty OR unknown (fog-of-war)
       # Calculate cube distance (Manhattan distance in hex coordinates)
       let dx = abs(system.coords.q - fromCoords.q)
       let dy = abs(system.coords.r - fromCoords.r)
@@ -267,9 +270,26 @@ proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: Syste
       candidates.add(item)
 
   if candidates.len > 0:
-    # Sort by distance and return closest
+    # Sort by distance
     candidates.sort(proc(a, b: SystemDist): int = cmp(a.distance, b.distance))
-    return some(candidates[0].systemId)
+
+    # Use fleetId hash to get consistent but unique selection per fleet
+    # This prevents all ETAC fleets from targeting the same system
+    let minDistance = candidates[0].distance
+    var closestSystems: seq[SystemId] = @[]
+    for candidate in candidates:
+      if candidate.distance == minDistance:
+        closestSystems.add(candidate.systemId)
+      else:
+        break  # candidates sorted by distance, so we're done
+
+    if closestSystems.len > 1:
+      # Multiple systems at same distance - use fleet ID hash for deterministic but unique selection
+      let fleetHash = hash(fleetId)
+      let selectedIdx = abs(fleetHash) mod closestSystems.len
+      return some(closestSystems[selectedIdx])
+    else:
+      return some(closestSystems[0])
 
   return none(SystemId)
 
@@ -361,9 +381,11 @@ proc needsReconnaissance*(controller: AIController, systemId: SystemId, currentT
   return age > 5  # Intel becomes stale after 5 turns
 
 proc findBestColonizationTarget*(controller: var AIController, filtered: FilteredGameState,
-                                  fromSystem: SystemId): Option[SystemId] =
+                                  fromSystem: SystemId, fleetId: FleetId): Option[SystemId] =
   ## Find best colonization target using intelligence
   ## Prioritizes: Eden/Abundant > Strategic > Nearby > Unknown
+  ## NOTE: "uncolonized" includes UNKNOWN systems - fog-of-war means we don't know if they're colonized
+  ## ETACs will discover on arrival if a system is already taken (realistic exploration)
   type TargetScore = tuple[systemId: SystemId, score: float, distance: int]
   var candidates: seq[TargetScore] = @[]
 
@@ -371,6 +393,7 @@ proc findBestColonizationTarget*(controller: var AIController, filtered: Filtere
 
   for systemId, system in filtered.starMap.systems:
     if not isSystemColonized(filtered, systemId):
+      # Not colonized = either truly empty OR unknown (fog-of-war)
       var score = 0.0
 
       # Calculate distance
@@ -434,7 +457,24 @@ proc findBestColonizationTarget*(controller: var AIController, filtered: Filtere
       elif b.score < a.score: -1
       else: 0
     )
-    return some(candidates[0].systemId)
+
+    # Use fleetId hash to get consistent but unique selection per fleet
+    # This prevents all ETAC fleets from targeting the same system
+    let maxScore = candidates[0].score
+    var topSystems: seq[SystemId] = @[]
+    for candidate in candidates:
+      if candidate.score == maxScore:
+        topSystems.add(candidate.systemId)
+      else:
+        break  # candidates sorted by score, so we're done
+
+    if topSystems.len > 1:
+      # Multiple systems with same score - use fleet ID hash for deterministic but unique selection
+      let fleetHash = hash(fleetId)
+      let selectedIdx = abs(fleetHash) mod topSystems.len
+      return some(topSystems[selectedIdx])
+    else:
+      return some(topSystems[0])
 
   return none(SystemId)
 
@@ -2083,6 +2123,8 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
       # ETAC fleets: Colonize if at uncolonized system, otherwise move to best target
       if not isSystemColonized(filtered, fleet.location):
         # At uncolonized system - COLONIZE IT!
+        when not defined(release):
+          echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " colonizing system ", fleet.location
         order.orderType = FleetOrderType.Colonize
         order.targetSystem = some(fleet.location)
         order.targetFleet = none(FleetId)
@@ -2090,16 +2132,21 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
         continue
       else:
         # At colonized system - seek BEST uncolonized system (using intel)
-        let targetOpt = findBestColonizationTarget(controller, filtered, fleet.location)
+        let targetOpt = findBestColonizationTarget(controller, filtered, fleet.location, fleet.id)
         if targetOpt.isSome:
+          when not defined(release):
+            echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " moving from ", fleet.location, " to colonization target ", targetOpt.get()
           order.orderType = FleetOrderType.Move
           order.targetSystem = targetOpt
           order.targetFleet = none(FleetId)
           result.add(order)
           continue
+        else:
+          when not defined(release):
+            echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " has NO colonization target (all systems colonized?)"
     elif p.expansionDrive > 0.3:
       # Non-ETAC fleets with expansion drive: Scout uncolonized systems
-      let targetOpt = findNearestUncolonizedSystem(filtered, fleet.location)
+      let targetOpt = findNearestUncolonizedSystem(filtered, fleet.location, fleet.id)
       if targetOpt.isSome:
         order.orderType = FleetOrderType.Move
         order.targetSystem = targetOpt
@@ -2141,6 +2188,17 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
       ## **Why This Matters:**
       ## Proactive defense prevents surprise attacks and resource loss. Undefended
       ## colonies are easy targets that can snowball into strategic losses.
+      ##
+      ## **CRITICAL FIX:** Exempt ETAC/colonization fleets from defense duty
+      ## - ETAC fleets must expand, not defend
+      ## - Prevents "fleet oscillation" where all fleets recall to homeworld
+
+      # Skip defense for ETAC fleets (they need to colonize)
+      let hasETAC = fleet.spaceLiftShips.anyIt(it.shipClass == ShipClass.ETAC)
+      if hasETAC:
+        # ETAC fleets prioritize expansion over defense
+        continue
+
       # Position fleets at undefended colonies (especially high-value or frontier)
       var undefendedColony: Option[SystemId] = none(SystemId)
       let importantColonies = controller.identifyImportantColonies(filtered)
@@ -2217,7 +2275,7 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
       # Priority 6: Exploration - send fleets to unknown systems
       # Instead of sitting idle, explore uncolonized systems
       if p.expansionDrive > 0.2 or rng.rand(1.0) < 0.3:
-        let exploreTarget = findNearestUncolonizedSystem(filtered, fleet.location)
+        let exploreTarget = findNearestUncolonizedSystem(filtered, fleet.location, fleet.id)
         if exploreTarget.isSome:
           order.orderType = FleetOrderType.Move
           order.targetSystem = exploreTarget
@@ -2555,10 +2613,13 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # EARLY GAME: Initial exploration and expansion
     # CRITICAL: ETACs BEFORE scouts - colonize first, intel second
     # Priority: ETACs → Frigates → Scouts
+    # CRITICAL FIX: Don't break after ETAC - allow multiple builds per turn
     # ------------------------------------------------------------------------
     if needETACs:
       let etacCost = getShipConstructionCost(ShipClass.ETAC)
       if house.treasury >= etacCost:
+        when not defined(release):
+          echo "[AI] ", $controller.houseId, " building ETAC at colony ", colony.systemId, " (have ", etacCount, "/", etacTarget, " ETACs)"
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -2567,7 +2628,7 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        break
+        # Continue to allow other colonies to build as well
 
     # Early game frigates for cheap exploration and combat
     # Cost 30 PP, build time 1 turn, can explore and fight

@@ -5,9 +5,9 @@ nim	TransferTimeConfig	config/population_config.html#TransferTimeConfig	object T
 nim	TransferModifiersConfig	config/population_config.html#TransferModifiersConfig	object TransferModifiersConfig		28
 nim	TransferLimitsConfig	config/population_config.html#TransferLimitsConfig	object TransferLimitsConfig		31
 nim	TransferRisksConfig	config/population_config.html#TransferRisksConfig	object TransferRisksConfig		36
-nim	AiStrategyConfig	config/population_config.html#AiStrategyConfig	object AiStrategyConfig		41
-nim	PopulationConfig	config/population_config.html#PopulationConfig	object PopulationConfig		50
-nim	loadPopulationConfig	config/population_config.html#loadPopulationConfig,string	proc loadPopulationConfig(configPath: string = "config/population.toml"): PopulationConfig		60
-nim	soulsPerPtu	config/population_config.html#soulsPerPtu	proc soulsPerPtu(): int		78
-nim	ptuSizeMillions	config/population_config.html#ptuSizeMillions	proc ptuSizeMillions(): float		81
-nim	reloadPopulationConfig	config/population_config.html#reloadPopulationConfig	proc reloadPopulationConfig()		86
+nim	AiStrategyConfig	config/population_config.html#AiStrategyConfig	object AiStrategyConfig		42
+nim	PopulationConfig	config/population_config.html#PopulationConfig	object PopulationConfig		51
+nim	loadPopulationConfig	config/population_config.html#loadPopulationConfig,string	proc loadPopulationConfig(configPath: string = "config/population.toml"): PopulationConfig		61
+nim	soulsPerPtu	config/population_config.html#soulsPerPtu	proc soulsPerPtu(): int		79
+nim	ptuSizeMillions	config/population_config.html#ptuSizeMillions	proc ptuSizeMillions(): float		82
+nim	reloadPopulationConfig	config/population_config.html#reloadPopulationConfig	proc reloadPopulationConfig()		87
