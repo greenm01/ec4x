@@ -1,8 +1,9 @@
 # Fog-of-War Refactoring Plan
 
-## Status: IN PROGRESS
+## Status: ✅ COMPLETE
 
 **Last Updated:** 2025-11-24
+**Completed:** 2025-11-24
 
 ## Goal
 
@@ -15,13 +16,13 @@ Refactor `tests/balance/ai_controller.nim` to enforce fog-of-war at the type lev
 2. Fixed `assessRelativeStrength()` - Uses `FilteredGameState`, respects fog-of-war
 3. Fixed `identifyVulnerableTargets()` - Uses `FilteredGameState`, only sees visible colonies
 4. Fixed fog-of-war violations in threat assessment
+5. **Refactored ALL ~37 functions to use `FilteredGameState`** ✅
+6. **REMOVED TEMPORARY BRIDGE** (lines 2987-3030) ✅
+7. **File compiles successfully** ✅
 
-### ⏳ In Progress
-- Refactoring remaining ~37 functions to use `FilteredGameState`
-
-### ❌ Blocked
-- File won't compile until refactoring is complete (breaking change)
-- Automated refactoring too complex - requires semantic understanding
+### ⏳ Pending
+- Run balance tests to verify AI still functions correctly
+- Re-enable diplomatic proposal handling when FilteredGameState exposes it
 
 ## The Challenge
 
