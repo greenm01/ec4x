@@ -1046,11 +1046,12 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   # More scouts = better intel = better tactical decisions
   let needScouts =
     if currentAct == GameAct.Act1_LandGrab:
-      # Act 1: Basic scouts (2) for exploration
-      scoutCount < 2 and p.techPriority >= 0.3
+      # Act 1: Basic scouts (2-3) for exploration - tied to expansion
+      scoutCount < 3 and p.expansionDrive >= 0.3
     elif currentAct == GameAct.Act2_RisingTensions or hasEnemies:
-      # Act 2 or at war: Intelligence network (5 scouts)
-      scoutCount < 5 and p.techPriority >= 0.3
+      # Act 2 or at war: Intelligence network (5 scouts) - CRITICAL for invasions!
+      # Scouts provide reconnaissance for invasion planning
+      scoutCount < 5 and (p.aggression >= 0.3 or hasEnemies)
     else:
       # Act 3-4: ELI mesh for invasion support (7 scouts)
       scoutCount < 7 and p.aggression >= 0.3

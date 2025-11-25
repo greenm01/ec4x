@@ -195,12 +195,27 @@ proc buildMilitaryOrders*(colony: Colony, budgetPP: int,
 proc buildIntelligenceOrders*(colony: Colony, budgetPP: int,
                               needScouts: bool, scoutCount: int): seq[BuildOrder] =
   ## Generate intelligence build orders (scouts)
+  ##
+  ## Intelligence budget guarantees scout production for reconnaissance.
+  ## Scout targets scale with game progression:
+  ## - Act 1: 2-3 scouts (exploration)
+  ## - Act 2: 5 scouts (intelligence network for invasions)
+  ## - Act 3-4: 7 scouts (ELI mesh for invasion support)
+  ##
+  ## CRITICAL: Build scouts based on budget availability, not external conditions.
+  ## The MOEA system allocates 10-15% to Intelligence - use it!
   result = @[]
   var remaining = budgetPP
 
-  if needScouts:
+  # Use Intelligence budget to build scouts if we have budget available
+  # This ensures scouts are built regardless of external "needScouts" condition
+  if remaining > 0:
     let scoutCost = getShipConstructionCost(ShipClass.Scout)
-    while remaining >= scoutCost:
+
+    # Build scouts up to reasonable limits based on current count
+    # Don't over-build - stop at ~10 scouts (more than Act 3 target)
+    while remaining >= scoutCost and scoutCount + result.len < 10:
+      logDebug(LogCategory.lcAI, &"Building scout at colony {colony.systemId} (budget={remaining}PP, scoutCount={scoutCount + result.len})")
       result.add(BuildOrder(
         colonySystem: colony.systemId,
         buildType: BuildType.Ship,
@@ -309,7 +324,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   logInfo(LogCategory.lcAI, &"{controller.houseId} Act {act} Budget Allocation: " &
           &"Expansion={budgets[Expansion]}PP ({allocation[Expansion]*100:.0f}%), " &
           &"Military={budgets[Military]}PP ({allocation[Military]*100:.0f}%), " &
-          &"Defense={budgets[Defense]}PP ({allocation[Defense]*100:.0f}%)")
+          &"Defense={budgets[Defense]}PP ({allocation[Defense]*100:.0f}%), " &
+          &"Intelligence={budgets[Intelligence]}PP ({allocation[Intelligence]*100:.0f}%)")
 
   # 4. Generate orders for each objective within budget
   result = @[]
