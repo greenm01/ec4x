@@ -560,14 +560,85 @@ proc getReserveForSystem*(controller: AIController, systemId: SystemId): Option[
       return some(reserve.fleetId)
   return none(FleetId)
 
-proc identifyInvasionOpportunities*(controller: var AIController, state: GameState): seq[SystemId] =
-  ## Identify enemy colonies that warrant coordinated invasion
-  ## Criteria: valuable target, requires multiple fleets, within reach
+proc assessRelativeStrength*(controller: AIController, state: GameState, targetHouse: HouseId): float =
+  ## Phase 2i: Assess relative strength of a house (0.0 = weakest, 1.0 = strongest)
+  ## Considers prestige, military, economy, and colonies
+  if targetHouse notin state.houses:
+    return 0.5  # Unknown strength
+
+  let target = state.houses[targetHouse]
+  let myHouse = state.houses[controller.houseId]
+
+  # Calculate strength factors
+  var targetStrength = 0.0
+  var myStrength = 0.0
+
+  # Prestige weight: 30%
+  targetStrength += target.prestige.float * 0.3
+  myStrength += myHouse.prestige.float * 0.3
+
+  # Colony count weight: 20%
+  var targetColonies = 0
+  var myColonies = 0
+  for colony in state.colonies.values:
+    if colony.owner == targetHouse:
+      targetColonies += 1
+    elif colony.owner == controller.houseId:
+      myColonies += 1
+  targetStrength += targetColonies.float * 20.0 * 0.2
+  myStrength += myColonies.float * 20.0 * 0.2
+
+  # Fleet count weight: 30%
+  var targetFleets = 0
+  var myFleets = 0
+  for fleet in state.fleets.values:
+    if fleet.owner == targetHouse:
+      targetFleets += fleet.combatStrength()
+    elif fleet.owner == controller.houseId:
+      myFleets += fleet.combatStrength()
+  targetStrength += targetFleets.float * 0.3
+  myStrength += myFleets.float * 0.3
+
+  # Economy (treasury) weight: 20%
+  targetStrength += target.treasury.float * 0.001 * 0.2
+  myStrength += myHouse.treasury.float * 0.001 * 0.2
+
+  # Return relative strength (target vs me)
+  if myStrength == 0:
+    return 1.0  # Assume target is stronger if we have no strength
+  return targetStrength / (targetStrength + myStrength)
+
+proc identifyVulnerableTargets*(controller: var AIController, state: GameState): seq[tuple[systemId: SystemId, owner: HouseId, relativeStrength: float]] =
+  ## Phase 2i: Identify colonies owned by weaker players
+  ## Returns targets sorted by vulnerability (weakest first)
   result = @[]
 
   for systemId, colony in state.colonies:
     if colony.owner == controller.houseId:
       continue
+
+    # Assess relative strength of colony owner
+    let strength = controller.assessRelativeStrength(state, colony.owner)
+
+    # Prefer targets that are weaker than us (strength < 0.5)
+    # But also consider targets slightly stronger if valuable
+    result.add((systemId, colony.owner, strength))
+
+  # Sort by relative strength (weakest first)
+  result.sort(proc(a, b: auto): int = cmp(a.relativeStrength, b.relativeStrength))
+
+proc identifyInvasionOpportunities*(controller: var AIController, state: GameState): seq[SystemId] =
+  ## Identify enemy colonies that warrant coordinated invasion
+  ## Phase 2i: Now prioritizes weaker players instead of strongest
+  ## Criteria: valuable target, requires multiple fleets, within reach
+  result = @[]
+
+  # Get vulnerable targets (weakest players first)
+  let vulnerableTargets = controller.identifyVulnerableTargets(state)
+
+  for target in vulnerableTargets:
+    let systemId = target.systemId
+    let colony = state.colonies[systemId]
 
     # Estimate defense strength (ground forces + starbase + nearby fleets)
     var defenseStrength = 0
@@ -583,8 +654,13 @@ proc identifyInvasionOpportunities*(controller: var AIController, state: GameSta
     let isValuable = colony.production >= 50 or
                      colony.resources in [ResourceRating.Rich, ResourceRating.VeryRich]
 
+    # Prefer weaker targets (relative strength < 0.4) for easier victories
+    # Or stronger targets if very valuable AND we're strong enough
+    let preferTarget = (target.relativeStrength < 0.4) or
+                       (isValuable and target.relativeStrength < 0.6)
+
     # Requires coordinated attack if defense > 150
-    if isValuable and defenseStrength > 150:
+    if preferTarget and defenseStrength > 150:
       result.add(systemId)
 
 proc countAvailableFleets*(controller: AIController, state: GameState): int =
