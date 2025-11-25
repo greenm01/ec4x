@@ -60,17 +60,20 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 **Test Coverage:** 101+ integration tests passing, all systems verified
 
 🤖 **Current Phase - AI Development:**
-- ✅ Rule-based AI implemented (2,800+ lines, 7 strategy types)
-- ✅ Phase-aware decision making (4-act game structure)
-- ✅ Parallel simulation system for training data generation
-- ⏳ Balancing 4-act progression (Act 1-4 validation)
-- ⏳ Neural network training pipeline (AlphaZero-style self-play)
+- ✅ Modular Rule-Based Advisor (RBA) implemented (8 modules, 1,722 lines)
+- ✅ 12 distinct AI personalities (Aggressive, Economic, Espionage, Diplomatic, etc.)
+- ✅ Fog-of-war aware decision making
+- ✅ Genetic algorithm optimization tools (personality evolution)
+- ✅ 4-act game structure awareness (Land Grab → Rising Tensions → Total War → Endgame)
+- ⏳ Balance testing and tuning (400+ game validation)
+- ⏳ Neural network training pipeline (future: AlphaZero-style self-play)
 
-**AI Architecture:** Hybrid Nim + Python system using specialized neural networks (not LLMs)
-- Rule-based AI provides bootstrap training data
-- Neural networks learn optimal strategy via self-play reinforcement learning
-- ONNX Runtime for fast CPU/GPU inference (10-20ms vs 3-5s for LLMs)
-- See [AI System Architecture](docs/architecture/ai-system.md) for details
+**AI Architecture:** Modular expert system with personality-driven behavior
+- 8 specialized subsystems: intelligence, diplomacy, tactical, strategic, budget
+- 12 personality archetypes with 6 continuous traits (aggression, risk, economy, expansion, diplomacy, tech)
+- Genetic algorithms for personality optimization and exploit discovery
+- Competitive co-evolution for balance testing
+- See [AI System Documentation](docs/ai/README.md) for details
 
 🔮 **Future Phases:**
 - Neural network training (PyTorch + ROCm GPU acceleration)
@@ -82,6 +85,16 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 
 ### Game Rules
 - **[Complete Game Specification](docs/specs/index.md)** - Full rules, gameplay, and strategic systems
+
+### AI System
+- **[AI Documentation](docs/ai/README.md)** - AI system overview and navigation
+- **[AI Architecture](docs/ai/ARCHITECTURE.md)** - Modular RBA system design (8 subsystems)
+- **[AI Personalities](docs/ai/PERSONALITIES.md)** - 12 strategy archetypes explained
+- **[Decision Framework](docs/ai/DECISION_FRAMEWORK.md)** - How AI makes decisions
+
+### Testing & Balance
+- **[Testing Overview](docs/testing/README.md)** - Testing levels and methodology
+- **[Balance Methodology](docs/testing/BALANCE_METHODOLOGY.md)** - Regression testing approach
 
 ### Technical Documentation
 - **[Architecture Guide](docs/EC4X-Architecture.md)** - System design and implementation structure

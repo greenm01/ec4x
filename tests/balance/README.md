@@ -1,6 +1,8 @@
 # EC4X Balance Testing Framework
 
-AI-powered game balance testing system that simulates full games and generates structured data for analysis.
+Regression testing system for validating game balance with fixed AI strategies across the 4-act game structure.
+
+**See Also:** [Testing Documentation](../../docs/testing/README.md) - Complete testing methodology
 
 ## ⭐ ONE SOURCE OF TRUTH - Nimble Task Workflow ⭐
 
@@ -108,42 +110,23 @@ task cleanBalance, "Clean balance test artifacts":
   exec "rm -rf balance_results/*"
 ```
 
-### Alternative Testing Approaches
+### Balance Testing vs AI Tuning
 
-EC4X uses **two complementary testing methodologies**:
+**Balance Testing (This Directory):**
+- **Purpose:** Regression testing with fixed AI strategies
+- **Goal:** Validate engine stability and game progression
+- **Method:** Run 100+ games per act with predefined personalities
+- **Tools:** Nimble tasks above
+- **Output:** CSV diagnostics + JSON snapshots
 
-#### 1. Fixed Strategy Testing (Current - Phase 2)
-**Purpose:** Validate game balance with fixed AI strategies (Act-by-Act analysis)
+**AI Tuning (Separate Tool):**
+- **Purpose:** Optimize AI personalities via genetic algorithms
+- **Goal:** Find dominant strategies and balance exploits
+- **Method:** Evolutionary optimization and competitive co-evolution
+- **Tools:** `nimble evolveAI`, `nimble coevolveAI` (see `tools/ai_tuning/`)
+- **Output:** Evolved personalities + fitness data
 
-**Primary tool:** Nimble tasks (see above)
-
-**Manual single-game testing:**
-```bash
-# Build first, then run simulation directly with custom parameters
-nimble buildBalance
-./tests/balance/run_simulation 30 88888 4 4  # 30 turns, seed 88888, 4 rings, 4 players
-```
-
-**Custom multi-game configurations:**
-```bash
-# Call Python directly for non-standard parameters
-python3 run_balance_test_parallel.py --workers 32 --games 500 --turns 25
-```
-
-#### 2. Genetic Coevolution Testing
-**Purpose:** Evolve AI personalities through competitive coevolution
-
-**Shell scripts for genetic algorithm testing:**
-- `./tests/balance/run_parallel_test.sh` - Run coevolution experiments
-- `./tests/balance/archive_results.sh` - Archive coevolution results
-
-**Example coevolution test:**
-```bash
-# 4 parallel runs, 10 generations, 8 population, 5 games/gen
-./tests/balance/run_parallel_test.sh 4 10 8 5
-```
-
-See `docs/BALANCE_TESTING_METHODOLOGY.md` for full details on both approaches.
+See `../../docs/testing/README.md` for complete testing philosophy.
 
 ## Overview
 
@@ -270,17 +253,24 @@ Tests if rush strategies are too strong or too weak.
 
 ## AI Strategies
 
-The framework supports 7 distinct AI personalities:
+The framework uses **12 distinct AI personalities** from the modular Rule-Based Advisor (RBA) system:
 
-| Strategy | Aggression | Economic Focus | Expansion | Description |
-|----------|-----------|----------------|-----------|-------------|
-| Aggressive | 0.9 | 0.3 | 0.7 | Heavy military, early attacks |
-| Economic | 0.2 | 0.9 | 0.5 | Growth and tech focused |
-| Espionage | 0.5 | 0.5 | 0.4 | Intelligence and sabotage |
-| Diplomatic | 0.3 | 0.6 | 0.5 | Pacts and manipulation |
-| Balanced | 0.5 | 0.5 | 0.5 | Mixed approach |
-| Turtle | 0.1 | 0.7 | 0.2 | Defensive consolidation |
-| Expansionist | 0.6 | 0.4 | 0.95 | Rapid colonization |
+| Strategy | Aggression | Economic | Expansion | Tech | Diplomacy | Risk |
+|----------|-----------|----------|-----------|------|-----------|------|
+| Aggressive | 0.9 | 0.2 | 0.7 | 0.3 | 0.1 | 0.8 |
+| Economic | 0.2 | 0.9 | 0.6 | 0.7 | 0.5 | 0.3 |
+| Espionage | 0.3 | 0.6 | 0.4 | 0.8 | 0.4 | 0.7 |
+| Diplomatic | 0.2 | 0.6 | 0.5 | 0.5 | 0.9 | 0.4 |
+| Balanced | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 |
+| Turtle | 0.1 | 0.7 | 0.3 | 0.6 | 0.6 | 0.2 |
+| Expansionist | 0.4 | 0.5 | 0.9 | 0.4 | 0.3 | 0.6 |
+| TechRush | 0.2 | 0.7 | 0.4 | 0.9 | 0.5 | 0.4 |
+| Raider | 0.7 | 0.3 | 0.5 | 0.4 | 0.2 | 0.8 |
+| MilitaryIndustrial | 0.6 | 0.7 | 0.6 | 0.5 | 0.3 | 0.5 |
+| Opportunistic | 0.5 | 0.6 | 0.6 | 0.6 | 0.4 | 0.7 |
+| Isolationist | 0.3 | 0.8 | 0.4 | 0.7 | 0.1 | 0.3 |
+
+**See:** [AI Personalities Documentation](../../docs/ai/PERSONALITIES.md) for detailed strategy descriptions
 
 ## Balance Criteria
 
@@ -369,18 +359,30 @@ exportBalanceTest(result, "balance_results/your_test.json")
 
 ## Current Status
 
-**Framework**: ✅ Complete
-**AI Strategies**: ⏳ In Progress (order generation TODO)
-**Test Scenarios**: ⏳ In Progress (game initialization TODO)
-**AI Analysis**: ✅ Prompt template ready
+**Framework**: ✅ Complete - Regression testing operational
+**AI System**: ✅ Complete - Modular RBA with 12 personalities (src/ai/rba/)
+**Test Scenarios**: ✅ Complete - 4-act structure testing
+**Diagnostics**: ✅ Complete - CSV export + unknown-unknowns detection
 
-## Next Steps
+## AI Architecture
 
-1. **Complete AI order generation** - Implement full logic for all strategies
-2. **Implement game initialization** - Create balanced starting conditions
-3. **Run first test suite** - Generate initial balance data
-4. **AI analysis iteration** - Feed JSON to Claude/GPT, implement recommendations
-5. **Balance verification** - Re-test until criteria met
+Balance testing uses the modular **Rule-Based Advisor (RBA)** AI:
+
+**Location:** `src/ai/rba/` (NOT tests/balance/ai_controller.nim)
+
+**8 Specialized Modules:**
+1. `player.nim` - Public API
+2. `controller.nim` - Strategy definitions
+3. `intelligence.nim` - Reconnaissance & intel gathering
+4. `diplomacy.nim` - Strength assessment & diplomatic decisions
+5. `tactical.nim` - Fleet coordination & operations
+6. `strategic.nim` - Combat assessment & invasion planning
+7. `budget.nim` - Multi-objective resource allocation
+8. `controller_types.nim` - Type definitions (circular import resolution)
+
+**Test Wrapper:** `tests/balance/ai_controller.nim` is a thin wrapper that imports from `src/ai/rba/`
+
+**See:** [AI Architecture Documentation](../../docs/ai/ARCHITECTURE.md)
 
 ## Files
 
