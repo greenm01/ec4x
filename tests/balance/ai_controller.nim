@@ -2721,13 +2721,12 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # ========================================================================
     # CONQUEST PHASE: Switch to Troop Transports when colonization ends
     # ========================================================================
-    elif not canColonize and p.aggression > 0.4 and myColonies.len >= 4:
+    if not canColonize and p.aggression > 0.4 and myColonies.len >= 4:
       # No more colonies → switch to invasion fleet buildup
       let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
       if house.treasury >= transportCost and colony.production >= 80 and rng.rand(1.0) < 0.7:
-        when not defined(release):
-          logInfo(LogCategory.lcAI, &"{controller.houseId} building Troop Transport at colony {colony.systemId} - " &
-                  &"CONQUEST PHASE (no colonization targets left, aggression: {p.aggression:.2f})")
+        logInfo(LogCategory.lcAI, &"{controller.houseId} building Troop Transport at colony {colony.systemId} - " &
+                &"CONQUEST PHASE (no colonization targets left, aggression: {p.aggression:.2f})")
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,

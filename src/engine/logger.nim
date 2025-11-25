@@ -31,9 +31,11 @@ proc initEngineLogger*(logDir: string = "", enableFileLogging: bool = false) =
   ## If logDir is provided and enableFileLogging is true, logs will be written to file
 
   # Console logger with custom format
+  # CRITICAL: Set flushThreshold to lvlAll so debug/info messages flush immediately
   engineLogger = newConsoleLogger(
     levelThreshold = lvlDebug,
-    fmtStr = "[$time] [$levelname] "
+    fmtStr = "[$time] [$levelname] ",
+    flushThreshold = lvlAll
   )
 
   if enableFileLogging and logDir != "":
