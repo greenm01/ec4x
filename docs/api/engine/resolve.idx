@@ -1,7 +1,3 @@
 nimTitle	resolve	resolve.html	module src/engine/resolve		0
-nim	TurnResult	resolve.html#TurnResult	object TurnResult		28
-nim	GameEvent	resolve.html#GameEvent	object GameEvent		33
-nim	GameEventType	resolve.html#GameEventType	enum GameEventType		39
-nim	CombatReport	resolve.html#CombatReport	object CombatReport		49
-nim	resolveMovementOrder	resolve.html#resolveMovementOrder,GameState,HouseId,FleetOrder,seq[GameEvent]	proc resolveMovementOrder(state: var GameState; houseId: HouseId; order: FleetOrder;\n                     events: var seq[GameEvent])		73
-nim	resolveTurn	resolve.html#resolveTurn,GameState,Table[HouseId,OrderPacket]	proc resolveTurn(state: GameState; orders: Table[HouseId, OrderPacket]): TurnResult		85
+nim	TurnResult	resolve.html#TurnResult	object TurnResult		23
+nim	resolveTurn	resolve.html#resolveTurn,GameState,Table[HouseId,OrderPacket]	proc resolveTurn(state: GameState; orders: Table[HouseId, OrderPacket]): TurnResult		36

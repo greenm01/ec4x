@@ -1,0 +1,8 @@
+nimTitle	fleet_orders	resolution/fleet_orders.html	module src/engine/resolution/fleet_orders		0
+nim	isSystemHostile	resolution/fleet_orders.html#isSystemHostile,GameState,SystemId,HouseId	proc isSystemHostile(state: GameState; systemId: SystemId; houseId: HouseId): bool		18
+nim	estimatePathRisk	resolution/fleet_orders.html#estimatePathRisk,GameState,seq[SystemId],HouseId	proc estimatePathRisk(state: GameState; path: seq[SystemId]; houseId: HouseId): int		50
+nim	findClosestOwnedColony	resolution/fleet_orders.html#findClosestOwnedColony,GameState,SystemId,HouseId	proc findClosestOwnedColony(state: GameState; fromSystem: SystemId; houseId: HouseId): Option[\n    SystemId]		67
+nim	shouldAutoSeekHome	resolution/fleet_orders.html#shouldAutoSeekHome,GameState,Fleet,FleetOrder	proc shouldAutoSeekHome(state: GameState; fleet: Fleet; order: FleetOrder): bool		123
+nim	resolveMovementOrder	resolution/fleet_orders.html#resolveMovementOrder,GameState,HouseId,FleetOrder,seq[GameEvent]	proc resolveMovementOrder(state: var GameState; houseId: HouseId; order: FleetOrder;\n                     events: var seq[GameEvent])		185
+nim	resolveColonizationOrder	resolution/fleet_orders.html#resolveColonizationOrder,GameState,HouseId,FleetOrder,seq[GameEvent]	proc resolveColonizationOrder(state: var GameState; houseId: HouseId;\n                         order: FleetOrder; events: var seq[GameEvent])		277
+nim	autoLoadCargo	resolution/fleet_orders.html#autoLoadCargo,GameState,Table[HouseId,OrderPacket],seq[GameEvent]	proc autoLoadCargo(state: var GameState; orders: Table[HouseId, OrderPacket];\n              events: var seq[GameEvent])		364
