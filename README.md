@@ -60,14 +60,21 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 **Test Coverage:** 101+ integration tests passing, all systems verified
 
 🤖 **Current Phase - AI Development:**
-- ✅ Strategic AI implemented (diplomacy + military decision-making)
-- ✅ Training data generation system (parallel simulations)
-- ⏳ Generating 50+ game training dataset (10,000+ examples)
-- ⏳ Model training planned (Mistral-7B fine-tuning)
+- ✅ Rule-based AI implemented (2,800+ lines, 7 strategy types)
+- ✅ Phase-aware decision making (4-act game structure)
+- ✅ Parallel simulation system for training data generation
+- ⏳ Balancing 4-act progression (Act 1-4 validation)
+- ⏳ Neural network training pipeline (AlphaZero-style self-play)
+
+**AI Architecture:** Hybrid Nim + Python system using specialized neural networks (not LLMs)
+- Rule-based AI provides bootstrap training data
+- Neural networks learn optimal strategy via self-play reinforcement learning
+- ONNX Runtime for fast CPU/GPU inference (10-20ms vs 3-5s for LLMs)
+- See [AI System Architecture](docs/architecture/ai-system.md) for details
 
 🔮 **Future Phases:**
-- LLM inference service (llama.cpp with ROCm GPU acceleration)
-- Nim integration (HTTP API for AI player decisions)
+- Neural network training (PyTorch + ROCm GPU acceleration)
+- ONNX inference integration (Nim + ONNX Runtime)
 - UI development (TUI for order entry, game visualization)
 - Network integration (Nostr protocol, decentralized multiplayer)
 
