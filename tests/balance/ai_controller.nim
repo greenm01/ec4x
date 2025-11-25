@@ -217,6 +217,32 @@ proc getFleetStrength(fleet: Fleet): int =
   for squadron in fleet.squadrons:
     result += squadron.combatStrength()
 
+proc isSingleScoutSquadron(squadron: Squadron): bool =
+  ## Check if squadron is a single scout (ideal for espionage)
+  ## Phase 2c: Scout Operational Modes
+  result = squadron.flagship.shipClass == ShipClass.Scout and squadron.ships.len == 0
+
+proc countScoutsInFleet(fleet: Fleet): int =
+  ## Count total scouts in a fleet (for ELI mesh calculation)
+  ## Phase 2c: Scout Operational Modes
+  result = 0
+  for squadron in fleet.squadrons:
+    if squadron.flagship.shipClass == ShipClass.Scout:
+      result += 1  # Flagship
+    for ship in squadron.ships:
+      if ship.shipClass == ShipClass.Scout:
+        result += 1
+
+proc getAvailableSingleScouts(filtered: FilteredGameState, houseId: HouseId): seq[Fleet] =
+  ## Get all single-scout fleets available for espionage missions
+  ## Phase 2c: Scout Operational Modes
+  ## RESPECTS FOG-OF-WAR: Only returns own fleets
+  result = @[]
+  for fleet in filtered.ownFleets:
+    if fleet.owner == houseId and fleet.squadrons.len == 1:
+      if isSingleScoutSquadron(fleet.squadrons[0]):
+        result.add(fleet)
+
 proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: SystemId): Option[SystemId] =
   ## Find nearest uncolonized system using cube distance
   ## Returns closest uncolonized system to avoid all AIs targeting the same one
@@ -556,13 +582,15 @@ proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameS
       var pathIsSafe = true
       for pathSystemId in pathResult.path:
         if pathSystemId != colony.systemId and isSystemColonized(filtered, pathSystemId):
-          let pathColony = getColony(filtered, pathSystemId).get()
-          if pathColony.owner != controller.houseId:
-            # Check diplomatic status
-            let house = filtered.ownHouse
-            if house.diplomaticRelations.isEnemy(pathColony.owner):
-              pathIsSafe = false
-              break
+          let pathColonyOpt = getColony(filtered, pathSystemId)
+          if pathColonyOpt.isSome:
+            let pathColony = pathColonyOpt.get()
+            if pathColony.owner != controller.houseId:
+              # Check diplomatic status
+              let house = filtered.ownHouse
+              if house.diplomaticRelations.isEnemy(pathColony.owner):
+                pathIsSafe = false
+                break
 
       if not pathIsSafe:
         continue  # Skip routes through enemy territory
@@ -695,7 +723,10 @@ proc identifyInvasionOpportunities*(controller: var AIController, filtered: Filt
 
   for target in vulnerableTargets:
     let systemId = target.systemId
-    let colony = getColony(filtered, systemId).get()
+    let colonyOpt = getColony(filtered, systemId)
+    if colonyOpt.isNone:
+      continue  # Can't invade a system we can't see
+    let colony = colonyOpt.get()
 
     # Estimate defense strength (ground forces + starbase + nearby fleets)
     var defenseStrength = 0
@@ -767,8 +798,10 @@ proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGa
 
   # Identify fleets for invasion force (need 2-3 combat fleets)
   var selectedFleets: seq[FleetId] = @[]
+  var scoutFleets: seq[FleetId] = @[]  # Phase 2c: ELI mesh support
+
   for fleet in filtered.ownFleets:
-    if fleet.owner == controller.houseId and fleet.combatStrength() > 0:
+    if fleet.owner == controller.houseId:
       # Skip fleets already in operations
       var inOperation = false
       for op in controller.operations:
@@ -777,11 +810,20 @@ proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGa
           break
 
       if not inOperation:
-        selectedFleets.add(fleet.id)
-        if selectedFleets.len >= 3:
-          break
+        # Collect combat fleets
+        if fleet.combatStrength() > 0:
+          selectedFleets.add(fleet.id)
+          if selectedFleets.len >= 3:
+            break
+        # Phase 2c: Collect single scouts for ELI mesh (need 3+ for mesh network)
+        elif fleet.squadrons.len == 1 and isSingleScoutSquadron(fleet.squadrons[0]):
+          if scoutFleets.len < 4:  # Up to 4 scouts for strong ELI mesh
+            scoutFleets.add(fleet.id)
 
+  # Phase 2c: Add scouts to invasion force for ELI mesh
+  # Per specs: 3+ scouts form mesh network with magnified ELI capability
   if selectedFleets.len >= 2:
+    selectedFleets.add(scoutFleets)  # Append scout fleets to invasion force
     controller.planCoordinatedOperation(
       filtered,
       OperationType.Invasion,
@@ -1055,7 +1097,10 @@ proc identifyEconomicTargets*(controller: var AIController, filtered: FilteredGa
     # Target high-value colonies of economically strong enemies
     if intel.economicStrength > 0.8:  # Only target if they're competitive
       for systemId in intel.highValueTargets:
-        let colony = getColony(filtered, systemId).get()
+        let colonyOpt = getColony(filtered, systemId)
+        if colonyOpt.isNone:
+          continue  # Can't see this colony
+        let colony = colonyOpt.get()
         var value = float(colony.production)
 
         # Bonus for rich resources (denying them is valuable)
@@ -1325,7 +1370,10 @@ proc calculateDefensiveStrength(filtered: FilteredGameState, systemId: SystemId)
   if not isSystemColonized(filtered, systemId):
     return 0
 
-  let colony = getColony(filtered, systemId).get()
+  let colonyOpt = getColony(filtered, systemId)
+  if colonyOpt.isNone:
+    return 0  # Can't assess defense of invisible colony
+  let colony = colonyOpt.get()
   result = 0
 
   # Starbase strength (each starbase adds attack + defense strength)
@@ -1356,7 +1404,10 @@ proc estimateColonyValue(filtered: FilteredGameState, systemId: SystemId): int =
   if not isSystemColonized(filtered, systemId):
     return 0
 
-  let colony = getColony(filtered, systemId).get()
+  let colonyOpt = getColony(filtered, systemId)
+  if colonyOpt.isNone:
+    return 0  # Can't assess value of invisible colony
+  let colony = colonyOpt.get()
   result = 0
 
   # Production value
@@ -1390,7 +1441,11 @@ proc assessCombatSituation(controller: AIController, filtered: FilteredGameState
     result.recommendAttack = false
     return
 
-  let targetColony = getColony(filtered, targetSystem).get()
+  let targetColonyOpt = getColony(filtered, targetSystem)
+  if targetColonyOpt.isNone:
+    result.recommendAttack = false
+    return  # Can't attack invisible colony
+  let targetColony = targetColonyOpt.get()
   result.targetOwner = targetColony.owner
 
   # Don't attack our own colonies
@@ -1506,7 +1561,11 @@ proc assessInvasionViability(controller: AIController, filtered: FilteredGameSta
 
   # Get basic combat assessment first
   let combat = assessCombatSituation(controller, filtered, targetSystem)
-  let targetColony = getColony(filtered, targetSystem).get()
+  let targetColonyOpt = getColony(filtered, targetSystem)
+  if targetColonyOpt.isNone:
+    result.invasionViable = false
+    return  # Can't invade invisible colony
+  let targetColony = targetColonyOpt.get()
   let p = controller.personality
 
   # =============================================================================
@@ -1775,9 +1834,11 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
         if otherFleet.location == systemId and otherFleet.id != fleet.id:
           hasDefense = true
           break
-      let colony = getColony(filtered, systemId).get()
-      if colony.starbases.len > 0:
-        hasDefense = true
+      let colonyOpt = getColony(filtered, systemId)
+      if colonyOpt.isSome:
+        let colony = colonyOpt.get()
+        if colony.starbases.len > 0:
+          hasDefense = true
       if not hasDefense:
         undefendedColony = some(systemId)
         break
@@ -1790,7 +1851,8 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
         var isFrontier = false
         let adjacentIds = filtered.starMap.getAdjacentSystems(colony.systemId)
         for neighborId in adjacentIds:
-          if isSystemColonized(filtered, neighborId) and getColony(filtered, neighborId).get().owner != controller.houseId:
+          let neighborColony = getColony(filtered, neighborId)
+          if neighborColony.isSome and neighborColony.get().owner != controller.houseId:
             isFrontier = true
             break
         if isFrontier:
@@ -2094,9 +2156,11 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
             break
 
         # Check if colony has starbase
-        let colony = getColony(filtered, systemId).get()
-        if colony.starbases.len > 0:
-          hasDefense = true
+        let colonyOpt = getColony(filtered, systemId)
+        if colonyOpt.isSome:
+          let colony = colonyOpt.get()
+          if colony.starbases.len > 0:
+            hasDefense = true
 
         if not hasDefense:
           undefendedColony = some(systemId)
@@ -2113,10 +2177,12 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
           let adjacentIds = filtered.starMap.getAdjacentSystems(colony.systemId)
           for neighborId in adjacentIds:
             if isSystemColonized(filtered, neighborId):
-              let neighbor = getColony(filtered, neighborId).get()
-              if neighbor.owner != controller.houseId:
-                isFrontier = true
-                break
+              let neighborOpt = getColony(filtered, neighborId)
+              if neighborOpt.isSome:
+                let neighbor = neighborOpt.get()
+                if neighbor.owner != controller.houseId:
+                  isFrontier = true
+                  break
 
           if isFrontier:
             # Check if colony has defensive fleet
@@ -2342,9 +2408,11 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       if combat.recommendRetreat:
         criticalThreat = true
 
-  # Strategic needs assessment (FIXED: scouts only needed initially)
-  let needScouts = scoutCount < 2  # Need 2-3 scouts for exploration/ELI
-  let needMoreScouts = scoutCount < 3 and p.techPriority > 0.5 and militaryCount > 5
+  # Strategic needs assessment - Phase 2c: Scout Operational Modes
+  # Need 5-7 scouts: 2-3 for espionage missions, 3+ for ELI mesh on invasions
+  let needScouts = scoutCount < 3  # Minimum for basic espionage
+  let needMoreScouts = scoutCount < 5 and p.techPriority > 0.4 and militaryCount > 3
+  let needELIMesh = scoutCount < 7 and p.aggression > 0.5 and militaryCount > 5  # For invasion support
   # PRESTIGE OPTIMIZATION: Colonization gives +5 prestige
   # Expand aggressively when uncolonized systems available
   let needETACs = (etacCount < 2 and p.expansionDrive > 0.3 and
@@ -2643,8 +2711,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # LATE GAME: Specialized assets and optimization
     # ------------------------------------------------------------------------
 
-    # Additional scouts for ELI mesh networks
-    if needMoreScouts and scoutCount < 5:
+    # Additional scouts for ELI mesh networks (Phase 2c)
+    if (needMoreScouts or needELIMesh) and scoutCount < 7:
       let scoutCost = getShipConstructionCost(ShipClass.Scout)
       if house.treasury >= scoutCost:
         result.add(BuildOrder(
@@ -3028,7 +3096,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     turn: filtered.turn,
     fleetOrders: generateFleetOrders(controller, filtered, rng),
     buildOrders: generateBuildOrders(controller, filtered, rng),
-    researchAllocation: generateResearchAllocation(controller, state),
+    researchAllocation: generateResearchAllocation(controller, filtered),
     diplomaticActions: generateDiplomaticActions(controller, filtered, rng),
     populationTransfers: generatePopulationTransfers(controller, filtered, rng),
     squadronManagement: generateSquadronManagement(controller, filtered, rng),
