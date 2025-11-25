@@ -7,6 +7,14 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Phase 2c Complete: Scout Operational Modes + FoW Bug Fixes (2025-11-24)**
+  - Implemented single-scout squadrons for espionage (SpyPlanet, HackStarbase)
+  - Implemented multi-scout (3+) for ELI mesh networks on invasions
+  - Enhanced build strategy: 5-7 scouts instead of 2-3
+  - Invasion planning attaches up to 4 scouts for strong ELI mesh
+  - Added scout_count diagnostic metric for future analysis
+  - **Bonus:** Fixed 11 fog-of-war Option.get() bugs that could crash AI
+  - **Impact:** Scout operations fully functional, ELI mesh coordination active
 - ✅ **FOG-OF-WAR REFACTORING COMPLETE (2025-11-24)**
   - Removed TEMPORARY BRIDGE that defeated fog-of-war enforcement
   - Refactored ALL ~37 functions to use FilteredGameState instead of GameState
@@ -234,13 +242,14 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 - ✅ Fighters remain at colony if no suitable carriers available
 - **Results:** 0% capacity violations, 0% idle carriers in diagnostics
 
-**2c. Scout Operational Modes** ⏳ MEDIUM PRIORITY (After FoW + fighters)
-- Single-scout squadrons for espionage missions
-- Multi-scout squadrons for ELI mesh networks
-- Manual reorganization workflow
-- Mission type prioritization
-
-**Estimated Effort:** Medium complexity (~300 lines, 10 tests)
+**2c. Scout Operational Modes** ✅ **COMPLETE** (2025-11-24)
+- ✅ Single-scout squadrons for espionage missions (SpyPlanet, HackStarbase)
+- ✅ Multi-scout squadrons (3+) for ELI mesh networks on invasions
+- ✅ Enhanced build strategy: 5-7 scouts instead of 2-3
+- ✅ Invasion planning attaches up to 4 scouts for strong ELI mesh
+- ✅ Added scout_count diagnostic metric for future analysis
+- **Bonus:** Fixed 11 fog-of-war Option.get() bugs that could crash AI
+- **Results:** Scout operational modes implemented, ELI mesh coordination active
 
 **2d. ELI/CLK Arms Race Dynamics** ✅ **COMPLETE** (2025-11-24)
 - ✅ CLK research in heavy tech path (20% allocation) and moderate path (33%)
