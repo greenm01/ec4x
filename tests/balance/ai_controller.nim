@@ -2329,13 +2329,16 @@ proc hasViableColonizationTargets(filtered: FilteredGameState, houseId: HouseId)
   return false
 
 proc hasIdleETAC(filtered: FilteredGameState, houseId: HouseId): bool =
-  ## Returns true if we have an ETAC at a colony that's not currently moving
+  ## Returns true if we have an ETAC with PTU at a colony that's not currently moving
+  ## CRITICAL FIX: Must check for loaded PTU - empty ETACs can't colonize!
   ## Prevents building redundant ETACs when one is already waiting to go
   for colony in filtered.ownColonies:
     if colony.owner == houseId and colony.unassignedSpaceLiftShips.len > 0:
       for spaceLift in colony.unassignedSpaceLiftShips:
         if spaceLift.shipClass == ShipClass.ETAC:
-          return true
+          # CRITICAL: Check if ETAC has colonist cargo loaded
+          if spaceLift.cargo.cargoType == CargoType.Colonists and spaceLift.cargo.quantity > 0:
+            return true
 
   # Check fleets at owned colonies
   for fleet in filtered.ownFleets:
@@ -2350,7 +2353,9 @@ proc hasIdleETAC(filtered: FilteredGameState, houseId: HouseId): bool =
       if atOwnedColony:
         for spaceLift in fleet.spaceLiftShips:
           if spaceLift.shipClass == ShipClass.ETAC:
-            return true
+            # CRITICAL: Check if ETAC has colonist cargo loaded
+            if spaceLift.cargo.cargoType == CargoType.Colonists and spaceLift.cargo.quantity > 0:
+              return true
 
   return false
 
