@@ -3,7 +3,7 @@
 ## Implements strategic decision-making for different AI personalities
 ## to enable realistic game simulations
 
-import std/[tables, options, random, sequtils, strformat, algorithm, hashes]
+import std/[tables, options, random, sequtils, strformat, algorithm, hashes, sets]
 import ../../src/engine/[gamestate, orders, fleet, squadron, starmap, fog_of_war, logger]
 import ../../src/common/types/[core, units, tech, planets]
 import ../../src/engine/espionage/types as esp_types
@@ -386,6 +386,58 @@ proc findWeakestEnemyColony(filtered: FilteredGameState, houseId: HouseId, rng: 
 # =============================================================================
 # Intelligence Gathering
 # =============================================================================
+
+proc identifyEnemyHomeworlds(filtered: FilteredGameState): seq[SystemId] =
+  ## Identify likely enemy homeworlds for reconnaissance
+  ## Uses prestige rankings to find enemy starting positions
+  ## RESPECTS FOG-OF-WAR: Uses only public prestige data
+  result = @[]
+
+  # Get enemy houses (sorted by prestige, most powerful first)
+  var enemies: seq[HouseId] = @[]
+  for houseId, prestige in filtered.housePrestige:
+    if houseId != filtered.viewingHouse and not filtered.houseEliminated.getOrDefault(houseId, false):
+      enemies.add(houseId)
+
+  # Identify enemy homeworlds from visible colonies
+  # Homeworld = first colony we see from each house
+  var seenHouses = initHashSet[HouseId]()
+  for visCol in filtered.visibleColonies:
+    if visCol.owner != filtered.viewingHouse and visCol.owner notin seenHouses:
+      result.add(visCol.systemId)
+      seenHouses.incl(visCol.owner)
+
+  # If we haven't found all enemy homeworlds yet, we need to scout more
+  # Return systems we know exist but haven't visited yet (adjacent systems)
+  if result.len < enemies.len:
+    for systemId, visSystem in filtered.visibleSystems:
+      if visSystem.visibility == VisibilityLevel.Adjacent:
+        # Prioritize unvisited adjacent systems
+        if systemId notin result:
+          result.add(systemId)
+          if result.len >= enemies.len:
+            break
+
+proc needsReconnaissance(filtered: FilteredGameState, targetSystem: SystemId): bool =
+  ## Check if a system needs reconnaissance (stale or no intel)
+  ## Returns true if we should send scouts to gather intelligence
+  let visSystem = filtered.visibleSystems.getOrDefault(targetSystem)
+
+  # Need reconnaissance if:
+  # 1. Never visited (Adjacent or None visibility)
+  # 2. Stale intel (visited >10 turns ago)
+  case visSystem.visibility
+  of VisibilityLevel.None, VisibilityLevel.Adjacent:
+    return true  # Never visited, definitely need recon
+  of VisibilityLevel.Scouted:
+    # Stale if last scouted >10 turns ago
+    if visSystem.lastScoutedTurn.isSome:
+      return filtered.turn - visSystem.lastScoutedTurn.get() > 10
+    return true  # No scout record, should recon
+  of VisibilityLevel.Occupied, VisibilityLevel.Owned:
+    return false  # Already have current intel
+  else:
+    return true
 
 proc updateIntelligence*(controller: var AIController, filtered: FilteredGameState, systemId: SystemId,
                          turn: int, confidenceLevel: float = 1.0) =
@@ -2032,7 +2084,16 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
 
       # If no economic target found (or not economically focused), use standard military targeting
       if bestTarget.isNone:
-        for colony in filtered.ownColonies:
+        # DEBUG: Log visibility for invasion targeting
+        if filtered.visibleColonies.len > 0:
+          var enemyCount = 0
+          for colony in filtered.visibleColonies:
+            if colony.owner != controller.houseId:
+              enemyCount += 1
+          if enemyCount > 0:
+            logInfo(LogCategory.lcAI, &"{controller.houseId} sees {enemyCount} enemy colonies for invasion targeting")
+
+        for colony in filtered.visibleColonies:
           if colony.owner == controller.houseId:
             continue  # Skip our own colonies
 
@@ -2225,7 +2286,38 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
         # ALWAYS LOG: Warns when ETAC has no valid targets
         logWarn(LogCategory.lcAI, &"{controller.houseId} ETAC fleet {fleet.id} has NO colonization target " &
                 &"(location: {fleet.location}, all systems colonized?)")
-    elif p.expansionDrive > 0.3:
+    # Priority 4.5: Reconnaissance - Scout enemy homeworlds for invasion planning
+    # CRITICAL FIX: AI must gather intelligence on enemy colonies to enable invasions
+    # ANY fleet can do reconnaissance - cheap expendable ships are good probe fleets
+    if not hasETAC and fleet.squadrons.len == 0 and fleet.spaceLiftShips.len > 0:
+      # Use cheap spacelift ships (transports, scouts, etc) for reconnaissance
+      let enemyHomeworlds = identifyEnemyHomeworlds(filtered)
+      var reconTarget: Option[SystemId] = none(SystemId)
+
+      # Find closest enemy homeworld that needs reconnaissance
+      var minDist = 999
+      let fromCoords = filtered.starMap.systems[fleet.location].coords
+      for enemySystem in enemyHomeworlds:
+        if needsReconnaissance(filtered, enemySystem):
+          let coords = filtered.starMap.systems[enemySystem].coords
+          let dx = abs(coords.q - fromCoords.q)
+          let dy = abs(coords.r - fromCoords.r)
+          let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+          let dist = (dx + dy + dz) div 2
+          if dist < minDist:
+            minDist = dist
+            reconTarget = some(enemySystem)
+
+      if reconTarget.isSome:
+        logInfo(LogCategory.lcAI, &"{controller.houseId} fleet {fleet.id} conducting reconnaissance of enemy system {reconTarget.get()} (probe fleet)")
+        order.orderType = FleetOrderType.Move
+        order.targetSystem = reconTarget
+        order.targetFleet = none(FleetId)
+        result.add(order)
+        continue
+
+    # Priority 4.8: Generic Exploration - Scout uncolonized systems
+    if p.expansionDrive > 0.3:
       # Non-ETAC fleets with expansion drive: Scout uncolonized systems
       let targetOpt = findNearestUncolonizedSystem(filtered, fleet.location, fleet.id)
       if targetOpt.isSome:
