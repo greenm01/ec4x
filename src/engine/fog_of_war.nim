@@ -5,7 +5,7 @@
 
 import std/[tables, options, sets, sequtils, strutils]
 import ../common/types/[core, planets, tech]
-import gamestate, fleet, squadron, starmap
+import gamestate, fleet, squadron, starmap, order_types
 import intelligence/types as intel_types
 
 type
@@ -72,6 +72,7 @@ type
     ownHouse*: House
     ownColonies*: seq[Colony]
     ownFleets*: seq[Fleet]
+    ownFleetOrders*: Table[FleetId, FleetOrder]  # Persistent orders for own fleets
 
     # Visible systems
     visibleSystems*: Table[SystemId, VisibleSystem]
@@ -216,6 +217,13 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
   for fleetId, fleet in state.fleets:
     if fleet.owner == houseId:
       result.ownFleets.add(fleet)
+
+  # Own fleet orders (persistent orders for strategic planning)
+  result.ownFleetOrders = initTable[FleetId, FleetOrder]()
+  for fleetId, order in state.fleetOrders:
+    # Only include orders for fleets owned by this house
+    if fleetId in state.fleets and state.fleets[fleetId].owner == houseId:
+      result.ownFleetOrders[fleetId] = order
 
   # Build visible systems map
   result.visibleSystems = initTable[SystemId, VisibleSystem]()

@@ -4,7 +4,8 @@
 ## in the game world, arranged in a hexagonal grid pattern.
 
 import hex
-import std/options
+import std/[options, random]
+import types/planets
 
 type
   System* = object
@@ -13,15 +14,49 @@ type
     coords*: Hex        ## Hexagonal coordinates on the star map
     ring*: uint32       ## Distance from the central hub system
     player*: Option[uint]  ## Which player controls this system (if any)
+    planetClass*: PlanetClass  ## Habitability classification
+    resourceRating*: ResourceRating  ## Resource availability
 
 proc newSystem*(coords: Hex, ring: uint32, numRings: uint32, player: Option[uint] = none(uint)): System =
-  ## Create a new star system
+  ## Create a new star system with randomized planet properties
+  ## Planet distribution (realistic bell curve):
+  ## - Extreme/Desolate: 10% each (harsh frontier)
+  ## - Hostile/Harsh: 25% each (challenging colonies)
+  ## - Benign: 20% (average)
+  ## - Lush/Eden: 8%/2% (prizes worth fighting for)
+  ## Uses system ID as seed for deterministic generation
   let id = coords.toId(numRings)
+
+  # Use system ID as seed for deterministic planet generation
+  var rng = initRand(int64(id))
+
+  # Generate planet class (weighted distribution)
+  let planetRoll = rng.rand(99)
+  let planetClass =
+    if planetRoll < 10: PlanetClass.Extreme
+    elif planetRoll < 20: PlanetClass.Desolate
+    elif planetRoll < 45: PlanetClass.Hostile
+    elif planetRoll < 70: PlanetClass.Harsh
+    elif planetRoll < 90: PlanetClass.Benign
+    elif planetRoll < 98: PlanetClass.Lush
+    else: PlanetClass.Eden
+
+  # Generate resource rating (bell curve around Abundant)
+  let resourceRoll = rng.rand(99)
+  let resourceRating =
+    if resourceRoll < 10: ResourceRating.VeryPoor
+    elif resourceRoll < 30: ResourceRating.Poor
+    elif resourceRoll < 70: ResourceRating.Abundant
+    elif resourceRoll < 90: ResourceRating.Rich
+    else: ResourceRating.VeryRich
+
   System(
     id: id,
     coords: coords,
     ring: ring,
-    player: player
+    player: player,
+    planetClass: planetClass,
+    resourceRating: resourceRating
   )
 
 proc `$`*(s: System): string =

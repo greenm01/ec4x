@@ -19,6 +19,7 @@
 6. **Don't create new markdown docs without explicit permission**
 7. **Add focused API documentation** - when touching engine code, add concise doc comments explaining purpose and key behavior. Prioritize maintainability over comprehensiveness. Avoid verbose explanations or rationale unless architecturally critical.
 8. **Engine respects fog-of-war** - Never use omniscient game state. Only use intelligence database (house.intelligence) and visible systems.
+9. ** Use Data Oriented Design (DOD) software principles when feasible.
 
 ## File Organization Rules (CRITICAL - Read First!)
 

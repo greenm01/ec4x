@@ -4,6 +4,7 @@ import std/[tables, options, strutils]
 import ../common/[hex, system]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, ship, starmap
+import order_types  # Fleet order types (avoid circular dependency)
 import config/[prestige_config, military_config, tech_config]
 import diplomacy/types as dip_types
 import diplomacy/proposals as dip_proposals
@@ -177,6 +178,7 @@ type
     houses*: Table[HouseId, House]
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
+    fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
     diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
     turnDeadline*: int64          # Unix timestamp
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
