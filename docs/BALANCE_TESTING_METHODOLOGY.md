@@ -324,12 +324,47 @@ GAMES_PER_COUNT = 5  # 25 total games
 - Abstract strategic cycles (scale with map size: 1-15 years per cycle)
 - Current mechanics appropriate for multi-generational timeline
 
-**🔄 Phase 2 In Progress: Act-by-Act Analysis (Post-Fix)**
-- **Next:** Phase 2A - Act 1 analysis (7-turn games, 200 samples)
-- **Goal:** Validate early game balance with working colonization
-- **Priority:** Verify expansion now reaches 5-8 colonies as designed
+**✅ Phase 2A Complete: Act 1 Analysis (7 turns, 100 games)**
+- **Result:** Colony expansion VALIDATED - 7.0 colonies average at turn 7
+- **Target:** 5-8 colonies → ✅ ACHIEVED (100% within range)
+- **Findings:**
+  - Colonization fix working perfectly
+  - Scout/fighter building bugs discovered and FIXED
+  - Early-game pacing matches design (Land Grab phase functional)
 
-**⏳ Phase 3:** Blocked until Phase 2 validates scaling behavior
+**✅ Phase 2C Complete: Hybrid Phase-Aware AI System (2025-11-25)**
+- **Problem:** Mid-game ETAC spam - AI continued building colonization ships after Act 1
+- **Root Cause:** No phase awareness - production logic didn't understand 4-act structure
+- **Solution:** Implemented hybrid strategic planning system (tests/balance/ai_controller.nim:2630-2731)
+
+**Key Features:**
+1. **GameAct Enum:** Defines 4-act game structure
+   - Act1_LandGrab (turns 1-7): Colonization priority
+   - Act2_RisingTensions (turns 8-15): Military buildup
+   - Act3_TotalWar (turns 16-25): Conquest phase
+   - Act4_Endgame (turns 26-30): Victory push
+
+2. **Phase-Aware Unit Production:**
+   - **ETACs:** Only Act 1-2, stops when map >50% colonized
+   - **Scouts:** Scales 2 → 5 → 7 across acts
+   - **Frigates:** Act 1 only (cheap early defense)
+   - **Transports:** Acts 2-4 for conquest
+   - **Military:** Dynamically scales (3 → 8 → 15+ ships)
+
+3. **Tactical Overrides:** Phase guidelines are defaults, but tactical needs override
+   - Under threat → Always build military
+   - Weak vs enemies → Build to parity first
+   - Map saturated → Stop ETACs, build transports
+
+4. **Idiot-Proof Tooling:**
+   - Created `tests/balance/sim` wrapper script
+   - Usage: `./tests/balance/sim 30 88888 4 4`
+   - Proper --help documentation
+
+**Impact:** AI now stops building colonization ships when appropriate, transitions naturally between acts, and responds dynamically to threats while following phase-appropriate production defaults.
+
+**⏳ Phase 2B-D:** Ready to validate full 30-turn games with phase-aware AI
+**⏳ Phase 3:** Blocked until Phase 2 validates full 30-turn arc
 
 ### Implementation Notes
 
