@@ -155,6 +155,19 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     # BALANCE FIX: Enable auto-assign so new ships join fleets automatically
     result.colonies[homeSystemId].autoAssignFleets = true
 
+    # Add starting facilities (spaceport for ETACs, shipyard for military)
+    result.colonies[homeSystemId].spaceports.add(Spaceport(
+      id: $homeSystemId & "_spaceport1",
+      commissionedTurn: 1,
+      docks: 5
+    ))
+    result.colonies[homeSystemId].shipyards.add(Shipyard(
+      id: $homeSystemId & "_shipyard1",
+      commissionedTurn: 1,
+      docks: 10,
+      isCrippled: false
+    ))
+
     # Create starting fleets at homeworld (4 fleets matching original EC)
     let startingFleets = createStartingFleets(houseId, homeSystemId)
     for fleet in startingFleets:

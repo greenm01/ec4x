@@ -2412,13 +2412,23 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
 
   # Strategic needs assessment - Phase 2c: Scout Operational Modes
   # Need 5-7 scouts: 2-3 for espionage missions, 3+ for ELI mesh on invasions
-  let needScouts = scoutCount < 3  # Minimum for basic espionage
-  let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.3  # Removed military requirement - scouts are cheap!
-  let needELIMesh = scoutCount < 7 and p.aggression >= 0.3  # Removed military requirement
+  # EARLY GAME PRIORITY: Build scouts ONLY after colonization phase (after turn 10 or have 3+ colonies)
+  let isEarlyGame = filtered.turn < 10 or myColonies.len < 3
+  let needScouts = scoutCount < 2 and not isEarlyGame  # Start with 2 scouts mid-game for intel
+  let needMoreScouts = scoutCount < 5 and p.techPriority >= 0.3 and not isEarlyGame
+  let needELIMesh = scoutCount < 7 and p.aggression >= 0.3
+
   # PRESTIGE OPTIMIZATION: Colonization gives +5 prestige
-  # Expand aggressively when uncolonized systems available
-  let needETACs = (etacCount < 2 and p.expansionDrive > 0.3 and
-                   findNearestUncolonizedSystem(filtered, myColonies[0].systemId).isSome)
+  # EARLY GAME PRIORITY: Expand aggressively when uncolonized systems available
+  # Build more ETACs early game (4-5), fewer mid-game (2)
+  let etacTarget = if isEarlyGame: 4 else: 2
+  # ACCELERATION: Always build ETACs early game if under target (was gated by expansionDrive)
+  let needETACs = (etacCount < etacTarget and isEarlyGame)
+
+  # EARLY GAME: Need cheap exploration/combat ships (frigates) before expensive military
+  # Frigates cost 30 PP (vs 80+ for cruisers), build time 1 turn
+  # Build 3-5 frigates early for exploration and basic defense
+  let needFrigates = isEarlyGame and militaryCount < 5 and p.expansionDrive > 0.3
 
   # PRESTIGE OPTIMIZATION: Invasions give +10 prestige (highest single gain)
   # Build transports for aggressive AIs to enable invasions
@@ -2484,11 +2494,22 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     let needsInfrastructure = not hasSpaceport or not hasShipyard
 
     # ------------------------------------------------------------------------
-    # CRITICAL PRIORITY: Infrastructure for ship building
+    # INFRASTRUCTURE: Build spaceports/shipyards when needed for military
+    # EARLY GAME FIX: Don't block ETAC building - homeworld starts with shipyard
     # ------------------------------------------------------------------------
-    if needsInfrastructure and (needMilitary or p.aggression > 0.4):
-      # Need spaceport first, then shipyard
-      if not hasSpaceport and house.treasury >= 100:
+    if not hasShipyard and (needMilitary or p.aggression > 0.4):
+      # No shipyard at all - need to build one (shouldn't happen at homeworld)
+      if hasSpaceport and house.treasury >= 150:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Building,
+          quantity: 1,
+          shipClass: none(ShipClass),
+          buildingType: some("Shipyard"),
+          industrialUnits: 0
+        ))
+        break  # Build shipyard first
+      elif not hasSpaceport and house.treasury >= 100:
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Building,
@@ -2498,16 +2519,6 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           industrialUnits: 0
         ))
         break  # Build spaceport first
-      elif hasSpaceport and not hasShipyard and house.treasury >= 150:
-        result.add(BuildOrder(
-          colonySystem: colony.systemId,
-          buildType: BuildType.Building,
-          quantity: 1,
-          shipClass: none(ShipClass),
-          buildingType: some("Shipyard"),
-          industrialUnits: 0
-        ))
-        break  # Build shipyard next
 
     if not hasShipyard:
       continue  # Can't build ships without shipyard
@@ -2542,21 +2553,9 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
 
     # ------------------------------------------------------------------------
     # EARLY GAME: Initial exploration and expansion
-    # CRITICAL: ETACs must come BEFORE marines to enable colonization
+    # CRITICAL: ETACs BEFORE scouts - colonize first, intel second
+    # Priority: ETACs → Frigates → Scouts
     # ------------------------------------------------------------------------
-    if needScouts:
-      let scoutCost = getShipConstructionCost(ShipClass.Scout)
-      if house.treasury >= scoutCost:
-        result.add(BuildOrder(
-          colonySystem: colony.systemId,
-          buildType: BuildType.Ship,
-          quantity: 1,
-          shipClass: some(ShipClass.Scout),
-          buildingType: none(string),
-          industrialUnits: 0
-        ))
-        break
-
     if needETACs:
       let etacCost = getShipConstructionCost(ShipClass.ETAC)
       if house.treasury >= etacCost:
@@ -2565,6 +2564,34 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildType: BuildType.Ship,
           quantity: 1,
           shipClass: some(ShipClass.ETAC),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        break
+
+    # Early game frigates for cheap exploration and combat
+    # Cost 30 PP, build time 1 turn, can explore and fight
+    if needFrigates:
+      let frigateCost = getShipConstructionCost(ShipClass.Frigate)
+      if house.treasury >= frigateCost and canAffordMoreShips and not atSquadronLimit:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Frigate),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        break
+
+    if needScouts:
+      let scoutCost = getShipConstructionCost(ShipClass.Scout)
+      if house.treasury >= scoutCost:
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Scout),
           buildingType: none(string),
           industrialUnits: 0
         ))
