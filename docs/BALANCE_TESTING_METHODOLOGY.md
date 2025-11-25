@@ -604,6 +604,285 @@ These targets are **time-scale independent** (work for all map sizes):
 
 ---
 
+## Unknown-Unknowns Testing Philosophy
+
+### Concept Definition
+
+**Unknown-Unknowns** are emergent AI behaviors and balance issues that weren't anticipated during development. Unlike "known-unknowns" (expected edge cases), these are systemic problems that only reveal themselves through comprehensive observation of live AI gameplay.
+
+### Why This Matters
+
+Traditional game testing focuses on:
+- **Known-knowns:** Features we know exist and can verify (unit tests)
+- **Known-unknowns:** Expected edge cases we design tests for (integration tests)
+
+But complex AI systems exhibit:
+- **Unknown-unknowns:** Emergent behaviors from interaction of multiple systems
+  - Example: 18-month colonization deadlock (Phase 2)
+  - Example: 3-colony expansion plateau
+  - Example: Spy missions preventing colonization (fleet collision)
+  - Example: Economic personalities starving military budgets
+
+**Key Insight:** You can't write tests for problems you don't know exist. You must **observe** AI gameplay and let it reveal its own failure modes.
+
+### Unknown-Unknowns Detection Methodology
+
+#### 1. Comprehensive Diagnostic Logging
+
+Track EVERY relevant metric per-turn, per-house:
+```nim
+# tests/balance/diagnostics.nim
+type TurnDiagnostic = object
+  turn: int
+  house: string
+
+  # Core metrics
+  colony_count: int
+  treasury: int
+  prestige: int
+
+  # Fleet composition
+  squadron_count: int
+  etac_count: int
+  scout_count: int
+  fighter_count: int
+
+  # Production
+  gross_output: int
+  maintenance_cost: int
+
+  # Behavior indicators
+  fleets_with_orders: int
+  spy_missions_active: int
+  build_queue_depth: int
+
+  # Anomaly flags
+  negative_treasury: bool
+  zero_expansion_turns: int
+  fleet_collision_count: int
+```
+
+**Philosophy:** Log everything, analyze patterns later. Unknown-unknowns hide in correlations between seemingly unrelated metrics.
+
+#### 2. Multi-Game Pattern Analysis
+
+Run 50-200 games with diagnostic logging, then use data analysis to find anomalies:
+
+**Example Analysis Questions:**
+- Why are 75% of games seeing zero expansion after turn 10?
+- Why do Aggressive personalities accumulate 1500+ PP but stop building?
+- Why are spy missions correlated with colonization failure?
+- What metrics diverge between successful and failed games?
+
+**Tools:**
+```bash
+# Generate diagnostics for 100 games
+python3 tests/balance/run_parallel_diagnostics.py --games 100
+
+# Analyze patterns with Polars (fast dataframe library)
+python3 tests/balance/analyze_phase2_gaps.py balance_results/diagnostics/
+```
+
+#### 3. Comparative Analysis Across Personalities
+
+Track same metrics across all AI personalities to find outliers:
+
+| Personality | Avg Colonies @T30 | Avg Treasury @T30 | Expansion Rate |
+|-------------|-------------------|-------------------|----------------|
+| Economic    | 3.0               | 1200 PP           | 0.0/turn       |
+| Aggressive  | 2.7               | 1500 PP           | 0.0/turn       |
+| Espionage   | 3.4               | 800 PP            | 0.0/turn       |
+| Balanced    | 2.5               | 1000 PP           | 0.0/turn       |
+
+**Red Flag:** All personalities plateau at 3 colonies despite different expansionDrive values (0.5-0.8). This reveals a systemic constraint, not a personality tuning issue.
+
+#### 4. Act-by-Act Progression Validation
+
+Test expectations at each game act to find where behavior deviates:
+
+**Act 1 (Turn 7) Validation:**
+```python
+expected = {
+    "colonies": (5, 8),      # Expected range
+    "prestige": (50, 150),
+    "treasury": (0, 300),
+}
+
+actual = {
+    "colonies": 3,           # BELOW EXPECTED
+    "prestige": 45,          # WITHIN EXPECTED
+    "treasury": 200,         # WITHIN EXPECTED
+}
+
+# Unknown-unknown detected: Colony count consistently below target
+```
+
+**Act 2 (Turn 15) Validation:**
+```python
+expected = {
+    "colonies": (10, 15),
+    "prestige": (150, 500),
+    "military_conflicts": (1, 5),  # Number of wars
+}
+
+actual = {
+    "colonies": 3,                 # CATASTROPHICALLY BELOW
+    "prestige": 180,               # WITHIN EXPECTED
+    "military_conflicts": 0,       # BELOW (no wars due to no territory pressure)
+}
+
+# Cascading failure: Low expansion → no territory conflicts → no Act 2 dynamics
+```
+
+#### 5. Negative Testing: "What Should Happen But Doesn't?"
+
+Design tests that check for ABSENCE of expected behavior:
+
+```nim
+# tests/balance/test_unknown_unknowns.nim
+
+test "AI should continue expanding while uncolonized systems exist":
+  var failedGames = 0
+  for seed in 1..50:
+    let result = runGame(seed, turns=30)
+    let uncolonizedSystems = totalSystems - colonizedSystems
+
+    if uncolonizedSystems > 30 and allHousesStoppedExpanding():
+      failedGames += 1
+      log("UNKNOWN-UNKNOWN: Game ", seed, " - 30+ empty systems but no expansion")
+
+  check failedGames == 0  # Should be 0, but might reveal systemic issue
+
+test "Aggressive AI should build military after economic foundation":
+  # If Aggressive AI accumulates 1000+ PP without building ships, something's wrong
+
+test "High expansionDrive should correlate with more colonies":
+  # If expansionDrive=0.8 performs same as 0.5, the parameter isn't working
+```
+
+### Unknown-Unknowns Testing Workflow
+
+```
+1. Run 100+ games with full diagnostic logging
+   ↓
+2. Analyze diagnostic CSVs for anomalies
+   - Unexpected plateaus
+   - Missing expected behaviors
+   - Correlation between unrelated metrics
+   ↓
+3. Formulate hypotheses about root causes
+   ↓
+4. Add targeted logging to test hypotheses
+   ↓
+5. Run 50 more games with enhanced diagnostics
+   ↓
+6. Confirm root cause and implement fix
+   ↓
+7. Regression test: Run original 100 games again
+   - Unknown-unknown should disappear
+   - Watch for NEW unknown-unknowns (cascading failures)
+```
+
+### Example: Discovering the "3-Colony Plateau" Unknown-Unknown
+
+**Phase 1: Notice Anomaly**
+```bash
+$ python3 analyze_phase2_gaps.py balance_results/diagnostics/
+WARNING: 87% of games show zero expansion after turn 10
+```
+
+**Phase 2: Drill Down**
+```python
+# Filter games by turn 10+
+late_game = df.filter(pl.col("turn") >= 10)
+
+# Check ETAC counts
+late_game.select(["turn", "house", "etac_count"]).describe()
+# Result: etac_count = 0 for 95% of late-game turns
+
+# Unknown-unknown hypothesis: AI stops building ETACs after turn 10
+```
+
+**Phase 3: Find Root Cause**
+```nim
+# Search codebase for turn 10 threshold
+$ rg "turn.*10" tests/balance/ai_controller.nim
+
+let isEarlyGame = filtered.turn < 10 or myColonies.len < 3
+```
+
+**Phase 4: Understand Impact**
+- AI designed to build ETACs only when `isEarlyGame = true`
+- Once turn >= 10 AND colonies >= 3, AI stops expanding forever
+- This wasn't in requirements or design docs → unknown-unknown
+
+**Phase 5: Fix and Validate**
+```nim
+# Change: Remove arbitrary turn threshold, use personality instead
+let shouldExpand = (availableSystems > myColonies.len) and
+                   (expansionDrive > 0.3) and
+                   (hasEconomicCapacity())
+```
+
+### Categories of Unknown-Unknowns
+
+#### Type 1: Emergent Behavior
+Multiple systems interact in unexpected ways:
+- Fleet orders + fog-of-war → spy missions block colonization
+- Economic focus + military personality → starvation deadlock
+- Early game logic + late game state → eternal plateau
+
+#### Type 2: Missing Behavior
+Expected gameplay simply doesn't happen:
+- No mid-game wars despite territory pressure
+- No tech research despite high techPriority
+- No diplomatic negotiations despite isolation
+
+#### Type 3: Inverted Behavior
+System works opposite to design intent:
+- Higher expansionDrive → FEWER colonies (due to fleet collisions)
+- Higher aggression → LESS military (due to economic starvation)
+- More spy missions → LESS intelligence (due to detection)
+
+#### Type 4: Scaling Failures
+System works at small scale, breaks at large scale:
+- 4-player games: balanced
+- 12-player games: economic collapse (resource competition)
+- Small maps: smooth expansion
+- Large maps: pathfinding timeout
+
+### Continuous Unknown-Unknowns Monitoring
+
+**Development Workflow:**
+```bash
+# After ANY AI logic change:
+$ python3 tests/balance/run_parallel_diagnostics.py --games 100
+$ python3 tests/balance/analyze_phase2_gaps.py balance_results/diagnostics/
+
+# Review report for new anomalies:
+- Win rate shifts
+- Metric distribution changes
+- New correlations between variables
+- Behavior regressions
+```
+
+**Monthly Health Check:**
+```bash
+# Run comprehensive overnight test
+$ nohup python3 tests/balance/run_parallel_diagnostics.py --games 500 &
+
+# Generate longitudinal analysis
+$ python3 analyze_trends.py --compare-to-baseline
+```
+
+### Key Principle
+
+> "You don't know what you don't know until you observe it happening."
+
+Unknown-unknowns testing is about **humility** - accepting that complex systems will surprise you, and building infrastructure to catch those surprises early.
+
+---
+
 ## Best Practices
 
 ### When to Run Tests

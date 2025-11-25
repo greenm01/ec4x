@@ -19,7 +19,10 @@
 6. **Don't create new markdown docs without explicit permission**
 7. **Add focused API documentation** - when touching engine code, add concise doc comments explaining purpose and key behavior. Prioritize maintainability over comprehensiveness. Avoid verbose explanations or rationale unless architecturally critical.
 8. **Engine respects fog-of-war** - Never use omniscient game state. Only use intelligence database (house.intelligence) and visible systems.
-9. ** Use Data Oriented Design (DOD) software principles when feasible.
+9. **Use Data Oriented Design (DOD) software principles when feasible**
+10. **🔴 CRITICAL: Use proper logging, not echo** - See "Logging Rules" section below
+11. **🔴 CRITICAL: Track all player-affecting metrics** - See "Unknown-Unknowns Testing" section below
+12. **🔴 CRITICAL: Force recompile in test scripts** - Prevent stale binary bugs
 
 ## File Organization Rules (CRITICAL - Read First!)
 
@@ -71,6 +74,205 @@
 2. **Feature complete?** → Update `docs/TODO.md`, remove from OPEN_ISSUES.md
 3. **Architecture explanation?** → Add as doc comment in source file
 4. **Balance test result?** → Auto-generated, already in balance_results/
+
+---
+
+## 🔴 Logging Rules (CRITICAL)
+
+### Why Logging Matters
+
+The "Brain-Dead AI" bug (2025-11-25) was invisible for hours because we used `echo` statements that disappear in release builds. Proper logging would have caught this immediately.
+
+### Nim Logging Architecture
+
+**Use `std/logging` for all engine code:**
+
+```nim
+import std/logging
+
+# Initialize logger in main.nim or daemon.nim
+var logger = newConsoleLogger(lvlInfo, useStderr=true)
+addHandler(logger)
+
+# In engine modules
+import std/logging
+
+proc resolveTurn*(state: var GameState, orders: Table[HouseId, OrderPacket]): TurnResult =
+  info "Resolving turn ", state.turn
+  debug "Processing ", orders.len, " order packets"
+
+  # Critical events - always logged
+  info "Turn ", state.turn, " resolved: ", result.events.len, " events"
+
+  # Detailed traces - only in debug builds
+  debug "Fleet ", fleetId, " moved from ", oldLoc, " to ", newLoc
+
+  # Errors - always logged with context
+  error "Invalid order from ", houseId, ": ", order, " - reason: ", reason
+```
+
+### Log Levels
+
+- **`lvlError`** - Critical failures (invalid orders, state corruption)
+- **`lvlWarn`** - Concerning behavior (missing orders, zero expansion)
+- **`lvlInfo`** - Important events (turn resolution, colonization, combat)
+- **`lvlDebug`** - Detailed traces (fleet movement, order processing)
+- **`lvlAll`** - Everything (use sparingly - performance impact)
+
+### When to Log
+
+✅ **Always Log:**
+- Turn start/end
+- Order validation failures
+- Combat outcomes
+- Colony establishment
+- Fleet commissioning
+- State mutations (with before/after values)
+
+✅ **Log at Info Level:**
+- AI decision rationale (why this order was chosen)
+- Resource allocation (why build X not Y)
+- Strategic pivots (economy → military)
+
+✅ **Log at Debug Level:**
+- Fleet pathfinding
+- Fog-of-war filtering
+- Intelligence gathering
+- Detailed combat calculations
+
+❌ **Don't Log:**
+- Inside tight loops (performance)
+- Redundant info (already in TurnResult)
+- Secrets/passwords (security)
+
+### File Logging for Post-Mortem
+
+```nim
+# For balance testing, write to files
+var fileLogger = newFileLogger("balance_results/game_12345.log",
+                               fmtStr="$time [$levelname] $appname: ")
+addHandler(fileLogger)
+```
+
+### Integration with Diagnostics
+
+Logging complements diagnostics:
+- **Diagnostics (CSV):** Quantitative metrics for pattern analysis
+- **Logs (text):** Qualitative context for debugging specific games
+
+---
+
+## 🔴 Unknown-Unknowns Testing (CRITICAL)
+
+### Philosophy
+
+> "You don't know what you don't know until you observe it happening."
+
+Complex AI systems exhibit emergent behaviors that can't be predicted. The only way to catch them is **comprehensive observation** of live gameplay.
+
+### The Unknown-Unknown Discovery That Almost Cost Us
+
+**2025-11-25: The "Stale Binary" Meta-Bug**
+
+**Symptom:** 100-game test showed AI stuck at 1 colony forever (0% expansion)
+**Investigation:** Manual test showed AI working perfectly
+**Root Cause:** Test script was using **stale binary compiled before persistent orders**
+**Impact:** 4+ hours wasted chasing a "bug" that didn't exist in code
+**Lesson:** Testing infrastructure itself can have unknown-unknowns!
+
+### Comprehensive Metrics Tracking
+
+**Rule:** Track EVERY metric that affects player experience.
+
+See `tests/balance/diagnostics.nim` for full implementation. Minimum metrics:
+
+```nim
+type DiagnosticMetrics = object
+  # Economy
+  treasury, production, grossOutput, maintenanceCost, constructionSpending
+
+  # Military
+  squadronCount, etacCount, scoutCount, fighterCount, raiderCount
+
+  # Orders (CRITICAL for catching AI failures)
+  fleetOrdersSubmitted, buildOrdersSubmitted, colonizeOrdersSubmitted
+  ordersRejected, rejectionReasons
+
+  # Build Queues (CRITICAL for catching construction stalls)
+  totalBuildQueueDepth, etacInConstruction, shipsUnderConstruction
+
+  # Commissioning (CRITICAL for catching production failures)
+  shipsCommissionedThisTurn, etacCommissionedThisTurn
+
+  # Fleet Activity (CRITICAL for catching movement bugs)
+  fleetsMoved, systemsColonized, failedColonizationAttempts
+  fleetsWithOrders, stuckFleets
+
+  # ETAC Specific (CRITICAL for expansion)
+  totalETACs, etacsWithoutOrders, etacsInTransit
+```
+
+### Detection Workflow
+
+```
+1. Run 100+ games with full diagnostic logging
+   ↓
+2. Analyze with Polars (Python dataframes)
+   - Find anomalies (zero orders, stuck colonies)
+   - Correlate metrics (treasury up, orders down = bug)
+   ↓
+3. Formulate hypotheses
+   ↓
+4. Add targeted logging to engine
+   ↓
+5. Run 50 more games with enhanced logs
+   ↓
+6. Confirm root cause → fix → regression test
+```
+
+### Regression Prevention
+
+**Test Script Rules:**
+
+```python
+# ❌ BAD - uses cached binary
+def run_test():
+    subprocess.run(["./run_simulation", ...])
+
+# ✅ GOOD - forces recompile
+def run_test():
+    # Check if source newer than binary
+    if is_source_newer("run_simulation.nim", "run_simulation"):
+        subprocess.run(["nim", "c", "-d:release", "run_simulation.nim"])
+
+    # Verify binary timestamp
+    binary_time = os.path.getmtime("run_simulation")
+    if time.time() - binary_time > 3600:  # 1 hour old
+        logger.warning("Binary is >1 hour old - may be stale")
+
+    subprocess.run(["./run_simulation", ...])
+```
+
+### Integration with CI/CD
+
+```yaml
+# .github/workflows/balance-tests.yml
+- name: Force Clean Build
+  run: |
+    rm -f tests/balance/run_simulation
+    nim c -d:release tests/balance/run_simulation.nim
+
+- name: Verify Binary Timestamp
+  run: |
+    if [ $(find tests/balance/run_simulation -mmin +5) ]; then
+      echo "ERROR: Binary not freshly compiled!"
+      exit 1
+    fi
+```
+
+### Documentation
+
+See `docs/BALANCE_TESTING_METHODOLOGY.md` section "Unknown-Unknowns Testing Philosophy" for complete methodology.
 
 ---
 
