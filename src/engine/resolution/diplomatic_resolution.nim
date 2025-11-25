@@ -10,6 +10,7 @@ import ../../common/[hex, types/core]
 import ../gamestate, ../orders
 import ../diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_proposals]
 import ../prestige
+import ../intelligence/diplomatic_intel
 
 proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, OrderPacket]) =
   ## Process diplomatic actions (per gameplay.md:1.3.3 - Command Phase)
@@ -87,6 +88,15 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
             proposal.status = dip_proposals.ProposalStatus.Accepted
             state.pendingProposals[proposalIndex] = proposal
             echo "      Pact established"
+
+            # Generate intelligence reports for all houses
+            diplomatic_intel.generatePactFormedIntel(
+              state,
+              proposal.proposer,
+              houseId,
+              "Non-Aggression",
+              state.turn
+            )
           else:
             echo "      Pact establishment failed (blocked)"
 
@@ -199,6 +209,21 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
               dip_types.DiplomaticState.Enemy,
               state.turn
             )
+
+            # Generate intelligence reports - pact break leads to war
+            diplomatic_intel.generateDiplomaticBreakIntel(
+              state,
+              houseId,
+              action.targetHouse,
+              "Non-Aggression Pact",
+              state.turn
+            )
+            diplomatic_intel.generateWarDeclarationIntel(
+              state,
+              houseId,
+              action.targetHouse,
+              state.turn
+            )
           else:
             echo "      No pact exists to break"
 
@@ -211,11 +236,27 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
             state.turn
           )
 
+          # Generate war declaration intelligence
+          diplomatic_intel.generateWarDeclarationIntel(
+            state,
+            houseId,
+            action.targetHouse,
+            state.turn
+          )
+
         of DiplomaticActionType.SetNeutral:
           echo "    ", houseId, " set ", action.targetHouse, " to Neutral"
           dip_engine.setDiplomaticState(
             state.houses[houseId].diplomaticRelations,
             action.targetHouse,
             dip_types.DiplomaticState.Neutral,
+            state.turn
+          )
+
+          # Generate peace treaty intelligence
+          diplomatic_intel.generatePeaceTreatyIntel(
+            state,
+            houseId,
+            action.targetHouse,
             state.turn
           )

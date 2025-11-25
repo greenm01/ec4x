@@ -45,7 +45,7 @@ import ../research/[types as res_types, costs as res_costs, effects as res_effec
 import ../espionage/[types as esp_types, engine as esp_engine]
 import ../diplomacy/[types as dip_types, proposals as dip_proposals]
 import ../blockade/engine as blockade_engine
-import ../intelligence/[detection, types as intel_types, generator as intel_gen]
+import ../intelligence/[detection, types as intel_types, generator as intel_gen, starbase_surveillance, scout_intel]
 import ../population/[types as pop_types]
 import ../config/[espionage_config, population_config, ground_units_config, construction_config, gameplay_config, military_config]
 import ../colonization/engine as col_engine
@@ -72,9 +72,12 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       echo "      Build order failed: colony not owned by ", packet.houseId
       continue
 
-    # Check if colony already has construction in progress
-    if colony.underConstruction.isSome:
-      echo "      Build order failed: system ", order.colonySystem, " already building something"
+    # Check if colony has dock capacity for more construction projects
+    # NEW: Build queue system - colonies can have multiple projects up to dock capacity
+    if not colony.canAcceptMoreProjects():
+      let capacity = colony.getConstructionDockCapacity()
+      let active = colony.getActiveConstructionProjects()
+      echo "      Build order failed: system ", order.colonySystem, " at capacity (", active, "/", capacity, " docks used)"
       continue
 
     # Convert gamestate.Colony to economy.Colony for construction functions
@@ -131,11 +134,14 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
     if construction.startConstruction(econColony, project):
       # Convert back and update game state
       var updatedColony = colony
-      updatedColony.underConstruction = some(project)
+      updatedColony.underConstruction = some(project)  # DEPRECATED: Legacy field (kept for compatibility)
+      updatedColony.constructionQueue.add(project)      # NEW: Add to build queue
       state.colonies[order.colonySystem] = updatedColony
 
+      let queuePos = updatedColony.constructionQueue.len
+      let capacity = updatedColony.getConstructionDockCapacity()
       echo "      Started construction at system ", order.colonySystem, ": ", projectDesc
-      echo "        Cost: ", project.costTotal, " PP, Est. ", project.turnsRemaining, " turns"
+      echo "        Cost: ", project.costTotal, " PP, Est. ", project.turnsRemaining, " turns (Queue: ", queuePos, "/", capacity, " docks)"
 
       # Generate event
       events.add(GameEvent(
@@ -1738,15 +1744,15 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       survivingScouts[scoutId] = scout
 
       # Generate intelligence reports based on mission type
+      # Enhanced scout intelligence system automatically:
+      # - Generates detailed scout encounter reports
+      # - Tracks fleet movement history over time
+      # - Tracks construction activity over multiple visits
       case scout.mission
       of SpyMissionType.SpyOnPlanet:
         echo "    Spy scout ", scoutId, " gathering planetary intelligence at system ", scoutLocation
-        let report = intel_gen.generateColonyIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
-        if report.isSome:
-          var house = state.houses[scout.owner]
-          house.intelligence.addColonyReport(report.get())
-          state.houses[scout.owner] = house
-          echo "      Intel: Colony has ", report.get().population, " pop, ", report.get().industry, " IU, ", report.get().defenses, " ground units"
+        scout_intel.processScoutIntelligence(state, scoutId, scout.owner, scoutLocation)
+        echo "      Enhanced colony intel: population, industry, defenses, construction tracking"
 
       of SpyMissionType.HackStarbase:
         echo "    Spy scout ", scoutId, " hacking starbase at system ", scoutLocation
@@ -1759,15 +1765,16 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
       of SpyMissionType.SpyOnSystem:
         echo "    Spy scout ", scoutId, " conducting system surveillance at ", scoutLocation
-        let report = intel_gen.generateSystemIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
-        if report.isSome:
-          var house = state.houses[scout.owner]
-          house.intelligence.addSystemReport(report.get())
-          state.houses[scout.owner] = house
-          echo "      Intel: Detected ", report.get().detectedFleets.len, " enemy fleets"
+        scout_intel.processScoutIntelligence(state, scoutId, scout.owner, scoutLocation)
+        echo "      Enhanced system intel: fleet composition, movement patterns, cargo details"
 
   # Update spy scouts in game state (remove detected ones)
   state.spyScouts = survivingScouts
+
+  # Process starbase surveillance (continuous monitoring every turn)
+  echo "  Processing starbase surveillance..."
+  var survRng = initRand(state.turn + 12345)  # Unique seed for surveillance
+  starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng)
 
   # Convert GameState colonies to economy engine format
   var econColonies: seq[econ_types.Colony] = @[]
@@ -1846,11 +1853,22 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
            " colonies under blockade) -> ", state.houses[houseId].prestige
 
   # Process construction completion - decrement turns and complete projects
+  # NEW: Process ALL projects in construction queue (not just legacy single project)
   for systemId, colony in state.colonies.mpairs:
-    if colony.underConstruction.isSome:
-      var project = colony.underConstruction.get()
+    # Process build queue (all projects in parallel)
+    var completedProjects: seq[econ_types.ConstructionProject] = @[]
+    var remainingProjects: seq[econ_types.ConstructionProject] = @[]
+
+    for project in colony.constructionQueue.mitems:
       project.turnsRemaining -= 1
 
+      if project.turnsRemaining <= 0:
+        completedProjects.add(project)
+      else:
+        remainingProjects.add(project)
+
+    # Process completed projects
+    for project in completedProjects:
       if project.turnsRemaining <= 0:
         # Construction complete!
         echo "    Construction completed at system ", systemId, ": ", project.itemId
@@ -2008,11 +2026,15 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           # Just log completion
           echo "      Infrastructure expansion completed at system ", systemId
 
-        # Clear construction slot
-        colony.underConstruction = none(econ_types.ConstructionProject)
-      else:
-        # Still under construction
-        colony.underConstruction = some(project)
+    # Update construction queue with remaining (in-progress) projects
+    colony.constructionQueue = remainingProjects
+
+    # LEGACY SUPPORT: Update underConstruction field for backwards compatibility
+    # Keep the first in-progress project as the "active" one
+    if remainingProjects.len > 0:
+      colony.underConstruction = some(remainingProjects[0])
+    else:
+      colony.underConstruction = none(econ_types.ConstructionProject)
 
   # Process research allocation
   # Per economy.md:4.0: Players allocate PP to research each turn

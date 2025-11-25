@@ -29,6 +29,12 @@ type
     starbaseLevel*: int          # 0 if no starbase
     constructionQueue*: seq[string]  # Item IDs in construction (if successful spy)
 
+    # Orbital defenses (visible when approaching colony for orbital missions)
+    unassignedSquadronCount*: int    # Combat squadrons at colony not in fleets
+    reserveFleetCount*: int          # Reserve fleets at colony (visible, half AS/DS)
+    mothballedFleetCount*: int       # Mothballed fleets (offline but visible)
+    shipyardCount*: int              # Space-based construction facilities (NOT spaceports)
+
   SystemIntelReport* = object
     ## Intelligence on enemy fleets in a system (SpyOnSystem mission)
     ## Per intel.md:96-105
@@ -85,6 +91,150 @@ type
     detected*: bool           # Was the perpetrator identified?
     description*: string
 
+  CombatPhase* {.pure.} = enum
+    ## Phase of combat where encounter occurred
+    Space,      # Space combat (mobile fleets)
+    Orbital,    # Orbital combat (guard fleets, unassigned squadrons, starbases)
+    Planetary   # Planetary invasion
+
+  CombatOutcome* {.pure.} = enum
+    ## Outcome of combat from reporter's perspective
+    Victory,       # Defeated enemy
+    Defeat,        # Defeated by enemy
+    Retreat,       # Tactical retreat
+    MutualRetreat, # Both sides retreated
+    Ongoing        # Combat continues (for pre-combat reports)
+
+  FleetOrderIntel* = object
+    ## Intelligence on enemy fleet's standing orders
+    orderType*: string        # Order type name (e.g., "Patrol", "GuardPlanet")
+    targetSystem*: Option[SystemId]  # Target system if applicable
+
+  SpaceLiftCargoIntel* = object
+    ## Intelligence on spacelift ship cargo (troop transports, ETACs)
+    shipClass*: string        # ETAC or TroopTransport
+    cargoType*: string        # Marines, Colonists, Supplies, or Empty
+    quantity*: int            # How many units loaded (0 = empty)
+    isCrippled*: bool         # Ship damage status
+
+  CombatFleetComposition* = object
+    ## Detailed fleet composition observed in combat
+    fleetId*: FleetId
+    owner*: HouseId
+    standingOrders*: Option[FleetOrderIntel]  # Fleet's orders (if observed)
+    squadrons*: seq[SquadronIntel]  # All squadrons in fleet
+    spaceLiftShips*: seq[SpaceLiftCargoIntel]  # Transport ships with cargo details
+    isCloaked*: bool                # Was fleet cloaked (if detected)
+
+  CombatEncounterReport* = object
+    ## Intelligence report from combat encounter
+    ## Generated automatically when fleets engage in combat
+    ## Surviving ships report detailed composition and outcome
+    reportId*: string         # Unique report ID
+    turn*: int                # Turn when combat occurred
+    systemId*: SystemId       # Where combat occurred
+    phase*: CombatPhase       # Space, Orbital, or Planetary
+    reportingHouse*: HouseId  # House that generated this report
+
+    # Pre-combat intelligence (always available)
+    alliedForces*: seq[CombatFleetComposition]  # Own forces in combat
+    enemyForces*: seq[CombatFleetComposition]   # Enemy forces observed
+
+    # Post-combat intelligence (only if survivors)
+    outcome*: CombatOutcome      # Battle outcome
+    alliedLosses*: seq[string]   # Lost squadron IDs
+    enemyLosses*: seq[string]    # Observed enemy losses (ship classes)
+    retreatedAllies*: seq[FleetId]   # Own fleets that retreated
+    retreatedEnemies*: seq[FleetId]  # Enemy fleets that retreated (if observed)
+    survived*: bool              # Did reporting fleet survive?
+
+  ScoutEncounterType* {.pure.} = enum
+    ## Type of encounter a scout observed
+    FleetSighting,       # Enemy fleet observed
+    ColonyDiscovered,    # New colony found
+    Bombardment,         # Witnessed bombardment
+    Blockade,            # Blockade established/ongoing
+    Combat,              # Witnessed combat between other forces
+    Construction,        # Construction activity observed
+    FleetMovement,       # Fleet movement pattern detected
+    DiplomaticActivity   # Diplomatic event observed (pacts, war declarations)
+
+  SensorQuality* {.pure.} = enum
+    ## Quality of sensor detection
+    None,           # Not detected
+    Visual,         # Basic visual detection
+    Scan,           # Active sensor scan (starbase level)
+    Perfect         # Perfect knowledge (own assets)
+
+  StarbaseSurveillanceReport* = object
+    ## Continuous surveillance from starbase advanced sensors
+    ## Starbases monitor their sector (system + adjacent systems) automatically
+    ## Only scouts and cloaked raiders can evade detection (stealth roll required)
+    starbaseId*: string
+    systemId*: SystemId           # Starbase location
+    owner*: HouseId               # Starbase owner
+    turn*: int                    # Surveillance turn
+
+    # Detected activity in this system and adjacent systems
+    detectedFleets*: seq[tuple[fleetId: FleetId, location: SystemId, owner: HouseId, shipCount: int]]
+    undetectedFleets*: seq[FleetId]  # Fleets that passed stealth check (for internal tracking)
+
+    # System activity
+    transitingFleets*: seq[tuple[fleetId: FleetId, fromSystem: SystemId, toSystem: SystemId]]
+    combatDetected*: seq[SystemId]    # Systems where combat occurred
+    bombardmentDetected*: seq[SystemId]  # Systems under bombardment
+
+    # Threat assessment
+    significantActivity*: bool        # Major fleet movements or combat
+    threatsDetected*: int            # Count of enemy fleets detected
+
+  ScoutEncounterReport* = object
+    ## Detailed report from scout reconnaissance
+    ## Scouts generate these for EVERYTHING they observe
+    reportId*: string
+    scoutId*: string              # Which scout made the observation
+    turn*: int
+    systemId*: SystemId
+    encounterType*: ScoutEncounterType
+
+    # What was observed (depending on encounter type)
+    observedHouses*: seq[HouseId]  # All houses involved
+    fleetDetails*: seq[FleetIntel] # Detailed fleet composition
+    colonyDetails*: Option[ColonyIntelReport]  # Colony details if applicable
+
+    # Movement intelligence
+    fleetMovements*: seq[tuple[fleetId: FleetId, fromSystem: Option[SystemId], toSystem: Option[SystemId]]]
+
+    # Activity description
+    description*: string          # Human-readable description
+    significance*: int            # 1-10 importance rating
+
+  FleetMovementHistory* = object
+    ## Historical tracking of fleet movements
+    ## Built up from multiple scout sightings
+    fleetId*: FleetId
+    owner*: HouseId
+    sightings*: seq[tuple[turn: int, systemId: SystemId]]  # Chronological sightings
+    patrolRoute*: Option[seq[SystemId]]  # Detected patrol pattern
+    lastKnownLocation*: SystemId
+    lastSeen*: int
+
+  ConstructionActivityReport* = object
+    ## Track construction progress at enemy colonies over time
+    systemId*: SystemId
+    owner*: HouseId
+    observedTurns*: seq[int]      # When scouts visited
+
+    # Construction tracking
+    infrastructureHistory*: seq[tuple[turn: int, level: int]]
+    shipyardCount*: int           # Current count
+    spaceportCount*: int          # Current count
+    starbaseCount*: int           # Current count
+
+    # Active projects observed
+    activeProjects*: seq[string]  # Item IDs being built
+    completedSinceLastVisit*: seq[string]  # What was completed
+
   IntelligenceDatabase* = object
     ## Collection of all intelligence reports for a house
     ## Stored per-house in GameState
@@ -92,6 +242,15 @@ type
     systemReports*: Table[SystemId, SystemIntelReport]
     starbaseReports*: Table[SystemId, StarbaseIntelReport]
     espionageActivity*: seq[EspionageActivityReport]  # Log of espionage against this house
+    combatReports*: seq[CombatEncounterReport]        # Combat encounter reports (chronological)
+
+    # Enhanced scout intelligence
+    scoutEncounters*: seq[ScoutEncounterReport]       # All scout observations
+    fleetMovementHistory*: Table[FleetId, FleetMovementHistory]  # Track fleet movements
+    constructionActivity*: Table[SystemId, ConstructionActivityReport]  # Track construction
+
+    # Starbase surveillance
+    starbaseSurveillance*: seq[StarbaseSurveillanceReport]  # Automated starbase sensor reports
 
 proc newIntelligenceDatabase*(): IntelligenceDatabase =
   ## Create empty intelligence database
@@ -99,6 +258,11 @@ proc newIntelligenceDatabase*(): IntelligenceDatabase =
   result.systemReports = initTable[SystemId, SystemIntelReport]()
   result.starbaseReports = initTable[SystemId, StarbaseIntelReport]()
   result.espionageActivity = @[]
+  result.combatReports = @[]
+  result.scoutEncounters = @[]
+  result.fleetMovementHistory = initTable[FleetId, FleetMovementHistory]()
+  result.constructionActivity = initTable[SystemId, ConstructionActivityReport]()
+  result.starbaseSurveillance = @[]
 
 proc addColonyReport*(db: var IntelligenceDatabase, report: ColonyIntelReport) =
   ## Add or update colony intelligence report
@@ -115,6 +279,75 @@ proc addStarbaseReport*(db: var IntelligenceDatabase, report: StarbaseIntelRepor
 proc addEspionageActivity*(db: var IntelligenceDatabase, report: EspionageActivityReport) =
   ## Add espionage activity report to log
   db.espionageActivity.add(report)
+
+proc addCombatReport*(db: var IntelligenceDatabase, report: CombatEncounterReport) =
+  ## Add combat encounter report to chronological log
+  db.combatReports.add(report)
+
+proc addScoutEncounter*(db: var IntelligenceDatabase, report: ScoutEncounterReport) =
+  ## Add scout encounter report to intelligence log
+  db.scoutEncounters.add(report)
+
+proc addStarbaseSurveillance*(db: var IntelligenceDatabase, report: StarbaseSurveillanceReport) =
+  ## Add starbase surveillance report
+  db.starbaseSurveillance.add(report)
+
+proc updateFleetMovementHistory*(db: var IntelligenceDatabase, fleetId: FleetId, owner: HouseId, systemId: SystemId, turn: int) =
+  ## Update fleet movement tracking with new sighting
+  if fleetId notin db.fleetMovementHistory:
+    db.fleetMovementHistory[fleetId] = FleetMovementHistory(
+      fleetId: fleetId,
+      owner: owner,
+      sightings: @[],
+      patrolRoute: none(seq[SystemId]),
+      lastKnownLocation: systemId,
+      lastSeen: turn
+    )
+
+  var history = db.fleetMovementHistory[fleetId]
+  history.sightings.add((turn, systemId))
+  history.lastKnownLocation = systemId
+  history.lastSeen = turn
+
+  # Detect patrol patterns (if fleet visits same systems repeatedly)
+  # TODO: Pattern detection algorithm
+
+  db.fleetMovementHistory[fleetId] = history
+
+proc updateConstructionActivity*(db: var IntelligenceDatabase, systemId: SystemId, owner: HouseId, turn: int,
+                                 infrastructure: int, shipyards: int, spaceports: int, starbases: int,
+                                 activeProjects: seq[string]) =
+  ## Update construction activity tracking for a colony
+  if systemId notin db.constructionActivity:
+    db.constructionActivity[systemId] = ConstructionActivityReport(
+      systemId: systemId,
+      owner: owner,
+      observedTurns: @[],
+      infrastructureHistory: @[],
+      shipyardCount: shipyards,
+      spaceportCount: spaceports,
+      starbaseCount: starbases,
+      activeProjects: activeProjects,
+      completedSinceLastVisit: @[]
+    )
+
+  var activity = db.constructionActivity[systemId]
+
+  # Detect completed projects (were in activeProjects before, not anymore)
+  var completed: seq[string] = @[]
+  for oldProject in activity.activeProjects:
+    if oldProject notin activeProjects:
+      completed.add(oldProject)
+
+  activity.observedTurns.add(turn)
+  activity.infrastructureHistory.add((turn, infrastructure))
+  activity.shipyardCount = shipyards
+  activity.spaceportCount = spaceports
+  activity.starbaseCount = starbases
+  activity.activeProjects = activeProjects
+  activity.completedSinceLastVisit = completed
+
+  db.constructionActivity[systemId] = activity
 
 proc getColonyIntel*(db: IntelligenceDatabase, systemId: SystemId): Option[ColonyIntelReport] =
   ## Retrieve colony intel if available

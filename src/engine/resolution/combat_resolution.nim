@@ -16,6 +16,7 @@ import ../config/[prestige_config, military_config, ground_units_config]
 import ../prestige
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony, resolveMovementOrder
+import ../intelligence/[types as intel_types, combat_intel]
 
 proc getTargetBucket(shipClass: ShipClass): TargetBucket =
   ## Determine target bucket from ship class
@@ -261,6 +262,41 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   if attackingFleets.len > 0 and mobileDefenders.len > 0:
     # Space combat: attackers must fight mobile defenders
     var spaceCombatParticipants = attackingFleets & mobileDefenders
+
+    # INTELLIGENCE GATHERING: Pre-Combat Reports
+    # Each house generates detailed intel on EACH other house's forces
+    # This handles multi-house combat correctly (3-way, 4-way, etc.)
+    var housesInCombat: seq[HouseId] = @[]
+    for (fleetId, fleet) in spaceCombatParticipants:
+      if fleet.owner notin housesInCombat:
+        housesInCombat.add(fleet.owner)
+
+    # Generate separate reports for each house observing each other house
+    for reportingHouse in housesInCombat:
+      var alliedFleetIds: seq[FleetId] = @[]
+
+      # Collect own forces
+      for (fleetId, fleet) in spaceCombatParticipants:
+        if fleet.owner == reportingHouse:
+          alliedFleetIds.add(fleetId)
+
+      # Generate separate intel report for EACH other house
+      for otherHouse in housesInCombat:
+        if otherHouse == reportingHouse:
+          continue  # Don't report on yourself
+
+        var otherHouseFleetIds: seq[FleetId] = @[]
+        for (fleetId, fleet) in spaceCombatParticipants:
+          if fleet.owner == otherHouse:
+            otherHouseFleetIds.add(fleetId)
+
+        if otherHouseFleetIds.len > 0:
+          let preCombatReport = combat_intel.generatePreCombatReport(
+            state, systemId, intel_types.CombatPhase.Space,
+            reportingHouse, alliedFleetIds, otherHouseFleetIds
+          )
+          state.houses[reportingHouse].intelligence.addCombatReport(preCombatReport)
+
     let (outcome, fleets, detected) = executeCombat(
       state, systemId, spaceCombatParticipants, systemOwner,
       includeStarbases = false,
@@ -318,6 +354,40 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
       if survivingAttackerFleets.len > 0:
         # Combine orbital defenders and surviving attackers
         var orbitalFleets = orbitalDefenders & survivingAttackerFleets
+
+        # INTELLIGENCE GATHERING: Pre-Combat Reports (Orbital Phase)
+        # Each house generates detailed intel on EACH other house's orbital forces
+        var orbitalHouses: seq[HouseId] = @[]
+        for (fleetId, fleet) in orbitalFleets:
+          if fleet.owner notin orbitalHouses:
+            orbitalHouses.add(fleet.owner)
+
+        # Generate separate reports for each house observing each other house
+        for reportingHouse in orbitalHouses:
+          var alliedFleetIds: seq[FleetId] = @[]
+
+          # Collect own forces
+          for (fleetId, fleet) in orbitalFleets:
+            if fleet.owner == reportingHouse:
+              alliedFleetIds.add(fleetId)
+
+          # Generate separate intel report for EACH other house
+          for otherHouse in orbitalHouses:
+            if otherHouse == reportingHouse:
+              continue  # Don't report on yourself
+
+            var otherHouseFleetIds: seq[FleetId] = @[]
+            for (fleetId, fleet) in orbitalFleets:
+              if fleet.owner == otherHouse:
+                otherHouseFleetIds.add(fleetId)
+
+            if otherHouseFleetIds.len > 0:
+              let orbitalPreCombatReport = combat_intel.generatePreCombatReport(
+                state, systemId, intel_types.CombatPhase.Orbital,
+                reportingHouse, alliedFleetIds, otherHouseFleetIds
+              )
+              state.houses[reportingHouse].intelligence.addCombatReport(orbitalPreCombatReport)
+
         let (outcome, fleets, detected) = executeCombat(
           state, systemId, orbitalFleets, systemOwner,
           includeStarbases = true,
@@ -366,6 +436,11 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   for tf in outcome.survivors:
     for combatSq in tf.squadrons:
       survivingSquadronIds[combatSq.squadron.id] = combatSq
+
+  # INTELLIGENCE: Capture fleet state before applying losses
+  var fleetsBeforeCombatUpdate: Table[FleetId, Fleet] = initTable[FleetId, Fleet]()
+  for (fleetId, fleet) in fleetsAtSystem:
+    fleetsBeforeCombatUpdate[fleetId] = fleet
 
   # Update or remove fleets based on survivors
   for (fleetId, fleet) in fleetsAtSystem:
@@ -418,6 +493,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
       for (fleetId, fleet) in fleetsAtSystem:
         if fleet.owner == defendingHouse:
+          # Skip fleets that were already destroyed in combat
+          if fleetId notin state.fleets:
+            continue
+
           # Destroy mothballed ships
           if fleet.status == FleetStatus.Mothballed:
             mothballedSquadronsDestroyed += fleet.squadrons.len
@@ -435,10 +514,11 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           # Destroy spacelift ships in any fleet (they were screened by orbital units)
           if fleet.spaceLiftShips.len > 0:
             spaceliftShipsDestroyed += fleet.spaceLiftShips.len
-            # Remove spacelift ships from fleet
-            var updatedFleet = state.fleets[fleetId]
-            updatedFleet.spaceLiftShips = @[]
-            state.fleets[fleetId] = updatedFleet
+            # Remove spacelift ships from fleet (check again as fleet might have been emptied above)
+            if fleetId in state.fleets:
+              var updatedFleet = state.fleets[fleetId]
+              updatedFleet.spaceLiftShips = @[]
+              state.fleets[fleetId] = updatedFleet
 
       if mothballedFleetsDestroyed > 0:
         echo "      ", mothballedSquadronsDestroyed, " mothballed squadron(s) in ",
@@ -474,6 +554,27 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         survivingUnassigned.add(updatedSquadron)
     colony.unassignedSquadrons = survivingUnassigned
     state.colonies[systemId] = colony
+
+  # INTELLIGENCE: Update combat reports with post-combat outcomes
+  # Update for Space Combat phase if it occurred
+  if spaceCombatOutcome.totalRounds > 0:
+    combat_intel.updatePostCombatIntelligence(
+      state, systemId, intel_types.CombatPhase.Space,
+      spaceCombatFleets,
+      state.fleets,
+      spaceCombatOutcome.retreated.mapIt(it),
+      spaceCombatOutcome.victor
+    )
+
+  # Update for Orbital Combat phase if it occurred
+  if orbitalCombatOutcome.totalRounds > 0:
+    combat_intel.updatePostCombatIntelligence(
+      state, systemId, intel_types.CombatPhase.Orbital,
+      orbitalCombatFleets,
+      state.fleets,
+      orbitalCombatOutcome.retreated.mapIt(it),
+      orbitalCombatOutcome.victor
+    )
 
   # 5.5. Process retreated fleets - auto-assign Seek Home orders
   # Fleets that retreated from combat automatically receive Order 02 (Seek Home)
@@ -712,6 +813,21 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
 
   echo "      Bombardment at ", targetId, ": ", infrastructureLoss, " infrastructure destroyed"
 
+  # Generate intelligence reports for both attacker and defender
+  let groundForcesKilled = result.populationDamage  # Population damage represents casualties
+  combat_intel.generateBombardmentIntelligence(
+    state,
+    targetId,
+    houseId,  # Attacking house
+    order.fleetId,
+    colony.owner,  # Defending house
+    infrastructureLoss,
+    defense.shields.isSome,  # Were shields active?
+    result.batteriesDestroyed,
+    groundForcesKilled,
+    fleet.spaceLiftShips.len  # Invasion threat assessment
+  )
+
   # Generate event
   var eventDesc = "Bombarded system " & $targetId & ", destroyed " & $infrastructureLoss & " infrastructure"
   if shipsDestroyedInDock:
@@ -827,6 +943,17 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   # Conduct invasion
   let result = conductInvasion(attackingForces, defendingForces, defense, invasionSeed)
+
+  # INTELLIGENCE: Generate invasion reports for both houses
+  combat_intel.generateInvasionIntelligence(
+    state, targetId, houseId, colony.owner,
+    attackingForces.len,
+    colony.armies,
+    colony.marines,
+    result.success,
+    result.attackerCasualties.len,
+    result.defenderCasualties.len
+  )
 
   # Apply results
   var updatedColony = colony
