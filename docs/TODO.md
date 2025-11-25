@@ -7,6 +7,12 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Phase 2e Complete: Fighter Doctrine & ACO Research Strategy (2025-11-24)**
+  - Implemented FD research timing based on capacity utilization (>70% trigger)
+  - Added ACO synergy research alongside FD for carrier efficiency
+  - Automated starbase infrastructure (1 per 5 fighters rule)
+  - FD multiplies capacity: 1.0x→1.5x→2.0x, ACO increases hangar: CV 3→5, CX 5→8
+  - **Impact:** Aggressive AIs strategically expand fighter capacity, maintain infrastructure
 - ✅ **Phase 2c Complete: Scout Operational Modes + FoW Bug Fixes (2025-11-24)**
   - Implemented single-scout squadrons for espionage (SpyPlanet, HackStarbase)
   - Implemented multi-scout (3+) for ELI mesh networks on invasions
@@ -259,13 +265,12 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 - **Results:** Aggressive AI now builds Raiders with CLK ambush advantage (+4 CER)
 - **Remaining:** ELI mesh network coordination (multi-scout bonuses) - deferred to Phase 3
 
-**2e. Fighter Doctrine & ACO Research** ⏳ MEDIUM PRIORITY (After FoW + ELI/CLK)
-- FD research timing (capacity utilization > 70%)
-- ACO synergy with FD investment
-- Starbase infrastructure requirements (1 per 5 fighters)
-- Capacity multiplication strategy
-
-**Estimated Effort:** Medium complexity (~200 lines, 7 tests)
+**2e. Fighter Doctrine & ACO Research** ✅ **COMPLETE** (2025-11-24)
+- ✅ FD research timing (capacity utilization > 70%)
+- ✅ ACO synergy with FD investment (researched together for carrier efficiency)
+- ✅ Starbase infrastructure requirements (1 per 5 fighters, auto-building)
+- ✅ Capacity multiplication strategy (FD: 1.0x→1.5x→2.0x, ACO: CV 3→4→5, CX 5→6→8)
+- **Results:** Aggressive AIs now expand fighter capacity strategically, maintain infrastructure
 
 **2f. Defense Layering Strategy** ✅ **COMPLETE** (2025-11-24)
 - ✅ Priority 2.5 defense check before offensive operations
