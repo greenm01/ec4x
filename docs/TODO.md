@@ -614,7 +614,8 @@ Add ~50–80 dims for last-seen values, stale intel, estimated enemy tech, detec
 
 Use RBA and NNA everywhere: code, logs, model files, menus, leaderboards.
 
-#### 2. Combine run_balance_test_parallel.py and run_balance_test.py, with archive_old_results(). Command line args to run parallel or single. Remove old files.
+#### 2. ✅ DONE - Unified testing through nimble tasks (2025-11-25)
+All balance testing now uses nimble tasks. Removed obsolete bash/Python wrappers.
 
 #### 3. Read and consider Grok's feedback for AI architecture into phase 2+: ec4x/docs/architecture/2025-11-24-grok-ec4x-ai-feedback.md
 
