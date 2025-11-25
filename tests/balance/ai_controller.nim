@@ -401,7 +401,7 @@ proc identifyEnemyHomeworlds(filtered: FilteredGameState): seq[SystemId] =
 
   # Identify enemy homeworlds from visible colonies
   # Homeworld = first colony we see from each house
-  var seenHouses = initHashSet[HouseId]()
+  var seenHouses: HashSet[HouseId]
   for visCol in filtered.visibleColonies:
     if visCol.owner != filtered.viewingHouse and visCol.owner notin seenHouses:
       result.add(visCol.systemId)
@@ -2857,8 +2857,11 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   var coloniesToBuild = myColonies
   coloniesToBuild.sort(proc(a, b: Colony): int = cmp(b.production, a.production))
 
+  # Track remaining treasury to prevent over-building
+  var remainingTreasury = house.treasury
+
   for colony in coloniesToBuild:
-    if house.treasury < 30:
+    if remainingTreasury < 30:
       break  # Not enough funds for anything
 
     let hasShipyard = colony.shipyards.len > 0
@@ -2936,11 +2939,11 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     if needETACs:
       let etacCost = getShipConstructionCost(ShipClass.ETAC)
       # Build on high-production colonies only (efficient ETAC production)
-      if house.treasury >= etacCost and colony.production >= 50:
+      if remainingTreasury >= etacCost and colony.production >= 50:
         # ALWAYS LOG: Critical for diagnosing colonization deadlock
         logInfo(LogCategory.lcAI, &"{controller.houseId} building ETAC at colony {colony.systemId} - " &
                 &"colonization targets available (expansionDrive: {p.expansionDrive:.2f}, " &
-                &"treasury: {house.treasury} PP, production: {colony.production} PU)")
+                &"treasury: {remainingTreasury} PP, production: {colony.production} PU)")
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -2949,7 +2952,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        # Continue to allow other colonies to build if needed
+        remainingTreasury -= etacCost
+        # Continue to allow other builds this colony
       else:
         # ALWAYS LOG: Critical for diagnosing why ETACs aren't being built
         if house.treasury < etacCost:
@@ -2973,7 +2977,7 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     if not canColonize and p.aggression > 0.4 and myColonies.len >= 4:
       # No more colonies → switch to invasion fleet buildup
       let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
-      if house.treasury >= transportCost and colony.production >= 80 and rng.rand(1.0) < 0.7:
+      if remainingTreasury >= transportCost and colony.production >= 80 and rng.rand(1.0) < 0.7:
         logInfo(LogCategory.lcAI, &"{controller.houseId} building Troop Transport at colony {colony.systemId} - " &
                 &"CONQUEST PHASE (no colonization targets left, aggression: {p.aggression:.2f})")
         result.add(BuildOrder(
@@ -2984,12 +2988,13 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
+        remainingTreasury -= transportCost
 
     # Early game frigates for cheap exploration and combat
     # Cost 30 PP, build time 1 turn, can explore and fight
     if needFrigates:
       let frigateCost = getShipConstructionCost(ShipClass.Frigate)
-      if house.treasury >= frigateCost and canAffordMoreShips and not atSquadronLimit:
+      if remainingTreasury >= frigateCost and canAffordMoreShips and not atSquadronLimit:
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -2998,11 +3003,12 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        break
+        remainingTreasury -= frigateCost
+        # Continue - allow more builds
 
     if needScouts:
       let scoutCost = getShipConstructionCost(ShipClass.Scout)
-      if house.treasury >= scoutCost:
+      if remainingTreasury >= scoutCost:
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -3011,7 +3017,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        break
+        remainingTreasury -= scoutCost
+        # Continue - allow more builds
 
     # ------------------------------------------------------------------------
     # Marine Garrison Management
@@ -3019,7 +3026,7 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # ------------------------------------------------------------------------
     if controller.shouldBuildMarines(filtered, colony):
       # This colony needs more marines for garrison
-      if house.treasury >= 30:  # Cost of marines
+      if remainingTreasury >= 30:  # Cost of marines
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Building,
@@ -3028,7 +3035,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: some("Marines"),
           industrialUnits: 0
         ))
-        break  # Build marines, then check next colony
+        remainingTreasury -= 30
+        # Continue - allow more builds
 
     # ------------------------------------------------------------------------
     # MID GAME: Military buildup and defense
@@ -3037,7 +3045,7 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     # Phase 2e: Fighter squadrons for aggressive AIs
     if needFighters:
       let fighterCost = getShipConstructionCost(ShipClass.Fighter)
-      if house.treasury >= fighterCost and canAffordMoreShips and not atSquadronLimit:
+      if remainingTreasury >= fighterCost and canAffordMoreShips and not atSquadronLimit:
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -3046,7 +3054,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        break  # One at a time to avoid treasury depletion
+        remainingTreasury -= fighterCost
+        # Continue - allow more builds
 
     # Phase 2e: Starbases for fighter capacity (1 per 5 fighters rule)
     # Per assets.md:2.4.1: "Requires 1 operational Starbase per 5 FS (ceil)"
@@ -3055,7 +3064,7 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     let currentStarbases = colony.starbases.len
     if fightersAtColony > 0 and currentStarbases < requiredStarbases:
       # Need more starbases to support fighter capacity
-      if house.treasury >= 300 and canAffordMoreShips and not atSquadronLimit:
+      if remainingTreasury >= 300 and canAffordMoreShips and not atSquadronLimit:
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -3064,11 +3073,12 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        break
+        remainingTreasury -= 300
+        # Continue - allow more builds
 
     # Starbases for defense (before expensive military buildup)
     # RESOURCE MANAGEMENT: Starbases also have maintenance, check affordability
-    if needDefenses and not hasStarbase and house.treasury >= 300 and canAffordMoreShips and not atSquadronLimit:
+    if needDefenses and not hasStarbase and remainingTreasury >= 300 and canAffordMoreShips and not atSquadronLimit:
       result.add(BuildOrder(
         colonySystem: colony.systemId,
         buildType: BuildType.Ship,
@@ -3077,7 +3087,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
         buildingType: none(string),
         industrialUnits: 0
       ))
-      break
+      remainingTreasury -= 300
+      # Continue - allow more builds
 
     # Military ships - COMPREHENSIVE SHIP SELECTION
     # RESOURCE MANAGEMENT: Only build if we can afford maintenance
@@ -3086,28 +3097,28 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       var shipCost: int
 
       # Choose ship based on treasury, aggression, and strategic needs
-      if house.treasury > 100 and needRaiders:
+      if remainingTreasury > 100 and needRaiders:
         # Raiders for ambush tactics (requires CLK research)
         shipClass = ShipClass.Raider
-      elif house.treasury > 120 and needCarriers:
+      elif remainingTreasury > 120 and needCarriers:
         # Carriers for fighter projection
         shipClass = ShipClass.Carrier
-      elif house.treasury > 150 and capitalShipCount < 2 and p.aggression > 0.6:
+      elif remainingTreasury > 150 and capitalShipCount < 2 and p.aggression > 0.6:
         # Build at least 2 capital ships for aggressive AIs
         shipClass = ShipClass.Battleship
-      elif house.treasury > 100 and militaryCount < 5:
+      elif remainingTreasury > 100 and militaryCount < 5:
         # Early military: Battle Cruisers
         shipClass = ShipClass.Battlecruiser
-      elif house.treasury > 80:
+      elif remainingTreasury > 80:
         # Mid-tier: Heavy Cruisers
         shipClass = ShipClass.HeavyCruiser
-      elif house.treasury > 60:
+      elif remainingTreasury > 60:
         # Mid-tier: Cruisers and Light Cruisers
         shipClass = if rng.rand(1.0) > 0.5: ShipClass.Cruiser else: ShipClass.LightCruiser
-      elif house.treasury > 40:
+      elif remainingTreasury > 40:
         # Budget: Destroyers
         shipClass = ShipClass.Destroyer
-      elif house.treasury > 30:
+      elif remainingTreasury > 30:
         # Cheap: Frigates
         shipClass = ShipClass.Frigate
       else:
@@ -3115,7 +3126,7 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
         shipClass = ShipClass.Corvette
 
       shipCost = getShipConstructionCost(shipClass)
-      if house.treasury >= shipCost:
+      if remainingTreasury >= shipCost:
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -3124,7 +3135,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
           buildingType: none(string),
           industrialUnits: 0
         ))
-        break
+        remainingTreasury -= shipCost
+        # Continue - allow more builds
 
     # Ground defenses for threatened colonies
     if threatenedColonies > 0 and colony.groundBatteries < 5:
