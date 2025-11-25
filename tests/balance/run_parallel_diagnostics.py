@@ -68,16 +68,17 @@ def archive_old_diagnostics() -> None:
             csv_file.unlink()
 
 def compile_simulation() -> bool:
-    """Compile run_simulation if needed."""
+    """
+    Compile run_simulation with FORCE RECOMPILE to prevent stale binary bugs.
+
+    Per UNKNOWN_UNKNOWNS_FINDINGS_2025-11-25.md:
+    - ALWAYS recompile to ensure dependencies (ai_controller.nim, etc.) are fresh
+    - Verify binary is less than 5 minutes old after compilation
+    - This prevents the "stale binary meta-bug" that cost 4+ hours of debugging
+    """
     nim_source = Path("tests/balance/run_simulation.nim")
 
-    # Check if binary exists and is up-to-date
-    if RUN_SIMULATION_BIN.exists():
-        if RUN_SIMULATION_BIN.stat().st_mtime > nim_source.stat().st_mtime:
-            print("✓ Using existing binary")
-            return True
-
-    print("Compiling run_simulation...")
+    print("🔨 Force recompiling run_simulation (prevent stale binary bugs)...")
     try:
         result = subprocess.run(
             ["nim", "c", "-d:release", str(nim_source)],
@@ -85,7 +86,19 @@ def compile_simulation() -> bool:
             text=True,
             check=True
         )
-        print("✓ Compilation complete")
+
+        # Verify binary is fresh (< 5 minutes old)
+        if RUN_SIMULATION_BIN.exists():
+            binary_age = time.time() - RUN_SIMULATION_BIN.stat().st_mtime
+            if binary_age > 300:  # 5 minutes
+                print(f"⚠ WARNING: Binary is {binary_age:.0f}s old - suspiciously stale!")
+                print("  Compilation may have failed silently or used cached artifacts")
+                return False
+            print(f"✓ Compilation complete (binary age: {binary_age:.1f}s)")
+        else:
+            print("✗ Binary not found after compilation")
+            return False
+
         return True
     except subprocess.CalledProcessError as e:
         print(f"✗ Compilation failed:\n{e.stderr}")
