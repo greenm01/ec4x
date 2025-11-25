@@ -286,7 +286,8 @@ proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: Syste
     if closestSystems.len > 1:
       # Multiple systems at same distance - use fleet ID hash for deterministic but unique selection
       let fleetHash = hash(fleetId)
-      let selectedIdx = abs(fleetHash) mod closestSystems.len
+      # Use bitwise AND to ensure positive value (avoid abs() overflow at int.low)
+      let selectedIdx = (fleetHash and 0x7FFFFFFF) mod closestSystems.len
       return some(closestSystems[selectedIdx])
     else:
       return some(closestSystems[0])

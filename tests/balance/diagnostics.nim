@@ -367,6 +367,31 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
     result.hackStarbaseMissions = 0
     result.totalEspionageMissions = 0
 
+  # Track orders submitted this turn (ENHANCED for unknown-unknowns detection)
+  if orders.isSome:
+    let packet = orders.get
+    result.fleetOrdersSubmitted = packet.fleetOrders.len
+    result.buildOrdersSubmitted = packet.buildOrders.len
+
+    # Count colonization orders from fleet orders
+    var colonizeCount = 0
+    for fleetOrder in packet.fleetOrders:
+      if fleetOrder.orderType == FleetOrderType.Colonize:
+        colonizeCount += 1
+    result.colonizeOrdersSubmitted = colonizeCount
+
+    # Total orders = fleet + build orders
+    result.totalOrders = packet.fleetOrders.len + packet.buildOrders.len
+
+    # TODO: Track invalid orders (need turn resolution feedback)
+    result.invalidOrders = 0
+  else:
+    result.fleetOrdersSubmitted = 0
+    result.buildOrdersSubmitted = 0
+    result.colonizeOrdersSubmitted = 0
+    result.totalOrders = 0
+    result.invalidOrders = 0
+
   result.coloniesWithoutDefense = def.coloniesWithoutDefense
   result.totalColonies = def.totalColonies
   result.mothballedFleetsUsed = def.mothballedFleetsUsed
