@@ -8,7 +8,7 @@ Inspired by Esterian Conquest and other classic BBS door games, EC4X combines th
 
 ## Game Overview
 
-Upstart Houses battle over a small region of space to dominate rivals and seize the imperial throne. The game starts at the dawn of the third imperium in year 2001. Each turn comprises one month of a thirteen month Terran Computational Calendar.
+Upstart Houses battle over a small region of space to dominate rivals and seize the imperial throne. The game features abstract strategic cycles that scale with map size - from decades in small skirmishes to centuries in epic campaigns. Victory is achieved through prestige accumulation across a dramatic 4-act structure.
 
 **Game Details:**
 - **Players:** 2-12
@@ -57,7 +57,7 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 - Star map generation (procedural, 2-12 players)
 - Configuration system (13 TOML files, 2000+ parameters)
 
-**Test Coverage:** 91+ integration tests passing, all systems verified
+**Test Coverage:** 101+ integration tests passing, all systems verified
 
 🤖 **Current Phase - AI Development:**
 - ✅ Strategic AI implemented (diplomacy + military decision-making)
