@@ -3,6 +3,11 @@
 # Source: docs/specs/gameplay.md Section 1.4
 # NOTE: Starting tech levels are defined in config/tech.toml [starting_tech]
 
+[theme]
+# House theme selection (see config/house_themes.toml for available themes)
+# Options: "dune", "generic", "classical"
+active_theme = "dune"  # Which house theme to use (change to "generic" for distribution)
+
 [elimination]
 # BALANCE: Player elimination thresholds
 defensive_collapse_turns = 3        # Turns below 0 prestige before elimination (gameplay.md:23, 90)
