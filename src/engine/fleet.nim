@@ -31,6 +31,7 @@ type
     owner*: HouseId                    # House that owns this fleet
     location*: SystemId                # Current system location
     status*: FleetStatus               # Operational status (active/reserve/mothballed)
+    # NOTE: currentOrder stored in GameState.fleetOrders table to avoid circular dependency
 
 proc newFleet*(squadrons: seq[Squadron] = @[], spaceLiftShips: seq[SpaceLiftShip] = @[],
                id: FleetId = "", owner: HouseId = "", location: SystemId = 0,

@@ -182,6 +182,8 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, order: FleetOrder): boo
 
   return false
 
+var movementCallDepth {.global.} = 0
+
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =
   ## Execute a fleet movement order with pathfinding and lane traversal rules
@@ -190,6 +192,15 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   ##   - Major lanes: 1 jump per turn if jumping into unexplored/rival system
   ##   - Minor/Restricted lanes: 1 jump per turn maximum
   ##   - Crippled ships or Spacelift ships cannot cross Restricted lanes
+
+  # Detect infinite recursion
+  movementCallDepth += 1
+  if movementCallDepth > 100:
+    echo "ERROR: resolveMovementOrder recursion depth > 100! Infinite loop detected!"
+    quit(1)
+
+  defer:
+    movementCallDepth -= 1
 
   if order.targetSystem.isNone:
     return
@@ -296,12 +307,33 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
     echo "    System ", targetId, " not found in starMap"
     return
 
-  let fleet = fleetOpt.get()
+  var fleet = fleetOpt.get()
 
-  # Check fleet at target location
+  # If fleet not at target, move there first
   if fleet.location != targetId:
-    echo "    Fleet not at target system"
-    return
+    echo "    Fleet not at target - moving there first (from ", fleet.location, " to ", targetId, ")"
+    # Create temporary movement order to get fleet to destination
+    let moveOrder = FleetOrder(
+      fleetId: order.fleetId,
+      orderType: FleetOrderType.Move,
+      targetSystem: some(targetId),
+      targetFleet: none(FleetId),
+      priority: order.priority
+    )
+    echo "    Calling resolveMovementOrder..."
+    resolveMovementOrder(state, houseId, moveOrder, events)
+    echo "    resolveMovementOrder returned"
+
+    # Reload fleet after movement
+    let movedFleetOpt = state.getFleet(order.fleetId)
+    if movedFleetOpt.isNone:
+      return
+    fleet = movedFleetOpt.get()
+
+    # Check if fleet reached destination (might be multiple jumps away)
+    if fleet.location != targetId:
+      echo "    Fleet still not at target after movement (too far)"
+      return
 
   # Check fleet has colonists
   var hasColonists = false
@@ -314,11 +346,13 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
     echo "    No colonists in fleet"
     return
 
-  # Establish colony
-  # TODO: Planet class and resources should be pre-generated or determined by system properties
-  # For now, assume ETAC scouts found a benign world with abundant resources
-  let planetClass = PlanetClass.Benign
-  let resources = ResourceRating.Abundant
+  # Establish colony using system's actual planet properties
+  # Get system to determine planet class and resources
+  let system = state.starMap.systems[targetId]
+  let planetClass = system.planetClass
+  let resources = system.resourceRating
+
+  echo "    Colonizing ", $planetClass, " world with ", $resources, " resources"
 
   # Create ETAC colony with 1 PTU (50k souls)
   let colony = createETACColony(targetId, houseId, planetClass, resources)

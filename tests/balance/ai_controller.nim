@@ -1724,9 +1724,13 @@ proc assessInvasionViability(controller: AIController, filtered: FilteredGameSta
 proc generateFleetOrders(controller: var AIController, filtered: FilteredGameState, rng: var Rand): seq[FleetOrder] =
   ## Generate fleet orders based on strategic military assessment
   ## Now updates intelligence when making decisions
+  when not defined(release):
+    echo "[AI] ", $controller.houseId, " generateFleetOrders called for turn ", filtered.turn
   result = @[]
   let p = controller.personality
   let myFleets = getOwnedFleets(filtered, controller.houseId)
+  when not defined(release):
+    echo "[AI] ", $controller.houseId, " has ", myFleets.len, " fleets"
 
   # Update intelligence for systems we have visibility on
   # (Our colonies + systems with our fleets = automatic intel)
@@ -2120,30 +2124,20 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
 
     if hasETAC:
       # Intelligence-driven colonization
-      # ETAC fleets: Colonize if at uncolonized system, otherwise move to best target
-      if not isSystemColonized(filtered, fleet.location):
-        # At uncolonized system - COLONIZE IT!
+      # ETAC fleets: Issue COLONIZE order to best uncolonized target
+      # The engine will automatically move the fleet there and colonize
+      let targetOpt = findBestColonizationTarget(controller, filtered, fleet.location, fleet.id)
+      if targetOpt.isSome:
         when not defined(release):
-          echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " colonizing system ", fleet.location
+          echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " issuing colonize order for system ", targetOpt.get()
         order.orderType = FleetOrderType.Colonize
-        order.targetSystem = some(fleet.location)
+        order.targetSystem = targetOpt
         order.targetFleet = none(FleetId)
         result.add(order)
         continue
       else:
-        # At colonized system - seek BEST uncolonized system (using intel)
-        let targetOpt = findBestColonizationTarget(controller, filtered, fleet.location, fleet.id)
-        if targetOpt.isSome:
-          when not defined(release):
-            echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " moving from ", fleet.location, " to colonization target ", targetOpt.get()
-          order.orderType = FleetOrderType.Move
-          order.targetSystem = targetOpt
-          order.targetFleet = none(FleetId)
-          result.add(order)
-          continue
-        else:
-          when not defined(release):
-            echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " has NO colonization target (all systems colonized?)"
+        when not defined(release):
+          echo "[AI] ", $controller.houseId, " ETAC fleet ", fleet.id, " has NO colonization target (all systems colonized?)"
     elif p.expansionDrive > 0.3:
       # Non-ETAC fleets with expansion drive: Scout uncolonized systems
       let targetOpt = findNearestUncolonizedSystem(filtered, fleet.location, fleet.id)
@@ -2287,8 +2281,15 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
       order.orderType = FleetOrderType.Patrol
       order.targetSystem = some(fleet.location)
       order.targetFleet = none(FleetId)
+      result.add(order)
+      continue
 
-    result.add(order)
+    # SHOULD NEVER REACH HERE - all priorities should end with continue or result.add+continue
+    when not defined(release):
+      echo "[AI WARNING] Fleet ", fleet.id, " reached end of order generation without being handled!"
+
+  when not defined(release):
+    echo "[AI] ", $controller.houseId, " generated ", result.len, " fleet orders"
 
 proc hasViableColonizationTargets(filtered: FilteredGameState, houseId: HouseId): bool =
   ## Returns true if there is at least one reachable uncolonized system
