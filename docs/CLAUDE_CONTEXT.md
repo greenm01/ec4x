@@ -17,7 +17,7 @@
 4. **Update TODO.md** after completing milestones
 5. **Run tests before committing** - all tests must pass
 6. **Don't create new markdown docs without explicit permission**
-7. **Add comprehensive API documentation** - whenever touching engine code, add doc comments explaining purpose, behavior, and architectural decisions
+7. **Add focused API documentation** - when touching engine code, add concise doc comments explaining purpose and key behavior. Prioritize maintainability over comprehensiveness. Avoid verbose explanations or rationale unless architecturally critical.
 
 ## File Organization Rules (CRITICAL - Read First!)
 

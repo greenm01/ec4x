@@ -409,12 +409,21 @@ proc removeCompletedOperations*(controller: var AIController, turn: int) =
 
 proc identifyImportantColonies*(controller: AIController, state: GameState): seq[SystemId] =
   ## Identify colonies that need defense-in-depth
-  ## Important = high production or abundant resources
+  ## Important = high production OR strategic resources
+  ##
+  ## **Thresholds (Phase 2f - adjusted for early-game relevance):**
+  ## - Production >= 30 PU/turn (lowered from 50 for mid-game industrial centers)
+  ## - Resources: Rich/VeryRich/Abundant (strategic value)
+  ##
+  ## **Rationale:** Early game colonies produce ~40-45 PU/turn. The old threshold
+  ## of 50 meant NO colonies qualified as "important" in early game, causing the
+  ## proactive defense logic to never trigger. Lowering to 30 ensures medium+
+  ## production colonies get defended.
   result = @[]
   for systemId, colony in state.colonies:
     if colony.owner == controller.houseId:
-      # High production colonies (important industrial centers)
-      if colony.production >= 50:
+      # Medium+ production colonies (lowered from 50 to 30 for early-game relevance)
+      if colony.production >= 30:
         result.add(systemId)
       # Abundant/Rich resource colonies (strategic value)
       elif colony.resources in [ResourceRating.Rich, ResourceRating.VeryRich, ResourceRating.Abundant]:
@@ -1486,9 +1495,61 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       result.add(order)
       continue
 
+    # Priority 2.5: Check if fleet needed for colony defense (Phase 2f)
+    # Before committing to offensive operations, ensure important/frontier colonies defended
+    var undefendedColony: Option[SystemId] = none(SystemId)
+
+    # First: Check important colonies (production >= 30 or strategic resources)
+    let importantColonies = controller.identifyImportantColonies(state)
+    for systemId in importantColonies:
+      var hasDefense = false
+      for otherFleet in myFleets:
+        if otherFleet.location == systemId and otherFleet.id != fleet.id:
+          hasDefense = true
+          break
+      let colony = state.colonies[systemId]
+      if colony.starbases.len > 0:
+        hasDefense = true
+      if not hasDefense:
+        undefendedColony = some(systemId)
+        break
+
+    # Second: Check frontier colonies (adjacent to enemy territory)
+    if undefendedColony.isNone:
+      for systemId, colony in state.colonies:
+        if colony.owner != controller.houseId:
+          continue
+        var isFrontier = false
+        let adjacentIds = state.starMap.getAdjacentSystems(systemId)
+        for neighborId in adjacentIds:
+          if neighborId in state.colonies and state.colonies[neighborId].owner != controller.houseId:
+            isFrontier = true
+            break
+        if isFrontier:
+          var hasDefense = false
+          for otherFleet in myFleets:
+            if otherFleet.location == systemId and otherFleet.id != fleet.id:
+              hasDefense = true
+              break
+          if colony.starbases.len > 0:
+            hasDefense = true
+          if not hasDefense:
+            undefendedColony = some(systemId)
+            break
+
+    # If colony needs defense, position there instead of attacking
+    if undefendedColony.isSome:
+      if fleet.location != undefendedColony.get():
+        order.orderType = FleetOrderType.Move
+        order.targetSystem = undefendedColony
+      else:
+        order.orderType = FleetOrderType.Patrol
+        order.targetSystem = some(fleet.location)
+      order.targetFleet = none(FleetId)
+      result.add(order)
+      continue
+
     # Priority 3: Find targets to attack based on aggression OR military focus
-    # BALANCE FIX: Lowered aggression from 0.5 to 0.3 to enable more combat
-    # BALANCE FIX: Added military-focused AIs always seek targets (even if low aggression)
     let militaryFocus = 1.0 - p.economicFocus
     let shouldSeekTargets = p.aggression > 0.3 or militaryFocus > 0.7
 
@@ -1732,6 +1793,91 @@ proc generateFleetOrders(controller: var AIController, state: GameState, rng: va
       order.targetSystem = needsDefense
       order.targetFleet = none(FleetId)
     else:
+      # Priority 5.5: Proactive Colony Defense (Phase 2f)
+      ## **Purpose:** Address 73.8% undefended colony rate by positioning fleets proactively
+      ##
+      ## **Strategy:**
+      ## 1. Prioritize important colonies (high production or rich resources)
+      ## 2. Fall back to frontier colonies (adjacent to enemy territory)
+      ## 3. Consider colony defended if it has fleet OR starbase
+      ##
+      ## **Defense Layering:**
+      ## - Important colonies get first priority (production >= 30 or rich resources)
+      ## - Frontier colonies get second priority (adjacent to enemy systems)
+      ## - Fleets move to guard position or patrol if already in position
+      ##
+      ## **Why This Matters:**
+      ## Proactive defense prevents surprise attacks and resource loss. Undefended
+      ## colonies are easy targets that can snowball into strategic losses.
+      # Position fleets at undefended colonies (especially high-value or frontier)
+      var undefendedColony: Option[SystemId] = none(SystemId)
+      let importantColonies = controller.identifyImportantColonies(state)
+
+      # DEBUG logging (Phase 2f)
+      if importantColonies.len > 0 and state.turn mod 10 == 0:
+        echo "  [DEBUG] ", controller.houseId, " Turn ", state.turn, ": ", importantColonies.len, " important colonies found"
+
+      for systemId in importantColonies:
+        # Check if colony has any defensive fleet
+        var hasDefense = false
+        for otherFleet in myFleets:
+          if otherFleet.location == systemId and otherFleet.id != fleet.id:
+            hasDefense = true
+            break
+
+        # Check if colony has starbase
+        let colony = state.colonies[systemId]
+        if colony.starbases.len > 0:
+          hasDefense = true
+
+        if not hasDefense:
+          undefendedColony = some(systemId)
+          break
+
+      # If no important colony needs defense, check frontier colonies
+      if undefendedColony.isNone:
+        for systemId, colony in state.colonies:
+          if colony.owner != controller.houseId:
+            continue
+
+          # Check if this is a frontier colony (adjacent to enemy territory)
+          var isFrontier = false
+          let adjacentIds = state.starMap.getAdjacentSystems(systemId)
+          for neighborId in adjacentIds:
+            if neighborId in state.colonies:
+              let neighbor = state.colonies[neighborId]
+              if neighbor.owner != controller.houseId:
+                isFrontier = true
+                break
+
+          if isFrontier:
+            # Check if colony has defensive fleet
+            var hasDefense = false
+            for otherFleet in myFleets:
+              if otherFleet.location == systemId and otherFleet.id != fleet.id:
+                hasDefense = true
+                break
+
+            if colony.starbases.len > 0:
+              hasDefense = true
+
+            if not hasDefense:
+              undefendedColony = some(systemId)
+              break
+
+      if undefendedColony.isSome:
+        # Move to guard undefended colony
+        if fleet.location != undefendedColony.get():
+          order.orderType = FleetOrderType.Move
+          order.targetSystem = undefendedColony
+        else:
+          # Already at colony - patrol to maintain presence
+          order.orderType = FleetOrderType.Patrol
+          order.targetSystem = some(fleet.location)
+        order.targetFleet = none(FleetId)
+        result.add(order)
+        continue
+
       # Priority 6: Exploration - send fleets to unknown systems
       # Instead of sitting idle, explore uncolonized systems
       if p.expansionDrive > 0.2 or rng.rand(1.0) < 0.3:
@@ -1964,8 +2110,10 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
     (starbaseCount == 0 and myColonies.len > 0)  # Always have at least one starbase
   )
 
+  # Phase 2d: Build Raiders if we've researched CLK (cloaking advantage)
+  let hasCLK = house.techTree.levels.cloakingTech > 0
   let needRaiders = (
-    p.aggression > 0.7 and raiderCount < 2 and militaryCount > 5 and house.treasury > 200
+    hasCLK and raiderCount < 3 and p.aggression > 0.4 and militaryCount > 3
   )
 
   let needCarriers = (
@@ -2117,8 +2265,8 @@ proc generateBuildOrders(controller: AIController, state: GameState, rng: var Ra
       var shipCost: int
 
       # Choose ship based on treasury, aggression, and strategic needs
-      if house.treasury > 150 and needRaiders:
-        # Raiders for ambush tactics (high aggression + good economy)
+      if house.treasury > 100 and needRaiders:
+        # Raiders for ambush tactics (requires CLK research)
         shipClass = ShipClass.Raider
       elif house.treasury > 120 and needCarriers:
         # Carriers for fighter projection
@@ -2302,25 +2450,28 @@ proc generateResearchAllocation(controller: AIController, state: GameState): res
       # Remaining ~42% to technologies
       let techBudget = researchBudget - result.economic - result.science
       if p.aggression > 0.5:
-        # Aggressive: focus on weapons
-        result.technology[TechField.WeaponsTech] = techBudget div 2
-        result.technology[TechField.ConstructionTech] = techBudget div 4
-        result.technology[TechField.ElectronicIntelligence] = techBudget div 4
+        # Aggressive: weapons + cloaking for Raiders (Phase 2d)
+        result.technology[TechField.WeaponsTech] = techBudget * 2 div 5  # 40%
+        result.technology[TechField.CloakingTech] = techBudget div 5     # 20% (for Raider ambush)
+        result.technology[TechField.ConstructionTech] = techBudget div 5 # 20%
+        result.technology[TechField.ElectronicIntelligence] = techBudget div 5  # 20%
       else:
-        # Peaceful: focus on infrastructure
+        # Peaceful: infrastructure + counter-intel for defense
         result.technology[TechField.ConstructionTech] = techBudget div 2
         result.technology[TechField.TerraformingTech] = techBudget div 4
         result.technology[TechField.CounterIntelligence] = techBudget div 4
 
-    elif p.techPriority > 0.4:
+    elif p.techPriority >= 0.4:
       # Moderate research - focus on fundamentals (EL/SL)
       result.economic = researchBudget div 2        # 50% to EL
       result.science = researchBudget div 3         # 33% to SL
 
-      # Remaining ~17% to one key tech
+      # Remaining ~17% to key tech(s)
       let techBudget = researchBudget - result.economic - result.science
       if p.aggression > 0.5:
-        result.technology[TechField.WeaponsTech] = techBudget
+        # Aggressive with moderate tech: split between weapons and cloaking
+        result.technology[TechField.WeaponsTech] = techBudget * 2 div 3  # 67%
+        result.technology[TechField.CloakingTech] = techBudget div 3      # 33%
       else:
         result.technology[TechField.ConstructionTech] = techBudget
     else:
