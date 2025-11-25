@@ -1,6 +1,6 @@
 # EC4X Balance Testing Methodology
 
-**Last Updated:** 2025-11-23
+**Last Updated:** 2025-11-24
 
 ## Overview
 
@@ -429,73 +429,91 @@ A well-paced 30-turn game follows a dramatic arc with clear phases:
 
 **Expected Prestige Range:** 1000-3000 (winner)
 
-### Pacing Requirements: Multi-Generational Timeline
+### Pacing Requirements: Cipher Ledger Abstract Timeline
 
-**CRITICAL INSIGHT:** Each player turn represents **5-10 years of in-game time**. This means:
+**CRITICAL DESIGN (2025-11-24):** EC4X uses **abstract strategic cycles** that scale with map size and territorial scope. Time is not fixed - it adapts to the scale of conflict.
 
-- **30 player turns = 150-300 years in-game**
-- **Multi-generational empire building**
-- Population growth happens over decades
-- Technology advances over generations
-- Colonies mature over lifetimes
+#### The Cipher Ledger System
 
-This creates an **epic scope** where players make strategic decisions across centuries while experiencing a 30-day game commitment.
+The Cipher Ledger is a quantum-entangled cryptographic network embedded in jump lane stabilizers, enabling instantaneous settlement across interstellar space. Strategic cycles represent the time required to:
+- Gather intelligence across your territory
+- Coordinate fleet deployments through jump lanes
+- Consolidate political and economic control
+- Execute strategic operations at empire scale
 
-#### Timeline Options
+**Key Insight:** As empires grow larger, strategic cycles naturally take longer. A tight 3-system border dispute happens faster than a 30-system galactic war.
 
-**Option 2: 1 turn = 5 years (recommended for faster pace)**
-- 30 turns = 150 years
-- 2-3 generations of leaders
-- Colonies grow from settlements to core worlds in 50-100 years
-- Technology advances over decades (reasonable)
+#### Timeline Scaling by Map Size
 
-**Option 3: 1 turn = 10 years (recommended for epic scale)**
-- 30 turns = 300 years
-- 5-6 generations of leaders
-- Colonies develop over centuries
-- Technology evolution feels generational
-- Greater sense of dynasty building
+**Small Maps (15-25 systems):**
+- 1 strategic cycle = 1-2 years
+- 30 turns = 30-60 years total
+- Rapid regional conflicts
+- 1-2 generations of leaders
+- Tight, focused warfare
+
+**Medium Maps (30-50 systems):**
+- 1 strategic cycle = 5-7 years
+- 30 turns = 150-210 years total
+- Multi-generational conflicts
+- 3-4 generations of leaders
+- Sector-scale warfare
+
+**Large Maps (60-100 systems):**
+- 1 strategic cycle = 10-15 years
+- 30 turns = 300-450 years total
+- Epic dynasty building
+- 6-9 generations of leaders
+- Galactic-scale warfare
+
+**Why This Works:**
+- Narrative flexibility (no contradictions)
+- Mechanics scale naturally (no special-casing)
+- Balance testing independent of time scale
+- Player experience adapts to map size
 
 #### Current Mechanics Already Appropriate
 
-**NO artificial acceleration needed** - the mechanics are designed for multi-year turns:
+**NO artificial acceleration needed** - the mechanics are designed for abstract strategic cycles:
 
-- **Population growth per turn**: Reasonable over 5-10 years
-- **Tech research**: Advancement over decades makes sense
-- **Colony development**: Growing from outpost to thriving world over generations
-- **Fleet construction**: Building armadas over years, not days
-- **Prestige accumulation**: Dynasty reputation built across lifetimes
+- **Population growth per turn**: Reasonable across multiple years per cycle
+- **Tech research**: Major breakthroughs every 6 strategic cycles
+- **Colony development**: Growing from outpost to thriving world over multiple cycles
+- **Fleet construction**: Building armadas over extended strategic periods
+- **Prestige accumulation**: Dynasty reputation built across cycles
+
+The abstract cycle system means the same mechanics work for both rapid regional conflicts (small maps) and epic galactic wars (large maps).
 
 ### Configuration Philosophy
 
-Rather than speeding up mechanics, we tune for **meaningful progression within the multi-generational timeline**:
+Rather than speeding up mechanics, we tune for **meaningful progression within abstract strategic cycles**:
 
-#### 1. Colony Development Over Decades
+#### 1. Colony Development
 ```toml
-# Population growth per turn = growth over 5-10 years
-# New colonies need 5-10 turns (25-100 years) to reach maturity
-# Rationale: Building civilizations takes generations
+# Population growth per cycle = development across strategic period
+# New colonies need 5-10 cycles to reach maturity
+# Scales naturally: 10-20 years (small maps) to 50-150 years (large maps)
 ```
 
-#### 2. Technology Over Generations
+#### 2. Technology Advancement
 ```toml
-# Tech advancement = generational progress
-# Major tech breakthroughs every 3-5 turns (15-50 years)
-# Rationale: Scientific revolutions span decades
+# Tech advancement via research breakthroughs
+# Major breakthroughs every 6 strategic cycles
+# Represents sustained R&D investment across empire
 ```
 
-#### 3. Military Buildup Over Years
+#### 3. Military Buildup
 ```toml
-# Fleet construction = multi-year industrial effort
-# Building armada over 5-10 turns = 25-100 years of preparation
-# Rationale: Military supremacy requires sustained investment
+# Fleet construction = sustained industrial effort
+# Building armada over multiple cycles
+# Time scale adapts: Rapid on small maps, generational on large maps
 ```
 
-#### 4. Prestige = Dynastic Legacy
+#### 4. Prestige = Dynasty Legacy
 ```toml
-# Prestige accumulation = historical reputation over centuries
-# Victory threshold = legendary dynasty status
-# Rationale: Great houses earn prestige across generations
+# Prestige accumulation = historical reputation across strategic cycles
+# Victory threshold = legendary dynasty status (2500 prestige)
+# Independent of time scale - prestige measures relative power
 ```
 
 ### Testing Implications
@@ -519,47 +537,47 @@ Rather than speeding up mechanics, we tune for **meaningful progression within t
   - Do players feel they're building dynasties?
   - Is 1-turn-per-day pacing satisfying?
 
-#### Validation Metrics (Multi-Generational Timeline)
+#### Validation Metrics (Abstract Strategic Cycles)
 
-These targets assume **1 turn = 5-10 years in-game**:
+These targets are **time-scale independent** (work for all map sizes):
 
-- **Act 1 (T7 = 35-70 years):**
-  - Empire establishment phase (first generation)
+- **Act 1 (Strategic Cycle 7):**
+  - Empire establishment phase
   - Target: 5-8 colonies, 50-150 prestige
   - Validation: Did expansion happen? Are foundations laid?
 
-- **Act 2 (T15 = 75-150 years):**
-  - Regional dominance phase (second generation)
+- **Act 2 (Strategic Cycle 15):**
+  - Regional dominance phase
   - Target: 10-15 colonies, 150-500 prestige, first wars
   - Validation: Are conflicts emerging? Tech advantages appearing?
 
-- **Act 3 (T25 = 125-250 years):**
-  - Total war phase (third generation+)
+- **Act 3 (Strategic Cycle 25):**
+  - Total war phase
   - Target: Clear leaders (1000+), active eliminations, major battles
   - Validation: Are decisive moments happening? Victory in sight?
 
-- **Act 4 (T30 = 150-300 years):**
-  - Endgame resolution (dynastic conclusion)
+- **Act 4 (Strategic Cycle 30):**
+  - Endgame resolution
   - Target: Winner emerges OR elimination victory
   - Validation: Was game satisfying? Did 4-act structure work?
 
 #### Key Testing Questions
 
-**Q: What prestige threshold makes sense for 150-300 year dynasties?**
-- Current: 5000 prestige victory
-- Question: Is this achievable in 30 turns with current mechanics?
-- Testing: Track max prestige achieved in 30-turn games
+**Q: What prestige threshold makes sense for abstract strategic cycles?**
+- Current: 2500 prestige victory (adjusted from 5000)
+- Question: Is this achievable in 30 cycles with current mechanics?
+- Testing: Track max prestige achieved in 30-cycle games
 
 **Q: Do current mechanics create the 4-act dramatic arc?**
 - Act transitions should feel natural
-- Mid-game (T15) should see clear leaders and wars
-- Late-game (T25) should be decisive
+- Mid-game (Cycle 15) should see clear leaders and wars
+- Late-game (Cycle 25) should be decisive
 - Testing: Analyze prestige progression curves across acts
 
-**Q: Should timeline be 5 years/turn or 10 years/turn?**
-- 5 years = faster-paced dynasties (150 years total)
-- 10 years = epic generational saga (300 years total)
-- Testing: Does current AI progression feel right for either?
+**Q: Does abstract time scaling work for balance testing?**
+- Balance should be independent of narrative time scale
+- Mechanics are cycle-based, not year-based
+- Testing: Same balance targets work for all map sizes
 
 ---
 

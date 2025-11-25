@@ -246,24 +246,25 @@ proc getAvailableSingleScouts(filtered: FilteredGameState, houseId: HouseId): se
 proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: SystemId): Option[SystemId] =
   ## Find nearest uncolonized system using cube distance
   ## Returns closest uncolonized system to avoid all AIs targeting the same one
-  ## RESPECTS FOG-OF-WAR: Only considers visible systems
+  ## EXPLORATION: Considers ALL systems (players know the star map exists)
+  ## Only colonization status is checked (not visible due to fog-of-war)
   type SystemDist = tuple[systemId: SystemId, distance: int]
   var candidates: seq[SystemDist] = @[]
 
   let fromCoords = filtered.starMap.systems[fromSystem].coords
 
   for systemId, system in filtered.starMap.systems:
-    # Only check visible systems
-    if systemId in filtered.visibleSystems:
-      # Check if not colonized
-      if not isSystemColonized(filtered, systemId):
-        # Calculate cube distance (Manhattan distance in hex coordinates)
-        let dx = abs(system.coords.q - fromCoords.q)
-        let dy = abs(system.coords.r - fromCoords.r)
-        let dz = abs((system.coords.q + system.coords.r) - (fromCoords.q + fromCoords.r))
-        let distance = (dx + dy + dz) div 2
-        let item: SystemDist = (systemId: systemId, distance: distance)
-        candidates.add(item)
+    # Check ALL systems on the map (exploration discovers what's there)
+    # Don't restrict to visibleSystems - that prevents exploration!
+    # In classic EC, you could see the star map and send fleets anywhere
+    if not isSystemColonized(filtered, systemId):
+      # Calculate cube distance (Manhattan distance in hex coordinates)
+      let dx = abs(system.coords.q - fromCoords.q)
+      let dy = abs(system.coords.r - fromCoords.r)
+      let dz = abs((system.coords.q + system.coords.r) - (fromCoords.q + fromCoords.r))
+      let distance = (dx + dy + dz) div 2
+      let item: SystemDist = (systemId: systemId, distance: distance)
+      candidates.add(item)
 
   if candidates.len > 0:
     # Sort by distance and return closest
@@ -747,8 +748,9 @@ proc identifyInvasionOpportunities*(controller: var AIController, filtered: Filt
     let preferTarget = (target.relativeStrength < 0.4) or
                        (isValuable and target.relativeStrength < 0.6)
 
-    # Requires coordinated attack if defense > 150
-    if preferTarget and defenseStrength > 150:
+    # Invade weak or moderately defended targets
+    # Early game: defense < 50, mid-game: defense 50-150, late game: attack anything
+    if preferTarget and defenseStrength < 200:
       result.add(systemId)
 
 proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState): int =
@@ -3161,8 +3163,9 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Manage strategic reserves (assign fleets to defend important colonies)
   controller.manageStrategicReserves(filtered)
 
-  # Plan new coordinated operations if aggressive personality and have free fleets
-  if p.aggression > 0.5 and controller.countAvailableFleets(filtered) >= 2:
+  # Plan new coordinated operations if moderately aggressive and have free fleets
+  # Threshold: 0.4 allows Balanced strategy (0.5) to invade, not just Aggressive (0.8)
+  if p.aggression >= 0.4 and controller.countAvailableFleets(filtered) >= 2:
     let opportunities = controller.identifyInvasionOpportunities(filtered)
     if opportunities.len > 0:
       # Plan invasion of highest-value target

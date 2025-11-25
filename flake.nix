@@ -20,6 +20,7 @@
             python311
             python311Packages.pip
             python311Packages.virtualenv
+            python3Packages.polars
           ];
           shellHook = ''
             export IN_NIX_SHELL=1
