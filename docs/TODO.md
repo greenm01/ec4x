@@ -7,6 +7,11 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Phase 2d+2f Complete: Defense & Raider Tactics (2025-11-24)**
+  - **2d - ELI/CLK Arms Race:** Aggressive AI now researches CLK, builds Raiders with ambush tactics
+  - **2f - Defense Layering:** Priority 2.5 check defends colonies before offense
+  - **Results:** 74.7% → 38.2% undefended colonies (48% reduction)
+  - **Raider Logic:** Build when CLK researched (aggression > 0.4, treasury > 100 PP)
 - ✅ **Phase 2a-2b-2g Complete: Critical AI Infrastructure (2025-11-24)**
   - **2a:** FoW Integration with RBA - FilteredGameState enforcing limited visibility
   - **2b:** Fighter/Carrier Ownership - Auto-loading, capacity violation detection
@@ -222,13 +227,13 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Medium complexity (~300 lines, 10 tests)
 
-**2d. ELI/CLK Arms Race Dynamics** ⏳ MEDIUM PRIORITY (After FoW + scouts)
-- ELI mesh network coordination (2-3 scouts: +1, 4-5: +2, 6+: +3)
-- CLK research for Raiders (offensive tech)
-- ELI research for Scouts (defensive tech)
-- Starbase +2 ELI advantage assessment
-
-**Estimated Effort:** Medium complexity (~250 lines, 8 tests)
+**2d. ELI/CLK Arms Race Dynamics** ✅ **COMPLETE** (2025-11-24)
+- ✅ CLK research in heavy tech path (20% allocation) and moderate path (33%)
+- ✅ Raider builds when CLK researched (requires aggression > 0.4, militaryCount > 3)
+- ✅ Lowered Raider build threshold to 100 PP (from 150 PP)
+- ✅ Fixed moderate research condition from > 0.4 to >= 0.4 (enables Aggressive strategy)
+- **Results:** Aggressive AI now builds Raiders with CLK ambush advantage (+4 CER)
+- **Remaining:** ELI mesh network coordination (multi-scout bonuses) - deferred to Phase 3
 
 **2e. Fighter Doctrine & ACO Research** ⏳ MEDIUM PRIORITY (After FoW + ELI/CLK)
 - FD research timing (capacity utilization > 70%)
@@ -238,13 +243,13 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 **Estimated Effort:** Medium complexity (~200 lines, 7 tests)
 
-**2f. Defense Layering Strategy** ⏳ MEDIUM PRIORITY (After FoW + FD/ACO)
-- Patrol orders (space combat, mobile defense)
-- Guard orders (orbital combat, fixed defense)
-- Reserve fleets (50% maintenance, 50% combat effectiveness)
-- Mothball fleets (0% maintenance, emergency reactivation)
-
-**Estimated Effort:** Low-medium complexity (~150 lines, 5 tests)
+**2f. Defense Layering Strategy** ✅ **COMPLETE** (2025-11-24)
+- ✅ Priority 2.5 defense check before offensive operations
+- ✅ Important colonies defended (production >= 30, lowered from 50)
+- ✅ Frontier colonies defended (adjacent to enemy territory)
+- ✅ Defense prioritized over expansion/offense for undefended colonies
+- **Results:** 74.7% → 38.2% undefended colonies (48% reduction)
+- **Remaining 38%:** Rear-area, low-value colonies (acceptable trade-off for offense)
 
 **2g. Espionage Mission Targeting** ✅ **COMPLETE** (2025-11-24)
 - ✅ Fixed scout fleet deployment (autoBalanceSquadronsToFleets now creates fleets)
