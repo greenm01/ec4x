@@ -39,6 +39,7 @@ type
     invasionFleetsWithoutELIMesh*: int  # Invasions without 3+ scout ELI mesh
     totalInvasions*: int
     clkResearchedNoRaiders*: bool       # Has CLK but no Raiders built
+    scoutCount*: int                    # Phase 2c: Current scout count for ELI mesh tracking
     spyPlanetMissions*: int             # Cumulative SpyOnPlanet missions
     hackStarbaseMissions*: int          # Cumulative HackStarbase missions
     totalEspionageMissions*: int        # All espionage missions
@@ -86,6 +87,7 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId): DiagnosticMetrics =
     invasionFleetsWithoutELIMesh: 0,
     totalInvasions: 0,
     clkResearchedNoRaiders: false,
+    scoutCount: 0,
     spyPlanetMissions: 0,
     hackStarbaseMissions: 0,
     totalEspionageMissions: 0,
@@ -172,6 +174,19 @@ proc collectLogisticsMetrics(state: GameState, houseId: HouseId): DiagnosticMetr
 
   result.idleCarriers = idleCarrierCount
   result.totalCarriers = totalCarrierCount
+
+  # Phase 2c: Count scouts for ELI mesh tracking
+  var scoutCount = 0
+  for fleetId, fleet in state.fleets:
+    if fleet.owner == houseId:
+      for squadron in fleet.squadrons:
+        if squadron.flagship.shipClass == ShipClass.Scout:
+          scoutCount += 1
+        for ship in squadron.ships:
+          if ship.shipClass == ShipClass.Scout:
+            scoutCount += 1
+
+  result.scoutCount = scoutCount
 
   # TODO: Track fighters disbanded due to capacity
   result.fightersDisbanded = 0
@@ -313,6 +328,7 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.invasionFleetsWithoutELIMesh = intel.invasionFleetsWithoutELIMesh
   result.totalInvasions = intel.totalInvasions
   result.clkResearchedNoRaiders = intel.clkResearchedNoRaiders
+  result.scoutCount = log.scoutCount  # Phase 2c
 
   # Track espionage missions from orders (if provided)
   if orders.isSome:
@@ -336,7 +352,7 @@ proc writeCSVHeader*(file: File) =
                  "space_wins,space_losses,space_total,orbital_failures,orbital_total," &
                  "raider_success,raider_attempts," &
                  "capacity_violations,fighters_disbanded,total_fighters,idle_carriers,total_carriers," &
-                 "invasions_no_eli,total_invasions,clk_no_raiders," &
+                 "invasions_no_eli,total_invasions,clk_no_raiders,scout_count," &
                  "spy_planet,hack_starbase,total_espionage," &
                  "undefended_colonies,total_colonies,mothball_used,mothball_total," &
                  "invalid_orders,total_orders")
@@ -351,7 +367,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.capacityViolationsActive},{metrics.fightersDisbanded}," &
                  &"{metrics.totalFighters},{metrics.idleCarriers},{metrics.totalCarriers}," &
                  &"{metrics.invasionFleetsWithoutELIMesh},{metrics.totalInvasions}," &
-                 &"{metrics.clkResearchedNoRaiders}," &
+                 &"{metrics.clkResearchedNoRaiders},{metrics.scoutCount}," &
                  &"{metrics.spyPlanetMissions},{metrics.hackStarbaseMissions},{metrics.totalEspionageMissions}," &
                  &"{metrics.coloniesWithoutDefense},{metrics.totalColonies}," &
                  &"{metrics.mothballedFleetsUsed},{metrics.mothballedFleetsTotal}," &
