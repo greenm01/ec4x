@@ -2129,23 +2129,23 @@ proc generateFleetOrders(controller: var AIController, filtered: FilteredGameSta
       # The engine will automatically move the fleet there and colonize
       let targetOpt = findBestColonizationTarget(controller, filtered, fleet.location, fleet.id)
       if targetOpt.isSome:
-        when not defined(release):
-          # Count PTUs in fleet
-          var ptuCount = 0
-          for spaceLift in fleet.spaceLiftShips:
-            if spaceLift.cargo.cargoType == CargoType.Colonists:
-              ptuCount += spaceLift.cargo.quantity
-          logInfo(LogCategory.lcAI, &"{controller.houseId} ETAC fleet {fleet.id} issuing colonize order for system {targetOpt.get()} " &
-                  &"(location: {fleet.location}, ETACs: {fleet.spaceLiftShips.len}, PTUs: {ptuCount})")
+        # ALWAYS LOG: Critical for diagnosing colonization order timing
+        # Count PTUs in fleet
+        var ptuCount = 0
+        for spaceLift in fleet.spaceLiftShips:
+          if spaceLift.cargo.cargoType == CargoType.Colonists:
+            ptuCount += spaceLift.cargo.quantity
+        logInfo(LogCategory.lcAI, &"{controller.houseId} ETAC fleet {fleet.id} issuing colonize order for system {targetOpt.get()} " &
+                &"(location: {fleet.location}, ETACs: {fleet.spaceLiftShips.len}, PTUs: {ptuCount})")
         order.orderType = FleetOrderType.Colonize
         order.targetSystem = targetOpt
         order.targetFleet = none(FleetId)
         result.add(order)
         continue
       else:
-        when not defined(release):
-          logWarn(LogCategory.lcAI, &"{controller.houseId} ETAC fleet {fleet.id} has NO colonization target " &
-                  &"(location: {fleet.location}, all systems colonized?)")
+        # ALWAYS LOG: Warns when ETAC has no valid targets
+        logWarn(LogCategory.lcAI, &"{controller.houseId} ETAC fleet {fleet.id} has NO colonization target " &
+                &"(location: {fleet.location}, all systems colonized?)")
     elif p.expansionDrive > 0.3:
       # Non-ETAC fleets with expansion drive: Scout uncolonized systems
       let targetOpt = findNearestUncolonizedSystem(filtered, fleet.location, fleet.id)
@@ -2688,10 +2688,10 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
       let etacCost = getShipConstructionCost(ShipClass.ETAC)
       # Build on high-production colonies only (efficient ETAC production)
       if house.treasury >= etacCost and colony.production >= 50:
-        when not defined(release):
-          logInfo(LogCategory.lcAI, &"{controller.houseId} building ETAC at colony {colony.systemId} - " &
-                  &"colonization targets available (expansionDrive: {p.expansionDrive:.2f}, " &
-                  &"treasury: {house.treasury} PP, production: {colony.production} PU)")
+        # ALWAYS LOG: Critical for diagnosing colonization deadlock
+        logInfo(LogCategory.lcAI, &"{controller.houseId} building ETAC at colony {colony.systemId} - " &
+                &"colonization targets available (expansionDrive: {p.expansionDrive:.2f}, " &
+                &"treasury: {house.treasury} PP, production: {colony.production} PU)")
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -2702,21 +2702,21 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
         ))
         # Continue to allow other colonies to build if needed
       else:
-        when not defined(release):
-          if house.treasury < etacCost:
-            logDebug(LogCategory.lcAI, &"{controller.houseId} cannot build ETAC at {colony.systemId} - " &
-                     &"insufficient funds (need {etacCost} PP, have {house.treasury} PP)")
-          elif colony.production < 50:
-            logDebug(LogCategory.lcAI, &"{controller.houseId} skipping ETAC build at {colony.systemId} - " &
-                     &"low production ({colony.production} PU, need 50+ PU)")
+        # ALWAYS LOG: Critical for diagnosing why ETACs aren't being built
+        if house.treasury < etacCost:
+          logDebug(LogCategory.lcAI, &"{controller.houseId} cannot build ETAC at {colony.systemId} - " &
+                   &"insufficient funds (need {etacCost} PP, have {house.treasury} PP)")
+        elif colony.production < 50:
+          logDebug(LogCategory.lcAI, &"{controller.houseId} skipping ETAC build at {colony.systemId} - " &
+                   &"low production ({colony.production} PU, need 50+ PU)")
     else:
-      when not defined(release):
-        if not canColonize:
-          logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - no viable colonization targets")
-        elif hasIdleETACWaiting:
-          logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - idle ETAC already available")
-        elif p.expansionDrive <= 0.3:
-          logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - low expansionDrive ({p.expansionDrive:.2f})")
+      # ALWAYS LOG: Critical for understanding expansion strategy
+      if not canColonize:
+        logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - no viable colonization targets")
+      elif hasIdleETACWaiting:
+        logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - idle ETAC already available")
+      elif p.expansionDrive <= 0.3:
+        logDebug(LogCategory.lcAI, &"{controller.houseId} not building ETAC - low expansionDrive ({p.expansionDrive:.2f})")
 
     # ========================================================================
     # CONQUEST PHASE: Switch to Troop Transports when colonization ends
