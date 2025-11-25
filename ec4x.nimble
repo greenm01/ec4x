@@ -180,7 +180,7 @@ task testBalanceDiagnostics, "Run diagnostic tests with CSV output (50 games, 30
   echo "Running diagnostic balance tests (50 games, 30 turns)..."
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
-  exec "python3 tests/balance/run_parallel_diagnostics.py 50 30 16"
+  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 50 30 16"
   echo "Diagnostic tests completed! Results in balance_results/diagnostics/"
 
 task testUnknownUnknowns, "Unknown-unknowns detection (200 games, full diagnostics)":
@@ -189,19 +189,19 @@ task testUnknownUnknowns, "Unknown-unknowns detection (200 games, full diagnosti
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   echo "Git hash: $(cat tests/balance/.build_git_hash)"
-  exec "python3 tests/balance/run_parallel_diagnostics.py 200 30 16"
+  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 200 30 16"
   echo "\nRunning automatic gap analysis..."
-  exec "python3 tests/balance/analyze_phase2_gaps.py"
+  exec "python3 tools/ai_tuning/analyze_phase2_gaps.py"
   echo "\nUnknown-unknowns detection completed!"
   echo "Review analysis output above for anomalies and red flags."
 
 task analyzeDiagnostics, "Analyze diagnostic CSV files for Phase 2 gaps":
   echo "Analyzing diagnostic data for Phase 2 gaps..."
-  exec "python3 tests/balance/analyze_phase2_gaps.py"
+  exec "python3 tools/ai_tuning/analyze_phase2_gaps.py"
 
 task analyzeProgression, "Analyze 4-act game progression":
   echo "Analyzing 4-act progression..."
-  exec "python3 tests/balance/analyze_4act_progression.py"
+  exec "python3 tools/ai_tuning/analyze_4act_progression.py"
 
 task testMapSizes, "Test balance across different map sizes":
   echo "Testing different map sizes (4, 8, 12 players)..."
@@ -227,3 +227,49 @@ task testStress, "Engine stress test (100k games for crash detection)":
   echo "Git hash: $(cat tests/balance/.build_git_hash)"
   exec "python3 run_stress_test.py"
   echo "Engine stress test completed!"
+
+# AI Tuning & Optimization Tasks
+
+task buildAITuning, "Build AI tuning tools (genetic algorithm)":
+  echo "Building AI tuning tools..."
+  mkDir "tools/ai_tuning/bin"
+  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/genetic_ai tools/ai_tuning/genetic_ai.nim"
+  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/evolve_ai tools/ai_tuning/evolve_ai.nim"
+  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/coevolution tools/ai_tuning/coevolution.nim"
+  echo "AI tuning tools built successfully!"
+  echo "Binaries: tools/ai_tuning/bin/{genetic_ai,evolve_ai,coevolution}"
+
+task evolveAI, "Evolve AI personalities via genetic algorithm (50 gen, 20 pop)":
+  echo "Evolving AI personalities via genetic algorithm..."
+  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/evolve_ai tools/ai_tuning/evolve_ai.nim"
+  exec "tools/ai_tuning/bin/evolve_ai --generations 50 --population 20 --games 4"
+  echo "Evolution completed! Results in balance_results/evolution/"
+
+task evolveAIQuick, "Quick AI evolution test (10 gen, 10 pop)":
+  echo "Running quick AI evolution test..."
+  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/evolve_ai tools/ai_tuning/evolve_ai.nim"
+  exec "tools/ai_tuning/bin/evolve_ai --generations 10 --population 10 --games 2"
+  echo "Quick evolution completed! Results in balance_results/evolution/"
+
+task coevolveAI, "Competitive co-evolution (4 species, 20 generations)":
+  echo "Running competitive co-evolution..."
+  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/coevolution tools/ai_tuning/coevolution.nim"
+  exec "tools/ai_tuning/bin/coevolution"
+  echo "Co-evolution completed! Results in balance_results/coevolution/"
+
+task tuneAIDiagnostics, "Run diagnostics for AI tuning (100 games, full CSV)":
+  echo "Running AI tuning diagnostics (100 games, 30 turns)..."
+  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 100 30 16"
+  echo "\nAnalyzing Phase 2 gaps..."
+  exec "python3 tools/ai_tuning/analyze_phase2_gaps.py"
+  echo "\nAnalyzing 4-act progression..."
+  exec "python3 tools/ai_tuning/analyze_4act_progression.py"
+  echo "AI tuning diagnostics completed!"
+
+task cleanAITuning, "Clean AI tuning artifacts":
+  echo "Cleaning AI tuning artifacts..."
+  exec "rm -rf tools/ai_tuning/bin/"
+  exec "rm -rf balance_results/evolution/"
+  exec "rm -rf balance_results/coevolution/"
+  echo "AI tuning artifacts cleaned!"
