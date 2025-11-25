@@ -7,6 +7,14 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Persistent Fleet Orders + Intelligence Bug Fix - COMPLETE (2025-11-25)**
+  - Implemented persistent fleet order system (state.fleetOrders table)
+  - Fixed critical intelligence report persistence bug (3 spy mission types)
+  - Added comprehensive test suite (10 tests, all passing)
+  - Auto-Hold after mission completion, locked orders for Reserve/Mothball fleets
+  - Mission abort auto-seek-home when destination becomes hostile
+  - Intelligence reports (SpyOnPlanet, HackStarbase, SpyOnSystem) now persist correctly
+  - **Impact:** Fleet orders maintain across turns, spy missions accumulate intel properly
 - ✅ **Cipher Ledger Timeline System - COMPLETE (2025-11-24)**
   - Replaced rigid 13-month calendar with abstract strategic cycles that scale with map size
   - Small maps: 1 cycle = 1-2 years → 30 turns = 30-60 years

@@ -1743,21 +1743,27 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
         echo "    Spy scout ", scoutId, " gathering planetary intelligence at system ", scoutLocation
         let report = intel_gen.generateColonyIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
         if report.isSome:
-          state.houses[scout.owner].intelligence.addColonyReport(report.get())
+          var house = state.houses[scout.owner]
+          house.intelligence.addColonyReport(report.get())
+          state.houses[scout.owner] = house
           echo "      Intel: Colony has ", report.get().population, " pop, ", report.get().industry, " IU, ", report.get().defenses, " ground units"
 
       of SpyMissionType.HackStarbase:
         echo "    Spy scout ", scoutId, " hacking starbase at system ", scoutLocation
         let report = intel_gen.generateStarbaseIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
         if report.isSome:
-          state.houses[scout.owner].intelligence.addStarbaseReport(report.get())
+          var house = state.houses[scout.owner]
+          house.intelligence.addStarbaseReport(report.get())
+          state.houses[scout.owner] = house
           echo "      Intel: Treasury ", report.get().treasuryBalance.get(0), " PP, Tax rate ", report.get().taxRate.get(0.0), "%"
 
       of SpyMissionType.SpyOnSystem:
         echo "    Spy scout ", scoutId, " conducting system surveillance at ", scoutLocation
         let report = intel_gen.generateSystemIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
         if report.isSome:
-          state.houses[scout.owner].intelligence.addSystemReport(report.get())
+          var house = state.houses[scout.owner]
+          house.intelligence.addSystemReport(report.get())
+          state.houses[scout.owner] = house
           echo "      Intel: Detected ", report.get().detectedFleets.len, " enemy fleets"
 
   # Update spy scouts in game state (remove detected ones)
