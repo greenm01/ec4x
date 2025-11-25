@@ -5,7 +5,7 @@
 
 import std/[tables, options, random, strformat, sequtils, strutils, algorithm]
 import ../../src/engine/[gamestate, starmap, fleet, squadron, spacelift]
-import ../../src/engine/config/prestige_multiplier
+import ../../src/engine/config/[prestige_multiplier, house_themes, gameplay_config]
 import ../../src/common/types/[core, units, planets, tech]
 import ../../src/common/[hex, system]
 
@@ -123,6 +123,11 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
   # Initialize dynamic prestige multiplier based on map size
   initializePrestigeMultiplier(starMap.systems.len, numHouses)
 
+  # Load house theme configuration from global gameplay config
+  let activeThemeName = globalGameplayConfig.theme.active_theme
+  let themeConfig = loadThemeConfig(activeThemeName = activeThemeName)
+  let activeTheme = getActiveTheme(themeConfig)
+
   # Initialize empty game state
   result = GameState(
     gameId: "balance_test",
@@ -138,18 +143,10 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     spyScouts: initTable[string, SpyScout]()
   )
 
-  # House names and colors (12 max players)
-  const houseNames = ["Atreides", "Harkonnen", "Ordos", "Corrino",
-                      "Vernius", "Moritani", "Richese", "Ginaz",
-                      "Ecaz", "Tleilax", "Ixian", "Bene-Gesserit"]
-  const houseColors = ["blue", "red", "green", "gold",
-                       "purple", "orange", "cyan", "white",
-                       "pink", "brown", "silver", "maroon"]
-
-  # Create houses at player system positions
+  # Create houses at player system positions using active theme
   for i in 0..<numHouses:
-    let houseName = if i < houseNames.len: houseNames[i] else: &"House{i+1}"
-    let houseColor = if i < houseColors.len: houseColors[i] else: "white"
+    let houseName = getHouseName(activeTheme, i)
+    let houseColor = getHouseColor(activeTheme, i)
     let houseId = (&"house-{houseName.toLower()}").HouseId
 
     # Initialize house with standard starting conditions
