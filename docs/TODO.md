@@ -7,6 +7,13 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **FOG-OF-WAR REFACTORING COMPLETE (2025-11-24)**
+  - Removed TEMPORARY BRIDGE that defeated fog-of-war enforcement
+  - Refactored ALL ~37 functions to use FilteredGameState instead of GameState
+  - AI now CANNOT access omniscient information (type-level enforcement)
+  - Added helpers: isSystemColonized(), getColony()
+  - Compiled successfully, tested with 50-game batch (100% success)
+  - **Impact:** Fair play guaranteed, realistic AI behavior enforced
 - ✅ **Engine-Level Safe Fallback Routes with Auto-Retreat Policy (2025-11-24)**
   - Integrated AI-planned fallback routes into engine's automatic seek-home system
   - Routes validate safe paths avoiding enemy territory using pathfinding
@@ -209,14 +216,16 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 **Target Improvements:**
 
 **2a. FoW Integration with RBA** ✅ **COMPLETE** (2025-11-24)
-- Refactor `generateAIOrders()` to accept `FilteredGameState` instead of `GameState`
-- Update 25+ helper functions to use filtered views
-- Handle incomplete information gracefully (Option[T] returns)
-- Add intelligence-gathering behavior (scouting priorities, espionage targeting)
-- Test FoW integration with existing balance tests
+- ✅ Refactored ALL ~37 functions to use FilteredGameState instead of GameState
+- ✅ **REMOVED TEMPORARY BRIDGE** - Enforces fog-of-war at type level
+- ✅ Added helper functions: isSystemColonized(), getColony()
+- ✅ Handle incomplete information (Option[T] for VisibleColony.production)
+- ✅ Intelligence-gathering behavior (scouting, espionage targeting)
+- ✅ Tested with 50-game batch - 100% success rate
+- **Impact:** AI CANNOT access omniscient data, fair play guaranteed
 
-**Estimated Effort:** High complexity (~1,100 lines affected/added, 20 tests)
-**Documentation:** See `docs/FOG_OF_WAR_INTEGRATION.md` for detailed plan
+**Actual Effort:** High complexity (~146 lines changed in ai_controller.nim)
+**Documentation:** See `docs/FOG_OF_WAR_REFACTORING.md` for completion status
 
 **2b. Fighter/Carrier Ownership System** ✅ **COMPLETE** (2025-11-24)
 - ✅ Colony-owned vs carrier-owned fighters tracked (gamestate.nim)
