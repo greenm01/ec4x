@@ -57,8 +57,18 @@ proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Co
 proc autoLoadFightersToCarriers(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
 
 proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
-  ## Process construction orders for a house
+  ## Process construction orders for a house with budget validation
+  ## Prevents overspending by tracking committed costs
   echo "    Processing build orders for ", state.houses[packet.houseId].name
+
+  # Initialize budget validation context
+  # CRITICAL: Uses Table copy semantics - get house, read treasury, don't modify original
+  let house = state.houses[packet.houseId]
+  var budgetContext = orders.initOrderValidationContext(house.treasury)
+
+  logInfo(LogCategory.lcEconomy,
+          &"{packet.houseId} Build Order Validation: {packet.buildOrders.len} orders, " &
+          &"{house.treasury} PP available")
 
   for order in packet.buildOrders:
     # Validate colony exists
@@ -85,20 +95,17 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       echo "      Build order failed: system ", order.colonySystem, " at capacity (", active, "/", capacity, " docks used)"
       continue
 
-    # Convert gamestate.Colony to economy.Colony for construction functions
-    var econColony = econ_types.Colony(
-      systemId: colony.systemId,
-      owner: colony.owner,
-      populationUnits: colony.population,
-      populationTransferUnits: 0,
-      industrial: econ_types.IndustrialUnits(
-        units: colony.infrastructure,  # Map infrastructure to IU
-        investmentCost: 30  # Base cost
-      ),
-      planetClass: colony.planetClass,
-      resources: colony.resources,
-      underConstruction: none(econ_types.ConstructionProject)
-    )
+    # Validate budget BEFORE creating construction project
+    let validationResult = orders.validateBuildOrderWithBudget(order, state, budgetContext)
+    if not validationResult.valid:
+      echo "      Build order failed: ", validationResult.error
+      logInfo(LogCategory.lcEconomy,
+              &"{packet.houseId} Build order rejected at {order.colonySystem}: {validationResult.error}")
+      continue
+
+    # NOTE: No conversion needed! gamestate.Colony now has all economic fields
+    # (populationUnits, industrial, grossOutput, taxRate, infrastructureDamage)
+    # Construction functions work directly with unified Colony type
 
     # Create construction project based on build type
     var project: econ_types.ConstructionProject
@@ -112,7 +119,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
         echo "      Infrastructure order failed: invalid unit count ", units
         continue
 
-      project = construction.createIndustrialProject(econColony, units)
+      project = construction.createIndustrialProject(colony, units)
       projectDesc = "Industrial expansion: " & $units & " IU"
 
     of BuildType.Ship:
@@ -135,16 +142,16 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       project = construction.createBuildingProject(buildingType)
       projectDesc = "Building construction: " & buildingType
 
-    # Start construction
-    if construction.startConstruction(econColony, project):
-      # Convert back and update game state
-      var updatedColony = colony
-      updatedColony.underConstruction = some(project)  # DEPRECATED: Legacy field (kept for compatibility)
-      updatedColony.constructionQueue.add(project)      # NEW: Add to build queue
-      state.colonies[order.colonySystem] = updatedColony
+    # Start construction (NOTE: startConstruction modifies colony in-place)
+    var mutableColony = colony
+    if construction.startConstruction(mutableColony, project):
+      # Update game state with modified colony
+      # NOTE: underConstruction is already set by startConstruction
+      mutableColony.constructionQueue.add(project)  # Also add to build queue
+      state.colonies[order.colonySystem] = mutableColony
 
-      let queuePos = updatedColony.constructionQueue.len
-      let capacity = updatedColony.getConstructionDockCapacity()
+      let queuePos = mutableColony.constructionQueue.len
+      let capacity = mutableColony.getConstructionDockCapacity()
       echo "      Started construction at system ", order.colonySystem, ": ", projectDesc
       echo "        Cost: ", project.costTotal, " PP, Est. ", project.turnsRemaining, " turns (Queue: ", queuePos, "/", capacity, " docks)"
 
@@ -157,6 +164,14 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       ))
     else:
       echo "      Construction start failed at system ", order.colonySystem
+
+  # Log budget validation summary
+  let successfulOrders = packet.buildOrders.len - budgetContext.rejectedOrders
+  logInfo(LogCategory.lcEconomy,
+          &"{packet.houseId} Build Order Summary: {successfulOrders}/{packet.buildOrders.len} orders accepted, " &
+          &"{budgetContext.committedSpending} PP committed, " &
+          &"{budgetContext.getRemainingBudget()} PP remaining, " &
+          &"{budgetContext.rejectedOrders} orders rejected due to insufficient funds")
 
 proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process squadron management orders: form squadrons, transfer ships, assign to fleets
@@ -992,22 +1007,11 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         house.diplomaticIsolation.active = false
         echo "    ", house.name, " is no longer diplomatically isolated"
 
-  # Convert colonies for maintenance phase
-  var econColonies: seq[econ_types.Colony] = @[]
+  # Convert colonies table to sequence for maintenance phase
+  # NOTE: No type conversion needed - gamestate.Colony has all economic fields
+  var coloniesSeq: seq[Colony] = @[]
   for systemId, colony in state.colonies:
-    econColonies.add(econ_types.Colony(
-      systemId: colony.systemId,
-      owner: colony.owner,
-      populationUnits: colony.population,
-      populationTransferUnits: 0,
-      industrial: econ_types.IndustrialUnits(units: colony.infrastructure * 10),
-      planetClass: colony.planetClass,
-      resources: colony.resources,
-      grossOutput: colony.production,
-      taxRate: 50,
-      underConstruction: none(econ_types.ConstructionProject),
-      infrastructureDamage: 0.0
-    ))
+    coloniesSeq.add(colony)
 
   # Build house fleet data
   var houseFleetData = initTable[HouseId, seq[(ShipClass, bool)]]()
@@ -1025,7 +1029,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
   # Call maintenance engine
   let maintenanceReport = econ_engine.resolveMaintenancePhase(
-    econColonies,
+    coloniesSeq,
     houseFleetData,
     houseTreasuries
   )
@@ -1803,32 +1807,11 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
   var survRng = initRand(state.turn + 12345)  # Unique seed for surveillance
   starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng)
 
-  # Convert GameState colonies to economy engine format
-  var econColonies: seq[econ_types.Colony] = @[]
+  # Convert colonies table to sequence for income phase
+  # NOTE: No type conversion needed - gamestate.Colony has all economic fields
+  var coloniesSeqIncome: seq[Colony] = @[]
   for systemId, colony in state.colonies:
-    # Get owner's current tax rate
-    let ownerHouse = state.houses[colony.owner]
-    let currentTaxRate = ownerHouse.taxPolicy.currentRate
-
-    # Convert Colony to economy Colony type
-    # grossOutput starts at 0 and will be calculated by economy engine
-
-    # Calculate PTU from exact souls count (1 PTU = 50k souls)
-    let ptuCount = colony.souls div soulsPerPtu()
-
-    econColonies.add(econ_types.Colony(
-      systemId: colony.systemId,
-      owner: colony.owner,
-      populationUnits: colony.population,  # Map population (millions) to PU
-      populationTransferUnits: ptuCount,  # Calculate from exact souls count
-      industrial: econ_types.IndustrialUnits(units: colony.infrastructure * 10),  # Map infrastructure to IU
-      planetClass: colony.planetClass,
-      resources: colony.resources,
-      grossOutput: 0,  # Will be calculated by economy engine
-      taxRate: currentTaxRate,  # Get from house tax policy
-      underConstruction: colony.underConstruction,  # Pass through construction state
-      infrastructureDamage: if colony.blockaded: 0.6 else: 0.0  # Blockade = 60% infrastructure damage
-    ))
+    coloniesSeqIncome.add(colony)
 
   # Build house tax policies from House state
   var houseTaxPolicies = initTable[HouseId, econ_types.TaxPolicy]()
@@ -1847,7 +1830,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
   # Call economy engine
   let incomeReport = econ_engine.resolveIncomePhase(
-    econColonies,
+    coloniesSeqIncome,
     houseTaxPolicies,
     houseTechLevels,
     houseTreasuries

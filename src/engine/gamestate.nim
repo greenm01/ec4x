@@ -67,13 +67,29 @@ type
   Colony* = object
     systemId*: SystemId
     owner*: HouseId
+
+    # Population (multiple representations for different systems)
     population*: int              # Population in millions (display field)
     souls*: int                   # Exact population count (for PTU transfers)
+    populationUnits*: int         # PU: Economic production measure (from economy/types.nim)
+    populationTransferUnits*: int # PTU: For colonization (~50k souls each, from economy/types.nim)
+
+    # Infrastructure and production
     infrastructure*: int          # Infrastructure level (0-10)
+    industrial*: econ_types.IndustrialUnits  # IU: Manufacturing capacity (from economy/types.nim)
+
+    # Planet characteristics
     planetClass*: PlanetClass
     resources*: ResourceRating
     buildings*: seq[BuildingType]
+
+    # Economic state (from economy/types.nim)
     production*: int              # Current turn production
+    grossOutput*: int             # GCO: Cached gross colonial output for current turn
+    taxRate*: int                 # 0-100 (usually house-wide, but can override per-colony)
+    infrastructureDamage*: float  # 0.0-1.0, from bombardment (from economy/types.nim)
+
+    # Construction
     underConstruction*: Option[ConstructionProject]  # DEPRECATED: Legacy single-project field
     constructionQueue*: seq[ConstructionProject]     # NEW: Multi-project build queue
     activeTerraforming*: Option[TerraformProject]    # Active terraforming project
@@ -105,8 +121,9 @@ type
     blockadedBy*: seq[HouseId]                # Which houses are blockading (can be multiple)
     blockadeTurns*: int                       # Consecutive turns under blockade
 
-  # Use the proper ConstructionProject from economy module
-  ConstructionProject* = econ_types.ConstructionProject
+  # NOTE: Don't re-export ConstructionProject to avoid ambiguity
+  # Modules should import economy/types directly for ConstructionProject
+  # Colony.underConstruction uses econ_types.ConstructionProject directly
 
   # Re-export proper TechTree from research module
   TechTree* = res_types.TechTree

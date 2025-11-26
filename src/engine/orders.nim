@@ -1,11 +1,12 @@
 ## Fleet order types and validation for EC4X
 
-import std/[options, tables]
+import std/[options, tables, strformat]
 import ../common/[hex, types/core, types/units]
-import gamestate, fleet, ship, spacelift, starmap
+import gamestate, fleet, ship, spacelift, starmap, logger
 import order_types  # Import and re-export fleet order types
 import espionage/types as esp_types
 import research/types as res_types
+import economy/construction  # For cost calculation
 
 # Re-export order types
 export order_types.FleetOrderType, order_types.FleetOrder
@@ -112,6 +113,23 @@ type
   ValidationResult* = object
     valid*: bool
     error*: string
+
+  OrderValidationContext* = object
+    ## Budget tracking context for validating orders
+    ## Prevents overspending by tracking running total of committed costs
+    availableTreasury*: int      # Total treasury available at order submission
+    committedSpending*: int      # Running total of validated order costs
+    rejectedOrders*: int         # Count of orders rejected due to budget
+
+  OrderCostSummary* = object
+    ## Summary of order costs for preview/validation
+    buildCosts*: int
+    researchCosts*: int
+    espionageCosts*: int
+    totalCost*: int
+    canAfford*: bool
+    errors*: seq[string]
+    warnings*: seq[string]
 
 # Order validation
 
@@ -336,3 +354,124 @@ proc addFleetOrder*(packet: var OrderPacket, order: FleetOrder) =
 proc addBuildOrder*(packet: var OrderPacket, order: BuildOrder) =
   ## Add a build order to packet
   packet.buildOrders.add(order)
+
+# Budget tracking and validation
+
+proc initOrderValidationContext*(treasury: int): OrderValidationContext =
+  ## Create new validation context for order packet
+  result = OrderValidationContext(
+    availableTreasury: treasury,
+    committedSpending: 0,
+    rejectedOrders: 0
+  )
+
+proc getRemainingBudget*(ctx: OrderValidationContext): int =
+  ## Get remaining budget after committed spending
+  result = ctx.availableTreasury - ctx.committedSpending
+
+proc calculateBuildOrderCost*(order: BuildOrder, state: GameState): int =
+  ## Calculate the PP cost of a build order
+  ## Returns 0 if cost cannot be determined
+  result = 0
+
+  case order.buildType
+  of BuildType.Ship:
+    if order.shipClass.isSome:
+      result = construction.getShipConstructionCost(order.shipClass.get()) * order.quantity
+
+  of BuildType.Building:
+    if order.buildingType.isSome:
+      result = construction.getBuildingCost(order.buildingType.get()) * order.quantity
+
+  of BuildType.Infrastructure:
+    # Infrastructure cost depends on colony state
+    if order.colonySystem in state.colonies:
+      let colony = state.colonies[order.colonySystem]
+      result = construction.getIndustrialUnitCost(colony) * order.industrialUnits
+
+proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
+                                   ctx: var OrderValidationContext): ValidationResult =
+  ## Validate build order including budget check
+  ## Updates context with committed spending if valid
+
+  # Basic validation first
+  if order.colonySystem notin state.colonies:
+    return ValidationResult(valid: false,
+                           error: &"Build order: Colony not found at system {order.colonySystem}")
+
+  let colony = state.colonies[order.colonySystem]
+
+  # Calculate cost
+  let cost = calculateBuildOrderCost(order, state)
+  if cost <= 0:
+    return ValidationResult(valid: false,
+                           error: &"Build order: Invalid cost calculation ({cost} PP)")
+
+  # Check budget
+  let remaining = ctx.getRemainingBudget()
+  if cost > remaining:
+    ctx.rejectedOrders += 1
+    logInfo(LogCategory.lcEconomy,
+            &"Build order rejected: need {cost} PP, have {remaining} PP remaining " &
+            &"(treasury={ctx.availableTreasury}, committed={ctx.committedSpending})")
+    return ValidationResult(valid: false,
+                           error: &"Insufficient funds: need {cost} PP, have {remaining} PP remaining")
+
+  # Valid - commit spending
+  ctx.committedSpending += cost
+  logDebug(LogCategory.lcEconomy,
+           &"Build order validated: {cost} PP committed, {ctx.getRemainingBudget()} PP remaining")
+
+  return ValidationResult(valid: true, error: "")
+
+proc previewOrderPacketCost*(packet: OrderPacket, state: GameState): OrderCostSummary =
+  ## Calculate total costs for an order packet without committing
+  ## Useful for UI preview before submission
+  result = OrderCostSummary(
+    buildCosts: 0,
+    researchCosts: 0,
+    espionageCosts: 0,
+    totalCost: 0,
+    canAfford: false,
+    errors: @[],
+    warnings: @[]
+  )
+
+  # Calculate build costs
+  for order in packet.buildOrders:
+    let cost = calculateBuildOrderCost(order, state)
+    if cost > 0:
+      result.buildCosts += cost
+    else:
+      result.warnings.add(&"Build order at {order.colonySystem}: cost calculation failed")
+
+  # Calculate research costs
+  result.researchCosts = packet.researchAllocation.economic +
+                        packet.researchAllocation.science
+  for field, amount in packet.researchAllocation.technology:
+    result.researchCosts += amount
+
+  # Calculate espionage costs (40 PP per EBP/CIP)
+  result.espionageCosts = (packet.ebpInvestment + packet.cipInvestment) * 40
+
+  # Total
+  result.totalCost = result.buildCosts + result.researchCosts + result.espionageCosts
+
+  # Check affordability
+  if packet.houseId in state.houses:
+    let house = state.houses[packet.houseId]
+    result.canAfford = house.treasury >= result.totalCost
+
+    if not result.canAfford:
+      result.errors.add(&"Insufficient funds: need {result.totalCost} PP, have {house.treasury} PP")
+
+    # Warnings for spending >90% of treasury
+    if result.totalCost > (house.treasury * 9 div 10):
+      result.warnings.add(&"Warning: Spending {result.totalCost}/{house.treasury} PP (>90% of treasury)")
+  else:
+    result.errors.add(&"House {packet.houseId} not found")
+
+  logInfo(LogCategory.lcEconomy,
+          &"{packet.houseId} Order Cost Preview: Build={result.buildCosts}PP, " &
+          &"Research={result.researchCosts}PP, Espionage={result.espionageCosts}PP, " &
+          &"Total={result.totalCost}PP, CanAfford={result.canAfford}")

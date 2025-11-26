@@ -9,13 +9,15 @@
 import std/[tables, options]
 import types, income, production, construction, maintenance
 import ../../common/types/[core, units]
+import ../gamestate  # For unified Colony type
 
 export types.IncomePhaseReport, types.HouseIncomeReport, types.ColonyIncomeReport
 export types.MaintenanceReport, types.CompletedProject
+# NOTE: Don't export gamestate.Colony to avoid ambiguity
 
 ## Income Phase Resolution (gameplay.md:1.3.2)
 
-proc resolveIncomePhase*(colonies: var seq[types.Colony],
+proc resolveIncomePhase*(colonies: var seq[Colony],
                         houseTaxPolicies: Table[HouseId, TaxPolicy],
                         houseTechLevels: Table[HouseId, int],
                         houseTreasuries: var Table[HouseId, int]): IncomePhaseReport =
@@ -43,7 +45,7 @@ proc resolveIncomePhase*(colonies: var seq[types.Colony],
   )
 
   # Group colonies by owner
-  var houseColonies = initTable[HouseId, seq[types.Colony]]()
+  var houseColonies = initTable[HouseId, seq[Colony]]()
   for colony in colonies:
     if colony.owner notin houseColonies:
       houseColonies[colony.owner] = @[]
@@ -84,7 +86,7 @@ proc resolveIncomePhase*(colonies: var seq[types.Colony],
 
 ## Maintenance Phase Resolution (gameplay.md:1.3.4)
 
-proc resolveMaintenancePhase*(colonies: var seq[types.Colony],
+proc resolveMaintenancePhase*(colonies: var seq[Colony],
                              houseFleetData: Table[HouseId, seq[(ShipClass, bool)]],
                              houseTreasuries: var Table[HouseId, int]): MaintenanceReport =
   ## Resolve maintenance phase
