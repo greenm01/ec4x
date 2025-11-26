@@ -32,15 +32,24 @@ state.houses[houseId] = house  # Persists changes
 - `state.spyScouts: Table[string, SpyScout]`
 
 ### Historical Context
-Fixed 43 critical bugs across the entire engine (commit 8314e0d):
-- Intelligence system: 30 bugs - ALL intel reports were being lost
-- Economy/Diplomacy: 13 bugs - Treasury, elimination, prestige, fleet status
+Fixed 46 critical bugs across the entire engine:
+- **Commit 8314e0d** (2025-11-25): 43 bugs - Intelligence (30), Economy/Diplomacy (13)
+- **Commit cdbbde5** (2025-11-25): 3 bugs - Transport/fighter commissioning persistence
+  - All intel reports were being lost
+  - Treasury, elimination, prestige, fleet status changes were lost
+  - Newly commissioned transports and fighters were lost
 
 ### When Writing New Code
 1. **NEVER** write `state.table[key].field = value`
 2. **ALWAYS** use: `var x = state.table[key]; x.field = value; state.table[key] = x`
 3. Batch multiple modifications to the same table entry together
 4. Add comment: `# CRITICAL: Get, modify, write back to persist`
+
+### Known Remaining Issues
+**Test Files:** ~74 Table copy bugs remain in integration tests (tests/integration/*.nim)
+- These bugs don't affect gameplay since tests setup initial state with direct writes
+- Need fixing before tests can properly verify state mutations
+- See docs/OPEN_ISSUES.md for details
 
 ## Always Use Nimble for Build and Test
 
