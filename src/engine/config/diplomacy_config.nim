@@ -9,6 +9,7 @@ import toml_serialization
 type
   PactViolationsConfig* = object
     dishonored_status_turns*: int
+    dishonor_corruption_magnitude*: float
     diplomatic_isolation_turns*: int
     pact_reinstatement_cooldown*: int
     repeat_violation_window*: int

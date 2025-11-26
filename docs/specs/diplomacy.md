@@ -22,10 +22,10 @@ This can include:
 Attacking a Non-Aggression partner constitutes immediate pact violation. When a violation is detected during the Conflict Phase per [Section 1.3.1](gameplay.md#131-conflict-phase), the diplomatic status automatically converts to Enemy and takes effect at the start of the next turn's Conflict Phase.
 
 **Penalties for Violating House:**
-- **Immediate Prestige Loss:** **PactViolation** penalty - see [Table 9.4](reference.md#94-prestige)
-- **Dishonored Status:** For 3 turns, other houses receive +1 prestige (**DishonoredBonus**) when they attack the violator (represents reputational damage) - see [Table 9.4](reference.md#94-prestige)
+- **Immediate Prestige Loss:** **PactViolation** penalty - see [Table 9.4](reference.md#104-prestige)
+- **Dishonored Status:** For 3 turns, other houses receive +1 prestige (**DishonoredBonus**) when they attack the violator (represents reputational damage) - see [Table 9.4](reference.md#104-prestige)
 - **Diplomatic Isolation:** Cannot establish new Non-Aggression Pacts with any house for 5 turns
-- **Repeat Violations:** Each subsequent violation within 10 turns incurs **RepeatViolation** penalty - see [Table 9.4](reference.md#94-prestige)
+- **Repeat Violations:** Each subsequent violation within 10 turns incurs **RepeatViolation** penalty - see [Table 9.4](reference.md#104-prestige)
 
 **Diplomatic Reinstatement:**
 Non-Aggression Pacts cannot be reinstated between the same houses for 5 turns after violation. The Dishonored status and diplomatic isolation apply to all houses, not just the betrayed partner, reflecting widespread loss of trust in the galactic community.

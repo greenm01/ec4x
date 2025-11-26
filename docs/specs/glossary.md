@@ -1,25 +1,25 @@
-# 10.0 Glossary & Definitions
+# 11.0 Glossary & Definitions
 
 ## Ship Classes
 
 ### Capital Ships
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| BB | Battleship – heavy capital ship | [9.1](reference.md#91-space-force-wep1) |
-| BC | Battle Cruiser – medium-heavy capital ship | [9.1](reference.md#91-space-force-wep1) |
-| CA | Heavy Cruiser – medium capital ship | [9.1](reference.md#91-space-force-wep1) |
-| CL | Light Cruiser – light capital ship | [9.1](reference.md#91-space-force-wep1) |
-| CT | Corvette – smallest capital ship | [9.1](reference.md#91-space-force-wep1) |
-| DD | Destroyer – small capital ship | [9.1](reference.md#91-space-force-wep1) |
-| DN | Dreadnought – very heavy capital ship | [9.1](reference.md#91-space-force-wep1) |
-| FG | Frigate – small escort ship | [9.1](reference.md#91-space-force-wep1) |
-| SD | Super Dreadnought – largest standard capital ship | [9.1](reference.md#91-space-force-wep1) |
+| BB | Battleship – heavy capital ship | [9.1](reference.md#101-space-force-wep1) |
+| BC | Battle Cruiser – medium-heavy capital ship | [9.1](reference.md#101-space-force-wep1) |
+| CA | Heavy Cruiser – medium capital ship | [9.1](reference.md#101-space-force-wep1) |
+| CL | Light Cruiser – light capital ship | [9.1](reference.md#101-space-force-wep1) |
+| CT | Corvette – smallest capital ship | [9.1](reference.md#101-space-force-wep1) |
+| DD | Destroyer – small capital ship | [9.1](reference.md#101-space-force-wep1) |
+| DN | Dreadnought – very heavy capital ship | [9.1](reference.md#101-space-force-wep1) |
+| FG | Frigate – small escort ship | [9.1](reference.md#101-space-force-wep1) |
+| SD | Super Dreadnought – largest standard capital ship | [9.1](reference.md#101-space-force-wep1) |
 
 ### Carriers & Fighters
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| CV | Carrier – medium carrier that holds 3-5 FS | [9.1](reference.md#91-space-force-wep1) |
-| CX | Super Carrier – heavy carrier that holds 5-8 FS | [9.1](reference.md#91-space-force-wep1) |
+| CV | Carrier – medium carrier that holds 3-5 FS | [9.1](reference.md#101-space-force-wep1) |
+| CX | Super Carrier – heavy carrier that holds 5-8 FS | [9.1](reference.md#101-space-force-wep1) |
 | FS | Fighter Squadron | [2.4.1](assets.md#241-fighter-squadrons-carriers) |
 
 ### Special Ships
@@ -33,30 +33,30 @@
 ## Ground Forces
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| AA | Armies – basic ground defense unit | [9.2](reference.md#92-ground-units-wep1) |
-| GB | Ground Batteries – orbital defense unit | [9.2](reference.md#92-ground-units-wep1) |
-| MD | Marine Division (Space Marines) – elite ground invasion unit | [9.2](reference.md#92-ground-units-wep1) |
-| PS | Planetary Shield – ultimate ground defense structure | [9.2](reference.md#92-ground-units-wep1) |
+| AA | Armies – basic ground defense unit | [9.2](reference.md#102-ground-units-wep1) |
+| GB | Ground Batteries – orbital defense unit | [9.2](reference.md#102-ground-units-wep1) |
+| MD | Marine Division (Space Marines) – elite ground invasion unit | [9.2](reference.md#102-ground-units-wep1) |
+| PS | Planetary Shield – ultimate ground defense structure | [9.2](reference.md#102-ground-units-wep1) |
 
 ## Spacelift & Infrastructure
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| ET | ETAC – Environmental Transformation And Colonization ship | [9.3](reference.md#93-spacelift-command-wep1) |
-| SP | Spaceport – facility for population/cargo transport | [9.3](reference.md#93-spacelift-command-wep1) |
-| SY | Shipyard – facility for ship construction | [9.3](reference.md#93-spacelift-command-wep1) |
-| TT | Troop Transports – ship for moving ground forces | [9.3](reference.md#93-spacelift-command-wep1) |
+| ET | ETAC – Environmental Transformation And Colonization ship | [9.3](reference.md#103-spacelift-command-wep1) |
+| SP | Spaceport – facility for population/cargo transport | [9.3](reference.md#103-spacelift-command-wep1) |
+| SY | Shipyard – facility for ship construction | [9.3](reference.md#103-spacelift-command-wep1) |
+| TT | Troop Transports – ship for moving ground forces | [9.3](reference.md#103-spacelift-command-wep1) |
 
 ## Ship & Unit Statistics
 | Term | Definition | Section Link |
 |------|------------|--------------|
 | AS | Attack Strength – offensive firepower of a ship or squadron | [7.3](operations.md#73-space-combat) |
-| CC | Command Cost – the "size" a ship takes in a squadron | [9.1](reference.md#91-space-force-wep1) |
+| CC | Command Cost – the "size" a ship takes in a squadron | [9.1](reference.md#101-space-force-wep1) |
 | CER | Combat Effectiveness Rating – multiplier applied to AS in Phases 1 & 3 | [7.3.3](operations.md#733-combat-effectiveness-rating-cer) |
-| CL | Carry Limit – number of FS (fighters) or MD/PTU a carrier/transport holds | [9.1](reference.md#91-space-force-wep1) |
-| CR | Command Rating – maximum total CC a flagship can command | [9.1](reference.md#91-space-force-wep1) |
+| CL | Carry Limit – number of FS (fighters) or MD/PTU a carrier/transport holds | [9.1](reference.md#101-space-force-wep1) |
+| CR | Command Rating – maximum total CC a flagship can command | [9.1](reference.md#101-space-force-wep1) |
 | DS | Defense Strength – hits required to cripple or destroy a unit | [7.3](operations.md#73-space-combat) |
-| MC | Maintenance Cost – upkeep cost as percentage of PC | [9.1](reference.md#91-space-force-wep1) |
-| PC | Production Cost – build cost in PP | [9.1](reference.md#91-space-force-wep1) |
+| MC | Maintenance Cost – upkeep cost as percentage of PC | [9.1](reference.md#101-space-force-wep1) |
+| PC | Production Cost – build cost in PP | [9.1](reference.md#101-space-force-wep1) |
 
 ## Economy & Production
 | Term | Definition | Section Link |
@@ -81,7 +81,7 @@
 |------|------------|--------------|
 | ACO | Advanced Carrier Operations – tech that increases carrier hangar capacity | [2.4.1](assets.md#241-fighter-squadrons-carriers) |
 | CLK | Cloaking tech level | [2.4.3](assets.md#243-raiders) |
-| CST | Construction tech level – required shipyard level to build a ship class | [9.1](reference.md#91-space-force-wep1) |
+| CST | Construction tech level – required shipyard level to build a ship class | [9.1](reference.md#101-space-force-wep1) |
 | EL | Economic Level – entrepreneurial & education advancement (max 10+) | [4.2](economy.md#42-economic-level-el) |
 | ELI | Electronic Intelligence – detection tech level | [2.4.2](assets.md#242-scouts) |
 | ERP | Economic Research Points – used to advance Economic Level | [4.1](economy.md#41-research-points-rp) |
@@ -90,7 +90,7 @@
 | SRP | Science Research Points – used to advance Science Level | [4.1](economy.md#41-research-points-rp) |
 | TL | Tech Level – generic technology level (context dependent) | [4.0](economy.md#40-research-development) |
 | TRP | Technology Research Points – used to purchase specific technologies | [4.1](economy.md#41-research-points-rp) |
-| WEP | Weapons Level – determines available ship classes and upgrades | [9.1](reference.md#91-space-force-wep1) |
+| WEP | Weapons Level – determines available ship classes and upgrades | [9.1](reference.md#101-space-force-wep1) |
 
 ## Combat & Military Operations
 | Term | Definition | Section Link |
