@@ -187,20 +187,27 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
               echo "      ", event.description, ": ", event.amount, " prestige"
 
             # Apply dishonored status (3 turns per diplomacy.md:8.1.2)
-            state.houses[houseId].dishonoredStatus = dip_types.DishonoredStatus(
-              active: true,
-              turnsRemaining: 3,
-              violationTurn: state.turn
-            )
-            echo "      Dishonored for 3 turns"
+            # EXCEPTION: No dishonor for final confrontation (only 2 houses left)
+            if not state.isFinalConfrontation():
+              state.houses[houseId].dishonoredStatus = dip_types.DishonoredStatus(
+                active: true,
+                turnsRemaining: 3,
+                violationTurn: state.turn
+              )
+              echo "      Dishonored for 3 turns"
+            else:
+              echo "      Dishonor waived (final confrontation)"
 
             # Apply diplomatic isolation (5 turns per diplomacy.md:8.1.2)
-            state.houses[houseId].diplomaticIsolation = dip_types.DiplomaticIsolation(
-              active: true,
-              turnsRemaining: 5,
-              violationTurn: state.turn
-            )
-            echo "      Isolated for 5 turns"
+            if not state.isFinalConfrontation():
+              state.houses[houseId].diplomaticIsolation = dip_types.DiplomaticIsolation(
+                active: true,
+                turnsRemaining: 5,
+                violationTurn: state.turn
+              )
+              echo "      Isolated for 5 turns"
+            else:
+              echo "      Isolation waived (final confrontation)"
 
             # Set status to Enemy
             dip_engine.setDiplomaticState(

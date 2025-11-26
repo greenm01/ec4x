@@ -537,6 +537,12 @@ proc calculatePrestige*(state: GameState, houseId: HouseId): int =
   ## Prestige is tracked via events and stored in House.prestige
   return state.houses[houseId].prestige
 
+proc isFinalConfrontation*(state: GameState): bool =
+  ## Check if only 2 houses remain (final confrontation)
+  ## No dishonor penalties for inevitable war between final two houses
+  let activeHouses = state.getActiveHouses()
+  return activeHouses.len == 2
+
 proc checkVictoryCondition*(state: GameState): Option[HouseId] =
   ## Check if any house has won the game
   ## Victory: prestige threshold (configurable) or last house standing
