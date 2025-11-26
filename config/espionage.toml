@@ -14,6 +14,9 @@ assassination_ebp = 10
 cyber_attack_ebp = 6
 economic_manipulation_ebp = 6
 psyops_campaign_ebp = 3
+counter_intel_sweep_ebp = 4
+intelligence_theft_ebp = 8
+plant_disinformation_ebp = 6
 
 [investment]
 # Over-investment penalties
@@ -49,6 +52,12 @@ assassination_srp_reduction = 50  # Percentage (50%)
 economic_ncv_reduction = 50    # Percentage (50%)
 psyops_tax_reduction = 25      # Percentage (25%)
 effect_duration_turns = 1      # How long effects last
+
+# Intelligence warfare effects
+intel_block_duration = 1       # Turns intelligence gathering is blocked
+disinformation_duration = 2    # Turns disinformation lasts
+disinformation_min_variance = 0.2  # 20% minimum corruption
+disinformation_max_variance = 0.4  # 40% maximum corruption
 
 # Detection failure penalties
 failed_espionage_prestige = -2  # When detected

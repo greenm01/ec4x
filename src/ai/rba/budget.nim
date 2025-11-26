@@ -341,7 +341,11 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     if not hasShipyard:
       continue  # Can't build ships without shipyard
 
-    # Build from each budget pool
+    # Build queue system allows multiple simultaneous projects per colony
+    # Each objective can submit orders up to its allocated budget
+    # Engine will enforce dock capacity limits (spaceports: 5, shipyards: 10)
+
+    # Generate orders for all objectives (engine will queue them)
     result.add(buildExpansionOrders(colony, budgets[Expansion], needETACs, hasShipyard))
     result.add(buildDefenseOrders(colony, budgets[Defense], needDefenses, hasStarbase))
     result.add(buildMilitaryOrders(colony, budgets[Military], militaryCount, canAffordMoreShips, atSquadronLimit))

@@ -8,12 +8,14 @@
 
 import std/[tables, options, sequtils, strformat]
 import ../../common/[hex, types/core, types/combat, types/units]
-import ../gamestate, ../orders, ../fleet, ../starmap, ../spacelift, ../logger
+import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../spacelift, ../logger
 import ../colonization/engine as col_engine
 import ../diplomacy/[types as dip_types]
 import ../config/[prestige_config, population_config]
 import ../prestige
 import ./types  # Common resolution types
+import ../intelligence/generator
+import ../intelligence/types as intel_types
 
 proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a system is hostile to a house based on known intel (fog-of-war)
@@ -276,13 +278,43 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
   logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
 
-  # Check for fleet encounters at destination
-  # Find other fleets at the same location
+  # Automatic intelligence gathering when arriving at system
+  # ANY fleet presence reveals enemy colonies (passive reconnaissance)
+  if newLocation in state.colonies:
+    let colony = state.colonies[newLocation]
+    if colony.owner != houseId:
+      # Generate basic intelligence report on enemy colony
+      let intelReport = generateColonyIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
+      if intelReport.isSome:
+        # CRITICAL: Must modify state.houses in-place to persist intelligence
+        state.houses[houseId].intelligence.addColonyReport(intelReport.get())
+        logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered intelligence on enemy colony at {newLocation}")
+
+  # Check for fleet encounters at destination with STEALTH DETECTION
+  # Per assets.md:2.4.3 - Cloaked fleets can only be detected by scouts or starbases
+  var enemyFleetsAtLocation: seq[tuple[fleetId: FleetId, fleet: Fleet]] = @[]
+  let detectingFleet = state.fleets[order.fleetId]
+  let hasScouts = detectingFleet.squadrons.anyIt(it.hasScouts())
+
   for otherFleetId, otherFleet in state.fleets:
     if otherFleetId != order.fleetId and otherFleet.location == newLocation:
       if otherFleet.owner != houseId:
+        # STEALTH CHECK: Cloaked fleets only detected by scouts
+        if otherFleet.isCloaked() and not hasScouts:
+          logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} failed to detect cloaked fleet {otherFleetId} at {newLocation} (no scouts)")
+          continue  # Cloaked fleet remains undetected
+
         logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
-        # Combat will be resolved in conflict phase next turn
+        enemyFleetsAtLocation.add((otherFleetId, otherFleet))
+
+  # Automatic fleet intelligence gathering - detected enemy fleets
+  if enemyFleetsAtLocation.len > 0:
+    let systemIntelReport = generateSystemIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
+    if systemIntelReport.isSome:
+      state.houses[houseId].intelligence.addSystemReport(systemIntelReport.get())
+      logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered intelligence on {enemyFleetsAtLocation.len} enemy fleet(s) at {newLocation}")
+
+  # Combat will be resolved in conflict phase next turn
         # This just logs the encounter
 
 proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
@@ -295,7 +327,23 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
 
   # Check if system already colonized
   if targetId in state.colonies:
-    logWarn(LogCategory.lcColonization, &"Fleet {order.fleetId}: System {targetId} already colonized")
+    let colony = state.colonies[targetId]
+
+    # ORBITAL INTELLIGENCE GATHERING
+    # Fleet approaching colony for colonization/guard/blockade gets close enough to see orbital defenses
+    if colony.owner != houseId:
+      # Generate detailed colony intel including orbital defenses
+      let colonyIntel = generateColonyIntelReport(state, houseId, targetId, intel_types.IntelQuality.Visual)
+      if colonyIntel.isSome:
+        state.houses[houseId].intelligence.addColonyReport(colonyIntel.get())
+        logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered orbital intelligence on enemy colony at {targetId}")
+
+      # Also gather system intel on any fleets present (including guard/reserve fleets)
+      let systemIntel = generateSystemIntelReport(state, houseId, targetId, intel_types.IntelQuality.Visual)
+      if systemIntel.isSome:
+        state.houses[houseId].intelligence.addSystemReport(systemIntel.get())
+
+    logWarn(LogCategory.lcColonization, &"Fleet {order.fleetId}: System {targetId} already colonized by {colony.owner}")
     return
 
   let fleetOpt = state.getFleet(order.fleetId)

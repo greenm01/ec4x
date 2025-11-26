@@ -7,6 +7,16 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- 🔄 **Build Queue System for Multi-Project Construction - IN PROGRESS (2025-11-25)**
+  - ✅ Added `constructionQueue: seq[ConstructionProject]` to Colony type
+  - ✅ Created dock capacity helper functions (`getConstructionDockCapacity()`, `canAcceptMoreProjects()`)
+  - ✅ Modified construction resolution to use dock-based capacity (spaceports: 5, shipyards: 10)
+  - ✅ Reverted budget.nim to add ALL orders (removed priority-based selection)
+  - ⏳ Test scout production with build queue system
+  - ⏳ Validate invasions occur with proper reconnaissance
+  - ⏳ **TODO:** Allow CST tech to upgrade dock capacity in spaceports and shipyards
+  - ⏳ **TODO:** Create integration tests for construction queue system
+  - **Impact:** Fixes scout production bottleneck (715 failed builds), enables proper MOEA budget allocation
 - 🔄 **Unknown-Unknowns Testing Infrastructure - IN PROGRESS (2025-11-25)**
   - ✅ Documented "Stale Binary" meta-bug discovery (4 hours lost to cached binary)
   - ✅ Added logging rules to CLAUDE_CONTEXT.md (use std/logging not echo)

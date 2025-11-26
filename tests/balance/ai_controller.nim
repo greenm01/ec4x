@@ -7,6 +7,7 @@
 # Import production RBA
 import ../../src/ai/rba/player
 import ../../src/ai/rba/budget  # Multi-objective budget allocation system
+import ../../src/ai/common/types  # For OperationType, CoordinatedOperation
 export player
 
 # Import remaining dependencies for order generation
@@ -135,6 +136,152 @@ proc findNearestUncolonizedSystem(filtered: FilteredGameState, fromSystem: Syste
       return some(closestSystems[0])
 
   return none(SystemId)
+
+# =============================================================================
+# Invasion Planning - Now in production RBA modules
+# =============================================================================
+# identifyInvasionOpportunities, countAvailableFleets, planCoordinatedInvasion
+# are now in src/ai/rba/tactical.nim with proper fog-of-war handling
+
+# Temporarily keep these test stubs to avoid breaking existing code
+# TODO: Remove after confirming production versions work
+
+proc countAvailableFleets_OLD*(controller: AIController, filtered: FilteredGameState): int =
+  ## Count fleets not currently in operations
+  ## RESPECTS FOG-OF-WAR: Only counts own fleets (perfect knowledge)
+  result = 0
+  for fleet in filtered.ownFleets:
+    # Check if fleet is already in an operation
+    var inOperation = false
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        inOperation = true
+        break
+
+    if not inOperation and fleet.combatStrength() > 0:
+      result += 1
+
+proc identifyInvasionOpportunities_OLD*(controller: var AIController, filtered: FilteredGameState): seq[SystemId] =
+  ## Identify enemy colonies that warrant coordinated invasion
+  ## Returns list of high-value targets sorted by priority
+  ## RESPECTS FOG-OF-WAR: Only considers visible colonies with intel
+  result = @[]
+
+  var totalVisible = 0
+  var skippedNoIntel = 0
+  var skippedDefense = 0
+
+  # Find visible enemy colonies
+  for visCol in filtered.visibleColonies:
+    if visCol.owner == controller.houseId:
+      continue
+
+    totalVisible += 1
+
+    # Skip if no intel on this colony (check both owned and estimated fields)
+    let hasIntel = visCol.population.isSome or visCol.production.isSome or
+                   visCol.estimatedPopulation.isSome or visCol.estimatedIndustry.isSome
+    if not hasIntel:
+      skippedNoIntel += 1
+      continue
+
+    # Calculate defense strength estimate
+    var defenseStrength = 0
+    if visCol.starbaseLevel.isSome and visCol.starbaseLevel.get() > 0:
+      defenseStrength += 100 * visCol.starbaseLevel.get()
+
+    # Check for defending fleets at this location
+    for fleet in filtered.visibleFleets:
+      if fleet.owner == visCol.owner and fleet.location == visCol.systemId:
+        # Estimate fleet strength from ship count (rough approximation)
+        if fleet.estimatedShipCount.isSome:
+          defenseStrength += fleet.estimatedShipCount.get() * 10  # ~10 strength per ship
+
+    # Accept any enemy colony as potential invasion target
+    # Defense strength assessment will be done during operation planning
+    result.add(visCol.systemId)
+
+    # Log defense strength for tuning
+    if result.len <= 3:  # Only log first few to avoid spam
+      logDebug(LogCategory.lcAI, &"{controller.houseId} target {visCol.systemId}: defense={defenseStrength}")
+
+  # Log diagnostic information
+  logDebug(LogCategory.lcAI, &"{controller.houseId} invasion scan: visible={totalVisible}, noIntel={skippedNoIntel}, badDefense={skippedDefense}, opportunities={result.len}")
+
+proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGameState) =
+  ## Assign fleets to defend important colonies (stub for now)
+  ## TODO: Implement strategic reserve management
+  discard
+
+proc planCoordinatedInvasion_OLD*(controller: var AIController, filtered: FilteredGameState,
+                                target: SystemId, turn: int) =
+  ## DEPRECATED: Use production version in src/ai/rba/tactical.nim
+  ## Plan multi-fleet invasion of a high-value target
+  ## Creates CoordinatedOperation that will be executed by generateFleetOrders
+  ## Assembles at nearby friendly system, then attacks together
+
+  # Find nearby friendly colony as assembly point
+  var assemblyPoint: Option[SystemId] = none(SystemId)
+  var minDist = 999
+
+  # Get target coordinates from visible colonies
+  var targetSystemId: Option[SystemId] = none(SystemId)
+  for visCol in filtered.visibleColonies:
+    if visCol.systemId == target:
+      targetSystemId = some(target)
+      break
+
+  if targetSystemId.isNone:
+    return  # Can't plan invasion of system we can't see
+
+  # Find closest friendly colony as assembly point
+  for col in filtered.ownColonies:
+    # Calculate distance (simplified - would need actual hex distance)
+    let dist = if col.systemId > target:
+                 int(col.systemId - target)
+               else:
+                 int(target - col.systemId)
+    if dist < minDist and dist > 0:
+      minDist = dist
+      assemblyPoint = some(col.systemId)
+
+  if assemblyPoint.isNone:
+    return  # No friendly colony to assemble at
+
+  # Gather available combat fleets
+  var fleets: seq[FleetId] = @[]
+  var totalStrength = 0
+
+  for fleet in filtered.ownFleets:
+    if fleets.len >= 3:  # Max 3 fleets per operation
+      break
+
+    # Skip if already in operation
+    var inOp = false
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        inOp = true
+        break
+
+    if not inOp and fleet.combatStrength() > 20:
+      fleets.add(fleet.id)
+      totalStrength += fleet.combatStrength()
+
+  # Need at least 2 fleets with good combined strength to invade
+  if fleets.len >= 2 and totalStrength >= 100:
+    # Create the coordinated invasion operation
+    let operation = CoordinatedOperation(
+      operationType: OperationType.Invasion,
+      targetSystem: target,
+      assemblyPoint: assemblyPoint.get(),
+      requiredFleets: fleets,
+      readyFleets: @[],  # Empty - fleets haven't arrived yet
+      turnScheduled: turn,
+      executionTurn: none(int)  # Will execute when all fleets ready
+    )
+
+    controller.operations.add(operation)
+    logInfo(LogCategory.lcAI, &"{controller.houseId} CREATED INVASION OPERATION: target={target}, assembly={assemblyPoint.get()}, fleets={fleets.len}, strength={totalStrength}")
 
 # =============================================================================
 # Order Generation
@@ -1672,8 +1819,12 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   # Plan new coordinated operations if moderately aggressive and have free fleets
   # Threshold: 0.4 allows Balanced strategy (0.5) to invade, not just Aggressive (0.8)
-  if p.aggression >= 0.4 and controller.countAvailableFleets(filtered) >= 2:
+  let availableFleets = controller.countAvailableFleets(filtered)
+  logDebug(LogCategory.lcAI, &"{controller.houseId} invasion check: aggression={p.aggression:.2f}, availableFleets={availableFleets}")
+
+  if p.aggression >= 0.4 and availableFleets >= 2:
     let opportunities = controller.identifyInvasionOpportunities(filtered)
+    logInfo(LogCategory.lcAI, &"{controller.houseId} found {opportunities.len} invasion opportunities")
     if opportunities.len > 0:
       # Plan invasion of highest-value target
       controller.planCoordinatedInvasion(filtered, opportunities[0], filtered.turn)

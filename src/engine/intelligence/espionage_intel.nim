@@ -32,6 +32,9 @@ proc generateEspionageIntelligence*(
     of esp_types.EspionageAction.CyberAttack: "Cyber Attack"
     of esp_types.EspionageAction.EconomicManipulation: "Economic Manipulation"
     of esp_types.EspionageAction.PsyopsCampaign: "Psyops Campaign"
+    of esp_types.EspionageAction.CounterIntelSweep: "Counter-Intelligence Sweep"
+    of esp_types.EspionageAction.IntelligenceTheft: "Intelligence Theft"
+    of esp_types.EspionageAction.PlantDisinformation: "Plant Disinformation"
 
   if result.success:
     # Successful espionage - attacker receives intelligence on success
@@ -48,6 +51,12 @@ proc generateEspionageIntelligence*(
         &"ESPIONAGE SUCCESS: Economic manipulation of {result.target} - halved NCV for 1 turn"
       of esp_types.EspionageAction.PsyopsCampaign:
         &"ESPIONAGE SUCCESS: Psyops campaign against {result.target} - -25% tax revenue for 1 turn"
+      of esp_types.EspionageAction.CounterIntelSweep:
+        &"COUNTER-INTEL SUCCESS: Intelligence secured - enemy intel gathering blocked for 1 turn"
+      of esp_types.EspionageAction.IntelligenceTheft:
+        &"ESPIONAGE SUCCESS: Intelligence theft from {result.target} - entire database stolen"
+      of esp_types.EspionageAction.PlantDisinformation:
+        &"ESPIONAGE SUCCESS: Disinformation planted in {result.target}'s intelligence - corruption lasts 2 turns"
 
     let attackerReport = intel_types.ScoutEncounterReport(
       reportId: &"{result.attacker}-espionage-success-{turn}-{result.target}",

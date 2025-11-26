@@ -19,6 +19,9 @@ type
     cyber_attack_ebp*: int
     economic_manipulation_ebp*: int
     psyops_campaign_ebp*: int
+    counter_intel_sweep_ebp*: int
+    intelligence_theft_ebp*: int
+    plant_disinformation_ebp*: int
 
   EspionageInvestmentConfig* = object
     threshold_percentage*: int
@@ -48,6 +51,10 @@ type
     psyops_tax_reduction*: int
     effect_duration_turns*: int
     failed_espionage_prestige*: int
+    intel_block_duration*: int
+    disinformation_duration*: int
+    disinformation_min_variance*: float
+    disinformation_max_variance*: float
 
   ScoutDetectionConfig* = object
     mesh_2_3_scouts*: int

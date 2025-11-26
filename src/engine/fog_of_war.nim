@@ -3,9 +3,9 @@
 ## Filters game state to create player-specific views with limited visibility.
 ## Per Grok AI feedback: "Fog of war is mandatory for both RBA and NNA"
 
-import std/[tables, options, sets, sequtils, strutils]
+import std/[tables, options, sets, sequtils, strutils, strformat]
 import ../common/types/[core, planets, tech]
-import gamestate, fleet, squadron, starmap, order_types
+import gamestate, fleet, squadron, starmap, order_types, logger
 import intelligence/types as intel_types
 
 type
@@ -33,8 +33,16 @@ type
     intelTurn*: Option[int]          # When intel was gathered
     estimatedPopulation*: Option[int]
     estimatedIndustry*: Option[int]
-    estimatedDefenses*: Option[int]
+    estimatedDefenses*: Option[int]  # Ground defenses only (armies, marines, batteries)
     starbaseLevel*: Option[int]
+
+    # Orbital defense intel (from approaching colony for orbital missions)
+    # Per user: orbital defenses include starbases (above), unassigned squadrons,
+    # reserve/mothballed fleets, and shipyards (space-based, NOT surface spaceports)
+    unassignedSquadronCount*: Option[int]   # Combat squadrons not in fleets
+    reserveFleetCount*: Option[int]         # Reserve fleets at colony
+    mothballedFleetCount*: Option[int]      # Mothballed fleets at colony
+    shipyardCount*: Option[int]             # Space-based construction facilities
 
   VisibleFleet* = object
     ## Fleet information visible to a specific house
@@ -151,6 +159,12 @@ proc createVisibleColony(colony: Colony, isOwned: bool,
     result.estimatedIndustry = some(report.industry)
     result.estimatedDefenses = some(report.defenses)
     result.starbaseLevel = some(report.starbaseLevel)
+
+    # Orbital defense intel (populated when approaching colony for orbital missions)
+    result.unassignedSquadronCount = some(report.unassignedSquadronCount)
+    result.reserveFleetCount = some(report.reserveFleetCount)
+    result.mothballedFleetCount = some(report.mothballedFleetCount)
+    result.shipyardCount = some(report.shipyardCount)
 
 proc createVisibleFleet(fleet: Fleet, isOwned: bool, location: SystemId,
                        intelReport: Option[intel_types.SystemIntelReport],
@@ -299,6 +313,10 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
 
   # Visible colonies
   result.visibleColonies = @[]
+
+  # DEBUG: Log intelligence database size
+  logDebug(LogCategory.lcAI, &"Fog-of-war for {houseId}: {house.intelligence.colonyReports.len} colony intel reports")
+
   for systemId, colony in state.colonies:
     if colony.owner != houseId:
       # Enemy colony - check if visible
