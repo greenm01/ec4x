@@ -8,6 +8,7 @@ import ../common/types/core
 import ../common/[system, hex]
 import gamestate
 import fleet
+import starmap
 import order_types
 import diplomacy/types as dip_types
 
@@ -92,19 +93,18 @@ proc getDefensiveCollapseOrders*(state: GameState, houseId: HouseId): seq[(Fleet
           )))
     else:
       # Fleet is away from home - return to nearest controlled system
-      # Find nearest controlled system (simple distance check using hex grid)
+      # Find nearest reachable controlled system via jump lanes
       var nearestSystem = controlledSystems[0]
-      var minDistance: uint32 = 999999
+      var minDistance = int.high
 
       for systemId in controlledSystems:
-        let system = state.starMap.systems[systemId]
-        let fleetSystem = state.starMap.systems[fleet.location]
-        # Use hex distance function
-        let dist = distance(system.coords, fleetSystem.coords)
-
-        if dist < minDistance:
-          minDistance = dist
-          nearestSystem = systemId
+        # Calculate distance via jump lanes pathfinding
+        let pathResult = state.starMap.findPath(fleet.location, systemId, fleet)
+        if pathResult.found:
+          let dist = pathResult.path.len - 1  # Number of jumps
+          if dist < minDistance:
+            minDistance = dist
+            nearestSystem = systemId
 
       # Issue move order to nearest home system
       if currentOrder.orderType != FleetOrderType.Move or
@@ -201,17 +201,17 @@ proc getAutopilotOrders*(state: GameState, houseId: HouseId): seq[(FleetId, Flee
           priority: 0
         )))
       else:
-        # Return to nearest home system
+        # Return to nearest home system via jump lanes
         var nearestSystem = controlledSystems[0]
-        var minDistance: uint32 = 999999
+        var minDistance = int.high
 
         for systemId in controlledSystems:
-          let system = state.starMap.systems[systemId]
-          let fleetSystem = state.starMap.systems[fleet.location]
-          let dist = distance(system.coords, fleetSystem.coords)
-
-          if dist < minDistance:
-            minDistance = dist
+          # Calculate distance via jump lanes pathfinding
+          let pathResult = state.starMap.findPath(fleet.location, systemId, fleet)
+          if pathResult.found:
+            let dist = pathResult.path.len - 1  # Number of jumps
+            if dist < minDistance:
+              minDistance = dist
             nearestSystem = systemId
 
         result.add((fleetId, FleetOrder(
