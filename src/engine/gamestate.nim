@@ -208,6 +208,7 @@ type
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
     fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
+    standingOrders*: Table[FleetId, StandingOrder]  # Standing orders (execute when no explicit order)
     diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
     turnDeadline*: int64          # Unix timestamp
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
@@ -227,6 +228,7 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
+    standingOrders: initTable[FleetId, StandingOrder](),
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     ongoingEffects: @[],
     spyScouts: initTable[string, SpyScout](),
