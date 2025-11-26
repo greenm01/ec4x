@@ -9,9 +9,10 @@
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets]
 import ../common/[hex, types/core, types/combat]
-import gamestate, orders, fleet, squadron
+import gamestate, orders, fleet, squadron, ai_special_modes
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
+import research/[types as res_types_research]
 import commands/executor
 import intelligence/espionage_intel
 # Import resolution modules
@@ -49,17 +50,83 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 
   echo "Resolving strategic cycle ", state.turn
 
+  # Generate AI orders for special modes (Defensive Collapse & MIA Autopilot)
+  # These override player/AI orders for affected houses
+  var effectiveOrders = orders  # Start with submitted orders
+
+  for houseId, house in result.newState.houses:
+    case house.status
+    of HouseStatus.DefensiveCollapse:
+      # Generate defensive collapse AI orders
+      let defensiveOrders = getDefensiveCollapseOrders(result.newState, houseId)
+
+      # Create empty order packet (no construction, research, diplomacy)
+      var collapsePacket = OrderPacket(
+        houseId: houseId,
+        turn: state.turn,
+        fleetOrders: @[],
+        buildOrders: @[],
+        researchAllocation: res_types_research.initResearchAllocation(),
+        diplomaticActions: @[],
+        populationTransfers: @[],
+        squadronManagement: @[],
+        cargoManagement: @[],
+        terraformOrders: @[],
+        espionageAction: none(esp_types.EspionageAttempt),
+        ebpInvestment: 0,
+        cipInvestment: 0
+      )
+
+      # Add defensive fleet orders
+      for (fleetId, order) in defensiveOrders:
+        collapsePacket.fleetOrders.add(order)
+
+      effectiveOrders[houseId] = collapsePacket
+      echo "  ", house.name, " (DEFENSIVE COLLAPSE): ", defensiveOrders.len, " defensive fleet orders"
+
+    of HouseStatus.Autopilot:
+      # Generate autopilot AI orders
+      let autopilotOrders = getAutopilotOrders(result.newState, houseId)
+
+      # Create minimal order packet (no construction, no new research, no diplomacy)
+      var autopilotPacket = OrderPacket(
+        houseId: houseId,
+        turn: state.turn,
+        fleetOrders: @[],
+        buildOrders: @[],
+        researchAllocation: res_types_research.initResearchAllocation(),
+        diplomaticActions: @[],
+        populationTransfers: @[],
+        squadronManagement: @[],
+        cargoManagement: @[],
+        terraformOrders: @[],
+        espionageAction: none(esp_types.EspionageAttempt),
+        ebpInvestment: 0,
+        cipInvestment: 0
+      )
+
+      # Add autopilot fleet orders
+      for (fleetId, order) in autopilotOrders:
+        autopilotPacket.fleetOrders.add(order)
+
+      effectiveOrders[houseId] = autopilotPacket
+      echo "  ", house.name, " (AUTOPILOT): ", autopilotOrders.len, " fleet orders (standing)"
+
+    of HouseStatus.Active:
+      # Normal play - use submitted orders
+      discard
+
   # Phase 1: Conflict (combat, infrastructure damage, espionage)
-  resolveConflictPhase(result.newState, orders, result.combatReports, result.events)
+  resolveConflictPhase(result.newState, effectiveOrders, result.combatReports, result.events)
 
   # Phase 2: Income (resource collection)
-  resolveIncomePhase(result.newState, orders)
+  resolveIncomePhase(result.newState, effectiveOrders)
 
   # Phase 3: Command (build orders, fleet orders, diplomatic actions)
-  resolveCommandPhase(result.newState, orders, result.events)
+  resolveCommandPhase(result.newState, effectiveOrders, result.events)
 
   # Phase 4: Maintenance (upkeep, effect decrements, status updates)
-  resolveMaintenancePhase(result.newState, result.events, orders)
+  resolveMaintenancePhase(result.newState, result.events, effectiveOrders)
 
   # Advance to next turn
   result.newState.turn += 1
