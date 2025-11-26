@@ -5,6 +5,7 @@
 import std/[tables, options, random, sequtils, sets, strformat]
 import ../../common/types/[core, tech, units]
 import ../../engine/[gamestate, fog_of_war, orders, logger]
+import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../engine/research/types as res_types
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
 import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics, standing_orders_manager]
@@ -73,6 +74,21 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
       result.technology[TechField.ConstructionTech] = techBudget div 2
       result.technology[TechField.WeaponsTech] = techBudget div 2
 
+proc calculateTotalCost(buildOrders: seq[BuildOrder]): int =
+  ## Calculate total PP cost of all build orders
+  result = 0
+  for order in buildOrders:
+    case order.buildType
+    of BuildType.Ship:
+      if order.shipClass.isSome:
+        result += getShipConstructionCost(order.shipClass.get()) * order.quantity
+    of BuildType.Building:
+      # Building costs vary by type, skip for now as we don't have cost lookup
+      discard
+    of BuildType.Infrastructure:
+      # Infrastructure costs are handled separately, skip for now
+      discard
+
 proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): OrderPacket =
   ## Generate complete order packet using all RBA subsystems
   ##
@@ -85,7 +101,11 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     treasury: filtered.ownHouse.treasury,  # Capture treasury at AI planning time
     fleetOrders: @[],
     buildOrders: @[],
-    researchAllocation: generateResearchAllocation(controller, filtered),
+    researchAllocation: res_types.ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int]()
+    ),  # Will be set below with treasury reservation
     diplomaticActions: @[],
     populationTransfers: @[],
     squadronManagement: @[],
@@ -100,10 +120,29 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let currentAct = ai_types.getCurrentGameAct(filtered.turn)
 
   # ==========================================================================
-  # LOGISTICS (Asset Lifecycle Management) - CALLED FIRST!
+  # TREASURY RESERVATION SYSTEM
+  # ==========================================================================
+  # Sequential allocation prevents race condition where research, builds, and
+  # espionage all independently claim percentages of the same full treasury
+  var remainingTreasury = filtered.ownHouse.treasury
+  var reservedBudgets = initTable[string, int]()
+
+  # 1. RESEARCH CLAIMS FIRST (highest priority)
+  let researchBudget = int(float(remainingTreasury) * p.techPriority)
+  result.researchAllocation = generateResearchAllocation(controller, filtered)
+  remainingTreasury -= researchBudget
+  reservedBudgets["research"] = researchBudget
+
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Treasury reservation: Research={researchBudget}PP, " &
+           &"remaining={remainingTreasury}PP")
+
+  # ==========================================================================
+  # LOGISTICS (Asset Lifecycle Management)
   # ==========================================================================
   # Philosophy: Use what you have before building more
   # Logistics handles: cargo loading, PTU transfers, fleet rebalancing, mothballing
+  # NOTE: Logistics does not consume treasury, it's purely asset optimization
   let logisticsOrders = logistics.generateLogisticsOrders(controller, filtered, currentAct)
 
   result.cargoManagement = logisticsOrders.cargo
@@ -128,7 +167,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   # Calculate context flags for build decision-making
   # These are simple heuristics - budget module makes the final decisions
-  let availableBudget = filtered.ownHouse.treasury
+  # 2. BUILD ORDERS CLAIM SECOND (from remaining treasury)
+  let availableBudget = remainingTreasury  # Use remaining after research, not full treasury!
 
   # Count military vs scout squadrons and special units
   var militaryCount = 0
@@ -198,6 +238,15 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     atSquadronLimit, militaryCount, scoutCount, planetBreakerCount, availableBudget
   )
 
+  # Calculate total build cost and reserve from treasury
+  let totalBuildCost = calculateTotalCost(result.buildOrders)
+  remainingTreasury -= totalBuildCost
+  reservedBudgets["builds"] = totalBuildCost
+
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Treasury reservation: Builds={totalBuildCost}PP, " &
+           &"remaining={remainingTreasury}PP")
+
   # ==========================================================================
   # STRATEGIC OPERATIONS PLANNING
   # ==========================================================================
@@ -257,6 +306,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # ESPIONAGE (Using RBA Espionage Module)
   # ==========================================================================
+  # 3. ESPIONAGE CLAIMS THIRD (from remaining treasury after research and builds)
   # PHASE 1: Calculate espionage investment (2-5% of treasury)
   # This determines how many EBP/CIP points we'll have THIS TURN
   let espionageInvestment = if p.riskTolerance > 0.6:
@@ -266,19 +316,24 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   else:
     0.03  # Balanced: 3% investment
 
-  let totalInvestment = int(float(filtered.ownHouse.treasury) * espionageInvestment)
+  let totalInvestment = int(float(remainingTreasury) * espionageInvestment)  # Use remaining, not full treasury!
   let ebpInvestment = totalInvestment div 2  # Half to offensive EBP
   let cipInvestment = totalInvestment div 2  # Half to defensive CIP
+  remainingTreasury -= totalInvestment
+  reservedBudgets["espionage"] = totalInvestment
 
   # PHASE 2: Calculate projected EBP/CIP (current + investment)
   # This is the budget available THIS TURN for espionage actions
   let projectedEBP = filtered.ownHouse.espionageBudget.ebpPoints + ebpInvestment
   let projectedCIP = filtered.ownHouse.espionageBudget.cipPoints + cipInvestment
 
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Treasury reservation: Espionage={totalInvestment}PP, " &
+           &"remaining={remainingTreasury}PP")
+
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Turn {filtered.turn}: Espionage budget - " &
-          &"treasury={filtered.ownHouse.treasury}PP, investment={totalInvestment}PP, " &
-          &"projected EBP={projectedEBP}, projected CIP={projectedCIP}")
+          &"investment={totalInvestment}PP, projected EBP={projectedEBP}, projected CIP={projectedCIP}")
 
   # PHASE 3: Generate espionage action using projected budget
   result.espionageAction = generateEspionageAction(controller, filtered, projectedEBP, projectedCIP, rng)
@@ -293,7 +348,20 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # NOTE: populationTransfers already handled by logistics module above
   # NOTE: squadronManagement already handled by logistics module above
   # NOTE: cargoManagement already handled by logistics module above
-  result.terraformOrders = generateTerraformOrders(controller, filtered, rng)
+  # 4. TERRAFORM ONLY IF SUFFICIENT REMAINS (>800 PP threshold)
+  if remainingTreasury > 800:
+    result.terraformOrders = generateTerraformOrders(controller, filtered, rng)
+  else:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Skipping terraform: only {remainingTreasury}PP remaining")
+
+  # FINAL TREASURY ALLOCATION LOGGING
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Treasury allocation complete: " &
+          &"Research={reservedBudgets[\"research\"]}PP, " &
+          &"Builds={reservedBudgets[\"builds\"]}PP, " &
+          &"Espionage={reservedBudgets[\"espionage\"]}PP, " &
+          &"remaining={remainingTreasury}PP")
 
   # ==========================================================================
   # STANDING ORDERS (QoL Integration)
