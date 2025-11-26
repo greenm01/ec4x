@@ -69,7 +69,7 @@ tests/**/[!.]*.exe
 tests/**/[!.]*.out
 
 # Specific binary patterns
-src/engine/**/[!.]*[!.nim]
+# NOTE: Don't use wildcards that block directories
 tests/unit/test_*[!.nim]
 tests/integration/test_*[!.nim]
 tests/balance/test_*[!.nim]
@@ -91,6 +91,9 @@ src/engine/combat/ground
 src/engine/resolve
 src/engine/gamestate
 src/engine/prestige
+src/engine/intelligence/combat_intel
+src/engine/intelligence/generator
+src/engine/intelligence/types
 # NOTE: Do NOT use wildcards like src/engine/**/types or src/engine/**/engine
 # Those would block .nim source files from being tracked
 # Library modules should not be compiled standalone anyway
