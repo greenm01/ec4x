@@ -95,7 +95,6 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     cipInvestment: 0
   )
 
-  let house = filtered.ownHouse
   let p = controller.personality
 
   # ==========================================================================
@@ -116,7 +115,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   # Calculate context flags for build decision-making
   # These are simple heuristics - budget module makes the final decisions
-  let availableBudget = house.treasury
+  let availableBudget = filtered.ownHouse.treasury
 
   # Count military vs scout squadrons
   var militaryCount = 0
@@ -134,21 +133,71 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Simple threat assessment
   let isUnderThreat = filtered.visibleFleets.anyIt(it.owner != controller.houseId)
 
-  # Build needs based on what we have
-  let needScouts = scoutCount < myColonies.len  # Want at least 1 scout per colony
-  let needETACs = militaryCount < 2  # Need some military presence
-  let needDefenses = currentAct >= ai_types.GameAct.Act2_RisingTensions
-  let needFighters = currentAct >= ai_types.GameAct.Act2_RisingTensions and p.aggression > 0.3
-  let needCarriers = needFighters  # Carriers support fighters
-  let needTransports = currentAct >= ai_types.GameAct.Act2_RisingTensions and p.aggression > 0.4
-  let needRaiders = p.aggression > 0.6 and currentAct >= ai_types.GameAct.Act2_RisingTensions
+  # Build needs based on what we have (gated by CST tech level)
+  let cst = filtered.ownHouse.techTree.levels.constructionTech
+
+  # Act-aware build needs (4-act structure from DECISION_FRAMEWORK.md)
+  # Act 1: 70-80% expansion (ETACs), 10-20% military (minimal), 10% intel (scouts)
+  # Act 2: 30-40% expansion (opportunistic), 50-60% military, 10% tech
+  # Act 3+: 0-10% expansion (conquest only), 80-90% military
+
+  # Count enemy colonies visible to us (for scout targeting)
+  var knownEnemyColonies = 0
+  for visCol in filtered.visibleColonies:
+    if visCol.owner != controller.houseId:
+      knownEnemyColonies += 1
+
+  # ETACs: Colonization ships (NOT military!)
+  let needETACs = case currentAct
+    of GameAct.Act1_LandGrab:
+      true  # ALWAYS build ETACs in Act 1 (land grab phase)
+    of GameAct.Act2_RisingTensions:
+      myColonies.len < 8  # Opportunistic colonization in Act 2
+    else:
+      false  # Zero colonization in Act 3-4 (conquest only)
+
+  # Scouts: For spying on known enemy colonies (not exploration - any ship can explore!)
+  let needScouts = case currentAct
+    of GameAct.Act1_LandGrab:
+      scoutCount < 2  # Just 2 scouts for opportunistic intel in Act 1
+    of GameAct.Act2_RisingTensions:
+      scoutCount < min(knownEnemyColonies * 2, 8)  # 2 scouts per enemy colony (spy missions)
+    else:
+      scoutCount < min(myColonies.len, 12)  # Act 3+: scouts for ELI mesh + intel
+
+  let needDefenses = cst >= 3  # Ground batteries (CST 1) and starbases (CST 3)
+  let needFighters = cst >= 3 and p.aggression > 0.3  # Fighter squadrons require CST 3
+  let needCarriers = cst >= 3 and needFighters  # Carriers support fighters (CST 3)
+  let needTransports = cst >= 1 and p.aggression > 0.4  # Troop transports (CST 1)
+  let needRaiders = cst >= 3 and p.aggression > 0.6  # Raiders require CST 3
 
   result.buildOrders = generateBuildOrdersWithBudget(
-    controller, filtered, house, myColonies, currentAct, p,
+    controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
     isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
     needCarriers, needTransports, needRaiders, canAffordMoreShips,
     atSquadronLimit, militaryCount, scoutCount, availableBudget
   )
+
+  # ==========================================================================
+  # STRATEGIC OPERATIONS PLANNING
+  # ==========================================================================
+  # Identify invasion opportunities and plan coordinated operations
+  # This populates controller.operations which are then executed in fleet orders
+  # Strategic planning happens in ALL acts - personality determines invasion timing
+  if p.aggression > 0.4:
+    let invasionTargets = identifyInvasionOpportunities(controller, filtered)
+
+    # Plan invasions for all viable targets (no artificial limit)
+    for targetSystem in invasionTargets:
+      # Check if we already have an operation targeting this system
+      var alreadyTargeted = false
+      for op in controller.operations:
+        if op.targetSystem == targetSystem:
+          alreadyTargeted = true
+          break
+
+      if not alreadyTargeted:
+        planCoordinatedInvasion(controller, filtered, targetSystem, filtered.turn)
 
   # ==========================================================================
   # FLEET ORDERS (Using RBA Tactical Module)
@@ -180,7 +229,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   else:
     0.03  # Balanced: 3% investment
 
-  let totalInvestment = int(float(house.treasury) * espionageInvestment)
+  let totalInvestment = int(float(filtered.ownHouse.treasury) * espionageInvestment)
   result.ebpInvestment = totalInvestment div 2  # Half to offensive EBP
   result.cipInvestment = totalInvestment div 2  # Half to defensive CIP
 
