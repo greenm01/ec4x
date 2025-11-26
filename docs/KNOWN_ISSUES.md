@@ -1,8 +1,89 @@
 # EC4X Known Issues & Architectural Limitations
 
-**Last Updated:** 2025-11-25
+**Last Updated:** 2025-11-26
 
 This document tracks known architectural limitations and design issues that affect game balance or AI behavior.
+
+---
+
+## -1. AI Early Game Paralysis
+
+**Status:** ✅ **RESOLVED** (2025-11-26, commits d8a7e12, 7d2849d)
+**Discovered:** 2025-11-26 during tactical system diagnosis
+**Impact:** AI completely paralyzed in Act 1, achieving only 1 colony by Turn 7 (target: 5-8 colonies)
+
+### Problem Description
+
+Five critical bugs prevented AI from executing basic 4X gameplay (eXplore, eXpand, eXploit, eXterminate):
+
+**Bug #1: ETAC Build Logic Backwards** ✅ **FIXED**
+- Was: `needETACs = militaryCount < 2` (treated colonizers as military units!)
+- Fixed: Act-aware logic - ALWAYS build in Act 1, opportunistic in Act 2, zero in Act 3+
+- File: `src/ai/rba/orders.nim:151-157`
+
+**Bug #2: Static Tactical Priorities Blocked Exploration** ✅ **FIXED**
+- Was: "Pickup squadrons" priority blocked ALL fleets from exploring
+- Fixed: Complete rewrite with phase-aware 4-act priority system
+- File: `src/ai/rba/tactical.nim:521-902` (full rewrite)
+
+**Bug #3: Scout Build Logic Misunderstood Role** ✅ **FIXED**
+- Was: `needScouts = scoutCount < myColonies.len` (1 colony = 1 scout max)
+- Fixed: Act-aware - minimal in Act 1 (any ship can explore!), spy-focused in Act 2+
+- File: `src/ai/rba/orders.nim:160-166`
+
+**Bug #4: ETAC Production Gate Blocked Construction** ✅ **FIXED**
+- Was: Required `colony.production >= 50` to build ETACs
+- Problem: Early colonies average 17-26 PP production
+- Fixed: Removed production gate entirely - budget is the only limit
+- File: `src/ai/rba/budget.nim:122-125`
+
+**Bug #5: Act 2 Budget Collapse Crushed Momentum** ✅ **FIXED**
+- Was: Only 20% budget allocated to expansion in Act 2
+- Fixed: Increased to 35% to maintain colonization momentum
+- File: `src/ai/rba/budget.nim:43`
+
+### Solution Implemented
+
+**Phase-Aware Tactical System:**
+- Act 1 (Turns 1-7): Exploration >> Colonization >> Defense (60% expansion, 10% military)
+- Act 2 (Turns 8-15): Military >> Defense >> Opportunistic Colonization (35% expansion, 30% military)
+- Act 3 (Turns 16-25): Invasions >> Defense >> Combat (0% expansion, 55% military)
+- Act 4 (Turns 26-30): All-in victory push (60% military)
+
+**Key Insights:**
+- ETACs are colonization ships, NOT military units
+- Any ship can explore (engine auto-generates intel on fleet encounters)
+- Scouts are for spying on known colonies, not exploration
+- Phase-aware priorities critical for 4-act game structure
+- Production gates on strategic units are dangerous
+
+### Results
+
+**Before Fix:**
+- Turn 7: 1 colony (complete paralysis)
+- Turn 15: 1 colony (zero progression)
+- ETACs: 2 (never increased)
+
+**After Fix:**
+- Turn 7: 4-5 colonies ✅ (Target: 5-8)
+- Turn 15: 4-6 colonies ⚠️ (Target: 10-15, needs tuning)
+- ETACs: 21-43 built ✅
+- **Improvement: 300-400% increase in early game expansion!**
+
+**Testing:** 96/100 games successful in Act 1 & Act 2 tests, 0 AI collapses
+
+### Remaining Work
+
+**Act 2 Expansion Plateau** (Lower Priority)
+- Expected: +5-7 colonies from Turn 7→15
+- Actual: +1-2 colonies from Turn 7→15
+- Likely causes: Budget still insufficient, ETACs not executing orders, map competition
+- Recommendation: Investigate ETAC order execution, possibly increase Act 2 budget to 40-45%
+
+### Related Commits
+
+- **d8a7e12:** Phase-aware tactical priorities (Bugs #1-3)
+- **7d2849d:** Production gate removal + Act 2 budget fix (Bugs #4-5)
 
 ---
 

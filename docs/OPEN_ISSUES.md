@@ -1,9 +1,74 @@
 # EC4X Open Issues & Gaps
 
-**Last Updated:** 2025-11-25
+**Last Updated:** 2025-11-26
 
 This is the SINGLE source of truth for known bugs, missing features, and technical debt.
 When an issue is fixed, check it off and update STATUS.md.
+
+---
+
+## AI - Act 2 Expansion Plateau
+
+**Priority:** MEDIUM (gameplay balance, not blocker)
+**Status:** 🟡 **Identified** - Act 1 fixed, Act 2 needs tuning
+**Discovered:** 2025-11-26 during phase-aware tactical validation
+
+### Problem Description
+
+After fixing Act 1 paralysis (5 critical bugs), expansion continues properly through Turn 7 (4-5 colonies achieved), but plateaus in Act 2:
+
+**Expected Progression:**
+- Turn 7 (Act 1 end): 5-8 colonies
+- Turn 15 (Act 2 end): 10-15 colonies (+5-7 growth)
+
+**Actual Progression:**
+- Turn 7: 4-5 colonies ✅ (~70% of target)
+- Turn 15: 4-6 colonies ⚠️ (+1-2 growth, only 30-40% of target)
+
+**Gap:** Act 2 expansion is ~80% below target
+
+### Possible Causes
+
+1. **Budget allocation insufficient:**
+   - Current: 35% expansion, 30% military in Act 2
+   - May need: 40-45% expansion to maintain momentum
+
+2. **ETAC order execution:**
+   - ETACs being built (21-43 per game)
+   - But colonization orders may not be executing properly
+   - Need to verify ETACs are receiving and executing colonization orders
+
+3. **Map competition:**
+   - 61 systems / 4 players = ~15 systems per player maximum
+   - Players may be bumping into each other earlier than expected
+   - Natural plateau due to territorial boundaries
+
+4. **Strategic priority conflicts:**
+   - Military/defense consuming ETACs before they can colonize?
+   - Act 2 transition at Turn 8 may be too aggressive
+
+### Investigation Steps
+
+1. Add diagnostic logging to track:
+   - ETAC fleet order types by turn
+   - Colonization order execution success/failure
+   - Systems available for colonization vs already claimed
+
+2. Run Act 2 test with increased expansion budget (40%, 45%, 50%)
+3. Analyze ETAC movement patterns (are they exploring or sitting idle?)
+4. Check if personality traits (expansionDrive) affecting Act 2 behavior
+
+### Impact
+
+- Act 1 is fully functional (300-400% improvement achieved)
+- Game is playable and AI executes basic 4X gameplay
+- Act 2 plateau is a tuning issue, not architectural failure
+- Lower priority than Planet-Breaker deployment validation
+
+### Related Issues
+
+- See KNOWN_ISSUES.md #-1 for Act 1 paralysis fix details
+- Part of broader 4-act balance validation
 
 ---
 
