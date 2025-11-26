@@ -37,14 +37,14 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
       }.toTable()
 
     of GameAct.Act2_RisingTensions:
-      # CRITICAL TRANSITION: Military buildup begins
-      # INVASION PREP: Need transports for aggressive AIs
+      # CRITICAL TRANSITION: Military buildup begins while continuing expansion
+      # Act 2 should maintain momentum from Act 1, not collapse expansion
       {
-        Expansion: 0.20,     # Reduced: Colonization slowing down
+        Expansion: 0.35,     # Keep expansion active (was 0.20, too low!)
         Defense: 0.15,
-        Military: 0.35,      # Reduced from 40% to make room for transports
+        Military: 0.30,      # Military buildup
         Intelligence: 0.10,
-        SpecialUnits: 0.15,  # ← INCREASED from 5% to 15% for transport production
+        SpecialUnits: 0.05,  # Transports for aggressive AIs
         Technology: 0.05
       }.toTable()
 
@@ -119,7 +119,10 @@ proc buildExpansionOrders*(colony: Colony, budgetPP: int,
 
   if needETACs and hasShipyard:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
-    while remaining >= etacCost and colony.production >= 50:
+    # CRITICAL FIX: Remove production gate that blocked ETAC construction!
+    # Early colonies average 17-26 PP production, but this required 50+
+    # ETACs are top priority in Act 1, build from ANY colony with budget
+    while remaining >= etacCost:
       result.add(BuildOrder(
         colonySystem: colony.systemId,
         buildType: BuildType.Ship,
