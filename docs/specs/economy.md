@@ -222,8 +222,7 @@ The Space Guilds provide civilian Starliner services to transfer established pop
 | **Concurrent Limit** | 5 transfers | Maximum active transfers per house |
 | **Source Conquered** | Continue | Transfer proceeds (Guild is neutral) |
 | **Dest Conquered** | Lost | PTUs lost (refugees disperse) |
-| **Dest Blockaded** | Smart Delivery | PTUs redirected to closest owned colony |
-| **Dest Collapsed** | Smart Delivery | PTUs redirected to closest owned colony |
+| **Dest Blockaded** | Closest_Owned | PTUs return to source |
 
 *Source: config/population.toml [transfer_time], [transfer_limits], and [transfer_risks] sections*
 <!-- POPULATION_TRANSFER_MECHANICS_TABLE_END -->

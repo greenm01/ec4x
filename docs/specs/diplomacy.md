@@ -83,7 +83,7 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 | Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +20 | -30 |
 | Economic Manipulation | 6 | Influence markets to harm the target's economy | +30 | -7 |
 | Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +10 | -3 |
-| Counter-Intelligence Sweep | 4 | Defensive operation to block enemy intelligence gathering. | +5 | 0 |
+| Counter-Intelligence Sweep | 4 | Defensive operation to block enemy intelligence gathering. | +5 | +0 |
 | Intelligence Theft | 8 | Steal target's entire intelligence database. | +40 | -20 |
 | Plant Disinformation | 6 | Corrupt target's intelligence with false data. | +15 | -15 |
 
