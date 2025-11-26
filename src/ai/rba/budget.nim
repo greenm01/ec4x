@@ -342,25 +342,37 @@ proc buildIntelligenceOrders*(colony: Colony, tracker: var BudgetTracker,
   ##
   ## Intelligence budget guarantees scout production for reconnaissance.
   ## Scout targets scale with game progression:
-  ## - Act 1: 2-3 scouts (exploration)
-  ## - Act 2: 5 scouts (intelligence network for invasions)
-  ## - Act 3-4: 7 scouts (ELI mesh for invasion support)
+  ## - Act 1: 3 scouts minimum (exploration)
+  ## - Act 2: 6 scouts (intelligence network for invasions)
+  ## - Act 3-4: 8 scouts (ELI mesh for invasion support)
   ##
-  ## CRITICAL: Build scouts based on budget availability, not external conditions.
-  ## The MOEA system allocates 10-15% to Intelligence - use it!
+  ## CRITICAL FIX: Build based on needScouts flag and budget, not global count check!
+  ## Previous bug: scoutCount + result.len < 10 prevented ANY scout building
+  ## Now: Build if needScouts=true AND we have intelligence budget
   result = @[]
 
-  # Use Intelligence budget to build scouts if we have budget available
-  # This ensures scouts are built regardless of external "needScouts" condition
+  # Only build scouts if we actually need them
+  if not needScouts:
+    logDebug(LogCategory.lcAI,
+             &"{tracker.houseId} Colony {colony.systemId}: Skipping scout build (needScouts=false, have {scoutCount} scouts)")
+    return
+
+  # Use Intelligence budget to build scouts
   let scoutCost = getShipConstructionCost(ShipClass.Scout)
   var scoutsBuilt = 0
 
+  # Log budget availability for diagnostics
+  let remaining = tracker.getRemainingBudget(Intelligence)
+  logDebug(LogCategory.lcAI,
+           &"{tracker.houseId} Colony {colony.systemId}: Scout build check - " &
+           &"needScouts={needScouts}, scoutCount={scoutCount}, remaining={remaining}PP, cost={scoutCost}PP")
+
   # Cap: 2 scouts per colony per turn (prevents runaway loops)
   # Combined with BudgetTracker, ensures sustainable scout production
-  while tracker.canAfford(Intelligence, scoutCost) and scoutCount + result.len < 10 and scoutsBuilt < 2:
-    logDebug(LogCategory.lcAI,
-             &"Building scout at colony {colony.systemId} " &
-             &"(remaining={tracker.getRemainingBudget(Intelligence)}PP, scoutCount={scoutCount + result.len})")
+  while tracker.canAfford(Intelligence, scoutCost) and scoutsBuilt < 2:
+    logInfo(LogCategory.lcAI,
+            &"{tracker.houseId} Colony {colony.systemId}: Building scout " &
+            &"(scout #{scoutCount + scoutsBuilt + 1}, remaining={tracker.getRemainingBudget(Intelligence)}PP)")
     result.add(BuildOrder(
       colonySystem: colony.systemId,
       buildType: BuildType.Ship,
@@ -371,6 +383,11 @@ proc buildIntelligenceOrders*(colony: Colony, tracker: var BudgetTracker,
     ))
     tracker.recordSpending(Intelligence, scoutCost)
     scoutsBuilt += 1
+
+  if scoutsBuilt == 0 and needScouts:
+    logDebug(LogCategory.lcAI,
+             &"{tracker.houseId} Colony {colony.systemId}: No scouts built " &
+             &"(insufficient budget: {remaining}PP < {scoutCost}PP)")
 
 proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
                               needFighters: bool, needCarriers: bool,

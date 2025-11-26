@@ -2,9 +2,9 @@
 ##
 ## Strategic espionage and counter-intelligence decision-making
 
-import std/[tables, options, random, sequtils, algorithm]
+import std/[tables, options, random, sequtils, algorithm, strformat]
 import ../../common/types/[core, diplomacy]
-import ../../engine/[gamestate, fog_of_war]
+import ../../engine/[gamestate, fog_of_war, logger]
 import ../../engine/espionage/types as esp_types
 import ../../engine/diplomacy/types as dip_types
 import ../common/types as ai_types  # For OperationType
@@ -149,8 +149,14 @@ proc generateEspionageAction*(controller: AIController, filtered: FilteredGameSt
   let p = controller.personality
   let house = filtered.ownHouse
 
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Espionage check: prestige={house.prestige}, " &
+           &"EBP={house.espionageBudget.ebpPoints}, CIP={house.espionageBudget.cipPoints}")
+
   # Check for counter-intelligence need first (defensive)
   if shouldUseCounterIntel(controller, filtered):
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Espionage: Counter-Intelligence Sweep (defensive)")
     # Counter-intel doesn't need a target
     return some(esp_types.EspionageAttempt(
       attacker: controller.houseId,
@@ -166,6 +172,8 @@ proc generateEspionageAction*(controller: AIController, filtered: FilteredGameSt
   # CRITICAL: Don't do espionage if prestige is critically low (collapsing)
   # Detection costs -2 prestige. Only block if truly desperate (< 0 = collapse)
   if house.prestige < 50:
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} Espionage: Skipped (prestige {house.prestige} < 50, too risky)")
     return none(esp_types.EspionageAttempt)
 
   # Frequency control: AI strategy determines espionage frequency
@@ -179,14 +187,27 @@ proc generateEspionageAction*(controller: AIController, filtered: FilteredGameSt
   else:
     0.5  # Balanced AI (50% chance)
 
-  if rng.rand(1.0) > espionageChance:
+  let roll = rng.rand(1.0)
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Espionage: Frequency check - " &
+           &"chance={espionageChance:.2f}, roll={roll:.2f}, " &
+           &"personality=(risk={p.riskTolerance:.2f}, econ={p.economicFocus:.2f}, aggro={p.aggression:.2f})")
+
+  if roll > espionageChance:
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} Espionage: Skipped (roll {roll:.2f} > chance {espionageChance:.2f})")
     return none(esp_types.EspionageAttempt)
 
   # Select target strategically
   let target = selectEspionageTarget(controller, filtered, rng)
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Espionage: Selected target {target}")
 
   # Select operation based on strategic context
   let operation = selectEspionageOperation(controller, filtered, target, rng)
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Espionage: {operation} against {target} " &
+          &"(EBP={house.espionageBudget.ebpPoints})")
 
   return some(esp_types.EspionageAttempt(
     attacker: controller.houseId,
