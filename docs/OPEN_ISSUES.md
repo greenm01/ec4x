@@ -7,11 +7,36 @@ When an issue is fixed, check it off and update STATUS.md.
 
 ---
 
+## Diagnostics - Comprehensive Metric Tracking
+
+**Priority:** COMPLETE
+**Status:** ✅ **Fully implemented** (2025-11-26)
+
+Expanded diagnostic system from 55 to 130 columns (+136% coverage) with comprehensive game metrics:
+
+**Added Metrics (75 new fields):**
+- Tech Levels: All 11 technologies (CST, WEP, EL, SL, TER, ELI, CLK, SLD, CIC, FD, ACO)
+- Combat Performance: CER averages, crits, retreats, bombardment, shields
+- Diplomatic Status: Pacts, violations, dishonor, isolation
+- Espionage Activity: EBP/CIP spending, operations, detections
+- Population & Colonies: Space Guild transfers, blockades
+- Economic Health: Deficits, damage, salvage, tax penalties
+- Squadron Capacity: Fighter/capital limits and violations
+- House Status: Autopilot, defensive collapse, elimination countdown
+
+**Key Discovery:** CST never reaches level 10 (Planet-Breaker requirement) within typical game lengths. Max observed: CST 4 by turn 100. This explains zero Planet-Breaker deployments.
+
+**Files Modified:**
+- `tests/balance/diagnostics.nim` - Complete expansion with 130-column CSV output
+
+---
+
 ## AI - Act 2 Expansion Plateau
 
 **Priority:** MEDIUM (gameplay balance, not blocker)
-**Status:** 🟡 **Identified** - Act 1 fixed, Act 2 needs tuning
+**Status:** 🟡 **Identified** - Act 1 fixed, Act 2 needs investigation with new diagnostics
 **Discovered:** 2025-11-26 during phase-aware tactical validation
+**Updated:** 2025-11-26 - Now have comprehensive diagnostics to investigate
 
 ### Problem Description
 
@@ -47,16 +72,27 @@ After fixing Act 1 paralysis (5 critical bugs), expansion continues properly thr
    - Military/defense consuming ETACs before they can colonize?
    - Act 2 transition at Turn 8 may be too aggressive
 
-### Investigation Steps
+### Investigation Steps (Now Enabled by Comprehensive Diagnostics)
 
-1. Add diagnostic logging to track:
-   - ETAC fleet order types by turn
-   - Colonization order execution success/failure
-   - Systems available for colonization vs already claimed
+With 130-column diagnostics now available, can investigate:
 
-2. Run Act 2 test with increased expansion budget (40%, 45%, 50%)
-3. Analyze ETAC movement patterns (are they exploring or sitting idle?)
-4. Check if personality traits (expansionDrive) affecting Act 2 behavior
+1. **Blockade Impact:** Check `blockaded_colonies` and `blockade_turns_total` metrics
+   - Are blockades preventing expansion?
+
+2. **Squadron Capacity Violations:** Check `squadron_limit_violation` and `fighter_cap_violation`
+   - Are players hitting military caps that prevent ETAC production?
+
+3. **Economic Throttling:** Check `treasury_deficit`, `tax_penalty_active`, `maintenance_deficit`
+   - Are economic issues limiting expansion capability?
+
+4. **Diplomatic Conflicts:** Check `enemy_count`, `pact_violations`, `space_wins/losses`
+   - Are early wars draining resources from expansion?
+
+5. **ETAC Production vs Orders:** Compare `etac_ships` count with `total_colonies`
+   - Are ETACs being built but not colonizing?
+
+6. **Tech Level Progression:** Check all `tech_*` fields
+   - Is tech advancement too slow to support growth?
 
 ### Impact
 
