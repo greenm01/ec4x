@@ -2092,6 +2092,42 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       let packet = orders[houseId]
       let allocation = packet.researchAllocation
 
+      # Calculate total PP cost for this research allocation
+      var totalResearchCost = allocation.economic + allocation.science
+      for field, pp in allocation.technology:
+        totalResearchCost += pp
+
+      # Scale down research allocation if treasury cannot afford it
+      # Research is planned at AI time but processed after Income Phase
+      # This prevents negative treasury from over-aggressive research budgets
+      var scaledAllocation = allocation
+      if totalResearchCost > state.houses[houseId].treasury:
+        # Calculate scaling factor (how much we can actually afford)
+        let affordablePercent = float(state.houses[houseId].treasury) / float(totalResearchCost)
+
+        # Scale all allocations proportionally
+        scaledAllocation.economic = int(float(allocation.economic) * affordablePercent)
+        scaledAllocation.science = int(float(allocation.science) * affordablePercent)
+
+        var scaledTech = initTable[TechField, int]()
+        for field, pp in allocation.technology:
+          scaledTech[field] = int(float(pp) * affordablePercent)
+        scaledAllocation.technology = scaledTech
+
+        # Recalculate actual cost
+        totalResearchCost = scaledAllocation.economic + scaledAllocation.science
+        for field, pp in scaledAllocation.technology:
+          totalResearchCost += pp
+
+        echo "      ", houseId, " research budget scaled down by ", int(affordablePercent * 100), "% due to treasury constraints"
+
+      # Deduct research cost from treasury (CRITICAL FIX)
+      # Research competes with builds for treasury resources
+      if totalResearchCost > 0:
+        state.houses[houseId].treasury -= totalResearchCost
+        echo "      ", houseId, " spent ", totalResearchCost, " PP on research (treasury: ",
+             state.houses[houseId].treasury + totalResearchCost, " → ", state.houses[houseId].treasury, ")"
+
       # Calculate GHO for this house
       var gho = 0
       for colony in state.colonies.values:
@@ -2101,8 +2137,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       # Get current tech levels
       let currentSL = state.houses[houseId].techTree.levels.scienceLevel  # Science Level
 
-      # Convert PP allocations to RP
-      let earnedRP = res_costs.allocateResearch(allocation, gho, currentSL)
+      # Convert PP allocations to RP (use SCALED allocation, not original)
+      let earnedRP = res_costs.allocateResearch(scaledAllocation, gho, currentSL)
 
       # Accumulate RP
       state.houses[houseId].techTree.accumulated.economic += earnedRP.economic
@@ -2113,14 +2149,14 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           state.houses[houseId].techTree.accumulated.technology[field] = 0
         state.houses[houseId].techTree.accumulated.technology[field] += trp
 
-      # Log allocations
-      if allocation.economic > 0:
-        echo "      ", houseId, " allocated ", allocation.economic, " PP → ", earnedRP.economic, " ERP",
+      # Log allocations (use SCALED allocation for accurate reporting)
+      if scaledAllocation.economic > 0:
+        echo "      ", houseId, " allocated ", scaledAllocation.economic, " PP → ", earnedRP.economic, " ERP",
              " (total: ", state.houses[houseId].techTree.accumulated.economic, " ERP)"
-      if allocation.science > 0:
-        echo "      ", houseId, " allocated ", allocation.science, " PP → ", earnedRP.science, " SRP",
+      if scaledAllocation.science > 0:
+        echo "      ", houseId, " allocated ", scaledAllocation.science, " PP → ", earnedRP.science, " SRP",
              " (total: ", state.houses[houseId].techTree.accumulated.science, " SRP)"
-      for field, pp in allocation.technology:
+      for field, pp in scaledAllocation.technology:
         if pp > 0 and field in earnedRP.technology:
           let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
           echo "      ", houseId, " allocated ", pp, " PP → ", earnedRP.technology[field], " TRP (", field, ")",
