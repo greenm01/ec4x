@@ -7,6 +7,16 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **AI Travel Time Awareness + Comprehensive Test Suite - COMPLETE (2025-11-25)**
+  - ✅ Implemented ETA calculation using engine's A* pathfinding (calculateETA, calculateMultiFleetETA)
+  - ✅ Time-aware invasion planning: selects fleets by ETA, rejects operations >8 turns away
+  - ✅ Time-aware reserve response: only dispatches if ETA ≤5 turns
+  - ✅ Refactored ETA functions to engine (starmap.nim) for human + AI use
+  - ✅ Comprehensive test suite: 12 tests (4 acts × 3 map sizes), all passing
+  - ✅ Added --players support to run_balance_test_parallel.py
+  - ✅ Created run_comprehensive_tests.py (build once, test all configs)
+  - **Results:** 1,152 games (96 per config), 0 collapses, validated across all scenarios
+  - **Impact:** AI now coordinates fleets with realistic timing, UI can show arrival times
 - 🔄 **Build Queue System for Multi-Project Construction - IN PROGRESS (2025-11-25)**
   - ✅ Added `constructionQueue: seq[ConstructionProject]` to Colony type
   - ✅ Created dock capacity helper functions (`getConstructionDockCapacity()`, `canAcceptMoreProjects()`)
