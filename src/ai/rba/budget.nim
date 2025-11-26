@@ -266,18 +266,20 @@ proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
 proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
                          militaryCount: int, canAffordMoreShips: bool,
                          atSquadronLimit: bool, cstLevel: int, act: GameAct): seq[BuildOrder] =
-  ## Generate military build orders with full capital ship progression
+  ## Generate military build orders with COMPLETE capital ship progression
   ## Uses BudgetTracker to prevent overspending
   ##
   ## Tech-gated ship unlocks by CST level:
-  ## - CST 1: Corvette, Frigate, Destroyer, Light Cruiser
-  ## - CST 2: Heavy Cruiser
-  ## - CST 3: Battle Cruiser
-  ## - CST 4: Battleship
-  ## - CST 5: Dreadnought
-  ## - CST 6: Super Dreadnought
+  ## - CST 1: Corvette (20PP), Frigate (30PP), Destroyer (40PP), Cruiser (60PP)
+  ## - CST 2: Heavy Cruiser (80PP)
+  ## - CST 3: Battle Cruiser (100PP)
+  ## - CST 4: Battleship (150PP)
+  ## - CST 5: Dreadnought (200PP)
+  ## - CST 6: Super Dreadnought (250PP)
   ##
-  ## Build strategy: Choose best ship affordable within tech limits
+  ## Build strategy: Choose strongest affordable ship within tech/budget limits
+  ##
+  ## Note: LightCruiser removed from progression (Cruiser is superior: better CR, same cost)
   result = @[]
   var shipsBuilt = 0
 
@@ -310,13 +312,20 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
       shipClass = ShipClass.HeavyCruiser      # CST 2: Early-mid heavy
       cost = getShipConstructionCost(shipClass)
     elif remaining >= 60 and militaryCount > 3:
-      shipClass = ShipClass.LightCruiser      # CST 1: Cost-effective mid
+      # Cruiser vs LightCruiser decision (both 60PP, AS 8)
+      # Cruiser: Better command (CR 6 vs 4), slightly better defense
+      # LightCruiser: Lower command cost (CC 2 vs 3)
+      # Prefer Cruiser for stronger squadron leadership
+      shipClass = ShipClass.Cruiser           # CST 1: Standard mid-game cruiser
       cost = getShipConstructionCost(shipClass)
     elif remaining >= 40 and militaryCount > 2:
       shipClass = ShipClass.Destroyer         # CST 1: Early-mid bridge
       cost = getShipConstructionCost(shipClass)
-    elif remaining >= 30:
+    elif remaining >= 30 and militaryCount > 1:
       shipClass = ShipClass.Frigate           # CST 1: Early backbone
+      cost = getShipConstructionCost(shipClass)
+    elif remaining >= 20:
+      shipClass = ShipClass.Corvette          # CST 1: Cheapest warship (early game filler)
       cost = getShipConstructionCost(shipClass)
     else:
       break  # Not enough budget for any ship
