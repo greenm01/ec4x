@@ -2,33 +2,41 @@
 BUILD QUEUE BUG - INCOMPLETE FIX (2025-11-26)
 ================================================================================
 
-CURRENT STATUS: 6/19 ship types building, 13 still broken (TREASURY + RESEARCH FIXES APPLIED)
+CURRENT STATUS: 6/19 ship types building, 13 still broken (INCOME + RESEARCH FIXES APPLIED)
 
-**CRITICAL: Income System Broken - Colonies Producing 0 PP!**
-- Diagnostic CSV shows: production=0, gco=0 (Gross Colony Output)
-- Colonies have 100 PU population but generate ZERO income
-- Houses start with 1000PP treasury, spend it all in turn 1, then bankrupt forever
-- Income reports show: "+0 PP (Gross: 0)" every turn
--
+**✅ INCOME SYSTEM FIXED! (Commit: b914bfb)**
+- Root cause: createHomeColony() and createETACColony() missing 6 economic fields
+- Fixed by adding: populationUnits, populationTransferUnits, industrial, taxRate, infrastructureDamage, grossOutput
+- Homeworlds now produce: 100 PP gross, 50 PP net per turn (was 0)
+- New colonies produce: ~1-2 PP gross per turn
+- Treasury sustainable throughout 100-turn game
 
- This cascades to multiple failures:
-  1. **No Treasury Recovery**: Houses can't build anything after turn 1 (no income)
-  2. **No Research**: GHO=0 → ERP calculation fails (divide by log(0) = -inf)
-  3. **CST Stuck at 1**: Can't advance tech without functional research
-  4. **12 Ships Blocked**: Advanced ships require CST 2-6
+**✅ RESEARCH SYSTEM WORKING! (Commit: 4119bb2 + income fix)**
+- Treasury deduction working (prevents negative treasury)
+- Proportional scaling when over-budget
+- ERP accumulating: 28 ERP logged in turn 1 (was 0)
+- TRP accumulating: 52 TRP for WeaponsTech, 52 TRP for ConstructionTech (was 0)
+- CST advancement: CST 2 by turn 10, CST 3 by turn 100 (was stuck at 1)
 
-**Root Cause**: Economy engine (econ_engine.resolveIncomePhase) returning 0 GCO
-- Needs investigation: Are colony.production fields being populated?
-- Check: income calculation formulas, tax policy, modifiers
+**❌ REMAINING ISSUE: RBA Not Building CST-Gated Ships**
+Despite CST reaching 2-3, RBA still doesn't build these ships:
+- HeavyCruiser (requires CST 2) - 0 built
+- Battlecruiser (requires CST 3) - 0 built
+- Battleship (requires CST 4) - 0 built
+- Dreadnought (requires CST 5) - 0 built
+- SuperDreadnought (requires CST 6) - 0 built
 
-**Research System Status**: PARTIALLY FIXED
-- ✅ Treasury deduction working (prevents negative treasury)
-- ✅ Proportional scaling when over-budget
-- ✅ SRP accumulation working (73, 66, 76 SRP logged in turn 1)
-- ❌ ERP = 0 (needs GHO > 0 to calculate)
-- ❌ TRP fields not logged (likely also need GHO > 0)
+**❌ REMAINING ISSUE: RBA Not Building Special Units**
+Despite CST reaching 3 and appropriate conditions:
+- Fighter (CST 3, aggression > 0.3) - 0 built
+- Carrier (CST 3, needFighters) - 0 built (I lowered requirement to CST 2)
+- Raider (CST 3, aggression > 0.6) - 0 built
+- TroopTransport (CST 1, aggression > 0.4) - 0 built
+- PlanetBreaker - 0 built
+- Starbase (CST 3) - 0 built
+- Corvette - 0 built (no CST requirement)
 
-**Next Step**: Fix income system FIRST, then research will work automatically.
+**Next Step**: Investigate RBA budget module to find why these ships aren't being ordered despite requirements being met.
 
 WORKING SHIP TYPES (7):
   ✅ Scout (FIXED - 617 built!)

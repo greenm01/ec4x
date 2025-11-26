@@ -296,14 +296,14 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
     # Priority: Build strongest affordable ship within tech limits
     let remaining = tracker.getRemainingBudget(Military)
 
-    if remaining >= 250 and cstLevel >= 6 and act >= GameAct.Act4_Endgame and militaryCount > 10:
-      shipClass = ShipClass.SuperDreadnought  # CST 6: Ultimate capital ship
+    if remaining >= 250 and cstLevel >= 6 and act >= GameAct.Act4_Endgame:
+      shipClass = ShipClass.SuperDreadnought  # CST 6: Ultimate capital ship (militaryCount gate removed)
       cost = getShipConstructionCost(shipClass)
-    elif remaining >= 200 and cstLevel >= 5 and militaryCount > 8:
-      shipClass = ShipClass.Dreadnought       # CST 5: Late-game heavy hitter
+    elif remaining >= 200 and cstLevel >= 5:
+      shipClass = ShipClass.Dreadnought       # CST 5: Late-game heavy hitter (militaryCount gate removed)
       cost = getShipConstructionCost(shipClass)
-    elif remaining >= 150 and cstLevel >= 4 and militaryCount > 6:
-      shipClass = ShipClass.Battleship        # CST 4: Mid-late game backbone
+    elif remaining >= 150 and cstLevel >= 4:
+      shipClass = ShipClass.Battleship        # CST 4: Mid-late game backbone (militaryCount gate removed)
       cost = getShipConstructionCost(shipClass)
     elif remaining >= 100 and cstLevel >= 3:
       shipClass = ShipClass.Battlecruiser     # CST 3: Mid-game workhorse
