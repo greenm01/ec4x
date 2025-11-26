@@ -106,7 +106,7 @@ proc getCurrentGameAct*(turn: int): GameAct =
 
 ### 4. Intelligence (`intelligence.nim`)
 
-**Responsibility:** Information gathering, reconnaissance, target identification
+**Responsibility:** Information gathering, reconnaissance, target identification, travel time analysis
 
 **Key Functions:**
 
@@ -124,6 +124,12 @@ proc identifyEnemyHomeworlds*(controller: AIController, filtered: FilteredGameSt
 # Economic intel
 proc gatherEconomicIntelligence*(controller: var AIController,
                                  filtered: FilteredGameState): seq[EconomicIntelligence]
+
+# Travel time & ETA calculations (NEW)
+proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,
+                   fleet: Fleet): Option[int]
+proc calculateMultiFleetETA*(starMap: StarMap, assemblyPoint: SystemId,
+                              fleets: seq[Fleet]): Option[int]
 ```
 
 **Intelligence Report:**
