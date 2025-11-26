@@ -74,7 +74,12 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
 
     # Check if colony has dock capacity for more construction projects
     # NEW: Build queue system - colonies can have multiple projects up to dock capacity
-    if not colony.canAcceptMoreProjects():
+    # EXCEPTION: Fighters are built planet-side and don't consume dock capacity (economy.md:3.10)
+    let isFighter = (order.buildType == BuildType.Ship and
+                     order.shipClass.isSome and
+                     order.shipClass.get() == ShipClass.Fighter)
+
+    if not isFighter and not colony.canAcceptMoreProjects():
       let capacity = colony.getConstructionDockCapacity()
       let active = colony.getActiveConstructionProjects()
       echo "      Build order failed: system ", order.colonySystem, " at capacity (", active, "/", capacity, " docks used)"
@@ -285,12 +290,14 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
 
       # Remove squadron from source fleet
       if sourceFleetId.isSome:
-        let srcFleet = state.fleets[sourceFleetId.get()]
+        # CRITICAL: Get fleet, modify squadrons, write back to persist
+        var srcFleet = state.fleets[sourceFleetId.get()]
         var newSquadrons: seq[Squadron] = @[]
         for squad in srcFleet.squadrons:
           if squad.id != order.squadronId.get():
             newSquadrons.add(squad)
-        state.fleets[sourceFleetId.get()].squadrons = newSquadrons
+        srcFleet.squadrons = newSquadrons
+        state.fleets[sourceFleetId.get()] = srcFleet
 
         # If source fleet is now empty, remove it
         if newSquadrons.len == 0:
@@ -1025,16 +1032,24 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
   # Apply results back to game state
   for houseId, upkeep in maintenanceReport.houseUpkeep:
-    state.houses[houseId].treasury = houseTreasuries[houseId]
-    echo "    ", state.houses[houseId].name, ": -", upkeep, " PP maintenance"
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[houseId]
+    house.treasury = houseTreasuries[houseId]
+    echo "    ", house.name, ": -", upkeep, " PP maintenance"
+    state.houses[houseId] = house
 
   # Report and handle completed projects
   for completed in maintenanceReport.completedProjects:
     echo "    Completed: ", completed.projectType, " at system ", completed.colonyId
 
     # Special handling for fighter squadrons
-    if completed.projectType == econ_types.ConstructionType.Building and
-       completed.itemId == "FighterSquadron":
+    # Fighters can come through as either:
+    # 1. ConstructionType.Building with itemId="FighterSquadron" (legacy/planned)
+    # 2. ConstructionType.Ship with itemId="Fighter" (current system via budget.nim)
+    if (completed.projectType == econ_types.ConstructionType.Building and
+        completed.itemId == "FighterSquadron") or
+       (completed.projectType == econ_types.ConstructionType.Ship and
+        completed.itemId == "Fighter"):
       # Commission fighter squadron at colony
       if completed.colonyId in state.colonies:
         var colony = state.colonies[completed.colonyId]
@@ -1049,11 +1064,8 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
         echo "      Commissioned fighter squadron ", fighterSq.id, " at ", completed.colonyId
 
-        # Auto-load fighters to carriers: Complete the fighter production pipeline
-        # Fighter → Colony → Carrier (if available carriers exist at colony)
-        # This prevents newly-commissioned fighters from sitting idle when carriers need them
-        if colony.autoAssignFleets:
-          autoLoadFightersToCarriers(state, colony, completed.colonyId, orders)
+        # Fighters remain at colony by default - player must manually load onto carriers
+        # Per assets.md:2.4.1 - fighters are colony-owned until explicitly transferred
 
         state.colonies[completed.colonyId] = colony
 
@@ -1355,7 +1367,10 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
       # Eliminate if no fleets OR no loaded transports with marines
       if fleets.len == 0 or not hasInvasionCapability:
-        state.houses[houseId].eliminated = true
+        # CRITICAL: Get, modify, write back to persist
+        var houseToUpdate = state.houses[houseId]
+        houseToUpdate.eliminated = true
+        state.houses[houseId] = houseToUpdate
 
         let reason = if fleets.len == 0:
           "no remaining forces"
@@ -1372,14 +1387,17 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         continue
 
     # Defensive collapse: prestige < threshold for consecutive turns
+    # CRITICAL: Get house once, modify elimination/counter, write back
+    var houseToUpdate = state.houses[houseId]
+
     if house.prestige < gameplayConfig.elimination.defensive_collapse_threshold:
-      state.houses[houseId].negativePrestigeTurns += 1
+      houseToUpdate.negativePrestigeTurns += 1
       echo "    ", house.name, " at risk: prestige ", house.prestige,
-           " (", state.houses[houseId].negativePrestigeTurns, "/",
+           " (", houseToUpdate.negativePrestigeTurns, "/",
            gameplayConfig.elimination.defensive_collapse_turns, " turns until elimination)"
 
-      if state.houses[houseId].negativePrestigeTurns >= gameplayConfig.elimination.defensive_collapse_turns:
-        state.houses[houseId].eliminated = true
+      if houseToUpdate.negativePrestigeTurns >= gameplayConfig.elimination.defensive_collapse_turns:
+        houseToUpdate.eliminated = true
         events.add(GameEvent(
           eventType: GameEventType.HouseEliminated,
           houseId: houseId,
@@ -1389,7 +1407,10 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         echo "    ", house.name, " eliminated by defensive collapse!"
     else:
       # Reset counter when prestige recovers
-      state.houses[houseId].negativePrestigeTurns = 0
+      houseToUpdate.negativePrestigeTurns = 0
+
+    # Write back modified house
+    state.houses[houseId] = houseToUpdate
 
   # Check squadron limits (military.toml)
   echo "  Checking squadron limits..."
@@ -1833,22 +1854,30 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
   # Apply results back to game state
   for houseId, houseReport in incomeReport.houseReports:
-    state.houses[houseId].treasury = houseTreasuries[houseId]
+    # CRITICAL: Get house once, modify all fields, write back to persist
+    var house = state.houses[houseId]
+    house.treasury = houseTreasuries[houseId]
     # Store income report for intelligence gathering (HackStarbase missions)
-    state.houses[houseId].latestIncomeReport = some(houseReport)
-    echo "    ", state.houses[houseId].name, ": +", houseReport.totalNet, " PP (Gross: ", houseReport.totalGross, ")"
+    house.latestIncomeReport = some(houseReport)
+    echo "    ", house.name, ": +", houseReport.totalNet, " PP (Gross: ", houseReport.totalGross, ")"
 
     # Update colony production fields from income reports
     for colonyReport in houseReport.colonies:
       if colonyReport.colonyId in state.colonies:
-        state.colonies[colonyReport.colonyId].production = colonyReport.grossOutput
+        # CRITICAL: Get colony, modify, write back to persist
+        var colony = state.colonies[colonyReport.colonyId]
+        colony.production = colonyReport.grossOutput
+        state.colonies[colonyReport.colonyId] = colony
 
     # Apply prestige events from economic activities
     for event in houseReport.prestigeEvents:
-      state.houses[houseId].prestige += event.amount
+      house.prestige += event.amount
       echo "      Prestige: ",
            (if event.amount > 0: "+" else: ""), event.amount,
-           " (", event.description, ") -> ", state.houses[houseId].prestige
+           " (", event.description, ") -> ", house.prestige
+
+    # Write back modified house
+    state.houses[houseId] = house
 
     # Apply blockade prestige penalties
     # Per operations.md:6.2.6: "-2 prestige per colony under blockade"
@@ -1889,7 +1918,21 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           # ARCHITECTURE FIX: Check if this is a spacelift ship (NOT a combat squadron)
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
-          if isSpaceLift:
+          # ARCHITECTURE FIX: Fighters go to colony.fighterSquadrons, not fleets
+          let isFighter = shipClass == ShipClass.Fighter
+
+          if isFighter:
+            # Create fighter squadron at colony
+            let fighterSq = FighterSquadron(
+              id: $systemId & "-FS-" & $(colony.fighterSquadrons.len + 1),
+              commissionedTurn: state.turn
+            )
+
+            colony.fighterSquadrons.add(fighterSq)
+            state.colonies[systemId] = colony
+
+            echo "      Commissioned fighter squadron ", fighterSq.id, " at ", systemId
+          elif isSpaceLift:
             # Create SpaceLiftShip (individual unit, not squadron)
             let shipId = colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
             var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, colony.owner, systemId)

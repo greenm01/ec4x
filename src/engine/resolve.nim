@@ -504,7 +504,10 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             echo "    [Reserve] Fleet ", order.fleetId, " merged into colony reserve fleet ", targetId
           else:
             # Create new reserve fleet at this colony
-            state.fleets[order.fleetId].status = FleetStatus.Reserve
+            # CRITICAL: Get, modify, write back to persist
+            var fleet = state.fleets[order.fleetId]
+            fleet.status = FleetStatus.Reserve
+            state.fleets[order.fleetId] = fleet
             echo "    [Reserve] Fleet ", order.fleetId, " is now colony reserve fleet (50% maint, half AS/DS)"
 
             # Assign permanent GuardPlanet order (reserve fleets can't be moved)
@@ -555,7 +558,10 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             echo "    [Mothball] Fleet ", order.fleetId, " merged into colony mothballed fleet ", targetId
           else:
             # Create new mothballed fleet at this colony
-            state.fleets[order.fleetId].status = FleetStatus.Mothballed
+            # CRITICAL: Get, modify, write back to persist
+            var fleet = state.fleets[order.fleetId]
+            fleet.status = FleetStatus.Mothballed
+            state.fleets[order.fleetId] = fleet
             echo "    [Mothball] Fleet ", order.fleetId, " is now mothballed (0% maint, no combat)"
 
             # Assign permanent Hold order (mothballed fleets can't be moved)

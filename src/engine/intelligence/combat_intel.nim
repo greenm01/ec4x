@@ -273,7 +273,10 @@ proc generateInvasionIntelligence*(
     survived: true  # Invading fleet survives (marines may not)
   )
 
-  state.houses[attackingHouse].intelligence.addCombatReport(attackerReport)
+  # CRITICAL: Get, modify, write back to persist
+  var attackerHouse = state.houses[attackingHouse]
+  attackerHouse.intelligence.addCombatReport(attackerReport)
+  state.houses[attackingHouse] = attackerHouse
 
   # Defender's invasion report (mirror perspective)
   let defenderOutcome = if invasionSuccess:
@@ -299,7 +302,10 @@ proc generateInvasionIntelligence*(
     survived: not invasionSuccess  # Defender survives if repelled invasion
   )
 
-  state.houses[defendingHouse].intelligence.addCombatReport(defenderReport)
+  # CRITICAL: Get, modify, write back to persist
+  var defenderHouse = state.houses[defendingHouse]
+  defenderHouse.intelligence.addCombatReport(defenderReport)
+  state.houses[defendingHouse] = defenderHouse
 
 proc generateBombardmentIntelligence*(
   state: var GameState,
@@ -352,7 +358,10 @@ proc generateBombardmentIntelligence*(
     survived: true
   )
 
-  state.houses[attackingHouse].intelligence.addCombatReport(attackerReport)
+  # CRITICAL: Get, modify, write back to persist
+  var attackerHouse = state.houses[attackingHouse]
+  attackerHouse.intelligence.addCombatReport(attackerReport)
+  state.houses[attackingHouse] = attackerHouse
 
   # Defender's bombardment report (knows they're being bombarded)
   let defenderReport = intel_types.CombatEncounterReport(
@@ -375,7 +384,10 @@ proc generateBombardmentIntelligence*(
     survived: infrastructureDamaged < 100  # Colony survives unless completely destroyed
   )
 
-  state.houses[defendingHouse].intelligence.addCombatReport(defenderReport)
+  # CRITICAL: Get, modify, write back to persist
+  var defenderHouse = state.houses[defendingHouse]
+  defenderHouse.intelligence.addCombatReport(defenderReport)
+  state.houses[defendingHouse] = defenderHouse
 
   # THREAT ASSESSMENT: If spacelift ships detected, invasion is imminent
   if spaceLiftShipsInvolved > 0:

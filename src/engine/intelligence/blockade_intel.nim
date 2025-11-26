@@ -38,7 +38,10 @@ proc generateBlockadeEstablishedIntel*(
     significance: 9  # Blockade is critical threat
   )
 
-  state.houses[defendingHouse].intelligence.addScoutEncounter(defenderReport)
+  # CRITICAL: Get, modify, write back to persist
+  var defenderHouse = state.houses[defendingHouse]
+  defenderHouse.intelligence.addScoutEncounter(defenderReport)
+  state.houses[defendingHouse] = defenderHouse
 
   # Blockaders' reports (they know they established the blockade)
   for blockader in blockadingHouses:
@@ -56,7 +59,10 @@ proc generateBlockadeEstablishedIntel*(
       significance: 8
     )
 
-    state.houses[blockader].intelligence.addScoutEncounter(blockaderReport)
+    # CRITICAL: Get, modify, write back to persist
+    var blockaderHouse = state.houses[blockader]
+    blockaderHouse.intelligence.addScoutEncounter(blockaderReport)
+    state.houses[blockader] = blockaderHouse
 
 proc generateBlockadeLiftedIntel*(
   state: var GameState,
@@ -83,7 +89,10 @@ proc generateBlockadeLiftedIntel*(
     significance: 7  # Important but less urgent than establishment
   )
 
-  state.houses[defendingHouse].intelligence.addScoutEncounter(defenderReport)
+  # CRITICAL: Get, modify, write back to persist
+  var defenderHouse = state.houses[defendingHouse]
+  defenderHouse.intelligence.addScoutEncounter(defenderReport)
+  state.houses[defendingHouse] = defenderHouse
 
   # Former blockaders' reports (their blockade was broken/withdrawn)
   for blockader in previousBlockaders:
@@ -101,4 +110,7 @@ proc generateBlockadeLiftedIntel*(
       significance: 6
     )
 
-    state.houses[blockader].intelligence.addScoutEncounter(blockaderReport)
+    # CRITICAL: Get, modify, write back to persist
+    var blockaderHouse = state.houses[blockader]
+    blockaderHouse.intelligence.addScoutEncounter(blockaderReport)
+    state.houses[blockader] = blockaderHouse

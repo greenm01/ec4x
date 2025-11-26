@@ -176,22 +176,25 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
             )
 
             # Apply prestige penalties
+            # CRITICAL: Get house once, modify all fields, write back to persist
+            var house = state.houses[houseId]
+
             let prestigeEvents = dip_engine.applyViolationPenalties(
               houseId,
               action.targetHouse,
-              state.houses[houseId].violationHistory,
+              house.violationHistory,
               state.turn
             )
 
             for event in prestigeEvents:
-              state.houses[houseId].prestige += event.amount
+              house.prestige += event.amount
               echo "      ", event.description, ": ", event.amount, " prestige"
 
             # Apply dishonored status (duration per config/diplomacy.toml)
             # EXCEPTION: No dishonor for final confrontation (only 2 houses left)
             if not state.isFinalConfrontation():
               let config = globalDiplomacyConfig
-              state.houses[houseId].dishonoredStatus = dip_types.DishonoredStatus(
+              house.dishonoredStatus = dip_types.DishonoredStatus(
                 active: true,
                 turnsRemaining: config.pact_violations.dishonored_status_turns,
                 violationTurn: state.turn
@@ -202,7 +205,7 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
 
             # Apply diplomatic isolation (5 turns per diplomacy.md:8.1.2)
             if not state.isFinalConfrontation():
-              state.houses[houseId].diplomaticIsolation = dip_types.DiplomaticIsolation(
+              house.diplomaticIsolation = dip_types.DiplomaticIsolation(
                 active: true,
                 turnsRemaining: 5,
                 violationTurn: state.turn
@@ -213,11 +216,14 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
 
             # Set status to Enemy
             dip_engine.setDiplomaticState(
-              state.houses[houseId].diplomaticRelations,
+              house.diplomaticRelations,
               action.targetHouse,
               dip_types.DiplomaticState.Enemy,
               state.turn
             )
+
+            # Write back modified house to persist all changes
+            state.houses[houseId] = house
 
             # Generate intelligence reports - pact break leads to war
             diplomatic_intel.generateDiplomaticBreakIntel(

@@ -72,7 +72,10 @@ proc generateEspionageIntelligence*(
       significance: 8  # Successful espionage is highly significant
     )
 
-    state.houses[result.attacker].intelligence.addScoutEncounter(attackerReport)
+    # CRITICAL: Get, modify, write back to persist
+    var attackerHouse = state.houses[result.attacker]
+    attackerHouse.intelligence.addScoutEncounter(attackerReport)
+    state.houses[result.attacker] = attackerHouse
 
     # If NOT detected, target remains unaware (no intelligence report)
     # This is intentional - undetected espionage is covert
@@ -100,8 +103,6 @@ proc generateEspionageIntelligence*(
       significance: if result.success: 9 else: 7  # Higher if they succeeded despite detection
     )
 
-    state.houses[result.target].intelligence.addScoutEncounter(targetReport)
-
     # Add to espionage activity log (per intel.md:types.nim EspionageActivityReport)
     let activityReport = intel_types.EspionageActivityReport(
       turn: turn,
@@ -115,7 +116,11 @@ proc generateEspionageIntelligence*(
         &"{result.attacker} failed {actionName} attempt (detected and blocked)"
     )
 
-    state.houses[result.target].intelligence.addEspionageActivity(activityReport)
+    # CRITICAL: Get target house once, add both reports, write back to persist
+    var targetHouse = state.houses[result.target]
+    targetHouse.intelligence.addScoutEncounter(targetReport)
+    targetHouse.intelligence.addEspionageActivity(activityReport)
+    state.houses[result.target] = targetHouse
 
     # If espionage was detected, attacker also knows they were detected
     if not result.success:
@@ -133,4 +138,7 @@ proc generateEspionageIntelligence*(
         significance: 6  # Failed espionage is moderately significant (prestige loss)
       )
 
-      state.houses[result.attacker].intelligence.addScoutEncounter(attackerFailureReport)
+      # CRITICAL: Get, modify, write back to persist
+      var attackerHouse = state.houses[result.attacker]
+      attackerHouse.intelligence.addScoutEncounter(attackerFailureReport)
+      state.houses[result.attacker] = attackerHouse

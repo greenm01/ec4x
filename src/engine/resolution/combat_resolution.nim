@@ -295,7 +295,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
             state, systemId, intel_types.CombatPhase.Space,
             reportingHouse, alliedFleetIds, otherHouseFleetIds
           )
-          state.houses[reportingHouse].intelligence.addCombatReport(preCombatReport)
+          # CRITICAL: Get, modify, write back to persist
+          var house = state.houses[reportingHouse]
+          house.intelligence.addCombatReport(preCombatReport)
+          state.houses[reportingHouse] = house
 
     let (outcome, fleets, detected) = executeCombat(
       state, systemId, spaceCombatParticipants, systemOwner,
@@ -386,7 +389,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
                 state, systemId, intel_types.CombatPhase.Orbital,
                 reportingHouse, alliedFleetIds, otherHouseFleetIds
               )
-              state.houses[reportingHouse].intelligence.addCombatReport(orbitalPreCombatReport)
+              # CRITICAL: Get, modify, write back to persist
+              var house = state.houses[reportingHouse]
+              house.intelligence.addCombatReport(orbitalPreCombatReport)
+              state.houses[reportingHouse] = house
 
         let (outcome, fleets, detected) = executeCombat(
           state, systemId, orbitalFleets, systemOwner,
