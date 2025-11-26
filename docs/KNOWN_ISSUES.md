@@ -1,6 +1,6 @@
 # EC4X Known Issues & Architectural Limitations
 
-**Last Updated:** 2025-11-24
+**Last Updated:** 2025-11-25
 
 This document tracks known architectural limitations and design issues that affect game balance or AI behavior.
 
@@ -8,83 +8,73 @@ This document tracks known architectural limitations and design issues that affe
 
 ## 0. Zero Invasions - Reconnaissance Gap
 
-**Status:** 🔴 **Critical Issue** - Invasions never occur (0 in 100-turn tests)
+**Status:** ✅ **RESOLVED** (2025-11-25, commit 698c105)
 **Discovered:** 2025-11-24 during diagnostic analysis
-**Impact:** AI never attempts planetary invasions, major gameplay mechanic non-functional
+**Impact:** AI never attempted planetary invasions, major gameplay mechanic was non-functional
 
 ### Problem Description
 
-The AI invasion system has THREE bugs preventing invasions:
+The AI invasion system had THREE bugs preventing invasions:
 
-**Bug 1: Aggression Threshold Too High** ✅ **FIXED**
+**Bug 1: Aggression Threshold Too High** ✅ **FIXED** (2025-11-24)
 - Was: `p.aggression > 0.5` (only Aggressive strategy could invade)
 - Fixed: `p.aggression >= 0.4` (Balanced strategy can invade too)
 
-**Bug 2: Defense Logic Inverted** ✅ **FIXED**
+**Bug 2: Defense Logic Inverted** ✅ **FIXED** (2025-11-24)
 - Was: `defenseStrength > 150` (only invade STRONG targets!)
 - Fixed: `defenseStrength < 200` (invade WEAK/MODERATE targets)
 
-**Bug 3: No Reconnaissance of Enemy Territory** ❌ **ROOT CAUSE**
-- Invasion planning requires `filtered.visibleColonies` (line 701)
-- AI exploration sends scouts to **uncolonized systems**, not **enemy space**
-- Without intelligence on enemy colonies, invasion targets list is empty
-- Even with bugs 1+2 fixed, zero invasions occur due to no visible targets
+**Bug 3: Intelligence Reports Not Used for Targeting** ✅ **FIXED** (2025-11-25, commit 698c105)
+- **Root Cause:** `identifyVulnerableTargets()` only checked `filtered.visibleColonies`
+- Intelligence reports from scouts/combat/surveillance were ignored
+- Even with intel database populated, AI couldn't target intel-only colonies for invasion
+- **Fix:** Modified `identifyVulnerableTargets()` to include colonies from `filtered.ownHouse.intelligence.colonyReports`
 
-### Root Cause Analysis
+### Solution Implemented
+
+**File:** `src/ai/rba/tactical.nim` (lines 327-357)
 
 ```nim
-# tests/balance/ai_controller.nim:694-713
-proc identifyVulnerableTargets(...): seq[...] =
+proc identifyVulnerableTargets*(controller: var AIController, filtered: FilteredGameState): seq[...] =
+  ## USES INTELLIGENCE REPORTS: Includes colonies from intelligence database, not just visible
   result = @[]
+  var addedSystems: seq[SystemId] = @[]
 
-  # Check visible enemy colonies from fog-of-war view
-  for visCol in filtered.visibleColonies:  # ← EMPTY IN EARLY GAME!
+  # Add currently visible colonies
+  for visCol in filtered.visibleColonies:
     if visCol.owner == controller.houseId:
       continue
+    let strength = controller.assessRelativeStrength(filtered, visCol.owner)
     result.add((visCol.systemId, visCol.owner, strength))
-```
+    addedSystems.add(visCol.systemId)
 
-**Why visibleColonies is empty:**
-1. Fog-of-war prevents seeing enemy colonies by default
-2. Scouts explore **uncolonized** systems (Priority 6, line 2216-2225)
-3. No logic sends scouts to **enemy homeworlds** for reconnaissance
-4. Without scout intelligence, enemy colonies remain invisible
-5. Invasion planning finds zero targets → zero invasions
-
-### Proposed Solution
-
-Add **reconnaissance missions** to enemy space:
-
-```nim
-# Priority 5.5: Intelligence Gathering (before exploration)
-if scoutCount > 0 and p.aggression >= 0.3:
-  # Identify enemy home systems from diplomacy/prestige rankings
-  let enemyHomeSystems = identifyEnemyHomeworlds(filtered)
-
-  # Send scouts to reconnoiter enemy space
-  for enemySystem in enemyHomeSystems:
-    if not hasRecentIntel(controller, enemySystem):
-      order.orderType = FleetOrderType.Move
-      order.targetSystem = some(enemySystem)
-      result.add(order)
+  # Add colonies from intelligence database (even if not currently visible)
+  for systemId, report in filtered.ownHouse.intelligence.colonyReports:
+    if report.targetOwner == controller.houseId:
       continue
+    if systemId in addedSystems:
+      continue
+    let strength = controller.assessRelativeStrength(filtered, report.targetOwner)
+    result.add((systemId, report.targetOwner, strength))
+    addedSystems.add(systemId)
 ```
 
-This would:
-1. Direct scouts to enemy homeworlds (known from game start)
-2. Gather intelligence on enemy colony strength
-3. Populate `visibleColonies` with invasion targets
-4. Enable invasion planning to proceed
+### Results
 
-### Impact Assessment
+**Before Fix:**
+- 0 invasions in 7-turn test (20 games)
+- Intelligence database populated but unused for targeting
 
-- **Severity:** Critical (core 4X mechanic non-functional)
-- **Affected Systems:** Invasion planning, intelligence gathering, military strategy
-- **Workaround:** None (invasions completely blocked)
-- **Effort to Fix:** Medium (2-4 hours)
-  - Add reconnaissance target identification
-  - Prioritize intel gathering over empty exploration
-  - Test with 30-turn diagnostics
+**After Fix:**
+- 95 invasions in 7-turn test (20 games)
+- AI now properly utilizes scout/combat/surveillance intel for invasion targeting
+- All 96 games in Act 2 test completed with 0 collapses
+
+### Related Commits
+
+- **698c105:** Enable invasion targeting via intelligence reports
+- **c79b78b:** Include ETACs in transport diagnostic counting
+- **cdbbde5:** Fix transport/fighter commissioning persistence
 
 ---
 
