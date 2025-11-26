@@ -129,13 +129,16 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # These are simple heuristics - budget module makes the final decisions
   let availableBudget = filtered.ownHouse.treasury
 
-  # Count military vs scout squadrons
+  # Count military vs scout squadrons and special units
   var militaryCount = 0
   var scoutCount = 0
+  var planetBreakerCount = 0
   for fleet in filtered.ownFleets:
     for squadron in fleet.squadrons:
       if squadron.flagship.shipClass == ShipClass.Scout:
         scoutCount += 1
+      elif squadron.flagship.shipClass == ShipClass.PlanetBreaker:
+        planetBreakerCount += 1
       else:
         militaryCount += 1
 
@@ -191,7 +194,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
     isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
     needCarriers, needTransports, needRaiders, canAffordMoreShips,
-    atSquadronLimit, militaryCount, scoutCount, availableBudget
+    atSquadronLimit, militaryCount, scoutCount, planetBreakerCount, availableBudget
   )
 
   # ==========================================================================
@@ -253,9 +256,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # ESPIONAGE (Using RBA Espionage Module)
   # ==========================================================================
-  result.espionageAction = generateEspionageAction(controller, filtered, rng)
-
-  # Calculate espionage investment (2-5% of treasury)
+  # PHASE 1: Calculate espionage investment (2-5% of treasury)
+  # This determines how many EBP/CIP points we'll have THIS TURN
   let espionageInvestment = if p.riskTolerance > 0.6:
     0.05  # High risk tolerance: 5% investment
   elif p.economicFocus > 0.7:
@@ -264,8 +266,25 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     0.03  # Balanced: 3% investment
 
   let totalInvestment = int(float(filtered.ownHouse.treasury) * espionageInvestment)
-  result.ebpInvestment = totalInvestment div 2  # Half to offensive EBP
-  result.cipInvestment = totalInvestment div 2  # Half to defensive CIP
+  let ebpInvestment = totalInvestment div 2  # Half to offensive EBP
+  let cipInvestment = totalInvestment div 2  # Half to defensive CIP
+
+  # PHASE 2: Calculate projected EBP/CIP (current + investment)
+  # This is the budget available THIS TURN for espionage actions
+  let projectedEBP = filtered.ownHouse.espionageBudget.ebpPoints + ebpInvestment
+  let projectedCIP = filtered.ownHouse.espionageBudget.cipPoints + cipInvestment
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Turn {filtered.turn}: Espionage budget - " &
+          &"treasury={filtered.ownHouse.treasury}PP, investment={totalInvestment}PP, " &
+          &"projected EBP={projectedEBP}, projected CIP={projectedCIP}")
+
+  # PHASE 3: Generate espionage action using projected budget
+  result.espionageAction = generateEspionageAction(controller, filtered, projectedEBP, projectedCIP, rng)
+
+  # PHASE 4: Store investment in order packet (will be processed by engine)
+  result.ebpInvestment = ebpInvestment
+  result.cipInvestment = cipInvestment
 
   # ==========================================================================
   # ECONOMIC ORDERS (Using RBA Economic Module)
