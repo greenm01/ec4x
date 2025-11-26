@@ -38,7 +38,7 @@ If a House's prestige drops and stays below zero for three consecutive turns, th
 
 **For Players:** You don't need to do anything - the game calculates this automatically when the map is created. Just know that larger maps = longer campaigns!
 
-See [Section 9.4](reference.md#94-prestige) for the mathematical details.
+See [Section 10.4](reference.md#104-prestige) for the mathematical details.
 
 ## 1.2 Game Setup
 
@@ -52,7 +52,7 @@ Generate a star-map as described in [Section 2.1](assets.md#21-star-map) for the
 
 Players start the game with one homeworld (An Abundant Eden planet, Level V colony with 840 PU), 1000 production points (PP) in the treasury, one spaceport, one shipyard, two fully loaded ETAC, 2 Light Cruiser, two Destroyers, and 0 Scouts. The tax rate is set to 50% by default.
 
-**All technology levels start at level 1** (EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I). See [Section 4.0](economy.md#40-research--development) for complete starting tech details and effects, and [Section 9.11](reference.md#911-technology-research) for tech advancement tables.
+**All technology levels start at level 1** (EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I). See [Section 4.0](economy.md#40-research--development) for complete starting tech details and effects, and [Section 10.11](reference.md#1011-technology-research) for tech advancement tables.
 
 ## 1.3 Turns
 

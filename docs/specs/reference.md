@@ -1,6 +1,6 @@
-# 9.0 Data Tables
+# 10.0 Data Tables
 
-## 9.1 Space Force (WEP1)
+## 10.1 Space Force (WEP1)
 
 <!-- SPACE_FORCE_TABLE_START -->
 CST = Minimum CST Level
@@ -34,7 +34,7 @@ CL = Carry Limit
 *Source: config/ships.toml*
 <!-- SPACE_FORCE_TABLE_END -->
 
-## 9.1.1 Ship Construction Times
+## 10.1.1 Ship Construction Times
 
 Base construction times by hull class (modified by CST tech per [Section 4.5](economy.md#45-construction-cst)):
 
@@ -59,7 +59,7 @@ minimum: 1 turn
 *Source: config/ships.toml [construction] section*
 <!-- CONSTRUCTION_TIMES_TABLE_END -->
 
-## 9.2 Ground Units (WEP1)
+## 10.2 Ground Units (WEP1)
 
 <!-- GROUND_UNITS_TABLE_START -->
 | **Class** | **Name**         | CST | PC  | MC  | AS  | DS  |
@@ -72,7 +72,7 @@ minimum: 1 turn
 *Source: config/ground_units.toml*
 <!-- GROUND_UNITS_TABLE_END -->
 
-## 9.3 Spacelift Command (WEP1)
+## 10.3 Spacelift Command (WEP1)
 
 <!-- SPACELIFT_TABLE_START -->
 | **Class** | **Name**         | CST | PC  | MC  | CL  | DS  |
@@ -85,7 +85,7 @@ minimum: 1 turn
 *Source: config/facilities.toml and config/ships.toml*
 <!-- SPACELIFT_TABLE_END -->
 
-## 9.4 Prestige
+## 10.4 Prestige
 
 **IMPORTANT: Dynamic Prestige Scaling**
 
@@ -160,7 +160,7 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 - See [Section 3.1.3](economy.md#313-tax-rate) for full tax mechanics
 - See [Section 3.2](economy.md#32-maintenance-costs) for maintenance mechanics
 
-## 9.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
+## 10.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
 
 | Limit Description                              | Rule Details                                                                                 | Source Section |
 |------------------------------------------------|----------------------------------------------------------------------------------------------|----------------|

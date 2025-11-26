@@ -533,7 +533,7 @@ House prestige affects crew morale and combat effectiveness. At the start of eac
 | High         | > 9              | +1 CER + one critical auto-succeeds    |
 | VeryHigh/Exceptional | > 6     | +2 to all CER rolls this turn          |
 
-See [Table 9.4](reference.md#94-prestige) for prestige ranges that determine morale level.
+See [Table 9.4](reference.md#104-prestige) for prestige ranges that determine morale level.
 
 **Morale Effects:**
 
@@ -544,7 +544,7 @@ See [Table 9.4](reference.md#94-prestige) for prestige ranges that determine mor
 
 **Morale Crisis (Collapsing Morale):**
 
-When a House's morale reaches Collapsing level (see [Table 9.4](reference.md#94-prestige) for prestige threshold), morale collapses:
+When a House's morale reaches Collapsing level (see [Table 9.4](reference.md#104-prestige) for prestige threshold), morale collapses:
 - All CER rolls receive -1 penalty (no morale check roll required).
 - One random fleet refuses orders and holds position for the turn.
 - Effects persist until prestige rises above the Collapsing threshold.
@@ -894,10 +894,10 @@ When multiple attackers independently select the same target during simultaneous
 **Multi-House Combat Prestige Attribution:**
 
 When three or more houses participate in combat:
-- **FleetVictory** prestige is awarded to the house that dealt the crippling blow to the final squadron in that Task Force - see [Table 9.4](reference.md#94-prestige)
+- **FleetVictory** prestige is awarded to the house that dealt the crippling blow to the final squadron in that Task Force - see [Table 9.4](reference.md#104-prestige)
 - If a squadron is destroyed in the same round it is crippled (via critical hit or overkill with critical), prestige goes to the house that dealt the crippling blow
 - If multiple houses attack simultaneously and a squadron is destroyed (already crippled from previous round), all attacking houses share prestige equally (rounded down, minimum 1 per house)
-- **FleetVictory** prestige is awarded to all houses engaged with the retreating Task Force, divided evenly (rounded down, minimum 1 per house) - see [Table 9.4](reference.md#94-prestige)
+- **FleetVictory** prestige is awarded to all houses engaged with the retreating Task Force, divided evenly (rounded down, minimum 1 per house) - see [Table 9.4](reference.md#104-prestige)
 - Track damage sources to determine which house dealt the crippling blow for prestige awards
 
 ### 7.3.4 Rounds
@@ -937,7 +937,7 @@ Non-homeworld colonies follow standard ROE evaluation and may be tactically aban
 
 **Morale ROE Modifier:**
 
-House morale affects combat behavior by modifying effective ROE for retreat evaluation. See [Table 9.4](reference.md#94-prestige) for morale level definitions.
+House morale affects combat behavior by modifying effective ROE for retreat evaluation. See [Table 9.4](reference.md#104-prestige) for morale level definitions.
 
 | Morale Level     | Morale ROE Modifier | Effect                                      |
 |:-----------------|:-------------------:|:--------------------------------------------|
@@ -1178,11 +1178,11 @@ Destroyed ships cannot be salvaged from battle wreckage. Salvage operations appl
 **Prestige Awards:**
 
 Prestige is awarded after combat resolution:
-- **FleetVictory** prestige for destroying an enemy Task Force (awarded to house that dealt crippling blow to final squadron) - see [Table 9.4](reference.md#94-prestige)
-- **FleetVictory** prestige for forcing an enemy Task Force to retreat (divided among all engaged houses) - see [Table 9.4](reference.md#94-prestige)
-- **StarbaseDestroyed** prestige for destroying an enemy Starbase - see [Table 9.4](reference.md#94-prestige)
-- **StarbaseDestroyed** penalty for losing a Starbase - see [Table 9.4](reference.md#94-prestige)
-- **DishonoredExpires** penalty for being ambushed by a cloaked fleet (if Raiders achieved surprise in Phase 1) - see [Table 9.4](reference.md#94-prestige)
+- **FleetVictory** prestige for destroying an enemy Task Force (awarded to house that dealt crippling blow to final squadron) - see [Table 9.4](reference.md#104-prestige)
+- **FleetVictory** prestige for forcing an enemy Task Force to retreat (divided among all engaged houses) - see [Table 9.4](reference.md#104-prestige)
+- **StarbaseDestroyed** prestige for destroying an enemy Starbase - see [Table 9.4](reference.md#104-prestige)
+- **StarbaseDestroyed** penalty for losing a Starbase - see [Table 9.4](reference.md#104-prestige)
+- **DishonoredExpires** penalty for being ambushed by a cloaked fleet (if Raiders achieved surprise in Phase 1) - see [Table 9.4](reference.md#104-prestige)
 - No prestige awarded or lost for mutual withdrawal, forced stalemate, or forced post-combat withdrawal
 
 ## 7.4 Orbital Combat

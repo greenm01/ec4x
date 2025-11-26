@@ -264,7 +264,7 @@ Each turn, the Duke can allocate Treasury funds as follows:
 
 ## 3.9 Maintenance Costs
 
-At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](reference.md#90-data-tables).
+At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](reference.md#100-data-tables).
 
 ### Fleet Operational Status
 
@@ -347,7 +347,7 @@ Ships in a crippled combat state (per [Section 7.1.2](operations.md#712-combat-s
 
 **Warning:** The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
 
-For every turn that a player misses payment for maintenance they lose prestige points; refer to [Section 9.4](reference.md#94-prestige).
+For every turn that a player misses payment for maintenance they lose prestige points; refer to [Section 10.4](reference.md#104-prestige).
 
 ## 3.10 Fighter Squadron Economics
 
@@ -467,7 +467,7 @@ What does NOT count (completely unlimited except money / existing rules):
 *Source: config/tech.toml [starting_tech] section*
 <!-- STARTING_TECH_TABLE_END -->
 
-The starting tech configuration ensures consistent behavior across the engine. Game scenario files (e.g., `game_setup/standard.toml`) inherit these values. See [Section 9.11](#911-technology-research) for complete tech advancement tables.
+The starting tech configuration ensures consistent behavior across the engine. Game scenario files (e.g., `game_setup/standard.toml`) inherit these values. See [Section 10.11](#911-technology-research) for complete tech advancement tables.
 
 ## 4.1 Research Points (RP)
 
@@ -675,7 +675,7 @@ CST tech reduces ship construction time by 10% per level:
 
 This creates meaningful progression from early game (capitals take 4-5 turns) to late game (CST10 enables rapid construction of even the largest ships).
 
-See [Section 9.1.1](reference.md#911-ship-construction-times) for complete construction time table.
+See [Section 10.1.1](reference.md#1011-ship-construction-times) for complete construction time table.
 
 ## 4.6 Weapons (WEP)
 
@@ -901,7 +901,7 @@ Construction and repair of House assets is accomplished planet-side or in orbit,
 
 ## 5.0 Ship Construction
 
-The number of turns required to construct a ship varies by hull class and CST tech level per [Section 9.1.1](reference.md#911-ship-construction-times).
+The number of turns required to construct a ship varies by hull class and CST tech level per [Section 10.1.1](reference.md#1011-ship-construction-times).
 
 **Payment Model:**
 - Full PC cost must be paid **upfront** from house treasury when construction begins

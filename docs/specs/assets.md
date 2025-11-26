@@ -55,7 +55,7 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 
 ### 2.3.1 Space Force Ships
 
-The base game includes a number of imperial classed space combatants listed in [Section 9.1](reference.md#91-space-force-wep1).
+The base game includes a number of imperial classed space combatants listed in [Section 10.1](reference.md#101-space-force-wep1).
 
 Feel free to create your own ships and races for asymmetrical warfare or narrative purposes.
 
@@ -65,7 +65,7 @@ The Spacelift Command provides commerce and transportation services in support o
 
 Spacelift assets have no offensive weapons capability, and un-escorted units are easily destroyed by rival forces. 
 
-Spacelift Command attributes are listed in [Section 9.3](reference.md#93-spacelift-command-wep1).
+Spacelift Command attributes are listed in [Section 10.3](reference.md#103-spacelift-command-wep1).
 
 #### 2.3.2.1 Spaceports
 
@@ -335,7 +335,7 @@ Scouts operate in two distinct modes depending on their mission:
 
 2. **Fleet Operations (Multi-Ship Squadron):** Scouts automatically join mixed squadrons with capital ships or other escorts (per auto-commissioning rules in [Section 6.2](operations.md#62-squadron-commissioning)) where they provide electronic warfare support, raider detection, and counter-intelligence capabilities. Embedded scouts benefit from the squadron's combined defensive strength during combat while maintaining their ELI detection capabilities.
 
-Per the Space Force table ([Section 9.1](reference.md#91-space-force-wep1)), Scouts have CC=1 (Command Cost) and CR=NA (Command Rating), meaning they can be commanded by other ships but cannot command ships themselves.
+Per the Space Force table ([Section 10.1](reference.md#101-space-force-wep1)), Scouts have CC=1 (Command Cost) and CR=NA (Command Rating), meaning they can be commanded by other ships but cannot command ships themselves.
 
 **⚠️ Espionage Tactical Note:** For covert operations, players should manually reorganize scouts into single-ship squadrons before deploying on spy missions. Multi-ship squadrons significantly increase detection risk during intelligence operations.
 

@@ -382,7 +382,6 @@ proc executeCounterIntelSweep*(attacker: HouseId, detected: bool): EspionageResu
   ## Execute Counter-Intelligence Sweep (defensive operation)
   ## Block enemy intelligence gathering for 1 turn
   ## 4 EBP cost
-  let config = globalPrestigeConfig
 
   var result = EspionageResult(
     success: not detected,  # Success if not detected (clean your own intel)
@@ -402,11 +401,12 @@ proc executeCounterIntelSweep*(attacker: HouseId, detected: bool): EspionageResu
 
   if not detected:
     # Create intelligence blocking effect
+    let config = globalEspionageConfig
     result.effect = some(OngoingEffect(
       effectType: EffectType.IntelBlocked,
       targetHouse: attacker,  # Protects attacker
       targetSystem: none(SystemId),
-      turnsRemaining: INTEL_BLOCK_DURATION,
+      turnsRemaining: config.effects.intel_block_duration,
       magnitude: 1.0  # Full block
     ))
     result.attackerPrestigeEvents.add(createPrestigeEvent(
@@ -421,7 +421,6 @@ proc executeIntelligenceTheft*(attacker: HouseId, target: HouseId, detected: boo
   ## Execute Intelligence Theft
   ## Steal entire intelligence database from target
   ## 8 EBP cost - high value action
-  let config = globalPrestigeConfig
 
   var result = EspionageResult(
     success: not detected,
@@ -464,7 +463,7 @@ proc executePlantDisinformation*(attacker: HouseId, target: HouseId, detected: b
   ## Execute Plant Disinformation
   ## Corrupt target's intelligence with false data
   ## 6 EBP cost - subtle sabotage
-  let config = globalPrestigeConfig
+  let espionageConfig = globalEspionageConfig
 
   var result = EspionageResult(
     success: not detected,
@@ -490,12 +489,15 @@ proc executePlantDisinformation*(attacker: HouseId, target: HouseId, detected: b
     ))
   else:
     # Create intelligence corruption effect
+    # Use midpoint of configured variance range as stored magnitude
+    let avgVariance = (espionageConfig.effects.disinformation_min_variance +
+                       espionageConfig.effects.disinformation_max_variance) / 2.0
     result.effect = some(OngoingEffect(
       effectType: EffectType.IntelCorrupted,
       targetHouse: target,
       targetSystem: none(SystemId),
-      turnsRemaining: DISINFORMATION_DURATION,
-      magnitude: 0.3  # 30% average corruption (will vary 20-40%)
+      turnsRemaining: espionageConfig.effects.disinformation_duration,
+      magnitude: avgVariance  # Average corruption (actual variance applied when corrupting)
     ))
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,

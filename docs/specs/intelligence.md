@@ -1,424 +1,169 @@
-# 9. Intelligence System
+# 9.0 Intelligence System
 
-The intelligence system provides detailed reporting on enemy forces, infrastructure, and economic capabilities gathered through scouts, espionage, and fleet encounters. Intelligence forms the foundation of strategic decision-making in EC4X's fog-of-war environment.
+Knowledge is power in EC4X. The intelligence system determines what you know about your rivals and when you know it. In the fog of war, victory often belongs to the House Duke who sees the battlefield most clearly.
 
-## 9.1 Intelligence Sources
+## 9.1 Gathering Intelligence
 
-Intelligence can be gathered through multiple sources, each providing different quality and scope of information.
+Intelligence flows from multiple sources, each revealing different aspects of your enemies' capabilities and intentions.
 
 ### 9.1.1 Scout Reconnaissance (Perfect Quality)
 
-**Scout Squadrons** operating under espionage orders (SpyOnPlanet, SpyOnSystem, HackStarbase) gather the most comprehensive intelligence available. Scouts provide:
+Your scout squadrons are the eyes and ears of your House. When dispatched on reconnaissance missions, they gather comprehensive intelligence on enemy assets, movements, and capabilities. Scout reports include complete fleet compositions with tech levels and hull integrity, detailed colony statistics including economic output and construction projects, and strategic assessments of enemy patrol patterns and force deployments.
 
-- **Perfect accuracy** - All reported data is current and exact
-- **Complete fleet composition** - Ship types, tech levels, hull integrity, cargo contents
-- **Full economic data** - Colony output, tax revenue, construction queues
-- **Strategic intelligence** - Fleet orders, standing orders, patrol routes
+Scouts provide the highest quality intelligence available. Their reports are detailed, accurate, and current. However, even scout intelligence can be compromised. Houses that successfully plant disinformation in your intelligence network or those operating under the stigma of dishonor may corrupt scout reports with false data. See [Section 9.4](#94-intelligence-corruption) for details on intelligence reliability.
 
-**Scout Advantages:**
-- See everything: fleets, colonies, combat, bombardment, blockades, construction
-- Detailed fleet composition including tech levels and hull integrity
-- Construction progress tracking over time
-- Fleet movement pattern detection
-- Patrol route analysis
-- Witness and report all events in system
+Scout missions are described in [Section 6.2.10-6.2.12](operations.md#6210-spy-on-a-planet-09) of the Operations manual.
 
-Scouts can be corrupted by Disinformation (espionage) or Dishonored status (diplomacy), reducing intelligence reliability. See [Section 9.4](#94-intelligence-corruption).
+### 9.1.2 Fleet Encounters
 
-### 9.1.2 Regular Fleet Encounters (Visual Quality)
+When your fleets encounter enemy forces in the same system, your captains automatically report what they observe. These visual sightings provide basic tactical intelligence: ship types, squadron sizes, and observable behavior such as patrol or blockade operations. You can count the enemy destroyers and cruisers, note the presence of transport vessels, and observe their standing orders.
 
-When any friendly fleet occupies the same system as foreign forces, **visual intelligence** is automatically gathered:
-
-- **Squadron composition** - Ship types and counts (e.g., "3 Destroyers, 2 Cruisers")
-- **Transport count** - Number of spacelift ships present
-- **Standing orders** - Observable fleet behavior (Patrol, Guard, Blockade, etc.)
-- **Fleet location** - Current system position
-
-**Visual Limitations:**
-- ❌ No tech level information (shows as 0)
-- ❌ No hull integrity data (cannot assess damage)
-- ❌ No cargo contents (transport ships show count only)
-
-This reflects tactical observation - you can see what ships are present, but not their technological sophistication or strategic cargo.
+Visual intelligence has natural limitations. Your captains cannot assess technological sophistication from a distance, determine hull damage states, or identify cargo contents. An enemy transport fleet shows only the number of ships, not whether they carry invasion troops, colonists, or equipment. Tech levels display as zero since there is no way to visually assess research advancement. This reflects the reality of tactical observation in space warfare.
 
 ### 9.1.3 Spy Operations (Spy Quality)
 
-**Espionage missions** (SpyOnPlanet, SpyOnSystem, HackStarbase) conducted by scout squadrons provide high-quality intelligence with some economic visibility:
+Scout squadrons conducting espionage missions (SpyOnPlanet, SpyOnSystem, HackStarbase) penetrate deeper than visual observation. These covert operations provide economic intelligence, construction queue details, and technological assessments that visual sightings cannot reveal.
 
-**SpyOnPlanet** reveals:
-- Colony population, industry (IU), defenses
-- Starbase level
-- Construction queue (all queued projects)
-- **Economic data**: Gross Colonial Output (GCO), Net Colonial Value (NCV)
-- Orbital defenses: unassigned squadrons, reserve/mothballed fleets, shipyards
+Planet surveillance exposes colony population, industrial capacity, defensive installations, and most critically, economic output and tax revenue. You learn what the colony produces and how much flows to the enemy treasury. System reconnaissance reveals full fleet dispositions including tech levels, hull integrity, and cargo manifests. Starbase hacking accesses financial records, research allocations, and technology advancement across all fields.
 
-**SpyOnSystem** reveals:
-- All fleets in system with full composition
-- Squadron details: ship classes, counts, tech levels, hull integrity
-- Spacelift cargo manifests
+This level of detail transforms strategic decision-making. Knowing an enemy's economic strength and research focus allows you to predict their capabilities turns in advance.
 
-**HackStarbase** reveals:
-- Treasury balance, gross/net income, tax rate
-- Tech levels across all research fields (Economic, Science, Technology)
-- Research allocations (ERP, SRP, TRP)
-- Current research focus
+### 9.1.4 Starbase Surveillance
 
-See [Section 6.2.9-6.2.11](operations.md#629-spy-on-a-planet-09) for operational details.
+Advanced sensor arrays installed on starbases monitor their sector continuously. A starbase watches its home system and all adjacent systems, detecting non-stealthed fleet movements, combat activity, and bombardment operations. This passive surveillance provides early warning of enemy fleet approaches and documents hostile activity near your territory.
 
-### 9.1.4 Starbase Surveillance (Scan Quality)
+Scouts and cloaked Raiders can evade starbase detection through stealth. Detection mechanics are described in [Section 7.1.3](operations.md#713-cloaking-and-detection).
 
-**Starbases with Advanced Sensors** automatically monitor their sector (system + adjacent systems):
+## 9.2 Intelligence Reports
 
-- Detect all non-stealthed fleet movements
-- Track fleet transit between systems
-- Identify combat and bombardment activity
-- Provide threat assessment
-
-**Detection Evasion:**
-- Scouts and cloaked Raiders can evade detection with successful stealth rolls
-- See [Section 7.1.3](operations.md#713-cloaking-and-detection) for detection mechanics
-
-## 9.2 Intelligence Report Types
-
-The game generates detailed intelligence reports from various sources, stored in each house's intelligence database.
+Your intelligence network generates detailed reports from all sources. These reports accumulate in your intelligence database, building a picture of enemy capabilities and activities over time.
 
 ### 9.2.1 Scout Encounter Reports
 
-Generated whenever scouts observe activity in a system. Types include:
+Scout encounters produce the most detailed intelligence reports. When scouts observe enemy fleets, the report includes complete squadron compositions, tech levels for all ships, hull integrity assessments, and cargo manifests for transport vessels. Fleet behavior patterns are noted, including standing orders and patrol routes.
 
-**Fleet Sighting**
-- Detailed fleet composition
-- Squadron breakdown with tech levels
-- Spacelift cargo details (type, quantity, damage status)
-- Standing orders
-- Significance: 7/10
+Colony discoveries provide comprehensive settlement data. Your analysts learn population levels, industrial capacity, defensive installations, construction queues, and orbital defenses. Economic intelligence reveals gross output and net tax revenue. The construction queue shows what the enemy is building and how many turns remain to completion.
 
-**Colony Discovered**
-- Complete colony statistics
-- Economic data (if Spy+ quality)
-- Construction queue
-- Orbital defenses inventory
-- Significance: 8/10
+Combat observations document both sides' forces before battle, losses sustained during the engagement, and battle outcomes. Scouts witnessing bombardment or invasion operations report the attacking force composition and target defenses.
 
-**Combat Witnessed**
-- Pre-combat force compositions (both sides)
-- Observed losses
-- Retreats and outcomes
-- Significance: Variable (5-10)
+Each report is assigned a significance rating from 1-10 based on strategic value. Discovery of a major enemy colony rates 8/10. Observing a small fleet patrol might rate 5/10. Witnessing a major space battle between rival houses could rate 10/10 depending on strategic implications.
 
-**Construction Activity**
-- Infrastructure changes
-- Completed projects
-- Active construction queue
-- Facility counts (shipyards, spaceports, starbases)
-- Significance: 5/10
+### 9.2.2 Fleet Movement Tracking
 
-### 9.2.2 Fleet Movement History
+The intelligence system maintains chronological records of enemy fleet sightings. Each observation notes the turn, system, and fleet composition. Over time, these sightings reveal movement patterns and patrol routes.
 
-The intelligence system tracks enemy fleet movements over time:
+Your intelligence staff tracks last known positions for all enemy fleets. Repeated sightings in a predictable pattern indicate patrol routes or blockade stations. Time since last sighting (staleness) helps assess whether intelligence remains current or has aged beyond reliability.
 
-- **Chronological sightings**: Turn and system for each observation
-- **Last known location**: Most recent confirmed position
-- **Patrol pattern detection**: Identifies repeated routes
-- **Staleness indicator**: Turns since last sighting
+This historical tracking enables strategic prediction. If an enemy fleet has patrolled the same three-system route for five turns, you can anticipate its position and plan accordingly.
 
-This enables strategic prediction of enemy fleet positions and patrol routes.
+### 9.2.3 Combat Intelligence
 
-### 9.2.3 Combat Encounter Reports
+Combat generates automatic intelligence reports for all participating forces. Before battle, both sides gain complete knowledge of enemy fleet composition, squadron breakdowns, spacelift cargo, and fleet orders. The fog of war lifts completely during combat - you see exactly what you're fighting.
 
-Generated automatically during combat for all participating and observing forces:
+Post-combat intelligence depends on survival. If your forces survive or retreat successfully, they report battle outcomes, losses sustained by both sides, and which enemy forces retreated. Complete annihilation provides no post-combat intelligence.
 
-**Pre-Combat Intelligence** (always available):
-- Allied force composition: Complete squadron breakdown
-- Enemy force composition: Complete squadron breakdown
-- Spacelift cargo details for both sides
-- Fleet orders and standing orders
-- Combat phase type (Space, Orbital, Planetary)
-
-**Post-Combat Intelligence** (only if survivors):
-- Battle outcome from reporter's perspective
-- Allied losses (squadron IDs)
-- Enemy losses (ship classes observed)
-- Retreated fleets (both sides if observed)
-- Survival status
+Combat observers (scout squadrons or neutral forces in system) witness the entire engagement and receive full intelligence reports without participating in the battle.
 
 ### 9.2.4 Diplomatic Intelligence
 
-All houses automatically receive intelligence on major diplomatic events:
+Major diplomatic events are public knowledge. All houses automatically receive intelligence reports when Non-Aggression pacts form, when pacts are violated, when war is declared, and when peace treaties end hostilities.
 
-**Pact Formations**
-- Non-Aggression pacts between any houses
-- Public visibility (all houses notified)
+Diplomatic intelligence includes the houses involved, the nature of the event, and resulting status changes. Pact violations trigger public dishonor, visible to all houses. This transparency reflects the political reality that major diplomatic shifts cannot be concealed in a small region of contested space.
 
-**Pact Violations**
-- Pact breaks and resulting war declarations
-- Public shame and dishonor status
-- Violation history tracking
+See [Section 8.1](diplomacy.md#81-diplomacy) for complete diplomatic mechanics.
 
-**War Declarations**
-- Direct enemy declarations
-- Public visibility
+### 9.2.5 Espionage Detection
 
-**Peace Treaties**
-- Return to neutral status
-- Cessation of hostilities
+Counter-intelligence operations may detect enemy espionage attempts against your House. Detection reports identify the perpetrator (if discovered), the type of espionage attempted, the target system, and whether the operation succeeded or failed.
 
-See [Section 8.1](diplomacy.md#81-diplomacy) for diplomatic mechanics.
-
-### 9.2.5 Espionage Activity Reports
-
-Houses receive reports when espionage is detected against them:
-
-- **Turn**: When activity occurred
-- **Perpetrator**: Attacker house (if identified)
-- **Action type**: What was attempted
-- **Target system**: If system-specific
-- **Detection status**: Whether perpetrator was identified
-- **Description**: Human-readable summary
-
-Failed espionage attempts that are detected provide valuable counter-intelligence.
+Failed espionage provides valuable counter-intelligence. Knowing your rivals attempted tech theft or sabotage reveals their strategic priorities and resource allocation. Repeated failed attempts indicate persistent espionage pressure requiring increased counter-intelligence investment.
 
 ## 9.3 Intelligence Quality Levels
 
-Intelligence has four quality levels indicating reliability and detail:
+Intelligence reports carry quality indicators reflecting reliability and detail level.
 
-### None
-- No intelligence available
-- System never visited or scouted
-- Complete fog of war
+**None** indicates complete fog of war. You have no intelligence on the target. The system has never been scouted or visited by your forces.
 
-### Visual (Regular Fleets)
-- Basic tactical observation
-- Ship types and counts visible
-- Cannot assess tech levels (shows 0)
-- Cannot see hull damage
-- Cannot see cargo contents
-- Transport count visible but not cargo
+**Visual** quality comes from fleet encounters. You see what's there but cannot assess technological sophistication or internal states. Ship types and counts are accurate. Tech levels, hull damage, and cargo contents remain unknown. This represents what your ship captains observe visually.
 
-### Spy (Espionage Operations)
-- High-quality intelligence
-- Full fleet composition with tech levels
-- Hull integrity assessment
-- Economic data (GCO, NCV)
-- Construction queues visible
-- Research allocations revealed
+**Spy** quality comes from espionage operations. You gain economic data, tech levels, hull integrity assessments, and construction details. This penetrates beyond visual observation to reveal strategic information.
 
-### Perfect (Scouts & Owned Assets)
-- Complete and current intelligence
-- All details available
-- No uncertainty
-- Real-time updates
-- Used for scout reports and own assets
+**Perfect** quality comes from scout reconnaissance and your own assets. All details are available, accurate, and current. Perfect quality intelligence forms the foundation of strategic planning.
+
+Intelligence quality affects decision-making. Visual sightings reveal enemy presence but not capability. Spy-quality intelligence reveals capability but may lack real-time updates. Perfect quality intelligence provides complete situational awareness.
 
 ## 9.4 Intelligence Corruption
 
-Intelligence can be compromised through espionage or diplomatic dishonor, introducing false data into reports.
+Intelligence can be compromised through enemy action or diplomatic dishonor. Corrupted intelligence introduces false data into your reports, potentially leading to catastrophic strategic miscalculations.
 
-### 9.4.1 Disinformation (Espionage)
+### 9.4.1 Disinformation
 
-The **Plant Disinformation** espionage action corrupts target house's intelligence gathering:
+The Plant Disinformation espionage action corrupts your intelligence gathering systems. Enemy operatives inject false data into scout telemetry, alter sensor readings, and fabricate statistical reports. The corruption is sophisticated and designed to appear legitimate.
 
-**Effect**:
-- **Duration**: 2 turns
-- **Corruption magnitude**: 20-40% variance in reported values
-- **Scope**: All intelligence reports (scouts, spies, visual)
+Disinformation persists for two turns after the enemy plants it. During this time, all your intelligence reports contain corrupted data with 20-40% variance from true values. Fleet strengths are inflated or deflated randomly. Colony statistics are distorted. Economic data is falsified. Tech levels are misreported.
 
-**Corrupted Data:**
-- Fleet compositions: Ship counts inflated/deflated
-- Colony statistics: Population, industry, defenses randomized
-- Economic data: Income, output, treasury altered
-- Tech levels: Research levels misreported
+The variance is significant enough to cause serious errors in strategic planning. An enemy fleet reported at 12 ships might actually have 7 or 17. A colony showing 8,000 PP monthly output might produce 5,000 or 11,000. You don't know your intelligence is corrupted until you act on false data and discover the truth through direct engagement.
 
-**Cost**: 6 EBP
-**Detection**: Can be blocked by Counter-Intelligence Sweep
+Counter-Intelligence Sweeps can block disinformation attempts. Investing in counter-intelligence protection is the only defense against this insidious form of espionage.
 
-See [Section 8.2.9](#829-plant-disinformation) for mechanics.
+See [Section 8.2.2](diplomacy.md#822-intelligence-warfare-actions) for disinformation mechanics and costs.
 
-### 9.4.2 Dishonored Intelligence
+### 9.4.2 Dishonor and Intelligence Failure
 
-Houses under **Dishonored status** (from pact violations) suffer intelligence corruption:
+Houses operating under Dishonored status suffer severe intelligence corruption. Dishonor stems from Non-Aggression pact violations and reflects deep organizational shame and demoralization. When your House is dishonored, your forces become disorganized, command structures falter, and intelligence gathering suffers catastrophic degradation.
 
-**Effect**:
-- **Duration**: 3 turns (same as dishonor)
-- **Corruption magnitude**: 50% variance (more severe than disinformation)
-- **Cause**: Disorganized and demoralized forces provide unreliable reports
+Dishonored intelligence corruption is more severe than disinformation, introducing 50% variance into all intelligence reports. The corruption lasts three turns, matching the dishonor duration. Every report from every source - scouts, spies, visual sightings - contains wildly inaccurate data. Strategic planning becomes nearly impossible.
 
-**Exception**: Final two houses are exempt from dishonor (and its intelligence corruption).
+The final two houses remaining in the game are exempt from dishonor and its intelligence effects. This exception ensures the endgame remains decisive rather than random.
 
-See [Section 8.1.2](diplomacy.md#812-non-aggression-pacts) for dishonor mechanics.
+Dishonor mechanics are described in [Section 8.1.2](diplomacy.md#812-non-aggression-pacts).
 
 ### 9.4.3 Corruption Detection
 
-Corrupted intelligence is not marked as such - players receive false data that appears legitimate. The deterministic corruption system ensures consistency:
+You receive no notification when your intelligence is corrupted. The false data appears legitimate in all reports. Discovery comes only when you act on corrupted intelligence and confront reality.
 
-- Same turn/house/system always produces same corrupted values
-- Prevents "flickering" intelligence between turns
-- Multiple reports from corrupted source remain consistent
-- Only renewed intelligence gathering provides truth
+An invasion force planned around corrupted fleet strength reports may find itself outnumbered 2:1. Economic projections based on false colony output data lead to strategic miscalculations. Tech level assessments showing inferior enemy research may be dangerously wrong.
 
-**Strategic Implications:**
-- Counter-intelligence investment becomes critical
-- Multiple intelligence sources provide verification
-- Scout reports can be compromised (not always perfect)
-- Dishonor penalties extend beyond prestige/diplomacy
+The uncertainty introduced by potential corruption creates strategic depth. Can you trust this scout report? Is the enemy weaker than they appear, or is your intelligence compromised? Counter-intelligence investment becomes critical not just for stopping enemy espionage but for ensuring your own intelligence remains reliable.
 
 ## 9.5 Intelligence Staleness
 
-Intelligence reports include timestamps showing when data was gathered. Stale intelligence remains visible but may no longer reflect reality.
+Intelligence ages over time. A scout report from five turns ago may no longer reflect current reality. The enemy could have moved fleets, constructed new ships, or abandoned positions.
 
-### Staleness Display
+The intelligence system tracks staleness for all reports, noting turns elapsed since observation. Your intelligence analysts flag aged reports so you can assess reliability. Fresh intelligence (0-1 turns old) is highly reliable. Moderate age (2-3 turns) introduces some uncertainty. Old intelligence (4+ turns) may be significantly outdated.
 
-- **Current (Turn N)**: Real-time data, perfect accuracy
-- **Recent (1-2 turns old)**: Likely still accurate, minor changes possible
-- **Stale (3-5 turns old)**: Moderate uncertainty, significant changes likely
-- **Ancient (6+ turns old)**: High uncertainty, situation may have changed dramatically
+Staleness affects different intelligence types differently. Fleet positions become stale quickly as ships move between systems. Colony statistics age more slowly since population and industry change gradually. Technology levels are relatively stable until research breakthroughs occur.
 
-### Strategic Implications
+Strategic planning must account for intelligence age. Old reports provide historical context but shouldn't drive tactical decisions. Fresh intelligence drives immediate action.
 
-- Fleet positions become unreliable after 2-3 turns
-- Colony data degrades as construction completes
-- Economic intelligence becomes outdated quickly
-- Tech levels change slowly (more reliable over time)
+## 9.6 Intelligence Database
 
-**UI Recommendation**: Show "Last updated: Turn X" on all intelligence displays.
+Your House maintains a comprehensive intelligence database storing all reports chronologically. The database indexes intelligence by target house, system, and report type, enabling rapid access to relevant information.
 
-## 9.6 Intelligence Database Storage
+The database supports strategic analysis by providing historical context. You can review enemy fleet movements over ten turns, track colony development over time, or analyze construction patterns. This historical depth reveals strategic intentions and enables prediction.
 
-Each house maintains a separate intelligence database containing:
+Intelligence Theft espionage operations steal a target house's entire intelligence database, giving you access to everything they know about the galaxy, including their intelligence on your own forces and those of other houses. This high-value operation can reveal enemy strategic plans, planned offensives, and alliance negotiations.
 
-### Colony Intelligence
-- **Storage**: Table indexed by SystemId
-- **Data**: Population, industry, defenses, starbase, construction, economics
-- **Updates**: Overwrite on new intelligence (keeps most recent)
-
-### System Intelligence
-- **Storage**: Table indexed by SystemId
-- **Data**: Detected fleets with composition
-- **Updates**: Overwrite on new intelligence
-
-### Starbase Intelligence
-- **Storage**: Table indexed by SystemId
-- **Data**: Economic and R&D data
-- **Updates**: Overwrite on new intelligence
-
-### Scout Encounter Log
-- **Storage**: Chronological append-only log
-- **Data**: All scout observations with full context
-- **Retention**: Permanent (provides historical intelligence)
-
-### Fleet Movement History
-- **Storage**: Table indexed by FleetId
-- **Data**: Sightings chronology, patrol patterns, last known position
-- **Updates**: Append new sightings, detect patterns
-
-### Construction Activity Tracking
-- **Storage**: Table indexed by SystemId
-- **Data**: Infrastructure history, active projects, completed projects
-- **Updates**: Append observations, detect completions
-
-### Combat Reports
-- **Storage**: Chronological append-only log
-- **Data**: Pre-combat intel, outcomes, losses, survivors
-- **Retention**: Permanent
-
-### Starbase Surveillance
-- **Storage**: Chronological append-only log
-- **Data**: Automated sensor reports from starbases
-- **Retention**: Recent turns only (configurable)
-
-### Espionage Activity Log
-- **Storage**: Chronological append-only log
-- **Data**: Detected espionage attempts against this house
-- **Retention**: Permanent (counter-intelligence value)
+Database contents remain confidential unless stolen through espionage. No house can see what intelligence other houses possess except through Intelligence Theft operations.
 
 ## 9.7 Strategic Use of Intelligence
 
-### Reconnaissance Priority
+Superior intelligence enables strategic advantage. Houses with comprehensive enemy intelligence can plan invasions with confidence, anticipate enemy movements, and identify vulnerabilities for exploitation.
 
-**High-Value Targets:**
-- Enemy home systems (full force assessment)
-- Border systems (detect invasions early)
-- Known fleet staging areas (track mobilization)
-- Enemy research colonies (assess tech advantage)
+Intelligence investment creates a positive feedback loop. Better intelligence enables better strategic decisions. Better decisions lead to stronger position. Stronger position enables more aggressive reconnaissance. More reconnaissance provides better intelligence.
 
-### Intelligence Sharing
+However, intelligence gathering is expensive. Scout missions risk detection and destruction. Espionage operations cost EBP points and face counter-intelligence. Maintaining comprehensive intelligence on multiple rivals requires significant resource allocation.
 
-**Diplomatic Value:**
-- Share scout reports with allies
-- Trade intelligence for favors
-- Reveal enemy movements to threatened neutrals
-- Withhold intelligence as leverage
+Strategic intelligence priorities must align with campaign objectives. If planning to invade House Atreides, invest heavily in Atreides intelligence to identify weak colonies and fleet deployments. If concerned about House Harkonnen expansion, focus intelligence gathering on their core systems and fleet movements.
 
-*Note: Intelligence sharing mechanics not yet implemented.*
-
-### Counter-Intelligence Strategy
-
-**Defensive Measures:**
-- Invest in Counter-Intelligence Sweep to block disinformation
-- Multiple intelligence sources for verification
-- Scout own borders to detect enemy scouts
-- Track intelligence staleness carefully
-
-### Deception Tactics
-
-**Offensive Use:**
-- Plant disinformation to mislead enemy decisions
-- Use cloaked raiders to avoid starbase detection
-- Single-scout spy missions for stealth
-- Hide fleet compositions until combat
+Intelligence also reveals opportunities. Scout reports showing an enemy colony with minimal defenses suggest invasion targets. Fleet movement tracking reveals undefended systems. Economic intelligence identifies houses with financial weakness.
 
 ## 9.8 Intelligence in Combat
 
-### Pre-Combat Intelligence
+Combat reveals perfect intelligence temporarily. When forces engage, both sides see complete enemy compositions. This intelligence persists in post-combat reports, providing detailed assessment of enemy ship classes, tech levels, and fleet strength.
 
-Before combat begins, both sides receive complete intelligence on enemy forces through automatic observation. This represents the moment of engagement when stealth is no longer possible.
+Observers gain the same intelligence benefits without combat risk. Positioning scout squadrons to observe anticipated battles provides perfect intelligence on both combatants. This is particularly valuable when rival houses fight each other, revealing their military capabilities without your direct involvement.
 
-**Revealed Information:**
-- All enemy squadrons with exact composition
-- Tech levels of all enemy ships
-- Hull integrity of enemy units
-- Spacelift cargo (troops, colonists, supplies)
+Combat intelligence can be surprising. Visual sightings suggested a small enemy force. Combat reveals advanced tech levels and hull integrity that make the force much stronger than anticipated. Corrupted pre-combat intelligence leads to disastrous engagements.
 
-### Post-Combat Updates
-
-Combat generates automatic intelligence reports for all participants:
-
-- **Survivors**: Full post-combat report with outcomes
-- **Observers** (scouts in system): Complete combat witness report
-- **Destroyed forces**: No report generated (obviously)
-
-This intelligence persists in the database for strategic analysis.
-
-## 9.9 Future Enhancements
-
-Potential intelligence system expansions:
-
-### Intelligence Sharing
-- Ally intel pooling
-- Trade intel reports for PP
-- Diplomatic intel exchanges
-
-### Enhanced Analysis
-- Automated threat assessment
-- Fleet strength predictions
-- Economic trajectory forecasting
-- Tech level gap warnings
-
-### Counter-Intelligence Operations
-- Feed false intel to enemy spies
-- Detect enemy scouts in territory
-- Encryption tech (reduce intel quality)
-- Decryption tech (improve intel quality)
-
-### Long-Range Sensors
-- Detect fleets 2+ jumps away
-- Early warning systems
-- Trade sensor range for detail
-
----
-
-**Related Sections:**
-- [Operations: Scout Missions](operations.md#629-spy-on-a-planet-09)
-- [Diplomacy: Espionage](diplomacy.md#82-subversion--subterfuge)
-- [Gameplay: Fog of War](gameplay.md#152-fog-of-war)
-- [Architecture: Intel System](../architecture/intel.md)
+The intelligence advantage in combat is why surprise attacks are so valuable. Cloaked Raiders achieve surprise through detection evasion, denying enemies time to assess force strength before engagement. By the time the enemy realizes the threat, combat has already begun.

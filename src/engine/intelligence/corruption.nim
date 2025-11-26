@@ -7,6 +7,7 @@ import std/[random, options]
 import ../../common/types/core
 import ../espionage/types as esp_types
 import ../diplomacy/types as dip_types
+import ../config/diplomacy_config
 import types as intel_types
 
 ## Corruption Detection
@@ -24,9 +25,10 @@ proc hasIntelCorruption*(effects: seq[esp_types.OngoingEffect], targetHouse: Hou
 proc hasDishonoredCorruption*(dishonoredStatus: dip_types.DishonoredStatus): Option[float] =
   ## Check if a house is dishonored (causing intel corruption)
   ## Dishonored houses have disorganized/demoralized forces → bad intelligence
-  ## Returns corruption magnitude if dishonored (lasts 3 turns)
+  ## Returns corruption magnitude if dishonored (duration from config)
   if dishonoredStatus.active and dishonoredStatus.turnsRemaining > 0:
-    return some(0.5)  # 50% corruption from dishonor for 3 turns
+    let config = globalDiplomacyConfig
+    return some(config.pact_violations.dishonor_corruption_magnitude)
   return none(float)
 
 ## Integer Corruption
