@@ -102,22 +102,32 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
         fleetId: fleetId,
         owner: fleet.owner,
         location: targetSystem,
-        shipCount: fleet.squadrons.len
+        shipCount: fleet.squadrons.len,
+        standingOrders: none(string),  # TODO: Add fleet standing orders
+        spaceLiftShipCount: none(int)
       )
 
-      # Detailed squadron info only for high quality intel
-      if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
-        var squadDetails: seq[intel_types.SquadronIntel] = @[]
-        for squadron in fleet.squadrons:
-          let squadIntel = intel_types.SquadronIntel(
-            squadronId: squadron.id,
-            shipClass: $squadron.flagship.shipClass,
-            shipCount: 1 + squadron.ships.len,  # Flagship + other ships
-            techLevel: squadron.flagship.stats.techLevel,
-            hullIntegrity: if squadron.flagship.isCrippled: some(50) else: some(100)  # Simplified: 100% or 50% (crippled)
-          )
-          squadDetails.add(squadIntel)
-        fleetIntel.squadronDetails = some(squadDetails)
+      # Visual quality: Can see ship types and squadron sizes, but NOT tech levels or damage
+      # Spy/Perfect quality: Full intel including tech levels and hull integrity
+      var squadDetails: seq[intel_types.SquadronIntel] = @[]
+      for squadron in fleet.squadrons:
+        let squadIntel = intel_types.SquadronIntel(
+          squadronId: squadron.id,
+          shipClass: $squadron.flagship.shipClass,
+          shipCount: 1 + squadron.ships.len,  # Flagship + other ships
+          # Tech level and hull integrity only for Spy+ quality
+          techLevel: if quality >= intel_types.IntelQuality.Spy: squadron.flagship.stats.techLevel else: 0,
+          hullIntegrity: if quality >= intel_types.IntelQuality.Spy:
+                          (if squadron.flagship.isCrippled: some(50) else: some(100))
+                         else: none(int)
+        )
+        squadDetails.add(squadIntel)
+      fleetIntel.squadronDetails = some(squadDetails)
+
+      # Visual quality: Can see number of transports, but NOT cargo contents
+      # Spy/Perfect quality: Full cargo manifest
+      if fleet.spaceLiftShips.len > 0:
+        fleetIntel.spaceLiftShipCount = some(fleet.spaceLiftShips.len)
 
       fleetIntels.add(fleetIntel)
 
