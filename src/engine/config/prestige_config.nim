@@ -60,6 +60,9 @@ type
     cyber_attack*: int
     economic_manipulation*: int
     psyops_campaign*: int
+    counter_intel_sweep*: int
+    intelligence_theft*: int
+    plant_disinformation*: int
     failed_espionage*: int
 
   EspionageVictimPrestigeConfig* = object
@@ -70,6 +73,9 @@ type
     cyber_attack_victim*: int
     economic_manipulation_victim*: int
     psyops_campaign_victim*: int
+    counter_intel_sweep_victim*: int
+    intelligence_theft_victim*: int
+    plant_disinformation_victim*: int
 
   ScoutPrestigeConfig* = object
     spy_on_planet*: int

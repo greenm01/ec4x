@@ -105,6 +105,9 @@ assassination = 50                 # Successful assassination (was 5)
 cyber_attack = 20                   # Successful cyber attack (was 2)
 economic_manipulation = 30          # Successful economic manipulation (was 3)
 psyops_campaign = 10                # Successful psyops (was 1)
+counter_intel_sweep = 5             # Successful counter-intelligence sweep (defensive)
+intelligence_theft = 40             # Steal target's entire intelligence database (high-value)
+plant_disinformation = 15           # Corrupt target's intelligence with false data
 
 # BALANCE: Espionage failure/detection penalties
 # ACCELERATION: Tripled penalty
@@ -120,6 +123,9 @@ assassination_victim = -70         # Leader assassinated (was -7)
 cyber_attack_victim = -30           # Victim of cyber attack (was -3)
 economic_manipulation_victim = -7  # Victim of economic manipulation
 psyops_campaign_victim = -3        # Victim of psyops
+counter_intel_sweep_victim = 0      # No victim penalty (defensive action)
+intelligence_theft_victim = -20     # Intelligence database stolen (embarrassing)
+plant_disinformation_victim = -15   # Intelligence corrupted (causes bad decisions)
 
 [scout]
 # BALANCE: Scout mission rewards
