@@ -286,11 +286,17 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     owner: owner,
     population: 100,  # Starting population in millions (was 5M, now 100M for EC parity)
     souls: 100_000_000,  # Exact population count: 100M souls
+    populationUnits: 100,  # PU for economic calculations (matches population)
+    populationTransferUnits: 100,  # PTU for Space Guild transfers
     infrastructure: 3,  # Starting infrastructure
+    industrial: econ_types.IndustrialUnits(units: 0, investmentCost: econ_types.BASE_IU_COST),  # No IU at start
     planetClass: PlanetClass.Eden,  # Homeworlds are Abundant Eden per specs
     resources: ResourceRating.Abundant,  # Abundant resources
     buildings: @[BuildingType.Shipyard],  # Start with basic shipyard
     production: 0,
+    grossOutput: 0,  # Will be calculated by income engine
+    taxRate: 50,  # Default 50% tax rate
+    infrastructureDamage: 0.0,  # No damage at start
     underConstruction: none(ConstructionProject),
     constructionQueue: @[],  # NEW: Empty build queue
     unassignedSquadrons: @[],  # No unassigned squadrons
@@ -322,11 +328,17 @@ proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetCl
     owner: owner,
     population: 0,  # 50k souls = 0.05M, truncates to 0 in display
     souls: 50_000,  # Exactly 1 PTU worth of colonists
+    populationUnits: 1,  # 1 PU for economic calculations (1 PTU = 1 PU)
+    populationTransferUnits: 1,  # 1 PTU from ETAC colonization
     infrastructure: 0,  # No infrastructure yet
+    industrial: econ_types.IndustrialUnits(units: 0, investmentCost: econ_types.BASE_IU_COST),  # No IU at start
     planetClass: planetClass,
     resources: resources,
     buildings: @[],  # No buildings yet
     production: 0,
+    grossOutput: 0,  # Will be calculated by income engine
+    taxRate: 50,  # Default 50% tax rate
+    infrastructureDamage: 0.0,  # No damage at start
     underConstruction: none(ConstructionProject),
     constructionQueue: @[],  # NEW: Empty build queue
     unassignedSquadrons: @[],
