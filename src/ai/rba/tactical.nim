@@ -326,14 +326,33 @@ proc assessRelativeStrength*(controller: AIController, filtered: FilteredGameSta
 
 proc identifyVulnerableTargets*(controller: var AIController, filtered: FilteredGameState): seq[tuple[systemId: SystemId, owner: HouseId, relativeStrength: float]] =
   ## Identify colonies owned by weaker players
+  ## USES INTELLIGENCE REPORTS: Includes colonies from intelligence database, not just visible
   result = @[]
 
+  # Track which systems we've already added to avoid duplicates
+  var addedSystems: seq[SystemId] = @[]
+
+  # Add currently visible colonies
   for visCol in filtered.visibleColonies:
     if visCol.owner == controller.houseId:
       continue
 
     let strength = controller.assessRelativeStrength(filtered, visCol.owner)
     result.add((visCol.systemId, visCol.owner, strength))
+    addedSystems.add(visCol.systemId)
+
+  # Add colonies from intelligence database (even if not currently visible)
+  for systemId, report in filtered.ownHouse.intelligence.colonyReports:
+    if report.targetOwner == controller.houseId:
+      continue
+
+    # Skip if already added from visible colonies
+    if systemId in addedSystems:
+      continue
+
+    let strength = controller.assessRelativeStrength(filtered, report.targetOwner)
+    result.add((systemId, report.targetOwner, strength))
+    addedSystems.add(systemId)
 
   result.sort(proc(a, b: auto): int = cmp(a.relativeStrength, b.relativeStrength))
 
