@@ -62,6 +62,7 @@ type
   OrderPacket* = object
     houseId*: HouseId
     turn*: int
+    treasury*: int                                           # Treasury at order generation time (for budget validation)
     fleetOrders*: seq[FleetOrder]
     buildOrders*: seq[BuildOrder]
     researchAllocation*: res_types.ResearchAllocation  # PP allocation to ERP/SRP/TRP
@@ -456,11 +457,13 @@ proc createHoldOrder*(fleetId: FleetId, priority: int = 0): FleetOrder =
 
 # Order packet creation
 
-proc newOrderPacket*(houseId: HouseId, turn: int): OrderPacket =
+proc newOrderPacket*(houseId: HouseId, turn: int, treasury: int = 0): OrderPacket =
   ## Create empty order packet for a house
+  ## treasury: Treasury at order generation time (defaults to 0 for test harnesses)
   result = OrderPacket(
     houseId: houseId,
     turn: turn,
+    treasury: treasury,
     fleetOrders: @[],
     buildOrders: @[],
     researchAllocation: res_types.initResearchAllocation(),
