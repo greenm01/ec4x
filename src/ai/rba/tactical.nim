@@ -148,6 +148,7 @@ proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGa
 
 proc respondToThreats*(controller: var AIController, filtered: FilteredGameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]] =
   ## Check for enemy fleets near protected systems
+  ## NOW WITH TRAVEL TIME AWARENESS: Only dispatches reserves that can respond in time
   result = @[]
 
   for reserve in controller.reserves:
@@ -156,6 +157,10 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
 
     let protectedSystem = reserve.assignedTo.get()
     let protectedCoords = filtered.starMap.systems[protectedSystem].coords
+
+    # Find nearest threat within response radius
+    var nearestThreat: Option[tuple[location: SystemId, distance: int, eta: int]] = none(tuple[location: SystemId, distance: int, eta: int])
+    var minDist = 999
 
     for fleet in filtered.ownFleets:
       if fleet.owner == controller.houseId or fleet.combatStrength() == 0:
@@ -167,9 +172,27 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
       let dz = abs((fleetCoords.q + fleetCoords.r) - (protectedCoords.q + protectedCoords.r))
       let dist = (dx + dy + dz) div 2
 
-      if dist <= reserve.responseRadius:
-        result.add((reserveFleet: reserve.fleetId, threatSystem: fleet.location))
-        break
+      if dist <= reserve.responseRadius and dist < minDist:
+        minDist = dist
+        # Calculate reserve's ETA to threat location
+        let reserveFleetOpt = filtered.ownFleets.filterIt(it.id == reserve.fleetId)
+        if reserveFleetOpt.len > 0:
+          let reserveFleet = reserveFleetOpt[0]
+          let etaOpt = calculateETA(filtered.starMap, reserveFleet.location, fleet.location, reserveFleet)
+          if etaOpt.isSome:
+            let threat: tuple[location: SystemId, distance: int, eta: int] = (fleet.location, dist, etaOpt.get())
+            nearestThreat = some(threat)
+
+    # Only dispatch if reserve can respond in reasonable time
+    # Compare threat distance to protected system vs reserve ETA
+    # If threat is 2 jumps away and reserve needs 5 turns, too late
+    if nearestThreat.isSome:
+      let threat = nearestThreat.get()
+      const MAX_RESPONSE_ETA = 5  # Only respond if we can get there in 5 turns
+      if threat.eta <= MAX_RESPONSE_ETA:
+        logInfo(LogCategory.lcAI, &"{controller.houseId} dispatching reserve {reserve.fleetId} " &
+                &"to threat at {threat.location} (ETA: {threat.eta} turns)")
+        result.add((reserveFleet: reserve.fleetId, threatSystem: threat.location))
 
 # =============================================================================
 # Fallback Routes (Safe Retreat Planning)
@@ -493,6 +516,7 @@ proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState
 proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGameState,
                                 target: SystemId, turn: int) =
   ## Plan multi-fleet invasion of a high-value target
+  ## NOW WITH TRAVEL TIME AWARENESS: Selects fleets by ETA and schedules execution
   var assemblyPoint: Option[SystemId] = none(SystemId)
   var minDist = 999
 
@@ -515,7 +539,9 @@ proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGa
   if assemblyPoint.isNone:
     return
 
-  var selectedFleets: seq[FleetId] = @[]
+  # Collect combat fleets with their ETAs to assembly point
+  type FleetWithETA = tuple[fleetId: FleetId, fleet: Fleet, eta: int]
+  var fleetsWithETA: seq[FleetWithETA] = @[]
   var scoutFleets: seq[FleetId] = @[]
 
   for fleet in filtered.ownFleets:
@@ -528,15 +554,38 @@ proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGa
 
       if not inOperation:
         if fleet.combatStrength() > 0:
-          selectedFleets.add(fleet.id)
-          if selectedFleets.len >= 3:
-            break
+          # Calculate ETA to assembly point
+          let etaOpt = calculateETA(filtered.starMap, fleet.location, assemblyPoint.get(), fleet)
+          if etaOpt.isSome:
+            fleetsWithETA.add((fleet.id, fleet, etaOpt.get()))
         elif fleet.squadrons.len == 1 and isSingleScoutSquadron(fleet.squadrons[0]):
           if scoutFleets.len < 4:
             scoutFleets.add(fleet.id)
 
+  # Sort fleets by ETA (fastest first)
+  fleetsWithETA.sort(proc(a, b: FleetWithETA): int = cmp(a.eta, b.eta))
+
+  # Select up to 3 combat fleets, but only if max ETA is reasonable
+  var selectedFleets: seq[FleetId] = @[]
+  var maxETA = 0
+  const MAX_INVASION_ETA = 8  # Don't plan invasions > 8 turns away
+
+  for i in 0..<min(3, fleetsWithETA.len):
+    let fleetData = fleetsWithETA[i]
+    if fleetData.eta <= MAX_INVASION_ETA:
+      selectedFleets.add(fleetData.fleetId)
+      maxETA = max(maxETA, fleetData.eta)
+
   if selectedFleets.len >= 2:
     selectedFleets.add(scoutFleets)
+
+    # Calculate execution turn: when slowest fleet arrives + 1 turn buffer
+    let executionTurn = turn + maxETA + 1
+
+    logInfo(LogCategory.lcAI, &"{controller.houseId} planning invasion of {target}: " &
+            &"{selectedFleets.len} fleets, assembly at {assemblyPoint.get()}, " &
+            &"max ETA {maxETA} turns, executing turn {executionTurn}")
+
     controller.planCoordinatedOperation(
       filtered,
       OperationType.Invasion,

@@ -5,7 +5,7 @@
 
 import std/[tables, options, sets, hashes, algorithm]
 import ../common/types
-import ../../engine/[gamestate, fog_of_war, fleet, squadron]
+import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap]
 import ../../common/types/[core, planets]
 
 # =============================================================================
@@ -288,3 +288,50 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
       intel.economicStrength = float(intel.estimatedProduction) / float(ourProduction)
 
     result.add(intel)
+
+# =============================================================================
+# Travel Time & ETA Calculations
+# =============================================================================
+
+proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,
+                   fleet: Fleet): Option[int] =
+  ## Calculate estimated turns for fleet to reach target system
+  ## Returns none if target is unreachable
+  ##
+  ## Uses conservative estimate: assumes 1 jump per turn (enemy/neutral territory)
+  ## Actual travel may be faster if using major lanes through friendly space
+  ##
+  ## RESPECTS FOG-OF-WAR: Uses pathfinding with fleet's lane access rules
+
+  if fromSystem == toSystem:
+    return some(0)  # Already there
+
+  let path = findPath(starMap, fromSystem, toSystem, fleet)
+  if not path.found:
+    return none(int)  # Unreachable
+
+  # PathResult.totalCost is in movement points (lane weights)
+  # Major lanes: weight 1
+  # Minor lanes: weight 2
+  # Restricted lanes: weight 3
+  #
+  # Conservative estimate: 1 jump per turn minimum
+  # This accounts for enemy territory, unknown lane types, etc.
+  let estimatedTurns = max(1, int(path.totalCost))
+
+  return some(estimatedTurns)
+
+proc calculateMultiFleetETA*(starMap: StarMap, assemblyPoint: SystemId,
+                              fleets: seq[Fleet]): Option[int] =
+  ## Calculate when all fleets can reach assembly point
+  ## Returns the maximum ETA (when the slowest fleet arrives)
+  ## Returns none if any fleet cannot reach the assembly point
+
+  var maxETA = 0
+  for fleet in fleets:
+    let eta = calculateETA(starMap, fleet.location, assemblyPoint, fleet)
+    if eta.isNone:
+      return none(int)  # At least one fleet can't reach assembly
+    maxETA = max(maxETA, eta.get())
+
+  return some(maxETA)
