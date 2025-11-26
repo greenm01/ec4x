@@ -9,7 +9,7 @@
 import std/[tables, options, sequtils, strformat, algorithm]
 import gamestate, orders, fleet, starmap, logger, spacelift
 import order_types
-import ../common/[hex, types/core, types/planets]
+import ../common/types/[core, planets]
 
 export StandingOrderType, StandingOrder, StandingOrderParams
 
@@ -96,10 +96,16 @@ proc executeDefendSystem(state: var GameState, fleetId: FleetId,
     return ExecutionResult(success: true,
                           action: &"Patrol system-{targetSystem}")
 
-  # Check distance from target
-  let fromCoords = state.starMap.systems[fleet.location].coords
-  let toCoords = state.starMap.systems[targetSystem].coords
-  let distance = int(hex.distance(fromCoords, toCoords))
+  # Check distance from target (via jump lanes, not as the crow flies)
+  let pathResult = state.starMap.findPath(fleet.location, targetSystem, fleet)
+  if not pathResult.found:
+    # Can't reach target - suspended order, log warning
+    logWarn(LogCategory.lcOrders,
+            &"{fleetId} DefendSystem: Cannot reach target system-{targetSystem}, no valid path")
+    return ExecutionResult(success: false,
+                          error: "No path to target system")
+
+  let distance = pathResult.path.len - 1  # Path includes start, so subtract 1
 
   if distance > maxRange:
     # Too far from target - return to defensive position
@@ -132,22 +138,26 @@ proc executeDefendSystem(state: var GameState, fleetId: FleetId,
   return ExecutionResult(success: true,
                         action: "Hold position within defensive range")
 
-proc findBestColonizationTarget(state: GameState, currentLocation: SystemId,
+proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation: SystemId,
                                 maxRange: int,
                                 preferredClasses: seq[PlanetClass]): Option[SystemId] =
   ## Find best uncolonized system for colonization
   ## Returns nearest system with preferred planet class
+  ## Distance calculated via jump lanes (pathfinding), not hex distance
   var candidates: seq[(SystemId, int, PlanetClass)] = @[]
 
   # Scan all systems within range
-  let currentCoords = state.starMap.systems[currentLocation].coords
   for systemId, system in state.starMap.systems:
     # Skip if already colonized
     if systemId in state.colonies:
       continue
 
-    # Check distance
-    let distance = int(hex.distance(currentCoords, system.coords))
+    # Check distance via jump lanes
+    let pathResult = state.starMap.findPath(currentLocation, systemId, fleet)
+    if not pathResult.found:
+      continue  # Can't reach this system
+
+    let distance = pathResult.path.len - 1  # Path includes start, so subtract 1
     if distance > maxRange:
       continue
 
@@ -205,7 +215,7 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
                           error: "No colonists for colonization")
 
   # Find best colonization target
-  let targetOpt = findBestColonizationTarget(state, fleet.location,
+  let targetOpt = findBestColonizationTarget(state, fleet, fleet.location,
                                              params.colonizeMaxRange,
                                              params.preferredPlanetClasses)
 
@@ -216,9 +226,10 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
                           error: "No colonization targets available")
 
   let targetSystem = targetOpt.get()
-  let fromCoords = state.starMap.systems[fleet.location].coords
-  let toCoords = state.starMap.systems[targetSystem].coords
-  let distance = int(hex.distance(fromCoords, toCoords))
+
+  # Calculate distance via jump lanes
+  let pathResult = state.starMap.findPath(fleet.location, targetSystem, fleet)
+  let distance = if pathResult.found: pathResult.path.len - 1 else: 0
 
   # If already at target, issue colonize order
   if fleet.location == targetSystem:
