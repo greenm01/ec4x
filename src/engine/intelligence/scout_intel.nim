@@ -58,6 +58,8 @@ proc generateScoutFleetEncounter*(
         owner: fleet.owner,
         location: systemId,
         shipCount: fleet.squadrons.len,
+        standingOrders: some($fleet.status),  # Scout sees fleet behavior
+        spaceLiftShipCount: some(fleet.spaceLiftShips.len),
         squadronDetails: some(squadDetails)
       )
 

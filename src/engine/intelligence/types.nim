@@ -55,16 +55,18 @@ type
     owner*: HouseId
     location*: SystemId
     shipCount*: int
-    # Detailed composition (only if quality = Spy or Perfect)
+    standingOrders*: Option[string]  # Fleet behavior (Visual+)
+    spaceLiftShipCount*: Option[int]  # Number of transports (Visual+)
+    # Squadron composition (Visual+: ship types/counts, Spy+: tech/damage)
     squadronDetails*: Option[seq[SquadronIntel]]
 
   SquadronIntel* = object
     ## Detailed squadron information
     squadronId*: string
-    shipClass*: string  # Ship class name
-    shipCount*: int
-    techLevel*: int
-    hullIntegrity*: Option[int]  # % if known
+    shipClass*: string  # Ship class name (Visual+)
+    shipCount*: int     # Squadron size (Visual+)
+    techLevel*: int     # Tech level (Spy+ only, 0 if unknown)
+    hullIntegrity*: Option[int]  # % if known (Spy+ only)
 
   StarbaseIntelReport* = object
     ## Intelligence from hacking a starbase (HackStarbase mission)
