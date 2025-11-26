@@ -29,14 +29,29 @@ Located in `specs/`:
 ### Technical Architecture
 
 Located in `architecture/`:
-- **[overview.md](architecture/overview.md)** - System architecture overview
+- **[overview.md](architecture/overview.md)** - System architecture overview (Updated 2025-11-26: AI & QoL systems)
 - **[combat-engine.md](architecture/combat-engine.md)** - Combat system design
 - **[dataflow.md](architecture/dataflow.md)** - Data flow diagrams
 - **[transport.md](architecture/transport.md)** - Network transport layer
 - **[storage.md](architecture/storage.md)** - Data persistence
 - **[daemon.md](architecture/daemon.md)** - Server daemon architecture
 - **[intel.md](architecture/intel.md)** - Intelligence system
+- **[standing-orders.md](architecture/standing-orders.md)** - Standing orders specification
 - **[tea-implementation.md](architecture/tea-implementation.md)** - TEA implementation
+
+### AI & Balance Testing
+
+Located in `ai/`:
+- **[README.md](ai/README.md)** - AI analysis overview (Updated 2025-11-26: QoL integration)
+- **[QOL_INTEGRATION_STATUS.md](ai/QOL_INTEGRATION_STATUS.md)** - RBA QoL integration status
+- **[RBA_OPTIMIZATION_GUIDE.md](ai/RBA_OPTIMIZATION_GUIDE.md)** - AI optimization guide
+- **[TOKEN_EFFICIENT_WORKFLOW.md](ai/TOKEN_EFFICIENT_WORKFLOW.md)** - Data analysis workflow
+- **[ARCHITECTURE.md](ai/ARCHITECTURE.md)** - RBA architecture details
+- **[DECISION_FRAMEWORK.md](ai/DECISION_FRAMEWORK.md)** - 4-act decision framework
+
+Located in `testing/`:
+- **[BALANCE_TESTING_2025-11-26.md](testing/BALANCE_TESTING_2025-11-26.md)** - Latest balance test report
+- **[BALANCE_METHODOLOGY.md](testing/BALANCE_METHODOLOGY.md)** - Testing methodology
 
 ### Implementation Guides
 
@@ -166,33 +181,54 @@ result.prestige = config.techAdvancement  # NOT hardcoded
 - Fleet Management
 - Star Map
 
+**✅ AI & QoL Systems (2025-11-26):**
+- Rule-Based AI (RBA) with 9 modules
+- Budget tracking (0% overspending)
+- Standing orders (8 types)
+- Fleet validation (100% security)
+
+**🔴 Known Issues (2025-11-26):**
+- Espionage system not executing (0% usage)
+- Scout production not triggering (0 scouts)
+- Mothballing logic not activating (0% usage)
+- Resource hoarding (55% games affected)
+
+See:
+- [Known Issues](KNOWN_ISSUES.md) for bug details
+- [Open Issues](OPEN_ISSUES.md) for investigation tasks
+- [QoL Roadmap](QOL_FEATURES_ROADMAP.md) for feature status
+- [Balance Testing Report](testing/BALANCE_TESTING_2025-11-26.md) for test results
+
 **🚧 Incomplete Systems:**
 - Blockade mechanics
-- Espionage order execution
 - Diplomatic action orders
 - UI (deferred)
-- AI (deferred)
-
-See [STATUS.md](STATUS.md) for detailed status.
 
 ---
 
 ## 🎯 Project Goals
 
-**Current Phase:** Code health and documentation cleanup
+**Current Phase:** AI subsystem debugging and QoL refinement
 
-**Near-Term Goals:**
-- Enforce NEP-1 conventions (pure enums, camelCase constants)
-- Migrate all game values to TOML configs
-- Create spec-code sync tooling
-- Implement remaining order systems
+**Immediate Goals (Week 1):**
+- Debug espionage system integration
+- Fix scout production logic
+- Fix mothballing system
+- Investigate resource hoarding patterns
+- Run balance testing round 2
+
+**Near-Term Goals (Month 1):**
+- Complete AI subsystem integration
+- Achieve >80% espionage usage
+- Achieve 5-7 scouts per house
+- Movement range calculator (QoL)
+- Construction queue preview (QoL)
 
 **Long-Term Goals:**
-- Complete core engine with all game systems
-- Comprehensive balance testing
+- Complete diplomacy AI integration
 - TUI interface (Terminal UI)
-- AI opponent implementation
 - Multiplayer server infrastructure
+- Advanced standing orders (conditional triggers)
 
 ---
 
@@ -203,14 +239,24 @@ See [STATUS.md](STATUS.md) for detailed status.
 - All enums `{.pure.}`
 - TOML configs for game values
 - NEP-1 naming conventions
+- Comprehensive logging at all levels
 
 **Development Workflow:**
-1. Load session context (`@docs/STYLE_GUIDE.md`, `@docs/STATUS.md`)
+1. Load session context (`@docs/CLAUDE_CONTEXT.md`)
 2. Make changes following style guide
-3. Run tests (`nim c -r tests/integration/test_*.nim`)
-4. Update STATUS.md if milestone complete
+3. Run tests (`nimble test` or `nimble testBalanceDiagnostics`)
+4. Update docs if system changes
 5. Commit with descriptive message
 6. Push to main branch
+
+**For AI/Balance Work:**
+1. Run diagnostics (`nimble testBalanceDiagnostics`)
+2. Generate summary (`nimble summarizeDiagnostics`)
+3. Share summary with Claude Code (not raw CSVs!)
+4. Make targeted changes based on analysis
+5. Re-test and iterate
+
+See [Token Efficient Workflow](ai/TOKEN_EFFICIENT_WORKFLOW.md) for details.
 
 ---
 
@@ -219,8 +265,9 @@ See [STATUS.md](STATUS.md) for detailed status.
 - [Nim Language](https://nim-lang.org/)
 - [NEP-1 Style Guide](https://nim-lang.org/docs/nep1.html)
 - [Nim Manual](https://nim-lang.org/docs/manual.html)
+- [EC Style Guide](../assets/ec-style-guide.md) - Esterian Conquest writing style
 
 ---
 
-**Last Updated:** 2025-11-21
+**Last Updated:** 2025-11-26
 **Maintained By:** Claude Code + Human Developer

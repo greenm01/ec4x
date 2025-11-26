@@ -2,11 +2,33 @@
 
 Guides for optimizing EC4X's Rule-Based AI (RBA) using diagnostic data and Claude Code.
 
+**Last Updated:** 2025-11-26 (Post-QoL Integration)
+
 ## Overview
 
 This directory contains everything you need to efficiently balance your game by leveraging your **AMD Ryzen 7950X3D** for data crunching and **Claude Code** for expert analysis.
 
 **Key Insight:** Use local compute to crunch data, share tiny summaries with Claude → 99.99% token reduction!
+
+## 🆕 Recent Changes (2025-11-26)
+
+### QoL Integration Complete
+
+The RBA system now integrates with Quality-of-Life features for intelligent, personality-driven automation:
+
+**✅ Integrated Systems:**
+- **Budget Tracking** - Engine + AI level validation (0% overspending achieved!)
+- **Standing Orders** - Intelligent fleet automation based on role + personality
+- **Fleet Validation** - Security + target validation (100% compliance)
+- **Ownership Checks** - Prevents unauthorized fleet control
+
+**🔴 Known Issues:** Several AI subsystems have integration bugs discovered in testing:
+- Espionage system not executing (0% usage)
+- Scout production not triggering (0 scouts built)
+- Mothballing logic not activating (0% usage)
+- Resource hoarding (55% games affected)
+
+**See:** `docs/testing/BALANCE_TESTING_2025-11-26.md` for full test report
 
 ## Quick Start
 

@@ -322,6 +322,83 @@ See [daemon.md](./daemon.md) for operational details.
 - Parallel turn resolution
 - Event sourcing architecture
 
+## AI & QoL Systems (2025-11-26)
+
+**Status:** Phase 1 Complete - Core QoL integrated with RBA
+
+### Rule-Based AI (RBA)
+
+**Location:** `src/ai/rba/`
+**Architecture:** Multi-module personality-driven decision system
+
+**Modules:**
+- **Budget** - Multi-objective budget allocation with running tracking
+- **Standing Orders** - Intelligent fleet automation based on role + personality
+- **Tactical** - Phase-aware 4-act priority system for fleet operations
+- **Strategic** - Invasion planning and coordinated operations
+- **Logistics** - Asset lifecycle management (cargo, PTU, reserves)
+- **Economic** - Terraforming and colony development
+- **Espionage** - Mission generation (BROKEN - under investigation)
+- **Intelligence** - Intel gathering and analysis
+- **Diplomacy** - Placeholder (not yet integrated)
+
+**Decision Flow:**
+```
+generateAIOrders()
+   ├─> Logistics (cargo, PTU, squadrons)
+   ├─> Build Orders (via budget module)
+   ├─> Strategic Planning (invasions)
+   ├─> Tactical Orders (fleet movements)
+   ├─> Standing Orders (routine automation)
+   ├─> Espionage (spy/hack missions)
+   └─> Economic Orders (terraform)
+```
+
+### Quality-of-Life (QoL) Features
+
+**Status:** Integrated with RBA for intelligent automation
+
+**Core Features:**
+1. **Budget Tracking** ✅ OPERATIONAL
+   - Engine-level validation (`OrderValidationContext`)
+   - AI-level tracking (`BudgetTracker`)
+   - Prevents overspending (0% violations achieved)
+
+2. **Standing Orders** ✅ OPERATIONAL
+   - 8 order types (Patrol, Defend, Colonize, Repair, Reinforce, Evade, Guard, Blockade)
+   - Role-based assignment (Colonizer, Scout, Defender, Raider, etc.)
+   - Personality-driven parameters (ROE, thresholds, ranges)
+   - 67% fleet assignment rate
+
+3. **Fleet Validation** ✅ OPERATIONAL
+   - Ownership security checks (100% compliance)
+   - Target validation (system existence, reachability)
+   - Capability validation (required ship types)
+
+4. **Planned Features** ⏳
+   - Movement range calculator
+   - Construction queue preview
+   - Batch order system
+
+**Integration Benefits:**
+- AI uses QoL features for consistent behavior
+- Reduced tactical micromanagement burden
+- Security enforcement at engine level
+- Full visibility via comprehensive logging
+
+### Known Issues
+
+**Critical (Discovered 2025-11-26):**
+- Espionage system not executing (0% usage)
+- Scout production not triggering (0 scouts built)
+- Mothballing logic not activating (0% usage)
+- Resource hoarding (55% games affected)
+
+**See:**
+- [QoL Integration Status](../ai/QOL_INTEGRATION_STATUS.md)
+- [Balance Testing Report](../testing/BALANCE_TESTING_2025-11-26.md)
+- [Known Issues](../KNOWN_ISSUES.md) - Issue #0
+
 ## Related Documentation
 
 - [Storage Architecture](./storage.md) - SQLite schema and queries

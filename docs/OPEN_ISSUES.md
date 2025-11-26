@@ -1,9 +1,89 @@
 # EC4X Open Issues & Gaps
 
-**Last Updated:** 2025-11-26
+**Last Updated:** 2025-11-26 (Post-QoL Integration Testing)
 
 This is the SINGLE source of truth for known bugs, missing features, and technical debt.
 When an issue is fixed, check it off and update STATUS.md.
+
+---
+
+## 🔴 CRITICAL: Post-QoL Integration Bugs
+
+### AI Subsystem Integration Failures
+
+**Priority:** 🔴 **CRITICAL**
+**Status:** 🔴 **Active** - Discovered in balance testing (2025-11-26)
+**Test Report:** `docs/testing/BALANCE_TESTING_2025-11-26.md`
+**Detailed Analysis:** `docs/KNOWN_ISSUES.md` (Issue #0)
+
+#### 1. Espionage System Not Executing
+
+**Priority:** 🔴 **CRITICAL**
+**Metric:** 0% usage across 1,500 turns (target >80%)
+**Impact:** No espionage missions, no intelligence gathering
+
+**Investigation Tasks:**
+- [ ] Add diagnostic logging to `src/ai/rba/espionage.nim`
+- [ ] Debug `generateEspionageAction()` return values
+- [ ] Check scout requirements (needs scouts to spy?)
+- [ ] Verify budget allocation (`ebpInvestment`, `cipInvestment`)
+- [ ] Test mission selection logic (valid targets?)
+- [ ] Verify integration in `src/ai/rba/orders.nim:256`
+
+**Expected Fix Effort:** 2-4 hours
+**Files:** `src/ai/rba/espionage.nim`, `src/ai/rba/orders.nim`
+
+#### 2. Scout Production Not Triggering
+
+**Priority:** 🔴 **CRITICAL**
+**Metric:** 0.0 scouts per house (target 5-7)
+**Impact:** No ELI mesh, no intelligence network
+
+**Investigation Tasks:**
+- [ ] Debug `needScouts` conditions in `src/ai/rba/orders.nim:174-180`
+- [ ] Check budget allocation (expansion vs intel split)
+- [ ] Verify scout build orders reach `generateBuildOrdersWithBudget()`
+- [ ] Test shipyard selection for scout builds
+- [ ] Add logging to scout build decision points
+- [ ] Verify CST tech requirements
+
+**Expected Fix Effort:** 1-2 hours
+**Files:** `src/ai/rba/orders.nim`, `src/ai/rba/budget.nim`
+
+#### 3. Mothballing System Not Executing
+
+**Priority:** ⚠️ **MEDIUM**
+**Metric:** 0% usage (target >70% late-game)
+**Impact:** Maintenance costs not optimized
+
+**Investigation Tasks:**
+- [ ] Debug mothball conditions in `src/ai/rba/logistics.nim`
+- [ ] Verify reserve system population
+- [ ] Check if logistics orders reach order execution
+- [ ] Test Act-specific logic (Act 3+ requirement?)
+- [ ] Add logging to mothball decision points
+
+**Expected Fix Effort:** 2-3 hours
+**Files:** `src/ai/rba/logistics.nim`, `src/ai/rba/orders.nim`
+
+#### 4. Chronic Resource Hoarding
+
+**Priority:** ⚠️ **MEDIUM**
+**Metric:** 55.2% games with 10+ zero-spend turns (target <5%)
+**Impact:** AI accumulating PP without spending
+
+**Investigation Tasks:**
+- [ ] Analyze build affordability thresholds (200 PP too high?)
+- [ ] Check if build orders are being generated but rejected
+- [ ] Verify budget allocation vs actual spending
+- [ ] Add "missed opportunity" diagnostic metrics
+- [ ] Test colony selection logic (valid shipyards?)
+- [ ] Check validation failure logging
+
+**Expected Fix Effort:** 3-4 hours
+**Files:** `src/ai/rba/budget.nim`, `src/ai/rba/orders.nim`
+
+**Aggregate Effort:** 8-13 hours total
 
 ---
 
