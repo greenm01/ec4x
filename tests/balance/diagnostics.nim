@@ -203,9 +203,21 @@ proc collectLogisticsMetrics(state: GameState, houseId: HouseId): DiagnosticMetr
 
   # Phase 2c: Count scouts for ELI mesh tracking
   var scoutCount = 0
+
+  # Count scouts in fleets
   for fleetId, fleet in state.fleets:
     if fleet.owner == houseId:
       for squadron in fleet.squadrons:
+        if squadron.flagship.shipClass == ShipClass.Scout:
+          scoutCount += 1
+        for ship in squadron.ships:
+          if ship.shipClass == ShipClass.Scout:
+            scoutCount += 1
+
+  # Count unassigned scouts at colonies (not yet assigned to fleets)
+  for systemId, colony in state.colonies:
+    if colony.owner == houseId:
+      for squadron in colony.unassignedSquadrons:
         if squadron.flagship.shipClass == ShipClass.Scout:
           scoutCount += 1
         for ship in squadron.ships:

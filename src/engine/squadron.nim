@@ -279,6 +279,10 @@ proc scoutShips*(sq: Squadron): seq[EnhancedShip] =
   ## Get all ships with ELI capability
   sq.allShips().filterIt(it.stats.specialCapability.startsWith("ELI"))
 
+proc hasScouts*(sq: Squadron): bool =
+  ## Check if squadron has any operational scouts
+  sq.scoutShips().filterIt(not it.isCrippled).len > 0
+
 proc raiderShips*(sq: Squadron): seq[EnhancedShip] =
   ## Get all ships with cloaking capability
   sq.allShips().filterIt(it.stats.specialCapability.startsWith("CLK"))

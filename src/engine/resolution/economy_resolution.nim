@@ -1622,6 +1622,11 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                   starbase.isCrippled = true
                   echo "      Applied crippled state to starbase ", starbase.id
               state.colonies[systemId] = colony
+      of esp_types.EffectType.IntelBlocked:
+        echo "    ", effect.targetHouse, " protected by counter-intelligence sweep"
+      of esp_types.EffectType.IntelCorrupted:
+        echo "    ", effect.targetHouse, "'s intelligence corrupted by disinformation (+/-",
+             int(effect.magnitude * 100), "% variance)"
 
   state.ongoingEffects = activeEffects
 

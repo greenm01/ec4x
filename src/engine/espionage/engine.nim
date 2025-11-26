@@ -378,6 +378,133 @@ proc executePsyopsCampaign*(attacker: HouseId, target: HouseId,
 
   return result
 
+proc executeCounterIntelSweep*(attacker: HouseId, detected: bool): EspionageResult =
+  ## Execute Counter-Intelligence Sweep (defensive operation)
+  ## Block enemy intelligence gathering for 1 turn
+  ## 4 EBP cost
+  let config = globalPrestigeConfig
+
+  var result = EspionageResult(
+    success: not detected,  # Success if not detected (clean your own intel)
+    detected: detected,
+    action: EspionageAction.CounterIntelSweep,
+    attacker: attacker,
+    target: attacker,  # Defensive action targets self
+    description: if detected: "Counter-intel sweep detected by enemy operatives"
+                 else: "Counter-intel sweep successful - intelligence secured",
+    attackerPrestigeEvents: @[],
+    targetPrestigeEvents: @[],
+    srpStolen: 0,
+    iuDamage: 0,
+    effect: none(OngoingEffect),
+    intelTheftSuccess: false
+  )
+
+  if not detected:
+    # Create intelligence blocking effect
+    result.effect = some(OngoingEffect(
+      effectType: EffectType.IntelBlocked,
+      targetHouse: attacker,  # Protects attacker
+      targetSystem: none(SystemId),
+      turnsRemaining: INTEL_BLOCK_DURATION,
+      magnitude: 1.0  # Full block
+    ))
+    result.attackerPrestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.CombatVictory,
+      1,  # +1 prestige for good operational security
+      "Counter-intelligence sweep successful"
+    ))
+
+  return result
+
+proc executeIntelligenceTheft*(attacker: HouseId, target: HouseId, detected: bool): EspionageResult =
+  ## Execute Intelligence Theft
+  ## Steal entire intelligence database from target
+  ## 8 EBP cost - high value action
+  let config = globalPrestigeConfig
+
+  var result = EspionageResult(
+    success: not detected,
+    detected: detected,
+    action: EspionageAction.IntelligenceTheft,
+    attacker: attacker,
+    target: target,
+    description: if detected: "Intelligence theft detected and prevented"
+                 else: "Intelligence database stolen successfully",
+    attackerPrestigeEvents: @[],
+    targetPrestigeEvents: @[],
+    srpStolen: 0,
+    iuDamage: 0,
+    effect: none(OngoingEffect),
+    intelTheftSuccess: not detected
+  )
+
+  if detected:
+    result.attackerPrestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.Eliminated,
+      FAILED_ESPIONAGE_PENALTY,
+      "Failed intelligence theft"
+    ))
+  else:
+    # Intelligence theft is handled in resolution - copy target's intel database
+    result.attackerPrestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.CombatVictory,
+      3,  # +3 prestige for major intel coup
+      "Intelligence theft successful"
+    ))
+    result.targetPrestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.Eliminated,
+      -3,  # -3 prestige for security breach
+      "Intelligence database compromised"
+    ))
+
+  return result
+
+proc executePlantDisinformation*(attacker: HouseId, target: HouseId, detected: bool): EspionageResult =
+  ## Execute Plant Disinformation
+  ## Corrupt target's intelligence with false data
+  ## 6 EBP cost - subtle sabotage
+  let config = globalPrestigeConfig
+
+  var result = EspionageResult(
+    success: not detected,
+    detected: detected,
+    action: EspionageAction.PlantDisinformation,
+    attacker: attacker,
+    target: target,
+    description: if detected: "Disinformation campaign detected and purged"
+                 else: "Disinformation planted in target intelligence",
+    attackerPrestigeEvents: @[],
+    targetPrestigeEvents: @[],
+    srpStolen: 0,
+    iuDamage: 0,
+    effect: none(OngoingEffect),
+    intelTheftSuccess: false
+  )
+
+  if detected:
+    result.attackerPrestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.Eliminated,
+      FAILED_ESPIONAGE_PENALTY,
+      "Failed disinformation campaign"
+    ))
+  else:
+    # Create intelligence corruption effect
+    result.effect = some(OngoingEffect(
+      effectType: EffectType.IntelCorrupted,
+      targetHouse: target,
+      targetSystem: none(SystemId),
+      turnsRemaining: DISINFORMATION_DURATION,
+      magnitude: 0.3  # 30% average corruption (will vary 20-40%)
+    ))
+    result.attackerPrestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.CombatVictory,
+      2,  # +2 prestige for successful deception
+      "Disinformation campaign successful"
+    ))
+
+  return result
+
 ## Main Espionage Execution
 
 proc executeEspionage*(attempt: EspionageAttempt,
@@ -422,6 +549,15 @@ proc executeEspionage*(attempt: EspionageAttempt,
 
   of EspionageAction.PsyopsCampaign:
     return executePsyopsCampaign(attempt.attacker, attempt.target, detection.detected)
+
+  of EspionageAction.CounterIntelSweep:
+    return executeCounterIntelSweep(attempt.attacker, detection.detected)
+
+  of EspionageAction.IntelligenceTheft:
+    return executeIntelligenceTheft(attempt.attacker, attempt.target, detection.detected)
+
+  of EspionageAction.PlantDisinformation:
+    return executePlantDisinformation(attempt.attacker, attempt.target, detection.detected)
 
 ## Budget Management
 

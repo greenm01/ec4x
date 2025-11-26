@@ -108,6 +108,22 @@ proc combatStrength*(f: Fleet): int =
   for sq in f.squadrons:
     result += sq.combatStrength()
 
+proc isCloaked*(f: Fleet): bool =
+  ## Check if fleet is cloaked
+  ## Per assets.md:2.4.3: "Fleets that include Raiders are fully cloaked"
+  ## Returns true if fleet has ANY non-crippled raiders
+  if f.squadrons.len == 0:
+    return false
+
+  # Check if fleet has any operational raiders
+  for sq in f.squadrons:
+    let raiders = sq.raiderShips()
+    for raider in raiders:
+      if not raider.isCrippled:
+        return true  # Fleet is cloaked if it has ANY operational raider
+
+  return false
+
 proc transportCapacity*(f: Fleet): int =
   ## Calculate the number of operational spacelift ships
   ## ARCHITECTURE FIX: Spacelift ships are now separate from squadrons
