@@ -7,9 +7,9 @@ import ../../common/types/[core, tech, units]
 import ../../engine/[gamestate, fog_of_war, orders, logger]
 import ../../engine/research/types as res_types
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
-import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics]
+import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics, standing_orders_manager]
 
-export core, orders
+export core, orders, standing_orders_manager
 
 proc generateResearchAllocation*(controller: AIController, filtered: FilteredGameState): res_types.ResearchAllocation =
   ## Generate research allocation based on personality
@@ -274,3 +274,29 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # NOTE: squadronManagement already handled by logistics module above
   # NOTE: cargoManagement already handled by logistics module above
   result.terraformOrders = generateTerraformOrders(controller, filtered, rng)
+
+  # ==========================================================================
+  # STANDING ORDERS (QoL Integration)
+  # ==========================================================================
+  # Assign standing orders to fleets without explicit tactical orders
+  # Standing orders provide consistent behavior for routine tasks:
+  # - Damaged fleets automatically return to shipyard (AutoRepair)
+  # - ETAC fleets automatically colonize (AutoColonize)
+  # - Defensive fleets guard homeworld (DefendSystem)
+  # - Risk-averse scouts retreat when outnumbered (AutoEvade)
+  #
+  # NOTE: Standing orders only execute when no explicit order is given
+  # Tactical orders take priority, standing orders handle the rest
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Standing Orders Assignment ===")
+
+  let standingOrders = assignStandingOrders(controller, filtered, filtered.turn)
+
+  # Log summary
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Standing Orders: {standingOrders.len} assigned, " &
+          &"{filtered.ownFleets.len - standingOrders.len} under tactical control")
+
+  # Store standing orders in controller for next turn
+  # NOTE: These will be applied to GameState during order execution
+  controller.standingOrders = standingOrders
