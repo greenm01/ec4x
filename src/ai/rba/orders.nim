@@ -186,10 +186,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # CRITICAL FIX: Build defenses earlier! Ground batteries need CST 1, not CST 3
   # Old logic required CST 3, leaving 59% of colonies undefended
   let needDefenses = cst >= 1  # Ground batteries at CST 1, starbases at CST 3
-  let needFighters = cst >= 3 and p.aggression > 0.3  # Fighter squadrons require CST 3
-  let needCarriers = cst >= 3 and needFighters  # Carriers support fighters (CST 3)
-  let needTransports = cst >= 1 and p.aggression > 0.4  # Troop transports (CST 1)
-  let needRaiders = cst >= 3 and p.aggression > 0.6  # Raiders require CST 3
+  let needFighters = cst >= 2 and p.aggression > 0.3  # Fighter squadrons (lowered from CST 3 to 2)
+  let needCarriers = cst >= 2 and needFighters  # Carriers support fighters (lowered from CST 3 to 2)
+  let needTransports = cst >= 1 and p.aggression > 0.3  # Troop transports (lowered aggression from 0.4 to 0.3)
+  let needRaiders = cst >= 2 and p.aggression > 0.5  # Raiders (lowered CST from 3 to 2, aggression from 0.6 to 0.5)
 
   result.buildOrders = generateBuildOrdersWithBudget(
     controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
