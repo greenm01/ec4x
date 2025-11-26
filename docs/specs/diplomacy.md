@@ -83,6 +83,9 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 | Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +20 | -30 |
 | Economic Manipulation | 6 | Influence markets to harm the target's economy | +30 | -7 |
 | Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +10 | -3 |
+| Counter-Intelligence Sweep | 4 | Defensive operation to block enemy intelligence gathering. | +5 | 0 |
+| Intelligence Theft | 8 | Steal target's entire intelligence database. | +40 | -20 |
+| Plant Disinformation | 6 | Corrupt target's intelligence with false data. | +15 | -15 |
 
 *Source: config/prestige.toml [espionage] and [espionage_victim] sections; config/espionage.toml [costs]*
 <!-- ESPIONAGE_PRESTIGE_TABLE_END -->
@@ -91,15 +94,18 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 
 Espionage actions allow players to disrupt their rivals' operations and gain tactical advantages through covert maneuvers. Below is a detailed overview of each available action, including its effects and thematic narrative.
 
-| Espionage Action         | Effect                                                  |
-| ------------------------ | ------------------------------------------------------- |
-| **Tech Theft**           | Steals **10 SRP** from the target's research pool       |
-| **Low Impact Sabotage**  | Reduces target's **1d6 Industrial Units (IU)**          |
-| **High Impact Sabotage** | Reduces target's **1d20 Industrial Units (IU)**         |
-| **Assassination**        | Reduces target's **SRP gain by 50%** for one turn       |
-| **Economic Disruption**  | Halves target's **Net Colony Value (NCV)** for one turn |
-| **Propaganda Campaign**  | Reduces target's **tax revenue by 25%** for one turn    |
-| **Cyber Attack**         | Cripples the target's **Starbase**                      |
+| Espionage Action              | Effect                                                     |
+| ----------------------------- | ---------------------------------------------------------- |
+| **Tech Theft**                | Steals **10 SRP** from the target's research pool          |
+| **Low Impact Sabotage**       | Reduces target's **1d6 Industrial Units (IU)**             |
+| **High Impact Sabotage**      | Reduces target's **1d20 Industrial Units (IU)**            |
+| **Assassination**             | Reduces target's **SRP gain by 50%** for one turn          |
+| **Economic Disruption**       | Halves target's **Net Colony Value (NCV)** for one turn    |
+| **Propaganda Campaign**       | Reduces target's **tax revenue by 25%** for one turn       |
+| **Cyber Attack**              | Cripples the target's **Starbase**                         |
+| **Counter-Intelligence Sweep** | Blocks enemy intelligence gathering for **1 turn**        |
+| **Intelligence Theft**        | Steals target's **entire intelligence database**           |
+| **Plant Disinformation**      | Corrupts target's intel with **20-40% variance for 2 turns** |
 
 **Tech Theft**:
 In the dead of night, a covert team of elite hackers infiltrates the rival House's research network, siphoning critical data and blueprints. By the time their intrusion is detected, valuable research progress has already been uploaded and integrated into your own laboratories, giving your scientists a sudden leap forward.
@@ -120,7 +126,32 @@ Anonymous agents spread false rumors of an impending financial collapse, trigger
 A coordinated propaganda blitz floods the rival House’s communications networks with fake news and altered footage, painting their leadership as corrupt and ineffective. Citizens begin to protest, refusing to pay full taxes as public confidence crumbles. The unrest leaves the enemy Duke struggling to maintain control, with lower revenues compounding their problems.
 
 **Cyber Attack**:
-A powerful virus infiltrates the core systems of the enemy’s Starbase, shutting down its defenses and key operational modules. The Starbase is left crippled, its functions severely impaired until extensive repairs are completed. The colony's defensive posture and economic output suffer a significant blow, leaving it vulnerable to further attacks.
+A powerful virus infiltrates the core systems of the enemy's Starbase, shutting down its defenses and key operational modules. The Starbase is left crippled, its functions severely impaired until extensive repairs are completed. The colony's defensive posture and economic output suffer a significant blow, leaving it vulnerable to further attacks.
+
+### **8.2.2 Intelligence Warfare Actions**
+
+EC4X introduces three specialized espionage actions focused on information warfare, bringing the total to **10 espionage actions**. These operations target enemy intelligence gathering capabilities rather than physical assets.
+
+**Counter-Intelligence Sweep** (4 EBP):
+Your security forces conduct a comprehensive sweep of all intelligence operations, communications networks, and data channels. Hidden surveillance equipment is discovered and destroyed, compromised personnel are identified and removed, and security protocols are hardened against enemy infiltration. For one turn, enemy intelligence gathering attempts are blocked - scout reports fail to transmit, spy operations are detected before completion, and surveillance networks go dark. This defensive operation provides critical protection during sensitive military operations or when preparing surprise attacks.
+
+**Intelligence Theft** (8 EBP):
+A masterful cyber-espionage operation penetrates the target House's most secure intelligence archives. Over the course of hours, massive data transfers siphon their entire intelligence database - scout reports, spy assessments, fleet movement tracking, economic analyses, and strategic evaluations. When complete, you possess a perfect copy of everything they know about the galaxy, including their intelligence on your own forces and those of other houses. This high-value operation can reveal enemy strategic intentions, planned offensives, and alliance negotiations. The theft may go undetected for turns, giving you time to exploit the stolen intelligence before counter-measures are implemented.
+
+**Plant Disinformation** (6 EBP):
+Your intelligence operatives conduct a sophisticated disinformation campaign, subtly corrupting the target House's intelligence gathering systems. False data is injected into scout telemetry, spy reports are altered with fabricated statistics, and sensor networks are fed phantom readings. The corruption is designed to appear legitimate - fleet strengths are inflated or deflated by 20-40%, colony statistics are randomized, economic data is distorted, and tech levels are misreported. The disinformation persists for 2 turns, during which all enemy intelligence reports (scouts, spies, visual encounters) contain corrupted data. Strategic decisions made on false intelligence can lead to disastrous military miscalculations, wasted resources, and failed offensives. The beauty of disinformation is that the enemy doesn't know their intelligence is compromised until they act on false data.
+
+**Strategic Implications:**
+
+Intelligence warfare creates a meta-game layer where information itself becomes a weapon:
+
+- **Counter-Intelligence Sweep** is defensive, protecting your operations during critical turns
+- **Intelligence Theft** provides one-time strategic insight into enemy knowledge and intentions
+- **Plant Disinformation** is offensive, degrading enemy decision-making for multiple turns
+
+Houses must balance offensive espionage (sabotage, assassination) with intelligence warfare. A well-timed disinformation campaign can cause more damage than physical sabotage by poisoning enemy strategic planning. Intelligence Theft can reveal enemy war plans, allowing preemptive counter-measures. Counter-Intelligence Sweeps protect your most sensitive operations from enemy surveillance.
+
+The interplay between **Intelligence Corruption** (disinformation and dishonor) and **Counter-Intelligence** creates strategic depth. See [Section 9.4](intelligence.md#94-intelligence-corruption) for complete intelligence corruption mechanics.
 
 ## 8.3 Counter Intelligence Command (CIC)
 
