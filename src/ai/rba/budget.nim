@@ -427,7 +427,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         industrialUnits: 0
       ))
       tracker.recordSpending(SpecialUnits, superCarrierCost)
-  elif canAffordMoreShips and needCarriers and cstLevel >= 3:
+  elif canAffordMoreShips and needCarriers and cstLevel >= 2:  # Lowered from CST 3 to 2
     let carrierCost = 120
     if tracker.canAfford(SpecialUnits, carrierCost):
       result.add(BuildOrder(
