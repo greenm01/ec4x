@@ -62,13 +62,14 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
   echo "    Processing build orders for ", state.houses[packet.houseId].name
 
   # Initialize budget validation context
-  # CRITICAL: Uses Table copy semantics - get house, read treasury, don't modify original
+  # Use treasury snapshot from OrderPacket (captured at AI planning time)
+  # This prevents budget mismatches when Income Phase modifies treasury before Command Phase
   let house = state.houses[packet.houseId]
-  var budgetContext = orders.initOrderValidationContext(house.treasury)
+  var budgetContext = orders.initOrderValidationContext(packet.treasury)
 
   logInfo(LogCategory.lcEconomy,
           &"{packet.houseId} Build Order Validation: {packet.buildOrders.len} orders, " &
-          &"{house.treasury} PP available")
+          &"{packet.treasury} PP available (snapshot from order generation)")
 
   for order in packet.buildOrders:
     # Validate colony exists
@@ -1878,6 +1879,12 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     # Process build queue (all projects in parallel)
     var completedProjects: seq[econ_types.ConstructionProject] = @[]
     var remainingProjects: seq[econ_types.ConstructionProject] = @[]
+
+    # DEBUG: Log queue contents
+    if colony.constructionQueue.len > 0:
+      echo &"    DEBUG: System {systemId} has {colony.constructionQueue.len} projects in queue"
+      for project in colony.constructionQueue:
+        echo &"      - {project.itemId}: {project.turnsRemaining} turns remaining"
 
     for project in colony.constructionQueue.mitems:
       project.turnsRemaining -= 1
