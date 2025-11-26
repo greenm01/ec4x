@@ -192,6 +192,9 @@ proc processScoutIntelligence*(
   var rng = initRand(turn + hash(scoutOwner) + int(systemId))  # Deterministic corruption per turn/house/system
 
   # Generate scout encounter report for fleets
+  # CRITICAL: Get house once, modify intelligence, write back to persist
+  var house = state.houses[scoutOwner]
+
   var fleetEncounter = generateScoutFleetEncounter(state, scoutId, scoutOwner, systemId, turn)
   if fleetEncounter.isSome:
     # Apply corruption if scout owner's intelligence is compromised
@@ -200,22 +203,22 @@ proc processScoutIntelligence*(
                       else: dishonoredCorruption.get()
       var corrupted = fleetEncounter.get()
       corrupted = corruption.corruptScoutEncounter(corrupted, magnitude, rng)
-      state.houses[scoutOwner].intelligence.addScoutEncounter(corrupted)
+      house.intelligence.addScoutEncounter(corrupted)
 
       # Update fleet movement history (use corrupted data)
       for fleetIntel in corrupted.fleetDetails:
-        state.houses[scoutOwner].intelligence.updateFleetMovementHistory(
+        house.intelligence.updateFleetMovementHistory(
           fleetIntel.fleetId,
           fleetIntel.owner,
           systemId,
           turn
         )
     else:
-      state.houses[scoutOwner].intelligence.addScoutEncounter(fleetEncounter.get())
+      house.intelligence.addScoutEncounter(fleetEncounter.get())
 
       # Update fleet movement history for each observed fleet
       for fleetIntel in fleetEncounter.get().fleetDetails:
-        state.houses[scoutOwner].intelligence.updateFleetMovementHistory(
+        house.intelligence.updateFleetMovementHistory(
           fleetIntel.fleetId,
           fleetIntel.owner,
           systemId,
@@ -231,15 +234,15 @@ proc processScoutIntelligence*(
                       else: dishonoredCorruption.get()
       var corrupted = colonyEncounter.get()
       corrupted = corruption.corruptScoutEncounter(corrupted, magnitude, rng)
-      state.houses[scoutOwner].intelligence.addScoutEncounter(corrupted)
+      house.intelligence.addScoutEncounter(corrupted)
     else:
-      state.houses[scoutOwner].intelligence.addScoutEncounter(colonyEncounter.get())
+      house.intelligence.addScoutEncounter(colonyEncounter.get())
 
     # Update construction activity tracking
     let colonyDetails = colonyEncounter.get().colonyDetails.get()
     if systemId in state.colonies:
       let colony = state.colonies[systemId]
-      state.houses[scoutOwner].intelligence.updateConstructionActivity(
+      house.intelligence.updateConstructionActivity(
         systemId,
         colony.owner,
         turn,
@@ -251,4 +254,7 @@ proc processScoutIntelligence*(
       )
 
     # Also add to standard colony intel database
-    state.houses[scoutOwner].intelligence.addColonyReport(colonyDetails)
+    house.intelligence.addColonyReport(colonyDetails)
+
+  # Write back modified house to persist intelligence
+  state.houses[scoutOwner] = house

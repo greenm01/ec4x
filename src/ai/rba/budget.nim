@@ -38,12 +38,13 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
 
     of GameAct.Act2_RisingTensions:
       # CRITICAL TRANSITION: Military buildup begins
+      # INVASION PREP: Need transports for aggressive AIs
       {
-        Expansion: 0.25,
+        Expansion: 0.20,     # Reduced: Colonization slowing down
         Defense: 0.15,
-        Military: 0.40,      # ← 40% guaranteed to military
+        Military: 0.35,      # Reduced from 40% to make room for transports
         Intelligence: 0.10,
-        SpecialUnits: 0.05,
+        SpecialUnits: 0.15,  # ← INCREASED from 5% to 15% for transport production
         Technology: 0.05
       }.toTable()
 
@@ -234,11 +235,11 @@ proc buildSpecialUnitsOrders*(colony: Colony, budgetPP: int,
   result = @[]
   var remaining = budgetPP
 
-  if not canAffordMoreShips:
-    return
-
   # Priority: Carriers → Transports → Raiders → Fighters
-  if needCarriers and remaining >= 150:
+  # NOTE: Expensive ships (carriers, transports, raiders) require affordability check
+  # Cheap fighters can always be built if budget allocated (like scouts)
+
+  if canAffordMoreShips and needCarriers and remaining >= 150:
     result.add(BuildOrder(
       colonySystem: colony.systemId,
       buildType: BuildType.Ship,
@@ -249,7 +250,10 @@ proc buildSpecialUnitsOrders*(colony: Colony, budgetPP: int,
     ))
     remaining -= 150
 
+  # Transports bypass canAffordMoreShips gate like scouts/fighters
+  # They're strategic assets for invasion gameplay, controlled by budget allocation
   if needTransports and remaining >= 100:
+    logDebug(LogCategory.lcAI, &"Building transport at colony {colony.systemId} (budget={remaining}PP)")
     result.add(BuildOrder(
       colonySystem: colony.systemId,
       buildType: BuildType.Ship,
@@ -260,7 +264,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, budgetPP: int,
     ))
     remaining -= 100
 
-  if needRaiders and remaining >= 100:
+  if canAffordMoreShips and needRaiders and remaining >= 100:
     result.add(BuildOrder(
       colonySystem: colony.systemId,
       buildType: BuildType.Ship,
@@ -275,6 +279,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, budgetPP: int,
   if needFighters:
     let fighterCost = getShipConstructionCost(ShipClass.Fighter)
     while remaining >= fighterCost:
+      logDebug(LogCategory.lcAI, &"Building fighter at colony {colony.systemId} (budget={remaining}PP)")
       result.add(BuildOrder(
         colonySystem: colony.systemId,
         buildType: BuildType.Ship,
@@ -309,23 +314,29 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                                    canAffordMoreShips: bool,
                                    atSquadronLimit: bool,
                                    militaryCount: int,
-                                   scoutCount: int): seq[BuildOrder] =
+                                   scoutCount: int,
+                                   availableBudget: int): seq[BuildOrder] =
   ## Generate build orders using budget allocation system
   ##
   ## This replaces the sequential priority system with multi-objective allocation
+  ##
+  ## IMPORTANT: availableBudget should be treasury AFTER maintenance costs
+  ## Otherwise AI will overspend and enter maintenance death spiral
 
   # 1. Calculate budget allocation percentages
   let allocation = allocateBudget(act, personality, isUnderThreat)
 
-  # 2. Convert to actual PP budgets
-  let budgets = calculateObjectiveBudgets(house.treasury, allocation)
+  # 2. Convert to actual PP budgets (using available budget after maintenance)
+  let budgets = calculateObjectiveBudgets(availableBudget, allocation)
 
   # 3. Log budget allocation for diagnostics
   logInfo(LogCategory.lcAI, &"{controller.houseId} Act {act} Budget Allocation: " &
           &"Expansion={budgets[Expansion]}PP ({allocation[Expansion]*100:.0f}%), " &
           &"Military={budgets[Military]}PP ({allocation[Military]*100:.0f}%), " &
           &"Defense={budgets[Defense]}PP ({allocation[Defense]*100:.0f}%), " &
-          &"Intelligence={budgets[Intelligence]}PP ({allocation[Intelligence]*100:.0f}%)")
+          &"Intelligence={budgets[Intelligence]}PP ({allocation[Intelligence]*100:.0f}%), " &
+          &"SpecialUnits={budgets[SpecialUnits]}PP ({allocation[SpecialUnits]*100:.0f}%), " &
+          &"Technology={budgets[Technology]}PP ({allocation[Technology]*100:.0f}%)")
 
   # 4. Generate orders for each objective within budget
   result = @[]

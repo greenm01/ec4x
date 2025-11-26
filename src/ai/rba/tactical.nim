@@ -7,6 +7,7 @@ import std/[tables, options, algorithm, sequtils, strformat]
 import ../common/types
 import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap, logger]
 import ../../engine/diplomacy/types as dip_types
+import ../../engine/intelligence/types as intel_types
 import ../../common/types/[core, planets]
 import ./controller_types
 import ./intelligence  # For isSystemColonized
@@ -262,7 +263,10 @@ proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameS
 proc syncFallbackRoutesToEngine*(controller: AIController, state: var GameState) =
   ## Sync AI controller's fallback routes to engine's House state
   if controller.houseId in state.houses:
-    state.houses[controller.houseId].fallbackRoutes = controller.fallbackRoutes
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[controller.houseId]
+    house.fallbackRoutes = controller.fallbackRoutes
+    state.houses[controller.houseId] = house
 
 proc findFallbackSystem*(controller: AIController, currentSystem: SystemId): Option[SystemId] =
   ## Find designated fallback system for a region
@@ -335,52 +339,94 @@ proc identifyVulnerableTargets*(controller: var AIController, filtered: Filtered
 
 proc identifyInvasionOpportunities*(controller: var AIController, filtered: FilteredGameState): seq[SystemId] =
   ## Identify enemy colonies that warrant coordinated invasion
-  ## RESPECTS FOG-OF-WAR: Uses visibleColonies to find targets
+  ## USES INTELLIGENCE REPORTS: Combines current visibility with intelligence database
+  ## This allows invasion planning even when scouts aren't actively watching targets
   result = @[]
 
   let vulnerableTargets = controller.identifyVulnerableTargets(filtered)
-  logDebug(LogCategory.lcAI, &"{controller.houseId} found {vulnerableTargets.len} vulnerable targets, {filtered.visibleColonies.len} visible colonies")
+
+  # Build list of known enemy colonies from:
+  # 1. Currently visible colonies (fog-of-war)
+  # 2. Intelligence reports from scouts, spies, combat encounters, starbase surveillance
+  var knownEnemyColonies: seq[tuple[systemId: SystemId, owner: HouseId]] = @[]
+
+  # Add currently visible colonies
+  for visCol in filtered.visibleColonies:
+    if visCol.owner != controller.houseId:
+      knownEnemyColonies.add((visCol.systemId, visCol.owner))
+
+  # Add colonies from intelligence database (even if not currently visible)
+  for systemId, report in filtered.ownHouse.intelligence.colonyReports:
+    if report.targetOwner != controller.houseId:
+      # Check if not already in list
+      var alreadyKnown = false
+      for known in knownEnemyColonies:
+        if known.systemId == systemId:
+          alreadyKnown = true
+          break
+      if not alreadyKnown:
+        knownEnemyColonies.add((systemId, report.targetOwner))
+
+  logDebug(LogCategory.lcAI, &"{controller.houseId} found {vulnerableTargets.len} vulnerable targets, {filtered.visibleColonies.len} visible colonies, {knownEnemyColonies.len} known enemy colonies from intel")
 
   # Convert vulnerable targets to a set for O(1) lookup
   var vulnerableSet: seq[SystemId] = @[]
   for target in vulnerableTargets:
     vulnerableSet.add(target.systemId)
 
-  # Check visible enemy colonies for invasion opportunities
+  # Check known enemy colonies for invasion opportunities
   var checkedCount = 0
   var skippedNotVulnerable = 0
   var skippedDefense = 0
   var skippedStrength = 0
 
-  for visCol in filtered.visibleColonies:
-    if visCol.owner == controller.houseId:
-      continue
-
+  for enemyCol in knownEnemyColonies:
     checkedCount += 1
 
     # Skip if not in vulnerable targets list
-    if visCol.systemId notin vulnerableSet:
+    if enemyCol.systemId notin vulnerableSet:
       skippedNotVulnerable += 1
       continue
 
-    # Estimate defense strength from fog-of-war intel
+    # Get intel from intelligence database if available
+    let intelReport = filtered.ownHouse.intelligence.getColonyIntel(enemyCol.systemId)
+
+    # Estimate defense strength from intelligence reports or visible data
     var defenseStrength = 0
-    if visCol.starbaseLevel.isSome and visCol.starbaseLevel.get() > 0:
-      defenseStrength += 100 * visCol.starbaseLevel.get()
+    if intelReport.isSome:
+      # Use intelligence data
+      defenseStrength += intelReport.get().starbaseLevel * 100
+      defenseStrength += intelReport.get().defenses * 10  # Ground units
+
+    # Check currently visible colonies for up-to-date info
+    for visCol in filtered.visibleColonies:
+      if visCol.systemId == enemyCol.systemId:
+        if visCol.starbaseLevel.isSome and visCol.starbaseLevel.get() > 0:
+          defenseStrength = visCol.starbaseLevel.get() * 100  # Override with current data
 
     # Check for defending fleets (visible through fog-of-war)
     for fleet in filtered.visibleFleets:
-      if fleet.owner == visCol.owner and fleet.location == visCol.systemId:
+      if fleet.owner == enemyCol.owner and fleet.location == enemyCol.systemId:
         if fleet.estimatedShipCount.isSome:
           defenseStrength += fleet.estimatedShipCount.get() * 10
 
-    # Check if colony is valuable (use estimated fields for fog-of-war)
-    let production = if visCol.production.isSome: visCol.production.get()
-                     elif visCol.estimatedIndustry.isSome: visCol.estimatedIndustry.get()
-                     else: 0
+    # Check if colony is valuable (use intelligence or visible data)
+    var production = 0
+    var resources = ResourceRating.Poor
 
-    let resources = if visCol.resources.isSome: visCol.resources.get()
-                    else: ResourceRating.Poor
+    if intelReport.isSome:
+      production = intelReport.get().industry
+      resources = ResourceRating.Poor  # Not in ColonyIntelReport, use conservative estimate
+
+    # Override with current visible data if available
+    for visCol in filtered.visibleColonies:
+      if visCol.systemId == enemyCol.systemId:
+        if visCol.production.isSome:
+          production = visCol.production.get()
+        elif visCol.estimatedIndustry.isSome:
+          production = visCol.estimatedIndustry.get()
+        if visCol.resources.isSome:
+          resources = visCol.resources.get()
 
     let isValuable = production >= 50 or
                      resources in [ResourceRating.Rich, ResourceRating.VeryRich]
@@ -388,7 +434,7 @@ proc identifyInvasionOpportunities*(controller: var AIController, filtered: Filt
     # Find the target in vulnerable list to get relative strength
     var relativeStrength = 0.5  # Default if not found
     for target in vulnerableTargets:
-      if target.systemId == visCol.systemId:
+      if target.systemId == enemyCol.systemId:
         relativeStrength = target.relativeStrength
         break
 
@@ -405,7 +451,7 @@ proc identifyInvasionOpportunities*(controller: var AIController, filtered: Filt
       skippedDefense += 1
       continue
 
-    result.add(visCol.systemId)
+    result.add(enemyCol.systemId)
 
   logDebug(LogCategory.lcAI, &"{controller.houseId} invasion filtering: checked={checkedCount}, skippedNotVulnerable={skippedNotVulnerable}, skippedDefense={skippedDefense}, skippedStrength={skippedStrength}, opportunities={result.len}")
 
