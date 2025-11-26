@@ -56,11 +56,12 @@ proc selectEspionageTarget*(controller: AIController, filtered: FilteredGameStat
   return controller.houseId  # Emergency fallback
 
 proc selectEspionageOperation*(controller: AIController, filtered: FilteredGameState,
-                              target: HouseId, rng: var Rand): esp_types.EspionageAction =
+                              target: HouseId, projectedEBP: int, rng: var Rand): esp_types.EspionageAction =
   ## Choose espionage operation based on strategic context and available EBP
+  ## projectedEBP = current points + this turn's investment (available immediately)
   let p = controller.personality
   let house = filtered.ownHouse
-  let ebp = house.espionageBudget.ebpPoints
+  let ebp = projectedEBP  # Use projected EBP, not current
 
   # Get target's relative strength
   let targetPrestige = filtered.housePrestige.getOrDefault(target, 0)
@@ -144,19 +145,23 @@ proc shouldUseCounterIntel*(controller: AIController, filtered: FilteredGameStat
 
   return false
 
-proc generateEspionageAction*(controller: AIController, filtered: FilteredGameState, rng: var Rand): Option[esp_types.EspionageAttempt] =
+proc generateEspionageAction*(controller: AIController, filtered: FilteredGameState,
+                              projectedEBP: int, projectedCIP: int, rng: var Rand): Option[esp_types.EspionageAttempt] =
   ## Generate espionage action with strategic targeting and operation selection
+  ## projectedEBP/CIP = current points + this turn's investment (available immediately)
   let p = controller.personality
   let house = filtered.ownHouse
 
   logDebug(LogCategory.lcAI,
            &"{controller.houseId} Espionage check: prestige={house.prestige}, " &
-           &"EBP={house.espionageBudget.ebpPoints}, CIP={house.espionageBudget.cipPoints}")
+           &"EBP={house.espionageBudget.ebpPoints}+{projectedEBP - house.espionageBudget.ebpPoints}={projectedEBP}, " &
+           &"CIP={house.espionageBudget.cipPoints}+{projectedCIP - house.espionageBudget.cipPoints}={projectedCIP}")
 
   # Check for counter-intelligence need first (defensive)
-  if shouldUseCounterIntel(controller, filtered):
+  # Use projected CIP (includes this turn's investment)
+  if projectedCIP >= 4 and shouldUseCounterIntel(controller, filtered):
     logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Espionage: Counter-Intelligence Sweep (defensive)")
+            &"{controller.houseId} Espionage: Counter-Intelligence Sweep (defensive, CIP={projectedCIP})")
     # Counter-intel doesn't need a target
     return some(esp_types.EspionageAttempt(
       attacker: controller.houseId,
@@ -203,11 +208,11 @@ proc generateEspionageAction*(controller: AIController, filtered: FilteredGameSt
   logDebug(LogCategory.lcAI,
            &"{controller.houseId} Espionage: Selected target {target}")
 
-  # Select operation based on strategic context
-  let operation = selectEspionageOperation(controller, filtered, target, rng)
+  # Select operation based on strategic context (using projected EBP)
+  let operation = selectEspionageOperation(controller, filtered, target, projectedEBP, rng)
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Espionage: {operation} against {target} " &
-          &"(EBP={house.espionageBudget.ebpPoints})")
+          &"(projected EBP={projectedEBP})")
 
   return some(esp_types.EspionageAttempt(
     attacker: controller.houseId,

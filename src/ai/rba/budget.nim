@@ -522,6 +522,99 @@ proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,
     tracker.recordSpending(SpecialUnits, planetBreakerCost)
 
 # =============================================================================
+# Budget Reporting for Transparency
+# =============================================================================
+
+type
+  BudgetReport* = object
+    ## Budget utilization report for economic transparency
+    houseId*: HouseId
+    turn*: int
+    totalBudget*: int
+    allocations*: Table[BuildObjective, int]
+    commitments*: Table[BuildObjective, int]
+    utilization*: Table[BuildObjective, float]
+    warnings*: seq[string]
+
+proc generateBudgetReport*(tracker: BudgetTracker, turn: int): BudgetReport =
+  ## Generate budget utilization report
+  ## Shows allocation vs actual spending for each objective
+  result = BudgetReport(
+    houseId: tracker.houseId,
+    turn: turn,
+    totalBudget: tracker.totalBudget,
+    allocations: tracker.allocated,
+    commitments: tracker.spent,
+    utilization: initTable[BuildObjective, float](),
+    warnings: @[]
+  )
+
+  # Calculate utilization rates and generate warnings
+  for objective in BuildObjective:
+    let allocated = tracker.allocated[objective]
+    let spent = tracker.spent[objective]
+
+    # Calculate utilization percentage
+    if allocated > 0:
+      result.utilization[objective] = float(spent) / float(allocated)
+    else:
+      result.utilization[objective] = 0.0
+
+    # Generate warnings for problematic budget patterns
+    if spent > allocated:
+      # Overspending (should never happen with proper coordination)
+      result.warnings.add(&"{objective}: OVERSPENT by {spent - allocated}PP " &
+                         &"(spent {spent}PP of {allocated}PP allocated)")
+    elif allocated > 0 and spent == 0:
+      # Budget allocated but nothing built
+      result.warnings.add(&"{objective}: Allocated {allocated}PP but spent nothing " &
+                         &"(may indicate missing build logic or exhausted production capacity)")
+    elif result.utilization[objective] < 0.3 and allocated > 100:
+      # Significant underutilization
+      let pct = int(result.utilization[objective] * 100)
+      result.warnings.add(&"{objective}: Low utilization {pct}% " &
+                         &"(spent {spent}PP of {allocated}PP allocated, {allocated - spent}PP wasted)")
+
+proc logBudgetReport*(report: BudgetReport) =
+  ## Log budget report for turn results
+  logInfo(LogCategory.lcAI,
+          &"")
+  logInfo(LogCategory.lcAI,
+          &"=== Budget Report: {report.houseId} (Turn {report.turn}) ===")
+  logInfo(LogCategory.lcAI,
+          &"Total Budget: {report.totalBudget}PP")
+  logInfo(LogCategory.lcAI,
+          &"")
+
+  # Log per-objective utilization
+  for objective in BuildObjective:
+    let allocated = report.allocations[objective]
+    let spent = report.commitments[objective]
+    let remaining = allocated - spent
+    let pct = if allocated > 0: int(report.utilization[objective] * 100) else: 0
+
+    var status = ""
+    if spent == 0 and allocated > 0:
+      status = " [UNUSED]"
+    elif report.utilization[objective] > 0.95:
+      status = " [EXHAUSTED]"
+    elif report.utilization[objective] < 0.5 and allocated > 100:
+      status = " [UNDERUTILIZED]"
+
+    logInfo(LogCategory.lcAI,
+            &"  {objective:15} {spent:4}/{allocated:4}PP ({pct:3}%) {remaining:4}PP remaining{status}")
+
+  # Log warnings
+  if report.warnings.len > 0:
+    logInfo(LogCategory.lcAI, &"")
+    logInfo(LogCategory.lcAI, &"Budget Warnings:")
+    for warning in report.warnings:
+      logWarn(LogCategory.lcAI, &"  ⚠ {warning}")
+
+  logInfo(LogCategory.lcAI,
+          &"===========================================")
+
+# =============================================================================
 # Integrated Build Planning
 # =============================================================================
 
@@ -546,6 +639,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                                    atSquadronLimit: bool,
                                    militaryCount: int,
                                    scoutCount: int,
+                                   planetBreakerCount: int,
                                    availableBudget: int): seq[BuildOrder] =
   ## Generate build orders using budget allocation system
   ##
@@ -573,7 +667,17 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Get tech levels for gating ship unlocks
   let cstLevel = house.techTree.levels.constructionTech
   let colonyCount = myColonies.len
-  let planetBreakerCount = house.planetBreakerCount
+
+  # PROJECTED STATE TRACKING
+  # Track units built THIS TURN to avoid double-counting
+  # Example: Colony A builds 2 scouts, Colony B sees projected count = 2 (not 0!)
+  var projectedScoutCount = scoutCount
+  var projectedMilitaryCount = militaryCount
+  var projectedPlanetBreakerCount = planetBreakerCount
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Starting build generation: " &
+          &"scouts={scoutCount}, military={militaryCount}, PBs={planetBreakerCount}")
 
   # Determine if we need siege capability (Planet-Breakers)
   # Build PBs when: CST 10 unlocked, fighting heavily fortified enemies, Act 3+
@@ -592,15 +696,51 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     # BudgetTracker prevents overspending across ALL colonies
     # Engine will enforce dock capacity limits (spaceports: 5, shipyards: 10)
 
+    # DYNAMIC NEED RECALCULATION
+    # Recalculate need flags using PROJECTED counts (current + built this turn)
+    let projectedNeedScouts = case act
+      of GameAct.Act1_LandGrab:
+        projectedScoutCount < 3
+      of GameAct.Act2_RisingTensions:
+        projectedScoutCount < 6
+      else:
+        projectedScoutCount < 8
+
     # Generate orders for all objectives using shared BudgetTracker
     # CRITICAL: tracker is var parameter - gets modified by each build function
+    # CRITICAL: Use PROJECTED counts to avoid double-building
     result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
     result.add(buildDefenseOrders(colony, tracker, needDefenses, hasStarbase))
-    result.add(buildMilitaryOrders(colony, tracker, militaryCount, canAffordMoreShips, atSquadronLimit, cstLevel, act))
-    result.add(buildIntelligenceOrders(colony, tracker, needScouts, scoutCount))
+
+    let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
+                                            canAffordMoreShips, atSquadronLimit, cstLevel, act)
+    result.add(militaryOrders)
+    projectedMilitaryCount += militaryOrders.len  # Update projected count
+
+    let intelligenceOrders = buildIntelligenceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
+    result.add(intelligenceOrders)
+    projectedScoutCount += intelligenceOrders.len  # Update projected count
+
     result.add(buildSpecialUnitsOrders(colony, tracker, needFighters, needCarriers,
                                       needTransports, needRaiders, canAffordMoreShips, cstLevel))
-    result.add(buildSiegeOrders(colony, tracker, planetBreakerCount, colonyCount, cstLevel, needSiege))
+
+    let siegeOrders = buildSiegeOrders(colony, tracker, projectedPlanetBreakerCount,
+                                       colonyCount, cstLevel, needSiege)
+    result.add(siegeOrders)
+    # Count Planet-Breakers in siege orders
+    for order in siegeOrders:
+      if order.shipClass.isSome and order.shipClass.get() == ShipClass.PlanetBreaker:
+        projectedPlanetBreakerCount += order.quantity
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Build generation complete: " &
+          &"built {projectedScoutCount - scoutCount} scouts, " &
+          &"{projectedMilitaryCount - militaryCount} military, " &
+          &"{projectedPlanetBreakerCount - planetBreakerCount} PBs")
 
   # Log final budget summary
   tracker.logBudgetSummary()
+
+  # Generate and log budget report for transparency
+  let report = generateBudgetReport(tracker, filtered.turn)
+  logBudgetReport(report)
