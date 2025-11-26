@@ -1,9 +1,79 @@
 # EC4X Open Issues & Gaps
 
-**Last Updated:** 2025-11-23
+**Last Updated:** 2025-11-25
 
 This is the SINGLE source of truth for known bugs, missing features, and technical debt.
 When an issue is fixed, check it off and update STATUS.md.
+
+---
+
+## Test Files - Nim Table Copy Bugs
+
+**Priority:** MEDIUM (blocks integration test improvements)
+**Status:** 🔴 **Not Started** - 74 bugs identified
+**Discovered:** 2025-11-25 during post-fix audit
+
+### Problem Description
+
+Integration test files contain ~74 instances of direct Table modifications that don't persist:
+
+```nim
+# BROKEN - Modifies copy, changes lost:
+state.houses["house1".HouseId].prestige = 5000
+state.houses["house2".HouseId].eliminated = true
+```
+
+### Affected Files
+
+| File | Bug Count | Impact |
+|------|-----------|--------|
+| `tests/integration/test_persistent_fleet_orders.nim` | 23 | Tests can't verify order persistence |
+| `tests/integration/test_victory_conditions.nim` | 20 | Victory condition tests may pass incorrectly |
+| `tests/integration/test_fleet_movement.nim` | 7 | Movement tests unreliable |
+| `tests/integration/test_auto_seek_home.nim` | 8 | Auto-seek tests unreliable |
+| `tests/integration/test_last_stand.nim` | 5 | Last stand tests unreliable |
+| `tests/integration/test_space_guild.nim` | 4 | Guild transfer tests unreliable |
+| `tests/integration/test_squadron_management.nim` | 3 | Squadron tests unreliable |
+| `tests/integration/test_spy_scouts.nim` | 2 | Spy tests unreliable |
+| `tests/integration/test_commissioning.nim` | 2 | Commissioning tests unreliable |
+| **Total** | **74** | All integration tests affected |
+
+### Why This Matters
+
+- Tests may pass even when engine is broken (false positives)
+- Tests may fail even when engine works (false negatives)
+- Cannot rely on integration tests for regression detection
+- Test setup code works (initial state) but mutation verification fails
+
+### Solution
+
+Apply get-modify-write pattern to all test mutations:
+
+```nim
+# CORRECT:
+var house = state.houses["house1".HouseId]
+house.prestige = 5000
+state.houses["house1".HouseId] = house
+```
+
+### Implementation Plan
+
+1. **Audit Phase** (30 min):
+   - Review each test file to identify actual bugs vs setup code
+   - Some direct writes in test setup are intentional (initial state)
+   - Focus on mutations within test body that verify engine behavior
+
+2. **Fix Phase** (2-3 hours):
+   - Apply get-modify-write pattern to all test mutations
+   - Run each test suite using `nimble test` to verify fixes
+   - Ensure no test behavior changes (only correctness improves)
+
+3. **Validation** (30 min):
+   - Run full test suite: `nimble test`
+   - Verify all tests still pass
+   - Add regression test for Table copy semantics
+
+**Estimated Effort:** 3-4 hours total
 
 ---
 
