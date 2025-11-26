@@ -1295,6 +1295,9 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
 
   # Call multi-objective budget system to generate ship build orders
   # (currentAct already defined above at line 1015)
+  # Calculate available budget: treasury minus estimated maintenance costs
+  let availableBudget = max(0, house.treasury - estimatedMaintenance)
+
   result = generateBuildOrdersWithBudget(
     controller, filtered, house, myColonies, currentAct, p,
     isUnderThreat = isUnderThreat,
@@ -1308,7 +1311,8 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
     canAffordMoreShips = canAffordMoreShips,
     atSquadronLimit = atSquadronLimit,
     militaryCount = militaryCount,
-    scoutCount = scoutCount
+    scoutCount = scoutCount,
+    availableBudget = availableBudget
   )
 
   # ==========================================================================
