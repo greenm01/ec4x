@@ -3,7 +3,7 @@
 ## Handles fleet coordination, combat assessment, and tactical planning
 ## Respects fog-of-war - uses only visible tactical information
 
-import std/[tables, options, algorithm, sequtils, strformat, random]
+import std/[tables, options, algorithm, sequtils, strformat, random, sets]
 import ../common/types
 import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap, logger, orders]
 import ../../engine/diplomacy/types as dip_types
@@ -163,11 +163,15 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
     var nearestThreat: Option[tuple[location: SystemId, distance: int, eta: int]] = none(tuple[location: SystemId, distance: int, eta: int])
     var minDist = 999
 
-    for fleet in filtered.ownFleets:
-      if fleet.owner == controller.houseId or fleet.combatStrength() == 0:
+    for visFleet in filtered.visibleFleets:
+      if visFleet.owner == controller.houseId:
         continue
 
-      let fleetCoords = filtered.starMap.systems[fleet.location].coords
+      # Skip if no combat strength (check estimatedShipCount for enemy fleets)
+      if visFleet.estimatedShipCount.isSome and visFleet.estimatedShipCount.get() == 0:
+        continue
+
+      let fleetCoords = filtered.starMap.systems[visFleet.location].coords
       let dx = abs(fleetCoords.q - protectedCoords.q)
       let dy = abs(fleetCoords.r - protectedCoords.r)
       let dz = abs((fleetCoords.q + fleetCoords.r) - (protectedCoords.q + protectedCoords.r))
@@ -179,9 +183,9 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
         let reserveFleetOpt = filtered.ownFleets.filterIt(it.id == reserve.fleetId)
         if reserveFleetOpt.len > 0:
           let reserveFleet = reserveFleetOpt[0]
-          let etaOpt = calculateETA(filtered.starMap, reserveFleet.location, fleet.location, reserveFleet)
+          let etaOpt = calculateETA(filtered.starMap, reserveFleet.location, visFleet.location, reserveFleet)
           if etaOpt.isSome:
-            let threat: tuple[location: SystemId, distance: int, eta: int] = (fleet.location, dist, etaOpt.get())
+            let threat: tuple[location: SystemId, distance: int, eta: int] = (visFleet.location, dist, etaOpt.get())
             nearestThreat = some(threat)
 
     # Only dispatch if reserve can respond in reasonable time
@@ -516,88 +520,386 @@ proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState
 
 proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): seq[FleetOrder] =
   ## Generate fleet orders for all owned fleets
+  ## NOW WITH PHASE-AWARE PRIORITIES (4-act structure)
   result = @[]
 
   let myFleets = getOwnedFleets(filtered, controller.houseId)
+  let currentAct = getCurrentGameAct(filtered.turn)
 
   # Update operation status
   updateOperationStatus(controller, filtered)
   removeCompletedOperations(controller, filtered.turn)
+
+  logInfo(LogCategory.lcAI, &"{controller.houseId} Turn {filtered.turn} ({currentAct}): Generating orders for {myFleets.len} fleets")
 
   for fleet in myFleets:
     var order: FleetOrder
     order.fleetId = fleet.id
     order.priority = 1
 
-    # Priority 1: Hold at colony to pick up unassigned squadrons
-    if isSystemColonized(filtered, fleet.location):
-      let colonyOpt = getColony(filtered, fleet.location)
-      if colonyOpt.isSome:
-        let colony = colonyOpt.get()
-        if colony.owner == controller.houseId and colony.unassignedSquadrons.len > 0:
-          order.orderType = FleetOrderType.Hold
-          order.targetSystem = some(fleet.location)
+    # Determine fleet type for logging
+    var hasETAC = false
+    var hasCombatShips = false
+    for ship in fleet.spaceLiftShips:
+      if ship.shipClass == ShipClass.ETAC:
+        hasETAC = true
+    if fleet.squadrons.len > 0:
+      hasCombatShips = true
+
+    let fleetType = if hasETAC: "ETAC" elif hasCombatShips: "Combat" else: "Empty"
+    logDebug(LogCategory.lcAI, &"  Fleet {fleet.id} ({fleetType}) at {fleet.location}: Determining orders...")
+
+    # ==========================================================================
+    # PHASE-AWARE PRIORITY SYSTEM
+    # ==========================================================================
+    # Act 1: Exploration >> Colonization >> Defense
+    # Act 2: Consolidation >> Military >> Opportunistic Colonization
+    # Act 3+: Invasions >> Defense >> Combat
+    # ==========================================================================
+
+    case currentAct:
+    of GameAct.Act1_LandGrab:
+      # ========================================================================
+      # ACT 1: LAND GRAB (Turns 1-7)
+      # Priority: Exploration (70-80%) >> Colonization >> Minimal Defense
+      # ========================================================================
+
+      # Priority 1a: ETACs colonize nearest uncolonized system
+      if hasETAC:
+        # Find nearest uncolonized system
+        var bestTarget: Option[SystemId] = none(SystemId)
+        var minDist = 999
+        let fromCoords = filtered.starMap.systems[fleet.location].coords
+
+        for systemId, visSystem in filtered.visibleSystems:
+          # Skip if already colonized
+          if isSystemColonized(filtered, systemId):
+            continue
+
+          # Calculate distance
+          let coords = filtered.starMap.systems[systemId].coords
+          let dx = abs(coords.q - fromCoords.q)
+          let dy = abs(coords.r - fromCoords.r)
+          let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+          let dist = (dx + dy + dz) div 2
+
+          if dist < minDist:
+            minDist = dist
+            bestTarget = some(systemId)
+
+        if bestTarget.isSome:
+          order.orderType = FleetOrderType.Colonize
+          order.targetSystem = bestTarget
           order.targetFleet = none(FleetId)
+          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 1: Land Grab)")
+          result.add(order)
+          continue
+        else:
+          logDebug(LogCategory.lcAI, &"    → No colonization targets found (map fully colonized?)")
+
+      # Priority 1b: Combat ships explore aggressively
+      if hasCombatShips:
+        # Build set of systems already targeted by our other fleets this turn
+        var alreadyTargeted = initHashSet[SystemId]()
+        for existingOrder in result:
+          if existingOrder.targetSystem.isSome:
+            alreadyTargeted.incl(existingOrder.targetSystem.get())
+
+        # Find closest unexplored system NOT already targeted (fan-out)
+        var reconTarget: Option[SystemId] = none(SystemId)
+        var minDist = 999
+        let fromCoords = filtered.starMap.systems[fleet.location].coords
+
+        for systemId, visSystem in filtered.visibleSystems:
+          if systemId == fleet.location or systemId in alreadyTargeted:
+            continue
+
+          # Target systems that need reconnaissance (adjacent/unscouted/stale)
+          if needsReconnaissance(filtered, systemId):
+            let coords = filtered.starMap.systems[systemId].coords
+            let dx = abs(coords.q - fromCoords.q)
+            let dy = abs(coords.r - fromCoords.r)
+            let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+            let dist = (dx + dy + dz) div 2
+            if dist < minDist:
+              minDist = dist
+              reconTarget = some(systemId)
+
+        if reconTarget.isSome:
+          order.orderType = FleetOrderType.Move
+          order.targetSystem = reconTarget
+          order.targetFleet = none(FleetId)
+          logInfo(LogCategory.lcAI, &"    → EXPLORE {reconTarget.get()} (Act 1: Systematic reconnaissance)")
           result.add(order)
           continue
 
-    # Priority 2: Coordinated operations
-    var inOperation = false
-    for op in controller.operations:
-      if fleet.id in op.requiredFleets:
-        inOperation = true
-        if fleet.location != op.assemblyPoint:
-          # Move to assembly point
-          order.orderType = FleetOrderType.Rendezvous
-          order.targetSystem = some(op.assemblyPoint)
+        # Fallback: Random adjacent exploration
+        if fleet.location in filtered.starMap.adjacency:
+          let adjacentSystems = filtered.starMap.adjacency[fleet.location]
+          if adjacentSystems.len > 0:
+            let targetSystem = adjacentSystems[rng.rand(adjacentSystems.len - 1)]
+            order.orderType = FleetOrderType.Move
+            order.targetSystem = some(targetSystem)
+            order.targetFleet = none(FleetId)
+            logInfo(LogCategory.lcAI, &"    → EXPLORE {targetSystem} (Act 1: Random adjacent)")
+            result.add(order)
+            continue
+
+      # Default: Hold position
+      order.orderType = FleetOrderType.Hold
+      order.targetSystem = some(fleet.location)
+      order.targetFleet = none(FleetId)
+      logDebug(LogCategory.lcAI, &"    → HOLD at {fleet.location} (Act 1: No valid targets)")
+      result.add(order)
+
+    of GameAct.Act2_RisingTensions:
+      # ========================================================================
+      # ACT 2: RISING TENSIONS (Turns 8-15)
+      # Priority: Military Buildup >> Defense >> Opportunistic Colonization
+      # ========================================================================
+
+      # Priority 1: Coordinated operations (invasions)
+      var inOperation = false
+      for op in controller.operations:
+        if fleet.id in op.requiredFleets:
+          inOperation = true
+          if fleet.location != op.assemblyPoint:
+            order.orderType = FleetOrderType.Rendezvous
+            order.targetSystem = some(op.assemblyPoint)
+            logInfo(LogCategory.lcAI, &"    → RENDEZVOUS at {op.assemblyPoint} (Act 2: Operation assembly)")
+          elif shouldExecuteOperation(controller, op, filtered.turn):
+            case op.operationType
+            of OperationType.Invasion:
+              order.orderType = FleetOrderType.Invade
+            of OperationType.Raid:
+              order.orderType = FleetOrderType.Blitz
+            of OperationType.Blockade:
+              order.orderType = FleetOrderType.BlockadePlanet
+            of OperationType.Defense:
+              order.orderType = FleetOrderType.Patrol
+            order.targetSystem = some(op.targetSystem)
+            logInfo(LogCategory.lcAI, &"    → EXECUTE {op.operationType} on {op.targetSystem} (Act 2: Operation)")
+          else:
+            order.orderType = FleetOrderType.Hold
+            order.targetSystem = some(fleet.location)
+            logDebug(LogCategory.lcAI, &"    → HOLD at assembly point (Act 2: Waiting for operation)")
           order.targetFleet = none(FleetId)
-        elif shouldExecuteOperation(controller, op, filtered.turn):
-          # Execute operation
-          case op.operationType
-          of OperationType.Invasion:
-            order.orderType = FleetOrderType.Invade
-            order.targetSystem = some(op.targetSystem)
-          of OperationType.Raid:
-            order.orderType = FleetOrderType.Blitz
-            order.targetSystem = some(op.targetSystem)
-          of OperationType.Blockade:
-            order.orderType = FleetOrderType.BlockadePlanet
-            order.targetSystem = some(op.targetSystem)
-          of OperationType.Defense:
-            order.orderType = FleetOrderType.Patrol
-            order.targetSystem = some(op.targetSystem)
+          result.add(order)
+          break
+
+      if inOperation:
+        continue
+
+      # Priority 2: Strategic reserve threat response
+      let threats = respondToThreats(controller, filtered)
+      var respondingToThreat = false
+      for threat in threats:
+        if threat.reserveFleet == fleet.id:
+          order.orderType = FleetOrderType.Move
+          order.targetSystem = some(threat.threatSystem)
           order.targetFleet = none(FleetId)
-        else:
-          # Wait at assembly point
-          order.orderType = FleetOrderType.Hold
-          order.targetSystem = some(fleet.location)
+          logInfo(LogCategory.lcAI, &"    → RESPOND to threat at {threat.threatSystem} (Act 2: Reserve activation)")
+          result.add(order)
+          respondingToThreat = true
+          break
+
+      if respondingToThreat:
+        continue
+
+      # Priority 3: Pick up unassigned squadrons (ONE fleet only)
+      if isSystemColonized(filtered, fleet.location):
+        let colonyOpt = getColony(filtered, fleet.location)
+        if colonyOpt.isSome:
+          let colony = colonyOpt.get()
+          if colony.owner == controller.houseId and colony.unassignedSquadrons.len > 0:
+            # Check if another fleet is already assigned to pickup duty
+            var hasPickupFleet = false
+            for existingOrder in result:
+              if existingOrder.orderType == FleetOrderType.Hold and
+                 existingOrder.targetSystem == some(fleet.location):
+                hasPickupFleet = true
+                break
+
+            if not hasPickupFleet:
+              order.orderType = FleetOrderType.Hold
+              order.targetSystem = some(fleet.location)
+              order.targetFleet = none(FleetId)
+              logInfo(LogCategory.lcAI, &"    → HOLD to pickup {colony.unassignedSquadrons.len} squadrons (Act 2: Reinforcement)")
+              result.add(order)
+              continue
+
+      # Priority 4: Opportunistic colonization (ETACs only)
+      if hasETAC:
+        var bestTarget: Option[SystemId] = none(SystemId)
+        var minDist = 999
+        let fromCoords = filtered.starMap.systems[fleet.location].coords
+
+        for systemId, visSystem in filtered.visibleSystems:
+          if isSystemColonized(filtered, systemId):
+            continue
+
+          let coords = filtered.starMap.systems[systemId].coords
+          let dx = abs(coords.q - fromCoords.q)
+          let dy = abs(coords.r - fromCoords.r)
+          let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+          let dist = (dx + dy + dz) div 2
+
+          if dist < minDist:
+            minDist = dist
+            bestTarget = some(systemId)
+
+        if bestTarget.isSome:
+          order.orderType = FleetOrderType.Colonize
+          order.targetSystem = bestTarget
           order.targetFleet = none(FleetId)
-        result.add(order)
-        break
+          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 2: Opportunistic)")
+          result.add(order)
+          continue
 
-    if inOperation:
-      continue
+      # Priority 5: Exploration/patrol
+      if hasCombatShips:
+        var reconTarget: Option[SystemId] = none(SystemId)
+        var minDist = 999
+        let fromCoords = filtered.starMap.systems[fleet.location].coords
 
-    # Priority 3: Strategic reserve threat response
-    let threats = respondToThreats(controller, filtered)
-    var respondingToThreat = false
-    for threat in threats:
-      if threat.reserveFleet == fleet.id:
-        order.orderType = FleetOrderType.Move
-        order.targetSystem = some(threat.threatSystem)
-        order.targetFleet = none(FleetId)
-        result.add(order)
-        respondingToThreat = true
-        break
+        for systemId, visSystem in filtered.visibleSystems:
+          if systemId == fleet.location:
+            continue
 
-    if respondingToThreat:
-      continue
+          if needsReconnaissance(filtered, systemId):
+            let coords = filtered.starMap.systems[systemId].coords
+            let dx = abs(coords.q - fromCoords.q)
+            let dy = abs(coords.r - fromCoords.r)
+            let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+            let dist = (dx + dy + dz) div 2
+            if dist < minDist:
+              minDist = dist
+              reconTarget = some(systemId)
 
-    # Default: Hold position
-    order.orderType = FleetOrderType.Hold
-    order.targetSystem = some(fleet.location)
-    order.targetFleet = none(FleetId)
-    result.add(order)
+        if reconTarget.isSome:
+          order.orderType = FleetOrderType.Move
+          order.targetSystem = reconTarget
+          order.targetFleet = none(FleetId)
+          logInfo(LogCategory.lcAI, &"    → PATROL/EXPLORE {reconTarget.get()} (Act 2: Intel gathering)")
+          result.add(order)
+          continue
+
+      # Default: Hold position
+      order.orderType = FleetOrderType.Hold
+      order.targetSystem = some(fleet.location)
+      order.targetFleet = none(FleetId)
+      logDebug(LogCategory.lcAI, &"    → HOLD at {fleet.location} (Act 2: No priority targets)")
+      result.add(order)
+
+    of GameAct.Act3_TotalWar, GameAct.Act4_Endgame:
+      # ========================================================================
+      # ACT 3-4: TOTAL WAR / ENDGAME (Turns 16-30)
+      # Priority: Invasions >> Defense >> Combat (NO colonization)
+      # ========================================================================
+
+      # Priority 1: Coordinated operations
+      var inOperation = false
+      for op in controller.operations:
+        if fleet.id in op.requiredFleets:
+          inOperation = true
+          if fleet.location != op.assemblyPoint:
+            order.orderType = FleetOrderType.Rendezvous
+            order.targetSystem = some(op.assemblyPoint)
+            logInfo(LogCategory.lcAI, &"    → RENDEZVOUS at {op.assemblyPoint} (Act 3+: War operation)")
+          elif shouldExecuteOperation(controller, op, filtered.turn):
+            case op.operationType
+            of OperationType.Invasion:
+              order.orderType = FleetOrderType.Invade
+            of OperationType.Raid:
+              order.orderType = FleetOrderType.Blitz
+            of OperationType.Blockade:
+              order.orderType = FleetOrderType.BlockadePlanet
+            of OperationType.Defense:
+              order.orderType = FleetOrderType.Patrol
+            order.targetSystem = some(op.targetSystem)
+            logInfo(LogCategory.lcAI, &"    → EXECUTE {op.operationType} on {op.targetSystem} (Act 3+: Total war)")
+          else:
+            order.orderType = FleetOrderType.Hold
+            order.targetSystem = some(fleet.location)
+            logDebug(LogCategory.lcAI, &"    → HOLD at assembly (Act 3+: Waiting)")
+          order.targetFleet = none(FleetId)
+          result.add(order)
+          break
+
+      if inOperation:
+        continue
+
+      # Priority 2: Strategic reserve threat response
+      let threats = respondToThreats(controller, filtered)
+      var respondingToThreat = false
+      for threat in threats:
+        if threat.reserveFleet == fleet.id:
+          order.orderType = FleetOrderType.Move
+          order.targetSystem = some(threat.threatSystem)
+          order.targetFleet = none(FleetId)
+          logInfo(LogCategory.lcAI, &"    → RESPOND to threat at {threat.threatSystem} (Act 3+: Defense)")
+          result.add(order)
+          respondingToThreat = true
+          break
+
+      if respondingToThreat:
+        continue
+
+      # Priority 3: Pick up reinforcements
+      if isSystemColonized(filtered, fleet.location):
+        let colonyOpt = getColony(filtered, fleet.location)
+        if colonyOpt.isSome:
+          let colony = colonyOpt.get()
+          if colony.owner == controller.houseId and colony.unassignedSquadrons.len > 0:
+            var hasPickupFleet = false
+            for existingOrder in result:
+              if existingOrder.orderType == FleetOrderType.Hold and
+                 existingOrder.targetSystem == some(fleet.location):
+                hasPickupFleet = true
+                break
+
+            if not hasPickupFleet:
+              order.orderType = FleetOrderType.Hold
+              order.targetSystem = some(fleet.location)
+              order.targetFleet = none(FleetId)
+              logInfo(LogCategory.lcAI, &"    → HOLD for reinforcements (Act 3+: {colony.unassignedSquadrons.len} squadrons)")
+              result.add(order)
+              continue
+
+      # Priority 4: Aggressive patrol/reconnaissance
+      if hasCombatShips:
+        var reconTarget: Option[SystemId] = none(SystemId)
+        var minDist = 999
+        let fromCoords = filtered.starMap.systems[fleet.location].coords
+
+        for systemId, visSystem in filtered.visibleSystems:
+          if systemId == fleet.location:
+            continue
+
+          if needsReconnaissance(filtered, systemId):
+            let coords = filtered.starMap.systems[systemId].coords
+            let dx = abs(coords.q - fromCoords.q)
+            let dy = abs(coords.r - fromCoords.r)
+            let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+            let dist = (dx + dy + dz) div 2
+            if dist < minDist:
+              minDist = dist
+              reconTarget = some(systemId)
+
+        if reconTarget.isSome:
+          order.orderType = FleetOrderType.Patrol
+          order.targetSystem = reconTarget
+          order.targetFleet = none(FleetId)
+          logInfo(LogCategory.lcAI, &"    → PATROL {reconTarget.get()} (Act 3+: Aggressive recon)")
+          result.add(order)
+          continue
+
+      # Default: Hold position
+      order.orderType = FleetOrderType.Hold
+      order.targetSystem = some(fleet.location)
+      order.targetFleet = none(FleetId)
+      logDebug(LogCategory.lcAI, &"    → HOLD at {fleet.location} (Act 3+: Defensive posture)")
+      result.add(order)
 
 proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGameState,
                                 target: SystemId, turn: int) =
