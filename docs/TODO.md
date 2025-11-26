@@ -62,14 +62,20 @@
   - ⏳ **Future:** Allow CST tech to upgrade dock capacity in spaceports and shipyards
   - ⏳ **Future:** Create integration tests for construction queue system
   - **Impact:** Fixed scout production bottleneck, enabled proper MOEA budget allocation, multi-build per colony working
+- ✅ **Comprehensive Diagnostic Metrics - COMPLETE (2025-11-26)**
+  - Expanded diagnostics from 55 to 130 columns (+136% coverage)
+  - Added 75 new metrics: tech levels, combat performance, diplomacy, espionage, capacity violations
+  - Key discovery: CST never reaches level 10 (explains zero Planet-Breakers)
+  - Files: `tests/balance/diagnostics.nim` (complete rewrite)
+  - **Impact:** Full visibility into game state for unknown-unknown detection
 - 🔄 **Unknown-Unknowns Testing Infrastructure - IN PROGRESS (2025-11-25)**
   - ✅ Documented "Stale Binary" meta-bug discovery (4 hours lost to cached binary)
   - ✅ Added logging rules to CLAUDE_CONTEXT.md (use std/logging not echo)
   - ✅ Added unknown-unknowns testing rules to CLAUDE_CONTEXT.md
-  - 🔄 Enhanced diagnostics with comprehensive metrics (partial implementation)
+  - ✅ Enhanced diagnostics with comprehensive metrics (COMPLETE - see above)
   - ⏳ Fix test script to force recompile (prevent stale binaries)
   - ⏳ Implement std/logging in engine (replace echo statements)
-  - ⏳ Run fresh 100-game validation test
+  - ⏳ Run fresh 100-game validation test with new diagnostics
   - **Impact:** Prevents testing infrastructure bugs, catches AI failures immediately
 - ✅ **Persistent Fleet Orders + Intelligence Bug Fix - COMPLETE (2025-11-25)**
   - Implemented persistent fleet order system (state.fleetOrders table)
