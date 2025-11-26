@@ -292,46 +292,9 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
 # =============================================================================
 # Travel Time & ETA Calculations
 # =============================================================================
+# NOTE: These functions have been moved to src/engine/starmap.nim
+# They are now available to both AI and human players via the engine
+# Re-export them here for backwards compatibility
 
-proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,
-                   fleet: Fleet): Option[int] =
-  ## Calculate estimated turns for fleet to reach target system
-  ## Returns none if target is unreachable
-  ##
-  ## Uses conservative estimate: assumes 1 jump per turn (enemy/neutral territory)
-  ## Actual travel may be faster if using major lanes through friendly space
-  ##
-  ## RESPECTS FOG-OF-WAR: Uses pathfinding with fleet's lane access rules
-
-  if fromSystem == toSystem:
-    return some(0)  # Already there
-
-  let path = findPath(starMap, fromSystem, toSystem, fleet)
-  if not path.found:
-    return none(int)  # Unreachable
-
-  # PathResult.totalCost is in movement points (lane weights)
-  # Major lanes: weight 1
-  # Minor lanes: weight 2
-  # Restricted lanes: weight 3
-  #
-  # Conservative estimate: 1 jump per turn minimum
-  # This accounts for enemy territory, unknown lane types, etc.
-  let estimatedTurns = max(1, int(path.totalCost))
-
-  return some(estimatedTurns)
-
-proc calculateMultiFleetETA*(starMap: StarMap, assemblyPoint: SystemId,
-                              fleets: seq[Fleet]): Option[int] =
-  ## Calculate when all fleets can reach assembly point
-  ## Returns the maximum ETA (when the slowest fleet arrives)
-  ## Returns none if any fleet cannot reach the assembly point
-
-  var maxETA = 0
-  for fleet in fleets:
-    let eta = calculateETA(starMap, fleet.location, assemblyPoint, fleet)
-    if eta.isNone:
-      return none(int)  # At least one fleet can't reach assembly
-    maxETA = max(maxETA, eta.get())
-
-  return some(maxETA)
+export starmap.calculateETA
+export starmap.calculateMultiFleetETA
