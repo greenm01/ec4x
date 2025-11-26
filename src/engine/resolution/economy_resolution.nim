@@ -1398,6 +1398,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
       if houseToUpdate.negativePrestigeTurns >= gameplayConfig.elimination.defensive_collapse_turns:
         houseToUpdate.eliminated = true
+        houseToUpdate.status = HouseStatus.DefensiveCollapse
         events.add(GameEvent(
           eventType: GameEventType.HouseEliminated,
           houseId: houseId,
