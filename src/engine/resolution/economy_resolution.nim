@@ -1929,8 +1929,6 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             )
 
             colony.fighterSquadrons.add(fighterSq)
-            state.colonies[systemId] = colony
-
             echo "      Commissioned fighter squadron ", fighterSq.id, " at ", systemId
           elif isSpaceLift:
             # Create SpaceLiftShip (individual unit, not squadron)
@@ -2085,6 +2083,15 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       colony.underConstruction = some(remainingProjects[0])
     else:
       colony.underConstruction = none(econ_types.ConstructionProject)
+
+    # CRITICAL: Write back colony to persist ALL modifications in this loop iteration
+    # Even with mpairs, nested seq/field modifications require explicit write-back:
+    # - fighterSquadrons (commissioned fighters)
+    # - unassignedSpaceLiftShips (commissioned transports/ETACs)
+    # - population (ETAC PTU extraction cost)
+    # - constructionQueue (completed/remaining projects)
+    # - underConstruction (legacy field)
+    state.colonies[systemId] = colony
 
   # Process research allocation
   # Per economy.md:4.0: Players allocate PP to research each turn
