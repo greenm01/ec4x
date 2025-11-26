@@ -11,8 +11,10 @@ import std/[options, tables]
 import types
 import ../../common/types/[core, units]
 import ../config/[construction_config, facilities_config]
+import ../gamestate  # For unified Colony type
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
+# NOTE: Don't export gamestate.Colony to avoid ambiguity with gamestate's own export
 
 ## Ship Construction Costs and Times (reference.md:9.1 and 9.1.1)
 

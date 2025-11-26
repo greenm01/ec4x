@@ -15,6 +15,7 @@ import std/math
 import types
 import ../../common/types/planets
 import ../config/economy_config
+import ../gamestate  # For unified Colony type
 
 export types.ProductionOutput
 

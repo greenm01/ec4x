@@ -2,12 +2,12 @@
 ##
 ## Main entry point for generating complete order packets from RBA AI
 
-import std/[tables, options, random, sequtils]
+import std/[tables, options, random, sequtils, sets, strformat]
 import ../../common/types/[core, tech, units]
-import ../../engine/[gamestate, fog_of_war, orders]
+import ../../engine/[gamestate, fog_of_war, orders, logger]
 import ../../engine/research/types as res_types
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
-import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence]
+import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics]
 
 export core, orders
 
@@ -96,6 +96,19 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   )
 
   let p = controller.personality
+  let currentAct = ai_types.getCurrentGameAct(filtered.turn)
+
+  # ==========================================================================
+  # LOGISTICS (Asset Lifecycle Management) - CALLED FIRST!
+  # ==========================================================================
+  # Philosophy: Use what you have before building more
+  # Logistics handles: cargo loading, PTU transfers, fleet rebalancing, mothballing
+  let logisticsOrders = logistics.generateLogisticsOrders(controller, filtered, currentAct)
+
+  result.cargoManagement = logisticsOrders.cargo
+  result.populationTransfers = logisticsOrders.population
+  result.squadronManagement = logisticsOrders.squadrons
+  # NOTE: Fleet orders from logistics will be added AFTER tactical orders to avoid conflicts
 
   # ==========================================================================
   # STRATEGIC PLANNING
@@ -110,7 +123,6 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # BUILD ORDERS (Using RBA Budget Module)
   # ==========================================================================
   # Generate build orders using multi-objective budget allocation
-  let currentAct = ai_types.getCurrentGameAct(filtered.turn)
   let myColonies = getOwnedColonies(filtered, controller.houseId)
 
   # Calculate context flags for build decision-making
@@ -156,16 +168,20 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     else:
       false  # Zero colonization in Act 3-4 (conquest only)
 
-  # Scouts: For spying on known enemy colonies (not exploration - any ship can explore!)
+  # Scouts: For intelligence gathering and ELI mesh
+  # CRITICAL FIX: Build scouts BEFORE we find enemies (not after!)
+  # Scouts are needed to FIND enemy colonies, so can't wait for knownEnemyColonies > 0
   let needScouts = case currentAct
     of GameAct.Act1_LandGrab:
-      scoutCount < 2  # Just 2 scouts for opportunistic intel in Act 1
+      scoutCount < 3  # 3 scouts minimum for exploration & early intel
     of GameAct.Act2_RisingTensions:
-      scoutCount < min(knownEnemyColonies * 2, 8)  # 2 scouts per enemy colony (spy missions)
+      scoutCount < 6  # 6 scouts for intelligence network (ELI mesh preparation)
     else:
-      scoutCount < min(myColonies.len, 12)  # Act 3+: scouts for ELI mesh + intel
+      scoutCount < 8  # Act 3+: 8 scouts for full ELI mesh + espionage support
 
-  let needDefenses = cst >= 3  # Ground batteries (CST 1) and starbases (CST 3)
+  # CRITICAL FIX: Build defenses earlier! Ground batteries need CST 1, not CST 3
+  # Old logic required CST 3, leaving 59% of colonies undefended
+  let needDefenses = cst >= 1  # Ground batteries at CST 1, starbases at CST 3
   let needFighters = cst >= 3 and p.aggression > 0.3  # Fighter squadrons require CST 3
   let needCarriers = cst >= 3 and needFighters  # Carriers support fighters (CST 3)
   let needTransports = cst >= 1 and p.aggression > 0.4  # Troop transports (CST 1)
@@ -202,7 +218,25 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # FLEET ORDERS (Using RBA Tactical Module)
   # ==========================================================================
-  result.fleetOrders = generateFleetOrders(controller, filtered, rng)
+  # Build set of fleets that logistics wants to manage (lifecycle operations)
+  var logisticsControlledFleets: HashSet[FleetId]
+  for order in logisticsOrders.fleetOrders:
+    logisticsControlledFleets.incl(order.fleetId)
+
+  # Generate tactical fleet orders (tactical will check logistics control)
+  # TODO: Pass logisticsControlledFleets to tactical so it can skip those fleets
+  let tacticalOrders = generateFleetOrders(controller, filtered, rng)
+
+  # Add tactical orders first (active operations take priority)
+  for order in tacticalOrders:
+    # Skip if logistics is managing this fleet (Reserve/Mothball/Salvage/Reactivate)
+    if order.fleetId notin logisticsControlledFleets:
+      result.fleetOrders.add(order)
+    else:
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Fleet {order.fleetId}: Logistics override (lifecycle management)")
+
+  # Add logistics lifecycle orders (for fleets tactical doesn't control)
+  result.fleetOrders.add(logisticsOrders.fleetOrders)
 
   # ==========================================================================
   # DIPLOMATIC ACTIONS (Using RBA Diplomacy Module)
@@ -236,13 +270,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # ECONOMIC ORDERS (Using RBA Economic Module)
   # ==========================================================================
-  result.populationTransfers = generatePopulationTransfers(controller, filtered, rng)
+  # NOTE: populationTransfers already handled by logistics module above
+  # NOTE: squadronManagement already handled by logistics module above
+  # NOTE: cargoManagement already handled by logistics module above
   result.terraformOrders = generateTerraformOrders(controller, filtered, rng)
-
-  # ==========================================================================
-  # SQUADRON & CARGO MANAGEMENT
-  # ==========================================================================
-  # Leave empty - engine auto-commissions squadrons
-  # AI can add manual management here if needed for advanced tactics
-  result.squadronManagement = @[]
-  result.cargoManagement = @[]

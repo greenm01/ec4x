@@ -10,88 +10,16 @@ import ./controller_types
 export core, orders
 
 proc generatePopulationTransfers*(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[PopulationTransferOrder] =
-  ## Generate Space Guild population transfer orders
-  ## Per config/population.toml and economy.md:3.7
+  ## DEPRECATED: Population transfers moved to logistics.nim
+  ## See: /docs/ai/RBA_MODULE_OVERLAP_ANALYSIS.md Section 1
   ##
-  ## Strategy:
-  ## - Transfer from mature colonies (PU > 150) to new/growing colonies (PU < 100)
-  ## - Prioritize high-value destinations (good resources, strategic location)
-  ## - Respect cost scaling (4-15 PP/PTU + 20% per jump)
+  ## The logistics module now handles population transfers with:
+  ## - Intel-based threat assessment
+  ## - Better frontier scoring using confidence levels
+  ## - Consistency with other asset management decisions
+  ##
+  ## This stub kept for API compatibility only.
   result = @[]
-  let p = controller.personality
-  let house = filtered.ownHouse
-
-  # Economic and expansion-focused AIs use population transfers
-  # Lower threshold to 0.3 so more AIs use this feature
-  if p.economicFocus < 0.3 or p.expansionDrive < 0.3:
-    return result
-
-  # Need minimum treasury (transfers are expensive)
-  if house.treasury < 400:
-    return result
-
-  # Find mature source colonies and growing destinations
-  type ColonyInfo = tuple[systemId: SystemId, pop: int, value: float]
-  var sources: seq[ColonyInfo] = @[]
-  var destinations: seq[ColonyInfo] = @[]
-
-  for colony in filtered.ownColonies:
-    if colony.owner != controller.houseId:
-      continue
-
-    # Mature colonies as sources (PU > 150 provides good PTU without hurting production)
-    if colony.population > 150:
-      sources.add((systemId: colony.systemId, pop: colony.population, value: 0.0))
-
-    # Growing colonies as destinations (PU < 100 benefits most from transfers)
-    elif colony.population > 0 and colony.population < 100:
-      # Calculate colony value (prioritize good resources and high infrastructure)
-      # ownColonies are full Colony objects, so fields are direct (not Option)
-      var value = float(colony.infrastructure) * 2.0  # Infrastructure is key
-
-      # Bonus for good resources
-      case colony.resources
-      of ResourceRating.VeryRich: value *= 2.0
-      of ResourceRating.Rich: value *= 1.5
-      of ResourceRating.Abundant: value *= 1.2
-      else: discard
-
-      destinations.add((systemId: colony.systemId, pop: colony.population, value: value))
-
-  if sources.len == 0 or destinations.len == 0:
-    return result
-
-  # Sort sources by population (highest first - can spare more)
-  sources.sort(proc(a, b: ColonyInfo): int = b.pop - a.pop)
-
-  # Sort destinations by value (highest first - prioritize valuable colonies)
-  destinations.sort(proc(a, b: ColonyInfo): int =
-    if b.value > a.value: 1
-    elif b.value < a.value: -1
-    else: 0
-  )
-
-  # Transfer from highest pop source to highest value destination
-  # Calculate PTU amount based on source capacity and destination need
-  let sourcePop = sources[0].pop
-  let destPop = destinations[0].pop
-
-  # Transfer 2-5 PTU depending on source size and destination need
-  var ptuAmount = 2  # Base amount
-  if sourcePop > 300:
-    ptuAmount = 5  # Large source can give more
-  elif sourcePop > 200:
-    ptuAmount = 3
-
-  # Reduce if destination is already growing well
-  if destPop > 50:
-    ptuAmount = max(1, ptuAmount - 1)
-
-  result.add(PopulationTransferOrder(
-    sourceColony: sources[0].systemId,
-    destColony: destinations[0].systemId,
-    ptuAmount: ptuAmount
-  ))
 
 proc generateTerraformOrders*(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[TerraformOrder] =
   ## Generate terraforming upgrade orders for planet class improvements
