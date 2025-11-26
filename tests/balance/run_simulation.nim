@@ -4,7 +4,8 @@
 ## and generates balance analysis report
 
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
-import game_setup, ai_controller, diagnostics
+import game_setup, diagnostics
+import ../../src/ai/rba/player as ai
 import ../../src/engine/[gamestate, resolve, orders, fog_of_war]
 import ../../src/common/types/core
 import ../../src/client/reports/turn_report
@@ -78,7 +79,7 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       var controller = controllers[i]
       # Apply fog-of-war filtering - AI only sees what it should
       let filteredView = createFogOfWarView(game, controller.houseId)
-      let orders = generateAIOrders(controller, filteredView, rng)
+      let orders = ai.generateAIOrders(controller, filteredView, rng)
       ordersTable[controller.houseId] = orders
       controllers[i] = controller
 

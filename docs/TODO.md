@@ -1,12 +1,29 @@
 # EC4X TODO & Implementation Status
 
-**Last Updated:** 2025-11-24
+**Last Updated:** 2025-11-26
 **Project Phase:** Phase 3 - AI Neural Network Training Pipeline
 **Test Coverage:** 101 integration tests passing
 **Engine Status:** 100% functional, production-ready
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ⚠️ **RBA AI Architecture Refactoring - PARTIALLY COMPLETE (2025-11-26)**
+  - ✅ **CRITICAL FIX:** Eliminated test harness that was blocking Planet-Breaker deployment
+  - ✅ Root cause: Test harness called non-existent `generateBuildOrdersWithBudget()` function
+  - ✅ Solution: Tests now use production RBA modules directly (no middleman)
+  - ✅ Created `src/ai/rba/espionage.nim` - Strategic espionage decision-making (COMPLETE)
+  - ✅ Created `src/ai/rba/economic.nim` - Population transfers & terraforming (COMPLETE)
+  - ✅ Created `src/ai/rba/orders.nim` - Main RBA coordinator (PARTIAL - see below)
+  - ✅ Build orders now properly call budget module (includes Planet-Breakers CST 10)
+  - ✅ Research allocation working (ERP/SRP/TRP based on personality)
+  - ✅ Espionage fully functional (offensive + defensive)
+  - ✅ Economic orders working (population, terraforming)
+  - ❌ **TODO:** Fleet order generation not implemented (fleets idle)
+  - ❌ **TODO:** Diplomatic action generation not implemented
+  - 📄 **See:** `docs/AI_RBA_REFACTORING_COMPLETE.md` for full details
+  - 📄 **See:** `docs/TODO_FLEET_ORDERS.md` for implementation guide
+  - **Impact:** Planet-Breakers will deploy once fleet orders enable Act 3-4 invasions
+  - **Next Step:** Implement fleet order generation to test Planet-Breaker deployment
 - ✅ **AI Travel Time Awareness + Comprehensive Test Suite - COMPLETE (2025-11-25)**
   - ✅ Implemented ETA calculation using engine's A* pathfinding (calculateETA, calculateMultiFleetETA)
   - ✅ Time-aware invasion planning: selects fleets by ETA, rejects operations >8 turns away

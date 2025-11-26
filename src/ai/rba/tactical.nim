@@ -3,14 +3,15 @@
 ## Handles fleet coordination, combat assessment, and tactical planning
 ## Respects fog-of-war - uses only visible tactical information
 
-import std/[tables, options, algorithm, sequtils, strformat]
+import std/[tables, options, algorithm, sequtils, strformat, random]
 import ../common/types
-import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap, logger]
+import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap, logger, orders]
 import ../../engine/diplomacy/types as dip_types
 import ../../engine/intelligence/types as intel_types
 import ../../common/types/[core, planets]
 import ./controller_types
-import ./intelligence  # For isSystemColonized
+import ./intelligence  # For isSystemColonized, getColony
+import ./diplomacy  # For getOwnedFleets
 
 # =============================================================================
 # Helper Functions
@@ -512,6 +513,91 @@ proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState
 
     if not inOperation and fleet.combatStrength() > 0:
       result += 1
+
+proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): seq[FleetOrder] =
+  ## Generate fleet orders for all owned fleets
+  result = @[]
+
+  let myFleets = getOwnedFleets(filtered, controller.houseId)
+
+  # Update operation status
+  updateOperationStatus(controller, filtered)
+  removeCompletedOperations(controller, filtered.turn)
+
+  for fleet in myFleets:
+    var order: FleetOrder
+    order.fleetId = fleet.id
+    order.priority = 1
+
+    # Priority 1: Hold at colony to pick up unassigned squadrons
+    if isSystemColonized(filtered, fleet.location):
+      let colonyOpt = getColony(filtered, fleet.location)
+      if colonyOpt.isSome:
+        let colony = colonyOpt.get()
+        if colony.owner == controller.houseId and colony.unassignedSquadrons.len > 0:
+          order.orderType = FleetOrderType.Hold
+          order.targetSystem = some(fleet.location)
+          order.targetFleet = none(FleetId)
+          result.add(order)
+          continue
+
+    # Priority 2: Coordinated operations
+    var inOperation = false
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        inOperation = true
+        if fleet.location != op.assemblyPoint:
+          # Move to assembly point
+          order.orderType = FleetOrderType.Rendezvous
+          order.targetSystem = some(op.assemblyPoint)
+          order.targetFleet = none(FleetId)
+        elif shouldExecuteOperation(controller, op, filtered.turn):
+          # Execute operation
+          case op.operationType
+          of OperationType.Invasion:
+            order.orderType = FleetOrderType.Invade
+            order.targetSystem = some(op.targetSystem)
+          of OperationType.Raid:
+            order.orderType = FleetOrderType.Blitz
+            order.targetSystem = some(op.targetSystem)
+          of OperationType.Blockade:
+            order.orderType = FleetOrderType.BlockadePlanet
+            order.targetSystem = some(op.targetSystem)
+          of OperationType.Defense:
+            order.orderType = FleetOrderType.Patrol
+            order.targetSystem = some(op.targetSystem)
+          order.targetFleet = none(FleetId)
+        else:
+          # Wait at assembly point
+          order.orderType = FleetOrderType.Hold
+          order.targetSystem = some(fleet.location)
+          order.targetFleet = none(FleetId)
+        result.add(order)
+        break
+
+    if inOperation:
+      continue
+
+    # Priority 3: Strategic reserve threat response
+    let threats = respondToThreats(controller, filtered)
+    var respondingToThreat = false
+    for threat in threats:
+      if threat.reserveFleet == fleet.id:
+        order.orderType = FleetOrderType.Move
+        order.targetSystem = some(threat.threatSystem)
+        order.targetFleet = none(FleetId)
+        result.add(order)
+        respondingToThreat = true
+        break
+
+    if respondingToThreat:
+      continue
+
+    # Default: Hold position
+    order.orderType = FleetOrderType.Hold
+    order.targetSystem = some(fleet.location)
+    order.targetFleet = none(FleetId)
+    result.add(order)
 
 proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGameState,
                                 target: SystemId, turn: int) =
