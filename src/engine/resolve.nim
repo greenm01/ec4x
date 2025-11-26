@@ -9,7 +9,7 @@
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets]
 import ../common/[hex, types/core, types/combat]
-import gamestate, orders, fleet, squadron, ai_special_modes
+import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
 import research/[types as res_types_research]
@@ -699,3 +699,8 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
   when not defined(release):
     echo "  [COMMAND PHASE FLEET ORDER PROCESSING - END] Processed ", processCount, " orders total"
+
+  # Execute standing orders for fleets without explicit orders
+  # This happens AFTER explicit orders are processed
+  # Standing orders provide persistent behaviors (patrol, auto-colonize, etc.)
+  executeStandingOrders(state, state.turn)
