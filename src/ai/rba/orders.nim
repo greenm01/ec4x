@@ -82,6 +82,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   result = OrderPacket(
     houseId: controller.houseId,
     turn: filtered.turn,
+    treasury: filtered.ownHouse.treasury,  # Capture treasury at AI planning time
     fleetOrders: @[],
     buildOrders: @[],
     researchAllocation: generateResearchAllocation(controller, filtered),

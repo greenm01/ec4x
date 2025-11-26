@@ -2,31 +2,30 @@
 BUILD QUEUE BUG - INCOMPLETE FIX (2025-11-26)
 ================================================================================
 
-CURRENT STATUS: 5/19 ship types building, 14 still broken
+CURRENT STATUS: 7/19 ship types building, 12 still broken (TREASURY FIX APPLIED)
 
-WORKING SHIP TYPES (5):
-  ✅ Destroyer
-  ✅ LightCruiser
-  ✅ Corvette
-  ✅ ETAC
-  ✅ GroundBattery (building)
+WORKING SHIP TYPES (7):
+  ✅ Scout (FIXED - 617 built!)
+  ✅ Frigate (FIXED - 103 built!)
+  ✅ Destroyer (493 built)
+  ✅ Corvette (127 built)
+  ✅ Cruiser (FIXED - 711 built!)
+  ✅ LightCruiser (614 built)
+  ✅ ETAC (3199 built)
 
-BROKEN SHIP TYPES (14):
-  ❌ Scout (CRITICAL - breaks intelligence system)
-  ❌ Frigate
-  ❌ Cruiser
-  ❌ HeavyCruiser
-  ❌ Battlecruiser
-  ❌ Battleship
-  ❌ Dreadnought
-  ❌ SuperDreadnought
-  ❌ Fighter
-  ❌ Raider
-  ❌ Carrier
-  ❌ SuperCarrier
-  ❌ TroopTransport
-  ❌ PlanetBreaker
-  ❌ Starbase
+BROKEN SHIP TYPES (12):
+  ❌ HeavyCruiser (CST 2+ required - not ordered by RBA?)
+  ❌ Battlecruiser (CST 3+ required - not ordered by RBA?)
+  ❌ Battleship (CST 4+ required - not ordered by RBA?)
+  ❌ Dreadnought (CST 5+ required - not ordered by RBA?)
+  ❌ SuperDreadnought (CST 6+ required - not ordered by RBA?)
+  ❌ Fighter (not ordered by RBA?)
+  ❌ Raider (not ordered by RBA?)
+  ❌ Carrier (not ordered by RBA?)
+  ❌ SuperCarrier (not ordered by RBA?)
+  ❌ TroopTransport (not ordered by RBA?)
+  ❌ PlanetBreaker (not ordered by RBA?)
+  ❌ Starbase (not ordered by RBA?)
 
 ================================================================================
 INVESTIGATION HISTORY
