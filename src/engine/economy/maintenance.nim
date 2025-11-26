@@ -14,7 +14,7 @@ import ../config/[ships_config, construction_config, facilities_config, ground_u
 import ../squadron, ../gamestate, ../fleet
 
 export types.MaintenanceReport
-export gamestate.Colony
+# NOTE: Don't export Colony to avoid ambiguity - importers should use gamestate directly
 export fleet.FleetStatus
 
 ## Ship Maintenance Costs (economy.md:3.9)
@@ -144,7 +144,7 @@ proc calculateRepairCost*(damage: float): int =
   ## TODO: Define proper repair cost formula
   return int(damage * 100.0)
 
-proc applyRepair*(colony: var types.Colony, repairPoints: int): float =
+proc applyRepair*(colony: var Colony, repairPoints: int): float =
   ## Apply repair points to damaged infrastructure
   ## Returns amount of damage repaired
   if colony.infrastructureDamage <= 0.0:
@@ -161,7 +161,7 @@ proc applyRepair*(colony: var types.Colony, repairPoints: int): float =
 
 ## Maintenance Shortfall (economy.md:3.11)
 
-proc applyMaintenanceShortfall*(colony: var types.Colony, shortfall: int) =
+proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int) =
   ## Apply consequences of maintenance shortfall
   ## Per economy.md:3.11
   ##

@@ -10,7 +10,7 @@ import ../src/core
 # Test helper to create fleets
 proc testMilitaryFleet(count: int): Fleet =
   let squadrons = createFleetSquadrons(@[(ShipClass.Destroyer, count)], 1, "test", 0)
-  newFleet(squadrons, "test-fleet", "test", 0)
+  newFleet(squadrons, @[], "test-fleet", "test", 0)
 
 suite "Hex Coordinate Tests":
   test "hex creation and basic properties":

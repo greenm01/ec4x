@@ -159,28 +159,25 @@ proc generateEspionageAction*(controller: AIController, filtered: FilteredGameSt
       targetSystem: none(SystemId)
     ))
 
-  # Check if we have EBP for offensive operations (min 2 for low-impact sabotage)
-  if house.espionageBudget.ebpPoints < 2:
-    return none(esp_types.EspionageAttempt)
+  # CRITICAL FIX: Don't gate espionage on EBP - let the operation selection handle costs
+  # The old check (< 2 EBP) prevented ANY espionage from happening
+  # Now: Always try espionage if we have scouts, let selectEspionageOperation pick affordable ops
 
   # CRITICAL: Don't do espionage if prestige is critically low (collapsing)
   # Detection costs -2 prestige. Only block if truly desperate (< 0 = collapse)
   if house.prestige < 50:
     return none(esp_types.EspionageAttempt)
 
-  # Frequency control: AI strategy determines espionage investment
-  # Economic/Turtle: 2-3% EBP budget (infrequent)
-  # Balanced: 3-4% EBP budget (moderate)
-  # Aggressive: 1-2% EBP budget (minimal, focus on military)
-  # Espionage strategy: 4-5% EBP budget (frequent)
+  # Frequency control: AI strategy determines espionage frequency
+  # INCREASED ALL RATES - espionage was too rare (0 missions observed!)
   let espionageChance = if p.riskTolerance > 0.6 and p.economicFocus < 0.5:
-    0.5  # Espionage-focused AI (50% chance per turn)
+    0.7  # Espionage-focused AI (70% chance per turn)
   elif p.economicFocus > 0.7:
-    0.2  # Economic AI (20% chance, minimal espionage)
+    0.4  # Economic AI (40% chance)
   elif p.aggression > 0.7:
-    0.15  # Aggressive AI (15% chance, focus on military instead)
+    0.3  # Aggressive AI (30% chance, focus on military instead)
   else:
-    0.3  # Balanced AI (30% chance)
+    0.5  # Balanced AI (50% chance)
 
   if rng.rand(1.0) > espionageChance:
     return none(esp_types.EspionageAttempt)

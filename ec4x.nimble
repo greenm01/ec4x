@@ -171,8 +171,38 @@ task testBalanceAll4Acts, "Test all 4 acts sequentially (7, 15, 25, 30 turns)":
 task cleanBalance, "Clean balance test artifacts":
   echo "Cleaning balance test artifacts..."
   exec "rm -f tests/balance/run_simulation"
-  exec "rm -rf balance_results/*"
+  exec "rm -rf balance_results/diagnostics/*.csv"
+  exec "rm -f balance_results/diagnostics_combined.parquet"
+  exec "rm -f balance_results/summary.json"
   echo "Balance test artifacts cleaned!"
+  echo "Note: Restic archives preserved in ~/.ec4x_test_data"
+
+task cleanBalanceAll, "Clean ALL balance data including restic archives":
+  echo "Cleaning ALL balance test data (including restic archives)..."
+  exec "rm -f tests/balance/run_simulation"
+  exec "rm -rf balance_results/*"
+  exec "rm -rf ~/.ec4x_test_data"
+  echo "All balance data cleaned (including archived diagnostics)!"
+  echo "⚠ Warning: This deletes historical test data permanently"
+
+task cleanDiagnostics, "Clean diagnostic CSVs only (keeps Parquet/summary)":
+  echo "Cleaning diagnostic CSV files..."
+  exec "rm -rf balance_results/diagnostics/*.csv"
+  echo "Diagnostic CSV files cleaned!"
+  echo "Kept: summary.json and diagnostics_combined.parquet"
+
+task listArchives, "List all archived diagnostic runs":
+  echo "Listing archived diagnostic runs..."
+  exec "python3 tools/ai_tuning/manage_archives.py list"
+
+task archiveStats, "Show restic archive statistics":
+  echo "Showing archive statistics..."
+  exec "python3 tools/ai_tuning/manage_archives.py stats"
+
+task pruneArchives, "Prune old archives (keep last 10)":
+  echo "Pruning old diagnostic archives..."
+  exec "python3 tools/ai_tuning/manage_archives.py prune 10"
+  echo "Note: To keep different number: python3 tools/ai_tuning/manage_archives.py prune <N>"
 
 # Advanced Balance Testing Tasks
 
@@ -192,6 +222,9 @@ task testUnknownUnknowns, "Unknown-unknowns detection (200 games, full diagnosti
   exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 200 30 16"
   echo "\nRunning automatic gap analysis..."
   exec "python3 tools/ai_tuning/analyze_phase2_gaps.py"
+  echo "\nGenerating AI-friendly summary..."
+  exec "python3 tools/ai_tuning/generate_summary.py --format json --output balance_results/summary.json"
+  echo "Summary written to balance_results/summary.json"
   echo "\nUnknown-unknowns detection completed!"
   echo "Review analysis output above for anomalies and red flags."
 
@@ -202,6 +235,19 @@ task analyzeDiagnostics, "Analyze diagnostic CSV files for Phase 2 gaps":
 task analyzeProgression, "Analyze 4-act game progression":
   echo "Analyzing 4-act progression..."
   exec "python3 tools/ai_tuning/analyze_4act_progression.py"
+
+task summarizeDiagnostics, "Generate AI-friendly JSON summary (minimal tokens)":
+  echo "Generating AI-friendly diagnostic summary..."
+  exec "python3 tools/ai_tuning/generate_summary.py --format json --output balance_results/summary.json"
+  echo "Summary written to balance_results/summary.json"
+  echo ""
+  echo "Human-readable version:"
+  exec "python3 tools/ai_tuning/generate_summary.py --format human"
+
+task convertToParquet, "Convert CSV diagnostics to Parquet format":
+  echo "Converting diagnostic CSVs to Parquet..."
+  exec "python3 tools/ai_tuning/convert_to_parquet.py"
+  echo "Conversion complete! Use Polars to analyze balance_results/diagnostics_combined.parquet"
 
 task testMapSizes, "Test balance across different map sizes":
   echo "Testing different map sizes (4, 8, 12 players)..."

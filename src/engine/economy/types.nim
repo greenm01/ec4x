@@ -33,33 +33,6 @@ type
     units*: int                 # Number of IU
     investmentCost*: int        # Cost to add next IU (varies by % of PU)
 
-  Colony* = object
-    ## Economic colony data (operations.md)
-    ## Note: Full colony may have additional fields in gamestate.nim
-    systemId*: SystemId
-    owner*: HouseId
-
-    # Population
-    populationUnits*: int       # PU: Economic production measure
-    populationTransferUnits*: int  # PTU: For colonization (~50k souls each)
-
-    # Production capacity
-    industrial*: IndustrialUnits   # IU: Manufacturing capacity
-
-    # Planet characteristics
-    planetClass*: PlanetClass   # Eden, Lush, Benign, Harsh, etc.
-    resources*: ResourceRating  # Very Poor, Poor, Abundant, Rich, Very Rich
-
-    # Economic state
-    grossOutput*: int           # GCO: Cached for current turn
-    taxRate*: int               # 0-100 (usually house-wide, but can override)
-
-    # Construction
-    underConstruction*: Option[ConstructionProject]
-
-    # Damage state
-    infrastructureDamage*: float  # 0.0-1.0, from bombardment
-
   ## Construction
 
   ConstructionType* {.pure.} = enum
@@ -176,20 +149,6 @@ proc calculatePU*(ptu: int): int =
   ## For now, simple linear approximation
   result = ptu
 
-proc initColony*(systemId: SystemId, owner: HouseId,
-                planetClass: PlanetClass, resources: ResourceRating,
-                startingPU: int): Colony =
-  ## Initialize a new colony with starting values
-  result = Colony(
-    systemId: systemId,
-    owner: owner,
-    populationUnits: startingPU,
-    populationTransferUnits: calculatePTU(startingPU),
-    industrial: IndustrialUnits(units: 0, investmentCost: BASE_IU_COST),
-    planetClass: planetClass,
-    resources: resources,
-    grossOutput: 0,
-    taxRate: 50,  # Default 50%
-    underConstruction: none(ConstructionProject),
-    infrastructureDamage: 0.0
-  )
+# initColony has been moved to colonization/engine.nim as initNewColony
+# This creates the full unified Colony type with all gamestate fields initialized
+# See colonization/engine.nim:47 for the new implementation

@@ -9,13 +9,15 @@
 ## - Awards +5 prestige for establishing colony
 
 import std/[options]
-import ../../common/types/[core, planets]
+import ../../common/types/[core, planets, units]
 import ../prestige
 import ../config/[prestige_config, prestige_multiplier]
 import ../economy/types as econ_types
+import ../gamestate  # For unified Colony type
 
 export core.HouseId, core.SystemId
 export prestige.PrestigeEvent
+# NOTE: Don't export gamestate.Colony to avoid ambiguity
 
 type
   ColonizationAttempt* = object
@@ -29,18 +31,77 @@ type
     ## Result of colonization attempt
     success*: bool
     reason*: string
-    newColony*: Option[econ_types.Colony]
+    newColony*: Option[Colony]  # Now uses unified Colony from gamestate
     prestigeEvent*: Option[PrestigeEvent]
 
 ## Colonization
 
-proc canColonize*(systemId: SystemId, existingColonies: seq[econ_types.Colony]): bool =
+proc canColonize*(systemId: SystemId, existingColonies: seq[Colony]): bool =
   ## Check if system can be colonized (no existing colony)
   ## Per operations.md:6.2.13
   for colony in existingColonies:
     if colony.systemId == systemId:
       return false
   return true
+
+proc initNewColony*(systemId: SystemId, owner: HouseId,
+                   planetClass: PlanetClass, resources: ResourceRating,
+                   startingPTU: int): Colony =
+  ## Initialize a new colony with all required fields
+  ## Replaces econ_types.initColony with full gamestate Colony initialization
+  result = Colony(
+    systemId: systemId,
+    owner: owner,
+
+    # Population (multiple representations)
+    population: startingPTU,  # Display field in millions
+    souls: startingPTU * 50_000,  # Exact count (~50k per PTU)
+    populationUnits: startingPTU,  # PU for economic calculations
+    populationTransferUnits: startingPTU,  # PTU used for colonization
+
+    # Infrastructure
+    infrastructure: 1,  # New colonies start at Level I
+    industrial: econ_types.IndustrialUnits(units: 0, investmentCost: econ_types.BASE_IU_COST),
+
+    # Planet characteristics
+    planetClass: planetClass,
+    resources: resources,
+    buildings: @[],
+
+    # Economic state
+    production: 0,  # Will be calculated in economy phase
+    grossOutput: 0,  # Will be calculated in economy phase
+    taxRate: 50,  # Default 50% tax rate
+    infrastructureDamage: 0.0,
+
+    # Construction
+    underConstruction: none(econ_types.ConstructionProject),
+    constructionQueue: @[],
+    activeTerraforming: none(TerraformProject),
+
+    # Military assets (all empty for new colony)
+    unassignedSquadrons: @[],
+    unassignedSpaceLiftShips: @[],
+    autoAssignFleets: false,
+    fighterSquadrons: @[],
+    capacityViolation: CapacityViolation(active: false, violationType: "", turnsRemaining: 0, violationTurn: 0),
+    starbases: @[],
+
+    # Facilities (none initially)
+    spaceports: @[],
+    shipyards: @[],
+
+    # Ground defenses (none initially)
+    planetaryShieldLevel: 0,
+    groundBatteries: 0,
+    armies: 0,
+    marines: 0,
+
+    # Blockade status (not blockaded)
+    blockaded: false,
+    blockadedBy: @[],
+    blockadeTurns: 0
+  )
 
 proc establishColony*(houseId: HouseId, systemId: SystemId,
                      planetClass: PlanetClass, resources: ResourceRating,
@@ -50,8 +111,8 @@ proc establishColony*(houseId: HouseId, systemId: SystemId,
 
   let config = globalPrestigeConfig
 
-  # Create new colony
-  let colony = econ_types.initColony(
+  # Create new colony with full initialization
+  let colony = initNewColony(
     systemId,
     houseId,
     planetClass,
@@ -75,7 +136,7 @@ proc establishColony*(houseId: HouseId, systemId: SystemId,
   )
 
 proc attemptColonization*(attempt: ColonizationAttempt,
-                         existingColonies: seq[econ_types.Colony],
+                         existingColonies: seq[Colony],
                          planetClass: PlanetClass,
                          resources: ResourceRating): ColonizationResult =
   ## Attempt to colonize a system
@@ -86,7 +147,7 @@ proc attemptColonization*(attempt: ColonizationAttempt,
     return ColonizationResult(
       success: false,
       reason: "System already colonized",
-      newColony: none(econ_types.Colony),
+      newColony: none(Colony),
       prestigeEvent: none(PrestigeEvent)
     )
 
@@ -95,7 +156,7 @@ proc attemptColonization*(attempt: ColonizationAttempt,
     return ColonizationResult(
       success: false,
       reason: "Insufficient PTU (need at least 1)",
-      newColony: none(econ_types.Colony),
+      newColony: none(Colony),
       prestigeEvent: none(PrestigeEvent)
     )
 

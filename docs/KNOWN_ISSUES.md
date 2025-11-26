@@ -6,6 +6,64 @@ This document tracks known architectural limitations and design issues that affe
 
 ---
 
+## -2. Colony Type Duplication (DRY Violation)
+
+**Status:** ✅ **RESOLVED** (2025-11-26)
+**Discovered:** 2025-11-26 during codebase audit
+**Impact:** Technical debt, manual conversion code scattered across modules, risk of field initialization errors
+
+### Problem Description
+
+Two separate `Colony` types violated DRY principle:
+1. `engine/gamestate.nim:Colony` - Full colony (67+ fields)
+2. `engine/economy/types.nim:Colony` - Economic subset (13 fields)
+
+This created:
+- Field duplication (planetClass, resources, underConstruction in both)
+- Manual conversion code scattered across modules (3 instances in economy_resolution.nim)
+- Risk of field initialization errors (wrong mappings: population != PU, infrastructure != IU)
+- 3 places to update when adding fields
+
+### Solution Implemented
+
+**Type Unification:**
+- Unified into single `Colony` type in `gamestate.nim:67-106`
+- Added economic fields: `populationUnits`, `populationTransferUnits`, `industrial`, `grossOutput`, `taxRate`, `infrastructureDamage`
+- Removed duplicate Colony from `economy/types.nim`
+- Removed ConstructionProject alias from gamestate.nim (was causing ambiguous identifier errors)
+
+**Module Updates** (9 files modified):
+- `colonization/engine.nim` - Created comprehensive `initNewColony()` initializing all 67+ fields
+- `economy/construction.nim`, `production.nim`, `income.nim`, `maintenance.nim` - Added gamestate imports
+- `economy/engine.nim` - Updated function signatures and table initialization
+- `economy_resolution.nim` - Removed 3 instances of manual conversion code (lines 88-104, 984-999, 1784-1809)
+
+**Export Cleanup:**
+- Removed Colony exports from economy modules to prevent ambiguous identifier errors
+- Each module imports gamestate directly for Colony type
+
+### Results
+
+✅ **Compilation**: All code compiles successfully
+✅ **Diagnostics**: 50 diagnostic games completed with 0 errors
+✅ **Fog-of-war**: New economic fields properly hidden from enemies:
+  - Owners see full Colony with all fields via `FilteredGameState.ownColonies`
+  - Enemies see filtered VisibleColony without sensitive economic data
+
+### Benefits of Unification
+
+1. **DRY Compliance**: Colony definition in ONE place
+2. **Type Safety**: No manual conversion = no field mapping bugs
+3. **Maintainability**: Add field once, available everywhere
+4. **Correctness**: No more wrong mappings (old bugs: population != PU, infrastructure != IU)
+5. **Performance**: No conversion overhead
+
+### Related Documentation
+
+- `docs/ai/COLONY_TYPE_UNIFICATION.md` - Full implementation plan and migration checklist
+
+---
+
 ## -1. AI Early Game Paralysis
 
 **Status:** ✅ **RESOLVED** (2025-11-26, commits d8a7e12, 7d2849d)

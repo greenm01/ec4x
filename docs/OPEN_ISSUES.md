@@ -7,6 +7,85 @@ When an issue is fixed, check it off and update STATUS.md.
 
 ---
 
+## Config System - Type Duplications (DRY Violations)
+
+**Priority:** LOW (technical debt, not blocking)
+**Status:** 🟡 **Identified** - Needs investigation and cleanup
+**Discovered:** 2025-11-26 during type duplication audit
+
+### Problem Description
+
+Multiple config types have duplicate definitions - legacy `config.nim` vs modern `config/*.nim`:
+
+**Confirmed Duplicates:**
+- `EconomyConfig` - 2 definitions (config.nim:22 vs config/economy_config.nim:166)
+- `CombatConfig` - 2 definitions
+- `PrestigeConfig` - 2 definitions
+- `ConstructionConfig` - 2 definitions
+- `EspionageConfig` - 2 definitions
+- `PopulationConfig` - 2 definitions
+- Plus 9 more duplicate types
+
+**Pattern:**
+- **Legacy** (`config.nim`): Simple types with 6-8 fields, basic configuration
+- **Modern** (`config/*.nim`): Comprehensive types with nested configs, TOML-based
+
+### Impact
+
+- Technical debt (same as Colony duplication issue)
+- Potential confusion about which config to use
+- Risk of using wrong/outdated config values
+- Multiple places to update when changing config
+
+### Analysis Needed
+
+1. **Verify legacy config.nim is unused:**
+   - Only found references in backup files (`resolve.nim.backup`)
+   - No active imports detected
+   - May be safe to deprecate/remove
+
+2. **Document config system migration:**
+   - When did migration happen?
+   - Are there any remaining users of legacy config?
+   - What's the migration path for new code?
+
+3. **Check if duplicates are intentional:**
+   - Some may be different types with same name
+   - Verify no namespace collision issues
+
+### Proposed Solution
+
+**Phase 1: Investigation** (1 hour)
+1. Search for all imports of `config.nim` (excluding backups)
+2. Verify no active usage of legacy config types
+3. Document which config types are truly duplicated vs different namespaces
+
+**Phase 2: Cleanup** (1-2 hours)
+1. If config.nim is unused, deprecate it (add deprecation warning)
+2. Add note to config.nim directing to modern config/*.nim modules
+3. Consider moving to `archive/` or deleting after verification
+
+**Phase 3: Documentation** (30 min)
+1. Document modern config system in README or architecture docs
+2. Add convention: all new config goes in `config/*.nim` modules
+3. Update STYLE_GUIDE.md with config system guidelines
+
+**Total Estimated Effort:** 2-3 hours
+
+### Related Issues
+
+- Similar to Colony type duplication (KNOWN_ISSUES #-2)
+- Part of broader technical debt cleanup
+
+### Discovery Method
+
+Found via systematic audit:
+```bash
+grep -rn "^  [A-Z][a-zA-Z]*\* = object" src/engine/ | awk -F: '{print $3}' | sort | uniq -c | sort -rn
+```
+
+---
+
 ## Diagnostics - Comprehensive Metric Tracking
 
 **Priority:** COMPLETE
