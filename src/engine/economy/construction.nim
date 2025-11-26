@@ -209,10 +209,19 @@ proc getIndustrialUnitCost*(colony: Colony): int =
 proc startConstruction*(colony: var Colony, project: ConstructionProject): bool =
   ## Start new construction project at colony
   ## Returns true if started successfully
-  if colony.underConstruction.isSome:
-    return false  # Already building something
+  ##
+  ## NOTE: This function is DEPRECATED for build queue system.
+  ## The economy resolution code directly manages constructionQueue now.
+  ## We keep this for backwards compatibility but it no longer blocks on underConstruction.
+  ##
+  ## The build queue system allows multiple simultaneous projects up to dock capacity.
+  ## Construction validation happens in economy_resolution.nim via canAcceptMoreProjects().
 
-  colony.underConstruction = some(project)
+  # LEGACY: Set underConstruction for first project (backwards compatibility)
+  if colony.underConstruction.isNone and colony.constructionQueue.len == 0:
+    colony.underConstruction = some(project)
+
+  # Always return true - actual capacity checking happens in resolution layer
   return true
 
 proc advanceConstruction*(colony: var Colony): Option[CompletedProject] =
