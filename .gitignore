@@ -51,6 +51,7 @@ flake.lock
 # Temporary files
 *.tmp
 *.temp
+*.backup
 .cache/
 
 # Game state files (if any)
@@ -85,18 +86,51 @@ tests/balance/generate_training_data
 tests/balance/run_simulation
 
 # Nim-compiled executables (no extension on Linux)
-# Specific binary artifacts that might be generated during development
+# All executables in src/engine subdirectories
 src/engine/combat/starbase
 src/engine/combat/ground
+src/engine/combat/engine
+src/engine/economy/types
+src/engine/economy/production
+src/engine/economy/engine
+src/engine/economy/income
+src/engine/economy/construction
+src/engine/economy/maintenance
+src/engine/research/types
+src/engine/research/costs
+src/engine/research/effects
+src/engine/research/advancement
+src/engine/config/prestige_config
+src/engine/config/espionage_config
+src/engine/config/diplomacy_config
+src/engine/config/gameplay_config
+src/engine/config/military_config
+src/engine/config/facilities_config
+src/engine/config/ground_units_config
+src/engine/config/combat_config
+src/engine/config/construction_config
+src/engine/config/economy_config
+src/engine/config/ships_config
+src/engine/config/tech_config
+src/engine/config/population_config
+src/engine/config/house_themes
+src/engine/diplomacy/engine
+src/engine/colonization/engine
+src/engine/espionage/engine
+src/engine/prestige
+src/engine/squadron
+src/engine/salvage
+src/engine/intelligence/generator
+src/engine/intelligence/combat_intel
+src/engine/intelligence/types
+src/engine/commands/executor
+src/engine/spacelift
+src/engine/orders
+src/engine/fleet
+src/engine/resolution/combat_resolution
 src/engine/resolve
 src/engine/gamestate
-src/engine/prestige
-src/engine/intelligence/combat_intel
-src/engine/intelligence/generator
-src/engine/intelligence/types
-# NOTE: Do NOT use wildcards like src/engine/**/types or src/engine/**/engine
-# Those would block .nim source files from being tracked
-# Library modules should not be compiled standalone anyway
+src/engine/fog_of_war
 
 # Combat test results (large files)
 combat_test_results.json
