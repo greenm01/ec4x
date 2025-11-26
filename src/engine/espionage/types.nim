@@ -27,7 +27,10 @@ type
     Assassination,      # 10 EBP: -50% SRP gain for 1 turn
     CyberAttack,        # 6 EBP: Cripple starbase
     EconomicManipulation,  # 6 EBP: Halve NCV for 1 turn
-    PsyopsCampaign      # 3 EBP: -25% tax revenue for 1 turn
+    PsyopsCampaign,     # 3 EBP: -25% tax revenue for 1 turn
+    CounterIntelSweep,  # 4 EBP: Block intelligence gathering for 1 turn
+    IntelligenceTheft,  # 8 EBP: Steal target's intelligence database
+    PlantDisinformation # 6 EBP: Corrupt target's intel with false data
 
   ## Counter-Intelligence Command (CIC)
 
@@ -72,6 +75,7 @@ type
     srpStolen*: int           # For tech theft
     iuDamage*: int            # For sabotage
     effect*: Option[OngoingEffect]  # For assassination, economic manipulation, psyops
+    intelTheftSuccess*: bool  # For intelligence theft - did we steal their database?
 
   ## Ongoing Effects
 
@@ -79,7 +83,9 @@ type
     SRPReduction,      # -50% SRP gain (assassination)
     NCVReduction,      # -50% NCV (economic manipulation)
     TaxReduction,      # -25% tax revenue (psyops)
-    StarbaseCrippled   # Starbase offline (cyber attack)
+    StarbaseCrippled,  # Starbase offline (cyber attack)
+    IntelBlocked,      # Intelligence gathering blocked (counter-intel sweep)
+    IntelCorrupted     # Intelligence data corrupted (disinformation)
 
   OngoingEffect* = object
     ## Effect that lasts for turns
@@ -135,6 +141,9 @@ const
   CYBER_ATTACK_COST* = 6
   ECONOMIC_MANIPULATION_COST* = 6
   PSYOPS_CAMPAIGN_COST* = 3
+  COUNTER_INTEL_SWEEP_COST* = 4
+  INTELLIGENCE_THEFT_COST* = 8
+  PLANT_DISINFORMATION_COST* = 6
 
   # Action effects
   TECH_THEFT_SRP* = 10     # SRP stolen
@@ -144,6 +153,10 @@ const
   ECONOMIC_REDUCTION* = 0.5  # 50% NCV reduction
   PSYOPS_REDUCTION* = 0.25  # 25% tax reduction
   EFFECT_DURATION* = 1  # Turns effect lasts
+  INTEL_BLOCK_DURATION* = 1  # Turns intel blocked (counter-intel sweep)
+  DISINFORMATION_DURATION* = 2  # Turns disinformation lasts
+  DISINFORMATION_MIN_VARIANCE* = 0.2  # 20% min corruption
+  DISINFORMATION_MAX_VARIANCE* = 0.4  # 40% max corruption
 
   # Detection rolls (target threshold)
   FAILED_ESPIONAGE_PENALTY* = -2  # Prestige penalty when detected
@@ -161,6 +174,9 @@ proc getActionCost*(action: EspionageAction): int =
   of EspionageAction.CyberAttack: config.costs.cyber_attack_ebp
   of EspionageAction.EconomicManipulation: config.costs.economic_manipulation_ebp
   of EspionageAction.PsyopsCampaign: config.costs.psyops_campaign_ebp
+  of EspionageAction.CounterIntelSweep: config.costs.counter_intel_sweep_ebp
+  of EspionageAction.IntelligenceTheft: config.costs.intelligence_theft_ebp
+  of EspionageAction.PlantDisinformation: config.costs.plant_disinformation_ebp
 
 proc getDetectionThreshold*(cicLevel: CICLevel): int =
   ## Get detection roll threshold for CIC level (from config)
