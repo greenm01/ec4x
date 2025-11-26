@@ -161,23 +161,48 @@ proc buildDefenseOrders*(colony: Colony, budgetPP: int,
 
 proc buildMilitaryOrders*(colony: Colony, budgetPP: int,
                          militaryCount: int, canAffordMoreShips: bool,
-                         atSquadronLimit: bool): seq[BuildOrder] =
-  ## Generate military build orders (frigates, cruisers, dreadnoughts)
+                         atSquadronLimit: bool, cstLevel: int, act: GameAct): seq[BuildOrder] =
+  ## Generate military build orders with full capital ship progression
+  ##
+  ## Tech-gated ship unlocks by CST level:
+  ## - CST 1: Corvette, Frigate, Destroyer, Light Cruiser
+  ## - CST 2: Heavy Cruiser
+  ## - CST 3: Battle Cruiser
+  ## - CST 4: Battleship
+  ## - CST 5: Dreadnought
+  ## - CST 6: Super Dreadnought
+  ##
+  ## Build strategy: Choose best ship affordable within tech limits
   result = @[]
   var remaining = budgetPP
 
   if not canAffordMoreShips or atSquadronLimit:
     return
 
-  # Build based on available budget (cheapest to most expensive)
-  while remaining >= 80:  # Frigate cost
-    let shipClass =
-      if remaining >= 200 and militaryCount > 8:
-        ShipClass.Dreadnought  # Late-game heavy hitters
-      elif remaining >= 120 and militaryCount > 4:
-        ShipClass.Cruiser      # Mid-game workhorses
-      else:
-        ShipClass.Frigate      # Early-game backbone
+  # Build ships based on tech level and budget
+  while remaining >= 30:  # Minimum for Frigate
+    var shipClass: ShipClass
+
+    # Choose ship based on CST tech, budget, and game phase
+    # Priority: Build strongest affordable ship within tech limits
+    if remaining >= 250 and cstLevel >= 6 and act >= GameAct.Act4_Endgame and militaryCount > 10:
+      shipClass = ShipClass.SuperDreadnought  # CST 6: Ultimate capital ship
+    elif remaining >= 200 and cstLevel >= 5 and militaryCount > 8:
+      shipClass = ShipClass.Dreadnought       # CST 5: Late-game heavy hitter
+    elif remaining >= 150 and cstLevel >= 4 and militaryCount > 6:
+      shipClass = ShipClass.Battleship        # CST 4: Mid-late game backbone
+    elif remaining >= 100 and cstLevel >= 3:
+      shipClass = ShipClass.Battlecruiser     # CST 3: Mid-game workhorse
+    elif remaining >= 80 and cstLevel >= 2:
+      shipClass = ShipClass.HeavyCruiser      # CST 2: Early-mid heavy
+    elif remaining >= 60 and militaryCount > 3:
+      shipClass = ShipClass.LightCruiser      # CST 1: Cost-effective mid
+    elif remaining >= 40 and militaryCount > 2:
+      shipClass = ShipClass.Destroyer         # CST 1: Early-mid bridge
+    elif remaining >= 30:
+      shipClass = ShipClass.Frigate           # CST 1: Early backbone
+    else:
+      break  # Not enough budget for any ship
 
     let cost = getShipConstructionCost(shipClass)
     if remaining >= cost:
@@ -230,25 +255,40 @@ proc buildIntelligenceOrders*(colony: Colony, budgetPP: int,
 proc buildSpecialUnitsOrders*(colony: Colony, budgetPP: int,
                               needFighters: bool, needCarriers: bool,
                               needTransports: bool, needRaiders: bool,
-                              canAffordMoreShips: bool): seq[BuildOrder] =
+                              canAffordMoreShips: bool, cstLevel: int): seq[BuildOrder] =
   ## Generate special unit orders (fighters, carriers, transports, raiders)
+  ##
+  ## Tech-gated unlocks:
+  ## - CST 3: Carrier, Raider
+  ## - CST 5: Super Carrier (better fighter capacity)
   result = @[]
   var remaining = budgetPP
 
-  # Priority: Carriers → Transports → Raiders → Fighters
+  # Priority: Super Carriers → Carriers → Transports → Raiders → Fighters
   # NOTE: Expensive ships (carriers, transports, raiders) require affordability check
   # Cheap fighters can always be built if budget allocated (like scouts)
 
-  if canAffordMoreShips and needCarriers and remaining >= 150:
+  # Prefer Super Carriers (CST 5) over regular Carriers when available
+  if canAffordMoreShips and needCarriers and remaining >= 200 and cstLevel >= 5:
     result.add(BuildOrder(
       colonySystem: colony.systemId,
       buildType: BuildType.Ship,
       quantity: 1,
-      shipClass: some(ShipClass.Carrier),
+      shipClass: some(ShipClass.SuperCarrier),  # CST 5: 5-8 fighter capacity
       buildingType: none(string),
       industrialUnits: 0
     ))
-    remaining -= 150
+    remaining -= 200
+  elif canAffordMoreShips and needCarriers and remaining >= 120 and cstLevel >= 3:
+    result.add(BuildOrder(
+      colonySystem: colony.systemId,
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: some(ShipClass.Carrier),  # CST 3: 3-5 fighter capacity
+      buildingType: none(string),
+      industrialUnits: 0
+    ))
+    remaining -= 120
 
   # Transports bypass canAffordMoreShips gate like scouts/fighters
   # They're strategic assets for invasion gameplay, controlled by budget allocation
@@ -289,6 +329,45 @@ proc buildSpecialUnitsOrders*(colony: Colony, budgetPP: int,
         industrialUnits: 0
       ))
       remaining -= fighterCost
+
+proc buildSiegeOrders*(colony: Colony, budgetPP: int,
+                      planetBreakerCount: int, colonyCount: int,
+                      cstLevel: int, needSiege: bool): seq[BuildOrder] =
+  ## Generate siege weapon orders (Planet-Breakers)
+  ##
+  ## Planet-Breakers are late-game superweapons that bypass planetary shields.
+  ##
+  ## Requirements per assets.md#2.4.8:
+  ## - CST 10 (highest tier construction tech)
+  ## - 400 PP construction cost
+  ## - Maximum 1 per owned colony (lose colony = lose its PB, no salvage)
+  ##
+  ## Strategic use:
+  ## - Break through SLD4-6 shield stalemates
+  ## - Essential for conquering heavily fortified colonies
+  ## - Fragile (AS 50, DS 20) - requires strong escorts
+  result = @[]
+  var remaining = budgetPP
+
+  # Only build if:
+  # 1. We need siege capability (planning invasions of fortified colonies)
+  # 2. We have CST 10 (highest tech requirement in game)
+  # 3. We haven't hit the 1-per-colony ownership limit
+  # 4. We can afford it (400 PP is expensive - 2x Dreadnought cost)
+  if not needSiege or cstLevel < 10 or planetBreakerCount >= colonyCount:
+    return
+
+  if remaining >= 400:
+    logDebug(LogCategory.lcAI, &"Building Planet-Breaker at colony {colony.systemId} (count={planetBreakerCount}/{colonyCount})")
+    result.add(BuildOrder(
+      colonySystem: colony.systemId,
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: some(ShipClass.PlanetBreaker),
+      buildingType: none(string),
+      industrialUnits: 0
+    ))
+    remaining -= 400
 
 # =============================================================================
 # Integrated Build Planning
@@ -345,6 +424,15 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   var coloniesToBuild = myColonies
   coloniesToBuild.sort(proc(a, b: Colony): int = cmp(b.production, a.production))
 
+  # Get tech levels for gating ship unlocks
+  let cstLevel = house.techTree.levels.constructionTech
+  let colonyCount = myColonies.len
+  let planetBreakerCount = house.planetBreakerCount
+
+  # Determine if we need siege capability (Planet-Breakers)
+  # Build PBs when: CST 10 unlocked, fighting heavily fortified enemies, Act 3+
+  let needSiege = act >= GameAct.Act3_TotalWar and cstLevel >= 10
+
   for colony in coloniesToBuild:
     let hasShipyard = colony.shipyards.len > 0
     let hasStarbase = colony.starbases.len > 0
@@ -359,7 +447,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     # Generate orders for all objectives (engine will queue them)
     result.add(buildExpansionOrders(colony, budgets[Expansion], needETACs, hasShipyard))
     result.add(buildDefenseOrders(colony, budgets[Defense], needDefenses, hasStarbase))
-    result.add(buildMilitaryOrders(colony, budgets[Military], militaryCount, canAffordMoreShips, atSquadronLimit))
+    result.add(buildMilitaryOrders(colony, budgets[Military], militaryCount, canAffordMoreShips, atSquadronLimit, cstLevel, act))
     result.add(buildIntelligenceOrders(colony, budgets[Intelligence], needScouts, scoutCount))
     result.add(buildSpecialUnitsOrders(colony, budgets[SpecialUnits], needFighters, needCarriers,
-                                      needTransports, needRaiders, canAffordMoreShips))
+                                      needTransports, needRaiders, canAffordMoreShips, cstLevel))
+    result.add(buildSiegeOrders(colony, budgets[SpecialUnits], planetBreakerCount, colonyCount, cstLevel, needSiege))
