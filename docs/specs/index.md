@@ -55,6 +55,7 @@ The complete EC4X game specification is organized into the following documents:
 ### Operations
 - **[Operations](operations.md)** - Movement and combat mechanics
 - **[Diplomacy](diplomacy.md)** - Diplomacy and espionage
+- **[Intelligence](intelligence.md)** - Intelligence gathering, reports, and fog of war
 
 ### Reference
 - **[Game Data Tables](reference.md)** - Ship stats, tech trees, and data tables

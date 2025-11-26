@@ -241,19 +241,57 @@ Because this form of attack is so fast, there is less damage to the planet since
 
 This mission is reserved for Scout squadrons. The squadron will attempt to hide itself in orbit as a civilian satellite and collect military intelligence from the surface.
 
+**Intelligence Gathered (Spy Quality):**
+
+Scout squadrons generate comprehensive **Colony Intelligence Reports** containing:
+- Colony population, infrastructure (IU), and defenses
+- Starbase level and construction queue (all queued projects)
+- **Economic data**: Gross Colonial Output (GCO), Net Colonial Value (NCV)
+- Orbital assets: unassigned squadrons, reserve/mothballed fleets, shipyard count
+- Significance rating: 8/10 (colony discovery is very significant)
+
+Scouts provide **Perfect quality** intelligence - all data is accurate and current. However, scout intel can be corrupted by Disinformation espionage or Dishonored status (see [Section 9.4](intelligence.md#94-intelligence-corruption)).
+
 **Stealth Consideration**: Single-scout squadrons are recommended for spy missions to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
+
+See [Section 9.1.1](intelligence.md#911-scout-reconnaissance-perfect-quality) for complete scout intelligence capabilities.
 
 ### 6.2.11 Hack a Starbase (10):
 
 This mission is reserved for Scout squadrons. The squadron will disguise itself as a civilian satellite and hack into a rival's Starbase network for the purpose of collecting economic and R&D intelligence.
 
+**Intelligence Gathered (Spy Quality):**
+
+Scout squadrons generate **Starbase Intelligence Reports** containing:
+- **Economic intelligence**: Treasury balance, gross/net income, current tax rate
+- **R&D intelligence**: Tech levels across all fields (Economic, Science, Technology)
+- Research allocations (ERP, SRP, TRP) and current research focus
+- Significance rating: 9/10 (house-level strategic intelligence)
+
+This provides unparalleled visibility into enemy economic strength and technological capabilities, enabling strategic planning and resource allocation decisions.
+
 **Stealth Consideration**: Single-scout squadrons are recommended for hacking missions to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
+
+See [Section 9.1.3](intelligence.md#913-spy-operations-spy-quality) for spy operation intelligence details.
 
 ### 6.2.12 Spy on a System (11):
 
 This mission is reserved for Scout squadrons. The squadron will loiter in the solar system and collect military asset intelligence.
 
+**Intelligence Gathered (Spy Quality):**
+
+Scout squadrons generate **System Intelligence Reports** containing:
+- All fleets in system with complete composition
+- Squadron details: ship classes, counts, tech levels, hull integrity
+- Spacelift cargo manifests (troop types, quantities, damage status)
+- Standing orders and fleet behavior
+- Significance rating: 7/10 (fleet composition is tactically significant)
+
+Unlike Visual quality intelligence from regular fleet encounters, scout reports reveal exact tech levels, damage assessment, and cargo contents - critical for invasion planning and fleet engagement decisions.
+
 **Stealth Consideration**: Single-scout squadrons are recommended for system reconnaissance to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
+
+See [Section 9.2.1](intelligence.md#921-scout-encounter-reports) for scout report types and significance ratings.
 
 ### 6.2.13 Colonize a Planet (12):
 

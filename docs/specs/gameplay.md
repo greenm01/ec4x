@@ -193,19 +193,40 @@ When fleets from different houses encounter each other in the same system, intel
 
 **Automatic Intelligence Reporting:**
 
-Whenever friendly fleets are present in the same system as foreign forces, players receive intelligence reports containing:
-- Fleet composition (ship types and approximate quantities)
-- Fleet size and combat strength estimates
+Whenever friendly fleets are present in the same system as foreign forces, players receive **Visual quality** intelligence reports containing:
+- Fleet composition (ship types and squadron sizes)
+- Number of spacelift ships (transport count)
+- Standing orders (Patrol, Guard, Blockade, etc.)
 - Fleet location (current system)
-- Fleet orders (if observable: patrol, blockade, bombardment, etc.)
+
+**Visual Intelligence Limitations:**
+
+Visual quality intelligence does NOT reveal:
+- ❌ Tech levels (always shows as 0)
+- ❌ Hull integrity/damage status
+- ❌ Cargo contents of transport ships (only count visible)
+
+This represents tactical observation - you can see what ships are present and their behavior, but not their technological sophistication or strategic cargo.
+
+**Intelligence Quality Levels:**
+
+EC4X uses four intelligence quality tiers:
+
+1. **Visual** (Regular Fleets) - Basic tactical observation, ship types visible but not tech/damage
+2. **Spy** (Espionage Operations) - High-quality intel with tech levels, hull status, economic data
+3. **Perfect** (Scouts & Owned Assets) - Complete accuracy, all details, real-time updates
+4. **None** (Fog of War) - No intelligence available
+
+See [Section 9.3](intelligence.md#93-intelligence-quality-levels) for complete quality level specifications.
 
 **Intelligence Collection Scenarios:**
 
 Intelligence is gathered in all of the following situations:
-- Patrol operations detecting foreign fleets per [Section 6.2.4](operations.md#624-patrol-a-system-03)
-- Fleet movement through systems containing foreign forces
-- Combat engagements (both participating and observing forces)
-- Scouts conducting reconnaissance missions per [Section 6.2.9-6.2.12](operations.md#629-spy-on-a-planet-09)
+- **Patrol operations**: Visual quality fleet intel per [Section 6.2.4](operations.md#624-patrol-a-system-03)
+- **Fleet movement**: Visual quality intel when passing through systems with foreign forces
+- **Combat engagements**: Perfect quality intel revealed pre-combat for all participants
+- **Scout reconnaissance**: Perfect quality intel from missions per [Section 6.2.9-6.2.12](operations.md#629-spy-on-a-planet-09)
+- **Espionage operations**: Spy quality intel from SpyOnPlanet, SpyOnSystem, HackStarbase
 
 **Diplomatic Status Independence:**
 
@@ -215,6 +236,14 @@ Intelligence gathering occurs regardless of diplomatic relationships:
 - Non-Aggression partners: Intelligence gathered, no combat (unless pact violated)
 
 This reflects the reality that military forces cannot remain completely hidden when operating in the same system, even if diplomatic protocols prevent engagement.
+
+**Intelligence Reports:**
+
+All intelligence is stored in each house's intelligence database with timestamps. See [Section 9](intelligence.md) for complete intelligence system documentation including:
+- Report types and contents
+- Intelligence corruption from disinformation/dishonor
+- Staleness indicators
+- Strategic use of intelligence
 
 ### 1.5.2 Fog of War
 
