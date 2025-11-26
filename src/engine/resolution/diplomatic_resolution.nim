@@ -9,6 +9,7 @@ import std/[tables, options]
 import ../../common/[hex, types/core]
 import ../gamestate, ../orders
 import ../diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_proposals]
+import ../config/diplomacy_config
 import ../prestige
 import ../intelligence/diplomatic_intel
 
@@ -186,15 +187,16 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
               state.houses[houseId].prestige += event.amount
               echo "      ", event.description, ": ", event.amount, " prestige"
 
-            # Apply dishonored status (3 turns per diplomacy.md:8.1.2)
+            # Apply dishonored status (duration per config/diplomacy.toml)
             # EXCEPTION: No dishonor for final confrontation (only 2 houses left)
             if not state.isFinalConfrontation():
+              let config = globalDiplomacyConfig
               state.houses[houseId].dishonoredStatus = dip_types.DishonoredStatus(
                 active: true,
-                turnsRemaining: 3,
+                turnsRemaining: config.pact_violations.dishonored_status_turns,
                 violationTurn: state.turn
               )
-              echo "      Dishonored for 3 turns"
+              echo "      Dishonored for ", config.pact_violations.dishonored_status_turns, " turns"
             else:
               echo "      Dishonor waived (final confrontation)"
 

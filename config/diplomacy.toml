@@ -13,6 +13,7 @@
 [pact_violations]
 # BALANCE: Violation consequences and durations
 dishonored_status_turns = 3        # Dishonored status lasts 3 turns
+dishonor_corruption_magnitude = 0.5  # 50% intelligence corruption from dishonor
 diplomatic_isolation_turns = 5      # Cannot form new pacts for 5 turns
 pact_reinstatement_cooldown = 5    # Cannot reinstate pact for 5 turns
 repeat_violation_window = 10       # Repeat violations within 10 turns trigger extra penalty
