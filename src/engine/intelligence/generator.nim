@@ -3,9 +3,11 @@
 ## Generates intelligence reports from successful spy scout missions
 ## Per intel.md and operations.md specifications
 
-import std/[tables, options, sequtils]
+import std/[tables, options, sequtils, random, hashes]
 import types as intel_types
+import corruption
 import ../gamestate, ../fleet  # Need FleetStatus from fleet module
+import ../espionage/types as esp_types
 
 proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.ColonyIntelReport] =
   ## Generate colony intelligence report from SpyOnPlanet mission
@@ -73,6 +75,13 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
       if legacyItem notin report.constructionQueue:
         report.constructionQueue.add(legacyItem)
 
+  # Apply corruption if scout owner's intelligence is compromised
+  let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, scoutOwner)
+  if corruptionEffect.isSome:
+    var rng = initRand(state.turn + hash(scoutOwner) + int(targetSystem))
+    let corrupted = corruption.corruptColonyIntel(report, corruptionEffect.get().magnitude, rng)
+    return some(corrupted)
+
   return some(report)
 
 proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.SystemIntelReport] =
@@ -110,12 +119,20 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
   if fleetIntels.len == 0:
     return none(intel_types.SystemIntelReport)
 
-  return some(intel_types.SystemIntelReport(
+  var report = intel_types.SystemIntelReport(
     systemId: targetSystem,
     gatheredTurn: state.turn,
     quality: quality,
     detectedFleets: fleetIntels
-  ))
+  )
+
+  # Apply corruption if scout owner's intelligence is compromised
+  let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, scoutOwner)
+  if corruptionEffect.isSome:
+    var rng = initRand(state.turn + hash(scoutOwner) + int(targetSystem))
+    report = corruption.corruptSystemIntel(report, corruptionEffect.get().magnitude, rng)
+
+  return some(report)
 
 proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.StarbaseIntelReport] =
   ## Generate starbase intelligence report from HackStarbase mission
@@ -185,5 +202,11 @@ proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetS
     report.currentResearch = some("Science")
   else:
     report.currentResearch = some("Technology")
+
+  # Apply corruption if scout owner's intelligence is compromised
+  let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, scoutOwner)
+  if corruptionEffect.isSome:
+    var rng = initRand(state.turn + hash(scoutOwner) + int(targetSystem))
+    report = corruption.corruptStarbaseIntel(report, corruptionEffect.get().magnitude, rng)
 
   return some(report)

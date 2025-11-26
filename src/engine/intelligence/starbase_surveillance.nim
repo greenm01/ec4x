@@ -9,9 +9,11 @@
 ## - Raiders (CLK capability): Stealth roll required (cloaked if successful)
 ## - Crippled starbases: No surveillance capability
 
-import std/[tables, options, sequtils, strformat, strutils, random]
+import std/[tables, options, sequtils, strformat, strutils, random, hashes]
 import types as intel_types
-import ../gamestate, ../fleet, ../squadron, ../starmap
+import corruption
+import ../gamestate, ../fleet, ../squadron
+import ../espionage/types as esp_types, ../starmap
 
 proc performStealthCheck*(
   stealthLevel: int,
@@ -139,7 +141,28 @@ proc processAllStarbaseSurveillance*(state: var GameState, turn: int, rng: var R
 
   for systemId, colony in state.colonies:
     if colony.starbases.len > 0:
-      let surveillance = generateStarbaseSurveillance(state, systemId, colony.owner, turn, rng)
+      var surveillance = generateStarbaseSurveillance(state, systemId, colony.owner, turn, rng)
 
       if surveillance.isSome:
-        state.houses[colony.owner].intelligence.addStarbaseSurveillance(surveillance.get())
+        # Apply corruption if starbase owner's intelligence is compromised
+        let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, colony.owner)
+        if corruptionEffect.isSome:
+          var corruptionRng = initRand(turn + hash(colony.owner) + int(systemId))
+          var report = surveillance.get()
+          let magnitude = corruptionEffect.get().magnitude
+
+          # Corrupt detected fleet data (tuples -> corrupted tuples)
+          var corruptedDetected: seq[tuple[fleetId: FleetId, location: SystemId, owner: HouseId, shipCount: int]] = @[]
+          for fleet in report.detectedFleets:
+            let corruptedCount = corruption.corruptInt(fleet.shipCount, magnitude, corruptionRng)
+            corruptedDetected.add((
+              fleetId: fleet.fleetId,
+              location: fleet.location,
+              owner: fleet.owner,
+              shipCount: corruptedCount
+            ))
+          report.detectedFleets = corruptedDetected
+
+          state.houses[colony.owner].intelligence.addStarbaseSurveillance(report)
+        else:
+          state.houses[colony.owner].intelligence.addStarbaseSurveillance(surveillance.get())

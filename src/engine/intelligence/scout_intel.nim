@@ -10,9 +10,11 @@
 ## - Patrol route analysis
 ## - Witness events (combat, bombardment, blockades)
 
-import std/[tables, options, sequtils, strformat]
+import std/[tables, options, sequtils, strformat, random, hashes]
 import types as intel_types
+import corruption
 import ../gamestate, ../fleet, ../squadron, ../spacelift
+import ../espionage/types as esp_types
 
 proc generateScoutFleetEncounter*(
   state: GameState,
@@ -182,24 +184,51 @@ proc processScoutIntelligence*(
 
   let turn = state.turn
 
-  # Generate scout encounter report for fleets
-  let fleetEncounter = generateScoutFleetEncounter(state, scoutId, scoutOwner, systemId, turn)
-  if fleetEncounter.isSome:
-    state.houses[scoutOwner].intelligence.addScoutEncounter(fleetEncounter.get())
+  # Check if scout owner has corrupted intelligence (disinformation planted)
+  let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, scoutOwner)
+  var rng = initRand(turn + hash(scoutOwner) + int(systemId))  # Deterministic corruption per turn/house/system
 
-    # Update fleet movement history for each observed fleet
-    for fleetIntel in fleetEncounter.get().fleetDetails:
-      state.houses[scoutOwner].intelligence.updateFleetMovementHistory(
-        fleetIntel.fleetId,
-        fleetIntel.owner,
-        systemId,
-        turn
-      )
+  # Generate scout encounter report for fleets
+  var fleetEncounter = generateScoutFleetEncounter(state, scoutId, scoutOwner, systemId, turn)
+  if fleetEncounter.isSome:
+    # Apply corruption if scout owner's intelligence is compromised
+    if corruptionEffect.isSome:
+      let magnitude = corruptionEffect.get().magnitude
+      var corrupted = fleetEncounter.get()
+      corrupted = corruption.corruptScoutEncounter(corrupted, magnitude, rng)
+      state.houses[scoutOwner].intelligence.addScoutEncounter(corrupted)
+
+      # Update fleet movement history (use corrupted data)
+      for fleetIntel in corrupted.fleetDetails:
+        state.houses[scoutOwner].intelligence.updateFleetMovementHistory(
+          fleetIntel.fleetId,
+          fleetIntel.owner,
+          systemId,
+          turn
+        )
+    else:
+      state.houses[scoutOwner].intelligence.addScoutEncounter(fleetEncounter.get())
+
+      # Update fleet movement history for each observed fleet
+      for fleetIntel in fleetEncounter.get().fleetDetails:
+        state.houses[scoutOwner].intelligence.updateFleetMovementHistory(
+          fleetIntel.fleetId,
+          fleetIntel.owner,
+          systemId,
+          turn
+        )
 
   # Generate scout encounter report for colonies
-  let colonyEncounter = generateScoutColonyObservation(state, scoutId, scoutOwner, systemId, turn)
+  var colonyEncounter = generateScoutColonyObservation(state, scoutId, scoutOwner, systemId, turn)
   if colonyEncounter.isSome:
-    state.houses[scoutOwner].intelligence.addScoutEncounter(colonyEncounter.get())
+    # Apply corruption if scout owner's intelligence is compromised
+    if corruptionEffect.isSome:
+      let magnitude = corruptionEffect.get().magnitude
+      var corrupted = colonyEncounter.get()
+      corrupted = corruption.corruptScoutEncounter(corrupted, magnitude, rng)
+      state.houses[scoutOwner].intelligence.addScoutEncounter(corrupted)
+    else:
+      state.houses[scoutOwner].intelligence.addScoutEncounter(colonyEncounter.get())
 
     # Update construction activity tracking
     let colonyDetails = colonyEncounter.get().colonyDetails.get()
