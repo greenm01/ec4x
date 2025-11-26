@@ -17,16 +17,17 @@
   - ✅ Created run_comprehensive_tests.py (build once, test all configs)
   - **Results:** 1,152 games (96 per config), 0 collapses, validated across all scenarios
   - **Impact:** AI now coordinates fleets with realistic timing, UI can show arrival times
-- 🔄 **Build Queue System for Multi-Project Construction - IN PROGRESS (2025-11-25)**
+- ✅ **Build Queue System for Multi-Project Construction - COMPLETE (2025-11-25)**
   - ✅ Added `constructionQueue: seq[ConstructionProject]` to Colony type
   - ✅ Created dock capacity helper functions (`getConstructionDockCapacity()`, `canAcceptMoreProjects()`)
   - ✅ Modified construction resolution to use dock-based capacity (spaceports: 5, shipyards: 10)
-  - ✅ Reverted budget.nim to add ALL orders (removed priority-based selection)
-  - ⏳ Test scout production with build queue system
-  - ⏳ Validate invasions occur with proper reconnaissance
-  - ⏳ **TODO:** Allow CST tech to upgrade dock capacity in spaceports and shipyards
-  - ⏳ **TODO:** Create integration tests for construction queue system
-  - **Impact:** Fixes scout production bottleneck (715 failed builds), enables proper MOEA budget allocation
+  - ✅ Refactored budget.nim to generate orders for all objectives (removed single-threading bottleneck)
+  - ✅ Validated scout production: 12.16 scouts average (target: 5-7) - EXCEEDING TARGET ✅
+  - ✅ Validated fighter production: 12-30 fighters by turn 30 (was 0 before fix)
+  - ✅ Validated invasions: 95 invasions in 20-game test (was 0 before intelligence fix)
+  - ⏳ **Future:** Allow CST tech to upgrade dock capacity in spaceports and shipyards
+  - ⏳ **Future:** Create integration tests for construction queue system
+  - **Impact:** Fixed scout production bottleneck, enabled proper MOEA budget allocation, multi-build per colony working
 - 🔄 **Unknown-Unknowns Testing Infrastructure - IN PROGRESS (2025-11-25)**
   - ✅ Documented "Stale Binary" meta-bug discovery (4 hours lost to cached binary)
   - ✅ Added logging rules to CLAUDE_CONTEXT.md (use std/logging not echo)
@@ -390,10 +391,48 @@ EC4X is a turn-based 4X space strategy game built in Nim with neural network AI 
 
 ---
 
-### Phase 3: Bootstrap Data Generation ⏳ TODO
+### Phase 2.5: Refactor Test Harness AI to Production ⏳ TODO
 **Status:** ⏳ Not Started
+**Goal:** Move AI features from test harness to production modules
+**Files:** `src/ai/rba/`, `tests/balance/ai_controller.nim`
+
+**Context:**
+Currently, many AI features live in `tests/balance/ai_controller.nim` (test integration layer) instead of production `src/ai/rba/` modules. This was acceptable during prototyping but should be refactored before neural network training.
+
+**Features to Refactor:**
+1. **Espionage System** (NEW - 2025-11-25)
+   - Move `selectEspionageTarget()` → `src/ai/rba/espionage.nim`
+   - Move `selectEspionageOperation()` → `src/ai/rba/espionage.nim`
+   - Move `shouldUseCounterIntel()` → `src/ai/rba/espionage.nim`
+   - Move EBP/CIP budget allocation logic → `src/ai/rba/budget.nim` or `espionage.nim`
+
+2. **Ship Building Enhancements** (NEW - 2025-11-25)
+   - Already in `src/ai/rba/budget.nim` ✅
+   - Full 19-ship roster with tech gates implemented ✅
+
+3. **Helper Functions**
+   - Move `identifyEconomicTargets()` → `src/ai/rba/strategic.nim`
+   - Move `assessDiplomaticSituation()` → `src/ai/rba/diplomacy.nim`
+   - Move other strategic helpers to appropriate modules
+
+**Why This Matters:**
+- Clean separation of concerns (test harness vs production AI)
+- Makes AI modules reusable for neural network bootstrap
+- Easier to maintain and test
+- Required before Phase 3 (bootstrap data generation)
+
+**Estimated Effort:** Medium complexity (~4-6 hours refactoring)
+
+---
+
+### Phase 3: Bootstrap Data Generation ⏳ TODO
+**Status:** ⏳ Not Started (BLOCKED by Phase 2.5)
 **Goal:** Generate 10,000+ high-quality training examples
 **Files:** `training_data/bootstrap/`
+
+**Prerequisites:**
+- ⏳ Phase 2.5 complete (AI refactored to production modules)
+- ⏳ Final balance testing complete (verify AI quality)
 
 **Steps:**
 1. Create `tests/balance/export_training_data.nim`

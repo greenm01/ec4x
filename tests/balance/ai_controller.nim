@@ -1651,32 +1651,279 @@ proc generateDiplomaticActions(controller: AIController, filtered: FilteredGameS
         ))
         return result  # Only one action per turn
 
-proc generateEspionageAction(controller: AIController, filtered: FilteredGameState, rng: var Rand): Option[esp_types.EspionageAttempt] =
-  ## Generate espionage action based on strategy and personality
-  ## Use personality weights to determine if we should use espionage
+proc selectEspionageTarget(controller: AIController, filtered: FilteredGameState, rng: var Rand): HouseId =
+  ## Choose espionage target strategically
+  ## Prioritize: prestige leaders, diplomatic enemies, economic powerhouses
+  let house = filtered.ownHouse
+  let myPrestige = house.prestige
+
+  var targets: seq[tuple[houseId: HouseId, priority: float]] = @[]
+
+  for houseId, prestige in filtered.housePrestige:
+    if houseId == controller.houseId:
+      continue
+
+    var priority = 0.0
+
+    # Target prestige leaders (disrupt them)
+    let prestigeGap = prestige - myPrestige
+    if prestigeGap > 0:
+      priority += prestigeGap.float * 0.01  # +1 priority per 100 prestige gap
+
+    # Target diplomatic enemies (high priority)
+    let relation = dip_types.getDiplomaticState(house.diplomaticRelations, houseId)
+    if relation == dip_types.DiplomaticState.Enemy:
+      priority += 200.0  # Major priority boost for enemies
+
+    # Random factor (prevent predictability)
+    priority += rng.rand(50.0)
+
+    targets.add((houseId, priority))
+
+  # Sort by priority (highest first)
+  targets.sort(proc(a, b: auto): int = cmp(b.priority, a.priority))
+
+  if targets.len > 0:
+    return targets[0].houseId
+
+  # Fallback: random (shouldn't happen)
+  let allHouses = toSeq(filtered.housePrestige.keys)
+  for houseId in allHouses:
+    if houseId != controller.houseId:
+      return houseId
+
+  return controller.houseId  # Emergency fallback
+
+proc selectEspionageOperation(controller: AIController, filtered: FilteredGameState,
+                             target: HouseId, rng: var Rand): esp_types.EspionageAction =
+  ## Choose espionage operation based on strategic context and available EBP
+  let p = controller.personality
+  let house = filtered.ownHouse
+  let ebp = house.espionageBudget.ebpPoints
+
+  # Get target's relative strength
+  let targetPrestige = filtered.housePrestige.getOrDefault(target, 0)
+  let myPrestige = house.prestige
+  let prestigeGap = targetPrestige - myPrestige
+
+  # Intelligence Theft - Steal enemy's entire intelligence database (high-value intel warfare)
+  # Very valuable when we lack intel on the galaxy or before major operations
+  if ebp >= 8 and rng.rand(1.0) < 0.15:  # 15% chance when available
+    # Prioritize stealing intel from leaders (they have best intel) or enemies
+    let relation = dip_types.getDiplomaticState(house.diplomaticRelations, target)
+    if prestigeGap > 100 or relation == dip_types.DiplomaticState.Enemy:
+      return esp_types.EspionageAction.IntelligenceTheft  # Steal complete intel database
+
+  # High-value operations when significantly behind (disruption strategy)
+  if prestigeGap > 300 and ebp >= 10 and rng.rand(1.0) < 0.3:
+    return esp_types.EspionageAction.Assassination  # Slow down leader's tech
+
+  if prestigeGap > 200 and ebp >= 7 and rng.rand(1.0) < 0.4:
+    return esp_types.EspionageAction.SabotageHigh  # Cripple production
+
+  # Plant Disinformation - Corrupt enemy intelligence (advanced psychological warfare)
+  # Very effective against aggressive enemies who rely on intel for invasions
+  if ebp >= 6 and rng.rand(1.0) < 0.2:  # 20% chance when available
+    # Target aggressive enemies (declared Enemy or significantly ahead in prestige)
+    let relation = dip_types.getDiplomaticState(house.diplomaticRelations, target)
+    if relation == dip_types.DiplomaticState.Enemy or targetPrestige > myPrestige + 200:
+      return esp_types.EspionageAction.PlantDisinformation  # Corrupt their intel for 2 turns
+
+  # Economic warfare for economic-focused AIs
+  if p.economicFocus > 0.6 and ebp >= 6 and rng.rand(1.0) < 0.5:
+    return esp_types.EspionageAction.EconomicManipulation  # Disrupt economy
+
+  # Cyber attacks before invasions (if we have operations targeting this system)
+  for op in controller.operations:
+    if op.operationType == OperationType.Invasion and ebp >= 6:
+      # Check if target house owns the invasion target system
+      let targetColonyOpt = getColony(filtered, op.targetSystem)
+      if targetColonyOpt.isSome and targetColonyOpt.get().owner == target:
+        return esp_types.EspionageAction.CyberAttack  # Soften defenses before invasion
+
+  # Tech theft (default, safe, always useful)
+  if ebp >= 5:
+    return esp_types.EspionageAction.TechTheft
+
+  # Cheap harassment options
+  if ebp >= 3 and rng.rand(1.0) < 0.5:
+    return esp_types.EspionageAction.PsyopsCampaign  # Economic harassment
+
+  if ebp >= 2:
+    return esp_types.EspionageAction.SabotageLow  # Better than nothing
+
+  # Fallback (won't execute if insufficient EBP)
+  return esp_types.EspionageAction.TechTheft
+
+proc shouldUseCounterIntel(controller: AIController, filtered: FilteredGameState): bool =
+  ## Decide if we should use Counter-Intelligence Sweep this turn (defensive)
+  let house = filtered.ownHouse
+
+  # Need at least 4 CIP for counter-intel
+  if house.espionageBudget.cipPoints < 4:
+    return false
+
+  # Protect during active invasion operations
+  for op in controller.operations:
+    if op.operationType == OperationType.Invasion:
+      return true  # Protect invasion plans from enemy intelligence
+
+  # Protect when prestige is very high (we're winning, thus a target)
+  if house.prestige > 900:
+    return true
+
+  # Protect periodically (every 5 turns) if low aggression (defensive personality)
+  if filtered.turn mod 5 == 0 and controller.personality.aggression < 0.5:
+    return true
+
+  return false
+
+proc generateTerraformOrders(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[TerraformOrder] =
+  ## Generate terraforming upgrade orders for planet class improvements
+  ## Per economy.md Section 4.7 and assets.md Section 2.2
+  ##
+  ## Strategy:
+  ## - Upgrade high-value colonies (good resources, strategic location)
+  ## - Requires TER tech level to allow upgrade (TER level >= target class)
+  ## - Costs 60-2000 PP depending on target class
+  ## - Takes 1-5 turns depending on TER level
+  result = @[]
   let p = controller.personality
   let house = filtered.ownHouse
 
-  # Check if we have EBP to use espionage (need at least 5 EBP for basic actions)
-  if house.espionageBudget.ebpPoints < 5:
+  # Economic AIs prioritize terraforming for long-term growth
+  # Lower threshold to 0.4 so more AIs use this feature
+  if p.economicFocus < 0.4:
+    return result
+
+  # Need healthy treasury (upgrades are expensive)
+  if house.treasury < 800:
+    return result
+
+  # Check TER tech level
+  let terLevel = house.techTree.levels.terraformingTech
+  if terLevel < 1:
+    return result  # No terraforming tech yet
+
+  # Find colonies that can be upgraded
+  type UpgradeCandidate = tuple[systemId: SystemId, currentClass: int, value: float, cost: int]
+  var candidates: seq[UpgradeCandidate] = @[]
+
+  for colony in filtered.ownColonies:
+    if colony.owner != controller.houseId:
+      continue
+
+    # Check if colony can be upgraded
+    # Planet class: 0=Extreme, 1=Desolate, 2=Hostile, 3=Harsh, 4=Benign, 5=Lush, 6=Eden
+    # ownColonies are full Colony objects (not VisibleColony), so planetClass is direct
+    let currentClass = int(colony.planetClass)
+    let targetClass = currentClass + 1
+
+    # Can't upgrade beyond Eden (class 6)
+    if targetClass > 6:
+      continue
+
+    # Need TER tech level >= target class to upgrade
+    # TER 1 allows upgrade to Desolate (class 1)
+    # TER 2 allows upgrade to Hostile (class 2), etc.
+    if terLevel < targetClass:
+      continue
+
+    # Calculate upgrade cost (from economy.md:4.7 or config)
+    # Rough estimate: 60 PP for Extreme→Desolate, up to 2000 PP for Lush→Eden
+    let cost = case targetClass
+      of 1: 60     # Extreme → Desolate
+      of 2: 150    # Desolate → Hostile
+      of 3: 350    # Hostile → Harsh
+      of 4: 600    # Harsh → Benign
+      of 5: 1000   # Benign → Lush
+      of 6: 2000   # Lush → Eden
+      else: 1000
+
+    # Skip if we can't afford it
+    if house.treasury < cost + 200:  # Keep 200 PP reserve
+      continue
+
+    # Calculate colony value (prioritize good resources and high infrastructure)
+    # ownColonies are full Colony objects, so fields are direct (not Option)
+    var value = float(colony.infrastructure) * 2.0  # Infrastructure is key
+
+    # Bonus for good resources (great ROI on rich planets)
+    case colony.resources
+    of ResourceRating.VeryRich: value *= 3.0  # HIGHEST priority
+    of ResourceRating.Rich: value *= 2.0
+    of ResourceRating.Abundant: value *= 1.5
+    else: value *= 0.5  # Low priority for poor resources
+
+    # Bonus for strategic location (homeworld, hub, etc.)
+    # We can't easily check this in filtered state, so use population as proxy
+    if colony.population > 200:
+      value *= 1.5  # Established, important colony
+
+    candidates.add((systemId: colony.systemId, currentClass: currentClass,
+                    value: value, cost: cost))
+
+  if candidates.len == 0:
+    return result
+
+  # Sort by value/cost ratio (best ROI first)
+  candidates.sort(proc(a, b: UpgradeCandidate): int =
+    let ratioA = a.value / float(a.cost)
+    let ratioB = b.value / float(b.cost)
+    if ratioB > ratioA: 1
+    elif ratioB < ratioA: -1
+    else: 0
+  )
+
+  # Upgrade one colony per turn (expensive)
+  let best = candidates[0]
+
+  # Calculate turns remaining based on TER level (higher TER = faster)
+  # Estimate: 5 turns at TER1, down to 1 turn at TER5+
+  let turnsRemaining = max(1, 6 - terLevel)
+
+  result.add(TerraformOrder(
+    colonySystem: best.systemId,
+    startTurn: filtered.turn,
+    turnsRemaining: turnsRemaining,
+    ppCost: best.cost,
+    targetClass: best.currentClass + 1
+  ))
+
+proc generateEspionageAction(controller: AIController, filtered: FilteredGameState, rng: var Rand): Option[esp_types.EspionageAttempt] =
+  ## Generate espionage action with strategic targeting and operation selection
+  let p = controller.personality
+  let house = filtered.ownHouse
+
+  # Check for counter-intelligence need first (defensive)
+  if shouldUseCounterIntel(controller, filtered):
+    # Counter-intel doesn't need a target
+    return some(esp_types.EspionageAttempt(
+      attacker: controller.houseId,
+      target: controller.houseId,  # Self-target for counter-intel
+      action: esp_types.EspionageAction.CounterIntelSweep,
+      targetSystem: none(SystemId)
+    ))
+
+  # Check if we have EBP for offensive operations (min 2 for low-impact sabotage)
+  if house.espionageBudget.ebpPoints < 2:
     return none(esp_types.EspionageAttempt)
 
-  # CRITICAL: Don't do espionage if prestige is low
-  # Detection costs -2 prestige, victims lose -1 to -7 prestige
-  # If prestige < 20, focus on prestige-safe activities (expansion, tech, economy)
-  if house.prestige < 20:
+  # CRITICAL: Don't do espionage if prestige is critically low (collapsing)
+  # Detection costs -2 prestige. Only block if truly desperate (< 0 = collapse)
+  if house.prestige < 0:
     return none(esp_types.EspionageAttempt)
 
-  # Use espionage based on personality rather than strategy enum
+  # Calculate espionage chance based on personality
   # High risk tolerance + low aggression = espionage focus
   let espionageChance = p.riskTolerance * 0.5 + (1.0 - p.aggression) * 0.3 + p.techPriority * 0.2
 
-  # Reduce espionage frequency dramatically - it's a prestige drain
-  # Even with high espionage personality, only 20% chance per turn
-  if rng.rand(1.0) > (espionageChance * 0.2):
+  # Reduced frequency (50% of calculated chance) to prevent spam
+  # High espionage personality (0.8) → 40% chance per turn
+  if rng.rand(1.0) > (espionageChance * 0.5):
     return none(esp_types.EspionageAttempt)
 
-  # Find a target house
+  # Find target houses
   var targetHouses: seq[HouseId] = @[]
   for houseId in filtered.housePrestige.keys:
     if houseId != controller.houseId:
@@ -1685,13 +1932,16 @@ proc generateEspionageAction(controller: AIController, filtered: FilteredGameSta
   if targetHouses.len == 0:
     return none(esp_types.EspionageAttempt)
 
-  let target = targetHouses[rng.rand(targetHouses.len - 1)]
+  # Strategic target selection
+  let target = selectEspionageTarget(controller, filtered, rng)
 
-  # Simple espionage attempt (tech theft)
+  # Strategic operation selection
+  let operation = selectEspionageOperation(controller, filtered, target, rng)
+
   return some(esp_types.EspionageAttempt(
     attacker: controller.houseId,
     target: target,
-    action: esp_types.EspionageAction.TechTheft,
+    action: operation,
     targetSystem: none(SystemId)
   ))
 
@@ -1702,41 +1952,85 @@ proc generateEspionageAction(controller: AIController, filtered: FilteredGameSta
 proc generatePopulationTransfers(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[PopulationTransferOrder] =
   ## Generate Space Guild population transfer orders
   ## Per config/population.toml and economy.md:3.7
+  ##
+  ## Strategy:
+  ## - Transfer from mature colonies (PU > 150) to new/growing colonies (PU < 100)
+  ## - Prioritize high-value destinations (good resources, strategic location)
+  ## - Respect cost scaling (4-15 PP/PTU + 20% per jump)
   result = @[]
   let p = controller.personality
   let house = filtered.ownHouse
 
-  # Only economically-focused AI uses population transfers
-  if p.economicFocus < 0.5 or p.expansionDrive < 0.4:
+  # Economic and expansion-focused AIs use population transfers
+  # Lower threshold to 0.3 so more AIs use this feature
+  if p.economicFocus < 0.3 or p.expansionDrive < 0.3:
     return result
 
   # Need minimum treasury (transfers are expensive)
-  if house.treasury < 500:
+  if house.treasury < 400:
     return result
 
-  # Find overpopulated source colonies and underpopulated destinations
-  var sources: seq[tuple[systemId: SystemId, pop: int]] = @[]
-  var destinations: seq[tuple[systemId: SystemId, pop: int]] = @[]
+  # Find mature source colonies and growing destinations
+  type ColonyInfo = tuple[systemId: SystemId, pop: int, value: float]
+  var sources: seq[ColonyInfo] = @[]
+  var destinations: seq[ColonyInfo] = @[]
 
   for colony in filtered.ownColonies:
-    if colony.owner == controller.houseId:
-      if colony.population > 15:  # Overpopulated
-        sources.add((colony.systemId, colony.population))
-      elif colony.population < 10 and colony.population > 0:  # Growing colony
-        destinations.add((colony.systemId, colony.population))
+    if colony.owner != controller.houseId:
+      continue
+
+    # Mature colonies as sources (PU > 150 provides good PTU without hurting production)
+    if colony.population > 150:
+      sources.add((systemId: colony.systemId, pop: colony.population, value: 0.0))
+
+    # Growing colonies as destinations (PU < 100 benefits most from transfers)
+    elif colony.population > 0 and colony.population < 100:
+      # Calculate colony value (prioritize good resources and high infrastructure)
+      # ownColonies are full Colony objects, so fields are direct (not Option)
+      var value = float(colony.infrastructure) * 2.0  # Infrastructure is key
+
+      # Bonus for good resources
+      case colony.resources
+      of ResourceRating.VeryRich: value *= 2.0
+      of ResourceRating.Rich: value *= 1.5
+      of ResourceRating.Abundant: value *= 1.2
+      else: discard
+
+      destinations.add((systemId: colony.systemId, pop: colony.population, value: value))
 
   if sources.len == 0 or destinations.len == 0:
     return result
 
-  # Transfer from highest pop source to lowest pop destination
-  sources.sort(proc(a, b: auto): int = b.pop - a.pop)
-  destinations.sort(proc(a, b: auto): int = a.pop - b.pop)
+  # Sort sources by population (highest first - can spare more)
+  sources.sort(proc(a, b: ColonyInfo): int = b.pop - a.pop)
 
-  # One transfer per turn (they're expensive)
+  # Sort destinations by value (highest first - prioritize valuable colonies)
+  destinations.sort(proc(a, b: ColonyInfo): int =
+    if b.value > a.value: 1
+    elif b.value < a.value: -1
+    else: 0
+  )
+
+  # Transfer from highest pop source to highest value destination
+  # Calculate PTU amount based on source capacity and destination need
+  let sourcePop = sources[0].pop
+  let destPop = destinations[0].pop
+
+  # Transfer 2-5 PTU depending on source size and destination need
+  var ptuAmount = 2  # Base amount
+  if sourcePop > 300:
+    ptuAmount = 5  # Large source can give more
+  elif sourcePop > 200:
+    ptuAmount = 3
+
+  # Reduce if destination is already growing well
+  if destPop > 50:
+    ptuAmount = max(1, ptuAmount - 1)
+
   result.add(PopulationTransferOrder(
     sourceColony: sources[0].systemId,
     destColony: destinations[0].systemId,
-    ptuAmount: 1  # Conservative: 1 PTU at a time
+    ptuAmount: ptuAmount
   ))
 
 proc generateSquadronManagement(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[SquadronManagementOrder] =
@@ -1833,6 +2127,33 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
       # Plan invasion of highest-value target
       controller.planCoordinatedInvasion(filtered, opportunities[0], filtered.turn)
 
+  # Calculate EBP/CIP investment based on personality and game phase
+  # Cost: 40 PP per EBP/CIP point (diplomacy.md:8.2, 8.3)
+  # Penalty: > 5% of turn budget loses prestige
+  let availableBudget = max(house.treasury - 100, 0)  # Reserve 100 PP for emergencies
+  let act = getCurrentGameAct(filtered.turn)
+
+  # Base allocation by personality
+  let ebpPercent = p.riskTolerance * 0.02 + (1.0 - p.aggression) * 0.02 + p.techPriority * 0.01
+  let cipPercent = (1.0 - p.riskTolerance) * 0.02 + (1.0 - p.aggression) * 0.01
+
+  # Scale by game act (espionage increases in importance)
+  let actMultiplier = case act
+    of GameAct.Act1_LandGrab: 0.3           # Low espionage early
+    of GameAct.Act2_RisingTensions: 0.7     # Ramp up
+    of GameAct.Act3_TotalWar: 1.0           # Full espionage
+    of GameAct.Act4_Endgame: 1.2            # All-in
+
+  # Calculate PP allocation (max 5% to avoid prestige loss)
+  let ebpBudget = min(int(availableBudget.float * ebpPercent * actMultiplier),
+                      int(availableBudget.float * 0.05))
+  let cipBudget = min(int(availableBudget.float * cipPercent * actMultiplier),
+                      int(availableBudget.float * 0.05))
+
+  # Convert PP to EBP/CIP points (40 PP per point)
+  let ebpInvest = ebpBudget div 40
+  let cipInvest = cipBudget div 40
+
   result = OrderPacket(
     houseId: controller.houseId,
     turn: filtered.turn,
@@ -1843,9 +2164,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     populationTransfers: generatePopulationTransfers(controller, filtered, rng),
     squadronManagement: generateSquadronManagement(controller, filtered, rng),
     cargoManagement: generateCargoManagement(controller, filtered, rng),
+    terraformOrders: generateTerraformOrders(controller, filtered, rng),
     espionageAction: generateEspionageAction(controller, filtered, rng),
-    ebpInvestment: 0,
-    cipInvestment: 0
+    ebpInvestment: ebpInvest,
+    cipInvestment: cipInvest
   )
 
   # Set espionage budget based on personality (not strategy enum)
