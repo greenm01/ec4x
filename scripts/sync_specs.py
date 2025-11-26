@@ -335,6 +335,9 @@ def generate_espionage_prestige_table(prestige_config: Dict[str, Any], espionage
         ("cyber_attack", "cyber_attack_victim", "Cyber Attack", "cyber_attack_ebp", "Attempt to hack into a Starbase's systems to cause damage and chaos."),
         ("economic_manipulation", "economic_manipulation_victim", "Economic Manipulation", "economic_manipulation_ebp", "Influence markets to harm the target's economy"),
         ("psyops_campaign", "psyops_campaign_victim", "Psyops Campaign", "psyops_campaign_ebp", "Launch a misinformation campaign or demoralization effort."),
+        ("counter_intel_sweep", "counter_intel_sweep_victim", "Counter-Intelligence Sweep", "counter_intel_sweep_ebp", "Defensive operation to block enemy intelligence gathering."),
+        ("intelligence_theft", "intelligence_theft_victim", "Intelligence Theft", "intelligence_theft_ebp", "Steal target's entire intelligence database."),
+        ("plant_disinformation", "plant_disinformation_victim", "Plant Disinformation", "plant_disinformation_ebp", "Corrupt target's intelligence with false data."),
     ]
 
     for player_key, victim_key, name, cost_key, description in actions:
