@@ -166,6 +166,12 @@ proc processAllStarbaseSurveillance*(state: var GameState, turn: int, rng: var R
             ))
           report.detectedFleets = corruptedDetected
 
-          state.houses[colony.owner].intelligence.addStarbaseSurveillance(report)
+          # CRITICAL: Get, modify, write back to persist
+          var house = state.houses[colony.owner]
+          house.intelligence.addStarbaseSurveillance(report)
+          state.houses[colony.owner] = house
         else:
-          state.houses[colony.owner].intelligence.addStarbaseSurveillance(surveillance.get())
+          # CRITICAL: Get, modify, write back to persist
+          var house = state.houses[colony.owner]
+          house.intelligence.addStarbaseSurveillance(surveillance.get())
+          state.houses[colony.owner] = house

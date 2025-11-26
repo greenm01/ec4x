@@ -45,7 +45,10 @@ proc generateWarDeclarationIntel*(
       significance: significance
     )
 
-    state.houses[houseId].intelligence.addScoutEncounter(report)
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[houseId]
+    house.intelligence.addScoutEncounter(report)
+    state.houses[houseId] = house
 
 proc generatePeaceTreatyIntel*(
   state: var GameState,
@@ -82,7 +85,10 @@ proc generatePeaceTreatyIntel*(
       significance: significance
     )
 
-    state.houses[houseId].intelligence.addScoutEncounter(report)
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[houseId]
+    house.intelligence.addScoutEncounter(report)
+    state.houses[houseId] = house
 
 proc generateAllianceFormedIntel*(
   state: var GameState,
@@ -119,7 +125,10 @@ proc generateAllianceFormedIntel*(
       significance: significance
     )
 
-    state.houses[houseId].intelligence.addScoutEncounter(report)
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[houseId]
+    house.intelligence.addScoutEncounter(report)
+    state.houses[houseId] = house
 
 proc generatePactFormedIntel*(
   state: var GameState,
@@ -157,7 +166,10 @@ proc generatePactFormedIntel*(
       significance: significance
     )
 
-    state.houses[houseId].intelligence.addScoutEncounter(report)
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[houseId]
+    house.intelligence.addScoutEncounter(report)
+    state.houses[houseId] = house
 
 proc generateDiplomaticBreakIntel*(
   state: var GameState,
@@ -195,4 +207,7 @@ proc generateDiplomaticBreakIntel*(
       significance: significance
     )
 
-    state.houses[houseId].intelligence.addScoutEncounter(report)
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[houseId]
+    house.intelligence.addScoutEncounter(report)
+    state.houses[houseId] = house
