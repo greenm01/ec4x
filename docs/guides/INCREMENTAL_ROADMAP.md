@@ -801,6 +801,118 @@ Before moving to next milestone:
 
 ---
 
+## Future: AI Economics Analysis & QoL Features
+
+**Priority:** Post-balance testing, after unknowns are identified
+
+**These features optimize what already works - don't build before balance testing!**
+
+### 1. Economics Advisor QoL (Config-Controlled)
+**Goal:** Help new players understand AI budget decisions
+
+**Features:**
+- Pattern-based warnings (3+ turns of same issue)
+- Separate "good underutilization" from "waste"
+- Config file: `config/qol.toml` with verbosity levels
+  - `off` - No warnings (expert mode)
+  - `warnings_only` - Critical issues only
+  - `detailed` - Full economic analysis
+
+**Example Warnings:**
+```
+⚠ Military budget exhausted by turn 5 - consider +10% allocation
+⚠ 0 scouts built in Act 1 - reconnaissance gap detected
+✓ Expansion underutilized (expected - only 1 ETAC needed)
+```
+
+### 2. Budget Adjustment Recommendations
+**Goal:** Suggest optimal allocation changes based on actual usage
+
+**Features:**
+- Detect budget mismatches (need vs allocation)
+- Suggest +/- 5% adjustments with reasoning
+- Respect AI personality (don't suggest pacifism to aggressive houses)
+- Context-aware (early threats trigger defense recommendations)
+
+**Example Recommendations:**
+```
+Turn 8: Enemy fleet detected at border
+→ Recommendation: Increase Defense 15% → 25% (emergency threat)
+
+Turn 12: Intelligence budget exhausted 3 turns running
+→ Recommendation: Increase Intelligence 15% → 20% (scout production gap)
+
+Turn 15: Expansion unused 500PP for 6 turns
+→ Recommendation: Reduce Expansion 55% → 20%, reallocate to Military
+```
+
+### 3. Polars-Based Budget Pattern Analysis
+**Goal:** Use machine power to find optimal allocations from 1000s of games
+
+**Analysis Types:**
+
+**A. Optimal Allocations by Act**
+```python
+# analyze_budget_patterns.py
+# Input: balance_results/diagnostics/*.csv (10,000+ games)
+# Output: Correlation between budget allocation → win rate
+
+Finding: "Military 58% in Act 3 → 52% win rate (vs 48% baseline)"
+Recommendation: Update Act 3 default from 55% → 58%
+```
+
+**B. Utilization Pattern Detection**
+```python
+Finding: "Intelligence averages 68% utilization in Act 1"
+Insight: "AI overallocates scouts early game"
+Recommendation: "Reduce Act 1 Intelligence 15% → 12%"
+```
+
+**C. Economic Victory Predictors**
+```python
+Pattern: Military exhaustion by turn 15 → 65% elimination rate
+Pattern: >90% utilization all objectives → 58% win rate
+Pattern: >30% treasury hoarding → 42% win rate (inefficiency)
+```
+
+**D. Build Order Optimization**
+```python
+Question: Does Corvette early game improve survival?
+Data: Corvette builders → 8% higher turn 10 survival
+Recommendation: Prioritize Corvette in low-budget scenarios
+```
+
+**Implementation:**
+```bash
+# Step 1: Run diagnostic games
+nimble testBalanceDiagnostics  # 10,000 games → CSV
+
+# Step 2: Analyze with Polars
+python tests/balance/analyze_budget_patterns.py \
+  --input balance_results/diagnostics/*.csv \
+  --output docs/balance/OPTIMAL_BUDGETS.md
+
+# Step 3: Generate visualizations
+# - Budget utilization heatmaps
+# - Win rate by allocation charts
+# - Build order efficiency graphs
+```
+
+**Deliverables:**
+- `docs/balance/OPTIMAL_BUDGETS.md` - Analysis report
+- `docs/balance/charts/` - Visualizations
+- Updated default allocations in `src/ai/rba/budget.nim`
+
+**Prerequisites:**
+- ✅ Budget transparency system working
+- ✅ Diagnostic CSV export functional
+- ⏳ Balance testing identifies which metrics matter
+- ⏳ Unknown-unknowns discovered and addressed
+
+**Status:** Deferred until balance testing complete
+
+---
+
 ## Key Principle
 
 > **Build the simplest thing that proves the next architectural layer.**
