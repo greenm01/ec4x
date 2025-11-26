@@ -142,6 +142,12 @@ type
     ConservativeLosing, # Retreat fleets when clearly losing combat
     AggressiveSurvival  # Retreat any fleet at risk of destruction
 
+  HouseStatus* {.pure.} = enum
+    ## Player/house operational status (gameplay.md:1.4)
+    Active,              # Normal play - submitting orders
+    Autopilot,           # Temporary MIA mode (3+ consecutive turns without orders)
+    DefensiveCollapse    # Permanent elimination (3+ consecutive turns prestige < 0)
+
   House* = object
     id*: HouseId
     name*: string
@@ -150,7 +156,9 @@ type
     treasury*: int                # Accumulated wealth
     techTree*: TechTree
     eliminated*: bool
+    status*: HouseStatus         # Operational status (Active, Autopilot, DefensiveCollapse)
     negativePrestigeTurns*: int  # Consecutive turns with prestige < 0 (defensive collapse)
+    turnsWithoutOrders*: int     # Consecutive turns without submitting orders (MIA autopilot)
     diplomaticRelations*: dip_types.DiplomaticRelations  # Relations with other houses
     violationHistory*: dip_types.ViolationHistory  # Track pact violations
     espionageBudget*: esp_types.EspionageBudget  # EBP/CIP points
@@ -234,7 +242,9 @@ proc initializeHouse*(name: string, color: string): House =
       advancedCarrierOps: startingTech.advanced_carrier_ops
     )),
     eliminated: false,
+    status: HouseStatus.Active,
     negativePrestigeTurns: 0,
+    turnsWithoutOrders: 0,
     diplomaticRelations: dip_types.initDiplomaticRelations(),
     violationHistory: dip_types.initViolationHistory(),
     espionageBudget: esp_types.initEspionageBudget(),
