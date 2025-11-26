@@ -7,6 +7,8 @@ import ../common/types
 import ./controller_types
 export controller_types
 import ../../engine/[gamestate, fog_of_war]
+import ../../engine/order_types
+export StandingOrder, StandingOrderType, StandingOrderParams
 import ../../common/types/core
 
 # =============================================================================
@@ -129,8 +131,9 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
 # Constructor Functions
 # =============================================================================
 
-proc newAIController*(houseId: HouseId, strategy: AIStrategy): AIController =
+proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemId = 0.SystemId): AIController =
   ## Create a new AI controller for a house
+  ## Note: homeworld should be set from GameState after initialization if not provided
   AIController(
     houseId: houseId,
     strategy: strategy,
@@ -138,11 +141,14 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy): AIController =
     intelligence: initTable[SystemId, IntelligenceReport](),
     operations: @[],
     reserves: @[],
-    fallbackRoutes: @[]
+    fallbackRoutes: @[],
+    homeworld: homeworld,
+    standingOrders: initTable[FleetId, StandingOrder]()
   )
 
-proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality): AIController =
+proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
   ## Create a new AI controller with a custom personality (for genetic algorithm)
+  ## Note: homeworld should be set from GameState after initialization if not provided
   AIController(
     houseId: houseId,
     strategy: AIStrategy.Balanced,
@@ -150,7 +156,9 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     intelligence: initTable[SystemId, IntelligenceReport](),
     operations: @[],
     reserves: @[],
-    fallbackRoutes: @[]
+    fallbackRoutes: @[],
+    homeworld: homeworld,
+    standingOrders: initTable[FleetId, StandingOrder]()
   )
 
 # =============================================================================
