@@ -23,14 +23,14 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
   let p = controller.personality
   let house = filtered.ownHouse
 
-  # Calculate available PP budget from production
-  var totalProduction = 0
-  for colony in filtered.ownColonies:
-    if colony.owner == controller.houseId:
-      totalProduction += colony.production
+  # Calculate research budget from treasury (not production)
+  # Research competes with builds for treasury resources
+  let researchBudget = int(float(house.treasury) * p.techPriority)
 
-  # Allocate percentage of production to research based on tech priority
-  let researchBudget = int(float(totalProduction) * p.techPriority)
+  # DEBUG: Log research budget calculation
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Research Budget: {researchBudget}PP " &
+           &"(treasury={house.treasury}, techPriority={p.techPriority:.2f})")
 
   if researchBudget > 0:
     # Distribute research budget across EL/SL/TRP based on strategy

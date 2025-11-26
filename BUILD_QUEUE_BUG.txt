@@ -2,7 +2,33 @@
 BUILD QUEUE BUG - INCOMPLETE FIX (2025-11-26)
 ================================================================================
 
-CURRENT STATUS: 7/19 ship types building, 12 still broken (TREASURY FIX APPLIED)
+CURRENT STATUS: 6/19 ship types building, 13 still broken (TREASURY + RESEARCH FIXES APPLIED)
+
+**CRITICAL: Income System Broken - Colonies Producing 0 PP!**
+- Diagnostic CSV shows: production=0, gco=0 (Gross Colony Output)
+- Colonies have 100 PU population but generate ZERO income
+- Houses start with 1000PP treasury, spend it all in turn 1, then bankrupt forever
+- Income reports show: "+0 PP (Gross: 0)" every turn
+-
+
+ This cascades to multiple failures:
+  1. **No Treasury Recovery**: Houses can't build anything after turn 1 (no income)
+  2. **No Research**: GHO=0 → ERP calculation fails (divide by log(0) = -inf)
+  3. **CST Stuck at 1**: Can't advance tech without functional research
+  4. **12 Ships Blocked**: Advanced ships require CST 2-6
+
+**Root Cause**: Economy engine (econ_engine.resolveIncomePhase) returning 0 GCO
+- Needs investigation: Are colony.production fields being populated?
+- Check: income calculation formulas, tax policy, modifiers
+
+**Research System Status**: PARTIALLY FIXED
+- ✅ Treasury deduction working (prevents negative treasury)
+- ✅ Proportional scaling when over-budget
+- ✅ SRP accumulation working (73, 66, 76 SRP logged in turn 1)
+- ❌ ERP = 0 (needs GHO > 0 to calculate)
+- ❌ TRP fields not logged (likely also need GHO > 0)
+
+**Next Step**: Fix income system FIRST, then research will work automatically.
 
 WORKING SHIP TYPES (7):
   ✅ Scout (FIXED - 617 built!)
