@@ -133,16 +133,35 @@ type
 
 # Order validation
 
-proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult =
+proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: HouseId): ValidationResult =
   ## Validate a fleet order against current game state
+  ## Checks:
+  ## - Fleet exists
+  ## - Fleet ownership (prevents controlling enemy fleets)
+  ## - Target validity (system exists, path exists)
+  ## - Required capabilities (spacelift, combat, scout)
   result = ValidationResult(valid: true, error: "")
 
   # Check fleet exists
   let fleetOpt = state.getFleet(order.fleetId)
   if fleetOpt.isNone:
+    logWarn(LogCategory.lcOrders,
+            &"{issuingHouse} Fleet Validation FAILED: {order.fleetId} does not exist")
     return ValidationResult(valid: false, error: "Fleet does not exist")
 
   let fleet = fleetOpt.get()
+
+  # CRITICAL: Validate fleet ownership (prevent controlling enemy fleets)
+  if fleet.owner != issuingHouse:
+    logWarn(LogCategory.lcOrders,
+            &"SECURITY VIOLATION: {issuingHouse} attempted to control {order.fleetId} " &
+            &"(owned by {fleet.owner})")
+    return ValidationResult(valid: false,
+                           error: &"Fleet {order.fleetId} is not owned by {issuingHouse}")
+
+  logDebug(LogCategory.lcOrders,
+           &"{issuingHouse} Validating {order.orderType} order for {order.fleetId} " &
+           &"at {fleet.location}")
 
   # Validate based on order type
   case order.orderType
@@ -152,16 +171,28 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
 
   of FleetOrderType.Move:
     if order.targetSystem.isNone:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Move order REJECTED: {order.fleetId} - no target system specified")
       return ValidationResult(valid: false, error: "Move order requires target system")
 
     let targetId = order.targetSystem.get()
     if not state.starMap.systems.hasKey(targetId):
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Move order REJECTED: {order.fleetId} → {targetId} " &
+              &"(target system does not exist)")
       return ValidationResult(valid: false, error: "Target system does not exist")
 
     # Check pathfinding - can fleet reach target?
     let pathResult = state.starMap.findPath(fleet.location, targetId, fleet)
     if not pathResult.found:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Move order REJECTED: {order.fleetId} → {targetId} " &
+              &"(no valid path from {fleet.location})")
       return ValidationResult(valid: false, error: "No valid path to target system")
+
+    logDebug(LogCategory.lcOrders,
+             &"{issuingHouse} Move order VALID: {order.fleetId} → {targetId} " &
+             &"({pathResult.path.len - 1} jumps via {fleet.location})")
 
   of FleetOrderType.Colonize:
     # Check fleet has spacelift squadron
@@ -173,15 +204,26 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
           break
 
     if not hasColonyShip:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Colonize order REJECTED: {order.fleetId} - " &
+              &"no functional spacelift squadron (ETAC/Troop Transport required)")
       return ValidationResult(valid: false, error: "Colonize requires functional spacelift squadron")
 
     if order.targetSystem.isNone:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Colonize order REJECTED: {order.fleetId} - no target system specified")
       return ValidationResult(valid: false, error: "Colonize order requires target system")
 
     # Check if system already colonized
     let targetId = order.targetSystem.get()
     if targetId in state.colonies:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Colonize order REJECTED: {order.fleetId} → {targetId} " &
+              &"(already colonized by {state.colonies[targetId].owner})")
       return ValidationResult(valid: false, error: "Target system is already colonized")
+
+    logDebug(LogCategory.lcOrders,
+             &"{issuingHouse} Colonize order VALID: {order.fleetId} → {targetId}")
 
   of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
     # Check fleet has combat squadrons
@@ -192,39 +234,79 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
         break
 
     if not hasMilitary:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+              &"no combat-capable squadrons")
       return ValidationResult(valid: false, error: "Combat order requires combat-capable squadrons")
 
     if order.targetSystem.isNone:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+              &"no target system specified")
       return ValidationResult(valid: false, error: "Combat order requires target system")
+
+    logDebug(LogCategory.lcOrders,
+             &"{issuingHouse} {order.orderType} order VALID: {order.fleetId} → " &
+             &"{order.targetSystem.get()}")
 
   of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
     # Spy missions require single-scout squadrons for stealth
     # Multi-ship squadrons significantly increase detection risk
     if fleet.squadrons.len != 1:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+              &"spy missions require single squadron (found {fleet.squadrons.len})")
       return ValidationResult(valid: false, error: "Spy missions require single squadron")
 
     let squadron = fleet.squadrons[0]
     if squadron.flagship.shipClass != ShipClass.Scout:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+              &"spy missions require Scout (found {squadron.flagship.shipClass})")
       return ValidationResult(valid: false, error: "Spy missions require Scout squadron")
 
     if squadron.ships.len > 0:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+              &"single-scout only (found {squadron.ships.len + 1} ships)")
       return ValidationResult(valid: false, error: "Spy missions require single-scout squadron (no additional ships)")
 
     if order.targetSystem.isNone:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+              &"no target system specified")
       return ValidationResult(valid: false, error: "Spy mission requires target system")
+
+    logDebug(LogCategory.lcOrders,
+             &"{issuingHouse} {order.orderType} order VALID: {order.fleetId} → " &
+             &"{order.targetSystem.get()}")
 
   of FleetOrderType.JoinFleet:
     if order.targetFleet.isNone:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} - " &
+              &"no target fleet specified")
       return ValidationResult(valid: false, error: "Join order requires target fleet")
 
-    let targetFleetOpt = state.getFleet(order.targetFleet.get())
+    let targetFleetId = order.targetFleet.get()
+    let targetFleetOpt = state.getFleet(targetFleetId)
     if targetFleetOpt.isNone:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} → {targetFleetId} " &
+              &"(target fleet does not exist)")
       return ValidationResult(valid: false, error: "Target fleet does not exist")
 
     # Check fleets are in same location
     let targetFleet = targetFleetOpt.get()
     if fleet.location != targetFleet.location:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} → {targetFleetId} " &
+              &"(fleets at different systems: {fleet.location} vs {targetFleet.location})")
       return ValidationResult(valid: false, error: "Fleets must be in same system to join")
+
+    logDebug(LogCategory.lcOrders,
+             &"{issuingHouse} JoinFleet order VALID: {order.fleetId} → {targetFleetId} " &
+             &"at {fleet.location}")
 
   else:
     # Other order types - basic validation only for now
@@ -232,35 +314,72 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState): ValidationResult 
 
 proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResult =
   ## Validate entire order packet for a house
+  ## Performs comprehensive validation including:
+  ## - Fleet ownership (prevents controlling enemy fleets)
+  ## - Target validity (systems exist, paths exist)
+  ## - Colony ownership (prevents building at enemy colonies)
   result = ValidationResult(valid: true, error: "")
 
   # Check house exists
   if packet.houseId notin state.houses:
+    logWarn(LogCategory.lcOrders,
+            &"Order packet REJECTED: {packet.houseId} does not exist")
     return ValidationResult(valid: false, error: "House does not exist")
 
   # Check turn number matches
   if packet.turn != state.turn:
+    logWarn(LogCategory.lcOrders,
+            &"{packet.houseId} Order packet REJECTED: wrong turn " &
+            &"(packet={packet.turn}, current={state.turn})")
     return ValidationResult(valid: false, error: "Order packet for wrong turn")
 
-  # Validate each fleet order
+  logInfo(LogCategory.lcOrders,
+          &"{packet.houseId} Validating order packet: {packet.fleetOrders.len} fleet orders, " &
+          &"{packet.buildOrders.len} build orders")
+
+  # Validate each fleet order with ownership check
+  var validFleetOrders = 0
   for order in packet.fleetOrders:
-    let orderResult = validateFleetOrder(order, state)
+    let orderResult = validateFleetOrder(order, state, packet.houseId)
     if not orderResult.valid:
       return orderResult
+    validFleetOrders += 1
+
+  if packet.fleetOrders.len > 0:
+    logInfo(LogCategory.lcOrders,
+            &"{packet.houseId} Fleet orders: {validFleetOrders}/{packet.fleetOrders.len} valid")
 
   # Validate build orders (check colony ownership, production capacity)
+  var validBuildOrders = 0
   for order in packet.buildOrders:
     # Check colony exists and is owned by house
     if order.colonySystem notin state.colonies:
+      logWarn(LogCategory.lcOrders,
+              &"{packet.houseId} Build order REJECTED: colony at {order.colonySystem} " &
+              &"does not exist")
       return ValidationResult(valid: false, error: "Build order: Colony does not exist at system " & $order.colonySystem)
 
     let colony = state.colonies[order.colonySystem]
     if colony.owner != packet.houseId:
+      logWarn(LogCategory.lcOrders,
+              &"SECURITY VIOLATION: {packet.houseId} attempted to build at {order.colonySystem} " &
+              &"(owned by {colony.owner})")
       return ValidationResult(valid: false, error: "Build order: House does not own colony at system " & $order.colonySystem)
 
     # Check for duplicate build orders at same colony (can only build one thing at a time)
     if colony.underConstruction.isSome:
+      logWarn(LogCategory.lcOrders,
+              &"{packet.houseId} Build order REJECTED: {order.colonySystem} " &
+              &"already has active construction")
       return ValidationResult(valid: false, error: "Build order: Colony at system " & $order.colonySystem & " already has active construction")
+
+    validBuildOrders += 1
+    logDebug(LogCategory.lcOrders,
+             &"{packet.houseId} Build order VALID: {order.buildType} at {order.colonySystem}")
+
+  if packet.buildOrders.len > 0:
+    logInfo(LogCategory.lcOrders,
+            &"{packet.houseId} Build orders: {validBuildOrders}/{packet.buildOrders.len} valid")
 
   # Validate research allocation (check total points available)
   let house = state.houses[packet.houseId]
@@ -288,6 +407,9 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
     if action.targetHouse == packet.houseId:
       return ValidationResult(valid: false, error: "Diplomatic action: Cannot target own house")
 
+  # All validations passed
+  logInfo(LogCategory.lcOrders,
+          &"{packet.houseId} Order packet VALIDATED: All orders valid and authorized")
   result = ValidationResult(valid: true, error: "")
 
 # Order creation helpers
