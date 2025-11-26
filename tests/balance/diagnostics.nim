@@ -4,7 +4,7 @@
 ## Per Grok gap analysis: "Run diagnostics. Let the numbers tell you exactly what's missing."
 
 import std/[tables, strformat, streams, options]
-import ../../src/engine/[gamestate, fleet, squadron, orders]
+import ../../src/engine/[gamestate, fleet, squadron, orders, logger]
 import ../../src/common/types/[core, units]
 
 type
@@ -34,6 +34,7 @@ type
     totalFighters*: int               # Current fighter count
     idleCarriers*: int                # Carriers with 0 fighters loaded
     totalCarriers*: int               # Total carrier count
+    totalTransports*: int             # Total troop transport count
 
     # Intel / Tech
     invasionFleetsWithoutELIMesh*: int  # Invasions without 3+ scout ELI mesh
@@ -200,6 +201,22 @@ proc collectLogisticsMetrics(state: GameState, houseId: HouseId): DiagnosticMetr
 
   result.idleCarriers = idleCarrierCount
   result.totalCarriers = totalCarrierCount
+
+  # Count transports (spacelift ships: ETAC + TroopTransport, not squadrons)
+  var transportCount = 0
+  for fleetId, fleet in state.fleets:
+    if fleet.owner == houseId:
+      for spaceLiftShip in fleet.spaceLiftShips:
+        # Count both ETAC (colonization) and TroopTransport (invasion)
+        if spaceLiftShip.shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]:
+          transportCount += 1
+      # Debug: log spacelift ship counts per fleet
+      if fleet.spaceLiftShips.len > 0:
+        logDebug(LogCategory.lcAI, &"Fleet {fleetId} has {fleet.spaceLiftShips.len} spacelift ships")
+
+  result.totalTransports = transportCount
+  if transportCount > 0:
+    logDebug(LogCategory.lcAI, &"{houseId} has {transportCount} transports")
 
   # Phase 2c: Count scouts for ELI mesh tracking
   var scoutCount = 0
@@ -414,7 +431,7 @@ proc writeCSVHeader*(file: File) =
   file.writeLine("turn,house,treasury,production,pu_growth,zero_spend_turns," &
                  "space_wins,space_losses,space_total,orbital_failures,orbital_total," &
                  "raider_success,raider_attempts," &
-                 "capacity_violations,fighters_disbanded,total_fighters,idle_carriers,total_carriers," &
+                 "capacity_violations,fighters_disbanded,total_fighters,idle_carriers,total_carriers,total_transports," &
                  "invasions_no_eli,total_invasions,clk_no_raiders,scout_count," &
                  "spy_planet,hack_starbase,total_espionage," &
                  "undefended_colonies,total_colonies,mothball_used,mothball_total," &
@@ -428,7 +445,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.orbitalFailures},{metrics.orbitalTotal}," &
                  &"{metrics.raiderAmbushSuccess},{metrics.raiderAmbushAttempts}," &
                  &"{metrics.capacityViolationsActive},{metrics.fightersDisbanded}," &
-                 &"{metrics.totalFighters},{metrics.idleCarriers},{metrics.totalCarriers}," &
+                 &"{metrics.totalFighters},{metrics.idleCarriers},{metrics.totalCarriers},{metrics.totalTransports}," &
                  &"{metrics.invasionFleetsWithoutELIMesh},{metrics.totalInvasions}," &
                  &"{metrics.clkResearchedNoRaiders},{metrics.scoutCount}," &
                  &"{metrics.spyPlanetMissions},{metrics.hackStarbaseMissions},{metrics.totalEspionageMissions}," &
