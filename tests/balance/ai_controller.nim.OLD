@@ -1293,26 +1293,13 @@ proc generateBuildOrders(controller: AIController, filtered: FilteredGameState, 
   # Key improvement: Military/Intelligence get dedicated budget in Act 2+, preventing starvation.
   # ==========================================================================
 
-  # Call multi-objective budget system to generate ship build orders
-  # (currentAct already defined above at line 1015)
-  # Calculate available budget: treasury minus estimated maintenance costs
+  # Call RBA budget system to generate ship build orders
+  # This includes all ship types: scouts, fighters, carriers, capital ships, Planet-Breakers, etc.
   let availableBudget = max(0, house.treasury - estimatedMaintenance)
 
-  result = generateBuildOrdersWithBudget(
+  result = budget.generateBuildOrders(
     controller, filtered, house, myColonies, currentAct, p,
-    isUnderThreat = isUnderThreat,
-    needETACs = needETACs,
-    needDefenses = needDefenses,
-    needScouts = needScouts,
-    needFighters = needFighters,
-    needCarriers = needCarriers,
-    needTransports = needTransports,
-    needRaiders = needRaiders,
-    canAffordMoreShips = canAffordMoreShips,
-    atSquadronLimit = atSquadronLimit,
-    militaryCount = militaryCount,
-    scoutCount = scoutCount,
-    availableBudget = availableBudget
+    availableBudget, rng
   )
 
   # ==========================================================================
