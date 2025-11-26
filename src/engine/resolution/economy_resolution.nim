@@ -62,14 +62,14 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
   echo "    Processing build orders for ", state.houses[packet.houseId].name
 
   # Initialize budget validation context
-  # Use treasury snapshot from OrderPacket (captured at AI planning time)
-  # This prevents budget mismatches when Income Phase modifies treasury before Command Phase
+  # Use CURRENT treasury from state (NOT snapshot from OrderPacket)
+  # This ensures validation matches the actual treasury after income/maintenance
   let house = state.houses[packet.houseId]
-  var budgetContext = orders.initOrderValidationContext(packet.treasury)
+  var budgetContext = orders.initOrderValidationContext(house.treasury)
 
   logInfo(LogCategory.lcEconomy,
           &"{packet.houseId} Build Order Validation: {packet.buildOrders.len} orders, " &
-          &"{packet.treasury} PP available (snapshot from order generation)")
+          &"{house.treasury} PP available (current treasury after income/maintenance)")
 
   for order in packet.buildOrders:
     # Validate colony exists
@@ -151,10 +151,18 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       mutableColony.constructionQueue.add(project)  # Also add to build queue
       state.colonies[order.colonySystem] = mutableColony
 
+      # CRITICAL FIX: Deduct construction cost from house treasury
+      # IMPORTANT: Use get-modify-write pattern (Nim Table copy semantics!)
+      var house = state.houses[packet.houseId]
+      let oldTreasury = house.treasury
+      house.treasury -= project.costTotal
+      state.houses[packet.houseId] = house
+
       let queuePos = mutableColony.constructionQueue.len
       let capacity = mutableColony.getConstructionDockCapacity()
       echo "      Started construction at system ", order.colonySystem, ": ", projectDesc
       echo "        Cost: ", project.costTotal, " PP, Est. ", project.turnsRemaining, " turns (Queue: ", queuePos, "/", capacity, " docks)"
+      echo "        Treasury: ", oldTreasury, " PP → ", house.treasury, " PP"
 
       # Generate event
       events.add(GameEvent(
