@@ -366,8 +366,55 @@ With this refactor:
 
 ---
 
+## 2. Diagnostic System - Limited Metrics Coverage
+
+**Status:** ✅ **RESOLVED** (2025-11-26)
+**Impact:** Prevented detection of unknown-unknowns in balance testing
+
+### Problem Description
+
+Original diagnostic system tracked only 55 metrics, missing critical game state data:
+- No tech level tracking (couldn't determine if CST reached 10 for Planet-Breakers)
+- No combat performance metrics (CER, crits, retreats)
+- No diplomatic status tracking (pacts, violations)
+- No espionage activity logging
+- No squadron capacity violation detection
+- No blockade impact measurement
+- No economic health indicators
+
+### Solution Implemented
+
+**Expanded diagnostic system to 130 columns (+136% coverage):**
+
+Added 75 new metrics from specifications and config files:
+- **Tech Levels:** All 11 technologies (CST, WEP, EL, SL, TER, ELI, CLK, SLD, CIC, FD, ACO)
+- **Combat Performance:** CER averages, critical hits, retreats, bombardment rounds, shield activations
+- **Diplomatic Status:** Active pacts, violations, dishonor status, isolation tracking
+- **Espionage Activity:** EBP/CIP spending, operation outcomes, counter-intel successes
+- **Population & Colonies:** Space Guild transfers, blockaded colonies, blockade durations
+- **Economic Health:** Treasury deficits, infrastructure damage, salvage recovered, tax penalties
+- **Squadron Capacity:** Fighter/capital squadron limits and violations, starbase requirements
+- **House Status:** Autopilot, defensive collapse, elimination countdown, MIA risk
+
+### Key Discovery
+
+**CST Tech Progression:** CST never reaches level 10 (Planet-Breaker requirement) within typical game lengths. Maximum CST observed: level 4 by turn 100. This explains zero Planet-Breaker deployments across all balance tests.
+
+### Results
+
+- Comprehensive metrics enable detection of unknown-unknowns
+- Can now identify: squadron cap violations, blockade impact, economic throttling, diplomatic destabilization
+- All future balance testing will have full visibility into game state
+
+### Related Commits
+
+- **[commit hash]:** Expand diagnostics to 130 columns with comprehensive metrics
+
+---
+
 ## Notes
 
+**Issue #1 Discovery Process:**
 This limitation was discovered through systematic diagnostic testing:
 1. Added scout_count metric to diagnostics
 2. Ran 50-game batch with 30 turns each

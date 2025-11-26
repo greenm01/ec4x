@@ -311,6 +311,21 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
           jumpLanes: @[]  # Don't reveal connections beyond adjacent
         )
 
+  # Universal map awareness - ALL systems visible from the start
+  # Players know the entire star map (systems and jump lanes), but colonies/fleets remain hidden until scouted
+  for systemId, system in state.starMap.systems:
+    if systemId notin result.visibleSystems:
+      let adjacentIds = state.starMap.getAdjacentSystems(systemId)
+      let coords: tuple[q: int, r: int] = (q: system.coords.q, r: system.coords.r)
+
+      result.visibleSystems[systemId] = VisibleSystem(
+        systemId: systemId,
+        visibility: VisibilityLevel.Adjacent,
+        lastScoutedTurn: none(int),
+        coordinates: some(coords),
+        jumpLanes: adjacentIds  # Reveal all jump lanes for strategic planning
+      )
+
   # Visible colonies
   result.visibleColonies = @[]
 

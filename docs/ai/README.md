@@ -171,9 +171,32 @@ let orders = generateAIOrders(controller, filteredView, rng)
 
 ---
 
-## Recent Improvements (2025-11-26)
+## Recent Improvements
 
-### Phase-Aware Tactical System
+### 2025-11-26: Comprehensive Diagnostic System Expansion
+
+**Expanded diagnostic metrics from 55 to 130 columns (+136% coverage):**
+
+Added 75 new metrics derived from specifications and config files:
+- **Tech Levels:** All 11 technologies (CST, WEP, EL, SL, TER, ELI, CLK, SLD, CIC, FD, ACO)
+- **Combat Performance:** CER averages, critical hits, retreats, bombardment rounds, shield activations
+- **Diplomatic Status:** Active pacts, violations, dishonor status, isolation tracking
+- **Espionage Activity:** EBP/CIP spending, operation outcomes, counter-intel successes
+- **Population & Colonies:** Space Guild transfers, blockaded colonies, blockade durations
+- **Economic Health:** Treasury deficits, infrastructure damage, salvage recovered, tax penalties
+- **Squadron Capacity:** Fighter/capital squadron limits and violations, starbase requirements
+- **House Status:** Autopilot, defensive collapse, elimination countdown, MIA risk
+
+**Key Finding:** CST never reaches level 10 (Planet-Breaker requirement) within typical game lengths. Maximum CST observed: level 4 by turn 100. This explains zero Planet-Breaker deployments across all balance tests.
+
+**Impact:** Comprehensive metrics enable detection of unknown-unknowns like:
+- Squadron capacity violations limiting military growth
+- Blockades preventing expansion
+- Espionage disrupting economies
+- Tax penalties throttling development
+- Diplomatic destabilization cascading into collapse
+
+### 2025-11-26: Phase-Aware Tactical System
 
 Fixed 5 critical bugs that caused complete AI paralysis in early game:
 
@@ -200,7 +223,8 @@ Fixed 5 critical bugs that caused complete AI paralysis in early game:
 **Results:**
 - Before: 1 colony by Turn 7 (complete paralysis)
 - After: 4-5 colonies by Turn 7 (300-400% improvement) ✅
-- Act 1 functional, Act 2 needs further tuning
+- 1,536 games validated (Acts 1-4) with 0 AI collapses
+- Act 1 functional, Act 2 needs further tuning (plateau at 4-6 colonies by Turn 30)
 
 **Key Insights:**
 - ETACs are colonization ships, not military units
