@@ -1,8 +1,85 @@
 # EC4X Known Issues & Architectural Limitations
 
-**Last Updated:** 2025-11-26
+**Last Updated:** 2025-11-26 (Post-QoL Integration Testing)
 
 This document tracks known architectural limitations and design issues that affect game balance or AI behavior.
+
+---
+
+## 🔴 CRITICAL: Active Issues (Post-QoL Integration)
+
+### 0. AI Subsystem Integration Bugs
+
+**Status:** 🔴 **ACTIVE** (Discovered 2025-11-26)
+**Discovered:** Balance testing after QoL integration (50 games, 30 turns)
+**Impact:** Several AI subsystems not executing despite QoL integration being functional
+**Test Report:** `docs/testing/BALANCE_TESTING_2025-11-26.md`
+
+#### Issues Discovered
+
+**1. Espionage System Completely Broken** 🔴 **CRITICAL**
+- **Metric:** 0% usage across 1,500 turns (target >80%)
+- **Evidence:** 0 SpyPlanet missions, 0 HackStarbase missions
+- **Root Cause:** `generateEspionageAction()` returns `none()` every turn
+- **Files:** `src/ai/rba/espionage.nim`, `src/ai/rba/orders.nim:256`
+- **Investigation Needed:**
+  - Prerequisites not met (insufficient scouts)?
+  - Budget allocation issue?
+  - Mission selection logic bug?
+  - Integration bug (module not being called)?
+
+**2. Scout Production Not Triggering** 🔴 **CRITICAL**
+- **Metric:** 0.0 scouts per house (target 5-7)
+- **Impact:** No ELI mesh, no intelligence gathering
+- **Root Cause:** Build logic not generating scout build orders
+- **Files:** `src/ai/rba/orders.nim:174-180`, `src/ai/rba/budget.nim`
+- **Investigation Needed:**
+  - Scout build conditions (`needScouts`) too restrictive?
+  - Budget allocation (all PP to other priorities)?
+  - Tech gate issue?
+  - Colony selection (no valid shipyards)?
+
+**3. Mothballing System Not Executing** ⚠️ **MEDIUM**
+- **Metric:** 0% usage (target >70% late-game)
+- **Impact:** Fleet maintenance costs not optimized
+- **Root Cause:** Logistics mothballing logic not triggering
+- **Files:** `src/ai/rba/logistics.nim`, `src/ai/rba/orders.nim:106-111`
+- **Investigation Needed:**
+  - Mothball conditions never met?
+  - Reserve system not populating?
+  - Integration bug (orders not applied)?
+  - Act-specific logic (only Act 3+)?
+
+**4. Chronic Resource Hoarding** ⚠️ **MEDIUM**
+- **Metric:** 55.2% games with 10+ consecutive zero-spend turns (target <5%)
+- **Impact:** AI not using available resources efficiently
+- **Root Cause:** Budget tracking working but build orders too conservative
+- **Files:** `src/ai/rba/budget.nim`, `src/ai/rba/orders.nim`
+- **Investigation Needed:**
+  - Build affordability check (200 PP too high)?
+  - Build order generation missing opportunities?
+  - Colony selection issues?
+  - Validation failures not being logged?
+
+#### What IS Working
+
+✅ **Budget Tracking** - 0% overspending violations (was 60%+ before)
+✅ **Standing Orders** - 67% fleet assignment rate (4/6 fleets)
+✅ **Fleet Validation** - 100% security compliance
+✅ **Carrier/Fighter** - 0% idle carriers
+
+#### Recommended Actions
+
+1. **Immediate:** Add comprehensive diagnostic logging to failing systems
+2. **Immediate:** Debug espionage action generation (CRITICAL)
+3. **Immediate:** Debug scout build conditions (CRITICAL)
+4. **Short-term:** Investigate resource hoarding patterns
+5. **Short-term:** Fix mothballing logic
+6. **Short-term:** Run balance testing round 2 after fixes
+
+---
+
+## ✅ RESOLVED: Historical Issues
 
 ---
 
