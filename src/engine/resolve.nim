@@ -9,6 +9,7 @@
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets]
 import ../common/types/core
+import ../common/logger
 import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
@@ -38,8 +39,8 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnResult =
   ## Resolve a complete game turn
   ## Returns new game state and events that occurred
-  when not defined(release):
-    echo "\n[RESOLVE TURN CALLED] Turn ", state.turn, " starting resolution"
+
+  logDebug("Resolve", "Turn resolution starting", "turn=", $state.turn)
 
   result.newState = state  # Start with current state
   result.events = @[]
@@ -48,8 +49,9 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Initialize RNG for this turn (use turn number as seed for reproducibility)
   # TODO: Use RNG for stochastic resolution once implemented
   discard initRand(state.turn)
+  logRNG("RNG initialized", "turn=", $state.turn, " seed=", $state.turn)
 
-  echo "Resolving strategic cycle ", state.turn
+  logResolve("Starting strategic cycle", "turn=", $state.turn)
 
   # Generate AI orders for special modes (Defensive Collapse & MIA Autopilot)
   # These override player/AI orders for affected houses
@@ -83,7 +85,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         collapsePacket.fleetOrders.add(order)
 
       effectiveOrders[houseId] = collapsePacket
-      echo "  ", house.name, " (DEFENSIVE COLLAPSE): ", defensiveOrders.len, " defensive fleet orders"
+      logInfo("Resolve", "Defensive Collapse mode active", house.name, " orders=", $defensiveOrders.len)
 
     of HouseStatus.Autopilot:
       # Generate autopilot AI orders
@@ -111,7 +113,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         autopilotPacket.fleetOrders.add(order)
 
       effectiveOrders[houseId] = autopilotPacket
-      echo "  ", house.name, " (AUTOPILOT): ", autopilotOrders.len, " fleet orders (standing)"
+      logInfo("Resolve", "Autopilot mode active", house.name, " orders=", $autopilotOrders.len)
 
     of HouseStatus.Active:
       # Normal play - use submitted orders
@@ -141,7 +143,7 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
                          combatReports: var seq[res_types.CombatReport], events: var seq[res_types.GameEvent]) =
   ## Phase 1: Resolve all combat and infrastructure damage
   ## This happens FIRST so damaged facilities affect production
-  echo "  [Conflict Phase]"
+  logInfo("Resolve", "=== Conflict Phase ===", "turn=", $state.turn)
 
   # Find all systems with hostile fleets
   var combatSystems: seq[SystemId] = @[]
@@ -334,7 +336,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
                         events: var seq[res_types.GameEvent]) =
   ## Phase 3: Execute orders
   ## Build orders may fail if shipyards were destroyed in conflict phase
-  echo "  [Command Phase]"
+  logInfo("Resolve", "=== Command Phase ===", "turn=", $state.turn)
 
   # Process build orders first
   for houseId in state.houses.keys:
@@ -373,7 +375,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   var newOrdersThisTurn = initHashSet[FleetId]()  # Track which fleets got new orders
 
   when not defined(release):
-    echo "  [COMMAND PHASE FLEET ORDER PROCESSING - START]"
+    logDebug("Fleet", "Fleet order processing start", "turn=", $state.turn)
 
   # Step 1: Collect NEW orders from this turn's OrderPackets
   # These will override any persistent orders for the same fleet
@@ -702,7 +704,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       echo "    [", $order.orderType, "] FAILED: ", result.message
 
   when not defined(release):
-    echo "  [COMMAND PHASE FLEET ORDER PROCESSING - END] Processed ", processCount, " orders total"
+    logDebug("Fleet", "Fleet order processing complete", "processed=", $processCount)
 
   # Execute standing orders for fleets without explicit orders
   # This happens AFTER explicit orders are processed
