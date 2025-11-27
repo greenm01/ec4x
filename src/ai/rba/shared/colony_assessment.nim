@@ -4,7 +4,7 @@
 ## Eliminates inconsistencies between strategic, tactical, and logistics calculations.
 
 import std/[options, sequtils]
-import ../../common/types/[core, planets]
+import ../../../common/types/[core, planets]
 import ../../../engine/[gamestate, fog_of_war]
 import ../intelligence  # For getColony helper
 

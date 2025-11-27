@@ -12,6 +12,7 @@ import ../../common/types/[core, planets, units]
 import ./controller_types
 import ./intelligence  # For isSystemColonized, getColony
 import ./diplomacy  # For getFleetStrength
+import ./shared/colony_assessment  # Shared defense assessment
 
 # =============================================================================
 # Helper Functions
@@ -22,27 +23,21 @@ import ./diplomacy  # For getFleetStrength
 # getFleetStrength - moved to diplomacy.nim to avoid duplication
 
 # =============================================================================
-# Combat Assessment
+# Combat Assessment (using shared colony_assessment module)
 # =============================================================================
 
 proc calculateDefensiveStrength*(filtered: FilteredGameState, systemId: SystemId): int =
   ## Calculate total defensive strength of a colony
+  ## Uses shared colony_assessment module for consistent calculations
   if not isSystemColonized(filtered, systemId):
     return 0
 
   let colonyOpt = getColony(filtered, systemId)
   if colonyOpt.isNone:
     return 0
+
   let colony = colonyOpt.get()
-  result = 0
-
-  for starbase in colony.starbases:
-    if not starbase.isCrippled:
-      result += 100
-
-  result += colony.groundBatteries * 20
-  result += colony.planetaryShieldLevel * 15
-  result += (colony.armies + colony.marines) * 10
+  return colony_assessment.calculateDefensiveStrength(colony)
 
 proc calculateFleetStrengthAtSystem*(filtered: FilteredGameState, systemId: SystemId,
                                      houseId: HouseId): int =
@@ -54,29 +49,16 @@ proc calculateFleetStrengthAtSystem*(filtered: FilteredGameState, systemId: Syst
 
 proc estimateColonyValue*(filtered: FilteredGameState, systemId: SystemId): int =
   ## Estimate strategic value of a colony
+  ## Uses shared colony_assessment module for consistent calculations
   if not isSystemColonized(filtered, systemId):
     return 0
 
   let colonyOpt = getColony(filtered, systemId)
   if colonyOpt.isNone:
     return 0
+
   let colony = colonyOpt.get()
-  result = 0
-
-  result += colony.production * 10
-  result += colony.infrastructure * 20
-
-  case colony.resources
-  of ResourceRating.VeryRich:
-    result += 70
-  of ResourceRating.Rich:
-    result += 50
-  of ResourceRating.Abundant:
-    result += 30
-  of ResourceRating.Poor:
-    result += 10
-  of ResourceRating.VeryPoor:
-    result += 0
+  return colony_assessment.assessStrategicValue(colony)
 
 proc assessCombatSituation*(controller: AIController, filtered: FilteredGameState,
                             targetSystem: SystemId): CombatAssessment =
