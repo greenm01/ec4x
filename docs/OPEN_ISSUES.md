@@ -16,39 +16,35 @@ When an issue is fixed, check it off and update STATUS.md.
 **Test Report:** `docs/testing/BALANCE_TESTING_2025-11-26.md`
 **Detailed Analysis:** `docs/KNOWN_ISSUES.md` (Issue #0)
 
-#### 1. Espionage System Not Executing
+#### 1. ~~Espionage System Not Executing~~ ✅ **RESOLVED**
 
-**Priority:** 🔴 **CRITICAL**
-**Metric:** 0% usage across 1,500 turns (target >80%)
-**Impact:** No espionage missions, no intelligence gathering
+**Priority:** 🔴 **CRITICAL** → ✅ **RESOLVED** (2025-11-26)
+**Metric:** 0% usage → **NOW WORKING** (verified turn 1+ espionage missions)
+**Root Cause:** Treasury projection bug - AI saw 2 PP before income phase
+**Fix:** Implemented `calculateProjectedTreasury()` in `src/ai/rba/orders.nim:15-43`
 
-**Investigation Tasks:**
-- [ ] Add diagnostic logging to `src/ai/rba/espionage.nim`
-- [ ] Debug `generateEspionageAction()` return values
-- [ ] Check scout requirements (needs scouts to spy?)
-- [ ] Verify budget allocation (`ebpInvestment`, `cipInvestment`)
-- [ ] Test mission selection logic (valid targets?)
-- [ ] Verify integration in `src/ai/rba/orders.nim:256`
+**Verification:**
+- ✅ Turn 1: house-ordos → PsyopsCampaign (DETECTED)
+- ✅ Turn 1: house-corrino → TechTheft (SUCCESS)
+- ✅ EBP/CIP purchases working correctly
+- ✅ Budget allocation functioning (2-5% of treasury)
 
-**Expected Fix Effort:** 2-4 hours
-**Files:** `src/ai/rba/espionage.nim`, `src/ai/rba/orders.nim`
+**Commit:** e1abb13 (feat: implement spaceport commission penalty + RBA facility logic)
 
-#### 2. Scout Production Not Triggering
+#### 2. ~~Scout Production Not Triggering~~ ✅ **RESOLVED**
 
-**Priority:** 🔴 **CRITICAL**
-**Metric:** 0.0 scouts per house (target 5-7)
-**Impact:** No ELI mesh, no intelligence network
+**Priority:** 🔴 **CRITICAL** → ✅ **RESOLVED** (2025-11-26)
+**Metric:** 0.0 scouts per house → **NOW WORKING** (scouts building turn 1, completing turn 2)
+**Root Cause:** Treasury projection bug - AI saw 2 PP before income phase
+**Fix:** Implemented `calculateProjectedTreasury()` in `src/ai/rba/orders.nim:15-43`
 
-**Investigation Tasks:**
-- [ ] Debug `needScouts` conditions in `src/ai/rba/orders.nim:174-180`
-- [ ] Check budget allocation (expansion vs intel split)
-- [ ] Verify scout build orders reach `generateBuildOrdersWithBudget()`
-- [ ] Test shipyard selection for scout builds
-- [ ] Add logging to scout build decision points
-- [ ] Verify CST tech requirements
+**Verification:**
+- ✅ Turn 1: Scouts building at all 4 houses
+- ✅ Turn 2: Scouts completing and commissioning
+- ✅ Scout count tracking correctly (scoutCount=1 after build)
+- ✅ Build orders generated with proper budgets
 
-**Expected Fix Effort:** 1-2 hours
-**Files:** `src/ai/rba/orders.nim`, `src/ai/rba/budget.nim`
+**Commit:** e1abb13 (feat: implement spaceport commission penalty + RBA facility logic)
 
 #### 3. Mothballing System Not Executing
 
