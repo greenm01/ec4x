@@ -51,84 +51,22 @@ Fixed 46 critical bugs across the entire engine:
 - Need fixing before tests can properly verify state mutations
 - See docs/OPEN_ISSUES.md for details
 
-## Engine API Patterns
+## Engine API Documentation
 
-### Logging
-Use the structured logging system (`src/common/logger.nim`):
-```nim
-import common/logger
+**For detailed engine patterns and examples, see:**
+- **[Engine API Quick-Start Guide](/docs/api/ENGINE_QUICKSTART.md)** - Complete patterns reference
+- **[API Documentation](/docs/api/README.md)** - Full API reference with examples
 
-# Module-specific logging
-logCombat("Resolving battle", "system=", $systemId)
-logInfo("Resolve", "Turn resolution starting", "turn=", $state.turn)
-logDebug("Table", "Colony modified", "id=", $colonyId)
+### Quick Reference
 
-# RNG determinism logging
-logRNG("RNG initialized for stochastic resolution", "seed=", $seed)
-```
+**Key Patterns** (detailed in Quick-Start):
+- **Logging**: Use `logger.nim` with `logCombat()`, `logInfo()`, `logRNG()` etc.
+- **RNG**: Turn-seeded `initRand(state.turn)`, pass through resolution chain
+- **Config**: Load stats with `getShipStats(class, techLevel)`, apply WEP/CST
+- **Destruction**: Mark `entity.destroyed = true` before removal, log it
+- **Table-to-Seq**: Copy → modify via mpairs → write back to `state.table[id]`
 
-### RNG Integration
-Always use turn-seeded RNG for deterministic resolution:
-```nim
-# In turn resolution (resolve.nim)
-var rng = initRand(state.turn)  # Turn-seeded for replay
-logRNG("RNG initialized", "turn=", $state.turn, " seed=", $state.turn)
-
-# Pass rng through resolution chain
-resolveConflictPhase(state, orders, events, rng)
-resolveBattle(state, systemId, orders, events, rng)
-
-# In combat resolution (combat/cer.nim)
-let roll = rng.roll1d20()  # Use provided RNG, don't create new one
-```
-
-### Config Integration
-Load stats from config, apply tech modifiers:
-```nim
-# Ships with tech levels
-let ownerWepLevel = state.houses[houseId].techTree.levels.weaponsTech
-let starbaseShip = EnhancedShip(
-  shipClass: ShipClass.Starbase,
-  stats: getShipStats(ShipClass.Starbase, ownerWepLevel),  # Config + tech
-  isCrippled: false
-)
-
-# Ground units with tech
-let ownerCSTLevel = state.houses[colony.owner].techTree.levels.constructionTech
-let battery = createGroundBattery(id, owner, techLevel = ownerCSTLevel)
-```
-
-### Destruction Tracking
-Mark entities as destroyed before removal:
-```nim
-# Squadrons
-if squadron.id notin survivingSquadronIds:
-  var destroyedSquadron = squadron
-  destroyedSquadron.destroyed = true
-  logCombat("Squadron destroyed", "id=", destroyedSquadron.id)
-  # Squadron not added to updatedSquadrons (removed from game state)
-
-# Batteries
-updatedColony.groundBatteries -= result.batteriesDestroyed
-if updatedColony.groundBatteries < 0:
-  updatedColony.groundBatteries = 0
-```
-
-### Table-to-Seq Patterns
-When economy engine needs seq[Colony], use copy-modify-writeback:
-```nim
-# Create seq copy for processing
-var coloniesSeq: seq[Colony] = @[]
-for systemId, colony in state.colonies:
-  coloniesSeq.add(colony)
-
-# Pass to engine that modifies via mpairs
-let report = econ_engine.resolveIncomePhase(coloniesSeq, ...)
-
-# CRITICAL: Write back modified colonies
-for colony in coloniesSeq:
-  state.colonies[colony.systemId] = colony
-```
+See [ENGINE_QUICKSTART.md](/docs/api/ENGINE_QUICKSTART.md) for complete code examples.
 
 ## Always Use Nimble for Build and Test
 

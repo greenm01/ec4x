@@ -1,8 +1,8 @@
 nimTitle	production	economy/production.html	module src/engine/economy/production		0
-nim	getRawIndex	economy/production.html#getRawIndex,PlanetClass,ResourceRating	proc getRawIndex(planetClass: PlanetClass; resources: ResourceRating): float		23
-nim	getEconomicLevelModifier	economy/production.html#getEconomicLevelModifier,int	proc getEconomicLevelModifier(techLevel: int): float		80
-nim	getProductivityGrowth	economy/production.html#getProductivityGrowth,int	proc getProductivityGrowth(taxRate: int): float		91
-nim	calculateGrossOutput	economy/production.html#calculateGrossOutput,Colony,int	proc calculateGrossOutput(colony: Colony; elTechLevel: int): int		102
-nim	calculateNetValue	economy/production.html#calculateNetValue,int,int	proc calculateNetValue(grossOutput: int; taxRate: int): int		120
-nim	calculateProductionOutput	economy/production.html#calculateProductionOutput,Colony,int	proc calculateProductionOutput(colony: Colony; elTechLevel: int): ProductionOutput		127
-nim	applyInfrastructureDamage	economy/production.html#applyInfrastructureDamage,Colony	proc applyInfrastructureDamage(colony: var Colony)		147
+nim	getRawIndex	economy/production.html#getRawIndex,PlanetClass,ResourceRating	proc getRawIndex(planetClass: PlanetClass; resources: ResourceRating): float		24
+nim	getEconomicLevelModifier	economy/production.html#getEconomicLevelModifier,int	proc getEconomicLevelModifier(techLevel: int): float		81
+nim	getProductivityGrowth	economy/production.html#getProductivityGrowth,int	proc getProductivityGrowth(taxRate: int): float		92
+nim	calculateGrossOutput	economy/production.html#calculateGrossOutput,Colony,int	proc calculateGrossOutput(colony: Colony; elTechLevel: int): int		103
+nim	calculateNetValue	economy/production.html#calculateNetValue,int,int	proc calculateNetValue(grossOutput: int; taxRate: int): int		121
+nim	calculateProductionOutput	economy/production.html#calculateProductionOutput,Colony,int	proc calculateProductionOutput(colony: Colony; elTechLevel: int): ProductionOutput		129
+nim	applyInfrastructureDamage	economy/production.html#applyInfrastructureDamage,Colony	proc applyInfrastructureDamage(colony: var Colony)		149

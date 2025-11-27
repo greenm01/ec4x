@@ -1,8 +1,8 @@
 nimTitle	income	economy/income.html	module src/engine/economy/income		0
-nim	calculateTaxPenalty	economy/income.html#calculateTaxPenalty,int	proc calculateTaxPenalty(avgTaxRate: int): int		22
-nim	calculateTaxBonus	economy/income.html#calculateTaxBonus,int,int	proc calculateTaxBonus(taxRate: int; colonyCount: int): int		38
-nim	getPopulationGrowthMultiplier	economy/income.html#getPopulationGrowthMultiplier,int	proc getPopulationGrowthMultiplier(taxRate: int): float		57
-nim	calculateRollingTaxAverage	economy/income.html#calculateRollingTaxAverage,seq[int]	proc calculateRollingTaxAverage(history: seq[int]): int		71
-nim	calculateColonyIncome	economy/income.html#calculateColonyIncome,Colony,int,int	proc calculateColonyIncome(colony: Colony; houseELTech: int; houseTaxRate: int): ColonyIncomeReport		86
-nim	calculateHouseIncome	economy/income.html#calculateHouseIncome,seq[Colony],int,TaxPolicy,int	proc calculateHouseIncome(colonies: seq[Colony]; houseELTech: int;\n                     taxPolicy: TaxPolicy; treasury: int): HouseIncomeReport		110
-nim	applyPopulationGrowth	economy/income.html#applyPopulationGrowth,Colony,int	proc applyPopulationGrowth(colony: var Colony; taxRate: int): float		178
+nim	calculateTaxPenalty	economy/income.html#calculateTaxPenalty,int	proc calculateTaxPenalty(avgTaxRate: int): int		21
+nim	calculateTaxBonus	economy/income.html#calculateTaxBonus,int,int	proc calculateTaxBonus(taxRate: int; colonyCount: int): int		37
+nim	getPopulationGrowthMultiplier	economy/income.html#getPopulationGrowthMultiplier,int	proc getPopulationGrowthMultiplier(taxRate: int): float		56
+nim	calculateRollingTaxAverage	economy/income.html#calculateRollingTaxAverage,seq[int]	proc calculateRollingTaxAverage(history: seq[int]): int		70
+nim	calculateColonyIncome	economy/income.html#calculateColonyIncome,Colony,int,int	proc calculateColonyIncome(colony: Colony; houseELTech: int; houseTaxRate: int): ColonyIncomeReport		85
+nim	calculateHouseIncome	economy/income.html#calculateHouseIncome,seq[Colony],int,TaxPolicy,int	proc calculateHouseIncome(colonies: seq[Colony]; houseELTech: int;\n                     taxPolicy: TaxPolicy; treasury: int): HouseIncomeReport		109
+nim	applyPopulationGrowth	economy/income.html#applyPopulationGrowth,Colony,int,float	proc applyPopulationGrowth(colony: var Colony; taxRate: int; baseGrowthRate: float): float		175
