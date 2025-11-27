@@ -618,13 +618,16 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
   ##
   ## TWO mothballing paths:
   ## 1. FINANCIAL: Treasury stressed + high maintenance burden
-  ## 2. OBSOLESCENCE: Old tech fleets in safe systems (any treasury level)
+  ## 2. IDLE FLEETS: Strategic redundancy in safe rear systems
+  ##
+  ## Philosophy: Mothball idle rear-area fleets, not "obsolete" ship classes.
+  ## Swarm tactics (cheap ship masses) are valid strategy in simultaneous combat.
 
   result = @[]
 
   # Determine mothballing strategy
   var financialMothball = false
-  var obsolescenceMothball = false
+  var idleFleetMothball = false
 
   # Path 1: Financial stress mothballing
   if inventory.totalTreasury < 500:
@@ -633,12 +636,12 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
       financialMothball = true
       logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Financial stress (treasury={inventory.totalTreasury}PP, maint={maintenanceRatio*100:.1f}%)")
 
-  # Path 2: Obsolescence mothballing (always active in mid/late game)
-  if inventory.totalFleets >= 3:  # Have enough fleets to spare some
-    obsolescenceMothball = true
-    logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Obsolescence check (fleets={inventory.totalFleets})")
+  # Path 2: Idle fleet mothballing (strategic redundancy management)
+  if inventory.totalFleets >= 4:  # Have enough fleets to identify true redundancy
+    idleFleetMothball = true
+    logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Idle fleet check (fleets={inventory.totalFleets})")
 
-  if not financialMothball and not obsolescenceMothball:
+  if not financialMothball and not idleFleetMothball:
     return @[]
 
   # Track colonies that already have mothballed fleets (one per colony limit)
@@ -687,26 +690,13 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
     if neededForOperation:
       continue  # Fleet assigned to operation, don't mothball
 
-    # Calculate fleet tech level (average of squadrons)
-    var totalTechLevel = 0
-    var squadronCount = 0
-    for squadron in fleet.squadrons:
-      # Approximate tech level from ship class
-      let techLevel = case squadron.flagship.shipClass
-        of ShipClass.Corvette, ShipClass.Scout: 1
-        of ShipClass.Frigate: 2
-        of ShipClass.Destroyer, ShipClass.LightCruiser: 3
-        of ShipClass.Cruiser, ShipClass.HeavyCruiser: 4
-        of ShipClass.Battlecruiser, ShipClass.Battleship: 5
-        of ShipClass.Dreadnought, ShipClass.SuperDreadnought: 6
-        else: 3
-      totalTechLevel += techLevel
-      squadronCount += 1
+    # Check if this system has redundant fleets (multiple fleets at same colony)
+    var fleetsAtThisSystem = 0
+    for f in filtered.ownFleets:
+      if f.location == fleet.location and f.status == FleetStatus.Active:
+        fleetsAtThisSystem += 1
 
-    let avgTechLevel = if squadronCount > 0: float(totalTechLevel) / float(squadronCount) else: 0.0
-
-    # Check if fleet is obsolete (tech level < 3)
-    let isObsolete = avgTechLevel < 3.0
+    let hasRedundancy = fleetsAtThisSystem > 1
 
     # Mothball decision based on active path
     var shouldMothball = false
@@ -716,15 +706,16 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
       # Financial path: mothball ANY fleet in safe system to reduce maintenance
       shouldMothball = true
       reason = "financial"
-    elif obsolescenceMothball and isSafeSystem and isObsolete:
-      # Obsolescence path: mothball only obsolete fleets
+    elif idleFleetMothball and isSafeSystem and hasRedundancy and not neededForOperation:
+      # Idle fleet path: mothball redundant fleets in safe rear systems
+      # Only if: safe system + multiple fleets + not assigned to operation
       shouldMothball = true
-      reason = "obsolete"
+      reason = "idle/redundant"
 
     if shouldMothball:
       result.add(fleet.id)
       coloniesWithMothball.incl(fleet.location)  # Track for one-per-colony
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing {fleet.id} ({reason}, tech={avgTechLevel:.1f}, location={fleet.location})")
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing {fleet.id} ({reason}, fleets_here={fleetsAtThisSystem}, location={fleet.location})")
 
 proc identifySalvageCandidates*(controller: AIController, inventory: AssetInventory,
                                 filtered: FilteredGameState): seq[FleetId] =
