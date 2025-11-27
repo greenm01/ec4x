@@ -5,8 +5,7 @@
 
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
 import game_setup, diagnostics
-when defined(enableRBA):
-  import ../../src/ai/rba/player as ai
+import ../../src/ai/rba/player as ai
 import ../../src/engine/[gamestate, resolve, orders, fog_of_war, setup]
 import ../../src/common/types/core
 import ../../src/client/reports/turn_report
@@ -23,9 +22,6 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
   echo "\nInitializing game state..."
   # mapRings must be valid (validated by caller)
   var game = createBalancedGame(numHouses, mapRings, seed)
-
-  when not defined(enableRBA):
-    {.fatal: "Balance tests require RBA. Compile with -d:enableRBA or use engine-only tests.".}
 
   # Create AI controllers for each house
   # Map houses to their thematic strategies
