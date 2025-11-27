@@ -584,6 +584,23 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         industrialUnits: 0
       ))
       tracker.recordSpending(SpecialUnits, superCarrierCost)
+
+      # Auto-build fighters to fill the Super Carrier (Phase 2: Fighter/Carrier Integration)
+      # Super Carriers have 5-8 capacity, aim for 5 fighters (100 PP total)
+      let fighterCost = getShipConstructionCost(ShipClass.Fighter)
+      var fightersBuilt = 0
+      while fightersBuilt < 5 and tracker.canAfford(SpecialUnits, fighterCost):
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Fighter),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        tracker.recordSpending(SpecialUnits, fighterCost)
+        fightersBuilt += 1
+
   elif canAffordMoreShips and needCarriers and cstLevel >= 2:  # Lowered from CST 3 to 2
     let carrierCost = 120
     if tracker.canAfford(SpecialUnits, carrierCost):
@@ -596,6 +613,22 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         industrialUnits: 0
       ))
       tracker.recordSpending(SpecialUnits, carrierCost)
+
+      # Auto-build fighters to fill the Carrier (Phase 2: Fighter/Carrier Integration)
+      # Carriers have 3-5 capacity, aim for 3 fighters (60 PP total)
+      let fighterCost = getShipConstructionCost(ShipClass.Fighter)
+      var fightersBuilt = 0
+      while fightersBuilt < 3 and tracker.canAfford(SpecialUnits, fighterCost):
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Fighter),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        tracker.recordSpending(SpecialUnits, fighterCost)
+        fightersBuilt += 1
 
   # Transports bypass canAffordMoreShips gate like scouts/fighters
   # They're strategic assets for invasion gameplay, controlled by budget allocation
