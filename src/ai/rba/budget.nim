@@ -263,6 +263,80 @@ proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
     ))
     tracker.recordSpending(Defense, groundBatteryCost)
 
+type
+  FleetComposition* = object
+    ## Tracks fleet composition by ship category
+    capitals*: int        # Dreadnought, SuperDreadnought, Battleship, Battlecruiser
+    escorts*: int         # HeavyCruiser, Cruiser, LightCruiser, Destroyer, Frigate, Corvette
+    specialists*: int     # Fighter, Carrier, Raider, Transport, Scout, ETAC, PlanetBreaker
+    total*: int
+
+  CompositionDoctrine* = object
+    ## Target composition ratios (0.0-1.0)
+    capitalRatio*: float
+    escortRatio*: float
+    specialistRatio*: float
+
+proc analyzeFleetComposition(fleets: seq[Fleet]): FleetComposition =
+  ## Analyze current fleet composition across all fleets
+  ## Categorizes ships into capitals, escorts, and specialists
+  result = FleetComposition(capitals: 0, escorts: 0, specialists: 0, total: 0)
+
+  for fleet in fleets:
+    for squadron in fleet.squadrons:
+      # Count flagship
+      case squadron.flagship.shipClass
+      of ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship, ShipClass.Battlecruiser:
+        result.capitals += 1
+      of ShipClass.HeavyCruiser, ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.Destroyer, ShipClass.Frigate, ShipClass.Corvette:
+        result.escorts += 1
+      of ShipClass.Fighter, ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Raider, ShipClass.TroopTransport, ShipClass.Scout, ShipClass.ETAC, ShipClass.PlanetBreaker:
+        result.specialists += 1
+      else:
+        result.specialists += 1  # Starbase and other special ships
+      result.total += 1
+
+      # Count wing ships
+      for ship in squadron.ships:
+        case ship.shipClass
+        of ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship, ShipClass.Battlecruiser:
+          result.capitals += 1
+        of ShipClass.HeavyCruiser, ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.Destroyer, ShipClass.Frigate, ShipClass.Corvette:
+          result.escorts += 1
+        of ShipClass.Fighter, ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Raider, ShipClass.TroopTransport, ShipClass.Scout, ShipClass.ETAC, ShipClass.PlanetBreaker:
+          result.specialists += 1
+        else:
+          result.specialists += 1
+        result.total += 1
+
+proc getCompositionDoctrine(personality: AIPersonality): CompositionDoctrine =
+  ## Get target fleet composition based on personality
+  ## Returns desired ratios for capitals, escorts, and specialists
+
+  # Aggressive: Capital-heavy doctrine (overwhelming firepower)
+  if personality.aggression >= 0.7:
+    result = CompositionDoctrine(
+      capitalRatio: 0.60,    # 60% capitals
+      escortRatio: 0.25,     # 25% escorts
+      specialistRatio: 0.15  # 15% specialists
+    )
+
+  # Economic: Escort-heavy doctrine (cost-efficient numbers)
+  elif personality.economicFocus >= 0.7:
+    result = CompositionDoctrine(
+      capitalRatio: 0.30,    # 30% capitals
+      escortRatio: 0.50,     # 50% escorts
+      specialistRatio: 0.20  # 20% specialists (fighters!)
+    )
+
+  # Balanced: Mixed doctrine
+  else:
+    result = CompositionDoctrine(
+      capitalRatio: 0.45,    # 45% capitals
+      escortRatio: 0.40,     # 40% escorts
+      specialistRatio: 0.15  # 15% specialists
+    )
+
 proc calculateShipPreference(personality: AIPersonality, shipClass: ShipClass): float =
   ## Calculate personality-based preference weight for ship types
   ## Returns multiplier (0.5x to 1.5x) based on personality traits
@@ -348,7 +422,8 @@ proc calculateShipPreference(personality: AIPersonality, shipClass: ShipClass): 
 proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
                          militaryCount: int, canAffordMoreShips: bool,
                          atSquadronLimit: bool, cstLevel: int, act: GameAct,
-                         personality: AIPersonality): seq[BuildOrder] =
+                         personality: AIPersonality,
+                         composition: FleetComposition): seq[BuildOrder] =
   ## Generate military build orders with PERSONALITY-DRIVEN ship preferences
   ## Uses BudgetTracker to prevent overspending
   ##
@@ -475,11 +550,33 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
     if candidates.len == 0:
       break  # Not enough budget for any ship
 
-    # Select ship with highest weighted score
+    # PHASE 3: COMPOSITION DOCTRINE ADJUSTMENTS
+    # Apply composition-based modifiers to maintain doctrine ratios
+    let doctrine = getCompositionDoctrine(personality)
+    var compositionModifier = 1.0
+
+    # Calculate current composition ratios (avoid division by zero)
+    let currentCapitalRatio = if composition.total > 0: float(composition.capitals) / float(composition.total) else: 0.0
+    let currentEscortRatio = if composition.total > 0: float(composition.escorts) / float(composition.total) else: 0.0
+    let currentSpecialistRatio = if composition.total > 0: float(composition.specialists) / float(composition.total) else: 0.0
+
+    # Select ship with highest weighted score (personality × composition)
     var bestScore = 0.0
     var bestCandidate: ShipCandidate
     for candidate in candidates:
-      let score = candidate.basePriority * candidate.personalityWeight
+      # Determine ship category for composition adjustment
+      case candidate.shipClass
+      of ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship, ShipClass.Battlecruiser:
+        # Capital ship: Boost if under target ratio
+        compositionModifier = if currentCapitalRatio < doctrine.capitalRatio: 1.3 else: 1.0
+      of ShipClass.HeavyCruiser, ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.Destroyer, ShipClass.Frigate, ShipClass.Corvette:
+        # Escort: Boost if under target ratio
+        compositionModifier = if currentEscortRatio < doctrine.escortRatio: 1.3 else: 1.0
+      else:
+        # Specialist: No adjustment for military orders (handled in special units)
+        compositionModifier = 1.0
+
+      let score = candidate.basePriority * candidate.personalityWeight * compositionModifier
       if score > bestScore:
         bestScore = score
         bestCandidate = candidate
@@ -896,6 +993,10 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Build PBs when: CST 10 unlocked, fighting heavily fortified enemies, Act 3+
   let needSiege = act >= GameAct.Act3_TotalWar and cstLevel >= 10
 
+  # PHASE 3: FLEET COMPOSITION ANALYSIS
+  # Analyze current fleet composition to maintain doctrine ratios
+  let currentComposition = analyzeFleetComposition(filtered.ownFleets)
+
   # Process all colonies for build orders
   # IMPORTANT: Some build orders require facilities, others don't:
   # - Fighters: Planet-side only, NO facilities required (economy.md:3.10)
@@ -937,7 +1038,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
       result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
 
       let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
-                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality)
+                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality, currentComposition)
       result.add(militaryOrders)
       projectedMilitaryCount += militaryOrders.len  # Update projected count
 
