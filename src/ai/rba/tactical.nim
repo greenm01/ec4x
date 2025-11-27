@@ -12,6 +12,7 @@ import ../../common/types/[core, planets]
 import ./controller_types
 import ./intelligence  # For isSystemColonized, getColony
 import ./diplomacy  # For getOwnedFleets
+import ./shared/colony_assessment  # Shared defense assessment
 
 # =============================================================================
 # Helper Functions
@@ -84,12 +85,11 @@ proc removeCompletedOperations*(controller: var AIController, turn: int) =
 
 proc identifyImportantColonies*(controller: AIController, filtered: FilteredGameState): seq[SystemId] =
   ## Identify colonies that need defense-in-depth
+  ## Uses shared colony_assessment module for consistent high-value determination
   result = @[]
   for colony in filtered.ownColonies:
     if colony.owner == controller.houseId:
-      if colony.production >= 30:
-        result.add(colony.systemId)
-      elif colony.resources in [ResourceRating.Rich, ResourceRating.VeryRich, ResourceRating.Abundant]:
+      if colony_assessment.isHighValueColony(colony):
         result.add(colony.systemId)
 
 proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,

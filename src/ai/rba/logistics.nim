@@ -28,6 +28,7 @@ import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, spacelif
 import ../common/types as ai_types
 import ./controller_types
 import ./intelligence  # For system analysis
+import ./shared/colony_assessment  # Shared defense assessment
 import ./diplomacy     # For getOwnedColonies, getOwnedFleets
 import ./strategic     # For threat assessment
 
@@ -164,15 +165,14 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
   for colony in filtered.ownColonies:
     result.totalProduction += colony.production
 
-    # Check defensive assets
-    let hasStarbase = colony.starbases.len > 0
-    let hasGroundDefense = colony.groundBatteries > 0 or colony.armies > 0
+    # Check defensive assets using shared assessment
+    let assessment = colony_assessment.assessColonyDefenseNeeds(colony, filtered)
 
-    if hasStarbase:
+    if assessment.hasStarbase:
       result.coloniesWithStarbase += 1
-    if hasGroundDefense:
+    if assessment.hasGroundDefense:
       result.coloniesWithGroundBattery += 1
-    if not hasStarbase and not hasGroundDefense:
+    if assessment.needsReinforcement:
       result.undefendedColonies.add(colony.systemId)
 
   # TODO: Calculate maintenance costs (requires querying ship stats and maintenance rates)
@@ -241,9 +241,9 @@ proc recommendAssetReallocations*(controller: AIController, inventory: AssetInve
         let report = controller.intelligence[colony.systemId]
         threatLevel = float(report.estimatedFleetStrength)
 
-      # Undefended colonies with threats are priority
-      let hasDefense = colony.starbases.len > 0 or colony.groundBatteries > 0
-      if not hasDefense and threatLevel > 0:
+      # Undefended colonies with threats are priority (using shared assessment)
+      let assessment = colony_assessment.assessColonyDefenseNeeds(colony, filtered)
+      if assessment.needsReinforcement and threatLevel > 0:
         if mostThreatenedColony.isNone or threatLevel > mostThreatenedColony.get().threatLevel:
           mostThreatenedColony = some((colony.systemId, threatLevel))
 
