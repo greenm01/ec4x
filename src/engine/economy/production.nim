@@ -120,10 +120,11 @@ proc calculateGrossOutput*(colony: Colony, elTechLevel: int): int =
 
 proc calculateNetValue*(grossOutput: int, taxRate: int): int =
   ## Calculate NCV (Net Colony Value) from GCO and tax rate
-  ## Per economy.md:3.3
+  ## Per economy.md:3.2: "PP Income = Total GCO across all colonies × Tax Rate (rounded up)"
+  ## Per economy.md:3.3: Formula: NCV = GCO × tax rate
   ##
-  ## Formula: NCV = GCO × tax rate
-  result = int(float(grossOutput) * (float(taxRate) / 100.0))
+  ## Use ceil() to round up per specification
+  result = int(ceil(float(grossOutput) * (float(taxRate) / 100.0)))
 
 proc calculateProductionOutput*(colony: Colony, elTechLevel: int): ProductionOutput =
   ## Calculate full production output for colony

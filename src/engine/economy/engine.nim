@@ -20,7 +20,8 @@ export types.MaintenanceReport, types.CompletedProject
 proc resolveIncomePhase*(colonies: var seq[Colony],
                         houseTaxPolicies: Table[HouseId, TaxPolicy],
                         houseTechLevels: Table[HouseId, int],
-                        houseTreasuries: var Table[HouseId, int]): IncomePhaseReport =
+                        houseTreasuries: var Table[HouseId, int],
+                        baseGrowthRate: float = 0.015): IncomePhaseReport =
   ## Resolve income phase for all houses
   ##
   ## Steps:
@@ -35,6 +36,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
   ##   houseTaxPolicies: Tax policy per house
   ##   houseTechLevels: Economic Level tech per house
   ##   houseTreasuries: House treasuries (modified with income)
+  ##   baseGrowthRate: Base population growth rate (loaded from config)
   ##
   ## Returns:
   ##   Complete income phase report
@@ -78,7 +80,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
     # Apply population growth to colonies
     for i, colony in colonies.mpairs:
       if colony.owner == houseId:
-        let growthRate = applyPopulationGrowth(colony, taxPolicy.currentRate)
+        let growthRate = applyPopulationGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
         # Note: Could update report with growth rates here
 
     # Store report
