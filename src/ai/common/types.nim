@@ -202,7 +202,7 @@ type
     Expansion,      # ETACs, colony infrastructure
     Defense,        # Starbases, ground batteries
     Military,       # Frigates, cruisers, dreadnoughts, raiders
-    Intelligence,   # Scouts for exploration and espionage
+    Reconnaissance, # Scouts for exploration and reconnaissance
     SpecialUnits,   # Fighters, carriers, transports
     Technology      # Research investment (future use)
 
