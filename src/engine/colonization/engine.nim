@@ -9,7 +9,7 @@
 ## - Awards +5 prestige for establishing colony
 
 import std/[options]
-import ../../common/types/[core, planets, units]
+import ../../common/types/[core, planets]
 import ../prestige
 import ../config/[prestige_config, prestige_multiplier]
 import ../economy/types as econ_types

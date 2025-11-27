@@ -4,7 +4,7 @@
 ## retreat decisions, and morale modifiers
 ## (Section 7.3.4, 7.3.5)
 
-import std/[sequtils, algorithm, strformat, strutils, options]
+import std/[sequtils, algorithm, strutils, options]
 import types
 
 export RetreatEvaluation

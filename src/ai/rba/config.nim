@@ -8,8 +8,9 @@
 ## - Global config instance for easy access
 ## - Follows engine config pattern (economy_config.nim)
 
-import std/[os, tables]
+import std/[os, tables, strformat]
 import toml_serialization
+import ../../engine/config/validators
 
 # ==============================================================================
 # Strategy Personalities
@@ -25,20 +26,6 @@ type
     diplomacy_value*: float
     tech_priority*: float
 
-  StrategyPersonalitiesConfig* = object
-    ## All 12 strategy personalities
-    aggressive*: StrategyPersonalityConfig
-    economic*: StrategyPersonalityConfig
-    espionage*: StrategyPersonalityConfig
-    diplomatic*: StrategyPersonalityConfig
-    balanced*: StrategyPersonalityConfig
-    turtle*: StrategyPersonalityConfig
-    expansionist*: StrategyPersonalityConfig
-    tech_rush*: StrategyPersonalityConfig
-    raider*: StrategyPersonalityConfig
-    military_industrial*: StrategyPersonalityConfig
-    opportunistic*: StrategyPersonalityConfig
-    isolationist*: StrategyPersonalityConfig
 
 # ==============================================================================
 # Budget Allocations
@@ -54,12 +41,6 @@ type
     special_units*: float
     technology*: float
 
-  BudgetAllocationsConfig* = object
-    ## Budget allocations across all 4 game acts
-    act1_land_grab*: BudgetAllocationConfig
-    act2_rising_tensions*: BudgetAllocationConfig
-    act3_total_war*: BudgetAllocationConfig
-    act4_endgame*: BudgetAllocationConfig
 
 # ==============================================================================
 # Tactical Parameters
@@ -88,18 +69,14 @@ type
 # ==============================================================================
 
 type
-  TerraformingCostsConfig* = object
-    ## Terraforming costs by planet class transition (in PP)
-    extreme_to_desolate*: int
-    desolate_to_hostile*: int
-    hostile_to_harsh*: int
-    harsh_to_benign*: int
-    benign_to_lush*: int
-    lush_to_eden*: int
-
   EconomicParametersConfig* = object
-    ## Economic-related parameters
-    terraforming_costs*: TerraformingCostsConfig
+    ## Economic-related parameters (terraforming costs in PP)
+    terraforming_costs_extreme_to_desolate*: int
+    terraforming_costs_desolate_to_hostile*: int
+    terraforming_costs_hostile_to_harsh*: int
+    terraforming_costs_harsh_to_benign*: int
+    terraforming_costs_benign_to_lush*: int
+    terraforming_costs_lush_to_eden*: int
 
 # ==============================================================================
 # Orders Parameters
@@ -119,15 +96,11 @@ type
 # ==============================================================================
 
 type
-  MothballingConfig* = object
-    ## Mothballing thresholds
-    treasury_threshold_pp*: int
-    maintenance_ratio_threshold*: float
-    min_fleet_count*: int
-
   LogisticsConfig* = object
-    ## Logistics parameters
-    mothballing*: MothballingConfig
+    ## Logistics parameters (mothballing thresholds)
+    mothballing_treasury_threshold_pp*: int
+    mothballing_maintenance_ratio_threshold*: float
+    mothballing_min_fleet_count*: int
 
 # ==============================================================================
 # Fleet Composition
@@ -139,12 +112,6 @@ type
     capital_ratio*: float
     escort_ratio*: float
     specialist_ratio*: float
-
-  FleetCompositionConfig* = object
-    ## Fleet composition across all doctrines
-    balanced*: FleetCompositionRatioConfig
-    aggressive*: FleetCompositionRatioConfig
-    defensive*: FleetCompositionRatioConfig
 
 # ==============================================================================
 # Threat Assessment
@@ -165,15 +132,148 @@ type
 type
   RBAConfig* = object
     ## Complete RBA configuration loaded from TOML
-    strategies*: StrategyPersonalitiesConfig
-    budget*: BudgetAllocationsConfig
+    # Strategy personalities (12 strategies)
+    strategies_aggressive*: StrategyPersonalityConfig
+    strategies_economic*: StrategyPersonalityConfig
+    strategies_espionage*: StrategyPersonalityConfig
+    strategies_diplomatic*: StrategyPersonalityConfig
+    strategies_balanced*: StrategyPersonalityConfig
+    strategies_turtle*: StrategyPersonalityConfig
+    strategies_expansionist*: StrategyPersonalityConfig
+    strategies_tech_rush*: StrategyPersonalityConfig
+    strategies_raider*: StrategyPersonalityConfig
+    strategies_military_industrial*: StrategyPersonalityConfig
+    strategies_opportunistic*: StrategyPersonalityConfig
+    strategies_isolationist*: StrategyPersonalityConfig
+    # Budget allocations (4 acts)
+    budget_act1_land_grab*: BudgetAllocationConfig
+    budget_act2_rising_tensions*: BudgetAllocationConfig
+    budget_act3_total_war*: BudgetAllocationConfig
+    budget_act4_endgame*: BudgetAllocationConfig
+    # Tactical parameters
     tactical*: TacticalConfig
+    # Strategic parameters
     strategic*: StrategicConfig
+    # Economic parameters
     economic*: EconomicParametersConfig
+    # Orders parameters
     orders*: OrdersConfig
+    # Logistics parameters
     logistics*: LogisticsConfig
-    fleet_composition*: FleetCompositionConfig
+    # Fleet composition ratios (3 doctrines)
+    fleet_composition_balanced*: FleetCompositionRatioConfig
+    fleet_composition_aggressive*: FleetCompositionRatioConfig
+    fleet_composition_defensive*: FleetCompositionRatioConfig
+    # Threat assessment
     threat_assessment*: ThreatAssessmentConfig
+
+# ==============================================================================
+# Config Validation
+# ==============================================================================
+
+proc validateRBAConfig*(config: RBAConfig) =
+  ## Validates RBA configuration after loading
+  ## Ensures all parameters are within valid ranges and constraints
+  ##
+  ## Validates:
+  ## - Strategy personality traits (0.0-1.0)
+  ## - Budget allocations per act (sum to 1.0)
+  ## - Fleet composition ratios (sum to 1.0)
+  ## - Tactical/strategic thresholds
+
+  # Validate all strategy personality traits are ratios (0.0-1.0)
+  let strategies = [
+    ("aggressive", config.strategies_aggressive),
+    ("economic", config.strategies_economic),
+    ("espionage", config.strategies_espionage),
+    ("diplomatic", config.strategies_diplomatic),
+    ("balanced", config.strategies_balanced),
+    ("turtle", config.strategies_turtle),
+    ("expansionist", config.strategies_expansionist),
+    ("tech_rush", config.strategies_tech_rush),
+    ("raider", config.strategies_raider),
+    ("military_industrial", config.strategies_military_industrial),
+    ("opportunistic", config.strategies_opportunistic),
+    ("isolationist", config.strategies_isolationist)
+  ]
+
+  for (name, strategy) in strategies:
+    validateRatio(strategy.aggression, &"strategies_{name}.aggression")
+    validateRatio(strategy.risk_tolerance, &"strategies_{name}.risk_tolerance")
+    validateRatio(strategy.economic_focus, &"strategies_{name}.economic_focus")
+    validateRatio(strategy.expansion_drive, &"strategies_{name}.expansion_drive")
+    validateRatio(strategy.diplomacy_value, &"strategies_{name}.diplomacy_value")
+    validateRatio(strategy.tech_priority, &"strategies_{name}.tech_priority")
+
+  # Validate budget allocations sum to 1.0 for each act
+  let budgets = [
+    ("act1_land_grab", config.budget_act1_land_grab),
+    ("act2_rising_tensions", config.budget_act2_rising_tensions),
+    ("act3_total_war", config.budget_act3_total_war),
+    ("act4_endgame", config.budget_act4_endgame)
+  ]
+
+  for (actName, budget) in budgets:
+    validateSumToOne([
+      budget.expansion,
+      budget.defense,
+      budget.military,
+      budget.reconnaissance,
+      budget.special_units,
+      budget.technology
+    ], tolerance = 0.01, context = &"budget_{actName}")
+
+  # Validate fleet composition ratios sum to 1.0
+  let compositions = [
+    ("balanced", config.fleet_composition_balanced),
+    ("aggressive", config.fleet_composition_aggressive),
+    ("defensive", config.fleet_composition_defensive)
+  ]
+
+  for (name, comp) in compositions:
+    validateSumToOne([
+      comp.capital_ratio,
+      comp.escort_ratio,
+      comp.specialist_ratio
+    ], tolerance = 0.01, context = &"fleet_composition_{name}")
+
+  # Validate strategic thresholds are ratios
+  validateRatio(config.strategic.attack_threshold, "strategic.attack_threshold")
+  validateRatio(config.strategic.aggressive_attack_threshold, "strategic.aggressive_attack_threshold")
+  validateRatio(config.strategic.retreat_threshold, "strategic.retreat_threshold")
+
+  # Validate threat assessment thresholds are ratios
+  validateRatio(config.threat_assessment.critical_threshold, "threat_assessment.critical_threshold")
+  validateRatio(config.threat_assessment.high_threshold, "threat_assessment.high_threshold")
+  validateRatio(config.threat_assessment.moderate_threshold, "threat_assessment.moderate_threshold")
+  validateRatio(config.threat_assessment.low_threshold, "threat_assessment.low_threshold")
+
+  # Validate tactical parameters are positive
+  validatePositive(config.tactical.response_radius_jumps, "tactical.response_radius_jumps")
+  validatePositive(config.tactical.max_invasion_eta_turns, "tactical.max_invasion_eta_turns")
+  validatePositive(config.tactical.max_response_eta_turns, "tactical.max_response_eta_turns")
+
+  # Validate orders parameters are ratios
+  validateRatio(config.orders.research_max_percent, "orders.research_max_percent")
+  validateRatio(config.orders.espionage_investment_percent, "orders.espionage_investment_percent")
+
+  # Validate orders scout counts are positive
+  validatePositive(config.orders.scout_count_act1, "orders.scout_count_act1")
+  validatePositive(config.orders.scout_count_act2, "orders.scout_count_act2")
+  validatePositive(config.orders.scout_count_act3_plus, "orders.scout_count_act3_plus")
+
+  # Validate logistics parameters
+  validatePositive(config.logistics.mothballing_treasury_threshold_pp, "logistics.mothballing_treasury_threshold_pp")
+  validateRatio(config.logistics.mothballing_maintenance_ratio_threshold, "logistics.mothballing_maintenance_ratio_threshold")
+  validatePositive(config.logistics.mothballing_min_fleet_count, "logistics.mothballing_min_fleet_count")
+
+  # Validate economic parameters are positive
+  validatePositive(config.economic.terraforming_costs_extreme_to_desolate, "economic.terraforming_costs_extreme_to_desolate")
+  validatePositive(config.economic.terraforming_costs_desolate_to_hostile, "economic.terraforming_costs_desolate_to_hostile")
+  validatePositive(config.economic.terraforming_costs_hostile_to_harsh, "economic.terraforming_costs_hostile_to_harsh")
+  validatePositive(config.economic.terraforming_costs_harsh_to_benign, "economic.terraforming_costs_harsh_to_benign")
+  validatePositive(config.economic.terraforming_costs_benign_to_lush, "economic.terraforming_costs_benign_to_lush")
+  validatePositive(config.economic.terraforming_costs_lush_to_eden, "economic.terraforming_costs_lush_to_eden")
 
 # ==============================================================================
 # Config Loading
@@ -190,6 +290,9 @@ proc loadRBAConfig*(configPath: string = "config/rba.toml"): RBAConfig =
 
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, RBAConfig)
+
+  # Validate configuration after loading
+  validateRBAConfig(result)
 
   echo "[Config] Loaded RBA configuration from ", configPath
 

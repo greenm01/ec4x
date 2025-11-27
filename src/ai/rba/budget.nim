@@ -121,10 +121,10 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
   ## Returns percentage allocation that sums to 1.0
 
   let cfg = case act
-    of GameAct.Act1_LandGrab: globalRBAConfig.budget.act1_land_grab
-    of GameAct.Act2_RisingTensions: globalRBAConfig.budget.act2_rising_tensions
-    of GameAct.Act3_TotalWar: globalRBAConfig.budget.act3_total_war
-    of GameAct.Act4_Endgame: globalRBAConfig.budget.act4_endgame
+    of GameAct.Act1_LandGrab: globalRBAConfig.budget_act1_land_grab
+    of GameAct.Act2_RisingTensions: globalRBAConfig.budget_act2_rising_tensions
+    of GameAct.Act3_TotalWar: globalRBAConfig.budget_act3_total_war
+    of GameAct.Act4_Endgame: globalRBAConfig.budget_act4_endgame
 
   # Convert config to BudgetAllocation table
   result = {

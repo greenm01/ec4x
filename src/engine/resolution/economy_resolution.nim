@@ -37,9 +37,9 @@
 ## The auto-fleet creation here enables newly-built units (especially scouts)
 ## to immediately begin operational duties without requiring explicit player orders.
 
-import std/[tables, algorithm, options, random, sequtils, hashes, math, strutils, strformat]
-import ../../common/[hex, types/core, types/combat, types/units, types/tech]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../ship, ../spacelift, ../starmap, ../logger
+import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
+import ../../common/[hex, types/core, types/units, types/tech]
+import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../starmap, ../logger
 import ../economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import ../research/[types as res_types, costs as res_costs, effects as res_effects, advancement]
 import ../espionage/[types as esp_types, engine as esp_engine]
@@ -47,7 +47,7 @@ import ../diplomacy/[types as dip_types, proposals as dip_proposals]
 import ../blockade/engine as blockade_engine
 import ../intelligence/[detection, types as intel_types, generator as intel_gen, starbase_surveillance, scout_intel]
 import ../population/[types as pop_types]
-import ../config/[espionage_config, population_config, ground_units_config, construction_config, gameplay_config, military_config]
+import ../config/[espionage_config, population_config, ground_units_config, gameplay_config, military_config]
 import ../colonization/engine as col_engine
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony

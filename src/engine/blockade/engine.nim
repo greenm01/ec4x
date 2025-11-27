@@ -1,7 +1,7 @@
 ## Blockade System Engine
 ## Implements blockade mechanics from operations.md Section 6.2.6
 
-import std/[tables, options]
+import std/[tables]
 import ../../common/types/core
 import ../gamestate, ../fleet
 import ../intelligence/blockade_intel

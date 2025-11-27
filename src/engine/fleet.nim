@@ -8,9 +8,9 @@
 ## - Fleet → Squadrons (combat units) + SpaceLiftShips (transport/colonization)
 ## - Per operations.md:288, spacelift ships are screened during combat
 
-import ship, squadron, spacelift
+import squadron, spacelift
 import ../common/types/[core, combat]
-import std/[sequtils, algorithm, strutils]
+import std/[algorithm, strutils]
 
 export FleetId, SystemId, HouseId, LaneType
 export Squadron, EnhancedShip, ShipClass  # Export for fleet users

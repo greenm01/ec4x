@@ -7,9 +7,9 @@
 ## - Production applied each maintenance phase
 ## - Projects complete when cost paid >= cost total
 
-import std/[options, tables]
+import std/options
 import types
-import ../../common/types/[core, units]
+import ../../common/types/units
 import ../config/[construction_config, facilities_config]
 import ../gamestate  # For unified Colony type
 

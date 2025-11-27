@@ -10,7 +10,7 @@
 ## - IU (Industrial Units): Manufacturing capacity
 
 import std/[tables, options, math]
-import ../../common/types/[core, planets]
+import ../../common/types/[core]
 import ../prestige  # For PrestigeEvent
 
 export core.HouseId, core.SystemId

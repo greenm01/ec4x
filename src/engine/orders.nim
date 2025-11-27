@@ -1,8 +1,8 @@
 ## Fleet order types and validation for EC4X
 
 import std/[options, tables, strformat]
-import ../common/[hex, types/core, types/units]
-import gamestate, fleet, ship, spacelift, starmap, logger
+import ../common/types/[core, units]
+import gamestate, fleet, spacelift, starmap, logger
 import order_types  # Import and re-export fleet order types
 import espionage/types as esp_types
 import research/types as res_types

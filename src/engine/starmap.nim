@@ -7,7 +7,7 @@
 ## - Implements actual game rules for lane traversal
 ## - Provides fast, reliable starmap generation and pathfinding
 
-import fleet, ship
+import fleet
 import ../common/[hex, system, types/combat]
 import std/[tables, sequtils, random, math, algorithm, hashes, sets]
 import std/options
@@ -43,6 +43,38 @@ const
 proc validatePlayerCount(count: int) =
   if count < minPlayers or count > maxPlayers:
     raise newException(StarMapError, "Player count must be between " & $minPlayers & " and " & $maxPlayers)
+
+proc validateMapRings*(rings: int, playerCount: int = 0): seq[string] =
+  ## Domain validation for map rings configuration
+  ## This is the DEFINITIVE validation for map ring parameters
+  ##
+  ## Returns empty seq if valid, otherwise list of error messages
+  ##
+  ## Rules:
+  ## - Zero rings explicitly not allowed (user requirement)
+  ## - Reasonable bounds: 1-20 rings
+  ## - No requirement that rings >= players (allow flexible combinations)
+  var errors: seq[string] = @[]
+
+  # Zero rings not allowed - must be explicit
+  if rings == 0:
+    errors.add("Map rings must be >= 1 (zero rings not supported)")
+    return errors  # Don't continue validation if zero
+
+  # Bounds checking
+  if rings < 1:
+    errors.add("Map rings must be >= 1 (got " & $rings & ")")
+  elif rings > 20:
+    errors.add("Map rings must be <= 20 (got " & $rings & ")")
+
+  # Optional: Warn if very small map for player count (but don't error)
+  # User requirement: Allow flexible combinations like 2 players on 12-ring map
+  if playerCount > 0 and rings < playerCount:
+    # This is a warning, not an error - game can still work
+    # Just might have tight starting positions
+    discard
+
+  return errors
 
 proc newStarMap*(playerCount: int): StarMap =
   validatePlayerCount(playerCount)
