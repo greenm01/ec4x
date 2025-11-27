@@ -631,6 +631,17 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.targetFleet = none(FleetId)
           logInfo(LogCategory.lcAI, &"    → EXPLORE {reconTarget.get()} (Act 1: Systematic reconnaissance)")
           result.add(order)
+
+          # Track reconnaissance mission for intelligence update
+          controller.pendingIntelUpdates.add(ReconUpdate(
+            systemId: reconTarget.get(),
+            fleetId: fleet.id,
+            scheduledTurn: filtered.turn + 1
+          ))
+          logDebug(LogCategory.lcAI,
+                   &"{controller.houseId} Fleet {fleet.id}: Scheduled intel update for system " &
+                   &"{reconTarget.get()} after reconnaissance")
+
           continue
 
         # Fallback: Random adjacent exploration
@@ -643,6 +654,14 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
             order.targetFleet = none(FleetId)
             logInfo(LogCategory.lcAI, &"    → EXPLORE {targetSystem} (Act 1: Random adjacent)")
             result.add(order)
+
+            # Track reconnaissance mission for intelligence update
+            controller.pendingIntelUpdates.add(ReconUpdate(
+              systemId: targetSystem,
+              fleetId: fleet.id,
+              scheduledTurn: filtered.turn + 1
+            ))
+
             continue
 
       # Default: Hold position
@@ -782,6 +801,14 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.targetFleet = none(FleetId)
           logInfo(LogCategory.lcAI, &"    → PATROL/EXPLORE {reconTarget.get()} (Act 2: Intel gathering)")
           result.add(order)
+
+          # Track reconnaissance mission for intelligence update
+          controller.pendingIntelUpdates.add(ReconUpdate(
+            systemId: reconTarget.get(),
+            fleetId: fleet.id,
+            scheduledTurn: filtered.turn + 1
+          ))
+
           continue
 
       # Default: Hold position
@@ -892,6 +919,14 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.targetFleet = none(FleetId)
           logInfo(LogCategory.lcAI, &"    → PATROL {reconTarget.get()} (Act 3+: Aggressive recon)")
           result.add(order)
+
+          # Track reconnaissance mission for intelligence update
+          controller.pendingIntelUpdates.add(ReconUpdate(
+            systemId: reconTarget.get(),
+            fleetId: fleet.id,
+            scheduledTurn: filtered.turn + 1
+          ))
+
           continue
 
       # Default: Hold position
