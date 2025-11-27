@@ -1,204 +1,95 @@
-# EC4X API Documentation
+# EC4X Engine API Documentation
 
-Complete API reference documentation generated from source code using Nim's nimdoc tool.
+## Quick Links
 
-## Structure
+- **[Engine Quick-Start Guide](ENGINE_QUICKSTART.md)** ⭐ **START HERE**
+- [Full API Reference](engine/index.html) - Auto-generated from code
+- [Development Context](../CLAUDE_CONTEXT.md) - Critical patterns & gotchas
 
-```
-docs/api/
-├── engine/           # Engine module documentation
-│   ├── index.html   # Main navigation page
-│   ├── core.html    # Core types (HouseId, SystemId, etc.)
-│   ├── units.html   # Ship classes and weapon systems
-│   ├── planets.html # Planet classification and resources
-│   ├── combat.html  # Combat mechanics and TaskForce
-│   ├── ship.html    # Individual ship representation
-│   ├── squadron.html # Combat squadrons with CR/CC
-│   ├── spacelift.html # Spacelift ships (ETAC, TroopTransport)
-│   ├── fleet.html   # Fleet management
-│   ├── gamestate.html # Game state and colonies
-│   ├── starmap.html # Star systems and jump lanes
-│   └── theindex.html # Full symbol index
-└── generate_docs.sh # Documentation generation script
-```
+## Documentation Structure
 
-## Viewing Documentation
+### 1. Quick-Start Guide
+**[ENGINE_QUICKSTART.md](ENGINE_QUICKSTART.md)** - Essential patterns for engine development:
+- Table copy semantics (get-modify-write pattern)
+- RNG integration for deterministic resolution
+- Combat system patterns
+- Economy system patterns
+- Logging and error handling
 
-Open `docs/api/engine/index.html` in your web browser:
+### 2. API Reference
+**[engine/index.html](engine/index.html)** - Auto-generated API docs:
+- `gamestate.nim` - Core game state types and queries
+- `resolve.nim` - Turn resolution orchestrator
+- `combat/` - Combat resolution system
+- `economy/` - Economy and construction
+- `squadron.nim`, `fleet.nim` - Military unit management
 
-```bash
-firefox docs/api/engine/index.html
-# or
-xdg-open docs/api/engine/index.html
-```
+### 3. Architecture Documentation
+**[../architecture/](../architecture/)** - System design docs:
+- `engine_architecture.md` - Engine structure and data flow
+- `resolution_pipeline.md` - Turn resolution phases
+- `combat_system.md` - Combat mechanics
+
+### 4. Specifications
+**[../specs/](../specs/)** - Game mechanics specifications:
+- `economy.md` - Economic system rules
+- `operations.md` - Military operations
+- `assets.md` - Unit types and stats
+- `gameplay.md` - Core gameplay rules
+
+## Getting Started
+
+### For New Developers
+1. Read **[ENGINE_QUICKSTART.md](ENGINE_QUICKSTART.md)** first
+2. Review **[CLAUDE_CONTEXT.md](../CLAUDE_CONTEXT.md)** for critical patterns
+3. Browse the API reference for specific modules
+4. Check architecture docs for system design
+
+### For RBA/AI Development
+1. Study `resolve.nim` for turn resolution flow
+2. Understand `gamestate.nim` queries for state access
+3. Review economy system for production/tech
+4. Check combat system for military operations
+
+### For Engine Development
+1. Follow patterns in ENGINE_QUICKSTART.md
+2. Use structured logging (logger.nim)
+3. Apply get-modify-write for table changes
+4. Pass RNG through resolution chain
+5. Write back seq modifications to state
 
 ## Regenerating Documentation
 
-To regenerate all documentation:
-
+Run the generation script to update API docs:
 ```bash
 cd docs/api
 ./generate_docs.sh
 ```
 
-To regenerate a specific module:
+This regenerates all HTML documentation from source code docstrings.
 
-```bash
-./generate_docs.sh /path/to/module.nim
-```
+## Recent Improvements (Engine Audit 2025-11-27)
 
-## Key Architecture Concepts
+- ✅ Fixed table copy semantics throughout engine
+- ✅ Added comprehensive logging system
+- ✅ Integrated deterministic RNG for replay
+- ✅ Fixed squadron/battery destruction tracking
+- ✅ Config integration with tech level modifiers
+- ✅ Population growth persistence fix
+- ✅ Created ENGINE_QUICKSTART guide
+- ✅ Updated CLAUDE_CONTEXT to reference docs (saves tokens!)
 
-### Construction and Commissioning
+See commit history for detailed changes.
 
-**Ship Construction Pipeline:**
+## Why This Saves Tokens
 
-1. **BuildOrder** → Submit via OrderPacket with:
-   - `buildType: BuildType.Ship` (Ship, Building, or Infrastructure)
-   - `quantity: int` - Number of units to build
-   - `shipClass: Option[ShipClass]` - For ships
-   - `buildingType: Option[string]` - For buildings ("Spaceport", "Shipyard", "Starbase", "GroundBattery", "FighterSquadron")
-   - `industrialUnits: int` - For infrastructure
+Instead of repeating patterns in conversation:
+- **Link to ENGINE_QUICKSTART.md** for detailed examples
+- **Link to API docs** for type information
+- **Keep CLAUDE_CONTEXT.md concise** with just quick references
 
-2. **ConstructionProject** → Created in colony:
-   - `projectType: ConstructionType` (Ship, Building, Infrastructure)
-   - `itemId: string` - Ship type or building name
-   - `costTotal: int` - Total PP cost
-   - `costPaid: int` - PP already invested
-   - `turnsRemaining: int` - Estimated completion
-
-3. **Commissioning** → Ship completion:
-   - Ships go to `colony.unassignedSquadrons[]`
-   - Spacelift ships go to `colony.unassignedSpaceLiftShips[]`
-   - Can be manually assigned to fleets or auto-assigned
-
-**Construction Functions:**
-- `createShipProject(shipClass: ShipClass): ConstructionProject`
-- `createBuildingProject(buildingType: string): ConstructionProject`
-- `getShipConstructionCost(shipClass: ShipClass): int`
-- `getShipBuildTime(shipClass: ShipClass, cstLevel: int): int`
-- `getBuildingCost(buildingType: string): int`
-- `getBuildingTime(buildingType: string): int`
-
-### Squadron Management
-
-**Squadron Management Actions:**
-
-Via `SquadronManagementOrder` in OrderPacket:
-
-1. **TransferShip** - Move ship between squadrons at colony:
-   - `sourceSquadronId: Option[string]`
-   - `targetSquadronId: Option[string]`
-   - `shipIndex: Option[int]` - Index in source squadron's ships array
-
-2. **AssignToFleet** - Assign squadron to fleet:
-   - `squadronId: Option[string]` - Squadron to assign
-   - `targetFleetId: Option[FleetId]` - none() creates new fleet
-
-**Squadron API:**
-- `newSquadron(flagship: EnhancedShip, id, owner, location): Squadron`
-- `addShip(sq: var Squadron, ship: EnhancedShip): bool`
-- `removeShip(sq: var Squadron, index: int): Option[EnhancedShip]`
-- `combatStrength(sq: Squadron): int` - Total AS (flagship + all ships)
-- `defenseStrength(sq: Squadron): int` - Total DS (flagship + all ships)
-- `allShips(sq: Squadron): seq[EnhancedShip]` - Flagship + escorts
-
-**Fleet Organization:**
-- Fleet contains `squadrons: seq[Squadron]` and `spaceLiftShips: seq[SpaceLiftShip]`
-- Fleet status: Active, Reserve, Mothballed
-- Squadrons can be moved between fleets via squadron management orders
-- Auto-assignment: colonies with `autoAssignFleets: true` automatically create fleets for unassigned squadrons
-
-**OrderPacket Structure:**
-
-All orders require proper initialization:
-```nim
-OrderPacket(
-  houseId: "house1",
-  turn: 1,
-  buildOrders: @[...],
-  fleetOrders: @[...],
-  researchAllocation: initResearchAllocation(),  # NOT default()
-  diplomaticActions: @[...],
-  populationTransfers: @[...],
-  squadronManagement: @[...],
-  cargoManagement: @[...],
-  terraformOrders: @[...],
-  espionageAction: none(esp_types.EspionageAttempt),  # NOT none(type(...))
-  ebpInvestment: 0,
-  cipInvestment: 0
-)
-```
-
-### Spacelift Command Ships
-
-**CRITICAL:** Spacelift ships (ETAC, TroopTransport) are **individual units** NOT squadrons.
-
-- Per operations.md:1036, spacelift ships are "individual units within the fleet"
-- They travel with fleets but are separate from combat squadrons
-- Screened during space combat (phase 1) and starbase assault (phase 2)
-- Participate in ground combat (phase 3) where they can be destroyed
-
-**Architecture:**
-```
-Fleet → Squadrons (combat) + SpaceLiftShips (transport/colonization)
-```
-
-See `spacelift.html` for complete API reference.
-
-### Combat Squadrons
-
-Tactical units with Command Rating (CR) and Command Cost (CC):
-
-- Squadron = Flagship + Escorts (0-11 ships)
-- CR determines tactical effectiveness
-- Squadrons fight as cohesive units during combat
-
-See `squadron.html` for complete API reference.
-
-### Task Forces
-
-Temporary combat formations created when fleets converge:
-
-- All house fleets in a system disband into squadrons
-- Squadrons fight individually (not as fleets)
-- Spacelift ships are screened behind the task force
-- Per operations.md:281-288
-
-See `combat.html` for TaskForce API reference.
-
-## Documentation Quality
-
-All documentation is generated directly from source code comments using:
-
-```nim
-## Module-level documentation (double ##)
-## Explains purpose and architecture
-
-proc functionName*(...): ReturnType =
-  ## Function documentation
-  ## Explains parameters and return values
-```
-
-The documentation reflects the actual implementation and is automatically kept in sync with code changes.
-
-## Adding Documentation for New Modules
-
-1. Ensure module has proper doc comments (`##` for exports)
-2. Add module to `generate_docs.sh` in appropriate section
-3. Update `engine/index.html` with new module card
-4. Regenerate documentation
-
-## Benefits for Development
-
-1. **Reduced Context Switching**: API reference available without reading source
-2. **Type Discovery**: Find correct enum values (PlanetClass, ResourceRating, etc.)
-3. **Architecture Clarity**: Understand module relationships and data flow
-4. **Compilation Error Prevention**: Verify types before writing code
-5. **Onboarding**: New developers can quickly understand the codebase
-
-## Related Documentation
-
-- `/docs/specs/` - Game specification and rules
-- `/docs/design/` - Design documents and architecture
-- `/balance_results/` - AI testing results and gap analysis
+This approach:
+- Reduces token usage in context
+- Keeps documentation updated in one place
+- Makes patterns discoverable for human developers
+- Provides authoritative reference for both AI and humans
