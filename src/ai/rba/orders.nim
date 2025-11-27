@@ -138,19 +138,6 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
            &"remaining={remainingTreasury}PP")
 
   # ==========================================================================
-  # LOGISTICS (Asset Lifecycle Management)
-  # ==========================================================================
-  # Philosophy: Use what you have before building more
-  # Logistics handles: cargo loading, PTU transfers, fleet rebalancing, mothballing
-  # NOTE: Logistics does not consume treasury, it's purely asset optimization
-  let logisticsOrders = logistics.generateLogisticsOrders(controller, filtered, currentAct)
-
-  result.cargoManagement = logisticsOrders.cargo
-  result.populationTransfers = logisticsOrders.population
-  result.squadronManagement = logisticsOrders.squadrons
-  # NOTE: Fleet orders from logistics will be added AFTER tactical orders to avoid conflicts
-
-  # ==========================================================================
   # STRATEGIC PLANNING
   # ==========================================================================
   # NOTE: Strategic assessment is implicitly done by tactical/strategic modules
@@ -271,24 +258,46 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # FLEET ORDERS (Using RBA Tactical Module)
   # ==========================================================================
+  # Generate tactical fleet orders (strategic priorities inform tactical decisions)
+  let tacticalOrders = generateFleetOrders(controller, filtered, rng)
+
+  # Add tactical orders to result (will be filtered by logistics later if needed)
+  for order in tacticalOrders:
+    result.fleetOrders.add(order)
+
+  # ==========================================================================
+  # LOGISTICS (Asset Lifecycle Management)
+  # ==========================================================================
+  # Philosophy: Optimize what you have after strategic/tactical decisions made
+  # Logistics handles: cargo loading, PTU transfers, fleet rebalancing, mothballing
+  # NOTE: Logistics runs AFTER tactical so it can optimize based on tactical assignments
+  # NOTE: Logistics does not consume treasury, it's purely asset optimization
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Logistics Optimization (post-tactical) ===")
+
+  let logisticsOrders = logistics.generateLogisticsOrders(controller, filtered, currentAct)
+
+  result.cargoManagement = logisticsOrders.cargo
+  result.populationTransfers = logisticsOrders.population
+  result.squadronManagement = logisticsOrders.squadrons
+
   # Build set of fleets that logistics wants to manage (lifecycle operations)
   var logisticsControlledFleets: HashSet[FleetId]
   for order in logisticsOrders.fleetOrders:
     logisticsControlledFleets.incl(order.fleetId)
 
-  # Generate tactical fleet orders (tactical will check logistics control)
-  # TODO: Pass logisticsControlledFleets to tactical so it can skip those fleets
-  let tacticalOrders = generateFleetOrders(controller, filtered, rng)
-
-  # Add tactical orders first (active operations take priority)
-  for order in tacticalOrders:
-    # Skip if logistics is managing this fleet (Reserve/Mothball/Salvage/Reactivate)
+  # Remove tactical orders for fleets that logistics is managing (lifecycle takes priority)
+  var filteredTacticalOrders: seq[FleetOrder] = @[]
+  for order in result.fleetOrders:
     if order.fleetId notin logisticsControlledFleets:
-      result.fleetOrders.add(order)
+      filteredTacticalOrders.add(order)
     else:
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Fleet {order.fleetId}: Logistics override (lifecycle management)")
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Fleet {order.fleetId}: Logistics override " &
+              &"(lifecycle management)")
 
-  # Add logistics lifecycle orders (for fleets tactical doesn't control)
+  # Replace fleet orders with filtered tactical + logistics lifecycle orders
+  result.fleetOrders = filteredTacticalOrders
   result.fleetOrders.add(logisticsOrders.fleetOrders)
 
   # ==========================================================================
