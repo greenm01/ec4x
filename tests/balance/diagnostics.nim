@@ -780,9 +780,22 @@ proc collectDefenseMetrics(state: GameState, houseId: HouseId): DiagnosticMetric
   result.coloniesWithoutDefense = undefendedColonies
   result.totalColonies = totalColonies
 
-  # TODO: Track mothballed fleets
+  # Track mothballed and reserve fleets
+  var mothballedCount = 0
+  var reserveCount = 0
+  for fleetId, fleet in state.fleets:
+    if fleet.owner == houseId:
+      case fleet.status
+      of FleetStatus.Mothballed:
+        mothballedCount += 1
+      of FleetStatus.Reserve:
+        reserveCount += 1
+      of FleetStatus.Active:
+        discard
+
+  result.mothballedFleetsTotal = mothballedCount + reserveCount  # Combined lifecycle management count
+  # mothballedFleetsUsed tracks reactivations (cumulative, tracked elsewhere)
   result.mothballedFleetsUsed = 0
-  result.mothballedFleetsTotal = 0
 
 proc countEspionageMissions*(orders: OrderPacket): tuple[spyPlanet: int, hackStarbase: int, spySystem: int] =
   ## Count espionage-related fleet orders in an order packet
