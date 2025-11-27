@@ -249,6 +249,57 @@ task convertToParquet, "Convert CSV diagnostics to Parquet format":
   exec "python3 tools/ai_tuning/convert_to_parquet.py"
   echo "Conversion complete! Use Polars to analyze balance_results/diagnostics_combined.parquet"
 
+# Data Analysis Tasks (Terminal-Based)
+
+task analyzeBalance, "Full analysis workflow: convert → analyze → report":
+  echo "Running full balance analysis workflow..."
+  echo "\n=== Step 1: Convert CSV to Parquet ==="
+  exec "python3 tools/ai_tuning/convert_to_parquet.py"
+  echo "\n=== Step 2: Phase 2 Gap Analysis ==="
+  exec "python3 -m analysis.cli phase2"
+  echo "\n=== Step 3: Generate Markdown Report ==="
+  exec "python3 -m analysis.reports balance_results/diagnostics_combined.parquet balance_results/analysis_report.md"
+  echo "\n✅ Analysis complete!"
+  echo "   • Parquet: balance_results/diagnostics_combined.parquet"
+  echo "   • Report: balance_results/analysis_report.md"
+
+task balanceSummary, "Quick terminal summary of diagnostic data":
+  echo "Showing balance summary..."
+  exec "python3 -m analysis.cli summary"
+
+task balanceByHouse, "Aggregate metrics by house":
+  echo "Analyzing metrics by house..."
+  exec "python3 -m analysis.cli by-house"
+
+task balanceByTurn, "Aggregate metrics by turn":
+  echo "Analyzing metrics by turn..."
+  exec "python3 -m analysis.cli by-turn"
+
+task balanceOutliers, "Detect outliers in key metrics":
+  echo "Detecting outliers in key metrics..."
+  echo "\n--- Total Fighters ---"
+  exec "python3 -m analysis.cli outliers total_fighters"
+  echo "\n--- Capacity Violations ---"
+  exec "python3 -m analysis.cli outliers capacity_violations"
+  echo "\n--- Invalid Orders ---"
+  exec "python3 -m analysis.cli outliers invalid_orders"
+
+task balancePhase2, "Phase 2 gap analysis (terminal output)":
+  echo "Running Phase 2 gap analysis..."
+  exec "python3 -m analysis.cli phase2"
+
+task balanceExport, "Export summary data to CSV for Excel/LibreOffice":
+  echo "Exporting summary data to CSV..."
+  exec "python3 -m analysis.cli export balance_results/summary_by_house.csv --type by_house"
+  echo "✅ Exported to balance_results/summary_by_house.csv"
+  echo "   Open in Excel/LibreOffice for pivot tables and charts"
+
+task balanceReport, "Generate Markdown report (git-committable)":
+  echo "Generating Markdown analysis report..."
+  exec "python3 -m analysis.reports balance_results/diagnostics_combined.parquet balance_results/analysis_report.md"
+  echo "✅ Report generated: balance_results/analysis_report.md"
+  echo "   Commit to git for documentation"
+
 task testMapSizes, "Test balance across different map sizes":
   echo "Testing different map sizes (4, 8, 12 players)..."
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"

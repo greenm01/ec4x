@@ -132,15 +132,29 @@ git commit -m "..."
 - Before releases
 - Weekly validation
 
-**Workflow:**
+**Workflow (NEW - 2025-11-27):**
 ```bash
 # 1. Quick validation (catches 90% of issues)
 nimble testBalanceQuick       # 20 games, ~10s
 
-# 2. If suspicious, run full act tests
-nimble testBalanceAct1        # 100 games, Act 1
-nimble testBalanceAct2        # 100 games, Act 2
+# 2. Full analysis (fast, terminal-based)
+nimble testBalanceDiagnostics # 50 games, ~2 min
+nimble analyzeBalance         # CSV → Parquet → Analysis → Report
 
+# 3. Review results
+nimble balancePhase2          # Terminal output
+cat balance_results/analysis_report.md
+
+# 4. Export to Excel for deeper analysis
+nimble balanceExport          # Opens in LibreOffice/Excel
+# Use pivot tables to find imbalances
+
+# 5. If anomalies found, detect outliers
+nimble balanceOutliers        # Z-score detection
+```
+
+**Legacy workflow (still supported):**
+```bash
 # 3. If still suspicious, unknown-unknowns detection
 nimble testUnknownUnknowns    # 200 games + analysis
 nimble analyzeDiagnostics     # Phase 2 gaps
@@ -149,6 +163,8 @@ nimble analyzeDiagnostics     # Phase 2 gaps
 python3 tools/ai_tuning/analyze_phase2_gaps.py
 python3 tools/ai_tuning/analyze_4act_progression.py
 ```
+
+**See:** `/docs/guides/BALANCE_ANALYSIS_SYSTEM.md` for complete guide
 
 ### AI Optimization Cycle
 
