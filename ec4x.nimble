@@ -51,17 +51,17 @@ task testWarnings, "Run tests with warnings enabled":
 task build, "Build all binaries":
   echo "Building EC4X binaries..."
   mkDir "bin"
-  exec "nim c -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
-  exec "nim c -d:release --opt:speed -o:bin/client src/main/client.nim"
-  # exec "nim c -d:release --opt:speed -o:bin/daemon src/main/daemon.nim"  # TODO: Enable when dependencies ready
+  exec "nim c --warnings:on -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
+  exec "nim c --warnings:on -d:release --opt:speed -o:bin/client src/main/client.nim"
+  # exec "nim c --warnings:on -d:release --opt:speed -o:bin/daemon src/main/daemon.nim"  # TODO: Enable when dependencies ready
   echo "Build completed successfully!"
 
 task buildDebug, "Build with debug information":
   echo "Building EC4X binaries with debug info..."
   mkDir "bin"
-  exec "nim c -d:debug --debuginfo --linedir:on -o:bin/moderator src/main/moderator.nim"
-  exec "nim c -d:debug --debuginfo --linedir:on -o:bin/client src/main/client.nim"
-  # exec "nim c -d:debug --debuginfo --linedir:on -o:bin/daemon src/main/daemon.nim"  # TODO: Enable when dependencies ready
+  exec "nim c --warnings:on -d:debug --debuginfo --linedir:on -o:bin/moderator src/main/moderator.nim"
+  exec "nim c --warnings:on -d:debug --debuginfo --linedir:on -o:bin/client src/main/client.nim"
+  # exec "nim c --warnings:on -d:debug --debuginfo --linedir:on -o:bin/daemon src/main/daemon.nim"  # TODO: Enable when dependencies ready
   echo "Debug build completed successfully!"
 
 task check, "Check syntax of all source files":
