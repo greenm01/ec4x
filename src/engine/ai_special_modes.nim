@@ -5,7 +5,6 @@
 
 import std/[tables, options]
 import ../common/types/core
-import ../common/[system, hex]
 import gamestate
 import fleet
 import starmap

@@ -3,7 +3,7 @@
 ## Generates intelligence reports for diplomatic events
 ## All houses receive intelligence about major diplomatic shifts
 
-import std/[tables, options, strformat, sequtils]
+import std/[tables, options, strformat]
 import types as intel_types
 import ../gamestate
 import ../diplomacy/types as dip_types

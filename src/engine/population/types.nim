@@ -2,7 +2,6 @@
 ## Tracks Space Guild civilian transport between colonies
 ## Source: docs/specs/economy.md Section 3.7, config/population.toml
 
-import std/[tables]
 import ../../common/types/core
 
 type

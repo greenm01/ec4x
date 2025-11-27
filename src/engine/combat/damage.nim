@@ -3,7 +3,7 @@
 ## Implements damage application, state transitions, and
 ## destruction protection rules for EC4X combat (Section 7.3.3)
 
-import std/[options, sequtils]
+import std/options
 import types
 
 export CombatState, StateChange

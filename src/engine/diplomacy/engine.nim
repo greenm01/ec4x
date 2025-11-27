@@ -6,7 +6,6 @@ import std/options
 import types
 import ../../common/types/[core, diplomacy]
 import ../prestige
-import ../config/prestige_config
 
 export types
 
