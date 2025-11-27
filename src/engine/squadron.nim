@@ -35,6 +35,7 @@ type
     ships*: seq[EnhancedShip]  # Ships under flagship command (excludes flagship)
     owner*: HouseId
     location*: SystemId
+    destroyed*: bool = false  # Set to true when squadron is destroyed in combat
 
     # Carrier fighter operations (assets.md:2.4.1.1)
     embarkedFighters*: seq[CarrierFighter]  # Fighters aboard carriers (carrier-owned)
@@ -234,9 +235,8 @@ proc hasCombatShips*(sq: Squadron): bool =
 
 proc isDestroyed*(sq: Squadron): bool =
   ## Check if squadron is completely destroyed
-  ## Squadron is destroyed if flagship is destroyed
-  ## TODO: Implement proper destruction tracking (requires health system beyond crippled state)
-  false
+  ## Squadron is destroyed when all ships (including flagship) are destroyed
+  sq.destroyed
 
 proc crippleShip*(sq: var Squadron, index: int): bool =
   ## Cripple a ship in the squadron

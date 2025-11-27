@@ -30,9 +30,9 @@ type
 
 # Forward declarations for phase functions
 proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
-                         combatReports: var seq[res_types.CombatReport], events: var seq[res_types.GameEvent])
+                         combatReports: var seq[res_types.CombatReport], events: var seq[res_types.GameEvent], rng: var Rand)
 proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
-                        events: var seq[res_types.GameEvent])
+                        events: var seq[res_types.GameEvent], rng: var Rand)
 
 ## Main Turn Resolution
 
@@ -47,9 +47,9 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   result.combatReports = @[]
 
   # Initialize RNG for this turn (use turn number as seed for reproducibility)
-  # TODO: Use RNG for stochastic resolution once implemented
-  discard initRand(state.turn)
-  logRNG("RNG initialized", "turn=", $state.turn, " seed=", $state.turn)
+  # Using turn number as seed ensures deterministic replay for debugging
+  var rng = initRand(state.turn)
+  logRNG("RNG initialized for stochastic resolution", "turn=", $state.turn, " seed=", $state.turn)
 
   logResolve("Starting strategic cycle", "turn=", $state.turn)
 
@@ -120,13 +120,13 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       discard
 
   # Phase 1: Conflict (combat, infrastructure damage, espionage)
-  resolveConflictPhase(result.newState, effectiveOrders, result.combatReports, result.events)
+  resolveConflictPhase(result.newState, effectiveOrders, result.combatReports, result.events, rng)
 
   # Phase 2: Income (resource collection)
   resolveIncomePhase(result.newState, effectiveOrders)
 
   # Phase 3: Command (build orders, fleet orders, diplomatic actions)
-  resolveCommandPhase(result.newState, effectiveOrders, result.events)
+  resolveCommandPhase(result.newState, effectiveOrders, result.events, rng)
 
   # Phase 4: Maintenance (upkeep, effect decrements, status updates)
   resolveMaintenancePhase(result.newState, result.events, effectiveOrders)
@@ -140,10 +140,11 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 ## Phase 1: Conflict
 
 proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
-                         combatReports: var seq[res_types.CombatReport], events: var seq[res_types.GameEvent]) =
+                         combatReports: var seq[res_types.CombatReport], events: var seq[res_types.GameEvent], rng: var Rand) =
   ## Phase 1: Resolve all combat and infrastructure damage
   ## This happens FIRST so damaged facilities affect production
   logInfo("Resolve", "=== Conflict Phase ===", "turn=", $state.turn)
+  logRNG("Using RNG for combat resolution", "seed=", $state.turn)
 
   # Find all systems with hostile fleets
   var combatSystems: seq[SystemId] = @[]
@@ -203,7 +204,7 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
 
   # Resolve combat in each system (operations.md:7.0)
   for systemId in combatSystems:
-    resolveBattle(state, systemId, orders, combatReports, events)
+    resolveBattle(state, systemId, orders, combatReports, events, rng)
 
   # Process espionage actions (per gameplay.md:1.3.1 - resolved in Conflict Phase)
   for houseId in state.houses.keys:
@@ -227,8 +228,7 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
                         else:
                           0
 
-        # Execute espionage action with detection roll
-        var rng = initRand(int64(state.turn) xor attempt.attacker.hash() xor attempt.target.hash())
+        # Execute espionage action with detection roll (using turn RNG)
         let result = esp_engine.executeEspionage(
           attempt,
           targetCICLevel,
@@ -238,7 +238,7 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
 
         # Apply results
         if result.success:
-          echo "    ", attempt.attacker, " espionage: ", result.description
+          logInfo("Espionage", "Mission success", $attempt.attacker, " ", result.description)
 
           # Apply prestige changes
           for prestigeEvent in result.attackerPrestigeEvents:
@@ -333,7 +333,7 @@ when false:
 ## Phase 3: Command
 
 proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
-                        events: var seq[res_types.GameEvent]) =
+                        events: var seq[res_types.GameEvent], rng: var Rand) =
   ## Phase 3: Execute orders
   ## Build orders may fail if shipyards were destroyed in conflict phase
   logInfo("Resolve", "=== Command Phase ===", "turn=", $state.turn)

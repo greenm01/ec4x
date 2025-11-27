@@ -7,8 +7,8 @@
 ## - Blitz operations (fast insertion variant)
 ## - Retreat processing and automated Seek Home
 
-import std/[tables, options, sequtils, hashes, math]
-import ../../common/[types/core, types/combat, types/units]
+import std/[tables, options, sequtils, hashes, math, random]
+import ../../common/[types/core, types/combat, types/units, logger]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types]
@@ -110,17 +110,12 @@ proc executeCombat(
           # Convert Starbase to Squadron-like structure for combat
           # Starbases are treated as special squadrons with fixed installations
           # Create EnhancedShip from Starbase using stats from config/ships.toml
-          # TODO: Load stats from config instead of hardcoding (requires GameConfig in GameState)
+          # Apply owner's WEP tech level to starbase AS/DS
+          let ownerWepLevel = state.houses[houseId].techTree.levels.weaponsTech
           let starbaseShip = EnhancedShip(
             shipClass: ShipClass.Starbase,
             shipType: ShipType.Military,
-            stats: ShipStats(
-              attackStrength: 45,   # From config/ships.toml [starbase]
-              defenseStrength: 50,  # From config/ships.toml [starbase]
-              commandCost: 0,
-              commandRating: 0,
-              techLevel: 0
-            ),
+            stats: getShipStats(ShipClass.Starbase, ownerWepLevel),
             isCrippled: starbase.isCrippled,
             name: "Starbase-" & starbase.id
           )
@@ -196,12 +191,12 @@ proc executeCombat(
 
 proc resolveBattle*(state: var GameState, systemId: SystemId,
                   orders: Table[HouseId, OrderPacket],
-                  combatReports: var seq[CombatReport], events: var seq[GameEvent]) =
+                  combatReports: var seq[CombatReport], events: var seq[GameEvent], rng: var Rand) =
   ## Resolve combat at a system with linear progression (operations.md:7.0)
   ## Phase 1: Space Combat - non-guard mobile fleets fight first
   ## Phase 2: Orbital Combat - if attackers survive, fight guard/reserve fleets + starbases
   ## Uses orders to determine which fleets are on guard duty
-  echo "    Combat at ", systemId
+  logCombat("Resolving battle", "system=", $systemId)
 
   # 1. Determine system ownership
   let systemOwner = if systemId in state.colonies: some(state.colonies[systemId].owner) else: none(HouseId)
@@ -461,6 +456,11 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         var updatedSquadron = squadron
         updatedSquadron.flagship.isCrippled = (survivorState.state == CombatState.Crippled)
         updatedSquadrons.add(updatedSquadron)
+      else:
+        # Squadron destroyed - mark it before removal
+        var destroyedSquadron = squadron
+        destroyedSquadron.destroyed = true
+        logCombat("Squadron destroyed", "id=", destroyedSquadron.id, " class=", $destroyedSquadron.flagship.shipClass)
 
     # Update fleet with surviving squadrons, or remove if none survived
     if updatedSquadrons.len > 0:
@@ -556,6 +556,11 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         var updatedSquadron = squadron
         updatedSquadron.flagship.isCrippled = (survivorState.state == CombatState.Crippled)
         survivingUnassigned.add(updatedSquadron)
+      else:
+        # Unassigned squadron destroyed - mark it before removal
+        var destroyedSquadron = squadron
+        destroyedSquadron.destroyed = true
+        logCombat("Unassigned squadron destroyed", "id=", destroyedSquadron.id, " class=", $destroyedSquadron.flagship.shipClass)
     colony.unassignedSquadrons = survivingUnassigned
     state.colonies[systemId] = colony
 
@@ -803,6 +808,11 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   updatedColony.infrastructure -= infrastructureLoss
   if updatedColony.infrastructure < 0:
     updatedColony.infrastructure = 0
+
+  # Apply battery destruction from bombardment
+  updatedColony.groundBatteries -= result.batteriesDestroyed
+  if updatedColony.groundBatteries < 0:
+    updatedColony.groundBatteries = 0
 
   # Ships-in-dock destruction (economy.md:5.0)
   var shipsDestroyedInDock = false
