@@ -231,6 +231,90 @@ proc buildExpansionOrders*(colony: Colony, tracker: var BudgetTracker,
       tracker.recordSpending(Expansion, etacCost)
       etacsBuilt += 1
 
+proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[BuildOrder] =
+  ## Generate facility build orders (Spaceport, Shipyard)
+  ## Uses BudgetTracker to prevent overspending from Expansion budget
+  ##
+  ## **CRITICAL**: This function enables production scaling!
+  ## Without facilities at new colonies, production caps at 3 ships/turn (homeworld only)
+  ##
+  ## **COST EFFICIENCY** (per economy.md:5.1, 5.3):
+  ## - Spaceport: 100 PP, 1 turn, 5 docks, but ships cost **2x** (100% PC penalty)
+  ## - Shipyard: 150 PP, 2 turns, 10 docks, **normal cost** (no penalty), requires Spaceport
+  ##
+  ## **Priority: SHIPYARD UPGRADES > NEW SPACEPORTS**
+  ## Shipyards eliminate 2x cost penalty, making them FAR more efficient than Spaceports.
+  ## Example: 3 Cruisers = 180 PP (shipyard) vs 360 PP (spaceport) - saves 180 PP!
+  ##
+  ## Strategy:
+  ## - Priority 1: Upgrade Spaceport → Shipyard (removes 2x penalty, huge savings)
+  ## - Priority 2: Build Spaceport at colonies without facilities (prerequisite)
+  result = @[]
+
+  let hasSpaceport = colony.spaceports.len > 0
+  let hasShipyard = colony.shipyards.len > 0
+
+  # Priority 1: UPGRADE SPACEPORT TO SHIPYARD (first Shipyard)
+  # This is THE most cost-effective investment: eliminates 2x ship construction penalty
+  # Shipyards pay for themselves after just 2-3 ships due to 50% cost savings
+  if hasSpaceport and not hasShipyard:
+    let shipyardCost = 150  # from facilities.toml
+    if tracker.canAfford(Expansion, shipyardCost):
+      logInfo(LogCategory.lcAI,
+              &"{tracker.houseId} Colony {colony.systemId}: Building Shipyard #1 (eliminates 2x spaceport penalty)")
+      result.add(BuildOrder(
+        colonySystem: colony.systemId,
+        buildType: BuildType.Building,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        buildingType: some("Shipyard"),
+        industrialUnits: 0
+      ))
+      tracker.recordSpending(Expansion, shipyardCost)
+      return  # One facility per colony per turn
+
+  # Priority 2: Build ADDITIONAL Shipyards (2nd, 3rd, 4th+) to scale production
+  # Each Shipyard = 10 docks = 10 parallel construction projects
+  # Build more Shipyards at high-production colonies to maximize fleet building
+  if hasShipyard and hasSpaceport:
+    let currentShipyards = colony.shipyards.len
+    # Build additional Shipyards until we have good dock capacity
+    # Target: 2-3 Shipyards per colony (20-30 docks) for healthy production scaling
+    if currentShipyards < 3:
+      let shipyardCost = 150  # from facilities.toml
+      if tracker.canAfford(Expansion, shipyardCost):
+        logInfo(LogCategory.lcAI,
+                &"{tracker.houseId} Colony {colony.systemId}: Building Shipyard #{currentShipyards + 1} " &
+                &"(scaling production capacity: {currentShipyards * 10} → {(currentShipyards + 1) * 10} docks)")
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Building,
+          quantity: 1,
+          shipClass: none(ShipClass),
+          buildingType: some("Shipyard"),
+          industrialUnits: 0
+        ))
+        tracker.recordSpending(Expansion, shipyardCost)
+        return  # One facility per colony per turn
+
+  # Priority 3: Build Spaceport if colony has no facilities
+  # Required prerequisite for Shipyard, enables ship production (but at 2x cost)
+  if not hasSpaceport and not hasShipyard:
+    let spaceportCost = 100  # from facilities.toml
+    if tracker.canAfford(Expansion, spaceportCost):
+      logInfo(LogCategory.lcAI,
+              &"{tracker.houseId} Colony {colony.systemId}: Building Spaceport (prerequisite for Shipyard)")
+      result.add(BuildOrder(
+        colonySystem: colony.systemId,
+        buildType: BuildType.Building,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        buildingType: some("Spaceport"),
+        industrialUnits: 0
+      ))
+      tracker.recordSpending(Expansion, spaceportCost)
+      return  # One facility per colony per turn
+
 proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
                         needDefenses: bool, hasStarbase: bool): seq[BuildOrder] =
   ## Generate defense-related build orders (starbases, ground batteries)
@@ -1098,6 +1182,11 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     # Carriers/Transports/Raiders require shipyard/spaceport
     result.add(buildSpecialUnitsOrders(colony, tracker, needFighters, needCarriers,
                                       needTransports, needRaiders, canAffordMoreShips, cstLevel))
+
+    # Facility orders: Build Spaceports at colonies without facilities
+    # CRITICAL: This scales ship production from 3/turn (homeworld only) to 3N/turn (N colonies)
+    # Without this, military budget remains massively underutilized (40-60% wasted)
+    result.add(buildFacilityOrders(colony, tracker))
 
     # Ship build orders: Only for colonies with shipyard/spaceport
     if canBuildShips:
