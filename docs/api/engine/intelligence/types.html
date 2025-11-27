@@ -67,7 +67,48 @@
   industry*: int
   defenses*: int
   starbaseLevel*: int
-  constructionQueue*: seq[string]">ColonyIntelReport</a></li>
+  constructionQueue*: seq[string]
+  grossOutput*: Option[int]
+  taxRevenue*: Option[int]
+  unassignedSquadronCount*: int
+  reserveFleetCount*: int
+  mothballedFleetCount*: int
+  shipyardCount*: int">ColonyIntelReport</a></li>
+<li><a class="reference" href="#CombatEncounterReport" title="CombatEncounterReport = object
+  reportId*: string
+  turn*: int
+  systemId*: SystemId
+  phase*: CombatPhase
+  reportingHouse*: HouseId
+  alliedForces*: seq[CombatFleetComposition]
+  enemyForces*: seq[CombatFleetComposition]
+  outcome*: CombatOutcome
+  alliedLosses*: seq[string]
+  enemyLosses*: seq[string]
+  retreatedAllies*: seq[FleetId]
+  retreatedEnemies*: seq[FleetId]
+  survived*: bool">CombatEncounterReport</a></li>
+<li><a class="reference" href="#CombatFleetComposition" title="CombatFleetComposition = object
+  fleetId*: FleetId
+  owner*: HouseId
+  standingOrders*: Option[FleetOrderIntel]
+  squadrons*: seq[SquadronIntel]
+  spaceLiftShips*: seq[SpaceLiftCargoIntel]
+  isCloaked*: bool">CombatFleetComposition</a></li>
+<li><a class="reference" href="#CombatOutcome" title="CombatOutcome {.pure.} = enum
+  Victory, Defeat, Retreat, MutualRetreat, Ongoing">CombatOutcome</a></li>
+<li><a class="reference" href="#CombatPhase" title="CombatPhase {.pure.} = enum
+  Space, Orbital, Planetary">CombatPhase</a></li>
+<li><a class="reference" href="#ConstructionActivityReport" title="ConstructionActivityReport = object
+  systemId*: SystemId
+  owner*: HouseId
+  observedTurns*: seq[int]
+  infrastructureHistory*: seq[tuple[turn: int, level: int]]
+  shipyardCount*: int
+  spaceportCount*: int
+  starbaseCount*: int
+  activeProjects*: seq[string]
+  completedSinceLastVisit*: seq[string]">ConstructionActivityReport</a></li>
 <li><a class="reference" href="#EspionageActivityReport" title="EspionageActivityReport = object
   turn*: int
   perpetrator*: HouseId
@@ -80,14 +121,54 @@
   owner*: HouseId
   location*: SystemId
   shipCount*: int
+  standingOrders*: Option[string]
+  spaceLiftShipCount*: Option[int]
   squadronDetails*: Option[seq[SquadronIntel]]">FleetIntel</a></li>
+<li><a class="reference" href="#FleetMovementHistory" title="FleetMovementHistory = object
+  fleetId*: FleetId
+  owner*: HouseId
+  sightings*: seq[tuple[turn: int, systemId: SystemId]]
+  patrolRoute*: Option[seq[SystemId]]
+  lastKnownLocation*: SystemId
+  lastSeen*: int">FleetMovementHistory</a></li>
+<li><a class="reference" href="#FleetOrderIntel" title="FleetOrderIntel = object
+  orderType*: string
+  targetSystem*: Option[SystemId]">FleetOrderIntel</a></li>
 <li><a class="reference" href="#IntelligenceDatabase" title="IntelligenceDatabase = object
   colonyReports*: Table[SystemId, ColonyIntelReport]
   systemReports*: Table[SystemId, SystemIntelReport]
   starbaseReports*: Table[SystemId, StarbaseIntelReport]
-  espionageActivity*: seq[EspionageActivityReport]">IntelligenceDatabase</a></li>
+  espionageActivity*: seq[EspionageActivityReport]
+  combatReports*: seq[CombatEncounterReport]
+  scoutEncounters*: seq[ScoutEncounterReport]
+  fleetMovementHistory*: Table[FleetId, FleetMovementHistory]
+  constructionActivity*: Table[SystemId, ConstructionActivityReport]
+  starbaseSurveillance*: seq[StarbaseSurveillanceReport]">IntelligenceDatabase</a></li>
 <li><a class="reference" href="#IntelQuality" title="IntelQuality {.pure.} = enum
   Visual, Scan, Spy, Perfect">IntelQuality</a></li>
+<li><a class="reference" href="#ScoutEncounterReport" title="ScoutEncounterReport = object
+  reportId*: string
+  scoutId*: string
+  turn*: int
+  systemId*: SystemId
+  encounterType*: ScoutEncounterType
+  observedHouses*: seq[HouseId]
+  fleetDetails*: seq[FleetIntel]
+  colonyDetails*: Option[ColonyIntelReport]
+  fleetMovements*: seq[tuple[fleetId: FleetId, fromSystem: Option[SystemId],
+                             toSystem: Option[SystemId]]]
+  description*: string
+  significance*: int">ScoutEncounterReport</a></li>
+<li><a class="reference" href="#ScoutEncounterType" title="ScoutEncounterType {.pure.} = enum
+  FleetSighting, ColonyDiscovered, Bombardment, Blockade, Combat, Construction,
+  FleetMovement, DiplomaticActivity">ScoutEncounterType</a></li>
+<li><a class="reference" href="#SensorQuality" title="SensorQuality {.pure.} = enum
+  None, Visual, Scan, Perfect">SensorQuality</a></li>
+<li><a class="reference" href="#SpaceLiftCargoIntel" title="SpaceLiftCargoIntel = object
+  shipClass*: string
+  cargoType*: string
+  quantity*: int
+  isCrippled*: bool">SpaceLiftCargoIntel</a></li>
 <li><a class="reference" href="#SquadronIntel" title="SquadronIntel = object
   squadronId*: string
   shipClass*: string
@@ -106,6 +187,20 @@
   researchAllocations*: Option[tuple[erp: int, srp: int, trp: int]]
   currentResearch*: Option[string]
   techLevels*: Option[TechLevel]">StarbaseIntelReport</a></li>
+<li><a class="reference" href="#StarbaseSurveillanceReport" title="StarbaseSurveillanceReport = object
+  starbaseId*: string
+  systemId*: SystemId
+  owner*: HouseId
+  turn*: int
+  detectedFleets*: seq[tuple[fleetId: FleetId, location: SystemId,
+                             owner: HouseId, shipCount: int]]
+  undetectedFleets*: seq[FleetId]
+  transitingFleets*: seq[tuple[fleetId: FleetId, fromSystem: SystemId,
+                               toSystem: SystemId]]
+  combatDetected*: seq[SystemId]
+  bombardmentDetected*: seq[SystemId]
+  significantActivity*: bool
+  threatsDetected*: int">StarbaseSurveillanceReport</a></li>
 <li><a class="reference" href="#SystemIntelReport" title="SystemIntelReport = object
   systemId*: SystemId
   gatheredTurn*: int
@@ -123,14 +218,28 @@
   <li><a class="reference" href="#addColonyReport%2CIntelligenceDatabase%2CColonyIntelReport" title="addColonyReport(db: var IntelligenceDatabase; report: ColonyIntelReport)">addColonyReport(db: var IntelligenceDatabase; report: ColonyIntelReport)</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">addCombatReport
+  <li><a class="reference" href="#addCombatReport%2CIntelligenceDatabase%2CCombatEncounterReport" title="addCombatReport(db: var IntelligenceDatabase; report: CombatEncounterReport)">addCombatReport(db: var IntelligenceDatabase; report: CombatEncounterReport)</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">addEspionageActivity
   <li><a class="reference" href="#addEspionageActivity%2CIntelligenceDatabase%2CEspionageActivityReport" title="addEspionageActivity(db: var IntelligenceDatabase;
                      report: EspionageActivityReport)">addEspionageActivity(db: var IntelligenceDatabase;
                      report: EspionageActivityReport)</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">addScoutEncounter
+  <li><a class="reference" href="#addScoutEncounter%2CIntelligenceDatabase%2CScoutEncounterReport" title="addScoutEncounter(db: var IntelligenceDatabase; report: ScoutEncounterReport)">addScoutEncounter(db: var IntelligenceDatabase; report: ScoutEncounterReport)</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">addStarbaseReport
   <li><a class="reference" href="#addStarbaseReport%2CIntelligenceDatabase%2CStarbaseIntelReport" title="addStarbaseReport(db: var IntelligenceDatabase; report: StarbaseIntelReport)">addStarbaseReport(db: var IntelligenceDatabase; report: StarbaseIntelReport)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">addStarbaseSurveillance
+  <li><a class="reference" href="#addStarbaseSurveillance%2CIntelligenceDatabase%2CStarbaseSurveillanceReport" title="addStarbaseSurveillance(db: var IntelligenceDatabase;
+                        report: StarbaseSurveillanceReport)">addStarbaseSurveillance(db: var IntelligenceDatabase;
+                        report: StarbaseSurveillanceReport)</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">addSystemReport
@@ -165,6 +274,22 @@
   <li><a class="reference" href="#newIntelligenceDatabase" title="newIntelligenceDatabase(): IntelligenceDatabase">newIntelligenceDatabase(): IntelligenceDatabase</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">updateConstructionActivity
+  <li><a class="reference" href="#updateConstructionActivity%2CIntelligenceDatabase%2CSystemId%2CHouseId%2Cint%2Cint%2Cint%2Cint%2Cint%2Cseq%5Bstring%5D" title="updateConstructionActivity(db: var IntelligenceDatabase; systemId: SystemId;
+                           owner: HouseId; turn: int; infrastructure: int;
+                           shipyards: int; spaceports: int; starbases: int;
+                           activeProjects: seq[string])">updateConstructionActivity(db: var IntelligenceDatabase; systemId: SystemId;
+                           owner: HouseId; turn: int; infrastructure: int;
+                           shipyards: int; spaceports: int; starbases: int;
+                           activeProjects: seq[string])</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">updateFleetMovementHistory
+  <li><a class="reference" href="#updateFleetMovementHistory%2CIntelligenceDatabase%2CFleetId%2CHouseId%2CSystemId%2Cint" title="updateFleetMovementHistory(db: var IntelligenceDatabase; fleetId: FleetId;
+                           owner: HouseId; systemId: SystemId; turn: int)">updateFleetMovementHistory(db: var IntelligenceDatabase; fleetId: FleetId;
+                           owner: HouseId; systemId: SystemId; turn: int)</a></li>
+
+</ul>
 
     </ul>
   </details>
@@ -174,8 +299,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -201,12 +326,98 @@
   <span class="Identifier">industry</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">defenses</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">starbaseLevel</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">constructionQueue</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span></pre></dt>
+  <span class="Identifier">constructionQueue</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>
+  <span class="Identifier">grossOutput</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span>
+  <span class="Identifier">taxRevenue</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span>
+  <span class="Identifier">unassignedSquadronCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">reserveFleetCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">mothballedFleetCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">shipyardCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
   <dd>
     
     Intelligence on an enemy colony (SpyOnPlanet mission) Per intel.md:107-121
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L17" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L17" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L17" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L17" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="CombatEncounterReport">
+  <dt><pre><a href="types.html#CombatEncounterReport"><span class="Identifier">CombatEncounterReport</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">reportId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">turn</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">systemId</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
+  <span class="Identifier">phase</span><span class="Operator">*</span><span class="Other">:</span> <a href="types.html#CombatPhase"><span class="Identifier">CombatPhase</span></a>
+  <span class="Identifier">reportingHouse</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
+  <span class="Identifier">alliedForces</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#CombatFleetComposition"><span class="Identifier">CombatFleetComposition</span></a><span class="Other">]</span>
+  <span class="Identifier">enemyForces</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#CombatFleetComposition"><span class="Identifier">CombatFleetComposition</span></a><span class="Other">]</span>
+  <span class="Identifier">outcome</span><span class="Operator">*</span><span class="Other">:</span> <a href="types.html#CombatOutcome"><span class="Identifier">CombatOutcome</span></a>
+  <span class="Identifier">alliedLosses</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>
+  <span class="Identifier">enemyLosses</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>
+  <span class="Identifier">retreatedAllies</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">]</span>
+  <span class="Identifier">retreatedEnemies</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">]</span>
+  <span class="Identifier">survived</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dd>
+    
+    Intelligence report from combat encounter Generated automatically when fleets engage in combat Surviving ships report detailed composition and outcome
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L135" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L135" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="CombatFleetComposition">
+  <dt><pre><a href="types.html#CombatFleetComposition"><span class="Identifier">CombatFleetComposition</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">fleetId</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a>
+  <span class="Identifier">owner</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
+  <span class="Identifier">standingOrders</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="types.html#FleetOrderIntel"><span class="Identifier">FleetOrderIntel</span></a><span class="Other">]</span>
+  <span class="Identifier">squadrons</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#SquadronIntel"><span class="Identifier">SquadronIntel</span></a><span class="Other">]</span>
+  <span class="Identifier">spaceLiftShips</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#SpaceLiftCargoIntel"><span class="Identifier">SpaceLiftCargoIntel</span></a><span class="Other">]</span>
+  <span class="Identifier">isCloaked</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dd>
+    
+    Detailed fleet composition observed in combat
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L126" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L126" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="CombatOutcome">
+  <dt><pre><a href="types.html#CombatOutcome"><span class="Identifier">CombatOutcome</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">Victory</span><span class="Other">,</span> <span class="Identifier">Defeat</span><span class="Other">,</span> <span class="Identifier">Retreat</span><span class="Other">,</span> <span class="Identifier">MutualRetreat</span><span class="Other">,</span> <span class="Identifier">Ongoing</span></pre></dt>
+  <dd>
+    
+    Outcome of combat from reporter's perspective
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L106" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L106" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="CombatPhase">
+  <dt><pre><a href="types.html#CombatPhase"><span class="Identifier">CombatPhase</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">Space</span><span class="Other">,</span> <span class="Identifier">Orbital</span><span class="Other">,</span> <span class="Identifier">Planetary</span></pre></dt>
+  <dd>
+    
+    Phase of combat where encounter occurred
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L100" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L100" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="ConstructionActivityReport">
+  <dt><pre><a href="types.html#ConstructionActivityReport"><span class="Identifier">ConstructionActivityReport</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">systemId</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
+  <span class="Identifier">owner</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
+  <span class="Identifier">observedTurns</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span>
+  <span class="Identifier">infrastructureHistory</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">turn</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">level</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">]</span><span class="Other">]</span>
+  <span class="Identifier">shipyardCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">spaceportCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">starbaseCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">activeProjects</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>
+  <span class="Identifier">completedSinceLastVisit</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span></pre></dt>
+  <dd>
+    
+    Track construction progress at enemy colonies over time
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L228" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L228" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -221,8 +432,8 @@
   <dd>
     
     Record of detected espionage activity against this house Generated when espionage attempts are detected
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L78" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L78" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L90" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L90" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -232,12 +443,42 @@
   <span class="Identifier">owner</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
   <span class="Identifier">location</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
   <span class="Identifier">shipCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">standingOrders</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span>
+  <span class="Identifier">spaceLiftShipCount</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span>
   <span class="Identifier">squadronDetails</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#SquadronIntel"><span class="Identifier">SquadronIntel</span></a><span class="Other">]</span><span class="Other">]</span></pre></dt>
   <dd>
     
     Intel on a specific fleet
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L42" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L42" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L52" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L52" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="FleetMovementHistory">
+  <dt><pre><a href="types.html#FleetMovementHistory"><span class="Identifier">FleetMovementHistory</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">fleetId</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a>
+  <span class="Identifier">owner</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
+  <span class="Identifier">sightings</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">turn</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">,</span> <span class="Identifier">systemId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span><span class="Other">]</span>
+  <span class="Identifier">patrolRoute</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><span class="Identifier">seq</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span><span class="Other">]</span>
+  <span class="Identifier">lastKnownLocation</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
+  <span class="Identifier">lastSeen</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <dd>
+    
+    Historical tracking of fleet movements Built up from multiple scout sightings
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L218" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L218" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="FleetOrderIntel">
+  <dt><pre><a href="types.html#FleetOrderIntel"><span class="Identifier">FleetOrderIntel</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">orderType</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">targetSystem</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span></pre></dt>
+  <dd>
+    
+    Intelligence on enemy fleet's standing orders
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L114" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L114" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -246,12 +487,17 @@
   <span class="Identifier">colonyReports</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">,</span> <a href="types.html#ColonyIntelReport"><span class="Identifier">ColonyIntelReport</span></a><span class="Other">]</span>
   <span class="Identifier">systemReports</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">,</span> <a href="types.html#SystemIntelReport"><span class="Identifier">SystemIntelReport</span></a><span class="Other">]</span>
   <span class="Identifier">starbaseReports</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">,</span> <a href="types.html#StarbaseIntelReport"><span class="Identifier">StarbaseIntelReport</span></a><span class="Other">]</span>
-  <span class="Identifier">espionageActivity</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#EspionageActivityReport"><span class="Identifier">EspionageActivityReport</span></a><span class="Other">]</span></pre></dt>
+  <span class="Identifier">espionageActivity</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#EspionageActivityReport"><span class="Identifier">EspionageActivityReport</span></a><span class="Other">]</span>
+  <span class="Identifier">combatReports</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#CombatEncounterReport"><span class="Identifier">CombatEncounterReport</span></a><span class="Other">]</span>
+  <span class="Identifier">scoutEncounters</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#ScoutEncounterReport"><span class="Identifier">ScoutEncounterReport</span></a><span class="Other">]</span>
+  <span class="Identifier">fleetMovementHistory</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">,</span> <a href="types.html#FleetMovementHistory"><span class="Identifier">FleetMovementHistory</span></a><span class="Other">]</span>
+  <span class="Identifier">constructionActivity</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Table</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">,</span> <a href="types.html#ConstructionActivityReport"><span class="Identifier">ConstructionActivityReport</span></a><span class="Other">]</span>
+  <span class="Identifier">starbaseSurveillance</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#StarbaseSurveillanceReport"><span class="Identifier">StarbaseSurveillanceReport</span></a><span class="Other">]</span></pre></dt>
   <dd>
     
     Collection of all intelligence reports for a house Stored per-house in GameState
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L88" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L88" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L244" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L244" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -261,8 +507,67 @@
   <dd>
     
     Quality/source of intelligence
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L10" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L10" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L10" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L10" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="ScoutEncounterReport">
+  <dt><pre><a href="types.html#ScoutEncounterReport"><span class="Identifier">ScoutEncounterReport</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">reportId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">scoutId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">turn</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">systemId</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
+  <span class="Identifier">encounterType</span><span class="Operator">*</span><span class="Other">:</span> <a href="types.html#ScoutEncounterType"><span class="Identifier">ScoutEncounterType</span></a>
+  <span class="Identifier">observedHouses</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">]</span>
+  <span class="Identifier">fleetDetails</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#FleetIntel"><span class="Identifier">FleetIntel</span></a><span class="Other">]</span>
+  <span class="Identifier">colonyDetails</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="types.html#ColonyIntelReport"><span class="Identifier">ColonyIntelReport</span></a><span class="Other">]</span>
+  <span class="Identifier">fleetMovements</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">fleetId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">,</span> <span class="Identifier">fromSystem</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span><span class="Other">,</span>
+                             <span class="Identifier">toSystem</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span><span class="Other">]</span><span class="Other">]</span>
+  <span class="Identifier">description</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">significance</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <dd>
+    
+    Detailed report from scout reconnaissance Scouts generate these for EVERYTHING they observe
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L197" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L197" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="ScoutEncounterType">
+  <dt><pre><a href="types.html#ScoutEncounterType"><span class="Identifier">ScoutEncounterType</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">FleetSighting</span><span class="Other">,</span> <span class="Identifier">ColonyDiscovered</span><span class="Other">,</span> <span class="Identifier">Bombardment</span><span class="Other">,</span> <span class="Identifier">Blockade</span><span class="Other">,</span> <span class="Identifier">Combat</span><span class="Other">,</span> <span class="Identifier">Construction</span><span class="Other">,</span>
+  <span class="Identifier">FleetMovement</span><span class="Other">,</span> <span class="Identifier">DiplomaticActivity</span></pre></dt>
+  <dd>
+    
+    Type of encounter a scout observed
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L157" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L157" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="SensorQuality">
+  <dt><pre><a href="types.html#SensorQuality"><span class="Identifier">SensorQuality</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">None</span><span class="Other">,</span> <span class="Identifier">Visual</span><span class="Other">,</span> <span class="Identifier">Scan</span><span class="Other">,</span> <span class="Identifier">Perfect</span></pre></dt>
+  <dd>
+    
+    Quality of sensor detection
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L168" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L168" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="SpaceLiftCargoIntel">
+  <dt><pre><a href="types.html#SpaceLiftCargoIntel"><span class="Identifier">SpaceLiftCargoIntel</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">shipClass</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">cargoType</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">quantity</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">isCrippled</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dd>
+    
+    Intelligence on spacelift ship cargo (troop transports, ETACs)
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L119" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L119" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -276,8 +581,8 @@
   <dd>
     
     Detailed squadron information
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L51" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L51" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L63" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L63" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -297,8 +602,31 @@
   <dd>
     
     Intelligence from hacking a starbase (HackStarbase mission) Per intel.md and operations.md:6.2.11 - &quot;economic and R&amp;D intelligence&quot;
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L59" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L59" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L71" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L71" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="StarbaseSurveillanceReport">
+  <dt><pre><a href="types.html#StarbaseSurveillanceReport"><span class="Identifier">StarbaseSurveillanceReport</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">starbaseId</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>
+  <span class="Identifier">systemId</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a>
+  <span class="Identifier">owner</span><span class="Operator">*</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a>
+  <span class="Identifier">turn</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">detectedFleets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">fleetId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">,</span> <span class="Identifier">location</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">,</span>
+                             <span class="Identifier">owner</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">,</span> <span class="Identifier">shipCount</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">]</span><span class="Other">]</span>
+  <span class="Identifier">undetectedFleets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">]</span>
+  <span class="Identifier">transitingFleets</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Keyword">tuple</span><span class="Other">[</span><span class="Identifier">fleetId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">,</span> <span class="Identifier">fromSystem</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">,</span>
+                               <span class="Identifier">toSystem</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span><span class="Other">]</span>
+  <span class="Identifier">combatDetected</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span>
+  <span class="Identifier">bombardmentDetected</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">]</span>
+  <span class="Identifier">significantActivity</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
+  <span class="Identifier">threatsDetected</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <dd>
+    
+    Continuous surveillance from starbase advanced sensors Starbases monitor their sector (system + adjacent systems) automatically Only scouts and cloaked raiders can evade detection (stealth roll required)
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L175" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L175" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -311,8 +639,8 @@
   <dd>
     
     Intelligence on enemy fleets in a system (SpyOnSystem mission) Per intel.md:96-105
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L32" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L32" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L42" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L42" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -329,8 +657,22 @@
   <dd>
     
     Add or update colony intelligence report
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L103" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L103" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L273" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L273" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="addCombatReport-procs-all">
+  <div id="addCombatReport,IntelligenceDatabase,CombatEncounterReport">
+  <dt><pre><span class="Keyword">proc</span> <a href="#addCombatReport%2CIntelligenceDatabase%2CCombatEncounterReport"><span class="Identifier">addCombatReport</span></a><span class="Other">(</span><span class="Identifier">db</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="types.html#IntelligenceDatabase"><span class="Identifier">IntelligenceDatabase</span></a><span class="Other">;</span> <span class="Identifier">report</span><span class="Other">:</span> <a href="types.html#CombatEncounterReport"><span class="Identifier">CombatEncounterReport</span></a><span class="Other">)</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Add combat encounter report to chronological log
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L289" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L289" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -344,8 +686,23 @@
   <dd>
     
     Add espionage activity report to log
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L115" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L115" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L285" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L285" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="addScoutEncounter-procs-all">
+  <div id="addScoutEncounter,IntelligenceDatabase,ScoutEncounterReport">
+  <dt><pre><span class="Keyword">proc</span> <a href="#addScoutEncounter%2CIntelligenceDatabase%2CScoutEncounterReport"><span class="Identifier">addScoutEncounter</span></a><span class="Other">(</span><span class="Identifier">db</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="types.html#IntelligenceDatabase"><span class="Identifier">IntelligenceDatabase</span></a><span class="Other">;</span>
+                       <span class="Identifier">report</span><span class="Other">:</span> <a href="types.html#ScoutEncounterReport"><span class="Identifier">ScoutEncounterReport</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Add scout encounter report to intelligence log
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L293" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L293" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -358,8 +715,23 @@
   <dd>
     
     Add or update starbase intelligence report
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L111" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L111" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L281" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L281" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="addStarbaseSurveillance-procs-all">
+  <div id="addStarbaseSurveillance,IntelligenceDatabase,StarbaseSurveillanceReport">
+  <dt><pre><span class="Keyword">proc</span> <a href="#addStarbaseSurveillance%2CIntelligenceDatabase%2CStarbaseSurveillanceReport"><span class="Identifier">addStarbaseSurveillance</span></a><span class="Other">(</span><span class="Identifier">db</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="types.html#IntelligenceDatabase"><span class="Identifier">IntelligenceDatabase</span></a><span class="Other">;</span>
+                             <span class="Identifier">report</span><span class="Other">:</span> <a href="types.html#StarbaseSurveillanceReport"><span class="Identifier">StarbaseSurveillanceReport</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Add starbase surveillance report
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L297" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L297" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -372,8 +744,8 @@
   <dd>
     
     Add or update system intelligence report
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L107" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L107" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L277" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L277" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -386,8 +758,8 @@
   <dd>
     
     Retrieve colony intel if available
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L119" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L119" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L358" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L358" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -400,8 +772,8 @@
   <dd>
     
     Calculate how many turns old this intel is
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L137" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L137" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L376" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L376" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -414,8 +786,8 @@
   <dd>
     
     Retrieve starbase intel if available
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L131" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L131" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L370" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L370" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -428,8 +800,8 @@
   <dd>
     
     Retrieve system intel if available
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L125" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L125" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L364" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L364" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -442,8 +814,41 @@
   <dd>
     
     Create empty intelligence database
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/types.nim#L96" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/types.nim#L96" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L261" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L261" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="updateConstructionActivity-procs-all">
+  <div id="updateConstructionActivity,IntelligenceDatabase,SystemId,HouseId,int,int,int,int,int,seq[string]">
+  <dt><pre><span class="Keyword">proc</span> <a href="#updateConstructionActivity%2CIntelligenceDatabase%2CSystemId%2CHouseId%2Cint%2Cint%2Cint%2Cint%2Cint%2Cseq%5Bstring%5D"><span class="Identifier">updateConstructionActivity</span></a><span class="Other">(</span><span class="Identifier">db</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="types.html#IntelligenceDatabase"><span class="Identifier">IntelligenceDatabase</span></a><span class="Other">;</span>
+                                <span class="Identifier">systemId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">;</span> <span class="Identifier">owner</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span> <span class="Identifier">turn</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
+                                <span class="Identifier">infrastructure</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">shipyards</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
+                                <span class="Identifier">spaceports</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">starbases</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
+                                <span class="Identifier">activeProjects</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Update construction activity tracking for a colony
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L323" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L323" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="updateFleetMovementHistory-procs-all">
+  <div id="updateFleetMovementHistory,IntelligenceDatabase,FleetId,HouseId,SystemId,int">
+  <dt><pre><span class="Keyword">proc</span> <a href="#updateFleetMovementHistory%2CIntelligenceDatabase%2CFleetId%2CHouseId%2CSystemId%2Cint"><span class="Identifier">updateFleetMovementHistory</span></a><span class="Other">(</span><span class="Identifier">db</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="types.html#IntelligenceDatabase"><span class="Identifier">IntelligenceDatabase</span></a><span class="Other">;</span> <span class="Identifier">fleetId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#FleetId"><span class="Identifier">FleetId</span></a><span class="Other">;</span>
+                                <span class="Identifier">owner</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span> <span class="Identifier">systemId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">;</span> <span class="Identifier">turn</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Update fleet movement tracking with new sighting
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/types.nim#L301" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/types.nim#L301" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

@@ -59,7 +59,7 @@
     <summary><a class="reference reference-toplevel" href="#12" id="62">Procs</a></summary>
     <ul class="simple simple-toc-section">
       <ul class="simple nested-toc-section">applyPopulationGrowth
-  <li><a class="reference" href="#applyPopulationGrowth%2CColony%2Cint" title="applyPopulationGrowth(colony: var Colony; taxRate: int): float">applyPopulationGrowth(colony: var Colony; taxRate: int): float</a></li>
+  <li><a class="reference" href="#applyPopulationGrowth%2CColony%2Cint%2Cfloat" title="applyPopulationGrowth(colony: var Colony; taxRate: int; baseGrowthRate: float): float">applyPopulationGrowth(colony: var Colony; taxRate: int; baseGrowthRate: float): float</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">calculateColonyIncome
@@ -100,8 +100,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -118,23 +118,25 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="production.html">production</a>, <a class="reference external" href="../_._/common/types/core.html">../../common/types/core</a>, <a class="reference external" href="../prestige.html">../prestige</a>, <a class="reference external" href="../config/prestige_config.html">../config/prestige_config</a>
+    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="production.html">production</a>, <a class="reference external" href="../prestige.html">../prestige</a>, <a class="reference external" href="../gamestate.html">../gamestate</a>
   </dl>
 </div>
 <div class="section" id="12">
   <h1><a class="toc-backref" href="#12">Procs</a></h1>
   <dl class="item">
     <div id="applyPopulationGrowth-procs-all">
-  <div id="applyPopulationGrowth,Colony,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#applyPopulationGrowth%2CColony%2Cint"><span class="Identifier">applyPopulationGrowth</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="types.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">;</span> <span class="Identifier">taxRate</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">float</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <div id="applyPopulationGrowth,Colony,int,float">
+  <dt><pre><span class="Keyword">proc</span> <a href="#applyPopulationGrowth%2CColony%2Cint%2Cfloat"><span class="Identifier">applyPopulationGrowth</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">;</span> <span class="Identifier">taxRate</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
+                           <span class="Identifier">baseGrowthRate</span><span class="Other">:</span> <span class="Identifier">float</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">float</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     <p>Apply population growth to colony Returns growth percentage for reporting</p>
-<p>Per economy.md:3.6: Base growth: 1.5% per turn Modified by tax rate per economy.md:3.2.2</p>
+<p>Per economy.md:3.6: Base growth rate loaded from config (natural_growth_rate) Modified by tax rate per economy.md:3.2.2</p>
+<p>Args: colony: Colony to apply growth to (modified) taxRate: Current tax rate (affects growth multiplier) baseGrowthRate: Base growth rate from config (e.g., 0.015 for 1.5%)</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L178" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L178" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L175" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L175" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -142,15 +144,15 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
 </div>
 <div id="calculateColonyIncome-procs-all">
   <div id="calculateColonyIncome,Colony,int,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#calculateColonyIncome%2CColony%2Cint%2Cint"><span class="Identifier">calculateColonyIncome</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <a href="types.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">;</span> <span class="Identifier">houseELTech</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">houseTaxRate</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="types.html#ColonyIncomeReport"><span class="Identifier">ColonyIncomeReport</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#calculateColonyIncome%2CColony%2Cint%2Cint"><span class="Identifier">calculateColonyIncome</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <a href="../gamestate.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">;</span> <span class="Identifier">houseELTech</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">houseTaxRate</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="types.html#ColonyIncomeReport"><span class="Identifier">ColonyIncomeReport</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     <p>Calculate income for single colony</p>
 <p>Args: colony: Colony economic data houseELTech: House Economic Level tech houseTaxRate: House-wide tax rate (colony can override)</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L86" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L86" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L85" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L85" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -158,7 +160,7 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
 </div>
 <div id="calculateHouseIncome-procs-all">
   <div id="calculateHouseIncome,seq[Colony],int,TaxPolicy,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#calculateHouseIncome%2Cseq%5BColony%5D%2Cint%2CTaxPolicy%2Cint"><span class="Identifier">calculateHouseIncome</span></a><span class="Other">(</span><span class="Identifier">colonies</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">houseELTech</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#calculateHouseIncome%2Cseq%5BColony%5D%2Cint%2CTaxPolicy%2Cint"><span class="Identifier">calculateHouseIncome</span></a><span class="Other">(</span><span class="Identifier">colonies</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../gamestate.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">houseELTech</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
                           <span class="Identifier">taxPolicy</span><span class="Other">:</span> <a href="types.html#TaxPolicy"><span class="Identifier">TaxPolicy</span></a><span class="Other">;</span> <span class="Identifier">treasury</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="types.html#HouseIncomeReport"><span class="Identifier">HouseIncomeReport</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
@@ -166,8 +168,8 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
     <p>Calculate total income for house</p>
 <p>Args: colonies: All colonies owned by house houseELTech: Economic Level tech taxPolicy: House tax policy with history treasury: Current treasury balance</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L110" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L110" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L109" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L109" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -180,8 +182,8 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
   <dd>
     
     Calculate 6-turn rolling average tax rate Per economy.md:3.2.1
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L71" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L71" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L70" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L70" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -194,8 +196,8 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
   <dd>
     
     Calculate prestige bonus from low tax rate Per economy.md:3.2.2 Returns total prestige for all colonies
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L38" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L38" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L37" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L37" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -208,8 +210,8 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
   <dd>
     
     Calculate prestige penalty from high rolling average tax rate Per economy.md:3.2.1
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L22" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L22" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L21" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L21" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -222,8 +224,8 @@ Tax Policy Prestige Effects (economy.md:3.2)Colony Income CalculationHouse Incom
   <dd>
     
     Get population growth multiplier from tax rate Per economy.md:3.2.2
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/income.nim#L57" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/income.nim#L57" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/income.nim#L56" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/income.nim#L56" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

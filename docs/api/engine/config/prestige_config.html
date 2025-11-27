@@ -87,6 +87,9 @@
   cyber_attack*: int
   economic_manipulation*: int
   psyops_campaign*: int
+  counter_intel_sweep*: int
+  intelligence_theft*: int
+  plant_disinformation*: int
   failed_espionage*: int">EspionagePrestigeConfig</a></li>
 <li><a class="reference" href="#EspionageVictimPrestigeConfig" title="EspionageVictimPrestigeConfig = object
   tech_theft_victim*: int
@@ -95,7 +98,10 @@
   assassination_victim*: int
   cyber_attack_victim*: int
   economic_manipulation_victim*: int
-  psyops_campaign_victim*: int">EspionageVictimPrestigeConfig</a></li>
+  psyops_campaign_victim*: int
+  counter_intel_sweep_victim*: int
+  intelligence_theft_victim*: int
+  plant_disinformation_victim*: int">EspionageVictimPrestigeConfig</a></li>
 <li><a class="reference" href="#MilitaryPrestigeConfig" title="MilitaryPrestigeConfig = object
   destroy_squadron*: int
   destroy_starbase*: int
@@ -224,8 +230,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -246,8 +252,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L79" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L79" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L85" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L85" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -263,8 +269,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L16" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L16" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L16" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L16" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -281,8 +287,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L32" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L32" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L32" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L32" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -295,12 +301,15 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <span class="Identifier">cyber_attack</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">economic_manipulation</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">psyops_campaign</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">counter_intel_sweep</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">intelligence_theft</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">plant_disinformation</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">failed_espionage</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L55" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L55" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L55" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L55" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -312,12 +321,15 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <span class="Identifier">assassination_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">cyber_attack_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">economic_manipulation_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">psyops_campaign_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <span class="Identifier">psyops_campaign_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">counter_intel_sweep_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">intelligence_theft_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">plant_disinformation_victim</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L65" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L65" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L68" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L68" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -337,8 +349,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L42" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L42" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L42" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L42" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -352,8 +364,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L25" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L25" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L25" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L25" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -373,8 +385,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L90" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L90" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L96" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L96" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -396,8 +408,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     Complete prestige configuration loaded from TOML
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L140" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L140" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L146" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L146" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -409,8 +421,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L74" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L74" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L80" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L80" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -434,8 +446,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L123" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L123" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L129" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L129" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -462,8 +474,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L103" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L103" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L109" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L109" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -473,8 +485,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L87" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L87" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L93" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L93" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -487,8 +499,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L10" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L10" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L10" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L10" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -503,8 +515,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L170" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L170" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L176" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L176" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -528,8 +540,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
 <li>Victory threshold (5000 prestige) stays constant regardless of map size</li>
 </ul>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L180" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L180" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L186" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L186" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -543,8 +555,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     Load prestige configuration from TOML file Uses toml_serialization for type-safe parsing
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L156" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L156" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L162" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L162" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -558,8 +570,8 @@ Global configuration instanceHelper to reload configuration (for testing)Dynamic
   <dd>
     
     Reload configuration from file
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/prestige_config.nim#L174" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/prestige_config.nim#L174" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/prestige_config.nim#L180" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/prestige_config.nim#L180" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

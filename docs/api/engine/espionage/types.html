@@ -71,10 +71,12 @@
   threshold*: int
   modifier*: int">DetectionResult</a></li>
 <li><a class="reference" href="#EffectType" title="EffectType {.pure.} = enum
-  SRPReduction, NCVReduction, TaxReduction, StarbaseCrippled">EffectType</a></li>
+  SRPReduction, NCVReduction, TaxReduction, StarbaseCrippled, IntelBlocked,
+  IntelCorrupted">EffectType</a></li>
 <li><a class="reference" href="#EspionageAction" title="EspionageAction {.pure.} = enum
   TechTheft, SabotageLow, SabotageHigh, Assassination, CyberAttack,
-  EconomicManipulation, PsyopsCampaign">EspionageAction</a></li>
+  EconomicManipulation, PsyopsCampaign, CounterIntelSweep, IntelligenceTheft,
+  PlantDisinformation">EspionageAction</a></li>
 <li><a class="reference" href="#EspionageAttempt" title="EspionageAttempt = object
   attacker*: HouseId
   target*: HouseId
@@ -101,7 +103,8 @@
   targetPrestigeEvents*: seq[PrestigeEvent]
   srpStolen*: int
   iuDamage*: int
-  effect*: Option[OngoingEffect]">EspionageResult</a></li>
+  effect*: Option[OngoingEffect]
+  intelTheftSuccess*: bool">EspionageResult</a></li>
 <li><a class="reference" href="#OngoingEffect" title="OngoingEffect = object
   effectType*: EffectType
   targetHouse*: HouseId
@@ -120,14 +123,21 @@
 <li><a class="reference" href="#ASSASSINATION_REDUCTION" title="ASSASSINATION_REDUCTION = 0.5">ASSASSINATION_REDUCTION</a></li>
 <li><a class="reference" href="#CIP_COST_PP" title="CIP_COST_PP = 40">CIP_COST_PP</a></li>
 <li><a class="reference" href="#CIP_DEDUCTION_PER_ROLL" title="CIP_DEDUCTION_PER_ROLL = 1">CIP_DEDUCTION_PER_ROLL</a></li>
+<li><a class="reference" href="#COUNTER_INTEL_SWEEP_COST" title="COUNTER_INTEL_SWEEP_COST = 4">COUNTER_INTEL_SWEEP_COST</a></li>
 <li><a class="reference" href="#CYBER_ATTACK_COST" title="CYBER_ATTACK_COST = 6">CYBER_ATTACK_COST</a></li>
+<li><a class="reference" href="#DISINFORMATION_DURATION" title="DISINFORMATION_DURATION = 2">DISINFORMATION_DURATION</a></li>
+<li><a class="reference" href="#DISINFORMATION_MAX_VARIANCE" title="DISINFORMATION_MAX_VARIANCE = 0.4">DISINFORMATION_MAX_VARIANCE</a></li>
+<li><a class="reference" href="#DISINFORMATION_MIN_VARIANCE" title="DISINFORMATION_MIN_VARIANCE = 0.2">DISINFORMATION_MIN_VARIANCE</a></li>
 <li><a class="reference" href="#EBP_COST_PP" title="EBP_COST_PP = 40">EBP_COST_PP</a></li>
 <li><a class="reference" href="#ECONOMIC_MANIPULATION_COST" title="ECONOMIC_MANIPULATION_COST = 6">ECONOMIC_MANIPULATION_COST</a></li>
 <li><a class="reference" href="#ECONOMIC_REDUCTION" title="ECONOMIC_REDUCTION = 0.5">ECONOMIC_REDUCTION</a></li>
 <li><a class="reference" href="#EFFECT_DURATION" title="EFFECT_DURATION = 1">EFFECT_DURATION</a></li>
 <li><a class="reference" href="#FAILED_ESPIONAGE_PENALTY" title="FAILED_ESPIONAGE_PENALTY = -2">FAILED_ESPIONAGE_PENALTY</a></li>
+<li><a class="reference" href="#INTEL_BLOCK_DURATION" title="INTEL_BLOCK_DURATION = 1">INTEL_BLOCK_DURATION</a></li>
+<li><a class="reference" href="#INTELLIGENCE_THEFT_COST" title="INTELLIGENCE_THEFT_COST = 8">INTELLIGENCE_THEFT_COST</a></li>
 <li><a class="reference" href="#INVESTMENT_PENALTY" title="INVESTMENT_PENALTY = -1">INVESTMENT_PENALTY</a></li>
 <li><a class="reference" href="#INVESTMENT_THRESHOLD" title="INVESTMENT_THRESHOLD = 5">INVESTMENT_THRESHOLD</a></li>
+<li><a class="reference" href="#PLANT_DISINFORMATION_COST" title="PLANT_DISINFORMATION_COST = 6">PLANT_DISINFORMATION_COST</a></li>
 <li><a class="reference" href="#PSYOPS_CAMPAIGN_COST" title="PSYOPS_CAMPAIGN_COST = 3">PSYOPS_CAMPAIGN_COST</a></li>
 <li><a class="reference" href="#PSYOPS_REDUCTION" title="PSYOPS_REDUCTION = 0.25">PSYOPS_REDUCTION</a></li>
 <li><a class="reference" href="#SABOTAGE_HIGH_COST" title="SABOTAGE_HIGH_COST = 7">SABOTAGE_HIGH_COST</a></li>
@@ -176,8 +186,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -205,8 +215,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Counter-intelligence sophistication level
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L34" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L34" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L37" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L37" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -219,8 +229,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Counter-intelligence detection attempt
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L94" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L94" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L100" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L100" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -233,31 +243,33 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Result of detection attempt
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L101" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L101" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L107" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L107" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
 <div id="EffectType">
   <dt><pre><a href="types.html#EffectType"><span class="Identifier">EffectType</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
-  <span class="Identifier">SRPReduction</span><span class="Other">,</span> <span class="Identifier">NCVReduction</span><span class="Other">,</span> <span class="Identifier">TaxReduction</span><span class="Other">,</span> <span class="Identifier">StarbaseCrippled</span></pre></dt>
+  <span class="Identifier">SRPReduction</span><span class="Other">,</span> <span class="Identifier">NCVReduction</span><span class="Other">,</span> <span class="Identifier">TaxReduction</span><span class="Other">,</span> <span class="Identifier">StarbaseCrippled</span><span class="Other">,</span> <span class="Identifier">IntelBlocked</span><span class="Other">,</span>
+  <span class="Identifier">IntelCorrupted</span></pre></dt>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L78" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L78" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L82" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L82" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
 <div id="EspionageAction">
   <dt><pre><a href="types.html#EspionageAction"><span class="Identifier">EspionageAction</span></a> {.<span class="Identifier">pure</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">TechTheft</span><span class="Other">,</span> <span class="Identifier">SabotageLow</span><span class="Other">,</span> <span class="Identifier">SabotageHigh</span><span class="Other">,</span> <span class="Identifier">Assassination</span><span class="Other">,</span> <span class="Identifier">CyberAttack</span><span class="Other">,</span>
-  <span class="Identifier">EconomicManipulation</span><span class="Other">,</span> <span class="Identifier">PsyopsCampaign</span></pre></dt>
+  <span class="Identifier">EconomicManipulation</span><span class="Other">,</span> <span class="Identifier">PsyopsCampaign</span><span class="Other">,</span> <span class="Identifier">CounterIntelSweep</span><span class="Other">,</span> <span class="Identifier">IntelligenceTheft</span><span class="Other">,</span>
+  <span class="Identifier">PlantDisinformation</span></pre></dt>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L23" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L23" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L23" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L23" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -270,8 +282,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Attempt to perform espionage action
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L55" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L55" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L58" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L58" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -285,8 +297,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Espionage budget tracking
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L45" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L45" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L48" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L48" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -298,8 +310,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Espionage phase report
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L110" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L110" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L116" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L116" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -315,12 +327,13 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <span class="Identifier">targetPrestigeEvents</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="../prestige.html#PrestigeEvent"><span class="Identifier">PrestigeEvent</span></a><span class="Other">]</span>
   <span class="Identifier">srpStolen</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
   <span class="Identifier">iuDamage</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
-  <span class="Identifier">effect</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="types.html#OngoingEffect"><span class="Identifier">OngoingEffect</span></a><span class="Other">]</span></pre></dt>
+  <span class="Identifier">effect</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span><a href="types.html#OngoingEffect"><span class="Identifier">OngoingEffect</span></a><span class="Other">]</span>
+  <span class="Identifier">intelTheftSuccess</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
   <dd>
     
     Result of espionage attempt
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L62" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L62" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L65" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L65" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -334,8 +347,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Effect that lasts for turns
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L84" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L84" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L90" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L90" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -350,8 +363,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L134" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L134" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L140" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L140" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -360,8 +373,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L143" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L143" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L152" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L152" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -370,8 +383,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L121" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L121" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L127" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L127" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -380,8 +393,18 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L128" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L128" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L134" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L134" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="COUNTER_INTEL_SWEEP_COST">
+  <dt><pre><a href="types.html#COUNTER_INTEL_SWEEP_COST"><span class="Identifier">COUNTER_INTEL_SWEEP_COST</span></a> <span class="Other">=</span> <span class="DecNumber">4</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L144" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L144" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -390,8 +413,38 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L135" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L135" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L141" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L141" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="DISINFORMATION_DURATION">
+  <dt><pre><a href="types.html#DISINFORMATION_DURATION"><span class="Identifier">DISINFORMATION_DURATION</span></a> <span class="Other">=</span> <span class="DecNumber">2</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L157" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L157" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="DISINFORMATION_MAX_VARIANCE">
+  <dt><pre><a href="types.html#DISINFORMATION_MAX_VARIANCE"><span class="Identifier">DISINFORMATION_MAX_VARIANCE</span></a> <span class="Other">=</span> <span class="FloatNumber">0.4</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L159" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L159" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="DISINFORMATION_MIN_VARIANCE">
+  <dt><pre><a href="types.html#DISINFORMATION_MIN_VARIANCE"><span class="Identifier">DISINFORMATION_MIN_VARIANCE</span></a> <span class="Other">=</span> <span class="FloatNumber">0.2</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L158" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L158" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -400,8 +453,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L120" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L120" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L126" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L126" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -410,8 +463,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L136" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L136" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L142" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L142" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -420,8 +473,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L144" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L144" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L153" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L153" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -430,8 +483,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L146" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L146" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L155" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L155" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -440,8 +493,28 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L149" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L149" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L162" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L162" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="INTEL_BLOCK_DURATION">
+  <dt><pre><a href="types.html#INTEL_BLOCK_DURATION"><span class="Identifier">INTEL_BLOCK_DURATION</span></a> <span class="Other">=</span> <span class="DecNumber">1</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L156" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L156" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="INTELLIGENCE_THEFT_COST">
+  <dt><pre><a href="types.html#INTELLIGENCE_THEFT_COST"><span class="Identifier">INTELLIGENCE_THEFT_COST</span></a> <span class="Other">=</span> <span class="DecNumber">8</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L145" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L145" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -450,8 +523,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L125" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L125" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L131" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L131" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -460,8 +533,18 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L124" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L124" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L130" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L130" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+<div id="PLANT_DISINFORMATION_COST">
+  <dt><pre><a href="types.html#PLANT_DISINFORMATION_COST"><span class="Identifier">PLANT_DISINFORMATION_COST</span></a> <span class="Other">=</span> <span class="DecNumber">6</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L146" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L146" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -470,8 +553,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L137" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L137" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L143" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L143" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -480,8 +563,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L145" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L145" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L154" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L154" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -490,8 +573,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L133" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L133" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L139" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L139" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -500,8 +583,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L142" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L142" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L151" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L151" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -510,8 +593,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L132" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L132" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L138" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L138" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -520,8 +603,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L141" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L141" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L150" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L150" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -530,8 +613,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L131" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L131" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L137" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L137" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -540,8 +623,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L140" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L140" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L149" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L149" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -558,8 +641,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Calculate prestige penalty for over-investment Per diplomacy.md:8.2: -1 prestige per 1% over 5% threshold
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L198" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L198" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L214" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L214" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -572,8 +655,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Get EBP cost for action (from config)
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L153" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L153" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L166" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L166" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -585,8 +668,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Get detection modifier based on CIP points (from config) Per diplomacy.md:8.3
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L177" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L177" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L193" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L193" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -599,8 +682,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Get detection roll threshold for CIC level (from config) Per diplomacy.md:8.3 - roll must meet or exceed threshold
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L165" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L165" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L181" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L181" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -612,8 +695,8 @@ Constants per diplomacy.md:8.2Helper Procs</p>
   <dd>
     
     Initialize empty espionage budget
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/espionage/types.nim#L188" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/espionage/types.nim#L188" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/espionage/types.nim#L204" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/espionage/types.nim#L204" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

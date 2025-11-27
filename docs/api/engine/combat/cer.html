@@ -103,6 +103,10 @@
   <li><a class="reference" href="#roll1d10%2CCombatRNG" title="roll1d10(rng: var CombatRNG): int">roll1d10(rng: var CombatRNG): int</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">roll1d20
+  <li><a class="reference" href="#roll1d20%2CCombatRNG" title="roll1d20(rng: var CombatRNG): int">roll1d20(rng: var CombatRNG): int</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">rollCER
   <li><a class="reference" href="#rollCER%2CCombatRNG%2CCombatPhase%2Cint%2Cbool%2Cint%2Cbool%2Cbool%2Cint" title="rollCER(rng: var CombatRNG; phase: CombatPhase; roundNumber: int;
         hasScouts: bool; moraleModifier: int; isSurprise: bool = false;
@@ -131,8 +135,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -155,8 +159,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L17" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L17" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L17" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L17" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -172,8 +176,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Pretty print CER roll for logs
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L133" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L133" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L138" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L138" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -186,8 +190,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Calculate actual damage: damage * CER Round up (Section 7.3.3)
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L120" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L120" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L125" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L125" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -200,8 +204,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Calculate total hits from squadron attack Total Hits = CER × Squadron_AS
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L126" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L126" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L131" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L131" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -215,8 +219,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Calculate total CER modifiers for an attack Returns sum of all applicable modifiers
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L54" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L54" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L59" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L59" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -229,8 +233,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Create deterministic CER roll for testing Uses same seed every time for reproducibility
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L147" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L147" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L152" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L152" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -242,8 +246,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Initialize RNG with seed Seed format: gameId-turnNum-combatId-phaseNum-roundNum
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L20" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L20" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L20" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L20" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -252,8 +256,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Initialize from string seed (for testing)
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L25" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L25" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L25" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L25" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -265,8 +269,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Generate next random number Using LCG: Xn+1 = (a * Xn + c) mod m
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L30" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L30" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L30" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L30" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -278,8 +282,21 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Roll a standard 1D10 die for CER Returns 1-10 (but we treat as 0-9 internally per spec) Spec uses &quot;natural 9&quot; for critical, which is roll result 9
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L46" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L46" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L46" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L46" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="roll1d20-procs-all">
+  <div id="roll1d20,CombatRNG">
+  <dt><pre><span class="Keyword">proc</span> <a href="#roll1d20%2CCombatRNG"><span class="Identifier">roll1d20</span></a><span class="Other">(</span><span class="Identifier">rng</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="cer.html#CombatRNG"><span class="Identifier">CombatRNG</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    Roll a standard 1D20 die for ground combat and shield rolls Returns 1-20 (inclusive)
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L52" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L52" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -296,8 +313,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
     <p>Roll for Combat Effectiveness Rating Returns CERRoll with all details</p>
 <p>desperationBonus: Additional modifier when combat stalls (both sides fight desperately)</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L83" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L83" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L88" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L88" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -310,8 +327,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Roll a die with given number of sides (1-based) Returns value from 1 to sides (inclusive)
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L40" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L40" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L40" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L40" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -324,8 +341,8 @@ Deterministic PRNG (LCG - Linear Congruential Generator) Simple but sufficient f
   <dd>
     
     Simulate multiple dice rolls to verify distribution Returns sequence of natural rolls (0-9)
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/cer.nim#L153" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/cer.nim#L153" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/cer.nim#L158" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/cer.nim#L158" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

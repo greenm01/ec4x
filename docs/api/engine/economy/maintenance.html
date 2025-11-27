@@ -59,11 +59,11 @@
     <summary><a class="reference reference-toplevel" href="#12" id="62">Procs</a></summary>
     <ul class="simple simple-toc-section">
       <ul class="simple nested-toc-section">applyMaintenanceShortfall
-  <li><a class="reference" href="#applyMaintenanceShortfall%2C%2Cint" title="applyMaintenanceShortfall(colony: var types.Colony; shortfall: int)">applyMaintenanceShortfall(colony: var types.Colony; shortfall: int)</a></li>
+  <li><a class="reference" href="#applyMaintenanceShortfall%2CColony%2Cint" title="applyMaintenanceShortfall(colony: var Colony; shortfall: int)">applyMaintenanceShortfall(colony: var Colony; shortfall: int)</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">applyRepair
-  <li><a class="reference" href="#applyRepair%2C%2Cint" title="applyRepair(colony: var types.Colony; repairPoints: int): float">applyRepair(colony: var types.Colony; repairPoints: int): float</a></li>
+  <li><a class="reference" href="#applyRepair%2CColony%2Cint" title="applyRepair(colony: var Colony; repairPoints: int): float">applyRepair(colony: var Colony; repairPoints: int): float</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">calculateColonyUpkeep
@@ -128,8 +128,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -144,16 +144,16 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="../_._/common/types/core.html">../../common/types/core</a>, <a class="reference external" href="../_._/common/types/units.html">../../common/types/units</a>, <a class="reference external" href="../config/ships_config.html">../config/ships_config</a>, <a class="reference external" href="../config/construction_config.html">../config/construction_config</a>, <a class="reference external" href="../config/facilities_config.html">../config/facilities_config</a>, <a class="reference external" href="../config/ground_units_config.html">../config/ground_units_config</a>, <a class="reference external" href="../squadron.html">../squadron</a>, <a class="reference external" href="../gamestate.html">../gamestate</a>, <a class="reference external" href="../fleet.html">../fleet</a>
+    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="../_._/common/types/units.html">../../common/types/units</a>, <a class="reference external" href="../config/construction_config.html">../config/construction_config</a>, <a class="reference external" href="../config/facilities_config.html">../config/facilities_config</a>, <a class="reference external" href="../config/ground_units_config.html">../config/ground_units_config</a>, <a class="reference external" href="../squadron.html">../squadron</a>, <a class="reference external" href="../gamestate.html">../gamestate</a>, <a class="reference external" href="../fleet.html">../fleet</a>
   </dl>
 </div>
 <div class="section" id="12">
   <h1><a class="toc-backref" href="#12">Procs</a></h1>
   <dl class="item">
     <div id="applyMaintenanceShortfall-procs-all">
-  <div id="applyMaintenanceShortfall,,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#applyMaintenanceShortfall%2C%2Cint"><span class="Identifier">applyMaintenanceShortfall</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">types</span><span class="Other">.</span><span class="Identifier">Colony</span><span class="Other">;</span> <span class="Identifier">shortfall</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <div id="applyMaintenanceShortfall,Colony,int">
+  <dt><pre><span class="Keyword">proc</span> <a href="#applyMaintenanceShortfall%2CColony%2Cint"><span class="Identifier">applyMaintenanceShortfall</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">;</span> <span class="Identifier">shortfall</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     <p>Apply consequences of maintenance shortfall Per economy.md:3.11</p>
@@ -164,22 +164,22 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
 </ul>
 <p>TODO: Implement proper shortfall mechanics For now, add infrastructure damage</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L164" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L164" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L163" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L163" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
 
 </div>
 <div id="applyRepair-procs-all">
-  <div id="applyRepair,,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#applyRepair%2C%2Cint"><span class="Identifier">applyRepair</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">types</span><span class="Other">.</span><span class="Identifier">Colony</span><span class="Other">;</span> <span class="Identifier">repairPoints</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">float</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <div id="applyRepair,Colony,int">
+  <dt><pre><span class="Keyword">proc</span> <a href="#applyRepair%2CColony%2Cint"><span class="Identifier">applyRepair</span></a><span class="Other">(</span><span class="Identifier">colony</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#Colony"><span class="Identifier">Colony</span></a><span class="Other">;</span> <span class="Identifier">repairPoints</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">float</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Apply repair points to damaged infrastructure Returns amount of damage repaired
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L147" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L147" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L146" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L146" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -192,8 +192,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Calculate total upkeep for all facilities and defenses at colony Includes: spaceports, shipyards, starbases, ground batteries, planetary shields, armies, marines
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L109" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L109" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L108" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L108" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -206,8 +206,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Calculate total fleet maintenance Args: seq of (ship class, is crippled)
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L50" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L50" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L49" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L49" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -221,8 +221,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
     <p>Calculate cost to repair infrastructure damage Per operations.md:6.2.6 - bombardment damages infrastructure</p>
 <p>Repair cost scales with damage severity TODO: Define proper repair cost formula</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L139" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L139" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L138" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L138" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -234,8 +234,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get upkeep cost for army division per turn Per ground_units.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L84" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L84" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L83" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L83" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -248,8 +248,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get maintenance cost for building (legacy compatibility) Use specific functions above for new code
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L94" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L94" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L93" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L93" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -261,8 +261,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get upkeep cost for ground battery per turn Per construction.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L74" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L74" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L73" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L73" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -274,8 +274,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get upkeep cost for marine division per turn Per ground_units.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L89" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L89" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L88" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L88" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -287,8 +287,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get upkeep cost for planetary shield per turn Per construction.toml (regardless of SLD level)
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L79" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L79" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L78" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L78" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -308,8 +308,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
 <li>Mothballed: 0% maintenance</li>
 </ul>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L22" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L22" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L21" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L21" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -321,8 +321,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get upkeep cost for shipyard per turn Per facilities.toml and construction.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L64" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L64" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L63" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L63" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -334,8 +334,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get upkeep cost for spaceport per turn Per facilities.toml and construction.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L59" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L59" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L58" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L58" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -347,8 +347,8 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
   <dd>
     
     Get upkeep cost for starbase per turn Per construction.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/economy/maintenance.nim#L69" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/economy/maintenance.nim#L69" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/economy/maintenance.nim#L68" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/economy/maintenance.nim#L68" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -360,7 +360,7 @@ Ship Maintenance Costs (economy.md:3.9)Building and Facility MaintenanceInfrastr
 <div class="section" id="19">
   <h1><a class="toc-backref" href="#19">Exports</a></h1>
   <dl class="item">
-    <a href="types.html#MaintenanceReport"><span class="Identifier">MaintenanceReport</span></a>, <a href="../gamestate.html#Colony"><span class="Identifier">Colony</span></a>, <a href="../fleet.html#FleetStatus"><span class="Identifier">FleetStatus</span></a>
+    <a href="types.html#MaintenanceReport"><span class="Identifier">MaintenanceReport</span></a>, <a href="../fleet.html#FleetStatus"><span class="Identifier">FleetStatus</span></a>
   </dl>
 </div>
 

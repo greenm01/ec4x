@@ -1,3 +1,3 @@
 nimTitle	resolve	resolve.html	module src/engine/resolve		0
-nim	TurnResult	resolve.html#TurnResult	object TurnResult		23
-nim	resolveTurn	resolve.html#resolveTurn,GameState,Table[HouseId,OrderPacket]	proc resolveTurn(state: GameState; orders: Table[HouseId, OrderPacket]): TurnResult		36
+nim	TurnResult	resolve.html#TurnResult	object TurnResult		26
+nim	resolveTurn	resolve.html#resolveTurn,GameState,Table[HouseId,OrderPacket]	proc resolveTurn(state: GameState; orders: Table[HouseId, OrderPacket]): TurnResult		39

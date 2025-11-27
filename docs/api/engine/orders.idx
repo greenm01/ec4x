@@ -1,24 +1,29 @@
 nimTitle	orders	orders.html	module src/engine/orders		0
-nim	FleetOrderType	orders.html#FleetOrderType	enum FleetOrderType		10
-nim	SquadronManagementAction	orders.html#SquadronManagementAction	enum SquadronManagementAction		32
-nim	SquadronManagementOrder	orders.html#SquadronManagementOrder	object SquadronManagementOrder		37
-nim	CargoManagementAction	orders.html#CargoManagementAction	enum CargoManagementAction		56
-nim	CargoManagementOrder	orders.html#CargoManagementOrder	object CargoManagementOrder		61
-nim	FleetOrder	orders.html#FleetOrder	object FleetOrder		70
-nim	TerraformOrder	orders.html#TerraformOrder	object TerraformOrder		77
-nim	OrderPacket	orders.html#OrderPacket	object OrderPacket		86
-nim	BuildOrder	orders.html#BuildOrder	object BuildOrder		103
-nim	BuildType	orders.html#BuildType	enum BuildType		111
-nim	DiplomaticAction	orders.html#DiplomaticAction	object DiplomaticAction		114
-nim	DiplomaticActionType	orders.html#DiplomaticActionType	enum DiplomaticActionType		120
-nim	PopulationTransferOrder	orders.html#PopulationTransferOrder	object PopulationTransferOrder		130
-nim	ValidationResult	orders.html#ValidationResult	object ValidationResult		137
-nim	validateFleetOrder	orders.html#validateFleetOrder,FleetOrder,GameState	proc validateFleetOrder(order: FleetOrder; state: GameState): ValidationResult		143
-nim	validateOrderPacket	orders.html#validateOrderPacket,OrderPacket,GameState	proc validateOrderPacket(packet: OrderPacket; state: GameState): ValidationResult		240
-nim	createMoveOrder	orders.html#createMoveOrder,FleetId,SystemId,int	proc createMoveOrder(fleetId: FleetId; targetSystem: SystemId; priority: int = 0): FleetOrder		302
-nim	createColonizeOrder	orders.html#createColonizeOrder,FleetId,SystemId,int	proc createColonizeOrder(fleetId: FleetId; targetSystem: SystemId; priority: int = 0): FleetOrder		312
-nim	createAttackOrder	orders.html#createAttackOrder,FleetId,SystemId,FleetOrderType,int	proc createAttackOrder(fleetId: FleetId; targetSystem: SystemId;\n                  attackType: FleetOrderType; priority: int = 0): FleetOrder		322
-nim	createHoldOrder	orders.html#createHoldOrder,FleetId,int	proc createHoldOrder(fleetId: FleetId; priority: int = 0): FleetOrder		332
-nim	newOrderPacket	orders.html#newOrderPacket,HouseId,int	proc newOrderPacket(houseId: HouseId; turn: int): OrderPacket		344
-nim	addFleetOrder	orders.html#addFleetOrder,OrderPacket,FleetOrder	proc addFleetOrder(packet: var OrderPacket; order: FleetOrder)		357
-nim	addBuildOrder	orders.html#addBuildOrder,OrderPacket,BuildOrder	proc addBuildOrder(packet: var OrderPacket; order: BuildOrder)		361
+nim	SquadronManagementAction	orders.html#SquadronManagementAction	enum SquadronManagementAction		15
+nim	SquadronManagementOrder	orders.html#SquadronManagementOrder	object SquadronManagementOrder		20
+nim	CargoManagementAction	orders.html#CargoManagementAction	enum CargoManagementAction		39
+nim	CargoManagementOrder	orders.html#CargoManagementOrder	object CargoManagementOrder		44
+nim	TerraformOrder	orders.html#TerraformOrder	object TerraformOrder		53
+nim	OrderPacket	orders.html#OrderPacket	object OrderPacket		62
+nim	BuildOrder	orders.html#BuildOrder	object BuildOrder		80
+nim	BuildType	orders.html#BuildType	enum BuildType		88
+nim	DiplomaticAction	orders.html#DiplomaticAction	object DiplomaticAction		91
+nim	DiplomaticActionType	orders.html#DiplomaticActionType	enum DiplomaticActionType		97
+nim	PopulationTransferOrder	orders.html#PopulationTransferOrder	object PopulationTransferOrder		107
+nim	ValidationResult	orders.html#ValidationResult	object ValidationResult		114
+nim	OrderValidationContext	orders.html#OrderValidationContext	object OrderValidationContext		118
+nim	OrderCostSummary	orders.html#OrderCostSummary	object OrderCostSummary		125
+nim	validateFleetOrder	orders.html#validateFleetOrder,FleetOrder,GameState,HouseId	proc validateFleetOrder(order: FleetOrder; state: GameState; issuingHouse: HouseId): ValidationResult		137
+nim	validateOrderPacket	orders.html#validateOrderPacket,OrderPacket,GameState	proc validateOrderPacket(packet: OrderPacket; state: GameState): ValidationResult		316
+nim	createMoveOrder	orders.html#createMoveOrder,FleetId,SystemId,int	proc createMoveOrder(fleetId: FleetId; targetSystem: SystemId; priority: int = 0): FleetOrder		417
+nim	createColonizeOrder	orders.html#createColonizeOrder,FleetId,SystemId,int	proc createColonizeOrder(fleetId: FleetId; targetSystem: SystemId; priority: int = 0): FleetOrder		427
+nim	createAttackOrder	orders.html#createAttackOrder,FleetId,SystemId,FleetOrderType,int	proc createAttackOrder(fleetId: FleetId; targetSystem: SystemId;\n                  attackType: FleetOrderType; priority: int = 0): FleetOrder		437
+nim	createHoldOrder	orders.html#createHoldOrder,FleetId,int	proc createHoldOrder(fleetId: FleetId; priority: int = 0): FleetOrder		447
+nim	newOrderPacket	orders.html#newOrderPacket,HouseId,int,int	proc newOrderPacket(houseId: HouseId; turn: int; treasury: int = 0): OrderPacket		459
+nim	addFleetOrder	orders.html#addFleetOrder,OrderPacket,FleetOrder	proc addFleetOrder(packet: var OrderPacket; order: FleetOrder)		474
+nim	addBuildOrder	orders.html#addBuildOrder,OrderPacket,BuildOrder	proc addBuildOrder(packet: var OrderPacket; order: BuildOrder)		478
+nim	initOrderValidationContext	orders.html#initOrderValidationContext,int	proc initOrderValidationContext(treasury: int): OrderValidationContext		484
+nim	getRemainingBudget	orders.html#getRemainingBudget,OrderValidationContext	proc getRemainingBudget(ctx: OrderValidationContext): int		492
+nim	calculateBuildOrderCost	orders.html#calculateBuildOrderCost,BuildOrder,GameState	proc calculateBuildOrderCost(order: BuildOrder; state: GameState): int		496
+nim	validateBuildOrderWithBudget	orders.html#validateBuildOrderWithBudget,BuildOrder,GameState,OrderValidationContext	proc validateBuildOrderWithBudget(order: BuildOrder; state: GameState;\n                             ctx: var OrderValidationContext): ValidationResult		542
+nim	previewOrderPacketCost	orders.html#previewOrderPacketCost,OrderPacket,GameState	proc previewOrderPacketCost(packet: OrderPacket; state: GameState): OrderCostSummary		575

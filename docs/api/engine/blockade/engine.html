@@ -97,8 +97,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -106,7 +106,7 @@
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="../_._/common/types/core.html">../../common/types/core</a>, <a class="reference external" href="../gamestate.html">../gamestate</a>, <a class="reference external" href="../fleet.html">../fleet</a>
+    <a class="reference external" href="../_._/common/types/core.html">../../common/types/core</a>, <a class="reference external" href="../gamestate.html">../gamestate</a>, <a class="reference external" href="../fleet.html">../fleet</a>, <a class="reference external" href="../intelligence/blockade_intel.html">../intelligence/blockade_intel</a>
   </dl>
 </div>
 <div class="section" id="12">
@@ -114,12 +114,13 @@
   <dl class="item">
     <div id="applyBlockades-procs-all">
   <div id="applyBlockades,GameState">
-  <dt><pre><span class="Keyword">proc</span> <a href="#applyBlockades%2CGameState"><span class="Identifier">applyBlockades</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#applyBlockades%2CGameState"><span class="Identifier">applyBlockades</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Apply blockade status to all colonies Called at start of Income Phase Per operations.md:6.2.6: &quot;Blockades established during the Conflict Phase reduce GCO for that same turn's Income Phase calculation&quot;
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L53" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L53" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L54" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L54" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -134,8 +135,8 @@
     <p>Calculate prestige penalty for colonies under blockade Per operations.md:6.2.6: &quot;House Prestige is reduced by 2 points for each turn if the colony begins the income phase under blockade&quot;</p>
 <p>Returns total prestige penalty (negative value)</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L94" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L94" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L114" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L114" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -150,8 +151,8 @@
     <p>Check if a relief fleet can break a blockade Per operations.md:6.2.6: Blockading fleets engage relief forces under order 05 (Guard/Blockade)</p>
 <p>Returns true if relief fleet has sufficient strength</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L146" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L146" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L166" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L166" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -164,8 +165,8 @@
   <dd>
     
     Get all colonies owned by a house that are currently blockaded
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L113" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L113" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L133" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L133" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -180,8 +181,8 @@
     <p>Get the GCO multiplier for a blockaded colony Per operations.md:6.2.6: &quot;Colonies under blockade reduce their GCO by 60%&quot;</p>
 <p>Returns multiplier (0.4 = 60% reduction)</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L83" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L83" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L103" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L103" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -194,8 +195,8 @@
   <dd>
     
     Get all fleets that are blockading a system
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L121" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L121" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L141" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L141" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -212,8 +213,8 @@
 <p>Per operations.md:6.2.6: &quot;Fleets are ordered to blockade an enemy planet and do not engage in Space Combat unless confronted by enemy ships under order 05&quot;</p>
 <p>Multiple empires can blockade the same planet if all are hostile to the colony owner. Blockade effects stack (still 60% reduction, but multiple houses contribute to the blockade).</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/blockade/engine.nim#L12" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/blockade/engine.nim#L12" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/blockade/engine.nim#L13" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/blockade/engine.nim#L13" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

@@ -97,8 +97,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/generator.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/generator.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/generator.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/generator.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -108,7 +108,7 @@
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="../gamestate.html">../gamestate</a>
+    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="corruption.html">corruption</a>, <a class="reference external" href="../gamestate.html">../gamestate</a>, <a class="reference external" href="../fleet.html">../fleet</a>, <a class="reference external" href="../espionage/types.html">../espionage/types</a>
   </dl>
 </div>
 <div class="section" id="12">
@@ -123,8 +123,8 @@
   <dd>
     
     Generate colony intelligence report from SpyOnPlanet mission Per intel.md:107-121
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/generator.nim#L10" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/generator.nim#L10" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/generator.nim#L12" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/generator.nim#L12" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -139,8 +139,8 @@
   <dd>
     
     Generate starbase intelligence report from HackStarbase mission Per intel.md and operations.md:6.2.11 - &quot;economic and R&amp;D intelligence&quot;
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/generator.nim#L85" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/generator.nim#L85" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/generator.nim#L156" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/generator.nim#L156" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -151,12 +151,12 @@
   <dt><pre><span class="Keyword">proc</span> <a href="#generateSystemIntelReport%2CGameState%2CHouseId%2CSystemId%2C"><span class="Identifier">generateSystemIntelReport</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <a href="../gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">;</span> <span class="Identifier">scoutOwner</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span>
                                <span class="Identifier">targetSystem</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a><span class="Other">;</span>
                                <span class="Identifier">quality</span><span class="Other">:</span> <span class="Identifier">intel_types</span><span class="Other">.</span><span class="Identifier">IntelQuality</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Option</span><span class="Other">[</span>
-    <a href="types.html#SystemIntelReport"><span class="Identifier">SystemIntelReport</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <a href="types.html#SystemIntelReport"><span class="Identifier">SystemIntelReport</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Generate system intelligence report from SpyOnSystem mission Per intel.md:96-105
-    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/generator.nim#L43" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/generator.nim#L43" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/generator.nim#L92" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/generator.nim#L92" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
