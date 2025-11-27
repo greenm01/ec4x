@@ -7,7 +7,7 @@
 ## - Violations: Track pact violations and penalties
 ## - Dishonored Status: Reputational damage after violation
 
-import std/[tables, options]
+import std/tables
 import ../../common/types/[core, diplomacy]
 import ../prestige
 import ../config/[prestige_config, diplomacy_config]

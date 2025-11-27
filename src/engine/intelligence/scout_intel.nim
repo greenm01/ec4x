@@ -10,7 +10,7 @@
 ## - Patrol route analysis
 ## - Witness events (combat, bombardment, blockades)
 
-import std/[tables, options, sequtils, strformat, random, hashes]
+import std/[tables, options, strformat, random, hashes]
 import types as intel_types
 import corruption
 import ../gamestate, ../fleet, ../squadron, ../spacelift

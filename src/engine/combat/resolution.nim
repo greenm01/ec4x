@@ -7,7 +7,7 @@
 ## Phase 2: Fighter Squadrons (Intercept)
 ## Phase 3: Capital Ships (Main Engagement)
 
-import std/[tables, sequtils, algorithm, options]
+import std/[tables, algorithm, options]
 import types, cer, targeting, damage
 
 export BattleContext, CombatResult

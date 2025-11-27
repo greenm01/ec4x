@@ -9,7 +9,7 @@
 ## - NCV (Net Colony Value): Taxed colony revenue
 ## - IU (Industrial Units): Manufacturing capacity
 
-import std/[tables, options, math]
+import std/[tables, math]
 import ../../common/types/[core]
 import ../prestige  # For PrestigeEvent
 
