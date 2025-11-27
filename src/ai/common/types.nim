@@ -201,10 +201,10 @@ type
     ## Strategic build objectives with competing priorities
     Expansion,      # ETACs, colony infrastructure
     Defense,        # Starbases, ground batteries
-    Military,       # Frigates, cruisers, dreadnoughts, raiders
+    Military,       # Frigates, destroyers, cruisers, battleships, dreadnoughts
     Reconnaissance, # Scouts for exploration and reconnaissance
-    SpecialUnits,   # Fighters, carriers, transports
-    Technology      # Research investment (future use)
+    SpecialUnits,   # Fighters, carriers, transports, raiders, planet-breakers
+    Technology      # Reserved for future research investment features
 
   BudgetAllocation* = Table[BuildObjective, float]
     ## Percentage of treasury allocated to each objective (must sum to ~1.0)
