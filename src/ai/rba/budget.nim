@@ -263,10 +263,93 @@ proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
     ))
     tracker.recordSpending(Defense, groundBatteryCost)
 
+proc calculateShipPreference(personality: AIPersonality, shipClass: ShipClass): float =
+  ## Calculate personality-based preference weight for ship types
+  ## Returns multiplier (0.5x to 1.5x) based on personality traits
+  ##
+  ## Aggressive AIs prefer capitals, Economic AIs prefer cost-efficient escorts,
+  ## Tech-focused AIs prefer cutting-edge ships
+  result = 1.0  # Neutral weight
+
+  # Aggressive personality: Prefer capital ships, avoid weak escorts
+  if personality.aggression >= 0.7:
+    case shipClass
+    of ShipClass.SuperDreadnought:
+      result = 1.39
+    of ShipClass.Dreadnought:
+      result = 1.33
+    of ShipClass.Battleship:
+      result = 1.30
+    of ShipClass.Battlecruiser:
+      result = 1.27
+    of ShipClass.HeavyCruiser:
+      result = 1.08
+    of ShipClass.Cruiser:
+      result = 0.91
+    of ShipClass.Destroyer:
+      result = 0.83
+    of ShipClass.Frigate:
+      result = 0.75
+    of ShipClass.Corvette:
+      result = 0.65
+    else:
+      result = 1.0
+
+  # Economic personality: Prefer cost-efficient ships, avoid expensive capitals
+  elif personality.economicFocus >= 0.7:
+    case shipClass
+    of ShipClass.SuperDreadnought:
+      result = 0.83
+    of ShipClass.Dreadnought:
+      result = 0.88
+    of ShipClass.Battleship:
+      result = 0.93
+    of ShipClass.Battlecruiser:
+      result = 1.05  # Best efficiency
+    of ShipClass.HeavyCruiser:
+      result = 1.11
+    of ShipClass.Cruiser:
+      result = 1.18  # Cost-efficient workhorse
+    of ShipClass.Destroyer:
+      result = 1.24
+    of ShipClass.Frigate:
+      result = 1.25
+    of ShipClass.Corvette:
+      result = 1.25  # Low maintenance
+    else:
+      result = 1.0
+
+  # Tech-focused personality: Prefer cutting-edge ships
+  elif personality.techPriority >= 0.7:
+    case shipClass
+    of ShipClass.SuperDreadnought:
+      result = 1.30  # CST 6 pinnacle
+    of ShipClass.Dreadnought:
+      result = 1.25  # CST 5
+    of ShipClass.Battleship:
+      result = 1.20  # CST 4
+    of ShipClass.Battlecruiser:
+      result = 1.15  # CST 3
+    of ShipClass.HeavyCruiser:
+      result = 1.10  # CST 3
+    of ShipClass.Cruiser:
+      result = 1.00
+    of ShipClass.Destroyer:
+      result = 0.90
+    of ShipClass.Frigate:
+      result = 0.80
+    of ShipClass.Corvette:
+      result = 0.70
+    else:
+      result = 1.0
+
+  # Balanced personality: No strong preferences (default weights)
+
 proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
                          militaryCount: int, canAffordMoreShips: bool,
-                         atSquadronLimit: bool, cstLevel: int, act: GameAct): seq[BuildOrder] =
-  ## Generate military build orders with COMPLETE capital ship progression
+                         atSquadronLimit: bool, cstLevel: int, act: GameAct,
+                         personality: AIPersonality): seq[BuildOrder] =
+  ## Generate military build orders with PERSONALITY-DRIVEN ship preferences
   ## Uses BudgetTracker to prevent overspending
   ##
   ## Tech-gated ship unlocks by CST level:
@@ -277,7 +360,10 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
   ## - CST 5: Dreadnought (200PP)
   ## - CST 6: Super Dreadnought (250PP)
   ##
-  ## Build strategy: Choose strongest affordable ship within tech/budget limits
+  ## Build strategy: WEIGHTED SELECTION based on personality preferences
+  ## - Aggressive AIs prefer capitals (Dreadnoughts, Battleships)
+  ## - Economic AIs prefer cost-efficient escorts (Cruisers, Destroyers)
+  ## - Tech-focused AIs prefer cutting-edge ships (highest CST requirement)
   ##
   ## Note: LightCruiser removed from progression (Cruiser is superior: better CR, same cost)
   result = @[]
@@ -292,43 +378,114 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
     var shipClass: ShipClass
     var cost: int
 
-    # Choose ship based on CST tech, available budget, and game phase
-    # Priority: Build strongest affordable ship within tech limits
+    # Choose ship based on CST tech, available budget, game phase, AND personality
+    # WEIGHTED SELECTION: Build ship with highest (base_priority × personality_weight)
     let remaining = tracker.getRemainingBudget(Military)
 
+    # Build list of affordable candidate ships within tech limits
+    type ShipCandidate = object
+      shipClass: ShipClass
+      cost: int
+      basePriority: float  # Higher = preferred (based on cost/power)
+      personalityWeight: float
+
+    var candidates: seq[ShipCandidate] = @[]
+
+    # Super Dreadnought (CST 6, 250PP)
     if remaining >= 250 and cstLevel >= 6 and act >= GameAct.Act4_Endgame:
-      shipClass = ShipClass.SuperDreadnought  # CST 6: Ultimate capital ship (militaryCount gate removed)
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 200 and cstLevel >= 5:
-      shipClass = ShipClass.Dreadnought       # CST 5: Late-game heavy hitter (militaryCount gate removed)
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 150 and cstLevel >= 4:
-      shipClass = ShipClass.Battleship        # CST 4: Mid-late game backbone (militaryCount gate removed)
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 100 and cstLevel >= 3:
-      shipClass = ShipClass.Battlecruiser     # CST 3: Mid-game workhorse
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 80 and cstLevel >= 2:
-      shipClass = ShipClass.HeavyCruiser      # CST 2: Early-mid heavy
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 60 and militaryCount > 3:
-      # Cruiser vs LightCruiser decision (both 60PP, AS 8)
-      # Cruiser: Better command (CR 6 vs 4), slightly better defense
-      # LightCruiser: Lower command cost (CC 2 vs 3)
-      # Prefer Cruiser for stronger squadron leadership
-      shipClass = ShipClass.Cruiser           # CST 1: Standard mid-game cruiser
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 40 and militaryCount > 2:
-      shipClass = ShipClass.Destroyer         # CST 1: Early-mid bridge
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 30 and militaryCount > 1:
-      shipClass = ShipClass.Frigate           # CST 1: Early backbone
-      cost = getShipConstructionCost(shipClass)
-    elif remaining >= 20:
-      shipClass = ShipClass.Corvette          # CST 1: Cheapest warship (early game filler)
-      cost = getShipConstructionCost(shipClass)
-    else:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.SuperDreadnought,
+        cost: getShipConstructionCost(ShipClass.SuperDreadnought),
+        basePriority: 9.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.SuperDreadnought)
+      ))
+
+    # Dreadnought (CST 5, 200PP)
+    if remaining >= 200 and cstLevel >= 5:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.Dreadnought,
+        cost: getShipConstructionCost(ShipClass.Dreadnought),
+        basePriority: 8.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.Dreadnought)
+      ))
+
+    # Battleship (CST 4, 150PP)
+    if remaining >= 150 and cstLevel >= 4:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.Battleship,
+        cost: getShipConstructionCost(ShipClass.Battleship),
+        basePriority: 7.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.Battleship)
+      ))
+
+    # Battlecruiser (CST 3, 100PP)
+    if remaining >= 100 and cstLevel >= 3:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.Battlecruiser,
+        cost: getShipConstructionCost(ShipClass.Battlecruiser),
+        basePriority: 6.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.Battlecruiser)
+      ))
+
+    # Heavy Cruiser (CST 2, 80PP)
+    if remaining >= 80 and cstLevel >= 2:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.HeavyCruiser,
+        cost: getShipConstructionCost(ShipClass.HeavyCruiser),
+        basePriority: 5.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.HeavyCruiser)
+      ))
+
+    # Cruiser (CST 1, 60PP) - militaryCount gate for early game pacing
+    if remaining >= 60 and militaryCount > 3:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.Cruiser,
+        cost: getShipConstructionCost(ShipClass.Cruiser),
+        basePriority: 4.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.Cruiser)
+      ))
+
+    # Destroyer (CST 1, 40PP)
+    if remaining >= 40 and militaryCount > 2:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.Destroyer,
+        cost: getShipConstructionCost(ShipClass.Destroyer),
+        basePriority: 3.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.Destroyer)
+      ))
+
+    # Frigate (CST 1, 30PP)
+    if remaining >= 30 and militaryCount > 1:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.Frigate,
+        cost: getShipConstructionCost(ShipClass.Frigate),
+        basePriority: 2.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.Frigate)
+      ))
+
+    # Corvette (CST 1, 20PP) - fallback option
+    if remaining >= 20:
+      candidates.add(ShipCandidate(
+        shipClass: ShipClass.Corvette,
+        cost: getShipConstructionCost(ShipClass.Corvette),
+        basePriority: 1.0,
+        personalityWeight: calculateShipPreference(personality, ShipClass.Corvette)
+      ))
+
+    if candidates.len == 0:
       break  # Not enough budget for any ship
+
+    # Select ship with highest weighted score
+    var bestScore = 0.0
+    var bestCandidate: ShipCandidate
+    for candidate in candidates:
+      let score = candidate.basePriority * candidate.personalityWeight
+      if score > bestScore:
+        bestScore = score
+        bestCandidate = candidate
+
+    shipClass = bestCandidate.shipClass
+    cost = bestCandidate.cost
 
     if tracker.canAfford(Military, cost):
       result.add(BuildOrder(
@@ -747,7 +904,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
       result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
 
       let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
-                                              canAffordMoreShips, atSquadronLimit, cstLevel, act)
+                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality)
       result.add(militaryOrders)
       projectedMilitaryCount += militaryOrders.len  # Update projected count
 
