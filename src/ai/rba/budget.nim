@@ -669,9 +669,23 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # 3. Generate orders for each objective within budget
   result = @[]
 
-  # Sort colonies by production (build at most productive first)
+  # Sort colonies prioritizing shipyards over spaceports (economy.md:5.1, 5.3)
+  # Shipyard construction has no penalty, spaceport construction has 100% PC increase
+  # Even though penalty isn't implemented in engine yet, prefer shipyards as best practice
   var coloniesToBuild = myColonies
-  coloniesToBuild.sort(proc(a, b: Colony): int = cmp(b.production, a.production))
+  coloniesToBuild.sort(proc(a, b: Colony): int =
+    let aHasShipyard = a.shipyards.len > 0
+    let bHasShipyard = b.shipyards.len > 0
+
+    # Primary sort: Shipyards before spaceports
+    if aHasShipyard and not bHasShipyard:
+      return -1  # a comes first
+    elif bHasShipyard and not aHasShipyard:
+      return 1   # b comes first
+
+    # Tie-breaker: Sort by production (most productive first)
+    return cmp(b.production, a.production)
+  )
 
   # Get tech levels for gating ship unlocks
   let cstLevel = house.techTree.levels.constructionTech
@@ -692,15 +706,16 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Build PBs when: CST 10 unlocked, fighting heavily fortified enemies, Act 3+
   let needSiege = act >= GameAct.Act3_TotalWar and cstLevel >= 10
 
-  # Build from all colonies with shipyards OR spaceports, using shared budget tracker
-  # BudgetTracker automatically prevents overspending
+  # Process all colonies for build orders
+  # IMPORTANT: Some build orders require facilities, others don't:
+  # - Fighters: Planet-side only, NO facilities required (economy.md:3.10)
+  # - Defense buildings: Planet-side, NO shipyard/spaceport required
+  # - Ships (except fighters): Require shipyard OR spaceport
   for colony in coloniesToBuild:
     let hasShipyard = colony.shipyards.len > 0
     let hasSpaceport = colony.spaceports.len > 0
     let hasStarbase = colony.starbases.len > 0
-
-    if not hasShipyard and not hasSpaceport:
-      continue  # Can't build ships without shipyard or spaceport
+    let canBuildShips = hasShipyard or hasSpaceport
 
     # Build queue system allows multiple simultaneous projects per colony
     # BudgetTracker prevents overspending across ALL colonies
@@ -716,31 +731,37 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
       else:
         projectedScoutCount < 8
 
-    # Generate orders for all objectives using shared BudgetTracker
-    # CRITICAL: tracker is var parameter - gets modified by each build function
-    # CRITICAL: Use PROJECTED counts to avoid double-building
-    result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
+    # Defense orders: Available at ALL colonies (planet-side construction)
     result.add(buildDefenseOrders(colony, tracker, needDefenses, hasStarbase))
 
-    let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
-                                            canAffordMoreShips, atSquadronLimit, cstLevel, act)
-    result.add(militaryOrders)
-    projectedMilitaryCount += militaryOrders.len  # Update projected count
-
-    let reconnaissanceOrders = buildReconnaissanceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
-    result.add(reconnaissanceOrders)
-    projectedScoutCount += reconnaissanceOrders.len  # Update projected count
-
+    # Special units: Fighters available at ALL colonies (planet-side, no facilities)
+    # Carriers/Transports/Raiders require shipyard/spaceport
     result.add(buildSpecialUnitsOrders(colony, tracker, needFighters, needCarriers,
                                       needTransports, needRaiders, canAffordMoreShips, cstLevel))
 
-    let siegeOrders = buildSiegeOrders(colony, tracker, projectedPlanetBreakerCount,
-                                       colonyCount, cstLevel, needSiege)
-    result.add(siegeOrders)
-    # Count Planet-Breakers in siege orders
-    for order in siegeOrders:
-      if order.shipClass.isSome and order.shipClass.get() == ShipClass.PlanetBreaker:
-        projectedPlanetBreakerCount += order.quantity
+    # Ship build orders: Only for colonies with shipyard/spaceport
+    if canBuildShips:
+      # Generate orders for all objectives using shared BudgetTracker
+      # CRITICAL: tracker is var parameter - gets modified by each build function
+      # CRITICAL: Use PROJECTED counts to avoid double-building
+      result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
+
+      let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
+                                              canAffordMoreShips, atSquadronLimit, cstLevel, act)
+      result.add(militaryOrders)
+      projectedMilitaryCount += militaryOrders.len  # Update projected count
+
+      let reconnaissanceOrders = buildReconnaissanceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
+      result.add(reconnaissanceOrders)
+      projectedScoutCount += reconnaissanceOrders.len  # Update projected count
+
+      let siegeOrders = buildSiegeOrders(colony, tracker, projectedPlanetBreakerCount,
+                                         colonyCount, cstLevel, needSiege)
+      result.add(siegeOrders)
+      # Count Planet-Breakers in siege orders
+      for order in siegeOrders:
+        if order.shipClass.isSome and order.shipClass.get() == ShipClass.PlanetBreaker:
+          projectedPlanetBreakerCount += order.quantity
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Build generation complete: " &
