@@ -20,7 +20,15 @@
             python311
             python311Packages.pip
             python311Packages.virtualenv
-            python3Packages.polars
+
+            # Data Analysis Stack (Terminal-focused)
+            python311Packages.polars       # Fast DataFrame library (already present)
+            python311Packages.pyarrow      # Parquet I/O backend
+            python311Packages.rich         # Beautiful terminal output
+            python311Packages.tabulate     # ASCII/Markdown tables
+            python311Packages.numpy        # Statistical functions
+            python311Packages.scipy        # Advanced statistics
+            python311Packages.click        # CLI framework
           ];
           shellHook = ''
             export IN_NIX_SHELL=1

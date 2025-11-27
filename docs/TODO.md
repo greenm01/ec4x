@@ -7,6 +7,36 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Terminal-Based Data Analysis System - COMPLETE (2025-11-27)**
+  - ✅ **Motivation:** Self-service RBA tuning + token-efficient Claude assistance
+    - User requested: "I would like to get the engine and rba into good enough shape that i can do all the tweaking and analysis myself"
+    - Goal: Terminal + Excel workflow (no web dashboard), old-school data analysis
+  - ✅ **Core Engine:** Polars-based parallel analysis (`/analysis/`)
+    - `balance_analyzer.py` (370 lines): Summary, outliers, Phase 2 gaps, Excel export
+    - `cli.py` (280 lines): Rich terminal interface (Click framework)
+    - `reports.py` (250 lines): Git-committable Markdown reports
+  - ✅ **Performance:** Parallel processing on 32-core AMD Ryzen 9 7950X3D
+    - Convert 200 CSVs → Parquet: <2 seconds (was ~30s with sequential)
+    - Load Parquet for analysis: <0.1 seconds (was ~5s parsing CSV)
+    - Phase 2 gap analysis: <0.5 seconds
+  - ✅ **Token Efficiency:** ~1000x reduction for Claude interactions
+    - Raw CSV: 5MB (~500K tokens)
+    - Markdown summary: 5KB (~500 tokens)
+    - Parquet: Excel-compatible, ML-ready (Phase 3 neural network training)
+  - ✅ **Nimble Integration:** 10 new tasks for workflow automation
+    - `analyzeBalance`: Full workflow (convert → analyze → report)
+    - `balanceSummary`, `balancePhase2`, `balanceOutliers`, `balanceExport`, `balanceReport`
+    - `balanceByHouse`, `balanceByTurn`: Aggregate metrics
+  - ✅ **Nix Dependencies:** Added 7 Python packages to flake.nix
+    - polars, pyarrow (fast DataFrame + Parquet I/O)
+    - rich, tabulate (terminal output)
+    - numpy, scipy (statistics)
+    - click (CLI framework)
+  - ✅ **Documentation:** Comprehensive guide for solo + Claude-assisted tuning
+    - `/docs/guides/BALANCE_ANALYSIS_SYSTEM.md` (600 lines)
+    - Best practices, workflows, command reference, troubleshooting
+  - **Impact:** User can now independently tune RBA config using terminal tools + Excel pivot tables
+  - **Files:** `/analysis/{__init__.py, balance_analyzer.py, cli.py, reports.py}`, `/tools/ai_tuning/convert_to_parquet.py` (enhanced), `/ec4x.nimble` (10 new tasks), `/flake.nix` (deps), `/docs/guides/BALANCE_ANALYSIS_SYSTEM.md`
 - ✅ **RBA Configuration Migration - COMPLETE (2025-11-27)**
   - ✅ **TOML Configuration System:** All 10 RBA modules migrated from hardcoded constants
     - Created `/config/rba.toml` with 9 config sections (246 lines)

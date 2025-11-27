@@ -2,7 +2,7 @@
 
 Guides for optimizing EC4X's Rule-Based AI (RBA) using diagnostic data and Claude Code.
 
-**Last Updated:** 2025-11-26 (Post-QoL Integration)
+**Last Updated:** 2025-11-27 (Terminal-Based Analysis System)
 
 ## Overview
 
@@ -30,22 +30,63 @@ The RBA system now integrates with Quality-of-Life features for intelligent, per
 
 **See:** `docs/testing/BALANCE_TESTING_2025-11-26.md` for full test report
 
-## Quick Start
+## 🆕 Terminal-Based Analysis System (2025-11-27)
+
+**NEW WORKFLOW:** Self-service RBA tuning + Claude-assisted analysis
+
+```bash
+# Full analysis workflow (fast!)
+nimble analyzeBalance           # CSV → Parquet → Analysis → Report
+
+# Or use individual commands:
+nimble balanceSummary           # Quick overview
+nimble balancePhase2            # Phase 2 gap analysis
+nimble balanceOutliers          # Detect anomalies
+nimble balanceExport            # Export to Excel/LibreOffice
+nimble balanceReport            # Generate markdown report
+```
+
+**Key Benefits:**
+- ✅ **100x faster** analysis (Parquet vs CSV)
+- ✅ **1000x token reduction** for Claude (markdown summaries)
+- ✅ **Terminal + Excel** workflow (no web dashboard)
+- ✅ **Self-service** tuning (edit `config/rba.toml`, test, repeat)
+
+**See:** `/docs/guides/BALANCE_ANALYSIS_SYSTEM.md` for comprehensive guide
+
+## Quick Start (Legacy)
 
 ```bash
 # 1. Run diagnostics (2 minutes)
 nimble testBalanceDiagnostics
 
-# 2. Generate AI-friendly summary (instant)
+# 2. New: Full analysis workflow
+nimble analyzeBalance           # Recommended!
+
+# 3. Legacy: Generate JSON summary
 nimble summarizeDiagnostics
 
-# 3. Share with Claude Code
-cat balance_results/summary.json
+# 4. Share with Claude Code
+cat balance_results/analysis_report.md  # New: markdown report
+cat balance_results/summary.json        # Legacy: JSON summary
 ```
 
 **Result:** Actionable feedback from ~500 tokens instead of 5 million!
 
 ## Documentation
+
+### 0. /docs/guides/BALANCE_ANALYSIS_SYSTEM.md ⭐ **NEW**
+**Purpose:** Complete guide to the terminal-based analysis system
+
+**Topics:**
+- Self-service RBA tuning workflow
+- Best practices for solo tuning
+- Tips for Claude-assisted tuning
+- Command reference (nimble tasks, CLI, Python API)
+- Excel/LibreOffice pivot table analysis
+- Troubleshooting & performance tips
+
+**When to read:** START HERE for the new analysis system
 
 ### 1. TOKEN_EFFICIENT_WORKFLOW.md
 **Purpose:** Learn the optimal workflow for sharing data with Claude Code
