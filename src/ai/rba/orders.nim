@@ -4,7 +4,7 @@
 
 import std/[tables, options, random, sequtils, sets, strformat]
 import ../../common/types/[core, tech, units]
-import ../../engine/[gamestate, fog_of_war, orders, logger]
+import ../../engine/[gamestate, fog_of_war, orders, logger, fleet]
 import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../engine/research/types as res_types
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
@@ -394,12 +394,34 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   for fleetId, standingOrder in standingOrders:
     if fleetId notin fleetsWithExplicitOrders:
       # This fleet has no tactical/logistics order, execute its standing order
-      # TODO: Implement convertStandingOrderToFleetOrder in standing_orders_manager.nim
-      # For now, just log that we would execute it
-      logDebug(LogCategory.lcAI,
-               &"{controller.houseId} Fleet {fleetId}: Would execute standing order " &
-               &"{standingOrder.orderType} (conversion not yet implemented)")
-      standingOrdersExecuted += 1
+      # Find the fleet in our filtered state
+      var fleet: Option[Fleet] = none(Fleet)
+      for f in filtered.ownFleets:
+        if f.id == fleetId:
+          fleet = some(f)
+          break
+
+      if fleet.isSome:
+        # Convert standing order to executable FleetOrder
+        let fleetOrder = convertStandingOrderToFleetOrder(
+          standingOrder,
+          fleet.get,
+          filtered
+        )
+
+        if fleetOrder.isSome:
+          result.fleetOrders.add(fleetOrder.get)
+          standingOrdersExecuted += 1
+          logDebug(LogCategory.lcAI,
+                   &"{controller.houseId} Fleet {fleetId}: Executing standing order " &
+                   &"{standingOrder.orderType} → {fleetOrder.get.orderType}")
+        else:
+          logDebug(LogCategory.lcAI,
+                   &"{controller.houseId} Fleet {fleetId}: Standing order " &
+                   &"{standingOrder.orderType} cannot execute (no valid target)")
+      else:
+        logWarn(LogCategory.lcAI,
+                &"{controller.houseId} Fleet {fleetId}: Standing order assigned but fleet not found")
 
   # Log summary
   logInfo(LogCategory.lcAI,

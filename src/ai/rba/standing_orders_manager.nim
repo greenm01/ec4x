@@ -8,7 +8,7 @@
 ## - Assign standing orders based on fleet role, personality, and strategic context
 ## - Let standing orders handle routine tasks while explicit orders handle critical operations
 
-import std/[tables, options, sequtils, strformat]
+import std/[tables, options, sequtils, strformat, sets]
 import ../common/types
 import ../../engine/[gamestate, fleet, logger, fog_of_war, starmap]
 import ../../engine/order_types
@@ -340,3 +340,195 @@ proc assignStandingOrders*(controller: var AIController,
           &"{controller.houseId} Standing order assignment complete: " &
           &"{assignedCount} assigned, {skippedCount} skipped " &
           &"(tactical/logistics control)")
+
+# =============================================================================
+# Standing Order Conversion to Fleet Orders
+# =============================================================================
+
+proc findNearestShipyard*(filtered: FilteredGameState, fromSystem: SystemId): Option[SystemId] =
+  ## Find nearest colony with shipyard for repairs
+  ## Returns closest shipyard colony, or homeworld as fallback
+
+  var nearestSystem: Option[SystemId] = none(SystemId)
+  var shortestDistance = int.high
+
+  for colony in filtered.ownColonies:
+    # Check if colony has operational shipyard
+    if hasOperationalShipyard(colony):
+      # Calculate distance (BFS would be more accurate, but this is a simple heuristic)
+      # For now, just find any shipyard - pathfinding happens in order execution
+      if nearestSystem.isNone:
+        nearestSystem = some(colony.systemId)
+        break
+
+  return nearestSystem
+
+proc findNearestUnclaimedSystem*(filtered: FilteredGameState,
+                                 fromSystem: SystemId,
+                                 maxRange: int,
+                                 preferredClasses: seq[PlanetClass]): Option[SystemId] =
+  ## Find nearest unclaimed system suitable for colonization
+  ## Prefers systems matching preferred planet classes
+
+  # Get list of colonized systems
+  var colonizedSystems = initHashSet[SystemId]()
+  for colony in filtered.ownColonies:
+    colonizedSystems.incl(colony.systemId)
+  for visCol in filtered.visibleColonies:
+    colonizedSystems.incl(visCol.systemId)
+
+  # Search visible systems for unclaimed ones
+  var candidates: seq[SystemId] = @[]
+
+  for systemId, visSystem in filtered.visibleSystems:
+    if systemId notin colonizedSystems:
+      # Check if system has habitable planet (would need planet data to verify)
+      # For now, any unclaimed visible system is a candidate
+      candidates.add(systemId)
+
+  # Return first candidate (tactical module will prioritize based on value)
+  if candidates.len > 0:
+    return some(candidates[0])
+
+  return none(SystemId)
+
+proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
+                                       fleet: Fleet,
+                                       filtered: FilteredGameState): Option[FleetOrder] =
+  ## Convert standing order to executable FleetOrder
+  ## Returns fleet order if conversion successful, none if order cannot execute
+
+  case standingOrder.orderType
+
+  of StandingOrderType.AutoRepair:
+    # Find nearest shipyard for repairs
+    let targetShipyard = if standingOrder.params.targetShipyard.isSome:
+      standingOrder.params.targetShipyard
+    else:
+      findNearestShipyard(filtered, fleet.location)
+
+    if targetShipyard.isSome:
+      logDebug(LogCategory.lcAI,
+               &"{fleet.id} AutoRepair: Moving to shipyard at {targetShipyard.get}")
+
+      return some(FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Move,
+        targetSystem: targetShipyard,
+        targetFleet: none(FleetId),
+        priority: 50
+      ))
+    else:
+      logWarn(LogCategory.lcAI,
+              &"{fleet.id} AutoRepair: No shipyard found, holding position")
+      return none(FleetOrder)
+
+  of StandingOrderType.AutoColonize:
+    # Find nearest unclaimed system
+    let targetSystem = findNearestUnclaimedSystem(
+      filtered,
+      fleet.location,
+      standingOrder.params.colonizeMaxRange,
+      standingOrder.params.preferredPlanetClasses
+    )
+
+    if targetSystem.isSome:
+      # Check if fleet is already at target
+      if fleet.location == targetSystem.get:
+        logDebug(LogCategory.lcAI,
+                 &"{fleet.id} AutoColonize: Colonizing {targetSystem.get}")
+
+        return some(FleetOrder(
+          fleetId: fleet.id,
+          orderType: FleetOrderType.Colonize,
+          targetSystem: targetSystem,
+          targetFleet: none(FleetId),
+          priority: 60
+        ))
+      else:
+        logDebug(LogCategory.lcAI,
+                 &"{fleet.id} AutoColonize: Moving to {targetSystem.get}")
+
+        return some(FleetOrder(
+          fleetId: fleet.id,
+          orderType: FleetOrderType.Move,
+          targetSystem: targetSystem,
+          targetFleet: none(FleetId),
+          priority: 60
+        ))
+    else:
+      logDebug(LogCategory.lcAI,
+               &"{fleet.id} AutoColonize: No unclaimed systems found, holding")
+      return none(FleetOrder)
+
+  of StandingOrderType.DefendSystem:
+    # Patrol assigned system or move to it
+    let targetSystem = standingOrder.params.defendTargetSystem
+
+    if fleet.location == targetSystem:
+      logDebug(LogCategory.lcAI,
+               &"{fleet.id} DefendSystem: Patrolling {targetSystem}")
+
+      return some(FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Patrol,
+        targetSystem: some(targetSystem),
+        targetFleet: none(FleetId),
+        priority: 40
+      ))
+    else:
+      logDebug(LogCategory.lcAI,
+               &"{fleet.id} DefendSystem: Moving to {targetSystem}")
+
+      return some(FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Move,
+        targetSystem: some(targetSystem),
+        targetFleet: none(FleetId),
+        priority: 40
+      ))
+
+  of StandingOrderType.AutoEvade:
+    # Retreat to fallback system if threatened
+    # For now, always generate Move order to fallback (threat detection TBD)
+    let fallbackSystem = standingOrder.params.fallbackSystem
+
+    if fleet.location != fallbackSystem:
+      logDebug(LogCategory.lcAI,
+               &"{fleet.id} AutoEvade: Retreating to {fallbackSystem}")
+
+      return some(FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Move,
+        targetSystem: some(fallbackSystem),
+        targetFleet: none(FleetId),
+        priority: 30  # High priority for retreats
+      ))
+    else:
+      # Already at safe location, hold
+      return none(FleetOrder)
+
+  of StandingOrderType.PatrolRoute:
+    # Follow patrol path
+    if standingOrder.params.patrolSystems.len > 0:
+      let currentIndex = standingOrder.params.patrolIndex
+      let nextSystem = standingOrder.params.patrolSystems[currentIndex]
+
+      logDebug(LogCategory.lcAI,
+               &"{fleet.id} PatrolRoute: Moving to waypoint {currentIndex + 1}/{standingOrder.params.patrolSystems.len}")
+
+      return some(FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Move,
+        targetSystem: some(nextSystem),
+        targetFleet: none(FleetId),
+        priority: 50
+      ))
+    else:
+      return none(FleetOrder)
+
+  else:
+    # Other standing order types not yet implemented
+    logDebug(LogCategory.lcAI,
+             &"{fleet.id} Standing order {standingOrder.orderType} not yet implemented")
+    return none(FleetOrder)
