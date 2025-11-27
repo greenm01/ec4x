@@ -1,7 +1,7 @@
 ## Common types for resolution modules
 
 import std/[options]
-import ../../common/[hex, types/core]
+import ../../common/types/core
 
 type
   GameEvent* = object

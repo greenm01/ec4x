@@ -7,7 +7,7 @@
 ## Infrastructure damage from combat affects production
 
 import std/[tables, options]
-import types, income, production, construction, maintenance
+import types, income, construction, maintenance
 import ../../common/types/[core, units]
 import ../gamestate  # For unified Colony type
 

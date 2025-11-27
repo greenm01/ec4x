@@ -16,7 +16,7 @@ import research/[types as res_types_research]
 import commands/executor
 import intelligence/espionage_intel
 # Import resolution modules
-import resolution/[types as res_types, fleet_orders, combat_resolution, economy_resolution, diplomatic_resolution]
+import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution]
 
 # Re-export resolution types for backward compatibility
 export res_types.GameEvent, res_types.GameEventType, res_types.CombatReport

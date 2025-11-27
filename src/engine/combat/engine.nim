@@ -5,7 +5,7 @@
 ##
 ## Pure game logic - no I/O, works with typed data
 
-import std/[options, tables, sequtils, strutils, strformat, random]
+import std/[options, tables, sequtils, strutils, random]
 import types, cer, resolution, retreat, damage, ../squadron
 import ../intelligence/detection
 

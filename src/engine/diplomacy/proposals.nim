@@ -3,7 +3,7 @@
 ## Handles pending diplomatic proposals for multiplayer games
 ## Per docs/architecture/diplomacy_proposals.md
 
-import std/[tables, options]
+import std/options
 import ../../common/types/core
 import types as dip_types
 

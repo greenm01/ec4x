@@ -9,11 +9,9 @@
 ## 4. Deposit NHV to treasury
 ## 5. Apply population growth
 
-import std/[tables, math]
+import std/math
 import types, production
-import ../../common/types/core
 import ../prestige
-import ../config/prestige_config
 import ../gamestate  # For unified Colony type
 
 export types.ColonyIncomeReport, types.HouseIncomeReport, types.IncomePhaseReport

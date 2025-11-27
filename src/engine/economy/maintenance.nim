@@ -7,10 +7,9 @@
 ## - Buildings have upkeep (construction.toml, facilities.toml)
 ## - Damaged infrastructure requires repair (construction.toml)
 
-import std/tables
 import types
-import ../../common/types/[core, units]
-import ../config/[ships_config, construction_config, facilities_config, ground_units_config]
+import ../../common/types/units
+import ../config/[construction_config, facilities_config, ground_units_config]
 import ../squadron, ../gamestate, ../fleet
 
 export types.MaintenanceReport

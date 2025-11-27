@@ -16,7 +16,7 @@
 # Each strategy defines a unique AI personality with weighted preferences
 # Traits range from 0.0 (minimum) to 1.0 (maximum)
 
-[strategies.aggressive]
+[strategies_aggressive]
 aggression = 0.9
 risk_tolerance = 0.8
 economic_focus = 0.5
@@ -24,7 +24,7 @@ expansion_drive = 0.8
 diplomacy_value = 0.2
 tech_priority = 0.4
 
-[strategies.economic]
+[strategies_economic]
 aggression = 0.3
 risk_tolerance = 0.3
 economic_focus = 0.9
@@ -32,7 +32,7 @@ expansion_drive = 0.5
 diplomacy_value = 0.6
 tech_priority = 0.8
 
-[strategies.espionage]
+[strategies_espionage]
 aggression = 0.5
 risk_tolerance = 0.6
 economic_focus = 0.5
@@ -40,7 +40,7 @@ expansion_drive = 0.65
 diplomacy_value = 0.4
 tech_priority = 0.6
 
-[strategies.diplomatic]
+[strategies_diplomatic]
 aggression = 0.3
 risk_tolerance = 0.4
 economic_focus = 0.6
@@ -48,7 +48,7 @@ expansion_drive = 0.5
 diplomacy_value = 0.9
 tech_priority = 0.5
 
-[strategies.balanced]
+[strategies_balanced]
 aggression = 0.4
 risk_tolerance = 0.5
 economic_focus = 0.7
@@ -56,7 +56,7 @@ expansion_drive = 0.5
 diplomacy_value = 0.6
 tech_priority = 0.5
 
-[strategies.turtle]
+[strategies_turtle]
 aggression = 0.1
 risk_tolerance = 0.3
 economic_focus = 0.7
@@ -64,7 +64,7 @@ expansion_drive = 0.4
 diplomacy_value = 0.7
 tech_priority = 0.7
 
-[strategies.expansionist]
+[strategies_expansionist]
 aggression = 0.6
 risk_tolerance = 0.7
 economic_focus = 0.4
@@ -72,7 +72,7 @@ expansion_drive = 0.95
 diplomacy_value = 0.3
 tech_priority = 0.3
 
-[strategies.tech_rush]
+[strategies_tech_rush]
 aggression = 0.2
 risk_tolerance = 0.4
 economic_focus = 0.8
@@ -80,7 +80,7 @@ expansion_drive = 0.4
 diplomacy_value = 0.7
 tech_priority = 0.95
 
-[strategies.raider]
+[strategies_raider]
 aggression = 0.85
 risk_tolerance = 0.9
 economic_focus = 0.4
@@ -88,7 +88,7 @@ expansion_drive = 0.6
 diplomacy_value = 0.1
 tech_priority = 0.5
 
-[strategies.military_industrial]
+[strategies_military_industrial]
 aggression = 0.7
 risk_tolerance = 0.5
 economic_focus = 0.75
@@ -96,7 +96,7 @@ expansion_drive = 0.6
 diplomacy_value = 0.3
 tech_priority = 0.6
 
-[strategies.opportunistic]
+[strategies_opportunistic]
 aggression = 0.5
 risk_tolerance = 0.6
 economic_focus = 0.6
@@ -104,7 +104,7 @@ expansion_drive = 0.6
 diplomacy_value = 0.5
 tech_priority = 0.5
 
-[strategies.isolationist]
+[strategies_isolationist]
 aggression = 0.15
 risk_tolerance = 0.2
 economic_focus = 0.85
@@ -126,7 +126,7 @@ tech_priority = 0.75
 # - Special_units: Transports, fighters, specialized ships
 # - Technology: Research investment
 
-[budget.act1_land_grab]
+[budget_act1_land_grab]
 expansion = 0.35
 defense = 0.10
 military = 0.10
@@ -134,7 +134,7 @@ reconnaissance = 0.40
 special_units = 0.05
 technology = 0.00
 
-[budget.act2_rising_tensions]
+[budget_act2_rising_tensions]
 expansion = 0.30
 defense = 0.20
 military = 0.30
@@ -142,7 +142,7 @@ reconnaissance = 0.10
 special_units = 0.05
 technology = 0.05
 
-[budget.act3_total_war]
+[budget_act3_total_war]
 expansion = 0.10
 defense = 0.15
 military = 0.45
@@ -150,7 +150,7 @@ reconnaissance = 0.05
 special_units = 0.15
 technology = 0.10
 
-[budget.act4_endgame]
+[budget_act4_endgame]
 expansion = 0.05
 defense = 0.10
 military = 0.55
@@ -183,13 +183,13 @@ retreat_threshold = 0.3          # Strength ratio triggering retreat
 # ==============================================================================
 # Terraforming costs by planet class transition (in PP)
 
-[economic.terraforming_costs]
-extreme_to_desolate = 60
-desolate_to_hostile = 150
-hostile_to_harsh = 350
-harsh_to_benign = 850
-benign_to_lush = 2100
-lush_to_eden = 5100
+[economic]
+terraforming_costs_extreme_to_desolate = 60
+terraforming_costs_desolate_to_hostile = 150
+terraforming_costs_hostile_to_harsh = 350
+terraforming_costs_harsh_to_benign = 850
+terraforming_costs_benign_to_lush = 2100
+terraforming_costs_lush_to_eden = 5100
 
 # ==============================================================================
 # ORDERS PARAMETERS
@@ -208,27 +208,27 @@ scout_count_act3_plus = 9        # Target scout count in Act 3+
 # ==============================================================================
 # Mothballing and fleet management thresholds
 
-[logistics.mothballing]
-treasury_threshold_pp = 900      # Treasury level triggering mothballing consideration
-maintenance_ratio_threshold = 0.10  # Maintenance/production ratio triggering mothballing
-min_fleet_count = 3              # Minimum fleets before considering mothballing
+[logistics]
+mothballing_treasury_threshold_pp = 900      # Treasury level triggering mothballing consideration
+mothballing_maintenance_ratio_threshold = 0.10  # Maintenance/production ratio triggering mothballing
+mothballing_min_fleet_count = 3              # Minimum fleets before considering mothballing
 
 # ==============================================================================
 # FLEET COMPOSITION BY DOCTRINE
 # ==============================================================================
 # Target fleet composition ratios for different combat doctrines
 
-[fleet_composition.balanced]
+[fleet_composition_balanced]
 capital_ratio = 0.40
 escort_ratio = 0.40
 specialist_ratio = 0.20
 
-[fleet_composition.aggressive]
+[fleet_composition_aggressive]
 capital_ratio = 0.50
 escort_ratio = 0.35
 specialist_ratio = 0.15
 
-[fleet_composition.defensive]
+[fleet_composition_defensive]
 capital_ratio = 0.30
 escort_ratio = 0.50
 specialist_ratio = 0.20

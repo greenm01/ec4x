@@ -7,12 +7,11 @@
 ## - Blitz operations (fast insertion variant)
 ## - Retreat processing and automated Seek Home
 
-import std/[tables, algorithm, options, sequtils, hashes, math]
-import ../../common/[hex, types/core, types/combat, types/units]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../spacelift
+import std/[tables, options, sequtils, hashes, math]
+import ../../common/[types/core, types/combat, types/units]
+import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types]
-import ../config/[prestige_config, military_config, ground_units_config]
 import ../prestige
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony, resolveMovementOrder
