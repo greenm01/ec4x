@@ -176,17 +176,21 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
 
 ## Population Growth
 
-proc applyPopulationGrowth*(colony: var Colony, taxRate: int): float =
+proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float =
   ## Apply population growth to colony
   ## Returns growth percentage for reporting
   ##
   ## Per economy.md:3.6:
-  ## Base growth: 1.5% per turn
+  ## Base growth rate loaded from config (natural_growth_rate)
   ## Modified by tax rate per economy.md:3.2.2
+  ##
+  ## Args:
+  ##   colony: Colony to apply growth to (modified)
+  ##   taxRate: Current tax rate (affects growth multiplier)
+  ##   baseGrowthRate: Base growth rate from config (e.g., 0.015 for 1.5%)
 
-  let baseGrowth = BASE_POPULATION_GROWTH
   let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
-  let growthRate = baseGrowth * taxMultiplier
+  let growthRate = baseGrowthRate * taxMultiplier
 
   # Apply logistic growth
   # TODO: Implement proper logistic curve with planet capacity limits

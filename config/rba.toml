@@ -1,0 +1,245 @@
+# EC4X Rule-Based AI Configuration
+# All RBA tuning parameters centralized for balance testing
+#
+# This configuration system enables:
+# - Balance testing without recompilation
+# - Genetic algorithm parameter evolution
+# - A/B testing of different AI behaviors
+# - Rapid iteration during AI development
+#
+# IMPORTANT: All field names use snake_case to match engine config convention
+# TOML structure mirrors the Nim type definitions in src/ai/rba/config.nim
+
+# ==============================================================================
+# STRATEGY PERSONALITIES (12 strategies × 6 traits)
+# ==============================================================================
+# Each strategy defines a unique AI personality with weighted preferences
+# Traits range from 0.0 (minimum) to 1.0 (maximum)
+
+[strategies.aggressive]
+aggression = 0.9
+risk_tolerance = 0.8
+economic_focus = 0.5
+expansion_drive = 0.8
+diplomacy_value = 0.2
+tech_priority = 0.4
+
+[strategies.economic]
+aggression = 0.3
+risk_tolerance = 0.3
+economic_focus = 0.9
+expansion_drive = 0.5
+diplomacy_value = 0.6
+tech_priority = 0.8
+
+[strategies.espionage]
+aggression = 0.5
+risk_tolerance = 0.6
+economic_focus = 0.5
+expansion_drive = 0.65
+diplomacy_value = 0.4
+tech_priority = 0.6
+
+[strategies.diplomatic]
+aggression = 0.3
+risk_tolerance = 0.4
+economic_focus = 0.6
+expansion_drive = 0.5
+diplomacy_value = 0.9
+tech_priority = 0.5
+
+[strategies.balanced]
+aggression = 0.4
+risk_tolerance = 0.5
+economic_focus = 0.7
+expansion_drive = 0.5
+diplomacy_value = 0.6
+tech_priority = 0.5
+
+[strategies.turtle]
+aggression = 0.1
+risk_tolerance = 0.3
+economic_focus = 0.7
+expansion_drive = 0.4
+diplomacy_value = 0.7
+tech_priority = 0.7
+
+[strategies.expansionist]
+aggression = 0.6
+risk_tolerance = 0.7
+economic_focus = 0.4
+expansion_drive = 0.95
+diplomacy_value = 0.3
+tech_priority = 0.3
+
+[strategies.tech_rush]
+aggression = 0.2
+risk_tolerance = 0.4
+economic_focus = 0.8
+expansion_drive = 0.4
+diplomacy_value = 0.7
+tech_priority = 0.95
+
+[strategies.raider]
+aggression = 0.85
+risk_tolerance = 0.9
+economic_focus = 0.4
+expansion_drive = 0.6
+diplomacy_value = 0.1
+tech_priority = 0.5
+
+[strategies.military_industrial]
+aggression = 0.7
+risk_tolerance = 0.5
+economic_focus = 0.75
+expansion_drive = 0.6
+diplomacy_value = 0.3
+tech_priority = 0.6
+
+[strategies.opportunistic]
+aggression = 0.5
+risk_tolerance = 0.6
+economic_focus = 0.6
+expansion_drive = 0.6
+diplomacy_value = 0.5
+tech_priority = 0.5
+
+[strategies.isolationist]
+aggression = 0.15
+risk_tolerance = 0.2
+economic_focus = 0.85
+expansion_drive = 0.3
+diplomacy_value = 0.2
+tech_priority = 0.75
+
+# ==============================================================================
+# BUDGET ALLOCATIONS BY GAME ACT
+# ==============================================================================
+# Budget percentages for each build objective across the 4-act game progression
+# All percentages should sum to 1.0 per act
+#
+# Build objectives:
+# - Expansion: Colony ships (ETACs), facilities (spaceports, shipyards)
+# - Defense: Defensive fleets, starbases
+# - Military: Combat ships (capital, escort)
+# - Reconnaissance: Scouts for ELI mesh and espionage
+# - Special_units: Transports, fighters, specialized ships
+# - Technology: Research investment
+
+[budget.act1_land_grab]
+expansion = 0.35
+defense = 0.10
+military = 0.10
+reconnaissance = 0.40
+special_units = 0.05
+technology = 0.00
+
+[budget.act2_rising_tensions]
+expansion = 0.30
+defense = 0.20
+military = 0.30
+reconnaissance = 0.10
+special_units = 0.05
+technology = 0.05
+
+[budget.act3_total_war]
+expansion = 0.10
+defense = 0.15
+military = 0.45
+reconnaissance = 0.05
+special_units = 0.15
+technology = 0.10
+
+[budget.act4_endgame]
+expansion = 0.05
+defense = 0.10
+military = 0.55
+reconnaissance = 0.05
+special_units = 0.15
+technology = 0.10
+
+# ==============================================================================
+# TACTICAL PARAMETERS
+# ==============================================================================
+# Operational limits for fleet movements and responses
+
+[tactical]
+response_radius_jumps = 3        # Maximum distance for fleet response to threats
+max_invasion_eta_turns = 8       # Maximum ETA for invasion operations
+max_response_eta_turns = 5       # Maximum ETA for defensive responses
+
+# ==============================================================================
+# STRATEGIC PARAMETERS
+# ==============================================================================
+# Combat engagement thresholds
+
+[strategic]
+attack_threshold = 0.6           # Minimum strength ratio to attack (balanced)
+aggressive_attack_threshold = 0.4 # Minimum ratio for aggressive personalities
+retreat_threshold = 0.3          # Strength ratio triggering retreat
+
+# ==============================================================================
+# ECONOMIC PARAMETERS
+# ==============================================================================
+# Terraforming costs by planet class transition (in PP)
+
+[economic.terraforming_costs]
+extreme_to_desolate = 60
+desolate_to_hostile = 150
+hostile_to_harsh = 350
+harsh_to_benign = 850
+benign_to_lush = 2100
+lush_to_eden = 5100
+
+# ==============================================================================
+# ORDERS PARAMETERS
+# ==============================================================================
+# Order generation parameters and thresholds
+
+[orders]
+research_max_percent = 0.25      # Maximum research budget (% of treasury)
+espionage_investment_percent = 0.03  # Espionage budget (% of original treasury)
+scout_count_act1 = 5             # Target scout count in Act 1
+scout_count_act2 = 7             # Target scout count in Act 2
+scout_count_act3_plus = 9        # Target scout count in Act 3+
+
+# ==============================================================================
+# LOGISTICS PARAMETERS
+# ==============================================================================
+# Mothballing and fleet management thresholds
+
+[logistics.mothballing]
+treasury_threshold_pp = 900      # Treasury level triggering mothballing consideration
+maintenance_ratio_threshold = 0.10  # Maintenance/production ratio triggering mothballing
+min_fleet_count = 3              # Minimum fleets before considering mothballing
+
+# ==============================================================================
+# FLEET COMPOSITION BY DOCTRINE
+# ==============================================================================
+# Target fleet composition ratios for different combat doctrines
+
+[fleet_composition.balanced]
+capital_ratio = 0.40
+escort_ratio = 0.40
+specialist_ratio = 0.20
+
+[fleet_composition.aggressive]
+capital_ratio = 0.50
+escort_ratio = 0.35
+specialist_ratio = 0.15
+
+[fleet_composition.defensive]
+capital_ratio = 0.30
+escort_ratio = 0.50
+specialist_ratio = 0.20
+
+# ==============================================================================
+# THREAT ASSESSMENT
+# ==============================================================================
+# Thresholds for threat level classification
+
+[threat_assessment]
+critical_threshold = 0.8
+high_threshold = 0.6
+moderate_threshold = 0.4
+low_threshold = 0.2

@@ -147,17 +147,37 @@ Complex systems exhibit emergent behaviors. Catch them with **comprehensive obse
 
 ## Configuration System
 
-**All balance values from TOML (13 files):**
-- `config/prestige.toml`, `config/espionage.toml`, etc.
+**All balance values from TOML (14 files):**
+- Engine: `config/prestige.toml`, `config/espionage.toml`, `config/economy.toml`, etc.
+- RBA AI: `config/rba.toml` (NEW - AI strategies, budgets, thresholds)
 - Type-safe loaders via `toml_serialization`
 - TOML uses `snake_case`, Nim fields match exactly
 
 ```nim
 # ❌ BAD - hardcoded
 result.prestige = 2
+let attackThreshold = 0.6
 
 # ✅ GOOD - from config
 result.prestige = globalPrestigeConfig.economic.tech_advancement
+let attackThreshold = globalRBAConfig.strategic.attack_threshold
+```
+
+**RBA Configuration** (`config/rba.toml` → `src/ai/rba/config.nim`):
+- Strategy personalities (12 strategies × 6 traits)
+- Budget allocations by game act (4 acts × 6 objectives)
+- Tactical parameters (response radius, ETA limits)
+- Strategic thresholds (attack, retreat)
+- Economic costs (terraforming)
+- Orders parameters (research caps, scout counts)
+- Logistics thresholds (mothballing)
+- Fleet composition ratios
+- Threat assessment levels
+
+**Reloading for testing:**
+```nim
+reloadRBAConfig()                              # Reload default config
+reloadRBAConfigFromPath("evolved_gen42.toml")  # Load custom config
 ```
 
 ---
