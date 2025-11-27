@@ -112,7 +112,8 @@ task demo, "Build and run a quick demo":
 task buildBalance, "Build balance test simulation binary":
   echo "Building balance test simulation binary..."
   echo "Using --forceBuild to ensure clean compilation"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  echo "NOTE: RBA is enabled (-d:enableRBA) for balance tests"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   echo "Balance test binary built successfully!"
   echo "Git hash: $(cat tests/balance/.build_git_hash)"
@@ -120,42 +121,42 @@ task buildBalance, "Build balance test simulation binary":
 task testBalanceQuick, "Quick balance validation (7 turns, 20 games)":
   echo "Running quick balance validation (7 turns, 20 games)..."
   echo "Forcing clean rebuild to prevent stale binary bugs..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 8 --games 20 --turns 7"
   echo "Quick balance validation completed!"
 
 task testBalanceAct1, "Act 1: Land Grab (7 turns, 100 games)":
   echo "Running Act 1 validation (7 turns, 100 games)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
   echo "Act 1 validation completed!"
 
 task testBalanceAct2, "Act 2: Rising Tensions (15 turns, 100 games)":
   echo "Running Act 2 validation (15 turns, 100 games)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 15"
   echo "Act 2 validation completed!"
 
 task testBalanceAct3, "Act 3: Total War (25 turns, 100 games)":
   echo "Running Act 3 validation (25 turns, 100 games)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 25"
   echo "Act 3 validation completed!"
 
 task testBalanceAct4, "Act 4: Endgame (30 turns, 100 games)":
   echo "Running Act 4 validation (30 turns, 100 games)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
   echo "Act 4 validation completed!"
 
 task testBalanceAll4Acts, "Test all 4 acts sequentially (7, 15, 25, 30 turns)":
   echo "Running complete 4-act validation suite..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   echo "Git hash: $(cat tests/balance/.build_git_hash)"
   echo "\n=== Act 1: Land Grab (7 turns) ==="
@@ -208,7 +209,7 @@ task pruneArchives, "Prune old archives (keep last 10)":
 
 task testBalanceDiagnostics, "Run diagnostic tests with CSV output (50 games, 30 turns)":
   echo "Running diagnostic balance tests (50 games, 30 turns)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 50 30 16"
   echo "Diagnostic tests completed! Results in balance_results/diagnostics/"
@@ -216,7 +217,7 @@ task testBalanceDiagnostics, "Run diagnostic tests with CSV output (50 games, 30
 task testUnknownUnknowns, "Unknown-unknowns detection (200 games, full diagnostics)":
   echo "Running unknown-unknowns detection suite (200 games, 30 turns)..."
   echo "This generates comprehensive CSV data for pattern analysis"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   echo "Git hash: $(cat tests/balance/.build_git_hash)"
   exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 200 30 16"
@@ -330,7 +331,7 @@ task balanceReport, "Generate Markdown report (git-committable)":
 
 task testMapSizes, "Test balance across different map sizes":
   echo "Testing different map sizes (4, 8, 12 players)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
+  exec "nim c --forceBuild -d:enableRBA -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_map_size_test.py"
   echo "Map size tests completed!"
