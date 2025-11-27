@@ -497,12 +497,38 @@ proc getRemainingBudget*(ctx: OrderValidationContext): int =
 proc calculateBuildOrderCost*(order: BuildOrder, state: GameState): int =
   ## Calculate the PP cost of a build order
   ## Returns 0 if cost cannot be determined
+  ##
+  ## IMPORTANT: Spaceport Commission Penalty (economy.md:5.1, 5.3)
+  ## - Ships built at spaceports (planet-side) incur 100% PC increase (double cost)
+  ## - Ships built at shipyards (orbital) have no penalty (standard cost)
   result = 0
 
   case order.buildType
   of BuildType.Ship:
     if order.shipClass.isSome:
-      result = construction.getShipConstructionCost(order.shipClass.get()) * order.quantity
+      let baseCost = construction.getShipConstructionCost(order.shipClass.get()) * order.quantity
+      let shipClass = order.shipClass.get()
+
+      # Apply spaceport commission penalty if building planet-side
+      # Per economy.md:5.1 - "Ships (excluding fighter squadrons) constructed planet-side incur a 100% PC increase"
+      # IMPORTANT: Fighters are EXEMPT from the penalty (planet-based manufacturing)
+      if shipClass == ShipClass.Fighter:
+        # Fighters never incur commission penalty (distributed planetary manufacturing)
+        result = baseCost
+      elif order.colonySystem in state.colonies:
+        let colony = state.colonies[order.colonySystem]
+        let hasShipyard = colony.shipyards.len > 0
+        let hasSpaceport = colony.spaceports.len > 0
+
+        if not hasShipyard and hasSpaceport:
+          # Planet-side construction (spaceport only) → 100% penalty (double cost)
+          result = baseCost * 2
+        else:
+          # Orbital construction (shipyard present) → no penalty
+          result = baseCost
+      else:
+        # Colony doesn't exist (validation will catch this)
+        result = baseCost
 
   of BuildType.Building:
     if order.buildingType.isSome:

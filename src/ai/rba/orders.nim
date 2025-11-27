@@ -26,7 +26,7 @@ proc calculateProjectedTreasury*(filtered: FilteredGameState): int =
   for colony in filtered.ownColonies:
     # Income = GCO × tax rate
     # GCO (Gross Colonial Output) is the total economic output
-    expectedIncome += (colony.gco * filtered.ownHouse.taxRate) div 100
+    expectedIncome += (colony.grossOutput * filtered.ownHouse.taxPolicy.currentRate) div 100
 
   # Calculate expected maintenance from fleets
   var expectedMaintenance = 0
