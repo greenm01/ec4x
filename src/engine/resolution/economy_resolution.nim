@@ -1856,6 +1856,11 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     houseTreasuries
   )
 
+  # Write back modified colonies (population growth was applied in-place)
+  # CRITICAL: Colonies were copied to seq, modified via mpairs, must write back to persist
+  for colony in coloniesSeqIncome:
+    state.colonies[colony.systemId] = colony
+
   # Apply results back to game state
   for houseId, houseReport in incomeReport.houseReports:
     # CRITICAL: Get house once, modify all fields, write back to persist
