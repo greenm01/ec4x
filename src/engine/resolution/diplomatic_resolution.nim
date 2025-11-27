@@ -167,7 +167,7 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
 
           if currentState == dip_types.DiplomaticState.NonAggression:
             # Record violation
-            let violation = dip_engine.recordViolation(
+            discard dip_engine.recordViolation(
               state.houses[houseId].violationHistory,
               houseId,
               action.targetHouse,
