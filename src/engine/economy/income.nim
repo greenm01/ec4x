@@ -146,8 +146,6 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
   result.totalPrestigeBonus = calculateTaxBonus(taxPolicy.currentRate, colonies.len)
 
   # Generate prestige events from tax policy
-  let config = globalPrestigeConfig
-
   # Low tax bonus (using configured thresholds and values)
   if result.totalPrestigeBonus > 0:
     result.prestigeEvents.add(createPrestigeEvent(

@@ -80,7 +80,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
     # Apply population growth to colonies
     for i, colony in colonies.mpairs:
       if colony.owner == houseId:
-        let growthRate = applyPopulationGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
+        discard applyPopulationGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
         # Note: Could update report with growth rates here
 
     # Store report
