@@ -20,18 +20,18 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
   ## Get personality parameters from config
   ## Loads values from config/rba.toml instead of hardcoded constants
   let cfg = case strategy
-    of AIStrategy.Aggressive: globalRBAConfig.strategies.aggressive
-    of AIStrategy.Economic: globalRBAConfig.strategies.economic
-    of AIStrategy.Espionage: globalRBAConfig.strategies.espionage
-    of AIStrategy.Diplomatic: globalRBAConfig.strategies.diplomatic
-    of AIStrategy.Balanced: globalRBAConfig.strategies.balanced
-    of AIStrategy.Turtle: globalRBAConfig.strategies.turtle
-    of AIStrategy.Expansionist: globalRBAConfig.strategies.expansionist
-    of AIStrategy.TechRush: globalRBAConfig.strategies.tech_rush
-    of AIStrategy.Raider: globalRBAConfig.strategies.raider
-    of AIStrategy.MilitaryIndustrial: globalRBAConfig.strategies.military_industrial
-    of AIStrategy.Opportunistic: globalRBAConfig.strategies.opportunistic
-    of AIStrategy.Isolationist: globalRBAConfig.strategies.isolationist
+    of AIStrategy.Aggressive: globalRBAConfig.strategies_aggressive
+    of AIStrategy.Economic: globalRBAConfig.strategies_economic
+    of AIStrategy.Espionage: globalRBAConfig.strategies_espionage
+    of AIStrategy.Diplomatic: globalRBAConfig.strategies_diplomatic
+    of AIStrategy.Balanced: globalRBAConfig.strategies_balanced
+    of AIStrategy.Turtle: globalRBAConfig.strategies_turtle
+    of AIStrategy.Expansionist: globalRBAConfig.strategies_expansionist
+    of AIStrategy.TechRush: globalRBAConfig.strategies_tech_rush
+    of AIStrategy.Raider: globalRBAConfig.strategies_raider
+    of AIStrategy.MilitaryIndustrial: globalRBAConfig.strategies_military_industrial
+    of AIStrategy.Opportunistic: globalRBAConfig.strategies_opportunistic
+    of AIStrategy.Isolationist: globalRBAConfig.strategies_isolationist
 
   AIPersonality(
     aggression: cfg.aggression,

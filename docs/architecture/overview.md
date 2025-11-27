@@ -84,6 +84,30 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Manage player roster
 - Convert between transport modes
 
+## Validation System
+
+**Purpose**: Comprehensive parameter and configuration validation
+**File**: `src/engine/setup.nim` (single source of truth)
+**Documentation**: `docs/architecture/validation-system.md`
+
+**Architecture**:
+- **Layer 3 (Entry Points)**: Parse with error handling, call validation
+- **Layer 2 (Orchestrator)**: `validateGameSetup()` coordinates all validation
+- **Layer 1 (Domain)**: Each module validates its own invariants
+
+**Validates**:
+- Game setup parameters (players, turns, map rings)
+- RBA AI configuration (budgets, ratios, thresholds)
+- TOML config files (ranges, sums, constraints)
+- Cross-parameter rules (e.g., no zero rings)
+
+**Key Features**:
+- Single source of truth - all entry points use same validation
+- Clear error messages with actual vs expected values
+- Collects all errors (not fail-on-first)
+- 36 unit tests covering edge cases
+- Blocks invalid configs before game creation
+
 ## Game Modes
 
 ### Localhost Mode

@@ -638,14 +638,14 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
   var idleFleetMothball = false
 
   # Path 1: Financial stress mothballing (BALANCED TUNING)
-  if inventory.totalTreasury < globalRBAConfig.logistics.mothballing.treasury_threshold_pp:
+  if inventory.totalTreasury < globalRBAConfig.logistics.mothballing_treasury_threshold_pp:
     let maintenanceRatio = float(inventory.maintenanceCost) / float(inventory.totalProduction)
-    if maintenanceRatio >= globalRBAConfig.logistics.mothballing.maintenance_ratio_threshold:
+    if maintenanceRatio >= globalRBAConfig.logistics.mothballing_maintenance_ratio_threshold:
       financialMothball = true
       logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Financial stress (treasury={inventory.totalTreasury}PP, maint={maintenanceRatio*100:.1f}%)")
 
   # Path 2: Idle fleet mothballing (strategic redundancy management, BALANCED TUNING)
-  if inventory.totalFleets >= globalRBAConfig.logistics.mothballing.min_fleet_count:
+  if inventory.totalFleets >= globalRBAConfig.logistics.mothballing_min_fleet_count:
     idleFleetMothball = true
     logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Idle fleet check (fleets={inventory.totalFleets})")
 

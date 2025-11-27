@@ -2,7 +2,7 @@
 ##
 ## Diplomatic operations and state changes per diplomacy.md:8.1
 
-import std/[tables, options]
+import std/options
 import types
 import ../../common/types/[core, diplomacy]
 import ../prestige

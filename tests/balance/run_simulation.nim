@@ -6,13 +6,13 @@
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
 import game_setup, diagnostics
 import ../../src/ai/rba/player as ai
-import ../../src/engine/[gamestate, resolve, orders, fog_of_war]
+import ../../src/engine/[gamestate, resolve, orders, fog_of_war, setup]
 import ../../src/common/types/core
 import ../../src/client/reports/turn_report
 
-proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 0): JsonNode =
+proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 3): JsonNode =
   ## Run a full game simulation with AI players
-  ## mapRings: number of hex rings (0 = use numHouses as default)
+  ## mapRings: number of hex rings (must be >= 1, zero not allowed)
   echo &"Starting simulation: {numHouses} houses, {numTurns} turns"
   echo &"Strategies: {strategies}"
 
@@ -20,8 +20,8 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
 
   # Create balanced starting game
   echo "\nInitializing game state..."
-  let rings = if mapRings > 0: mapRings else: numHouses
-  var game = createBalancedGame(numHouses, rings, seed)
+  # mapRings must be valid (validated by caller)
+  var game = createBalancedGame(numHouses, mapRings, seed)
 
   # Create AI controllers for each house
   # Map houses to their thematic strategies
@@ -230,20 +230,47 @@ when isMainModule:
   # Parse command line arguments: turns [seed] [mapRings] [numPlayers]
   var numTurns = 100
   var seed: int64 = 42
-  var mapRings = 0  # 0 = default to player count
+  var mapRings = 3  # Default: 3 rings (was 0, but zero rings not allowed)
   var numPlayers = 4  # Default to 4 players
 
+  # Parse with error handling
   if paramCount() >= 1:
-    numTurns = parseInt(paramStr(1))
+    try:
+      numTurns = parseInt(paramStr(1))
+    except ValueError:
+      echo "Error: Invalid turns parameter '", paramStr(1), "' (must be integer)"
+      quit(1)
 
   if paramCount() >= 2:
-    seed = parseBiggestInt(paramStr(2))
+    try:
+      seed = parseBiggestInt(paramStr(2))
+    except ValueError:
+      echo "Error: Invalid seed parameter '", paramStr(2), "' (must be integer)"
+      quit(1)
 
   if paramCount() >= 3:
-    mapRings = parseInt(paramStr(3))
+    try:
+      mapRings = parseInt(paramStr(3))
+    except ValueError:
+      echo "Error: Invalid map_rings parameter '", paramStr(3), "' (must be integer)"
+      quit(1)
 
   if paramCount() >= 4:
-    numPlayers = parseInt(paramStr(4))
+    try:
+      numPlayers = parseInt(paramStr(4))
+    except ValueError:
+      echo "Error: Invalid num_players parameter '", paramStr(4), "' (must be integer)"
+      quit(1)
+
+  # Validate all parameters using engine's setup validation
+  let params = GameSetupParams(
+    numPlayers: numPlayers,
+    numTurns: numTurns,
+    mapRings: mapRings,
+    seed: seed
+  )
+
+  validateGameSetupOrQuit(params, "run_simulation")
 
   # Create strategies for the specified number of players
   # All 12 strategy types mapped to thematic Dune houses

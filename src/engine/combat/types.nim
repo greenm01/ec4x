@@ -5,7 +5,7 @@
 ##
 ## Based on EC4X specifications Section 7.0 Combat
 
-import std/[tables, options]
+import std/options
 import ../../common/types/[core, units, combat as commonCombat, diplomacy]
 import ../squadron, ../fleet
 

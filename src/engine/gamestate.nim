@@ -1,9 +1,8 @@
 ## Core game state representation for EC4X
 
 import std/[tables, options, strutils]
-import ../common/[hex, system]
 import ../common/types/[core, planets, tech, diplomacy]
-import fleet, ship, starmap
+import fleet, starmap
 import order_types  # Fleet order types (avoid circular dependency)
 import config/[prestige_config, military_config, tech_config]
 import diplomacy/types as dip_types

@@ -1,11 +1,11 @@
 ## Fleet Order Execution Engine
 ## Implements all 16 fleet order types from operations.md Section 6.2
 
-import std/[options, tables, sequtils, algorithm]
-import ../../common/[hex, types/core, types/units]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap
+import std/[options, tables]
+import ../../common/[types/core, types/units]
+import ../gamestate, ../orders, ../fleet, ../squadron
 import ../intelligence/detection
-import ../combat/[types as combat_types, ground]
+import ../combat/[types as combat_types]
 
 type
   OrderExecutionResult* = object
