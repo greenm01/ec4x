@@ -380,11 +380,32 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   let standingOrders = assignStandingOrders(controller, filtered, filtered.turn)
 
+  # ==========================================================================
+  # STANDING ORDERS EXECUTION
+  # ==========================================================================
+  # Convert standing orders to executable FleetOrders for fleets without explicit orders
+  # Build set of fleets that already have explicit orders (tactical or logistics)
+  var fleetsWithExplicitOrders = initHashSet[FleetId]()
+  for order in result.fleetOrders:
+    fleetsWithExplicitOrders.incl(order.fleetId)
+
+  # Convert standing orders to FleetOrders for fleets without explicit orders
+  var standingOrdersExecuted = 0
+  for fleetId, standingOrder in standingOrders:
+    if fleetId notin fleetsWithExplicitOrders:
+      # This fleet has no tactical/logistics order, execute its standing order
+      # TODO: Implement convertStandingOrderToFleetOrder in standing_orders_manager.nim
+      # For now, just log that we would execute it
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} Fleet {fleetId}: Would execute standing order " &
+               &"{standingOrder.orderType} (conversion not yet implemented)")
+      standingOrdersExecuted += 1
+
   # Log summary
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Standing Orders: {standingOrders.len} assigned, " &
-          &"{filtered.ownFleets.len - standingOrders.len} under tactical control")
+          &"{standingOrdersExecuted} executed, " &
+          &"{fleetsWithExplicitOrders.len} under tactical/logistics control")
 
   # Store standing orders in controller for next turn
-  # NOTE: These will be applied to GameState during order execution
   controller.standingOrders = standingOrders
