@@ -6,7 +6,7 @@
 ##
 ## See docs/architecture/standing-orders.md for complete design.
 
-import std/[tables, options, sequtils, strformat, algorithm]
+import std/[tables, options, strformat, algorithm]
 import gamestate, orders, fleet, starmap, logger, spacelift
 import order_types
 import ../common/types/[core, planets]

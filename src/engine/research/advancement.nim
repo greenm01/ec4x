@@ -12,7 +12,7 @@ import std/[random, tables, options]
 import types, costs
 import ../../common/types/tech
 import ../prestige
-import ../config/[prestige_config, tech_config]
+import ../config/prestige_config
 
 export types.TechAdvancement, types.BreakthroughEvent, types.TechTree
 

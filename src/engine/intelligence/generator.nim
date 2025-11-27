@@ -3,7 +3,7 @@
 ## Generates intelligence reports from successful spy scout missions
 ## Per intel.md and operations.md specifications
 
-import std/[tables, options, sequtils, random, hashes]
+import std/[tables, options, random, hashes]
 import types as intel_types
 import corruption
 import ../gamestate, ../fleet  # Need FleetStatus from fleet module

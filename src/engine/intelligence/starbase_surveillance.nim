@@ -9,11 +9,11 @@
 ## - Raiders (CLK capability): Stealth roll required (cloaked if successful)
 ## - Crippled starbases: No surveillance capability
 
-import std/[tables, options, sequtils, strformat, strutils, random, hashes]
+import std/[tables, options, strutils, random, hashes]
 import types as intel_types
 import corruption
 import ../gamestate, ../fleet, ../squadron
-import ../espionage/types as esp_types, ../starmap
+import ../espionage/types as esp_types
 
 proc performStealthCheck*(
   stealthLevel: int,

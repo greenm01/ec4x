@@ -7,11 +7,11 @@
 ## - Helper functions for path finding and hostility detection
 
 import std/[tables, options, sequtils, strformat]
-import ../../common/[hex, types/core, types/combat, types/units]
+import ../../common/types/[core, combat, units]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../spacelift, ../logger
 import ../colonization/engine as col_engine
 import ../diplomacy/[types as dip_types]
-import ../config/[prestige_config, population_config]
+import ../config/population_config
 import ../prestige
 import ./types  # Common resolution types
 import ../intelligence/generator

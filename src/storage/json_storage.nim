@@ -4,8 +4,8 @@
 ## Loads and saves game state to/from JSON files
 
 import std/[json, tables, options, os]
-import ../engine/[gamestate, fleet, ship, starmap]
-import ../common/[hex, system]
+import ../engine/[gamestate, fleet, starmap]
+import ../common/system
 
 type
   StorageError* = object of CatchableError

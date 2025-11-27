@@ -4,7 +4,7 @@
 ## and weighted random target selection for EC4X combat
 ## (Section 7.3.2)
 
-import std/[sequtils, options, tables]
+import std/[options, tables]
 import types, cer
 
 export TargetBucket, DiplomaticState

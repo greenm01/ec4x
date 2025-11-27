@@ -8,7 +8,7 @@
 ## Individual phase logic has been extracted to resolution/* modules
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets]
-import ../common/[hex, types/core, types/combat]
+import ../common/types/core
 import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
