@@ -339,12 +339,11 @@ See [Section 3.9](economy.md#39-maintenance-costs) for complete details on reser
 
 ### 6.2.18 Mothball Fleet (17):
 
-Mothball a fleet for long-term storage, eliminating all maintenance costs. The fleet must be at a friendly colony with a Spaceport.
+Mothball a fleet for long-term storage, eliminating all maintenance costs. The fleet must be at a friendly colony. Ships are powered down in orbit, requiring no facilities.
 
 **Requirements:**
 - Fleet must be at friendly colony
-- Colony must have an operational Spaceport
-- Fleet becomes completely offline
+- Fleet becomes completely offline (powered down in orbit)
 
 **Mechanics:**
 - Fleet enters storage orbit at colony
