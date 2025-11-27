@@ -46,7 +46,8 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   result.combatReports = @[]
 
   # Initialize RNG for this turn (use turn number as seed for reproducibility)
-  var rng = initRand(state.turn)
+  # TODO: Use RNG for stochastic resolution once implemented
+  discard initRand(state.turn)
 
   echo "Resolving strategic cycle ", state.turn
 
@@ -282,47 +283,50 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
 
 ## Helper: Auto-balance unassigned squadrons to fleets at colony
 
-proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
-  ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
-  ## Only assigns to stationary fleets (those with Hold orders or no orders)
-  if colony.unassignedSquadrons.len == 0:
-    return
+# NOTE: Function currently unused but preserved for future implementation
+# TODO: Integrate auto-balancing of unassigned squadrons to stationary fleets
+when false:
+  proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
+    ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
+    ## Only assigns to stationary fleets (those with Hold orders or no orders)
+    if colony.unassignedSquadrons.len == 0:
+      return
 
-  # Get all fleets at this colony owned by same house
-  var candidateFleets: seq[FleetId] = @[]
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == colony.owner and fleet.location == systemId:
-      # Check if fleet has stationary orders (Hold or no orders)
-      var isStationary = true
+    # Get all fleets at this colony owned by same house
+    var candidateFleets: seq[FleetId] = @[]
+    for fleetId, fleet in state.fleets:
+      if fleet.owner == colony.owner and fleet.location == systemId:
+        # Check if fleet has stationary orders (Hold or no orders)
+        var isStationary = true
 
-      # Check if fleet has orders
-      if colony.owner in orders:
-        for order in orders[colony.owner].fleetOrders:
-          if order.fleetId == fleetId:
-            # Fleet has orders - only stationary if Hold
-            if order.orderType != FleetOrderType.Hold:
-              isStationary = false
-            break
+        # Check if fleet has orders
+        if colony.owner in orders:
+          for order in orders[colony.owner].fleetOrders:
+            if order.fleetId == fleetId:
+              # Fleet has orders - only stationary if Hold
+              if order.orderType != FleetOrderType.Hold:
+                isStationary = false
+              break
 
-      if isStationary:
-        candidateFleets.add(fleetId)
+        if isStationary:
+          candidateFleets.add(fleetId)
 
-  if candidateFleets.len == 0:
-    return
+    if candidateFleets.len == 0:
+      return
 
-  # Calculate target squadron count per fleet (balanced distribution)
-  let totalSquadrons = colony.unassignedSquadrons.len +
-                        candidateFleets.mapIt(state.fleets[it].squadrons.len).foldl(a + b, 0)
-  let targetPerFleet = totalSquadrons div candidateFleets.len
+    # Calculate target squadron count per fleet (balanced distribution)
+    let totalSquadrons = colony.unassignedSquadrons.len +
+                          candidateFleets.mapIt(state.fleets[it].squadrons.len).foldl(a + b, 0)
+    let targetPerFleet = totalSquadrons div candidateFleets.len
 
-  # Assign squadrons to fleets to reach target count
-  for fleetId in candidateFleets:
-    var fleet = state.fleets[fleetId]
-    while fleet.squadrons.len < targetPerFleet and colony.unassignedSquadrons.len > 0:
-      let squadron = colony.unassignedSquadrons[0]
-      fleet.squadrons.add(squadron)
-      colony.unassignedSquadrons.delete(0)
-    state.fleets[fleetId] = fleet
+    # Assign squadrons to fleets to reach target count
+    for fleetId in candidateFleets:
+      var fleet = state.fleets[fleetId]
+      while fleet.squadrons.len < targetPerFleet and colony.unassignedSquadrons.len > 0:
+        let squadron = colony.unassignedSquadrons[0]
+        fleet.squadrons.add(squadron)
+        colony.unassignedSquadrons.delete(0)
+      state.fleets[fleetId] = fleet
 
 ## Phase 3: Command
 

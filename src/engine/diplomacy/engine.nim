@@ -140,7 +140,7 @@ proc handleCombatViolation*(violatorRelations: var DiplomaticRelations,
   ## Automatically converts to Enemy status
 
   # Record violation
-  let violation = recordViolation(
+  discard recordViolation(
     violatorHistory,
     violator,
     victim,

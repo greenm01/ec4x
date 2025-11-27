@@ -168,7 +168,8 @@ proc ordersCmd(dir: string, ordersFile: string = "", house: string = ""): int =
     echo "Usage: moderator orders <dir> <file> --house=<name>"
     return 1
 
-  let absolutePath = if isAbsolute(dir): dir else: getCurrentDir() / dir
+  # TODO M1: Use absolutePath for order validation
+  # let absolutePath = if isAbsolute(dir): dir else: getCurrentDir() / dir
 
   # TODO M1: Actually parse and validate orders
   echo "Orders submitted for ", house
@@ -275,7 +276,8 @@ proc resultsCmd(dir: string, house: string = ""): int =
     echo "Usage: moderator results <dir> --house=<name>"
     return 1
 
-  let absolutePath = if isAbsolute(dir): dir else: getCurrentDir() / dir
+  # TODO M1: Use absolutePath for results loading
+  # let absolutePath = if isAbsolute(dir): dir else: getCurrentDir() / dir
 
   # TODO M1: Load and display turn results
   echo "No results available yet"
