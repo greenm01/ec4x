@@ -146,10 +146,12 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
 
     of GameAct.Act3_TotalWar:
       # Focus: Conquest and invasion
+      # CRITICAL: Reserve 10% Expansion for rebuilding facilities destroyed in orbital combat
+      # Shipyards/Spaceports are destroyed when colonies change hands or during battles
       {
-        Expansion: 0.00,     # No more colonization
+        Expansion: 0.10,     # Rebuild destroyed facilities (was 0.00)
         Defense: 0.15,
-        Military: 0.55,      # ← 55% to military + invasions
+        Military: 0.45,      # Reduced from 0.55 to fund facility rebuilding
         Reconnaissance: 0.05,
         SpecialUnits: 0.15,  # Transports for invasions
         Technology: 0.10
@@ -157,10 +159,11 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
 
     of GameAct.Act4_Endgame:
       # Focus: All-in for victory
+      # CRITICAL: Reserve 5% Expansion for facility rebuilding (colonies change hands frequently)
       {
-        Expansion: 0.00,
+        Expansion: 0.05,     # Rebuild destroyed facilities (was 0.00)
         Defense: 0.10,
-        Military: 0.60,
+        Military: 0.55,      # Reduced from 0.60 to fund facility rebuilding
         Reconnaissance: 0.05,
         SpecialUnits: 0.15,
         Technology: 0.10
