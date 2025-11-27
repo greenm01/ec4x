@@ -692,14 +692,15 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Build PBs when: CST 10 unlocked, fighting heavily fortified enemies, Act 3+
   let needSiege = act >= GameAct.Act3_TotalWar and cstLevel >= 10
 
-  # Build from all colonies with shipyards, using shared budget tracker
+  # Build from all colonies with shipyards OR spaceports, using shared budget tracker
   # BudgetTracker automatically prevents overspending
   for colony in coloniesToBuild:
     let hasShipyard = colony.shipyards.len > 0
+    let hasSpaceport = colony.spaceports.len > 0
     let hasStarbase = colony.starbases.len > 0
 
-    if not hasShipyard:
-      continue  # Can't build ships without shipyard
+    if not hasShipyard and not hasSpaceport:
+      continue  # Can't build ships without shipyard or spaceport
 
     # Build queue system allows multiple simultaneous projects per colony
     # BudgetTracker prevents overspending across ALL colonies
