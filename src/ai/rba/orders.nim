@@ -12,6 +12,36 @@ import ./[controller_types, budget, espionage, economic, tactical, strategic, di
 
 export core, orders, standing_orders_manager
 
+proc calculateProjectedTreasury*(filtered: FilteredGameState): int =
+  ## Calculate projected treasury for AI planning
+  ## Treasury projection = current + expected income - expected maintenance
+  ##
+  ## CRITICAL: AI generates orders BEFORE income/maintenance phase in turn resolution
+  ## But build orders are processed AFTER income is added. Without projection,
+  ## AI sees treasury=2 PP, makes no builds, then economy has 52 PP available.
+  let currentTreasury = filtered.ownHouse.treasury
+
+  # Calculate expected income from all owned colonies
+  var expectedIncome = 0
+  for colony in filtered.ownColonies:
+    # Income = GCO × tax rate
+    # GCO (Gross Colonial Output) is the total economic output
+    expectedIncome += (colony.gco * filtered.ownHouse.taxRate) div 100
+
+  # Calculate expected maintenance from fleets
+  var expectedMaintenance = 0
+  for fleet in filtered.ownFleets:
+    # Each fleet costs ~2 PP maintenance (simplified)
+    expectedMaintenance += 2
+
+  result = currentTreasury + expectedIncome - expectedMaintenance
+  result = max(result, 0)  # Can't go negative
+
+  logDebug(LogCategory.lcAI,
+           &"{filtered.viewingHouse} Projected treasury: current={currentTreasury}PP, " &
+           &"income≈{expectedIncome}PP, maintenance≈{expectedMaintenance}PP, " &
+           &"projected={result}PP")
+
 proc generateResearchAllocation*(controller: AIController, filtered: FilteredGameState): res_types.ResearchAllocation =
   ## Generate research allocation based on personality
   ## Allocates PP to research based on total production and tech priority
@@ -124,7 +154,12 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # Sequential allocation prevents race condition where research, builds, and
   # espionage all independently claim percentages of the same full treasury
-  var remainingTreasury = filtered.ownHouse.treasury
+  #
+  # CRITICAL: Use PROJECTED treasury (current + income - maintenance) because:
+  # - AI generates orders BEFORE income/maintenance phase
+  # - Orders are processed AFTER income is added
+  # - Without projection, AI sees 2 PP, makes no builds, economy has 52 PP available
+  var remainingTreasury = calculateProjectedTreasury(filtered)
   var reservedBudgets = initTable[string, int]()
 
   # 1. RESEARCH CLAIMS FIRST (highest priority)
