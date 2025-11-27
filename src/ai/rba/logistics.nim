@@ -25,6 +25,7 @@ import std/[tables, options, sequtils, algorithm, math, sets, strformat]
 import std/logging
 import ../../common/types/[core, units, tech]
 import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, spacelift, logger]
+import ../../engine/economy/maintenance
 import ../common/types as ai_types
 import ./controller_types
 import ./intelligence  # For system analysis
@@ -42,9 +43,9 @@ type
 
     # Fleet Assets
     totalFleets*: int
-    idleFleets*: seq[FleetId]           # Fleets with Hold orders
-    activeFleets*: seq[FleetId]         # Fleets with mission orders
-    mothballedFleets*: seq[FleetId]     # Fleets in mothball state
+    activeFleets*: seq[FleetId]         # Fleets in active status
+    reserveFleets*: seq[FleetId]        # Fleets in reserve status
+    mothballedFleets*: seq[FleetId]     # Fleets in mothballed status
 
     # Ship Counts by Class
     scouts*: int
@@ -73,7 +74,6 @@ type
     undefendedColonies*: seq[SystemId]
 
     # Strategic Reserves (high-value assets)
-    reserveFleets*: seq[FleetId]        # Fleets assigned to strategic reserve
     emergencyPTU*: int                  # PTU stockpiled for emergencies
 
     # Economic Assets
@@ -93,21 +93,14 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
   for fleet in filtered.ownFleets:
     result.totalFleets += 1
 
-    # Determine if fleet is idle by checking its current order
-    if fleet.id in filtered.ownFleetOrders:
-      let fleetOrder = filtered.ownFleetOrders[fleet.id]
-      case fleetOrder.orderType
-      of FleetOrderType.Hold:
-        result.idleFleets.add(fleet.id)
-      of FleetOrderType.Reserve:
-        result.reserveFleets.add(fleet.id)
-      of FleetOrderType.Mothball:
-        result.mothballedFleets.add(fleet.id)
-      else:
-        result.activeFleets.add(fleet.id)
-    else:
-      # No order recorded - treat as idle
-      result.idleFleets.add(fleet.id)
+    # Classify fleet by status (not by current order)
+    case fleet.status
+    of FleetStatus.Active:
+      result.activeFleets.add(fleet.id)
+    of FleetStatus.Reserve:
+      result.reserveFleets.add(fleet.id)
+    of FleetStatus.Mothballed:
+      result.mothballedFleets.add(fleet.id)
 
     # Count ships by class
     for squadron in fleet.squadrons:
@@ -193,17 +186,9 @@ type
     priorityScore*: float
 
 proc identifyIdleAssets*(inventory: AssetInventory, filtered: FilteredGameState): seq[FleetId] =
-  ## Find fleets that are idle and could be reassigned
-  ##
-  ## Idle indicators:
-  ## - Hold orders in safe rear systems
-  ## - Patrol orders with no enemy activity
-  ## - Completed mission with no follow-up orders
-
-  result = inventory.idleFleets
-
-  # TODO: Add logic to detect "false busy" fleets
-  # (fleets that have orders but aren't accomplishing anything)
+  ## DEPRECATED: No longer needed after fleet lifecycle refactor
+  ## Asset reallocation will be reimplemented if needed
+  result = @[]
 
 proc recommendAssetReallocations*(controller: AIController, inventory: AssetInventory,
                                   filtered: FilteredGameState): seq[ReallocationRecommendation] =
@@ -547,7 +532,7 @@ proc evaluateFleetLifecycle*(fleet: Fleet, inventory: AssetInventory,
 
 proc identifyReserveCandidates*(controller: AIController, inventory: AssetInventory,
                                 filtered: FilteredGameState): seq[FleetId] =
-  ## Find fleets that should be placed on reserve status
+  ## Find active fleets that should be placed on reserve status
   ##
   ## Reserve (ops.md 6.2.17):
   ## - 50% maintenance cost (better than active, not as good as mothball)
@@ -564,19 +549,17 @@ proc identifyReserveCandidates*(controller: AIController, inventory: AssetInvent
   if inventory.totalTreasury < 200 or inventory.totalTreasury > 300:
     return @[]  # Reserve only for moderate treasury stress
 
-  # Find idle fleets at colonies
-  for fleetId in inventory.idleFleets:
-    # Find the fleet
-    var targetFleet: Option[Fleet] = none(Fleet)
-    for fleet in filtered.ownFleets:
-      if fleet.id == fleetId:
-        targetFleet = some(fleet)
-        break
+  # Track colonies that already have reserve fleets (one per colony limit)
+  var coloniesWithReserve: HashSet[SystemId]
+  for fleet in filtered.ownFleets:
+    if fleet.status == FleetStatus.Reserve:
+      coloniesWithReserve.incl(fleet.location)
 
-    if targetFleet.isNone:
+  # Evaluate all active fleets
+  for fleet in filtered.ownFleets:
+    # Skip if already reserve/mothballed
+    if fleet.status in [FleetStatus.Reserve, FleetStatus.Mothballed]:
       continue
-
-    let fleet = targetFleet.get()
 
     # Check if fleet is at a colony
     var atColony = false
@@ -593,6 +576,10 @@ proc identifyReserveCandidates*(controller: AIController, inventory: AssetInvent
     if hasSpaceport:
       continue  # Has spaceport - prefer mothball instead
 
+    # One per colony limit
+    if fleet.location in coloniesWithReserve:
+      continue
+
     # Check if system is safe (no enemy threats in intel)
     var threatLevel = 0.0
     if fleet.location in controller.intelligence:
@@ -600,25 +587,39 @@ proc identifyReserveCandidates*(controller: AIController, inventory: AssetInvent
       if report.estimatedFleetStrength > 0:
         threatLevel = float(report.estimatedFleetStrength)
 
-    if threatLevel < 100.0:  # System is safe
-      result.add(fleetId)
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Reserve candidate: {fleetId} at {fleet.location} (no spaceport, safe)")
+    if threatLevel >= 100.0:
+      continue  # System under threat, keep fleet active
+
+    # Check if fleet is needed for active operations
+    var neededForOperation = false
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        neededForOperation = true
+        break
+
+    if neededForOperation:
+      continue  # Fleet assigned to operation, don't reserve
+
+    # This fleet is a good candidate
+    result.add(fleet.id)
+    coloniesWithReserve.incl(fleet.location)  # Track for one-per-colony
+    logInfo(LogCategory.lcAI, &"{controller.houseId} Reserve candidate: {fleet.id} at {fleet.location} (treasury={inventory.totalTreasury}PP, no spaceport, safe)")
 
 proc identifyMothballCandidates*(controller: AIController, inventory: AssetInventory,
                                  filtered: FilteredGameState): seq[FleetId] =
-  ## Find fleets that should be mothballed to save maintenance
+  ## Find active fleets that should be mothballed to save maintenance
   ##
   ## Mothball (ops.md 6.2.18):
   ## - 0% maintenance (maximum savings)
   ## - Offline (no combat contribution)
   ## - Screened in combat (protected from destruction)
-  ## - Requires spaceport at colony
+  ## - Just needs friendly colony (powered down in orbit)
   ## - 1-turn reactivation delay
   ##
   ## Use when:
-  ## - Treasury low (<200 PP) and maintenance burden high
+  ## - Treasury low (<500 PP) and maintenance burden high
   ## - Fleet obsolete (low-tech ships vs high-tech enemies)
-  ## - Fleet idle in safe rear system with spaceport
+  ## - Fleet in safe rear system
   ## - Long-term storage better than salvage
 
   result = @[]
@@ -632,29 +633,31 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
   if maintenanceRatio < 0.15:  # Less than 15% of production
     return @[]  # Maintenance is manageable
 
-  # Find idle fleets in safe systems with spaceports
-  for fleetId in inventory.idleFleets:
-    # Find the fleet
-    var targetFleet: Option[Fleet] = none(Fleet)
-    for fleet in filtered.ownFleets:
-      if fleet.id == fleetId:
-        targetFleet = some(fleet)
-        break
+  # Track colonies that already have mothballed fleets (one per colony limit)
+  var coloniesWithMothball: HashSet[SystemId]
+  for fleet in filtered.ownFleets:
+    if fleet.status == FleetStatus.Mothballed:
+      coloniesWithMothball.incl(fleet.location)
 
-    if targetFleet.isNone:
+  # Evaluate all active fleets
+  for fleet in filtered.ownFleets:
+    # Skip if already reserve/mothballed
+    if fleet.status in [FleetStatus.Reserve, FleetStatus.Mothballed]:
       continue
 
-    let fleet = targetFleet.get()
-
-    # Check if fleet is at a colony with spaceport
-    var atColonyWithSpaceport = false
+    # Check if fleet is at a colony
+    var atColony = false
     for colony in filtered.ownColonies:
-      if colony.systemId == fleet.location and colony.spaceports.len > 0:
-        atColonyWithSpaceport = true
+      if colony.systemId == fleet.location:
+        atColony = true
         break
 
-    if not atColonyWithSpaceport:
-      continue  # Mothball requires spaceport
+    if not atColony:
+      continue  # Mothball requires being at colony
+
+    # One per colony limit
+    if fleet.location in coloniesWithMothball:
+      continue
 
     # Check if system is safe (use intel reports)
     var isSafeSystem = true
@@ -665,6 +668,16 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
 
     if not isSafeSystem:
       continue  # Don't mothball in threatened systems
+
+    # Check if fleet is needed for active operations
+    var neededForOperation = false
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        neededForOperation = true
+        break
+
+    if neededForOperation:
+      continue  # Fleet assigned to operation, don't mothball
 
     # Calculate fleet tech level (average of squadrons)
     var totalTechLevel = 0
@@ -688,8 +701,9 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
     let isObsolete = avgTechLevel < 3.0
 
     if isSafeSystem and isObsolete:
-      result.add(fleetId)
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball candidate: {fleetId} at {fleet.location} (obsolete, tech {avgTechLevel:.1f})")
+      result.add(fleet.id)
+      coloniesWithMothball.incl(fleet.location)  # Track for one-per-colony
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball candidate: {fleet.id} at {fleet.location} (tech={avgTechLevel:.1f}, treasury={inventory.totalTreasury}PP, maint={maintenanceRatio*100:.1f}%)")
 
 proc identifySalvageCandidates*(controller: AIController, inventory: AssetInventory,
                                 filtered: FilteredGameState): seq[FleetId] =
@@ -713,19 +727,11 @@ proc identifySalvageCandidates*(controller: AIController, inventory: AssetInvent
   if inventory.totalTreasury > 100:
     return @[]
 
-  # Find obsolete or damaged fleets at colonies
-  for fleetId in inventory.idleFleets:
-    # Find the fleet
-    var targetFleet: Option[Fleet] = none(Fleet)
-    for fleet in filtered.ownFleets:
-      if fleet.id == fleetId:
-        targetFleet = some(fleet)
-        break
-
-    if targetFleet.isNone:
+  # Evaluate all active fleets
+  for fleet in filtered.ownFleets:
+    # Skip if already reserve/mothballed (they have lower maintenance anyway)
+    if fleet.status in [FleetStatus.Reserve, FleetStatus.Mothballed]:
       continue
-
-    let fleet = targetFleet.get()
 
     # Check if fleet is at a colony
     var atColony = false
@@ -736,6 +742,16 @@ proc identifySalvageCandidates*(controller: AIController, inventory: AssetInvent
 
     if not atColony:
       continue  # Salvage requires being at colony
+
+    # Don't salvage fleets needed for operations
+    var neededForOperation = false
+    for op in controller.operations:
+      if fleet.id in op.requiredFleets:
+        neededForOperation = true
+        break
+
+    if neededForOperation:
+      continue  # Fleet assigned to operation, don't salvage
 
     # Calculate fleet tech level and damage
     var totalTechLevel = 0
@@ -763,47 +779,245 @@ proc identifySalvageCandidates*(controller: AIController, inventory: AssetInvent
     let isHeavilyDamaged = damageRatio > 0.5
 
     if isVeryObsolete or isHeavilyDamaged:
-      result.add(fleetId)
+      result.add(fleet.id)
       let reason = if isVeryObsolete: "obsolete" else: "damaged"
-      logInfo(LogCategory.lcAI, &"{controller.houseId} SALVAGE candidate: {fleetId} ({reason}, tech {avgTechLevel:.1f}, {damageRatio*100:.0f}% damaged)")
+      logInfo(LogCategory.lcAI, &"{controller.houseId} SALVAGE candidate: {fleet.id} ({reason}, tech {avgTechLevel:.1f}, {damageRatio*100:.0f}% damaged)")
+
+proc estimateFleetCombatPower(fleet: Fleet): int =
+  ## Estimate fleet's total combat power (AS + DS)
+  result = 0
+  for squadron in fleet.squadrons:
+    # Sum attack strength
+    result += squadron.flagship.stats.attackStrength
+    for ship in squadron.ships:
+      result += ship.stats.attackStrength
+    # Sum defense strength
+    result += squadron.flagship.stats.defenseStrength
+    for ship in squadron.ships:
+      result += ship.stats.defenseStrength
+
+proc estimateFleetTechLevel(fleet: Fleet): float =
+  ## Calculate average tech level of fleet
+  var totalTechLevel = 0
+  var squadronCount = 0
+  for squadron in fleet.squadrons:
+    let techLevel = case squadron.flagship.shipClass
+      of ShipClass.Corvette, ShipClass.Scout: 1
+      of ShipClass.Frigate: 2
+      of ShipClass.Destroyer, ShipClass.LightCruiser: 3
+      of ShipClass.Cruiser, ShipClass.HeavyCruiser: 4
+      of ShipClass.Battlecruiser, ShipClass.Battleship: 5
+      of ShipClass.Dreadnought, ShipClass.SuperDreadnought: 6
+      else: 3
+    totalTechLevel += techLevel
+    squadronCount += 1
+  result = if squadronCount > 0: float(totalTechLevel) / float(squadronCount) else: 0.0
+
+proc calculateFleetMaintenanceCost(fleet: Fleet, targetStatus: FleetStatus): int =
+  ## Calculate total maintenance cost for a fleet at the target status
+  ## Uses actual ship maintenance costs from economy/maintenance module
+  result = 0
+  for squadron in fleet.squadrons:
+    # Flagship
+    result += getShipMaintenanceCost(squadron.flagship.shipClass, squadron.flagship.isCrippled, targetStatus)
+    # Escort ships
+    for ship in squadron.ships:
+      result += getShipMaintenanceCost(ship.shipClass, ship.isCrippled, targetStatus)
 
 proc identifyReactivationCandidates*(controller: AIController, inventory: AssetInventory,
                                     filtered: FilteredGameState): seq[FleetId] =
-  ## Find mothballed/reserve fleets that should be reactivated
+  ## SMART REACTIVATION: Selective, cost-benefit based, operation-aware
   ##
-  ## Reactivate when:
-  ## - Treasury recovered (>1000 PP)
-  ## - Emergency threat detected (invasion incoming)
-  ## - Offensive operation planned (need ships for assault)
+  ## Priority order:
+  ## 1. Operations need ships (even if treasury low)
+  ## 2. Critical threats (selective, close defense gap)
+  ## 3. Treasury recovered (gradual, reserve before mothball)
 
   result = @[]
 
-  # Reactivate if treasury is healthy
+  # Build a lookup of all inactive fleets with their stats
+  type FleetCandidate = object
+    fleetId: FleetId
+    fleet: Fleet
+    combatPower: int
+    techLevel: float
+    maintenanceCost: int
+    isReserve: bool  # Reserve = 50% maint, Mothball = 100% maint
+    location: SystemId
+
+  var candidates: seq[FleetCandidate] = @[]
+
+  # Gather reserve fleets
+  for fleetId in inventory.reserveFleets:
+    # Find fleet in ownFleets sequence
+    for fleet in filtered.ownFleets:
+      if fleet.id == fleetId:
+        candidates.add(FleetCandidate(
+          fleetId: fleetId,
+          fleet: fleet,
+          combatPower: estimateFleetCombatPower(fleet),
+          techLevel: estimateFleetTechLevel(fleet),
+          maintenanceCost: calculateFleetMaintenanceCost(fleet, FleetStatus.Active),  # Cost when reactivated
+          isReserve: true,
+          location: fleet.location
+        ))
+        break
+
+  # Gather mothballed fleets
+  for fleetId in inventory.mothballedFleets:
+    # Find fleet in ownFleets sequence
+    for fleet in filtered.ownFleets:
+      if fleet.id == fleetId:
+        candidates.add(FleetCandidate(
+          fleetId: fleetId,
+          fleet: fleet,
+          combatPower: estimateFleetCombatPower(fleet),
+          techLevel: estimateFleetTechLevel(fleet),
+          maintenanceCost: calculateFleetMaintenanceCost(fleet, FleetStatus.Active),  # Cost when reactivated
+          isReserve: false,
+          location: fleet.location
+        ))
+        break
+
+  if candidates.len == 0:
+    return @[]  # Nothing to reactivate
+
+  # =========================================================================
+  # PRIORITY 1: OPERATION-DRIVEN REACTIVATION
+  # =========================================================================
+  # If we have planned operations, check if they need more ships
+
+  for op in controller.operations:
+    # Count active fleets assigned to this operation
+    let assignedCount = op.requiredFleets.len
+
+    # Determine if operation needs more ships
+    let minRequired = case op.operationType
+      of OperationType.Invasion: 3  # Need strong assault force
+      of OperationType.Raid: 2      # Need fast strike team
+      of OperationType.Defense: 2   # Need defensive screen
+      of OperationType.Blockade: 1  # Can manage with one fleet
+
+    if assignedCount < minRequired:
+      # Operation needs more ships - reactivate closest capable fleets
+      let needed = minRequired - assignedCount
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Operation at {op.targetSystem} needs {needed} more fleets")
+
+      # Find candidates near the assembly point
+      var nearbyFleets: seq[FleetCandidate] = @[]
+      for candidate in candidates:
+        if candidate.location == op.assemblyPoint or candidate.location == op.targetSystem:
+          nearbyFleets.add(candidate)
+
+      # If not enough nearby, consider all fleets
+      if nearbyFleets.len < needed:
+        nearbyFleets = candidates
+
+      # Sort by combat power (strongest first)
+      nearbyFleets.sort(proc(a, b: FleetCandidate): int = cmp(b.combatPower, a.combatPower))
+
+      # Reactivate top N fleets needed
+      for i in 0 ..< min(needed, nearbyFleets.len):
+        result.add(nearbyFleets[i].fleetId)
+        logInfo(LogCategory.lcAI, &"{controller.houseId} Reactivating {nearbyFleets[i].fleetId} for {op.operationType} operation (power={nearbyFleets[i].combatPower})")
+
+      if result.len > 0:
+        return result  # Operation needs are highest priority
+
+  # =========================================================================
+  # PRIORITY 2: THREAT-DRIVEN REACTIVATION (SELECTIVE)
+  # =========================================================================
+  # Calculate defense gap at threatened colonies
+
+  for colony in filtered.ownColonies:
+    # Check intelligence for threats at this colony
+    if colony.systemId in controller.intelligence:
+      let report = controller.intelligence[colony.systemId]
+      let threatLevel = report.estimatedFleetStrength
+
+      if threatLevel > 100:  # Significant threat detected
+        # Calculate our current defense at this system
+        var ourDefense = 0
+        for fleetId, fleet in filtered.ownFleets:
+          if fleet.owner == controller.houseId and fleet.location == colony.systemId and fleet.status == FleetStatus.Active:
+            ourDefense += estimateFleetCombatPower(fleet)
+
+        # Add starbase defense
+        for starbase in colony.starbases:
+          ourDefense += starbase.attackStrength + starbase.defenseStrength
+
+        let defenseGap = threatLevel - ourDefense
+
+        if defenseGap > 50:  # Significant gap, need reinforcements
+          logInfo(LogCategory.lcAI, &"{controller.houseId} Defense gap at {colony.systemId}: threat={threatLevel}, defense={ourDefense}, gap={defenseGap}")
+
+          # Find fleets at this colony
+          var localDefenders: seq[FleetCandidate] = @[]
+          for candidate in candidates:
+            if candidate.location == colony.systemId:
+              localDefenders.add(candidate)
+
+          # Sort by combat power per maintenance cost (efficiency)
+          localDefenders.sort(proc(a, b: FleetCandidate): int =
+            let aEfficiency = if a.maintenanceCost > 0: a.combatPower div a.maintenanceCost else: a.combatPower
+            let bEfficiency = if b.maintenanceCost > 0: b.combatPower div b.maintenanceCost else: b.combatPower
+            cmp(bEfficiency, aEfficiency)
+          )
+
+          # Reactivate only enough to close the gap
+          var reactivatedPower = 0
+          for candidate in localDefenders:
+            if reactivatedPower < defenseGap:
+              result.add(candidate.fleetId)
+              reactivatedPower += candidate.combatPower
+              logInfo(LogCategory.lcAI, &"{controller.houseId} Reactivating {candidate.fleetId} for defense (power={candidate.combatPower}, maint={candidate.maintenanceCost})")
+
+          if result.len > 0:
+            return result  # Threat response is high priority
+
+  # =========================================================================
+  # PRIORITY 3: TREASURY-DRIVEN REACTIVATION (GRADUAL)
+  # =========================================================================
+
+  # Healthy treasury (>1000 PP): Can afford to reactivate fleets
   if inventory.totalTreasury > 1000:
-    # Can afford to bring all mothballed/reserve fleets back online
-    result.add(inventory.mothballedFleets)
-    result.add(inventory.reserveFleets)
-    for fleetId in result:
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Reactivating {fleetId} (treasury recovered)")
-    return result
+    # Calculate current average tech level of active fleet
+    var activeTechSum = 0.0
+    var activeFleetCount = 0
+    for fleetId in inventory.activeFleets:
+      for fleet in filtered.ownFleets:
+        if fleet.id == fleetId:
+          activeTechSum += estimateFleetTechLevel(fleet)
+          activeFleetCount += 1
+          break
+    let avgActiveTech = if activeFleetCount > 0: activeTechSum / float(activeFleetCount) else: 3.0
 
-  # Reactivate if under critical threat (even with low treasury)
-  var criticalThreatsDetected = 0
-  for systemId, report in controller.intelligence:
-    # Check if enemy fleet is near our colonies
-    if report.estimatedFleetStrength > 200:  # Major enemy fleet
-      # Check if near our colonies
-      for colony in filtered.ownColonies:
-        # Simple proximity check (same system or reported nearby)
-        if report.systemId == colony.systemId:
-          criticalThreatsDetected += 1
-          logInfo(LogCategory.lcAI, &"{controller.houseId} CRITICAL THREAT at {colony.systemId}: enemy fleet strength {report.estimatedFleetStrength}")
+    # Treasury 1000-2000: Reactivate reserve fleets (50% maint)
+    if inventory.totalTreasury < 2000:
+      for candidate in candidates:
+        if candidate.isReserve:
+          # Only reactivate if not obsolete
+          if candidate.techLevel >= avgActiveTech - 1.0:
+            result.add(candidate.fleetId)
+            logInfo(LogCategory.lcAI, &"{controller.houseId} Reactivating reserve {candidate.fleetId} (treasury recovered, tech={candidate.techLevel:.1f})")
+          else:
+            logInfo(LogCategory.lcAI, &"{controller.houseId} Skipping obsolete reserve {candidate.fleetId} (tech={candidate.techLevel:.1f} vs avg={avgActiveTech:.1f})")
+      return result
 
-  if criticalThreatsDetected > 0:
-    # Emergency reactivation
-    result.add(inventory.mothballedFleets)
-    result.add(inventory.reserveFleets)
-    logInfo(LogCategory.lcAI, &"{controller.houseId} EMERGENCY reactivation: {criticalThreatsDetected} critical threats detected")
+    # Treasury >2000: Reactivate mothballed fleets (0% → 100% maint jump)
+    if inventory.totalTreasury >= 2000:
+      for candidate in candidates:
+        # Only reactivate non-obsolete fleets
+        if candidate.techLevel >= avgActiveTech - 1.5:
+          result.add(candidate.fleetId)
+          let fleetType = if candidate.isReserve: "reserve" else: "mothballed"
+          logInfo(LogCategory.lcAI, &"{controller.houseId} Reactivating {fleetType} {candidate.fleetId} (treasury healthy, tech={candidate.techLevel:.1f})")
+        else:
+          logInfo(LogCategory.lcAI, &"{controller.houseId} Skipping obsolete {candidate.fleetId} (tech={candidate.techLevel:.1f} vs avg={avgActiveTech:.1f})")
+      return result
+
+  # No reactivation criteria met
+  return @[]
 
 ## =============================================================================
 ## FLEET COMPOSITION OPTIMIZATION
@@ -974,6 +1188,9 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
   # Step 5: Fleet lifecycle management (Reserve/Mothball/Salvage/Reactivate)
   result.fleetOrders = @[]
 
+  # Fleet lifecycle management based on treasury health
+  # NOTE: Functions have their own internal checks, we just call them based on general conditions
+
   if inventory.totalTreasury < 100:
     # CRITICAL treasury - salvage obsolete fleets for emergency PP
     let salvageCandidates = identifySalvageCandidates(controller, inventory, filtered)
@@ -987,8 +1204,8 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
       ))
       logInfo(LogCategory.lcAI, &"{controller.houseId} SALVAGING fleet {fleetId} for emergency PP (treasury critical)")
 
-  elif inventory.totalTreasury < 200:
-    # LOW treasury - mothball idle fleets (0% maintenance)
+  if inventory.totalTreasury < 500:
+    # LOW/MODERATE treasury - check for mothball candidates (they have internal threshold checks)
     let mothballCandidates = identifyMothballCandidates(controller, inventory, filtered)
     for fleetId in mothballCandidates:
       result.fleetOrders.add(FleetOrder(
@@ -1000,8 +1217,8 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
       ))
       logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing fleet {fleetId} (0% maint, treasury low)")
 
-  elif inventory.totalTreasury < 300:
-    # MODERATE treasury - place fleets on reserve (50% maintenance)
+  if inventory.totalTreasury >= 200 and inventory.totalTreasury <= 300:
+    # MODERATE treasury - check for reserve candidates
     let reserveCandidates = identifyReserveCandidates(controller, inventory, filtered)
     for fleetId in reserveCandidates:
       result.fleetOrders.add(FleetOrder(
@@ -1013,7 +1230,7 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
       ))
       logInfo(LogCategory.lcAI, &"{controller.houseId} Placing fleet {fleetId} on reserve (50% maint, half combat)")
 
-  elif inventory.totalTreasury > 1000:
+  if inventory.totalTreasury > 1000:
     # HEALTHY treasury - reactivate mothballed/reserve fleets
     let reactivationCandidates = identifyReactivationCandidates(controller, inventory, filtered)
     for fleetId in reactivationCandidates:
@@ -1042,8 +1259,8 @@ Maintenance: {inventory.maintenanceCost} PP/turn ({float(inventory.maintenanceCo
 
 FLEET ASSETS:
 - Total Fleets: {inventory.totalFleets}
-- Idle: {inventory.idleFleets.len}
 - Active: {inventory.activeFleets.len}
+- Reserve: {inventory.reserveFleets.len}
 - Mothballed: {inventory.mothballedFleets.len}
 
 SHIP INVENTORY:
