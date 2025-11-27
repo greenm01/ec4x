@@ -145,10 +145,15 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
 
     # Start construction (NOTE: startConstruction modifies colony in-place)
     var mutableColony = colony
+    # Check if construction slot is already occupied
+    let wasOccupied = mutableColony.underConstruction.isSome
+
     if construction.startConstruction(mutableColony, project):
       # Update game state with modified colony
-      # NOTE: underConstruction is already set by startConstruction
-      mutableColony.constructionQueue.add(project)  # Also add to build queue
+      # Only add to queue if construction slot was already occupied
+      # (if slot was empty, startConstruction already set it to underConstruction)
+      if wasOccupied:
+        mutableColony.constructionQueue.add(project)
       state.colonies[order.colonySystem] = mutableColony
 
       # CRITICAL FIX: Deduct construction cost from house treasury
@@ -1042,6 +1047,11 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
     houseFleetData,
     houseTreasuries
   )
+
+  # CRITICAL: Write modified colonies back to state
+  # Construction advances in coloniesSeq, must persist to state.colonies
+  for colony in coloniesSeq:
+    state.colonies[colony.systemId] = colony
 
   # Apply results back to game state
   for houseId, upkeep in maintenanceReport.houseUpkeep:

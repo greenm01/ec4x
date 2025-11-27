@@ -218,7 +218,7 @@ proc startConstruction*(colony: var Colony, project: ConstructionProject): bool 
   ## Construction validation happens in economy_resolution.nim via canAcceptMoreProjects().
 
   # LEGACY: Set underConstruction for first project (backwards compatibility)
-  if colony.underConstruction.isNone and colony.constructionQueue.len == 0:
+  if colony.underConstruction.isNone:
     colony.underConstruction = some(project)
 
   # Always return true - actual capacity checking happens in resolution layer
@@ -246,6 +246,11 @@ proc advanceConstruction*(colony: var Colony): Option[CompletedProject] =
 
     # Clear construction slot
     colony.underConstruction = none(ConstructionProject)
+
+    # Pull next project from queue if available
+    if colony.constructionQueue.len > 0:
+      colony.underConstruction = some(colony.constructionQueue[0])
+      colony.constructionQueue.delete(0)
 
     return some(completed)
 
