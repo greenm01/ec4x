@@ -264,18 +264,34 @@ task analyzeBalance, "Full analysis workflow: convert → analyze → report":
   echo "   • Report: balance_results/analysis_report.md"
 
 task balanceSummary, "Quick terminal summary of diagnostic data":
+  # Ensure Parquet file exists (auto-convert if needed)
+  if not fileExists("balance_results/diagnostics_combined.parquet"):
+    echo "Converting CSV to Parquet..."
+    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
   echo "Showing balance summary..."
   exec "python3 -m analysis.cli summary"
 
 task balanceByHouse, "Aggregate metrics by house":
+  # Ensure Parquet file exists (auto-convert if needed)
+  if not fileExists("balance_results/diagnostics_combined.parquet"):
+    echo "Converting CSV to Parquet..."
+    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
   echo "Analyzing metrics by house..."
   exec "python3 -m analysis.cli by-house"
 
 task balanceByTurn, "Aggregate metrics by turn":
+  # Ensure Parquet file exists (auto-convert if needed)
+  if not fileExists("balance_results/diagnostics_combined.parquet"):
+    echo "Converting CSV to Parquet..."
+    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
   echo "Analyzing metrics by turn..."
   exec "python3 -m analysis.cli by-turn"
 
 task balanceOutliers, "Detect outliers in key metrics":
+  # Ensure Parquet file exists (auto-convert if needed)
+  if not fileExists("balance_results/diagnostics_combined.parquet"):
+    echo "Converting CSV to Parquet..."
+    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
   echo "Detecting outliers in key metrics..."
   echo "\n--- Total Fighters ---"
   exec "python3 -m analysis.cli outliers total_fighters"
@@ -285,16 +301,28 @@ task balanceOutliers, "Detect outliers in key metrics":
   exec "python3 -m analysis.cli outliers invalid_orders"
 
 task balancePhase2, "Phase 2 gap analysis (terminal output)":
+  # Ensure Parquet file exists (auto-convert if needed)
+  if not fileExists("balance_results/diagnostics_combined.parquet"):
+    echo "Converting CSV to Parquet..."
+    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
   echo "Running Phase 2 gap analysis..."
   exec "python3 -m analysis.cli phase2"
 
 task balanceExport, "Export summary data to CSV for Excel/LibreOffice":
+  # Ensure Parquet file exists (auto-convert if needed)
+  if not fileExists("balance_results/diagnostics_combined.parquet"):
+    echo "Converting CSV to Parquet..."
+    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
   echo "Exporting summary data to CSV..."
   exec "python3 -m analysis.cli export balance_results/summary_by_house.csv --type by_house"
   echo "✅ Exported to balance_results/summary_by_house.csv"
   echo "   Open in Excel/LibreOffice for pivot tables and charts"
 
 task balanceReport, "Generate Markdown report (git-committable)":
+  # Ensure Parquet file exists (auto-convert if needed)
+  if not fileExists("balance_results/diagnostics_combined.parquet"):
+    echo "Converting CSV to Parquet..."
+    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
   echo "Generating Markdown analysis report..."
   exec "python3 -m analysis.reports balance_results/diagnostics_combined.parquet balance_results/analysis_report.md"
   echo "✅ Report generated: balance_results/analysis_report.md"
