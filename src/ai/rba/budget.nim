@@ -126,7 +126,7 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
         Expansion: 0.55,
         Defense: 0.15,
         Military: 0.10,
-        Intelligence: 0.15,
+        Reconnaissance: 0.15,
         SpecialUnits: 0.05,
         Technology: 0.00
       }.toTable()
@@ -139,7 +139,7 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
         Expansion: 0.30,     # Reduced slightly to fund defenses
         Defense: 0.20,
         Military: 0.30,      # Military buildup
-        Intelligence: 0.10,
+        Reconnaissance: 0.10,
         SpecialUnits: 0.05,  # Transports for aggressive AIs
         Technology: 0.05
       }.toTable()
@@ -150,7 +150,7 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
         Expansion: 0.00,     # No more colonization
         Defense: 0.15,
         Military: 0.55,      # ← 55% to military + invasions
-        Intelligence: 0.05,
+        Reconnaissance: 0.05,
         SpecialUnits: 0.15,  # Transports for invasions
         Technology: 0.10
       }.toTable()
@@ -161,7 +161,7 @@ proc allocateBudget*(act: GameAct, personality: AIPersonality,
         Expansion: 0.00,
         Defense: 0.10,
         Military: 0.60,
-        Intelligence: 0.05,
+        Reconnaissance: 0.05,
         SpecialUnits: 0.15,
         Technology: 0.10
       }.toTable()
@@ -344,20 +344,20 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
     else:
       break
 
-proc buildIntelligenceOrders*(colony: Colony, tracker: var BudgetTracker,
-                              needScouts: bool, scoutCount: int): seq[BuildOrder] =
-  ## Generate intelligence build orders (scouts)
+proc buildReconnaissanceOrders*(colony: Colony, tracker: var BudgetTracker,
+                                needScouts: bool, scoutCount: int): seq[BuildOrder] =
+  ## Generate reconnaissance build orders (scouts)
   ## Uses BudgetTracker to prevent overspending
   ##
-  ## Intelligence budget guarantees scout production for reconnaissance.
+  ## Reconnaissance budget guarantees scout production for exploration and intel gathering.
   ## Scout targets scale with game progression:
   ## - Act 1: 3 scouts minimum (exploration)
-  ## - Act 2: 6 scouts (intelligence network for invasions)
+  ## - Act 2: 6 scouts (reconnaissance network for invasions)
   ## - Act 3-4: 8 scouts (ELI mesh for invasion support)
   ##
   ## CRITICAL FIX: Build based on needScouts flag and budget, not global count check!
   ## Previous bug: scoutCount + result.len < 10 prevented ANY scout building
-  ## Now: Build if needScouts=true AND we have intelligence budget
+  ## Now: Build if needScouts=true AND we have reconnaissance budget
   result = @[]
 
   # Only build scouts if we actually need them
@@ -366,22 +366,22 @@ proc buildIntelligenceOrders*(colony: Colony, tracker: var BudgetTracker,
              &"{tracker.houseId} Colony {colony.systemId}: Skipping scout build (needScouts=false, have {scoutCount} scouts)")
     return
 
-  # Use Intelligence budget to build scouts
+  # Use Reconnaissance budget to build scouts
   let scoutCost = getShipConstructionCost(ShipClass.Scout)
   var scoutsBuilt = 0
 
   # Log budget availability for diagnostics
-  let remaining = tracker.getRemainingBudget(Intelligence)
+  let remaining = tracker.getRemainingBudget(Reconnaissance)
   logDebug(LogCategory.lcAI,
            &"{tracker.houseId} Colony {colony.systemId}: Scout build check - " &
            &"needScouts={needScouts}, scoutCount={scoutCount}, remaining={remaining}PP, cost={scoutCost}PP")
 
   # Cap: 2 scouts per colony per turn (prevents runaway loops)
   # Combined with BudgetTracker, ensures sustainable scout production
-  while tracker.canAfford(Intelligence, scoutCost) and scoutsBuilt < 2:
+  while tracker.canAfford(Reconnaissance, scoutCost) and scoutsBuilt < 2:
     logInfo(LogCategory.lcAI,
             &"{tracker.houseId} Colony {colony.systemId}: Building scout " &
-            &"(scout #{scoutCount + scoutsBuilt + 1}, remaining={tracker.getRemainingBudget(Intelligence)}PP)")
+            &"(scout #{scoutCount + scoutsBuilt + 1}, remaining={tracker.getRemainingBudget(Reconnaissance)}PP)")
     result.add(BuildOrder(
       colonySystem: colony.systemId,
       buildType: BuildType.Ship,
@@ -390,7 +390,7 @@ proc buildIntelligenceOrders*(colony: Colony, tracker: var BudgetTracker,
       buildingType: none(string),
       industrialUnits: 0
     ))
-    tracker.recordSpending(Intelligence, scoutCost)
+    tracker.recordSpending(Reconnaissance, scoutCost)
     scoutsBuilt += 1
 
   if scoutsBuilt == 0 and needScouts:
@@ -726,9 +726,9 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     result.add(militaryOrders)
     projectedMilitaryCount += militaryOrders.len  # Update projected count
 
-    let intelligenceOrders = buildIntelligenceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
-    result.add(intelligenceOrders)
-    projectedScoutCount += intelligenceOrders.len  # Update projected count
+    let reconnaissanceOrders = buildReconnaissanceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
+    result.add(reconnaissanceOrders)
+    projectedScoutCount += reconnaissanceOrders.len  # Update projected count
 
     result.add(buildSpecialUnitsOrders(colony, tracker, needFighters, needCarriers,
                                       needTransports, needRaiders, canAffordMoreShips, cstLevel))
