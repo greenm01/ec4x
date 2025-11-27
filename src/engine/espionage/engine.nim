@@ -52,7 +52,7 @@ proc executeTechTheft*(attacker: HouseId, target: HouseId,
   let prestigeConfig = globalPrestigeConfig
   let espConfig = globalEspionageConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.TechTheft,
@@ -88,8 +88,6 @@ proc executeTechTheft*(attacker: HouseId, target: HouseId,
       "Research stolen"
     ))
 
-  return result
-
 proc executeSabotageLow*(attacker: HouseId, target: HouseId, targetSystem: SystemId,
                         detected: bool, rng: var Rand): EspionageResult =
   ## Execute low impact sabotage
@@ -97,7 +95,7 @@ proc executeSabotageLow*(attacker: HouseId, target: HouseId, targetSystem: Syste
 
   let config = globalPrestigeConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.SabotageLow,
@@ -132,8 +130,6 @@ proc executeSabotageLow*(attacker: HouseId, target: HouseId, targetSystem: Syste
       "Industrial sabotage (" & $result.iuDamage & " IU lost)"
     ))
 
-  return result
-
 proc executeSabotageHigh*(attacker: HouseId, target: HouseId, targetSystem: SystemId,
                          detected: bool, rng: var Rand): EspionageResult =
   ## Execute high impact sabotage
@@ -141,7 +137,7 @@ proc executeSabotageHigh*(attacker: HouseId, target: HouseId, targetSystem: Syst
 
   let config = globalPrestigeConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.SabotageHigh,
@@ -176,8 +172,6 @@ proc executeSabotageHigh*(attacker: HouseId, target: HouseId, targetSystem: Syst
       "Devastating sabotage (" & $result.iuDamage & " IU lost)"
     ))
 
-  return result
-
 proc executeAssassination*(attacker: HouseId, target: HouseId,
                           detected: bool): EspionageResult =
   ## Execute assassination
@@ -185,7 +179,7 @@ proc executeAssassination*(attacker: HouseId, target: HouseId,
 
   let config = globalPrestigeConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.Assassination,
@@ -226,7 +220,6 @@ proc executeAssassination*(attacker: HouseId, target: HouseId,
       "Key figure assassinated"
     ))
 
-  return result
 
 proc executeCyberAttack*(attacker: HouseId, target: HouseId, targetSystem: SystemId,
                         detected: bool): EspionageResult =
@@ -235,7 +228,7 @@ proc executeCyberAttack*(attacker: HouseId, target: HouseId, targetSystem: Syste
 
   let config = globalPrestigeConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.CyberAttack,
@@ -276,7 +269,6 @@ proc executeCyberAttack*(attacker: HouseId, target: HouseId, targetSystem: Syste
       "Starbase crippled by cyber attack"
     ))
 
-  return result
 
 proc executeEconomicManipulation*(attacker: HouseId, target: HouseId,
                                   detected: bool): EspionageResult =
@@ -285,7 +277,7 @@ proc executeEconomicManipulation*(attacker: HouseId, target: HouseId,
 
   let config = globalPrestigeConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.EconomicManipulation,
@@ -326,7 +318,6 @@ proc executeEconomicManipulation*(attacker: HouseId, target: HouseId,
       "Economy disrupted"
     ))
 
-  return result
 
 proc executePsyopsCampaign*(attacker: HouseId, target: HouseId,
                            detected: bool): EspionageResult =
@@ -335,7 +326,7 @@ proc executePsyopsCampaign*(attacker: HouseId, target: HouseId,
 
   let config = globalPrestigeConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.PsyopsCampaign,
@@ -376,14 +367,13 @@ proc executePsyopsCampaign*(attacker: HouseId, target: HouseId,
       "Public morale damaged by propaganda"
     ))
 
-  return result
 
 proc executeCounterIntelSweep*(attacker: HouseId, detected: bool): EspionageResult =
   ## Execute Counter-Intelligence Sweep (defensive operation)
   ## Block enemy intelligence gathering for 1 turn
   ## 4 EBP cost
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,  # Success if not detected (clean your own intel)
     detected: detected,
     action: EspionageAction.CounterIntelSweep,
@@ -415,14 +405,13 @@ proc executeCounterIntelSweep*(attacker: HouseId, detected: bool): EspionageResu
       "Counter-intelligence sweep successful"
     ))
 
-  return result
 
 proc executeIntelligenceTheft*(attacker: HouseId, target: HouseId, detected: bool): EspionageResult =
   ## Execute Intelligence Theft
   ## Steal entire intelligence database from target
   ## 8 EBP cost - high value action
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.IntelligenceTheft,
@@ -457,7 +446,6 @@ proc executeIntelligenceTheft*(attacker: HouseId, target: HouseId, detected: boo
       "Intelligence database compromised"
     ))
 
-  return result
 
 proc executePlantDisinformation*(attacker: HouseId, target: HouseId, detected: bool): EspionageResult =
   ## Execute Plant Disinformation
@@ -465,7 +453,7 @@ proc executePlantDisinformation*(attacker: HouseId, target: HouseId, detected: b
   ## 6 EBP cost - subtle sabotage
   let espionageConfig = globalEspionageConfig
 
-  var result = EspionageResult(
+  result = EspionageResult(
     success: not detected,
     detected: detected,
     action: EspionageAction.PlantDisinformation,
@@ -505,7 +493,6 @@ proc executePlantDisinformation*(attacker: HouseId, target: HouseId, detected: b
       "Disinformation campaign successful"
     ))
 
-  return result
 
 ## Main Espionage Execution
 
