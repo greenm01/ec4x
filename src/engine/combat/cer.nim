@@ -49,6 +49,11 @@ proc roll1d10*(rng: var CombatRNG): int =
   ## Spec uses "natural 9" for critical, which is roll result 9
   rng.rollDie(10) - 1  # Convert to 0-9 range
 
+proc roll1d20*(rng: var CombatRNG): int =
+  ## Roll a standard 1D20 die for ground combat and shield rolls
+  ## Returns 1-20 (inclusive)
+  rng.rollDie(20)
+
 ## CER Calculation (Section 7.3.3)
 
 proc calculateModifiers*(

@@ -157,9 +157,8 @@ proc rollShieldBlock*(shieldLevel: int, rng: var CombatRNG): (bool, float) =
 
   let (rollNeeded, blockPct) = getShieldData(shieldLevel)
 
-  # Roll 1d20 (extend RNG to support d20)
-  # TODO: Add roll1d20() to CER module
-  let roll = (rng.roll1d10() * 2) mod 20 + 1  # TEMP: Simulate d20
+  # Roll 1d20 using proper function from CER module
+  let roll = rng.roll1d20()
 
   if roll >= rollNeeded:
     return (true, blockPct)
