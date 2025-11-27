@@ -504,7 +504,7 @@ proc conductBlitz*(
   # Phase 1: One round of bombardment (transports vulnerable)
   # Section 7.6.2: "Troop transports are included as individual units"
   # Note: This would need mutable fleet access, simplified for now
-  let bombResult = resolveBombardmentRound(attackingFleet, defense, rng)
+  discard resolveBombardmentRound(attackingFleet, defense, rng)
 
   # Check if transports survived (simplified - track in fleet)
   # In full implementation, transports would be in attackingFleet

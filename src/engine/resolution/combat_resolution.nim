@@ -418,7 +418,6 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
   # 5. Apply losses to game state
   # Combine outcomes from both combat phases
-  var allCombatFleets = spaceCombatFleets & orbitalCombatFleets
   var combinedOutcome: CombatResult
   if spaceCombatOutcome.totalRounds > 0:
     combinedOutcome = spaceCombatOutcome

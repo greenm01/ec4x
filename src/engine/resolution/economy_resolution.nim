@@ -1993,12 +1993,6 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             # Capital ships always create new squadrons (they're flagships)
             var addedToSquadron = false
 
-            let isCapitalShip = shipClass in [
-              ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought,
-              ShipClass.Carrier, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
-              ShipClass.HeavyCruiser, ShipClass.Cruiser
-            ]
-
             let isEscort = shipClass in [
               ShipClass.Scout, ShipClass.Frigate, ShipClass.Destroyer,
               ShipClass.Corvette, ShipClass.LightCruiser
