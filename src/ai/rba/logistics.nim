@@ -616,22 +616,30 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
   ## - Just needs friendly colony (powered down in orbit)
   ## - 1-turn reactivation delay
   ##
-  ## Use when:
-  ## - Treasury low (<500 PP) and maintenance burden high
-  ## - Fleet obsolete (low-tech ships vs high-tech enemies)
-  ## - Fleet in safe rear system
-  ## - Long-term storage better than salvage
+  ## TWO mothballing paths:
+  ## 1. FINANCIAL: Treasury stressed + high maintenance burden
+  ## 2. OBSOLESCENCE: Old tech fleets in safe systems (any treasury level)
 
   result = @[]
 
-  # Only consider mothballing if treasury is stressed
-  if inventory.totalTreasury > 500:
-    return @[]
+  # Determine mothballing strategy
+  var financialMothball = false
+  var obsolescenceMothball = false
 
-  # Check maintenance burden vs production
-  let maintenanceRatio = float(inventory.maintenanceCost) / float(inventory.totalProduction)
-  if maintenanceRatio < 0.15:  # Less than 15% of production
-    return @[]  # Maintenance is manageable
+  # Path 1: Financial stress mothballing
+  if inventory.totalTreasury < 500:
+    let maintenanceRatio = float(inventory.maintenanceCost) / float(inventory.totalProduction)
+    if maintenanceRatio >= 0.15:  # 15%+ of production going to maintenance
+      financialMothball = true
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Financial stress (treasury={inventory.totalTreasury}PP, maint={maintenanceRatio*100:.1f}%)")
+
+  # Path 2: Obsolescence mothballing (always active in mid/late game)
+  if inventory.totalFleets >= 3:  # Have enough fleets to spare some
+    obsolescenceMothball = true
+    logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Obsolescence check (fleets={inventory.totalFleets})")
+
+  if not financialMothball and not obsolescenceMothball:
+    return @[]
 
   # Track colonies that already have mothballed fleets (one per colony limit)
   var coloniesWithMothball: HashSet[SystemId]
@@ -700,10 +708,23 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
     # Check if fleet is obsolete (tech level < 3)
     let isObsolete = avgTechLevel < 3.0
 
-    if isSafeSystem and isObsolete:
+    # Mothball decision based on active path
+    var shouldMothball = false
+    var reason = ""
+
+    if financialMothball and isSafeSystem:
+      # Financial path: mothball ANY fleet in safe system to reduce maintenance
+      shouldMothball = true
+      reason = "financial"
+    elif obsolescenceMothball and isSafeSystem and isObsolete:
+      # Obsolescence path: mothball only obsolete fleets
+      shouldMothball = true
+      reason = "obsolete"
+
+    if shouldMothball:
       result.add(fleet.id)
       coloniesWithMothball.incl(fleet.location)  # Track for one-per-colony
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball candidate: {fleet.id} at {fleet.location} (tech={avgTechLevel:.1f}, treasury={inventory.totalTreasury}PP, maint={maintenanceRatio*100:.1f}%)")
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing {fleet.id} ({reason}, tech={avgTechLevel:.1f}, location={fleet.location})")
 
 proc identifySalvageCandidates*(controller: AIController, inventory: AssetInventory,
                                 filtered: FilteredGameState): seq[FleetId] =
@@ -942,9 +963,8 @@ proc identifyReactivationCandidates*(controller: AIController, inventory: AssetI
           if fleet.owner == controller.houseId and fleet.location == colony.systemId and fleet.status == FleetStatus.Active:
             ourDefense += estimateFleetCombatPower(fleet)
 
-        # Add starbase defense
-        for starbase in colony.starbases:
-          ourDefense += starbase.attackStrength + starbase.defenseStrength
+        # Add starbase defense (simplified: 100 points per starbase)
+        ourDefense += colony.starbases.len * 100
 
         let defenseGap = threatLevel - ourDefense
 
@@ -1204,18 +1224,17 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
       ))
       logInfo(LogCategory.lcAI, &"{controller.houseId} SALVAGING fleet {fleetId} for emergency PP (treasury critical)")
 
-  if inventory.totalTreasury < 500:
-    # LOW/MODERATE treasury - check for mothball candidates (they have internal threshold checks)
-    let mothballCandidates = identifyMothballCandidates(controller, inventory, filtered)
-    for fleetId in mothballCandidates:
-      result.fleetOrders.add(FleetOrder(
-        fleetId: fleetId,
-        orderType: FleetOrderType.Mothball,
-        targetSystem: none(SystemId),
-        targetFleet: none(FleetId),
-        priority: 150
-      ))
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing fleet {fleetId} (0% maint, treasury low)")
+  # Check for mothball candidates (handles both financial + obsolescence paths)
+  let mothballCandidates = identifyMothballCandidates(controller, inventory, filtered)
+  for fleetId in mothballCandidates:
+    result.fleetOrders.add(FleetOrder(
+      fleetId: fleetId,
+      orderType: FleetOrderType.Mothball,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 150
+    ))
+    logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing fleet {fleetId} (0% maint)")
 
   if inventory.totalTreasury >= 200 and inventory.totalTreasury <= 300:
     # MODERATE treasury - check for reserve candidates
