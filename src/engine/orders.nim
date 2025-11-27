@@ -383,7 +383,6 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
             &"{packet.houseId} Build orders: {validBuildOrders}/{packet.buildOrders.len} valid")
 
   # Validate research allocation (check total points available)
-  let house = state.houses[packet.houseId]
   # Note: Actual PP availability check happens during resolution (after income phase)
   # Here we just validate structure - allocation can't be negative
   if packet.researchAllocation.economic < 0 or packet.researchAllocation.science < 0:
@@ -549,8 +548,6 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
   if order.colonySystem notin state.colonies:
     return ValidationResult(valid: false,
                            error: &"Build order: Colony not found at system {order.colonySystem}")
-
-  let colony = state.colonies[order.colonySystem]
 
   # Calculate cost
   let cost = calculateBuildOrderCost(order, state)
