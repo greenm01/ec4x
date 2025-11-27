@@ -337,6 +337,65 @@ proc getCompositionDoctrine(personality: AIPersonality): CompositionDoctrine =
       specialistRatio: 0.15  # 15% specialists
     )
 
+proc assessAggregateThreat(intelligence: Table[SystemId, IntelligenceReport],
+                          personality: AIPersonality): float =
+  ## Assess overall enemy threat level from intelligence reports
+  ## Returns threat modifier (0.8-1.2) for strategic adjustment
+  ##
+  ## Phase 4: Counter-Strategy Adaptation (Simplified)
+  ## Uses aggregate threat assessment due to fog-of-war limitations
+
+  var totalThreat = 0
+  var threatenedSystemCount = 0
+
+  # Aggregate enemy fleet strength across all intel reports
+  for systemId, report in intelligence:
+    if report.estimatedFleetStrength > 0 and report.owner.isSome:
+      totalThreat += report.estimatedFleetStrength
+      threatenedSystemCount += 1
+
+  # No significant threats detected
+  if totalThreat < 100:
+    return 1.0  # Neutral - maintain current strategy
+
+  # Calculate average threat per system
+  let avgThreatPerSystem = if threatenedSystemCount > 0:
+    float(totalThreat) / float(threatenedSystemCount)
+  else:
+    0.0
+
+  # Strategic adjustments based on personality and threat level
+  # High aggression: More aggressive when threatened (build more capitals)
+  # High risk tolerance: Less reactive to threats
+  # Low aggression: More defensive when threatened (build more escorts)
+
+  if personality.aggression >= 0.7:
+    # Aggressive: Escalate in response to threats (build bigger ships)
+    if avgThreatPerSystem > 200:
+      return 1.15  # 15% boost to capital preference
+    elif avgThreatPerSystem > 100:
+      return 1.08  # 8% boost
+    else:
+      return 1.0
+
+  elif personality.riskTolerance < 0.3:
+    # Risk-averse: Build defensive escorts when threatened
+    if avgThreatPerSystem > 150:
+      return 0.85  # 15% penalty to capitals (favor escorts)
+    elif avgThreatPerSystem > 100:
+      return 0.92  # 8% penalty
+    else:
+      return 1.0
+
+  else:
+    # Balanced: Slight escalation under pressure
+    if avgThreatPerSystem > 200:
+      return 1.10
+    elif avgThreatPerSystem > 150:
+      return 1.05
+    else:
+      return 1.0
+
 proc calculateShipPreference(personality: AIPersonality, shipClass: ShipClass): float =
   ## Calculate personality-based preference weight for ship types
   ## Returns multiplier (0.5x to 1.5x) based on personality traits
@@ -423,7 +482,8 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
                          militaryCount: int, canAffordMoreShips: bool,
                          atSquadronLimit: bool, cstLevel: int, act: GameAct,
                          personality: AIPersonality,
-                         composition: FleetComposition): seq[BuildOrder] =
+                         composition: FleetComposition,
+                         intelligence: Table[SystemId, IntelligenceReport]): seq[BuildOrder] =
   ## Generate military build orders with PERSONALITY-DRIVEN ship preferences
   ## Uses BudgetTracker to prevent overspending
   ##
@@ -560,7 +620,11 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
     let currentEscortRatio = if composition.total > 0: float(composition.escorts) / float(composition.total) else: 0.0
     let currentSpecialistRatio = if composition.total > 0: float(composition.specialists) / float(composition.total) else: 0.0
 
-    # Select ship with highest weighted score (personality × composition)
+    # PHASE 4: COUNTER-STRATEGY ADAPTATION
+    # Assess aggregate threat and apply strategic modifiers
+    let threatModifier = assessAggregateThreat(intelligence, personality)
+
+    # Select ship with highest weighted score (personality × composition × threat)
     var bestScore = 0.0
     var bestCandidate: ShipCandidate
     for candidate in candidates:
@@ -569,9 +633,14 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
       of ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship, ShipClass.Battlecruiser:
         # Capital ship: Boost if under target ratio
         compositionModifier = if currentCapitalRatio < doctrine.capitalRatio: 1.3 else: 1.0
+        # Apply threat modifier to capitals (aggressive AIs escalate, defensive avoid)
+        compositionModifier *= threatModifier
       of ShipClass.HeavyCruiser, ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.Destroyer, ShipClass.Frigate, ShipClass.Corvette:
         # Escort: Boost if under target ratio
         compositionModifier = if currentEscortRatio < doctrine.escortRatio: 1.3 else: 1.0
+        # Inverse threat modifier for escorts (defensive AIs build more when threatened)
+        if threatModifier < 1.0:
+          compositionModifier *= (2.0 - threatModifier)  # Convert 0.85 to 1.15, etc.
       else:
         # Specialist: No adjustment for military orders (handled in special units)
         compositionModifier = 1.0
@@ -1038,7 +1107,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
       result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
 
       let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
-                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality, currentComposition)
+                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality, currentComposition, controller.intelligence)
       result.add(militaryOrders)
       projectedMilitaryCount += militaryOrders.len  # Update projected count
 
