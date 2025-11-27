@@ -9,7 +9,7 @@
 ## - NCV (Net Colony Value): Taxed colony revenue
 ## - IU (Industrial Units): Manufacturing capacity
 
-import std/[tables, options]
+import std/[tables, options, math]
 import ../../common/types/[core, planets]
 import ../prestige  # For PrestigeEvent
 
@@ -125,29 +125,71 @@ const
   # Tax rate thresholds
   TAX_HIGH_THRESHOLD* = 50     # Above this triggers prestige penalty
 
-  # Population growth
-  BASE_POPULATION_GROWTH* = 0.015  # 1.5% per turn base rate
-
   # Industrial unit base cost
   BASE_IU_COST* = 30           # Base cost for IU up to 50% of PU
+
+  # NOTE: BASE_POPULATION_GROWTH removed - now loaded from config/economy.toml
+  # Use GameConfig.economy.naturalGrowthRate instead
 
 ## Helper Procs
 
 proc calculatePTU*(pu: int): int =
   ## Convert PU to PTU per economy.md:3.1
-  ## PTU = pu - 1 + exp(0.00657 * pu)
+  ## Formula: PTU = pu - 1 + exp(0.00657 * pu)
   ##
-  ## TODO: Implement proper exponential conversion
-  ## For now, simple linear approximation
-  result = pu
+  ## This exponential relationship models dis-inflationary economics:
+  ## High-PU colonies contribute many PTUs with minimal PU loss,
+  ## incentivizing population concentration and growth.
+
+  if pu <= 0:
+    return 0
+
+  if pu == 1:
+    # PTU = 1 - 1 + exp(0.00657) = 0 + 1.0066 ≈ 1
+    return 1
+
+  const conversionFactor = 0.00657
+  let exponent = conversionFactor * float(pu)
+  let expValue = exp(exponent)
+
+  result = pu - 1 + int(round(expValue))
 
 proc calculatePU*(ptu: int): int =
   ## Convert PTU to PU per economy.md:3.1
-  ## Uses Lambert W function (complex)
+  ## Inverse of calculatePTU using binary search approximation
+  ## (Lambert W function is complex to implement in Nim)
   ##
-  ## TODO: Implement proper inverse conversion
-  ## For now, simple linear approximation
-  result = ptu
+  ## Accurate within ±1 PU which is acceptable for game mechanics
+
+  if ptu <= 0:
+    return 0
+
+  if ptu == 1:
+    return 1
+
+  # Binary search for PU that gives target PTU
+  var low = 1
+  var high = ptu + 100  # Upper bound estimate
+
+  while low < high:
+    let mid = (low + high) div 2
+    let calculatedPTU = calculatePTU(mid)
+
+    if calculatedPTU < ptu:
+      low = mid + 1
+    elif calculatedPTU > ptu:
+      high = mid
+    else:
+      return mid  # Exact match
+
+  # Return closest PU value
+  let ptuLow = calculatePTU(low)
+  let ptuHigh = if high <= ptu + 100: calculatePTU(high) else: int.high
+
+  if abs(ptuLow - ptu) < abs(ptuHigh - ptu):
+    result = low
+  else:
+    result = high
 
 # initColony has been moved to colonization/engine.nim as initNewColony
 # This creates the full unified Colony type with all gamestate fields initialized

@@ -6,20 +6,9 @@ import std/[tables, options, random, sequtils, algorithm]
 import ../../common/types/[core, planets]
 import ../../engine/[gamestate, fog_of_war, orders]
 import ./controller_types
+import ./config  # RBA configuration system
 
 export core, orders
-
-proc generatePopulationTransfers*(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[PopulationTransferOrder] =
-  ## DEPRECATED: Population transfers moved to logistics.nim
-  ## See: /docs/ai/RBA_MODULE_OVERLAP_ANALYSIS.md Section 1
-  ##
-  ## The logistics module now handles population transfers with:
-  ## - Intel-based threat assessment
-  ## - Better frontier scoring using confidence levels
-  ## - Consistency with other asset management decisions
-  ##
-  ## This stub kept for API compatibility only.
-  result = @[]
 
 proc generateTerraformOrders*(controller: AIController, filtered: FilteredGameState, rng: var Rand): seq[TerraformOrder] =
   ## Generate terraforming upgrade orders for planet class improvements
@@ -72,15 +61,14 @@ proc generateTerraformOrders*(controller: AIController, filtered: FilteredGameSt
     if terLevel < targetClass:
       continue
 
-    # Calculate upgrade cost (from economy.md:4.7 or config)
-    # Rough estimate: 60 PP for Extreme→Desolate, up to 2000 PP for Lush→Eden
+    # Calculate upgrade cost (from config, based on economy.md:4.7)
     let cost = case targetClass
-      of 1: 60     # Extreme → Desolate
-      of 2: 150    # Desolate → Hostile
-      of 3: 350    # Hostile → Harsh
-      of 4: 600    # Harsh → Benign
-      of 5: 1000   # Benign → Lush
-      of 6: 2000   # Lush → Eden
+      of 1: globalRBAConfig.economic.terraforming_costs.extreme_to_desolate     # Extreme → Desolate
+      of 2: globalRBAConfig.economic.terraforming_costs.desolate_to_hostile    # Desolate → Hostile
+      of 3: globalRBAConfig.economic.terraforming_costs.hostile_to_harsh       # Hostile → Harsh
+      of 4: globalRBAConfig.economic.terraforming_costs.harsh_to_benign        # Harsh → Benign
+      of 5: globalRBAConfig.economic.terraforming_costs.benign_to_lush         # Benign → Lush
+      of 6: globalRBAConfig.economic.terraforming_costs.lush_to_eden           # Lush → Eden
       else: 1000
 
     # Skip if we can't afford it

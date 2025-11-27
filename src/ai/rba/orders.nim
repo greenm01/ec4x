@@ -9,6 +9,7 @@ import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../engine/research/types as res_types
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
 import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics, standing_orders_manager]
+import ./config  # RBA configuration system
 
 export core, orders, standing_orders_manager
 
@@ -163,14 +164,42 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   var reservedBudgets = initTable[string, int]()
 
   # 1. RESEARCH CLAIMS FIRST (highest priority)
-  let researchBudget = int(float(remainingTreasury) * p.techPriority)
+  # CRITICAL FIX: Cap research at 25% to leave budget for builds (scouts, ships, facilities)
+  # Previous bug: techPriority=0.8 → 80% to research, only 20% for builds → no scouts!
+  # Fixed: Max 25% to research, min 75% for builds → scouts affordable
+  let researchPct = min(p.techPriority * 0.30, globalRBAConfig.orders.research_max_percent)  # Scale down and cap
+  let researchBudget = int(float(remainingTreasury) * researchPct)
   result.researchAllocation = generateResearchAllocation(controller, filtered)
   remainingTreasury -= researchBudget
   reservedBudgets["research"] = researchBudget
 
   logDebug(LogCategory.lcAI,
-           &"{controller.houseId} Treasury reservation: Research={researchBudget}PP, " &
+           &"{controller.houseId} Treasury reservation: Research={researchBudget}PP ({int(researchPct*100)}%), " &
            &"remaining={remainingTreasury}PP")
+
+  # ==========================================================================
+  # 2. ESPIONAGE CLAIMS SECOND (from ORIGINAL treasury, not remaining)
+  # ==========================================================================
+  # CRITICAL FIX: Calculate espionage from ORIGINAL treasury, not remaining!
+  # Previous bug: Espionage got 2-5% of remaining treasury (after research took 50-100%) = ~0 PP
+  # Now: Espionage gets 2-5% of ORIGINAL treasury, guaranteeing meaningful budget
+  #
+  # Example: Treasury=500, Research=60%=300, Espionage=3% of REMAINING=6 (0 EBP!) ❌
+  # Fixed:   Treasury=500, Research=60%=300, Espionage=3% of ORIGINAL=15 (7 EBP) ✓
+  let projectedTreasury = calculateProjectedTreasury(filtered)  # Cache original value
+  let espionageInvestmentPct = globalRBAConfig.orders.espionage_investment_percent
+
+  let espionageTotalInvestment = int(float(projectedTreasury) * espionageInvestmentPct)
+  let espionageEBPInvestment = espionageTotalInvestment div 2  # Half to offensive EBP
+  let espionageCIPInvestment = espionageTotalInvestment div 2  # Half to defensive CIP
+  remainingTreasury -= espionageTotalInvestment
+  reservedBudgets["espionage"] = espionageTotalInvestment
+
+  logInfo(LogCategory.lcAI,
+          &"DIAGNOSTIC: {controller.houseId} Espionage budget BEFORE builds: " &
+          &"treasury={filtered.ownHouse.treasury}, investment={espionageTotalInvestment}PP " &
+          &"({int(espionageInvestmentPct * 100)}%), EBP={espionageEBPInvestment}, CIP={espionageCIPInvestment}, " &
+          &"remaining={remainingTreasury}PP")
 
   # ==========================================================================
   # STRATEGIC PLANNING
@@ -189,8 +218,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   # Calculate context flags for build decision-making
   # These are simple heuristics - budget module makes the final decisions
-  # 2. BUILD ORDERS CLAIM SECOND (from remaining treasury)
-  let availableBudget = remainingTreasury  # Use remaining after research, not full treasury!
+  # 3. BUILD ORDERS CLAIM THIRD (from remaining treasury after research and espionage)
+  let availableBudget = remainingTreasury  # Use remaining after research and espionage, not full treasury!
 
   # Count military vs scout squadrons and special units
   var militaryCount = 0
@@ -205,8 +234,12 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
       else:
         militaryCount += 1
 
-  let canAffordMoreShips = availableBudget >= 200  # Basic affordability check
+  let canAffordMoreShips = availableBudget >= 50  # Allow even cheap corvettes (50 PP)
   let atSquadronLimit = false  # Engine manages squadron limits, we just build
+
+  # Log affordability decision for diagnostics
+  logDebug(LogCategory.lcAI,
+    &"Build affordability: budget={availableBudget}PP, threshold=50PP, canAfford={canAffordMoreShips}")
 
   # Simple threat assessment
   let isUnderThreat = filtered.visibleFleets.anyIt(it.owner != controller.houseId)
@@ -237,13 +270,18 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Scouts: For intelligence gathering and ELI mesh
   # CRITICAL FIX: Build scouts BEFORE we find enemies (not after!)
   # Scouts are needed to FIND enemy colonies, so can't wait for knownEnemyColonies > 0
+  # INCREASED THRESHOLDS: Target 5-7 scouts for robust ELI mesh coverage
   let needScouts = case currentAct
     of GameAct.Act1_LandGrab:
-      scoutCount < 3  # 3 scouts minimum for exploration & early intel
+      scoutCount < globalRBAConfig.orders.scout_count_act1  # 5 scouts minimum for exploration & early intel
     of GameAct.Act2_RisingTensions:
-      scoutCount < 6  # 6 scouts for intelligence network (ELI mesh preparation)
+      scoutCount < globalRBAConfig.orders.scout_count_act2  # 7 scouts for intelligence network (ELI mesh preparation)
     else:
-      scoutCount < 8  # Act 3+: 8 scouts for full ELI mesh + espionage support
+      scoutCount < globalRBAConfig.orders.scout_count_act3_plus  # Act 3+: 9 scouts for full ELI mesh + espionage support
+
+  logInfo(LogCategory.lcAI,
+          &"DIAGNOSTIC: {controller.houseId} Scout decision - Act={currentAct}, " &
+          &"scoutCount={scoutCount}, needScouts={needScouts}")
 
   # CRITICAL FIX: Build defenses earlier! Ground batteries need CST 1, not CST 3
   # Old logic required CST 3, leaving 59% of colonies undefended
@@ -300,6 +338,14 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   for order in tacticalOrders:
     result.fleetOrders.add(order)
 
+  # Mark systems for intelligence updates based on fleet movements
+  # Intelligence will be gathered when fleets arrive at destination systems
+  for order in result.fleetOrders:
+    if order.orderType == FleetOrderType.Move and order.targetSystem.isSome:
+      # Note: Intel update happens automatically during resolution when fleet arrives
+      # This comment documents the expected behavior
+      discard
+
   # ==========================================================================
   # LOGISTICS (Asset Lifecycle Management)
   # ==========================================================================
@@ -348,43 +394,23 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   result.diplomaticActions = @[]
 
   # ==========================================================================
-  # ESPIONAGE (Using RBA Espionage Module)
+  # ESPIONAGE ACTION GENERATION (Budget already reserved above)
   # ==========================================================================
-  # 3. ESPIONAGE CLAIMS THIRD (from remaining treasury after research and builds)
-  # PHASE 1: Calculate espionage investment (2-5% of treasury)
-  # This determines how many EBP/CIP points we'll have THIS TURN
-  let espionageInvestment = if p.riskTolerance > 0.6:
-    0.05  # High risk tolerance: 5% investment
-  elif p.economicFocus > 0.7:
-    0.02  # Economic focus: 2% investment (minimal)
-  else:
-    0.03  # Balanced: 3% investment
-
-  let totalInvestment = int(float(remainingTreasury) * espionageInvestment)  # Use remaining, not full treasury!
-  let ebpInvestment = totalInvestment div 2  # Half to offensive EBP
-  let cipInvestment = totalInvestment div 2  # Half to defensive CIP
-  remainingTreasury -= totalInvestment
-  reservedBudgets["espionage"] = totalInvestment
-
-  # PHASE 2: Calculate projected EBP/CIP (current + investment)
+  # Calculate projected EBP/CIP (current + investment)
   # This is the budget available THIS TURN for espionage actions
-  let projectedEBP = filtered.ownHouse.espionageBudget.ebpPoints + ebpInvestment
-  let projectedCIP = filtered.ownHouse.espionageBudget.cipPoints + cipInvestment
-
-  logDebug(LogCategory.lcAI,
-           &"{controller.houseId} Treasury reservation: Espionage={totalInvestment}PP, " &
-           &"remaining={remainingTreasury}PP")
+  let projectedEBP = filtered.ownHouse.espionageBudget.ebpPoints + espionageEBPInvestment
+  let projectedCIP = filtered.ownHouse.espionageBudget.cipPoints + espionageCIPInvestment
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Turn {filtered.turn}: Espionage budget - " &
-          &"investment={totalInvestment}PP, projected EBP={projectedEBP}, projected CIP={projectedCIP}")
+          &"investment={espionageTotalInvestment}PP, projected EBP={projectedEBP}, projected CIP={projectedCIP}")
 
-  # PHASE 3: Generate espionage action using projected budget
+  # Generate espionage action using projected budget
   result.espionageAction = generateEspionageAction(controller, filtered, projectedEBP, projectedCIP, rng)
 
-  # PHASE 4: Store investment in order packet (will be processed by engine)
-  result.ebpInvestment = ebpInvestment
-  result.cipInvestment = cipInvestment
+  # Store investment in order packet (will be processed by engine)
+  result.ebpInvestment = espionageEBPInvestment
+  result.cipInvestment = espionageCIPInvestment
 
   # ==========================================================================
   # ECONOMIC ORDERS (Using RBA Economic Module)

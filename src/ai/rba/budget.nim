@@ -13,6 +13,7 @@ import ../common/types
 import ../../engine/[gamestate, orders, fleet, logger, fog_of_war]
 import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../common/types/[core, units]
+import ./config  # RBA configuration system
 
 # =============================================================================
 # Budget Tracker - Running Budget Management
@@ -114,60 +115,26 @@ proc logBudgetSummary*(tracker: BudgetTracker) =
 
 proc allocateBudget*(act: GameAct, personality: AIPersonality,
                      isUnderThreat: bool = false): BudgetAllocation =
-  ## Calculate budget allocation percentages based on game act and personality
+  ## Calculate budget allocation percentages from config based on game act
+  ## Loads values from config/rba.toml instead of hardcoded constants
   ##
   ## Returns percentage allocation that sums to 1.0
 
-  result = case act
-    of GameAct.Act1_LandGrab:
-      # Focus: Rapid expansion, minimal military
-      # INCREASED Defense from 0.10 to 0.15 - colonies need ground batteries!
-      {
-        Expansion: 0.55,
-        Defense: 0.15,
-        Military: 0.10,
-        Reconnaissance: 0.15,
-        SpecialUnits: 0.05,
-        Technology: 0.00
-      }.toTable()
+  let cfg = case act
+    of GameAct.Act1_LandGrab: globalRBAConfig.budget.act1_land_grab
+    of GameAct.Act2_RisingTensions: globalRBAConfig.budget.act2_rising_tensions
+    of GameAct.Act3_TotalWar: globalRBAConfig.budget.act3_total_war
+    of GameAct.Act4_Endgame: globalRBAConfig.budget.act4_endgame
 
-    of GameAct.Act2_RisingTensions:
-      # CRITICAL TRANSITION: Military buildup begins while continuing expansion
-      # Act 2 should maintain momentum from Act 1, not collapse expansion
-      # INCREASED Defense from 0.15 to 0.20 - protect growing empire
-      {
-        Expansion: 0.30,     # Reduced slightly to fund defenses
-        Defense: 0.20,
-        Military: 0.30,      # Military buildup
-        Reconnaissance: 0.10,
-        SpecialUnits: 0.05,  # Transports for aggressive AIs
-        Technology: 0.05
-      }.toTable()
-
-    of GameAct.Act3_TotalWar:
-      # Focus: Conquest and invasion
-      # CRITICAL: Reserve 10% Expansion for rebuilding facilities destroyed in orbital combat
-      # Shipyards/Spaceports are destroyed when colonies change hands or during battles
-      {
-        Expansion: 0.10,     # Rebuild destroyed facilities (was 0.00)
-        Defense: 0.15,
-        Military: 0.45,      # Reduced from 0.55 to fund facility rebuilding
-        Reconnaissance: 0.05,
-        SpecialUnits: 0.15,  # Transports for invasions
-        Technology: 0.10
-      }.toTable()
-
-    of GameAct.Act4_Endgame:
-      # Focus: All-in for victory
-      # CRITICAL: Reserve 5% Expansion for facility rebuilding (colonies change hands frequently)
-      {
-        Expansion: 0.05,     # Rebuild destroyed facilities (was 0.00)
-        Defense: 0.10,
-        Military: 0.55,      # Reduced from 0.60 to fund facility rebuilding
-        Reconnaissance: 0.05,
-        SpecialUnits: 0.15,
-        Technology: 0.10
-      }.toTable()
+  # Convert config to BudgetAllocation table
+  result = {
+    Expansion: cfg.expansion,
+    Defense: cfg.defense,
+    Military: cfg.military,
+    Reconnaissance: cfg.reconnaissance,
+    SpecialUnits: cfg.special_units,
+    Technology: cfg.technology
+  }.toTable()
 
   # Personality modifiers (max ±15% shift)
   let aggressionMod = (personality.aggression - 0.5) * 0.30  # -0.15 to +0.15
@@ -240,24 +207,45 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
   ##
   ## **CRITICAL**: This function enables production scaling!
   ## Without facilities at new colonies, production caps at 3 ships/turn (homeworld only)
+  ## **SCOUT PRODUCTION DEPENDENCY**: Scouts (and all ships) require facilities!
+  ## More colonies with facilities = more scout production = better ELI mesh coverage
   ##
   ## **COST EFFICIENCY** (per economy.md:5.1, 5.3):
   ## - Spaceport: 100 PP, 1 turn, 5 docks, but ships cost **2x** (100% PC penalty)
   ## - Shipyard: 150 PP, 2 turns, 10 docks, **normal cost** (no penalty), requires Spaceport
   ##
-  ## **Priority: SHIPYARD UPGRADES > NEW SPACEPORTS**
-  ## Shipyards eliminate 2x cost penalty, making them FAR more efficient than Spaceports.
-  ## Example: 3 Cruisers = 180 PP (shipyard) vs 360 PP (spaceport) - saves 180 PP!
-  ##
+  ## **Priority: NEW SPACEPORTS > SHIPYARD UPGRADES** (in early game)
+  ## Spaceports enable ship production at new colonies, including scouts for ELI mesh.
   ## Strategy:
-  ## - Priority 1: Upgrade Spaceport → Shipyard (removes 2x penalty, huge savings)
-  ## - Priority 2: Build Spaceport at colonies without facilities (prerequisite)
+  ## - Priority 1: Build Spaceport at colonies without facilities (HIGHEST PRIORITY - enables scout production!)
+  ## - Priority 2: Upgrade Spaceport → Shipyard (removes 2x penalty, huge savings)
+  ## - Priority 3: Build ADDITIONAL Shipyards (2nd, 3rd+) to scale production
   result = @[]
 
   let hasSpaceport = colony.spaceports.len > 0
   let hasShipyard = colony.shipyards.len > 0
 
-  # Priority 1: UPGRADE SPACEPORT TO SHIPYARD (first Shipyard)
+  # Priority 1: Build Spaceport if colony has no facilities
+  # **CRITICAL FOR SCOUTS**: Without this, scouts can't be built at new colonies!
+  # Required prerequisite for Shipyard, enables ship production (but at 2x cost)
+  if not hasSpaceport and not hasShipyard:
+    let spaceportCost = 100  # from facilities.toml
+    if tracker.canAfford(Expansion, spaceportCost):
+      logInfo(LogCategory.lcAI,
+              &"{tracker.houseId} Colony {colony.systemId}: Building Spaceport " &
+              &"(enables ship production including scouts for ELI mesh)")
+      result.add(BuildOrder(
+        colonySystem: colony.systemId,
+        buildType: BuildType.Building,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        buildingType: some("Spaceport"),
+        industrialUnits: 0
+      ))
+      tracker.recordSpending(Expansion, spaceportCost)
+      return  # One facility per colony per turn
+
+  # Priority 2: UPGRADE SPACEPORT TO SHIPYARD (first Shipyard)
   # This is THE most cost-effective investment: eliminates 2x ship construction penalty
   # Shipyards pay for themselves after just 2-3 ships due to 50% cost savings
   if hasSpaceport and not hasShipyard:
@@ -276,7 +264,7 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
       tracker.recordSpending(Expansion, shipyardCost)
       return  # One facility per colony per turn
 
-  # Priority 2: Build ADDITIONAL Shipyards (2nd, 3rd, 4th+) to scale production
+  # Priority 3: Build ADDITIONAL Shipyards (2nd, 3rd, 4th+) to scale production
   # Each Shipyard = 10 docks = 10 parallel construction projects
   # Build more Shipyards at high-production colonies to maximize fleet building
   if hasShipyard and hasSpaceport:
@@ -299,24 +287,6 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
         ))
         tracker.recordSpending(Expansion, shipyardCost)
         return  # One facility per colony per turn
-
-  # Priority 3: Build Spaceport if colony has no facilities
-  # Required prerequisite for Shipyard, enables ship production (but at 2x cost)
-  if not hasSpaceport and not hasShipyard:
-    let spaceportCost = 100  # from facilities.toml
-    if tracker.canAfford(Expansion, spaceportCost):
-      logInfo(LogCategory.lcAI,
-              &"{tracker.houseId} Colony {colony.systemId}: Building Spaceport (prerequisite for Shipyard)")
-      result.add(BuildOrder(
-        colonySystem: colony.systemId,
-        buildType: BuildType.Building,
-        quantity: 1,
-        shipClass: none(ShipClass),
-        buildingType: some("Spaceport"),
-        industrialUnits: 0
-      ))
-      tracker.recordSpending(Expansion, spaceportCost)
-      return  # One facility per colony per turn
 
 proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
                         needDefenses: bool, hasStarbase: bool): seq[BuildOrder] =
@@ -1109,6 +1079,14 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Now: Single tracker enforces house-wide budget limit
   var tracker = initBudgetTracker(controller.houseId, availableBudget, allocation)
 
+  # DIAGNOSTIC: Log budget allocation breakdown
+  logInfo(LogCategory.lcAI,
+    &"{controller.houseId} Budget allocation ({act}): " &
+    &"total={availableBudget}PP, " &
+    &"Expansion={int(allocation[Expansion]*float(availableBudget))}PP, " &
+    &"Reconnaissance={int(allocation[Reconnaissance]*float(availableBudget))}PP, " &
+    &"Military={int(allocation[Military]*float(availableBudget))}PP")
+
   # 3. Generate orders for each objective within budget
   result = @[]
 
@@ -1153,6 +1131,16 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Analyze current fleet composition to maintain doctrine ratios
   let currentComposition = analyzeFleetComposition(filtered.ownFleets)
 
+  # Diagnostic: Check facility availability across colonies
+  let facilitiesAvailable = coloniesToBuild.countIt(it.shipyards.len > 0 or it.spaceports.len > 0)
+  if facilitiesAvailable == 0:
+    logWarn(LogCategory.lcAI,
+      &"AI {controller.houseId}: No shipyards/spaceports! Cannot build ships (including scouts)")
+  elif facilitiesAvailable < coloniesToBuild.len:
+    logInfo(LogCategory.lcAI,
+      &"AI {controller.houseId}: Only {facilitiesAvailable}/{coloniesToBuild.len} colonies have facilities - " &
+      &"scout production limited to {facilitiesAvailable} colonies")
+
   # Process all colonies for build orders
   # IMPORTANT: Some build orders require facilities, others don't:
   # - Fighters: Planet-side only, NO facilities required (economy.md:3.10)
@@ -1170,13 +1158,14 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
     # DYNAMIC NEED RECALCULATION
     # Recalculate need flags using PROJECTED counts (current + built this turn)
+    # INCREASED THRESHOLDS: Target 5-7 scouts for robust ELI mesh coverage
     let projectedNeedScouts = case act
       of GameAct.Act1_LandGrab:
-        projectedScoutCount < 3
+        projectedScoutCount < 5  # Was 3
       of GameAct.Act2_RisingTensions:
-        projectedScoutCount < 6
+        projectedScoutCount < 7  # Was 6
       else:
-        projectedScoutCount < 8
+        projectedScoutCount < 9  # Was 8
 
     # Defense orders: Available at ALL colonies (planet-side construction)
     result.add(buildDefenseOrders(colony, tracker, needDefenses, hasStarbase))
@@ -1196,16 +1185,22 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
       # Generate orders for all objectives using shared BudgetTracker
       # CRITICAL: tracker is var parameter - gets modified by each build function
       # CRITICAL: Use PROJECTED counts to avoid double-building
+
+      # PRIORITY 1: SCOUTS (for ELI mesh and espionage)
+      # Build scouts FIRST to ensure they're not blocked by ETAC/Military production
+      # Scouts enable intelligence gathering and espionage missions
+      let reconnaissanceOrders = buildReconnaissanceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
+      result.add(reconnaissanceOrders)
+      projectedScoutCount += reconnaissanceOrders.len  # Update projected count
+
+      # PRIORITY 2: EXPANSION (ETACs for colonization)
       result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
 
+      # PRIORITY 3: MILITARY (combat ships)
       let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
                                               canAffordMoreShips, atSquadronLimit, cstLevel, act, personality, currentComposition, controller.intelligence)
       result.add(militaryOrders)
       projectedMilitaryCount += militaryOrders.len  # Update projected count
-
-      let reconnaissanceOrders = buildReconnaissanceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
-      result.add(reconnaissanceOrders)
-      projectedScoutCount += reconnaissanceOrders.len  # Update projected count
 
       let siegeOrders = buildSiegeOrders(colony, tracker, projectedPlanetBreakerCount,
                                          colonyCount, cstLevel, needSiege)
@@ -1223,6 +1218,13 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
   # Log final budget summary
   tracker.logBudgetSummary()
+
+  # Diagnostic: Track unspent budget (potential missed build opportunities)
+  for objective in BuildObjective:
+    let remaining = tracker.getRemainingBudget(objective)
+    if remaining > 100:  # Significant unspent budget
+      logDebug(LogCategory.lcAI,
+        &"AI {controller.houseId}: Unspent budget: {objective}={remaining}PP (check build opportunities)")
 
   # Generate and log budget report for transparency
   let report = generateBudgetReport(tracker, filtered.turn)

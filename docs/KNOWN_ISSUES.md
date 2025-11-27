@@ -222,6 +222,106 @@ Five critical bugs prevented AI from executing basic 4X gameplay (eXplore, eXpan
 
 ---
 
+## 1. Logistic Population Growth Not Implemented
+
+**Status:** ⏸️ **DEFERRED** (Low Priority Enhancement)
+**Discovered:** 2025-11-27 during economic formula compliance audit
+**Impact:** Population grows indefinitely without planet capacity limits
+
+### Problem Description
+
+Current implementation uses simple exponential population growth:
+
+```nim
+# src/engine/economy/income.nim:198
+let newPU = int(float(colony.populationUnits) * (1.0 + growthRate))
+```
+
+**Specification:** economy.md:3.6 describes logistic growth with planet capacity limits
+
+### Expected Behavior
+
+Logistic growth formula with carrying capacity:
+- `dP/dt = r * P * (1 - P/K)` where K = planet carrying capacity
+- Growth rate decreases as population approaches capacity
+- Different capacity limits by planet class (Eden > Lush > Benign > Harsh > etc.)
+
+### Current Behavior
+
+- Simple exponential growth: `PU(t+1) = PU(t) * (1 + growthRate)`
+- No capacity enforcement
+- Colonies can grow indefinitely
+- Growth rate constant regardless of population size
+
+### Impact
+
+- **Gameplay:** Late-game colonies become unrealistically large
+- **Balance:** No natural population ceiling
+- **Economy:** Production scaling uncapped
+- **Priority:** LOW - gameplay functional, just unrealistic at scale
+
+### Proposed Solution
+
+**Phase 1: Add planet capacity config** (30 min)
+- Add `[planet_capacity]` section to config/economy.toml
+- Define max PU by planet class (e.g., Eden=1000, Harsh=200)
+
+**Phase 2: Implement logistic formula** (1-2 hours)
+- Replace exponential with: `newPU = PU + r * PU * (1 - PU/K)`
+- Handle edge cases (P near 0, P near K)
+- Smooth transition from current exponential behavior
+
+**Phase 3: Balance testing** (1 hour)
+- Verify growth curves reach capacity smoothly
+- Test across all planet classes
+- Validate no economic disruption
+
+**Total Estimated Effort:** 2-3 hours
+
+### Why Deferred
+
+- Not gameplay-blocking (game functional without it)
+- Requires careful balance testing to get capacities right
+- Other economic fixes higher priority (PU/PTU conversion was critical)
+- Can be added later without breaking existing saves
+
+---
+
+## 2. Economy.md Documentation Inconsistency
+
+**Status:** ⏸️ **DEFERRED** (Documentation Only)
+**Discovered:** 2025-11-27 during economic formula compliance audit
+**Impact:** Confusing base growth rate specification
+
+### Problem Description
+
+Conflicting documentation about base population growth rate:
+- **Line 115:** Table header says "multiplier to natural 2% base"
+- **Line 162:** Text says "1.5% per turn"
+
+### Current Implementation
+
+Code was using hardcoded `BASE_POPULATION_GROWTH = 0.015` (1.5%)
+
+**NOW FIXED:** Phase 4 removed hardcoded constant, now uses config:
+- `config/economy.toml` specifies `natural_growth_rate = 0.05` (5%)
+- Engine loads from config instead of hardcoding
+
+### Resolution Needed
+
+1. **Verify correct value:** Is natural growth 1.5%, 2%, or 5%?
+2. **Update docs:** Make economy.md consistent (line 115 and 162 match)
+3. **Update config:** Set economy.toml to match documented value
+
+### Why Deferred
+
+- Engine now config-driven (no hardcoded constants) ✅
+- Documentation fix is non-blocking
+- Need to decide canonical growth rate through playtesting
+- Can be fixed once balance testing determines optimal value
+
+---
+
 ## 0. Zero Invasions - Reconnaissance Gap
 
 **Status:** ✅ **RESOLVED** (2025-11-25, commit 698c105)

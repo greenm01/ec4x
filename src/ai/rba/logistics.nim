@@ -28,6 +28,7 @@ import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, spacelif
 import ../../engine/economy/maintenance
 import ../common/types as ai_types
 import ./controller_types
+import ./config  # RBA configuration system
 import ./intelligence  # For system analysis
 import ./shared/colony_assessment  # Shared defense assessment
 import ./diplomacy     # For getOwnedColonies, getOwnedFleets
@@ -168,9 +169,16 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
     if assessment.needsReinforcement:
       result.undefendedColonies.add(colony.systemId)
 
-  # TODO: Calculate maintenance costs (requires querying ship stats and maintenance rates)
-  # For now, estimate based on fleet count (rough heuristic)
-  result.maintenanceCost = result.totalFleets * 10  # Placeholder: ~10 PP/fleet average
+  # Calculate real maintenance costs from actual fleet composition
+  result.maintenanceCost = 0
+  for fleet in filtered.ownFleets:
+    for squadron in fleet.squadrons:
+      # Each ship in squadron contributes to maintenance
+      # getShipMaintenanceCost accounts for fleet status (Active/Reserve/Mothballed)
+      let shipCost = getShipMaintenanceCost(squadron.flagship.shipClass,
+                                            squadron.flagship.isCrippled,
+                                            fleet.status)
+      result.maintenanceCost += shipCost * squadron.ships.len
 
 ## =============================================================================
 ## ASSET REALLOCATION STRATEGY
@@ -629,15 +637,15 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
   var financialMothball = false
   var idleFleetMothball = false
 
-  # Path 1: Financial stress mothballing
-  if inventory.totalTreasury < 500:
+  # Path 1: Financial stress mothballing (BALANCED TUNING)
+  if inventory.totalTreasury < globalRBAConfig.logistics.mothballing.treasury_threshold_pp:
     let maintenanceRatio = float(inventory.maintenanceCost) / float(inventory.totalProduction)
-    if maintenanceRatio >= 0.15:  # 15%+ of production going to maintenance
+    if maintenanceRatio >= globalRBAConfig.logistics.mothballing.maintenance_ratio_threshold:
       financialMothball = true
       logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Financial stress (treasury={inventory.totalTreasury}PP, maint={maintenanceRatio*100:.1f}%)")
 
-  # Path 2: Idle fleet mothballing (strategic redundancy management)
-  if inventory.totalFleets >= 4:  # Have enough fleets to identify true redundancy
+  # Path 2: Idle fleet mothballing (strategic redundancy management, BALANCED TUNING)
+  if inventory.totalFleets >= globalRBAConfig.logistics.mothballing.min_fleet_count:
     idleFleetMothball = true
     logInfo(LogCategory.lcAI, &"{controller.houseId} Mothball: Idle fleet check (fleets={inventory.totalFleets})")
 
@@ -671,11 +679,13 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
       continue
 
     # Check if system is safe (use intel reports)
+    # DEFAULT TO SAFE if no intel (early game before scouts deployed)
     var isSafeSystem = true
     if fleet.location in controller.intelligence:
       let report = controller.intelligence[fleet.location]
       if report.estimatedFleetStrength > 50:
-        isSafeSystem = false  # Enemy fleet detected
+        isSafeSystem = false
+    # If no intel report exists, assume safe (allows early-game mothballing)
 
     if not isSafeSystem:
       continue  # Don't mothball in threatened systems
@@ -1217,6 +1227,17 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
 
   # Check for mothball candidates (handles both financial + obsolescence paths)
   let mothballCandidates = identifyMothballCandidates(controller, inventory, filtered)
+
+  # Diagnostic: Log mothballing decision details
+  let maintenanceRatio = if inventory.totalProduction > 0:
+    float(inventory.maintenanceCost) / float(inventory.totalProduction)
+  else:
+    0.0
+  logDebug(LogCategory.lcAI,
+    &"AI {controller.houseId} Mothballing check: candidates={mothballCandidates.len}, " &
+    &"treasury={inventory.totalTreasury}PP, maintenance={inventory.maintenanceCost}PP, " &
+    &"ratio={maintenanceRatio*100:.1f}%, fleets={inventory.totalFleets}")
+
   for fleetId in mothballCandidates:
     result.fleetOrders.add(FleetOrder(
       fleetId: fleetId,

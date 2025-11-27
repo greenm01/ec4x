@@ -10,6 +10,7 @@ import ../../engine/diplomacy/types as dip_types
 import ../../engine/intelligence/types as intel_types
 import ../../common/types/[core, planets]
 import ./controller_types
+import ./config  # RBA configuration system
 import ./intelligence  # For isSystemColonized, getColony
 import ./diplomacy  # For getOwnedFleets
 import ./shared/colony_assessment  # Shared defense assessment
@@ -93,12 +94,13 @@ proc identifyImportantColonies*(controller: AIController, filtered: FilteredGame
         result.add(colony.systemId)
 
 proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,
-                              assignedSystem: Option[SystemId], radius: int = 3) =
+                              assignedSystem: Option[SystemId], radius: int = -1) =
   ## Designate a fleet as strategic reserve
+  let effectiveRadius = if radius == -1: globalRBAConfig.tactical.response_radius_jumps else: radius
   let reserve = StrategicReserve(
     fleetId: fleetId,
     assignedTo: assignedSystem,
-    responseRadius: radius
+    responseRadius: effectiveRadius
   )
   controller.reserves.add(reserve)
 
@@ -140,12 +142,12 @@ proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGa
       let dz = abs((fleetCoords.q + fleetCoords.r) - (systemCoords.q + systemCoords.r))
       let dist = (dx + dy + dz) div 2
 
-      if dist < minDist and dist <= 3:
+      if dist < minDist and dist <= globalRBAConfig.tactical.response_radius_jumps:
         minDist = dist
         bestFleet = some(fleet.id)
 
     if bestFleet.isSome:
-      controller.assignStrategicReserve(bestFleet.get(), some(systemId), 3)
+      controller.assignStrategicReserve(bestFleet.get(), some(systemId), globalRBAConfig.tactical.response_radius_jumps)
 
 proc respondToThreats*(controller: var AIController, filtered: FilteredGameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]] =
   ## Check for enemy fleets near protected systems
@@ -193,8 +195,7 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
     # If threat is 2 jumps away and reserve needs 5 turns, too late
     if nearestThreat.isSome:
       let threat = nearestThreat.get()
-      const MAX_RESPONSE_ETA = 5  # Only respond if we can get there in 5 turns
-      if threat.eta <= MAX_RESPONSE_ETA:
+      if threat.eta <= globalRBAConfig.tactical.max_response_eta_turns:
         logInfo(LogCategory.lcAI, &"{controller.houseId} dispatching reserve {reserve.fleetId} " &
                 &"to threat at {threat.location} (ETA: {threat.eta} turns)")
         result.add((reserveFleet: reserve.fleetId, threatSystem: threat.location))
@@ -991,11 +992,10 @@ proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGa
   # Select up to 3 combat fleets, but only if max ETA is reasonable
   var selectedFleets: seq[FleetId] = @[]
   var maxETA = 0
-  const MAX_INVASION_ETA = 8  # Don't plan invasions > 8 turns away
 
   for i in 0..<min(3, fleetsWithETA.len):
     let fleetData = fleetsWithETA[i]
-    if fleetData.eta <= MAX_INVASION_ETA:
+    if fleetData.eta <= globalRBAConfig.tactical.max_invasion_eta_turns:
       selectedFleets.add(fleetData.fleetId)
       maxETA = max(maxETA, fleetData.eta)
 
