@@ -943,7 +943,79 @@ All balance testing now uses nimble tasks. Removed obsolete bash/Python wrappers
 
 #### 6. Remove and exclude json files from repo and db if possible.
 
-#### 7. ⏸️ NICE TO HAVE - Tech Level Caps Quality-of-Life Enhancements
+#### 7. ⏸️ NICE TO HAVE - CFO-Admiral Feedback Control System Optimization
+
+**Status:** ⏸️ Deferred (Nice-to-have research project)
+**Context:** CFO-Admiral consultation system is a negative feedback control loop (similar to PID controllers in electrical engineering)
+**Priority:** LOW (system works well, optimization is academic interest)
+
+**Current Implementation:**
+The CFO-Admiral consultation creates a feedback control system:
+```
+Admiral (Controller) → Requirements (Setpoint)
+         ↓
+CFO (Actuator) → Budget Allocation
+         ↓
+Budget System → Ships Built (Output)
+         ↓
+Game State → Colony Defenses (Measured State)
+         ↓
+(Feedback) → Admiral observes gaps → New Requirements
+```
+
+**Current Parameters:**
+- **Proportional**: 70% weight on current requirements (requirement-driven response)
+- **Integral**: Requirements carry forward until fulfilled (accumulation)
+- **Damping**: 30% baseline config weight (prevents oscillation/overshoot)
+
+**Research Opportunities:**
+1. **Classical Control Theory Analysis**
+   - Apply control systems engineering (electrical/mechanical engineering)
+   - Analyze system stability (oscillation, overshoot, undershoot)
+   - Tune P/I/D coefficients for optimal convergence
+   - Study step response, frequency response, phase margins
+
+2. **Adaptive Control**
+   - Dynamic coefficient adjustment based on Act/game phase
+   - Different P/I/D values for Act 1 (slow buildup) vs Act 3 (urgent war)
+   - Personality-based control parameters (aggressive = high gain, defensive = high damping)
+
+3. **Multi-Variable Control**
+   - Current system controls Defense/Military/Recon independently
+   - Could apply MIMO (Multiple Input Multiple Output) control theory
+   - Cross-coupling between objectives (defense ↔ military trade-offs)
+
+4. **Discrete-Time Control**
+   - System operates in discrete turns (not continuous)
+   - Apply z-transform analysis instead of Laplace transform
+   - Study discrete-time stability (different from continuous systems)
+
+5. **Optimal Control**
+   - Define cost function (unfulfilled warnings, resource waste, strategic risk)
+   - Apply LQR (Linear Quadratic Regulator) or MPC (Model Predictive Control)
+   - Find mathematically optimal allocation strategy
+
+**Potential Benefits:**
+- Faster convergence to stable defense posture
+- Reduced oscillation between over/under-allocation
+- Better handling of sudden threats (step response)
+- Personality-specific control behaviors
+
+**Why Deferred:**
+- Current system works well (22.8% improvement over baseline)
+- Most unfulfilled warnings are non-urgent (Medium/Low priority)
+- Academic optimization vs practical gameplay improvement
+- Control theory research is intellectually interesting but not critical
+
+**Estimated Effort:** High (requires control systems expertise, extensive simulation testing)
+
+**See Also:**
+- `docs/balance/unknown_unknown_2.md` - CFO-Admiral consultation implementation
+- `src/ai/rba/cfo/consultation.nim` - Current feedback implementation
+- Classical control theory textbooks (Ogata, Franklin, etc.)
+- MuZero/AlphaZero papers (reinforcement learning as optimal control)
+
+#### 8. ⏸️ NICE TO HAVE - Tech Level Caps Quality-of-Life Enhancements
 
 **Status:** ⏸️ Deferred (Long-term backlog)
 **Context:** Tech level caps fully implemented in Phase 1 (P0) and Phase 2 (P1)
