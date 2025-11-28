@@ -21,8 +21,24 @@ DEFAULT_NUM_JOBS = 16  # One per physical core on 7950X3D
 OUTPUT_DIR = Path("balance_results/diagnostics")
 RUN_SIMULATION_BIN = Path("tests/balance/run_simulation")
 
-def archive_old_diagnostics() -> None:
-    """Archive existing diagnostic results to restic backup with date-based organization."""
+def cleanup_old_csvs() -> None:
+    """Remove old CSV files from diagnostics directory."""
+    if not OUTPUT_DIR.exists():
+        return
+
+    csv_files = list(OUTPUT_DIR.glob("*.csv"))
+    if csv_files:
+        for csv_file in csv_files:
+            csv_file.unlink()
+        print(f"✓ Removed {len(csv_files)} old CSV files")
+
+def archive_old_diagnostics(skip_archive: bool = False) -> None:
+    """Archive existing diagnostic results with graceful fallback and auto-init."""
+    if skip_archive:
+        print("ℹ Archiving disabled (--no-archive flag)")
+        cleanup_old_csvs()
+        return
+
     if not OUTPUT_DIR.exists():
         return
 
@@ -32,7 +48,13 @@ def archive_old_diagnostics() -> None:
         print("No existing diagnostic data to archive")
         return
 
-    # Create restic repo if it doesn't exist
+    # Check for restic installation
+    if not shutil.which("restic"):
+        print("ℹ Restic not installed - skipping archive (tests continue normally)")
+        cleanup_old_csvs()
+        return
+
+    # Create restic repo directory
     restic_repo = Path.home() / ".ec4x_test_data"
     restic_repo.mkdir(exist_ok=True)
 
@@ -41,12 +63,25 @@ def archive_old_diagnostics() -> None:
         "RESTIC_PASSWORD": ""  # No password for local test data
     }
 
-    # Initialize repo if needed (will fail silently if already initialized)
-    subprocess.run(["restic", "init"], env=env, capture_output=True)
+    # Auto-initialize repository on first run
+    config_file = restic_repo / "config"
+    if not config_file.exists():
+        print(f"ℹ First run: Initializing archive repository at {restic_repo}")
+        result = subprocess.run(
+            ["restic", "init"],
+            env=env,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            print("ℹ Could not initialize archive (tests continue normally)")
+            cleanup_old_csvs()
+            return
+        print(f"✓ Archive repository initialized at {restic_repo}")
 
     # Archive with current date tag
     date_tag = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    print(f"\nArchiving {len(csv_files)} existing diagnostic files to restic with tag: {date_tag}")
+    print(f"Archiving {len(csv_files)} diagnostic files (tag: {date_tag})")
 
     result = subprocess.run(
         ["restic", "backup", str(OUTPUT_DIR), "--tag", f"diagnostics-{date_tag}"],
@@ -56,16 +91,11 @@ def archive_old_diagnostics() -> None:
     )
 
     if result.returncode == 0:
-        print(f"✓ Diagnostics archived to {restic_repo}")
-        # Clean up after successful archive
-        for csv_file in csv_files:
-            csv_file.unlink()
-        print(f"✓ Removed {len(csv_files)} old CSV files")
+        print(f"✓ Archived to {restic_repo}")
+        cleanup_old_csvs()
     else:
-        print(f"⚠ Archive failed: {result.stderr[:200]}")
-        print("  Removing old files anyway...")
-        for csv_file in csv_files:
-            csv_file.unlink()
+        print("ℹ Archive skipped (tests continue normally)")
+        cleanup_old_csvs()
 
 def compile_simulation() -> bool:
     """
@@ -141,6 +171,11 @@ def run_single_game(args: Tuple[int, int, int]) -> Tuple[int, int, bool, str]:
 
 def main():
     """Main entry point."""
+    # Parse --no-archive flag
+    skip_archive = "--no-archive" in sys.argv
+    if skip_archive:
+        sys.argv.remove("--no-archive")
+
     # Parse command line arguments
     num_games = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_NUM_GAMES
     turns_per_game = int(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_TURNS_PER_GAME
@@ -159,7 +194,7 @@ def main():
     print()
 
     # Archive old diagnostics before starting new run
-    archive_old_diagnostics()
+    archive_old_diagnostics(skip_archive=skip_archive)
 
     # Ensure output directory exists
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

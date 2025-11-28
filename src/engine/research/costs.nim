@@ -10,6 +10,7 @@
 import std/[math, tables]
 import types
 import ../../common/types/tech
+import ../config/tech_config
 
 export types.ResearchAllocation
 
@@ -27,18 +28,10 @@ proc convertPPToERP*(pp: int, gho: int): int =
 
 proc getELUpgradeCost*(currentLevel: int): int =
   ## Get ERP cost to advance Economic Level
-  ## Per economy.md:4.2
+  ## Per economy.md:4.2 and config/tech.toml
   ##
-  ## EL1-5: 40 + EL(10)
-  ## EL6+: 90 + 15 per level above 5
-
-  if currentLevel <= 5:
-    return 40 + currentLevel * 10
-  else:
-    # EL6 = 90 + 15 = 105, EL7 = 90 + 30 = 120, etc.
-    let baseEL5Cost = 40 + 5 * 10  # 90
-    let levelsAbove5 = currentLevel - 5
-    return baseEL5Cost + (15 * levelsAbove5)
+  ## Loads from globalTechConfig instead of hardcoded formula
+  return getELUpgradeCostFromConfig(currentLevel)
 
 proc getELModifier*(level: int): float =
   ## Get EL economic modifier (as multiplier)
@@ -60,15 +53,10 @@ proc convertPPToSRP*(pp: int, currentSL: int): int =
 
 proc getSLUpgradeCost*(currentLevel: int): int =
   ## Get SRP cost to advance Science Level
-  ## Per economy.md:4.3
+  ## Per economy.md:4.3 and config/tech.toml
   ##
-  ## SL1-5: 20 + SL(5)
-  ## SL6+: Increases by 10 per level
-  if currentLevel <= 5:
-    return 20 + currentLevel * 5
-  else:
-    # SL6 = 55, SL7 = 65, SL8 = 75, etc.
-    return 55 + (currentLevel - 6) * 10
+  ## Loads from globalTechConfig instead of hardcoded formula
+  return getSLUpgradeCostFromConfig(currentLevel)
 
 proc getSLModifier*(level: int): float =
   ## Get SL research modifier
@@ -96,11 +84,10 @@ proc convertPPToTRP*(pp: int, techField: TechField, slLevel: int, gho: int): int
 
 proc getTechUpgradeCost*(techField: TechField, currentLevel: int): int =
   ## Get TRP cost to advance tech level
-  ## Per economy.md:4.4-4.12 (varies by field)
+  ## Per economy.md:4.4-4.12 and config/tech.toml
   ##
-  ## TODO: Load field-specific costs from specs
-  ## Placeholder: Exponential scaling
-  return 50 + (currentLevel * currentLevel * 10)
+  ## Loads from globalTechConfig instead of hardcoded values
+  return getTechUpgradeCostFromConfig(techField, currentLevel)
 
 ## Research Allocation
 
