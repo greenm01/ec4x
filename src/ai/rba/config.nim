@@ -126,6 +126,18 @@ type
     low_threshold*: float
 
 # ==============================================================================
+# Admiral Configuration
+# ==============================================================================
+
+type
+  AdmiralConfig* = object
+    ## Admiral module parameters (fleet rebalancing)
+    enabled*: bool
+    split_threshold_act1*: int
+    merge_threshold_act2*: int
+    rendezvous_preference*: string
+
+# ==============================================================================
 # Root Configuration
 # ==============================================================================
 
@@ -166,6 +178,8 @@ type
     fleet_composition_defensive*: FleetCompositionRatioConfig
     # Threat assessment
     threat_assessment*: ThreatAssessmentConfig
+    # Admiral module (fleet rebalancing)
+    admiral*: AdmiralConfig
 
 # ==============================================================================
 # Config Validation
