@@ -1950,14 +1950,41 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           let isFighter = shipClass == ShipClass.Fighter
 
           if isFighter:
-            # Create fighter squadron at colony
+            # Path 1: Commission fighter at colony (assets.md:2.4.1)
             let fighterSq = FighterSquadron(
               id: $systemId & "-FS-" & $(colony.fighterSquadrons.len + 1),
               commissionedTurn: state.turn
             )
 
             colony.fighterSquadrons.add(fighterSq)
-            echo "      Commissioned fighter squadron ", fighterSq.id, " at ", systemId
+            echo "      Commissioned fighter squadron ", fighterSq.id, " at ", systemId, " (Path 1)"
+
+            # Path 2: Auto-load onto carriers at same colony (assets.md:2.4.1)
+            # Find carriers at this colony with available hangar space
+            for fleetId, fleet in state.fleets.mpairs:
+              if fleet.location == systemId and fleet.owner == colony.owner:
+                for squadron in fleet.squadrons.mitems:
+                  if squadron.flagship.shipClass in [ShipClass.Carrier, ShipClass.SuperCarrier]:
+                    # Check hangar capacity (simplified: CV=3, CX=5, ignoring ACO tech for now)
+                    let maxCapacity = if squadron.flagship.shipClass == ShipClass.Carrier: 3 else: 5
+                    let currentLoad = squadron.embarkedFighters.len
+
+                    if currentLoad < maxCapacity:
+                      # Auto-load fighter onto carrier
+                      let carrierFighter = CarrierFighter(
+                        id: fighterSq.id,
+                        commissionedTurn: fighterSq.commissionedTurn
+                      )
+                      squadron.embarkedFighters.add(carrierFighter)
+
+                      # Remove from colony (transfer ownership)
+                      colony.fighterSquadrons.delete(colony.fighterSquadrons.len - 1)
+
+                      echo "        Auto-loaded ", fighterSq.id, " onto carrier ", fleetId, " (Path 2, ", currentLoad + 1, "/", maxCapacity, " capacity)"
+                      # Exit both loops after successful auto-load
+                      break
+                  if squadron.embarkedFighters.len > 0:  # Fighter was loaded
+                    break
           elif isSpaceLift:
             # Create SpaceLiftShip (individual unit, not squadron)
             let shipId = colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
