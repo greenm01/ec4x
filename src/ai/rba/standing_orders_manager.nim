@@ -217,6 +217,42 @@ proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],
   )
 
 # =============================================================================
+# Colony Defense Assessment
+# =============================================================================
+
+type
+  UndefendedColony = object
+    systemId: SystemId
+    priority: float  # Higher = more important to defend
+
+proc identifyUndefendedColonies(filtered: FilteredGameState): seq[UndefendedColony] =
+  ## Identify colonies without fleet defense and prioritize them
+  ## Priority based on: distance from homeworld (farther = higher priority)
+  result = @[]
+
+  # Build set of systems with our fleets for quick lookup
+  var systemsWithFleets = initHashSet[SystemId]()
+  for fleet in filtered.ownFleets:
+    systemsWithFleets.incl(fleet.location)
+
+  # Identify undefended colonies
+  for colony in filtered.ownColonies:
+    let systemId = colony.systemId
+
+    # Check if colony has defense (starbases or fleets)
+    let hasStarbase = colony.starbases.len > 0
+    let hasFleet = systemId in systemsWithFleets
+
+    if not hasStarbase and not hasFleet:
+      # Colony is undefended - calculate priority
+      # For now, simple priority: all colonies equally important
+      # Could enhance with: distance from homeworld, strategic value, threat level
+      result.add(UndefendedColony(
+        systemId: systemId,
+        priority: 1.0  # All colonies equal priority for now
+      ))
+
+# =============================================================================
 # Intelligent Standing Order Management
 # =============================================================================
 
@@ -225,6 +261,9 @@ proc assignStandingOrders*(controller: var AIController,
                           currentTurn: int): Table[FleetId, StandingOrder] =
   ## Assign standing orders to all fleets based on role and personality
   ## Returns table of fleet assignments
+  ##
+  ## Standing orders are PERSISTENT - only reassign when necessary to avoid
+  ## fleets constantly changing targets before reaching destinations
   ##
   ## Comprehensive logging of all assignments for diagnostics
 
@@ -254,9 +293,56 @@ proc assignStandingOrders*(controller: var AIController,
 
   var assignedCount = 0
   var skippedCount = 0
+  var preservedCount = 0
+
+  # Identify undefended colonies for Defender fleet assignment
+  var undefendedColonies = identifyUndefendedColonies(filtered)
+  var coloniesNeedingDefense = undefendedColonies.len
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Colony defense status: {coloniesNeedingDefense} undefended of {filtered.ownColonies.len} total")
+
+  # Build set of systems that still need defense for existing assignments
+  var systemsNeedingDefense = initHashSet[SystemId]()
+  for colony in undefendedColonies:
+    systemsNeedingDefense.incl(colony.systemId)
 
   for fleet in filtered.ownFleets:
-    # Assess fleet role
+    # Check if this fleet has an existing standing order that's still valid
+    if fleet.id in controller.standingOrders:
+      let existingOrder = controller.standingOrders[fleet.id]
+
+      # For DefendSystem orders, check if the target still needs defense
+      if existingOrder.orderType == StandingOrderType.DefendSystem:
+        let target = existingOrder.params.defendTargetSystem
+
+        # If defending homeworld or a system that still needs defense, preserve the order
+        if target == homeworld or target in systemsNeedingDefense:
+          result[fleet.id] = existingOrder
+          preservedCount += 1
+
+          # If defending a colony that still needs defense, remove it from the undefended list
+          if target != homeworld and target in systemsNeedingDefense:
+            for i in 0..<undefendedColonies.len:
+              if undefendedColonies[i].systemId == target:
+                undefendedColonies.delete(i)
+                break
+
+          logDebug(LogCategory.lcAI,
+                   &"{controller.houseId} Fleet {fleet.id}: Preserving DefendSystem order for {target}")
+          continue
+
+      # For other order types, preserve them (AutoRepair, AutoColonize, AutoEvade)
+      elif existingOrder.orderType in {StandingOrderType.AutoRepair,
+                                       StandingOrderType.AutoColonize,
+                                       StandingOrderType.AutoEvade}:
+        result[fleet.id] = existingOrder
+        preservedCount += 1
+        logDebug(LogCategory.lcAI,
+                 &"{controller.houseId} Fleet {fleet.id}: Preserving {existingOrder.orderType} order")
+        continue
+
+    # No valid existing order - assess role and assign new order
     let role = assessFleetRole(fleet, filtered, p)
 
     logDebug(LogCategory.lcAI,
@@ -306,13 +392,24 @@ proc assignStandingOrders*(controller: var AIController,
 
     of FleetRole.Defender:
       # Defensive fleets guard homeworld/colonies
-      let order = createDefendSystemOrder(fleet, homeworld, 3, baseROE)
+      # Prioritize undefended colonies, then homeworld
+      var targetSystem = homeworld
+      var assignmentType = "homeworld"
+
+      if undefendedColonies.len > 0:
+        # Assign to highest-priority undefended colony
+        let colony = undefendedColonies[0]
+        targetSystem = colony.systemId
+        assignmentType = "colony"
+        undefendedColonies.delete(0)  # Remove assigned colony from list
+
+      let order = createDefendSystemOrder(fleet, targetSystem, 3, baseROE)
       result[fleet.id] = order
       assignedCount += 1
 
       logInfo(LogCategory.lcAI,
               &"{controller.houseId} Fleet {fleet.id}: Assigned DefendSystem " &
-              &"(defender, homeworld {homeworld}, range 3)")
+              &"(defender, {assignmentType} {targetSystem}, range 3)")
 
     of FleetRole.Raider, FleetRole.Invasion:
       # Offensive fleets managed by tactical module - no standing orders
@@ -338,7 +435,7 @@ proc assignStandingOrders*(controller: var AIController,
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Standing order assignment complete: " &
-          &"{assignedCount} assigned, {skippedCount} skipped " &
+          &"{assignedCount} new, {preservedCount} preserved, {skippedCount} skipped " &
           &"(tactical/logistics control)")
 
 # =============================================================================
