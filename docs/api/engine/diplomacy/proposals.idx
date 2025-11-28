@@ -1,7 +1,7 @@
-nimTitle	proposals	diplomacy/proposals.html	module src/engine/diplomacy/proposals		0
-nim	ProposalType	diplomacy/proposals.html#ProposalType	enum ProposalType		13
-nim	ProposalStatus	diplomacy/proposals.html#ProposalStatus	enum ProposalStatus		19
-nim	PendingProposal	diplomacy/proposals.html#PendingProposal	object PendingProposal		26
-nim	generateProposalId	diplomacy/proposals.html#generateProposalId,int,HouseId,HouseId	proc generateProposalId(turn: int; proposer: HouseId; target: HouseId): string		36
-nim	findProposal	diplomacy/proposals.html#findProposal,seq[PendingProposal],string	proc findProposal(proposals: seq[PendingProposal]; proposalId: string): Option[\n    PendingProposal]		40
-nim	findProposalIndex	diplomacy/proposals.html#findProposalIndex,seq[PendingProposal],string	proc findProposalIndex(proposals: seq[PendingProposal]; proposalId: string): int		47
+nimTitle	proposals	engine/diplomacy/proposals.html	module src/engine/diplomacy/proposals		0
+nim	ProposalType	engine/diplomacy/proposals.html#ProposalType	enum ProposalType		13
+nim	ProposalStatus	engine/diplomacy/proposals.html#ProposalStatus	enum ProposalStatus		19
+nim	PendingProposal	engine/diplomacy/proposals.html#PendingProposal	object PendingProposal		26
+nim	generateProposalId	engine/diplomacy/proposals.html#generateProposalId,int,HouseId,HouseId	proc generateProposalId(turn: int; proposer: HouseId; target: HouseId): string		36
+nim	findProposal	engine/diplomacy/proposals.html#findProposal,seq[PendingProposal],string	proc findProposal(proposals: seq[PendingProposal]; proposalId: string): Option[\n    PendingProposal]		40
+nim	findProposalIndex	engine/diplomacy/proposals.html#findProposalIndex,seq[PendingProposal],string	proc findProposalIndex(proposals: seq[PendingProposal]; proposalId: string): int		47

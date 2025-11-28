@@ -1,22 +1,22 @@
-nimTitle	fleet	fleet.html	module src/engine/fleet		0
-nim	FleetStatus	fleet.html#FleetStatus	enum FleetStatus		20
-nim	Fleet	fleet.html#Fleet	object Fleet		26
-nim	newFleet	fleet.html#newFleet,seq[Squadron],seq[SpaceLiftShip],FleetId,HouseId,SystemId,FleetStatus	proc newFleet(squadrons: seq[Squadron] = @[];\n         spaceLiftShips: seq[SpaceLiftShip] = @[]; id: FleetId = "";\n         owner: HouseId = ""; location: SystemId = 0;\n         status: FleetStatus = FleetStatus.Active): Fleet		36
-nim	`$`	fleet.html#$,Fleet	proc `$`(f: Fleet): string		43
-nim	len	fleet.html#len,Fleet	proc len(f: Fleet): int		65
-nim	isEmpty	fleet.html#isEmpty,Fleet	proc isEmpty(f: Fleet): bool		69
-nim	add	fleet.html#add,Fleet,Squadron	proc add(f: var Fleet; squadron: Squadron)		73
-nim	remove	fleet.html#remove,Fleet,int	proc remove(f: var Fleet; index: int)		77
-nim	clear	fleet.html#clear,Fleet	proc clear(f: var Fleet)		82
-nim	canTraverse	fleet.html#canTraverse,Fleet,LaneType	proc canTraverse(f: Fleet; laneType: LaneType): bool		86
-nim	combatStrength	fleet.html#combatStrength,Fleet	proc combatStrength(f: Fleet): int		105
-nim	isCloaked	fleet.html#isCloaked,Fleet	proc isCloaked(f: Fleet): bool		111
-nim	transportCapacity	fleet.html#transportCapacity,Fleet	proc transportCapacity(f: Fleet): int		127
-nim	hasCombatShips	fleet.html#hasCombatShips,Fleet	proc hasCombatShips(f: Fleet): bool		135
-nim	hasTransportShips	fleet.html#hasTransportShips,Fleet	proc hasTransportShips(f: Fleet): bool		142
-nim	combatSquadrons	fleet.html#combatSquadrons,Fleet	proc combatSquadrons(f: Fleet): seq[Squadron]		150
-nim	spaceLiftShipsSeq	fleet.html#spaceLiftShipsSeq,Fleet	proc spaceLiftShipsSeq(f: Fleet): seq[SpaceLiftShip]		157
-nim	crippledSquadrons	fleet.html#crippledSquadrons,Fleet	proc crippledSquadrons(f: Fleet): seq[Squadron]		162
-nim	effectiveSquadrons	fleet.html#effectiveSquadrons,Fleet	proc effectiveSquadrons(f: Fleet): seq[Squadron]		169
-nim	merge	fleet.html#merge,Fleet,Fleet	proc merge(f1: var Fleet; f2: Fleet)		176
-nim	split	fleet.html#split,Fleet,seq[int]	proc split(f: var Fleet; indices: seq[int]): Fleet		182
+nimTitle	fleet	engine/fleet.html	module src/engine/fleet		0
+nim	FleetStatus	engine/fleet.html#FleetStatus	enum FleetStatus		20
+nim	Fleet	engine/fleet.html#Fleet	object Fleet		26
+nim	newFleet	engine/fleet.html#newFleet,seq[Squadron],seq[SpaceLiftShip],FleetId,HouseId,SystemId,FleetStatus	proc newFleet(squadrons: seq[Squadron] = @[];\n         spaceLiftShips: seq[SpaceLiftShip] = @[]; id: FleetId = "";\n         owner: HouseId = ""; location: SystemId = 0;\n         status: FleetStatus = FleetStatus.Active): Fleet		36
+nim	`$`	engine/fleet.html#$,Fleet	proc `$`(f: Fleet): string		43
+nim	len	engine/fleet.html#len,Fleet	proc len(f: Fleet): int		65
+nim	isEmpty	engine/fleet.html#isEmpty,Fleet	proc isEmpty(f: Fleet): bool		69
+nim	add	engine/fleet.html#add,Fleet,Squadron	proc add(f: var Fleet; squadron: Squadron)		73
+nim	remove	engine/fleet.html#remove,Fleet,int	proc remove(f: var Fleet; index: int)		77
+nim	clear	engine/fleet.html#clear,Fleet	proc clear(f: var Fleet)		82
+nim	canTraverse	engine/fleet.html#canTraverse,Fleet,LaneType	proc canTraverse(f: Fleet; laneType: LaneType): bool		86
+nim	combatStrength	engine/fleet.html#combatStrength,Fleet	proc combatStrength(f: Fleet): int		105
+nim	isCloaked	engine/fleet.html#isCloaked,Fleet	proc isCloaked(f: Fleet): bool		111
+nim	transportCapacity	engine/fleet.html#transportCapacity,Fleet	proc transportCapacity(f: Fleet): int		127
+nim	hasCombatShips	engine/fleet.html#hasCombatShips,Fleet	proc hasCombatShips(f: Fleet): bool		135
+nim	hasTransportShips	engine/fleet.html#hasTransportShips,Fleet	proc hasTransportShips(f: Fleet): bool		142
+nim	combatSquadrons	engine/fleet.html#combatSquadrons,Fleet	proc combatSquadrons(f: Fleet): seq[Squadron]		150
+nim	spaceLiftShipsSeq	engine/fleet.html#spaceLiftShipsSeq,Fleet	proc spaceLiftShipsSeq(f: Fleet): seq[SpaceLiftShip]		157
+nim	crippledSquadrons	engine/fleet.html#crippledSquadrons,Fleet	proc crippledSquadrons(f: Fleet): seq[Squadron]		162
+nim	effectiveSquadrons	engine/fleet.html#effectiveSquadrons,Fleet	proc effectiveSquadrons(f: Fleet): seq[Squadron]		169
+nim	merge	engine/fleet.html#merge,Fleet,Fleet	proc merge(f1: var Fleet; f2: Fleet)		176
+nim	split	engine/fleet.html#split,Fleet,seq[int]	proc split(f: var Fleet; indices: seq[int]): Fleet		182

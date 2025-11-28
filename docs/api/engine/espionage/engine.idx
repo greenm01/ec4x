@@ -1,7 +1,7 @@
-nimTitle	engine	espionage/engine.html	module src/engine/espionage/engine		0
-nim	attemptDetection	espionage/engine.html#attemptDetection,DetectionAttempt,Rand	proc attemptDetection(attempt: DetectionAttempt; rng: var Rand): DetectionResult		21
-nim	purchaseEBP	espionage/engine.html#purchaseEBP,EspionageBudget,int	proc purchaseEBP(budget: var EspionageBudget; ppSpent: int): int		56
-nim	purchaseCIP	espionage/engine.html#purchaseCIP,EspionageBudget,int	proc purchaseCIP(budget: var EspionageBudget; ppSpent: int): int		64
-nim	canAffordAction	espionage/engine.html#canAffordAction,EspionageBudget,EspionageAction	proc canAffordAction(budget: EspionageBudget; action: EspionageAction): bool		72
-nim	spendEBP	espionage/engine.html#spendEBP,EspionageBudget,EspionageAction	proc spendEBP(budget: var EspionageBudget; action: EspionageAction): bool		76
-nim	spendCIP	espionage/engine.html#spendCIP,EspionageBudget,int	proc spendCIP(budget: var EspionageBudget; amount: int = CIP_DEDUCTION_PER_ROLL): bool		85
+nimTitle	engine	engine/espionage/engine.html	module src/engine/espionage/engine		0
+nim	attemptDetection	engine/espionage/engine.html#attemptDetection,DetectionAttempt,Rand	proc attemptDetection(attempt: DetectionAttempt; rng: var Rand): DetectionResult		21
+nim	purchaseEBP	engine/espionage/engine.html#purchaseEBP,EspionageBudget,int	proc purchaseEBP(budget: var EspionageBudget; ppSpent: int): int		56
+nim	purchaseCIP	engine/espionage/engine.html#purchaseCIP,EspionageBudget,int	proc purchaseCIP(budget: var EspionageBudget; ppSpent: int): int		64
+nim	canAffordAction	engine/espionage/engine.html#canAffordAction,EspionageBudget,EspionageAction	proc canAffordAction(budget: EspionageBudget; action: EspionageAction): bool		72
+nim	spendEBP	engine/espionage/engine.html#spendEBP,EspionageBudget,EspionageAction	proc spendEBP(budget: var EspionageBudget; action: EspionageAction): bool		76
+nim	spendCIP	engine/espionage/engine.html#spendCIP,EspionageBudget,int	proc spendCIP(budget: var EspionageBudget; amount: int = CIP_DEDUCTION_PER_ROLL): bool		85

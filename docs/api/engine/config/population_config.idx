@@ -1,13 +1,13 @@
-nimTitle	population_config	config/population_config.html	module src/engine/config/population_config		0
-nim	PtuDefinitionConfig	config/population_config.html#PtuDefinitionConfig	object PtuDefinitionConfig		11
-nim	TransferCostsConfig	config/population_config.html#TransferCostsConfig	object TransferCostsConfig		16
-nim	TransferTimeConfig	config/population_config.html#TransferTimeConfig	object TransferTimeConfig		25
-nim	TransferModifiersConfig	config/population_config.html#TransferModifiersConfig	object TransferModifiersConfig		29
-nim	TransferLimitsConfig	config/population_config.html#TransferLimitsConfig	object TransferLimitsConfig		32
-nim	TransferRisksConfig	config/population_config.html#TransferRisksConfig	object TransferRisksConfig		37
-nim	AiStrategyConfig	config/population_config.html#AiStrategyConfig	object AiStrategyConfig		43
-nim	PopulationConfig	config/population_config.html#PopulationConfig	object PopulationConfig		52
-nim	loadPopulationConfig	config/population_config.html#loadPopulationConfig,string	proc loadPopulationConfig(configPath: string = "config/population.toml"): PopulationConfig		62
-nim	soulsPerPtu	config/population_config.html#soulsPerPtu	proc soulsPerPtu(): int		80
-nim	ptuSizeMillions	config/population_config.html#ptuSizeMillions	proc ptuSizeMillions(): float		83
-nim	reloadPopulationConfig	config/population_config.html#reloadPopulationConfig	proc reloadPopulationConfig()		88
+nimTitle	population_config	engine/config/population_config.html	module src/engine/config/population_config		0
+nim	PtuDefinitionConfig	engine/config/population_config.html#PtuDefinitionConfig	object PtuDefinitionConfig		11
+nim	TransferCostsConfig	engine/config/population_config.html#TransferCostsConfig	object TransferCostsConfig		16
+nim	TransferTimeConfig	engine/config/population_config.html#TransferTimeConfig	object TransferTimeConfig		25
+nim	TransferModifiersConfig	engine/config/population_config.html#TransferModifiersConfig	object TransferModifiersConfig		29
+nim	TransferLimitsConfig	engine/config/population_config.html#TransferLimitsConfig	object TransferLimitsConfig		32
+nim	TransferRisksConfig	engine/config/population_config.html#TransferRisksConfig	object TransferRisksConfig		37
+nim	AiStrategyConfig	engine/config/population_config.html#AiStrategyConfig	object AiStrategyConfig		43
+nim	PopulationConfig	engine/config/population_config.html#PopulationConfig	object PopulationConfig		52
+nim	loadPopulationConfig	engine/config/population_config.html#loadPopulationConfig,string	proc loadPopulationConfig(configPath: string = "config/population.toml"): PopulationConfig		62
+nim	soulsPerPtu	engine/config/population_config.html#soulsPerPtu	proc soulsPerPtu(): int		80
+nim	ptuSizeMillions	engine/config/population_config.html#ptuSizeMillions	proc ptuSizeMillions(): float		83
+nim	reloadPopulationConfig	engine/config/population_config.html#reloadPopulationConfig	proc reloadPopulationConfig()		88

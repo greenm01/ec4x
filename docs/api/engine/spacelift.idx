@@ -1,11 +1,11 @@
-nimTitle	spacelift	spacelift.html	module src/engine/spacelift		0
-nim	CargoType	spacelift.html#CargoType	enum CargoType		16
-nim	SpaceLiftCargo	spacelift.html#SpaceLiftCargo	object SpaceLiftCargo		23
-nim	SpaceLiftShip	spacelift.html#SpaceLiftShip	object SpaceLiftShip		29
-nim	newSpaceLiftShip	spacelift.html#newSpaceLiftShip,string,ShipClass,HouseId,SystemId	proc newSpaceLiftShip(id: string; shipClass: ShipClass; owner: HouseId;\n                 location: SystemId): SpaceLiftShip		39
-nim	isEmpty	spacelift.html#isEmpty,SpaceLiftShip	proc isEmpty(ship: SpaceLiftShip): bool		62
-nim	isFull	spacelift.html#isFull,SpaceLiftShip	proc isFull(ship: SpaceLiftShip): bool		66
-nim	canLoad	spacelift.html#canLoad,SpaceLiftShip,CargoType	proc canLoad(ship: SpaceLiftShip; cargoType: CargoType): bool		70
-nim	loadCargo	spacelift.html#loadCargo,SpaceLiftShip,CargoType,int	proc loadCargo(ship: var SpaceLiftShip; cargoType: CargoType; quantity: int): bool		80
-nim	unloadCargo	spacelift.html#unloadCargo,SpaceLiftShip	proc unloadCargo(ship: var SpaceLiftShip): tuple[cargoType: CargoType, quantity: int]		96
-nim	`$`	spacelift.html#$,SpaceLiftShip	proc `$`(ship: SpaceLiftShip): string		103
+nimTitle	spacelift	engine/spacelift.html	module src/engine/spacelift		0
+nim	CargoType	engine/spacelift.html#CargoType	enum CargoType		16
+nim	SpaceLiftCargo	engine/spacelift.html#SpaceLiftCargo	object SpaceLiftCargo		23
+nim	SpaceLiftShip	engine/spacelift.html#SpaceLiftShip	object SpaceLiftShip		29
+nim	newSpaceLiftShip	engine/spacelift.html#newSpaceLiftShip,string,ShipClass,HouseId,SystemId	proc newSpaceLiftShip(id: string; shipClass: ShipClass; owner: HouseId;\n                 location: SystemId): SpaceLiftShip		39
+nim	isEmpty	engine/spacelift.html#isEmpty,SpaceLiftShip	proc isEmpty(ship: SpaceLiftShip): bool		62
+nim	isFull	engine/spacelift.html#isFull,SpaceLiftShip	proc isFull(ship: SpaceLiftShip): bool		66
+nim	canLoad	engine/spacelift.html#canLoad,SpaceLiftShip,CargoType	proc canLoad(ship: SpaceLiftShip; cargoType: CargoType): bool		70
+nim	loadCargo	engine/spacelift.html#loadCargo,SpaceLiftShip,CargoType,int	proc loadCargo(ship: var SpaceLiftShip; cargoType: CargoType; quantity: int): bool		80
+nim	unloadCargo	engine/spacelift.html#unloadCargo,SpaceLiftShip	proc unloadCargo(ship: var SpaceLiftShip): tuple[cargoType: CargoType, quantity: int]		96
+nim	`$`	engine/spacelift.html#$,SpaceLiftShip	proc `$`(ship: SpaceLiftShip): string		103

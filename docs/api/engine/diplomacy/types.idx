@@ -1,25 +1,25 @@
-nimTitle	types	diplomacy/types.html	module src/engine/diplomacy/types		0
-nim	DiplomaticRelation	diplomacy/types.html#DiplomaticRelation	object DiplomaticRelation		23
-nim	DiplomaticRelations	diplomacy/types.html#DiplomaticRelations	object DiplomaticRelations		28
-nim	ViolationRecord	diplomacy/types.html#ViolationRecord	object ViolationRecord		35
-nim	DishonoredStatus	diplomacy/types.html#DishonoredStatus	object DishonoredStatus		42
-nim	DiplomaticIsolation	diplomacy/types.html#DiplomaticIsolation	object DiplomaticIsolation		48
-nim	ViolationHistory	diplomacy/types.html#ViolationHistory	object ViolationHistory		54
-nim	DiplomaticEvent	diplomacy/types.html#DiplomaticEvent	object DiplomaticEvent		62
-nim	DiplomaticReport	diplomacy/types.html#DiplomaticReport	object DiplomaticReport		72
-nim	dishonoredDuration	diplomacy/types.html#dishonoredDuration	proc dishonoredDuration(): int		81
-nim	isolationDuration	diplomacy/types.html#isolationDuration	proc isolationDuration(): int		85
-nim	pactReinstatementCooldown	diplomacy/types.html#pactReinstatementCooldown	proc pactReinstatementCooldown(): int		89
-nim	violationRepeatWindow	diplomacy/types.html#violationRepeatWindow	proc violationRepeatWindow(): int		93
-nim	violationPrestigePenalty	diplomacy/types.html#violationPrestigePenalty	proc violationPrestigePenalty(): int		97
-nim	violationRepeatPenalty	diplomacy/types.html#violationRepeatPenalty	proc violationRepeatPenalty(): int		101
-nim	dishonoredBonusPrestige	diplomacy/types.html#dishonoredBonusPrestige	proc dishonoredBonusPrestige(): int		105
-nim	initDiplomaticRelations	diplomacy/types.html#initDiplomaticRelations	proc initDiplomaticRelations(): DiplomaticRelations		111
-nim	initViolationHistory	diplomacy/types.html#initViolationHistory	proc initViolationHistory(): ViolationHistory		117
-nim	getDiplomaticState	diplomacy/types.html#getDiplomaticState,DiplomaticRelations,HouseId	proc getDiplomaticState(relations: DiplomaticRelations; otherHouse: HouseId): DiplomaticState		133
-nim	setDiplomaticState	diplomacy/types.html#setDiplomaticState,DiplomaticRelations,HouseId,DiplomaticState,int	proc setDiplomaticState(relations: var DiplomaticRelations; otherHouse: HouseId;\n                   state: DiplomaticState; turn: int)		139
-nim	isInPact	diplomacy/types.html#isInPact,DiplomaticRelations,HouseId	proc isInPact(relations: DiplomaticRelations; otherHouse: HouseId): bool		147
-nim	isEnemy	diplomacy/types.html#isEnemy,DiplomaticRelations,HouseId	proc isEnemy(relations: DiplomaticRelations; otherHouse: HouseId): bool		151
-nim	canFormPact	diplomacy/types.html#canFormPact,ViolationHistory	proc canFormPact(history: ViolationHistory): bool		155
-nim	canReinstatePact	diplomacy/types.html#canReinstatePact,ViolationHistory,HouseId,int	proc canReinstatePact(history: ViolationHistory; otherHouse: HouseId;\n                 currentTurn: int): bool		159
-nim	countRecentViolations	diplomacy/types.html#countRecentViolations,ViolationHistory,int	proc countRecentViolations(history: ViolationHistory; currentTurn: int): int		169
+nimTitle	types	engine/diplomacy/types.html	module src/engine/diplomacy/types		0
+nim	DiplomaticRelation	engine/diplomacy/types.html#DiplomaticRelation	object DiplomaticRelation		23
+nim	DiplomaticRelations	engine/diplomacy/types.html#DiplomaticRelations	object DiplomaticRelations		28
+nim	ViolationRecord	engine/diplomacy/types.html#ViolationRecord	object ViolationRecord		35
+nim	DishonoredStatus	engine/diplomacy/types.html#DishonoredStatus	object DishonoredStatus		42
+nim	DiplomaticIsolation	engine/diplomacy/types.html#DiplomaticIsolation	object DiplomaticIsolation		48
+nim	ViolationHistory	engine/diplomacy/types.html#ViolationHistory	object ViolationHistory		54
+nim	DiplomaticEvent	engine/diplomacy/types.html#DiplomaticEvent	object DiplomaticEvent		62
+nim	DiplomaticReport	engine/diplomacy/types.html#DiplomaticReport	object DiplomaticReport		72
+nim	dishonoredDuration	engine/diplomacy/types.html#dishonoredDuration	proc dishonoredDuration(): int		81
+nim	isolationDuration	engine/diplomacy/types.html#isolationDuration	proc isolationDuration(): int		85
+nim	pactReinstatementCooldown	engine/diplomacy/types.html#pactReinstatementCooldown	proc pactReinstatementCooldown(): int		89
+nim	violationRepeatWindow	engine/diplomacy/types.html#violationRepeatWindow	proc violationRepeatWindow(): int		93
+nim	violationPrestigePenalty	engine/diplomacy/types.html#violationPrestigePenalty	proc violationPrestigePenalty(): int		97
+nim	violationRepeatPenalty	engine/diplomacy/types.html#violationRepeatPenalty	proc violationRepeatPenalty(): int		101
+nim	dishonoredBonusPrestige	engine/diplomacy/types.html#dishonoredBonusPrestige	proc dishonoredBonusPrestige(): int		105
+nim	initDiplomaticRelations	engine/diplomacy/types.html#initDiplomaticRelations	proc initDiplomaticRelations(): DiplomaticRelations		111
+nim	initViolationHistory	engine/diplomacy/types.html#initViolationHistory	proc initViolationHistory(): ViolationHistory		117
+nim	getDiplomaticState	engine/diplomacy/types.html#getDiplomaticState,DiplomaticRelations,HouseId	proc getDiplomaticState(relations: DiplomaticRelations; otherHouse: HouseId): DiplomaticState		133
+nim	setDiplomaticState	engine/diplomacy/types.html#setDiplomaticState,DiplomaticRelations,HouseId,DiplomaticState,int	proc setDiplomaticState(relations: var DiplomaticRelations; otherHouse: HouseId;\n                   state: DiplomaticState; turn: int)		139
+nim	isInPact	engine/diplomacy/types.html#isInPact,DiplomaticRelations,HouseId	proc isInPact(relations: DiplomaticRelations; otherHouse: HouseId): bool		147
+nim	isEnemy	engine/diplomacy/types.html#isEnemy,DiplomaticRelations,HouseId	proc isEnemy(relations: DiplomaticRelations; otherHouse: HouseId): bool		151
+nim	canFormPact	engine/diplomacy/types.html#canFormPact,ViolationHistory	proc canFormPact(history: ViolationHistory): bool		155
+nim	canReinstatePact	engine/diplomacy/types.html#canReinstatePact,ViolationHistory,HouseId,int	proc canReinstatePact(history: ViolationHistory; otherHouse: HouseId;\n                 currentTurn: int): bool		159
+nim	countRecentViolations	engine/diplomacy/types.html#countRecentViolations,ViolationHistory,int	proc countRecentViolations(history: ViolationHistory; currentTurn: int): int		169
