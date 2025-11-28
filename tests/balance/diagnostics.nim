@@ -958,11 +958,24 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.scoutCount = log.scoutCount  # Phase 2c
 
   # Track espionage missions from orders (if provided)
+  # Note: We track OrderPacket.espionageAction (EBP-based espionage) not fleet-based espionage
   if orders.isSome:
-    let espCounts = countEspionageMissions(orders.get)
-    result.spyPlanetMissions = espCounts.spyPlanet
-    result.hackStarbaseMissions = espCounts.hackStarbase
-    result.totalEspionageMissions = espCounts.spyPlanet + espCounts.hackStarbase + espCounts.spySystem
+    let packet = orders.get
+
+    # Count fleet-based espionage orders (SpyPlanet, HackStarbase, SpySystem)
+    let fleetEspCounts = countEspionageMissions(packet)
+    result.spyPlanetMissions = fleetEspCounts.spyPlanet
+    result.hackStarbaseMissions = fleetEspCounts.hackStarbase
+
+    # Count EBP-based espionage actions (OrderPacket.espionageAction)
+    # This is the main espionage system (TechTheft, Assassination, etc.)
+    var ebpEspionageMissions = 0
+    if packet.espionageAction.isSome:
+      ebpEspionageMissions = 1  # OrderPacket contains at most 1 espionage action
+
+    # Total includes both fleet-based and EBP-based espionage
+    result.totalEspionageMissions = fleetEspCounts.spyPlanet + fleetEspCounts.hackStarbase +
+                                    fleetEspCounts.spySystem + ebpEspionageMissions
   else:
     result.spyPlanetMissions = 0
     result.hackStarbaseMissions = 0
