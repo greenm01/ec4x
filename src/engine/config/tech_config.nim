@@ -323,7 +323,9 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
     of 13: return cfg.level_13_trp
     of 14: return cfg.level_14_trp
     of 15: return cfg.level_15_trp
-    else: return 60 + (level - 15) * 5  # Level 16+ (extreme edge case)
+    else:
+      raise newException(ValueError,
+        "Invalid CST level: " & $level & " (max is 15)")
 
   of TechField.WeaponsTech:
     let cfg = globalTechConfig.weapons_tech
@@ -343,7 +345,9 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
     of 13: return cfg.level_13_trp
     of 14: return cfg.level_14_trp
     of 15: return cfg.level_15_trp
-    else: return 60 + (level - 15) * 5  # Level 16+ (extreme edge case)
+    else:
+      raise newException(ValueError,
+        "Invalid WEP level: " & $level & " (max is 15)")
 
   of TechField.TerraformingTech:
     let cfg = globalTechConfig.terraforming_tech
@@ -375,7 +379,9 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
     of 13: return cfg.level_13_trp
     of 14: return cfg.level_14_trp
     of 15: return cfg.level_15_trp
-    else: return 60 + (level - 15) * 5  # Level 16+ (extreme edge case)
+    else:
+      raise newException(ValueError,
+        "Invalid ELI level: " & $level & " (max is 15)")
 
   of TechField.CloakingTech:
     let cfg = globalTechConfig.cloaking_tech
@@ -395,7 +401,9 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
     of 13: return cfg.level_13_trp
     of 14: return cfg.level_14_trp
     of 15: return cfg.level_15_trp
-    else: return 70 + (level - 15) * 5  # Level 16+ (extreme edge case)
+    else:
+      raise newException(ValueError,
+        "Invalid CLK level: " & $level & " (max is 15)")
 
   of TechField.ShieldTech:
     let cfg = globalTechConfig.shield_tech
@@ -415,7 +423,9 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
     of 13: return cfg.level_13_trp
     of 14: return cfg.level_14_trp
     of 15: return cfg.level_15_trp
-    else: return 70 + (level - 15) * 5  # Level 16+ (extreme edge case)
+    else:
+      raise newException(ValueError,
+        "Invalid SLD level: " & $level & " (max is 15)")
 
   of TechField.CounterIntelligence:
     let cfg = globalTechConfig.counter_intelligence_tech
@@ -435,7 +445,9 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
     of 13: return cfg.level_13_trp
     of 14: return cfg.level_14_trp
     of 15: return cfg.level_15_trp
-    else: return 60 + (level - 15) * 5  # Level 16+ (extreme edge case)
+    else:
+      raise newException(ValueError,
+        "Invalid CIC level: " & $level & " (max is 15)")
 
   of TechField.FighterDoctrine:
     let cfg = globalTechConfig.fighter_doctrine
