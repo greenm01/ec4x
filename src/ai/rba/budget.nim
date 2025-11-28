@@ -732,13 +732,18 @@ proc buildReconnaissanceOrders*(colony: Colony, tracker: var BudgetTracker,
 proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
                               needFighters: bool, needCarriers: bool,
                               needTransports: bool, needRaiders: bool,
-                              canAffordMoreShips: bool, cstLevel: int): seq[BuildOrder] =
+                              canAffordMoreShips: bool, cstLevel: int,
+                              ownFleets: seq[Fleet]): seq[BuildOrder] =
   ## Generate special unit orders (fighters, carriers, transports, raiders)
   ## Uses BudgetTracker to prevent overspending
   ##
   ## Tech-gated unlocks:
   ## - CST 3: Carrier, Raider
   ## - CST 5: Super Carrier (better fighter capacity)
+  ##
+  ## Grace Period Protection:
+  ## - Fighters require carriers for capacity (2-turn grace period before auto-disbanding)
+  ## - Standalone fighters only built if carriers exist in ownFleets
   result = @[]
 
   # DIAGNOSTIC LOGGING: Track function entry
@@ -841,24 +846,53 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
       ))
       tracker.recordSpending(SpecialUnits, raiderCost)
 
-  # Fighters (cheap filler)
+  # Fighters (cheap filler - for colony defense or carrier deployment)
+  # CAPACITY CHECK: Only build fighters if colony has capacity OR we have carriers
+  # Fighters need EITHER:
+  # 1. Colony capacity (starbases + population), OR
+  # 2. Carrier capacity (can load onto carriers for fleet operations)
   if needFighters:
     let fighterCost = getShipConstructionCost(ShipClass.Fighter)
-    # DIAGNOSTIC LOGGING: Track fighter build loop entry
-    logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Entering fighter build loop: " &
-            &"cost={fighterCost}PP, budget={tracker.getRemainingBudget(SpecialUnits)}PP, colony={colony.systemId}")
-    while tracker.canAfford(SpecialUnits, fighterCost):
-      logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Building fighter at colony {colony.systemId} " &
-               &"(remaining={tracker.getRemainingBudget(SpecialUnits)}PP)")
-      result.add(BuildOrder(
-        colonySystem: colony.systemId,
-        buildType: BuildType.Ship,
-        quantity: 1,
-        shipClass: some(ShipClass.Fighter),
-        buildingType: none(string),
-        industrialUnits: 0
-      ))
-      tracker.recordSpending(SpecialUnits, fighterCost)
+
+    # Check colony capacity: requires operational starbases (1 per 5 FS)
+    # Per assets.md:2.4.1: Max FS = min(floor(PU/100) × FD, operational_starbases × 5)
+    let operationalStarbases = colony.starbases.countIt(not it.isCrippled)
+    let currentFighters = colony.fighterSquadrons.len
+    let colonyCapacity = operationalStarbases * 5  # Each starbase supports 5 fighters
+    let hasColonyCapacity = currentFighters < colonyCapacity
+
+    # Check if we have carriers available (alternative deployment option)
+    var hasCarrierCapacity = false
+    for fleet in ownFleets:
+      for squadron in fleet.squadrons:
+        if squadron.flagship.shipClass in [ShipClass.Carrier, ShipClass.SuperCarrier]:
+          hasCarrierCapacity = true
+          break
+      if hasCarrierCapacity:
+        break
+
+    # DIAGNOSTIC LOGGING: Track fighter build decision
+    logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Colony {colony.systemId} fighter check: " &
+            &"currentFS={currentFighters}, colonyCapacity={colonyCapacity} ({operationalStarbases} starbases), " &
+            &"hasCarriers={hasCarrierCapacity}, canBuild={hasColonyCapacity or hasCarrierCapacity}")
+
+    # Build fighters if EITHER colony has capacity OR we have carriers to load them
+    if hasColonyCapacity or hasCarrierCapacity:
+      while tracker.canAfford(SpecialUnits, fighterCost):
+        logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Building fighter at colony {colony.systemId} " &
+                 &"(remaining={tracker.getRemainingBudget(SpecialUnits)}PP)")
+        result.add(BuildOrder(
+          colonySystem: colony.systemId,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Fighter),
+          buildingType: none(string),
+          industrialUnits: 0
+        ))
+        tracker.recordSpending(SpecialUnits, fighterCost)
+    else:
+      logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Skipping fighter construction at colony {colony.systemId}: " &
+              &"no colony capacity (need starbases) and no carriers available")
 
 proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,
                       planetBreakerCount: int, colonyCount: int,
@@ -1209,7 +1243,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     # Special units: Fighters available at ALL colonies (planet-side, no facilities)
     # Carriers/Transports/Raiders require shipyard/spaceport
     result.add(buildSpecialUnitsOrders(colony, tracker, needFighters, needCarriers,
-                                      needTransports, needRaiders, canAffordMoreShips, cstLevel))
+                                      needTransports, needRaiders, canAffordMoreShips, cstLevel,
+                                      filtered.ownFleets))
 
     # Facility orders: Build Spaceports at colonies without facilities
     # CRITICAL: This scales ship production from 3/turn (homeworld only) to 3N/turn (N colonies)
