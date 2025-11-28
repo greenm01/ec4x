@@ -49,6 +49,9 @@ type
 # Now import sub-modules (they will see our type definitions)
 import ./admiral/[fleet_analysis, defensive_ops, offensive_ops, staging, build_requirements]
 
+# Export build_requirements functions for Admiral-CFO feedback loop
+export build_requirements.reprioritizeRequirements
+
 proc determineStrategy(currentAct: ai_types.GameAct, personality: AIPersonality): AdmiralStrategy =
   ## Determine admiral strategy based on game act and AI personality
   case currentAct
