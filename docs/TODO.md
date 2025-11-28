@@ -1,6 +1,6 @@
 # EC4X TODO & Implementation Status
 
-**Last Updated:** 2025-11-27
+**Last Updated:** 2025-11-28
 **Project Phase:** Phase 3 - AI Neural Network Training Pipeline (Post-Critical Bug Fixes)
 **Test Coverage:** 101 integration tests passing
 **Engine Status:** 100% functional, production-ready
@@ -891,6 +891,41 @@ All balance testing now uses nimble tasks. Removed obsolete bash/Python wrappers
 #### 5. Remove old LLM related files and folders from project
 
 #### 6. Remove and exclude json files from repo and db if possible.
+
+#### 7. ⏸️ NICE TO HAVE - Tech Level Caps Quality-of-Life Enhancements
+
+**Status:** ⏸️ Deferred (Long-term backlog)
+**Context:** Tech level caps fully implemented in Phase 1 (P0) and Phase 2 (P1)
+**Priority:** LOW (nice-to-have polish, not critical functionality)
+
+**Completed Foundation:**
+- ✅ Core tech caps (EL≤11, SL≤8, CST/WEP/etc≤15)
+- ✅ AI budget reallocation (redirects ERP/SRP from maxed techs to TRP)
+- ✅ Waste metrics tracking (diagnostics show wasted RP and turns at max)
+
+**Future Enhancements (Optional):**
+
+**7a. Dynamic Max Level Configuration**
+Allow game setup to customize tech level caps:
+- Add `[tech_caps]` section to `config/game_setup.toml`
+- Add loader in `src/engine/config/game_setup_config.nim`
+- Pass caps to advancement functions instead of using constants
+- **Use Case:** Longer games could allow EL=15, SL=12 for extended progression
+- **Estimated Effort:** 2-3 hours (config system + refactoring)
+
+**7b. UI Indicators for Maxed Technologies**
+Show visual feedback when tech levels are capped:
+- Modify `src/client/reports/turn_report.nim` to detect maxed techs
+- Add "(MAX)" suffix and color coding for capped levels
+- Show waste warnings if investing in maxed techs
+- **Use Case:** Players immediately see when to stop investing in EL/SL
+- **Estimated Effort:** 1-2 hours (UI formatting)
+
+**Why Deferred:**
+- Core functionality complete and working
+- AI already handles caps intelligently
+- Diagnostics provide visibility for tuning
+- Polish can be added later based on player feedback
 
 ### General Notes
 
