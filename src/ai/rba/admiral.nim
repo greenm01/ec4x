@@ -47,7 +47,7 @@ type
 # Note: Sub-modules will import these types directly from this file
 
 # Now import sub-modules (they will see our type definitions)
-import ./admiral/[fleet_analysis, defensive_ops, offensive_ops, staging]
+import ./admiral/[fleet_analysis, defensive_ops, offensive_ops, staging, build_requirements]
 
 proc determineStrategy(currentAct: ai_types.GameAct, personality: AIPersonality): AdmiralStrategy =
   ## Determine admiral strategy based on game act and AI personality
@@ -114,6 +114,30 @@ proc generateAdmiralOrders*(
   # Merge defensive orders into result
   for fleetId, order in defensiveOrders:
     result[fleetId] = order
+
+  # Step 2.5: Generate build requirements (Phase 3)
+  if globalRBAConfig.admiral.build_requirements_enabled:
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} Admiral: Generating build requirements")
+
+    let buildReqs = generateBuildRequirements(
+      filtered,
+      analyses,
+      defensiveOrders,
+      controller,
+      currentAct
+    )
+
+    # Store in controller for orders.nim to use
+    controller.admiralRequirements = some(buildReqs)
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Admiral: Generated {buildReqs.requirements.len} requirements " &
+            &"(Critical={buildReqs.criticalCount}, High={buildReqs.highCount}, " &
+            &"Est={buildReqs.totalEstimatedCost}PP)")
+  else:
+    # Phase 2 mode: No requirements generation
+    controller.admiralRequirements = none(BuildRequirements)
 
   # Step 3: Determine act-specific strategy
   let strategy = determineStrategy(currentAct, controller.personality)
