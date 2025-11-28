@@ -127,20 +127,20 @@ tech_priority = 0.75
 # - Technology: Research investment
 
 [budget_act1_land_grab]
-expansion = 0.35
-defense = 0.10
-military = 0.20      # Increased from 0.10 to ensure adequate colony defense
-reconnaissance = 0.30 # Balanced to achieve 5-scout target (was 0.40, too high)
-special_units = 0.05
-technology = 0.00
+expansion = 0.45       # Increased from 0.35 - PRIORITY in Act 1
+defense = 0.10         # Maintain
+military = 0.20        # Maintain for colony defense
+reconnaissance = 0.10  # Reduced from 0.30 - any ship can explore in Act 1
+special_units = 0.10   # Increased from 0.05 - more ETACs for expansion
+technology = 0.05      # Add minimal tech investment
 
 [budget_act2_rising_tensions]
-expansion = 0.30
-defense = 0.20
-military = 0.30
-reconnaissance = 0.10
-special_units = 0.05
-technology = 0.05
+expansion = 0.20       # Reduced from 0.30 - land grab mostly done
+defense = 0.15         # Reduced from 0.20 - colonies established
+military = 0.30        # Maintain - prepare for war
+reconnaissance = 0.25  # Increased from 0.10 - BUILD ELI mesh now
+special_units = 0.05   # Maintain
+technology = 0.05      # Maintain minimal investment
 
 [budget_act3_total_war]
 expansion = 0.10
@@ -199,9 +199,9 @@ terraforming_costs_lush_to_eden = 5100
 [orders]
 research_max_percent = 0.25      # Maximum research budget (% of treasury)
 espionage_investment_percent = 0.03  # Espionage budget (% of original treasury)
-scout_count_act1 = 5             # Target scout count in Act 1
-scout_count_act2 = 7             # Target scout count in Act 2
-scout_count_act3_plus = 9        # Target scout count in Act 3+
+scout_count_act1 = 3             # Reduced from 5 - minimal scouting in Act 1
+scout_count_act2 = 8             # Increased from 7 - ELI mesh priority in Act 2
+scout_count_act3_plus = 10       # Increased from 9 - full coverage in Act 3+
 
 # ==============================================================================
 # LOGISTICS PARAMETERS
