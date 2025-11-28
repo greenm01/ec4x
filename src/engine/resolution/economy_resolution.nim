@@ -2167,6 +2167,14 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           state.houses[houseId].techTree.accumulated.technology[field] = 0
         state.houses[houseId].techTree.accumulated.technology[field] += trp
 
+      # Save earned RP to House state for diagnostics tracking
+      state.houses[houseId].lastTurnResearchERP = earnedRP.economic
+      state.houses[houseId].lastTurnResearchSRP = earnedRP.science
+      var totalTRP = 0
+      for field, trp in earnedRP.technology:
+        totalTRP += trp
+      state.houses[houseId].lastTurnResearchTRP = totalTRP
+
       # Log allocations (use SCALED allocation for accurate reporting)
       if scaledAllocation.economic > 0:
         echo "      ", houseId, " allocated ", scaledAllocation.economic, " PP → ", earnedRP.economic, " ERP",
@@ -2179,6 +2187,51 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
           echo "      ", houseId, " allocated ", pp, " PP → ", earnedRP.technology[field], " TRP (", field, ")",
                " (total: ", totalTRP, " TRP)"
+
+      # Check for tech advancement (every 6 turns)
+      if advancement.isUpgradeTurn(state.turn):
+        echo "      [TECH ADVANCEMENT] Turn ", state.turn, " - attempting tech advancements for ", houseId
+
+        # Attempt EL advancement
+        let elResult = advancement.attemptELAdvancement(
+          state.houses[houseId].techTree,
+          state.houses[houseId].techTree.levels.economicLevel
+        )
+        if elResult.isSome:
+          let adv = elResult.get
+          echo "      ", houseId, " advanced EL from level ", adv.fromLevel, " to ", adv.toLevel,
+               " (cost: ", adv.cost, " ERP)"
+          # Apply prestige if present
+          if adv.prestigeEvent.isSome:
+            state.houses[houseId].prestige += adv.prestigeEvent.get.amount
+
+        # Attempt SL advancement
+        let slResult = advancement.attemptSLAdvancement(
+          state.houses[houseId].techTree,
+          state.houses[houseId].techTree.levels.scienceLevel
+        )
+        if slResult.isSome:
+          let adv = slResult.get
+          echo "      ", houseId, " advanced SL from level ", adv.fromLevel, " to ", adv.toLevel,
+               " (cost: ", adv.cost, " SRP)"
+          # Apply prestige if present
+          if adv.prestigeEvent.isSome:
+            state.houses[houseId].prestige += adv.prestigeEvent.get.amount
+
+        # Attempt tech field advancements
+        for field in TechField:
+          # Skip EL/SL as they're handled above
+          if field == TechField.EconomicLevel or field == TechField.ScienceLevel:
+            continue
+
+          let techResult = advancement.attemptTechAdvancement(state.houses[houseId].techTree, field)
+          if techResult.isSome:
+            let adv = techResult.get
+            echo "      ", houseId, " advanced ", field, " from level ", adv.fromLevel, " to ", adv.toLevel,
+                 " (cost: ", adv.cost, " TRP)"
+            # Apply prestige if present
+            if adv.prestigeEvent.isSome:
+              state.houses[houseId].prestige += adv.prestigeEvent.get.amount
 
 ## Phase 3: Command
 

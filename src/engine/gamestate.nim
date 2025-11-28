@@ -191,6 +191,11 @@ type
     # Economic reports (for intelligence gathering)
     latestIncomeReport*: Option[econ_types.HouseIncomeReport]  # Last turn's income report
 
+    # Research tracking (for diagnostics)
+    lastTurnResearchERP*: int  # Economic RP earned last turn
+    lastTurnResearchSRP*: int  # Science RP earned last turn
+    lastTurnResearchTRP*: int  # Total Technology RP earned last turn (sum of all fields)
+
     # Safe retreat routes (automatic seek-home behavior)
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference
