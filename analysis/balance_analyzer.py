@@ -425,3 +425,224 @@ class BalanceAnalyzer:
         df.write_csv(output_path)
 
         return output_path
+
+    def export_for_claude(
+        self,
+        output_path: Path | str,
+        format_type: str = "markdown",
+        houses: Optional[List[str]] = None,
+        turns: Optional[Tuple[int, int]] = None,
+        metrics: Optional[List[str]] = None
+    ):
+        """
+        Export data in Claude-optimized formats (token-efficient).
+
+        Args:
+            output_path: Output file path
+            format_type: "markdown", "json", or "summary"
+            houses: List of house names to filter (default: all)
+            turns: Tuple of (start, end) turn range (default: all)
+            metrics: List of metrics to include (default: important ones)
+
+        Returns:
+            Tuple of (output_path, estimated_tokens)
+        """
+        import json
+        from pathlib import Path
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Filter data
+        df = self.df
+
+        if houses:
+            df = df.filter(pl.col("house").is_in(houses))
+
+        if turns:
+            df = df.filter(
+                (pl.col("turn") >= turns[0]) & (pl.col("turn") <= turns[1])
+            )
+
+        # Select metrics (default to important ones)
+        if metrics is None:
+            metrics = [
+                "treasury_balance", "total_fighters", "total_destroyers",
+                "total_cruisers", "tech_wep", "tech_eli", "prestige_current",
+                "space_combat_wins", "space_combat_losses"
+            ]
+
+        # Ensure core columns are included
+        core_cols = ["turn", "house"]
+        available_metrics = [m for m in metrics if m in df.columns]
+        select_cols = core_cols + available_metrics
+
+        df = df.select(select_cols)
+
+        # Export based on format
+        if format_type == "markdown":
+            self._export_markdown(df, output_path, houses, turns, available_metrics)
+        elif format_type == "json":
+            self._export_json(df, output_path, houses, turns, available_metrics)
+        elif format_type == "summary":
+            self._export_summary(df, output_path, houses, turns, available_metrics)
+        else:
+            raise ValueError(f"Invalid format_type: {format_type}")
+
+        # Estimate tokens (rough: 1 token ≈ 4 bytes)
+        file_size = output_path.stat().st_size
+        estimated_tokens = file_size // 4
+
+        return output_path, estimated_tokens
+
+    def _export_markdown(self, df: pl.DataFrame, output_path: Path,
+                         houses: Optional[List[str]], turns: Optional[Tuple[int, int]],
+                         metrics: List[str]):
+        """Export as markdown table (Claude's native format)."""
+        with open(output_path, "w") as f:
+            # Header
+            f.write("# EC4X Diagnostic Data Export\n\n")
+
+            if turns:
+                f.write(f"**Turns:** {turns[0]}-{turns[1]}\n")
+            else:
+                min_turn = df.select(pl.col("turn").min()).item()
+                max_turn = df.select(pl.col("turn").max()).item()
+                f.write(f"**Turns:** {min_turn}-{max_turn}\n")
+
+            if houses:
+                f.write(f"**Houses:** {', '.join(houses)}\n")
+            else:
+                f.write("**Houses:** All\n")
+
+            f.write(f"**Metrics:** {len(metrics)}\n\n")
+
+            # Table header
+            header = "| Turn | House |"
+            for metric in metrics:
+                header += f" {metric} |"
+            f.write(header + "\n")
+
+            # Separator
+            separator = "|------|-------|"
+            for _ in metrics:
+                separator += "----------|"
+            f.write(separator + "\n")
+
+            # Data rows
+            for row in df.iter_rows(named=True):
+                line = f"| {row['turn']} | {row['house']} |"
+                for metric in metrics:
+                    value = row.get(metric, "")
+                    if isinstance(value, float):
+                        line += f" {value:.1f} |"
+                    else:
+                        line += f" {value} |"
+                f.write(line + "\n")
+
+            f.write(f"\n*{len(df)} rows exported*\n")
+
+    def _export_json(self, df: pl.DataFrame, output_path: Path,
+                     houses: Optional[List[str]], turns: Optional[Tuple[int, int]],
+                     metrics: List[str]):
+        """Export as compact JSON with aggregated statistics."""
+        # Build JSON structure
+        json_data = {
+            "summary": {
+                "turn_range": [df.select(pl.col("turn").min()).item(),
+                              df.select(pl.col("turn").max()).item()],
+                "houses": houses if houses else "all",
+                "total_rows": len(df),
+                "metrics_count": len(metrics)
+            },
+            "metrics": {}
+        }
+
+        # Aggregate each metric
+        for metric in metrics:
+            if metric in df.columns:
+                metric_col = df.select(pl.col(metric))
+                json_data["metrics"][metric] = {
+                    "mean": round(metric_col.mean().item(), 2),
+                    "median": round(metric_col.median().item(), 2),
+                    "min": metric_col.min().item(),
+                    "max": metric_col.max().item(),
+                    "stddev": round(metric_col.std().item(), 2)
+                }
+
+        # Detect anomalies (z-score > 3.0)
+        anomalies = []
+        for metric in metrics:
+            if metric in df.columns:
+                try:
+                    mean = df.select(pl.col(metric).mean()).item()
+                    std = df.select(pl.col(metric).std()).item()
+
+                    if std > 0:
+                        df_with_zscore = df.with_columns([
+                            ((pl.col(metric) - mean) / std).abs().alias("z_score")
+                        ])
+
+                        outliers = df_with_zscore.filter(pl.col("z_score") > 3.0)
+
+                        for row in outliers.iter_rows(named=True):
+                            anomalies.append({
+                                "turn": row["turn"],
+                                "house": row["house"],
+                                "metric": metric,
+                                "value": row[metric],
+                                "z_score": round(row["z_score"], 2)
+                            })
+                except:
+                    pass  # Skip metrics that can't be aggregated
+
+        json_data["anomalies"] = anomalies[:20]  # Limit to top 20
+
+        # Write to file
+        with open(output_path, "w") as f:
+            json.dump(json_data, f, indent=2)
+
+    def _export_summary(self, df: pl.DataFrame, output_path: Path,
+                        houses: Optional[List[str]], turns: Optional[Tuple[int, int]],
+                        metrics: List[str]):
+        """Export as high-level text summary (<1K tokens)."""
+        with open(output_path, "w") as f:
+            f.write("# EC4X Diagnostic Summary\n\n")
+
+            # Overview
+            f.write("## Overview\n")
+            min_turn = df.select(pl.col("turn").min()).item()
+            max_turn = df.select(pl.col("turn").max()).item()
+            f.write(f"- **Turn Range:** {min_turn}-{max_turn}\n")
+            f.write(f"- **Houses:** {', '.join(houses) if houses else 'All'}\n")
+            f.write(f"- **Total Data Points:** {len(df)}\n\n")
+
+            # Key Metrics
+            f.write("## Key Metrics\n\n")
+            for metric in metrics[:5]:  # Top 5 metrics
+                if metric in df.columns:
+                    mean_val = df.select(pl.col(metric).mean()).item()
+                    min_val = df.select(pl.col(metric).min()).item()
+                    max_val = df.select(pl.col(metric).max()).item()
+                    f.write(f"- **{metric}:** mean={mean_val:.1f}, min={min_val:.1f}, max={max_val:.1f}\n")
+
+            # Anomalies
+            f.write("\n## Anomalies Detected\n\n")
+            anomaly_count = 0
+            for metric in metrics:
+                if metric in df.columns:
+                    try:
+                        mean = df.select(pl.col(metric).mean()).item()
+                        std = df.select(pl.col(metric).std()).item()
+                        if std > 0:
+                            outliers = df.filter(((pl.col(metric) - mean) / std).abs() > 3.0)
+                            if len(outliers) > 0:
+                                f.write(f"- **{metric}:** {len(outliers)} outliers detected\n")
+                                anomaly_count += len(outliers)
+                    except:
+                        pass
+
+            if anomaly_count == 0:
+                f.write("*No significant anomalies detected*\n")
+
+            f.write(f"\n*Summary generated from {len(df)} data points*\n")

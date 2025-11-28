@@ -17,7 +17,7 @@ import research/[types as res_types_research]
 import commands/executor
 import intelligence/espionage_intel
 # Import resolution modules
-import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution]
+import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_blockade, simultaneous_espionage]
 
 # Re-export resolution types for backward compatibility
 export res_types.GameEvent, res_types.GameEventType, res_types.CombatReport
@@ -207,81 +207,87 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
     resolveBattle(state, systemId, orders, combatReports, events, rng)
 
   # Process espionage actions (per gameplay.md:1.3.1 - resolved in Conflict Phase)
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      let packet = orders[houseId]
+  # NOTE: Now handled by SIMULTANEOUS ESPIONAGE RESOLUTION (see Command Phase)
+  # This sequential loop is deprecated and will be removed
+  when false:
+    for houseId in state.houses.keys:
+      if houseId in orders:
+        let packet = orders[houseId]
 
-      # Process espionage action if present (max 1 per turn per diplomacy.md:8.2)
-      if packet.espionageAction.isSome:
-        let attempt = packet.espionageAction.get()
+        # Process espionage action if present (max 1 per turn per diplomacy.md:8.2)
+        if packet.espionageAction.isSome:
+          let attempt = packet.espionageAction.get()
 
-        # Get target's CIC level from tech tree
-        let targetCICLevel = case state.houses[attempt.target].techTree.levels.counterIntelligence
-          of 1: esp_types.CICLevel.CIC1
-          of 2: esp_types.CICLevel.CIC2
-          of 3: esp_types.CICLevel.CIC3
-          of 4: esp_types.CICLevel.CIC4
-          of 5: esp_types.CICLevel.CIC5
-          else: esp_types.CICLevel.CIC1
-        let targetCIP = if attempt.target in state.houses:
-                          state.houses[attempt.target].espionageBudget.cipPoints
-                        else:
-                          0
+          # Get target's CIC level from tech tree
+          let targetCICLevel = case state.houses[attempt.target].techTree.levels.counterIntelligence
+            of 1: esp_types.CICLevel.CIC1
+            of 2: esp_types.CICLevel.CIC2
+            of 3: esp_types.CICLevel.CIC3
+            of 4: esp_types.CICLevel.CIC4
+            of 5: esp_types.CICLevel.CIC5
+            else: esp_types.CICLevel.CIC1
+          let targetCIP = if attempt.target in state.houses:
+                            state.houses[attempt.target].espionageBudget.cipPoints
+                          else:
+                            0
 
-        # Execute espionage action with detection roll (using turn RNG)
-        let result = esp_engine.executeEspionage(
-          attempt,
-          targetCICLevel,
-          targetCIP,
-          rng
-        )
+          # Execute espionage action with detection roll (using turn RNG)
+          let result = esp_engine.executeEspionage(
+            attempt,
+            targetCICLevel,
+            targetCIP,
+            rng
+          )
 
-        # Apply results
-        if result.success:
-          logInfo("Espionage", "Mission success", $attempt.attacker, " ", result.description)
+          # Apply results
+          if result.success:
+            logInfo("Espionage", "Mission success", $attempt.attacker, " ", result.description)
 
-          # Apply prestige changes
-          for prestigeEvent in result.attackerPrestigeEvents:
-            state.houses[attempt.attacker].prestige += prestigeEvent.amount
-          for prestigeEvent in result.targetPrestigeEvents:
-            state.houses[attempt.target].prestige += prestigeEvent.amount
+            # Apply prestige changes
+            for prestigeEvent in result.attackerPrestigeEvents:
+              state.houses[attempt.attacker].prestige += prestigeEvent.amount
+            for prestigeEvent in result.targetPrestigeEvents:
+              state.houses[attempt.target].prestige += prestigeEvent.amount
 
-          # Apply ongoing effects
-          if result.effect.isSome:
-            state.ongoingEffects.add(result.effect.get())
+            # Apply ongoing effects
+            if result.effect.isSome:
+              state.ongoingEffects.add(result.effect.get())
 
-          # Apply immediate effects (SRP theft, IU damage, etc.)
-          if result.srpStolen > 0:
-            # Steal SRP from target
-            if attempt.target in state.houses:
-              state.houses[attempt.target].techTree.accumulated.science =
-                max(0, state.houses[attempt.target].techTree.accumulated.science - result.srpStolen)
-              state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
-              echo "      Stole ", result.srpStolen, " SRP from ", attempt.target
+            # Apply immediate effects (SRP theft, IU damage, etc.)
+            if result.srpStolen > 0:
+              # Steal SRP from target
+              if attempt.target in state.houses:
+                state.houses[attempt.target].techTree.accumulated.science =
+                  max(0, state.houses[attempt.target].techTree.accumulated.science - result.srpStolen)
+                state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
+                echo "      Stole ", result.srpStolen, " SRP from ", attempt.target
 
-        else:
-          echo "    ", attempt.attacker, " espionage DETECTED by ", attempt.target
-          # Apply detection prestige penalties
-          for prestigeEvent in result.attackerPrestigeEvents:
-            state.houses[attempt.attacker].prestige += prestigeEvent.amount
+          else:
+            echo "    ", attempt.attacker, " espionage DETECTED by ", attempt.target
+            # Apply detection prestige penalties
+            for prestigeEvent in result.attackerPrestigeEvents:
+              state.houses[attempt.attacker].prestige += prestigeEvent.amount
 
-        # Generate intelligence reports for espionage operation
-        espionage_intel.generateEspionageIntelligence(state, result, state.turn)
+          # Generate intelligence reports for espionage operation
+          espionage_intel.generateEspionageIntelligence(state, result, state.turn)
 
   # Process planetary combat orders (operations.md:7.5, 7.6)
   # These execute after space/orbital combat in linear progression
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      for order in orders[houseId].fleetOrders:
-        case order.orderType
-        of FleetOrderType.Bombard:
-          resolveBombardment(state, houseId, order, events)
-        of FleetOrderType.Invade:
-          resolveInvasion(state, houseId, order, events)
-        of FleetOrderType.Blitz:
-          resolveBlitz(state, houseId, order, events)
-        else:
-          discard
+  # NOTE: Now handled by SIMULTANEOUS PLANETARY COMBAT RESOLUTION (see Command Phase)
+  # This sequential loop is deprecated and will be removed
+  when false:
+    for houseId in state.houses.keys:
+      if houseId in orders:
+        for order in orders[houseId].fleetOrders:
+          case order.orderType
+          of FleetOrderType.Bombard:
+            resolveBombardment(state, houseId, order, events)
+          of FleetOrderType.Invade:
+            resolveInvasion(state, houseId, order, events)
+          of FleetOrderType.Blitz:
+            resolveBlitz(state, houseId, order, events)
+          else:
+            discard
 
 ## Helper: Auto-balance unassigned squadrons to fleets at colony
 
@@ -432,6 +438,58 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # Track which fleets have already executed orders this turn
   var fleetsProcessed = initHashSet[FleetId]()
 
+  # ===================================================================
+  # SIMULTANEOUS COLONIZATION RESOLUTION
+  # ===================================================================
+  # Resolve all colonization orders simultaneously to prevent first-mover advantage
+  # This must happen before the main fleet order loop
+  when not defined(release):
+    echo "  [SIMULTANEOUS COLONIZATION] Resolving colonization orders fairly..."
+
+  let colonizationResults = simultaneous.resolveColonization(state, orders, rng)
+
+  when not defined(release):
+    echo "  [SIMULTANEOUS COLONIZATION] Resolved ", colonizationResults.len, " colonization attempts"
+    for result in colonizationResults:
+      echo "    House ", result.houseId, " Fleet ", result.fleetId, ": ", result.outcome,
+           " (prestige: +", result.prestigeAwarded, ")"
+
+  # ===================================================================
+  # SIMULTANEOUS BLOCKADE RESOLUTION
+  # ===================================================================
+  when not defined(release):
+    echo "  [SIMULTANEOUS BLOCKADE] Resolving blockade orders fairly..."
+
+  let blockadeResults = simultaneous_blockade.resolveBlockades(state, orders, rng)
+
+  when not defined(release):
+    echo "  [SIMULTANEOUS BLOCKADE] Resolved ", blockadeResults.len, " blockade attempts"
+
+  # ===================================================================
+  # SIMULTANEOUS PLANETARY COMBAT RESOLUTION
+  # ===================================================================
+  when not defined(release):
+    echo "  [SIMULTANEOUS PLANETARY COMBAT] Resolving planetary combat orders fairly..."
+
+  let planetaryCombatResults = simultaneous_planetary.resolvePlanetaryCombat(state, orders, rng)
+
+  when not defined(release):
+    echo "  [SIMULTANEOUS PLANETARY COMBAT] Resolved ", planetaryCombatResults.len, " planetary combat attempts"
+
+  # ===================================================================
+  # SIMULTANEOUS ESPIONAGE RESOLUTION
+  # ===================================================================
+  when not defined(release):
+    echo "  [SIMULTANEOUS ESPIONAGE] Resolving espionage orders fairly..."
+
+  let espionageResults = simultaneous_espionage.resolveEspionage(state, orders, rng)
+
+  when not defined(release):
+    echo "  [SIMULTANEOUS ESPIONAGE] Resolved ", espionageResults.len, " espionage attempts"
+
+  # ===================================================================
+  # FLEET ORDER EXECUTION
+  # ===================================================================
   # Execute all fleet orders through the new executor
   when not defined(release):
     var processCount = 0
@@ -523,22 +581,55 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
         resolveMovementOrder(state, houseId, order, events)
 
       of FleetOrderType.Colonize:
-        # Move-to-Colonize: Fleet moves to target then colonizes
-        when not defined(release):
-          echo "    [BEFORE COLONIZE CALL] About to call resolveColonizationOrder for fleet ", order.fleetId
-        resolveColonizationOrder(state, houseId, order, events)
-        when not defined(release):
-          echo "    [AFTER COLONIZE CALL] resolveColonizationOrder returned for fleet ", order.fleetId
+        # Check if already handled by simultaneous resolution
+        if simultaneous.wasColonizationHandled(colonizationResults, houseId, order.fleetId):
+          when not defined(release):
+            echo "    [COLONIZE SKIP] Fleet ", order.fleetId, " already handled by simultaneous resolution"
+          discard
+        else:
+          # Move-to-Colonize: Fleet moves to target then colonizes
+          when not defined(release):
+            echo "    [BEFORE COLONIZE CALL] About to call resolveColonizationOrder for fleet ", order.fleetId
+          resolveColonizationOrder(state, houseId, order, events)
+          when not defined(release):
+            echo "    [AFTER COLONIZE CALL] resolveColonizationOrder returned for fleet ", order.fleetId
 
-      of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
-        # TODO: Move-to-Attack pattern
-        # These are handled in Conflict Phase
-        discard
+      of FleetOrderType.Bombard:
+        # Check if already handled by simultaneous resolution
+        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, order.fleetId):
+          discard  # Already handled
+        else:
+          resolveBombardment(state, houseId, order, events)
 
-      of FleetOrderType.SpySystem:
-        # TODO: Move-to-Spy pattern
-        # Handled in Conflict Phase
-        discard
+      of FleetOrderType.Invade:
+        # Check if already handled by simultaneous resolution
+        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, order.fleetId):
+          discard  # Already handled
+        else:
+          resolveInvasion(state, houseId, order, events)
+
+      of FleetOrderType.Blitz:
+        # Check if already handled by simultaneous resolution
+        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, order.fleetId):
+          discard  # Already handled
+        else:
+          resolveBlitz(state, houseId, order, events)
+
+      of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
+        # Check if already handled by simultaneous resolution
+        if simultaneous_espionage.wasEspionageHandled(espionageResults, houseId, order.fleetId):
+          discard  # Already handled
+        else:
+          # TODO: Implement individual espionage handlers
+          discard
+
+      of FleetOrderType.BlockadePlanet:
+        # Check if already handled by simultaneous resolution
+        if simultaneous_blockade.wasBlockadeHandled(blockadeResults, houseId, order.fleetId):
+          discard  # Already handled
+        else:
+          # TODO: Implement individual blockade handler
+          discard
       of FleetOrderType.Reserve:
         # Place fleet on reserve status
         # Per economy.md:3.9 - ships auto-join colony's single reserve fleet

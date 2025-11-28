@@ -1,9 +1,12 @@
 # EC4X Open Issues & Gaps
 
-**Last Updated:** 2025-11-27 (Post-AI Subsystem Fixes: Scouts, Espionage, Resource Hoarding, Mothballing)
+**Last Updated:** 2025-11-27 (Post-Simultaneous Resolution: Sequential Bias Eliminated)
 
 This is the SINGLE source of truth for known bugs, missing features, and technical debt.
 When an issue is fixed, check it off and update STATUS.md.
+
+**Recently Resolved:**
+- ✅ **Sequential Order Processing Bias** (2025-11-27) - Implemented simultaneous resolution for all competitive orders (colonization, blockade, planetary combat, espionage). Win rates dropped from 87-93% to 56.2% max. System is now fully deterministic and reproducible. See KNOWN_ISSUES.md #-3 for details.
 
 ---
 

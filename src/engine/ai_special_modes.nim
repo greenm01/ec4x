@@ -5,6 +5,7 @@
 
 import std/[tables, options]
 import ../common/types/core
+import ../common/logger
 import gamestate
 import fleet
 import starmap
@@ -239,13 +240,13 @@ proc updateMIAStatus*(state: var GameState, housesWithOrders: seq[HouseId]) =
       if house.status == HouseStatus.Autopilot:
         # House returned from autopilot
         house.status = HouseStatus.Active
-        echo "  ", house.name, " has returned from autopilot mode"
+        logInfo("AI", "House returned from autopilot", "house=", house.name)
     else:
       # House missed orders
       house.turnsWithoutOrders += 1
-      echo "  ", house.name, " missed orders (", house.turnsWithoutOrders, "/3 turns)"
+      logDebug("AI", "House missed orders", "house=", house.name, " turns=", $house.turnsWithoutOrders, "/3")
 
       if house.turnsWithoutOrders >= 3 and house.status != HouseStatus.Autopilot:
         # Enter autopilot mode
         house.status = HouseStatus.Autopilot
-        echo "  ", house.name, " has entered autopilot mode (MIA for 3 turns)"
+        logInfo("AI", "House entered autopilot mode", "house=", house.name, " reason=MIA_3_turns")

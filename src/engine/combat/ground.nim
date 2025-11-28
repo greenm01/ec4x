@@ -666,6 +666,97 @@ proc createMarine*(
     state: CombatState.Undamaged
   )
 
+## Ground Force Assembly (Consolidation Functions)
+## These functions eliminate duplication in combat resolution code
+
+proc assembleDefendingForces*(
+  systemId: string,
+  armyCount: int,
+  marineCount: int,
+  owner: HouseId
+): seq[GroundUnit] =
+  ## Assemble defending ground forces from colony counts
+  ## Consolidates duplicated code from bombardment/invasion/blitz resolution
+  ##
+  ## Creates armies and marines with proper IDs and stats from config
+  ## Returns seq ready for ground combat
+
+  result = @[]
+
+  # Add armies (garrison forces)
+  for i in 0 ..< armyCount:
+    let army = createArmy(
+      id = systemId & "_AA_" & $i,
+      owner = owner
+    )
+    result.add(army)
+
+  # Add marines (can defend too)
+  for i in 0 ..< marineCount:
+    let marine = createMarine(
+      id = systemId & "_MD_" & $i,
+      owner = owner
+    )
+    result.add(marine)
+
+proc assemblePlanetaryDefense*(
+  systemId: string,
+  shieldLevel: int,
+  batteryCount: int,
+  owner: HouseId,
+  constructionTechLevel: int
+): PlanetaryDefense =
+  ## Assemble complete planetary defense structure
+  ## Consolidates duplicated code from bombardment/invasion/blitz resolution
+  ##
+  ## Creates shields and ground batteries with proper IDs and tech levels
+  ## Returns PlanetaryDefense ready for combat
+
+  result = PlanetaryDefense()
+
+  # Add planetary shields if present
+  if shieldLevel > 0:
+    let (rollNeeded, blockPct) = getShieldData(shieldLevel)
+    result.shields = some(ShieldLevel(
+      level: shieldLevel,
+      blockChance: float(rollNeeded) / 20.0,
+      blockPercentage: blockPct
+    ))
+
+  # Add ground batteries
+  result.groundBatteries = @[]
+  for i in 0 ..< batteryCount:
+    let battery = createGroundBattery(
+      id = systemId & "_GB" & $i,
+      owner = owner,
+      techLevel = constructionTechLevel
+    )
+    result.groundBatteries.add(battery)
+
+  # Spaceport status (true if exists, managed separately)
+  result.spaceport = false  # Set by caller based on colony state
+
+proc assembleAttackingForces*(
+  systemId: string,
+  marineCount: int,
+  owner: HouseId
+): seq[GroundUnit] =
+  ## Assemble attacking ground forces (marines only)
+  ## Consolidates duplicated code from invasion/blitz resolution
+  ##
+  ## Creates marines with proper IDs and stats from config
+  ## Returns seq ready for ground combat
+
+  result = @[]
+
+  # Add marines (invasion/blitz force)
+  for i in 0 ..< marineCount:
+    let marine = createMarine(
+      id = systemId & "_AM_" & $i,  # AM = Attacking Marine
+      owner = owner
+    )
+    result.add(marine)
+
 ## Notes for Future Implementation
 ##
 ## 1. Ground Combat State Persistence:

@@ -8,6 +8,7 @@
 import std/[options, tables, sequtils, strutils, random]
 import types, cer, resolution, retreat, damage, ../squadron
 import ../intelligence/detection
+import ../../common/logger
 
 export BattleContext, CombatResult, TaskForce, CombatSquadron
 
@@ -110,7 +111,11 @@ proc resolveCombat*(context: BattleContext): CombatResult =
         let detectionResult = detectRaider(detectorUnit, targetCloakLevel, detectionRng)
 
         when defined(debugDetection):
-          echo fmt"[Detection] {detectorTF.house} (ELI{detectorTF.eliLevel}, {scoutCount} scouts) detecting {targetTF.house} (CLK{targetCloakLevel}): effective ELI{detectionResult.effectiveELI}, rolled {detectionResult.roll} vs threshold {detectionResult.threshold} = {detectionResult.detected}"
+          logDebug("Detection", "Cloak detection attempt",
+                  "detector=", $detectorTF.house, " detectorELI=", $detectorTF.eliLevel,
+                  " scouts=", $scoutCount, " target=", $targetTF.house, " targetCLK=", $targetCloakLevel,
+                  " effectiveELI=", $detectionResult.effectiveELI, " roll=", $detectionResult.roll,
+                  " threshold=", $detectionResult.threshold, " detected=", $detectionResult.detected)
 
         if detectionResult.detected:
           # Raiders detected! Remove ambush advantage

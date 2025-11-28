@@ -4,7 +4,7 @@ import std/[tables, options, strutils]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, starmap
 import order_types  # Fleet order types (avoid circular dependency)
-import config/[prestige_config, military_config, tech_config]
+import config/[prestige_config, military_config, tech_config, game_setup_config]
 import diplomacy/types as dip_types
 import diplomacy/proposals as dip_proposals
 import espionage/types as esp_types
@@ -277,20 +277,26 @@ proc initializeHouse*(name: string, color: string): House =
   )
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
-  ## Create a starting homeworld colony
-  ## ACCELERATION: Homeworld starts with 100M population to match original EC's
-  ## ~100 PP/year baseline production. At 2 PP per 10M, this gives ~20 PP/turn.
+  ## Create a starting homeworld colony per gameplay.md:1.2
+  ## Loads configuration from game_setup/standard.toml
+  let setupConfig = game_setup_config.globalGameSetupConfig
+  let homeworldCfg = setupConfig.homeworld
+
+  # Parse planet class and resources from config
+  let planetClass = game_setup_config.parsePlanetClass(homeworldCfg.planet_class)
+  let resources = game_setup_config.parseResourceRating(homeworldCfg.raw_quality)
+
   result = Colony(
     systemId: systemId,
     owner: owner,
-    population: 100,  # Starting population in millions (was 5M, now 100M for EC parity)
-    souls: 100_000_000,  # Exact population count: 100M souls
-    populationUnits: 100,  # PU for economic calculations (matches population)
-    populationTransferUnits: 100,  # PTU for Space Guild transfers
-    infrastructure: 3,  # Starting infrastructure
+    population: homeworldCfg.population_units,  # Starting population from config
+    souls: homeworldCfg.population_units * 1_000_000,  # Convert PU to souls (1 PU = 1M souls)
+    populationUnits: homeworldCfg.population_units,  # PU for economic calculations
+    populationTransferUnits: homeworldCfg.population_units,  # PTU for Space Guild transfers
+    infrastructure: homeworldCfg.colony_level,  # Infrastructure level from config
     industrial: econ_types.IndustrialUnits(units: 0, investmentCost: econ_types.BASE_IU_COST),  # No IU at start
-    planetClass: PlanetClass.Eden,  # Homeworlds are Abundant Eden per specs
-    resources: ResourceRating.Abundant,  # Abundant resources
+    planetClass: planetClass,  # Planet class from config
+    resources: resources,  # Resources from config
     buildings: @[BuildingType.Shipyard],  # Start with basic shipyard
     production: 0,
     grossOutput: 0,  # Will be calculated by income engine

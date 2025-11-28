@@ -9,6 +9,7 @@
 import std/[tables, options, sequtils, strformat]
 import ../../common/types/[core, combat, units]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../spacelift, ../logger
+import ../state_helpers
 import ../colonization/engine as col_engine
 import ../diplomacy/[types as dip_types]
 import ../config/population_config
@@ -286,10 +287,8 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
       # Generate basic intelligence report on enemy colony
       let intelReport = generateColonyIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
       if intelReport.isSome:
-        # CRITICAL: Must get house, modify, and write back to persist intelligence
-        var house = state.houses[houseId]
-        house.intelligence.addColonyReport(intelReport.get())
-        state.houses[houseId] = house
+        state.withHouse(houseId):
+          house.intelligence.addColonyReport(intelReport.get())
         logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered intelligence on enemy colony at {newLocation}")
 
   # Check for fleet encounters at destination with STEALTH DETECTION
@@ -313,9 +312,8 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   if enemyFleetsAtLocation.len > 0:
     let systemIntelReport = generateSystemIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
     if systemIntelReport.isSome:
-      var house = state.houses[houseId]
-      house.intelligence.addSystemReport(systemIntelReport.get())
-      state.houses[houseId] = house
+      state.withHouse(houseId):
+        house.intelligence.addSystemReport(systemIntelReport.get())
       logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered intelligence on {enemyFleetsAtLocation.len} enemy fleet(s) at {newLocation}")
 
   # Combat will be resolved in conflict phase next turn
@@ -339,17 +337,15 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
       # Generate detailed colony intel including orbital defenses
       let colonyIntel = generateColonyIntelReport(state, houseId, targetId, intel_types.IntelQuality.Visual)
       if colonyIntel.isSome:
-        var house = state.houses[houseId]
-        house.intelligence.addColonyReport(colonyIntel.get())
-        state.houses[houseId] = house
+        state.withHouse(houseId):
+          house.intelligence.addColonyReport(colonyIntel.get())
         logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered orbital intelligence on enemy colony at {targetId}")
 
       # Also gather system intel on any fleets present (including guard/reserve fleets)
       let systemIntel = generateSystemIntelReport(state, houseId, targetId, intel_types.IntelQuality.Visual)
       if systemIntel.isSome:
-        var house = state.houses[houseId]
-        house.intelligence.addSystemReport(systemIntel.get())
-        state.houses[houseId] = house
+        state.withHouse(houseId):
+          house.intelligence.addSystemReport(systemIntel.get())
 
     logWarn(LogCategory.lcColonization, &"Fleet {order.fleetId}: System {targetId} already colonized by {colony.owner}")
     return
@@ -429,17 +425,16 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   state.colonies[targetId] = colony
 
   # Unload colonists from fleet
-  var updatedFleet = fleet
-  for ship in updatedFleet.spaceLiftShips.mitems:
+  for ship in fleet.spaceLiftShips.mitems:
     if ship.cargo.cargoType == CargoType.Colonists:
       discard ship.unloadCargo()
-
-  state.fleets[order.fleetId] = updatedFleet
+  state.fleets[order.fleetId] = fleet
 
   # Apply prestige award
   if result.prestigeEvent.isSome:
     let prestigeEvent = result.prestigeEvent.get()
-    state.houses[houseId].prestige += prestigeEvent.amount
+    state.withHouse(houseId):
+      house.prestige += prestigeEvent.amount
     logInfo(LogCategory.lcColonization, &"{state.houses[houseId].name} colonized system {targetId} (+{prestigeEvent.amount} prestige)")
 
   # Generate event

@@ -7,6 +7,31 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Simultaneous Order Resolution System - COMPLETE (2025-11-27)**
+  - ✅ **Problem:** Sequential order processing created first-mover advantages
+    - Hash table iteration order (`for houseId in state.houses.keys`) was non-deterministic
+    - house-corrino winning 87-93% of games due to favorable iteration order
+    - Different test runs produced different dominant houses
+  - ✅ **Solution:** Three-phase simultaneous resolution pattern
+    - Phase 1: Collect all competitive order intents (no state mutation)
+    - Phase 2: Detect conflicts and resolve via conflict resolution rules
+    - Phase 3: Execute winning orders atomically
+  - ✅ **Implemented Systems:**
+    - Colonization: Winner-takes-all by fleet strength (already complete)
+    - Blockade: Winner-takes-all by blockade strength
+    - Planetary Combat (Bombard/Invade/Blitz): Winner-takes-all by attack strength
+    - Espionage (SpyPlanet/SpySystem/HackStarbase): Prestige-based priority with dishonor penalties
+  - ✅ **Results:** Completely deterministic, sequential bias eliminated
+    - Before: 87-93% win rate (iteration order bias)
+    - After: 56.2% max win rate (strategy-based advantage)
+    - Multiple test runs produce identical results
+  - ✅ **Technical Details:**
+    - Deterministic tiebreaking: `turn xor hash(targetId)` ensures reproducible outcomes
+    - Dishonored houses deprioritized in espionage (moved to end of priority list)
+    - Winner-takes-all for colonization, blockade, planetary combat
+    - All succeed in priority order for espionage
+  - **Files:** `src/engine/resolution/simultaneous*.nim` (4 modules), `src/engine/resolve.nim` (integration)
+  - **Commits:** [TBD - will be included in next commit]
 - ✅ **Terminal-Based Data Analysis System - COMPLETE (2025-11-27)**
   - ✅ **Motivation:** Self-service RBA tuning + token-efficient Claude assistance
     - User requested: "I would like to get the engine and rba into good enough shape that i can do all the tweaking and analysis myself"

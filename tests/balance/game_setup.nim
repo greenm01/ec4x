@@ -115,7 +115,7 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
   var rng = initRand(seed)
 
   # Generate star map with player starting positions
-  var starMap = newStarMap(numHouses)
+  var starMap = newStarMap(numHouses, seed)
   # Override numRings based on mapSize parameter
   starMap.numRings = mapSize.uint32
   starMap.populate()
@@ -127,6 +127,14 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
   let activeThemeName = globalGameplayConfig.theme.active_theme
   let themeConfig = loadThemeConfig(activeThemeName = activeThemeName)
   let activeTheme = getActiveTheme(themeConfig)
+
+  # DIAGNOSTIC: Test if specific map positions are inherently advantageous
+  # Rotate house-to-position mapping by seed to test all position combinations
+  # This will reveal if corrino's dominance is position-based or something else
+  let positionRotation = int(seed mod numHouses.int64)
+  var houseOrder = toSeq(0..<numHouses)
+  # Rotate the array by positionRotation positions
+  houseOrder = houseOrder[positionRotation..^1] & houseOrder[0..<positionRotation]
 
   # Initialize empty game state
   result = GameState(
@@ -152,11 +160,19 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     # Initialize house with standard starting conditions
     result.houses[houseId] = initializeHouse(houseName, houseColor)
 
-    # Get player's starting system from star map
-    let homeSystemId = result.starMap.playerSystemIds[i]
+    # BALANCE FIX: Use randomized mapping instead of direct index
+    # houseOrder[i] gives this house's randomized position in the player system list
+    let positionIndex = houseOrder[i]
+    let homeSystemId = result.starMap.playerSystemIds[positionIndex]
 
     # Create home colony
     result.colonies[homeSystemId] = createHomeColony(homeSystemId, houseId)
+
+    # BALANCE FIX: Normalize starting system quality to ensure fairness
+    # Override procedural generation to give all players identical starting conditions
+    result.starMap.systems[homeSystemId].planetClass = PlanetClass.Eden
+    result.starMap.systems[homeSystemId].resourceRating = ResourceRating.Abundant
+
     # BALANCE FIX: Enable auto-assign so new ships join fleets automatically
     result.colonies[homeSystemId].autoAssignFleets = true
 

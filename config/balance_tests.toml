@@ -1,0 +1,86 @@
+# Balance Test Configuration
+#
+# Defines test scenarios for automated balance testing
+# Tests rotate strategies across houses to ensure no strategy-specific bias
+
+[metadata]
+version = "0.1.0"
+description = "Balance test scenarios for EC4X engine validation"
+
+# Default test scenario - rotates all strategies for comprehensive testing
+[[scenarios]]
+name = "standard_rotation"
+description = "Tests all strategies in rotating assignments"
+strategies = ["Aggressive", "Economic", "Balanced", "Turtle"]
+turns = 30
+map_rings = 3
+num_games = 20
+
+# Quick validation test - shorter games for rapid feedback
+[[scenarios]]
+name = "quick_validation"
+description = "Fast 7-turn test for CI/CD pipelines"
+strategies = ["Aggressive", "Economic", "Balanced", "Turtle"]
+turns = 7
+map_rings = 3
+num_games = 20
+
+# Extended test - longer games for thorough balance analysis
+[[scenarios]]
+name = "extended"
+description = "100-turn games for comprehensive balance testing"
+strategies = ["Aggressive", "Economic", "Balanced", "Turtle"]
+turns = 100
+map_rings = 4
+num_games = 10
+
+# Strategy-specific tests
+[[scenarios]]
+name = "aggressive_only"
+description = "All houses using Aggressive strategy"
+strategies = ["Aggressive", "Aggressive", "Aggressive", "Aggressive"]
+turns = 30
+map_rings = 3
+num_games = 10
+
+[[scenarios]]
+name = "economic_only"
+description = "All houses using Economic strategy"
+strategies = ["Economic", "Economic", "Economic", "Economic"]
+turns = 30
+map_rings = 3
+num_games = 10
+
+[[scenarios]]
+name = "balanced_only"
+description = "All houses using Balanced strategy"
+strategies = ["Balanced", "Balanced", "Balanced", "Balanced"]
+turns = 30
+map_rings = 3
+num_games = 10
+
+[[scenarios]]
+name = "turtle_only"
+description = "All houses using Turtle strategy"
+strategies = ["Turtle", "Turtle", "Turtle", "Turtle"]
+turns = 30
+map_rings = 3
+num_games = 10
+
+# Comprehensive 12-strategy test - all AI personalities
+[[scenarios]]
+name = "full_12_strategies"
+description = "Comprehensive test with all 12 AI strategy personalities"
+strategies = ["Aggressive", "Economic", "Espionage", "Diplomatic", "Balanced", "Turtle", "Expansionist", "TechRush", "Raider", "MilitaryIndustrial", "Opportunistic", "Isolationist"]
+turns = 30
+map_rings = 6
+num_games = 10
+
+# Quick 12-strategy validation - shorter for rapid testing
+[[scenarios]]
+name = "quick_12_strategies"
+description = "Fast 7-turn test with all 12 strategies"
+strategies = ["Aggressive", "Economic", "Espionage", "Diplomatic", "Balanced", "Turtle", "Expansionist", "TechRush", "Raider", "MilitaryIndustrial", "Opportunistic", "Isolationist"]
+turns = 7
+map_rings = 5
+num_games = 10
