@@ -399,6 +399,170 @@ proc assessOffensiveReadiness*(
   ## TODO: Full implementation for Act 2+ offensive requirements
   result = @[]
 
+proc assessStrategicAssets*(
+  filtered: FilteredGameState,
+  controller: AIController,
+  currentAct: GameAct
+): seq[BuildRequirement] =
+  ## Comprehensive strategic asset assessment - Admiral requests ALL needed assets
+  ## Covers: Fighters, Carriers, Starbases, Ground Units, Transports, Raiders, Scouts
+  ## CFO decides what's affordable based on budget reality
+  result = @[]
+
+  let house = filtered.ownHouse
+  let cstLevel = house.techTree.levels.constructionTech
+  let personality = controller.personality
+
+  # =============================================================================
+  # CARRIERS & FIGHTERS (CST 3+)
+  # =============================================================================
+  if cstLevel >= 3:
+    # Count existing carriers and fighters
+    var carrierCount = 0
+    var fighterCount = 0
+    var totalCarrierCapacity = 0
+
+    for fleet in filtered.ownFleets:
+      for squadron in fleet.squadrons:
+        if squadron.flagship.shipClass == ShipClass.Carrier:
+          carrierCount += 1
+          totalCarrierCapacity += 3  # Simplified: CV holds 3
+          fighterCount += squadron.embarkedFighters.len
+        elif squadron.flagship.shipClass == ShipClass.SuperCarrier:
+          carrierCount += 1
+          totalCarrierCapacity += 5  # Simplified: CX holds 5
+          fighterCount += squadron.embarkedFighters.len
+
+    # Count colony-based fighters
+    for colony in filtered.ownColonies:
+      fighterCount += colony.fighterSquadrons.len
+
+    # Aggressive houses want carriers for power projection
+    let wantsCarriers = personality.aggression > 0.5 or currentAct >= GameAct.Act2_RisingTensions
+
+    if wantsCarriers:
+      # Request carriers based on fleet size and game phase
+      let targetCarriers = case currentAct
+        of GameAct.Act1_LandGrab: 1  # One carrier for expansion
+        of GameAct.Act2_RisingTensions: 2  # Two carriers for rising tensions
+        of GameAct.Act3_TotalWar: 3  # Three carriers for total war
+        of GameAct.Act4_Endgame: 4  # Four carriers for endgame
+
+      if carrierCount < targetCarriers:
+        let carrierCost = if cstLevel >= 5: 200 else: 120
+        let carrierClass = if cstLevel >= 5: ShipClass.SuperCarrier else: ShipClass.Carrier
+
+        result.add(BuildRequirement(
+          requirementType: RequirementType.StrategicAsset,
+          priority: RequirementPriority.Medium,
+          shipClass: some(carrierClass),
+          quantity: targetCarriers - carrierCount,
+          buildObjective: BuildObjective.SpecialUnits,
+          targetSystem: none(SystemId),
+          estimatedCost: carrierCost * (targetCarriers - carrierCount),
+          reason: &"Carrier strike force (have {carrierCount}/{targetCarriers})"
+        ))
+
+      # Request fighters to fill carrier capacity
+      let targetFighters = totalCarrierCapacity
+      if fighterCount < targetFighters:
+        result.add(BuildRequirement(
+          requirementType: RequirementType.StrategicAsset,
+          priority: RequirementPriority.Low,
+          shipClass: some(ShipClass.Fighter),
+          quantity: targetFighters - fighterCount,
+          buildObjective: BuildObjective.SpecialUnits,
+          targetSystem: none(SystemId),
+          estimatedCost: 20 * (targetFighters - fighterCount),
+          reason: &"Fighter wings for carriers (have {fighterCount}/{targetFighters})"
+        ))
+
+  # =============================================================================
+  # STARBASES (for fighter support & colony defense)
+  # =============================================================================
+  # Count existing starbases and fighter requirements
+  var totalStarbases = 0
+  var requiredStarbases = 0
+
+  for colony in filtered.ownColonies:
+    let operationalStarbases = colony.starbases.countIt(not it.isCrippled)
+    totalStarbases += operationalStarbases
+
+    let currentFighters = colony.fighterSquadrons.len
+    # Rule: 1 starbase per 5 fighters (ceil(FS / 5))
+    if currentFighters > 0:
+      requiredStarbases += (currentFighters + 4) div 5  # Ceiling division
+
+  if requiredStarbases > totalStarbases:
+    result.add(BuildRequirement(
+      requirementType: RequirementType.Infrastructure,
+      priority: RequirementPriority.High,  # Urgent - prevents fighter disbanding
+      shipClass: some(ShipClass.Starbase),
+      quantity: requiredStarbases - totalStarbases,
+      buildObjective: BuildObjective.Defense,
+      targetSystem: none(SystemId),
+      estimatedCost: 30 * (requiredStarbases - totalStarbases),  # Starbase cost
+      reason: &"Starbase infrastructure for fighters (have {totalStarbases}, need {requiredStarbases})"
+    ))
+
+  # =============================================================================
+  # TRANSPORTS (for invasion & logistics)
+  # =============================================================================
+  if cstLevel >= 3:  # Transports available at CST 3
+    var transportCount = 0
+    for fleet in filtered.ownFleets:
+      transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
+
+    # Aggressive houses want transports for invasion
+    let wantsTransports = personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions
+    if wantsTransports:
+      let targetTransports = filtered.ownColonies.len div 3  # ~1 transport per 3 colonies
+
+      if transportCount < targetTransports:
+        result.add(BuildRequirement(
+          requirementType: RequirementType.StrategicAsset,
+          priority: RequirementPriority.Low,
+          shipClass: some(ShipClass.TroopTransport),
+          quantity: targetTransports - transportCount,
+          buildObjective: BuildObjective.SpecialUnits,
+          targetSystem: none(SystemId),
+          estimatedCost: 100 * (targetTransports - transportCount),
+          reason: &"Invasion transports (have {transportCount}/{targetTransports})"
+        ))
+
+  # =============================================================================
+  # GROUND UNITS (armies, marines, shields)
+  # =============================================================================
+  # TODO: Assess ground unit needs based on:
+  # - Planetary shields for high-value colonies
+  # - Armies for invasion-ready colonies
+  # - Marines for offensive operations
+
+  # =============================================================================
+  # RAIDERS (for harassment)
+  # =============================================================================
+  if cstLevel >= 3:  # Raiders available at CST 3
+    var raiderCount = 0
+    for fleet in filtered.ownFleets:
+      raiderCount += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.Raider)
+
+    # Raider personalities want raiders
+    let wantsRaiders = personality.aggression > 0.7 and currentAct >= GameAct.Act2_RisingTensions
+    if wantsRaiders:
+      let targetRaiders = 2  # Small raider force
+
+      if raiderCount < targetRaiders:
+        result.add(BuildRequirement(
+          requirementType: RequirementType.StrategicAsset,
+          priority: RequirementPriority.Low,
+          shipClass: some(ShipClass.Raider),
+          quantity: targetRaiders - raiderCount,
+          buildObjective: BuildObjective.Military,
+          targetSystem: none(SystemId),
+          estimatedCost: 60 * (targetRaiders - raiderCount),
+          reason: &"Raider harassment force (have {raiderCount}/{targetRaiders})"
+        ))
+
 # =============================================================================
 # Requirement Generation
 # =============================================================================
@@ -436,6 +600,7 @@ proc generateBuildRequirements*(
   let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct)
   let reconGaps = assessReconnaissanceGaps(filtered, controller, currentAct)
   let offensiveNeeds = assessOffensiveReadiness(filtered, analyses, controller, currentAct)
+  let strategicAssets = assessStrategicAssets(filtered, controller, currentAct)
 
   # Convert gaps to build requirements
   var requirements: seq[BuildRequirement] = @[]
@@ -445,6 +610,9 @@ proc generateBuildRequirements*(
     let req = createDefenseRequirement(gap, filtered)
     if req.quantity > 0:  # Only add if we actually need ships
       requirements.add(req)
+
+  # Strategic asset requirements (fighters, carriers, starbases, transports, etc.)
+  requirements.add(strategicAssets)
 
   # Reconnaissance requirements (deferred to existing logic for MVP)
   # Offensive requirements (deferred to existing logic for MVP)
