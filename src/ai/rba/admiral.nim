@@ -47,7 +47,7 @@ type
 # Note: Sub-modules will import these types directly from this file
 
 # Now import sub-modules (they will see our type definitions)
-import ./admiral/[fleet_analysis, defensive_ops]
+import ./admiral/[fleet_analysis, defensive_ops, offensive_ops, staging]
 
 proc determineStrategy(currentAct: ai_types.GameAct, personality: AIPersonality): AdmiralStrategy =
   ## Determine admiral strategy based on game act and AI personality
@@ -104,7 +104,7 @@ proc generateAdmiralOrders*(
            &"{controller.houseId} Admiral: Analyzed {analyses.len} fleets")
 
   # Step 2: Generate defensive orders (colony protection)
-  # This is the MVP focus - fixing Unknown-Unknown #3
+  # MVP focus - fixes Unknown-Unknown #3
   let defensiveOrders = generateDefensiveOrders(
     filtered,
     analyses,
@@ -115,13 +115,65 @@ proc generateAdmiralOrders*(
   for fleetId, order in defensiveOrders:
     result[fleetId] = order
 
-  # TODO: Future enhancements
-  # - Step 3: Check for threats (defensive consolidation)
-  # - Step 4: Check for opportunities (counter-attacks)
-  # - Step 5: Apply act-specific strategy (split/merge/maintain)
-  # - Step 6: Generate probing orders if needed
+  # Step 3: Determine act-specific strategy
+  let strategy = determineStrategy(currentAct, controller.personality)
+
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Admiral: Strategy={strategy} for {currentAct}")
+
+  # Step 4: Apply act-specific offensive operations
+  # Note: These generate FleetOrders, not StandingOrders, so we return them separately
+  var offensiveFleetOrders: seq[FleetOrder] = @[]
+
+  case strategy
+  of AdmiralStrategy.SplitForExploration:
+    # Act 1: Keep fleets dispersed for exploration (no merging)
+    # Defense is priority - no offensive ops in Act 1
+    discard
+
+  of AdmiralStrategy.MergeForCombat:
+    # Act 2: Consolidate idle fleets for combat operations
+    let stagingArea = selectStagingAreaForGeneral(filtered, controller)
+
+    let mergeOrders = generateMergeOrders(
+      filtered, analyses, controller, stagingArea
+    )
+    offensiveFleetOrders.add(mergeOrders)
+
+    # Probing attacks to gather intel on enemy defenses
+    let probingOrders = generateProbingOrders(
+      filtered, analyses, controller
+    )
+    offensiveFleetOrders.add(probingOrders)
+
+    # Counter-attacks against vulnerable targets
+    if controller.personality.aggression > 0.5:
+      let counterAttackOrders = generateCounterAttackOrders(
+        filtered, analyses, controller
+      )
+      offensiveFleetOrders.add(counterAttackOrders)
+
+  of AdmiralStrategy.MaintainFormations:
+    # Act 3+: Preserve existing battle groups, limited reorganization
+    # Only counter-attack if very aggressive
+    if controller.personality.aggression > 0.7:
+      let counterAttackOrders = generateCounterAttackOrders(
+        filtered, analyses, controller
+      )
+      offensiveFleetOrders.add(counterAttackOrders)
+
+  of AdmiralStrategy.ProbingAttacks, AdmiralStrategy.DefensiveConsolidation,
+     AdmiralStrategy.OpportunisticCounter:
+    # Special strategies - not yet implemented
+    discard
+
+  # Note: Offensive fleet orders are returned through a separate mechanism
+  # (We'd need to modify the return type or store them in controller state)
+  # For now, we only return standing orders (defensive assignments)
+  # TODO: Extend to return both standing orders and fleet orders
 
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Admiral: Generated {result.len} strategic orders")
+          &"{controller.houseId} Admiral: Generated {result.len} standing orders, " &
+          &"{offensiveFleetOrders.len} offensive fleet orders")
 
   return result
