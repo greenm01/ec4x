@@ -2,19 +2,31 @@
 
 ## 2.1 Star Map
 
-The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedural generated jump lanes. The map is sized by rings around the center hub, one per number of players.
-
-The map takes inspiration from VBAM, and the 1st or 2nd edition campaign guides can be used to spawn a random map. The method is briefly explained below.
+The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub, one per number of players.
 
 The center of the map is a special hub occupied by the last holdouts of the former imperial Empire. This system is heavily guarded by fighter squadrons and the home planet is fortified against invasion. The former Emperor has no offensive ships to speak of, which were scuttled by their crews at the height of the collapse. This is prime territory ripe for the taking. He who controls the hub holds great strategic power.
 
-Solar systems have special traits and are procedural generated. They are filled with planets, moons, and gas giants that are variable in their suitability for colonization and production.
+Solar systems have special traits and are procedurally generated. They are filled with planets, moons, and gas giants that are variable in their suitability for colonization and production.
 
-There are three classes of jump lanes: restricted, minor, and major. The hub is guaranteed to have six jump lanes connecting it to the first ring, making it an important strategic asset. Homeworlds on the outer ring will have three lanes. The number of lanes connecting the other hexes are randomly generated in accordance with VBAM. The class of all lanes are random.
+**Jump Lane Classes**
 
-Movement across the lanes is explained in [Section 6.1](operations.md#61-jump-lanes).
+There are three classes of jump lanes that determine which ship types can traverse them:
 
-Each player's homeworld should be placed on the outer ring, as far as strategically possible from rival home system(s).
+- **Major lanes** (50% of all lanes): Allow all ship types including crippled ships, ETACs, and troop transports
+- **Minor lanes** (35% of all lanes): Block crippled ships only; all other ships may pass
+- **Restricted lanes** (15% of all lanes): Block crippled ships, ETACs, and troop transports
+
+This distribution ensures 85% of lanes allow colonization ships through, reducing strategic bottlenecks while maintaining tactical complexity. Movement across the lanes is explained in [Section 6.1](operations.md#61-jump-lanes).
+
+**Hub Connectivity**
+
+The hub is guaranteed to have six jump lanes connecting it to the first ring, making it an important strategic asset. Hub lanes use the same distribution as the rest of the map (mixed lane types), preventing predictable "rush-to-center" gameplay. Controlling the hub grants significant strategic power but requires careful fleet composition.
+
+**Homeworld Placement**
+
+Player homeworlds are placed on the outer ring using distance maximization algorithms. The generator prioritizes vertex positions (hex corners) when possible and ensures each homeworld is as far as strategically possible from rival home systems. This creates balanced starting positions while introducing natural asymmetry in the tactical landscape.
+
+Homeworlds on the outer ring will have three lanes connecting them to the inner rings.
 
 ## 2.2 Solar Systems
 
