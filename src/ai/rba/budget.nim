@@ -14,6 +14,7 @@ import ../../engine/[gamestate, orders, fleet, logger, fog_of_war, squadron]
 import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../common/types/[core, units]
 import ./config  # RBA configuration system (globalRBAConfig)
+import ./cfo     # CFO module for budget allocation
 
 # =============================================================================
 # Budget Tracker - Running Budget Management
@@ -112,59 +113,9 @@ proc logBudgetSummary*(tracker: BudgetTracker) =
 # =============================================================================
 # Budget Allocation by Game Act
 # =============================================================================
-
-proc allocateBudget*(act: GameAct, personality: AIPersonality,
-                     isUnderThreat: bool = false): BudgetAllocation =
-  ## Calculate budget allocation percentages from config based on game act
-  ## Loads values from config/rba.toml instead of hardcoded constants
-  ##
-  ## Returns percentage allocation that sums to 1.0
-
-  let cfg = case act
-    of GameAct.Act1_LandGrab: globalRBAConfig.budget_act1_land_grab
-    of GameAct.Act2_RisingTensions: globalRBAConfig.budget_act2_rising_tensions
-    of GameAct.Act3_TotalWar: globalRBAConfig.budget_act3_total_war
-    of GameAct.Act4_Endgame: globalRBAConfig.budget_act4_endgame
-
-  # Convert config to BudgetAllocation table
-  result = {
-    Expansion: cfg.expansion,
-    Defense: cfg.defense,
-    Military: cfg.military,
-    Reconnaissance: cfg.reconnaissance,
-    SpecialUnits: cfg.special_units,
-    Technology: cfg.technology
-  }.toTable()
-
-  # Personality modifiers (max ±15% shift)
-  let aggressionMod = (personality.aggression - 0.5) * 0.30  # -0.15 to +0.15
-  let economicMod = (personality.economicFocus - 0.5) * 0.20  # -0.10 to +0.10
-
-  # Aggressive personalities: More military, less expansion
-  if aggressionMod > 0.0:
-    result[Military] = min(0.80, result[Military] + aggressionMod)
-    result[Expansion] = max(0.0, result[Expansion] - aggressionMod * 0.7)
-
-  # Economic personalities: More expansion, less military (Act 1-2 only)
-  if economicMod > 0.0 and act in {GameAct.Act1_LandGrab, GameAct.Act2_RisingTensions}:
-    result[Expansion] = min(0.75, result[Expansion] + economicMod)
-    result[Military] = max(0.10, result[Military] - economicMod * 0.5)
-
-  # Under threat: Emergency military boost
-  if isUnderThreat:
-    let emergencyBoost = 0.20
-    result[Military] = min(0.85, result[Military] + emergencyBoost)
-    result[Expansion] = max(0.0, result[Expansion] - emergencyBoost * 0.7)
-    result[SpecialUnits] = max(0.0, result[SpecialUnits] - emergencyBoost * 0.3)
-
-  # Normalize to ensure sum = 1.0
-  var total = 0.0
-  for val in result.values:
-    total += val
-
-  if total != 1.0:
-    for key in result.keys:
-      result[key] = result[key] / total
+# MOVED TO: src/ai/rba/cfo/allocation.nim
+# Budget allocation is now handled by the CFO (Chief Financial Officer) module
+# This module focuses on build execution (WHAT to build with allocated PP)
 
 proc calculateObjectiveBudgets*(treasury: int, allocation: BudgetAllocation): Table[BuildObjective, int] =
   ## Convert percentage allocation to actual PP budgets
@@ -1073,41 +1024,14 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   ## Otherwise AI will overspend and enter maintenance death spiral
 
   # 1. Calculate budget allocation percentages
-  var allocation = allocateBudget(act, personality, isUnderThreat)
-
-  # 1.5. PHASE 3: Strategic Triage for Admiral Requirements
-  # Admiral requirements get absolute priority, but maintain minimum strategic reserves
-  # to avoid strategic blindness (e.g., all budget to defense, none for scouts)
-  if admiralRequirements.isSome:
-    let reqs = admiralRequirements.get()
-    if reqs.requirements.len > 0:
-      let criticalCost = reqs.requirements.filterIt(it.priority == RequirementPriority.Critical)
-                                        .mapIt(it.estimatedCost).foldl(a + b, 0)
-      let highCost = reqs.requirements.filterIt(it.priority == RequirementPriority.High)
-                                     .mapIt(it.estimatedCost).foldl(a + b, 0)
-
-      let totalUrgentCost = criticalCost + highCost
-      let budgetPercent = if availableBudget > 0: float(totalUrgentCost) / float(availableBudget) else: 0.0
-
-      if budgetPercent > 0.85:  # Admiral needs >85% of budget
-        # Strategic triage: Reserve minimum budgets for awareness
-        let minRecon = int(float(availableBudget) * globalRBAConfig.admiral.min_recon_budget_percent)
-        let minExpansion = int(float(availableBudget) * globalRBAConfig.admiral.min_expansion_budget_percent)
-
-        logInfo(LogCategory.lcAI,
-                &"{controller.houseId} Strategic Triage: Admiral needs {budgetPercent*100:.0f}% of budget " &
-                &"(Critical={criticalCost}PP, High={highCost}PP). " &
-                &"Reserving {minRecon}PP recon, {minExpansion}PP expansion")
-
-        # Adjust allocation to reserve minimums (reduce from Defense/Military proportionally)
-        let totalReserve = minRecon + minExpansion
-        let reduceFromDefense = int(float(totalReserve) * 0.5)
-        let reduceFromMilitary = totalReserve - reduceFromDefense
-
-        allocation[Reconnaissance] = max(allocation[Reconnaissance], float(minRecon) / float(availableBudget))
-        allocation[Expansion] = max(allocation[Expansion], float(minExpansion) / float(availableBudget))
-        allocation[Defense] = max(0.0, allocation[Defense] - float(reduceFromDefense) / float(availableBudget))
-        allocation[Military] = max(0.0, allocation[Military] - float(reduceFromMilitary) / float(availableBudget))
+  # NEW: CFO module handles allocation with Admiral consultation
+  var allocation = cfo.allocateBudget(
+    act,
+    personality,
+    isUnderThreat,
+    admiralRequirements,  # CFO consults Admiral requirements
+    availableBudget       # CFO needs total budget to calculate percentages
+  )
 
   # 2. Initialize BudgetTracker with full house budget
   # CRITICAL: Single tracker prevents overspending across all colonies
