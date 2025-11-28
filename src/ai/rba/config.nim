@@ -137,6 +137,24 @@ type
     merge_threshold_act2*: int
     rendezvous_preference*: string
 
+    # Phase 3: Build Requirements System
+    build_requirements_enabled*: bool
+    defense_gap_detection_enabled*: bool
+    defense_gap_max_distance*: int
+    offensive_requirements_enabled*: bool
+    critical_priority_homeworld*: bool
+    high_priority_production_threshold*: int
+    threat_assessment_radius*: int
+
+    # Strategic Triage Budget Reserves
+    min_recon_budget_percent*: float
+    min_expansion_budget_percent*: float
+
+    # Escalation Thresholds
+    escalation_low_to_medium_turns*: int
+    escalation_medium_to_high_turns*: int
+    escalation_high_to_critical_turns*: int
+
 # ==============================================================================
 # Root Configuration
 # ==============================================================================
