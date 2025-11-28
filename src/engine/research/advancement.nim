@@ -16,6 +16,22 @@ import ../config/prestige_config
 
 export types.TechAdvancement, types.BreakthroughEvent, types.TechTree
 
+## Maximum Tech Levels (economy.md:4.0)
+## Caps prevent wasteful investment once maximum research levels reached
+
+const
+  maxEconomicLevel* = 11      # EL caps at 11 per economy.md:4.2
+  maxScienceLevel* = 8        # SL caps at 8 per economy.md:4.3
+  maxConstructionTech* = 15   # CST extended for long games
+  maxWeaponsTech* = 15        # WEP extended for long games
+  maxTerraformingTech* = 7    # TER limited to planet classes
+  maxElectronicIntelligence* = 15  # ELI extended
+  maxCloakingTech* = 15       # CLK extended
+  maxShieldTech* = 15         # SLD extended
+  maxCounterIntelligence* = 15  # CIC extended
+  maxFighterDoctrine* = 3     # FD limited to 3 doctrines
+  maxAdvancedCarrierOps* = 3  # ACO limited to 3 levels
+
 ## Upgrade Cycles (economy.md:4.1)
 
 proc isUpgradeTurn*(turn: int): bool =
@@ -107,6 +123,10 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
   ## Attempt to advance Economic Level
   ## Returns advancement if successful
 
+  # Check if already at max level
+  if currentEL >= maxEconomicLevel:
+    return none(TechAdvancement)
+
   let cost = getELUpgradeCost(currentEL)
 
   if tree.accumulated.economic >= cost:
@@ -139,6 +159,10 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
 proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[TechAdvancement] =
   ## Attempt to advance Science Level
   ## Returns advancement if successful
+
+  # Check if already at max level
+  if currentSL >= maxScienceLevel:
+    return none(TechAdvancement)
 
   let cost = getSLUpgradeCost(currentSL)
 
@@ -195,6 +219,23 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
       tree.levels.fighterDoctrine
     of TechField.AdvancedCarrierOps:
       tree.levels.advancedCarrierOps
+
+  # Check if already at max level
+  let maxLevel = case field
+    of TechField.EconomicLevel: maxEconomicLevel
+    of TechField.ScienceLevel: maxScienceLevel
+    of TechField.ConstructionTech: maxConstructionTech
+    of TechField.WeaponsTech: maxWeaponsTech
+    of TechField.TerraformingTech: maxTerraformingTech
+    of TechField.ElectronicIntelligence: maxElectronicIntelligence
+    of TechField.CloakingTech: maxCloakingTech
+    of TechField.ShieldTech: maxShieldTech
+    of TechField.CounterIntelligence: maxCounterIntelligence
+    of TechField.FighterDoctrine: maxFighterDoctrine
+    of TechField.AdvancedCarrierOps: maxAdvancedCarrierOps
+
+  if currentLevel >= maxLevel:
+    return none(TechAdvancement)
 
   let cost = getTechUpgradeCost(field, currentLevel)
 
