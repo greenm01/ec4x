@@ -480,12 +480,21 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # SIMULTANEOUS ESPIONAGE RESOLUTION
   # ===================================================================
   when not defined(release):
-    echo "  [SIMULTANEOUS ESPIONAGE] Resolving espionage orders fairly..."
+    echo "  [SIMULTANEOUS ESPIONAGE] Resolving fleet espionage orders fairly..."
 
   let espionageResults = simultaneous_espionage.resolveEspionage(state, orders, rng)
 
   when not defined(release):
-    echo "  [SIMULTANEOUS ESPIONAGE] Resolved ", espionageResults.len, " espionage attempts"
+    echo "  [SIMULTANEOUS ESPIONAGE] Resolved ", espionageResults.len, " fleet espionage attempts"
+
+  # Process OrderPacket.espionageAction (EBP-based espionage)
+  when not defined(release):
+    echo "  [ESPIONAGE ACTIONS] Processing EBP-based espionage actions..."
+
+  simultaneous_espionage.processEspionageActions(state, orders, rng)
+
+  when not defined(release):
+    echo "  [ESPIONAGE ACTIONS] Completed EBP-based espionage processing"
 
   # ===================================================================
   # FLEET ORDER EXECUTION

@@ -11,6 +11,9 @@ import ../orders
 import ../order_types
 import ../logger
 import ../squadron
+import ../espionage/engine as esp_engine
+import ../espionage/executor as esp_executor
+import ../espionage/types as esp_types
 import ../../common/types/core
 
 proc collectEspionageIntents*(
@@ -78,7 +81,7 @@ proc resolveEspionageConflict*(
   state: var GameState,
   conflict: EspionageConflict,
   rng: var Rand
-): seq[EspionageResult] =
+): seq[simultaneous_types.EspionageResult] =
   ## Resolve espionage conflict using prestige-based priority
   ## Dishonored houses go to end of list, if both dishonored then random
   result = @[]
@@ -128,7 +131,7 @@ proc resolveEspionageConflict*(
   # All espionage attempts succeed, but in priority order
   # (Actual espionage resolution happens in main loop with proper detection rolls)
   for intent in sorted:
-    result.add(EspionageResult(
+    result.add(simultaneous_types.EspionageResult(
       houseId: intent.houseId,
       fleetId: intent.fleetId,
       originalTarget: intent.targetSystem,
@@ -141,7 +144,7 @@ proc resolveEspionage*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
   rng: var Rand
-): seq[EspionageResult] =
+): seq[simultaneous_types.EspionageResult] =
   ## Main entry point: Resolve all espionage orders simultaneously
   result = @[]
 
@@ -156,7 +159,7 @@ proc resolveEspionage*(
     result.add(conflictResults)
 
 proc wasEspionageHandled*(
-  results: seq[EspionageResult],
+  results: seq[simultaneous_types.EspionageResult],
   houseId: HouseId,
   fleetId: FleetId
 ): bool =
@@ -165,3 +168,98 @@ proc wasEspionageHandled*(
     if result.houseId == houseId and result.fleetId == fleetId:
       return true
   return false
+
+proc processEspionageActions*(
+  state: var GameState,
+  orders: Table[HouseId, OrderPacket],
+  rng: var Rand
+) =
+  ## Process OrderPacket.espionageAction for all houses
+  ## This handles EBP-based espionage actions (TechTheft, Assassination, etc.)
+  ## separate from fleet-based espionage orders
+
+  for houseId in state.houses.keys:
+    if houseId notin orders:
+      continue
+
+    let packet = orders[houseId]
+
+    # Step 1: Process EBP/CIP investments (purchase points with PP)
+    if packet.ebpInvestment > 0:
+      let ebpPurchased = esp_engine.purchaseEBP(state.houses[houseId].espionageBudget, packet.ebpInvestment)
+      # Deduct PP from treasury (already projected in AI, but need to deduct actual cost)
+      state.houses[houseId].treasury -= packet.ebpInvestment
+      echo &"  {houseId} purchased {ebpPurchased} EBP for {packet.ebpInvestment} PP"
+
+    if packet.cipInvestment > 0:
+      let cipPurchased = esp_engine.purchaseCIP(state.houses[houseId].espionageBudget, packet.cipInvestment)
+      state.houses[houseId].treasury -= packet.cipInvestment
+      echo &"  {houseId} purchased {cipPurchased} CIP for {packet.cipInvestment} PP"
+
+    # Step 2: Execute espionage action if present
+    if packet.espionageAction.isNone:
+      continue
+
+    let attempt = packet.espionageAction.get()
+
+    # Check if attacker has sufficient EBP
+    let actionCost = esp_engine.getActionCost(attempt.action)
+    if not esp_engine.canAffordAction(state.houses[houseId].espionageBudget, attempt.action):
+      echo &"  {houseId} cannot afford {attempt.action} (cost: {actionCost} EBP, has: {state.houses[houseId].espionageBudget.ebpPoints})"
+      continue
+
+    # Spend EBP
+    if not esp_engine.spendEBP(state.houses[houseId].espionageBudget, attempt.action):
+      echo &"  {houseId} failed to spend EBP for {attempt.action}"
+      continue
+
+    echo &"  {houseId} executing {attempt.action} against {attempt.target} (cost: {actionCost} EBP)"
+
+    # Get target's CIC level from tech tree
+    let targetCICLevel = case state.houses[attempt.target].techTree.levels.counterIntelligence
+      of 1: esp_types.CICLevel.CIC1
+      of 2: esp_types.CICLevel.CIC2
+      of 3: esp_types.CICLevel.CIC3
+      of 4: esp_types.CICLevel.CIC4
+      of 5: esp_types.CICLevel.CIC5
+      else: esp_types.CICLevel.CIC1
+
+    let targetCIP = if attempt.target in state.houses:
+                      state.houses[attempt.target].espionageBudget.cipPoints
+                    else:
+                      0
+
+    # Execute espionage action with detection roll
+    let result = esp_executor.executeEspionage(
+      attempt,
+      targetCICLevel,
+      targetCIP,
+      rng
+    )
+
+    # Apply results
+    if result.success:
+      echo &"    SUCCESS: {result.description}"
+
+      # Apply prestige changes
+      for prestigeEvent in result.attackerPrestigeEvents:
+        state.houses[attempt.attacker].prestige += prestigeEvent.amount
+      for prestigeEvent in result.targetPrestigeEvents:
+        state.houses[attempt.target].prestige += prestigeEvent.amount
+
+      # Apply ongoing effects
+      if result.effect.isSome:
+        state.ongoingEffects.add(result.effect.get())
+
+      # Apply immediate effects (SRP theft, IU damage, etc.)
+      if result.srpStolen > 0:
+        if attempt.target in state.houses:
+          state.houses[attempt.target].techTree.accumulated.science =
+            max(0, state.houses[attempt.target].techTree.accumulated.science - result.srpStolen)
+          state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
+          echo &"      Stole {result.srpStolen} SRP from {attempt.target}"
+    else:
+      echo &"    DETECTED by {attempt.target}"
+      # Apply detection prestige penalties
+      for prestigeEvent in result.attackerPrestigeEvents:
+        state.houses[attempt.attacker].prestige += prestigeEvent.amount
