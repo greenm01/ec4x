@@ -177,13 +177,42 @@ For construction and maintenance costs, see [Section 3.10](economy.md#310-fighte
 
 **Commissioning Requirements:**
 
-To commission new fighter squadrons, a colony must:
+Fighters can be commissioned through two pathways:
+
+**Path 1: Colony-Based Commissioning (for defense or future carrier transfer)**
+
+To commission fighters that will remain colony-owned, a colony must:
 1. Have available capacity: `Current FS < Max FS`
 2. Meet infrastructure requirement: `Operational Starbases ≥ ceil((Current FS + New FS) / 5)`
 3. Have sufficient population capacity: `floor(PU / 100) × FD ≥ (Current FS + New FS)`
 4. Have sufficient treasury: `Available PP ≥ 20 × New FS`
 
-Colonies in capacity violation cannot commission new fighter squadrons until the violation is resolved.
+**Path 2: Auto-Loading to Carriers (for immediate carrier deployment)**
+
+When fighters are commissioned at a colony with carriers present:
+1. Fighters are initially commissioned as colony-owned (count against colony capacity)
+2. Engine automatically attempts to load fighters onto carriers at the same colony
+3. Auto-loading prioritizes carriers with available hangar space
+4. Successfully loaded fighters transfer ownership (no longer count against colony)
+5. If auto-loading fails (no carriers or no space), fighters remain colony-owned
+
+**Auto-Loading Rules:**
+- Carriers must be at the same colony (docked or stationary)
+- Carriers must have available hangar capacity
+- Auto-loading happens immediately after commissioning (same turn)
+- Grace period (2 turns) applies to fighters that remain colony-owned
+
+**Benefits of Path 2:**
+- Fighters can be built without starbase infrastructure if carriers present
+- Automatic transfer saves manual loading orders
+- Bypasses colony capacity limits if successfully loaded
+- Still allows colony defense if auto-loading fails (with grace period)
+
+**Notes:**
+- Path 1 fighters remain colony-owned and require starbases
+- Path 2 fighters become carrier-owned if auto-loaded successfully
+- If auto-loading fails, fighters trigger grace period if colony lacks capacity
+- Colonies in capacity violation can still commission if carriers will auto-load
 
 **Fighter Ownership and Tracking:**
 
