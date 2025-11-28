@@ -255,3 +255,21 @@ split_threshold_act1 = 2            # Split fleets with 2+ ships in Act 1
 merge_threshold_act2 = 3            # Merge when 3+ idle single-ship fleets
 rendezvous_preference = "homeworld" # Where to merge fleets: homeworld, frontline, center
 
+# Phase 3: Build Requirements System (Requirements-driven ship production)
+build_requirements_enabled = true   # Enable requirements-driven build system (IMMEDIATE ROLLOUT)
+defense_gap_detection_enabled = true
+defense_gap_max_distance = 5        # Max jump distance to consider for defense
+offensive_requirements_enabled = true
+critical_priority_homeworld = true  # Always Critical priority for homeworld
+high_priority_production_threshold = 50  # Industry threshold for High priority
+threat_assessment_radius = 3        # Jumps to check for enemy fleets
+
+# Strategic Triage Budget Reserves (Wise Admiral - maintain awareness)
+min_recon_budget_percent = 0.10     # Minimum 10% for reconnaissance
+min_expansion_budget_percent = 0.05 # Minimum 5% for expansion
+
+# Escalation Thresholds (Engaging AI - responds to player actions)
+escalation_low_to_medium_turns = 3  # Low → Medium after 3 turns undefended
+escalation_medium_to_high_turns = 5 # Medium → High after 5 turns
+escalation_high_to_critical_turns = 7  # High → Critical after 7 turns
+
