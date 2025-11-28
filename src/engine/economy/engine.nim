@@ -20,6 +20,7 @@ export types.MaintenanceReport, types.CompletedProject
 proc resolveIncomePhase*(colonies: var seq[Colony],
                         houseTaxPolicies: Table[HouseId, TaxPolicy],
                         houseTechLevels: Table[HouseId, int],
+                        houseCSTTechLevels: Table[HouseId, int],
                         houseTreasuries: var Table[HouseId, int],
                         baseGrowthRate: float = 0.015): IncomePhaseReport =
   ## Resolve income phase for all houses
@@ -35,6 +36,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
   ##   colonies: All game colonies (modified for pop growth)
   ##   houseTaxPolicies: Tax policy per house
   ##   houseTechLevels: Economic Level tech per house
+  ##   houseCSTTechLevels: Construction tech per house (affects capacity)
   ##   houseTreasuries: House treasuries (modified with income)
   ##   baseGrowthRate: Base population growth rate (loaded from config)
   ##
@@ -66,13 +68,18 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
     else:
       1  # Default EL1
 
+    let cstTech = if houseId in houseCSTTechLevels:
+      houseCSTTechLevels[houseId]
+    else:
+      1  # Default CST1
+
     let treasury = if houseId in houseTreasuries:
       houseTreasuries[houseId]
     else:
       0
 
     # Calculate house income
-    let houseReport = calculateHouseIncome(houseColonyList, elTech, taxPolicy, treasury)
+    let houseReport = calculateHouseIncome(houseColonyList, elTech, cstTech, taxPolicy, treasury)
 
     # Update treasury
     houseTreasuries[houseId] = houseReport.treasuryAfter

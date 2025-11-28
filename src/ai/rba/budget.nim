@@ -741,12 +741,18 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
   ## - CST 5: Super Carrier (better fighter capacity)
   result = @[]
 
+  # DIAGNOSTIC LOGGING: Track function entry
+  logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] buildSpecialUnitsOrders called: colony={colony.systemId}, " &
+          &"needFighters={needFighters}, budget={tracker.getRemainingBudget(SpecialUnits)}PP")
+
+
   # Priority: Super Carriers → Carriers → Transports → Raiders → Fighters
   # NOTE: Expensive ships (carriers, transports, raiders) require affordability check
   # Cheap fighters can always be built if budget allocated (like scouts)
 
   # Prefer Super Carriers (CST 5) over regular Carriers when available
-  if canAffordMoreShips and needCarriers and cstLevel >= 5:
+  # CRITICAL: Carriers are strategic assets - prioritize them even if budget is tight
+  if needCarriers and cstLevel >= 5:
     let superCarrierCost = 200
     if tracker.canAfford(SpecialUnits, superCarrierCost):
       result.add(BuildOrder(
@@ -775,7 +781,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         tracker.recordSpending(SpecialUnits, fighterCost)
         fightersBuilt += 1
 
-  elif canAffordMoreShips and needCarriers and cstLevel >= 2:  # Lowered from CST 3 to 2
+  elif needCarriers and cstLevel >= 3:  # Matches ships.toml tech_level - carriers are strategic assets
     let carrierCost = 120
     if tracker.canAfford(SpecialUnits, carrierCost):
       result.add(BuildOrder(
@@ -838,9 +844,11 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
   # Fighters (cheap filler)
   if needFighters:
     let fighterCost = getShipConstructionCost(ShipClass.Fighter)
+    # DIAGNOSTIC LOGGING: Track fighter build loop entry
+    logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Entering fighter build loop: " &
+            &"cost={fighterCost}PP, budget={tracker.getRemainingBudget(SpecialUnits)}PP, colony={colony.systemId}")
     while tracker.canAfford(SpecialUnits, fighterCost):
-      logDebug(LogCategory.lcAI,
-               &"Building fighter at colony {colony.systemId} " &
+      logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Building fighter at colony {colony.systemId} " &
                &"(remaining={tracker.getRemainingBudget(SpecialUnits)}PP)")
       result.add(BuildOrder(
         colonySystem: colony.systemId,
@@ -1178,6 +1186,11 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     # Build queue system allows multiple simultaneous projects per colony
     # BudgetTracker prevents overspending across ALL colonies
     # Engine will enforce dock capacity limits (spaceports: 5, shipyards: 10)
+
+    # DIAGNOSTIC LOGGING: Track SpecialUnits budget at colony loop entry
+    if colony == coloniesToBuild[0]:  # Log once per house per turn
+      logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] {tracker.houseId}: Processing {coloniesToBuild.len} colonies, " &
+              &"SpecialUnits budget={tracker.getRemainingBudget(SpecialUnits)}PP")
 
     # DYNAMIC NEED RECALCULATION
     # Recalculate need flags using PROJECTED counts (current + built this turn)

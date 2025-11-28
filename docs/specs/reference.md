@@ -36,25 +36,19 @@ CL = Carry Limit
 
 ## 10.1.1 Ship Construction Times
 
-Base construction times by hull class (modified by CST tech per [Section 4.5](economy.md#45-construction-cst)):
+**All ship construction completes instantly (1 turn)** regardless of hull class or CST tech level.
+
+This reflects the game's time narrative where turns represent variable time periods (1-15 years depending on map size). Multi-turn construction would cause severe balance issues across different map sizes.
+
+**CST Tech Effects:**
+- CST unlocks ship classes (see CST column in Space Force table above)
+- CST increases industrial production capacity by 10% per level (affects GCO)
+- CST does NOT affect construction time (all ships build in 1 turn)
 
 <!-- CONSTRUCTION_TIMES_TABLE_START -->
-| Hull Class | Ships | Base Time | CST1 | CST5 | CST10 |
-|------------|-------|-----------|------|------|-------|
-| Spacelift  | ET, TT | 1 turn | 1 | 1 | 1 |
-| Small      | CT, FG, DD, SC | 1 turn | 1 | 1 | 1 |
-| Medium     | CL, CA | 2 turns | 2 | 1 | 1 |
-| Large      | BC, BB, CV, RR | 3 turns | 3 | 2 | 1 |
-| Capital    | DN, SD, CX | 4 turns | 4 | 3 | 1 |
-| Super-Capital | PB | 5 turns | 5 | 3 | 1 |
-
-**Construction Time Formula:**
-```
-actual_time = ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))
-minimum: 1 turn
-```
-
-**Example:** A Battleship (3 turns base) at CST5 takes `ceiling(3 × 0.6)` = 2 turns
+| Hull Class | Ships | Construction Time |
+|------------|-------|-------------------|
+| All Classes | All Ships | 1 turn (instant) |
 
 *Source: config/ships.toml [construction] section*
 <!-- CONSTRUCTION_TIMES_TABLE_END -->

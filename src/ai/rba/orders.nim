@@ -83,39 +83,51 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
       let techBudget = researchBudget - result.economic - result.science
 
       if p.aggression > 0.5:
-        # Aggressive: weapons + cloaking + construction
-        result.technology[TechField.WeaponsTech] = techBudget * 2 div 5
-        result.technology[TechField.CloakingTech] = techBudget div 5
-        result.technology[TechField.ConstructionTech] = techBudget div 5
-        result.technology[TechField.ElectronicIntelligence] = techBudget div 5
+        # Aggressive: weapons + cloaking + construction + FD
+        result.technology[TechField.WeaponsTech] = techBudget * 3 div 10      # 30%
+        result.technology[TechField.ConstructionTech] = techBudget * 2 div 10  # 20%
+        result.technology[TechField.CloakingTech] = techBudget * 2 div 10      # 20%
+        result.technology[TechField.ElectronicIntelligence] = techBudget div 10  # 10%
+        result.technology[TechField.FighterDoctrine] = techBudget div 10       # 10%
+        result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
       else:
-        # Peaceful: infrastructure + counter-intel for defense
-        result.technology[TechField.ConstructionTech] = techBudget div 2
-        result.technology[TechField.TerraformingTech] = techBudget div 4
-        result.technology[TechField.ElectronicIntelligence] = techBudget div 4
+        # Peaceful: infrastructure + counter-intel + terraforming
+        result.technology[TechField.ConstructionTech] = techBudget * 3 div 10  # 30%
+        result.technology[TechField.TerraformingTech] = techBudget * 2 div 10  # 20%
+        result.technology[TechField.ElectronicIntelligence] = techBudget div 10  # 10%
+        result.technology[TechField.ShieldTech] = techBudget * 2 div 10        # 20%
+        result.technology[TechField.CounterIntelligence] = techBudget div 10   # 10%
+        result.technology[TechField.FighterDoctrine] = techBudget div 10       # 10%
     elif p.economicFocus > 0.7:
-      # Economic focus: prioritize EL/SL for growth
+      # Economic focus: prioritize EL/SL for growth + infrastructure
       result.economic = researchBudget * 2 div 5   # 40% to EL
       result.science = researchBudget * 2 div 5    # 40% to SL
       let techBudget = researchBudget - result.economic - result.science
-      result.technology[TechField.ConstructionTech] = techBudget div 2
-      result.technology[TechField.TerraformingTech] = techBudget div 2
+      result.technology[TechField.ConstructionTech] = techBudget * 4 div 10  # 40%
+      result.technology[TechField.TerraformingTech] = techBudget * 3 div 10  # 30%
+      result.technology[TechField.FighterDoctrine] = techBudget * 2 div 10   # 20%
+      result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
     elif p.aggression > 0.7:
-      # Aggressive: minimal EL/SL, focus on military tech
+      # Aggressive: minimal EL/SL, heavy military tech focus
       result.economic = researchBudget div 5       # 20% to EL
       result.science = researchBudget div 5        # 20% to SL
       let techBudget = researchBudget - result.economic - result.science
-      result.technology[TechField.WeaponsTech] = techBudget div 2
-      result.technology[TechField.ConstructionTech] = techBudget div 2
+      result.technology[TechField.WeaponsTech] = techBudget * 4 div 10       # 40%
+      result.technology[TechField.ConstructionTech] = techBudget * 3 div 10  # 30%
+      result.technology[TechField.FighterDoctrine] = techBudget * 2 div 10   # 20%
+      result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
     else:
-      # Balanced
+      # Balanced strategy across all tech
       result.economic = researchBudget div 3
       result.science = researchBudget div 3
       let techBudget = researchBudget - result.economic - result.science
-      result.technology[TechField.ConstructionTech] = techBudget div 2
-      result.technology[TechField.WeaponsTech] = techBudget div 2
+      result.technology[TechField.ConstructionTech] = techBudget * 3 div 10  # 30%
+      result.technology[TechField.WeaponsTech] = techBudget * 2 div 10       # 20%
+      result.technology[TechField.FighterDoctrine] = techBudget * 2 div 10   # 20%
+      result.technology[TechField.TerraformingTech] = techBudget * 2 div 10  # 20%
+      result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
 
-    # REALLOCATION LOGIC: Redirect budget from maxed EL/SL to TRP
+    # REALLOCATION LOGIC: Redirect budget from maxed EL/SL/TRP to available techs
     # This prevents AI from wasting RP on technologies that cannot advance
     var redirectedBudget = 0
 
@@ -133,19 +145,86 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
               &"{controller.houseId} Redirecting {result.science}PP from maxed SL to TRP")
       result.science = 0
 
-    # Distribute redirected budget to TRP fields based on personality
+    # Check TRP field caps and redirect budget from maxed fields
+    # Get current tech levels from tree
+    let techLevels = filtered.ownHouse.techTree.levels
+
+    proc getTechMax(field: TechField): int =
+      ## Get maximum level for tech field
+      case field
+      of TechField.EconomicLevel: maxEconomicLevel
+      of TechField.ScienceLevel: maxScienceLevel
+      of TechField.ConstructionTech: maxConstructionTech
+      of TechField.WeaponsTech: maxWeaponsTech
+      of TechField.TerraformingTech: maxTerraformingTech
+      of TechField.ElectronicIntelligence: maxElectronicIntelligence
+      of TechField.CloakingTech: maxCloakingTech
+      of TechField.ShieldTech: maxShieldTech
+      of TechField.CounterIntelligence: maxCounterIntelligence
+      of TechField.FighterDoctrine: maxFighterDoctrine
+      of TechField.AdvancedCarrierOps: maxAdvancedCarrierOps
+
+    proc getCurrentTechLevel(field: TechField): int =
+      ## Get current level for tech field from tree
+      case field
+      of TechField.EconomicLevel: techLevels.economicLevel
+      of TechField.ScienceLevel: techLevels.scienceLevel
+      of TechField.ConstructionTech: techLevels.constructionTech
+      of TechField.WeaponsTech: techLevels.weaponsTech
+      of TechField.TerraformingTech: techLevels.terraformingTech
+      of TechField.ElectronicIntelligence: techLevels.electronicIntelligence
+      of TechField.CloakingTech: techLevels.cloakingTech
+      of TechField.ShieldTech: techLevels.shieldTech
+      of TechField.CounterIntelligence: techLevels.counterIntelligence
+      of TechField.FighterDoctrine: techLevels.fighterDoctrine
+      of TechField.AdvancedCarrierOps: techLevels.advancedCarrierOps
+
+    # Collect budget from maxed TRP fields
+    var maxedFields: seq[TechField] = @[]
+    for field, amount in result.technology.pairs:
+      if amount > 0 and getCurrentTechLevel(field) >= getTechMax(field):
+        redirectedBudget += amount
+        maxedFields.add(field)
+        logInfo(LogCategory.lcAI,
+                &"{controller.houseId} Redirecting {amount}PP from maxed {field} " &
+                &"(level {getCurrentTechLevel(field)}/{getTechMax(field)})")
+
+    # Remove maxed fields from allocation
+    for field in maxedFields:
+      result.technology.del(field)
+
+    # Distribute redirected budget to non-maxed TRP fields based on personality
     if redirectedBudget > 0:
+      # Build list of available (non-maxed) tech fields
+      var availableTechs: seq[TechField] = @[]
+
+      # Priority order varies by personality
       if p.aggression > 0.5:
-        # Aggressive: prioritize weapons and construction
-        result.technology[TechField.WeaponsTech] = result.technology.getOrDefault(TechField.WeaponsTech) + (redirectedBudget * 2 div 3)
-        result.technology[TechField.ConstructionTech] = result.technology.getOrDefault(TechField.ConstructionTech) + (redirectedBudget div 3)
+        # Aggressive: WEP > CST > CLK > ELI
+        availableTechs = @[TechField.WeaponsTech, TechField.ConstructionTech,
+                          TechField.CloakingTech, TechField.ElectronicIntelligence]
       else:
-        # Peaceful/Economic: prioritize construction and terraforming
-        result.technology[TechField.ConstructionTech] = result.technology.getOrDefault(TechField.ConstructionTech) + (redirectedBudget * 2 div 3)
-        result.technology[TechField.TerraformingTech] = result.technology.getOrDefault(TechField.TerraformingTech) + (redirectedBudget div 3)
+        # Peaceful/Economic: CST > TER > SLD > CIC
+        availableTechs = @[TechField.ConstructionTech, TechField.TerraformingTech,
+                          TechField.ShieldTech, TechField.CounterIntelligence]
+
+      # Filter out maxed techs from available list
+      availableTechs = availableTechs.filterIt(getCurrentTechLevel(it) < getTechMax(it))
+
+      # Distribute redirected budget across available techs
+      if availableTechs.len > 0:
+        let perTech = redirectedBudget div availableTechs.len
+        for tech in availableTechs:
+          result.technology[tech] = result.technology.getOrDefault(tech) + perTech
+          logDebug(LogCategory.lcAI,
+                   &"{controller.houseId} Allocated {perTech}PP to {tech}")
+      else:
+        # All techs maxed - log warning and redistribute to treasury (handled by caller)
+        logWarn(LogCategory.lcAI,
+                &"{controller.houseId} All tech fields maxed! {redirectedBudget}PP research budget wasted")
 
       logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Redirected {redirectedBudget}PP total to TRP fields")
+              &"{controller.houseId} Redirected {redirectedBudget}PP from {maxedFields.len} maxed fields")
 
 proc calculateTotalCost(buildOrders: seq[BuildOrder]): int =
   ## Calculate total PP cost of all build orders
@@ -367,10 +446,19 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # CRITICAL FIX: Build defenses earlier! Ground batteries need CST 1, not CST 3
   # Old logic required CST 3, leaving 59% of colonies undefended
   let needDefenses = cst >= 1  # Ground batteries at CST 1, starbases at CST 3
-  let needFighters = cst >= 2 and p.aggression > 0.3  # Fighter squadrons (lowered from CST 3 to 2)
-  let needCarriers = cst >= 2 and needFighters  # Carriers support fighters (lowered from CST 3 to 2)
+
+  # FIGHTER/CARRIER FIX: Must match ships.toml tech requirements
+  # Fighter: tech_level=3, Carrier: tech_level=3
+  # Build carriers WITH fighters (see budget.nim:783-810) to provide capacity
+  # Without carriers, fighters auto-disband after 2-turn grace period
+  let needFighters = cst >= 3  # Matches ships.toml tech_level requirement
+  let needCarriers = cst >= 3 and needFighters  # Carriers support fighters (matches ships.toml tech_level)
   let needTransports = cst >= 1 and p.aggression > 0.3  # Troop transports (lowered aggression from 0.4 to 0.3)
   let needRaiders = cst >= 2 and p.aggression > 0.5  # Raiders (lowered CST from 3 to 2, aggression from 0.6 to 0.5)
+
+  # DIAGNOSTIC LOGGING: Track fighter build pipeline
+  logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] {controller.houseId} needs: " &
+          &"fighters={needFighters}, carriers={needCarriers}, CST={cst}, aggression={p.aggression}")
 
   result.buildOrders = generateBuildOrdersWithBudget(
     controller, filtered, filtered.ownHouse, myColonies, currentAct, p,

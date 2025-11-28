@@ -30,15 +30,11 @@ export config_accessors.requiresSpaceport
 ## (Cost and base time accessors provided by config_accessors.nim)
 
 proc getShipBuildTime*(shipClass: ShipClass, cstLevel: int): int =
-  ## Get actual construction time in turns with CST modifier
-  ## Per reference.md:9.1.1
-  ##
-  ## Formula: ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))
-  ## Minimum: 1 turn
-  let baseTime = getShipBaseBuildTime(shipClass)
-  let modifier = 1.0 - (float(cstLevel - 1) * 0.10)
-  let actualTime = ceil(float(baseTime) * modifier).int
-  return max(1, actualTime)
+  ## Ship construction completes instantly (1 turn)
+  ## Per new time narrative: turns represent variable time periods (1-15 years)
+  ## Multi-turn construction would cause severe balance issues across map sizes
+  ## CST tech still unlocks ship classes and affects capacity (see Phase 3)
+  return 1  # Always instant
 
 ## Building Construction (provided by config_accessors.nim)
 ## - getBuildingCost, getBuildingTime, requiresSpaceport now in config_accessors
