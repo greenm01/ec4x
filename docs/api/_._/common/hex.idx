@@ -1,15 +1,15 @@
-nimTitle	hex	_._/common/hex.html	module src/common/hex		0
-nim	Hex	_._/common/hex.html#Hex	object Hex		9
-nim	newHex	_._/common/hex.html#newHex,int32,int32	proc newHex(q, r: int32): Hex		13
-nim	`$`	_._/common/hex.html#$,Hex	proc `$`(h: Hex): string		17
-nim	`==`	_._/common/hex.html#==,Hex,Hex	proc `==`(a, b: Hex): bool		21
-nim	hash	_._/common/hex.html#hash,Hex	proc hash(h: Hex): Hash		25
-nim	toId	_._/common/hex.html#toId,Hex,uint32	proc toId(h: Hex; numRings: uint32): uint		31
-nim	distance	_._/common/hex.html#distance,Hex,Hex	proc distance(h1, h2: Hex): uint32		38
-nim	withinRadius	_._/common/hex.html#withinRadius,Hex,int32	proc withinRadius(center: Hex; radius: int32): seq[Hex]		45
-nim	neighbor	_._/common/hex.html#neighbor,Hex,int	proc neighbor(h: Hex; direction: int): Hex		54
-nim	neighbors	_._/common/hex.html#neighbors,Hex	proc neighbors(h: Hex): seq[Hex]		68
-nim	hex	_._/common/hex.html#hex,int32,int32	proc hex(q, r: int32): Hex		75
-nim	hex	_._/common/hex.html#hex,int,int	proc hex(q, r: int): Hex		76
-nim	HexOrigin	_._/common/hex.html#HexOrigin	const HexOrigin		79
-nimgrp	hex	_._/common/hex.html#hex-procs-all	proc		75
+nimTitle	hex	common/hex.html	module src/common/hex		0
+nim	Hex	common/hex.html#Hex	object Hex		9
+nim	newHex	common/hex.html#newHex,int32,int32	proc newHex(q, r: int32): Hex		13
+nim	`$`	common/hex.html#$,Hex	proc `$`(h: Hex): string		17
+nim	`==`	common/hex.html#==,Hex,Hex	proc `==`(a, b: Hex): bool		21
+nim	hash	common/hex.html#hash,Hex	proc hash(h: Hex): Hash		25
+nim	toId	common/hex.html#toId,Hex,uint32	proc toId(h: Hex; numRings: uint32): uint		31
+nim	distance	common/hex.html#distance,Hex,Hex	proc distance(h1, h2: Hex): uint32		38
+nim	withinRadius	common/hex.html#withinRadius,Hex,int32	proc withinRadius(center: Hex; radius: int32): seq[Hex]		45
+nim	neighbor	common/hex.html#neighbor,Hex,int	proc neighbor(h: Hex; direction: int): Hex		54
+nim	neighbors	common/hex.html#neighbors,Hex	proc neighbors(h: Hex): seq[Hex]		68
+nim	hex	common/hex.html#hex,int32,int32	proc hex(q, r: int32): Hex		75
+nim	hex	common/hex.html#hex,int,int	proc hex(q, r: int): Hex		76
+nim	HexOrigin	common/hex.html#HexOrigin	const HexOrigin		79
+nimgrp	hex	common/hex.html#hex-procs-all	proc		75

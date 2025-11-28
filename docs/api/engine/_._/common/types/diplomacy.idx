@@ -1,3 +1,0 @@
-nimTitle	diplomacy	_._/common/types/diplomacy.html	module src/common/types/diplomacy		0
-nim	DiplomaticState	_._/common/types/diplomacy.html#DiplomaticState	enum DiplomaticState		11
-nim	PrestigeChange	_._/common/types/diplomacy.html#PrestigeChange	object PrestigeChange		17

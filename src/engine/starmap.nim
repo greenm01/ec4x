@@ -165,16 +165,18 @@ proc generateHexGrid(starMap: var StarMap) =
 
 proc assignPlayerHomeworlds(starMap: var StarMap) =
   ## Assign player homeworlds following game specification
-  var outerRingSystems: seq[System] = @[]
+  ## Homeworlds can be placed on any ring (except hub ring 0) using distance maximization
+  var allSystems: seq[System] = @[]
   for system in starMap.systems.values:
-    if system.ring == starMap.numRings:
-      outerRingSystems.add(system)
+    # Exclude hub (ring 0), allow all other rings
+    if system.ring > 0:
+      allSystems.add(system)
 
-  if outerRingSystems.len < starMap.playerCount:
-    raise newException(StarMapError, "Not enough outer ring systems for all players")
+  if allSystems.len < starMap.playerCount:
+    raise newException(StarMapError, "Not enough systems for all players")
 
   # Sort by angle for even distribution
-  outerRingSystems.sort do (a, b: System) -> int:
+  allSystems.sort do (a, b: System) -> int:
     let angleA = arctan2(a.coords.r.float64, a.coords.q.float64)
     let angleB = arctan2(b.coords.r.float64, b.coords.q.float64)
     cmp(angleA, angleB)
@@ -184,13 +186,13 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
 
   if starMap.playerCount <= maxVertexPlayers:
     # Use vertices (corners) for optimal strategic placement
-    let vertices = outerRingSystems.filterIt(starMap.countHexNeighbors(it.coords) == 3)
+    let vertices = allSystems.filterIt(starMap.countHexNeighbors(it.coords) == 3)
 
-    # Choose candidate pool: prefer vertices if enough, otherwise use outer ring
+    # Choose candidate pool: prefer vertices if enough, otherwise use all systems
     let candidateSystems = if vertices.len >= starMap.playerCount:
       vertices
     else:
-      outerRingSystems
+      allSystems
 
     # Apply distance-maximization to candidate pool for fair spacing
     # Shuffle candidates for randomized but fair initial placement
@@ -221,10 +223,10 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
       selectedSystems.add(bestSystem)
   else:
     # Even distribution for larger player counts
-    let step = outerRingSystems.len.float64 / starMap.playerCount.float64
+    let step = allSystems.len.float64 / starMap.playerCount.float64
     for i in 0..<starMap.playerCount:
-      let index = int(i.float64 * step) mod outerRingSystems.len
-      selectedSystems.add(outerRingSystems[index])
+      let index = int(i.float64 * step) mod allSystems.len
+      selectedSystems.add(allSystems[index])
 
   # Assign players to selected systems
   for i, system in selectedSystems:
@@ -256,7 +258,9 @@ proc connectHub(starMap: var StarMap) =
     starMap.addLane(lane)
 
 proc connectPlayerSystems(starMap: var StarMap) =
-  ## Connect player systems with exactly 3 lanes each (game spec)
+  ## Connect player systems with configurable number of lanes (default: 3)
+  let laneCount = globalStarmapConfig.homeworld_placement.homeworld_lane_count
+
   for playerId in starMap.playerSystemIds:
     let system = starMap.systems[playerId]
 
@@ -272,13 +276,14 @@ proc connectPlayerSystems(starMap: var StarMap) =
     let existing = starMap.getAdjacentSystems(playerId)
     neighbors = neighbors.filterIt(it notin existing)
 
-    # Connect to exactly 3 neighbors (game spec requirement)
-    if neighbors.len < 3:
-      raise newException(StarMapError, "Player system must have at least 3 available neighbors")
+    # Connect to exactly N neighbors (configurable)
+    if neighbors.len < laneCount:
+      raise newException(StarMapError,
+        "Player system must have at least " & $laneCount & " available neighbors")
 
     neighbors.shuffle()
-    for i in 0..<min(3, neighbors.len):
-      let laneType = if i < 3: LaneType.Major else: LaneType.Minor
+    for i in 0..<min(laneCount, neighbors.len):
+      let laneType = if i < laneCount: LaneType.Major else: LaneType.Minor
       let lane = JumpLane(source: playerId, destination: neighbors[i], laneType: laneType)
       starMap.addLane(lane)
 

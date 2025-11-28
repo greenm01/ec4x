@@ -1,10 +1,10 @@
-nimTitle	corruption	intelligence/corruption.html	module src/engine/intelligence/corruption		0
-nim	hasIntelCorruption	intelligence/corruption.html#hasIntelCorruption,seq[],HouseId	proc hasIntelCorruption(effects: seq[esp_types.OngoingEffect]; targetHouse: HouseId): Option[\n    OngoingEffect]		15
-nim	hasDishonoredCorruption	intelligence/corruption.html#hasDishonoredCorruption	proc hasDishonoredCorruption(dishonoredStatus: dip_types.DishonoredStatus): Option[\n    float]		25
-nim	corruptInt	intelligence/corruption.html#corruptInt,int,float,Rand	proc corruptInt(value: int; magnitude: float; rng: var Rand): int		36
-nim	corruptIntOption	intelligence/corruption.html#corruptIntOption,Option[int],float,Rand	proc corruptIntOption(value: Option[int]; magnitude: float; rng: var Rand): Option[\n    int]		48
-nim	corruptFleetIntel	intelligence/corruption.html#corruptFleetIntel,,float,Rand	proc corruptFleetIntel(fleet: intel_types.FleetIntel; magnitude: float; rng: var Rand): intel_types.FleetIntel		56
-nim	corruptColonyIntel	intelligence/corruption.html#corruptColonyIntel,,float,Rand	proc corruptColonyIntel(colony: intel_types.ColonyIntelReport; magnitude: float;\n                   rng: var Rand): intel_types.ColonyIntelReport		76
-nim	corruptStarbaseIntel	intelligence/corruption.html#corruptStarbaseIntel,,float,Rand	proc corruptStarbaseIntel(starbase: intel_types.StarbaseIntelReport;\n                     magnitude: float; rng: var Rand): intel_types.StarbaseIntelReport		100
-nim	corruptSystemIntel	intelligence/corruption.html#corruptSystemIntel,,float,Rand	proc corruptSystemIntel(system: intel_types.SystemIntelReport; magnitude: float;\n                   rng: var Rand): intel_types.SystemIntelReport		123
-nim	corruptScoutEncounter	intelligence/corruption.html#corruptScoutEncounter,,float,Rand	proc corruptScoutEncounter(report: intel_types.ScoutEncounterReport;\n                      magnitude: float; rng: var Rand): intel_types.ScoutEncounterReport		135
+nimTitle	corruption	engine/intelligence/corruption.html	module src/engine/intelligence/corruption		0
+nim	hasIntelCorruption	engine/intelligence/corruption.html#hasIntelCorruption,seq[],HouseId	proc hasIntelCorruption(effects: seq[esp_types.OngoingEffect]; targetHouse: HouseId): Option[\n    OngoingEffect]		15
+nim	hasDishonoredCorruption	engine/intelligence/corruption.html#hasDishonoredCorruption	proc hasDishonoredCorruption(dishonoredStatus: dip_types.DishonoredStatus): Option[\n    float]		25
+nim	corruptInt	engine/intelligence/corruption.html#corruptInt,int,float,Rand	proc corruptInt(value: int; magnitude: float; rng: var Rand): int		36
+nim	corruptIntOption	engine/intelligence/corruption.html#corruptIntOption,Option[int],float,Rand	proc corruptIntOption(value: Option[int]; magnitude: float; rng: var Rand): Option[\n    int]		48
+nim	corruptFleetIntel	engine/intelligence/corruption.html#corruptFleetIntel,,float,Rand	proc corruptFleetIntel(fleet: intel_types.FleetIntel; magnitude: float; rng: var Rand): intel_types.FleetIntel		56
+nim	corruptColonyIntel	engine/intelligence/corruption.html#corruptColonyIntel,,float,Rand	proc corruptColonyIntel(colony: intel_types.ColonyIntelReport; magnitude: float;\n                   rng: var Rand): intel_types.ColonyIntelReport		76
+nim	corruptStarbaseIntel	engine/intelligence/corruption.html#corruptStarbaseIntel,,float,Rand	proc corruptStarbaseIntel(starbase: intel_types.StarbaseIntelReport;\n                     magnitude: float; rng: var Rand): intel_types.StarbaseIntelReport		100
+nim	corruptSystemIntel	engine/intelligence/corruption.html#corruptSystemIntel,,float,Rand	proc corruptSystemIntel(system: intel_types.SystemIntelReport; magnitude: float;\n                   rng: var Rand): intel_types.SystemIntelReport		123
+nim	corruptScoutEncounter	engine/intelligence/corruption.html#corruptScoutEncounter,,float,Rand	proc corruptScoutEncounter(report: intel_types.ScoutEncounterReport;\n                      magnitude: float; rng: var Rand): intel_types.ScoutEncounterReport		135

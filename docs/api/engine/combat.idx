@@ -1,4 +1,0 @@
-nimTitle	combat	combat.html	module src/common/types/combat		0
-nim	LaneType	combat.html#LaneType	enum LaneType		9
-nim	CombatState	combat.html#CombatState	enum CombatState		21
-nim	CombatEffectivenessRating	combat.html#CombatEffectivenessRating	type CombatEffectivenessRating		27

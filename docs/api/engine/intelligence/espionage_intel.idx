@@ -1,2 +1,2 @@
-nimTitle	espionage_intel	intelligence/espionage_intel.html	module src/engine/intelligence/espionage_intel		0
-nim	generateEspionageIntelligence	intelligence/espionage_intel.html#generateEspionageIntelligence,GameState,,int	proc generateEspionageIntelligence(state: var GameState;\n                              result: esp_types.EspionageResult; turn: int)		11
+nimTitle	espionage_intel	engine/intelligence/espionage_intel.html	module src/engine/intelligence/espionage_intel		0
+nim	generateEspionageIntelligence	engine/intelligence/espionage_intel.html#generateEspionageIntelligence,GameState,,int	proc generateEspionageIntelligence(state: var GameState;\n                              result: esp_types.EspionageResult; turn: int)		11

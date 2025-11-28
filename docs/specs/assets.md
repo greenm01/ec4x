@@ -12,9 +12,11 @@ Solar systems have special traits and are procedurally generated. They are fille
 
 There are three classes of jump lanes that determine which ship types can traverse them:
 
+<!-- LANE_DISTRIBUTION_START -->
 - **Major lanes** (50% of all lanes): Allow all ship types including crippled ships, ETACs, and troop transports
 - **Minor lanes** (35% of all lanes): Block crippled ships only; all other ships may pass
 - **Restricted lanes** (15% of all lanes): Block crippled ships, ETACs, and troop transports
+<!-- LANE_DISTRIBUTION_END -->
 
 This distribution ensures 85% of lanes allow colonization ships through, reducing strategic bottlenecks while maintaining tactical complexity. Movement across the lanes is explained in [Section 6.1](operations.md#61-jump-lanes).
 
@@ -24,9 +26,11 @@ The hub is guaranteed to have six jump lanes connecting it to the first ring, ma
 
 **Homeworld Placement**
 
-Player homeworlds are placed on the outer ring using distance maximization algorithms. The generator prioritizes vertex positions (hex corners) when possible and ensures each homeworld is as far as strategically possible from rival home systems. This creates balanced starting positions while introducing natural asymmetry in the tactical landscape.
+<!-- HOMEWORLD_PLACEMENT_START -->
+Player homeworlds are placed throughout the map using distance maximization algorithms. The generator ensures each homeworld is as far as strategically possible from rival home systems, creating balanced starting positions while introducing natural asymmetry in the tactical landscape. Unlike traditional hex-ring maps where homeworlds are predictably on the outer edge, this system allows homeworlds on any ring for unpredictable, varied starting scenarios.
 
-Homeworlds on the outer ring will have three lanes connecting them to the inner rings.
+Homeworlds will have 3 lanes connecting them to adjacent systems.
+<!-- HOMEWORLD_PLACEMENT_END -->
 
 ## 2.2 Solar Systems
 

@@ -35,3 +35,19 @@ prefer_vertex_positions = true  # Place homeworlds on hex vertices when possible
 # Hub connectivity (center system)
 # Mixed lane types prevent predictable "rush-to-center" gameplay
 hub_uses_mixed_lanes = true
+
+# ============================================================================
+# HOMEWORLD PLACEMENT
+# ============================================================================
+
+[homeworld_placement]
+# BALANCE: Homeworld placement flexibility
+# Homeworlds can be placed anywhere in the map using distance maximization
+# This removes the predictable "outer ring only" constraint for unpredictable,
+# VBAM-style placement where homeworlds can appear on any ring
+# Distance maximization ensures fair spacing regardless of ring location
+
+# Number of jump lanes connecting each homeworld to adjacent systems
+# Default: 3 (game spec requirement)
+# Maximum: 6 (hex grid limit - hexagons have 6 neighbors)
+homeworld_lane_count = 3

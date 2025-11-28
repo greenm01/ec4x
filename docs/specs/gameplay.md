@@ -18,7 +18,9 @@ Poor colony management will tarnish your House's legacy, while over-exposure to 
 
 Flexibility and strategic foresight are your greatest tools in the quest for power. Use every resource and opportunity the game provides to crush your rivals and ensure the dominance of your House.
 
+<!-- STARTING_PRESTIGE_START -->
 Players start the game with 50 prestige points.
+<!-- STARTING_PRESTIGE_END -->
 
 If a House's prestige drops and stays below zero for three consecutive turns, the empire enters Defensive Collapse and the player is permanently eliminated. See [Section 1.4](#14-player-elimination--autopilot) for full elimination and autopilot mechanics.
 

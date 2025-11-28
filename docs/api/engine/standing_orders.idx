@@ -1,4 +1,4 @@
-nimTitle	standing_orders	standing_orders.html	module src/engine/standing_orders		0
-nim	ExecutionResult	standing_orders.html#ExecutionResult	object ExecutionResult		17
-nim	executeStandingOrder	standing_orders.html#executeStandingOrder,GameState,FleetId,StandingOrder,int	proc executeStandingOrder(state: var GameState; fleetId: FleetId;\n                     standingOrder: StandingOrder; turn: int): ExecutionResult		748
-nim	executeStandingOrders	standing_orders.html#executeStandingOrders,GameState,int	proc executeStandingOrders(state: var GameState; turn: int)		778
+nimTitle	standing_orders	engine/standing_orders.html	module src/engine/standing_orders		0
+nim	ExecutionResult	engine/standing_orders.html#ExecutionResult	object ExecutionResult		17
+nim	executeStandingOrder	engine/standing_orders.html#executeStandingOrder,GameState,FleetId,StandingOrder,int	proc executeStandingOrder(state: var GameState; fleetId: FleetId;\n                     standingOrder: StandingOrder; turn: int): ExecutionResult		748
+nim	executeStandingOrders	engine/standing_orders.html#executeStandingOrders,GameState,int	proc executeStandingOrders(state: var GameState; turn: int)		778

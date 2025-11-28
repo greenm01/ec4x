@@ -1,29 +1,29 @@
-nimTitle	detection	intelligence/detection.html	module src/engine/intelligence/detection		0
-nim	globalRNG	intelligence/detection.html#globalRNG	var globalRNG		18
-nim	ELIUnit	intelligence/detection.html#ELIUnit	object ELIUnit		21
-nim	DetectionResult	intelligence/detection.html#DetectionResult	object DetectionResult		26
-nim	calculateWeightedAverageELI	intelligence/detection.html#calculateWeightedAverageELI,seq[int]	proc calculateWeightedAverageELI(eliLevels: seq[int]): int		35
-nim	applyDominantTechPenalty	intelligence/detection.html#applyDominantTechPenalty,int,seq[int]	proc applyDominantTechPenalty(weightedAvg: int; eliLevels: seq[int]): int		45
-nim	getMeshNetworkBonus	intelligence/detection.html#getMeshNetworkBonus,int	proc getMeshNetworkBonus(scoutCount: int): int		59
-nim	calculateEffectiveELI	intelligence/detection.html#calculateEffectiveELI,seq[int],bool	proc calculateEffectiveELI(eliLevels: seq[int]; isStarbase: bool = false): int		73
-nim	attemptSpyDetection	intelligence/detection.html#attemptSpyDetection,int,int,Rand	proc attemptSpyDetection(detectorELI: int; spyELI: int; rng: var Rand): DetectionResult		101
-nim	detectSpyScout	intelligence/detection.html#detectSpyScout,ELIUnit,int,Rand	proc detectSpyScout(detectorUnit: ELIUnit; spyELI: int; rng: var Rand): DetectionResult		134
-nim	attemptSpyDetection	intelligence/detection.html#attemptSpyDetection,int,int	proc attemptSpyDetection(detectorELI, spyELI: int): DetectionResult		148
-nim	detectSpyScout	intelligence/detection.html#detectSpyScout,ELIUnit,int	proc detectSpyScout(detectorUnit: ELIUnit; spyELI: int): DetectionResult		152
-nim	getRaiderThresholdStrategy	intelligence/detection.html#getRaiderThresholdStrategy,int,int	proc getRaiderThresholdStrategy(eliLevel: int; cloakLevel: int): string		158
-nim	rollRaiderThreshold	intelligence/detection.html#rollRaiderThreshold,ThresholdRange,string,Rand	proc rollRaiderThreshold(thresholdRange: ThresholdRange; strategy: string;\n                    rng: var Rand): int		172
-nim	attemptRaiderDetection	intelligence/detection.html#attemptRaiderDetection,int,int,Rand	proc attemptRaiderDetection(detectorELI: int; cloakLevel: int; rng: var Rand): DetectionResult		193
-nim	detectRaider	intelligence/detection.html#detectRaider,ELIUnit,int,Rand	proc detectRaider(detectorUnit: ELIUnit; cloakLevel: int; rng: var Rand): DetectionResult		226
-nim	rollRaiderThreshold	intelligence/detection.html#rollRaiderThreshold,ThresholdRange,string	proc rollRaiderThreshold(thresholdRange: ThresholdRange; strategy: string): int		240
-nim	attemptRaiderDetection	intelligence/detection.html#attemptRaiderDetection,int,int	proc attemptRaiderDetection(detectorELI, cloakLevel: int): DetectionResult		244
-nim	detectRaider	intelligence/detection.html#detectRaider,ELIUnit,int	proc detectRaider(detectorUnit: ELIUnit; cloakLevel: int): DetectionResult		248
-nim	getScoutELILevels	intelligence/detection.html#getScoutELILevels,Squadron	proc getScoutELILevels(squadron: Squadron): seq[int]		254
-nim	getFleetELILevels	intelligence/detection.html#getFleetELILevels,seq[Squadron]	proc getFleetELILevels(squadrons: seq[Squadron]): seq[int]		263
-nim	getFleetCloakLevel	intelligence/detection.html#getFleetCloakLevel,seq[Squadron]	proc getFleetCloakLevel(squadrons: seq[Squadron]): int		271
-nim	hasELICapability	intelligence/detection.html#hasELICapability,seq[Squadron]	proc hasELICapability(squadrons: seq[Squadron]): bool		284
-nim	createELIUnit	intelligence/detection.html#createELIUnit,seq[Squadron],bool	proc createELIUnit(squadrons: seq[Squadron]; isStarbase: bool = false): ELIUnit		292
-nimgrp	attemptspydetection	intelligence/detection.html#attemptSpyDetection-procs-all	proc		101
-nimgrp	rollraiderthreshold	intelligence/detection.html#rollRaiderThreshold-procs-all	proc		172
-nimgrp	detectraider	intelligence/detection.html#detectRaider-procs-all	proc		226
-nimgrp	attemptraiderdetection	intelligence/detection.html#attemptRaiderDetection-procs-all	proc		193
-nimgrp	detectspyscout	intelligence/detection.html#detectSpyScout-procs-all	proc		134
+nimTitle	detection	engine/intelligence/detection.html	module src/engine/intelligence/detection		0
+nim	globalRNG	engine/intelligence/detection.html#globalRNG	var globalRNG		18
+nim	ELIUnit	engine/intelligence/detection.html#ELIUnit	object ELIUnit		21
+nim	DetectionResult	engine/intelligence/detection.html#DetectionResult	object DetectionResult		26
+nim	calculateWeightedAverageELI	engine/intelligence/detection.html#calculateWeightedAverageELI,seq[int]	proc calculateWeightedAverageELI(eliLevels: seq[int]): int		35
+nim	applyDominantTechPenalty	engine/intelligence/detection.html#applyDominantTechPenalty,int,seq[int]	proc applyDominantTechPenalty(weightedAvg: int; eliLevels: seq[int]): int		45
+nim	getMeshNetworkBonus	engine/intelligence/detection.html#getMeshNetworkBonus,int	proc getMeshNetworkBonus(scoutCount: int): int		59
+nim	calculateEffectiveELI	engine/intelligence/detection.html#calculateEffectiveELI,seq[int],bool	proc calculateEffectiveELI(eliLevels: seq[int]; isStarbase: bool = false): int		73
+nim	attemptSpyDetection	engine/intelligence/detection.html#attemptSpyDetection,int,int,Rand	proc attemptSpyDetection(detectorELI: int; spyELI: int; rng: var Rand): DetectionResult		101
+nim	detectSpyScout	engine/intelligence/detection.html#detectSpyScout,ELIUnit,int,Rand	proc detectSpyScout(detectorUnit: ELIUnit; spyELI: int; rng: var Rand): DetectionResult		134
+nim	attemptSpyDetection	engine/intelligence/detection.html#attemptSpyDetection,int,int	proc attemptSpyDetection(detectorELI, spyELI: int): DetectionResult		148
+nim	detectSpyScout	engine/intelligence/detection.html#detectSpyScout,ELIUnit,int	proc detectSpyScout(detectorUnit: ELIUnit; spyELI: int): DetectionResult		152
+nim	getRaiderThresholdStrategy	engine/intelligence/detection.html#getRaiderThresholdStrategy,int,int	proc getRaiderThresholdStrategy(eliLevel: int; cloakLevel: int): string		158
+nim	rollRaiderThreshold	engine/intelligence/detection.html#rollRaiderThreshold,ThresholdRange,string,Rand	proc rollRaiderThreshold(thresholdRange: ThresholdRange; strategy: string;\n                    rng: var Rand): int		172
+nim	attemptRaiderDetection	engine/intelligence/detection.html#attemptRaiderDetection,int,int,Rand	proc attemptRaiderDetection(detectorELI: int; cloakLevel: int; rng: var Rand): DetectionResult		193
+nim	detectRaider	engine/intelligence/detection.html#detectRaider,ELIUnit,int,Rand	proc detectRaider(detectorUnit: ELIUnit; cloakLevel: int; rng: var Rand): DetectionResult		226
+nim	rollRaiderThreshold	engine/intelligence/detection.html#rollRaiderThreshold,ThresholdRange,string	proc rollRaiderThreshold(thresholdRange: ThresholdRange; strategy: string): int		240
+nim	attemptRaiderDetection	engine/intelligence/detection.html#attemptRaiderDetection,int,int	proc attemptRaiderDetection(detectorELI, cloakLevel: int): DetectionResult		244
+nim	detectRaider	engine/intelligence/detection.html#detectRaider,ELIUnit,int	proc detectRaider(detectorUnit: ELIUnit; cloakLevel: int): DetectionResult		248
+nim	getScoutELILevels	engine/intelligence/detection.html#getScoutELILevels,Squadron	proc getScoutELILevels(squadron: Squadron): seq[int]		254
+nim	getFleetELILevels	engine/intelligence/detection.html#getFleetELILevels,seq[Squadron]	proc getFleetELILevels(squadrons: seq[Squadron]): seq[int]		263
+nim	getFleetCloakLevel	engine/intelligence/detection.html#getFleetCloakLevel,seq[Squadron]	proc getFleetCloakLevel(squadrons: seq[Squadron]): int		271
+nim	hasELICapability	engine/intelligence/detection.html#hasELICapability,seq[Squadron]	proc hasELICapability(squadrons: seq[Squadron]): bool		284
+nim	createELIUnit	engine/intelligence/detection.html#createELIUnit,seq[Squadron],bool	proc createELIUnit(squadrons: seq[Squadron]; isStarbase: bool = false): ELIUnit		292
+nimgrp	attemptspydetection	engine/intelligence/detection.html#attemptSpyDetection-procs-all	proc		101
+nimgrp	rollraiderthreshold	engine/intelligence/detection.html#rollRaiderThreshold-procs-all	proc		172
+nimgrp	detectraider	engine/intelligence/detection.html#detectRaider-procs-all	proc		226
+nimgrp	attemptraiderdetection	engine/intelligence/detection.html#attemptRaiderDetection-procs-all	proc		193
+nimgrp	detectspyscout	engine/intelligence/detection.html#detectSpyScout-procs-all	proc		134
