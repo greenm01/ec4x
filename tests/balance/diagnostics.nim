@@ -45,6 +45,12 @@ type
     researchTRP*: int           # Technology Research Points invested
     researchBreakthroughs*: int # Count of breakthroughs this turn (bi-annual rolls)
 
+    # Research Waste Tracking (Tech Level Caps)
+    researchWastedERP*: int     # ERP wasted on maxed EL (EL >= 11)
+    researchWastedSRP*: int     # SRP wasted on maxed SL (SL >= 8)
+    turnsAtMaxEL*: int          # Consecutive turns with EL at maximum (11)
+    turnsAtMaxSL*: int          # Consecutive turns with SL at maximum (8)
+
     # Maintenance & Prestige
     maintenanceCostTotal*: int  # Total maintenance paid this turn
     maintenanceShortfallTurns*: int  # Consecutive turns with maintenance shortfall
@@ -238,6 +244,10 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId): DiagnosticMetrics =
     # Research Points
     researchERP: 0, researchSRP: 0, researchTRP: 0, researchBreakthroughs: 0,
 
+    # Research Waste Tracking
+    researchWastedERP: 0, researchWastedSRP: 0,
+    turnsAtMaxEL: 0, turnsAtMaxSL: 0,
+
     # Maintenance & Prestige
     maintenanceCostTotal: 0, maintenanceShortfallTurns: 0,
     prestigeCurrent: 0, prestigeChange: 0, prestigeVictoryProgress: 0,
@@ -363,12 +373,44 @@ proc collectEconomyMetrics(state: GameState, houseId: HouseId,
   result.techFD = house.techTree.levels.fighterDoctrine
   result.techACO = house.techTree.levels.advancedCarrierOps
 
-  # Research Points (TODO: need to track RP spending from turn resolution)
-  # For now initialize to zero - will be updated when we add RP tracking to turn resolution
-  result.researchERP = 0
-  result.researchSRP = 0
-  result.researchTRP = 0
-  result.researchBreakthroughs = 0
+  # Research Points (tracked from turn resolution)
+  result.researchERP = house.lastTurnResearchERP
+  result.researchSRP = house.lastTurnResearchSRP
+  result.researchTRP = house.lastTurnResearchTRP
+  result.researchBreakthroughs = 0  # TODO: track breakthroughs when tech advancement implemented
+
+  # Research Waste Tracking (Tech Level Caps)
+  # Track wasted RP when investing in maxed tech levels
+  const maxEconomicLevel = 11
+  const maxScienceLevel = 8
+
+  # Track ERP waste if EL at max
+  if result.techEL >= maxEconomicLevel and result.researchERP > 0:
+    result.researchWastedERP = result.researchERP
+  else:
+    result.researchWastedERP = 0
+
+  # Track SRP waste if SL at max
+  if result.techSL >= maxScienceLevel and result.researchSRP > 0:
+    result.researchWastedSRP = result.researchSRP
+  else:
+    result.researchWastedSRP = 0
+
+  # Track consecutive turns at max levels (similar to prestigeVictoryProgress)
+  if prevMetrics.isSome:
+    if result.techEL >= maxEconomicLevel:
+      result.turnsAtMaxEL = prevMetrics.get.turnsAtMaxEL + 1
+    else:
+      result.turnsAtMaxEL = 0
+
+    if result.techSL >= maxScienceLevel:
+      result.turnsAtMaxSL = prevMetrics.get.turnsAtMaxSL + 1
+    else:
+      result.turnsAtMaxSL = 0
+  else:
+    # First turn
+    result.turnsAtMaxEL = if result.techEL >= maxEconomicLevel: 1 else: 0
+    result.turnsAtMaxSL = if result.techSL >= maxScienceLevel: 1 else: 0
 
   # Maintenance & Prestige
   # TODO: track maintenance costs from turn resolution
@@ -859,6 +901,10 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.researchSRP = econ.researchSRP
   result.researchTRP = econ.researchTRP
   result.researchBreakthroughs = econ.researchBreakthroughs
+  result.researchWastedERP = econ.researchWastedERP
+  result.researchWastedSRP = econ.researchWastedSRP
+  result.turnsAtMaxEL = econ.turnsAtMaxEL
+  result.turnsAtMaxSL = econ.turnsAtMaxSL
   result.maintenanceCostTotal = econ.maintenanceCostTotal
   result.maintenanceShortfallTurns = econ.maintenanceShortfallTurns
   result.prestigeCurrent = econ.prestigeCurrent
@@ -1025,6 +1071,7 @@ proc writeCSVHeader*(file: File) =
                  "tech_eli,tech_clk,tech_sld,tech_cic,tech_fd,tech_aco," &
                  # Research & Prestige
                  "research_erp,research_srp,research_trp,research_breakthroughs," &
+                 "research_wasted_erp,research_wasted_srp,turns_at_max_el,turns_at_max_sl," &
                  "maintenance_cost,maintenance_shortfall_turns," &
                  "prestige,prestige_change,prestige_victory_progress," &
                  # Combat Performance
@@ -1081,6 +1128,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.techELI},{metrics.techCLK},{metrics.techSLD},{metrics.techCIC},{metrics.techFD},{metrics.techACO}," &
                  # Research & Prestige
                  &"{metrics.researchERP},{metrics.researchSRP},{metrics.researchTRP},{metrics.researchBreakthroughs}," &
+                 &"{metrics.researchWastedERP},{metrics.researchWastedSRP},{metrics.turnsAtMaxEL},{metrics.turnsAtMaxSL}," &
                  &"{metrics.maintenanceCostTotal},{metrics.maintenanceShortfallTurns}," &
                  &"{metrics.prestigeCurrent},{metrics.prestigeChange},{metrics.prestigeVictoryProgress}," &
                  # Combat Performance
