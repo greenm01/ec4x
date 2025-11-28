@@ -411,9 +411,60 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
         planCoordinatedInvasion(controller, filtered, targetSystem, filtered.turn)
 
   # ==========================================================================
+  # STANDING ORDERS ASSIGNMENT (QoL Integration)
+  # ==========================================================================
+  # Assign standing orders BEFORE tactical so Tactical can skip fleets with standing orders
+  # Standing orders provide consistent behavior for routine tasks:
+  # - Damaged fleets automatically return to shipyard (AutoRepair)
+  # - ETAC fleets automatically colonize (AutoColonize)
+  # - Defensive fleets guard homeworld (DefendSystem)
+  # - Risk-averse scouts retreat when outnumbered (AutoEvade)
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Standing Orders Assignment ===")
+
+  let standingOrders = assignStandingOrders(controller, filtered, filtered.turn)
+
+  # Update controller immediately so Tactical can see these assignments
+  controller.standingOrders = standingOrders
+
+  # ==========================================================================
+  # STRATEGIC STANDING ORDERS → EXPLICIT FLEET ORDERS
+  # ==========================================================================
+  # Convert DefendSystem and other strategic standing orders to explicit FleetOrders
+  # These are strategic commitments that should not be overridden by Tactical
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Converting Strategic Standing Orders ===")
+
+  var strategicOrdersConverted = 0
+  for fleetId, standingOrder in standingOrders:
+    # Only convert strategic standing orders (DefendSystem, AutoRepair)
+    if standingOrder.orderType in {StandingOrderType.DefendSystem, StandingOrderType.AutoRepair}:
+      # Find fleet
+      var fleetOpt: Option[Fleet] = none(Fleet)
+      for f in filtered.ownFleets:
+        if f.id == fleetId:
+          fleetOpt = some(f)
+          break
+
+      if fleetOpt.isSome:
+        let fleet = fleetOpt.get()
+        let orderOpt = convertStandingOrderToFleetOrder(standingOrder, fleet, filtered)
+
+        if orderOpt.isSome:
+          result.fleetOrders.add(orderOpt.get())
+          strategicOrdersConverted += 1
+          logDebug(LogCategory.lcAI,
+                   &"{controller.houseId} Fleet {fleetId}: Converted {standingOrder.orderType} " &
+                   &"to explicit FleetOrder (strategic commitment)")
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Converted {strategicOrdersConverted} strategic standing orders to explicit FleetOrders")
+
+  # ==========================================================================
   # FLEET ORDERS (Using RBA Tactical Module)
   # ==========================================================================
   # Generate tactical fleet orders (strategic priorities inform tactical decisions)
+  # NOTE: Tactical can now skip fleets with DefendSystem standing orders
   let tacticalOrders = generateFleetOrders(controller, filtered, rng)
 
   # Add tactical orders to result (will be filtered by logistics later if needed)
@@ -516,57 +567,40 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
           &"remaining={remainingTreasury}PP")
 
   # ==========================================================================
-  # STANDING ORDERS (QoL Integration)
+  # FALLBACK STANDING ORDERS EXECUTION
   # ==========================================================================
-  # Assign standing orders to fleets without explicit tactical orders
-  # Standing orders provide consistent behavior for routine tasks:
-  # - Damaged fleets automatically return to shipyard (AutoRepair)
-  # - ETAC fleets automatically colonize (AutoColonize)
-  # - Defensive fleets guard homeworld (DefendSystem)
-  # - Risk-averse scouts retreat when outnumbered (AutoEvade)
-  #
-  # NOTE: Standing orders only execute when no explicit order is given
-  # Tactical orders take priority, standing orders handle the rest
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} === Standing Orders Assignment ===")
-
-  let standingOrders = assignStandingOrders(controller, filtered, filtered.turn)
-
-  # ==========================================================================
-  # STANDING ORDERS EXECUTION
-  # ==========================================================================
-  # Convert standing orders to executable FleetOrders for fleets without explicit orders
-  # Build set of fleets that already have explicit orders (tactical or logistics)
+  # Convert fallback standing orders to executable FleetOrders for fleets without explicit orders
+  # NOTE: Strategic standing orders (DefendSystem, AutoRepair) already converted earlier
+  # Build set of fleets that already have explicit orders (tactical or logistics or strategic)
   var fleetsWithExplicitOrders = initHashSet[FleetId]()
   for order in result.fleetOrders:
     fleetsWithExplicitOrders.incl(order.fleetId)
 
-  # Convert standing orders to FleetOrders for fleets without explicit orders
-  var standingOrdersExecuted = 0
+  # Convert fallback standing orders for fleets without explicit orders
+  var fallbackOrdersExecuted = 0
   for fleetId, standingOrder in standingOrders:
+    # Skip strategic orders (already converted earlier)
+    if standingOrder.orderType in {StandingOrderType.DefendSystem, StandingOrderType.AutoRepair}:
+      continue
+
     if fleetId notin fleetsWithExplicitOrders:
-      # This fleet has no tactical/logistics order, execute its standing order
-      # Find the fleet in our filtered state
-      var fleet: Option[Fleet] = none(Fleet)
+      # This fleet has no explicit order, execute its fallback standing order
+      var fleetOpt: Option[Fleet] = none(Fleet)
       for f in filtered.ownFleets:
         if f.id == fleetId:
-          fleet = some(f)
+          fleetOpt = some(f)
           break
 
-      if fleet.isSome:
-        # Convert standing order to executable FleetOrder
-        let fleetOrder = convertStandingOrderToFleetOrder(
-          standingOrder,
-          fleet.get,
-          filtered
-        )
+      if fleetOpt.isSome:
+        let fleet = fleetOpt.get()
+        let orderOpt = convertStandingOrderToFleetOrder(standingOrder, fleet, filtered)
 
-        if fleetOrder.isSome:
-          result.fleetOrders.add(fleetOrder.get)
-          standingOrdersExecuted += 1
+        if orderOpt.isSome:
+          result.fleetOrders.add(orderOpt.get())
+          fallbackOrdersExecuted += 1
           logDebug(LogCategory.lcAI,
-                   &"{controller.houseId} Fleet {fleetId}: Executing standing order " &
-                   &"{standingOrder.orderType} → {fleetOrder.get.orderType}")
+                   &"{controller.houseId} Fleet {fleetId}: Executing fallback standing order " &
+                   &"{standingOrder.orderType} → {orderOpt.get.orderType}")
         else:
           logDebug(LogCategory.lcAI,
                    &"{controller.houseId} Fleet {fleetId}: Standing order " &
@@ -578,8 +612,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Log summary
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Standing Orders: {standingOrders.len} assigned, " &
-          &"{standingOrdersExecuted} executed, " &
-          &"{fleetsWithExplicitOrders.len} under tactical/logistics control")
+          &"{strategicOrdersConverted} strategic converted, {fallbackOrdersExecuted} fallback executed, " &
+          &"{fleetsWithExplicitOrders.len} total explicit orders")
 
-  # Store standing orders in controller for next turn
-  controller.standingOrders = standingOrders
+  # NOTE: Standing orders already stored in controller earlier (before Tactical)
