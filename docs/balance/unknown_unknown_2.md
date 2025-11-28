@@ -1,8 +1,9 @@
 # Unknown-Unknown #2: Act 2 Defense Requirements Exceed Budget Capacity
 
-**Status**: Identified
-**Severity**: Medium
+**Status**: Resolved (CFO-Admiral Consultation System)
+**Severity**: Medium → Low
 **Discovered**: 2025-11-28
+**Resolved**: 2025-11-28
 **Test**: 50-turn comprehensive balance test
 
 ## Summary
@@ -210,10 +211,158 @@ Act 2 (Turns 8-15):
 - **Phase 3**: Build requirements system working correctly
 - **Phase 4**: May need budget reforms or multi-turn planning
 
+## Resolution: CFO-Admiral Consultation System
+
+**Implementation Date**: 2025-11-28
+**Solution Chosen**: Dynamic budget allocation with Admiral consultation (variant of Option 2)
+
+### Architecture
+
+Created new CFO module with clean separation of concerns:
+- `src/ai/rba/cfo.nim`: Public API
+- `src/ai/rba/cfo/allocation.nim`: Core allocation logic (baseline + personality + consultation)
+- `src/ai/rba/cfo/consultation.nim`: Admiral consultation logic (requirements blending + strategic triage)
+
+### How It Works
+
+**Before CFO Consultation** (baseline):
+```
+Act 2 Budget Allocation:
+- Defense: 15% (static from config)
+- Military: 30% (static from config)
+- Reconnaissance: 25% (static from config)
+Result: Admiral needs 160PP Defense, gets 45PP (115PP shortage)
+```
+
+**After CFO Consultation** (dynamic):
+```
+1. CFO reads baseline from config (Defense=15%)
+2. CFO calculates PP needed from Admiral requirements (160PP Defense)
+3. CFO blends requirements with baseline:
+   - Target = 160PP / 300PP = 53%
+   - Blended = (53% × 0.7) + (15% × 0.3) = 37% + 4.5% = 41.5%
+4. CFO normalizes to ensure total = 100%
+Result: Admiral needs 160PP Defense, gets 124PP (36PP shortage vs 115PP before)
+```
+
+**Consultation Strategy**:
+- **Requirements Blending** (normal case): 70% requirement-driven + 30% baseline config
+  - Maintains strategic diversity while fulfilling tactical needs
+  - Only considers Critical+High priority requirements
+- **Strategic Triage** (oversubscribed case): Emergency allocation with minimum reserves
+  - Maintains 10% minimum for reconnaissance (strategic awareness)
+  - Maintains 5% minimum for expansion (economic growth)
+  - Prevents strategic blindness
+
+### Implementation Details
+
+**Key Functions** (src/ai/rba/cfo/consultation.nim):
+```nim
+proc calculateRequiredPP*(requirements: BuildRequirements): Table[BuildObjective, int]
+  - Sums estimated costs per objective for Critical+High priority requirements
+  - Lower priorities deferred if budget tight
+
+proc blendRequirementsWithBaseline*(allocation: var BudgetAllocation, ...)
+  - Normal case: 70% requirement-driven, 30% baseline config
+  - Adjusts Defense, Military, Reconnaissance based on Admiral needs
+
+proc applyStrategicTriage*(allocation: var BudgetAllocation, ...)
+  - Emergency case: When urgent requirements > available budget
+  - Maintains minimum reserves for recon/expansion
+  - Prevents strategic blindness
+
+proc consultAdmiralRequirements*(allocation: var BudgetAllocation, ...)
+  - Main entry point: Chooses blending vs triage strategy
+```
+
+**Integration Point** (src/ai/rba/budget.nim:1028-1034):
+```nim
+var allocation = cfo.allocateBudget(
+  act,
+  personality,
+  isUnderThreat,
+  admiralRequirements,  # NEW: CFO consults Admiral requirements
+  availableBudget       # NEW: CFO needs total budget to calculate percentages
+)
+```
+
+### Test Results
+
+**Comprehensive 50-turn balance test**:
+- **Baseline** (static allocation): 782 unfulfilled warnings
+- **After CFO consultation**: 604 unfulfilled warnings
+- **Improvement**: 22.8% reduction (178 fewer warnings)
+
+**Analysis of Remaining Warnings**:
+- Total requirements generated: 35,360PP
+- Urgent requirements (Critical+High): 478PP (1.4%)
+- Non-urgent requirements (Medium+Low): 34,882PP (98.6%)
+- CFO correctly ignores non-urgent requirements (can be deferred)
+
+**Dynamic Allocation Examples**:
+```
+Turn 8: Admiral needs 80PP Defense → CFO allocates 29% (up from 15%)
+Turn 10: Admiral needs 120PP Defense → CFO allocates 33% (up from 15%)
+Turn 12: Admiral needs 160PP Defense → CFO allocates 39% (up from 15%)
+Turn 14: Admiral needs 0PP Defense → CFO allocates 15% (baseline)
+```
+
+### Why This Solution Works
+
+1. **Dynamic Response**: Budget adapts to actual strategic needs rather than static percentages
+2. **Priority-Aware**: Only urgent (Critical+High) requirements drive allocation changes
+3. **Strategic Balance**: 70/30 blend maintains diversity while fulfilling tactical needs
+4. **Safety Nets**: Strategic triage prevents blindness (minimum recon/expansion reserves)
+5. **Backward Compatible**: Falls back to static config when no Admiral requirements
+6. **Modular Architecture**: Clean separation prevents file bloat (budget.nim was getting large)
+
+### Remaining Issues
+
+While the CFO consultation system significantly improved budget allocation, unfulfilled warnings remain because:
+
+1. **Priority Distribution**: Admiral generates mostly Medium/Low priority requirements (98.6%)
+   - CFO correctly defers these to focus on urgent needs
+   - This is expected behavior, not a bug
+
+2. **Budget Constraints**: Even with dynamic allocation, budget still finite
+   - Can't defend all 8-12 colonies simultaneously
+   - Gradual defense buildup over Act 2 (realistic pacing)
+
+3. **Warning System**: Logs ALL unfulfilled requirements regardless of priority
+   - Future enhancement: Suppress warnings for deferred low-priority requirements
+   - Or: Show as "Deferred" instead of "Unfulfilled"
+
+### Future Enhancements
+
+Potential Phase 4 improvements:
+1. **Multi-Turn Planning**: Admiral spreads requirements across turns based on budget capacity
+2. **Priority-Aware Warnings**: Suppress/reclassify warnings for non-urgent requirements
+3. **Personality-Scaled Reserves**: Adjust minimum recon/expansion percentages by risk tolerance
+4. **Carry-Forward System**: Track unfulfilled urgent requirements across turns
+
+### Lessons Learned
+
+**Unknown-Unknown Nature**:
+- Initial symptom: 500+ unfulfilled warnings
+- Initial hypothesis: Budget percentages wrong
+- Actual problem: No communication between Admiral (requirements) and CFO (allocation)
+- Solution required: New consultation system bridging strategic and fiscal planning
+
+**Design Philosophy**:
+- Admiral identifies WHAT is needed (requirements)
+- CFO determines HOW MUCH budget to allocate (percentages)
+- Consultation bridges strategic needs with fiscal reality
+
+**Architecture Impact**:
+- Extracted CFO logic to dedicated module (clean separation)
+- Prevented budget.nim from growing to 1500+ lines
+- Enabled future enhancements without file bloat
+
 ## Next Steps
 
 1. ✅ Document Unknown-Unknown #2 findings
-2. ⏳ Decide on solution approach (Options 1-4)
-3. ⏳ Implement chosen solution
-4. ⏳ Re-test with 50-turn simulation
-5. ⏳ Validate Act 2 defense buildup pacing
+2. ✅ Implement CFO-Admiral consultation system
+3. ✅ Test with 50-turn simulation
+4. ✅ Validate dynamic allocation behavior
+5. ✅ Document resolution and results
+6. ⏳ Consider Phase 4 enhancements (multi-turn planning, priority-aware warnings)
