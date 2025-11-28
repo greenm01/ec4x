@@ -1016,17 +1016,18 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.enemyStatusCount = dip.enemyStatusCount
   result.neutralStatusCount = dip.neutralStatusCount
 
-  # Espionage Activity (TODO: track from turn resolution)
-  result.espionageSuccessCount = 0
-  result.espionageFailureCount = 0
-  result.espionageDetectedCount = 0
-  result.techTheftsSuccessful = 0
-  result.sabotageOperations = 0
-  result.assassinationAttempts = 0
-  result.cyberAttacksLaunched = 0
-  result.ebpPointsSpent = 0
-  result.cipPointsSpent = 0
-  result.counterIntelSuccesses = 0
+  # Espionage Activity (tracked from turn resolution)
+  let house = state.houses.getOrDefault(houseId)
+  result.espionageSuccessCount = house.lastTurnEspionageSuccess
+  result.espionageFailureCount = max(0, house.lastTurnEspionageAttempts - house.lastTurnEspionageSuccess - house.lastTurnEspionageDetected)
+  result.espionageDetectedCount = house.lastTurnEspionageDetected
+  result.techTheftsSuccessful = house.lastTurnTechThefts
+  result.sabotageOperations = house.lastTurnSabotage
+  result.assassinationAttempts = house.lastTurnAssassinations
+  result.cyberAttacksLaunched = house.lastTurnCyberAttacks
+  result.ebpPointsSpent = house.lastTurnEBPSpent
+  result.cipPointsSpent = house.lastTurnCIPSpent
+  result.counterIntelSuccesses = 0  # TODO: Track when enemy espionage detected
 
   # Population & Colony Management
   result.populationTransfersActive = econ.populationTransfersActive
