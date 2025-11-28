@@ -9,7 +9,7 @@ import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../engine/research/types as res_types
 import ../../engine/research/advancement  # For max tech level constants
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
-import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics, standing_orders_manager]
+import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics, standing_orders_manager, admiral]
 import ./config  # RBA configuration system
 
 export core, orders, standing_orders_manager
@@ -422,6 +422,38 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Replace fleet orders with filtered tactical + logistics lifecycle orders
   result.fleetOrders = filteredTacticalOrders
   result.fleetOrders.add(logisticsOrders.fleetOrders)
+
+  # ==========================================================================
+  # ADMIRAL MODULE (Strategic Fleet Rebalancing)
+  # ==========================================================================
+  # Admiral analyzes fleet utilization and provides strategic oversight:
+  # - Distributes Defender fleets across colonies (fixes Unknown-Unknown #3)
+  # - Act-aware fleet reorganization (split in Act 1, merge in Act 2+)
+  # - Defensive consolidation under threat
+  # - Opportunistic counter-attacks
+  #
+  # NOTE: Admiral generates standing order updates, not fleet orders
+  # This allows persistent defensive posture without micromanagement
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Admiral Strategic Analysis ===")
+
+  # Build tactical orders table for Admiral analysis
+  var tacticalOrdersTable = initTable[FleetId, FleetOrder]()
+  for order in result.fleetOrders:
+    tacticalOrdersTable[order.fleetId] = order
+
+  let admiralOrders = generateAdmiralOrders(
+    controller,
+    filtered,
+    currentAct,
+    tacticalOrdersTable
+  )
+
+  # Merge Admiral's standing order updates into controller state
+  updateStandingOrdersWithAdmiralChanges(controller, admiralOrders)
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Admiral: Applied {admiralOrders.len} strategic reassignments")
 
   # ==========================================================================
   # DIPLOMATIC ACTIONS (Using RBA Diplomacy Module)
