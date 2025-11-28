@@ -127,8 +127,8 @@ tech_priority = 0.75
 # - Technology: Research investment
 
 [budget_act1_land_grab]
-expansion = 0.45       # Increased from 0.35 - PRIORITY in Act 1
-defense = 0.10         # Maintain
+expansion = 0.45       # Maximum expansion during land grab
+defense = 0.10         # Low priority - personality-driven (homeworld-only for most AIs)
 military = 0.20        # Maintain for colony defense
 reconnaissance = 0.10  # Reduced from 0.30 - any ship can explore in Act 1
 special_units = 0.10   # Increased from 0.05 - more ETACs for expansion

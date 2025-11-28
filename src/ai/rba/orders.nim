@@ -325,6 +325,45 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
           &"DIAGNOSTIC: {controller.houseId} Scout decision - Act={currentAct}, " &
           &"scoutCount={scoutCount}, needScouts={needScouts}")
 
+  # ==========================================================================
+  # ADMIRAL MODULE (Strategic Fleet Rebalancing & Requirements Generation)
+  # ==========================================================================
+  # Admiral MUST run BEFORE build orders to generate requirements for this turn
+  # Order is critical:
+  #   1. Admiral analyzes fleet state
+  #   2. Admiral generates build requirements
+  #   3. Build system executes requirements (this turn, not next turn!)
+  #
+  # Admiral provides strategic oversight:
+  # - Distributes Defender fleets across colonies (fixes Unknown-Unknown #3)
+  # - Generates requirements-driven build orders (Phase 3)
+  # - Act-aware fleet reorganization (split in Act 1, merge in Act 2+)
+  # - Defensive consolidation under threat
+  # - Opportunistic counter-attacks
+  #
+  # NOTE: Admiral generates standing order updates + build requirements
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Admiral Strategic Analysis ===")
+
+  # Build empty tactical orders table (Admiral runs before tactical)
+  var emptyTacticalOrders = initTable[FleetId, FleetOrder]()
+
+  let admiralOrders = generateAdmiralOrders(
+    controller,
+    filtered,
+    currentAct,
+    emptyTacticalOrders  # Empty because tactical hasn't run yet
+  )
+
+  # Merge Admiral's standing order updates into controller state
+  updateStandingOrdersWithAdmiralChanges(controller, admiralOrders)
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Admiral: Applied {admiralOrders.len} strategic reassignments")
+
+  # ==========================================================================
+  # BUILD ORDERS (Execute Admiral Requirements + Standard Builds)
+  # ==========================================================================
   # CRITICAL FIX: Build defenses earlier! Ground batteries need CST 1, not CST 3
   # Old logic required CST 3, leaving 59% of colonies undefended
   let needDefenses = cst >= 1  # Ground batteries at CST 1, starbases at CST 3
@@ -423,38 +462,6 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Replace fleet orders with filtered tactical + logistics lifecycle orders
   result.fleetOrders = filteredTacticalOrders
   result.fleetOrders.add(logisticsOrders.fleetOrders)
-
-  # ==========================================================================
-  # ADMIRAL MODULE (Strategic Fleet Rebalancing)
-  # ==========================================================================
-  # Admiral analyzes fleet utilization and provides strategic oversight:
-  # - Distributes Defender fleets across colonies (fixes Unknown-Unknown #3)
-  # - Act-aware fleet reorganization (split in Act 1, merge in Act 2+)
-  # - Defensive consolidation under threat
-  # - Opportunistic counter-attacks
-  #
-  # NOTE: Admiral generates standing order updates, not fleet orders
-  # This allows persistent defensive posture without micromanagement
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} === Admiral Strategic Analysis ===")
-
-  # Build tactical orders table for Admiral analysis
-  var tacticalOrdersTable = initTable[FleetId, FleetOrder]()
-  for order in result.fleetOrders:
-    tacticalOrdersTable[order.fleetId] = order
-
-  let admiralOrders = generateAdmiralOrders(
-    controller,
-    filtered,
-    currentAct,
-    tacticalOrdersTable
-  )
-
-  # Merge Admiral's standing order updates into controller state
-  updateStandingOrdersWithAdmiralChanges(controller, admiralOrders)
-
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Admiral: Applied {admiralOrders.len} strategic reassignments")
 
   # ==========================================================================
   # DIPLOMATIC ACTIONS (Using RBA Diplomacy Module)
