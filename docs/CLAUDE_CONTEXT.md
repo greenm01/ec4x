@@ -138,10 +138,38 @@ Complex systems exhibit emergent behaviors. Catch them with **comprehensive obse
 
 ### Detection Workflow
 1. Run 100+ games → CSV diagnostics
-2. Analyze with Polars (Python)
+2. Analyze with Polars (Python) - **REQUIRED**
 3. Find anomalies → Formulate hypotheses
 4. Add targeted logging → Re-test
 5. Fix → Regression test with nimble
+
+### CSV Analysis Requirements
+**Use polars for ALL CSV analysis** - Fast, type-safe DataFrame library
+```python
+import polars as pl
+
+# Read diagnostic CSV
+df = pl.read_csv('balance_results/diagnostics/game_2000.csv')
+
+# Filter and analyze
+result = (df
+    .filter(pl.col('turn') >= 5)
+    .select(['turn', 'house', 'tech_cst', 'total_fighters'])
+    .sort(['house', 'turn'])
+)
+
+# Aggregate stats
+summary = df.group_by('house').agg([
+    pl.col('prestige').mean().alias('avg_prestige'),
+    pl.col('tech_cst').max().alias('max_cst')
+])
+```
+
+**Why polars over pandas:**
+- 5-10x faster on large CSVs (130+ columns)
+- Better type inference
+- Lazy evaluation support
+- Modern API with method chaining
 
 ---
 
