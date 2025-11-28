@@ -6,10 +6,34 @@ import std/[tables, options]
 import ../common/types
 import ../../engine/gamestate  # For FallbackRoute
 import ../../engine/order_types  # For StandingOrder
-import ../../common/types/core
+import ../../common/types/[core, units]  # For ShipClass
 
-# Forward declare BuildRequirements to avoid circular import
-type BuildRequirements* = object
+# Forward declarations for Admiral integration
+# Full types defined in admiral/build_requirements.nim
+type
+  RequirementPriority* {.pure.} = enum
+    Critical, High, Medium, Low, Deferred
+
+  RequirementType* {.pure.} = enum
+    DefenseGap, OffensivePrep, ReconnaissanceGap, ExpansionSupport, ThreatResponse
+
+  BuildRequirement* = object
+    requirementType*: RequirementType
+    priority*: RequirementPriority
+    shipClass*: Option[ShipClass]
+    quantity*: int
+    buildObjective*: BuildObjective  # From ai_common_types
+    targetSystem*: Option[SystemId]
+    estimatedCost*: int
+    reason*: string
+
+  BuildRequirements* = object
+    requirements*: seq[BuildRequirement]
+    totalEstimatedCost*: int
+    criticalCount*: int
+    highCount*: int
+    generatedTurn*: int
+    act*: GameAct
 
 type
   ReconUpdate* = object
