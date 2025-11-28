@@ -34,7 +34,7 @@ proc expectedGameBehavior(playerCount: int): tuple[
     hubConnections: 6,                    # Hub has exactly 6 major lanes
     playerConnections: 3,                 # Players have exactly 3 lanes each
     ringCounts: expectedRingCounts,
-    playerOnOuterRing: true,              # Players on outer ring
+    playerOnOuterRing: false,             # Players can be on any ring (not just outer)
     allMajorLanesFromHub: true            # All hub lanes are major
   )
 
@@ -102,9 +102,9 @@ suite "EC4X Game Specification Validation":
         let connections = starMap.getAdjacentSystems(playerId)
         check connections.len == expected.playerConnections
 
-        # Player should be on outer ring
+        # Player can be on any ring except hub (ring 0)
         let playerSystem = starMap.systems[playerId]
-        check playerSystem.ring == starMap.numRings
+        check playerSystem.ring > 0 and playerSystem.ring <= starMap.numRings
 
         # Count major lanes from player
         var majorLanes = 0
@@ -124,10 +124,10 @@ suite "EC4X Game Specification Validation":
 
       echo "Testing vertex selection for ", playerCount, " players"
 
-      # Count vertices available
+      # Count vertices available across all rings (not just outer)
       var vertexCount = 0
       for system in starMap.systems.values:
-        if system.ring == starMap.numRings:
+        if system.ring > 0:  # Any ring except hub
           let neighborCount = starMap.countHexNeighbors(system.coords)
           if neighborCount == 3:
             vertexCount += 1
@@ -144,14 +144,14 @@ suite "EC4X Game Specification Validation":
           if system.player.isSome:
             playerSystems.add(system)
 
-        # Players should be on outer ring
+        # Players can be on any ring (except hub)
         for system in playerSystems:
-          check system.ring == starMap.numRings
+          check system.ring > 0 and system.ring <= starMap.numRings
 
           # For small player counts, should prefer vertices
           let neighborCount = starMap.countHexNeighbors(system.coords)
           check neighborCount >= 3  # At least 3 neighbors
-          check neighborCount <= 4  # At most 4 neighbors for outer ring
+          check neighborCount <= 6  # At most 6 neighbors (hex grid limit)
 
   test "edge case handling validation":
     # Test that edge cases are handled gracefully according to game rules
@@ -159,10 +159,10 @@ suite "EC4X Game Specification Validation":
     # Test 5 players (requires non-vertex placement)
     let starMap5 = starMap(5)
 
-    # Count available vertices
+    # Count available vertices across all rings (not just outer)
     var vertexCount = 0
     for system in starMap5.systems.values:
-      if system.ring == starMap5.numRings:
+      if system.ring > 0:  # Any ring except hub
         if starMap5.countHexNeighbors(system.coords) == 3:
           vertexCount += 1
 

@@ -1426,7 +1426,7 @@ def replace_inline_values_operations(content: str, combat_config: Dict[str, Any]
     return content
 
 
-def replace_inline_values_assets(content: str, espionage_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any]) -> str:
+def replace_inline_values_assets(content: str, espionage_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any], starmap_config: Dict[str, Any]) -> str:
     """Replace inline marker values in assets.md with values from config."""
     import re
 
@@ -1443,6 +1443,11 @@ def replace_inline_values_assets(content: str, espionage_config: Dict[str, Any],
         'ELI_ADVANTAGE_MINOR': lambda: str(espionage_config['raider_detection']['eli_advantage_minor']),
         'FIGHTER_SQUADRON_COST': lambda: str(construction_config['costs']['fighter_squadron_cost']),
         'CAPACITY_GRACE_PERIOD': lambda: str(military_config['fighter_mechanics']['capacity_violation_grace_period']),
+        # Starmap configuration values
+        'MAJOR_LANE_PERCENT': lambda: str(int(starmap_config['lane_weights']['major_weight'] * 100)),
+        'MINOR_LANE_PERCENT': lambda: str(int(starmap_config['lane_weights']['minor_weight'] * 100)),
+        'RESTRICTED_LANE_PERCENT': lambda: str(int(starmap_config['lane_weights']['restricted_weight'] * 100)),
+        'HOMEWORLD_LANE_COUNT': lambda: str(starmap_config['homeworld_placement']['homeworld_lane_count']),
     }
 
     # Replace each inline marker with plain value (removes markers)
@@ -1450,6 +1455,12 @@ def replace_inline_values_assets(content: str, espionage_config: Dict[str, Any],
         pattern = f"<!-- {marker} -->.*?<!-- /{marker} -->"
         replacement = value_func()
         content = re.sub(pattern, replacement, content)
+
+    # Also handle simple inline markers without closing tags (new pattern)
+    for marker, value_func in replacements.items():
+        pattern = f"<!-- {marker} -->"
+        replacement = value_func()
+        content = content.replace(pattern, replacement)
 
     return content
 
@@ -1484,7 +1495,7 @@ def update_operations_spec(shield_table: str, combat_config: Dict[str, Any], con
     print(f"✓ Successfully updated {spec_file}")
 
 
-def update_assets_spec(spy_detection_table: str, raider_detection_table: str, espionage_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any]):
+def update_assets_spec(spy_detection_table: str, raider_detection_table: str, espionage_config: Dict[str, Any], construction_config: Dict[str, Any], military_config: Dict[str, Any], starmap_config: Dict[str, Any]):
     """Update docs/specs/assets.md with generated tables and inline values."""
     spec_file = Path("docs/specs/assets.md")
 
@@ -1495,7 +1506,7 @@ def update_assets_spec(spy_detection_table: str, raider_detection_table: str, es
     content = spec_file.read_text()
 
     # Replace inline values first
-    content = replace_inline_values_assets(content, espionage_config, construction_config, military_config)
+    content = replace_inline_values_assets(content, espionage_config, construction_config, military_config, starmap_config)
 
     # Replace spy detection table
     spy_start = "<!-- SPY_DETECTION_TABLE_START -->"
@@ -1567,6 +1578,12 @@ def replace_inline_values_gameplay(content: str, gameplay_config: Dict[str, Any]
         pattern = f"<!-- {marker} -->.*?<!-- /{marker} -->"
         replacement = value_func()
         content = re.sub(pattern, replacement, content)
+
+    # Also handle simple inline markers without closing tags (new pattern)
+    for marker, value_func in replacements.items():
+        pattern = f"<!-- {marker} -->"
+        replacement = value_func()
+        content = content.replace(pattern, replacement)
 
     return content
 
@@ -1672,6 +1689,9 @@ def main():
 
     game_setup_config = load_toml(Path("game_setup/standard.toml"))
     print(f"✓ Loaded game_setup/standard.toml")
+
+    starmap_config = load_toml(config_dir / "starmap.toml")
+    print(f"✓ Loaded {config_dir / 'starmap.toml'}")
 
     population_config = load_toml(config_dir / "population.toml")
     print(f"✓ Loaded {config_dir / 'population.toml'}")
@@ -1797,7 +1817,7 @@ def main():
                         cic_tech_table, fd_table, aco_table, starting_tech_table,
                         economy_config, construction_config, military_config, tech_config)
     update_operations_spec(shield_table, combat_config, construction_config, military_config)
-    update_assets_spec(spy_detection_table, raider_detection_table, espionage_config, construction_config, military_config)
+    update_assets_spec(spy_detection_table, raider_detection_table, espionage_config, construction_config, military_config, starmap_config)
     update_gameplay_spec(gameplay_config, game_setup_config)
     update_index_and_glossary(gameplay_config, game_setup_config)
 

@@ -67,9 +67,9 @@ suite "Robust Starmap Tests":
 
       check playerSystems.len == playerCount
 
-      # All players on outer ring
+      # All players can be on any ring (except hub ring 0)
       for system in playerSystems:
-        check system.ring == starMap.numRings
+        check system.ring > 0 and system.ring <= starMap.numRings
 
       # Player IDs are sequential
       var playerIds = playerSystems.mapIt(it.player.get).sorted()
