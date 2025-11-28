@@ -105,7 +105,37 @@ level_4_trp = 20
 level_5_sl = 5
 level_5_trp = 22
 
-# Maximum construction level is CST10
+level_6_sl = 6
+level_6_trp = 25
+
+level_7_sl = 7
+level_7_trp = 27
+
+level_8_sl = 8
+level_8_trp = 30
+
+level_9_sl = 9
+level_9_trp = 32
+
+level_10_sl = 10
+level_10_trp = 35
+
+level_11_sl = 11
+level_11_trp = 40
+
+level_12_sl = 12
+level_12_trp = 45
+
+level_13_sl = 13
+level_13_trp = 50
+
+level_14_sl = 14
+level_14_trp = 55
+
+level_15_sl = 15
+level_15_trp = 60
+
+# Maximum construction level is CST15 (extended for very long games)
 
 # ============================================================================
 # Weapons (WEP)
@@ -136,7 +166,37 @@ level_4_trp = 20
 level_5_sl = 5
 level_5_trp = 22
 
-# Maximum WEP level is WEP10
+level_6_sl = 6
+level_6_trp = 25
+
+level_7_sl = 7
+level_7_trp = 27
+
+level_8_sl = 8
+level_8_trp = 30
+
+level_9_sl = 9
+level_9_trp = 32
+
+level_10_sl = 10
+level_10_trp = 35
+
+level_11_sl = 11
+level_11_trp = 40
+
+level_12_sl = 12
+level_12_trp = 45
+
+level_13_sl = 13
+level_13_trp = 50
+
+level_14_sl = 14
+level_14_trp = 55
+
+level_15_sl = 15
+level_15_trp = 60
+
+# Maximum WEP level is WEP15 (extended for very long games)
 
 # ============================================================================
 # Terraforming (TER)
@@ -236,7 +296,37 @@ level_4_trp = 20
 level_5_sl = 5
 level_5_trp = 22
 
-# Maximum ELI level is ELI5
+level_6_sl = 6
+level_6_trp = 25
+
+level_7_sl = 7
+level_7_trp = 27
+
+level_8_sl = 8
+level_8_trp = 30
+
+level_9_sl = 9
+level_9_trp = 32
+
+level_10_sl = 10
+level_10_trp = 35
+
+level_11_sl = 11
+level_11_trp = 40
+
+level_12_sl = 12
+level_12_trp = 45
+
+level_13_sl = 13
+level_13_trp = 50
+
+level_14_sl = 14
+level_14_trp = 55
+
+level_15_sl = 15
+level_15_trp = 60
+
+# Maximum ELI level is ELI15 (extended for very long games)
 
 # ============================================================================
 # Cloaking (CLK)
@@ -262,7 +352,37 @@ level_4_trp = 25
 level_5_sl = 7
 level_5_trp = 27
 
-# Maximum CLK level is CLK5
+level_6_sl = 8
+level_6_trp = 30
+
+level_7_sl = 9
+level_7_trp = 32
+
+level_8_sl = 10
+level_8_trp = 35
+
+level_9_sl = 11
+level_9_trp = 40
+
+level_10_sl = 12
+level_10_trp = 45
+
+level_11_sl = 13
+level_11_trp = 50
+
+level_12_sl = 14
+level_12_trp = 55
+
+level_13_sl = 15
+level_13_trp = 60
+
+level_14_sl = 16
+level_14_trp = 65
+
+level_15_sl = 17
+level_15_trp = 70
+
+# Maximum CLK level is CLK15 (extended for very long games)
 
 # ============================================================================
 # Planetary Shields (SLD)
@@ -288,7 +408,37 @@ level_4_trp = 25
 level_5_sl = 7
 level_5_trp = 27
 
-# Maximum SLD level is SLD5
+level_6_sl = 8
+level_6_trp = 30
+
+level_7_sl = 9
+level_7_trp = 32
+
+level_8_sl = 10
+level_8_trp = 35
+
+level_9_sl = 11
+level_9_trp = 40
+
+level_10_sl = 12
+level_10_trp = 45
+
+level_11_sl = 13
+level_11_trp = 50
+
+level_12_sl = 14
+level_12_trp = 55
+
+level_13_sl = 15
+level_13_trp = 60
+
+level_14_sl = 16
+level_14_trp = 65
+
+level_15_sl = 17
+level_15_trp = 70
+
+# Maximum SLD level is SLD15 (extended for very long games)
 
 # ============================================================================
 # Counter Intelligence Command (CIC)
@@ -313,7 +463,37 @@ level_4_trp = 20
 level_5_sl = 5
 level_5_trp = 22
 
-# Maximum CIC level is CIC5
+level_6_sl = 6
+level_6_trp = 25
+
+level_7_sl = 7
+level_7_trp = 27
+
+level_8_sl = 8
+level_8_trp = 30
+
+level_9_sl = 9
+level_9_trp = 32
+
+level_10_sl = 10
+level_10_trp = 35
+
+level_11_sl = 11
+level_11_trp = 40
+
+level_12_sl = 12
+level_12_trp = 45
+
+level_13_sl = 13
+level_13_trp = 50
+
+level_14_sl = 14
+level_14_trp = 55
+
+level_15_sl = 15
+level_15_trp = 60
+
+# Maximum CIC level is CIC15 (extended for very long games)
 
 # ============================================================================
 # Fighter Doctrine (FD)
