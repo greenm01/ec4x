@@ -1,0 +1,43 @@
+nimTitle	types	engine/espionage/types.html	module src/engine/espionage/types		0
+nim	EspionageAction	engine/espionage/types.html#EspionageAction	enum EspionageAction		23
+nim	CICLevel	engine/espionage/types.html#CICLevel	enum CICLevel		37
+nim	EspionageBudget	engine/espionage/types.html#EspionageBudget	object EspionageBudget		48
+nim	EspionageAttempt	engine/espionage/types.html#EspionageAttempt	object EspionageAttempt		58
+nim	EspionageResult	engine/espionage/types.html#EspionageResult	object EspionageResult		65
+nim	EffectType	engine/espionage/types.html#EffectType	enum EffectType		82
+nim	OngoingEffect	engine/espionage/types.html#OngoingEffect	object OngoingEffect		90
+nim	DetectionAttempt	engine/espionage/types.html#DetectionAttempt	object DetectionAttempt		100
+nim	DetectionResult	engine/espionage/types.html#DetectionResult	object DetectionResult		107
+nim	EspionageReport	engine/espionage/types.html#EspionageReport	object EspionageReport		116
+nim	EBP_COST_PP	engine/espionage/types.html#EBP_COST_PP	const EBP_COST_PP		126
+nim	CIP_COST_PP	engine/espionage/types.html#CIP_COST_PP	const CIP_COST_PP		127
+nim	INVESTMENT_THRESHOLD	engine/espionage/types.html#INVESTMENT_THRESHOLD	const INVESTMENT_THRESHOLD		130
+nim	INVESTMENT_PENALTY	engine/espionage/types.html#INVESTMENT_PENALTY	const INVESTMENT_PENALTY		131
+nim	CIP_DEDUCTION_PER_ROLL	engine/espionage/types.html#CIP_DEDUCTION_PER_ROLL	const CIP_DEDUCTION_PER_ROLL		134
+nim	TECH_THEFT_COST	engine/espionage/types.html#TECH_THEFT_COST	const TECH_THEFT_COST		137
+nim	SABOTAGE_LOW_COST	engine/espionage/types.html#SABOTAGE_LOW_COST	const SABOTAGE_LOW_COST		138
+nim	SABOTAGE_HIGH_COST	engine/espionage/types.html#SABOTAGE_HIGH_COST	const SABOTAGE_HIGH_COST		139
+nim	ASSASSINATION_COST	engine/espionage/types.html#ASSASSINATION_COST	const ASSASSINATION_COST		140
+nim	CYBER_ATTACK_COST	engine/espionage/types.html#CYBER_ATTACK_COST	const CYBER_ATTACK_COST		141
+nim	ECONOMIC_MANIPULATION_COST	engine/espionage/types.html#ECONOMIC_MANIPULATION_COST	const ECONOMIC_MANIPULATION_COST		142
+nim	PSYOPS_CAMPAIGN_COST	engine/espionage/types.html#PSYOPS_CAMPAIGN_COST	const PSYOPS_CAMPAIGN_COST		143
+nim	COUNTER_INTEL_SWEEP_COST	engine/espionage/types.html#COUNTER_INTEL_SWEEP_COST	const COUNTER_INTEL_SWEEP_COST		144
+nim	INTELLIGENCE_THEFT_COST	engine/espionage/types.html#INTELLIGENCE_THEFT_COST	const INTELLIGENCE_THEFT_COST		145
+nim	PLANT_DISINFORMATION_COST	engine/espionage/types.html#PLANT_DISINFORMATION_COST	const PLANT_DISINFORMATION_COST		146
+nim	TECH_THEFT_SRP	engine/espionage/types.html#TECH_THEFT_SRP	const TECH_THEFT_SRP		149
+nim	SABOTAGE_LOW_DICE	engine/espionage/types.html#SABOTAGE_LOW_DICE	const SABOTAGE_LOW_DICE		150
+nim	SABOTAGE_HIGH_DICE	engine/espionage/types.html#SABOTAGE_HIGH_DICE	const SABOTAGE_HIGH_DICE		151
+nim	ASSASSINATION_REDUCTION	engine/espionage/types.html#ASSASSINATION_REDUCTION	const ASSASSINATION_REDUCTION		152
+nim	ECONOMIC_REDUCTION	engine/espionage/types.html#ECONOMIC_REDUCTION	const ECONOMIC_REDUCTION		153
+nim	PSYOPS_REDUCTION	engine/espionage/types.html#PSYOPS_REDUCTION	const PSYOPS_REDUCTION		154
+nim	EFFECT_DURATION	engine/espionage/types.html#EFFECT_DURATION	const EFFECT_DURATION		155
+nim	INTEL_BLOCK_DURATION	engine/espionage/types.html#INTEL_BLOCK_DURATION	const INTEL_BLOCK_DURATION		156
+nim	DISINFORMATION_DURATION	engine/espionage/types.html#DISINFORMATION_DURATION	const DISINFORMATION_DURATION		157
+nim	DISINFORMATION_MIN_VARIANCE	engine/espionage/types.html#DISINFORMATION_MIN_VARIANCE	const DISINFORMATION_MIN_VARIANCE		158
+nim	DISINFORMATION_MAX_VARIANCE	engine/espionage/types.html#DISINFORMATION_MAX_VARIANCE	const DISINFORMATION_MAX_VARIANCE		159
+nim	FAILED_ESPIONAGE_PENALTY	engine/espionage/types.html#FAILED_ESPIONAGE_PENALTY	const FAILED_ESPIONAGE_PENALTY		162
+nim	getActionCost	engine/espionage/types.html#getActionCost,EspionageAction	proc getActionCost(action: EspionageAction): int		166
+nim	getDetectionThreshold	engine/espionage/types.html#getDetectionThreshold,CICLevel	proc getDetectionThreshold(cicLevel: CICLevel): int		181
+nim	getCIPModifier	engine/espionage/types.html#getCIPModifier,int	proc getCIPModifier(cipPoints: int): int		193
+nim	initEspionageBudget	engine/espionage/types.html#initEspionageBudget	proc initEspionageBudget(): EspionageBudget		204
+nim	calculateOverInvestmentPenalty	engine/espionage/types.html#calculateOverInvestmentPenalty,int,int	proc calculateOverInvestmentPenalty(invested: int; turnBudget: int): int		214

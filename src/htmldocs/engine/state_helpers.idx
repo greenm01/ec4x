@@ -1,0 +1,14 @@
+nimTitle	state_helpers	engine/state_helpers.html	module src/engine/state_helpers		0
+nim	withHouse	engine/state_helpers.html#withHouse.t,GameState,HouseId,untyped	template withHouse(state: var GameState; houseId: HouseId; body: untyped): untyped		23
+nim	withColony	engine/state_helpers.html#withColony.t,GameState,SystemId,untyped	template withColony(state: var GameState; systemId: SystemId; body: untyped): untyped		36
+nim	withFleet	engine/state_helpers.html#withFleet.t,GameState,FleetId,untyped	template withFleet(state: var GameState; fleetId: FleetId; body: untyped): untyped		47
+nim	withFleetOrder	engine/state_helpers.html#withFleetOrder.t,GameState,FleetId,untyped	template withFleetOrder(state: var GameState; fleetId: FleetId; body: untyped): untyped		58
+nim	withStandingOrder	engine/state_helpers.html#withStandingOrder.t,GameState,FleetId,untyped	template withStandingOrder(state: var GameState; fleetId: FleetId; body: untyped): untyped		68
+nim	withSpyScout	engine/state_helpers.html#withSpyScout.t,GameState,string,untyped	template withSpyScout(state: var GameState; scoutId: string; body: untyped): untyped		78
+nim	withDiplomacy	engine/state_helpers.html#withDiplomacy.t,GameState,,untyped	template withDiplomacy(state: var GameState; housePair: (HouseId, HouseId); body: untyped): untyped		89
+nim	withHouseIfExists	engine/state_helpers.html#withHouseIfExists.t,GameState,HouseId,untyped	template withHouseIfExists(state: var GameState; houseId: HouseId; body: untyped): untyped		102
+nim	withColonyIfExists	engine/state_helpers.html#withColonyIfExists.t,GameState,SystemId,untyped	template withColonyIfExists(state: var GameState; systemId: SystemId; body: untyped): untyped		113
+nim	withFleetIfExists	engine/state_helpers.html#withFleetIfExists.t,GameState,FleetId,untyped	template withFleetIfExists(state: var GameState; fleetId: FleetId; body: untyped): untyped		124
+nim	batchMutateHouses	engine/state_helpers.html#batchMutateHouses.t,GameState,openArray[HouseId],untyped	template batchMutateHouses(state: var GameState; houseIds: openArray[HouseId];\n                  body: untyped): untyped		137
+nim	batchMutateColonies	engine/state_helpers.html#batchMutateColonies.t,GameState,openArray[SystemId],untyped	template batchMutateColonies(state: var GameState; systemIds: openArray[SystemId];\n                    body: untyped): untyped		148
+nim	batchMutateFleets	engine/state_helpers.html#batchMutateFleets.t,GameState,openArray[FleetId],untyped	template batchMutateFleets(state: var GameState; fleetIds: openArray[FleetId];\n                  body: untyped): untyped		159

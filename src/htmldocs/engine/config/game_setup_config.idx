@@ -1,0 +1,15 @@
+nimTitle	game_setup_config	engine/config/game_setup_config.html	module src/engine/config/game_setup_config		0
+nim	GameInfoConfig	engine/config/game_setup_config.html#GameInfoConfig	object GameInfoConfig		12
+nim	VictoryConditionsConfig	engine/config/game_setup_config.html#VictoryConditionsConfig	object VictoryConditionsConfig		19
+nim	MapConfig	engine/config/game_setup_config.html#MapConfig	object MapConfig		25
+nim	StartingResourcesConfig	engine/config/game_setup_config.html#StartingResourcesConfig	object StartingResourcesConfig		32
+nim	StartingTechConfig	engine/config/game_setup_config.html#StartingTechConfig	object StartingTechConfig		38
+nim	StartingFleetConfig	engine/config/game_setup_config.html#StartingFleetConfig	object StartingFleetConfig		52
+nim	StartingFacilitiesConfig	engine/config/game_setup_config.html#StartingFacilitiesConfig	object StartingFacilitiesConfig		59
+nim	HomeworldConfig	engine/config/game_setup_config.html#HomeworldConfig	object HomeworldConfig		67
+nim	GameSetupConfig	engine/config/game_setup_config.html#GameSetupConfig	object GameSetupConfig		74
+nim	loadGameSetupConfig	engine/config/game_setup_config.html#loadGameSetupConfig,string	proc loadGameSetupConfig(configPath: string = "game_setup/standard.toml"): GameSetupConfig		85
+nim	parsePlanetClass	engine/config/game_setup_config.html#parsePlanetClass,string	proc parsePlanetClass(className: string): PlanetClass		97
+nim	parseResourceRating	engine/config/game_setup_config.html#parseResourceRating,string	proc parseResourceRating(ratingName: string): ResourceRating		110
+nim	globalGameSetupConfig	engine/config/game_setup_config.html#globalGameSetupConfig	var globalGameSetupConfig		123
+nim	reloadGameSetupConfig	engine/config/game_setup_config.html#reloadGameSetupConfig	proc reloadGameSetupConfig()		127

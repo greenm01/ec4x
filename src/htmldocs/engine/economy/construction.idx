@@ -1,0 +1,9 @@
+nimTitle	construction	engine/economy/construction.html	module src/engine/economy/construction		0
+nim	getShipBuildTime	engine/economy/construction.html#getShipBuildTime,ShipClass,int	proc getShipBuildTime(shipClass: ShipClass; cstLevel: int): int		32
+nim	getIndustrialUnitCost	engine/economy/construction.html#getIndustrialUnitCost,Colony	proc getIndustrialUnitCost(colony: Colony): int		48
+nim	startConstruction	engine/economy/construction.html#startConstruction,Colony,ConstructionProject	proc startConstruction(colony: var Colony; project: ConstructionProject): bool		79
+nim	advanceConstruction	engine/economy/construction.html#advanceConstruction,Colony	proc advanceConstruction(colony: var Colony): Option[CompletedProject]		97
+nim	cancelConstruction	engine/economy/construction.html#cancelConstruction,Colony	proc cancelConstruction(colony: var Colony): int		132
+nim	createShipProject	engine/economy/construction.html#createShipProject,ShipClass,int	proc createShipProject(shipClass: ShipClass; cstLevel: int = 1): ConstructionProject		148
+nim	createBuildingProject	engine/economy/construction.html#createBuildingProject,string	proc createBuildingProject(buildingType: string): ConstructionProject		163
+nim	createIndustrialProject	engine/economy/construction.html#createIndustrialProject,Colony,int	proc createIndustrialProject(colony: Colony; units: int): ConstructionProject		177

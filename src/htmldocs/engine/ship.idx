@@ -1,0 +1,9 @@
+nimTitle	ship	engine/ship.html	module src/engine/ship		0
+nim	Ship	engine/ship.html#Ship	object Ship		11
+nim	newShip	engine/ship.html#newShip,ShipType,bool	proc newShip(shipType: ShipType; isCrippled: bool = false): Ship		16
+nim	`$`	engine/ship.html#$,Ship	proc `$`(s: Ship): string		20
+nim	canCrossRestrictedLane	engine/ship.html#canCrossRestrictedLane,Ship	proc canCrossRestrictedLane(ship: Ship): bool		25
+nim	isCombatCapable	engine/ship.html#isCombatCapable,Ship	proc isCombatCapable(ship: Ship): bool		33
+nim	canCarryTroops	engine/ship.html#canCarryTroops,Ship	proc canCarryTroops(ship: Ship): bool		41
+nim	militaryShip	engine/ship.html#militaryShip,bool	proc militaryShip(crippled: bool = false): Ship		50
+nim	spaceliftShip	engine/ship.html#spaceliftShip,bool	proc spaceliftShip(crippled: bool = false): Ship		53

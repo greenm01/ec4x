@@ -1,0 +1,16 @@
+nimTitle	cer	engine/combat/cer.html	module src/engine/combat/cer		0
+nim	CombatRNG	engine/combat/cer.html#CombatRNG	object CombatRNG		17
+nim	initRNG	engine/combat/cer.html#initRNG,int64	proc initRNG(seed: int64): CombatRNG		20
+nim	initRNG	engine/combat/cer.html#initRNG,string	proc initRNG(seedString: string): CombatRNG		25
+nim	next	engine/combat/cer.html#next,CombatRNG	proc next(rng: var CombatRNG): uint64		30
+nim	rollDie	engine/combat/cer.html#rollDie,CombatRNG,int	proc rollDie(rng: var CombatRNG; sides: int): int		40
+nim	roll1d10	engine/combat/cer.html#roll1d10,CombatRNG	proc roll1d10(rng: var CombatRNG): int		46
+nim	roll1d20	engine/combat/cer.html#roll1d20,CombatRNG	proc roll1d20(rng: var CombatRNG): int		52
+nim	calculateModifiers	engine/combat/cer.html#calculateModifiers,CombatPhase,int,bool,int,bool,bool	proc calculateModifiers(phase: CombatPhase; roundNumber: int; hasScouts: bool;\n                   moraleModifier: int; isSurprise: bool; isAmbush: bool): int		59
+nim	rollCER	engine/combat/cer.html#rollCER,CombatRNG,CombatPhase,int,bool,int,bool,bool,int	proc rollCER(rng: var CombatRNG; phase: CombatPhase; roundNumber: int;\n        hasScouts: bool; moraleModifier: int; isSurprise: bool = false;\n        isAmbush: bool = false; desperationBonus: int = 0): CERRoll		88
+nim	applyDamage	engine/combat/cer.html#applyDamage,int,float	proc applyDamage(damage: int; effectiveness: float): int		125
+nim	calculateHits	engine/combat/cer.html#calculateHits,int,CERRoll	proc calculateHits(squadronAS: int; cerRoll: CERRoll): int		131
+nim	`$`	engine/combat/cer.html#$,CERRoll	proc `$`(cer: CERRoll): string		138
+nim	deterministicRoll	engine/combat/cer.html#deterministicRoll,string,CombatPhase,int	proc deterministicRoll(seed: string; phase: CombatPhase; roundNum: int): CERRoll		152
+nim	simulateRolls	engine/combat/cer.html#simulateRolls,int64,int	proc simulateRolls(seed: int64; count: int): seq[int]		158
+nimgrp	initrng	engine/combat/cer.html#initRNG-procs-all	proc		20
