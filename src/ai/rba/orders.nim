@@ -337,7 +337,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
     isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
     needCarriers, needTransports, needRaiders, canAffordMoreShips,
-    atSquadronLimit, militaryCount, scoutCount, planetBreakerCount, availableBudget
+    atSquadronLimit, militaryCount, scoutCount, planetBreakerCount, availableBudget,
+    controller.admiralRequirements  # Phase 3: Pass Admiral requirements to build system
   )
 
   # Calculate total build cost and reserve from treasury
