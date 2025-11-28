@@ -167,36 +167,34 @@ suite "Fleet Tests":
     check not fleet.isEmpty()
 
   test "fleet operations":
-    var fleet = newFleet()
     let militarySq = createSquadron(ShipClass.Destroyer, 1, "sq1", "test", 0)
-    let spaceliftSq = createSquadron(ShipClass.TroopTransport, 1, "sq2", "test", 0)
+    let spaceliftShip = newSpaceLiftShip("transport1", ShipClass.TroopTransport, "test", 0)
 
-    fleet.add(militarySq)
-    fleet.add(spaceliftSq)
+    let fleet = newFleet(@[militarySq], @[spaceliftShip], "test-fleet", "test", 0)
 
-    check fleet.len == 2
+    check fleet.len == 1  # len counts squadrons only
     check fleet.hasCombatShips()
     check fleet.hasTransportShips()
     check fleet.combatStrength() > 0
     check fleet.transportCapacity() == 1
 
   test "fleet lane traversal":
-    let mixedSquadrons = createFleetSquadrons(
-      @[(ShipClass.Destroyer, 1), (ShipClass.TroopTransport, 1)],
-      1, "test", 0
-    )
-    let militarySquadrons = createFleetSquadrons(
-      @[(ShipClass.Destroyer, 2)],
-      1, "test", 0
-    )
-    let spaceliftSquadrons = createFleetSquadrons(
-      @[(ShipClass.TroopTransport, 2)],
-      1, "test", 0
-    )
+    # Mixed fleet: 1 combat squadron + 1 spacelift ship
+    let mixedSquadrons = createFleetSquadrons(@[(ShipClass.Destroyer, 1)], 1, "test", 0)
+    let mixedSpacelifts = @[newSpaceLiftShip("transport1", ShipClass.TroopTransport, "test", 0)]
 
-    let mixedFleet = newFleet(mixedSquadrons)
-    let militaryFleet = newFleet(militarySquadrons)
-    let spaceliftFleet = newFleet(spaceliftSquadrons)
+    # Pure military fleet: 2 combat squadrons, no spacelifts
+    let militarySquadrons = createFleetSquadrons(@[(ShipClass.Destroyer, 2)], 1, "test", 0)
+
+    # Pure spacelift fleet: no combat squadrons, 2 spacelift ships
+    let spaceliftShips = @[
+      newSpaceLiftShip("transport2", ShipClass.TroopTransport, "test", 0),
+      newSpaceLiftShip("transport3", ShipClass.TroopTransport, "test", 0)
+    ]
+
+    let mixedFleet = newFleet(mixedSquadrons, mixedSpacelifts)
+    let militaryFleet = newFleet(militarySquadrons, @[])
+    let spaceliftFleet = newFleet(@[], spaceliftShips)
 
     # Major and Minor lanes can be traversed by any fleet
     check mixedFleet.canTraverse(Major)
@@ -212,23 +210,32 @@ suite "Fleet Tests":
     check not spaceliftFleet.canTraverse(Restricted)
 
   test "fleet squadron helpers":
+    # Pure military fleet: 3 combat squadrons, no spacelifts
     let milSquadrons = createFleetSquadrons(@[(ShipClass.Destroyer, 3)], 1, "test", 0)
-    let spaceSquadrons = createFleetSquadrons(@[(ShipClass.TroopTransport, 2)], 1, "test", 0)
-    let mixedSquadrons = createFleetSquadrons(@[(ShipClass.Destroyer, 2), (ShipClass.TroopTransport, 1)], 1, "test", 0)
 
-    let milFleet = newFleet(milSquadrons)
-    let spaceFleet = newFleet(spaceSquadrons)
-    let mixed = newFleet(mixedSquadrons)
+    # Pure spacelift fleet: no combat squadrons, 2 spacelift ships
+    let spaceliftShips = @[
+      newSpaceLiftShip("transport4", ShipClass.TroopTransport, "test", 0),
+      newSpaceLiftShip("transport5", ShipClass.TroopTransport, "test", 0)
+    ]
 
-    check milFleet.len == 3
+    # Mixed fleet: 2 combat squadrons + 1 spacelift ship
+    let mixedSquadrons = createFleetSquadrons(@[(ShipClass.Destroyer, 2)], 1, "test", 0)
+    let mixedSpacelifts = @[newSpaceLiftShip("transport6", ShipClass.TroopTransport, "test", 0)]
+
+    let milFleet = newFleet(milSquadrons, @[])
+    let spaceFleet = newFleet(@[], spaceliftShips)
+    let mixed = newFleet(mixedSquadrons, mixedSpacelifts)
+
+    check milFleet.len == 3  # 3 squadrons
     check milFleet.combatStrength() > 0
     check milFleet.transportCapacity() == 0
 
-    check spaceFleet.len == 2
+    check spaceFleet.len == 0  # len counts squadrons only (this fleet has none)
     check spaceFleet.combatStrength() == 0
     check spaceFleet.transportCapacity() == 2
 
-    check mixed.len == 3
+    check mixed.len == 2  # 2 squadrons
     check mixed.combatStrength() > 0
     check mixed.transportCapacity() == 1
 

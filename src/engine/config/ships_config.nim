@@ -5,6 +5,7 @@
 
 import std/[os, options]
 import toml_serialization
+import ../../common/logger
 
 type
   ShipStatsConfig* = object
@@ -79,7 +80,7 @@ proc loadShipsConfig*(configPath: string = "config/ships.toml"): ShipsConfig =
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, ShipsConfig)
 
-  echo "[Config] Loaded ships configuration from ", configPath
+  logInfo("Config", "Loaded ships configuration", "path=", configPath)
 
 ## Global configuration instance
 

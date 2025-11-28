@@ -1,0 +1,3 @@
+nimTitle	executor	espionage/executor.html	module src/engine/espionage/executor		0
+nim	executeEspionageAction	espionage/executor.html#executeEspionageAction,ActionDescriptor,HouseId,HouseId,Option[SystemId],bool,Rand	proc executeEspionageAction(descriptor: ActionDescriptor; attacker: HouseId;\n                       target: HouseId; targetSystem: Option[SystemId];\n                       detected: bool; rng: var Rand): EspionageResult		15
+nim	executeEspionage	espionage/executor.html#executeEspionage,EspionageAttempt,CICLevel,int,Rand	proc executeEspionage(attempt: EspionageAttempt; defenderCICLevel: CICLevel;\n                 defenderCIPPoints: int; rng: var Rand): EspionageResult		113

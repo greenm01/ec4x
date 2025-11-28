@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   PopulationConfig* = object
@@ -187,7 +188,7 @@ proc loadEconomyConfig*(configPath: string = "config/economy.toml"): EconomyConf
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, EconomyConfig)
 
-  echo "[Config] Loaded economy configuration from ", configPath
+  logInfo("Config", "Loaded economy configuration", "path=", configPath)
 
 ## Global configuration instance
 

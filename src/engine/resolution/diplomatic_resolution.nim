@@ -6,7 +6,7 @@
 ## - Enemy/Neutral declarations
 
 import std/[tables, options]
-import ../../common/types/core
+import ../../common/[types/core, logger]
 import ../gamestate, ../orders
 import ../diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_proposals]
 import ../config/diplomacy_config
@@ -24,12 +24,14 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
         of DiplomaticActionType.ProposeNonAggressionPact:
           # Pact proposal system per docs/architecture/diplomacy_proposals.md
           # Creates pending proposal that target must accept/reject
-          echo "    ", houseId, " proposed Non-Aggression Pact to ", action.targetHouse
+          logResolve("Non-Aggression Pact proposed",
+                     "proposer=", $houseId, " target=", $action.targetHouse)
 
           if action.targetHouse in state.houses and not state.houses[action.targetHouse].eliminated:
             # Check if proposer can form pacts (not isolated)
             if not dip_types.canFormPact(state.houses[houseId].violationHistory):
-              echo "      Proposal blocked: proposer is diplomatically isolated"
+              logWarn("Diplomacy", "Proposal blocked - proposer is diplomatically isolated",
+                      "house=", $houseId)
             else:
               # Create pending proposal
               let proposal = dip_proposals.PendingProposal(
@@ -43,32 +45,38 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
                 message: action.message.get("")
               )
               state.pendingProposals.add(proposal)
-              echo "      Proposal created (expires in 3 turns)"
+              logResolve("Proposal created",
+                        "proposalId=", proposal.id, " expires=3 turns")
 
         of DiplomaticActionType.AcceptProposal:
           # Accept pending proposal
           if action.proposalId.isNone:
-            echo "    ERROR: AcceptProposal missing proposalId"
+            logError("Diplomacy", "AcceptProposal missing proposalId",
+                     "house=", $houseId)
             continue
 
           let proposalId = action.proposalId.get()
           let proposalIndex = dip_proposals.findProposalIndex(state.pendingProposals, proposalId)
 
           if proposalIndex < 0:
-            echo "    ERROR: Proposal ", proposalId, " not found"
+            logError("Diplomacy", "Proposal not found",
+                     "proposalId=", proposalId, " house=", $houseId)
             continue
 
           var proposal = state.pendingProposals[proposalIndex]
 
           if proposal.target != houseId:
-            echo "    ERROR: ", houseId, " cannot accept proposal not targeted at them"
+            logError("Diplomacy", "Cannot accept proposal not targeted at them",
+                     "house=", $houseId, " target=", $proposal.target)
             continue
 
           if proposal.status != dip_proposals.ProposalStatus.Pending:
-            echo "    ERROR: Proposal ", proposalId, " is not pending (status: ", proposal.status, ")"
+            logError("Diplomacy", "Proposal is not pending",
+                     "proposalId=", proposalId, " status=", $proposal.status)
             continue
 
-          echo "    ", houseId, " accepted Non-Aggression Pact from ", proposal.proposer
+          logResolve("Non-Aggression Pact accepted",
+                     "acceptor=", $houseId, " proposer=", $proposal.proposer)
 
           # Establish pact for both houses
           let eventOpt1 = dip_engine.proposePact(
@@ -88,7 +96,8 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
           if eventOpt1.isSome and eventOpt2.isSome:
             proposal.status = dip_proposals.ProposalStatus.Accepted
             state.pendingProposals[proposalIndex] = proposal
-            echo "      Pact established"
+            logResolve("Pact established",
+                      "proposer=", $proposal.proposer, " acceptor=", $houseId)
 
             # Generate intelligence reports for all houses
             diplomatic_intel.generatePactFormedIntel(
@@ -99,65 +108,77 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
               state.turn
             )
           else:
-            echo "      Pact establishment failed (blocked)"
+            logWarn("Diplomacy", "Pact establishment failed - blocked",
+                    "proposer=", $proposal.proposer, " acceptor=", $houseId)
 
         of DiplomaticActionType.RejectProposal:
           # Reject pending proposal
           if action.proposalId.isNone:
-            echo "    ERROR: RejectProposal missing proposalId"
+            logError("Diplomacy", "RejectProposal missing proposalId",
+                     "house=", $houseId)
             continue
 
           let proposalId = action.proposalId.get()
           let proposalIndex = dip_proposals.findProposalIndex(state.pendingProposals, proposalId)
 
           if proposalIndex < 0:
-            echo "    ERROR: Proposal ", proposalId, " not found"
+            logError("Diplomacy", "Proposal not found",
+                     "proposalId=", proposalId, " house=", $houseId)
             continue
 
           var proposal = state.pendingProposals[proposalIndex]
 
           if proposal.target != houseId:
-            echo "    ERROR: ", houseId, " cannot reject proposal not targeted at them"
+            logError("Diplomacy", "Cannot reject proposal not targeted at them",
+                     "house=", $houseId, " target=", $proposal.target)
             continue
 
           if proposal.status != dip_proposals.ProposalStatus.Pending:
-            echo "    ERROR: Proposal ", proposalId, " is not pending (status: ", proposal.status, ")"
+            logError("Diplomacy", "Proposal is not pending",
+                     "proposalId=", proposalId, " status=", $proposal.status)
             continue
 
-          echo "    ", houseId, " rejected Non-Aggression Pact from ", proposal.proposer
+          logResolve("Non-Aggression Pact rejected",
+                     "rejector=", $houseId, " proposer=", $proposal.proposer)
           proposal.status = dip_proposals.ProposalStatus.Rejected
           state.pendingProposals[proposalIndex] = proposal
 
         of DiplomaticActionType.WithdrawProposal:
           # Withdraw own proposal
           if action.proposalId.isNone:
-            echo "    ERROR: WithdrawProposal missing proposalId"
+            logError("Diplomacy", "WithdrawProposal missing proposalId",
+                     "house=", $houseId)
             continue
 
           let proposalId = action.proposalId.get()
           let proposalIndex = dip_proposals.findProposalIndex(state.pendingProposals, proposalId)
 
           if proposalIndex < 0:
-            echo "    ERROR: Proposal ", proposalId, " not found"
+            logError("Diplomacy", "Proposal not found",
+                     "proposalId=", proposalId, " house=", $houseId)
             continue
 
           var proposal = state.pendingProposals[proposalIndex]
 
           if proposal.proposer != houseId:
-            echo "    ERROR: ", houseId, " cannot withdraw proposal from ", proposal.proposer
+            logError("Diplomacy", "Cannot withdraw proposal from another house",
+                     "house=", $houseId, " proposer=", $proposal.proposer)
             continue
 
           if proposal.status != dip_proposals.ProposalStatus.Pending:
-            echo "    ERROR: Proposal ", proposalId, " is not pending (status: ", proposal.status, ")"
+            logError("Diplomacy", "Proposal is not pending",
+                     "proposalId=", proposalId, " status=", $proposal.status)
             continue
 
-          echo "    ", houseId, " withdrew Non-Aggression Pact proposal to ", proposal.target
+          logResolve("Non-Aggression Pact proposal withdrawn",
+                     "withdrawer=", $houseId, " target=", $proposal.target)
           proposal.status = dip_proposals.ProposalStatus.Withdrawn
           state.pendingProposals[proposalIndex] = proposal
 
         of DiplomaticActionType.BreakPact:
           # Breaking a pact triggers violation penalties (diplomacy.md:8.1.2)
-          echo "    ", houseId, " breaking pact with ", action.targetHouse
+          logResolve("Breaking pact",
+                     "breaker=", $houseId, " target=", $action.targetHouse)
 
           # Check if there's actually a pact to break
           let currentState = dip_engine.getDiplomaticState(
@@ -188,7 +209,8 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
 
             for event in prestigeEvents:
               house.prestige += event.amount
-              echo "      ", event.description, ": ", event.amount, " prestige"
+              logResolve("Violation prestige penalty",
+                        "event=", event.description, " prestige=", $event.amount)
 
             # Apply dishonored status (duration per config/diplomacy.toml)
             # EXCEPTION: No dishonor for final confrontation (only 2 houses left)
@@ -199,9 +221,11 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
                 turnsRemaining: config.pact_violations.dishonored_status_turns,
                 violationTurn: state.turn
               )
-              echo "      Dishonored for ", config.pact_violations.dishonored_status_turns, " turns"
+              logResolve("Dishonored status applied",
+                        "house=", $houseId, " turns=", $config.pact_violations.dishonored_status_turns)
             else:
-              echo "      Dishonor waived (final confrontation)"
+              logDebug("Diplomacy", "Dishonor waived (final confrontation)",
+                       "house=", $houseId)
 
             # Apply diplomatic isolation (5 turns per diplomacy.md:8.1.2)
             if not state.isFinalConfrontation():
@@ -210,9 +234,11 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
                 turnsRemaining: 5,
                 violationTurn: state.turn
               )
-              echo "      Isolated for 5 turns"
+              logResolve("Diplomatic isolation applied",
+                        "house=", $houseId, " turns=5")
             else:
-              echo "      Isolation waived (final confrontation)"
+              logDebug("Diplomacy", "Isolation waived (final confrontation)",
+                       "house=", $houseId)
 
             # Set status to Enemy
             dip_engine.setDiplomaticState(
@@ -240,10 +266,12 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
               state.turn
             )
           else:
-            echo "      No pact exists to break"
+            logWarn("Diplomacy", "No pact exists to break",
+                    "house=", $houseId, " target=", $action.targetHouse)
 
         of DiplomaticActionType.DeclareEnemy:
-          echo "    ", houseId, " declared ", action.targetHouse, " as Enemy"
+          logResolve("Declared Enemy",
+                     "declarer=", $houseId, " target=", $action.targetHouse)
           dip_engine.setDiplomaticState(
             state.houses[houseId].diplomaticRelations,
             action.targetHouse,
@@ -260,7 +288,8 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
           )
 
         of DiplomaticActionType.SetNeutral:
-          echo "    ", houseId, " set ", action.targetHouse, " to Neutral"
+          logResolve("Set to Neutral",
+                     "house=", $houseId, " target=", $action.targetHouse)
           dip_engine.setDiplomaticState(
             state.houses[houseId].diplomaticRelations,
             action.targetHouse,

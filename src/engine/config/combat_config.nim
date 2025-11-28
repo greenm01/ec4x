@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   CombatMechanicsConfig* = object
@@ -98,7 +99,7 @@ proc loadCombatConfig*(configPath: string = "config/combat.toml"): CombatConfig 
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, CombatConfig)
 
-  echo "[Config] Loaded combat configuration from ", configPath
+  logInfo("Config", "Loaded combat configuration", "path=", configPath)
 
 ## Global configuration instance
 

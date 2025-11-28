@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   StartingTechConfig* = object
@@ -36,7 +37,7 @@ proc loadTechConfig*(configPath: string = "config/tech.toml"): TechConfig =
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, TechConfig)
 
-  echo "[Config] Loaded technology configuration from ", configPath
+  logInfo("Config", "Loaded technology configuration", "path=", configPath)
 
 ## Global configuration instance
 

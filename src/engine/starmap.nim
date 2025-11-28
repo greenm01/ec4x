@@ -9,7 +9,8 @@
 
 import fleet
 import ../common/[hex, system, types/combat]
-import std/[tables, sequtils, random, math, algorithm, hashes, sets]
+import config/starmap_config
+import std/[tables, sequtils, random, math, algorithm, hashes, sets, strformat]
 import std/options
 
 type
@@ -23,6 +24,7 @@ type
     numRings*: uint32
     hubId*: uint
     playerSystemIds*: seq[uint]
+    seed*: int64  # Seed for deterministic but varied generation
 
   JumpLane* = object
     source*: uint
@@ -76,7 +78,7 @@ proc validateMapRings*(rings: int, playerCount: int = 0): seq[string] =
 
   return errors
 
-proc newStarMap*(playerCount: int): StarMap =
+proc newStarMap*(playerCount: int, seed: int64 = 42): StarMap =
   validatePlayerCount(playerCount)
 
   StarMap(
@@ -86,7 +88,8 @@ proc newStarMap*(playerCount: int): StarMap =
     playerCount: playerCount,
     numRings: playerCount.uint32,
     hubId: 0,
-    playerSystemIds: @[]
+    playerSystemIds: @[],
+    seed: seed
   )
 
 proc addSystem(starMap: var StarMap, system: System) =
@@ -113,6 +116,21 @@ proc addLane(starMap: var StarMap, lane: JumpLane) =
 
   starMap.adjacency[lane.source].add(lane.destination)
   starMap.adjacency[lane.destination].add(lane.source)
+
+proc weightedSample[T](items: openArray[T], weights: openArray[float], rng: var Rand): T =
+  ## Select a random item using weighted probabilities
+  ## Weights should sum to 1.0, but will be normalized if not
+  let totalWeight = weights.sum()
+  let r = rng.rand(1.0)
+  var cumulative = 0.0
+
+  for i, weight in weights:
+    cumulative += weight / totalWeight
+    if r <= cumulative:
+      return items[i]
+
+  # Fallback (should never reach here with valid weights)
+  return items[^1]
 
 proc getAdjacentSystems*(starMap: StarMap, systemId: uint): seq[uint] =
   starMap.adjacency.getOrDefault(systemId, @[])
@@ -168,33 +186,39 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
     # Use vertices (corners) for optimal strategic placement
     let vertices = outerRingSystems.filterIt(starMap.countHexNeighbors(it.coords) == 3)
 
-    if vertices.len >= starMap.playerCount:
-      # Use vertices directly
-      for i in 0..<starMap.playerCount:
-        selectedSystems.add(vertices[i])
+    # Choose candidate pool: prefer vertices if enough, otherwise use outer ring
+    let candidateSystems = if vertices.len >= starMap.playerCount:
+      vertices
     else:
-      # Fall back to maximizing distance
-      selectedSystems = @[outerRingSystems[0]]  # Start with first system
+      outerRingSystems
 
-      for i in 1..<starMap.playerCount:
-        var bestSystem = outerRingSystems[1]
-        var maxMinDistance = 0.0
+    # Apply distance-maximization to candidate pool for fair spacing
+    # Shuffle candidates for randomized but fair initial placement
+    var rng = initRand(starMap.seed)
+    var shuffledCandidates = candidateSystems
+    rng.shuffle(shuffledCandidates)
 
-        # Find system that maximizes minimum distance to existing players
-        for candidate in outerRingSystems:
-          if candidate in selectedSystems:
-            continue
+    selectedSystems = @[shuffledCandidates[0]]  # Start with random first system
 
-          var minDistance = float.high
-          for existing in selectedSystems:
-            let dist = distance(candidate.coords, existing.coords).float64
-            minDistance = min(minDistance, dist)
+    for i in 1..<starMap.playerCount:
+      var bestSystem = shuffledCandidates[1]
+      var maxMinDistance = 0.0
 
-          if minDistance > maxMinDistance:
-            maxMinDistance = minDistance
-            bestSystem = candidate
+      # Find system that maximizes minimum distance to existing players
+      for candidate in shuffledCandidates:
+        if candidate in selectedSystems:
+          continue
 
-        selectedSystems.add(bestSystem)
+        var minDistance = float.high
+        for existing in selectedSystems:
+          let dist = distance(candidate.coords, existing.coords).float64
+          minDistance = min(minDistance, dist)
+
+        if minDistance > maxMinDistance:
+          maxMinDistance = minDistance
+          bestSystem = candidate
+
+      selectedSystems.add(bestSystem)
   else:
     # Even distribution for larger player counts
     let step = outerRingSystems.len.float64 / starMap.playerCount.float64
@@ -208,7 +232,7 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
     starMap.playerSystemIds.add(system.id)
 
 proc connectHub(starMap: var StarMap) =
-  ## Connect hub with exactly 6 major lanes to first ring (game spec)
+  ## Connect hub with mixed lane types to first ring (prevents rush-to-center)
   let hubSystem = starMap.systems[starMap.hubId]
 
   var ring1Neighbors: seq[uint] = @[]
@@ -219,9 +243,16 @@ proc connectHub(starMap: var StarMap) =
   if ring1Neighbors.len != 6:
     raise newException(StarMapError, "Hub must have exactly 6 first-ring neighbors")
 
-  # Connect with Major lanes as per spec
+  # Connect with weighted lane types to avoid predictable convergence at center
+  var rng = initRand(starMap.seed)
+  let weights = globalStarmapConfig.lane_weights
   for neighborId in ring1Neighbors:
-    let lane = JumpLane(source: starMap.hubId, destination: neighborId, laneType: LaneType.Major)
+    let laneType = weightedSample(
+      [LaneType.Major, LaneType.Minor, LaneType.Restricted],
+      [weights.major_weight, weights.minor_weight, weights.restricted_weight],
+      rng
+    )
+    let lane = JumpLane(source: starMap.hubId, destination: neighborId, laneType: laneType)
     starMap.addLane(lane)
 
 proc connectPlayerSystems(starMap: var StarMap) =
@@ -277,7 +308,14 @@ proc connectRemainingSystem(starMap: var StarMap) =
         if neighborConnections.len >= 3:
           continue  # Skip connecting to player systems that already have 3 connections
 
-      let laneType = sample([LaneType.Major, LaneType.Minor, LaneType.Restricted])
+      # Use weighted lane type selection for balanced gameplay
+      var rng = initRand(starMap.seed + system.id.int64)  # Deterministic per-system RNG
+      let weights = globalStarmapConfig.lane_weights
+      let laneType = weightedSample(
+        [LaneType.Major, LaneType.Minor, LaneType.Restricted],
+        [weights.major_weight, weights.minor_weight, weights.restricted_weight],
+        rng
+      )
       let lane = JumpLane(source: system.id, destination: neighborId, laneType: laneType)
       starMap.addLane(lane)
 

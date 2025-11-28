@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   PtuDefinitionConfig* = object
@@ -68,7 +69,7 @@ proc loadPopulationConfig*(configPath: string = "config/population.toml"): Popul
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, PopulationConfig)
 
-  echo "[Config] Loaded population configuration from ", configPath
+  logInfo("Config", "Loaded population configuration", "path=", configPath)
 
 ## Global configuration instance
 

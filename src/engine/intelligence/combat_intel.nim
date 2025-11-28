@@ -5,6 +5,7 @@
 
 import std/[tables, options, sequtils, strformat]
 import types as intel_types
+import ../../common/logger
 import ../gamestate, ../fleet, ../squadron, ../spacelift
 
 proc createFleetComposition*(
@@ -391,4 +392,5 @@ proc generateBombardmentIntelligence*(
 
   # THREAT ASSESSMENT: If spacelift ships detected, invasion is imminent
   if spaceLiftShipsInvolved > 0:
-    echo "    CRITICAL INTEL: ", spaceLiftShipsInvolved, " spacelift ships detected - invasion force present!"
+    logWarn("Intelligence", "CRITICAL: Invasion force detected",
+            "spaceliftShips=", $spaceLiftShipsInvolved, " system=", $systemId)

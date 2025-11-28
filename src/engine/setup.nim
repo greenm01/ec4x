@@ -89,6 +89,7 @@ proc validateGameSetupOrQuit*(params: GameSetupParams, programName: string = "ga
   ##   ```
   let errors = validateGameSetup(params)
   if errors.len > 0:
+    # Keep echo for user-facing CLI error messages
     echo "Invalid game setup parameters:"
     for err in errors:
       echo "  - ", err

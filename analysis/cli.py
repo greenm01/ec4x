@@ -260,5 +260,83 @@ def export(ctx, output, type, metrics):
         sys.exit(1)
 
 
+@cli.command(name="export-for-claude")
+@click.argument("output", type=click.Path())
+@click.option("--format", "-f", default="markdown",
+              type=click.Choice(["markdown", "json", "summary"]),
+              help="Output format (default: markdown)")
+@click.option("--houses", multiple=True, help="Filter by house names")
+@click.option("--turns", help="Turn range (e.g., '10,20' for turns 10-20)")
+@click.option("--metrics", "-m", multiple=True, help="Metrics to include (default: important ones)")
+@click.pass_context
+def export_for_claude(ctx, output, format, houses, turns, metrics):
+    """
+    Export data optimized for Claude analysis (token-efficient).
+
+    Examples:
+        # Markdown table for turns 10-15
+        python -m analysis.cli export-for-claude combat.md --turns=10,15 --format=markdown
+
+        # JSON summary for all data
+        python -m analysis.cli export-for-claude summary.json --format=json
+
+        # Quick summary (< 1K tokens)
+        python -m analysis.cli export-for-claude quick.txt --format=summary
+
+        # Filter by houses and metrics
+        python -m analysis.cli export-for-claude alpha.md --houses=alpha --metrics=total_fighters,tech_wep
+    """
+    analyzer = ctx.obj["analyzer"]
+
+    # Parse turns (e.g., "10,20" -> (10, 20))
+    turn_range = None
+    if turns:
+        try:
+            parts = turns.split(",")
+            if len(parts) == 2:
+                turn_range = (int(parts[0]), int(parts[1]))
+            else:
+                console.print("[red]ERROR:[/red] Turns must be in format 'start,end' (e.g., '10,20')")
+                sys.exit(1)
+        except ValueError:
+            console.print("[red]ERROR:[/red] Invalid turn range format")
+            sys.exit(1)
+
+    houses_list = list(houses) if houses else None
+    metrics_list = list(metrics) if metrics else None
+
+    console.print(f"[cyan]Exporting data for Claude ({format} format)...[/cyan]")
+
+    try:
+        output_path, estimated_tokens = analyzer.export_for_claude(
+            output,
+            format_type=format,
+            houses=houses_list,
+            turns=turn_range,
+            metrics=metrics_list
+        )
+
+        # Color-code token count
+        if estimated_tokens < 5000:
+            token_color = "green"
+        elif estimated_tokens < 12000:
+            token_color = "yellow"
+        else:
+            token_color = "red"
+
+        console.print(f"[green]✓[/green] Exported to {output_path}")
+        console.print(f"[dim]File size:[/dim] {output_path.stat().st_size / 1024:.1f} KB")
+        console.print(f"[dim]Estimated tokens:[/dim] [{token_color}]~{estimated_tokens:,}[/{token_color}]")
+
+        if estimated_tokens > 12000:
+            console.print("[yellow]⚠[/yellow] File is large for Claude. Consider filtering by turns/houses/metrics.")
+
+    except Exception as e:
+        console.print(f"[red]ERROR:[/red] {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     cli(obj={})

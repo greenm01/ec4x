@@ -1,0 +1,7 @@
+nimTitle	maintenance_shortfall	economy/maintenance_shortfall.html	module src/engine/economy/maintenance_shortfall		0
+nim	AssetType	economy/maintenance_shortfall.html#AssetType	enum AssetType		24
+nim	StrippedAsset	economy/maintenance_shortfall.html#StrippedAsset	object StrippedAsset		35
+nim	ShortfallCascade	economy/maintenance_shortfall.html#ShortfallCascade	object ShortfallCascade		41
+nim	processShortfall	economy/maintenance_shortfall.html#processShortfall,GameState,HouseId,int	proc processShortfall(state: GameState; houseId: HouseId; shortfall: int): ShortfallCascade		114
+nim	applyShortfallCascade	economy/maintenance_shortfall.html#applyShortfallCascade,GameState,ShortfallCascade	proc applyShortfallCascade(state: var GameState; cascade: ShortfallCascade)		279
+nim	resolveMaintenanceShortfalls	economy/maintenance_shortfall.html#resolveMaintenanceShortfalls,GameState	proc resolveMaintenanceShortfalls(state: var GameState)		347

@@ -1,10 +1,10 @@
 nimTitle	construction_config	config/construction_config.html	module src/engine/config/construction_config		0
-nim	ConstructionTimesConfig	config/construction_config.html#ConstructionTimesConfig	object ConstructionTimesConfig		10
-nim	RepairConfig	config/construction_config.html#RepairConfig	object RepairConfig		26
-nim	ModifiersConfig	config/construction_config.html#ModifiersConfig	object ModifiersConfig		31
-nim	CostsConfig	config/construction_config.html#CostsConfig	object CostsConfig		35
-nim	UpkeepConfig	config/construction_config.html#UpkeepConfig	object UpkeepConfig		48
-nim	ConstructionConfig	config/construction_config.html#ConstructionConfig	object ConstructionConfig		55
-nim	loadConstructionConfig	config/construction_config.html#loadConstructionConfig,string	proc loadConstructionConfig(configPath: string = "config/construction.toml"): ConstructionConfig		63
-nim	globalConstructionConfig	config/construction_config.html#globalConstructionConfig	var globalConstructionConfig		77
-nim	reloadConstructionConfig	config/construction_config.html#reloadConstructionConfig	proc reloadConstructionConfig()		81
+nim	ConstructionTimesConfig	config/construction_config.html#ConstructionTimesConfig	object ConstructionTimesConfig		11
+nim	RepairConfig	config/construction_config.html#RepairConfig	object RepairConfig		27
+nim	ModifiersConfig	config/construction_config.html#ModifiersConfig	object ModifiersConfig		32
+nim	CostsConfig	config/construction_config.html#CostsConfig	object CostsConfig		36
+nim	UpkeepConfig	config/construction_config.html#UpkeepConfig	object UpkeepConfig		49
+nim	ConstructionConfig	config/construction_config.html#ConstructionConfig	object ConstructionConfig		56
+nim	loadConstructionConfig	config/construction_config.html#loadConstructionConfig,string	proc loadConstructionConfig(configPath: string = "config/construction.toml"): ConstructionConfig		64
+nim	globalConstructionConfig	config/construction_config.html#globalConstructionConfig	var globalConstructionConfig		78
+nim	reloadConstructionConfig	config/construction_config.html#reloadConstructionConfig	proc reloadConstructionConfig()		82

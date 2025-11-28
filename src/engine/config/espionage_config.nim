@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   ThresholdRange* = array[2, int]  ## [min_threshold, max_threshold]
@@ -146,7 +147,7 @@ proc loadEspionageConfig*(configPath: string = "config/espionage.toml"): Espiona
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, EspionageConfig)
 
-  echo "[Config] Loaded espionage configuration from ", configPath
+  logInfo("Config", "Loaded espionage configuration", "path=", configPath)
 
 ## Global configuration instance
 

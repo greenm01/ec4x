@@ -1,0 +1,9 @@
+nimTitle	transfers	population/transfers.html	module src/engine/population/transfers		0
+nim	TransferResult	population/transfers.html#TransferResult	enum TransferResult		25
+nim	TransferCompletion	population/transfers.html#TransferCompletion	object TransferCompletion		31
+nim	calculateTransferCost	population/transfers.html#calculateTransferCost,PlanetClass,PlanetClass,int,int	proc calculateTransferCost(sourcePlanetClass: PlanetClass;\n                      destPlanetClass: PlanetClass; distance: int;\n                      ptuAmount: int): int		49
+nim	findNearestOwnedColony	population/transfers.html#findNearestOwnedColony,GameState,SystemId,HouseId	proc findNearestOwnedColony(state: GameState; fromSystem: SystemId; houseId: HouseId): Option[\n    SystemId]		67
+nim	ptuToPu	population/transfers.html#ptuToPu,int	proc ptuToPu(ptuAmount: int): int		91
+nim	initiateTransfer	population/transfers.html#initiateTransfer,GameState,HouseId,SystemId,SystemId,int	proc initiateTransfer(state: var GameState; houseId: HouseId; sourceSystem: SystemId;\n                 destSystem: SystemId; ptuAmount: int): tuple[success: bool,\n    message: string]		98
+nim	applyTransferCompletion	population/transfers.html#applyTransferCompletion,GameState,TransferCompletion	proc applyTransferCompletion(state: var GameState; completion: TransferCompletion)		229
+nim	processTransfers	population/transfers.html#processTransfers,GameState	proc processTransfers(state: var GameState): seq[TransferCompletion]		251

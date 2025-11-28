@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   ConstructionTimesConfig* = object
@@ -70,7 +71,7 @@ proc loadConstructionConfig*(configPath: string = "config/construction.toml"): C
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, ConstructionConfig)
 
-  echo "[Config] Loaded construction configuration from ", configPath
+  logInfo("Config", "Loaded construction configuration", "path=", configPath)
 
 ## Global configuration instance
 
