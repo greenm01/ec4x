@@ -81,6 +81,8 @@ level_6_srp = 27
 level_7_srp = 32
 level_8_srp = 37
 
+# Maximum science level is SL8 per economy.md:4.3
+
 # ============================================================================
 # Construction (CST)
 # Source: Section 4.5
