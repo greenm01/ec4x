@@ -1,0 +1,8 @@
+nimTitle	starmap_config	engine/config/starmap_config.html	module src/engine/config/starmap_config		0
+nim	LaneWeightsConfig	engine/config/starmap_config.html#LaneWeightsConfig	object LaneWeightsConfig		11
+nim	GenerationConfig	engine/config/starmap_config.html#GenerationConfig	object GenerationConfig		17
+nim	HomeworldPlacementConfig	engine/config/starmap_config.html#HomeworldPlacementConfig	object HomeworldPlacementConfig		23
+nim	StarmapConfig	engine/config/starmap_config.html#StarmapConfig	object StarmapConfig		27
+nim	loadStarmapConfig	engine/config/starmap_config.html#loadStarmapConfig,string	proc loadStarmapConfig(configPath: string = "config/starmap.toml"): StarmapConfig		33
+nim	globalStarmapConfig	engine/config/starmap_config.html#globalStarmapConfig	var globalStarmapConfig		47
+nim	reloadStarmapConfig	engine/config/starmap_config.html#reloadStarmapConfig	proc reloadStarmapConfig()		51

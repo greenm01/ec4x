@@ -1,0 +1,23 @@
+nimTitle	ground	engine/combat/ground.html	module src/engine/combat/ground		0
+nim	GroundUnitType	engine/combat/ground.html#GroundUnitType	enum GroundUnitType		23
+nim	GroundUnit	engine/combat/ground.html#GroundUnit	object GroundUnit		30
+nim	PlanetaryDefense	engine/combat/ground.html#PlanetaryDefense	object PlanetaryDefense		39
+nim	ShieldLevel	engine/combat/ground.html#ShieldLevel	object ShieldLevel		46
+nim	BombardmentResult	engine/combat/ground.html#BombardmentResult	object BombardmentResult		52
+nim	InvasionResult	engine/combat/ground.html#InvasionResult	object InvasionResult		65
+nim	getBombardmentCER	engine/combat/ground.html#getBombardmentCER,int	proc getBombardmentCER(roll: int): (float, bool)		77
+nim	getGroundCombatCER	engine/combat/ground.html#getGroundCombatCER,int	proc getGroundCombatCER(roll: int): float		102
+nim	getShieldData	engine/combat/ground.html#getShieldData,int	proc getShieldData(shieldLevel: int): (int, float)		126
+nim	rollShieldBlock	engine/combat/ground.html#rollShieldBlock,int,CombatRNG	proc rollShieldBlock(shieldLevel: int; rng: var CombatRNG): (bool, float)		149
+nim	applyShieldReduction	engine/combat/ground.html#applyShieldReduction,int,int,CombatRNG	proc applyShieldReduction(hits: int; shieldLevel: int; rng: var CombatRNG): int		168
+nim	separatePlanetBreakerAS	engine/combat/ground.html#separatePlanetBreakerAS,seq[CombatSquadron]	proc separatePlanetBreakerAS(squadrons: seq[CombatSquadron]): (int, int)		182
+nim	resolveBombardmentRound	engine/combat/ground.html#resolveBombardmentRound,seq[CombatSquadron],PlanetaryDefense,CombatRNG	proc resolveBombardmentRound(attackingFleet: seq[CombatSquadron];\n                        defense: var PlanetaryDefense; rng: var CombatRNG): BombardmentResult		207
+nim	conductBombardment	engine/combat/ground.html#conductBombardment,seq[CombatSquadron],PlanetaryDefense,int64,int	proc conductBombardment(attackingFleet: seq[CombatSquadron];\n                   defense: var PlanetaryDefense; seed: int64;\n                   maxRounds: int = 3): BombardmentResult		328
+nim	conductInvasion	engine/combat/ground.html#conductInvasion,seq[GroundUnit],seq[GroundUnit],PlanetaryDefense,int64	proc conductInvasion(attackingForces: seq[GroundUnit];\n                defendingForces: seq[GroundUnit]; defense: var PlanetaryDefense;\n                seed: int64): InvasionResult		361
+nim	conductBlitz	engine/combat/ground.html#conductBlitz,seq[CombatSquadron],seq[GroundUnit],PlanetaryDefense,int64	proc conductBlitz(attackingFleet: seq[CombatSquadron];\n             attackingForces: seq[GroundUnit]; defense: var PlanetaryDefense;\n             seed: int64): InvasionResult		486
+nim	createGroundBattery	engine/combat/ground.html#createGroundBattery,string,HouseId,int	proc createGroundBattery(id: string; owner: HouseId; techLevel: int = 1): GroundUnit		612
+nim	createArmy	engine/combat/ground.html#createArmy,string,HouseId	proc createArmy(id: string; owner: HouseId): GroundUnit		633
+nim	createMarine	engine/combat/ground.html#createMarine,string,HouseId	proc createMarine(id: string; owner: HouseId): GroundUnit		651
+nim	assembleDefendingForces	engine/combat/ground.html#assembleDefendingForces,string,int,int,HouseId	proc assembleDefendingForces(systemId: string; armyCount: int; marineCount: int;\n                        owner: HouseId): seq[GroundUnit]		672
+nim	assemblePlanetaryDefense	engine/combat/ground.html#assemblePlanetaryDefense,string,int,int,HouseId,int	proc assemblePlanetaryDefense(systemId: string; shieldLevel: int; batteryCount: int;\n                         owner: HouseId; constructionTechLevel: int): PlanetaryDefense		702
+nim	assembleAttackingForces	engine/combat/ground.html#assembleAttackingForces,string,int,HouseId	proc assembleAttackingForces(systemId: string; marineCount: int; owner: HouseId): seq[\n    GroundUnit]		739

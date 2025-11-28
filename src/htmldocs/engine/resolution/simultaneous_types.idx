@@ -1,0 +1,15 @@
+nimTitle	simultaneous_types	engine/resolution/simultaneous_types.html	module src/engine/resolution/simultaneous_types		0
+nim	ResolutionOutcome	engine/resolution/simultaneous_types.html#ResolutionOutcome	enum ResolutionOutcome		11
+nim	OrderResult	engine/resolution/simultaneous_types.html#OrderResult	object OrderResult		20
+nim	ColonizationIntent	engine/resolution/simultaneous_types.html#ColonizationIntent	object ColonizationIntent		30
+nim	ColonizationConflict	engine/resolution/simultaneous_types.html#ColonizationConflict	object ColonizationConflict		38
+nim	ColonizationResult	engine/resolution/simultaneous_types.html#ColonizationResult	type ColonizationResult		43
+nim	PlanetaryCombatIntent	engine/resolution/simultaneous_types.html#PlanetaryCombatIntent	object PlanetaryCombatIntent		50
+nim	PlanetaryCombatConflict	engine/resolution/simultaneous_types.html#PlanetaryCombatConflict	object PlanetaryCombatConflict		58
+nim	PlanetaryCombatResult	engine/resolution/simultaneous_types.html#PlanetaryCombatResult	type PlanetaryCombatResult		63
+nim	BlockadeIntent	engine/resolution/simultaneous_types.html#BlockadeIntent	object BlockadeIntent		70
+nim	BlockadeConflict	engine/resolution/simultaneous_types.html#BlockadeConflict	object BlockadeConflict		77
+nim	BlockadeResult	engine/resolution/simultaneous_types.html#BlockadeResult	type BlockadeResult		82
+nim	EspionageIntent	engine/resolution/simultaneous_types.html#EspionageIntent	object EspionageIntent		89
+nim	EspionageConflict	engine/resolution/simultaneous_types.html#EspionageConflict	object EspionageConflict		98
+nim	EspionageResult	engine/resolution/simultaneous_types.html#EspionageResult	type EspionageResult		103

@@ -1,0 +1,16 @@
+nimTitle	economy_config	engine/config/economy_config.html	module src/engine/config/economy_config		0
+nim	PopulationConfig	engine/config/economy_config.html#PopulationConfig	object PopulationConfig		11
+nim	ProductionConfig	engine/config/economy_config.html#ProductionConfig	object ProductionConfig		19
+nim	InfrastructureConfig	engine/config/economy_config.html#InfrastructureConfig	object InfrastructureConfig		25
+nim	PlanetClassesConfig	engine/config/economy_config.html#PlanetClassesConfig	object PlanetClassesConfig		28
+nim	ResearchConfig	engine/config/economy_config.html#ResearchConfig	object ResearchConfig		43
+nim	EspionageConfig	engine/config/economy_config.html#EspionageConfig	object EspionageConfig		65
+nim	RawMaterialEfficiencyConfig	engine/config/economy_config.html#RawMaterialEfficiencyConfig	object RawMaterialEfficiencyConfig		80
+nim	TaxMechanicsConfig	engine/config/economy_config.html#TaxMechanicsConfig	object TaxMechanicsConfig		117
+nim	TaxPopulationGrowthConfig	engine/config/economy_config.html#TaxPopulationGrowthConfig	object TaxPopulationGrowthConfig		120
+nim	IndustrialInvestmentConfig	engine/config/economy_config.html#IndustrialInvestmentConfig	object IndustrialInvestmentConfig		137
+nim	ColonizationConfig	engine/config/economy_config.html#ColonizationConfig	object ColonizationConfig		158
+nim	EconomyConfig	engine/config/economy_config.html#EconomyConfig	object EconomyConfig		167
+nim	loadEconomyConfig	engine/config/economy_config.html#loadEconomyConfig,string	proc loadEconomyConfig(configPath: string = "config/economy.toml"): EconomyConfig		181
+nim	globalEconomyConfig	engine/config/economy_config.html#globalEconomyConfig	var globalEconomyConfig		195
+nim	reloadEconomyConfig	engine/config/economy_config.html#reloadEconomyConfig	proc reloadEconomyConfig()		199

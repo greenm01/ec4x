@@ -1,0 +1,35 @@
+nimTitle	types	engine/intelligence/types.html	module src/engine/intelligence/types		0
+nim	IntelQuality	engine/intelligence/types.html#IntelQuality	enum IntelQuality		10
+nim	ColonyIntelReport	engine/intelligence/types.html#ColonyIntelReport	object ColonyIntelReport		17
+nim	SystemIntelReport	engine/intelligence/types.html#SystemIntelReport	object SystemIntelReport		42
+nim	FleetIntel	engine/intelligence/types.html#FleetIntel	object FleetIntel		52
+nim	SquadronIntel	engine/intelligence/types.html#SquadronIntel	object SquadronIntel		63
+nim	StarbaseIntelReport	engine/intelligence/types.html#StarbaseIntelReport	object StarbaseIntelReport		71
+nim	EspionageActivityReport	engine/intelligence/types.html#EspionageActivityReport	object EspionageActivityReport		90
+nim	CombatPhase	engine/intelligence/types.html#CombatPhase	enum CombatPhase		100
+nim	CombatOutcome	engine/intelligence/types.html#CombatOutcome	enum CombatOutcome		106
+nim	FleetOrderIntel	engine/intelligence/types.html#FleetOrderIntel	object FleetOrderIntel		114
+nim	SpaceLiftCargoIntel	engine/intelligence/types.html#SpaceLiftCargoIntel	object SpaceLiftCargoIntel		119
+nim	CombatFleetComposition	engine/intelligence/types.html#CombatFleetComposition	object CombatFleetComposition		126
+nim	CombatEncounterReport	engine/intelligence/types.html#CombatEncounterReport	object CombatEncounterReport		135
+nim	ScoutEncounterType	engine/intelligence/types.html#ScoutEncounterType	enum ScoutEncounterType		157
+nim	SensorQuality	engine/intelligence/types.html#SensorQuality	enum SensorQuality		168
+nim	StarbaseSurveillanceReport	engine/intelligence/types.html#StarbaseSurveillanceReport	object StarbaseSurveillanceReport		175
+nim	ScoutEncounterReport	engine/intelligence/types.html#ScoutEncounterReport	object ScoutEncounterReport		197
+nim	FleetMovementHistory	engine/intelligence/types.html#FleetMovementHistory	object FleetMovementHistory		218
+nim	ConstructionActivityReport	engine/intelligence/types.html#ConstructionActivityReport	object ConstructionActivityReport		228
+nim	IntelligenceDatabase	engine/intelligence/types.html#IntelligenceDatabase	object IntelligenceDatabase		244
+nim	newIntelligenceDatabase	engine/intelligence/types.html#newIntelligenceDatabase	proc newIntelligenceDatabase(): IntelligenceDatabase		261
+nim	addColonyReport	engine/intelligence/types.html#addColonyReport,IntelligenceDatabase,ColonyIntelReport	proc addColonyReport(db: var IntelligenceDatabase; report: ColonyIntelReport)		273
+nim	addSystemReport	engine/intelligence/types.html#addSystemReport,IntelligenceDatabase,SystemIntelReport	proc addSystemReport(db: var IntelligenceDatabase; report: SystemIntelReport)		277
+nim	addStarbaseReport	engine/intelligence/types.html#addStarbaseReport,IntelligenceDatabase,StarbaseIntelReport	proc addStarbaseReport(db: var IntelligenceDatabase; report: StarbaseIntelReport)		281
+nim	addEspionageActivity	engine/intelligence/types.html#addEspionageActivity,IntelligenceDatabase,EspionageActivityReport	proc addEspionageActivity(db: var IntelligenceDatabase;\n                     report: EspionageActivityReport)		285
+nim	addCombatReport	engine/intelligence/types.html#addCombatReport,IntelligenceDatabase,CombatEncounterReport	proc addCombatReport(db: var IntelligenceDatabase; report: CombatEncounterReport)		289
+nim	addScoutEncounter	engine/intelligence/types.html#addScoutEncounter,IntelligenceDatabase,ScoutEncounterReport	proc addScoutEncounter(db: var IntelligenceDatabase; report: ScoutEncounterReport)		293
+nim	addStarbaseSurveillance	engine/intelligence/types.html#addStarbaseSurveillance,IntelligenceDatabase,StarbaseSurveillanceReport	proc addStarbaseSurveillance(db: var IntelligenceDatabase;\n                        report: StarbaseSurveillanceReport)		297
+nim	updateFleetMovementHistory	engine/intelligence/types.html#updateFleetMovementHistory,IntelligenceDatabase,FleetId,HouseId,SystemId,int	proc updateFleetMovementHistory(db: var IntelligenceDatabase; fleetId: FleetId;\n                           owner: HouseId; systemId: SystemId; turn: int)		301
+nim	updateConstructionActivity	engine/intelligence/types.html#updateConstructionActivity,IntelligenceDatabase,SystemId,HouseId,int,int,int,int,int,seq[string]	proc updateConstructionActivity(db: var IntelligenceDatabase; systemId: SystemId;\n                           owner: HouseId; turn: int; infrastructure: int;\n                           shipyards: int; spaceports: int; starbases: int;\n                           activeProjects: seq[string])		323
+nim	getColonyIntel	engine/intelligence/types.html#getColonyIntel,IntelligenceDatabase,SystemId	proc getColonyIntel(db: IntelligenceDatabase; systemId: SystemId): Option[\n    ColonyIntelReport]		358
+nim	getSystemIntel	engine/intelligence/types.html#getSystemIntel,IntelligenceDatabase,SystemId	proc getSystemIntel(db: IntelligenceDatabase; systemId: SystemId): Option[\n    SystemIntelReport]		364
+nim	getStarbaseIntel	engine/intelligence/types.html#getStarbaseIntel,IntelligenceDatabase,SystemId	proc getStarbaseIntel(db: IntelligenceDatabase; systemId: SystemId): Option[\n    StarbaseIntelReport]		370
+nim	getIntelStaleness	engine/intelligence/types.html#getIntelStaleness,,int	proc getIntelStaleness(report: ColonyIntelReport | SystemIntelReport |\n    StarbaseIntelReport; currentTurn: int): int		376
