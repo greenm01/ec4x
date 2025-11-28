@@ -460,6 +460,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] {controller.houseId} needs: " &
           &"fighters={needFighters}, carriers={needCarriers}, CST={cst}, aggression={p.aggression}")
 
+  # Admiral-CFO Feedback Loop: Iteratively adjust priorities until budget fits
+  # MAX_ITERATIONS is enforced in reprioritizeRequirements() to prevent infinite loops
+  const MAX_FEEDBACK_ITERATIONS = 3
+
   result.buildOrders = generateBuildOrdersWithBudget(
     controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
     isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
@@ -467,6 +471,47 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     atSquadronLimit, militaryCount, scoutCount, planetBreakerCount, availableBudget,
     controller.admiralRequirements  # Phase 3: Pass Admiral requirements to build system
   )
+
+  # Feedback loop: Continue adjusting priorities until requirements are affordable
+  var feedbackIteration = 0
+  while controller.cfoFeedback.isSome and controller.admiralRequirements.isSome and feedbackIteration < MAX_FEEDBACK_ITERATIONS:
+    let feedback = controller.cfoFeedback.get()
+
+    # Check if there are unfulfilled requirements that need reprioritization
+    if feedback.unfulfilledRequirements.len > 0:
+      let originalReqs = controller.admiralRequirements.get()
+
+      # Admiral reprioritizes based on CFO feedback
+      let reprioritized = reprioritizeRequirements(originalReqs, feedback)
+
+      # Check if Admiral made adjustments (iteration increased)
+      if reprioritized.iteration > originalReqs.iteration:
+        logInfo(LogCategory.lcAI,
+                &"{controller.houseId} Admiral-CFO feedback loop: Re-running budget with reprioritized requirements " &
+                &"(iteration {reprioritized.iteration})")
+
+        # Update controller with reprioritized requirements
+        controller.admiralRequirements = some(reprioritized)
+
+        # Clear previous CFO feedback for new iteration
+        controller.cfoFeedback = none(CFOFeedback)
+
+        # Re-run budget generation with adjusted priorities
+        result.buildOrders = generateBuildOrdersWithBudget(
+          controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
+          isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
+          needCarriers, needTransports, needRaiders, canAffordMoreShips,
+          atSquadronLimit, militaryCount, scoutCount, planetBreakerCount, availableBudget,
+          controller.admiralRequirements  # Reprioritized requirements
+        )
+
+        feedbackIteration += 1
+      else:
+        # Admiral reached iteration limit, stop feedback loop
+        break
+    else:
+      # All requirements fulfilled, exit feedback loop
+      break
 
   # Calculate total build cost and reserve from treasury
   let totalBuildCost = calculateTotalCost(result.buildOrders)

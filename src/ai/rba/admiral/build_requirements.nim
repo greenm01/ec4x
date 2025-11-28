@@ -15,7 +15,7 @@
 import std/[options, tables, sequtils, algorithm, strformat]
 import ../../../common/system
 import ../../../common/types/[core, units]
-import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron]
+import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron, spacelift]
 import ../../common/types as ai_common_types  # For BuildObjective
 import ../controller_types  # For BuildRequirements types
 import ../config
@@ -405,7 +405,13 @@ proc assessStrategicAssets*(
   currentAct: GameAct
 ): seq[BuildRequirement] =
   ## Comprehensive strategic asset assessment - Admiral requests ALL needed assets
-  ## Covers: Fighters, Carriers, Starbases, Ground Units, Transports, Raiders, Scouts
+  ## Covers:
+  ##   - Capital Ships: Dreadnoughts, Battleships, Battlecruisers (main battle line)
+  ##   - Carriers & Fighters: Power projection and strike warfare
+  ##   - Starbases: Infrastructure for fighter support & colony defense
+  ##   - Ground Units: Armies, Marines, Planetary Shields, Ground Batteries
+  ##   - Transports: Invasion capability and logistics
+  ##   - Raiders: Harassment and asymmetric warfare
   ## CFO decides what's affordable based on budget reality
   result = @[]
 
@@ -452,7 +458,7 @@ proc assessStrategicAssets*(
         let carrierCost = if cstLevel >= 5: 200 else: 120
         let carrierClass = if cstLevel >= 5: ShipClass.SuperCarrier else: ShipClass.Carrier
 
-        result.add(BuildRequirement(
+        let req = BuildRequirement(
           requirementType: RequirementType.StrategicAsset,
           priority: RequirementPriority.Medium,
           shipClass: some(carrierClass),
@@ -461,12 +467,14 @@ proc assessStrategicAssets*(
           targetSystem: none(SystemId),
           estimatedCost: carrierCost * (targetCarriers - carrierCount),
           reason: &"Carrier strike force (have {carrierCount}/{targetCarriers})"
-        ))
+        )
+        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x {carrierClass} ({req.estimatedCost}PP) - {req.reason}")
+        result.add(req)
 
       # Request fighters to fill carrier capacity
       let targetFighters = totalCarrierCapacity
       if fighterCount < targetFighters:
-        result.add(BuildRequirement(
+        let req = BuildRequirement(
           requirementType: RequirementType.StrategicAsset,
           priority: RequirementPriority.Low,
           shipClass: some(ShipClass.Fighter),
@@ -475,7 +483,9 @@ proc assessStrategicAssets*(
           targetSystem: none(SystemId),
           estimatedCost: 20 * (targetFighters - fighterCount),
           reason: &"Fighter wings for carriers (have {fighterCount}/{targetFighters})"
-        ))
+        )
+        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Fighter ({req.estimatedCost}PP) - {req.reason}")
+        result.add(req)
 
   # =============================================================================
   # STARBASES (for fighter support & colony defense)
@@ -494,7 +504,7 @@ proc assessStrategicAssets*(
       requiredStarbases += (currentFighters + 4) div 5  # Ceiling division
 
   if requiredStarbases > totalStarbases:
-    result.add(BuildRequirement(
+    let req = BuildRequirement(
       requirementType: RequirementType.Infrastructure,
       priority: RequirementPriority.High,  # Urgent - prevents fighter disbanding
       shipClass: some(ShipClass.Starbase),
@@ -503,7 +513,9 @@ proc assessStrategicAssets*(
       targetSystem: none(SystemId),
       estimatedCost: 30 * (requiredStarbases - totalStarbases),  # Starbase cost
       reason: &"Starbase infrastructure for fighters (have {totalStarbases}, need {requiredStarbases})"
-    ))
+    )
+    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Starbase ({req.estimatedCost}PP) - {req.reason}")
+    result.add(req)
 
   # =============================================================================
   # TRANSPORTS (for invasion & logistics)
@@ -519,7 +531,7 @@ proc assessStrategicAssets*(
       let targetTransports = filtered.ownColonies.len div 3  # ~1 transport per 3 colonies
 
       if transportCount < targetTransports:
-        result.add(BuildRequirement(
+        let req = BuildRequirement(
           requirementType: RequirementType.StrategicAsset,
           priority: RequirementPriority.Low,
           shipClass: some(ShipClass.TroopTransport),
@@ -528,15 +540,158 @@ proc assessStrategicAssets*(
           targetSystem: none(SystemId),
           estimatedCost: 100 * (targetTransports - transportCount),
           reason: &"Invasion transports (have {transportCount}/{targetTransports})"
-        ))
+        )
+        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x TroopTransport ({req.estimatedCost}PP) - {req.reason}")
+        result.add(req)
 
   # =============================================================================
-  # GROUND UNITS (armies, marines, shields)
+  # CAPITAL SHIPS (DNs, BBs, BCs - main battle line)
   # =============================================================================
-  # TODO: Assess ground unit needs based on:
-  # - Planetary shields for high-value colonies
-  # - Armies for invasion-ready colonies
-  # - Marines for offensive operations
+  # Count existing capital ships
+  var dreadnoughtCount = 0
+  var battleshipCount = 0
+  var battlecruiserCount = 0
+
+  for fleet in filtered.ownFleets:
+    for squadron in fleet.squadrons:
+      case squadron.flagship.shipClass
+      of ShipClass.Dreadnought: dreadnoughtCount += 1
+      of ShipClass.Battleship: battleshipCount += 1
+      of ShipClass.Battlecruiser: battlecruiserCount += 1
+      else: discard
+
+  # Capital ship requirements based on game phase and personality
+  let totalCapitalShips = dreadnoughtCount + battleshipCount + battlecruiserCount
+
+  # Target capital ship count scales with game phase
+  let targetCapitalShips = case currentAct
+    of GameAct.Act1_LandGrab: 2  # Small core fleet
+    of GameAct.Act2_RisingTensions: 4  # Expanding fleet
+    of GameAct.Act3_TotalWar: 8  # Major battle fleet
+    of GameAct.Act4_Endgame: 12  # Massive endgame fleet
+
+  if totalCapitalShips < targetCapitalShips:
+    # Choose capital ship type based on CST level and personality
+    let (capitalClass, capitalCost) =
+      if cstLevel >= 5 and personality.aggression > 0.7:
+        (ShipClass.Dreadnought, 180)  # Aggressive: DNs for firepower
+      elif cstLevel >= 4:
+        (ShipClass.Battleship, 120)  # Standard: BBs for balance
+      else:
+        (ShipClass.Battlecruiser, 80)  # Early: BCs for mobility
+
+    let req = BuildRequirement(
+      requirementType: RequirementType.OffensivePrep,
+      priority: RequirementPriority.High,
+      shipClass: some(capitalClass),
+      quantity: targetCapitalShips - totalCapitalShips,
+      buildObjective: BuildObjective.Military,
+      targetSystem: none(SystemId),
+      estimatedCost: capitalCost * (targetCapitalShips - totalCapitalShips),
+      reason: &"Capital ship battle line (have {totalCapitalShips}/{targetCapitalShips})"
+    )
+    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x {capitalClass} ({req.estimatedCost}PP) - {req.reason}")
+    result.add(req)
+
+  # =============================================================================
+  # GROUND UNITS (armies, marines, shields, batteries)
+  # =============================================================================
+  # Count existing ground forces
+  var totalArmies = 0
+  var totalMarines = 0  # Marines at colonies (not loaded on transports)
+  var totalGroundBatteries = 0
+  var shieldedColonies = 0
+
+  for colony in filtered.ownColonies:
+    totalArmies += colony.armies
+    totalMarines += colony.marines  # Colony-based marines
+    totalGroundBatteries += colony.groundBatteries
+    if colony.planetaryShieldLevel > 0:
+      shieldedColonies += 1
+
+  # Count loaded marines on transports
+  var loadedMarines = 0
+  for fleet in filtered.ownFleets:
+    for spaceLiftShip in fleet.spaceLiftShips:
+      if spaceLiftShip.cargo.cargoType == CargoType.Marines:
+        loadedMarines += spaceLiftShip.cargo.quantity
+
+  let totalMarinesAll = totalMarines + loadedMarines  # Total marines (colony + loaded)
+
+  # Planetary shields for high-value colonies (homeworld + major systems)
+  let highValueColonies = filtered.ownColonies.filterIt(
+    it.systemId == controller.homeworld or it.populationUnits >= 10
+  )
+
+  let targetShields = highValueColonies.len
+  if shieldedColonies < targetShields:
+    let req = BuildRequirement(
+      requirementType: RequirementType.Infrastructure,
+      priority: RequirementPriority.Medium,
+      shipClass: none(ShipClass),
+      quantity: targetShields - shieldedColonies,
+      buildObjective: BuildObjective.Defense,
+      targetSystem: none(SystemId),
+      estimatedCost: 50 * (targetShields - shieldedColonies),
+      reason: &"Planetary shields for high-value colonies (have {shieldedColonies}/{targetShields})"
+    )
+    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
+    result.add(req)
+
+  # Ground batteries for colony defense
+  let targetBatteries = filtered.ownColonies.len * 3  # 3 batteries per colony baseline
+  if totalGroundBatteries < targetBatteries:
+    let req = BuildRequirement(
+      requirementType: RequirementType.Infrastructure,
+      priority: RequirementPriority.Low,
+      shipClass: none(ShipClass),
+      quantity: targetBatteries - totalGroundBatteries,
+      buildObjective: BuildObjective.Defense,
+      targetSystem: none(SystemId),
+      estimatedCost: 5 * (targetBatteries - totalGroundBatteries),  # Batteries are cheap
+      reason: &"Ground batteries for colony defense (have {totalGroundBatteries}/{targetBatteries})"
+    )
+    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x GroundBattery ({req.estimatedCost}PP) - {req.reason}")
+    result.add(req)
+
+  # Armies for colony defense
+  let targetArmies = filtered.ownColonies.len * 2  # 2 armies per colony baseline
+  if totalArmies < targetArmies:
+    let req = BuildRequirement(
+      requirementType: RequirementType.DefenseGap,
+      priority: RequirementPriority.Low,
+      shipClass: none(ShipClass),
+      quantity: targetArmies - totalArmies,
+      buildObjective: BuildObjective.Defense,
+      targetSystem: none(SystemId),
+      estimatedCost: 10 * (targetArmies - totalArmies),
+      reason: &"Ground armies for colony defense (have {totalArmies}/{targetArmies})"
+    )
+    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Army ({req.estimatedCost}PP) - {req.reason}")
+    result.add(req)
+
+  # Marines for offensive operations (if aggressive and have transports)
+  if personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions:
+    # Count transports
+    var transportCount = 0
+    for fleet in filtered.ownFleets:
+      transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
+
+    if transportCount > 0:
+      let targetMarines = transportCount * 1  # 1 MD per transport (full capacity)
+      if totalMarinesAll < targetMarines:
+        let req = BuildRequirement(
+          requirementType: RequirementType.OffensivePrep,
+          priority: RequirementPriority.Low,
+          shipClass: none(ShipClass),
+          quantity: targetMarines - totalMarinesAll,
+          buildObjective: BuildObjective.Military,
+          targetSystem: none(SystemId),
+          estimatedCost: 15 * (targetMarines - totalMarinesAll),
+          reason: &"Marines for invasion operations (have {totalMarinesAll}/{targetMarines})"
+        )
+        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Marines ({req.estimatedCost}PP) - {req.reason}")
+        result.add(req)
 
   # =============================================================================
   # RAIDERS (for harassment)
@@ -552,7 +707,7 @@ proc assessStrategicAssets*(
       let targetRaiders = 2  # Small raider force
 
       if raiderCount < targetRaiders:
-        result.add(BuildRequirement(
+        let req = BuildRequirement(
           requirementType: RequirementType.StrategicAsset,
           priority: RequirementPriority.Low,
           shipClass: some(ShipClass.Raider),
@@ -561,7 +716,9 @@ proc assessStrategicAssets*(
           targetSystem: none(SystemId),
           estimatedCost: 60 * (targetRaiders - raiderCount),
           reason: &"Raider harassment force (have {raiderCount}/{targetRaiders})"
-        ))
+        )
+        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Raider ({req.estimatedCost}PP) - {req.reason}")
+        result.add(req)
 
 # =============================================================================
 # Requirement Generation
@@ -630,9 +787,95 @@ proc generateBuildRequirements*(
     criticalCount: requirements.countIt(it.priority == RequirementPriority.Critical),
     highCount: requirements.countIt(it.priority == RequirementPriority.High),
     generatedTurn: filtered.turn,
-    act: currentAct
+    act: currentAct,
+    iteration: 0  # Initial requirements (not reprioritized)
   )
 
   logInfo(LogCategory.lcAI,
           &"Admiral generated {requirements.len} build requirements " &
           &"(Critical={result.criticalCount}, High={result.highCount}, Total={result.totalEstimatedCost}PP)")
+
+proc reprioritizeRequirements*(
+  originalRequirements: BuildRequirements,
+  cfoFeedback: CFOFeedback
+): BuildRequirements =
+  ## Admiral reprioritizes requirements based on CFO feedback
+  ##
+  ## Strategy:
+  ## 1. Start with unfulfilled requirements
+  ## 2. Downgrade priorities of less critical items to fit within budget
+  ## 3. Focus on absolute essentials (Critical → High)
+  ##
+  ## This creates a tighter, more affordable requirements list
+
+  const MAX_ITERATIONS = 3  # Prevent infinite loops
+
+  if originalRequirements.iteration >= MAX_ITERATIONS:
+    logWarn(LogCategory.lcAI,
+            &"Admiral reprioritization limit reached ({MAX_ITERATIONS} iterations). " &
+            &"Accepting unfulfilled requirements.")
+    return originalRequirements
+
+  # If everything was fulfilled OR nothing was unfulfilled, no need to reprioritize
+  if cfoFeedback.unfulfilledRequirements.len == 0:
+    return originalRequirements
+
+  logInfo(LogCategory.lcAI,
+          &"Admiral reprioritizing {cfoFeedback.unfulfilledRequirements.len} unfulfilled requirements " &
+          &"(iteration {originalRequirements.iteration + 1}, shortfall: {cfoFeedback.totalUnfulfilledCost}PP)")
+
+  # Strategy: Keep only Critical requirements, downgrade High→Medium, Medium→Low
+  var reprioritized: seq[BuildRequirement] = @[]
+
+  # Add all fulfilled requirements (these were already affordable)
+  reprioritized.add(cfoFeedback.fulfilledRequirements)
+
+  # Reprioritize unfulfilled requirements
+  for req in cfoFeedback.unfulfilledRequirements:
+    var adjustedReq = req
+
+    case req.priority
+    of RequirementPriority.Critical:
+      # Keep Critical as-is (absolute essentials)
+      adjustedReq.priority = RequirementPriority.Critical
+    of RequirementPriority.High:
+      # Downgrade High → Medium (important but not critical)
+      adjustedReq.priority = RequirementPriority.Medium
+      logDebug(LogCategory.lcAI,
+               &"Admiral: Downgrading '{req.reason}' (High → Medium)")
+    of RequirementPriority.Medium:
+      # Downgrade Medium → Low (nice-to-have)
+      adjustedReq.priority = RequirementPriority.Low
+      logDebug(LogCategory.lcAI,
+               &"Admiral: Downgrading '{req.reason}' (Medium → Low)")
+    of RequirementPriority.Low:
+      # Downgrade Low → Deferred (skip this round)
+      adjustedReq.priority = RequirementPriority.Deferred
+      logDebug(LogCategory.lcAI,
+               &"Admiral: Deferring '{req.reason}' (Low → Deferred)")
+    of RequirementPriority.Deferred:
+      # Already deferred, keep as deferred
+      adjustedReq.priority = RequirementPriority.Deferred
+
+    reprioritized.add(adjustedReq)
+
+  # Re-sort by new priorities
+  reprioritized.sort(proc(a, b: BuildRequirement): int =
+    if a.priority < b.priority: 1  # Reverse: Higher priority first
+    elif a.priority > b.priority: -1
+    else: 0
+  )
+
+  result = BuildRequirements(
+    requirements: reprioritized,
+    totalEstimatedCost: reprioritized.mapIt(it.estimatedCost).foldl(a + b, 0),
+    criticalCount: reprioritized.countIt(it.priority == RequirementPriority.Critical),
+    highCount: reprioritized.countIt(it.priority == RequirementPriority.High),
+    generatedTurn: originalRequirements.generatedTurn,
+    act: originalRequirements.act,
+    iteration: originalRequirements.iteration + 1
+  )
+
+  logInfo(LogCategory.lcAI,
+          &"Admiral reprioritized requirements: {result.requirements.len} total " &
+          &"(Critical={result.criticalCount}, High={result.highCount}, iteration={result.iteration})")

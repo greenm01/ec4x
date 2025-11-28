@@ -1104,12 +1104,23 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # 3.1. PHASE 3: Process Admiral Requirements FIRST (before colony loop)
   # Admiral requirements have absolute priority (Critical > High > Medium)
   # This ensures tactical needs drive production instead of hardcoded thresholds
+  # Track CFO feedback for Admiral-CFO feedback loop
+  var cfoFeedback = CFOFeedback(
+    fulfilledRequirements: @[],
+    unfulfilledRequirements: @[],
+    deferredRequirements: @[],
+    totalBudgetAvailable: availableBudget,
+    totalBudgetSpent: 0,
+    totalUnfulfilledCost: 0
+  )
+
   if admiralRequirements.isSome:
     let reqs = admiralRequirements.get()
     for req in reqs.requirements:
       # Process requirements in priority order (already sorted by Admiral)
       # Skip Deferred requirements (low urgency)
       if req.priority == RequirementPriority.Deferred:
+        cfoFeedback.deferredRequirements.add(req)
         continue
 
       # Find best colony to build (prefer target system if specified)
@@ -1133,6 +1144,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
         logWarn(LogCategory.lcAI,
                 &"{controller.houseId} Admiral requirement cannot be fulfilled: " &
                 &"no colonies with shipyard/spaceport (need {req.quantity}× {req.shipClass.get()})")
+        cfoFeedback.unfulfilledRequirements.add(req)
+        cfoFeedback.totalUnfulfilledCost += req.estimatedCost
         continue
 
       # Try to allocate budget for this requirement
@@ -1153,6 +1166,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
             industrialUnits: 0
           ))
           tracker.recordSpending(req.buildObjective, totalCost)
+          cfoFeedback.fulfilledRequirements.add(req)
+          cfoFeedback.totalBudgetSpent += totalCost
 
           logInfo(LogCategory.lcAI,
                   &"{controller.houseId} Fulfilled Admiral requirement: " &
@@ -1160,6 +1175,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                   &"(priority={req.priority}, cost={totalCost}PP, reason={req.reason})")
         else:
           # Insufficient budget
+          cfoFeedback.unfulfilledRequirements.add(req)
+          cfoFeedback.totalUnfulfilledCost += totalCost
           logWarn(LogCategory.lcAI,
                   &"{controller.houseId} Admiral requirement unfulfilled (insufficient {req.buildObjective} budget): " &
                   &"{req.quantity}× {shipClass} (need {totalCost}PP)")
@@ -1309,3 +1326,11 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Generate and log budget report for transparency
   let report = generateBudgetReport(tracker, filtered.turn)
   logBudgetReport(report)
+
+  # Store CFO feedback for Admiral-CFO feedback loop
+  if admiralRequirements.isSome:
+    controller.cfoFeedback = some(cfoFeedback)
+    if cfoFeedback.unfulfilledRequirements.len > 0:
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} CFO Feedback: {cfoFeedback.fulfilledRequirements.len} fulfilled, " &
+              &"{cfoFeedback.unfulfilledRequirements.len} unfulfilled (shortfall: {cfoFeedback.totalUnfulfilledCost}PP)")
