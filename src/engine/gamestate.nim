@@ -196,6 +196,17 @@ type
     lastTurnResearchSRP*: int  # Science RP earned last turn
     lastTurnResearchTRP*: int  # Total Technology RP earned last turn (sum of all fields)
 
+    # Espionage tracking (for diagnostics)
+    lastTurnEspionageAttempts*: int  # Total espionage attempts last turn
+    lastTurnEspionageSuccess*: int   # Successful operations
+    lastTurnEspionageDetected*: int  # Detected by counter-intel
+    lastTurnTechThefts*: int         # Tech theft operations
+    lastTurnSabotage*: int           # Sabotage operations (low + high)
+    lastTurnAssassinations*: int     # Assassination attempts
+    lastTurnCyberAttacks*: int       # Cyber attacks on starbases
+    lastTurnEBPSpent*: int           # EBP spent on operations
+    lastTurnCIPSpent*: int           # CIP spent on counter-intel
+
     # Safe retreat routes (automatic seek-home behavior)
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference
