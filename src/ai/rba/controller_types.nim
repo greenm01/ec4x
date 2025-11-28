@@ -35,6 +35,22 @@ type
     highCount*: int
     generatedTurn*: int
     act*: GameAct
+    iteration*: int  # Feedback loop iteration (0 = initial, 1+ = reprioritized)
+
+  RequirementFulfillmentStatus* {.pure.} = enum
+    ## Tracks whether a requirement was fulfilled by CFO
+    Fulfilled,    # CFO had budget and fulfilled the requirement
+    Unfulfilled,  # CFO couldn't afford this requirement
+    Deferred      # Low priority, intentionally skipped
+
+  CFOFeedback* = object
+    ## CFO's feedback to Admiral on which requirements were fulfilled
+    fulfilledRequirements*: seq[BuildRequirement]
+    unfulfilledRequirements*: seq[BuildRequirement]
+    deferredRequirements*: seq[BuildRequirement]
+    totalBudgetAvailable*: int
+    totalBudgetSpent*: int
+    totalUnfulfilledCost*: int
 
 type
   ReconUpdate* = object
@@ -55,3 +71,4 @@ type
     standingOrders*: Table[FleetId, StandingOrder]  # QoL: Standing orders for routine tasks
     pendingIntelUpdates*: seq[ReconUpdate]  # Reconnaissance missions scheduled for intel gathering
     admiralRequirements*: Option[BuildRequirements]  # Phase 3: Admiral build requirements
+    cfoFeedback*: Option[CFOFeedback]  # Phase 3: CFO feedback on requirement fulfillment
