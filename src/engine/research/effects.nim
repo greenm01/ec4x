@@ -2,14 +2,19 @@
 ##
 ## Tech level effects on game systems per economy.md:4.0
 ##
-## Tech effects:
+## Tech effects implemented here:
 ## - WEP: +10% AS/DS per level (combat)
 ## - EL: +5% GCO per level (economy)
-## - CST: +1 squadron limit per level (fleet capacity)
-## - ELI: Detection bonus (scouts, raiders)
-## - TER: Terraforming speed and cost
-## - SLD: Planetary shields
-## - CIC: Counter-intelligence
+## - TER: Terraforming cost and requirements
+##
+## Tech effects implemented elsewhere:
+## - CST: Squadron limit (gamestate.nim), capacity bonus (to be implemented)
+## - ELI: Detection system (intelligence/detection.nim)
+## - CLK: Cloaking system (intelligence/detection.nim)
+## - SLD: Planetary shields (combat/ground.nim)
+## - CIC: Counter-intelligence (espionage/types.nim)
+## - FD: Fighter capacity multiplier (combat/fighter_capacity.nim)
+## - ACO: Carrier capacity (to be implemented)
 
 import ../../common/types/tech
 
@@ -47,33 +52,19 @@ proc applyDefenseBonus*(baseDS: int, wepLevel: int): int =
 
 ## Construction Tech Effects (economy.md:4.5)
 
-proc getSquadronLimit*(cstLevel: int): int =
-  ## Get squadron limit from Construction tech
-  ## Per economy.md:4.5: Base + tech level
-  ##
-  ## TODO: Define base squadron limit
-  ## Placeholder: 10 + level
-  result = 10 + cstLevel
-
-proc getConstructionSpeedBonus*(cstLevel: int): float =
-  ## Get construction speed bonus
-  ## Higher CST = faster ship/building construction
-  ##
-  ## TODO: Define proper CST speed bonus
-  result = float(cstLevel) * 0.05  # +5% per level
+proc getConstructionCapacityMultiplier*(cstLevel: int): float =
+  ## Get production capacity multiplier from CST tech
+  ## Per economy.md:4.5: +10% per level (construction capacity increases)
+  ## This affects GCO calculation by boosting industrial output
+  result = 1.0 + (float(cstLevel - 1) * 0.10)
 
 ## Electronic Intelligence Effects (economy.md:4.8)
-
-proc getELIDetectionBonus*(eliLevel: int): int =
-  ## Get detection bonus for scouts
-  ## Per economy.md:4.8
-  ##
-  ## NOTE: Full ELI detection system implemented in intelligence/detection.nim
-  ## This function returns basic level for simple calculations
-  result = eliLevel
+## NOTE: Full ELI detection system implemented in intelligence/detection.nim
+## This module does not provide ELI functions - use intelligence/detection.nim
 
 proc getELICounterCloakBonus*(eliLevel: int): int =
   ## Get bonus to detect cloaked raiders
+  ## Used for quick calculations where full detection system not needed
   result = eliLevel div 2  # +1 per 2 levels
 
 ## Terraforming Effects (economy.md:4.7)
@@ -99,10 +90,10 @@ proc getTerraformingBaseCost*(currentClass: int): int =
   else: 0     # Already Eden or invalid
 
 proc getTerraformingSpeed*(terLevel: int): int =
-  ## Get turns required for terraforming
-  ## Higher TER = faster terraforming
-  ## Per spec: 10 - TER_level turns (minimum 1)
-  result = max(1, 10 - terLevel)
+  ## Terraforming completes instantly (1 turn)
+  ## Per new time narrative: turns represent variable time periods (1-15 years)
+  ## TER level affects cost only, not duration
+  result = 1  # Always instant
 
 proc canTerraform*(currentClass: int, terLevel: int): bool =
   ## Check if colony can be terraformed with current TER level
@@ -113,44 +104,42 @@ proc canTerraform*(currentClass: int, terLevel: int): bool =
   return terLevel >= targetClass
 
 ## Cloaking Effects (economy.md:4.9)
-
-proc getCloakingDetectionDifficulty*(clkLevel: int): int =
-  ## Get detection difficulty for cloaked ships
-  ## Higher CLK = harder to detect
-  ##
-  ## NOTE: Full cloaking system implemented in intelligence/detection.nim
-  ## Formula: d20 + ELI_total vs (10 + CLK_level)
-  result = 10 + clkLevel
+## NOTE: Full cloaking system implemented in intelligence/detection.nim
+## Use detection.nim for CLK detection difficulty calculations
 
 ## Planetary Shields Effects (economy.md:4.10)
-
-proc getPlanetaryShieldStrength*(sldLevel: int): int =
-  ## Get planetary shield strength
-  ## Reduces bombardment damage
-  ##
-  ## TODO: Define proper shield mechanics
-  result = sldLevel * 10
+## NOTE: Full shield system implemented in combat/ground.nim
+## Use gamestate shield lookup functions for shield block percentages
 
 ## Counter-Intelligence Effects (economy.md:4.11)
-
-proc getCICCounterEspionageBonus*(cicLevel: int): int =
-  ## Get bonus to counter espionage attempts
-  ##
-  ## TODO: Define proper CIC mechanics
-  result = cicLevel
+## NOTE: Full CIC system implemented in espionage/types.nim
+## Use espionage detection thresholds for CIC mechanics
 
 ## Fighter Doctrine Effects (economy.md:4.12)
+## NOTE: Fighter capacity multiplier system implemented in combat/fighter_capacity.nim
+## Use getFighterDoctrineMultiplier() for capacity calculations
 
-proc getFighterDoctrineBonus*(fdLevel: int): float =
-  ## Get fighter effectiveness bonus
-  ##
-  ## TODO: Define proper FD mechanics
-  result = float(fdLevel) * 0.05
+## Advanced Carrier Operations Effects (economy.md:4.13)
+## NOTE: Full ACO carrier capacity system implemented in squadron.nim
+## Use squadron.getCarrierCapacity() for capacity calculations
+##
+## ACO capacity progression:
+## - ACO I: CV=3FS, CX=5FS (starting tech)
+## - ACO II: CV=4FS, CX=6FS
+## - ACO III: CV=5FS, CX=8FS
 
-## Carrier Operations Effects (economy.md:4.13)
+proc getCarrierCapacityCV*(acoLevel: int): int =
+  ## Get Carrier (CV) fighter capacity for ACO tech level
+  ## Per economy.md:4.13
+  case acoLevel
+  of 1: 3   # ACO I
+  of 2: 4   # ACO II
+  else: 5   # ACO III+
 
-proc getCarrierCapacityBonus*(acoLevel: int): int =
-  ## Get bonus fighter capacity for carriers
-  ##
-  ## TODO: Define proper ACO mechanics
-  result = acoLevel * 2  # +2 fighters per level
+proc getCarrierCapacityCX*(acoLevel: int): int =
+  ## Get Super Carrier (CX) fighter capacity for ACO tech level
+  ## Per economy.md:4.13
+  case acoLevel
+  of 1: 5   # ACO I
+  of 2: 6   # ACO II
+  else: 8   # ACO III+

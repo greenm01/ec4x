@@ -188,15 +188,22 @@ proc getBuildingCost*(buildingType: string): int =
   getBuildingConfig(buildingType).cost
 
 proc getBuildingTime*(buildingType: string): int =
-  ## Get construction time for building type from config
-  ## REFACTORED: Was 18 lines, now single lookup
-  getBuildingConfig(buildingType).time
+  ## Building construction completes instantly (1 turn)
+  ## Per new time narrative: turns represent variable time periods (1-15 years)
+  ## Multi-turn construction would cause severe balance issues across map sizes
+  return 1  # Always instant
 
 proc requiresSpaceport*(buildingType: string): bool =
   ## Check if building requires a spaceport
   ## REFACTORED: Was 9 lines, now single lookup
   getBuildingConfig(buildingType).requiresSpaceport
 
+proc getShipCSTRequirement*(shipClass: ShipClass): int =
+  ## Get CST tech level required to build ship class
+  ## Per economy.md:4.5 - CST unlocks new ship classes
+  ## Returns 0 for ground units (no CST requirement)
+  getShipField(shipClass, tech_level, globalShipsConfig)
+
 ## Export for use in construction.nim
-export getShipConstructionCost, getShipBaseBuildTime
+export getShipConstructionCost, getShipBaseBuildTime, getShipCSTRequirement
 export getBuildingCost, getBuildingTime, requiresSpaceport

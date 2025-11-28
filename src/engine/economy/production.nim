@@ -100,11 +100,12 @@ proc getProductivityGrowth*(taxRate: int): float =
   ## - Tax 0% = +10% growth
   result = (50.0 - float(taxRate)) / 500.0
 
-proc calculateGrossOutput*(colony: Colony, elTechLevel: int): int =
+proc calculateGrossOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int = 1): int =
   ## Calculate GCO (Gross Colony Output) for colony
-  ## Per economy.md:3.1
+  ## Per economy.md:3.1 and 4.5
   ##
-  ## Formula: GCO = (PU × RAW_INDEX) + (IU × EL_MOD × (1 + PROD_GROWTH))
+  ## Formula: GCO = (PU × RAW_INDEX) + (IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH))
+  ## CST_MOD: Construction capacity multiplier per economy.md:4.5 (+10% per level)
 
   # Population production component
   let rawIndex = getRawIndex(colony.planetClass, colony.resources)
@@ -112,8 +113,9 @@ proc calculateGrossOutput*(colony: Colony, elTechLevel: int): int =
 
   # Industrial production component
   let elMod = getEconomicLevelModifier(elTechLevel)
+  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10)  # CST capacity bonus
   let prodGrowth = getProductivityGrowth(colony.taxRate)
-  let industrialProd = float(colony.industrial.units) * elMod * (1.0 + prodGrowth)
+  let industrialProd = float(colony.industrial.units) * elMod * cstMod * (1.0 + prodGrowth)
 
   # Total GCO
   result = int(populationProd + industrialProd)
@@ -126,9 +128,9 @@ proc calculateNetValue*(grossOutput: int, taxRate: int): int =
   ## Use ceil() to round up per specification
   result = int(ceil(float(grossOutput) * (float(taxRate) / 100.0)))
 
-proc calculateProductionOutput*(colony: Colony, elTechLevel: int): ProductionOutput =
+proc calculateProductionOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int = 1): ProductionOutput =
   ## Calculate full production output for colony
-  let gco = calculateGrossOutput(colony, elTechLevel)
+  let gco = calculateGrossOutput(colony, elTechLevel, cstTechLevel)
   let ncv = calculateNetValue(gco, colony.taxRate)
 
   # Calculate component breakdown
@@ -136,8 +138,9 @@ proc calculateProductionOutput*(colony: Colony, elTechLevel: int): ProductionOut
   let popProd = int(float(colony.populationUnits) * rawIndex)
 
   let elMod = getEconomicLevelModifier(elTechLevel)
+  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10)  # CST capacity bonus
   let prodGrowth = getProductivityGrowth(colony.taxRate)
-  let indProd = int(float(colony.industrial.units) * elMod * (1.0 + prodGrowth))
+  let indProd = int(float(colony.industrial.units) * elMod * cstMod * (1.0 + prodGrowth))
 
   result = ProductionOutput(
     grossOutput: gco,

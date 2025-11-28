@@ -689,7 +689,7 @@ proc calculateTransitTime(state: GameState, sourceSystem: SystemId, destSystem: 
 
 proc calculateTransferCost(planetClass: PlanetClass, ptuAmount: int, jumps: int): int =
   ## Calculate Space Guild transfer cost per config/population.toml
-  ## Formula: base_cost_per_ptu × ptu_amount × (1 + (jumps - 1) × 0.20)
+  ## Formula: base_cost_per_ptu × ptu_amount × (1 + jumps × 0.20)
   ## Source: docs/specs/economy.md Section 3.7, config/population.toml [transfer_costs]
 
   # Base cost per PTU by planet class (config/population.toml)
@@ -702,10 +702,10 @@ proc calculateTransferCost(planetClass: PlanetClass, ptuAmount: int, jumps: int)
     of PlanetClass.Desolate: 12
     of PlanetClass.Extreme: 15
 
-  # Distance modifier: +20% per jump beyond first (config/population.toml [transfer_modifiers])
-  # First jump has no modifier, subsequent jumps add 20% each
+  # Distance modifier: +20% per jump (config/population.toml [transfer_modifiers])
+  # Per spec: "Base × (1 + 0.2 × jumps)" where jumps includes the first jump
   let distanceMultiplier = if jumps > 0:
-    1.0 + (float(jumps - 1) * 0.20)
+    1.0 + (float(jumps) * 0.20)
   else:
     1.0  # Same system, no distance penalty
 
@@ -753,6 +753,13 @@ proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, even
     if sourceColony.souls < soulsToTransfer:
       echo "      Transfer failed: source colony ", transfer.sourceColony, " has only ", sourceColony.souls,
            " souls (needs ", soulsToTransfer, " for ", transfer.ptuAmount, " PTU)"
+      continue
+
+    # Check concurrent transfer limit (max 5 per house per config/population.toml)
+    let activeTransfers = state.populationInTransit.filterIt(it.houseId == packet.houseId)
+    if activeTransfers.len >= globalPopulationConfig.max_concurrent_transfers:
+      echo "      Transfer rejected: Maximum ", globalPopulationConfig.max_concurrent_transfers,
+           " concurrent transfers reached (house has ", activeTransfers.len, " active)"
       continue
 
     # Calculate transit time and jump distance
@@ -1843,6 +1850,11 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
   for houseId, house in state.houses:
     houseTechLevels[houseId] = house.techTree.levels.economicLevel  # EL = economicLevel (confusing naming)
 
+  # Build house CST tech levels (Construction = constructionTech field)
+  var houseCSTTechLevels = initTable[HouseId, int]()
+  for houseId, house in state.houses:
+    houseCSTTechLevels[houseId] = house.techTree.levels.constructionTech
+
   # Build house treasuries
   var houseTreasuries = initTable[HouseId, int]()
   for houseId, house in state.houses:
@@ -1853,6 +1865,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     coloniesSeqIncome,
     houseTaxPolicies,
     houseTechLevels,
+    houseCSTTechLevels,
     houseTreasuries
   )
 
