@@ -165,19 +165,26 @@ proc generateCounterAttackOrders*(
     # if not isEnemy:
     #   continue  # Skip allies/neutrals
 
-    # TODO: Check for fleet presence when we have better fleet intel tracking
-    # For MVP, consider all enemy colonies as potential targets
-    # Fleet defender detection would require scout encounters or full fog-of-war visibility
+    # Check for fleet presence using fleet movement history
+    # This aggregates all sightings (scouts, combat, any observation)
+    var hasDefenders = false
+    for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
+      # Check if this is an enemy fleet at our target colony
+      if history.owner == colonyReport.targetOwner and history.lastKnownLocation == systemId:
+        hasDefenders = true
+        break
 
-    # Priority based on industry value
-    var priority = 100.0
-    priority += colonyReport.industry.float * 2.0
+    # Only target undefended colonies
+    if not hasDefenders:
+      # Undefended colony - high priority target
+      var priority = 100.0
+      priority += colonyReport.industry.float * 2.0
 
-    vulnerableTargets.add(VulnerableTarget(
-      systemId: systemId,
-      enemyHouse: colonyReport.targetOwner,
-      priority: priority
-    ))
+      vulnerableTargets.add(VulnerableTarget(
+        systemId: systemId,
+        enemyHouse: colonyReport.targetOwner,
+        priority: priority
+      ))
 
   if vulnerableTargets.len == 0:
     return result
