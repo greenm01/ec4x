@@ -194,39 +194,107 @@ proc calculateGapSeverity(
   colonyPriority: float,
   threat: float,
   currentDefenders: int,
-  nearestDefenderDistance: int
+  nearestDefenderDistance: int,
+  currentAct: GameAct,
+  riskTolerance: float
 ): RequirementPriority =
-  ## Calculate gap severity based on multiple factors
+  ## Calculate gap severity based on Act objectives + personality modulation
+  ##
+  ## Design Philosophy:
+  ## - Acts define WHAT strategic objectives matter (expansion, war, etc.)
+  ## - Personality defines HOW willing you are to take risks within that objective
+  ##
+  ## Act 1 (Land Grab): Everyone prioritizes expansion, but...
+  ##   - High risk (0.7+): Pure expansion, no colony defense at all
+  ##   - Medium risk (0.4-0.6): Homeworld-only, accept exposed colonies
+  ##   - Low risk (<0.4): Defend as you expand, slower but safer
+  ##
+  ## Act 2+ (Rising Tensions/War): Defense becomes critical, but...
+  ##   - High risk: Still aggressive, only defend high-value/threatened
+  ##   - Medium risk: Balanced defense, standard thresholds
+  ##   - Low risk: Cautious, defend everything proactively
   let config = globalRBAConfig.admiral
 
-  # Homeworld undefended = Critical
+  # Homeworld always protected (all acts, all personalities)
   if colonyPriority > 500.0 and currentDefenders == 0:
     return RequirementPriority.Critical
 
-  # High-value colony (50+ industry) undefended = High
+  # Act 1: Expansion is primary objective - personality modulates defense willingness
+  if currentAct == GameAct.Act1_LandGrab:
+    # High risk: Pure expansion focus, skip all colony defense
+    if riskTolerance >= 0.7:
+      return RequirementPriority.Deferred
+
+    # Medium risk: Homeworld-only, colonies fend for themselves
+    if riskTolerance >= 0.4:
+      return RequirementPriority.Deferred
+
+    # Low risk: Cautious expansion - defend colonies as you claim them
+    # (Falls through to Act 2+ logic below with lower thresholds)
+
+  # Act 2+: Defense becomes critical strategic objective
+  # Acts 2-4 all prioritize defense, but personality modulates HOW defensive
+
+  # High-value colony (50+ industry) undefended - Act objective: Protect production
   if colonyPriority > config.high_priority_production_threshold.float and currentDefenders == 0:
-    return RequirementPriority.High
+    # Act says: High-value colonies MUST be defended
+    # Personality says: HOW urgent is this?
+    if riskTolerance >= 0.7:
+      return RequirementPriority.Medium  # Aggressive: "Eventually, sure"
+    else:
+      return RequirementPriority.High    # Cautious/Balanced: "Right now!"
 
-  # Active threat nearby = elevate priority
+  # Active threat nearby - Act objective: Respond to enemy movements
   if threat > 0.5 and currentDefenders == 0:
-    return RequirementPriority.High
+    # Act says: Enemies nearby = defend
+    # Personality says: How much risk do I accept?
+    if riskTolerance >= 0.7:
+      return RequirementPriority.Medium  # Aggressive: "I'll counter-attack instead"
+    else:
+      return RequirementPriority.High    # Cautious/Balanced: "Defend immediately!"
   elif threat > 0.3 and currentDefenders == 0:
-    return RequirementPriority.Medium
+    if riskTolerance < 0.4:
+      return RequirementPriority.Medium  # Cautious: "Even minor threats matter"
+    else:
+      return RequirementPriority.Low     # Balanced/Aggressive: "Not urgent yet"
 
-  # Distant defender = lower priority
+  # Distant defender - Act objective: Coverage efficiency
   if nearestDefenderDistance > config.defense_gap_max_distance:
     if currentDefenders == 0:
-      return RequirementPriority.Medium
+      if riskTolerance < 0.4:
+        return RequirementPriority.Medium  # Cautious: "Too far, build local"
+      else:
+        return RequirementPriority.Low     # Balanced/Aggressive: "Acceptable gap"
     else:
       return RequirementPriority.Low
 
-  # Standard undefended colony
+  # Standard undefended colony - Act objective varies by phase
+  # Act 2: Preparation - defense matters but not urgent
+  # Act 3/4: War - all colonies should be defended
   if currentDefenders == 0:
-    return RequirementPriority.Medium
+    if currentAct == GameAct.Act2_RisingTensions:
+      # Act 2: Prepare defenses, not urgent yet
+      if riskTolerance < 0.4:
+        return RequirementPriority.Medium  # Cautious: "Prepare now"
+      elif riskTolerance < 0.7:
+        return RequirementPriority.Low     # Balanced: "Eventually"
+      else:
+        return RequirementPriority.Deferred  # Aggressive: "Focus on offense"
+    else:
+      # Act 3/4: War - defend everything (personality modulates priority)
+      if riskTolerance < 0.4:
+        return RequirementPriority.High    # Cautious: "Critical in war!"
+      elif riskTolerance < 0.7:
+        return RequirementPriority.Medium  # Balanced: "Important"
+      else:
+        return RequirementPriority.Low     # Aggressive: "Meh, offense > defense"
 
-  # Under-defended (threat > defenders)
+  # Under-defended (threat > defenders) - personality-scaled
   if threat > currentDefenders.float * 0.3:
-    return RequirementPriority.Low
+    if riskTolerance < 0.4:
+      return RequirementPriority.Low     # Cautious: "Reinforce proactively"
+    else:
+      return RequirementPriority.Deferred  # Balanced/Aggressive: "Acceptable risk"
 
   return RequirementPriority.Deferred
 
@@ -238,7 +306,8 @@ proc assessDefenseGaps*(
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
   defensiveAssignments: Table[FleetId, StandingOrder],
-  controller: AIController
+  controller: AIController,
+  currentAct: GameAct
 ): seq[DefenseGap] =
   ## Identify defense gaps with severity scoring
   result = @[]
@@ -267,9 +336,10 @@ proc assessDefenseGaps*(
       colony.systemId, controller
     ).turnsUndefended
 
-    # Calculate gap severity with escalation
+    # Calculate gap severity with escalation (personality-driven)
     let baseSeverity = calculateGapSeverity(
-      colonyPriority, threat, currentDefenders, nearestDefender.distance
+      colonyPriority, threat, currentDefenders, nearestDefender.distance,
+      currentAct, controller.personality.risk_tolerance
     )
     let severity = escalateSeverity(baseSeverity, turnsUndefended)
 
@@ -362,8 +432,8 @@ proc generateBuildRequirements*(
 ): BuildRequirements =
   ## Main entry point: Generate all build requirements from Admiral analysis
 
-  # Assess gaps
-  let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller)
+  # Assess gaps (personality-driven)
+  let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct)
   let reconGaps = assessReconnaissanceGaps(filtered, controller, currentAct)
   let offensiveNeeds = assessOffensiveReadiness(filtered, analyses, controller, currentAct)
 
