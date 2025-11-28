@@ -129,8 +129,8 @@ tech_priority = 0.75
 [budget_act1_land_grab]
 expansion = 0.35
 defense = 0.10
-military = 0.25      # Increased from 0.10 to ensure adequate colony defense
-reconnaissance = 0.25 # Reduced from 0.40 (excessive for 5 scouts target)
+military = 0.20      # Increased from 0.10 to ensure adequate colony defense
+reconnaissance = 0.30 # Balanced to achieve 5-scout target (was 0.40, too high)
 special_units = 0.05
 technology = 0.00
 
