@@ -7,6 +7,7 @@ import ../../common/types/[core, tech, units]
 import ../../engine/[gamestate, fog_of_war, orders, logger, fleet]
 import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../engine/research/types as res_types
+import ../../engine/research/advancement  # For max tech level constants
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
 import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics, standing_orders_manager]
 import ./config  # RBA configuration system
@@ -43,9 +44,9 @@ proc calculateProjectedTreasury*(filtered: FilteredGameState): int =
            &"income≈{expectedIncome}PP, maintenance≈{expectedMaintenance}PP, " &
            &"projected={result}PP")
 
-proc generateResearchAllocation*(controller: AIController, filtered: FilteredGameState): res_types.ResearchAllocation =
+proc generateResearchAllocation*(controller: AIController, filtered: FilteredGameState, researchBudget: int): res_types.ResearchAllocation =
   ## Generate research allocation based on personality
-  ## Allocates PP to research based on total production and tech priority
+  ## Uses pre-calculated research budget from projected treasury (not raw treasury)
   result = res_types.ResearchAllocation(
     economic: 0,
     science: 0,
@@ -53,18 +54,27 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
   )
 
   let p = controller.personality
-  let house = filtered.ownHouse
 
-  # Calculate research budget from treasury (not production)
-  # Research competes with builds for treasury resources
-  let researchBudget = int(float(house.treasury) * p.techPriority)
-
-  # DEBUG: Log research budget calculation
+  # DEBUG: Log research budget allocation
   logDebug(LogCategory.lcAI,
            &"{controller.houseId} Research Budget: {researchBudget}PP " &
-           &"(treasury={house.treasury}, techPriority={p.techPriority:.2f})")
+           &"(from projected treasury, techPriority={p.techPriority:.2f})")
 
   if researchBudget > 0:
+    # Get current tech levels to check for maxed EL/SL
+    let currentEL = filtered.ownHouse.techTree.levels.economicLevel
+    let currentSL = filtered.ownHouse.techTree.levels.scienceLevel
+
+    # Check if EL/SL are at maximum levels (caps from advancement.nim)
+    let elMaxed = currentEL >= maxEconomicLevel  # EL caps at 11
+    let slMaxed = currentSL >= maxScienceLevel   # SL caps at 8
+
+    # Log max level detection for diagnostics
+    if elMaxed or slMaxed:
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Tech caps reached - EL={currentEL}/{maxEconomicLevel} " &
+              &"(maxed={elMaxed}), SL={currentSL}/{maxScienceLevel} (maxed={slMaxed})")
+
     # Distribute research budget across EL/SL/TRP based on strategy
     if p.techPriority > 0.6:
       # Heavy research investment - balance across all three categories
@@ -104,6 +114,38 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
       let techBudget = researchBudget - result.economic - result.science
       result.technology[TechField.ConstructionTech] = techBudget div 2
       result.technology[TechField.WeaponsTech] = techBudget div 2
+
+    # REALLOCATION LOGIC: Redirect budget from maxed EL/SL to TRP
+    # This prevents AI from wasting RP on technologies that cannot advance
+    var redirectedBudget = 0
+
+    # If EL is maxed, redirect ERP to TRP (Construction priority)
+    if elMaxed and result.economic > 0:
+      redirectedBudget += result.economic
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Redirecting {result.economic}PP from maxed EL to TRP")
+      result.economic = 0
+
+    # If SL is maxed, redirect SRP to TRP (Weapons priority for aggressive, Construction otherwise)
+    if slMaxed and result.science > 0:
+      redirectedBudget += result.science
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Redirecting {result.science}PP from maxed SL to TRP")
+      result.science = 0
+
+    # Distribute redirected budget to TRP fields based on personality
+    if redirectedBudget > 0:
+      if p.aggression > 0.5:
+        # Aggressive: prioritize weapons and construction
+        result.technology[TechField.WeaponsTech] = result.technology.getOrDefault(TechField.WeaponsTech) + (redirectedBudget * 2 div 3)
+        result.technology[TechField.ConstructionTech] = result.technology.getOrDefault(TechField.ConstructionTech) + (redirectedBudget div 3)
+      else:
+        # Peaceful/Economic: prioritize construction and terraforming
+        result.technology[TechField.ConstructionTech] = result.technology.getOrDefault(TechField.ConstructionTech) + (redirectedBudget * 2 div 3)
+        result.technology[TechField.TerraformingTech] = result.technology.getOrDefault(TechField.TerraformingTech) + (redirectedBudget div 3)
+
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Redirected {redirectedBudget}PP total to TRP fields")
 
 proc calculateTotalCost(buildOrders: seq[BuildOrder]): int =
   ## Calculate total PP cost of all build orders
@@ -169,7 +211,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Fixed: Max 25% to research, min 75% for builds → scouts affordable
   let researchPct = min(p.techPriority * 0.30, globalRBAConfig.orders.research_max_percent)  # Scale down and cap
   let researchBudget = int(float(remainingTreasury) * researchPct)
-  result.researchAllocation = generateResearchAllocation(controller, filtered)
+  result.researchAllocation = generateResearchAllocation(controller, filtered, researchBudget)
   remainingTreasury -= researchBudget
   reservedBudgets["research"] = researchBudget
 
