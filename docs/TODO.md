@@ -7,6 +7,34 @@
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 
 **Recent:**
+- ✅ **Phase 2 RBA Unknown-Unknowns Testing - COMPLETE (2025-11-28)**
+  - ✅ **Unknown-Unknown #1: Espionage System Non-Functional**
+    - Problem: 0 espionage missions across all games despite AI generation
+    - Root Cause: Engine wasn't processing OrderPacket.espionageAction
+    - Solution: Extended simultaneous_espionage.nim with processEspionageActions()
+    - Result: 274 missions in Act 1 (35% success rate), espionage fully operational
+    - Files: `src/engine/resolution/simultaneous_espionage.nim`, `src/engine/resolve.nim`
+    - Commits: 6ef8f4f, 2b65f62
+  - ✅ **Unknown-Unknown #2: Insufficient Military Production / Undefended Colonies**
+    - Problem: 55.7% of colonies undefended by Turn 7 (0.83 ships/colony, need ≥1.0)
+    - Root Cause: 40% budget on reconnaissance (excessive for 5-scout target)
+    - Solution: Rebalanced Act 1 budget allocation (recon 40%→30%, military 10%→20%)
+    - Result: 27.0% undefended ✅ (<40% target), 5.0 scouts per house ✅ (5-7 target)
+    - Files: `config/rba.toml` (budget_act1_land_grab)
+    - Commits: 359c029, 8cd0834
+  - ✅ **Espionage Diagnostic Tracking**
+    - Added 9 lastTurn* fields to House type in gamestate.nim
+    - Instrumented processEspionageActions() to track all espionage activity
+    - Updated collectDiagnostics() to read House fields
+    - Files: `src/engine/gamestate.nim`, `tests/balance/diagnostics.nim`
+    - Commits: 2b65f62
+  - ✅ **Starting Prestige Adjustment**
+    - Increased from 50 → 100 to enable Act 1 espionage (threshold: 50)
+    - Files: `config/prestige.toml`
+    - Commits: 27ccfda
+  - **Known Issue:** Espionage action type tracking (spy_planet, hack_starbase, total_espionage) not populated in diagnostics
+  - **Balance Status:** Aggressive 38.5% (dominant), Balanced 27.1%, Economic 19.8%, Turtle 14.6%
+  - **Impact:** Act 1 RBA now achieves defense, scout, and espionage targets
 - ✅ **Simultaneous Order Resolution System - COMPLETE (2025-11-27)**
   - ✅ **Problem:** Sequential order processing created first-mover advantages
     - Hash table iteration order (`for houseId in state.houses.keys`) was non-deterministic
