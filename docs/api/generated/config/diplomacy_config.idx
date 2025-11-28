@@ -1,0 +1,8 @@
+nimTitle	diplomacy_config	config/diplomacy_config.html	module src/engine/config/diplomacy_config		0
+nim	PactViolationsConfig	config/diplomacy_config.html#PactViolationsConfig	object PactViolationsConfig		10
+nim	EspionageEffectsConfig	config/diplomacy_config.html#EspionageEffectsConfig	object EspionageEffectsConfig		17
+nim	DetectionConfig	config/diplomacy_config.html#DetectionConfig	object DetectionConfig		33
+nim	DiplomacyConfig	config/diplomacy_config.html#DiplomacyConfig	object DiplomacyConfig		36
+nim	loadDiplomacyConfig	config/diplomacy_config.html#loadDiplomacyConfig,string	proc loadDiplomacyConfig(configPath: string = "config/diplomacy.toml"): DiplomacyConfig		42
+nim	globalDiplomacyConfig	config/diplomacy_config.html#globalDiplomacyConfig	var globalDiplomacyConfig		56
+nim	reloadDiplomacyConfig	config/diplomacy_config.html#reloadDiplomacyConfig	proc reloadDiplomacyConfig()		60

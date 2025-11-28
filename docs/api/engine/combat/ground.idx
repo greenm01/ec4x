@@ -18,3 +18,6 @@ nim	conductBlitz	combat/ground.html#conductBlitz,seq[CombatSquadron],seq[GroundU
 nim	createGroundBattery	combat/ground.html#createGroundBattery,string,HouseId,int	proc createGroundBattery(id: string; owner: HouseId; techLevel: int = 1): GroundUnit		612
 nim	createArmy	combat/ground.html#createArmy,string,HouseId	proc createArmy(id: string; owner: HouseId): GroundUnit		633
 nim	createMarine	combat/ground.html#createMarine,string,HouseId	proc createMarine(id: string; owner: HouseId): GroundUnit		651
+nim	assembleDefendingForces	combat/ground.html#assembleDefendingForces,string,int,int,HouseId	proc assembleDefendingForces(systemId: string; armyCount: int; marineCount: int;\n                        owner: HouseId): seq[GroundUnit]		672
+nim	assemblePlanetaryDefense	combat/ground.html#assemblePlanetaryDefense,string,int,int,HouseId,int	proc assemblePlanetaryDefense(systemId: string; shieldLevel: int; batteryCount: int;\n                         owner: HouseId; constructionTechLevel: int): PlanetaryDefense		702
+nim	assembleAttackingForces	combat/ground.html#assembleAttackingForces,string,int,HouseId	proc assembleAttackingForces(systemId: string; marineCount: int; owner: HouseId): seq[\n    GroundUnit]		739

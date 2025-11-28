@@ -86,8 +86,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/ai_special_modes.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/ai_special_modes.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/ai_special_modes.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/ai_special_modes.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -117,7 +117,7 @@ MIA Detection and Status Updates</p>
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="_._/common/types/core.html">../common/types/core</a>, <a class="reference external" href="gamestate.html">gamestate</a>, <a class="reference external" href="fleet.html">fleet</a>, <a class="reference external" href="starmap.html">starmap</a>, <a class="reference external" href="order_types.html">order_types</a>, <a class="reference external" href="diplomacy/types.html">diplomacy/types</a>
+    <a class="reference external" href="_._/common/types/core.html">../common/types/core</a>, <a class="reference external" href="_._/common/logger.html">../common/logger</a>, <a class="reference external" href="gamestate.html">gamestate</a>, <a class="reference external" href="fleet.html">fleet</a>, <a class="reference external" href="starmap.html">starmap</a>, <a class="reference external" href="order_types.html">order_types</a>, <a class="reference external" href="diplomacy/types.html">diplomacy/types</a>
   </dl>
 </div>
 <div class="section" id="12">
@@ -130,8 +130,8 @@ MIA Detection and Status Updates</p>
   <dd>
     
     Generate autopilot AI orders Returns fleet orders only - construction/research/diplomacy frozen
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/ai_special_modes.nim#L133" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/ai_special_modes.nim#L133" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/ai_special_modes.nim#L134" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/ai_special_modes.nim#L134" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -144,8 +144,8 @@ MIA Detection and Status Updates</p>
   <dd>
     
     Generate defensive collapse AI orders Returns fleet orders only - all other activity ceases
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/ai_special_modes.nim#L30" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/ai_special_modes.nim#L30" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/ai_special_modes.nim#L31" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/ai_special_modes.nim#L31" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -154,12 +154,12 @@ MIA Detection and Status Updates</p>
 <div id="updateMIAStatus-procs-all">
   <div id="updateMIAStatus,GameState,seq[HouseId]">
   <dt><pre><span class="Keyword">proc</span> <a href="#updateMIAStatus%2CGameState%2Cseq%5BHouseId%5D"><span class="Identifier">updateMIAStatus</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">;</span> <span class="Identifier">housesWithOrders</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">]</span><span class="Other">)</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Update MIA autopilot status for houses Call this at the end of order submission phase housesWithOrders: Houses that submitted orders this turn
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/ai_special_modes.nim#L226" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/ai_special_modes.nim#L226" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/ai_special_modes.nim#L227" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/ai_special_modes.nim#L227" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

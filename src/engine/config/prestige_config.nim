@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   VictoryConfig* = object
@@ -169,7 +170,7 @@ proc loadPrestigeConfig*(configPath: string = "config/prestige.toml"): PrestigeC
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, PrestigeConfig)
 
-  echo "[Config] Loaded prestige configuration from ", configPath
+  logInfo("Config", "Loaded prestige configuration", "path=", configPath)
 
 ## Global configuration instance
 

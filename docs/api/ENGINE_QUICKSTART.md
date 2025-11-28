@@ -276,8 +276,128 @@ let fleet = fleetOpt.get()
 7. **Batch table modifications** for efficiency
 8. **Use structured logging** with module-specific helpers
 
+## Rules-Based AI (RBA) Integration
+
+The EC4X engine supports Rules-Based AI for automated testing and balance analysis. RBA provides deterministic AI players that follow configurable decision rules.
+
+### Quick Start with RBA
+
+```bash
+# Run 100 simulations with RBA players
+nimble testBalance
+
+# Run quick 20-game test
+nimble testBalanceQuick
+
+# Generate analysis reports
+python3 analysis/cli.py summary
+```
+
+### Integration Pattern
+
+```nim
+# RBA players are configured in house definitions
+let playerHouse = House(
+  id: HouseId.HouseCorrino,
+  isAI: false,      # Human player
+  aiProfile: None
+)
+
+let aiHouse = House(
+  id: HouseId.HouseAtreides,
+  isAI: true,       # RBA-controlled
+  aiProfile: Some(AIProfile.Balanced)
+)
+```
+
+### Configuration
+
+RBA behavior is controlled via:
+- **AI Profiles**: Aggressive, Defensive, Balanced, Economic, Expansionist
+- **Config Files**: `src/engine/config/rba_*.nim`
+- **Rule Weights**: Customizable decision priorities
+
+For detailed RBA usage, see:
+- [RBA_QUICKSTART.md](./RBA_QUICKSTART.md) - Getting started guide
+- [RBA_CONFIG_REFERENCE.md](./RBA_CONFIG_REFERENCE.md) - Configuration reference
+
+## Definition of Done Checklist
+
+When making engine changes, ensure you meet these criteria:
+
+### 1. Validation Requirements
+- [ ] **State Integrity**: No orphaned references between tables
+- [ ] **Table Consistency**: All entity IDs in tables are valid
+- [ ] **Config Compliance**: All values within min/max bounds from config
+- [ ] **Turn Determinism**: Same input → same output (RNG properly seeded)
+
+```nim
+# Use validation helpers
+validateGameState(state)  # Checks all integrity constraints
+validateTurnResults(oldState, newState, events)  # Checks turn consistency
+```
+
+### 2. Testing Requirements
+- [ ] **Unit Tests**: Pass `nimble test` for affected modules
+- [ ] **Integration Tests**: Pass full turn resolution tests
+- [ ] **Balance Tests**: Pass `nimble testBalanceQuick` (20 games, all RBA profiles)
+- [ ] **Regression Tests**: Compare with baseline game saves
+
+```bash
+# Run validation suite
+nimble test                    # Unit tests
+nimble testBalanceQuick       # Quick balance check (20 games)
+nimble testBalance            # Full balance check (100 games)
+```
+
+### 3. Documentation Requirements
+- [ ] **Code Comments**: Public APIs have doc comments
+- [ ] **Logging**: Critical state changes have log statements
+- [ ] **Change Notes**: Update CLAUDE_CONTEXT.md if patterns change
+- [ ] **Config Updates**: Document any new config parameters
+
+### 4. Performance Requirements
+- [ ] **No Memory Leaks**: Tables properly cleaned up
+- [ ] **Table Writes**: Use batch modifications where possible
+- [ ] **Log Volume**: Debug logs don't spam in production
+- [ ] **RNG Calls**: No redundant RNG initialization
+
+### 5. Common Validation Errors
+
+**Orphaned Fleet References**:
+```nim
+# BAD: Fleet references non-existent house
+state.fleets[fleetId] = Fleet(owner: deletedHouseId)
+
+# GOOD: Check house exists first
+if houseId notin state.houses:
+  state.fleets.del(fleetId)
+```
+
+**Lost Table Modifications**:
+```nim
+# BAD: Changes lost due to value semantics
+state.houses[houseId].treasury += 1000
+
+# GOOD: Get-modify-write pattern
+var house = state.houses[houseId]
+house.treasury += 1000
+state.houses[houseId] = house
+```
+
+**Non-deterministic RNG**:
+```nim
+# BAD: Creates non-deterministic RNG
+var rng = initRand()  # Seeds from system time
+
+# GOOD: Use turn-seeded RNG
+var rng = initRand(state.turn)  # Deterministic
+```
+
 ## Further Reading
 
+- [RBA_QUICKSTART.md](./RBA_QUICKSTART.md) - Rules-Based AI testing guide
+- [RBA_CONFIG_REFERENCE.md](./RBA_CONFIG_REFERENCE.md) - RBA configuration reference
 - [Full API Documentation](./engine/index.html) - Auto-generated from code
 - [CLAUDE_CONTEXT.md](../CLAUDE_CONTEXT.md) - Development patterns
 - [Architecture Docs](../architecture/) - System design

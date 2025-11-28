@@ -107,6 +107,24 @@
   <li><a class="reference" href="#applyShieldReduction%2Cint%2Cint%2CCombatRNG" title="applyShieldReduction(hits: int; shieldLevel: int; rng: var CombatRNG): int">applyShieldReduction(hits: int; shieldLevel: int; rng: var CombatRNG): int</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">assembleAttackingForces
+  <li><a class="reference" href="#assembleAttackingForces%2Cstring%2Cint%2CHouseId" title="assembleAttackingForces(systemId: string; marineCount: int; owner: HouseId): seq[
+    GroundUnit]">assembleAttackingForces(systemId: string; marineCount: int; owner: HouseId): seq[
+    GroundUnit]</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">assembleDefendingForces
+  <li><a class="reference" href="#assembleDefendingForces%2Cstring%2Cint%2Cint%2CHouseId" title="assembleDefendingForces(systemId: string; armyCount: int; marineCount: int;
+                        owner: HouseId): seq[GroundUnit]">assembleDefendingForces(systemId: string; armyCount: int; marineCount: int;
+                        owner: HouseId): seq[GroundUnit]</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">assemblePlanetaryDefense
+  <li><a class="reference" href="#assemblePlanetaryDefense%2Cstring%2Cint%2Cint%2CHouseId%2Cint" title="assemblePlanetaryDefense(systemId: string; shieldLevel: int; batteryCount: int;
+                         owner: HouseId; constructionTechLevel: int): PlanetaryDefense">assemblePlanetaryDefense(systemId: string; shieldLevel: int; batteryCount: int;
+                         owner: HouseId; constructionTechLevel: int): PlanetaryDefense</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">conductBlitz
   <li><a class="reference" href="#conductBlitz%2Cseq%5BCombatSquadron%5D%2Cseq%5BGroundUnit%5D%2CPlanetaryDefense%2Cint64" title="conductBlitz(attackingFleet: seq[CombatSquadron];
              attackingForces: seq[GroundUnit]; defense: var PlanetaryDefense;
@@ -181,8 +199,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -193,7 +211,7 @@
 <li>Section 7.6: Planetary Invasion &amp; Blitz</li>
 <li>Section 2.4.8: Planet-Breaker shield penetration</li>
 </ul>
-Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table (Section 7.6)Planetary Shield Mechanics (Section 7.5.2)Planet-Breaker Shield Penetration (Section 7.5.2)Bombardment Resolution (Section 7.5)Planetary Invasion (Section 7.6.1)Planetary Blitz (Section 7.6.2)Ground Unit ManagementNotes for Future Implementation<ol class="simple"><li>Ground Combat State Persistence:<ul class="simple"><li>Ground units and batteries persist between turns</li>
+Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table (Section 7.6)Planetary Shield Mechanics (Section 7.5.2)Planet-Breaker Shield Penetration (Section 7.5.2)Bombardment Resolution (Section 7.5)Planetary Invasion (Section 7.6.1)Planetary Blitz (Section 7.6.2)Ground Unit ManagementGround Force Assembly (Consolidation Functions) These functions eliminate duplication in combat resolution codeNotes for Future Implementation<ol class="simple"><li>Ground Combat State Persistence:<ul class="simple"><li>Ground units and batteries persist between turns</li>
 <li>Crippled units have reduced AS (× 0.5)</li>
 <li>Must be saved in colony/system state</li>
 </ul>
@@ -246,8 +264,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Result of one bombardment round
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L52" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L52" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L52" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L52" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -262,8 +280,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Individual ground combat unit
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L30" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L30" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L30" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L30" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -273,8 +291,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Types of ground forces
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L23" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L23" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L23" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L23" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -290,8 +308,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Result of planetary invasion or blitz
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L65" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L65" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L65" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L65" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -304,8 +322,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Complete planetary defense setup
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L39" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L39" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L39" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L39" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -317,8 +335,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Planetary shield information (per reference.md Section 9.3)
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L46" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L46" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L46" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L46" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -335,8 +353,59 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Apply shield reduction to bombardment hits Returns effective hits after shield blocking
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L168" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L168" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L168" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L168" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="assembleAttackingForces-procs-all">
+  <div id="assembleAttackingForces,string,int,HouseId">
+  <dt><pre><span class="Keyword">proc</span> <a href="#assembleAttackingForces%2Cstring%2Cint%2CHouseId"><span class="Identifier">assembleAttackingForces</span></a><span class="Other">(</span><span class="Identifier">systemId</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">marineCount</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">owner</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span>
+    <a href="ground.html#GroundUnit"><span class="Identifier">GroundUnit</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Assemble attacking ground forces (marines only) Consolidates duplicated code from invasion/blitz resolution</p>
+<p>Creates marines with proper IDs and stats from config Returns seq ready for ground combat</p>
+
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L739" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L739" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="assembleDefendingForces-procs-all">
+  <div id="assembleDefendingForces,string,int,int,HouseId">
+  <dt><pre><span class="Keyword">proc</span> <a href="#assembleDefendingForces%2Cstring%2Cint%2Cint%2CHouseId"><span class="Identifier">assembleDefendingForces</span></a><span class="Other">(</span><span class="Identifier">systemId</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">armyCount</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">marineCount</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
+                             <span class="Identifier">owner</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="ground.html#GroundUnit"><span class="Identifier">GroundUnit</span></a><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Assemble defending ground forces from colony counts Consolidates duplicated code from bombardment/invasion/blitz resolution</p>
+<p>Creates armies and marines with proper IDs and stats from config Returns seq ready for ground combat</p>
+
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L672" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L672" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+</div>
+<div id="assemblePlanetaryDefense-procs-all">
+  <div id="assemblePlanetaryDefense,string,int,int,HouseId,int">
+  <dt><pre><span class="Keyword">proc</span> <a href="#assemblePlanetaryDefense%2Cstring%2Cint%2Cint%2CHouseId%2Cint"><span class="Identifier">assemblePlanetaryDefense</span></a><span class="Other">(</span><span class="Identifier">systemId</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">shieldLevel</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span>
+                              <span class="Identifier">batteryCount</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">owner</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span>
+                              <span class="Identifier">constructionTechLevel</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="ground.html#PlanetaryDefense"><span class="Identifier">PlanetaryDefense</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Assemble complete planetary defense structure Consolidates duplicated code from bombardment/invasion/blitz resolution</p>
+<p>Creates shields and ground batteries with proper IDs and tech levels Returns PlanetaryDefense ready for combat</p>
+
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L702" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L702" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -358,8 +427,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
 <li>Shields, spaceports, batteries seized if successful</li>
 </ol>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L486" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L486" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L486" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L486" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -374,8 +443,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Conduct full bombardment (up to 3 rounds per turn) Section 7.5: &quot;No more than three combat rounds are conducted per turn&quot;
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L328" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L328" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L328" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L328" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -399,8 +468,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
 <li>50% of remaining IU destroyed by loyal citizens</li>
 </ul>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L361" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L361" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L361" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L361" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -413,8 +482,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Create an Army unit (garrison defense) from config Stats loaded from config/ground_units.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L633" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L633" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L633" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L633" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -429,8 +498,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
     <p>Create a ground battery unit from config Stats loaded from config/ground_units.toml</p>
 <p>TODO M3: Apply tech modifiers if applicable</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L612" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L612" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L612" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L612" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -443,8 +512,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Create a Marine unit (invasion force) from config Stats loaded from config/ground_units.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L651" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L651" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L651" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L651" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -459,8 +528,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
     <p>Get bombardment CER multiplier and critical hit flag from config Returns (multiplier, isCritical)</p>
 <p>Uses config/combat.toml bombardment thresholds</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L77" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L77" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L77" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L77" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -474,8 +543,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
     <p>Get ground combat CER multiplier (invasion/blitz) from config</p>
 <p>Uses config/combat.toml ground_combat thresholds</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L102" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L102" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L102" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L102" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -490,8 +559,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
     <p>Get shield data from config for given level (1-6) Returns (rollNeeded, blockPct)</p>
 <p>Uses config/combat.toml planetary_shields section</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L126" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L126" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L126" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L126" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -505,8 +574,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
   <dd>
     
     Resolve one round of planetary bombardment (max 3 per turn) Implements Section 7.5.1-7.5.4
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L207" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L207" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L207" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L207" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -521,8 +590,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
     <p>Roll to see if shields block damage Returns (blocked, percentage_to_block)</p>
 <p>Uses 1d20 roll (not 1d10) per spec</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L149" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L149" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L149" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L149" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -537,8 +606,8 @@ Ground Combat TypesBombardment CER Table (Section 7.5.1)Ground Combat CER Table 
     <p>Separate Planet-Breaker AS from conventional ship AS Returns (planet_breaker_as, conventional_as)</p>
 <p>Planet-Breakers bypass shields completely</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/ground.nim#L182" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/ground.nim#L182" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/ground.nim#L182" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/ground.nim#L182" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

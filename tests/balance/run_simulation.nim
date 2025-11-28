@@ -4,11 +4,14 @@
 ## and generates balance analysis report
 
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
-import game_setup, diagnostics
+import game_setup, diagnostics, balance_test_config  # Test-specific modules
 import ../../src/ai/rba/player as ai
+import ../../src/ai/common/types  # For AIStrategy type
 import ../../src/engine/[gamestate, resolve, orders, fog_of_war, setup]
 import ../../src/common/types/core
 import ../../src/client/reports/turn_report
+import ../../src/engine/research/types as res_types
+import ../../src/engine/espionage/types as esp_types
 
 proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 3): JsonNode =
   ## Run a full game simulation with AI players
@@ -24,29 +27,28 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
   var game = createBalancedGame(numHouses, mapRings, seed)
 
   # Create AI controllers for each house
-  # Map houses to their thematic strategies
-  let houseStrategyMap = {
-    "house-atreides": AIStrategy.Balanced,
-    "house-harkonnen": AIStrategy.Aggressive,
-    "house-ordos": AIStrategy.Espionage,
-    "house-corrino": AIStrategy.Diplomatic,
-    "house-vernius": AIStrategy.TechRush,
-    "house-moritani": AIStrategy.Raider,
-    "house-richese": AIStrategy.Economic,
-    "house-ginaz": AIStrategy.MilitaryIndustrial,
-    "house-ecaz": AIStrategy.Opportunistic,
-    "house-tleilax": AIStrategy.Isolationist,
-    "house-ixian": AIStrategy.Expansionist,
-    "house-bene-gesserit": AIStrategy.Turtle
-  }.toTable
-
+  # Use the strategies parameter passed to this function (for balance testing)
+  # Match houses to strategies using the starMap's player order (deterministic)
   var controllers: seq[AIController] = @[]
   var houseIds: seq[HouseId] = @[]  # Keep for diagnostic collection
+
+  # Build a position-to-house mapping first
+  var positionToHouse = initTable[int, HouseId]()
   for houseId in game.houses.keys:
-    let strategy = if $houseId in houseStrategyMap: houseStrategyMap[$houseId] else: AIStrategy.Balanced
-    controllers.add(newAIController(houseId, strategy))
-    houseIds.add(houseId)
-    echo &"  {houseId}: {strategy}"
+    for i in 0..<numHouses:
+      let homeSystemId = game.starMap.playerSystemIds[i]
+      if homeSystemId in game.colonies and game.colonies[homeSystemId].owner == houseId:
+        positionToHouse[i] = houseId
+        break
+
+  # Assign strategies based on position (deterministic)
+  for i in 0..<numHouses:
+    if i in positionToHouse:
+      let houseId = positionToHouse[i]
+      let strategy = if i < strategies.len: strategies[i] else: AIStrategy.Balanced
+      controllers.add(newAIController(houseId, strategy))
+      houseIds.add(houseId)
+      echo &"  {houseId}: {strategy}"
 
   echo &"\nGame initialized with {game.houses.len} houses"
   echo &"Star map: {game.starMap.systems.len} systems"
@@ -79,6 +81,8 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       var controller = controllers[i]
       # Apply fog-of-war filtering - AI only sees what it should
       let filteredView = createFogOfWarView(game, controller.houseId)
+
+      # Generate orders using RBA
       let orders = ai.generateAIOrders(controller, filteredView, rng)
       ordersTable[controller.houseId] = orders
       controllers[i] = controller
@@ -272,26 +276,21 @@ when isMainModule:
 
   validateGameSetupOrQuit(params, "run_simulation")
 
+  # Load test strategies from config (enables testing without recompilation)
+  let scenario = getScenario("quick_validation")
+  let balanceTestStrategies = getStrategies(scenario)
+
   # Create strategies for the specified number of players
-  # All 12 strategy types mapped to thematic Dune houses
-  # IMPORTANT: Order must match houseNames array in game_setup.nim:142
+  # For balance testing: rotate strategies based on seed to test all combinations
+  # Each game tests the same strategies but assigned to different houses
   var strategies: seq[AIStrategy] = @[]
-  let strategyTypes = [
-    AIStrategy.Balanced,            # 0.  house-atreides (noble, honorable, balanced)
-    AIStrategy.Aggressive,          # 1.  house-harkonnen (brutal military oppression)
-    AIStrategy.Espionage,           # 2.  house-ordos (secretive, sabotage, deviousness)
-    AIStrategy.Diplomatic,          # 3.  house-corrino (Emperor - political manipulation)
-    AIStrategy.TechRush,            # 4.  house-vernius (Ix - technological masters)
-    AIStrategy.Raider,              # 5.  house-moritani (assassins, hit-and-run)
-    AIStrategy.Economic,            # 6.  house-richese (wealthy merchants)
-    AIStrategy.MilitaryIndustrial,  # 7.  house-ginaz (swordmasters - military training)
-    AIStrategy.Opportunistic,       # 8.  house-ecaz (flexible, adaptable)
-    AIStrategy.Isolationist,        # 9.  house-tleilax (xenophobic genetic manipulators)
-    AIStrategy.Expansionist,        # 10. house-ixian (alternate Ix house - rapid expansion)
-    AIStrategy.Turtle               # 11. house-bene-gesserit (patient, long-term planning)
-  ]
+
+  # Rotate strategy assignment based on seed for balance testing
+  # This ensures each house gets each strategy across multiple test runs
+  let rotation = int(seed mod balanceTestStrategies.len)
   for i in 0..<numPlayers:
-    strategies.add(strategyTypes[i mod strategyTypes.len])
+    let strategyIndex = (i + rotation) mod balanceTestStrategies.len
+    strategies.add(balanceTestStrategies[strategyIndex])
 
   let report = runSimulation(numPlayers, numTurns, strategies, seed, mapRings)
 

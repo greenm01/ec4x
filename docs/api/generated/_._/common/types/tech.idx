@@ -1,0 +1,3 @@
+nimTitle	tech	_._/common/types/tech.html	module src/common/types/tech		0
+nim	TechField	_._/common/types/tech.html#TechField	enum TechField		9
+nim	TechLevel	_._/common/types/tech.html#TechLevel	object TechLevel		23

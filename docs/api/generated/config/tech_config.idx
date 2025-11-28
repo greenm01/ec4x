@@ -1,0 +1,6 @@
+nimTitle	tech_config	config/tech_config.html	module src/engine/config/tech_config		0
+nim	StartingTechConfig	config/tech_config.html#StartingTechConfig	object StartingTechConfig		10
+nim	TechConfig	config/tech_config.html#TechConfig	object TechConfig		25
+nim	loadTechConfig	config/tech_config.html#loadTechConfig,string	proc loadTechConfig(configPath: string = "config/tech.toml"): TechConfig		29
+nim	globalTechConfig	config/tech_config.html#globalTechConfig	var globalTechConfig		43
+nim	reloadTechConfig	config/tech_config.html#reloadTechConfig	proc reloadTechConfig()		47

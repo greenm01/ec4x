@@ -8,6 +8,7 @@
 import std/[options, sequtils]
 import types, cer, targeting, damage
 import ../../common/types/[core, units, combat as commonCombat]
+import ../../common/logger
 import ../squadron
 
 export CombatSquadron, TaskForce
@@ -107,30 +108,56 @@ proc shouldStarbaseJoinCombat*(
 
 ## Starbase Hacking (Section 6.2.11)
 ##
-## Scouts can hack starbases for intelligence gathering.
-## This is NOT combat - it's a separate intelligence operation.
+## **IMPLEMENTATION STATUS: ✅ COMPLETE**
 ##
-## TODO M3: Implement starbase hacking mechanics
-## - Solo Scout requirement
-## - Detection rolls
-## - Intelligence gathering (economic & R&D data)
-## - Success/failure outcomes
+## Starbase hacking is fully implemented through the spy scout system (NOT through combat).
+## The stub below is orphaned code from an earlier design and is never called.
+##
+## **Complete Implementation Path:**
+##
+## 1. **Order Execution** (commands/executor.nim:596)
+##    - executeHackStarbaseOrder() validates single-scout requirement
+##    - Creates SpyScout object with HackStarbase mission type
+##    - Scouts remain in system gathering intelligence per turn
+##
+## 2. **Detection Mechanics** (intelligence/detection.nim)
+##    Per assets.md:2.4.2 Spy Detection Table:
+##    - calculateEffectiveELI(): Weighted average + dominant tech penalty + mesh bonus
+##    - Starbase +2 ELI modifier against spy scouts (line 92)
+##    - attemptSpyDetection(): 1D3 threshold selection + 1D20 detection roll (lines 101-132)
+##    - Mesh network bonuses: +1 (2-3 scouts), +2 (4-5 scouts), +3 (6+ scouts)
+##
+## 3. **Turn Resolution** (intelligence/spy_resolution.nim)
+##    - resolveSpyDetection(): Checks each spy scout against enemy fleets/starbases
+##    - Uses detection.nim for ELI calculations and threshold rolls
+##    - Detected scouts destroyed (lines 41-78)
+##
+## 4. **Intelligence Generation** (intelligence/generator.nim:156)
+##    Per operations.md:6.2.11 - Economic and R&D intelligence:
+##    - generateStarbaseIntelReport(): Economic (treasury, income, tax) + R&D (tech levels, allocations)
+##    - Intelligence corruption handling (disinformation, dishonor effects)
+##    - Returns StarbaseIntelReport with complete house-level strategic intelligence
+##
+## 5. **Integration** (resolution/economy_resolution.nim:2004)
+##    - Called during Maintenance phase for all active spy scouts
+##    - Reports delivered to player's intelligence database
+##
+## **Architectural Separation:**
+## - Combat module: Handles starbase combat mechanics (AS/DS, CER rolls, critical hits)
+## - Intelligence module: Handles covert espionage operations (no combat involvement)
 
 proc attemptStarbaseHack*(
   scout: Squadron,
   targetStarbase: Squadron,
   rng: var CombatRNG
 ): tuple[success: bool, detected: bool, intel: string] =
-  ## Attempt to hack a starbase with a Scout
-  ## Returns (success, detected, intel_gathered)
-  ##
-  ## TODO M3: Implement hacking mechanics
-  ## TODO M3: Detection rolls based on ELI levels
-  ## TODO M3: Intelligence data format
+  ## DEPRECATED: Orphaned stub from earlier design - never called
+  ## See module documentation above for actual implementation path
+  ## This function signature was intended for combat-phase hacking but
+  ## the architecture evolved to use turn-based spy scout system instead
 
   result = (false, false, "")
-  # STUB: Always fails for now
-  echo "STUB: Starbase hacking not yet implemented"
+  logWarn("Combat", "Deprecated starbase hacking stub called - use spy scout system", "status=orphaned")
 
 ## Notes for Future Implementation
 ##

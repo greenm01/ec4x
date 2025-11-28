@@ -1,0 +1,23 @@
+nimTitle	starmap	starmap.html	module src/engine/starmap		0
+nim	StarMapError	starmap.html#StarMapError	object StarMapError		16
+nim	StarMap	starmap.html#StarMap	object StarMap		18
+nim	JumpLane	starmap.html#JumpLane	object JumpLane		27
+nim	PathResult	starmap.html#PathResult	object PathResult		32
+nim	validateMapRings	starmap.html#validateMapRings,int,int	proc validateMapRings(rings: int; playerCount: int = 0): seq[string]		47
+nim	newStarMap	starmap.html#newStarMap,int	proc newStarMap(playerCount: int): StarMap		79
+nim	getAdjacentSystems	starmap.html#getAdjacentSystems,StarMap,uint	proc getAdjacentSystems(starMap: StarMap; systemId: uint): seq[uint]		117
+nim	countHexNeighbors	starmap.html#countHexNeighbors,StarMap,Hex	proc countHexNeighbors(starMap: StarMap; coords: Hex): int		120
+nim	validateConnectivity	starmap.html#validateConnectivity,StarMap	proc validateConnectivity(starMap: StarMap): bool		297
+nim	canFleetTraverseLane	starmap.html#canFleetTraverseLane,Fleet,LaneType	proc canFleetTraverseLane(fleet: Fleet; laneType: LaneType): bool		315
+nim	weight	starmap.html#weight,LaneType	proc weight(laneType: LaneType): uint32		329
+nim	findPath	starmap.html#findPath,StarMap,uint,uint,Fleet	proc findPath(starMap: StarMap; start: uint; goal: uint; fleet: Fleet): PathResult		339
+nim	populate	starmap.html#populate,StarMap	proc populate(starMap: var StarMap)		408
+nim	starMap	starmap.html#starMap,int	proc starMap(playerCount: int): StarMap		428
+nim	getStarMapStats	starmap.html#getStarMapStats,StarMap	proc getStarMapStats(starMap: StarMap): string		434
+nim	verifyGameRules	starmap.html#verifyGameRules,StarMap	proc verifyGameRules(starMap: StarMap): bool		456
+nim	isReachable	starmap.html#isReachable,StarMap,uint,uint,Fleet	proc isReachable(starMap: StarMap; start: uint; goal: uint; fleet: Fleet): bool		479
+nim	findPathsInRange	starmap.html#findPathsInRange,StarMap,uint,uint32,Fleet	proc findPathsInRange(starMap: StarMap; start: uint; maxCost: uint32; fleet: Fleet): seq[\n    uint]		484
+nim	getPathCost	starmap.html#getPathCost,StarMap,seq[uint],Fleet	proc getPathCost(starMap: StarMap; path: seq[uint]; fleet: Fleet): uint32		513
+nim	playerSystems	starmap.html#playerSystems,StarMap,uint	proc playerSystems(starMap: StarMap; playerId: uint): seq[System]		532
+nim	calculateETA	starmap.html#calculateETA,StarMap,SystemId,SystemId,Fleet	proc calculateETA(starMap: StarMap; fromSystem: SystemId; toSystem: SystemId;\n             fleet: Fleet): Option[int]		544
+nim	calculateMultiFleetETA	starmap.html#calculateMultiFleetETA,StarMap,SystemId,seq[Fleet]	proc calculateMultiFleetETA(starMap: StarMap; assemblyPoint: SystemId;\n                       fleets: seq[Fleet]): Option[int]		572

@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   SpaceportConfig* = object
@@ -57,7 +58,7 @@ proc loadFacilitiesConfig*(configPath: string = "config/facilities.toml"): Facil
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, FacilitiesConfig)
 
-  echo "[Config] Loaded facilities configuration from ", configPath
+  logInfo("Config", "Loaded facilities configuration", "path=", configPath)
 
 ## Global configuration instance
 

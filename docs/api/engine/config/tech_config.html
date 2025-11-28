@@ -52,6 +52,9 @@
     </div>
     <ul class="simple simple-toc" id="toc-list">
   <li>
+  <a class="reference reference-toplevel" href="#6" id="56">Imports</a>
+</li>
+<li>
   <details open>
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
@@ -103,15 +106,21 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/tech_config.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/tech_config.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
     <p class="module-desc"><p>Technology Configuration Loader</p>
 <p>Loads technology research costs and effects from config/tech.toml Allows runtime configuration for all tech trees</p>
 Global configuration instanceHelper to reload configuration (for testing)</p>
-    <div class="section" id="7">
+    <div class="section" id="6">
+  <h1><a class="toc-backref" href="#6">Imports</a></h1>
+  <dl class="item">
+    <a class="reference external" href="../_._/common/logger.html">../../common/logger</a>
+  </dl>
+</div>
+<div class="section" id="7">
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
     <div id="StartingTechConfig">
@@ -130,8 +139,8 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dd>
     
     Starting tech levels per economy.md:4.0 CRITICAL: ALL tech starts at level 1, not 0!
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L10" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L10" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/tech_config.nim#L11" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/tech_config.nim#L11" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -141,8 +150,8 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dd>
     
     Technology configuration from tech.toml
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L25" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L25" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/tech_config.nim#L26" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/tech_config.nim#L26" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -157,8 +166,8 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <dd>
     
     
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L43" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L43" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/tech_config.nim#L44" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/tech_config.nim#L44" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -172,12 +181,13 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
   <div id="loadTechConfig,string">
   <dt><pre><span class="Keyword">proc</span> <a href="#loadTechConfig%2Cstring"><span class="Identifier">loadTechConfig</span></a><span class="Other">(</span><span class="Identifier">configPath</span><span class="Other">:</span> <span class="Identifier">string</span> <span class="Other">=</span> <span class="StringLit">&quot;config/tech.toml&quot;</span><span class="Other">)</span><span class="Other">:</span> <a href="tech_config.html#TechConfig"><span class="Identifier">TechConfig</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">SerializationError</span><span class="Other">,</span> <span class="Identifier">TomlError</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Load technology configuration from TOML file Uses toml_serialization for type-safe parsing
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L29" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L29" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/tech_config.nim#L30" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/tech_config.nim#L30" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -185,14 +195,14 @@ Global configuration instanceHelper to reload configuration (for testing)</p>
 </div>
 <div id="reloadTechConfig-procs-all">
   <div id="reloadTechConfig">
-  <dt><pre><span class="Keyword">proc</span> <a href="#reloadTechConfig"><span class="Identifier">reloadTechConfig</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">SerializationError</span><span class="Other">,</span> <span class="Identifier">TomlError</span><span class="Other">]</span><span class="Other">,</span>
-                          <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#reloadTechConfig"><span class="Identifier">reloadTechConfig</span></a><span class="Other">(</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">SerializationError</span><span class="Other">,</span> <span class="Identifier">TomlError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span>
+    <span class="Identifier">ReadDirEffect</span><span class="Other">,</span> <span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span>
                           <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Reload configuration from file
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/config/tech_config.nim#L47" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/config/tech_config.nim#L47" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/config/tech_config.nim#L48" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/config/tech_config.nim#L48" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

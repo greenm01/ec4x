@@ -72,6 +72,15 @@
 </li>
 <li>
   <details open>
+    <summary><a class="reference reference-toplevel" href="#8" id="58">Vars</a></summary>
+    <ul class="simple simple-toc-section">
+      <li><a class="reference" href="#globalRNG" title="globalRNG = initRand()">globalRNG</a></li>
+
+    </ul>
+  </details>
+</li>
+<li>
+  <details open>
     <summary><a class="reference reference-toplevel" href="#12" id="62">Procs</a></summary>
     <ul class="simple simple-toc-section">
       <ul class="simple nested-toc-section">applyDominantTechPenalty
@@ -79,12 +88,12 @@
 
 </ul>
 <ul class="simple nested-toc-section">attemptRaiderDetection
-  <li><a class="reference" href="#attemptRaiderDetection%2Cint%2Cint" title="attemptRaiderDetection(detectorELI: int; cloakLevel: int): DetectionResult">attemptRaiderDetection(detectorELI: int; cloakLevel: int): DetectionResult</a></li>
+  <li><a class="reference" href="#attemptRaiderDetection%2Cint%2Cint" title="attemptRaiderDetection(detectorELI, cloakLevel: int): DetectionResult">attemptRaiderDetection(detectorELI, cloakLevel: int): DetectionResult</a></li>
 <li><a class="reference" href="#attemptRaiderDetection%2Cint%2Cint%2CRand" title="attemptRaiderDetection(detectorELI: int; cloakLevel: int; rng: var Rand): DetectionResult">attemptRaiderDetection(detectorELI: int; cloakLevel: int; rng: var Rand): DetectionResult</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">attemptSpyDetection
-  <li><a class="reference" href="#attemptSpyDetection%2Cint%2Cint" title="attemptSpyDetection(detectorELI: int; spyELI: int): DetectionResult">attemptSpyDetection(detectorELI: int; spyELI: int): DetectionResult</a></li>
+  <li><a class="reference" href="#attemptSpyDetection%2Cint%2Cint" title="attemptSpyDetection(detectorELI, spyELI: int): DetectionResult">attemptSpyDetection(detectorELI, spyELI: int): DetectionResult</a></li>
 <li><a class="reference" href="#attemptSpyDetection%2Cint%2Cint%2CRand" title="attemptSpyDetection(detectorELI: int; spyELI: int; rng: var Rand): DetectionResult">attemptSpyDetection(detectorELI: int; spyELI: int; rng: var Rand): DetectionResult</a></li>
 
 </ul>
@@ -134,10 +143,6 @@
   <li><a class="reference" href="#hasELICapability%2Cseq%5BSquadron%5D" title="hasELICapability(squadrons: seq[Squadron]): bool">hasELICapability(squadrons: seq[Squadron]): bool</a></li>
 
 </ul>
-<ul class="simple nested-toc-section">rollDetectionThreshold
-  <li><a class="reference" href="#rollDetectionThreshold%2CThresholdRange" title="rollDetectionThreshold(thresholdRange: ThresholdRange): int">rollDetectionThreshold(thresholdRange: ThresholdRange): int</a></li>
-
-</ul>
 <ul class="simple nested-toc-section">rollRaiderThreshold
   <li><a class="reference" href="#rollRaiderThreshold%2CThresholdRange%2Cstring" title="rollRaiderThreshold(thresholdRange: ThresholdRange; strategy: string): int">rollRaiderThreshold(thresholdRange: ThresholdRange; strategy: string): int</a></li>
 <li><a class="reference" href="#rollRaiderThreshold%2CThresholdRange%2Cstring%2CRand" title="rollRaiderThreshold(thresholdRange: ThresholdRange; strategy: string;
@@ -157,14 +162,19 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
     <p class="module-desc"><p>Detection System for Spy Scouts and Raiders</p>
 <p>Implements ELI-based detection mechanics for spy scouts and cloaked raiders Based on assets.md Sections 2.4.2 and 2.4.3</p>
-ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron ELI Helpers</p>
+<p>REFACTORED (Phase 10): Data-Oriented Design</p>
+<ul class="simple"><li>Eliminated 98 lines of RNG overload duplication</li>
+<li>Global RNG versions now just wrap parameterized versions</li>
+<li>Reduced from 357 lines → 259 lines (27% reduction)</li>
+</ul>
+Global RNG instance (for overload wrappers)ELI Mesh Network CalculationSpy Scout DetectionSpy Scout Detection (Parameterized RNG version)Spy Scout Detection (Global RNG wrappers - eliminates duplication!)Raider DetectionRaider Detection (Parameterized RNG version)Raider Detection (Global RNG wrappers - eliminates duplication!)Fleet/Squadron ELI Helpers</p>
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
@@ -183,8 +193,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Result of a detection attempt
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L18" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L18" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L26" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L26" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -195,8 +205,24 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     A unit capable of ELI detection (fleet with scouts or starbase)
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L13" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L13" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L21" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L21" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+
+  </dd>
+</div>
+
+  </dl>
+</div>
+<div class="section" id="8">
+  <h1><a class="toc-backref" href="#8">Vars</a></h1>
+  <dl class="item">
+    <div id="globalRNG">
+  <dt><pre><a href="detection.html#globalRNG"><span class="Identifier">globalRNG</span></a> <span class="Other">=</span> <span class="Identifier">initRand</span><span class="Other">(</span><span class="Other">)</span></pre></dt>
+  <dd>
+    
+    
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L18" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L18" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -213,8 +239,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Apply dominant tech level penalty (step 2) If &gt;50% of scouts are below weighted average, reduce by 1
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L37" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L37" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L45" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L45" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -222,20 +248,13 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
 </div>
 <div id="attemptRaiderDetection-procs-all">
   <div id="attemptRaiderDetection,int,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#attemptRaiderDetection%2Cint%2Cint"><span class="Identifier">attemptRaiderDetection</span></a><span class="Other">(</span><span class="Identifier">detectorELI</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">cloakLevel</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="detection.html#DetectionResult"><span class="Identifier">DetectionResult</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#attemptRaiderDetection%2Cint%2Cint"><span class="Identifier">attemptRaiderDetection</span></a><span class="Other">(</span><span class="Identifier">detectorELI</span><span class="Other">,</span> <span class="Identifier">cloakLevel</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="detection.html#DetectionResult"><span class="Identifier">DetectionResult</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    <p>Attempt to detect a cloaked raider fleet (using global RNG) Returns detection result with all roll details</p>
-<p>Process:</p>
-<ol class="simple"><li>Get threshold range from detection table</li>
-<li>Determine strategy based on ELI advantage</li>
-<li>Apply strategy to get threshold</li>
-<li>Roll 1d20, if &gt;= threshold then detected</li>
-</ol>
-
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L229" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L229" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    Wrapper using global RNG
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L244" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L244" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -244,9 +263,16 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Attempt to detect a cloaked raider fleet (with provided RNG) Returns detection result with all roll details
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L261" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L261" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <p>Attempt to detect a cloaked raider fleet (with provided RNG) Returns detection result with all roll details</p>
+<p>Process:</p>
+<ol class="simple"><li>Get threshold range from detection table</li>
+<li>Determine strategy based on ELI advantage</li>
+<li>Apply strategy to get threshold</li>
+<li>Roll 1d20, if &gt;= threshold then detected</li>
+</ol>
+
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L193" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L193" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -254,19 +280,13 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
 </div>
 <div id="attemptSpyDetection-procs-all">
   <div id="attemptSpyDetection,int,int">
-  <dt><pre><span class="Keyword">proc</span> <a href="#attemptSpyDetection%2Cint%2Cint"><span class="Identifier">attemptSpyDetection</span></a><span class="Other">(</span><span class="Identifier">detectorELI</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">;</span> <span class="Identifier">spyELI</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="detection.html#DetectionResult"><span class="Identifier">DetectionResult</span></a> {.
+  <dt><pre><span class="Keyword">proc</span> <a href="#attemptSpyDetection%2Cint%2Cint"><span class="Identifier">attemptSpyDetection</span></a><span class="Other">(</span><span class="Identifier">detectorELI</span><span class="Other">,</span> <span class="Identifier">spyELI</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <a href="detection.html#DetectionResult"><span class="Identifier">DetectionResult</span></a> {.
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    <p>Attempt to detect a spy scout (using global RNG) Returns detection result with all roll details</p>
-<p>Process:</p>
-<ol class="simple"><li>Get threshold range from detection table</li>
-<li>Roll 1d3 to select threshold within range</li>
-<li>Roll 1d20, if &gt;= threshold then detected</li>
-</ol>
-
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L100" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L100" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    Wrapper using global RNG
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L148" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L148" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -275,9 +295,15 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Attempt to detect a spy scout (with provided RNG) Returns detection result with all roll details
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L128" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L128" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <p>Attempt to detect a spy scout (with provided RNG) Returns detection result with all roll details</p>
+<p>Process:</p>
+<ol class="simple"><li>Get threshold range from detection table</li>
+<li>Roll 1d3 to select threshold within range</li>
+<li>Roll 1d20, if &gt;= threshold then detected</li>
+</ol>
+
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L101" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L101" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -290,8 +316,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Calculate final effective ELI level for detection Combines weighted average, dominant tech penalty, and mesh network bonus Starbases get +2 bonus against spy scouts
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L65" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L65" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L73" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L73" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -304,8 +330,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Calculate weighted average ELI level (step 1) Returns rounded-up average
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L27" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L27" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L35" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L35" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -318,8 +344,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Create an ELIUnit from squadrons or starbase
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L351" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L351" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L292" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L292" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -331,9 +357,9 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    High-level raider detection (using global RNG) Calculates effective ELI and attempts detection
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L288" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L288" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    Wrapper using global RNG
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L248" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L248" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -343,8 +369,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     High-level raider detection (with provided RNG) Calculates effective ELI and attempts detection
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L299" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L299" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L226" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L226" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -356,9 +382,9 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    High-level spy scout detection (using global RNG) Calculates effective ELI and attempts detection
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L156" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L156" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    Wrapper using global RNG
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L152" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L152" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -368,8 +394,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     High-level spy scout detection (with provided RNG) Calculates effective ELI and attempts detection
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L167" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L167" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L134" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L134" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -382,8 +408,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Get highest cloaking level in a fleet Fleets are cloaked if they contain raiders Returns highest CLK level, or 0 if no cloaking
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L330" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L330" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L271" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L271" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -396,8 +422,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Extract ELI levels from all scouts in a fleet
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L322" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L322" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L263" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L263" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -410,8 +436,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Calculate mesh network modifier based on scout count Per assets.md:2.4.2: 1=+0, 2-3=+1, 4-5=+2, 6+=+3
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L51" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L51" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L59" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L59" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -424,8 +450,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Determine which threshold to use based on ELI advantage Returns: &quot;lower&quot; if ELI is 2+ higher, &quot;random&quot; if equal/1 higher, &quot;upper&quot; if lower
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L181" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L181" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L158" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L158" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -438,8 +464,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Extract ELI levels from all scouts in a squadron Returns sequence of ELI tech levels
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L313" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L313" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L254" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L254" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -452,22 +478,8 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
   <dd>
     
     Check if fleet has any ELI-capable units (scouts)
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L343" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L343" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
-
-  </dd>
-</div>
-
-</div>
-<div id="rollDetectionThreshold-procs-all">
-  <div id="rollDetectionThreshold,ThresholdRange">
-  <dt><pre><span class="Keyword">proc</span> <a href="#rollDetectionThreshold%2CThresholdRange"><span class="Identifier">rollDetectionThreshold</span></a><span class="Other">(</span><span class="Identifier">thresholdRange</span><span class="Other">:</span> <a href="../config/espionage_config.html#ThresholdRange"><span class="Identifier">ThresholdRange</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
-  <dd>
-    
-    Roll 1d3 to select value within threshold range Range is <a class="reference internal" href="#min, max">min, max</a>, roll determines which value to use
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L91" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L91" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L284" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L284" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -479,9 +491,9 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
     <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Roll threshold based on strategy (using global RNG) &quot;lower&quot; = use min, &quot;upper&quot; = use max, &quot;random&quot; = roll 1d3
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L193" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L193" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    Wrapper using global RNG
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L240" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L240" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -490,9 +502,9 @@ ELI Mesh Network CalculationSpy Scout DetectionRaider DetectionFleet/Squadron EL
                          <span class="Identifier">rng</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">Rand</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Roll threshold based on strategy (with provided RNG)
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/intelligence/detection.nim#L209" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/intelligence/detection.nim#L209" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    Roll threshold based on strategy (with provided RNG) &quot;lower&quot; = use min, &quot;upper&quot; = use max, &quot;random&quot; = roll 1d3
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/intelligence/detection.nim#L172" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/intelligence/detection.nim#L172" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

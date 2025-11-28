@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   PactViolationsConfig* = object
@@ -49,7 +50,7 @@ proc loadDiplomacyConfig*(configPath: string = "config/diplomacy.toml"): Diploma
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, DiplomacyConfig)
 
-  echo "[Config] Loaded diplomacy configuration from ", configPath
+  logInfo("Config", "Loaded diplomacy configuration", "path=", configPath)
 
 ## Global configuration instance
 

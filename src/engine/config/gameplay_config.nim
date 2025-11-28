@@ -6,6 +6,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   ThemeConfig* = object
@@ -59,7 +60,7 @@ proc loadGameplayConfig*(configPath: string = "config/gameplay.toml"): GameplayC
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, GameplayConfig)
 
-  echo "[Config] Loaded gameplay configuration from ", configPath
+  logInfo("Config", "Loaded gameplay configuration", "path=", configPath)
 
 ## Global configuration instance
 

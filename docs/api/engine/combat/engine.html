@@ -92,8 +92,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/engine.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/engine.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/engine.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/engine.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -104,7 +104,7 @@ Main Combat ResolutionCombat Initialization HelpersQuick Battle Helper</p>
     <div class="section" id="6">
   <h1><a class="toc-backref" href="#6">Imports</a></h1>
   <dl class="item">
-    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="cer.html">cer</a>, <a class="reference external" href="resolution.html">resolution</a>, <a class="reference external" href="retreat.html">retreat</a>, <a class="reference external" href="damage.html">damage</a>, <a class="reference external" href="../squadron.html">../squadron</a>, <a class="reference external" href="../intelligence/detection.html">../intelligence/detection</a>
+    <a class="reference external" href="types.html">types</a>, <a class="reference external" href="cer.html">cer</a>, <a class="reference external" href="resolution.html">resolution</a>, <a class="reference external" href="retreat.html">retreat</a>, <a class="reference external" href="damage.html">damage</a>, <a class="reference external" href="../squadron.html">../squadron</a>, <a class="reference external" href="../intelligence/detection.html">../intelligence/detection</a>, <a class="reference external" href="../_._/common/logger.html">../../common/logger</a>
   </dl>
 </div>
 <div class="section" id="12">
@@ -117,8 +117,8 @@ Main Combat ResolutionCombat Initialization HelpersQuick Battle Helper</p>
   <dd>
     
     Convert Squadron to CombatSquadron for battle
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/engine.nim#L258" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/engine.nim#L258" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/engine.nim#L263" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/engine.nim#L263" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -135,8 +135,8 @@ Main Combat ResolutionCombat Initialization HelpersQuick Battle Helper</p>
     <p>Create Task Force from squadrons</p>
 <p>Args: house: House ID squadrons: Squadrons in Task Force roe: Rules of Engagement (0-10) prestige: House prestige for morale (default 50) isHomeworld: Defending homeworld (never retreat) eliLevel: House ELI tech level (for scout detection) clkLevel: House CLK tech level (for raider cloaking)</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/engine.nim#L272" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/engine.nim#L272" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/engine.nim#L277" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/engine.nim#L277" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -146,12 +146,12 @@ Main Combat ResolutionCombat Initialization HelpersQuick Battle Helper</p>
   <div id="quickBattle,TaskForce,TaskForce,SystemId,int64">
   <dt><pre><span class="Keyword">proc</span> <a href="#quickBattle%2CTaskForce%2CTaskForce%2CSystemId%2Cint64"><span class="Identifier">quickBattle</span></a><span class="Other">(</span><span class="Identifier">attacker</span><span class="Other">:</span> <a href="types.html#TaskForce"><span class="Identifier">TaskForce</span></a><span class="Other">;</span> <span class="Identifier">defender</span><span class="Other">:</span> <a href="types.html#TaskForce"><span class="Identifier">TaskForce</span></a><span class="Other">;</span>
                  <span class="Identifier">systemId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#SystemId"><span class="Identifier">SystemId</span></a> <span class="Other">=</span> <span class="DecNumber">0</span><span class="Other">;</span> <span class="Identifier">seed</span><span class="Other">:</span> <span class="Identifier">int64</span> <span class="Other">=</span> <span class="DecNumber">12345</span><span class="Other">)</span><span class="Other">:</span> <a href="types.html#CombatResult"><span class="Identifier">CombatResult</span></a> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Convenience function for simple 1v1 battles
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/engine.nim#L332" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/engine.nim#L332" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/engine.nim#L337" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/engine.nim#L337" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -160,14 +160,14 @@ Main Combat ResolutionCombat Initialization HelpersQuick Battle Helper</p>
 <div id="resolveCombat-procs-all">
   <div id="resolveCombat,BattleContext">
   <dt><pre><span class="Keyword">proc</span> <a href="#resolveCombat%2CBattleContext"><span class="Identifier">resolveCombat</span></a><span class="Other">(</span><span class="Identifier">context</span><span class="Other">:</span> <a href="types.html#BattleContext"><span class="Identifier">BattleContext</span></a><span class="Other">)</span><span class="Other">:</span> <a href="types.html#CombatResult"><span class="Identifier">CombatResult</span></a> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     <p>Resolve complete combat scenario Pure function: same input = same output (deterministic PRNG)</p>
 <p>Returns full CombatResult with round-by-round details</p>
 
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/combat/engine.nim#L16" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/combat/engine.nim#L16" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/combat/engine.nim#L17" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/combat/engine.nim#L17" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>

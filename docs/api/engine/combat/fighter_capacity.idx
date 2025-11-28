@@ -1,0 +1,13 @@
+nimTitle	fighter_capacity	combat/fighter_capacity.html	module src/engine/combat/fighter_capacity		0
+nim	ViolationType	combat/fighter_capacity.html#ViolationType	enum ViolationType		25
+nim	CapacityStatus	combat/fighter_capacity.html#CapacityStatus	object CapacityStatus		31
+nim	EnforcementAction	combat/fighter_capacity.html#EnforcementAction	object EnforcementAction		41
+nim	calculateMaxFighterCapacity	combat/fighter_capacity.html#calculateMaxFighterCapacity,int,int	proc calculateMaxFighterCapacity(populationUnits: int; fdLevel: int): int		63
+nim	calculateRequiredStarbases	combat/fighter_capacity.html#calculateRequiredStarbases,int	proc calculateRequiredStarbases(fighterCount: int): int		69
+nim	analyzeCapacity	combat/fighter_capacity.html#analyzeCapacity,GameState,Colony,HouseId	proc analyzeCapacity(state: GameState; colony: Colony; houseId: HouseId): CapacityStatus		76
+nim	checkViolations	combat/fighter_capacity.html#checkViolations,GameState	proc checkViolations(state: GameState): seq[CapacityStatus]		110
+nim	updateViolationTracking	combat/fighter_capacity.html#updateViolationTracking,GameState,CapacityStatus	proc updateViolationTracking(state: var GameState; status: CapacityStatus)		120
+nim	planEnforcement	combat/fighter_capacity.html#planEnforcement,GameState,CapacityStatus	proc planEnforcement(state: GameState; status: CapacityStatus): EnforcementAction		153
+nim	applyEnforcement	combat/fighter_capacity.html#applyEnforcement,GameState,EnforcementAction	proc applyEnforcement(state: var GameState; action: EnforcementAction)		181
+nim	processCapacityEnforcement	combat/fighter_capacity.html#processCapacityEnforcement,GameState	proc processCapacityEnforcement(state: var GameState)		203
+nim	canCommissionFighter	combat/fighter_capacity.html#canCommissionFighter,GameState,Colony	proc canCommissionFighter(state: GameState; colony: Colony): bool		239

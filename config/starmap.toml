@@ -1,0 +1,37 @@
+# EC4X Starmap Configuration
+# Procedural map generation parameters
+#
+# This file contains:
+# - BALANCE VARIABLES: Lane type distribution, map generation weights
+# - CORE MECHANICS: Starmap generation rules
+
+# ============================================================================
+# JUMP LANE GENERATION
+# ============================================================================
+
+[lane_weights]
+# BALANCE: Lane type distribution for procedural generation
+# Controls strategic gameplay by determining movement restrictions
+# - Major lanes: Allow all ship types (including crippled, ETAC, transports)
+# - Minor lanes: Block crippled ships only
+# - Restricted lanes: Block crippled ships, ETACs, and troop transports
+#
+# Default: 50% Major, 35% Minor, 15% Restricted
+# Rationale: 85% of lanes allow colonization ships (ETACs) to reduce bottlenecks
+major_weight = 0.50
+minor_weight = 0.35
+restricted_weight = 0.15
+
+# ============================================================================
+# MAP GENERATION PARAMETERS
+# ============================================================================
+
+[generation]
+# BALANCE: Homeworld placement strategy
+# Distance maximization ensures fair starting positions
+use_distance_maximization = true
+prefer_vertex_positions = true  # Place homeworlds on hex vertices when possible
+
+# Hub connectivity (center system)
+# Mixed lane types prevent predictable "rush-to-center" gameplay
+hub_uses_mixed_lanes = true

@@ -83,6 +83,95 @@ This document tracks known architectural limitations and design issues that affe
 
 ---
 
+## -3. Sequential Order Processing Bias (Non-Deterministic First-Mover Advantage)
+
+**Status:** ✅ **RESOLVED** (2025-11-27)
+**Discovered:** 2025-11-27 during balance testing
+**Impact:** One house winning 87-93% of games due to hash table iteration order creating first-mover advantages
+
+### Problem Description
+
+Hash table iteration order (`for houseId in state.houses.keys`) was creating non-deterministic first-mover advantages in competitive order processing:
+
+**Affected Systems:**
+- Colonization: First house to process got uncontested colonies
+- Blockade: First blockader claimed target, others blocked
+- Planetary Combat: First attacker got priority
+- Espionage: First spy mission succeeded, others queued
+
+**Evidence:**
+- house-corrino: 87-93% win rate (favorable iteration order)
+- Different test runs produced different dominant houses:
+  - Run 1: house-corrino 100% win rate
+  - Run 2: house-zulu 68.8% win rate
+  - Run 3: house-ordos 56.2% win rate
+- Non-deterministic outcomes from identical game seeds
+
+### Solution Implemented
+
+**Three-Phase Simultaneous Resolution Pattern:**
+
+1. **Collection Phase**: Gather all competitive order intents without state mutation
+2. **Conflict Detection**: Group orders by target to identify conflicts
+3. **Atomic Resolution**: Apply conflict resolution rules and execute winning orders
+
+**Conflict Resolution Rules:**
+- **Colonization**: Winner-takes-all by fleet strength (deterministic tiebreaker)
+- **Blockade**: Winner-takes-all by blockade strength (deterministic tiebreaker)
+- **Planetary Combat**: Winner-takes-all by attack strength (deterministic tiebreaker)
+- **Espionage**: Prestige-based priority with dishonor penalties
+  - Honored houses sorted by prestige (descending)
+  - Dishonored houses moved to end, sorted randomly
+  - All succeed in priority order (no winner-takes-all)
+
+**Deterministic Tiebreaking:**
+```nim
+proc tiebreakerSeed(turn: int, targetId: SystemId): int64 =
+  return turn.int64 xor hash(targetId)
+```
+
+### Results
+
+**Before Fix:**
+- house-corrino: 87-93% win rate (iteration order)
+- Different dominant houses across test runs
+- Non-reproducible game outcomes
+
+**After Fix:**
+- house-ordos: 56.2% win rate (strategy advantage)
+- Identical results across multiple test runs
+- Completely deterministic outcomes
+- Prestige values identical to 0.1 decimal point
+
+**Testing:** Verified determinism across 3+ test runs, exact same results every time
+
+### Files Modified
+
+**New Modules Created:**
+- `src/engine/resolution/simultaneous_types.nim` - Type definitions for all conflict resolution
+- `src/engine/resolution/simultaneous_resolver.nim` - Generic conflict resolution logic
+- `src/engine/resolution/simultaneous_blockade.nim` - Blockade conflict resolution
+- `src/engine/resolution/simultaneous_planetary.nim` - Planetary combat conflict resolution
+- `src/engine/resolution/simultaneous_espionage.nim` - Espionage priority resolution
+
+**Integration:**
+- `src/engine/resolve.nim` - Added simultaneous resolution phases (lines 458-488)
+- `src/engine/resolve.nim` - Added skip logic for already-handled orders (lines 597-632)
+
+### Benefits
+
+1. **Fair Competition**: No first-mover advantage from iteration order
+2. **Deterministic Outcomes**: Same inputs always produce same results
+3. **Reproducible Testing**: Balance tests now reliable
+4. **Strategic Balance**: Remaining imbalances are strategy-based, not technical
+5. **Maintainable Pattern**: Three-phase pattern can be extended to future competitive orders
+
+### Related Commits
+
+- [TBD - will be included in next commit]
+
+---
+
 ## -2. Colony Type Duplication (DRY Violation)
 
 **Status:** ✅ **RESOLVED** (2025-11-26)

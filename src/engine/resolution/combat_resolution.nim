@@ -43,7 +43,7 @@ proc executeCombat(
   if fleetsInCombat.len < 2:
     return (CombatResult(), @[], @[])
 
-  echo "        ", combatPhase, " - ", fleetsInCombat.len, " fleets engaged"
+  logCombat(combatPhase, "fleets=", $fleetsInCombat.len)
 
   # Group fleets by house
   var houseFleets: Table[HouseId, seq[Fleet]] = initTable[HouseId, seq[Fleet]]()
@@ -66,7 +66,7 @@ proc executeCombat(
     for fleet in fleets:
       # Mothballed ships are screened during combat and cannot fight
       if fleet.status == FleetStatus.Mothballed:
-        echo "          Fleet ", fleet.id, " is mothballed - screened from combat"
+        logDebug("Combat", "Fleet mothballed - screened from combat", "fleetId=", $fleet.id)
         continue
 
       for squadron in fleet.squadrons:
@@ -97,7 +97,7 @@ proc executeCombat(
           )
           combatSquadrons.add(combatSq)
         if colony.unassignedSquadrons.len > 0:
-          echo "          Added ", colony.unassignedSquadrons.len, " unassigned squadron(s) to orbital defense"
+          logDebug("Combat", "Added unassigned squadrons to orbital defense", "count=", $colony.unassignedSquadrons.len)
 
     # Add starbases for system owner (always included for detection)
     # Starbases are ALWAYS included in task forces for detection purposes
@@ -140,7 +140,7 @@ proc executeCombat(
           combatSquadrons.add(combatSq)
         if colony.starbases.len > 0:
           let combatRole = if includeStarbases: "defense and detection" else: "detection only"
-          echo "          Added ", colony.starbases.len, " starbase(s) for ", combatRole
+          logDebug("Combat", "Added starbases", "count=", $colony.starbases.len, " role=", combatRole)
 
     # Create TaskForce for this house
     taskForces[houseId] = TaskForce(
@@ -246,7 +246,7 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   # 3. PHASE 1: Space Combat (attackers vs mobile defenders)
   # All attacking fleets must fight through mobile defending fleets first
   # Mobile defenders = owner's active fleets without guard orders
-  echo "      Phase 1: Space Combat"
+  logCombat("Phase 1: Space Combat")
   var spaceCombatOutcome: CombatResult
   var spaceCombatFleets: seq[(FleetId, Fleet)] = @[]
   var spaceCombatSurvivors: seq[HouseId] = @[]  # Houses that survived space combat
@@ -310,19 +310,19 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
       if tf.house != systemOwner.get() and tf.house notin spaceCombatSurvivors:
         spaceCombatSurvivors.add(tf.house)
 
-    echo "          Space combat complete - ", spaceCombatOutcome.totalRounds, " rounds"
-    echo "          ", spaceCombatSurvivors.len, " attacking house(s) survived"
+    logCombat("Space combat complete", "rounds=", $spaceCombatOutcome.totalRounds)
+    logCombat("Combat result", "survivors=", $spaceCombatSurvivors.len)
     if detectedInSpace.len > 0:
-      echo "          ", detectedInSpace.len, " cloaked house(s) detected"
+      logCombat("Cloaked detection", "detected=", $detectedInSpace.len)
   elif attackingFleets.len > 0:
     # No mobile defenders - attackers proceed directly to orbital combat
-    echo "          No space combat (no mobile defenders)"
+    logCombat("No space combat - no mobile defenders")
     # All attackers advance to orbital combat
     for (fleetId, fleet) in attackingFleets:
       if fleet.owner notin spaceCombatSurvivors:
         spaceCombatSurvivors.add(fleet.owner)
   else:
-    echo "          No space combat (no attackers)"
+    logCombat("No space combat - no attackers")
 
   # 4. PHASE 2: Orbital Combat (surviving attackers vs orbital defenders)
   # Only attackers who survived space combat can engage orbital defenders
@@ -340,7 +340,7 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         hasOrbitalDefenders = true
 
     if hasOrbitalDefenders:
-      echo "      Phase 2: Orbital Combat"
+      logCombat("Phase 2: Orbital Combat")
 
       # Gather surviving attacker fleets
       var survivingAttackerFleets: seq[(FleetId, Fleet)] = @[]
@@ -397,18 +397,18 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         )
         orbitalCombatOutcome = outcome
         orbitalCombatFleets = fleets
-        echo "          Orbital combat complete - ", orbitalCombatOutcome.totalRounds, " rounds"
+        logCombat("Orbital combat complete", "rounds=", $orbitalCombatOutcome.totalRounds)
         if detected.len > detectedInSpace.len:
-          echo "          ", (detected.len - detectedInSpace.len), " additional house(s) detected in orbital phase"
+          logCombat("Additional detection in orbital phase", "count=", $(detected.len - detectedInSpace.len))
       else:
-        echo "          No surviving attacker fleets for orbital combat"
+        logCombat("No surviving attacker fleets for orbital combat")
     else:
-      echo "      Phase 2: No orbital combat (no orbital defenders)"
+      logCombat("Phase 2: No orbital combat - no orbital defenders")
       # Attackers achieved orbital supremacy without a fight
   elif systemOwner.isSome and spaceCombatSurvivors.len == 0:
-    echo "      Phase 2: No orbital combat (attackers eliminated in space combat)"
+    logCombat("Phase 2: No orbital combat - attackers eliminated in space")
   else:
-    echo "      Phase 2: No orbital combat (no colony)"
+    logCombat("Phase 2: No orbital combat - no colony")
 
   # 5. Apply losses to game state
   # Combine outcomes from both combat phases
@@ -525,11 +525,13 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
               state.fleets[fleetId] = updatedFleet
 
       if mothballedFleetsDestroyed > 0:
-        echo "      ", mothballedSquadronsDestroyed, " mothballed squadron(s) in ",
-             mothballedFleetsDestroyed, " fleet(s) destroyed - no orbital defense remains"
+        logCombat("Mothballed squadrons destroyed - no orbital defense remains",
+                  "squadrons=", $mothballedSquadronsDestroyed,
+                  " fleets=", $mothballedFleetsDestroyed)
 
       if spaceliftShipsDestroyed > 0:
-        echo "      ", spaceliftShipsDestroyed, " spacelift ship(s) destroyed - no orbital defense remains"
+        logCombat("Spacelift ships destroyed - no orbital defense remains",
+                  "ships=", $spaceliftShipsDestroyed)
 
   # Update starbases at colony based on survivors
   if systemOwner.isSome and systemId in state.colonies:
@@ -589,7 +591,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   # Fleets that retreated from combat automatically receive Order 02 (Seek Home)
   # to find the nearest friendly colony and regroup
   if outcome.retreated.len > 0:
-    echo "      Processing retreated fleets - auto-assigning Seek Home orders"
+    logCombat("Processing retreated fleets - auto-assigning Seek Home orders",
+              "count=", $outcome.retreated.len)
 
     for houseId in outcome.retreated:
       # Find all fleets belonging to this house at the battle location
@@ -599,7 +602,9 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
 
           if safeDestination.isSome:
-            echo "        Fleet ", fleetId, " (", houseId, ") retreated - auto-assigning Seek Home to system ", safeDestination.get()
+            logDebug("Combat", "Fleet retreated - auto-assigning Seek Home",
+                     "fleetId=", $fleetId, " houseId=", $houseId,
+                     " destination=", $safeDestination.get())
 
             # Create Seek Home order for this fleet
             # NOTE: This creates an "in-flight" movement that will be processed immediately
@@ -622,7 +627,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
               systemId: some(systemId)
             ))
           else:
-            echo "        Fleet ", fleetId, " (", houseId, ") retreated but has no safe destination - holding position"
+            logWarn("Combat", "Fleet retreated but has no safe destination - holding position",
+                    "fleetId=", $fleetId, " houseId=", $houseId)
             # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
             events.add(GameEvent(
               eventType: GameEventType.Battle,
@@ -687,14 +693,19 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     let victorHouse = victor.get()
     let victorPrestige = getPrestigeValue(PrestigeSource.CombatVictory)
     state.houses[victorHouse].prestige += victorPrestige
-    echo "      ", state.houses[victorHouse].name, " victory (+", victorPrestige, " prestige)"
+    logCombat("Combat victory prestige awarded",
+              "house=", state.houses[victorHouse].name,
+              " prestige=", $victorPrestige)
 
     # Award prestige for squadrons destroyed
     let enemyLosses = if victorHouse in attackerHouses: defenderLosses else: attackerLosses
     if enemyLosses > 0:
       let squadronPrestige = getPrestigeValue(PrestigeSource.SquadronDestroyed) * enemyLosses
       state.houses[victorHouse].prestige += squadronPrestige
-      echo "      ", state.houses[victorHouse].name, " destroyed ", enemyLosses, " squadrons (+", squadronPrestige, " prestige)"
+      logCombat("Squadron destruction prestige awarded",
+                "house=", state.houses[victorHouse].name,
+                " squadrons=", $enemyLosses,
+                " prestige=", $squadronPrestige)
 
   # Generate event
   let victorName = if victor.isSome: state.houses[victor.get()].name else: "No one"
@@ -705,7 +716,7 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     systemId: some(systemId)
   ))
 
-  echo "      Battle complete. Victor: ", victorName
+  logCombat("Battle complete", "victor=", victorName)
 
 proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrder,
                        events: var seq[GameEvent]) =
@@ -721,17 +732,21 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   # Validate fleet exists and is at target
   let fleetOpt = state.getFleet(order.fleetId)
   if fleetOpt.isNone:
-    echo "      Bombardment failed: fleet not found"
+    logWarn("Combat", "Bombardment failed - fleet not found",
+            "fleetId=", $order.fleetId)
     return
 
   let fleet = fleetOpt.get()
   if fleet.location != targetId:
-    echo "      Bombardment failed: fleet not at target system"
+    logWarn("Combat", "Bombardment failed - fleet not at target system",
+            "fleetId=", $order.fleetId, " location=", $fleet.location,
+            " target=", $targetId)
     return
 
   # Validate target colony exists
   if targetId notin state.colonies:
-    echo "      Bombardment failed: no colony at target"
+    logWarn("Combat", "Bombardment failed - no colony at target",
+            "systemId=", $targetId)
     return
 
   # Fleet now uses Squadrons - convert to CombatSquadrons
@@ -821,11 +836,14 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     if project.projectType == econ_types.ConstructionType.Ship:
       updatedColony.underConstruction = none(econ_types.ConstructionProject)
       shipsDestroyedInDock = true
-      echo "      Ship under construction destroyed in bombardment!"
+      logCombat("Ship under construction destroyed in bombardment",
+                "systemId=", $targetId)
 
   state.colonies[targetId] = updatedColony
 
-  echo "      Bombardment at ", targetId, ": ", infrastructureLoss, " infrastructure destroyed"
+  logCombat("Bombardment complete",
+            "systemId=", $targetId,
+            " infrastructure=", $infrastructureLoss)
 
   # Generate intelligence reports for both attacker and defender
   let groundForcesKilled = result.populationDamage  # Population damage represents casualties
@@ -867,24 +885,29 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   # Validate fleet exists and is at target
   let fleetOpt = state.getFleet(order.fleetId)
   if fleetOpt.isNone:
-    echo "      Invasion failed: fleet not found"
+    logWarn("Combat", "Invasion failed - fleet not found",
+            "fleetId=", $order.fleetId)
     return
 
   let fleet = fleetOpt.get()
   if fleet.location != targetId:
-    echo "      Invasion failed: fleet not at target system"
+    logWarn("Combat", "Invasion failed - fleet not at target system",
+            "fleetId=", $order.fleetId, " location=", $fleet.location,
+            " target=", $targetId)
     return
 
   # Validate target colony exists
   if targetId notin state.colonies:
-    echo "      Invasion failed: no colony at target"
+    logWarn("Combat", "Invasion failed - no colony at target",
+            "systemId=", $targetId)
     return
 
   let colony = state.colonies[targetId]
 
   # Check if colony belongs to attacker (can't invade your own colony)
   if colony.owner == houseId:
-    echo "      Invasion failed: cannot invade your own colony"
+    logWarn("Combat", "Invasion failed - cannot invade your own colony",
+            "houseId=", $houseId, " systemId=", $targetId)
     return
 
   # Build attacking ground forces from spacelift ships (marines only)
@@ -899,7 +922,8 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
         attackingForces.add(marine)
 
   if attackingForces.len == 0:
-    echo "      Invasion failed: no marines in fleet"
+    logWarn("Combat", "Invasion failed - no marines in fleet",
+            "fleetId=", $order.fleetId)
     return
 
   # Build defending ground forces
@@ -943,7 +967,8 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   # Check prerequisite: all ground batteries must be destroyed
   # Per operations.md:7.6, invasion requires bombardment to destroy ground batteries first
   if defense.groundBatteries.len > 0:
-    echo "      Invasion failed: ", defense.groundBatteries.len, " ground batteries still operational (bombardment required first)"
+    logWarn("Combat", "Invasion failed - ground batteries still operational (bombardment required first)",
+            "systemId=", $targetId, " batteries=", $defense.groundBatteries.len)
     return
 
   # Ground forces already added above
@@ -974,7 +999,9 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   if result.success:
     # Invasion succeeded - colony captured
-    echo "      Invasion SUCCESS: ", houseId, " captured ", targetId, " from ", colony.owner
+    logCombat("Invasion SUCCESS - colony captured",
+              "attacker=", $houseId, " defender=", $colony.owner,
+              " systemId=", $targetId)
 
     # Transfer ownership
     updatedColony.owner = houseId
@@ -1002,12 +1029,14 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Prestige changes
     let attackerPrestige = getPrestigeValue(PrestigeSource.ColonySeized)
     state.houses[houseId].prestige += attackerPrestige
-    echo "      ", houseId, " gains ", attackerPrestige, " prestige for capturing colony"
+    logCombat("Invasion prestige awarded",
+              "house=", $houseId, " prestige=", $attackerPrestige)
 
     # Defender loses prestige for colony loss
     let defenderPenalty = -attackerPrestige  # Equal but opposite
     state.houses[colony.owner].prestige += defenderPenalty
-    echo "      ", colony.owner, " loses ", -defenderPenalty, " prestige for losing colony"
+    logCombat("Colony loss prestige penalty",
+              "house=", $colony.owner, " prestige=", $defenderPenalty)
 
     # Generate event
     events.add(GameEvent(
@@ -1018,8 +1047,11 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
   else:
     # Invasion failed - ALL attacking marines destroyed (no retreat from ground combat)
-    echo "      Invasion FAILED: ", colony.owner, " repelled ", houseId, " invasion at ", targetId
-    echo "      All ", attackingForces.len, " attacking marine divisions destroyed"
+    logCombat("Invasion FAILED - attacker repelled",
+              "defender=", $colony.owner, " attacker=", $houseId,
+              " systemId=", $targetId)
+    logCombat("All attacking marines destroyed",
+              "marines=", $attackingForces.len)
 
     # Update defender ground forces
     let survivingDefenders = defendingForces.len - result.defenderCasualties.len
@@ -1062,24 +1094,29 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
   # Validate fleet exists and is at target
   let fleetOpt = state.getFleet(order.fleetId)
   if fleetOpt.isNone:
-    echo "      Blitz failed: fleet not found"
+    logWarn("Combat", "Blitz failed - fleet not found",
+            "fleetId=", $order.fleetId)
     return
 
   let fleet = fleetOpt.get()
   if fleet.location != targetId:
-    echo "      Blitz failed: fleet not at target system"
+    logWarn("Combat", "Blitz failed - fleet not at target system",
+            "fleetId=", $order.fleetId, " location=", $fleet.location,
+            " target=", $targetId)
     return
 
   # Validate target colony exists
   if targetId notin state.colonies:
-    echo "      Blitz failed: no colony at target"
+    logWarn("Combat", "Blitz failed - no colony at target",
+            "systemId=", $targetId)
     return
 
   let colony = state.colonies[targetId]
 
   # Check if colony belongs to attacker
   if colony.owner == houseId:
-    echo "      Blitz failed: cannot blitz your own colony"
+    logWarn("Combat", "Blitz failed - cannot blitz your own colony",
+            "houseId=", $houseId, " systemId=", $targetId)
     return
 
   # Build attacking fleet (squadrons needed for blitz vs ground batteries)
@@ -1108,7 +1145,8 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
         attackingForces.add(marine)
 
   if attackingForces.len == 0:
-    echo "      Blitz failed: no marines in fleet"
+    logWarn("Combat", "Blitz failed - no marines in fleet",
+            "fleetId=", $order.fleetId)
     return
 
   # Build defending ground forces
@@ -1166,7 +1204,9 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   if result.success:
     # Blitz succeeded - colony captured with assets intact
-    echo "      Blitz SUCCESS: ", houseId, " captured ", targetId, " from ", colony.owner, " (assets seized)"
+    logCombat("Blitz SUCCESS - colony captured with assets seized",
+              "attacker=", $houseId, " defender=", $colony.owner,
+              " systemId=", $targetId)
 
     # Transfer ownership
     updatedColony.owner = houseId
@@ -1189,12 +1229,14 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Prestige changes (blitz gets same prestige as invasion)
     let attackerPrestige = getPrestigeValue(PrestigeSource.ColonySeized)
     state.houses[houseId].prestige += attackerPrestige
-    echo "      ", houseId, " gains ", attackerPrestige, " prestige for blitzing colony"
+    logCombat("Blitz prestige awarded",
+              "house=", $houseId, " prestige=", $attackerPrestige)
 
     # Defender loses prestige for colony loss
     let defenderPenalty = -attackerPrestige
     state.houses[colony.owner].prestige += defenderPenalty
-    echo "      ", colony.owner, " loses ", -defenderPenalty, " prestige for losing colony"
+    logCombat("Colony loss prestige penalty",
+              "house=", $colony.owner, " prestige=", $defenderPenalty)
 
     # Generate event
     events.add(GameEvent(
@@ -1205,8 +1247,11 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
   else:
     # Blitz failed - ALL attacking marines destroyed (no retreat from ground combat)
-    echo "      Blitz FAILED: ", colony.owner, " repelled ", houseId, " blitz at ", targetId
-    echo "      All ", attackingForces.len, " attacking marine divisions destroyed"
+    logCombat("Blitz FAILED - attacker repelled",
+              "defender=", $colony.owner, " attacker=", $houseId,
+              " systemId=", $targetId)
+    logCombat("All attacking marines destroyed",
+              "marines=", $attackingForces.len)
 
     # Update defender ground forces
     let survivingDefenders = defendingForces.len - result.defenderCasualties.len

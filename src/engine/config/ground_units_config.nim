@@ -5,6 +5,7 @@
 
 import std/[os]
 import toml_serialization
+import ../../common/logger
 
 type
   PlanetaryShieldConfig* = object
@@ -79,7 +80,7 @@ proc loadGroundUnitsConfig*(configPath: string = "config/ground_units.toml"): Gr
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, GroundUnitsConfig)
 
-  echo "[Config] Loaded ground units configuration from ", configPath
+  logInfo("Config", "Loaded ground units configuration", "path=", configPath)
 
 ## Global configuration instance
 

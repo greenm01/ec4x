@@ -5,6 +5,7 @@
 
 import std/[tables, strutils, os]
 import toml_serialization
+import ../../common/logger
 
 type
   ThemeEntry* = object
@@ -114,30 +115,33 @@ proc initializeThemes*() =
 
   # Log active theme
   let theme = getActiveTheme(globalThemeConfig)
-  echo "House Theme: ", theme.name, " - ", theme.description
+  logInfo("Config", "House theme loaded",
+          "name=", theme.name, " description=", theme.description)
   if theme.legalWarning != "none":
-    echo "  WARNING: ", theme.legalWarning
+    logWarn("Config", "Theme legal warning", "warning=", theme.legalWarning)
 
 when isMainModule:
   # Test theme loading
-  echo "Testing House Theme Loader"
-  echo "=========================="
+  logDebug("Test", "Testing House Theme Loader")
+  logDebug("Test", "==========================")
 
   let config = loadThemeConfig()
-  echo "\nAvailable themes: ", config.themes.len
+  logDebug("Test", "Available themes", "count=", $config.themes.len)
   for themeName, theme in config.themes:
-    echo "\n--- ", theme.name, " ---"
-    echo "Description: ", theme.description
-    echo "Legal Warning: ", theme.legalWarning
-    echo "Houses:"
+    logDebug("Test", "Theme details",
+            "name=", theme.name, " description=", theme.description,
+            " legalWarning=", theme.legalWarning)
+    logDebug("Test", "Theme houses:")
     for i, house in theme.houses:
-      echo "  ", i, ". ", house.name, " (", house.color, ")"
+      logDebug("Test", "House",
+              "index=", $i, " name=", house.name, " color=", house.color)
 
-  echo "\nActive Theme: ", config.activeTheme
+  logDebug("Test", "Active theme", "name=", config.activeTheme)
   let activeTheme = getActiveTheme(config)
-  echo "Active Theme Details:"
-  echo "  Name: ", activeTheme.name
-  echo "  Description: ", activeTheme.description
-  echo "  First 4 houses:"
+  logDebug("Test", "Active theme details",
+          "name=", activeTheme.name, " description=", activeTheme.description)
+  logDebug("Test", "First 4 houses:")
   for i in 0..3:
-    echo "    ", i, ". ", getHouseName(activeTheme, i), " (", getHouseColor(activeTheme, i), ")"
+    logDebug("Test", "House",
+            "index=", $i, " name=", getHouseName(activeTheme, i),
+            " color=", getHouseColor(activeTheme, i))

@@ -95,8 +95,8 @@
 
   </div>
   <div class="nine columns" id="content">
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolution/combat_resolution.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolution/combat_resolution.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolution/combat_resolution.nim#L1" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolution/combat_resolution.nim#L1" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
     <div id="tocRoot"></div>
     
@@ -129,8 +129,8 @@
   <dd>
     
     Resolve combat at a system with linear progression (operations.md:7.0) Phase 1: Space Combat - non-guard mobile fleets fight first Phase 2: Orbital Combat - if attackers survive, fight guard/reserve fleets + starbases Uses orders to determine which fleets are on guard duty
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolution/combat_resolution.nim#L192" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolution/combat_resolution.nim#L192" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolution/combat_resolution.nim#L192" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolution/combat_resolution.nim#L192" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -139,13 +139,13 @@
 <div id="resolveBlitz-procs-all">
   <div id="resolveBlitz,GameState,HouseId,FleetOrder,seq[GameEvent]">
   <dt><pre><span class="Keyword">proc</span> <a href="#resolveBlitz%2CGameState%2CHouseId%2CFleetOrder%2Cseq%5BGameEvent%5D"><span class="Identifier">resolveBlitz</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">;</span> <span class="Identifier">houseId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span> <span class="Identifier">order</span><span class="Other">:</span> <a href="../order_types.html#FleetOrder"><span class="Identifier">FleetOrder</span></a><span class="Other">;</span>
-                  <span class="Identifier">events</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#GameEvent"><span class="Identifier">GameEvent</span></a><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+                  <span class="Identifier">events</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#GameEvent"><span class="Identifier">GameEvent</span></a><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Process planetary blitz order (operations.md:7.6.2) Fast insertion variant - seizes assets intact but marines get 0.5x AS penalty Transports vulnerable to ground batteries during insertion
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolution/combat_resolution.nim#L1051" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolution/combat_resolution.nim#L1051" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolution/combat_resolution.nim#L1083" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolution/combat_resolution.nim#L1083" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -155,12 +155,12 @@
   <div id="resolveBombardment,GameState,HouseId,FleetOrder,seq[GameEvent]">
   <dt><pre><span class="Keyword">proc</span> <a href="#resolveBombardment%2CGameState%2CHouseId%2CFleetOrder%2Cseq%5BGameEvent%5D"><span class="Identifier">resolveBombardment</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">;</span> <span class="Identifier">houseId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span>
                         <span class="Identifier">order</span><span class="Other">:</span> <a href="../order_types.html#FleetOrder"><span class="Identifier">FleetOrder</span></a><span class="Other">;</span> <span class="Identifier">events</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#GameEvent"><span class="Identifier">GameEvent</span></a><span class="Other">]</span><span class="Other">)</span> {.
-    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Process planetary bombardment order (operations.md:7.5) Phase 2 of planetary combat - requires orbital supremacy Attacks planetary shields, ground batteries, and infrastructure
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolution/combat_resolution.nim#L710" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolution/combat_resolution.nim#L710" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolution/combat_resolution.nim#L721" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolution/combat_resolution.nim#L721" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
@@ -169,13 +169,13 @@
 <div id="resolveInvasion-procs-all">
   <div id="resolveInvasion,GameState,HouseId,FleetOrder,seq[GameEvent]">
   <dt><pre><span class="Keyword">proc</span> <a href="#resolveInvasion%2CGameState%2CHouseId%2CFleetOrder%2Cseq%5BGameEvent%5D"><span class="Identifier">resolveInvasion</span></a><span class="Other">(</span><span class="Identifier">state</span><span class="Other">:</span> <span class="Keyword">var</span> <a href="../gamestate.html#GameState"><span class="Identifier">GameState</span></a><span class="Other">;</span> <span class="Identifier">houseId</span><span class="Other">:</span> <a href="../_._/common/types/core.html#HouseId"><span class="Identifier">HouseId</span></a><span class="Other">;</span> <span class="Identifier">order</span><span class="Other">:</span> <a href="../order_types.html#FleetOrder"><span class="Identifier">FleetOrder</span></a><span class="Other">;</span>
-                     <span class="Identifier">events</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#GameEvent"><span class="Identifier">GameEvent</span></a><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+                     <span class="Identifier">events</span><span class="Other">:</span> <span class="Keyword">var</span> <span class="Identifier">seq</span><span class="Other">[</span><a href="types.html#GameEvent"><span class="Identifier">GameEvent</span></a><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     Process planetary invasion order (operations.md:7.6) Phase 3 of planetary combat - requires all ground batteries destroyed Marines attack ground forces to capture colony
-    <a href="https://github.com/niltempus/ec4x/tree/main/src/engine/resolution/combat_resolution.nim#L856" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
-<a href="https://github.com/niltempus/ec4x/edit/devel/src/engine/resolution/combat_resolution.nim#L856" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
+    <a href="https://github.com/niltempus/ec4x/tree/main/../../src/engine/resolution/combat_resolution.nim#L874" class="link-seesrc" target="_blank">Source</a>&nbsp;&nbsp;
+<a href="https://github.com/niltempus/ec4x/edit/devel/../../src/engine/resolution/combat_resolution.nim#L874" class="link-seesrc" target="_blank" >Edit</a>&nbsp;&nbsp;
 
   </dd>
 </div>
