@@ -13,7 +13,7 @@
 [victory]
 # BALANCE: Victory and defeat thresholds
 prestige_victory = 2500            # Reach 2500 prestige to win (adjusted for 10x base prestige)
-starting_prestige = 50             # NOTE: Game setup defines this in game_setup/standard.toml
+starting_prestige = 100            # Increased from 50 to enable Act 1 espionage (threshold: 50)
 defeat_threshold = 0               # Below 0 for consecutive turns = surrender
 defeat_consecutive_turns = 3       # NOTE: Elimination mechanics in config/gameplay.toml
 
