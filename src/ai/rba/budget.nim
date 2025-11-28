@@ -10,10 +10,10 @@
 
 import std/[tables, options, algorithm, strformat, sequtils]
 import ../common/types
-import ../../engine/[gamestate, orders, fleet, logger, fog_of_war]
+import ../../engine/[gamestate, orders, fleet, logger, fog_of_war, squadron]
 import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../common/types/[core, units]
-import ./config  # RBA configuration system
+import ./config  # RBA configuration system (globalRBAConfig)
 
 # =============================================================================
 # Budget Tracker - Running Budget Management
@@ -1062,7 +1062,9 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                                    militaryCount: int,
                                    scoutCount: int,
                                    planetBreakerCount: int,
-                                   availableBudget: int): seq[BuildOrder] =
+                                   availableBudget: int,
+                                   # Phase 3: Admiral requirements (optional)
+                                   admiralRequirements: Option[BuildRequirements] = none(BuildRequirements)): seq[BuildOrder] =
   ## Generate build orders using budget allocation system
   ##
   ## This replaces the sequential priority system with multi-objective allocation
@@ -1071,7 +1073,41 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   ## Otherwise AI will overspend and enter maintenance death spiral
 
   # 1. Calculate budget allocation percentages
-  let allocation = allocateBudget(act, personality, isUnderThreat)
+  var allocation = allocateBudget(act, personality, isUnderThreat)
+
+  # 1.5. PHASE 3: Strategic Triage for Admiral Requirements
+  # Admiral requirements get absolute priority, but maintain minimum strategic reserves
+  # to avoid strategic blindness (e.g., all budget to defense, none for scouts)
+  if admiralRequirements.isSome:
+    let reqs = admiralRequirements.get()
+    if reqs.requirements.len > 0:
+      let criticalCost = reqs.requirements.filterIt(it.priority == RequirementPriority.Critical)
+                                        .mapIt(it.estimatedCost).foldl(a + b, 0)
+      let highCost = reqs.requirements.filterIt(it.priority == RequirementPriority.High)
+                                     .mapIt(it.estimatedCost).foldl(a + b, 0)
+
+      let totalUrgentCost = criticalCost + highCost
+      let budgetPercent = if availableBudget > 0: float(totalUrgentCost) / float(availableBudget) else: 0.0
+
+      if budgetPercent > 0.85:  # Admiral needs >85% of budget
+        # Strategic triage: Reserve minimum budgets for awareness
+        let minRecon = int(float(availableBudget) * globalRBAConfig.admiral.min_recon_budget_percent)
+        let minExpansion = int(float(availableBudget) * globalRBAConfig.admiral.min_expansion_budget_percent)
+
+        logInfo(LogCategory.lcAI,
+                &"{controller.houseId} Strategic Triage: Admiral needs {budgetPercent*100:.0f}% of budget " &
+                &"(Critical={criticalCost}PP, High={highCost}PP). " &
+                &"Reserving {minRecon}PP recon, {minExpansion}PP expansion")
+
+        # Adjust allocation to reserve minimums (reduce from Defense/Military proportionally)
+        let totalReserve = minRecon + minExpansion
+        let reduceFromDefense = int(float(totalReserve) * 0.5)
+        let reduceFromMilitary = totalReserve - reduceFromDefense
+
+        allocation[Reconnaissance] = max(allocation[Reconnaissance], float(minRecon) / float(availableBudget))
+        allocation[Expansion] = max(allocation[Expansion], float(minExpansion) / float(availableBudget))
+        allocation[Defense] = max(0.0, allocation[Defense] - float(reduceFromDefense) / float(availableBudget))
+        allocation[Military] = max(0.0, allocation[Military] - float(reduceFromMilitary) / float(availableBudget))
 
   # 2. Initialize BudgetTracker with full house budget
   # CRITICAL: Single tracker prevents overspending across all colonies
@@ -1089,6 +1125,69 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
   # 3. Generate orders for each objective within budget
   result = @[]
+
+  # 3.1. PHASE 3: Process Admiral Requirements FIRST (before colony loop)
+  # Admiral requirements have absolute priority (Critical > High > Medium)
+  # This ensures tactical needs drive production instead of hardcoded thresholds
+  if admiralRequirements.isSome:
+    let reqs = admiralRequirements.get()
+    for req in reqs.requirements:
+      # Process requirements in priority order (already sorted by Admiral)
+      # Skip Deferred requirements (low urgency)
+      if req.priority == RequirementPriority.Deferred:
+        continue
+
+      # Find best colony to build (prefer target system if specified)
+      var buildColony: Option[Colony] = none(Colony)
+      if req.targetSystem.isSome:
+        # Try to build at/near target system
+        for colony in myColonies:
+          if colony.systemId == req.targetSystem.get():
+            if colony.shipyards.len > 0 or colony.spaceports.len > 0:
+              buildColony = some(colony)
+              break
+
+      # Fallback: Use first colony with facilities
+      if buildColony.isNone:
+        for colony in myColonies:
+          if colony.shipyards.len > 0 or colony.spaceports.len > 0:
+            buildColony = some(colony)
+            break
+
+      if buildColony.isNone:
+        logWarn(LogCategory.lcAI,
+                &"{controller.houseId} Admiral requirement cannot be fulfilled: " &
+                &"no colonies with shipyard/spaceport (need {req.quantity}× {req.shipClass.get()})")
+        continue
+
+      # Try to allocate budget for this requirement
+      let col = buildColony.get()
+      if req.shipClass.isSome:
+        let shipClass = req.shipClass.get()
+        let shipStats = getShipStats(shipClass)
+        let totalCost = shipStats.buildCost * req.quantity
+
+        if tracker.canAfford(req.buildObjective, totalCost):
+          # Budget available - create build order
+          result.add(BuildOrder(
+            colonySystem: col.systemId,
+            buildType: BuildType.Ship,
+            quantity: req.quantity,
+            shipClass: some(shipClass),
+            buildingType: none(string),
+            industrialUnits: 0
+          ))
+          tracker.recordSpending(req.buildObjective, totalCost)
+
+          logInfo(LogCategory.lcAI,
+                  &"{controller.houseId} Fulfilled Admiral requirement: " &
+                  &"{req.quantity}× {shipClass} at {col.systemId} " &
+                  &"(priority={req.priority}, cost={totalCost}PP, reason={req.reason})")
+        else:
+          # Insufficient budget
+          logWarn(LogCategory.lcAI,
+                  &"{controller.houseId} Admiral requirement unfulfilled (insufficient {req.buildObjective} budget): " &
+                  &"{req.quantity}× {shipClass} (need {totalCost}PP)")
 
   # Sort colonies prioritizing shipyards over spaceports (economy.md:5.1, 5.3)
   # Shipyard construction has no penalty, spaceport construction has 100% PC increase
