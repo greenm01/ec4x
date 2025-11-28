@@ -2,11 +2,14 @@
 ##
 ## Separated to avoid circular imports between controller and subsystems
 
-import std/tables
+import std/[tables, options]
 import ../common/types
 import ../../engine/gamestate  # For FallbackRoute
 import ../../engine/order_types  # For StandingOrder
 import ../../common/types/core
+
+# Forward declare BuildRequirements to avoid circular import
+type BuildRequirements* = object
 
 type
   ReconUpdate* = object
@@ -26,3 +29,4 @@ type
     homeworld*: SystemId  # Primary fallback and repair location
     standingOrders*: Table[FleetId, StandingOrder]  # QoL: Standing orders for routine tasks
     pendingIntelUpdates*: seq[ReconUpdate]  # Reconnaissance missions scheduled for intel gathering
+    admiralRequirements*: Option[BuildRequirements]  # Phase 3: Admiral build requirements
