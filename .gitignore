@@ -142,6 +142,9 @@ balance_results/
 tests/balance/*.json
 tests/balance/balance_results/
 
+# Claude-generated analysis scripts (not tracked)
+claude_scripts/
+
 # AI Training and Inference (DO NOT COMMIT LARGE DATA)
 # Training data from simulations
 ai_training/training_data/

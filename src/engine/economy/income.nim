@@ -82,16 +82,17 @@ proc calculateRollingTaxAverage*(history: seq[int]): int =
 
 ## Colony Income Calculation
 
-proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseTaxRate: int): ColonyIncomeReport =
+proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseCSTTech: int, houseTaxRate: int): ColonyIncomeReport =
   ## Calculate income for single colony
   ##
   ## Args:
   ##   colony: Colony economic data
   ##   houseELTech: House Economic Level tech
+  ##   houseCSTTech: House Construction tech (affects capacity)
   ##   houseTaxRate: House-wide tax rate (colony can override)
 
   let taxRate = if colony.taxRate > 0: colony.taxRate else: houseTaxRate
-  let output = calculateProductionOutput(colony, houseELTech)
+  let output = calculateProductionOutput(colony, houseELTech, houseCSTTech)
 
   result = ColonyIncomeReport(
     colonyId: colony.systemId,
@@ -107,12 +108,13 @@ proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseTaxRate: int)
 ## House Income Calculation
 
 proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
-                          taxPolicy: TaxPolicy, treasury: int): HouseIncomeReport =
+                          houseCSTTech: int, taxPolicy: TaxPolicy, treasury: int): HouseIncomeReport =
   ## Calculate total income for house
   ##
   ## Args:
   ##   colonies: All colonies owned by house
   ##   houseELTech: Economic Level tech
+  ##   houseCSTTech: Construction tech (affects capacity)
   ##   taxPolicy: House tax policy with history
   ##   treasury: Current treasury balance
 
@@ -133,7 +135,7 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
 
   # Calculate each colony's income
   for colony in colonies:
-    let colonyReport = calculateColonyIncome(colony, houseELTech, taxPolicy.currentRate)
+    let colonyReport = calculateColonyIncome(colony, houseELTech, houseCSTTech, taxPolicy.currentRate)
     result.colonies.add(colonyReport)
     result.totalGross += colonyReport.grossOutput
     result.totalNet += colonyReport.netValue
@@ -172,29 +174,59 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
 
 ## Population Growth
 
+proc getPlanetCapacity*(planetClass: PlanetClass): int =
+  ## Get maximum population capacity for planet class
+  ## Per planets.nim comments and economy.md:3.6
+  case planetClass
+  of PlanetClass.Extreme: 20
+  of PlanetClass.Desolate: 60
+  of PlanetClass.Hostile: 180
+  of PlanetClass.Harsh: 500
+  of PlanetClass.Benign: 1000
+  of PlanetClass.Lush: 2000
+  of PlanetClass.Eden: 5000
+
 proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float =
-  ## Apply population growth to colony
+  ## Apply logistic population growth to colony
   ## Returns growth percentage for reporting
   ##
   ## Per economy.md:3.6:
+  ## Uses logistic growth function with planet capacity limits
   ## Base growth rate loaded from config (natural_growth_rate)
   ## Modified by tax rate per economy.md:3.2.2
+  ##
+  ## Logistic growth formula: dP/dt = r × P × (1 - P/K)
+  ## Where:
+  ##   P = current population
+  ##   r = growth rate (base × tax multiplier)
+  ##   K = carrying capacity (planet class dependent)
   ##
   ## Args:
   ##   colony: Colony to apply growth to (modified)
   ##   taxRate: Current tax rate (affects growth multiplier)
   ##   baseGrowthRate: Base growth rate from config (e.g., 0.015 for 1.5%)
 
-  let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
-  let growthRate = baseGrowthRate * taxMultiplier
+  let currentPU = float(colony.populationUnits)
+  let capacity = float(getPlanetCapacity(colony.planetClass))
 
-  # Apply logistic growth
-  # TODO: Implement proper logistic curve with planet capacity limits
-  # For now, simple exponential growth
-  let newPU = int(float(colony.populationUnits) * (1.0 + growthRate))
-  colony.populationUnits = newPU
+  # Calculate effective growth rate with tax modifier
+  let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
+  let effectiveGrowthRate = baseGrowthRate * taxMultiplier
+
+  # Apply logistic growth: dP = r × P × (1 - P/K)
+  # Limiting factor prevents growth beyond capacity
+  let limitingFactor = 1.0 - (currentPU / capacity)
+  let growth = currentPU * effectiveGrowthRate * max(0.0, limitingFactor)
+
+  # Calculate new population (ensure non-negative and within capacity)
+  let newPU = int(min(currentPU + growth, capacity))
+  colony.populationUnits = max(1, newPU)  # Minimum 1 PU (colony doesn't die from growth)
 
   # Update PTU
-  colony.populationTransferUnits = calculatePTU(newPU)
+  colony.populationTransferUnits = calculatePTU(colony.populationUnits)
 
-  return growthRate * 100.0  # Return as percentage
+  # Return actual growth percentage for reporting
+  if currentPU > 0:
+    return ((float(colony.populationUnits) - currentPU) / currentPU) * 100.0
+  else:
+    return 0.0

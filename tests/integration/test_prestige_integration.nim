@@ -36,7 +36,7 @@ suite "Prestige Integration":
       history: @[10, 10, 10]
     )
 
-    let report = calculateHouseIncome(@[colony], 1, taxPolicy, 1000)
+    let report = calculateHouseIncome(@[colony], 1, 1, taxPolicy, 1000)
 
     # Should generate prestige bonus
     check report.totalPrestigeBonus == 3
@@ -66,7 +66,7 @@ suite "Prestige Integration":
       history: @[70, 70, 70, 70, 70, 70]
     )
 
-    let report = calculateHouseIncome(@[colony], 1, taxPolicy, 1000)
+    let report = calculateHouseIncome(@[colony], 1, 1, taxPolicy, 1000)
 
     # Should generate prestige penalty
     check report.taxAverage6Turn == 70

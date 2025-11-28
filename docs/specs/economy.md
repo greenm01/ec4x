@@ -51,12 +51,13 @@ An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the 
 **Gross Colony Output (GCO)**: The total economic output of a colony, expressed in production points. GCO is determined by the productivity of the colony, industrial investments, resource availability, and technological enhancements.
 
 ```
-GCO = (PU × RAW_INDEX) + (IU × EL_MOD × (1 + PROD_GROWTH))
+GCO = (PU × RAW_INDEX) + (IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH))
 ```
 
 Where:
 - PU: Population Units of the colony
-- RAW_INDEX: Resource quality index based on the solar system's mineral abundance. 
+- RAW_INDEX: Resource quality index based on the solar system's mineral abundance.
+- CST_MOD: Construction tech capacity modifier = 1.0 + (CST_level - 1) × 0.10 
 - IU: Industrial Units at the colony
 - EL_MOD: Economic Level Modifier, based on the colony's EL tech level
 - PROD_GROWTH: Productivity growth rate influenced by the tax rate
@@ -666,16 +667,17 @@ CST will open up new, larger hulled classes of combat ships.
 
 The maximum construction level is CST10.
 
-### Construction Speed Bonus
+### Construction Capacity Bonus
 
-CST tech reduces ship construction time by 10% per level:
-- **Formula:** `ceiling(base_time × (1.0 - (CST_level - 1) × 0.10))`
-- **Minimum:** 1 turn (construction never completes faster than 1 turn)
-- **Example:** A Battleship (3 turns base) at CST5 takes `ceiling(3 × 0.6)` = 2 turns
+CST tech increases industrial production capacity by 10% per level:
+- **Formula:** `CST_MOD = 1.0 + (CST_level - 1) × 0.10`
+- **Applied to:** Industrial component of GCO: `IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH)`
+- **Example:** At CST5, industrial output is multiplied by 1.40 (40% bonus)
 
-This creates meaningful progression from early game (capitals take 4-5 turns) to late game (CST10 enables rapid construction of even the largest ships).
+**Construction Time:**
+All construction completes instantly (1 turn) regardless of CST level. This reflects the new time narrative where turns represent variable time periods (1-15 years depending on map size). Multi-turn construction would cause severe balance issues across different map sizes.
 
-See [Section 10.1.1](reference.md#1011-ship-construction-times) for complete construction time table.
+CST tech provides economic benefits through capacity increases, not construction speed.
 
 ## 4.6 Weapons (WEP)
 
@@ -901,7 +903,7 @@ Construction and repair of House assets is accomplished planet-side or in orbit,
 
 ## 5.0 Ship Construction
 
-The number of turns required to construct a ship varies by hull class and CST tech level per [Section 10.1.1](reference.md#1011-ship-construction-times).
+All ship construction completes instantly (1 turn) regardless of hull class or CST tech level. This reflects the game's time narrative where turns represent variable time periods (1-15 years depending on map size).
 
 **Payment Model:**
 - Full PC cost must be paid **upfront** from house treasury when construction begins

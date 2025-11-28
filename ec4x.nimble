@@ -23,15 +23,41 @@ requires "toml_serialization >= 0.2.0"
 
 task test, "Run the complete test suite":
   echo "Running EC4X test suite..."
+  echo "=== Core Tests ==="
   exec "nim c -r tests/test_core.nim"
-  # TODO: Add back when tests are created:
-  # exec "nim c -r tests/test_starmap_robust.nim"
-  # exec "nim c -r tests/test_starmap_validation.nim"
+  echo ""
+  echo "=== Integration Tests ==="
+  exec "nim c -r tests/run_all_integration_tests.nim"
+  echo ""
   echo "All tests completed successfully!"
 
 task testCore, "Run core functionality tests":
   echo "Running core functionality tests..."
   exec "nim c -r tests/test_core.nim"
+
+task testIntegration, "Run all integration tests":
+  echo "Running all integration tests..."
+  exec "nim c -r tests/run_all_integration_tests.nim"
+
+task testUnits, "Test all unit construction (ships, ground units, facilities)":
+  echo "Testing all 34 game asset types..."
+  exec "nim c -r tests/integration/test_all_units_construction.nim"
+
+task testEconomy, "Test economy system integration":
+  echo "Testing M5 economy system..."
+  exec "nim c -r tests/integration/test_m5_economy_integration.nim"
+
+task testTechnology, "Test technology advancement system":
+  echo "Testing technology system..."
+  exec "nim c -r tests/integration/test_technology_comprehensive.nim"
+
+task testDiplomacy, "Test diplomacy system":
+  echo "Testing diplomacy system..."
+  exec "nim c -r tests/integration/test_diplomacy.nim"
+
+task testPrestige, "Test prestige system":
+  echo "Testing prestige system..."
+  exec "nim c -r tests/integration/test_prestige_comprehensive.nim"
 
 task testStarmap, "Run starmap tests":
   echo "Running starmap tests..."
@@ -119,6 +145,8 @@ task buildBalance, "Build balance test simulation binary":
 
 task testBalanceQuick, "Quick balance validation (7 turns, 20 games)":
   echo "Running quick balance validation (7 turns, 20 games)..."
+  echo "Cleaning old diagnostics to prevent confusion..."
+  exec "rm -rf balance_results/diagnostics/*.csv"
   echo "Forcing clean rebuild to prevent stale binary bugs..."
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
@@ -127,6 +155,8 @@ task testBalanceQuick, "Quick balance validation (7 turns, 20 games)":
 
 task testBalanceAct1, "Act 1: Land Grab (7 turns, 100 games)":
   echo "Running Act 1 validation (7 turns, 100 games)..."
+  echo "Cleaning old diagnostics to prevent confusion..."
+  exec "rm -rf balance_results/diagnostics/*.csv"
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
@@ -134,6 +164,8 @@ task testBalanceAct1, "Act 1: Land Grab (7 turns, 100 games)":
 
 task testBalanceAct2, "Act 2: Rising Tensions (15 turns, 100 games)":
   echo "Running Act 2 validation (15 turns, 100 games)..."
+  echo "Cleaning old diagnostics to prevent confusion..."
+  exec "rm -rf balance_results/diagnostics/*.csv"
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 15"
@@ -141,6 +173,8 @@ task testBalanceAct2, "Act 2: Rising Tensions (15 turns, 100 games)":
 
 task testBalanceAct3, "Act 3: Total War (25 turns, 100 games)":
   echo "Running Act 3 validation (25 turns, 100 games)..."
+  echo "Cleaning old diagnostics to prevent confusion..."
+  exec "rm -rf balance_results/diagnostics/*.csv"
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 25"
@@ -148,6 +182,8 @@ task testBalanceAct3, "Act 3: Total War (25 turns, 100 games)":
 
 task testBalanceAct4, "Act 4: Endgame (30 turns, 100 games)":
   echo "Running Act 4 validation (30 turns, 100 games)..."
+  echo "Cleaning old diagnostics to prevent confusion..."
+  exec "rm -rf balance_results/diagnostics/*.csv"
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
@@ -155,6 +191,8 @@ task testBalanceAct4, "Act 4: Endgame (30 turns, 100 games)":
 
 task testBalanceAll4Acts, "Test all 4 acts sequentially (7, 15, 25, 30 turns)":
   echo "Running complete 4-act validation suite..."
+  echo "Cleaning old diagnostics to prevent confusion..."
+  exec "rm -rf balance_results/diagnostics/*.csv"
   exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
   exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
   echo "Git hash: $(cat tests/balance/.build_git_hash)"

@@ -7,6 +7,7 @@ import order_types  # Import and re-export fleet order types
 import espionage/types as esp_types
 import research/types as res_types
 import economy/construction  # For cost calculation
+import economy/config_accessors  # For CST requirement checking
 
 # Re-export order types
 export order_types.FleetOrderType, order_types.FleetOrder
@@ -366,6 +367,23 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
               &"SECURITY VIOLATION: {packet.houseId} attempted to build at {order.colonySystem} " &
               &"(owned by {colony.owner})")
       return ValidationResult(valid: false, error: "Build order: House does not own colony at system " & $order.colonySystem)
+
+    # Check CST tech requirement for ships (economy.md:4.5)
+    if order.buildType == BuildType.Ship and order.shipClass.isSome:
+      let shipClass = order.shipClass.get()
+      let required_cst = getShipCSTRequirement(shipClass)
+
+      # Get house's CST level
+      if packet.houseId in state.houses:
+        let house = state.houses[packet.houseId]
+        let house_cst = house.techTree.levels.constructionTech
+
+        if house_cst < required_cst:
+          logWarn(LogCategory.lcOrders,
+                  &"{packet.houseId} Build order REJECTED: {shipClass} requires CST{required_cst}, " &
+                  &"house has CST{house_cst}")
+          return ValidationResult(valid: false,
+                                 error: &"Build order: {shipClass} requires CST{required_cst}, house has CST{house_cst}")
 
     # Check for duplicate build orders at same colony (can only build one thing at a time)
     if colony.underConstruction.isSome:

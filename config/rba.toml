@@ -135,12 +135,12 @@ special_units = 0.10   # Increased from 0.05 - more ETACs for expansion
 technology = 0.05      # Add minimal tech investment
 
 [budget_act2_rising_tensions]
-expansion = 0.20       # Reduced from 0.30 - land grab mostly done
-defense = 0.15         # Reduced from 0.20 - colonies established
-military = 0.30        # Maintain - prepare for war
-reconnaissance = 0.25  # Increased from 0.10 - BUILD ELI mesh now
-special_units = 0.05   # Maintain
-technology = 0.05      # Maintain minimal investment
+expansion = 0.10       # Reduced from 0.15 - most colonies claimed in Act 1
+defense = 0.15         # Unchanged - maintain colony defense
+military = 0.25        # Reduced from 0.30 - shift budget to special units
+reconnaissance = 0.15  # Reduced from 0.20 - scouts already built
+special_units = 0.30   # CRITICAL FIX: Need 180PP for carrier+fighters (was 0.15)
+technology = 0.05      # Unchanged - minimal investment
 
 [budget_act3_total_war]
 expansion = 0.10
