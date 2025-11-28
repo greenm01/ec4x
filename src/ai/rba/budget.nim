@@ -847,40 +847,49 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
       tracker.recordSpending(SpecialUnits, raiderCost)
 
   # Fighters (cheap filler - for colony defense or carrier deployment)
-  # CAPACITY CHECK: Only build fighters if colony has capacity OR we have carriers
-  # Fighters need EITHER:
-  # 1. Colony capacity (starbases + population), OR
-  # 2. Carrier capacity (can load onto carriers for fleet operations)
+  # Two commissioning paths (per assets.md:2.4.1):
+  # Path 1: Colony-based (requires starbases for defense)
+  # Path 2: Direct carrier commissioning (bypasses starbase requirement)
   if needFighters:
     let fighterCost = getShipConstructionCost(ShipClass.Fighter)
 
-    # Check colony capacity: requires operational starbases (1 per 5 FS)
-    # Per assets.md:2.4.1: Max FS = min(floor(PU/100) × FD, operational_starbases × 5)
+    # Path 1: Check colony capacity for defense fighters
+    # Requires operational starbases (1 per 5 FS)
     let operationalStarbases = colony.starbases.countIt(not it.isCrippled)
     let currentFighters = colony.fighterSquadrons.len
     let colonyCapacity = operationalStarbases * 5  # Each starbase supports 5 fighters
     let hasColonyCapacity = currentFighters < colonyCapacity
 
-    # Check if we have carriers available (alternative deployment option)
+    # Path 2: Check carrier capacity for direct commissioning
+    # Carriers can accept fighters without colony starbase infrastructure
     var hasCarrierCapacity = false
+    var totalCarrierSlots = 0
     for fleet in ownFleets:
       for squadron in fleet.squadrons:
-        if squadron.flagship.shipClass in [ShipClass.Carrier, ShipClass.SuperCarrier]:
+        if squadron.flagship.shipClass == ShipClass.Carrier:
+          # Standard Carrier: 3-5 FS depending on ACO tech (simplified: assume 3)
+          let embarked = squadron.embarkedFighters.len
+          totalCarrierSlots += max(0, 3 - embarked)
           hasCarrierCapacity = true
-          break
-      if hasCarrierCapacity:
-        break
+        elif squadron.flagship.shipClass == ShipClass.SuperCarrier:
+          # Super Carrier: 5-8 FS depending on ACO tech (simplified: assume 5)
+          let embarked = squadron.embarkedFighters.len
+          totalCarrierSlots += max(0, 5 - embarked)
+          hasCarrierCapacity = true
 
     # DIAGNOSTIC LOGGING: Track fighter build decision
     logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Colony {colony.systemId} fighter check: " &
             &"currentFS={currentFighters}, colonyCapacity={colonyCapacity} ({operationalStarbases} starbases), " &
-            &"hasCarriers={hasCarrierCapacity}, canBuild={hasColonyCapacity or hasCarrierCapacity}")
+            &"carrierSlots={totalCarrierSlots}, canBuild={hasColonyCapacity or hasCarrierCapacity}")
 
-    # Build fighters if EITHER colony has capacity OR we have carriers to load them
+    # Build fighters if EITHER:
+    # - Path 1: Colony has capacity (defense fighters), OR
+    # - Path 2: Carriers have available hangar space (direct commissioning)
     if hasColonyCapacity or hasCarrierCapacity:
       while tracker.canAfford(SpecialUnits, fighterCost):
+        let pathType = if hasColonyCapacity: "colony-defense" else: "carrier-direct"
         logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Building fighter at colony {colony.systemId} " &
-                 &"(remaining={tracker.getRemainingBudget(SpecialUnits)}PP)")
+                 &"(remaining={tracker.getRemainingBudget(SpecialUnits)}PP, path={pathType})")
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -892,7 +901,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         tracker.recordSpending(SpecialUnits, fighterCost)
     else:
       logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Skipping fighter construction at colony {colony.systemId}: " &
-              &"no colony capacity (need starbases) and no carriers available")
+              &"no colony capacity (need starbases) and no carrier hangar space available")
 
 proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,
                       planetBreakerCount: int, colonyCount: int,
