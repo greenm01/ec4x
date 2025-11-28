@@ -15,7 +15,8 @@ type
     Critical, High, Medium, Low, Deferred
 
   RequirementType* {.pure.} = enum
-    DefenseGap, OffensivePrep, ReconnaissanceGap, ExpansionSupport, ThreatResponse
+    DefenseGap, OffensivePrep, ReconnaissanceGap, ExpansionSupport, ThreatResponse,
+    StrategicAsset, Infrastructure
 
   BuildRequirement* = object
     requirementType*: RequirementType
