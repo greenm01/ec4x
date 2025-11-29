@@ -3,7 +3,7 @@
 
 import std/[options, tables]
 import ../../common/types/[core, units]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../state_helpers, ../logger
+import ../gamestate, ../orders, ../fleet, ../squadron, ../state_helpers, ../logger, ../starmap
 import ../intelligence/detection
 import ../combat/[types as combat_types]
 
@@ -196,14 +196,22 @@ proc executeSeekHomeOrder(
       eventsGenerated: @[]
     )
 
-  # Find closest colony (simple distance calculation)
-  # TODO: Use proper pathfinding when starmap has coordinate system
-  let targetColony = friendlyColonies[0]
+  # Find closest colony using pathfinding
+  var closestColony = friendlyColonies[0]
+  var minDistance = int.high
+
+  for colonyId in friendlyColonies:
+    let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
+    if pathResult.found:
+      let distance = pathResult.path.len - 1
+      if distance < minDistance:
+        minDistance = distance
+        closestColony = colonyId
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " seeking home at " & $targetColony,
-    eventsGenerated: @["Fleet seeking home"]
+    message: "Fleet " & $fleet.id & " seeking home at " & $closestColony & " (" & $minDistance & " jumps)",
+    eventsGenerated: @["Fleet seeking home (" & $minDistance & " jumps)"]
   )
 
 # =============================================================================
@@ -268,8 +276,28 @@ proc executeGuardStarbaseOrder(
 
   let targetSystem = order.targetSystem.get()
 
-  # Check starbase exists in target system
-  # TODO: Validate starbase presence once starbase tracking added to GameState
+  # Validate starbase presence and ownership
+  if targetSystem notin state.colonies:
+    return OrderExecutionResult(
+      success: false,
+      message: "No colony at " & $targetSystem & " for starbase guard duty",
+      eventsGenerated: @[]
+    )
+
+  let colony = state.colonies[targetSystem]
+  if colony.owner != fleet.owner:
+    return OrderExecutionResult(
+      success: false,
+      message: "Cannot guard starbase at enemy colony " & $targetSystem,
+      eventsGenerated: @[]
+    )
+
+  if colony.starbases.len == 0:
+    return OrderExecutionResult(
+      success: false,
+      message: "No starbase at " & $targetSystem & " to guard",
+      eventsGenerated: @[]
+    )
 
   result = OrderExecutionResult(
     success: true,
@@ -366,8 +394,10 @@ proc executeBlockadeOrder(
       eventsGenerated: @[]
     )
 
-  # Mark colony as blockaded
-  # TODO: Add blockade tracking to Colony type
+  # NOTE: Blockade tracking not yet implemented in Colony type
+  # Blockade effects are calculated dynamically during Income Phase by checking
+  # for BlockadePlanet fleet orders at colony systems (see income.nim)
+  # Future enhancement: Add blockaded: bool field to Colony type for faster lookups
 
   result = OrderExecutionResult(
     success: true,
@@ -636,7 +666,21 @@ proc executeHackStarbaseOrder(
 
   let targetSystem = order.targetSystem.get()
 
-  # TODO: Check starbase exists at target
+  # Validate starbase presence at target
+  if targetSystem notin state.colonies:
+    return OrderExecutionResult(
+      success: false,
+      message: "No colony at " & $targetSystem & " for starbase hacking",
+      eventsGenerated: @[]
+    )
+
+  let colony = state.colonies[targetSystem]
+  if colony.starbases.len == 0:
+    return OrderExecutionResult(
+      success: false,
+      message: "No starbase at " & $targetSystem & " to hack",
+      eventsGenerated: @[]
+    )
 
   # Create spy scout and add to game state
   let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem

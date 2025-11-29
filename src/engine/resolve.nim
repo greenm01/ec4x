@@ -291,8 +291,9 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
 
 ## Helper: Auto-balance unassigned squadrons to fleets at colony
 
-# NOTE: Function currently unused but preserved for future implementation
-# TODO: Integrate auto-balancing of unassigned squadrons to stationary fleets
+# NOTE: This functionality is handled by economy_resolution.nim:autoBalanceSquadronsToFleets
+# which runs after ship commissioning during the Economy Phase.
+# The implementation below is preserved for reference but not currently used.
 when false:
   proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
     ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
@@ -625,20 +626,18 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
           resolveBlitz(state, houseId, order, events)
 
       of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
-        # Check if already handled by simultaneous resolution
-        if simultaneous_espionage.wasEspionageHandled(espionageResults, houseId, order.fleetId):
-          discard  # Already handled
-        else:
-          # TODO: Implement individual espionage handlers
-          discard
+        # All espionage orders are handled by simultaneous resolution
+        # (see simultaneous_espionage.resolveEspionage earlier in Command Phase)
+        # Scout deployment and spy scout creation happens in executeFleetOrder
+        # No additional individual handler needed
+        discard
 
       of FleetOrderType.BlockadePlanet:
-        # Check if already handled by simultaneous resolution
-        if simultaneous_blockade.wasBlockadeHandled(blockadeResults, houseId, order.fleetId):
-          discard  # Already handled
-        else:
-          # TODO: Implement individual blockade handler
-          discard
+        # All blockade orders are handled by simultaneous resolution
+        # (see simultaneous_blockade.resolveBlockades earlier in Command Phase)
+        # Blockade effects (60% GCO reduction) applied during Income Phase
+        # No additional individual handler needed
+        discard
       of FleetOrderType.Reserve:
         # Place fleet on reserve status
         # Per economy.md:3.9 - ships auto-join colony's single reserve fleet
