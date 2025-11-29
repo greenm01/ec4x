@@ -6,6 +6,7 @@
 import std/[tables, options]
 import ../src/core
 import ../src/engine/[gamestate, orders, resolve, economy]
+import ../../src/engine/research/types as res_types
 # Note: Combat tests use engine/combat/ modules directly
 
 # Test that we can create a game and run turns without any network

@@ -12,6 +12,7 @@
 
 import std/[unittest, tables, options, strformat]
 import ../../src/engine/[gamestate, starmap, fleet, ship, squadron, orders, resolve]
+import ../../src/engine/research/types as res_types
 import ../../src/engine/resolution/[fleet_orders, combat_resolution]
 import ../../src/engine/diplomacy/types as dip_types
 import ../../src/common/types/[core, units, combat, diplomacy]

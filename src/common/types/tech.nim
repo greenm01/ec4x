@@ -7,9 +7,8 @@
 
 type
   TechField* {.pure.} = enum
-    ## Eleven tech fields in EC4X (economy.md:4.0)
-    EconomicLevel            # EL
-    ScienceLevel             # SL
+    ## Nine technology fields in EC4X (economy.md:4.0)
+    ## EL and SL are separate research levels, not tech fields
     ConstructionTech         # CST
     WeaponsTech              # WEP
     TerraformingTech         # TER

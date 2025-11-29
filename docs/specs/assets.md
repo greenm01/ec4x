@@ -614,15 +614,18 @@ Starbases participate in detection for ALL combat phases occurring in their syst
 
 **Economic Benefits:**
 
-Starbases boost the population growth-rate and Industrial Units (IU) of a colony by 5% every turn, up to a max of 15% (three Starbases).
+Starbases boost both **population growth rate** and **industrial production output** by 5% per operational starbase, with each benefit capped at 15% maximum (three starbases).
 
-Example: under normal conditions the natural birthrate of a colony is 2%. With three Starbases, the rate is:
+**Population Growth Bonus:**
+- +5% per operational starbase, max +15% (3 starbases)
+- Example: Natural birthrate 2% → With 3 starbases: 2% × (1 + 0.15) = 2.3%
 
-```
-2% * (1 + (0.05 * 3)) = 2.3% 
-```
+**Industrial Production Bonus:**
+- +5% per operational starbase, max +15% (3 starbases)
+- Applied to IU component of GCO formula: `IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH + STARBASE_BONUS)`
+- Example: 100 IU base output → With 3 starbases: 100 × (1 + 0.15) = 115 output
 
-Crippled Starbases do not yield benefits until they are repaired.
+Crippled starbases do not yield benefits until they are repaired.
 
 ### 2.4.7 Planetary Shields & Ground Batteries
 

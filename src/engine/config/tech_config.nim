@@ -466,6 +466,3 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
     of 3: return cfg.level_3_trp
     else:
       raise newException(ValueError, "Invalid ACO level: " & $level & " (max is 3)")
-
-  of TechField.EconomicLevel, TechField.ScienceLevel:
-    raise newException(ValueError, "Use getELUpgradeCostFromConfig or getSLUpgradeCostFromConfig for EL/SL")

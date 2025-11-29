@@ -72,21 +72,42 @@ type
 
   ## Research Advancement
 
-  TechAdvancement* = object
-    ## Tech level advancement event
+  AdvancementType* {.pure.} = enum
+    ## Type of research advancement
+    EconomicLevel,    # EL advancement
+    ScienceLevel,     # SL advancement
+    Technology        # Tech field advancement
+
+  ResearchAdvancement* = object
+    ## Unified advancement event with type discrimination
+    ## Separates EL/SL levels from technology fields per economy.md:4.2-4.3
+    case advancementType*: AdvancementType
+    of EconomicLevel:
+      elFromLevel*: int
+      elToLevel*: int
+      elCost*: int      # ERP spent
+    of ScienceLevel:
+      slFromLevel*: int
+      slToLevel*: int
+      slCost*: int      # SRP spent
+    of Technology:
+      techField*: TechField
+      techFromLevel*: int
+      techToLevel*: int
+      techCost*: int    # TRP spent
+
     houseId*: HouseId
-    field*: TechField
-    fromLevel*: int
-    toLevel*: int
-    cost*: int        # ERP/SRP/TRP spent
-    prestigeEvent*: Option[PrestigeEvent]  # Prestige awarded for advancement
+    prestigeEvent*: Option[PrestigeEvent]
+
+  # Legacy type alias for backwards compatibility during migration
+  TechAdvancement* = ResearchAdvancement
 
   ResearchReport* = object
     ## Research phase report
     turn*: int
     allocations*: Table[HouseId, ResearchAllocation]
     breakthroughs*: seq[BreakthroughEvent]
-    advancements*: seq[TechAdvancement]
+    advancements*: seq[ResearchAdvancement]
 
 ## Constants per economy.md:4.0
 
@@ -107,6 +128,23 @@ const
 
 ## Helper Procs
 
+proc initDefaultTechLevel*(): TechLevel =
+  ## Initialize TechLevel with all fields at starting level 1
+  ## Per economy.md:4.0: "ALL technology levels start at level 1, never 0"
+  result = TechLevel(
+    economicLevel: 1,
+    scienceLevel: 1,
+    constructionTech: 1,
+    weaponsTech: 1,
+    terraformingTech: 1,
+    electronicIntelligence: 1,
+    cloakingTech: 1,
+    shieldTech: 1,
+    counterIntelligence: 1,
+    fighterDoctrine: 1,
+    advancedCarrierOps: 1
+  )
+
 proc initTechTree*(startingLevels: TechLevel): TechTree =
   ## Initialize tech tree with starting levels
   result = TechTree(
@@ -118,6 +156,11 @@ proc initTechTree*(startingLevels: TechLevel): TechTree =
     ),
     breakthroughBonus: initTable[TechField, float]()
   )
+
+proc initTechTree*(): TechTree =
+  ## Initialize tech tree with default starting levels (all at 1)
+  ## Convenience function for tests and scenarios
+  result = initTechTree(initDefaultTechLevel())
 
 proc initResearchAllocation*(): ResearchAllocation =
   ## Initialize empty research allocation
