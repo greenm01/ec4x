@@ -215,7 +215,8 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
   let ownedSystems = state.getOwnedSystems(houseId)
   let occupiedSystems = state.getOccupiedSystems(houseId)
   let scoutedSystems = state.getScoutedSystems(houseId, ownedSystems, occupiedSystems)
-  let adjacentSystems = state.getAdjacentSystems(ownedSystems + occupiedSystems + scoutedSystems)
+  # Adjacent systems are only neighbors of owned/occupied systems (not scouted)
+  let adjacentSystems = state.getAdjacentSystems(ownedSystems + occupiedSystems)
 
   # Own house (full details)
   result.ownHouse = state.houses.getOrDefault(houseId)
