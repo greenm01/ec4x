@@ -209,10 +209,21 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
       break
 
   if not hasColonists:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} AutoColonize failed: No colonists aboard")
-    return ExecutionResult(success: false,
-                          error: "No colonists for colonization")
+    # ETAC empty - automatically return to nearest friendly colony for PTU reload
+    # This ensures ETACs don't sit idle after colonization
+    logInfo(LogCategory.lcOrders,
+            &"{fleetId} AutoColonize: Empty ETAC returning home for PTU reload")
+
+    let seekHomeOrder = FleetOrder(
+      fleetId: fleetId,
+      orderType: FleetOrderType.SeekHome,
+      targetSystem: none(SystemId),  # SeekHome finds nearest colony automatically
+      priority: 100
+    )
+    state.fleetOrders[fleetId] = seekHomeOrder
+
+    return ExecutionResult(success: true,
+                          action: "Seeking home for PTU reload")
 
   # Find best colonization target
   let targetOpt = findBestColonizationTarget(state, fleet, fleet.location,

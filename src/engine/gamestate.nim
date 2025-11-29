@@ -97,7 +97,7 @@ type
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
     unassignedSquadrons*: seq[Squadron]          # Combat squadrons at colony, not in any fleet
     unassignedSpaceLiftShips*: seq[SpaceLiftShip] # ARCHITECTURE FIX: Spacelift ships separate
-    autoAssignFleets*: bool                       # If true, auto-balance squadrons to fleets at colony
+    # NOTE: Auto-assignment is ALWAYS enabled (see docs/architecture/standing-orders.md for rationale)
 
     # Fighter squadrons (assets.md:2.4.1)
     fighterSquadrons*: seq[FighterSquadron]  # Colony-based fighters
@@ -235,8 +235,60 @@ type
 
 # Initialization
 
+proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
+  ## Create a new game with full setup including starmap generation
+  ##
+  ## This is the recommended way to create a new game. It handles:
+  ## - Starmap generation and population
+  ## - Game state initialization
+  ## - Input validation
+  ##
+  ## Parameters:
+  ##   - gameId: Unique identifier for this game
+  ##   - playerCount: Number of players (2-12)
+  ##   - seed: Random seed for map generation
+  ##
+  ## Example:
+  ##   let game = newGame("game1", 4, seed = 12345)
+
+  # Create and populate starmap
+  var starMap = newStarMap(playerCount, seed)
+  starMap.populate()
+
+  # Create game state with populated map
+  result = GameState(
+    gameId: gameId,
+    turn: 0,
+    phase: GamePhase.Setup,
+    starMap: starMap,
+    houses: initTable[HouseId, House](),
+    colonies: initTable[SystemId, Colony](),
+    fleets: initTable[FleetId, Fleet](),
+    standingOrders: initTable[FleetId, StandingOrder](),
+    diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
+    ongoingEffects: @[],
+    spyScouts: initTable[string, SpyScout](),
+    populationInTransit: @[],
+    pendingProposals: @[]
+  )
+
 proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameState =
-  ## Create initial game state with map and player houses
+  ## Create initial game state with an existing starMap
+  ##
+  ## IMPORTANT: The starMap must be populated before passing to this function.
+  ## Call `starMap.populate()` after creating with `newStarMap()`.
+  ##
+  ## Prefer using `newGame()` which handles starmap creation automatically.
+  ##
+  ## Example:
+  ##   var starMap = newStarMap(playerCount)
+  ##   starMap.populate()  # REQUIRED
+  ##   let state = newGameState("game1", playerCount, starMap)
+
+  # Validate starMap is populated
+  if starMap.systems.len == 0:
+    raise newException(ValueError, "StarMap must be populated before creating GameState. Call starMap.populate() first.")
+
   result = GameState(
     gameId: gameId,
     turn: 0,
@@ -325,7 +377,6 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     repairQueue: @[],  # Empty repair queue
     unassignedSquadrons: @[],  # No unassigned squadrons
     unassignedSpaceLiftShips: @[],  # No unassigned spacelift ships
-    autoAssignFleets: true,  # Auto-assign by default
     fighterSquadrons: @[],  # No fighters at start
     capacityViolation: CapacityViolation(
       active: false,
@@ -368,7 +419,6 @@ proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetCl
     repairQueue: @[],  # Empty repair queue
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
-    autoAssignFleets: true,
     fighterSquadrons: @[],
     capacityViolation: CapacityViolation(
       active: false,

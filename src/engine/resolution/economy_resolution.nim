@@ -40,6 +40,7 @@
 import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
 import ../../common/[hex, types/core, types/units, types/tech]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../starmap, ../logger
+import ../order_types  # For StandingOrder and StandingOrderType
 import ../economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import ../research/[types as res_types, costs as res_costs, effects as res_effects, advancement]
 import ../espionage/[types as esp_types, engine as esp_engine]
@@ -53,7 +54,7 @@ import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony
 
 # Forward declarations
-proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
+proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
 # NOTE: autoLoadFightersToCarriers is unused - see when false: block below
 # proc autoLoadFightersToCarriers(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
 
@@ -75,13 +76,17 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
   for order in packet.buildOrders:
     # Validate colony exists
     if order.colonySystem notin state.colonies:
-      echo "      Build order failed: colony not found at system ", order.colonySystem
+      let errorMsg = &"Colony not found at system {order.colonySystem}"
+      logError(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
+      # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
 
     # Validate colony ownership
     let colony = state.colonies[order.colonySystem]
     if colony.owner != packet.houseId:
-      echo "      Build order failed: colony not owned by ", packet.houseId
+      let errorMsg = &"Colony at system {order.colonySystem} not owned by {packet.houseId} (owned by {colony.owner})"
+      logError(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
+      # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
 
     # Check if colony has dock capacity for more construction projects
@@ -94,15 +99,17 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
     if not isFighter and not colony.canAcceptMoreProjects():
       let capacity = colony.getConstructionDockCapacity()
       let active = colony.getActiveConstructionProjects()
-      echo "      Build order failed: system ", order.colonySystem, " at capacity (", active, "/", capacity, " docks used)"
+      let errorMsg = &"System {order.colonySystem} at capacity ({active}/{capacity} docks used) - cannot accept more projects"
+      logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
+      # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
 
     # Validate budget BEFORE creating construction project
     let validationResult = orders.validateBuildOrderWithBudget(order, state, budgetContext)
     if not validationResult.valid:
-      echo "      Build order failed: ", validationResult.error
-      logInfo(LogCategory.lcEconomy,
-              &"{packet.houseId} Build order rejected at {order.colonySystem}: {validationResult.error}")
+      let errorMsg = validationResult.error
+      logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId} at system {order.colonySystem}: {errorMsg}")
+      # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
 
     # NOTE: No conversion needed! gamestate.Colony now has all economic fields
@@ -1799,7 +1806,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
         )
 
         # Roll detection with turn RNG
-        var rng = initRand(state.turn + scoutId.hash())
+        var rng = initRand(state.turn xor scoutId.hash())
         let detectionResult = detectSpyScout(detectorUnit, scout.eliLevel, rng)
 
         if detectionResult.detected:
@@ -1959,18 +1966,18 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     #    - If no capital squadrons, escorts try to join same-class escort squadrons
     #    - Capital ships always create new squadrons (they're flagships)
     #    - Unjoined escorts create new squadrons
-    # 4. **Fleet Assignment** (if colony.autoAssignFleets == true):
+    # 4. **Fleet Assignment** (always enabled):
     #    - Calls autoBalanceSquadronsToFleets() to organize squadrons into fleets
     #    - Balances squadron count across existing stationary Active fleets
     #    - Creates new fleets if no candidate fleets exist
     #
     # **Commissioning Pipeline for Spacelift Ships (ETAC/TT):**
     # 1. Ship commissioned to colony.unassignedSpaceLiftShips
-    # 2. If autoAssignFleets enabled, immediately joins first available fleet
+    # 2. Immediately joins first available fleet via auto-assignment
     #
     # **Result:**
-    # - With autoAssignFleets=true (default): Ships end up in fleets, ready for orders
-    # - With autoAssignFleets=false: Ships remain in colony.unassignedSquadrons
+    # - Ships end up in fleets, ready for orders (auto-assignment always enabled)
+    # - See docs/architecture/fleet-management.md for rationale
     # =========================================================================
 
     for project in completedProjects:
@@ -2054,7 +2061,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} spacelift ship at {systemId}")
 
             # Auto-assign to fleets if enabled
-            if colony.autoAssignFleets and colony.unassignedSpaceLiftShips.len > 0:
+            if colony.unassignedSpaceLiftShips.len > 0:
               # Find stationary fleets at this system
               for fleetId, fleet in state.fleets.mpairs:
                 if fleet.location == systemId and fleet.owner == colony.owner:
@@ -2129,7 +2136,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             # This completes the economic production pipeline: Treasury → Construction → Commissioning → Fleet
             # Without this step, units remain in unassignedSquadrons and cannot execute operational orders
             # (e.g., scouts cannot perform espionage, carriers cannot deploy to defensive positions)
-            if colony.autoAssignFleets and colony.unassignedSquadrons.len > 0:
+            if colony.unassignedSquadrons.len > 0:
               autoBalanceSquadronsToFleets(state, colony, systemId, orders)
 
         of econ_types.ConstructionType.Building:
@@ -2430,7 +2437,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                        state.houses[houseId].lastTurnResearchTRP
 
       # Roll for breakthrough
-      var rng = initRand(hash(state.turn) + hash(houseId))
+      var rng = initRand(hash(state.turn) xor hash(houseId))
       let breakthroughOpt = advancement.rollBreakthrough(investedRP * 5, rng)  # Approximate 5-turn total
 
       if breakthroughOpt.isSome:
@@ -2454,7 +2461,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 ## Phase 3: Command
 
 
-proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
+proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
   ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
   ##
   ## **Purpose:** Automatically organize newly-commissioned ships into operational fleets
@@ -2492,17 +2499,42 @@ proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Co
       if fleet.status != FleetStatus.Active:
         continue
 
-      # Check if fleet has stationary orders (Hold or no orders)
+      # Check if fleet has stationary orders (Hold, Guard, Patrol, or no orders)
+      # These orders keep fleets at/near the colony and can accept reinforcements
       var isStationary = true
 
-      # Check if fleet has orders
+      # Check if fleet has active orders
       if colony.owner in orders:
         for order in orders[colony.owner].fleetOrders:
           if order.fleetId == fleetId:
-            # Fleet has orders - only stationary if Hold
-            if order.orderType != FleetOrderType.Hold:
+            # Fleet is stationary if: Hold, GuardStarbase, GuardPlanet, or Patrol (at same system)
+            case order.orderType
+            of FleetOrderType.Hold, FleetOrderType.GuardStarbase, FleetOrderType.GuardPlanet:
+              isStationary = true
+            of FleetOrderType.Patrol:
+              # Patrol at same system is stationary, patrol to other system is movement
+              isStationary = (order.targetSystem.isNone or order.targetSystem.get() == systemId)
+            else:
               isStationary = false
             break
+
+      # Also check standing orders - fleets with movement-based standing orders should not receive squadrons
+      # Movement-based: PatrolRoute, AutoColonize, AutoReinforce, AutoRepair (when seeking shipyard)
+      # Stationary: DefendSystem, GuardColony, AutoEvade, BlockadeTarget (at target)
+      if isStationary and fleetId in state.standingOrders:
+        let standingOrder = state.standingOrders[fleetId]
+        case standingOrder.orderType
+        of StandingOrderType.PatrolRoute, StandingOrderType.AutoColonize, StandingOrderType.AutoReinforce:
+          # These always involve movement between systems
+          isStationary = false
+        of StandingOrderType.AutoRepair:
+          # AutoRepair only moves when damaged, otherwise stationary
+          # For simplicity, treat as non-stationary (don't want to add squadrons if fleet might leave for repairs)
+          isStationary = false
+        else:
+          # DefendSystem, GuardColony, AutoEvade, BlockadeTarget are stationary (at/defending a system)
+          # None, or any future order types default to stationary
+          discard
 
       if isStationary:
         candidateFleets.add(fleetId)

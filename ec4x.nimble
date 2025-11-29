@@ -59,6 +59,85 @@ task testPrestige, "Test prestige system":
   echo "Testing prestige system..."
   exec "nim c -r tests/integration/test_prestige_comprehensive.nim"
 
+task testComprehensive, "Run all comprehensive test suites":
+  echo "Running comprehensive test suites..."
+  echo "=== Analytics Engine Tests ==="
+  exec "nim c -r tests/integration/test_analytics_engine.nim"
+  echo ""
+  echo "=== Combat Engine Tests ==="
+  exec "nim c -r tests/integration/test_combat_comprehensive.nim"
+  echo ""
+  echo "=== Unit Validation Tests ==="
+  exec "nim c -r tests/integration/test_all_units_comprehensive.nim"
+  echo ""
+  echo "=== Resolution Engine Tests ==="
+  exec "nim c -r tests/integration/test_resolution_comprehensive.nim"
+  echo ""
+  echo "All comprehensive tests completed successfully!"
+
+task testAnalytics, "Test analytics engine (export, formats, statistics)":
+  echo "Testing analytics engine..."
+  exec "nim c -r tests/integration/test_analytics_engine.nim"
+
+task testCombat, "Test combat engine (CER, damage, targeting)":
+  echo "Testing combat engine..."
+  exec "nim c -r tests/integration/test_combat_comprehensive.nim"
+
+task testAllUnitsValidation, "Validate all units against TOML configs":
+  echo "Validating all units against TOML configs..."
+  exec "nim c -r tests/integration/test_all_units_comprehensive.nim"
+
+task testResolution, "Test resolution engine (commissioning, fleet ops)":
+  echo "Testing resolution engine..."
+  exec "nim c -r tests/integration/test_resolution_comprehensive.nim"
+
+# Stress Testing Tasks
+
+task testStressEngine, "Run ALL engine stress tests (state corruption, fuzzing, performance, unknowns)":
+  echo "Running comprehensive engine stress test suite..."
+  echo "⚠️  WARNING: This will take 10-30 minutes to complete"
+  echo ""
+  echo "=== State Corruption Tests ==="
+  exec "nim c -r tests/stress/test_state_corruption.nim"
+  echo ""
+  echo "=== Pathological Input Fuzzing ==="
+  exec "nim c -r tests/stress/test_pathological_inputs.nim"
+  echo ""
+  echo "=== Performance Regression Tests ==="
+  exec "nim c -r tests/stress/test_performance_regression.nim"
+  echo ""
+  echo "=== Unknown-Unknowns Detection (Stress) ==="
+  exec "nim c -r tests/stress/test_unknown_unknowns.nim"
+  echo ""
+  echo "✅ All engine stress tests completed!"
+
+task testStressEngineQuick, "Quick engine stress test (faster, less thorough)":
+  echo "Running quick stress tests..."
+  echo "=== State Corruption (quick) ==="
+  exec "nim c -r tests/stress/test_state_corruption.nim -d:STRESS_QUICK"
+  echo ""
+  echo "=== Pathological Input Fuzzing ==="
+  exec "nim c -r tests/stress/test_pathological_inputs.nim"
+  echo ""
+  echo "✅ Quick stress tests completed!"
+
+task testStateCorruption, "Test for state corruption over 1000+ turns":
+  echo "Testing state corruption (long-duration simulations)..."
+  exec "nim c -r tests/stress/test_state_corruption.nim"
+
+task testPathologicalInputs, "Fuzz engine with invalid/malformed inputs":
+  echo "Testing pathological inputs (fuzzing)..."
+  exec "nim c -r tests/stress/test_pathological_inputs.nim"
+
+task testPerformanceRegression, "Monitor turn times for performance regression":
+  echo "Testing performance regression..."
+  exec "nim c -r tests/stress/test_performance_regression.nim"
+
+task testStressUnknownUnknowns, "Statistical anomaly detection (100+ games)":
+  echo "Running stress test unknown-unknowns detection..."
+  echo "⚠️  This will take 5-10 minutes (runs 100+ games)"
+  exec "nim c -r tests/stress/test_unknown_unknowns.nim"
+
 task testStarmap, "Run starmap tests":
   echo "Running starmap tests..."
   exec "nim c -r tests/test_starmap_robust.nim"

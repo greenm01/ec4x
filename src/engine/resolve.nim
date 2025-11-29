@@ -7,7 +7,7 @@
 ## REFACTORED: Main orchestrator that coordinates resolution phases
 ## Individual phase logic has been extracted to resolution/* modules
 
-import std/[tables, algorithm, options, random, sequtils, hashes, sets]
+import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../common/types/core
 import ../common/logger as common_logger
 import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, logger
@@ -396,10 +396,12 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
         if order.fleetId in state.fleets:
           let fleet = state.fleets[order.fleetId]
           if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
-            # Skip new orders for Reserve/Mothball fleets (orders are locked)
-            when not defined(release):
-              echo "    [LOCKED] Fleet ", order.fleetId, " has locked permanent order (status: ", fleet.status, "), ignoring new order"
-            continue
+            # Allow Reactivate orders to change status back to Active
+            # All other orders are locked for Reserve/Mothball fleets
+            if order.orderType != FleetOrderType.Reactivate:
+              when not defined(release):
+                echo "    [LOCKED] Fleet ", order.fleetId, " has locked permanent order (status: ", fleet.status, "), ignoring non-Reactivate order"
+              continue
 
         allFleetOrders.add((houseId, order))
         newOrdersThisTurn.incl(order.fleetId)
@@ -887,3 +889,25 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       balancedCount += 1
   when not defined(release):
     echo "  [AUTO-BALANCE] Balanced ", balancedCount, " fleets"
+
+  # =========================================================================
+  # AUTO-ASSIGN: Organize unassigned squadrons into fleets
+  # =========================================================================
+  # Auto-assignment is ALWAYS enabled (see docs/architecture/fleet-management.md)
+  # Automatically organize unassigned squadrons into operational fleets:
+  # - Newly commissioned ships from construction
+  # - Manually transferred squadrons
+  # - Squadrons from disbanded/destroyed fleets
+  # This eliminates micromanagement for both players and AI
+  # =========================================================================
+  when not defined(release):
+    logInfo(LogCategory.lcFleet, "[AUTO-ASSIGN] Organizing unassigned squadrons into fleets...")
+  var assignedCount = 0
+  for systemId, colony in state.colonies.mpairs:
+    if colony.unassignedSquadrons.len > 0:
+      when not defined(release):
+        logInfo(LogCategory.lcFleet, &"[AUTO-ASSIGN] Colony {systemId}: {colony.unassignedSquadrons.len} unassigned squadrons")
+      economy_resolution.autoBalanceSquadronsToFleets(state, colony, systemId, orders)
+      assignedCount += colony.unassignedSquadrons.len
+  when not defined(release):
+    logInfo(LogCategory.lcFleet, &"[AUTO-ASSIGN] Processed {assignedCount} unassigned squadrons")

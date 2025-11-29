@@ -80,7 +80,7 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
   let dishonoredCorruption = corruption.hasDishonoredCorruption(state.houses[scoutOwner].dishonoredStatus)
 
   if corruptionEffect.isSome or dishonoredCorruption.isSome:
-    var rng = initRand(state.turn + hash(scoutOwner) + int(targetSystem))
+    var rng = initRand(state.turn xor hash(scoutOwner) xor int(targetSystem))
     # Use highest corruption magnitude (disinformation or dishonor)
     let magnitude = if corruptionEffect.isSome: corruptionEffect.get().magnitude
                     else: dishonoredCorruption.get()
@@ -146,7 +146,7 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
   let dishonoredCorruption = corruption.hasDishonoredCorruption(state.houses[scoutOwner].dishonoredStatus)
 
   if corruptionEffect.isSome or dishonoredCorruption.isSome:
-    var rng = initRand(state.turn + hash(scoutOwner) + int(targetSystem))
+    var rng = initRand(state.turn xor hash(scoutOwner) xor int(targetSystem))
     let magnitude = if corruptionEffect.isSome: corruptionEffect.get().magnitude
                     else: dishonoredCorruption.get()
     report = corruption.corruptSystemIntel(report, magnitude, rng)
@@ -227,7 +227,7 @@ proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetS
   let dishonoredCorruption = corruption.hasDishonoredCorruption(state.houses[scoutOwner].dishonoredStatus)
 
   if corruptionEffect.isSome or dishonoredCorruption.isSome:
-    var rng = initRand(state.turn + hash(scoutOwner) + int(targetSystem))
+    var rng = initRand(state.turn xor hash(scoutOwner) xor int(targetSystem))
     let magnitude = if corruptionEffect.isSome: corruptionEffect.get().magnitude
                     else: dishonoredCorruption.get()
     report = corruption.corruptStarbaseIntel(report, magnitude, rng)

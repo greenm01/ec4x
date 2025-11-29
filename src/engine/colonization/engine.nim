@@ -82,7 +82,6 @@ proc initNewColony*(systemId: SystemId, owner: HouseId,
     # Military assets (all empty for new colony)
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
-    autoAssignFleets: false,
     fighterSquadrons: @[],
     capacityViolation: CapacityViolation(active: false, violationType: "", turnsRemaining: 0, violationTurn: 0),
     starbases: @[],

@@ -1,0 +1,6 @@
+nimTitle	order_types	order_types.html	module src/engine/order_types		0
+nim	FleetOrderType	order_types.html#FleetOrderType	enum FleetOrderType		8
+nim	FleetOrder	order_types.html#FleetOrder	object FleetOrder		30
+nim	StandingOrderType	order_types.html#StandingOrderType	enum StandingOrderType		42
+nim	StandingOrderParams	order_types.html#StandingOrderParams	object StandingOrderParams		56
+nim	StandingOrder	order_types.html#StandingOrder	object StandingOrder		83

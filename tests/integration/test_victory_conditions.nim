@@ -10,7 +10,8 @@ suite "Victory Conditions":
 
   test "Prestige victory at 5000 threshold":
     # Create minimal game state
-    let starMap = newStarMap(3)
+    var starMap = newStarMap(3)
+    starMap.populate()
     var state = newGameState("test", 3, starMap)
 
     # Add houses
@@ -34,7 +35,8 @@ suite "Victory Conditions":
     check result.status.achievedOnTurn == 50
 
   test "No victory when below threshold":
-    let starMap = newStarMap(2)
+    var starMap = newStarMap(2)
+    starMap.populate()
     var state = newGameState("test", 2, starMap)
 
     state.houses["house1".HouseId] = initializeHouse("House Alpha", "blue")
@@ -49,7 +51,8 @@ suite "Victory Conditions":
     check result.victoryOccurred == false
 
   test "Last house standing victory":
-    let starMap = newStarMap(3)
+    var starMap = newStarMap(3)
+    starMap.populate()
     var state = newGameState("test", 3, starMap)
 
     state.houses["house1".HouseId] = initializeHouse("House Alpha", "blue")
@@ -70,7 +73,8 @@ suite "Victory Conditions":
     check result.status.victoryType == VictoryType.LastHouseStanding
 
   test "Turn limit victory to highest prestige":
-    let starMap = newStarMap(3)
+    var starMap = newStarMap(3)
+    starMap.populate()
     var state = newGameState("test", 3, starMap)
 
     state.houses["house1".HouseId] = initializeHouse("House Alpha", "blue")
@@ -93,7 +97,8 @@ suite "Victory Conditions":
     check result.status.victoryType == VictoryType.TurnLimit
 
   test "Turn limit not reached yet":
-    let starMap = newStarMap(3)
+    var starMap = newStarMap(3)
+    starMap.populate()
     var state = newGameState("test", 2, starMap)
 
     state.houses["house1".HouseId] = initializeHouse("House Alpha", "blue")
@@ -109,7 +114,8 @@ suite "Victory Conditions":
     check result.victoryOccurred == false
 
   test "Prestige victory takes priority over last standing":
-    let starMap = newStarMap(3)
+    var starMap = newStarMap(3)
+    starMap.populate()
     var state = newGameState("test", 2, starMap)
 
     state.houses["house1".HouseId] = initializeHouse("House Alpha", "blue")
@@ -126,7 +132,8 @@ suite "Victory Conditions":
     check result.status.victoryType == VictoryType.PrestigeVictory  # Higher priority
 
   test "Leaderboard ranking by prestige":
-    let starMap = newStarMap(3)
+    var starMap = newStarMap(3)
+    starMap.populate()
     var state = newGameState("test", 4, starMap)
 
     state.houses["house1".HouseId] = initializeHouse("House Alpha", "blue")
@@ -149,7 +156,8 @@ suite "Victory Conditions":
     check leaderboard[3].houseId == "house4".HouseId
 
   test "Leaderboard places eliminated houses last":
-    let starMap = newStarMap(3)
+    var starMap = newStarMap(3)
+    starMap.populate()
     var state = newGameState("test", 3, starMap)
 
     state.houses["house1".HouseId] = initializeHouse("House Alpha", "blue")
