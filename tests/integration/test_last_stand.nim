@@ -24,7 +24,6 @@ suite "Last-Stand Invasions":
     ## Create game state with two houses - one defeated, one with colony
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -61,7 +60,6 @@ suite "Last-Stand Invasions":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -263,7 +261,6 @@ suite "Last-Stand Blitz Operations":
     ## Create state for blitz testing
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -298,7 +295,6 @@ suite "Last-Stand Blitz Operations":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],

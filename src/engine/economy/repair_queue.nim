@@ -13,10 +13,9 @@ import std/[tables, options, strformat]
 import ../gamestate
 import ../fleet
 import ../squadron
+import ../logger
 import types as econ_types
-import ../../common/logger
 import ../../common/types/[core, units]
-import ../assets
 
 export econ_types.RepairProject, econ_types.FacilityType, econ_types.RepairTargetType
 
@@ -24,7 +23,7 @@ proc calculateRepairCost*(shipClass: ShipClass): int =
   ## Calculate repair cost for a ship
   ## Per economy.md:5.4 - All repairs require shipyards, cost is 25% of build cost
   let stats = getShipStats(shipClass)
-  result = (stats.constructionCost.float * 0.25).int
+  result = (stats.buildCost.float * 0.25).int
 
 proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
                          squadronIdx: int, shipIdx: int): Option[RepairProject] =
@@ -118,9 +117,9 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
       fleet.squadrons = updatedSquadrons
 
       # EMPTY FLEET CLEANUP
-      # If removing this squadron leaves the fleet empty, delete the fleet
-      # entirely along with its associated orders.
-      if fleet.squadrons.len == 0:
+      # If removing this squadron leaves the fleet empty (no squadrons AND no spacelift ships),
+      # delete the fleet entirely along with its associated orders.
+      if fleet.isEmpty():
         state.fleets.del(fleetId)
         # Clean up associated orders to prevent orphaned data
         if fleetId in state.fleetOrders:

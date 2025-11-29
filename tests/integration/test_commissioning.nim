@@ -1,13 +1,18 @@
 ## Detailed Commissioning Tests
 ##
+## ⚠️ DEPRECATED: This test file uses the deprecated `underConstruction` field
+## and tests outdated commissioning behavior (unassigned pools).
+##
+## For current commissioning tests, see: test_all_units_commissioning.nim
+## which tests the correct auto-assignment behavior for all 19 ship types.
+##
 ## Tests the complete commissioning flow from construction completion to squadron creation
 ## Covers:
 ## - Different ship types commissioning correctly
-## - Combat ships → squadrons in unassignedSquadrons
-## - Spacelift ships → unassignedSpaceLiftShips
-## - Multiple ships commissioning in same turn
-## - Auto-assignment of commissioned squadrons
-## - Manual assignment after commissioning
+## - Auto-assignment of commissioned squadrons (now mandatory)
+##
+## NOTE: Several tests expect ships in unassigned pools, but the engine now
+## auto-assigns all ships immediately per standing-orders.md
 
 import std/[unittest, tables, options]
 import ../../src/engine/[gamestate, orders, resolve, fleet, squadron]
@@ -45,7 +50,6 @@ suite "Ship Commissioning":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,  # Disable for manual control
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -152,7 +156,11 @@ suite "Ship Commissioning":
     var result = resolveTurn(state, orders)
     state = result.newState
 
-    let turnsNeeded = state.colonies[1].underConstruction.get().turnsRemaining
+    # Check construction queue (underConstruction is deprecated)
+    let turnsNeeded = if state.colonies[1].constructionQueue.len > 0:
+      state.colonies[1].constructionQueue[0].turnsRemaining
+    else:
+      0  # No construction in queue
 
     for i in 1..turnsNeeded:
       packet.turn = state.turn
@@ -204,7 +212,11 @@ suite "Ship Commissioning":
     var result = resolveTurn(state, orders)
     state = result.newState
 
-    let turnsNeeded = state.colonies[1].underConstruction.get().turnsRemaining
+    # Check construction queue (underConstruction is deprecated)
+    let turnsNeeded = if state.colonies[1].constructionQueue.len > 0:
+      state.colonies[1].constructionQueue[0].turnsRemaining
+    else:
+      0  # No construction in queue
 
     for i in 1..turnsNeeded:
       packet.turn = state.turn
@@ -290,8 +302,7 @@ suite "Ship Commissioning":
   test "Auto-assignment creates fleet for commissioned squadron":
     var state = createTestState()
 
-    # Enable auto-assignment
-    state.colonies[1].autoAssignFleets = true
+    # Auto-assignment is now always enabled (no flag needed)
 
     # Build a destroyer
     let buildOrder = BuildOrder(
@@ -325,7 +336,11 @@ suite "Ship Commissioning":
     var result = resolveTurn(state, orders)
     state = result.newState
 
-    let turnsNeeded = state.colonies[1].underConstruction.get().turnsRemaining
+    # Check construction queue (underConstruction is deprecated)
+    let turnsNeeded = if state.colonies[1].constructionQueue.len > 0:
+      state.colonies[1].constructionQueue[0].turnsRemaining
+    else:
+      0  # No construction in queue
 
     for i in 1..turnsNeeded:
       packet.turn = state.turn

@@ -15,7 +15,6 @@ suite "Fleet Movement Integration":
     ## Systems: 1 -- 2 -- 3 -- 4 -- 5 (all major lanes)
     result = GameState()
     result.turn = 1
-    result.year = 2501
     result.month = 1
     result.phase = GamePhase.Active
 

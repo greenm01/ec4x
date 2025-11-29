@@ -2,7 +2,7 @@
 
 ## 2.1 Star Map
 
-The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub, one per number of players.
+The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system at ring 0. For example, a 4-player game has 4 rings (rings 1-4) plus the center hub at ring 0.
 
 The center of the map is a special hub occupied by the last holdouts of the former imperial Empire. This system is heavily guarded by fighter squadrons and the home planet is fortified against invasion. The former Emperor has no offensive ships to speak of, which were scuttled by their crews at the height of the collapse. This is prime territory ripe for the taking. He who controls the hub holds great strategic power.
 
@@ -29,7 +29,7 @@ The hub is guaranteed to have six jump lanes connecting it to the first ring, ma
 <!-- HOMEWORLD_PLACEMENT_START -->
 Player homeworlds are placed throughout the map using distance maximization algorithms. The generator ensures each homeworld is as far as strategically possible from rival home systems, creating balanced starting positions while introducing natural asymmetry in the tactical landscape. Unlike traditional hex-ring maps where homeworlds are predictably on the outer edge, this system allows homeworlds on any ring for unpredictable, varied starting scenarios.
 
-Homeworlds will have 3 lanes connecting them to adjacent systems.
+Each homeworld is guaranteed to have exactly 3 **Major lanes** connecting it to adjacent systems, ensuring reliable colonization paths and fleet movement from the start.
 <!-- HOMEWORLD_PLACEMENT_END -->
 
 ## 2.2 Solar Systems

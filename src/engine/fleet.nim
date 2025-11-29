@@ -70,8 +70,8 @@ proc len*(f: Fleet): int =
   f.squadrons.len
 
 proc isEmpty*(f: Fleet): bool =
-  ## Check if the fleet has no squadrons
-  f.squadrons.len == 0
+  ## Check if the fleet has no squadrons AND no spacelift ships
+  f.squadrons.len == 0 and f.spaceLiftShips.len == 0
 
 proc add*(f: var Fleet, squadron: Squadron) =
   ## Add a squadron to the fleet

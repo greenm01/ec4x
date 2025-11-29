@@ -15,7 +15,6 @@ suite "Spy Scout Intelligence Operations":
     # Create a minimal star map
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 

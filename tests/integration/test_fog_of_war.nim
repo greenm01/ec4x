@@ -4,7 +4,7 @@
 
 import std/[unittest, tables, options, sets]
 import ../../src/engine/[gamestate, fog_of_war, starmap, fleet, squadron]
-import ../../src/common/types/[core, planets, tech, units]
+import ../../src/common/[system, types/[core, planets, tech, units]]
 import ../../src/engine/intelligence/types as intel_types
 
 suite "Fog of War System":

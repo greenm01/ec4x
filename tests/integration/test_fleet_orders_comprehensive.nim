@@ -15,7 +15,6 @@ suite "Fleet Orders: Complete Integration Tests":
     ## Create a game state with multiple systems for comprehensive testing
     result = GameState()
     result.turn = 1
-    result.year = 2501
     result.month = 1
     result.phase = GamePhase.Active
 
