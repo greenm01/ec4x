@@ -617,7 +617,9 @@ proc createGroundBattery*(
   ## Create a ground battery unit from config
   ## Stats loaded from config/ground_units.toml
   ##
-  ## TODO M3: Apply tech modifiers if applicable
+  ## NOTE: techLevel parameter accepted but not applied (no formula defined)
+  ## Per economy.md:4.5, CST affects construction capacity, not ground unit stats
+  ## Future: Define if/how CST should modify ground battery AS/DS
 
   let cfg = globalGroundUnitsConfig.ground_battery
 
