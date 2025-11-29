@@ -14,7 +14,7 @@ import ../gamestate
 import ../fleet
 import ../squadron
 import types as econ_types
-import ../logging
+import ../../common/logger
 import ../../common/types/[core, units]
 import ../assets
 
@@ -65,16 +65,94 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
   var isCrippled: bool
 
   if shipIdx == -1:
-    # Flagship
+    # =========================================================================
+    # FLAGSHIP EXTRACTION FOR REPAIR
+    # =========================================================================
+    # Flagships are the command ships that hold squadrons together. When a
+    # crippled flagship needs repair, we must handle the squadron appropriately.
+    #
+    # Per operations.md:6.5.2, all crippled ships must be repairable.
+    # However, flagships cannot simply be removed like escort ships.
+    #
+    # STRATEGY:
+    # - Case 1: Squadron has escorts → Promote strongest escort to new flagship
+    # - Case 2: Squadron has no escorts → Dissolve squadron entirely
+    #
+    # This ensures:
+    # - All crippled ships can be repaired (no stranded crippled flagships)
+    # - Squadrons remain valid (always have a flagship or are removed)
+    # - Empty fleets are cleaned up (no orphaned fleet structures)
+    # =========================================================================
+
     shipClass = squadron.flagship.shipClass
     isCrippled = squadron.flagship.isCrippled
 
     if not isCrippled:
       return none(RepairProject)
 
-    # TODO: Handle flagship extraction (need to dissolve squadron or transfer flagship)
-    # For now, skip flagship repairs - this is a complex case
-    return none(RepairProject)
+    if squadron.ships.len > 0:
+      # -----------------------------------------------------------------------
+      # CASE 1: SQUADRON HAS ESCORTS - PROMOTE TO FLAGSHIP
+      # -----------------------------------------------------------------------
+      # When the squadron has escort ships, we promote the strongest escort
+      # to become the new flagship. This preserves the squadron structure.
+      #
+      # Selection criteria: Highest combined AS + DS (combat effectiveness)
+      # The old flagship is extracted for repair.
+      # -----------------------------------------------------------------------
+
+      var bestEscortIdx = 0
+      var bestStrength = 0
+      for i, ship in squadron.ships:
+        let strength = ship.stats.attackStrength + ship.stats.defenseStrength
+        if strength > bestStrength:
+          bestStrength = strength
+          bestEscortIdx = i
+
+      # Promote escort to flagship position
+      squadron.flagship = squadron.ships[bestEscortIdx]
+      squadron.ships.delete(bestEscortIdx)
+      fleet.squadrons[squadronIdx] = squadron
+      state.fleets[fleetId] = fleet
+
+      logInfo(LogCategory.lcEconomy,
+              &"Promoted escort to flagship in squad-{squadron.id} (old flagship sent for repair)")
+    else:
+      # -----------------------------------------------------------------------
+      # CASE 2: SQUADRON HAS NO ESCORTS - DISSOLVE SQUADRON
+      # -----------------------------------------------------------------------
+      # When the squadron has no escorts (single-flagship squadron), we must
+      # dissolve the squadron entirely. The flagship goes to repair, and the
+      # squadron structure is removed from the fleet.
+      #
+      # This also triggers EMPTY FLEET CLEANUP if this was the last squadron.
+      # -----------------------------------------------------------------------
+
+      var updatedSquadrons: seq[Squadron] = @[]
+      for i, sq in fleet.squadrons:
+        if i != squadronIdx:
+          updatedSquadrons.add(sq)
+
+      fleet.squadrons = updatedSquadrons
+
+      # EMPTY FLEET CLEANUP
+      # If removing this squadron leaves the fleet empty, delete the fleet
+      # entirely along with its associated orders.
+      if fleet.squadrons.len == 0:
+        state.fleets.del(fleetId)
+        # Clean up associated orders to prevent orphaned data
+        if fleetId in state.fleetOrders:
+          state.fleetOrders.del(fleetId)
+        if fleetId in state.standingOrders:
+          state.standingOrders.del(fleetId)
+
+        logInfo(LogCategory.lcEconomy,
+                &"Dissolved squadron {squadron.id} and removed empty fleet-{fleetId} (flagship sent for repair)")
+      else:
+        state.fleets[fleetId] = fleet
+
+        logInfo(LogCategory.lcEconomy,
+                &"Dissolved squadron {squadron.id} from fleet-{fleetId} (flagship sent for repair)")
   else:
     # Escort
     if shipIdx < 0 or shipIdx >= squadron.ships.len:

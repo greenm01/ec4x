@@ -310,6 +310,23 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
              &"{issuingHouse} JoinFleet order VALID: {order.fleetId} → {targetFleetId} " &
              &"at {fleet.location}")
 
+  of FleetOrderType.Rendezvous:
+    if order.targetSystem.isNone:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Rendezvous order REJECTED: {order.fleetId} - " &
+              &"no target system specified")
+      return ValidationResult(valid: false, error: "Rendezvous order requires target system")
+
+    let targetId = order.targetSystem.get()
+    if not state.starMap.systems.hasKey(targetId):
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} Rendezvous order REJECTED: {order.fleetId} → {targetId} " &
+              &"(target system does not exist)")
+      return ValidationResult(valid: false, error: "Target system does not exist")
+
+    logDebug(LogCategory.lcOrders,
+             &"{issuingHouse} Rendezvous order VALID: {order.fleetId} → {targetId}")
+
   else:
     # Other order types - basic validation only for now
     discard

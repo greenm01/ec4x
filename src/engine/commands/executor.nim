@@ -2,8 +2,8 @@
 ## Implements all 16 fleet order types from operations.md Section 6.2
 
 import std/[options, tables]
-import ../../common/[types/core, types/units]
-import ../gamestate, ../orders, ../fleet, ../squadron
+import ../../common/types/[core, units]
+import ../gamestate, ../orders, ../fleet, ../squadron, ../state_helpers, ../logger
 import ../intelligence/detection
 import ../combat/[types as combat_types]
 
@@ -570,15 +570,25 @@ proc executeSpyPlanetOrder(
 
   state.spyScouts[spyId] = spyScout
 
-  # Remove scout from fleet (it operates independently now)
+  # Remove scout from fleet (it operates independently now, permanently consumed)
   var updatedFleet = fleet
   for i in 0..<updatedFleet.squadrons.len:
     if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
       updatedFleet.squadrons.delete(i)
       break
 
-  # Update fleet in game state
-  state.fleets[fleet.id] = updatedFleet
+  # Check if fleet is now empty and clean up if needed
+  if updatedFleet.squadrons.len == 0:
+    # Fleet is empty - remove it completely
+    state.fleets.del(fleet.id)
+    if fleet.id in state.fleetOrders:
+      state.fleetOrders.del(fleet.id)
+    if fleet.id in state.standingOrders:
+      state.standingOrders.del(fleet.id)
+    logInfo(LogCategory.lcFleet, "Removed empty fleet " & $fleet.id & " after scout deployment (Order 09: Spy on Planet)")
+  else:
+    # Fleet still has squadrons - update it
+    state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,
@@ -642,15 +652,25 @@ proc executeHackStarbaseOrder(
 
   state.spyScouts[spyId] = spyScout
 
-  # Remove scout from fleet (it operates independently now)
+  # Remove scout from fleet (it operates independently now, permanently consumed)
   var updatedFleet = fleet
   for i in 0..<updatedFleet.squadrons.len:
     if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
       updatedFleet.squadrons.delete(i)
       break
 
-  # Update fleet in game state
-  state.fleets[fleet.id] = updatedFleet
+  # Check if fleet is now empty and clean up if needed
+  if updatedFleet.squadrons.len == 0:
+    # Fleet is empty - remove it completely
+    state.fleets.del(fleet.id)
+    if fleet.id in state.fleetOrders:
+      state.fleetOrders.del(fleet.id)
+    if fleet.id in state.standingOrders:
+      state.standingOrders.del(fleet.id)
+    logInfo(LogCategory.lcFleet, "Removed empty fleet " & $fleet.id & " after scout deployment (Order 10: Hack Starbase)")
+  else:
+    # Fleet still has squadrons - update it
+    state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,
@@ -712,15 +732,25 @@ proc executeSpySystemOrder(
 
   state.spyScouts[spyId] = spyScout
 
-  # Remove scout from fleet (it operates independently now)
+  # Remove scout from fleet (it operates independently now, permanently consumed)
   var updatedFleet = fleet
   for i in 0..<updatedFleet.squadrons.len:
     if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
       updatedFleet.squadrons.delete(i)
       break
 
-  # Update fleet in game state
-  state.fleets[fleet.id] = updatedFleet
+  # Check if fleet is now empty and clean up if needed
+  if updatedFleet.squadrons.len == 0:
+    # Fleet is empty - remove it completely
+    state.fleets.del(fleet.id)
+    if fleet.id in state.fleetOrders:
+      state.fleetOrders.del(fleet.id)
+    if fleet.id in state.standingOrders:
+      state.standingOrders.del(fleet.id)
+    logInfo(LogCategory.lcFleet, "Removed empty fleet " & $fleet.id & " after scout deployment (Order 11: Spy on System)")
+  else:
+    # Fleet still has squadrons - update it
+    state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,
@@ -822,13 +852,28 @@ proc executeJoinFleetOrder(
       eventsGenerated: @[]
     )
 
-  # TODO: Merge squadrons into target fleet
-  # TODO: Disband source fleet
+  # Merge squadrons and spacelift ships into target fleet
+  var updatedTargetFleet = targetFleet
+  for squadron in fleet.squadrons:
+    updatedTargetFleet.squadrons.add(squadron)
+  for ship in fleet.spaceLiftShips:
+    updatedTargetFleet.spaceLiftShips.add(ship)
+
+  state.fleets[targetFleetId] = updatedTargetFleet
+
+  # Remove source fleet and clean up orders
+  state.fleets.del(fleet.id)
+  if fleet.id in state.fleetOrders:
+    state.fleetOrders.del(fleet.id)
+  if fleet.id in state.standingOrders:
+    state.standingOrders.del(fleet.id)
+
+  logInfo(LogCategory.lcFleet, "Fleet " & $fleet.id & " merged into fleet " & $targetFleetId & " (source fleet removed)")
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " joining " & $targetFleet.id,
-    eventsGenerated: @["Fleet merge initiated"]
+    message: "Fleet " & $fleet.id & " joined " & $targetFleetId & " (" & $fleet.squadrons.len & " squadrons merged)",
+    eventsGenerated: @["Fleet " & $fleet.id & " merged into " & $targetFleetId]
   )
 
 # =============================================================================
@@ -863,14 +908,71 @@ proc executeRendezvousOrder(
     )
     return result
 
-  # Find other fleets at rendezvous with same order
-  # TODO: Check for other fleets with Rendezvous order at same location
-  # TODO: Merge all rendezvous fleets (lowest ID becomes host)
+  # Find other fleets at rendezvous with same order at same location
+  var rendezvousFleets: seq[Fleet] = @[]
+  rendezvousFleets.add(fleet)
+
+  # Collect all fleets with Rendezvous orders at this system
+  for fleetId, otherFleet in state.fleets:
+    if fleetId == fleet.id:
+      continue  # Skip self
+
+    # Check if at same location and owned by same house
+    if otherFleet.location == targetSystem and otherFleet.owner == fleet.owner:
+      # Check if has Rendezvous order to same system
+      if fleetId in state.fleetOrders:
+        let otherOrder = state.fleetOrders[fleetId]
+        if otherOrder.orderType == FleetOrderType.Rendezvous and
+           otherOrder.targetSystem.isSome and
+           otherOrder.targetSystem.get() == targetSystem:
+          rendezvousFleets.add(otherFleet)
+
+  # If only this fleet, wait for others
+  if rendezvousFleets.len == 1:
+    return OrderExecutionResult(
+      success: true,
+      message: "Fleet " & $fleet.id & " waiting at rendezvous point " & $targetSystem,
+      eventsGenerated: @["At rendezvous point, waiting for other fleets"]
+    )
+
+  # Multiple fleets at rendezvous - merge into lowest ID fleet
+  var lowestId = fleet.id
+  for f in rendezvousFleets:
+    if f.id < lowestId:
+      lowestId = f.id
+
+  # Get host fleet
+  var hostFleet = state.fleets[lowestId]
+
+  # Merge all other fleets into host
+  var mergedCount = 0
+  for f in rendezvousFleets:
+    if f.id == lowestId:
+      continue  # Skip host
+
+    # Merge squadrons and spacelift ships
+    for squadron in f.squadrons:
+      hostFleet.squadrons.add(squadron)
+    for ship in f.spaceLiftShips:
+      hostFleet.spaceLiftShips.add(ship)
+
+    # Remove merged fleet and clean up orders
+    state.fleets.del(f.id)
+    if f.id in state.fleetOrders:
+      state.fleetOrders.del(f.id)
+    if f.id in state.standingOrders:
+      state.standingOrders.del(f.id)
+
+    mergedCount += 1
+    logInfo(LogCategory.lcFleet, "Fleet " & $f.id & " merged into rendezvous host " & $lowestId & " (source fleet removed)")
+
+  # Update host fleet
+  state.fleets[lowestId] = hostFleet
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " at rendezvous point " & $targetSystem,
-    eventsGenerated: @["Rendezvous position reached"]
+    message: "Rendezvous complete at " & $targetSystem & ": " & $mergedCount & " fleets merged into " & $lowestId,
+    eventsGenerated: @["Rendezvous complete: " & $(rendezvousFleets.len) & " fleets merged"]
   )
 
 # =============================================================================
@@ -882,41 +984,78 @@ proc executeSalvageOrder(
   fleet: Fleet,
   order: FleetOrder
 ): OrderExecutionResult =
-  ## Order 15: Salvage fleet at closest friendly colony
+  ## Order 15: Salvage fleet at closest friendly colony with spaceport or shipyard
   ## Fleet disbands, ships salvaged for 50% PC
   ## Per operations.md:6.2.16
+  ##
+  ## AUTOMATIC EXECUTION: This order executes immediately when given
+  ## FACILITIES: Works at colonies with either spaceport OR shipyard
 
-  # Find closest friendly colony
+  # Find closest friendly colony with salvage facilities (spaceport or shipyard)
   var closestColony: Option[SystemId] = none(SystemId)
 
-  for colonyId, colony in state.colonies:
-    if colony.owner == fleet.owner:
-      # TODO: Calculate distance and find closest
-      closestColony = some(colonyId)
-      break
+  # Check if fleet is currently at a friendly colony with facilities
+  if fleet.location in state.colonies:
+    let colony = state.colonies[fleet.location]
+    let hasFacilities = colony.spaceports.len > 0 or colony.shipyards.len > 0
+
+    if colony.owner == fleet.owner and hasFacilities:
+      # Already at a suitable colony - use it immediately
+      closestColony = some(fleet.location)
+
+  # If not at suitable colony, search all owned colonies for one with facilities
+  # Note: For simplicity, we take the first colony with facilities found
+  # A more sophisticated implementation would use pathfinding to find truly closest
+  if closestColony.isNone:
+    for colonyId, colony in state.colonies:
+      if colony.owner == fleet.owner:
+        # Check if colony has salvage facilities
+        let hasFacilities = colony.spaceports.len > 0 or colony.shipyards.len > 0
+
+        if hasFacilities:
+          closestColony = some(colonyId)
+          break
 
   if closestColony.isNone:
     return OrderExecutionResult(
       success: false,
-      message: "No friendly colony found for salvage",
+      message: "No friendly colony with spaceport or shipyard found for salvage",
       eventsGenerated: @[]
     )
 
-  # Calculate salvage value (50% of ship PC)
+  # Calculate salvage value (50% of ship PC per operations.md:6.2.16)
   var salvageValue = 0
   for squadron in fleet.squadrons:
-    for ship in squadron.allShips():
+    # Flagship
+    salvageValue += (squadron.flagship.stats.buildCost div 2)
+    # Other ships in squadron
+    for ship in squadron.ships:
       salvageValue += (ship.stats.buildCost div 2)
 
-  # TODO: Add PP to house treasury
-  # TODO: Remove fleet from game state
+  # Add salvage PP to house treasury
+  state.withHouse(fleet.owner):
+    house.treasury += salvageValue
+
+  # Generate event
+  let targetSystem = closestColony.get()
+  let transitMessage = if fleet.location == targetSystem:
+    "at colony"
+  else:
+    "after transit to " & $targetSystem
+
+  # Remove fleet from game state
+  state.fleets.del(fleet.id)
+  if fleet.id in state.fleetOrders:
+    state.fleetOrders.del(fleet.id)
+  if fleet.id in state.standingOrders:
+    state.standingOrders.del(fleet.id)
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " salvaged at " & $closestColony.get() & " for " & $salvageValue & " PP",
+    message: "Fleet " & $fleet.id & " salvaged " & transitMessage & " for " & $salvageValue & " PP",
     eventsGenerated: @[
-      "Fleet salvaged",
-      "Recovered " & $salvageValue & " PP"
+      "Fleet " & $fleet.id & " salvaged",
+      "Recovered " & $salvageValue & " PP from " & $fleet.squadrons.len & " squadron(s)"
     ]
   )
 

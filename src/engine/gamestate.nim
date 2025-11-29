@@ -182,6 +182,7 @@ type
     dishonoredStatus*: dip_types.DishonoredStatus  # Pact violation penalty
     diplomaticIsolation*: dip_types.DiplomaticIsolation  # Pact violation penalty
     taxPolicy*: econ_types.TaxPolicy  # Current tax rate and 6-turn history
+    consecutiveShortfallTurns*: int  # Consecutive turns of missed maintenance payment (economy.md:3.11)
 
     # Planet-Breaker tracking (assets.md:2.4.8)
     planetBreakerCount*: int  # Current PB count (max = current colony count)
