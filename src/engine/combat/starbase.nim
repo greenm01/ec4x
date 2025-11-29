@@ -53,9 +53,11 @@ proc createStarbaseCombatSquadron*(
   ## Create a combat squadron for a starbase
   ## Starbases are always solo units (one per squadron)
   ##
-  ## TODO M3: Load starbase stats from system state
-  ## TODO M3: Apply WEP tech modifiers
-  ## TODO M3: Handle starbase damage persistence across turns
+  ## NOTE: This function is a legacy helper that's not actually used.
+  ## Real starbase combat implementation is in combat_resolution.nim:105-140 which:
+  ## ✅ Loads starbase data from colony.starbases (state)
+  ## ✅ Applies WEP tech modifiers via getShipStats()
+  ## ✅ Handles damage persistence via starbase.isCrippled field
 
   let starbase = newEnhancedShip(
     ShipClass.Starbase,
