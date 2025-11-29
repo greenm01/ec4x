@@ -103,7 +103,7 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
         owner: fleet.owner,
         location: targetSystem,
         shipCount: fleet.squadrons.len,
-        standingOrders: none(string),  # TODO: Add fleet standing orders
+        standingOrders: none(string),  # Future enhancement: Report fleet standing orders if detected
         spaceLiftShipCount: none(int)
       )
 
