@@ -71,7 +71,6 @@ suite "Automated Seek Home - ETAC Missions":
     ## Create state with ETAC mission and multiple colonies
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -115,7 +114,6 @@ suite "Automated Seek Home - ETAC Missions":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -145,7 +143,6 @@ suite "Automated Seek Home - ETAC Missions":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -175,7 +172,6 @@ suite "Automated Seek Home - ETAC Missions":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -292,7 +288,6 @@ suite "Automated Seek Home - Guard Orders":
     ## Create state with fleet on guard duty
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -334,7 +329,6 @@ suite "Automated Seek Home - Guard Orders":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -364,7 +358,6 @@ suite "Automated Seek Home - Guard Orders":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -470,7 +463,6 @@ suite "Automated Seek Home - Blockade Orders":
     ## Create state with blockade fleet at conquered system
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -512,7 +504,6 @@ suite "Automated Seek Home - Blockade Orders":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -542,7 +533,6 @@ suite "Automated Seek Home - Blockade Orders":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -615,7 +605,6 @@ suite "Automated Seek Home - Patrol Orders":
     ## Create state with patrol fleet in conquered territory
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -657,7 +646,6 @@ suite "Automated Seek Home - Patrol Orders":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -687,7 +675,6 @@ suite "Automated Seek Home - Patrol Orders":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -759,7 +746,6 @@ suite "Automated Seek Home - No Safe Destination":
   test "Fleet holds position when no owned colonies exist":
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -801,7 +787,6 @@ suite "Automated Seek Home - No Safe Destination":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -869,7 +854,6 @@ suite "Automated Seek Home - Multiple Fleets":
   test "Multiple fleets retreat simultaneously":
     var state = GameState()
     state.turn = 1
-    state.year = 2501
     state.month = 1
     state.phase = GamePhase.Active
 
@@ -911,7 +895,6 @@ suite "Automated Seek Home - Multiple Fleets":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -941,7 +924,6 @@ suite "Automated Seek Home - Multiple Fleets":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],

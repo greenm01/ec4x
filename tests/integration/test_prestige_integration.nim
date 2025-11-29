@@ -16,7 +16,7 @@ suite "Prestige Integration":
 
   test "Low tax rate generates prestige bonus":
     # Create low-tax colony
-    let colony = econ_types.Colony(
+    let colony = Colony(
       systemId: 1.SystemId,
       owner: "house1".HouseId,
       populationUnits: 100,

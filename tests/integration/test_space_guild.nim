@@ -42,7 +42,6 @@ suite "Population Transfer Mechanics":
   proc createTestState(): GameState =
     var result = GameState()
     result.turn = 1
-    result.year = 2501
     result.month = 1
     result.phase = GamePhase.Active
 
@@ -69,7 +68,6 @@ suite "Population Transfer Mechanics":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -92,7 +90,6 @@ suite "Population Transfer Mechanics":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -372,7 +369,6 @@ suite "In-Transit Ownership Changes":
   proc createTestState(): GameState =
     var result = GameState()
     result.turn = 1
-    result.year = 2501
     result.month = 1
     result.phase = GamePhase.Active
 
@@ -407,7 +403,6 @@ suite "In-Transit Ownership Changes":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -430,7 +425,6 @@ suite "In-Transit Ownership Changes":
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],

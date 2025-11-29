@@ -25,7 +25,7 @@ suite "Complete Prestige Flow Integration":
 
     # 1. Tech advancement: +2 prestige
     let startingLevels = TechLevel(
-      economicLevel: 1, shieldLevel: 1, constructionTech: 0,
+      economicLevel: 1, shieldTech: 1, constructionTech: 0,
       weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
       counterIntelligence: 0
     )
@@ -88,7 +88,7 @@ suite "Complete Prestige Flow Integration":
 
     # One more tech advancement
     let startingLevels = TechLevel(
-      economicLevel: 1, shieldLevel: 1, constructionTech: 0,
+      economicLevel: 1, shieldTech: 1, constructionTech: 0,
       weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
       counterIntelligence: 0
     )
@@ -149,7 +149,7 @@ suite "Complete Prestige Flow Integration":
 
     # Gains
     let startingLevels = TechLevel(
-      economicLevel: 1, shieldLevel: 1, constructionTech: 0,
+      economicLevel: 1, shieldTech: 1, constructionTech: 0,
       weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
       counterIntelligence: 0
     )
@@ -222,7 +222,7 @@ suite "Complete Prestige Flow Integration":
     ## Test prestige accumulation through full tech tree progression
     var prestige = 0
     let startingLevels = TechLevel(
-      economicLevel: 1, shieldLevel: 1, constructionTech: 0,
+      economicLevel: 1, shieldTech: 1, constructionTech: 0,
       weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
       counterIntelligence: 0
     )
@@ -306,7 +306,7 @@ suite "Complete Prestige Flow Integration":
 
     # Tech advancement: +2
     let startingLevels = TechLevel(
-      economicLevel: 1, shieldLevel: 1, constructionTech: 0,
+      economicLevel: 1, shieldTech: 1, constructionTech: 0,
       weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
       counterIntelligence: 0
     )

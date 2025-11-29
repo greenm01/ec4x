@@ -10,9 +10,10 @@
 
 import std/[unittest, tables, options]
 import ../../src/engine/[gamestate, orders, resolve, fleet, squadron]
+import ../../src/engine/economy/types as econ_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
-import ../../src/common/types/[core, units]
+import ../../src/common/types/[core, units, planets]
 
 suite "Squadron Management":
 
@@ -48,11 +49,10 @@ suite "Squadron Management":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
-      activeTerraforming: none(TerraformProject),
+      underConstruction: none(econ_types.ConstructionProject),
+      activeTerraforming: none(econ_types.TerraformProject),
       unassignedSquadrons: @[sq1, sq2, sq3],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,  # Disable auto-assign for manual testing
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -332,11 +332,10 @@ suite "Fleet Organization":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
-      activeTerraforming: none(TerraformProject),
+      underConstruction: none(econ_types.ConstructionProject),
+      activeTerraforming: none(econ_types.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],
@@ -414,11 +413,10 @@ suite "Auto-Assignment System":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
-      activeTerraforming: none(TerraformProject),
+      underConstruction: none(econ_types.ConstructionProject),
+      activeTerraforming: none(econ_types.TerraformProject),
       unassignedSquadrons: @[sq1],
       unassignedSpaceLiftShips: @[],
-      autoAssignFleets: true,  # Enable auto-assignment
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(),
       starbases: @[],

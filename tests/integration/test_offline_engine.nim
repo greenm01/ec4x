@@ -4,9 +4,10 @@
 ## Validates the offline-first architecture
 
 import std/[tables, options]
-import ../src/core
-import ../src/engine/[gamestate, orders, resolve, economy]
+import ../../src/engine/[gamestate, orders, resolve]
+import ../../src/engine/economy/[types as econ_types, income]
 import ../../src/engine/research/types as res_types
+import ../../src/common/types/[core, planets, units]
 # Note: Combat tests use engine/combat/ modules directly
 
 # Test that we can create a game and run turns without any network

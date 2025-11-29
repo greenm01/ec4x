@@ -3,6 +3,7 @@
 import std/[unittest, options, strutils]
 import ../../src/engine/colonization/engine
 import ../../src/engine/economy/types as econ_types
+import ../../src/engine/gamestate
 import ../../src/engine/prestige
 import ../../src/engine/config/prestige_config
 import ../../src/common/types/[core, planets]
@@ -11,7 +12,7 @@ suite "Colonization System":
 
   test "Can colonize empty system":
     let systemId = 42.SystemId
-    let existingColonies: seq[econ_types.Colony] = @[]
+    let existingColonies: seq[Colony] = @[]
 
     check canColonize(systemId, existingColonies) == true
 

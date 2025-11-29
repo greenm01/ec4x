@@ -131,6 +131,22 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Phase 4: Maintenance (upkeep, effect decrements, status updates)
   resolveMaintenancePhase(result.newState, result.events, effectiveOrders)
 
+  # Validate all commissioning pools are empty before advancing turn
+  # All commissioned units should be auto-assigned to fleets/colonies
+  # Fighter squadrons are OK to remain at colonies (they're not "unassigned")
+  for systemId, colony in result.newState.colonies:
+    if colony.unassignedSquadrons.len > 0:
+      logError("Resolve", "Turn ending with unassigned combat squadrons", "colony=", $systemId, " count=", $colony.unassignedSquadrons.len)
+      # This should never happen - indicates auto-assignment bug
+      raise newException(ValueError, "Colony " & $systemId & " has " & $colony.unassignedSquadrons.len & " unassigned combat squadrons at turn end")
+
+    if colony.unassignedSpaceLiftShips.len > 0:
+      logError("Resolve", "Turn ending with unassigned spacelift ships", "colony=", $systemId, " count=", $colony.unassignedSpaceLiftShips.len)
+      # This should never happen - indicates auto-assignment bug
+      raise newException(ValueError, "Colony " & $systemId & " has " & $colony.unassignedSpaceLiftShips.len & " unassigned spacelift ships at turn end")
+
+  logDebug("Resolve", "Turn validation passed - all commissioned units assigned", "turn=", $result.newState.turn)
+
   # Advance to next turn
   result.newState.turn += 1
   # Advance strategic cycle (handled by advanceTurn)

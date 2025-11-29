@@ -21,23 +21,33 @@ requires "toml_serialization >= 0.2.0"
 
 # Tasks
 
-task test, "Run the complete test suite":
-  echo "Running EC4X test suite..."
-  echo "=== Core Tests ==="
-  exec "nim c -r tests/test_core.nim"
-  echo ""
-  echo "=== Integration Tests ==="
-  exec "nim c -r tests/run_all_integration_tests.nim"
-  echo ""
-  echo "All tests completed successfully!"
+task test, "Run the complete test suite with analysis":
+  exec "rm -f test_report.csv"
+  exec "tests/run_all_tests.py --types all --report test_report.csv"
 
-task testCore, "Run core functionality tests":
-  echo "Running core functionality tests..."
-  exec "nim c -r tests/test_core.nim"
+task testQuick, "Run complete test suite (no CSV report)":
+  exec "rm -f test_report.csv"
+  exec "tests/run_all_tests.py --types all"
 
-task testIntegration, "Run all integration tests":
-  echo "Running all integration tests..."
-  exec "nim c -r tests/run_all_integration_tests.nim"
+task testUnit, "Run unit tests only":
+  exec "rm -f test_report.csv"
+  exec "tests/run_all_tests.py --types unit"
+
+task testIntegration, "Run integration tests":
+  exec "rm -f test_report.csv"
+  exec "tests/run_all_tests.py --types integration"
+
+task testStress, "Run stress tests":
+  exec "rm -f test_report.csv"
+  exec "tests/stress/run_stress_tests.py"
+
+task testStressQuick, "Run stress tests in quick mode":
+  exec "rm -f test_report.csv"
+  exec "tests/stress/run_stress_tests.py --quick"
+
+task testBalance, "Run balance tests":
+  exec "rm -f test_report.csv"
+  exec "tests/run_all_tests.py --types balance --timeout 300"
 
 task testUnits, "Test all unit construction (ships, ground units, facilities)":
   echo "Testing all 34 game asset types..."
@@ -460,15 +470,6 @@ task testStressAI, "AI stress test (1000 games, crash and behavior detection)":
   echo "Git hash: $(cat tests/balance/.build_git_hash)"
   exec "python3 tests/balance/run_parallel_diagnostics.py 1000 30 16"
   echo "AI stress test completed! Check balance_results/diagnostics/ for anomalies"
-
-task testStress, "Engine stress test (100k games for crash detection)":
-  echo "Running engine stress test (100k games - this will take hours)..."
-  echo "This tests engine stability across all configurations"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
-  echo "Git hash: $(cat tests/balance/.build_git_hash)"
-  exec "python3 run_stress_test.py"
-  echo "Engine stress test completed!"
 
 # AI Tuning & Optimization Tasks
 

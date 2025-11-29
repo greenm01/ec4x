@@ -1325,12 +1325,110 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
     # Handle ship construction
     elif completed.projectType == econ_types.ConstructionType.Ship:
       if completed.colonyId in state.colonies:
-        let colony = state.colonies[completed.colonyId]
+        var colony = state.colonies[completed.colonyId]
         let owner = colony.owner
 
         # Parse ship class from itemId
         try:
           let shipClass = parseEnum[ShipClass](completed.itemId)
+
+          # Handle special ship types first
+          # 1. Fighter squadrons → colony.fighterSquadrons
+          if shipClass == ShipClass.Fighter:
+            let fighterSq = FighterSquadron(
+              id: $completed.colonyId & "-FS-" & $(colony.fighterSquadrons.len + 1),
+              commissionedTurn: state.turn
+            )
+            colony.fighterSquadrons.add(fighterSq)
+            state.colonies[completed.colonyId] = colony
+            logInfo(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {completed.colonyId}")
+
+            events.add(GameEvent(
+              eventType: GameEventType.ShipCommissioned,
+              houseId: owner,
+              description: "Fighter squadron commissioned at " & $completed.colonyId,
+              systemId: some(completed.colonyId)
+            ))
+            continue
+
+          # 2. Starbases → colony.starbases
+          elif shipClass == ShipClass.Starbase:
+            let starbase = Starbase(
+              id: $completed.colonyId & "-SB-" & $(colony.starbases.len + 1),
+              commissionedTurn: state.turn,
+              isCrippled: false
+            )
+            colony.starbases.add(starbase)
+            state.colonies[completed.colonyId] = colony
+            logInfo(LogCategory.lcEconomy, &"Commissioned starbase {starbase.id} at {completed.colonyId} (operational: {getOperationalStarbaseCount(colony)})")
+
+            events.add(GameEvent(
+              eventType: GameEventType.ShipCommissioned,
+              houseId: owner,
+              description: "Starbase commissioned at " & $completed.colonyId,
+              systemId: some(completed.colonyId)
+            ))
+            continue
+
+          # 3. Check if this is a spacelift ship (ETAC or TroopTransport)
+          let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
+
+          if isSpaceLift:
+            # Commission spacelift ship and auto-assign to fleet
+            let shipId = owner & "_" & $shipClass & "_" & $completed.colonyId & "_" & $state.turn
+            var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, owner, completed.colonyId)
+
+            # Auto-load PTU onto ETAC at commissioning
+            if shipClass == ShipClass.ETAC and colony.population > 1:
+              let extractionCost = 1.0 / (1.0 + 0.00657 * colony.population.float)
+              let newPopulation = colony.population.float - extractionCost
+              colony.population = max(1, newPopulation.int)
+              spaceLiftShip.cargo.cargoType = CargoType.Colonists
+              spaceLiftShip.cargo.quantity = 1
+              logInfo(LogCategory.lcEconomy, &"Loaded 1 PTU onto {shipId} (extraction: {extractionCost:.2f} PU from {completed.colonyId})")
+
+            colony.unassignedSpaceLiftShips.add(spaceLiftShip)
+            state.colonies[completed.colonyId] = colony
+            logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} spacelift ship at {completed.colonyId}")
+
+            # Auto-assign to fleets (create new fleet if needed)
+            if colony.unassignedSpaceLiftShips.len > 0:
+              let shipToAssign = colony.unassignedSpaceLiftShips[colony.unassignedSpaceLiftShips.len - 1]
+
+              var targetFleetId = ""
+              for fleetId, fleet in state.fleets:
+                if fleet.location == completed.colonyId and fleet.owner == owner:
+                  targetFleetId = fleetId
+                  break
+
+              if targetFleetId == "":
+                # Create new fleet for spacelift ship
+                targetFleetId = $owner & "_fleet" & $(state.fleets.len + 1)
+                state.fleets[targetFleetId] = Fleet(
+                  id: targetFleetId,
+                  owner: owner,
+                  location: completed.colonyId,
+                  squadrons: @[],
+                  spaceLiftShips: @[shipToAssign],
+                  status: FleetStatus.Active,
+                  autoBalanceSquadrons: true
+                )
+                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new fleet {targetFleetId}")
+              else:
+                # Add to existing fleet
+                state.fleets[targetFleetId].spaceLiftShips.add(shipToAssign)
+                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in fleet {targetFleetId}")
+
+              # Remove from unassigned pool (it's now in fleet)
+              colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
+              state.colonies[completed.colonyId] = colony
+
+              logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {targetFleetId}")
+
+            # Skip rest of combat ship logic
+            continue
+
+          # Combat ships - existing logic
           let techLevel = state.houses[owner].techTree.levels.weaponsTech
 
           # Create the ship
@@ -1356,7 +1454,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
                 for squadron in fleet.squadrons.mitems:
                   if squadron.id == assignedSquadron:
                     discard addShip(squadron, ship)
-                    echo "      Commissioned ", shipClass, " and assigned to squadron ", squadron.id
+                    logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} and assigned to squadron {squadron.id}")
                     break
 
           else:
@@ -1383,11 +1481,11 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
                 status: FleetStatus.Active,
                 autoBalanceSquadrons: true
               )
-              echo "      Commissioned ", shipClass, " in new fleet ", targetFleetId
+              logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new fleet {targetFleetId}")
             else:
               # Add squadron to existing fleet
               state.fleets[targetFleetId].squadrons.add(newSq)
-              echo "      Commissioned ", shipClass, " in new squadron ", newSq.id
+              logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new squadron {newSq.id}")
 
           # Generate event
           events.add(GameEvent(
@@ -1398,7 +1496,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
           ))
 
         except ValueError:
-          echo "      ERROR: Invalid ship class: ", completed.itemId
+          logError(LogCategory.lcEconomy, &"Invalid ship class: {completed.itemId}")
 
   # Check for elimination and defensive collapse
   let gameplayConfig = globalGameplayConfig
@@ -1997,6 +2095,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           # ARCHITECTURE FIX: Fighters go to colony.fighterSquadrons, not fleets
           let isFighter = shipClass == ShipClass.Fighter
 
+          logInfo(LogCategory.lcEconomy, &"Commissioning {shipClass}: isFighter={isFighter}, isSpaceLift={isSpaceLift}")
+
           if isFighter:
             # Path 1: Commission fighter at colony (assets.md:2.4.1)
             let fighterSq = FighterSquadron(
@@ -2060,23 +2160,46 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
             logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} spacelift ship at {systemId}")
 
-            # Auto-assign to fleets if enabled
+            # Auto-assign to fleets (create new fleet if needed)
             if colony.unassignedSpaceLiftShips.len > 0:
-              # Find stationary fleets at this system
-              for fleetId, fleet in state.fleets.mpairs:
+              # Get the ship from unassigned pool (use this reference, not the local variable)
+              let shipToAssign = colony.unassignedSpaceLiftShips[colony.unassignedSpaceLiftShips.len - 1]
+
+              # Find or create fleet at this location
+              var targetFleetId = ""
+              for fleetId, fleet in state.fleets:
                 if fleet.location == systemId and fleet.owner == colony.owner:
-                  # Transfer spacelift ship to fleet
-                  fleet.spaceLiftShips.add(spaceLiftShip)
-                  # Remove the spacelift ship we just assigned (it's the last one we added)
-                  colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
-
-                  # WARN if ETAC assigned without PTU (potential colonization failure)
-                  if shipClass == ShipClass.ETAC and
-                     (spaceLiftShip.cargo.cargoType != CargoType.Colonists or spaceLiftShip.cargo.quantity == 0):
-                    logWarn(LogCategory.lcFleet, &"Empty ETAC {shipId} assigned to fleet {fleetId} - colonization will fail!")
-
-                  logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {fleetId}")
+                  targetFleetId = fleetId
                   break
+
+              if targetFleetId == "":
+                # Create new fleet for spacelift ship
+                targetFleetId = $colony.owner & "_fleet" & $(state.fleets.len + 1)
+                state.fleets[targetFleetId] = Fleet(
+                  id: targetFleetId,
+                  owner: colony.owner,
+                  location: systemId,
+                  squadrons: @[],
+                  spaceLiftShips: @[shipToAssign],
+                  status: FleetStatus.Active,
+                  autoBalanceSquadrons: true
+                )
+                let createdFleet = state.fleets[targetFleetId]
+                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new fleet {targetFleetId} with {createdFleet.spaceLiftShips.len} spacelift ships")
+              else:
+                # Add to existing fleet
+                state.fleets[targetFleetId].spaceLiftShips.add(shipToAssign)
+                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in fleet {targetFleetId}")
+
+              # Remove from unassigned pool (it's now in fleet)
+              colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
+
+              # WARN if ETAC assigned without PTU (potential colonization failure)
+              if shipClass == ShipClass.ETAC and
+                 (spaceLiftShip.cargo.cargoType != CargoType.Colonists or spaceLiftShip.cargo.quantity == 0):
+                logWarn(LogCategory.lcFleet, &"Empty ETAC {shipId} assigned to fleet {targetFleetId} - colonization will fail!")
+
+              logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {targetFleetId}")
 
           else:
             # Combat ship - create squadron as normal

@@ -10,7 +10,7 @@
 import fleet
 import ../common/[hex, system, types/combat]
 import config/starmap_config
-import std/[tables, sequtils, random, math, algorithm, hashes, sets, strformat]
+import std/[tables, sequtils, random, math, algorithm, hashes, sets, strformat, strutils]
 import std/options
 
 type
@@ -355,6 +355,30 @@ proc validateConnectivity*(starMap: StarMap): bool =
 
   return visited.len == starMap.systems.len
 
+proc validateHomeworldLanes*(starMap: StarMap): seq[string] =
+  ## Validate that each homeworld has exactly 3 Major lanes
+  ## Returns list of validation errors (empty if valid)
+  var errors: seq[string] = @[]
+
+  for playerId in starMap.playerSystemIds:
+    # Count lanes connected to this homeworld
+    var majorLanes = 0
+    var totalLanes = 0
+
+    for lane in starMap.lanes:
+      if lane.source == playerId or lane.destination == playerId:
+        totalLanes += 1
+        if lane.laneType == LaneType.Major:
+          majorLanes += 1
+
+    # Per assets.md: "Each homeworld is guaranteed to have exactly 3 Major lanes"
+    if totalLanes != 3:
+      errors.add("Homeworld " & $playerId & " has " & $totalLanes & " lanes (expected 3)")
+    if majorLanes != 3:
+      errors.add("Homeworld " & $playerId & " has " & $majorLanes & " Major lanes (expected 3)")
+
+  return errors
+
 proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool =
   ## Check if fleet can traverse lane type per game rules
   case laneType:
@@ -457,11 +481,16 @@ proc populate*(starMap: var StarMap) =
 
     # Validate result
     if not starMap.validateConnectivity():
-      raise newException(StarMapError, "Generated starmap is not fully connected")
+      raise newException(StarMapError, "Generated starmap is not fully connected - dead systems detected")
 
     # Validate player count
     if starMap.playerSystemIds.len != starMap.playerCount:
       raise newException(StarMapError, "Incorrect number of player systems assigned")
+
+    # Validate homeworld lanes (must have exactly 3 Major lanes each)
+    let homeworldErrors = starMap.validateHomeworldLanes()
+    if homeworldErrors.len > 0:
+      raise newException(StarMapError, "Homeworld validation failed: " & homeworldErrors.join("; "))
 
   except StarMapError:
     raise
@@ -497,21 +526,20 @@ proc getStarMapStats*(starMap: StarMap): string =
   return stats
 
 proc verifyGameRules*(starMap: StarMap): bool =
-  ## Verify starmap follows all game specification rules
+  ## Verify starmap follows all game specification rules per assets.md
   try:
-    # Hub should have exactly 6 lanes
+    # 1. Hub should have exactly 6 lanes
     let hubConnections = starMap.getAdjacentSystems(starMap.hubId)
     if hubConnections.len != 6:
       return false
 
-    # Player systems should have exactly 3 lanes each
-    for playerId in starMap.playerSystemIds:
-      let connections = starMap.getAdjacentSystems(playerId)
-      if connections.len != 3:
-        return false
-
-    # All systems should be reachable
+    # 2. All systems must be reachable from hub (no dead systems)
     if not starMap.validateConnectivity():
+      return false
+
+    # 3. Each homeworld must have exactly 3 Major lanes
+    let homeworldErrors = starMap.validateHomeworldLanes()
+    if homeworldErrors.len > 0:
       return false
 
     return true

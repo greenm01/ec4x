@@ -608,8 +608,8 @@ proc executeSpyPlanetOrder(
       break
 
   # Check if fleet is now empty and clean up if needed
-  if updatedFleet.squadrons.len == 0:
-    # Fleet is empty - remove it completely
+  if updatedFleet.isEmpty():
+    # Fleet is empty (no squadrons AND no spacelift ships) - remove it completely
     state.fleets.del(fleet.id)
     if fleet.id in state.fleetOrders:
       state.fleetOrders.del(fleet.id)
@@ -704,8 +704,8 @@ proc executeHackStarbaseOrder(
       break
 
   # Check if fleet is now empty and clean up if needed
-  if updatedFleet.squadrons.len == 0:
-    # Fleet is empty - remove it completely
+  if updatedFleet.isEmpty():
+    # Fleet is empty (no squadrons AND no spacelift ships) - remove it completely
     state.fleets.del(fleet.id)
     if fleet.id in state.fleetOrders:
       state.fleetOrders.del(fleet.id)
@@ -784,8 +784,8 @@ proc executeSpySystemOrder(
       break
 
   # Check if fleet is now empty and clean up if needed
-  if updatedFleet.squadrons.len == 0:
-    # Fleet is empty - remove it completely
+  if updatedFleet.isEmpty():
+    # Fleet is empty (no squadrons AND no spacelift ships) - remove it completely
     state.fleets.del(fleet.id)
     if fleet.id in state.fleetOrders:
       state.fleetOrders.del(fleet.id)

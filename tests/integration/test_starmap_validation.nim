@@ -82,15 +82,30 @@ suite "EC4X Game Specification Validation":
         check neighbor.ring == 1
         check distance(neighbor.coords, hex(0, 0)) == 1
 
-      # All hub lanes should be Major type
+      # Hub lanes use the same distribution as rest of map (mixed types per assets.md:2.1)
+      # Verify we have exactly 6 hub lanes
       var hubLanes: seq[JumpLane] = @[]
       for lane in starMap.lanes:
         if lane.source == starMap.hubId or lane.destination == starMap.hubId:
           hubLanes.add(lane)
 
       check hubLanes.len == expected.hubConnections
+
+      # Hub lanes should have mixed types (not all Major)
+      # Per assets.md: "Hub lanes use the same distribution as the rest of the map (mixed lane types)"
+      var majorCount = 0
+      var minorCount = 0
+      var restrictedCount = 0
       for lane in hubLanes:
-        check lane.laneType == LaneType.Major
+        case lane.laneType
+        of LaneType.Major: majorCount += 1
+        of LaneType.Minor: minorCount += 1
+        of LaneType.Restricted: restrictedCount += 1
+
+      # Should have at least one Major lane (for basic connectivity)
+      check majorCount >= 1
+      # Total should equal hub connections
+      check majorCount + minorCount + restrictedCount == expected.hubConnections
 
   test "player system connectivity matches game specification":
     for playerCount in [2, 3, 4, 5, 6, 8, 10, 12]:

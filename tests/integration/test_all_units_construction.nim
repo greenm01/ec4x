@@ -65,7 +65,6 @@ proc createTestState(cstLevel: int = 10): GameState =
     activeTerraforming: none(TerraformProject),
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
-    autoAssignFleets: true,
     fighterSquadrons: @[],
     capacityViolation: CapacityViolation(),
     starbases: @[],
