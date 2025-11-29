@@ -13,23 +13,23 @@ import ../../src/engine/colonization/engine as col_engine
 import ../../src/engine/espionage/[types as esp_types, engine as esp_engine]
 import ../../src/engine/diplomacy/[types as dip_types, engine as dip_engine]
 import ../../src/engine/prestige
-import ../../src/engine/config/[prestige_config, espionage_config]
+import ../../src/engine/config/[prestige_config, prestige_multiplier, espionage_config]
 import ../../src/common/types/[core, planets]
 import ../../src/engine/economy/types as econ_types
 
 suite "Complete Prestige Flow Integration":
 
+  setup:
+    # Disable prestige multiplier for testing (use base prestige values)
+    # Tests were written for base values before multiplier system was added
+    setPrestigeMultiplierForTesting(1.0)
+
   test "Multi-system prestige accumulation":
     ## Test prestige accumulation from all systems in sequence
     var totalPrestige = 50  # Starting prestige
 
-    # 1. Tech advancement: +2 prestige
-    let startingLevels = TechLevel(
-      economicLevel: 1, shieldTech: 1, constructionTech: 0,
-      weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
-      counterIntelligence: 0
-    )
-    var techTree = initTechTree(startingLevels)
+    # 1. Tech advancement: +20 prestige (base value)
+    var techTree = initTechTree()  # Uses initDefaultTechLevel() - all fields start at 1
     techTree.accumulated.economic = 100  # Enough for EL advancement
 
     let techResult = attemptELAdvancement(techTree, 1)  # Start at level 1
@@ -39,9 +39,9 @@ suite "Complete Prestige Flow Integration":
       check advancement.prestigeEvent.isSome
       if advancement.prestigeEvent.isSome:
         totalPrestige += advancement.prestigeEvent.get().amount
-        check totalPrestige == 52  # 50 + 2
+        check totalPrestige == 70  # 50 + 20
 
-    # 2. Colony establishment: +5 prestige
+    # 2. Colony establishment: +50 prestige (base value)
     let colonyResult = establishColony(
       "house1".HouseId,
       100.SystemId,
@@ -53,7 +53,7 @@ suite "Complete Prestige Flow Integration":
     check colonyResult.prestigeEvent.isSome
     if colonyResult.prestigeEvent.isSome:
       totalPrestige += colonyResult.prestigeEvent.get().amount
-      check totalPrestige == 57  # 52 + 5
+      check totalPrestige == 120  # 70 + 50
 
     # 3. Successful espionage: +2 prestige (skipped - API changed)
     # NOTE: Espionage API has been refactored. Individual action executors
@@ -69,37 +69,32 @@ suite "Complete Prestige Flow Integration":
     let pactResult = proposePact(relations, "house2".HouseId, history, 1)
     check pactResult.isSome
     # Pact formation doesn't change prestige
-    check totalPrestige == 57  # Updated from 59
+    check totalPrestige == 120  # 70 + 50 (no change for pact formation)
 
-    # 5. Violate pact: -5 prestige (first violation)
+    # 5. Violate pact: -100 prestige (base penalty)
     let violation = recordViolation(history, "house1".HouseId, "house2".HouseId, 2, "Unprovoked attack")
     let penalties = applyViolationPenalties("house1".HouseId, "house2".HouseId, history, 2)
     check penalties.len > 0
-    totalPrestige += penalties[0].amount  # Should be -5
-    check totalPrestige == 52  # 57 - 5 (updated)
+    totalPrestige += penalties[0].amount  # -100
+    check totalPrestige == 20  # 120 - 100
 
     # Final check
-    check totalPrestige == 52  # Updated from 54
+    check totalPrestige == 20  # Final tally: 50 + 20 + 50 - 100
 
   test "Victory condition: reaching 5000 prestige":
     ## Simulate reaching victory threshold through multiple activities
     var prestige = 4980  # Close to victory
 
-    # One more tech advancement
-    let startingLevels = TechLevel(
-      economicLevel: 1, shieldTech: 1, constructionTech: 0,
-      weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
-      counterIntelligence: 0
-    )
-    var tree = initTechTree(startingLevels)
+    # One more tech advancement: +20
+    var tree = initTechTree()  # Uses initDefaultTechLevel() - all fields start at 1
     tree.accumulated.economic = 100
     let advancement = attemptELAdvancement(tree, 1)
     if advancement.isSome and advancement.get().prestigeEvent.isSome:
       prestige += advancement.get().prestigeEvent.get().amount
 
-    check prestige == 4982
+    check prestige == 5000  # 4980 + 20
 
-    # Multiple colonies to reach threshold
+    # Multiple colonies to reach threshold: each +50
     for i in 1..4:
       let colony = establishColony(
         "winner".HouseId,
@@ -111,49 +106,44 @@ suite "Complete Prestige Flow Integration":
       if colony.prestigeEvent.isSome:
         prestige += colony.prestigeEvent.get().amount
 
-    check prestige == 5002  # 4982 + (4 * 5) = 5002
+    check prestige == 5200  # 5000 + (4 * 50) = 5200
     check prestige >= 5000  # Victory condition met!
 
   test "Negative prestige accumulation from failures":
     ## Test that failures and penalties reduce prestige correctly
     var prestige = 100
 
-    # Failed espionage: -2 prestige (skipped - API changed)
+    # Failed espionage: skipped - API changed
     # NOTE: Espionage API refactored, skip this step
     # prestige stays at 100
 
-    # First pact violation: -5 prestige (base)
+    # First pact violation: -100 prestige (base)
     var history = dip_types.initViolationHistory()
     discard recordViolation(history, "house1".HouseId, "house2".HouseId, 1, "Attack")
     let penalties = applyViolationPenalties("house1".HouseId, "house2".HouseId, history, 1)
     for event in penalties:
       prestige += event.amount
-    check prestige == 95  # 100 - 5 (updated)
+    check prestige == 0  # 100 - 100
 
-    # Second pact violation: -5 (base) + -3 (1 repeat) = -8
+    # Second pact violation: -100 (base) + -100 (1 repeat) = -200
     discard recordViolation(history, "house1".HouseId, "house3".HouseId, 2, "Attack")
     let penalties2 = applyViolationPenalties("house1".HouseId, "house3".HouseId, history, 2)
     for event in penalties2:
       prestige += event.amount
-    check prestige == 87  # 95 - 8 (updated)
+    check prestige == -200  # 0 - 200
 
-    check prestige == 87  # Updated from 85
+    check prestige == -200  # Final tally
 
   test "Prestige balance: gains vs losses":
     ## Test that a balanced strategy maintains prestige
     var prestige = 200
 
     # Gains
-    let startingLevels = TechLevel(
-      economicLevel: 1, shieldTech: 1, constructionTech: 0,
-      weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
-      counterIntelligence: 0
-    )
-    var tree = initTechTree(startingLevels)
+    var tree = initTechTree()  # Uses initDefaultTechLevel() - all fields start at 1
     tree.accumulated.economic = 100
     let tech = attemptELAdvancement(tree, 1)
     if tech.isSome and tech.get().prestigeEvent.isSome:
-      prestige += tech.get().prestigeEvent.get().amount  # +2
+      prestige += tech.get().prestigeEvent.get().amount  # +20
 
     let colony = establishColony(
       "balanced".HouseId,
@@ -163,15 +153,15 @@ suite "Complete Prestige Flow Integration":
       50
     )
     if colony.prestigeEvent.isSome:
-      prestige += colony.prestigeEvent.get().amount  # +5
+      prestige += colony.prestigeEvent.get().amount  # +50
 
-    check prestige == 207  # 200 + 2 + 5
+    check prestige == 270  # 200 + 20 + 50
 
     # Loss (skipped - API changed)
     # Espionage API refactored, skip failed espionage step
-    # prestige stays at 207
+    # prestige stays at 270
 
-    check prestige == 207  # No change (updated from 205)
+    check prestige == 270  # No change from espionage
 
   test "All espionage actions prestige impact":
     ## SKIPPED: Espionage API has been refactored
@@ -185,71 +175,66 @@ suite "Complete Prestige Flow Integration":
   test "Research progression prestige accumulation":
     ## Test prestige accumulation through full tech tree progression
     var prestige = 0
-    let startingLevels = TechLevel(
-      economicLevel: 1, shieldTech: 1, constructionTech: 0,
-      weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
-      counterIntelligence: 0
-    )
-    var tree = initTechTree(startingLevels)
+    var tree = initTechTree()  # Uses initDefaultTechLevel() - all fields start at 1
 
-    # Energy Level advancement
+    # Economic Level advancement: each +20
     tree.accumulated.economic = 1000
     for level in 1..3:  # Start from 1
       let result = attemptELAdvancement(tree, level)
       if result.isSome and result.get().prestigeEvent.isSome:
         prestige += result.get().prestigeEvent.get().amount
 
-    check prestige == 6  # 3 advancements * 2 prestige each
+    check prestige == 60  # 3 advancements * 20 prestige each
 
-    # Weapons Tech advancement
+    # Weapons Tech advancement: each +20
     tree.accumulated.technology[TechField.WeaponsTech] = 1000
-    for level in 0..2:  # WEP starts at 0
+    for level in 1..3:  # WEP starts at 1 (all tech starts at 1)
       let result = attemptTechAdvancement(tree, TechField.WeaponsTech)
       if result.isSome and result.get().prestigeEvent.isSome:
         prestige += result.get().prestigeEvent.get().amount
 
-    check prestige == 12  # 6 advancements * 2 prestige each
+    check prestige == 120  # 60 + (3 * 20) = 120
 
-    # Science Level advancement (not Defense - SL = Science Level)
+    # Science Level advancement: each +20
     tree.accumulated.science = 1000
     for level in 1..2:  # SL starts at 1
       let result = attemptSLAdvancement(tree, level)
       if result.isSome and result.get().prestigeEvent.isSome:
         prestige += result.get().prestigeEvent.get().amount
 
-    check prestige == 16  # (3 EL + 3 WEP + 2 SL) = 8 advancements * 2 prestige each
+    check prestige == 160  # 120 + (2 * 20) = 160 (total 8 advancements * 20 each)
 
   test "Diplomatic violations escalation penalty":
     ## Test that repeated violations increase penalties correctly
     var history = dip_types.initViolationHistory()
     var totalPenalty = 0
 
-    # First violation: -5 prestige (base only)
+    # First violation: -100 prestige (base only)
     discard recordViolation(history, "aggressor".HouseId, "victim1".HouseId, 1, "Attack 1")
     let penalty1 = applyViolationPenalties("aggressor".HouseId, "victim1".HouseId, history, 1)
     for event in penalty1:
       totalPenalty += event.amount
-    check totalPenalty == -5
+    check totalPenalty == -100  # Base penalty
 
-    # Second violation: Observed actual penalty
+    # Second violation: -100 (base) + -100 (1 repeat) = -200 this violation, -300 total
     discard recordViolation(history, "aggressor".HouseId, "victim2".HouseId, 2, "Attack 2")
     let penalty2 = applyViolationPenalties("aggressor".HouseId, "victim2".HouseId, history, 2)
     for event in penalty2:
       totalPenalty += event.amount
-    check totalPenalty == -13  # Observed: -5 base + repeat penalty calculation
+    check totalPenalty == -300  # -100 + -200
 
-    # Third violation: Observed actual penalty
+    # Third violation: -100 (base) + -200 (2 repeats) = -300 this violation, -600 total
     discard recordViolation(history, "aggressor".HouseId, "victim3".HouseId, 3, "Attack 3")
     let penalty3 = applyViolationPenalties("aggressor".HouseId, "victim3".HouseId, history, 3)
     for event in penalty3:
       totalPenalty += event.amount
-    check totalPenalty == -24  # Observed: cumulative penalties increase
+    check totalPenalty == -600  # -300 + -300
 
   test "Colonization expansion prestige rewards":
     ## Test prestige from establishing multiple colonies
     var prestige = 0
 
-    # Establish 10 colonies
+    # Establish 10 colonies: each +50
     for i in 1..10:
       let colony = establishColony(
         "colonizer".HouseId,
@@ -261,26 +246,21 @@ suite "Complete Prestige Flow Integration":
       if colony.prestigeEvent.isSome:
         prestige += colony.prestigeEvent.get().amount
 
-    check prestige == 50  # 10 colonies * 5 prestige each
+    check prestige == 500  # 10 colonies * 50 prestige each
 
   test "Mixed strategy prestige accumulation":
     ## Realistic game scenario: mix of successes and failures
     var prestige = 300  # Starting mid-game prestige
     var rng = initRand(55555)
 
-    # Tech advancement: +2
-    let startingLevels = TechLevel(
-      economicLevel: 1, shieldTech: 1, constructionTech: 0,
-      weaponsTech: 0, terraformingTech: 0, electronicIntelligence: 0,
-      counterIntelligence: 0
-    )
-    var tree = initTechTree(startingLevels)
+    # Tech advancement: +20
+    var tree = initTechTree()  # Uses initDefaultTechLevel() - all fields start at 1
     tree.accumulated.economic = 100
     let tech = attemptELAdvancement(tree, 1)
     if tech.isSome and tech.get().prestigeEvent.isSome:
       prestige += tech.get().prestigeEvent.get().amount
 
-    # Establish 2 colonies: +10
+    # Establish 2 colonies: each +50
     for i in 1..2:
       let colony = establishColony(
         "player".HouseId,
@@ -294,5 +274,5 @@ suite "Complete Prestige Flow Integration":
 
     # NOTE: Espionage API has been refactored - executeTechTheft no longer exists
     # Skipping espionage prestige in this test
-    # Net gain: +2 + 10 = +12
-    check prestige == 312
+    # Net gain: +20 + 100 = +120
+    check prestige == 420  # 300 + 20 + (2 * 50)

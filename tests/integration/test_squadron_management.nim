@@ -65,6 +65,9 @@ suite "Squadron Management":
   test "Assign squadron to new fleet":
     var state = createTestState()
 
+    # Keep only sq1 in unassigned - remove sq2 and sq3 to prevent auto-assign interference
+    state.colonies[1].unassignedSquadrons = @[state.colonies[1].unassignedSquadrons[0]]  # Keep only sq1
+
     # Create squadron management order to assign sq1 to a new fleet
     let order = SquadronManagementOrder(
       houseId: "house1",
@@ -136,7 +139,8 @@ suite "Squadron Management":
     )
 
     # Remove sq1 from unassigned (it's now in fleet)
-    state.colonies[1].unassignedSquadrons = state.colonies[1].unassignedSquadrons[1..^1]
+    # Also clear out sq3 so auto-assign doesn't add it to fleet1
+    state.colonies[1].unassignedSquadrons = @[state.colonies[1].unassignedSquadrons[1]]  # Keep only sq2
 
     # Now assign sq2 to the existing fleet
     let order = SquadronManagementOrder(
@@ -177,7 +181,38 @@ suite "Squadron Management":
     check result.newState.fleets["fleet1"].squadrons.len == 2
 
   test "Transfer ship between squadrons":
-    var state = createTestState()
+    # Create clean state without unassigned squadrons to avoid auto-assign issues
+    var state = GameState()
+    state.turn = 1
+    state.houses["house1"] = House(
+      id: "house1",
+      name: "Test House",
+      treasury: 10000,
+      eliminated: false,
+      techTree: res_types.initTechTree(),
+    )
+
+    # Create colony with NO unassigned squadrons
+    state.colonies[1] = Colony(
+      systemId: 1,
+      owner: "house1",
+      population: 100,
+      souls: 100_000_000,
+      infrastructure: 5,
+      planetClass: PlanetClass.Benign,
+      resources: ResourceRating.Abundant,
+      buildings: @[],
+      production: 100,
+      underConstruction: none(econ_types.ConstructionProject),
+      activeTerraforming: none(gamestate.TerraformProject),
+      unassignedSquadrons: @[],  # Empty - no unassigned squadrons
+      unassignedSpaceLiftShips: @[],
+      fighterSquadrons: @[],
+      capacityViolation: CapacityViolation(),
+      starbases: @[],
+      spaceports: @[],
+      shipyards: @[]
+    )
 
     # Create two fleets with squadrons
     let destroyer1 = newEnhancedShip(ShipClass.Destroyer)

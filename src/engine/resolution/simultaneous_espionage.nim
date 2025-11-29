@@ -216,6 +216,12 @@ proc processEspionageActions*(
 
     let attempt = packet.espionageAction.get()
 
+    # Validate target house is not eliminated (leaderboard is public info)
+    if attempt.target in state.houses:
+      if state.houses[attempt.target].eliminated:
+        echo &"  {houseId} cannot target eliminated house {attempt.target}"
+        continue
+
     # Check if attacker has sufficient EBP
     let actionCost = esp_engine.getActionCost(attempt.action)
     if not esp_engine.canAffordAction(state.houses[houseId].espionageBudget, attempt.action):

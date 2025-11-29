@@ -73,8 +73,8 @@ suite "Spy Scout Intelligence Operations":
     check result.success == true
     check result.message.contains("spy on planet")
 
-    # Verify scout was removed from fleet
-    check state.fleets["fleet1"].squadrons.len == 0
+    # Verify fleet was removed (empty fleets are automatically deleted)
+    check "fleet1" notin state.fleets
 
     # Verify spy scout was created
     check state.spyScouts.len == 1
@@ -86,6 +86,11 @@ suite "Spy Scout Intelligence Operations":
       check spyScout.detected == false
 
   test "Order 10: Deploy scout to hack starbase":
+    # Create a colony with starbase at system 2 (owned by house2)
+    var colony = createHomeColony(2.SystemId, "house2")
+    colony.starbases = @[Starbase(id: "sb1", commissionedTurn: 0, isCrippled: false)]
+    state.colonies[2] = colony
+
     # Create a fleet with one Scout
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)
     var squadron = newSquadron(scout, "sq1", "house1", 0u)
@@ -107,8 +112,8 @@ suite "Spy Scout Intelligence Operations":
     check result.success == true
     check result.message.contains("infiltrating starbase")
 
-    # Verify scout was removed from fleet
-    check state.fleets["fleet1"].squadrons.len == 0
+    # Verify fleet was removed (empty fleets are automatically deleted)
+    check "fleet1" notin state.fleets
 
     # Verify spy scout was created
     check state.spyScouts.len == 1
@@ -141,8 +146,8 @@ suite "Spy Scout Intelligence Operations":
     check result.success == true
     check result.message.contains("spy on system")
 
-    # Verify scout was removed from fleet
-    check state.fleets["fleet1"].squadrons.len == 0
+    # Verify fleet was removed (empty fleets are automatically deleted)
+    check "fleet1" notin state.fleets
 
     # Verify spy scout was created
     check state.spyScouts.len == 1

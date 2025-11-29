@@ -227,6 +227,131 @@ proc updatePostCombatIntelligence*(
     # Save updated report
     state.houses[houseId].intelligence.combatReports[reportIdx] = report
 
+proc generateBlitzIntelligence*(
+  state: var GameState,
+  systemId: SystemId,
+  attackingHouse: HouseId,
+  defendingHouse: HouseId,
+  attackingMarines: int,
+  defendingArmies: int,
+  defendingMarines: int,
+  blitzSuccess: bool,
+  attackerCasualties: int,
+  defenderCasualties: int
+) =
+  ## Generate intelligence reports for planetary blitz assault
+  ## Both attacker and defender receive detailed after-action reports
+  ##
+  ## Blitz reports emphasize assets seized INTACT (key difference from invasion)
+  ##
+  ## Blitz reports include:
+  ## - Force composition (marines vs armies/marines)
+  ## - Planetary defenses (shields, batteries, spaceports)
+  ## - Battle outcome (success/failure)
+  ## - Casualties on both sides
+  ## - Assets seized INTACT (no infrastructure/IU damage on success)
+  ## - Surviving/captured assets post-blitz
+
+  let turn = state.turn
+
+  # Get post-blitz colony state for asset reporting
+  var assetInfo: seq[string] = @[]
+  if systemId in state.colonies:
+    let colony = state.colonies[systemId]
+    if blitzSuccess:
+      # Successful blitz - emphasize ALL assets seized INTACT
+      assetInfo.add("--- Assets Seized INTACT ---")
+      assetInfo.add(&"Infrastructure: {colony.infrastructure} levels (NO DAMAGE)")
+      assetInfo.add(&"Industrial: {colony.industrial.units} IU (NO DAMAGE)")
+      assetInfo.add(&"Population: {colony.population} PU")
+      assetInfo.add(&"Garrison: {colony.marines} Marines")
+      if colony.planetaryShieldLevel > 0:
+        assetInfo.add(&"Shields: SLD{colony.planetaryShieldLevel} (INTACT)")
+      if colony.groundBatteries > 0:
+        assetInfo.add(&"Ground Batteries: {colony.groundBatteries} (INTACT)")
+      if colony.spaceports.len > 0:
+        assetInfo.add(&"Spaceports: {colony.spaceports.len} (INTACT)")
+    else:
+      # Failed blitz - defender shows surviving assets
+      assetInfo.add("--- Surviving Assets ---")
+      assetInfo.add(&"Infrastructure: {colony.infrastructure} levels")
+      assetInfo.add(&"Industrial: {colony.industrial.units} IU")
+      assetInfo.add(&"Population: {colony.population} PU")
+      assetInfo.add(&"Defense: {colony.armies} Armies, {colony.marines} Marines")
+      assetInfo.add(&"Ground Batteries: {colony.groundBatteries}")
+
+  # Attacker's blitz report
+  let attackerOutcome = if blitzSuccess:
+    intel_types.CombatOutcome.Victory
+  else:
+    intel_types.CombatOutcome.Defeat
+
+  var attackerInfo: seq[string] = @[]
+  attackerInfo.add((0..<attackerCasualties).mapIt("Marine"))
+  if blitzSuccess:
+    attackerInfo.add("Blitz successful - all assets seized intact")
+  attackerInfo.add(assetInfo)
+
+  let attackerReport = intel_types.CombatEncounterReport(
+    reportId: &"{attackingHouse}-blitz-{turn}-{systemId}",
+    turn: turn,
+    systemId: systemId,
+    phase: intel_types.CombatPhase.Planetary,
+    reportingHouse: attackingHouse,
+    alliedForces: @[],  # Ground forces, not fleets
+    enemyForces: @[],
+    outcome: attackerOutcome,
+    alliedLosses: attackerInfo,
+    enemyLosses: (0..<defenderCasualties).mapIt(
+      if it < defendingArmies: "Army" else: "Marine"
+    ),
+    retreatedAllies: @[],
+    retreatedEnemies: @[],
+    survived: true  # Blitz fleet survives
+  )
+
+  # CRITICAL: Get, modify, write back to persist
+  var attackerHouse = state.houses[attackingHouse]
+  attackerHouse.intelligence.addCombatReport(attackerReport)
+  state.houses[attackingHouse] = attackerHouse
+
+  # Defender's blitz report (mirror perspective)
+  let defenderOutcome = if blitzSuccess:
+    intel_types.CombatOutcome.Defeat
+  else:
+    intel_types.CombatOutcome.Victory
+
+  var defenderInfo: seq[string] = @[]
+  defenderInfo.add((0..<defenderCasualties).mapIt(
+    if it < defendingArmies: "Army" else: "Marine"
+  ))
+  if blitzSuccess:
+    defenderInfo.add("Colony seized by blitz - all assets captured intact")
+  else:
+    defenderInfo.add("Blitz repelled - all attacking marines destroyed")
+  defenderInfo.add(assetInfo)
+
+  let defenderReport = intel_types.CombatEncounterReport(
+    reportId: &"{defendingHouse}-defense-{turn}-{systemId}",
+    turn: turn,
+    systemId: systemId,
+    phase: intel_types.CombatPhase.Planetary,
+    reportingHouse: defendingHouse,
+    alliedForces: @[],
+    enemyForces: @[],
+    outcome: defenderOutcome,
+    alliedLosses: defenderInfo,
+    enemyLosses: (0..<attackerCasualties).mapIt("Marine"),
+    retreatedAllies: @[],
+    retreatedEnemies: @[],
+    survived: true  # Defending colony survives (may change hands)
+  )
+
+  # CRITICAL: Get, modify, write back to persist
+  var defenderHouse = state.houses[defendingHouse]
+  defenderHouse.intelligence.addCombatReport(defenderReport)
+  state.houses[defendingHouse] = defenderHouse
+
 proc generateInvasionIntelligence*(
   state: var GameState,
   systemId: SystemId,
@@ -237,7 +362,8 @@ proc generateInvasionIntelligence*(
   defendingMarines: int,
   invasionSuccess: bool,
   attackerCasualties: int,
-  defenderCasualties: int
+  defenderCasualties: int,
+  industrialUnitsDestroyed: int
 ) =
   ## Generate intelligence reports for planetary invasion
   ## Both attacker and defender receive detailed after-action reports
@@ -247,14 +373,44 @@ proc generateInvasionIntelligence*(
   ## - Planetary defenses (shields, batteries, spaceports)
   ## - Battle outcome (success/failure)
   ## - Casualties on both sides
+  ## - Infrastructure and industrial damage (on success)
+  ## - Surviving/captured assets post-invasion
 
   let turn = state.turn
+
+  # Get post-invasion colony state for asset reporting
+  var assetInfo: seq[string] = @[]
+  if systemId in state.colonies:
+    let colony = state.colonies[systemId]
+    if invasionSuccess:
+      # Successful invasion - show captured assets
+      assetInfo.add("--- Assets Seized ---")
+      assetInfo.add(&"Infrastructure: {colony.infrastructure} levels (50% destroyed)")
+      assetInfo.add(&"Industrial: {colony.industrial.units} IU ({industrialUnitsDestroyed} IU destroyed)")
+      assetInfo.add(&"Population: {colony.population} PU")
+      assetInfo.add(&"Garrison: {colony.marines} Marines")
+      if colony.planetaryShieldLevel > 0:
+        assetInfo.add(&"Shields: SLD{colony.planetaryShieldLevel}")
+    else:
+      # Failed invasion - defender shows surviving assets
+      assetInfo.add("--- Surviving Assets ---")
+      assetInfo.add(&"Infrastructure: {colony.infrastructure} levels")
+      assetInfo.add(&"Industrial: {colony.industrial.units} IU")
+      assetInfo.add(&"Population: {colony.population} PU")
+      assetInfo.add(&"Defense: {colony.armies} Armies, {colony.marines} Marines")
+      assetInfo.add(&"Ground Batteries: {colony.groundBatteries}")
 
   # Attacker's invasion report
   let attackerOutcome = if invasionSuccess:
     intel_types.CombatOutcome.Victory
   else:
     intel_types.CombatOutcome.Defeat
+
+  var attackerInfo: seq[string] = @[]
+  attackerInfo.add((0..<attackerCasualties).mapIt("Marine"))
+  if invasionSuccess and industrialUnitsDestroyed > 0:
+    attackerInfo.add(&"{industrialUnitsDestroyed} IU destroyed in fighting")
+  attackerInfo.add(assetInfo)
 
   let attackerReport = intel_types.CombatEncounterReport(
     reportId: &"{attackingHouse}-invasion-{turn}-{systemId}",
@@ -265,7 +421,7 @@ proc generateInvasionIntelligence*(
     alliedForces: @[],  # Ground forces, not fleets
     enemyForces: @[],
     outcome: attackerOutcome,
-    alliedLosses: (0..<attackerCasualties).mapIt("Marine"),
+    alliedLosses: attackerInfo,
     enemyLosses: (0..<defenderCasualties).mapIt(
       if it < defendingArmies: "Army" else: "Marine"
     ),
@@ -285,6 +441,16 @@ proc generateInvasionIntelligence*(
   else:
     intel_types.CombatOutcome.Victory
 
+  var defenderInfo: seq[string] = @[]
+  defenderInfo.add((0..<defenderCasualties).mapIt(
+    if it < defendingArmies: "Army" else: "Marine"
+  ))
+  if invasionSuccess and industrialUnitsDestroyed > 0:
+    defenderInfo.add(&"{industrialUnitsDestroyed} IU destroyed")
+    defenderInfo.add("50% infrastructure destroyed")
+    defenderInfo.add("Shields and spaceports destroyed")
+  defenderInfo.add(assetInfo)
+
   let defenderReport = intel_types.CombatEncounterReport(
     reportId: &"{defendingHouse}-defense-{turn}-{systemId}",
     turn: turn,
@@ -294,9 +460,7 @@ proc generateInvasionIntelligence*(
     alliedForces: @[],
     enemyForces: @[],
     outcome: defenderOutcome,
-    alliedLosses: (0..<defenderCasualties).mapIt(
-      if it < defendingArmies: "Army" else: "Marine"
-    ),
+    alliedLosses: defenderInfo,
     enemyLosses: (0..<attackerCasualties).mapIt("Marine"),
     retreatedAllies: @[],
     retreatedEnemies: @[],
@@ -315,6 +479,7 @@ proc generateBombardmentIntelligence*(
   attackingFleetId: FleetId,
   defendingHouse: HouseId,
   infrastructureDamaged: int,
+  industrialUnitsDestroyed: int,
   shieldsActive: bool,
   groundBatteriesDestroyed: int,
   groundForcesKilled: int,
@@ -325,9 +490,10 @@ proc generateBombardmentIntelligence*(
   ##
   ## Bombardment reports include:
   ## - Attacking fleet composition
-  ## - Infrastructure damage dealt
+  ## - Infrastructure levels damaged
+  ## - Industrial capacity (IU) destroyed
   ## - Planetary defenses status (shields, batteries)
-  ## - Ground forces casualties
+  ## - Ground forces/population casualties (PU)
   ## - Whether invasion force is present (spacelift ships detected)
 
   let turn = state.turn
@@ -338,7 +504,27 @@ proc generateBombardmentIntelligence*(
     let fleet = state.fleets[attackingFleetId]
     attackingFleetComposition.add(createFleetComposition(state, fleet, attackingFleetId))
 
+  # Get post-bombardment colony state for surviving assets intel
+  var survivingAssets: seq[string] = @[]
+  if systemId in state.colonies:
+    let colony = state.colonies[systemId]
+    survivingAssets.add(&"Infrastructure: {colony.infrastructure} levels")
+    survivingAssets.add(&"Industrial: {colony.industrial.units} IU")
+    survivingAssets.add(&"Population: {colony.population} PU")
+    survivingAssets.add(&"Ground Batteries: {colony.groundBatteries}")
+    if colony.planetaryShieldLevel > 0:
+      survivingAssets.add(&"Shields: SLD{colony.planetaryShieldLevel}")
+
   # Attacker's bombardment report (they know exactly what they did)
+  var attackerEnemyLosses = @[
+    &"{infrastructureDamaged} infrastructure levels destroyed",
+    &"{industrialUnitsDestroyed} IU destroyed",
+    &"{groundBatteriesDestroyed} ground batteries destroyed",
+    &"{groundForcesKilled} PU casualties",
+    "--- Surviving Enemy Assets ---"
+  ]
+  attackerEnemyLosses.add(survivingAssets)
+
   let attackerReport = intel_types.CombatEncounterReport(
     reportId: &"{attackingHouse}-bombardment-{turn}-{systemId}",
     turn: turn,
@@ -349,11 +535,7 @@ proc generateBombardmentIntelligence*(
     enemyForces: @[],  # Can't see ground defenses from orbit (except what's destroyed)
     outcome: intel_types.CombatOutcome.Victory,  # Bombardment always "succeeds" if executed
     alliedLosses: @[],  # Bombardment doesn't lose ships
-    enemyLosses: @[
-      &"{infrastructureDamaged} infrastructure destroyed",
-      &"{groundBatteriesDestroyed} ground batteries destroyed",
-      &"{groundForcesKilled} ground forces killed"
-    ],
+    enemyLosses: attackerEnemyLosses,
     retreatedAllies: @[],
     retreatedEnemies: @[],
     survived: true
@@ -365,6 +547,15 @@ proc generateBombardmentIntelligence*(
   state.houses[attackingHouse] = attackerHouse
 
   # Defender's bombardment report (knows they're being bombarded)
+  var defenderAlliedLosses = @[
+    &"{infrastructureDamaged} infrastructure levels destroyed",
+    &"{industrialUnitsDestroyed} IU destroyed",
+    &"{groundBatteriesDestroyed} ground batteries destroyed",
+    &"{groundForcesKilled} PU casualties",
+    "--- Surviving Assets ---"
+  ]
+  defenderAlliedLosses.add(survivingAssets)
+
   let defenderReport = intel_types.CombatEncounterReport(
     reportId: &"{defendingHouse}-bombardment-defense-{turn}-{systemId}",
     turn: turn,
@@ -374,11 +565,7 @@ proc generateBombardmentIntelligence*(
     alliedForces: @[],  # Ground forces (no fleet composition for defenders)
     enemyForces: attackingFleetComposition,  # Defender can see attacking fleet
     outcome: intel_types.CombatOutcome.Defeat,  # Being bombarded
-    alliedLosses: @[
-      &"{infrastructureDamaged} infrastructure destroyed",
-      &"{groundBatteriesDestroyed} ground batteries destroyed",
-      &"{groundForcesKilled} ground forces killed"
-    ],
+    alliedLosses: defenderAlliedLosses,
     enemyLosses: @[],  # Bombardment doesn't damage attacking fleet
     retreatedAllies: @[],
     retreatedEnemies: @[],

@@ -62,7 +62,8 @@ suite "M5 Economy Integration with resolve.nim":
 
   test "Maintenance phase runs with M5 economy":
     # Create game state with fleets
-    let testMap = newStarMap(10)
+    var testMap = newStarMap(10)
+    testMap.populate()
     var state = newGameState("test-game", 1, testMap)
 
     let house1 = initializeHouse("Alpha", "blue")
@@ -83,7 +84,8 @@ suite "M5 Economy Integration with resolve.nim":
 
   test "Full turn cycle processes all phases":
     # Create complete game state
-    let testMap = newStarMap(10)
+    var testMap = newStarMap(10)
+    testMap.populate()
     var state = newGameState("test-game", 2, testMap)
     state.phase = GamePhase.Active
 
