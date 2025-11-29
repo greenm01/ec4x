@@ -15,6 +15,7 @@ import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/economy/types as econ_types
 import ../../src/common/types/[core, units, planets]
+import ../../src/common/system
 
 suite "Space Guild Transfer Costs":
 
@@ -45,6 +46,13 @@ suite "Population Transfer Mechanics":
     result.turn = 1
     result.phase = GamePhase.Active
 
+    # Generate starmap to get valid system IDs
+    var map = newStarMap(2)
+    map.populate()
+    result.starMap = map
+    let sourceSystemId = map.playerSystemIds[0]
+    let destSystemId = map.playerSystemIds[1]
+
     result.houses["house1"] = House(
       id: "house1",
       name: "Test House",
@@ -54,8 +62,8 @@ suite "Population Transfer Mechanics":
     )
 
     # Source colony with population
-    result.colonies[1] = Colony(
-      systemId: 1,
+    result.colonies[sourceSystemId] = Colony(
+      systemId: sourceSystemId.SystemId,
       owner: "house1",
       population: 100,
       souls: 100_000_000,
@@ -76,8 +84,8 @@ suite "Population Transfer Mechanics":
     )
 
     # Destination colony
-    result.colonies[2] = Colony(
-      systemId: 2,
+    result.colonies[destSystemId] = Colony(
+      systemId: destSystemId.SystemId,
       owner: "house1",
       population: 50,
       souls: 50_000_000,
@@ -101,11 +109,13 @@ suite "Population Transfer Mechanics":
 
   test "Population transfer order structure":
     var state = createTestState()
+    let sourceSystemId = state.starMap.playerSystemIds[0]
+    let destSystemId = state.starMap.playerSystemIds[1]
 
     # Create a population transfer order
     let transferOrder = PopulationTransferOrder(
-      sourceColony: 1,
-      destColony: 2,
+      sourceColony: sourceSystemId,
+      destColony: destSystemId,
       ptuAmount: 10  # Transfer 10 PTU
     )
 
@@ -130,19 +140,21 @@ suite "Population Transfer Mechanics":
 
     # Verify order structure is valid
     check packet.populationTransfers.len == 1
-    check packet.populationTransfers[0].sourceColony == 1
-    check packet.populationTransfers[0].destColony == 2
+    check packet.populationTransfers[0].sourceColony == sourceSystemId
+    check packet.populationTransfers[0].destColony == destSystemId
     check packet.populationTransfers[0].ptuAmount == 10
 
   test "Population transfer between own colonies succeeds":
     var state = createTestState()
+    let sourceSystemId = state.starMap.playerSystemIds[0]
+    let destSystemId = state.starMap.playerSystemIds[1]
 
-    let initialSource = state.colonies[1].population
-    let initialDest = state.colonies[2].population
+    let initialSource = state.colonies[sourceSystemId].population
+    let initialDest = state.colonies[destSystemId].population
 
     let transferOrder = PopulationTransferOrder(
-      sourceColony: 1,
-      destColony: 2,
+      sourceColony: sourceSystemId,
+      destColony: destSystemId,
       ptuAmount: 10  # 10 PTU = 1 PU
     )
 
@@ -169,10 +181,12 @@ suite "Population Transfer Mechanics":
 
     # Transfer should be processed
     # Population should be in transit or moved
-    check result.newState.colonies[1].population <= initialSource
+    check result.newState.colonies[sourceSystemId].population <= initialSource
 
   test "Transfer fails if destination owned by different house":
     var state = createTestState()
+    let sourceSystemId = state.starMap.playerSystemIds[0]
+    let destSystemId = state.starMap.playerSystemIds[1]
 
     # Add another house that owns destination
     state.houses["house2"] = House(
@@ -184,14 +198,14 @@ suite "Population Transfer Mechanics":
     )
 
     # Make destination owned by house2
-    state.colonies[2].owner = "house2"
+    state.colonies[destSystemId].owner = "house2"
 
-    let initialSource = state.colonies[1].population
-    let initialDest = state.colonies[2].population
+    let initialSource = state.colonies[sourceSystemId].population
+    let initialDest = state.colonies[destSystemId].population
 
     let transferOrder = PopulationTransferOrder(
-      sourceColony: 1,
-      destColony: 2,
+      sourceColony: sourceSystemId,
+      destColony: destSystemId,
       ptuAmount: 10
     )
 
@@ -217,11 +231,13 @@ suite "Population Transfer Mechanics":
     let result = resolveTurn(state, orders)
 
     # Transfer should FAIL - population unchanged
-    check result.newState.colonies[1].population == initialSource
-    check result.newState.colonies[2].population == initialDest
+    check result.newState.colonies[sourceSystemId].population == initialSource
+    check result.newState.colonies[destSystemId].population == initialDest
 
   test "Transfer fails if source owned by different house":
     var state = createTestState()
+    let sourceSystemId = state.starMap.playerSystemIds[0]
+    let destSystemId = state.starMap.playerSystemIds[1]
 
     # Add another house that owns source
     state.houses["house2"] = House(
@@ -233,14 +249,14 @@ suite "Population Transfer Mechanics":
     )
 
     # Make source owned by house2
-    state.colonies[1].owner = "house2"
+    state.colonies[sourceSystemId].owner = "house2"
 
-    let initialSource = state.colonies[1].population
-    let initialDest = state.colonies[2].population
+    let initialSource = state.colonies[sourceSystemId].population
+    let initialDest = state.colonies[destSystemId].population
 
     let transferOrder = PopulationTransferOrder(
-      sourceColony: 1,
-      destColony: 2,
+      sourceColony: sourceSystemId,
+      destColony: destSystemId,
       ptuAmount: 10
     )
 
@@ -266,8 +282,8 @@ suite "Population Transfer Mechanics":
     let result = resolveTurn(state, orders)
 
     # Transfer should FAIL - population unchanged
-    check result.newState.colonies[1].population == initialSource
-    check result.newState.colonies[2].population == initialDest
+    check result.newState.colonies[sourceSystemId].population == initialSource
+    check result.newState.colonies[destSystemId].population == initialDest
 
   test "PTU conversion to population units":
     # Per economy.md - PTU represents a standardized population unit
@@ -282,11 +298,13 @@ suite "Population Transfer Mechanics":
 
   test "Source colony has sufficient population":
     var state = createTestState()
+    let sourceSystemId = state.starMap.playerSystemIds[0]
+    let destSystemId = state.starMap.playerSystemIds[1]
 
     # Try to transfer more PTU than source has
     let transferOrder = PopulationTransferOrder(
-      sourceColony: 1,
-      destColony: 2,
+      sourceColony: sourceSystemId,
+      destColony: destSystemId,
       ptuAmount: 1500  # 1500 PTU = 150 PU, but source only has 100 PU
     )
 
@@ -312,15 +330,17 @@ suite "Population Transfer Mechanics":
     let result = resolveTurn(state, orders)
 
     # Transfer should fail or be capped - verify population unchanged or reduced by max
-    check result.newState.colonies[1].population <= 100
+    check result.newState.colonies[sourceSystemId].population <= 100
 
   test "Transfer deducts cost from treasury":
     var state = createTestState()
+    let sourceSystemId = state.starMap.playerSystemIds[0]
+    let destSystemId = state.starMap.playerSystemIds[1]
     let initialTreasury = state.houses["house1"].treasury
 
     let transferOrder = PopulationTransferOrder(
-      sourceColony: 1,
-      destColony: 2,
+      sourceColony: sourceSystemId,
+      destColony: destSystemId,
       ptuAmount: 10
     )
 
@@ -371,6 +391,13 @@ suite "In-Transit Ownership Changes":
     result.turn = 1
     result.phase = GamePhase.Active
 
+    # Generate starmap to get valid system IDs
+    var map = newStarMap(2)
+    map.populate()
+    result.starMap = map
+    let sourceSystemId = map.playerSystemIds[0]
+    let destSystemId = map.playerSystemIds[1]
+
     result.houses["house1"] = House(
       id: "house1",
       name: "Test House",
@@ -388,8 +415,8 @@ suite "In-Transit Ownership Changes":
     )
 
     # Source colony owned by house1
-    result.colonies[1] = Colony(
-      systemId: 1,
+    result.colonies[sourceSystemId] = Colony(
+      systemId: sourceSystemId.SystemId,
       owner: "house1",
       population: 100,
       souls: 100_000_000,
@@ -410,8 +437,8 @@ suite "In-Transit Ownership Changes":
     )
 
     # Destination colony owned by house1
-    result.colonies[2] = Colony(
-      systemId: 2,
+    result.colonies[destSystemId] = Colony(
+      systemId: destSystemId.SystemId,
       owner: "house1",
       population: 50,
       souls: 50_000_000,
@@ -435,14 +462,16 @@ suite "In-Transit Ownership Changes":
 
   test "Colonists lost when destination conquered during transit":
     var state = createTestState()
+    let sourceSystemId = state.starMap.playerSystemIds[0]
+    let destSystemId = state.starMap.playerSystemIds[1]
 
-    let initialSourcePop = state.colonies[1].population
-    let initialDestPop = state.colonies[2].population
+    let initialSourcePop = state.colonies[sourceSystemId].population
+    let initialDestPop = state.colonies[destSystemId].population
 
     # Start population transfer
     let transferOrder = PopulationTransferOrder(
-      sourceColony: 1,
-      destColony: 2,
+      sourceColony: sourceSystemId,
+      destColony: destSystemId,
       ptuAmount: 10  # 10 PTU = 1 PU
     )
 
@@ -470,13 +499,13 @@ suite "In-Transit Ownership Changes":
     state = result1.newState
 
     # Verify colonists departed from source
-    check state.colonies[1].population < initialSourcePop
+    check state.colonies[sourceSystemId].population < initialSourcePop
 
     # Verify in-transit entry created
     check state.populationInTransit.len == 1
 
     # Simulate conquest: change destination ownership to house2
-    state.colonies[2].owner = "house2"
+    state.colonies[destSystemId].owner = "house2"
 
     # Turn 2: Transfer arrives, but destination is now enemy-controlled
     packet.turn = state.turn
@@ -490,10 +519,10 @@ suite "In-Transit Ownership Changes":
     check state.populationInTransit.len == 0
 
     # Verify destination population UNCHANGED (colonists lost, not delivered)
-    check state.colonies[2].population == initialDestPop
+    check state.colonies[destSystemId].population == initialDestPop
 
     # Verify source population stayed reduced (colonists don't return)
-    check state.colonies[1].population < initialSourcePop
+    check state.colonies[sourceSystemId].population < initialSourcePop
 
   test "Colonists returned when destination blockaded during transit":
     # NOTE: This test is currently disabled because it requires starmap/jump lane data
