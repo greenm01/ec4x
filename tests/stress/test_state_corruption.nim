@@ -174,7 +174,7 @@ suite "State Corruption: Long-Duration Simulations":
     if allViolations.len > 0:
       echo &"\n📊 Total violations: {allViolations.len}"
       reportViolations(allViolations)
-      fail("State corruption detected")
+      fail()
     else:
       echo "✅ No state corruption detected"
 
@@ -202,7 +202,7 @@ suite "State Corruption: Long-Duration Simulations":
       except CatchableError as e:
         echo &"❌ Turn {turn} crashed with 12 houses: {e.msg}"
         fail()
-        return
+        break
 
       # Check invariants every 10 turns
       if turn mod 10 == 0:
@@ -214,7 +214,7 @@ suite "State Corruption: Long-Duration Simulations":
     if allViolations.len > 0:
       echo &"\n📊 Violations at maximum scale: {allViolations.len}"
       reportViolations(allViolations)
-      fail("State corruption at maximum scale")
+      fail()
     else:
       echo "✅ No corruption at maximum scale"
 
@@ -257,7 +257,7 @@ suite "State Corruption: Long-Duration Simulations":
       let violations = checkStateInvariants(game, 10)
       if violations.len > 0:
         reportViolations(violations)
-        fail("Invalid state after 0 PU colony test")
+        fail()
 
   test "State corruption: negative treasury recovery":
     ## Test if houses can recover from negative treasury
@@ -287,7 +287,7 @@ suite "State Corruption: Long-Duration Simulations":
       except CatchableError as e:
         echo &"❌ Crashed at turn {turn} with negative treasury: {e.msg}"
         fail()
-        return
+        break
 
       if turn mod 10 == 0:
         let violations = checkStateInvariants(game, turn)
@@ -342,7 +342,7 @@ suite "State Corruption: Boundary Conditions":
     let violations = checkStateInvariants(game, 20)
     if violations.len > 0:
       reportViolations(violations)
-      fail("Invalid state at maximum tech levels")
+      fail()
     else:
       echo "✅ Engine stable at maximum tech levels"
 
@@ -376,7 +376,7 @@ suite "State Corruption: Boundary Conditions":
       let critical = violations.filterIt(it.severity == ViolationSeverity.Critical)
       if critical.len > 0:
         reportViolations(critical)
-        fail("Critical violations with extreme prestige")
+        fail()
       else:
         echo "✅ Engine stable with extreme prestige (warnings expected)"
     else:

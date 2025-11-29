@@ -173,8 +173,7 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     result.starMap.systems[homeSystemId].planetClass = PlanetClass.Eden
     result.starMap.systems[homeSystemId].resourceRating = ResourceRating.Abundant
 
-    # BALANCE FIX: Enable auto-assign so new ships join fleets automatically
-    result.colonies[homeSystemId].autoAssignFleets = true
+    # NOTE: Auto-assignment is ALWAYS enabled (no field needed per gamestate.nim:100)
 
     # Add starting facilities (spaceport for ETACs, shipyard for military)
     result.colonies[homeSystemId].spaceports.add(Spaceport(

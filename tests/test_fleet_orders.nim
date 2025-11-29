@@ -1,7 +1,7 @@
 ## Tests for Fleet Order Execution System
 ## Tests all 16 order types from operations.md Section 6.2
 
-import std/[unittest, options, tables]
+import std/[unittest, options, tables, strutils]
 import ../src/common/[hex, system, types/core, types/units]
 import ../src/engine/[gamestate, orders, fleet, squadron, starmap]
 import ../src/engine/commands/executor
@@ -31,34 +31,60 @@ proc createTestGameState(): GameState =
   result = newGameState("test_game", 2, testMap)
 
   # Add test houses
-  result.houses["house1"] = newHouse("house1", "TestHouse1", HouseStatus.Active)
-  result.houses["house2"] = newHouse("house2", "TestHouse2", HouseStatus.Active)
+  result.houses["house1"] = initializeHouse("TestHouse1", "blue")
+  result.houses["house1"].id = "house1"
+  result.houses["house2"] = initializeHouse("TestHouse2", "red")
+  result.houses["house2"].id = "house2"
 
   # Add test colonies
   result.colonies[1] = Colony(
     systemId: 1,
     owner: "house1",
     population: 10,
+    souls: 10_000_000,
     infrastructure: 5,
-    planetClass: 1,
-    resources: 100,
+    planetClass: PlanetClass.Benign,
+    resources: ResourceRating.Abundant,
+    buildings: @[],
+    production: 100,
+    constructionQueue: @[],
+    repairQueue: @[],
+    activeTerraforming: none(TerraformProject),
+    unassignedSquadrons: @[],
+    unassignedSpaceLiftShips: @[],
+    fighterSquadrons: @[],
+    capacityViolation: CapacityViolation(),
+    starbases: @[],
+    spaceports: @[],
+    shipyards: @[],
     groundBatteries: 3,
     armies: 2,
-    marines: 0,
-    underConstruction: none(ConstructionProject)
+    marines: 0
   )
 
   result.colonies[2] = Colony(
     systemId: 2,
     owner: "house2",
     population: 8,
+    souls: 8_000_000,
     infrastructure: 4,
-    planetClass: 1,
-    resources: 80,
+    planetClass: PlanetClass.Benign,
+    resources: ResourceRating.Abundant,
+    buildings: @[],
+    production: 80,
+    constructionQueue: @[],
+    repairQueue: @[],
+    activeTerraforming: none(TerraformProject),
+    unassignedSquadrons: @[],
+    unassignedSpaceLiftShips: @[],
+    fighterSquadrons: @[],
+    capacityViolation: CapacityViolation(),
+    starbases: @[],
+    spaceports: @[],
+    shipyards: @[],
     groundBatteries: 2,
     armies: 1,
-    marines: 0,
-    underConstruction: none(ConstructionProject)
+    marines: 0
   )
 
 proc createTestFleet(owner: HouseId, location: SystemId, fleetId: string, hasScout: bool = false): Fleet =
@@ -84,7 +110,7 @@ proc createTestFleet(owner: HouseId, location: SystemId, fleetId: string, hasSco
 suite "Order 00: Hold Position":
   test "Hold order always succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -102,7 +128,7 @@ suite "Order 00: Hold Position":
 
   test "Hold order with wrong house fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -125,13 +151,13 @@ suite "Order 00: Hold Position":
 suite "Order 01: Move Fleet":
   test "Move order with valid target succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Move,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -143,7 +169,7 @@ suite "Order 01: Move Fleet":
 
   test "Move order without target fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -166,7 +192,7 @@ suite "Order 01: Move Fleet":
 suite "Order 02: Seek Home":
   test "Seek home finds friendly colony":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -194,7 +220,7 @@ suite "Order 02: Seek Home":
     for colonyId in toRemove:
       state.colonies.del(colonyId)
 
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -217,13 +243,13 @@ suite "Order 02: Seek Home":
 suite "Order 03: Patrol System":
   test "Patrol order with target succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Patrol,
-      targetSystem: some(SystemId("sys1")),
+      targetSystem: some(SystemId(1)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -235,7 +261,7 @@ suite "Order 03: Patrol System":
 
   test "Patrol order without target fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -257,13 +283,13 @@ suite "Order 03: Patrol System":
 suite "Order 04: Guard Starbase":
   test "Guard starbase with combat ships succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.GuardStarbase,
-      targetSystem: some(SystemId("sys1")),
+      targetSystem: some(SystemId(1)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -275,7 +301,7 @@ suite "Order 04: Guard Starbase":
 
   test "Guard starbase without target fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -297,13 +323,13 @@ suite "Order 04: Guard Starbase":
 suite "Order 05: Guard/Blockade Planet":
   test "Guard planet with combat ships succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.GuardPlanet,
-      targetSystem: some(SystemId("sys1")),
+      targetSystem: some(SystemId(1)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -315,13 +341,13 @@ suite "Order 05: Guard/Blockade Planet":
 
   test "Blockade enemy colony succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.BlockadePlanet,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -334,13 +360,13 @@ suite "Order 05: Guard/Blockade Planet":
 
   test "Blockade own colony fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.BlockadePlanet,
-      targetSystem: some(SystemId("sys1")),
+      targetSystem: some(SystemId(1)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -357,13 +383,13 @@ suite "Order 05: Guard/Blockade Planet":
 suite "Order 06-08: Combat Orders":
   test "Bombard order with combat ships succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Bombard,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -385,7 +411,7 @@ suite "Order 06-08: Combat Orders":
     let fleet = Fleet(
       id: "invasion_fleet",
       owner: "house1",
-      location: "sys2",
+      location: 2,
       squadrons: @[sq1, sq2]
     )
     state.fleets[fleet.id] = fleet
@@ -393,7 +419,7 @@ suite "Order 06-08: Combat Orders":
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Invade,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -411,7 +437,7 @@ suite "Order 06-08: Combat Orders":
     let fleet = Fleet(
       id: "blitz_fleet",
       owner: "house1",
-      location: "sys2",
+      location: 2,
       squadrons: @[sq]
     )
     state.fleets[fleet.id] = fleet
@@ -419,7 +445,7 @@ suite "Order 06-08: Combat Orders":
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Blitz,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -436,7 +462,7 @@ suite "Order 06-08: Combat Orders":
 suite "Order 09-11: Spy Orders":
   test "Spy planet requires exactly one scout":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "SpyFleet", hasScout = true)
+    var fleet = createTestFleet("house1", 2, "SpyFleet", hasScout = true)
 
     # Remove destroyer, leave only scout
     fleet.squadrons = fleet.squadrons[1..^1]
@@ -445,7 +471,7 @@ suite "Order 09-11: Spy Orders":
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.SpyPlanet,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -463,7 +489,7 @@ suite "Order 09-11: Spy Orders":
     let fleet = Fleet(
       id: "hack_fleet",
       owner: "house1",
-      location: "sys2",
+      location: 2,
       squadrons: @[sq]
     )
     state.fleets[fleet.id] = fleet
@@ -471,7 +497,7 @@ suite "Order 09-11: Spy Orders":
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.HackStarbase,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -489,7 +515,7 @@ suite "Order 09-11: Spy Orders":
     let fleet = Fleet(
       id: "spy_fleet",
       owner: "house1",
-      location: "sys2",
+      location: 2,
       squadrons: @[sq]
     )
     state.fleets[fleet.id] = fleet
@@ -497,7 +523,7 @@ suite "Order 09-11: Spy Orders":
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.SpySystem,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -520,7 +546,7 @@ suite "Order 12: Colonize":
     let fleet = Fleet(
       id: "colony_fleet",
       owner: "house1",
-      location: "sys1",
+      location: 1,
       squadrons: @[sq]
     )
     state.fleets[fleet.id] = fleet
@@ -528,7 +554,7 @@ suite "Order 12: Colonize":
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Colonize,
-      targetSystem: some(SystemId("sys1")),
+      targetSystem: some(SystemId(1)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -540,13 +566,13 @@ suite "Order 12: Colonize":
 
   test "Colonize without ETAC fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Colonize,
-      targetSystem: some(SystemId("sys1")),
+      targetSystem: some(SystemId(1)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -563,8 +589,8 @@ suite "Order 12: Colonize":
 suite "Order 13: Join Fleet":
   test "Join fleet at same location succeeds":
     var state = createTestGameState()
-    let fleet1 = createTestFleet("house1", "sys1", "Fleet1")
-    let fleet2 = createTestFleet("house1", "sys1", "Fleet2")
+    let fleet1 = createTestFleet("house1", 1, "Fleet1")
+    let fleet2 = createTestFleet("house1", 1, "Fleet2")
 
     state.fleets[fleet1.id] = fleet1
     state.fleets[fleet2.id] = fleet2
@@ -584,8 +610,8 @@ suite "Order 13: Join Fleet":
 
   test "Join fleet at different location fails":
     var state = createTestGameState()
-    let fleet1 = createTestFleet("house1", "sys1", "Fleet1")
-    let fleet2 = createTestFleet("house1", "sys2", "Fleet2")
+    let fleet1 = createTestFleet("house1", 1, "Fleet1")
+    let fleet2 = createTestFleet("house1", 2, "Fleet2")
 
     state.fleets[fleet1.id] = fleet1
     state.fleets[fleet2.id] = fleet2
@@ -605,8 +631,8 @@ suite "Order 13: Join Fleet":
 
   test "Join fleet of different house fails":
     var state = createTestGameState()
-    let fleet1 = createTestFleet("house1", "sys1", "Fleet1")
-    let fleet2 = createTestFleet("house2", "sys1", "Fleet2")
+    let fleet1 = createTestFleet("house1", 1, "Fleet1")
+    let fleet2 = createTestFleet("house2", 1, "Fleet2")
 
     state.fleets[fleet1.id] = fleet1
     state.fleets[fleet2.id] = fleet2
@@ -631,13 +657,13 @@ suite "Order 13: Join Fleet":
 suite "Order 14: Rendezvous":
   test "Rendezvous order succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Rendezvous,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -648,7 +674,7 @@ suite "Order 14: Rendezvous":
 
   test "Rendezvous without target fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -670,7 +696,7 @@ suite "Order 14: Rendezvous":
 suite "Order 15: Salvage":
   test "Salvage with friendly colony succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -699,7 +725,7 @@ suite "Order 15: Salvage":
     for colonyId in toRemove:
       state.colonies.del(colonyId)
 
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -746,7 +772,7 @@ suite "Order Validation":
     let fleet = Fleet(
       id: "unarmed_fleet",
       owner: "house1",
-      location: "sys1",
+      location: 1,
       squadrons: @[sq]
     )
     state.fleets[fleet.id] = fleet
@@ -754,7 +780,7 @@ suite "Order Validation":
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.GuardStarbase,
-      targetSystem: some(SystemId("sys1")),
+      targetSystem: some(SystemId(1)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -771,7 +797,7 @@ suite "Order Validation":
 suite "Order 16: Reserve Fleet":
   test "Reserve order at friendly colony succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -791,7 +817,7 @@ suite "Order 16: Reserve Fleet":
 
   test "Reserve order without colony fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     # Remove colony at sys2
@@ -812,7 +838,7 @@ suite "Order 16: Reserve Fleet":
 
   test "Reserve order at enemy colony fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -835,11 +861,11 @@ suite "Order 16: Reserve Fleet":
 suite "Order 17: Mothball Fleet":
   test "Mothball order at friendly colony with spaceport succeeds":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     # Add spaceport to colony
-    state.colonies[1].spaceports.add(Spaceport(level: 1, crippled: false))
+    state.colonies[1].spaceports.add(Spaceport(id: "sp1", commissionedTurn: 1, docks: 5))
 
     let order = FleetOrder(
       fleetId: fleet.id,
@@ -858,7 +884,7 @@ suite "Order 17: Mothball Fleet":
 
   test "Mothball order without spaceport fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -876,7 +902,7 @@ suite "Order 17: Mothball Fleet":
 
   test "Mothball order without colony fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     # Remove colony
@@ -897,11 +923,11 @@ suite "Order 17: Mothball Fleet":
 
   test "Mothball order at enemy colony fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys2", "TestFleet")
+    let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     # Add spaceport to enemy colony
-    state.colonies[2].spaceports.add(Spaceport(level: 1, crippled: false))
+    state.colonies[2].spaceports.add(Spaceport(id: "sp2", commissionedTurn: 1, docks: 5))
 
     let order = FleetOrder(
       fleetId: fleet.id,
@@ -923,7 +949,7 @@ suite "Order 17: Mothball Fleet":
 suite "Order 18: Reactivate Fleet":
   test "Reactivate reserve fleet succeeds":
     var state = createTestGameState()
-    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    var fleet = createTestFleet("house1", 1, "TestFleet")
     fleet.status = FleetStatus.Reserve
     state.fleets[fleet.id] = fleet
 
@@ -943,7 +969,7 @@ suite "Order 18: Reactivate Fleet":
 
   test "Reactivate mothballed fleet succeeds":
     var state = createTestGameState()
-    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    var fleet = createTestFleet("house1", 1, "TestFleet")
     fleet.status = FleetStatus.Mothballed
     state.fleets[fleet.id] = fleet
 
@@ -963,7 +989,7 @@ suite "Order 18: Reactivate Fleet":
 
   test "Reactivate active fleet fails":
     var state = createTestGameState()
-    let fleet = createTestFleet("house1", "sys1", "TestFleet")
+    let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
@@ -986,14 +1012,14 @@ suite "Order 18: Reactivate Fleet":
 suite "Fleet Status Movement Restrictions":
   test "Reserve fleet cannot move":
     var state = createTestGameState()
-    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    var fleet = createTestFleet("house1", 1, "TestFleet")
     fleet.status = FleetStatus.Reserve
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Move,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )
@@ -1005,14 +1031,14 @@ suite "Fleet Status Movement Restrictions":
 
   test "Mothballed fleet cannot move":
     var state = createTestGameState()
-    var fleet = createTestFleet("house1", "sys1", "TestFleet")
+    var fleet = createTestFleet("house1", 1, "TestFleet")
     fleet.status = FleetStatus.Mothballed
     state.fleets[fleet.id] = fleet
 
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.Move,
-      targetSystem: some(SystemId("sys2")),
+      targetSystem: some(SystemId(2)),
       targetFleet: none(FleetId),
       priority: 0
     )

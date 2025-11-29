@@ -1,11 +1,45 @@
 ## Simple Stress Test
 ## Demonstrates stress testing on actual engine code
 
-import std/[times, strformat, random, tables, options]
+import std/[times, strformat, random, tables, options, sequtils, math]
 import unittest
+import ../../src/engine/[gamestate, resolve, orders, starmap]
+import ../../src/engine/colonization/engine as colonization
+import ../../src/engine/research/types as res_types
+import ../../src/engine/espionage/types as esp_types
+import ../../src/engine/economy/types as econ_types
+import ../../src/common/types/[core, planets]
 
-# Import from integration test to get working game state creation
-import ../integration/test_resolution_comprehensive
+proc createTestGameState(): GameState =
+  ## Create a minimal game state for stress testing
+  result = GameState()
+  result.turn = 1
+  result.phase = GamePhase.Active
+
+  # Generate proper starmap (minimum 2 players)
+  result.starMap = newStarMap(2, seed = 42)
+  result.starMap.populate()
+
+  # Get first player's starting system
+  let homeSystemId = result.starMap.playerSystemIds[0]
+
+  # Create test house
+  result.houses["house1"] = House(
+    id: "house1",
+    name: "Test House",
+    treasury: 10000,
+    eliminated: false,
+    techTree: res_types.initTechTree(),
+  )
+
+  # Create home colony at valid system
+  result.colonies[homeSystemId] = colonization.initNewColony(
+    homeSystemId,
+    "house1",
+    PlanetClass.Benign,
+    ResourceRating.Abundant,
+    2000  # startingPTU
+  )
 
 suite "Simple Stress: State Integrity":
 
@@ -46,7 +80,7 @@ suite "Simple Stress: State Integrity":
       except CatchableError as e:
         echo &"❌ Turn {turn} crashed: {e.msg}"
         fail()
-        return
+        break
 
       let elapsed = (cpuTime() - startTime) * 1000.0
       turnTimes.add(elapsed)

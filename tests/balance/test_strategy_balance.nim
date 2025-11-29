@@ -6,6 +6,8 @@
 import std/[tables, options, random]
 import balance_framework
 import ../../src/engine/[gamestate, resolve, orders, starmap]
+import ../../src/engine/espionage/types as esp_types
+import ../../src/engine/research/types as res_types
 import ../../src/common/types/[core, units, planets, tech]
 import ../../src/engine/config/gameplay_config
 
@@ -117,34 +119,33 @@ proc generateAIOrders*(controller: AIController, state: GameState,
   ## Generate orders for an AI player based on strategy
   result = OrderPacket(
     houseId: controller.houseId,
+    turn: 0,  # Will be set by caller
+    treasury: 0,  # Will be set by caller
     fleetOrders: @[],
     buildOrders: @[],
-    researchAllocations: initTable[string, int](),
-    taxRate: 50,
-    espionageAction: none(EspionageAction),
+    researchAllocation: res_types.ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int]()
+    ),
+    diplomaticActions: @[],
+    populationTransfers: @[],
+    squadronManagement: @[],
+    cargoManagement: @[],
+    terraformOrders: @[],
+    espionageAction: none(esp_types.EspionageAttempt),
     ebpInvestment: 0,
-    cipInvestment: 0,
-    diplomaticAction: none(DiplomaticAction)
+    cipInvestment: 0
   )
 
   let p = controller.personality
 
-  # Set tax rate based on economic focus
-  if p.economicFocus > 0.7:
-    result.taxRate = 30  # Low taxes for growth
-  elif p.economicFocus < 0.3:
-    result.taxRate = 60  # High taxes for military spending
-  else:
-    result.taxRate = 45  # Moderate
+  # TODO: Set tax rate on colonies directly in state, not in orders
+  # Tax rate should be set on House or Colony objects, not in OrderPacket
 
-  # Research allocation based on tech priority
-  if p.techPriority > 0.6:
-    # Heavy research investment (TODO: Calculate based on available SRP)
-    result.researchAllocations["EL"] = 100
-    result.researchAllocations["WEP"] = if p.aggression > 0.5: 80 else: 40
-  else:
-    # Minimal research
-    result.researchAllocations["EL"] = 50
+  # TODO: Research allocation based on tech priority
+  # Calculate PP amounts to allocate to economic, science, and tech research
+  # For now, leaving empty - would need to calculate from house treasury
 
   # Espionage based on strategy
   case controller.strategy
@@ -168,19 +169,9 @@ proc generateAIOrders*(controller: AIController, state: GameState,
 # =============================================================================
 
 proc createStandardTestGame*(numHouses: int, strategies: seq[AIStrategy]): GameState =
-  ## Create a standard test game setup
-  # TODO: Generate star map
-  # TODO: Place starting colonies
-  # TODO: Initialize houses with equal starting conditions
-  result = GameState(
-    turn: 1,
-    year: 2400,
-    month: 1,
-    houses: initTable[HouseId, House](),
-    colonies: initTable[SystemId, Colony](),
-    fleets: initTable[FleetId, Fleet](),
-    systems: initTable[SystemId, StarSystem]()
-  )
+  ## Create a standard test game setup using the proper constructor
+  # Use newGame() to get a properly initialized game state
+  result = newGame("test_strategy_balance_" & $numHouses, numHouses, seed = 42)
 
 proc testMilitaryVsEconomic*(): BalanceTestResult =
   ## Test if military and economic strategies are balanced
@@ -258,11 +249,11 @@ proc testEarlyAggression*(): BalanceTestResult =
 # =============================================================================
 
 when isMainModule:
-  import std/strformat
+  import std/[strformat, strutils]
 
-  echo "="*60
+  echo repeat("=", 60)
   echo "EC4X Strategy Balance Tests"
-  echo "="*60
+  echo repeat("=", 60)
   echo ""
 
   # Test 1: Military vs Economic
@@ -286,7 +277,7 @@ when isMainModule:
   echo &"  ✓ Exported: balance_results/early_aggression.json"
   echo ""
 
-  echo "="*60
+  echo repeat("=", 60)
   echo "All tests complete!"
   echo ""
   echo "Next steps:"

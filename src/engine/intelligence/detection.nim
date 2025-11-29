@@ -96,6 +96,19 @@ proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int 
 
 ## Spy Scout Detection
 
+proc rollSpyDetectionThreshold*(thresholdRange: ThresholdRange, rng: var Rand): int =
+  ## Roll threshold for spy detection (1d3 within range)
+  ## For testing and internal use
+  let roll3 = rng.rand(1..3)
+  case roll3
+  of 1: thresholdRange[0]
+  of 2: (thresholdRange[0] + thresholdRange[1]) div 2
+  else: thresholdRange[1]
+
+proc rollSpyDetectionThreshold*(thresholdRange: ThresholdRange): int =
+  ## Wrapper using global RNG
+  rollSpyDetectionThreshold(thresholdRange, globalRNG)
+
 ## Spy Scout Detection (Parameterized RNG version)
 
 proc attemptSpyDetection*(
@@ -115,11 +128,7 @@ proc attemptSpyDetection*(
   let thresholdRange = getSpyDetectionThreshold(detectorELI, spyELI)
 
   # Roll for actual threshold (1d3)
-  let roll3 = rng.rand(1..3)
-  let threshold = case roll3
-    of 1: thresholdRange[0]
-    of 2: (thresholdRange[0] + thresholdRange[1]) div 2
-    else: thresholdRange[1]
+  let threshold = rollSpyDetectionThreshold(thresholdRange, rng)
 
   # Roll for detection (1d20)
   let detectionRoll = rng.rand(1..20)

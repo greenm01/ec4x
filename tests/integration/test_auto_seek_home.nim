@@ -20,6 +20,7 @@ import ../../src/engine/[gamestate, orders, resolve, fleet, spacelift, squadron,
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/diplomacy/types as dip_types
+import ../../src/engine/economy/types as econ_types
 import ../../src/common/types/[core, units, planets, diplomacy]
 import ../../src/common/[hex, system]
 
@@ -71,7 +72,6 @@ suite "Automated Seek Home - ETAC Missions":
     ## Create state with ETAC mission and multiple colonies
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     # Initialize starmap with systems 1, 2, 3 connected linearly
@@ -110,7 +110,7 @@ suite "Automated Seek Home - ETAC Missions":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -139,7 +139,7 @@ suite "Automated Seek Home - ETAC Missions":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 50,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -168,7 +168,7 @@ suite "Automated Seek Home - ETAC Missions":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 30,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -288,7 +288,6 @@ suite "Automated Seek Home - Guard Orders":
     ## Create state with fleet on guard duty
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     # Initialize starmap
@@ -325,7 +324,7 @@ suite "Automated Seek Home - Guard Orders":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -354,7 +353,7 @@ suite "Automated Seek Home - Guard Orders":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 50,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -463,7 +462,6 @@ suite "Automated Seek Home - Blockade Orders":
     ## Create state with blockade fleet at conquered system
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     # Initialize starmap
@@ -500,7 +498,7 @@ suite "Automated Seek Home - Blockade Orders":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -529,7 +527,7 @@ suite "Automated Seek Home - Blockade Orders":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 40,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -605,7 +603,6 @@ suite "Automated Seek Home - Patrol Orders":
     ## Create state with patrol fleet in conquered territory
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     # Initialize starmap
@@ -642,7 +639,7 @@ suite "Automated Seek Home - Patrol Orders":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -671,7 +668,7 @@ suite "Automated Seek Home - Patrol Orders":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 50,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -746,7 +743,6 @@ suite "Automated Seek Home - No Safe Destination":
   test "Fleet holds position when no owned colonies exist":
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     # Initialize starmap
@@ -783,7 +779,7 @@ suite "Automated Seek Home - No Safe Destination":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -854,7 +850,6 @@ suite "Automated Seek Home - Multiple Fleets":
   test "Multiple fleets retreat simultaneously":
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     # Initialize starmap
@@ -891,7 +886,7 @@ suite "Automated Seek Home - Multiple Fleets":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -920,7 +915,7 @@ suite "Automated Seek Home - Multiple Fleets":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 50,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],

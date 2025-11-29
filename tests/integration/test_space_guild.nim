@@ -13,6 +13,7 @@ import std/[unittest, tables, options]
 import ../../src/engine/[gamestate, orders, resolve, starmap]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
+import ../../src/engine/economy/types as econ_types
 import ../../src/common/types/[core, units, planets]
 
 suite "Space Guild Transfer Costs":
@@ -42,7 +43,6 @@ suite "Population Transfer Mechanics":
   proc createTestState(): GameState =
     var result = GameState()
     result.turn = 1
-    result.month = 1
     result.phase = GamePhase.Active
 
     result.houses["house1"] = House(
@@ -64,7 +64,7 @@ suite "Population Transfer Mechanics":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -86,7 +86,7 @@ suite "Population Transfer Mechanics":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 50,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -369,7 +369,6 @@ suite "In-Transit Ownership Changes":
   proc createTestState(): GameState =
     var result = GameState()
     result.turn = 1
-    result.month = 1
     result.phase = GamePhase.Active
 
     result.houses["house1"] = House(
@@ -399,7 +398,7 @@ suite "In-Transit Ownership Changes":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -421,7 +420,7 @@ suite "In-Transit Ownership Changes":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 50,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],

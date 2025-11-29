@@ -3,11 +3,49 @@
 ## Demonstrates the client-side turn report formatter
 ## by generating sample reports from simulation data
 
-import std/[json, times, strformat, random, sequtils, tables, algorithm, os]
-import game_setup, ai_controller
+import std/[json, times, strformat, random, sequtils, tables, algorithm, os, options]
+import game_setup
+# TODO: ai_controller module doesn't exist yet - AI logic needs to be implemented
 import ../../src/engine/[gamestate, resolve, orders]
-import ../../src/common/types/core
+import ../../src/engine/espionage/types as esp_types
+import ../../src/engine/research/types as res_types
+import ../../src/common/types/[core, tech]
 import ../../src/client/reports/turn_report
+
+# Minimal AI stubs for compilation (TODO: implement properly)
+type
+  AIStrategy* {.pure.} = enum
+    Aggressive, Economic, Balanced, Turtle, Espionage, Diplomatic, Expansionist
+
+  AIController* = object
+    houseId*: HouseId
+    strategy*: AIStrategy
+
+proc newAIController*(houseId: HouseId, strategy: AIStrategy): AIController =
+  AIController(houseId: houseId, strategy: strategy)
+
+proc generateAIOrders*(controller: AIController, state: GameState, rng: var Rand): OrderPacket =
+  ## Stub AI - returns empty orders
+  OrderPacket(
+    houseId: controller.houseId,
+    turn: state.turn,
+    treasury: if state.houses.hasKey(controller.houseId): state.houses[controller.houseId].treasury else: 0,
+    fleetOrders: @[],
+    buildOrders: @[],
+    researchAllocation: res_types.ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int]()
+    ),
+    diplomaticActions: @[],
+    populationTransfers: @[],
+    squadronManagement: @[],
+    cargoManagement: @[],
+    terraformOrders: @[],
+    espionageAction: none(esp_types.EspionageAttempt),
+    ebpInvestment: 0,
+    cipInvestment: 0
+  )
 
 proc testTurnReports*() =
   ## Run a short simulation and generate turn reports for each house

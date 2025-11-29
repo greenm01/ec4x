@@ -4,9 +4,10 @@
 ## Validates the offline-first architecture
 
 import std/[tables, options]
-import ../../src/engine/[gamestate, orders, resolve]
+import ../../src/engine/[gamestate, orders, resolve, starmap]
 import ../../src/engine/economy/[types as econ_types, income]
 import ../../src/engine/research/types as res_types
+import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/[core, planets, units]
 # Note: Combat tests use engine/combat/ modules directly
 
@@ -15,7 +16,8 @@ proc testOfflineGameFlow() =
   echo "Testing offline game flow..."
 
   # Create a basic 2-player game
-  let map = createGame(2)
+  var map = newStarMap(2)
+  map.populate()
 
   # Create initial game state
   var state = newGameState("test-game", 2, map)
@@ -28,8 +30,15 @@ proc testOfflineGameFlow() =
       turn: state.turn,
       fleetOrders: @[],
       buildOrders: @[],
-      researchAllocation: initTable[TechField, int](),
-      diplomaticActions: @[]
+      researchAllocation: initResearchAllocation(),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      squadronManagement: @[],
+      cargoManagement: @[],
+      terraformOrders: @[],
+      espionageAction: none(esp_types.EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
     )
 
   # Resolve a turn - should work entirely offline

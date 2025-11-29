@@ -19,15 +19,30 @@ suite "Prestige Integration":
     let colony = Colony(
       systemId: 1.SystemId,
       owner: "house1".HouseId,
+      population: 100,
+      souls: 100_000_000,
       populationUnits: 100,
       populationTransferUnits: 100,
+      infrastructure: 5,
       industrial: econ_types.IndustrialUnits(units: 0, investmentCost: 30),
       planetClass: PlanetClass.Benign,
       resources: ResourceRating.Abundant,
+      buildings: @[],
+      production: 100,
       grossOutput: 0,
       taxRate: 10,  # 10% tax -> +3 prestige per colony
+      infrastructureDamage: 0.0,
       underConstruction: none(econ_types.ConstructionProject),
-      infrastructureDamage: 0.0
+      constructionQueue: @[],
+      repairQueue: @[],
+      activeTerraforming: none(gamestate.TerraformProject),
+      unassignedSquadrons: @[],
+      unassignedSpaceLiftShips: @[],
+      fighterSquadrons: @[],
+      capacityViolation: CapacityViolation(),
+      starbases: @[],
+      spaceports: @[],
+      shipyards: @[]
     )
 
     # Calculate income with low tax
@@ -46,18 +61,33 @@ suite "Prestige Integration":
 
   test "High tax rate generates prestige penalty":
     # Create high-tax colony with history
-    let colony = econ_types.Colony(
+    let colony = Colony(
       systemId: 1.SystemId,
       owner: "house1".HouseId,
+      population: 100,
+      souls: 100_000_000,
       populationUnits: 100,
       populationTransferUnits: 100,
+      infrastructure: 5,
       industrial: econ_types.IndustrialUnits(units: 0, investmentCost: 30),
       planetClass: PlanetClass.Benign,
       resources: ResourceRating.Abundant,
+      buildings: @[],
+      production: 100,
       grossOutput: 0,
       taxRate: 70,
+      infrastructureDamage: 0.0,
       underConstruction: none(econ_types.ConstructionProject),
-      infrastructureDamage: 0.0
+      constructionQueue: @[],
+      repairQueue: @[],
+      activeTerraforming: none(gamestate.TerraformProject),
+      unassignedSquadrons: @[],
+      unassignedSpaceLiftShips: @[],
+      fighterSquadrons: @[],
+      capacityViolation: CapacityViolation(),
+      starbases: @[],
+      spaceports: @[],
+      shipyards: @[]
     )
 
     # History of high taxes
@@ -86,8 +116,6 @@ suite "Prestige Integration":
     var state = GameState(
       gameId: "test-victory",
       turn: 100,
-      year: 2010,
-      month: 1,
       phase: GamePhase.Active,
       houses: initTable[HouseId, House](),
       starMap: newStarMap(2)
@@ -127,8 +155,6 @@ suite "Prestige Integration":
     var state = GameState(
       gameId: "test-victory-last",
       turn: 100,
-      year: 2010,
-      month: 1,
       phase: GamePhase.Active,
       houses: initTable[HouseId, House](),
       starMap: newStarMap(2)
@@ -168,8 +194,6 @@ suite "Prestige Integration":
     var state = GameState(
       gameId: "test-no-victory",
       turn: 10,
-      year: 2002,
-      month: 1,
       phase: GamePhase.Active,
       houses: initTable[HouseId, House](),
       starMap: newStarMap(2)

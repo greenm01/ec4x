@@ -94,7 +94,7 @@ suite "Spy Scout Detection":
     # Test all possible 1d3 outcomes
     var results: set[0..20] = {}
     for i in 1..30:
-      let threshold = rollDetectionThreshold(thresholdRange)
+      let threshold = rollSpyDetectionThreshold(thresholdRange)
       check threshold >= 10 and threshold <= 12
       results.incl(threshold)
 
