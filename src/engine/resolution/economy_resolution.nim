@@ -347,12 +347,12 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
           let targetFleet = state.fleets[targetId]
           # Only allow assignment to Active fleets (exclude Reserve and Mothballed)
           if targetFleet.status != FleetStatus.Active:
-            echo "    AssignToFleet failed: Cannot assign squadrons to ", targetFleet.status, " fleets (only Active fleets allowed)"
+            logWarn(LogCategory.lcEconomy, "AssignToFleet failed: Cannot assign squadrons to " & $targetFleet.status & " fleets (only Active fleets allowed)")
           else:
             state.fleets[targetId].squadrons.add(squadron)
-            echo "    Assigned squadron ", squadron.id, " to fleet ", targetId
+            logInfo(LogCategory.lcEconomy, "Assigned squadron " & $squadron.id & " to fleet " & $targetId)
         else:
-          echo "    AssignToFleet failed: Target fleet ", targetId, " does not exist"
+          logWarn(LogCategory.lcEconomy, "AssignToFleet failed: Target fleet " & $targetId & " does not exist")
       else:
         # Create new fleet
         let newFleetId = packet.houseId & "_fleet_" & $order.colonySystem & "_" & $state.turn

@@ -685,7 +685,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             var fleet = state.fleets[order.fleetId]
             fleet.status = FleetStatus.Reserve
             state.fleets[order.fleetId] = fleet
-            echo "    [Reserve] Fleet ", order.fleetId, " is now colony reserve fleet (50% maint, half AS/DS)"
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " is now colony reserve fleet (50% maint, half AS/DS)")
 
             # Assign permanent GuardPlanet order (reserve fleets can't be moved)
             let guardOrder = FleetOrder(
@@ -696,7 +696,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
               priority: 1
             )
             state.fleetOrders[order.fleetId] = guardOrder
-            echo "    [Reserve] Assigned permanent GuardPlanet order (can't be moved)"
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " assigned permanent GuardPlanet order (can't be moved)")
       of FleetOrderType.Mothball:
         # Mothball fleet
         # Per economy.md:3.9 - ships auto-join colony's single mothballed fleet
@@ -743,7 +743,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             var fleet = state.fleets[order.fleetId]
             fleet.status = FleetStatus.Mothballed
             state.fleets[order.fleetId] = fleet
-            echo "    [Mothball] Fleet ", order.fleetId, " is now mothballed (0% maint, no combat)"
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " is now mothballed (0% maint, no combat)")
 
             # Assign permanent Hold order (mothballed fleets can't be moved)
             let holdOrder = FleetOrder(
@@ -754,19 +754,19 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
               priority: 1
             )
             state.fleetOrders[order.fleetId] = holdOrder
-            echo "    [Mothball] Assigned permanent Hold (00) order (can't be moved)"
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " assigned permanent Hold (00) order (can't be moved)")
       of FleetOrderType.Reactivate:
         # Reactivate fleet from Reserve or Mothballed status
         if order.fleetId in state.fleets:
           var fleet = state.fleets[order.fleetId]
 
           if fleet.status == FleetStatus.Active:
-            echo "    [Reactivate] Fleet ", order.fleetId, " already active"
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " already active")
           else:
             let oldStatus = fleet.status
             fleet.status = FleetStatus.Active
             state.fleets[order.fleetId] = fleet
-            echo "    [Reactivate] Fleet ", order.fleetId, " returned to active duty (was ", $oldStatus, ")"
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " returned to active duty (was " & $oldStatus & ")")
 
             # Clear the permanent order that was assigned during Reserve/Mothball
             state.fleetOrders.del(order.fleetId)
