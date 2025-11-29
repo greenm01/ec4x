@@ -43,12 +43,13 @@ suite "Fog of War - Core Visibility Levels":
     let filtered = createFogOfWarView(state, house1)
 
     # Should see own colony with full details
+    let ownSystem = map.playerSystemIds[0]
     check filtered.ownColonies.len == 1
     check filtered.ownColonies[0].owner == house1
-    check filtered.ownColonies[0].population == 100  # Home colony starts at 100M
+    # Check population matches actual colony (value from game_setup/standard.toml)
+    check filtered.ownColonies[0].population == state.colonies[ownSystem].population
 
     # Own system should be visible with Owned level
-    let ownSystem = map.playerSystemIds[0]
     check ownSystem in filtered.visibleSystems
     check filtered.visibleSystems[ownSystem].visibility == VisibilityLevel.Owned
     check filtered.visibleSystems[ownSystem].lastScoutedTurn == some(10)
@@ -554,11 +555,12 @@ suite "Fog of War - Edge Cases & Transitions":
 
     let filtered = createFogOfWarView(state, emptyHouse)
 
-    # Should have valid view but empty
+    # Should have valid view but minimal visibility
     check filtered.viewingHouse == emptyHouse
     check filtered.ownColonies.len == 0
     check filtered.ownFleets.len == 0
-    check filtered.visibleSystems.len == 0
+    # Universal map awareness: ALL systems visible from start (fog_of_war.nim:315-328)
+    check filtered.visibleSystems.len == map.systems.len
 
     # Public info still available
     check filtered.housePrestige.len >= 2  # At least house1 and house2
@@ -921,11 +923,11 @@ suite "Fog of War - Advanced Edge Cases":
     check targetSystem in filtered.visibleSystems
     check filtered.visibleSystems[targetSystem].visibility == VisibilityLevel.Scouted
 
-  test "System with no intel and no adjacency - completely hidden":
+  test "System with no intel - visible via universal map awareness":
     let house1 = "house-1".HouseId
 
-    # Find a system that's not home, not adjacent, and has no intel
-    var hiddenSystem = 0u
+    # Find a system that's not home, not adjacent to home, and has no intel
+    var distantSystem = 0u
     let house1Home = map.playerSystemIds[0]
     let adjacentSystems = map.getAdjacentSystems(house1Home)
 
@@ -933,16 +935,18 @@ suite "Fog of War - Advanced Edge Cases":
       if systemId != house1Home and
          systemId notin adjacentSystems and
          systemId notin map.playerSystemIds:
-        hiddenSystem = systemId
+        distantSystem = systemId
         break
 
-    check hiddenSystem != 0  # Found a hidden system
+    check distantSystem != 0  # Found a distant system
 
     let filtered = createFogOfWarView(state, house1)
 
-    # Should not be visible at all
-    check hiddenSystem notin filtered.visibleSystems
-    check filtered.getIntelStaleness(hiddenSystem) == -1
+    # Universal map awareness: ALL systems visible from start (fog_of_war.nim:315-328)
+    # Even systems with no intel are visible as Adjacent with full jump lane info
+    check distantSystem in filtered.visibleSystems
+    check filtered.visibleSystems[distantSystem].visibility == VisibilityLevel.Adjacent
+    check filtered.getIntelStaleness(distantSystem) == -1  # No intel, but system known
 
   test "System intel without colony intel - still Scouted":
     let house1 = "house-1".HouseId
