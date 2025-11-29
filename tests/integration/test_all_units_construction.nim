@@ -15,7 +15,7 @@
 ## - Facilities: docs/specs/reference.md:10.3
 
 import std/[unittest, tables, options, strformat]
-import ../../src/engine/[gamestate, orders, resolve]
+import ../../src/engine/[gamestate, orders, resolve, starmap]
 import ../../src/engine/economy/[construction, types]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
@@ -31,6 +31,14 @@ proc createTestState(cstLevel: int = 10): GameState =
   result = GameState()
   result.turn = 1
   result.phase = GamePhase.Active
+
+  # Generate starmap to get valid system IDs
+  var map = newStarMap(2)
+  map.populate()
+  result.starMap = map
+
+  # Get first player system from starmap
+  let testSystemId = map.playerSystemIds[0]
 
   # Create house with high CST and sufficient treasury
   result.houses["house1"] = House(
@@ -51,8 +59,8 @@ proc createTestState(cstLevel: int = 10): GameState =
   result.houses["house1"].techTree.levels.advancedCarrierOps = 3 # Advanced Carrier Ops maxed
 
   # Create colony with full facilities
-  result.colonies[1] = Colony(
-    systemId: 1,
+  result.colonies[testSystemId] = Colony(
+    systemId: testSystemId.SystemId,
     owner: "house1",
     population: 100,
     souls: 100_000_000,
@@ -86,9 +94,10 @@ proc testShipConstruction(shipClass: ShipClass, cstRequired: int,
   ## Returns true if ship was successfully built
   var state = createTestState(cstLevel = cstRequired)
   let initialTreasury = state.houses["house1"].treasury
+  let testSystemId = state.starMap.playerSystemIds[0]
 
   let buildOrder = BuildOrder(
-    colonySystem: 1,
+    colonySystem: testSystemId,
     buildType: BuildType.Ship,
     quantity: 1,
     shipClass: some(shipClass),
@@ -205,9 +214,10 @@ suite "All Ship Types - Construction Verification":
     # CRITICAL: This is the unit RBA never builds
     var state = createTestState(cstLevel = 3)
     let initialTreasury = state.houses["house1"].treasury
+    let testSystemId = state.starMap.playerSystemIds[0]
 
     let buildOrder = BuildOrder(
-      colonySystem: 1,
+      colonySystem: testSystemId,
       buildType: BuildType.Ship,
       quantity: 1,
       shipClass: some(ShipClass.Fighter),
@@ -241,7 +251,7 @@ suite "All Ship Types - Construction Verification":
     check newState.houses["house1"].treasury == initialTreasury - 20
 
     # Fighter should appear in colony's fighterSquadrons
-    check newState.colonies[1].fighterSquadrons.len > 0
+    check newState.colonies[testSystemId].fighterSquadrons.len > 0
 
   test "Corvette (CT) - CST 1, 20PP":
     check testShipConstruction(ShipClass.Corvette, 1, 20)
@@ -289,9 +299,10 @@ suite "All Ship Types - Construction Verification":
     # Starbases are special - they stay at the colony
     var state = createTestState(cstLevel = 3)
     let initialTreasury = state.houses["house1"].treasury
+    let testSystemId = state.starMap.playerSystemIds[0]
 
     let buildOrder = BuildOrder(
-      colonySystem: 1,
+      colonySystem: testSystemId,
       buildType: BuildType.Ship,
       quantity: 1,
       shipClass: some(ShipClass.Starbase),
@@ -322,7 +333,7 @@ suite "All Ship Types - Construction Verification":
     let newState = result.newState
 
     check newState.houses["house1"].treasury == initialTreasury - 300
-    check newState.colonies[1].starbases.len > 0
+    check newState.colonies[testSystemId].starbases.len > 0
 
   test "ETAC (ET) - CST 1, 25PP":
     check testShipConstruction(ShipClass.ETAC, 1, 25)
@@ -378,9 +389,10 @@ suite "CST Tech Gate Enforcement":
 
   test "Cannot build Fighter with CST 2 (requires CST 3)":
     var state = createTestState(cstLevel = 2)  # Below requirement
+    let testSystemId = state.starMap.playerSystemIds[0]
 
     let buildOrder = BuildOrder(
-      colonySystem: 1,
+      colonySystem: testSystemId,
       buildType: BuildType.Ship,
       quantity: 1,
       shipClass: some(ShipClass.Fighter),
@@ -411,16 +423,17 @@ suite "CST Tech Gate Enforcement":
     let newState = result.newState
 
     # Order should be REJECTED - no fighters built
-    check newState.colonies[1].fighterSquadrons.len == 0
+    check newState.colonies[testSystemId].fighterSquadrons.len == 0
 
     # Treasury should be unchanged (order rejected)
     check newState.houses["house1"].treasury == state.houses["house1"].treasury
 
   test "CAN build Fighter with CST 3 (meets requirement)":
     var state = createTestState(cstLevel = 3)  # Exactly at requirement
+    let testSystemId = state.starMap.playerSystemIds[0]
 
     let buildOrder = BuildOrder(
-      colonySystem: 1,
+      colonySystem: testSystemId,
       buildType: BuildType.Ship,
       quantity: 1,
       shipClass: some(ShipClass.Fighter),
@@ -451,14 +464,15 @@ suite "CST Tech Gate Enforcement":
     let newState = result.newState
 
     # Order should be ACCEPTED - fighter built
-    check newState.colonies[1].fighterSquadrons.len > 0
+    check newState.colonies[testSystemId].fighterSquadrons.len > 0
     check newState.houses["house1"].treasury < state.houses["house1"].treasury
 
   test "Cannot build Planet-Breaker with CST 9 (requires CST 10)":
     var state = createTestState(cstLevel = 9)
+    let testSystemId = state.starMap.playerSystemIds[0]
 
     let buildOrder = BuildOrder(
-      colonySystem: 1,
+      colonySystem: testSystemId,
       buildType: BuildType.Ship,
       quantity: 1,
       shipClass: some(ShipClass.PlanetBreaker),
