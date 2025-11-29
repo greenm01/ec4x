@@ -9,8 +9,8 @@
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets]
 import ../common/types/core
-import ../common/logger
-import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders
+import ../common/logger as common_logger
+import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, logger
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
 import research/[types as res_types_research]
@@ -671,10 +671,14 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
             state.fleets[targetId] = targetFleet
 
-            # Remove the now-empty fleet
+            # Remove the now-empty fleet and clean up orders
             state.fleets.del(order.fleetId)
+            if order.fleetId in state.fleetOrders:
+              state.fleetOrders.del(order.fleetId)
+            if order.fleetId in state.standingOrders:
+              state.standingOrders.del(order.fleetId)
 
-            echo "    [Reserve] Fleet ", order.fleetId, " merged into colony reserve fleet ", targetId
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " merged into colony reserve fleet " & $targetId & " (source fleet removed)")
           else:
             # Create new reserve fleet at this colony
             # CRITICAL: Get, modify, write back to persist
@@ -725,10 +729,14 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
             state.fleets[targetId] = targetFleet
 
-            # Remove the now-empty fleet
+            # Remove the now-empty fleet and clean up orders
             state.fleets.del(order.fleetId)
+            if order.fleetId in state.fleetOrders:
+              state.fleetOrders.del(order.fleetId)
+            if order.fleetId in state.standingOrders:
+              state.standingOrders.del(order.fleetId)
 
-            echo "    [Mothball] Fleet ", order.fleetId, " merged into colony mothballed fleet ", targetId
+            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " merged into colony mothballed fleet " & $targetId & " (source fleet removed)")
           else:
             # Create new mothballed fleet at this colony
             # CRITICAL: Get, modify, write back to persist
@@ -747,6 +755,21 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             )
             state.fleetOrders[order.fleetId] = holdOrder
             echo "    [Mothball] Assigned permanent Hold (00) order (can't be moved)"
+      of FleetOrderType.Reactivate:
+        # Reactivate fleet from Reserve or Mothballed status
+        if order.fleetId in state.fleets:
+          var fleet = state.fleets[order.fleetId]
+
+          if fleet.status == FleetStatus.Active:
+            echo "    [Reactivate] Fleet ", order.fleetId, " already active"
+          else:
+            let oldStatus = fleet.status
+            fleet.status = FleetStatus.Active
+            state.fleets[order.fleetId] = fleet
+            echo "    [Reactivate] Fleet ", order.fleetId, " returned to active duty (was ", $oldStatus, ")"
+
+            # Clear the permanent order that was assigned during Reserve/Mothball
+            state.fleetOrders.del(order.fleetId)
       else:
         discard
 
@@ -771,8 +794,10 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
         # Guard orders never complete - continue indefinitely
         # SPECIAL: Reserve fleets have permanent Guard (can't be changed)
         discard
-      of FleetOrderType.Reserve, FleetOrderType.Mothball:
-        # Status change orders complete immediately (but assign permanent follow-up order)
+      of FleetOrderType.Reserve, FleetOrderType.Mothball, FleetOrderType.Reactivate:
+        # Status change orders complete immediately
+        # Reserve/Mothball assign permanent follow-up orders
+        # Reactivate removes permanent orders and completes
         orderCompleted = true
       else:
         # Other orders (Patrol, Blockade, etc.) continue indefinitely
@@ -781,7 +806,8 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       if orderCompleted:
         # Assign Hold order so fleet maintains position until commanded otherwise
         # Exception: Reserve/Mothball already assigned permanent orders (don't override)
-        if order.orderType notin [FleetOrderType.Reserve, FleetOrderType.Mothball]:
+        # Exception: Reactivate already cleared orders (don't add Hold)
+        if order.orderType notin [FleetOrderType.Reserve, FleetOrderType.Mothball, FleetOrderType.Reactivate]:
           # Clear completed order
           state.fleetOrders.del(order.fleetId)
           # Verify fleet still exists (might have been merged or destroyed)

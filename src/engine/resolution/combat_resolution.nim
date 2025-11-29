@@ -8,8 +8,8 @@
 ## - Retreat processing and automated Seek Home
 
 import std/[tables, options, sequtils, hashes, math, random]
-import ../../common/[types/core, types/combat, types/units, logger]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift
+import ../../common/[types/core, types/combat, types/units, logger as common_logger]
+import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../logger
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
@@ -474,8 +474,13 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         autoBalanceSquadrons: fleet.autoBalanceSquadrons  # Preserve balancing setting
       )
     else:
-      # Fleet destroyed
+      # Fleet destroyed - remove fleet and clean up orders
       state.fleets.del(fleetId)
+      if fleetId in state.fleetOrders:
+        state.fleetOrders.del(fleetId)
+      if fleetId in state.standingOrders:
+        state.standingOrders.del(fleetId)
+      logInfo(LogCategory.lcCombat, "Removed empty fleet " & $fleetId & " after combat (all squadrons destroyed)")
 
   # Check if all defenders eliminated - if so, destroy mothballed ships
   # Per economy.md:3.9 - mothballed ships are vulnerable if no Task Force defends them
