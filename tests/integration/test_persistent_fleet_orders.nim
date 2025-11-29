@@ -72,7 +72,8 @@ suite "Persistent Fleet Orders":
       id: "house1",
       name: "House Alpha",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree()
     )
     house1.diplomaticRelations = dip_types.initDiplomaticRelations()
 
@@ -80,7 +81,8 @@ suite "Persistent Fleet Orders":
       id: "house2",
       name: "House Beta",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree()
     )
     house2.diplomaticRelations = dip_types.initDiplomaticRelations()
 
