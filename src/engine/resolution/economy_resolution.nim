@@ -105,7 +105,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       continue
 
     # Validate budget BEFORE creating construction project
-    let validationResult = orders.validateBuildOrderWithBudget(order, state, budgetContext)
+    let validationResult = orders.validateBuildOrderWithBudget(order, state, packet.houseId, budgetContext)
     if not validationResult.valid:
       let errorMsg = validationResult.error
       logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId} at system {order.colonySystem}: {errorMsg}")

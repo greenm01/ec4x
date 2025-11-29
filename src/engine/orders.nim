@@ -575,14 +575,33 @@ proc calculateBuildOrderCost*(order: BuildOrder, state: GameState): int =
       result = construction.getIndustrialUnitCost(colony) * order.industrialUnits
 
 proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
+                                   houseId: HouseId,
                                    ctx: var OrderValidationContext): ValidationResult =
-  ## Validate build order including budget check
+  ## Validate build order including budget check and tech requirements
   ## Updates context with committed spending if valid
 
   # Basic validation first
   if order.colonySystem notin state.colonies:
     return ValidationResult(valid: false,
                            error: &"Build order: Colony not found at system {order.colonySystem}")
+
+  # Check CST tech requirement for ships (economy.md:4.5)
+  if order.buildType == BuildType.Ship and order.shipClass.isSome:
+    let shipClass = order.shipClass.get()
+    let required_cst = getShipCSTRequirement(shipClass)
+
+    # Get house's CST level
+    if houseId in state.houses:
+      let house = state.houses[houseId]
+      let house_cst = house.techTree.levels.constructionTech
+
+      if house_cst < required_cst:
+        ctx.rejectedOrders += 1
+        logWarn(LogCategory.lcEconomy,
+                &"{houseId} Build order REJECTED: {shipClass} requires CST{required_cst}, " &
+                &"house has CST{house_cst}")
+        return ValidationResult(valid: false,
+                               error: &"Build order: {shipClass} requires CST{required_cst}, house has CST{house_cst}")
 
   # Calculate cost
   let cost = calculateBuildOrderCost(order, state)
