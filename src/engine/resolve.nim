@@ -573,7 +573,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
           )
           # Update persistent order
           state.fleetOrders[order.fleetId] = actualOrder
-          echo "    [MISSION ABORT] Fleet ", order.fleetId, " seeking home to system ", safeDestination.get()
+          logInfo(LogCategory.lcFleet, "Fleet " & order.fleetId & " mission aborted - seeking home to system " & $safeDestination.get())
         else:
           # No safe destination - assign Hold at current position
           actualOrder = FleetOrder(
@@ -584,13 +584,13 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             priority: order.priority
           )
           state.fleetOrders[order.fleetId] = actualOrder
-          echo "    [MISSION ABORT] Fleet ", order.fleetId, " has no safe destination - holding position"
+          logWarn(LogCategory.lcFleet, "Fleet " & order.fleetId & " mission aborted - no safe destination, holding position")
 
     # Execute the validated order
     let result = executeFleetOrder(state, houseId, actualOrder)
 
     if result.success:
-      echo "    [", $order.orderType, "] ", result.message
+      logDebug(LogCategory.lcFleet, "Fleet " & actualOrder.fleetId & " order " & $actualOrder.orderType & " executed: " & result.message)
       # Add events from order execution
       for eventMsg in result.eventsGenerated:
         events.add(GameEvent(
@@ -603,45 +603,45 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       # UNIVERSAL PATTERN: All fleet orders follow "Move-to-ACTION"
       # 1. Move fleet to target (if needed)
       # 2. Execute action at target
-      case order.orderType
+      case actualOrder.orderType  # Use actualOrder, not order (may have been replaced by SeekHome)
       of FleetOrderType.Move, FleetOrderType.SeekHome, FleetOrderType.Patrol:
         # Pure movement orders - just move
-        resolveMovementOrder(state, houseId, order, events)
+        resolveMovementOrder(state, houseId, actualOrder, events)
 
       of FleetOrderType.Colonize:
         # Check if already handled by simultaneous resolution
-        if simultaneous.wasColonizationHandled(colonizationResults, houseId, order.fleetId):
+        if simultaneous.wasColonizationHandled(colonizationResults, houseId, actualOrder.fleetId):
           when not defined(release):
-            echo "    [COLONIZE SKIP] Fleet ", order.fleetId, " already handled by simultaneous resolution"
+            echo "    [COLONIZE SKIP] Fleet ", actualOrder.fleetId, " already handled by simultaneous resolution"
           discard
         else:
           # Move-to-Colonize: Fleet moves to target then colonizes
           when not defined(release):
-            echo "    [BEFORE COLONIZE CALL] About to call resolveColonizationOrder for fleet ", order.fleetId
-          resolveColonizationOrder(state, houseId, order, events)
+            echo "    [BEFORE COLONIZE CALL] About to call resolveColonizationOrder for fleet ", actualOrder.fleetId
+          resolveColonizationOrder(state, houseId, actualOrder, events)
           when not defined(release):
-            echo "    [AFTER COLONIZE CALL] resolveColonizationOrder returned for fleet ", order.fleetId
+            echo "    [AFTER COLONIZE CALL] resolveColonizationOrder returned for fleet ", actualOrder.fleetId
 
       of FleetOrderType.Bombard:
         # Check if already handled by simultaneous resolution
-        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, order.fleetId):
+        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, actualOrder.fleetId):
           discard  # Already handled
         else:
-          resolveBombardment(state, houseId, order, events)
+          resolveBombardment(state, houseId, actualOrder, events)
 
       of FleetOrderType.Invade:
         # Check if already handled by simultaneous resolution
-        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, order.fleetId):
+        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, actualOrder.fleetId):
           discard  # Already handled
         else:
-          resolveInvasion(state, houseId, order, events)
+          resolveInvasion(state, houseId, actualOrder, events)
 
       of FleetOrderType.Blitz:
         # Check if already handled by simultaneous resolution
-        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, order.fleetId):
+        if simultaneous_planetary.wasPlanetaryCombatHandled(planetaryCombatResults, houseId, actualOrder.fleetId):
           discard  # Already handled
         else:
-          resolveBlitz(state, houseId, order, events)
+          resolveBlitz(state, houseId, actualOrder, events)
 
       of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
         # All espionage orders are handled by simultaneous resolution
@@ -659,8 +659,8 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       of FleetOrderType.Reserve:
         # Place fleet on reserve status
         # Per economy.md:3.9 - ships auto-join colony's single reserve fleet
-        if order.fleetId in state.fleets:
-          var fleet = state.fleets[order.fleetId]
+        if actualOrder.fleetId in state.fleets:
+          var fleet = state.fleets[actualOrder.fleetId]
           let colonySystem = fleet.location
 
           # Check if colony already has a reserve fleet
@@ -669,7 +669,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             if existingFleet.owner == fleet.owner and
                existingFleet.location == colonySystem and
                existingFleet.status == FleetStatus.Reserve and
-               fleetId != order.fleetId:
+               fleetId != actualOrder.fleetId:
               reserveFleetId = some(fleetId)
               break
 
@@ -689,36 +689,36 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             state.fleets[targetId] = targetFleet
 
             # Remove the now-empty fleet and clean up orders
-            state.fleets.del(order.fleetId)
-            if order.fleetId in state.fleetOrders:
-              state.fleetOrders.del(order.fleetId)
-            if order.fleetId in state.standingOrders:
-              state.standingOrders.del(order.fleetId)
+            state.fleets.del(actualOrder.fleetId)
+            if actualOrder.fleetId in state.fleetOrders:
+              state.fleetOrders.del(actualOrder.fleetId)
+            if actualOrder.fleetId in state.standingOrders:
+              state.standingOrders.del(actualOrder.fleetId)
 
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " merged into colony reserve fleet " & $targetId & " (source fleet removed)")
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " merged into colony reserve fleet " & $targetId & " (source fleet removed)")
           else:
             # Create new reserve fleet at this colony
             # CRITICAL: Get, modify, write back to persist
-            var fleet = state.fleets[order.fleetId]
+            var fleet = state.fleets[actualOrder.fleetId]
             fleet.status = FleetStatus.Reserve
-            state.fleets[order.fleetId] = fleet
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " is now colony reserve fleet (50% maint, half AS/DS)")
+            state.fleets[actualOrder.fleetId] = fleet
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " is now colony reserve fleet (50% maint, half AS/DS)")
 
             # Assign permanent GuardPlanet order (reserve fleets can't be moved)
             let guardOrder = FleetOrder(
-              fleetId: order.fleetId,
+              fleetId: actualOrder.fleetId,
               orderType: FleetOrderType.GuardPlanet,
               targetSystem: some(colonySystem),
               targetFleet: none(FleetId),
               priority: 1
             )
-            state.fleetOrders[order.fleetId] = guardOrder
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " assigned permanent GuardPlanet order (can't be moved)")
+            state.fleetOrders[actualOrder.fleetId] = guardOrder
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " assigned permanent GuardPlanet order (can't be moved)")
       of FleetOrderType.Mothball:
         # Mothball fleet
         # Per economy.md:3.9 - ships auto-join colony's single mothballed fleet
-        if order.fleetId in state.fleets:
-          var fleet = state.fleets[order.fleetId]
+        if actualOrder.fleetId in state.fleets:
+          var fleet = state.fleets[actualOrder.fleetId]
           let colonySystem = fleet.location
 
           # Check if colony already has a mothballed fleet
@@ -727,7 +727,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             if existingFleet.owner == fleet.owner and
                existingFleet.location == colonySystem and
                existingFleet.status == FleetStatus.Mothballed and
-               fleetId != order.fleetId:
+               fleetId != actualOrder.fleetId:
               mothballedFleetId = some(fleetId)
               break
 
@@ -747,61 +747,61 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             state.fleets[targetId] = targetFleet
 
             # Remove the now-empty fleet and clean up orders
-            state.fleets.del(order.fleetId)
-            if order.fleetId in state.fleetOrders:
-              state.fleetOrders.del(order.fleetId)
-            if order.fleetId in state.standingOrders:
-              state.standingOrders.del(order.fleetId)
+            state.fleets.del(actualOrder.fleetId)
+            if actualOrder.fleetId in state.fleetOrders:
+              state.fleetOrders.del(actualOrder.fleetId)
+            if actualOrder.fleetId in state.standingOrders:
+              state.standingOrders.del(actualOrder.fleetId)
 
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " merged into colony mothballed fleet " & $targetId & " (source fleet removed)")
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " merged into colony mothballed fleet " & $targetId & " (source fleet removed)")
           else:
             # Create new mothballed fleet at this colony
             # CRITICAL: Get, modify, write back to persist
-            var fleet = state.fleets[order.fleetId]
+            var fleet = state.fleets[actualOrder.fleetId]
             fleet.status = FleetStatus.Mothballed
-            state.fleets[order.fleetId] = fleet
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " is now mothballed (0% maint, no combat)")
+            state.fleets[actualOrder.fleetId] = fleet
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " is now mothballed (0% maint, no combat)")
 
             # Assign permanent Hold order (mothballed fleets can't be moved)
             let holdOrder = FleetOrder(
-              fleetId: order.fleetId,
+              fleetId: actualOrder.fleetId,
               orderType: FleetOrderType.Hold,
               targetSystem: some(colonySystem),
               targetFleet: none(FleetId),
               priority: 1
             )
-            state.fleetOrders[order.fleetId] = holdOrder
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " assigned permanent Hold (00) order (can't be moved)")
+            state.fleetOrders[actualOrder.fleetId] = holdOrder
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " assigned permanent Hold (00) order (can't be moved)")
       of FleetOrderType.Reactivate:
         # Reactivate fleet from Reserve or Mothballed status
-        if order.fleetId in state.fleets:
-          var fleet = state.fleets[order.fleetId]
+        if actualOrder.fleetId in state.fleets:
+          var fleet = state.fleets[actualOrder.fleetId]
 
           if fleet.status == FleetStatus.Active:
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " already active")
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " already active")
           else:
             let oldStatus = fleet.status
             fleet.status = FleetStatus.Active
-            state.fleets[order.fleetId] = fleet
-            logInfo(LogCategory.lcFleet, "Fleet " & $order.fleetId & " returned to active duty (was " & $oldStatus & ")")
+            state.fleets[actualOrder.fleetId] = fleet
+            logInfo(LogCategory.lcFleet, "Fleet " & $actualOrder.fleetId & " returned to active duty (was " & $oldStatus & ")")
 
             # Clear the permanent order that was assigned during Reserve/Mothball
-            state.fleetOrders.del(order.fleetId)
+            state.fleetOrders.del(actualOrder.fleetId)
       else:
         discard
 
       # Check if order is completed and should be cleared
       var orderCompleted = false
-      case order.orderType
+      case actualOrder.orderType  # Use actualOrder for completion checking too
       of FleetOrderType.Colonize:
         # Colonize completes when colony is established at target
-        if order.targetSystem.isSome:
-          if order.targetSystem.get() in state.colonies:
+        if actualOrder.targetSystem.isSome:
+          if actualOrder.targetSystem.get() in state.colonies:
             orderCompleted = true
       of FleetOrderType.Move, FleetOrderType.SeekHome:
         # Movement completes when fleet reaches destination
-        if order.fleetId in state.fleets and order.targetSystem.isSome:
-          if state.fleets[order.fleetId].location == order.targetSystem.get():
+        if actualOrder.fleetId in state.fleets and actualOrder.targetSystem.isSome:
+          if state.fleets[actualOrder.fleetId].location == actualOrder.targetSystem.get():
             orderCompleted = true
       of FleetOrderType.Hold:
         # Hold never completes - continues indefinitely
@@ -824,27 +824,27 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
         # Assign Hold order so fleet maintains position until commanded otherwise
         # Exception: Reserve/Mothball already assigned permanent orders (don't override)
         # Exception: Reactivate already cleared orders (don't add Hold)
-        if order.orderType notin [FleetOrderType.Reserve, FleetOrderType.Mothball, FleetOrderType.Reactivate]:
+        if actualOrder.orderType notin [FleetOrderType.Reserve, FleetOrderType.Mothball, FleetOrderType.Reactivate]:
           # Clear completed order
-          state.fleetOrders.del(order.fleetId)
+          state.fleetOrders.del(actualOrder.fleetId)
           # Verify fleet still exists (might have been merged or destroyed)
-          if order.fleetId in state.fleets:
+          if actualOrder.fleetId in state.fleets:
             let holdOrder = FleetOrder(
-              fleetId: order.fleetId,
+              fleetId: actualOrder.fleetId,
               orderType: FleetOrderType.Hold,
-              targetSystem: some(state.fleets[order.fleetId].location),
+              targetSystem: some(state.fleets[actualOrder.fleetId].location),
               targetFleet: none(FleetId),
               priority: 1
             )
-            state.fleetOrders[order.fleetId] = holdOrder
+            state.fleetOrders[actualOrder.fleetId] = holdOrder
             when not defined(release):
-              echo "    [ORDER COMPLETED] Fleet ", order.fleetId, " order ", $order.orderType, " completed → assigned Hold order"
+              echo "    [ORDER COMPLETED] Fleet ", actualOrder.fleetId, " order ", $actualOrder.orderType, " completed → assigned Hold order"
         else:
           when not defined(release):
-            echo "    [ORDER COMPLETED] Fleet ", order.fleetId, " order ", $order.orderType, " completed (status changed)"
+            echo "    [ORDER COMPLETED] Fleet ", actualOrder.fleetId, " order ", $actualOrder.orderType, " completed (status changed)"
 
     else:
-      echo "    [", $order.orderType, "] FAILED: ", result.message
+      logWarn(LogCategory.lcFleet, "Fleet " & actualOrder.fleetId & " order " & $actualOrder.orderType & " FAILED: " & result.message)
 
   when not defined(release):
     logDebug("Fleet", "Fleet order processing complete", "processed=", $processCount)

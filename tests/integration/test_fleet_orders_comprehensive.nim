@@ -84,6 +84,11 @@ suite "Fleet Orders: Complete Integration Tests":
           id: fmt"spaceport-{sysId}",
           commissionedTurn: 1,
           docks: 5
+        )],
+        starbases: @[Starbase(
+          id: fmt"starbase-{sysId}",
+          commissionedTurn: 1,
+          isCrippled: false
         )]
       )
 
@@ -98,6 +103,11 @@ suite "Fleet Orders: Complete Integration Tests":
           id: fmt"spaceport-{sysId}",
           commissionedTurn: 1,
           docks: 5
+        )],
+        starbases: @[Starbase(
+          id: fmt"starbase-{sysId}",
+          commissionedTurn: 1,
+          isCrippled: false
         )]
       )
 

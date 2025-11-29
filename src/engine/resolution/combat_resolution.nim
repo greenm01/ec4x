@@ -825,11 +825,27 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
 
   # Apply damage to colony
   var updatedColony = colony
+
   # Infrastructure damage from bombardment result
   let infrastructureLoss = result.infrastructureDamage div 10  # Convert IU damage to infrastructure levels
   updatedColony.infrastructure -= infrastructureLoss
   if updatedColony.infrastructure < 0:
     updatedColony.infrastructure = 0
+
+  # Industrial capacity damage (IU)
+  updatedColony.industrial.units -= result.infrastructureDamage
+  if updatedColony.industrial.units < 0:
+    updatedColony.industrial.units = 0
+
+  # Population casualties (PU)
+  # result.populationDamage is in PU, convert to souls (1 PU = 1M souls)
+  let soulsCasualties = result.populationDamage * 1_000_000
+  updatedColony.souls -= soulsCasualties
+  if updatedColony.souls < 0:
+    updatedColony.souls = 0
+  # Update display fields
+  updatedColony.population = updatedColony.souls div 1_000_000
+  updatedColony.populationUnits = updatedColony.population
 
   # Apply battery destruction from bombardment
   updatedColony.groundBatteries -= result.batteriesDestroyed
@@ -850,7 +866,9 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
 
   logCombat("Bombardment complete",
             "systemId=", $targetId,
-            " infrastructure=", $infrastructureLoss)
+            " infrastructure=", $infrastructureLoss,
+            " IU=", $result.infrastructureDamage,
+            " casualties=", $result.populationDamage, " PU")
 
   # Generate intelligence reports for both attacker and defender
   let groundForcesKilled = result.populationDamage  # Population damage represents casualties
@@ -861,6 +879,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     order.fleetId,
     colony.owner,  # Defending house
     infrastructureLoss,
+    result.infrastructureDamage,  # IU damage
     defense.shields.isSome,  # Were shields active?
     result.batteriesDestroyed,
     groundForcesKilled,
@@ -990,17 +1009,6 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   # Conduct invasion
   let result = conductInvasion(attackingForces, defendingForces, defense, invasionSeed)
 
-  # INTELLIGENCE: Generate invasion reports for both houses
-  combat_intel.generateInvasionIntelligence(
-    state, targetId, houseId, colony.owner,
-    attackingForces.len,
-    colony.armies,
-    colony.marines,
-    result.success,
-    result.attackerCasualties.len,
-    result.defenderCasualties.len
-  )
-
   # Apply results
   var updatedColony = colony
 
@@ -1015,6 +1023,11 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
     # Apply infrastructure damage (50% destroyed per operations.md:7.6.2)
     updatedColony.infrastructure = updatedColony.infrastructure div 2
+
+    # Apply industrial capacity damage (IU lost from invasion)
+    updatedColony.industrial.units -= result.infrastructureDestroyed
+    if updatedColony.industrial.units < 0:
+      updatedColony.industrial.units = 0
 
     # Shields and spaceports destroyed on landing (per spec)
     updatedColony.planetaryShieldLevel = 0
@@ -1089,6 +1102,18 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
   state.colonies[targetId] = updatedColony
+
+  # INTELLIGENCE: Generate invasion reports for both houses (after state updates)
+  combat_intel.generateInvasionIntelligence(
+    state, targetId, houseId, colony.owner,
+    attackingForces.len,
+    colony.armies,
+    colony.marines,
+    result.success,
+    result.attackerCasualties.len,
+    result.defenderCasualties.len,
+    result.infrastructureDestroyed
+  )
 
 proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
                  events: var seq[GameEvent]) =
@@ -1291,3 +1316,14 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
   state.colonies[targetId] = updatedColony
+
+  # INTELLIGENCE: Generate blitz reports for both houses (after state updates)
+  combat_intel.generateBlitzIntelligence(
+    state, targetId, houseId, colony.owner,
+    attackingForces.len,
+    colony.armies,
+    colony.marines,
+    result.success,
+    result.attackerCasualties.len,
+    result.defenderCasualties.len
+  )

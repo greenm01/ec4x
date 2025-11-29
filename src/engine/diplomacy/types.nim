@@ -10,7 +10,7 @@
 import std/tables
 import ../../common/types/[core, diplomacy]
 import ../prestige
-import ../config/[prestige_config, diplomacy_config]
+import ../config/[prestige_config, prestige_multiplier, diplomacy_config]
 
 export core.HouseId
 export diplomacy.DiplomaticState
@@ -95,16 +95,16 @@ proc violationRepeatWindow*(): int =
   globalDiplomacyConfig.pact_violations.repeat_violation_window
 
 proc violationPrestigePenalty*(): int =
-  ## Get violation prestige penalty from prestige config
-  globalPrestigeConfig.diplomacy.pact_violation
+  ## Get violation prestige penalty from prestige config with dynamic scaling
+  applyMultiplier(globalPrestigeConfig.diplomacy.pact_violation)
 
 proc violationRepeatPenalty*(): int =
-  ## Get repeat violation prestige penalty from prestige config
-  globalPrestigeConfig.diplomacy.repeat_violation
+  ## Get repeat violation prestige penalty from prestige config with dynamic scaling
+  applyMultiplier(globalPrestigeConfig.diplomacy.repeat_violation)
 
 proc dishonoredBonusPrestige*(): int =
-  ## Get dishonored bonus prestige from prestige config
-  globalPrestigeConfig.diplomacy.dishonored_bonus
+  ## Get dishonored bonus prestige from prestige config with dynamic scaling
+  applyMultiplier(globalPrestigeConfig.diplomacy.dishonored_bonus)
 
 ## Helper Procs
 

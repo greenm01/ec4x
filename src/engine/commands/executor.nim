@@ -394,6 +394,16 @@ proc executeBlockadeOrder(
       eventsGenerated: @[]
     )
 
+  # Validate target house is not eliminated (leaderboard is public info)
+  if colony.owner in state.houses:
+    let targetHouse = state.houses[colony.owner]
+    if targetHouse.eliminated:
+      return OrderExecutionResult(
+        success: false,
+        message: "Cannot blockade colony of eliminated house " & $colony.owner,
+        eventsGenerated: @[]
+      )
+
   # NOTE: Blockade tracking not yet implemented in Colony type
   # Blockade effects are calculated dynamically during Income Phase by checking
   # for BlockadePlanet fleet orders at colony systems (see income.nim)
@@ -427,6 +437,34 @@ proc executeBombardOrder(
       eventsGenerated: @[]
     )
 
+  let targetSystem = order.targetSystem.get()
+
+  # Check target colony exists
+  if targetSystem notin state.colonies:
+    return OrderExecutionResult(
+      success: false,
+      message: "No colony at " & $targetSystem & " to bombard",
+      eventsGenerated: @[]
+    )
+
+  let colony = state.colonies[targetSystem]
+  if colony.owner == fleet.owner:
+    return OrderExecutionResult(
+      success: false,
+      message: "Cannot bombard own colony",
+      eventsGenerated: @[]
+    )
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  if colony.owner in state.houses:
+    let targetHouse = state.houses[colony.owner]
+    if targetHouse.eliminated:
+      return OrderExecutionResult(
+        success: false,
+        message: "Cannot bombard colony of eliminated house " & $colony.owner,
+        eventsGenerated: @[]
+      )
+
   # Check for combat capability
   var hasCombatShips = false
   for squadron in fleet.squadrons:
@@ -443,7 +481,7 @@ proc executeBombardOrder(
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " preparing bombardment",
+    message: "Fleet " & $fleet.id & " preparing bombardment of " & $targetSystem,
     eventsGenerated: @["Bombardment order issued"]
   )
 
@@ -467,6 +505,34 @@ proc executeInvadeOrder(
       message: "Invasion requires target system",
       eventsGenerated: @[]
     )
+
+  let targetSystem = order.targetSystem.get()
+
+  # Check target colony exists
+  if targetSystem notin state.colonies:
+    return OrderExecutionResult(
+      success: false,
+      message: "No colony at " & $targetSystem & " to invade",
+      eventsGenerated: @[]
+    )
+
+  let colony = state.colonies[targetSystem]
+  if colony.owner == fleet.owner:
+    return OrderExecutionResult(
+      success: false,
+      message: "Cannot invade own colony",
+      eventsGenerated: @[]
+    )
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  if colony.owner in state.houses:
+    let targetHouse = state.houses[colony.owner]
+    if targetHouse.eliminated:
+      return OrderExecutionResult(
+        success: false,
+        message: "Cannot invade colony of eliminated house " & $colony.owner,
+        eventsGenerated: @[]
+      )
 
   # Check for combat ships and loaded troop transports
   var hasCombatShips = false
@@ -500,7 +566,7 @@ proc executeInvadeOrder(
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " launching invasion",
+    message: "Fleet " & $fleet.id & " launching invasion of " & $targetSystem,
     eventsGenerated: @["Invasion order issued"]
   )
 
@@ -524,6 +590,34 @@ proc executeBlitzOrder(
       eventsGenerated: @[]
     )
 
+  let targetSystem = order.targetSystem.get()
+
+  # Check target colony exists
+  if targetSystem notin state.colonies:
+    return OrderExecutionResult(
+      success: false,
+      message: "No colony at " & $targetSystem & " to blitz",
+      eventsGenerated: @[]
+    )
+
+  let colony = state.colonies[targetSystem]
+  if colony.owner == fleet.owner:
+    return OrderExecutionResult(
+      success: false,
+      message: "Cannot blitz own colony",
+      eventsGenerated: @[]
+    )
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  if colony.owner in state.houses:
+    let targetHouse = state.houses[colony.owner]
+    if targetHouse.eliminated:
+      return OrderExecutionResult(
+        success: false,
+        message: "Cannot blitz colony of eliminated house " & $colony.owner,
+        eventsGenerated: @[]
+      )
+
   # Check for loaded troop transports (spacelift ships, NOT squadrons)
   # Per ARCHITECTURE FIX 2025-11-23: Spacelift ships are separate from squadrons
   var hasLoadedTransports = false
@@ -544,7 +638,7 @@ proc executeBlitzOrder(
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " executing blitz assault",
+    message: "Fleet " & $fleet.id & " executing blitz assault on " & $targetSystem,
     eventsGenerated: @["Blitz order issued"]
   )
 
@@ -567,6 +661,20 @@ proc executeSpyPlanetOrder(
       eventsGenerated: @[]
     )
 
+  let targetSystem = order.targetSystem.get()
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  if targetSystem in state.colonies:
+    let colony = state.colonies[targetSystem]
+    if colony.owner in state.houses:
+      let targetHouse = state.houses[colony.owner]
+      if targetHouse.eliminated:
+        return OrderExecutionResult(
+          success: false,
+          message: "Cannot spy on eliminated house " & $colony.owner,
+          eventsGenerated: @[]
+        )
+
   # Check fleet has exactly one Scout
   var scoutCount = 0
   var scoutELI = 0
@@ -583,8 +691,7 @@ proc executeSpyPlanetOrder(
       eventsGenerated: @[]
     )
 
-  # Deploy spy scout
-  let targetSystem = order.targetSystem.get()
+  # Deploy spy scout (already validated targetSystem above)
 
   # Create spy scout and add to game state
   let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
@@ -648,22 +755,6 @@ proc executeHackStarbaseOrder(
       eventsGenerated: @[]
     )
 
-  # Check fleet has exactly one Scout
-  var scoutCount = 0
-  var scoutELI = 0
-
-  for squadron in fleet.squadrons:
-    if squadron.flagship.shipClass == ShipClass.Scout:
-      scoutCount += 1
-      scoutELI = squadron.flagship.stats.techLevel
-
-  if scoutCount != 1:
-    return OrderExecutionResult(
-      success: false,
-      message: "Hack Starbase requires exactly one Scout (found " & $scoutCount & ")",
-      eventsGenerated: @[]
-    )
-
   let targetSystem = order.targetSystem.get()
 
   # Validate starbase presence at target
@@ -679,6 +770,32 @@ proc executeHackStarbaseOrder(
     return OrderExecutionResult(
       success: false,
       message: "No starbase at " & $targetSystem & " to hack",
+      eventsGenerated: @[]
+    )
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  if colony.owner in state.houses:
+    let targetHouse = state.houses[colony.owner]
+    if targetHouse.eliminated:
+      return OrderExecutionResult(
+        success: false,
+        message: "Cannot hack starbase of eliminated house " & $colony.owner,
+        eventsGenerated: @[]
+      )
+
+  # Check fleet has exactly one Scout
+  var scoutCount = 0
+  var scoutELI = 0
+
+  for squadron in fleet.squadrons:
+    if squadron.flagship.shipClass == ShipClass.Scout:
+      scoutCount += 1
+      scoutELI = squadron.flagship.stats.techLevel
+
+  if scoutCount != 1:
+    return OrderExecutionResult(
+      success: false,
+      message: "Hack Starbase requires exactly one Scout (found " & $scoutCount & ")",
       eventsGenerated: @[]
     )
 
@@ -744,6 +861,20 @@ proc executeSpySystemOrder(
       eventsGenerated: @[]
     )
 
+  let targetSystem = order.targetSystem.get()
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  if targetSystem in state.colonies:
+    let colony = state.colonies[targetSystem]
+    if colony.owner in state.houses:
+      let targetHouse = state.houses[colony.owner]
+      if targetHouse.eliminated:
+        return OrderExecutionResult(
+          success: false,
+          message: "Cannot spy on system of eliminated house " & $colony.owner,
+          eventsGenerated: @[]
+        )
+
   # Check fleet has exactly one Scout
   var scoutCount = 0
   var scoutELI = 0
@@ -759,8 +890,6 @@ proc executeSpySystemOrder(
       message: "Spy System requires exactly one Scout (found " & $scoutCount & ")",
       eventsGenerated: @[]
     )
-
-  let targetSystem = order.targetSystem.get()
 
   # Create spy scout and add to game state
   let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
@@ -916,7 +1045,7 @@ proc executeJoinFleetOrder(
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " joined " & $targetFleetId & " (" & $fleet.squadrons.len & " squadrons merged)",
+    message: "Fleet " & $fleet.id & " joining " & $targetFleetId & " (" & $fleet.squadrons.len & " squadrons merged)",
     eventsGenerated: @["Fleet " & $fleet.id & " merged into " & $targetFleetId]
   )
 

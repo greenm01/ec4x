@@ -18,7 +18,7 @@ import std/[random, tables, options]
 import types, costs
 import ../../common/types/tech
 import ../prestige
-import ../config/prestige_config
+import ../config/[prestige_config, prestige_multiplier]
 
 export types.ResearchAdvancement, types.AdvancementType, types.BreakthroughEvent, types.TechTree
 
@@ -154,11 +154,12 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[ResearchA
     # Advance level
     tree.levels.economicLevel = currentEL + 1
 
-    # Create prestige event
+    # Create prestige event with dynamic scaling
     let config = globalPrestigeConfig
+    let prestigeAmount = applyMultiplier(config.economic.tech_advancement)
     let prestigeEvent = createPrestigeEvent(
       PrestigeSource.TechAdvancement,
-      config.economic.tech_advancement,
+      prestigeAmount,
       "Economic Level " & $currentEL & " → " & $(currentEL + 1)
     )
 
@@ -190,11 +191,12 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[ResearchA
     # Advance level
     tree.levels.scienceLevel = currentSL + 1
 
-    # Create prestige event
+    # Create prestige event with dynamic scaling
     let config = globalPrestigeConfig
+    let prestigeAmount = applyMultiplier(config.economic.tech_advancement)
     let prestigeEvent = createPrestigeEvent(
       PrestigeSource.TechAdvancement,
-      config.economic.tech_advancement,
+      prestigeAmount,
       "Science Level " & $currentSL & " → " & $(currentSL + 1)
     )
 
@@ -279,12 +281,13 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[Resea
   of TechField.AdvancedCarrierOps:
     tree.levels.advancedCarrierOps += 1
 
-  # Create prestige event
+  # Create prestige event with dynamic scaling
   let config = globalPrestigeConfig
+  let prestigeAmount = applyMultiplier(config.economic.tech_advancement)
   let fieldName = $field
   let prestigeEvent = createPrestigeEvent(
     PrestigeSource.TechAdvancement,
-    config.economic.tech_advancement,
+    prestigeAmount,
     fieldName & " " & $currentLevel & " → " & $(currentLevel + 1)
   )
 

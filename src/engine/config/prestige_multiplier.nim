@@ -16,6 +16,11 @@ proc initializePrestigeMultiplier*(numSystems: int, numPlayers: int) =
   logInfo("Prestige", "Dynamic multiplier initialized",
           "multiplier=", $currentMultiplier, " systems=", $numSystems, " players=", $numPlayers)
 
+proc setPrestigeMultiplierForTesting*(multiplier: float) =
+  ## Set the prestige multiplier directly for testing
+  ## Use 1.0 to disable multiplier effects in tests
+  currentMultiplier = multiplier
+
 proc getPrestigeMultiplier*(): float =
   ## Get the current prestige multiplier
   ## Returns the base multiplier if not initialized

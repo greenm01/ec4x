@@ -22,6 +22,25 @@ proc resolveSpyDetection*(state: var GameState): seq[string] =
 
   var destroyedSpies: seq[string] = @[]
 
+  # First pass: Remove spy scouts whose owner house is eliminated
+  for spyId, spy in state.spyScouts:
+    if spy.owner in state.houses:
+      let ownerHouse = state.houses[spy.owner]
+      if ownerHouse.eliminated:
+        destroyedSpies.add(spyId)
+        result.add("Spy scout " & spyId & " recalled - owner house " & $spy.owner & " eliminated")
+        continue
+
+    # Check if target house is eliminated
+    if spy.location in state.colonies:
+      let colony = state.colonies[spy.location]
+      if colony.owner in state.houses:
+        let targetHouse = state.houses[colony.owner]
+        if targetHouse.eliminated:
+          destroyedSpies.add(spyId)
+          result.add("Spy scout " & spyId & " mission ended - target house " & $colony.owner & " eliminated")
+          continue
+
   for spyId, spy in state.spyScouts:
     if spy.detected:
       continue  # Already detected, will be removed
