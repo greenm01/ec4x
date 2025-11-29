@@ -58,9 +58,10 @@ proc resolveSpyDetection*(state: var GameState): seq[string] =
           # Get highest ELI level from all starbases
           var starbaseELI = 0
           for starbase in colony.starbases:
-            # TODO: Get actual starbase ELI level
-            # For now, assume starbases have ELI capability
-            starbaseELI = max(starbaseELI, 2)  # Placeholder
+            # NOTE: Starbases currently don't track ELI level
+            # Per assets.md, starbases provide detection capability
+            # Using ELI 2 as baseline starbase detection capability
+            starbaseELI = max(starbaseELI, 2)
 
           if starbaseELI > 0:
             let sbUnit = ELIUnit(
@@ -89,8 +90,9 @@ proc gatherIntelligence*(state: GameState, spy: SpyScout): Option[string] =
   ## Gather intelligence based on spy mission type
   ## Returns intelligence report if successful
   ##
-  ## TODO: Implement actual intelligence gathering mechanics
-  ## For now, returns basic information
+  ## NOTE: This is a legacy text-based intel system
+  ## Full intel system uses generator.nim (generateSystemIntelReport, etc.)
+  ## and intelligence/types.nim (IntelligenceData, ScoutEncounterReport)
 
   if spy.detected:
     return none(string)
@@ -117,7 +119,7 @@ proc gatherIntelligence*(state: GameState, spy: SpyScout): Option[string] =
         var report = "Starbase Intelligence (" & $spy.location & "):\n"
         report &= "  Owner: " & $colony.owner & "\n"
         report &= "  Starbases: " & $colony.starbases.len & "\n"
-        # TODO: Add economic/R&D intelligence
+        # Economic/R&D intel available via generator.generateStarbaseIntelReport()
         return some(report)
       else:
         return some("No starbase found at " & $spy.location)
@@ -137,7 +139,7 @@ proc gatherIntelligence*(state: GameState, spy: SpyScout): Option[string] =
     var report = "System Intelligence (" & $spy.location & "):\n"
     report &= "  Fleets present: " & $fleetCount & "\n"
     report &= "  Total squadrons: " & $totalShips & "\n"
-    # TODO: Add detailed fleet composition
+    # Fleet composition available via generator.generateSystemIntelReport()
     return some(report)
 
 proc resolveIntelligenceGathering*(state: GameState): Table[HouseId, seq[string]] =

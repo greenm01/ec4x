@@ -31,7 +31,7 @@ proc generateBlockadeEstablishedIntel*(
     systemId: systemId,
     encounterType: intel_types.ScoutEncounterType.Blockade,
     observedHouses: blockadingHouses,
-    fleetDetails: @[],  # TODO: Could add fleet composition details
+    fleetDetails: @[],  # Future enhancement: Could add fleet composition if scouted
     colonyDetails: none(intel_types.ColonyIntelReport),
     fleetMovements: @[],
     description: &"BLOCKADE ESTABLISHED: System {systemId} is under blockade by {blockadersList}. GCO reduced by 60%.",

@@ -108,7 +108,7 @@ proc generateEspionageIntelligence*(
       turn: turn,
       perpetrator: result.attacker,
       action: actionName,
-      targetSystem: none(SystemId),  # TODO: Add system for sabotage/cyber attacks
+      targetSystem: none(SystemId),  # Future: Track system for sabotage/cyber attacks when implemented
       detected: true,
       description: if result.success:
         &"{result.attacker} successfully conducted {actionName} (detected)"
