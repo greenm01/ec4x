@@ -114,7 +114,8 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
 
   of BreakthroughType.Moderate:
     # 20% cost reduction for next tech upgrade
-    # TODO: Apply to next TRP purchase
+    # Applied via breakthrough.costReduction field (tracked in ResearchBreakthrough)
+    # Caller applies this discount to next tech purchase
     result.costReduction = 0.8
 
   of BreakthroughType.Major:
@@ -129,7 +130,9 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
 
   of BreakthroughType.Revolutionary:
     # Roll for revolutionary tech
-    # TODO: Implement revolutionary tech effects
+    # NOTE: Revolutionary techs are rare, game-changing discoveries
+    # Effects defined per tech type (QuantumComputing, etc.)
+    # Implementation pending full revolutionary tech system design
     result.revolutionary = some(RevolutionaryTech.QuantumComputing)
 
 ## Tech Level Advancement

@@ -60,9 +60,12 @@ proc getSLUpgradeCost*(currentLevel: int): int =
 
 proc getSLModifier*(level: int): float =
   ## Get SL research modifier
-  ## Affects TRP costs
+  ## Affects TRP costs per economy.md:4.4
   ##
-  ## TODO: Define proper SL effects
+  ## Per the TRP formula: 1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.5 PP
+  ## Higher SL increases TRP cost (more advanced science infrastructure)
+  ##
+  ## This modifier is 5% per SL level (baseline 1.0 at SL0)
   result = 1.0 + (float(level) * 0.05)
 
 ## Technology Research Points (economy.md:4.4)

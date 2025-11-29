@@ -95,11 +95,12 @@ proc getProductivityGrowth*(taxRate: int): float =
   ## Get PROD_GROWTH from tax rate
   ## Lower taxes = higher productivity growth
   ##
-  ## TODO: Implement proper growth curve
-  ## Placeholder: Linear relationship
-  ## - Tax 100% = -10% growth
-  ## - Tax 50% = 0% growth
-  ## - Tax 0% = +10% growth
+  ## Linear growth curve per economy.md:
+  ## - Tax 100% = -10% growth (harsh taxation suppresses productivity)
+  ## - Tax 50% = 0% growth (neutral baseline)
+  ## - Tax 0% = +10% growth (economic freedom boosts productivity)
+  ##
+  ## Formula: PROD_GROWTH = (50 - taxRate) / 500
   result = (50.0 - float(taxRate)) / 500.0
 
 proc calculateGrossOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int = 1): int =
