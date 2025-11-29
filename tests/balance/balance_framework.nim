@@ -331,21 +331,21 @@ proc toJson*(metadata: TestMetadata): JsonNode =
     "execution_time_ms": metadata.executionTimeMs
   }
 
-proc toJson*(result: BalanceTestResult): JsonNode =
+proc toJson*(testResult: BalanceTestResult): JsonNode =
   var snapshotsJson = newJArray()
-  for snapshot in result.turnSnapshots:
+  for snapshot in testResult.turnSnapshots:
     snapshotsJson.add(snapshot.toJson())
 
   var recsJson = newJArray()
-  for rec in result.recommendations:
+  for rec in testResult.recommendations:
     recsJson.add(%rec)
 
   %* {
-    "metadata": result.metadata.toJson(),
-    "config": result.config.toJson(),
+    "metadata": testResult.metadata.toJson(),
+    "config": testResult.config.toJson(),
     "turn_snapshots": snapshotsJson,
-    "outcome": result.outcome.toJson(),
-    "metrics": result.metrics.toJson(),
+    "outcome": testResult.outcome.toJson(),
+    "metrics": testResult.metrics.toJson(),
     "recommendations": recsJson
   }
 
@@ -386,8 +386,8 @@ proc captureHouseSnapshot*(state: GameState, houseId: HouseId,
   var techLevels = initTable[string, int]()
   techLevels["EL"] = house.techTree.levels.economicLevel
   techLevels["SL"] = house.techTree.levels.scienceLevel
-  techLevels["CST"] = house.techTree.levels.constructionLevel
-  techLevels["WEP"] = house.techTree.levels.weaponsLevel
+  techLevels["CST"] = house.techTree.levels.constructionTech
+  techLevels["WEP"] = house.techTree.levels.weaponsTech
   # TODO: Add other tech levels
 
   result = HouseSnapshot(
@@ -427,10 +427,14 @@ proc captureTurnSnapshot*(state: GameState, turnResult: TurnResult,
   var diplomaticEvents: seq[DiplomaticEventSnapshot] = @[]
   var espionageEvents: seq[EspionageEventSnapshot] = @[]
 
+  # Calculate year and month from turn (13 turns per year in EC4X)
+  let year = ((state.turn - 1) div 13) + 1
+  let month = ((state.turn - 1) mod 13) + 1
+
   result = TurnSnapshot(
     turn: state.turn,
-    year: state.year,
-    month: state.month,
+    year: year,
+    month: month,
     houses: houses,
     combatEvents: combatEvents,
     economicEvents: economicEvents,
@@ -447,7 +451,7 @@ proc runBalanceTest*(config: BalanceTestConfig, initialState: GameState): Balanc
   let startTime = cpuTime()
 
   result.metadata = TestMetadata(
-    testId: &"{config.testName}_{now().format(\"yyyyMMdd_HHmmss\")}",
+    testId: &"{config.testName}_{now().format(\"yyyyMMddHHmmss\")}",
     timestamp: $now(),
     engineVersion: "0.1.0",  # TODO: Get from build system
     configVersion: "1.0",

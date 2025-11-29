@@ -8,6 +8,9 @@ import ../../src/engine/prestige
 import ../../src/engine/config/prestige_config
 import ../../src/common/types/[core, planets]
 
+# Export initNewColony from colonization/engine module
+export initNewColony
+
 suite "Colonization System":
 
   test "Can colonize empty system":
@@ -19,7 +22,7 @@ suite "Colonization System":
   test "Cannot colonize occupied system":
     let systemId = 42.SystemId
     let existingColonies = @[
-      econ_types.initColony(systemId, "house1".HouseId, PlanetClass.Benign, ResourceRating.Abundant, 10)
+      initNewColony(systemId, "house1".HouseId, PlanetClass.Benign, ResourceRating.Abundant, 10)
     ]
 
     check canColonize(systemId, existingColonies) == false
@@ -74,7 +77,7 @@ suite "Colonization System":
   test "Colonization attempt fails on occupied system":
     let systemId = 300.SystemId
     let existingColonies = @[
-      econ_types.initColony(systemId, "house2".HouseId, PlanetClass.Benign, ResourceRating.Abundant, 10)
+      initNewColony(systemId, "house2".HouseId, PlanetClass.Benign, ResourceRating.Abundant, 10)
     ]
 
     let attempt = ColonizationAttempt(

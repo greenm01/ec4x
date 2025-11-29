@@ -15,7 +15,8 @@
 import std/[times, strformat, random, tables, options, sequtils]
 import unittest
 import stress_framework
-import ../../src/engine/[gamestate, resolve, orders, fleet, starmap]
+import ../../src/engine/[gamestate, resolve, orders, fleet, starmap, squadron]
+import ../../src/engine/colonization/engine as colonization
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/[core, planets]
@@ -27,22 +28,9 @@ proc createTestGame(): GameState =
   result.turn = 1
   result.phase = GamePhase.Active
 
-  # Create minimal starmap
-  result.starMap = StarMap()
-  result.starMap.systems[SystemId(1)] = System(
-    id: SystemId(1),
-    name: "Home",
-    position: (0, 0),
-    planetClass: PlanetClass.Terran,
-    resources: ResourceRating.Average
-  )
-  result.starMap.systems[SystemId(2)] = System(
-    id: SystemId(2),
-    name: "Target",
-    position: (1, 0),
-    planetClass: PlanetClass.Terran,
-    resources: ResourceRating.Average
-  )
+  # Create minimal starmap using newStarMap
+  result.starMap = newStarMap(2, seed = 42)
+  result.starMap.populate()
 
   # Create test houses
   result.houses["house1"] = House(
@@ -51,11 +39,6 @@ proc createTestGame(): GameState =
     treasury: 10000,
     eliminated: false,
     techTree: res_types.initTechTree(),
-    diplomaticRelations: dip_types.initDiplomaticRelations(),
-    violationHistory: dip_types.initViolationHistory(),
-    espionageBudget: esp_types.initEspionageBudget(),
-    dishonoredStatus: dip_types.initDishonoredStatus(),
-    diplomaticIsolation: dip_types.initDiplomaticIsolation(),
   )
 
   result.houses["house2"] = House(
@@ -64,25 +47,16 @@ proc createTestGame(): GameState =
     treasury: 10000,
     eliminated: false,
     techTree: res_types.initTechTree(),
-    diplomaticRelations: dip_types.initDiplomaticRelations(),
-    violationHistory: dip_types.initViolationHistory(),
-    espionageBudget: esp_types.initEspionageBudget(),
-    dishonoredStatus: dip_types.initDishonoredStatus(),
-    diplomaticIsolation: dip_types.initDiplomaticIsolation(),
   )
 
-  # Create test colony
-  result.colonies[SystemId(1)] = Colony(
-    systemId: SystemId(1),
-    owner: "house1",
-    population: 100,
-    souls: 100_000_000,
-    populationUnits: 100,
-    populationTransferUnits: 2000,
-    industrial: 50,
-    infrastructure: 5,
-    planetClass: PlanetClass.Terran,
-    resources: ResourceRating.Average,
+  # Create test colony at first player system
+  let homeSystemId = result.starMap.playerSystemIds[0]
+  result.colonies[homeSystemId] = colonization.initNewColony(
+    homeSystemId,
+    "house1",
+    PlanetClass.Benign,
+    ResourceRating.Abundant,
+    2000  # startingPTU
   )
 
   # Create test fleet
@@ -92,14 +66,14 @@ proc createTestGame(): GameState =
     flagship: flagship,
     ships: @[],
     owner: "house1",
-    location: SystemId(1),
+    location: homeSystemId,
     embarkedFighters: @[]
   )
 
   result.fleets["fleet1"] = Fleet(
     id: "fleet1",
     owner: "house1",
-    location: SystemId(1),
+    location: homeSystemId,
     squadrons: @[squadron],
     spaceLiftShips: @[],
     status: FleetStatus.Active,
@@ -124,66 +98,65 @@ suite "Pathological Inputs: Invalid Orders":
       fleetId
 
     if firstFleet == "":
-      skip("No fleet available for testing")
-      return
+      skip()
+    else:
+      echo &"  Testing fleet: {firstFleet}"
 
-    echo &"  Testing fleet: {firstFleet}"
+      # Try various invalid system IDs
+      let invalidSystemIds = [
+        SystemId(-1),           # Negative
+        SystemId(0),            # Zero (maybe valid as Imperial Hub?)
+        SystemId(999_999),      # Extremely large
+        SystemId(high(int32)),  # Maximum int
+      ]
 
-    # Try various invalid system IDs
-    let invalidSystemIds = [
-      SystemId(-1),           # Negative
-      SystemId(0),            # Zero (maybe valid as Imperial Hub?)
-      SystemId(999_999),      # Extremely large
-      SystemId(high(int32)),  # Maximum int
-    ]
+      for invalidSys in invalidSystemIds:
+        echo &"  Trying system ID: {invalidSys}"
 
-    for invalidSys in invalidSystemIds:
-      echo &"  Trying system ID: {invalidSys}"
+        var ordersTable = initTable[HouseId, OrderPacket]()
+        ordersTable[firstHouse] = OrderPacket(
+          houseId: firstHouse,
+          turn: 1,
+          buildOrders: @[],
+          fleetOrders: @[
+            FleetOrder(
+              fleetId: firstFleet,
+              orderType: FleetOrderType.Move,
+              targetSystem: some(invalidSys),
+              targetFleet: none(FleetId),
+              priority: 0
+            )
+          ],
+          researchAllocation: initResearchAllocation(),
+          diplomaticActions: @[],
+          populationTransfers: @[],
+          squadronManagement: @[],
+          cargoManagement: @[],
+          terraformOrders: @[],
+          espionageAction: none(esp_types.EspionageAttempt),
+          ebpInvestment: 0,
+          cipInvestment: 0
+        )
 
-      var ordersTable = initTable[HouseId, OrderPacket]()
-      ordersTable[firstHouse] = OrderPacket(
-        houseId: firstHouse,
-        turn: 1,
-        buildOrders: @[],
-        fleetOrders: @[
-          FleetOrder(
-            fleetId: firstFleet,
-            orderType: FleetOrderType.Move,
-            targetSystem: some(invalidSys),
-            targetFleet: none(FleetId),
-            priority: 0
-          )
-        ],
-        researchAllocation: initResearchAllocation(),
-        diplomaticActions: @[],
-        populationTransfers: @[],
-        squadronManagement: @[],
-        cargoManagement: @[],
-        terraformOrders: @[],
-        espionageAction: none(esp_types.EspionageAttempt),
-        ebpInvestment: 0,
-        cipInvestment: 0
-      )
+        # Engine should handle gracefully - either reject order or ignore
+        try:
+          let result = resolveTurn(game, ordersTable)
+          game = result.newState
 
-      # Engine should handle gracefully - either reject order or ignore
-      try:
-        let result = resolveTurn(game, ordersTable)
-        game = result.newState
+          # Check that state is still valid
+          let violations = checkStateInvariants(game, 1)
+          if violations.len > 0:
+            echo &"    ⚠️  State corrupted after invalid system ID {invalidSys}"
+            reportViolations(violations)
+            fail()
+          else:
+            echo &"    ✅ Handled system ID {invalidSys} safely"
 
-        # Check that state is still valid
-        let violations = checkStateInvariants(game, 1)
-        if violations.len > 0:
-          echo &"    ⚠️  State corrupted after invalid system ID {invalidSys}"
-          reportViolations(violations)
-          fail("State corruption from invalid system ID")
-        else:
-          echo &"    ✅ Handled system ID {invalidSys} safely"
-
-      except CatchableError as e:
-        # Crash is acceptable IF it's a clean assertion/error
-        # NOT acceptable if it's a segfault or corruption
-        echo &"    ⚠️  Crashed on system ID {invalidSys}: {e.msg}"
-        # Don't fail - crash may be intentional validation
+        except CatchableError as e:
+          # Crash is acceptable IF it's a clean assertion/error
+          # NOT acceptable if it's a segfault or corruption
+          echo &"    ⚠️  Crashed on system ID {invalidSys}: {e.msg}"
+          # Don't fail - crash may be intentional validation
 
   test "Fuzz: orders for non-existent fleets":
     ## Try to give orders to fleets that don't exist
@@ -195,13 +168,13 @@ suite "Pathological Inputs: Invalid Orders":
     let validSystem = toSeq(game.starMap.systems.keys)[0]
 
     # Try various non-existent fleet IDs
-    let fakeFleetIds = [
+    var fakeFleetIds: seq[string] = @[
       "nonexistent_fleet",
       "fleet_999999",
       "",  # Empty string
       "fleet-with-special-chars!@#$",
-      "x" .repeat(1000),  # Very long ID
     ]
+    fakeFleetIds.add("x".repeat(1000))  # Very long ID
 
     for fakeFleet in fakeFleetIds:
       echo &"  Trying fleet ID: '{fakeFleet[0..min(50, fakeFleet.len-1)]}'..."
@@ -240,7 +213,7 @@ suite "Pathological Inputs: Invalid Orders":
         if violations.len > 0:
           echo &"    ⚠️  State corrupted"
           reportViolations(violations)
-          fail("State corruption from fake fleet ID")
+          fail()
         else:
           echo &"    ✅ Handled gracefully"
 
@@ -269,12 +242,12 @@ suite "Pathological Inputs: Invalid Orders":
       turn: 1,
       buildOrders: @[
         BuildOrder(
-          systemId: SystemId(999_999),  # Doesn't exist
-          assetType: AssetType.Ship,
+          colonySystem: SystemId(999_999),  # Doesn't exist
+          buildType: BuildType.Ship,
+          quantity: 1,
           shipClass: some(ShipClass.Destroyer),
-          groundUnitType: none(GroundUnitType),
-          facilityType: none(FacilityType),
-          quantity: 1
+          buildingType: none(string),
+          industrialUnits: 0
         )
       ],
       fleetOrders: @[],
@@ -296,7 +269,7 @@ suite "Pathological Inputs: Invalid Orders":
       let violations = checkStateInvariants(game, 1)
       if violations.len > 0:
         reportViolations(violations)
-        fail("State corruption from invalid build location")
+        fail()
       else:
         echo "    ✅ Invalid build location handled safely"
 
@@ -320,12 +293,12 @@ suite "Pathological Inputs: Invalid Orders":
     ]
 
     for (econ, sci, tech) in testCases:
-      echo &"  Trying allocation: E={econ}%, S={sci}%, T={tech}%"
+      echo &"  Trying allocation: E={econ}, S={sci}, T={tech}"
 
       var research = initResearchAllocation()
-      research.economicPercent = econ
-      research.sciencePercent = sci
-      research.techPercent = tech
+      research.economic = econ
+      research.science = sci
+      # Technology allocation is now a Table, skip for this test
 
       var ordersTable = initTable[HouseId, OrderPacket]()
       ordersTable[firstHouse] = OrderPacket(
@@ -351,7 +324,7 @@ suite "Pathological Inputs: Invalid Orders":
         let violations = checkStateInvariants(game, 1)
         if violations.len > 0:
           reportViolations(violations)
-          fail("State corruption from invalid research allocation")
+          fail()
         else:
           echo "    ✅ Handled safely"
 
@@ -376,55 +349,54 @@ suite "Pathological Inputs: Extreme Values":
       fleetId
 
     if firstFleet == "":
-      skip("No fleet available")
-      return
+      skip()
+    else:
+      let validSystem = game.fleets[firstFleet].location
 
-    let validSystem = game.fleets[firstFleet].location
+      # Create 1000 Hold orders (should be harmless but test array handling)
+      var massiveOrders: seq[FleetOrder] = @[]
+      for i in 1..1000:
+        massiveOrders.add(FleetOrder(
+          fleetId: firstFleet,
+          orderType: FleetOrderType.Hold,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId),
+          priority: i
+        ))
 
-    # Create 1000 Hold orders (should be harmless but test array handling)
-    var massiveOrders: seq[FleetOrder] = @[]
-    for i in 1..1000:
-      massiveOrders.add(FleetOrder(
-        fleetId: firstFleet,
-        orderType: FleetOrderType.Hold,
-        targetSystem: none(SystemId),
-        targetFleet: none(FleetId),
-        priority: i
-      ))
+      var ordersTable = initTable[HouseId, OrderPacket]()
+      ordersTable[firstHouse] = OrderPacket(
+        houseId: firstHouse,
+        turn: 1,
+        buildOrders: @[],
+        fleetOrders: massiveOrders,
+        researchAllocation: initResearchAllocation(),
+        diplomaticActions: @[],
+        populationTransfers: @[],
+        squadronManagement: @[],
+        cargoManagement: @[],
+        terraformOrders: @[],
+        espionageAction: none(esp_types.EspionageAttempt),
+        ebpInvestment: 0,
+        cipInvestment: 0
+      )
 
-    var ordersTable = initTable[HouseId, OrderPacket]()
-    ordersTable[firstHouse] = OrderPacket(
-      houseId: firstHouse,
-      turn: 1,
-      buildOrders: @[],
-      fleetOrders: massiveOrders,
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      squadronManagement: @[],
-      cargoManagement: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
+      let startTime = cpuTime()
+      try:
+        let result = resolveTurn(game, ordersTable)
+        game = result.newState
+        let elapsed = cpuTime() - startTime
 
-    let startTime = cpuTime()
-    try:
-      let result = resolveTurn(game, ordersTable)
-      game = result.newState
-      let elapsed = cpuTime() - startTime
+        echo &"  ✅ Processed 1000 orders in {elapsed*1000:.1f}ms"
 
-      echo &"  ✅ Processed 1000 orders in {elapsed*1000:.1f}ms"
+        let violations = checkStateInvariants(game, 1)
+        if violations.len > 0:
+          reportViolations(violations)
+          fail()
 
-      let violations = checkStateInvariants(game, 1)
-      if violations.len > 0:
-        reportViolations(violations)
-        fail("State corruption from massive order list")
-
-    except CatchableError as e:
-      echo &"  ❌ Crashed with 1000 orders: {e.msg}"
-      fail("Engine crashed on large order list")
+      except CatchableError as e:
+        echo &"  ❌ Crashed with 1000 orders: {e.msg}"
+        fail()
 
   test "Extreme: maximum build queue":
     ## Try to queue 100+ construction projects
@@ -439,12 +411,12 @@ suite "Pathological Inputs: Extreme Values":
     var massiveQueue: seq[BuildOrder] = @[]
     for i in 1..100:
       massiveQueue.add(BuildOrder(
-        systemId: firstColony,
-        assetType: AssetType.Ship,
+        colonySystem: firstColony,
+        buildType: BuildType.Ship,
+        quantity: 1,
         shipClass: some(ShipClass.Scout),
-        groundUnitType: none(GroundUnitType),
-        facilityType: none(FacilityType),
-        quantity: 1
+        buildingType: none(string),
+        industrialUnits: 0
       ))
 
     var ordersTable = initTable[HouseId, OrderPacket]()
@@ -473,11 +445,11 @@ suite "Pathological Inputs: Extreme Values":
       let violations = checkStateInvariants(game, 1)
       if violations.len > 0:
         reportViolations(violations)
-        fail("State corruption from massive build queue")
+        fail()
 
     except CatchableError as e:
       echo &"  ❌ Crashed: {e.msg}"
-      fail("Engine crashed on large build queue")
+      fail()
 
 when isMainModule:
   echo "╔════════════════════════════════════════════════╗"

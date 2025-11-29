@@ -8,10 +8,10 @@
 ##
 ## This test runs many simulations and looks for anomalies
 
-import std/[times, strformat, random, tables, options, sequtils, stats, algorithm]
+import std/[times, strformat, random, tables, options, sequtils, stats, algorithm, math, strutils]
 import unittest
 import stress_framework
-import ../../src/engine/[gamestate, resolve, orders, setup]
+import ../../src/engine/[gamestate, resolve, orders]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/core
@@ -126,7 +126,7 @@ suite "Unknown-Unknowns: Statistical Anomaly Detection":
         echo &"  Game {gameId}/100..."
 
       # Create game with random seed
-      var game = setupNewGame(numHouses = 3, seed = int64(gameId * 42))
+      var game = newGame(&"unknowns-{gameId}", 3, int64(gameId * 42))
       var gameViolations: seq[InvariantViolation] = @[]
 
       # Run 50 turns
@@ -178,7 +178,7 @@ suite "Unknown-Unknowns: Statistical Anomaly Detection":
 
     if crashCount > 0:
       echo "\n  🔴 CRITICAL: Crashes detected in {crashCount} games!"
-      fail("Engine crashes detected")
+      fail()
 
     # Prestige analysis
     let prestiges = allMetrics.mapIt(it.avgFinalPrestige)
@@ -250,11 +250,11 @@ suite "Unknown-Unknowns: Statistical Anomaly Detection":
         echo "  🔴 High anomaly rate (>{anomalyCount}%) - investigate!"
 
     # Report all violations if any critical ones found
-    let allCritical = allViolations.flatten().filterIt(it.severity == ViolationSeverity.Critical)
+    let allCritical = allViolations.filterIt(it.severity == ViolationSeverity.Critical)
     if allCritical.len > 0:
       echo &"\n🔴 Found {allCritical.len} CRITICAL violations:"
       reportViolations(allCritical)
-      fail("Critical violations detected")
+      fail()
 
   test "Anomaly detection: rare events":
     ## Look for events that should be very rare but might occur
@@ -273,7 +273,7 @@ suite "Unknown-Unknowns: Statistical Anomaly Detection":
       if gameId mod 100 == 0:
         echo &"  Game {gameId}/1000..."
 
-      var game = setupNewGame(numHouses = 2, seed = int64(gameId))
+      var game = newGame(&"rare-{gameId}", 2, int64(gameId))
 
       # Run 10 turns quickly
       for turn in 1..10:
@@ -323,7 +323,7 @@ suite "Unknown-Unknowns: Statistical Anomaly Detection":
 
     # Fail if any critical rare events detected
     if rareEvents["crash"] > 0 or rareEvents["duplicate_ids"] > 0 or rareEvents["invalid_location"] > 0:
-      fail("Critical rare events detected")
+      fail()
 
 when isMainModule:
   echo "╔════════════════════════════════════════════════╗"

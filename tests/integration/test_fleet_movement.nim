@@ -5,6 +5,7 @@
 
 import std/[unittest, tables, options, strformat]
 import ../../src/engine/[gamestate, starmap, fleet, ship, squadron, orders, resolve]
+import ../../src/engine/resolution/fleet_orders
 import ../../src/common/types/[core, units, combat]
 import ../../src/common/[hex, system]
 
@@ -15,7 +16,6 @@ suite "Fleet Movement Integration":
     ## Systems: 1 -- 2 -- 3 -- 4 -- 5 (all major lanes)
     result = GameState()
     result.turn = 1
-    result.month = 1
     result.phase = GamePhase.Active
 
     # Create a simple linear starmap
@@ -111,7 +111,7 @@ suite "Fleet Movement Integration":
     )
 
     var events: seq[GameEvent] = @[]
-    resolveMovementOrder(state, "house-alpha", order, events)
+    fleet_orders.resolveMovementOrder(state, "house-alpha", order, events)
 
     # Fleet should have moved to system 2
     check state.fleets["fleet-1"].location == 2u
@@ -140,7 +140,7 @@ suite "Fleet Movement Integration":
     )
 
     var events: seq[GameEvent] = @[]
-    resolveMovementOrder(state, "house-alpha", order, events)
+    fleet_orders.resolveMovementOrder(state, "house-alpha", order, events)
 
     # Fleet should have moved 2 jumps to system 3 (all friendly major lanes)
     check state.fleets["fleet-1"].location == 3u
@@ -169,7 +169,7 @@ suite "Fleet Movement Integration":
     )
 
     var events: seq[GameEvent] = @[]
-    resolveMovementOrder(state, "house-alpha", order, events)
+    fleet_orders.resolveMovementOrder(state, "house-alpha", order, events)
 
     # Fleet should only move 1 jump (system 4) due to enemy territory
     check state.fleets["fleet-1"].location == 4u
@@ -197,7 +197,7 @@ suite "Fleet Movement Integration":
     )
 
     var events: seq[GameEvent] = @[]
-    resolveMovementOrder(state, "house-alpha", order, events)
+    fleet_orders.resolveMovementOrder(state, "house-alpha", order, events)
 
     # Fleet should remain at system 2
     check state.fleets["fleet-1"].location == 2u
@@ -245,7 +245,7 @@ suite "Fleet Movement Integration":
     )
 
     var events: seq[GameEvent] = @[]
-    resolveMovementOrder(state, "house-alpha", order, events)
+    fleet_orders.resolveMovementOrder(state, "house-alpha", order, events)
 
     # Fleet should NOT move (blocked by restricted lane)
     check state.fleets["fleet-1"].location == 2u
@@ -285,7 +285,7 @@ suite "Fleet Movement Integration":
     )
 
     var events: seq[GameEvent] = @[]
-    resolveMovementOrder(state, "house-alpha", order, events)
+    fleet_orders.resolveMovementOrder(state, "house-alpha", order, events)
 
     # Both fleets should now be at system 2
     check state.fleets["fleet-alpha"].location == 2u

@@ -16,6 +16,7 @@ import ../../src/engine/[gamestate, orders, resolve, fleet, spacelift, squadron]
 import ../../src/engine/combat/ground
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
+import ../../src/engine/economy/types as econ_types
 import ../../src/common/types/[core, units, planets]
 
 suite "Last-Stand Invasions":
@@ -24,7 +25,6 @@ suite "Last-Stand Invasions":
     ## Create game state with two houses - one defeated, one with colony
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     # House 1 - Lost all colonies but has fleet with marines
@@ -56,7 +56,7 @@ suite "Last-Stand Invasions":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 50,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],
@@ -261,7 +261,6 @@ suite "Last-Stand Blitz Operations":
     ## Create state for blitz testing
     var state = GameState()
     state.turn = 1
-    state.month = 1
     state.phase = GamePhase.Active
 
     state.houses["house1"] = House(
@@ -291,7 +290,7 @@ suite "Last-Stand Blitz Operations":
       resources: ResourceRating.Poor,
       buildings: @[],
       production: 30,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],

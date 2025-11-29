@@ -10,7 +10,8 @@ import ../../src/common/types/[core, planets, units, tech]
 suite "M5 Economy Integration with resolve.nim":
   test "Income phase runs with M5 economy":
     # Create minimal game state
-    let testMap = newStarMap(10)  # 10 systems
+    var testMap = newStarMap(10)  # 10 systems
+    testMap.populate()
     var state = newGameState("test-game", 2, testMap)
 
     # Add two houses

@@ -9,6 +9,8 @@
 import std/[unittest, tables, strformat, math, strutils, options]
 import ../../src/engine/economy/[types, production, income, construction]
 import ../../src/engine/research/[costs, advancement]
+import ../../src/engine/gamestate  # For Colony type
+import ../../src/engine/config/economy_config  # For growth rate config
 import ../../src/common/types/[core, planets, units]
 
 type
@@ -52,7 +54,7 @@ proc simulateColonyGrowth(startColony: Colony, turns: int, taxRate: int, elLevel
     ))
 
     # Apply growth
-    discard applyPopulationGrowth(colony, taxRate)
+    discard applyPopulationGrowth(colony, taxRate, globalEconomyConfig.population.natural_growth_rate)
 
 proc compareScenarios(results: seq[SimulationResult]) =
   ## Print comparison table of scenarios

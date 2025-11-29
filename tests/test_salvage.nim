@@ -1,32 +1,36 @@
 ## Tests for Salvage and Repair System
 
 import std/[unittest, options, tables, strutils]
-import ../src/engine/[salvage, gamestate, fleet, squadron, starmap]
 import ../src/common/types/[core, units]
+import ../src/engine/[gamestate, fleet, squadron, starmap]
 import ../src/engine/economy/maintenance
+import ../src/engine/economy/types as econ_types
+
+# Import salvage module with alias to avoid conflicts
+import ../src/engine/salvage as salvage_module
 
 suite "Salvage Operations":
   test "salvage value calculation":
     # Test normal salvage (50% value)
-    let destroyerValue = getSalvageValue(ShipClass.Destroyer, SalvageType.Normal)
+    let destroyerValue = salvage_module.getSalvageValue(ShipClass.Destroyer, salvage_module.SalvageType.Normal)
     let destroyerCost = getShipStats(ShipClass.Destroyer).buildCost
     check destroyerValue == int(float(destroyerCost) * 0.5)
 
     # Test emergency salvage (25% value)
-    let emergencyValue = getSalvageValue(ShipClass.Destroyer, SalvageType.Emergency)
+    let emergencyValue = salvage_module.getSalvageValue(ShipClass.Destroyer, salvage_module.SalvageType.Emergency)
     check emergencyValue == int(float(destroyerCost) * 0.25)
 
   test "salvage destroyed ship":
-    let result = salvageShip(ShipClass.Cruiser, SalvageType.Normal)
+    let result = salvage_module.salvageShip(ShipClass.Cruiser, salvage_module.SalvageType.Normal)
     check result.success
     check result.shipClass == ShipClass.Cruiser
-    check result.salvageType == SalvageType.Normal
+    check result.salvageType == salvage_module.SalvageType.Normal
     check result.resourcesRecovered > 0
-    check result.resourcesRecovered == getSalvageValue(ShipClass.Cruiser, SalvageType.Normal)
+    check result.resourcesRecovered == salvage_module.getSalvageValue(ShipClass.Cruiser, salvage_module.SalvageType.Normal)
 
   test "salvage multiple ships":
     let destroyed = @[ShipClass.Fighter, ShipClass.Scout, ShipClass.Destroyer]
-    let results = salvageDestroyedShips(destroyed, SalvageType.Emergency)
+    let results = salvage_module.salvageDestroyedShips(destroyed, salvage_module.SalvageType.Emergency)
 
     check results.len == 3
     check results[0].shipClass == ShipClass.Fighter
@@ -35,7 +39,7 @@ suite "Salvage Operations":
 
     # All should be emergency salvage
     for result in results:
-      check result.salvageType == SalvageType.Emergency
+      check result.salvageType == salvage_module.SalvageType.Emergency
       check result.success
 
   test "fleet salvage value":
@@ -51,31 +55,31 @@ suite "Salvage Operations":
       squadrons: @[squadron1, squadron2, squadron3]
     )
 
-    let totalValue = getFleetSalvageValue(fleet, SalvageType.Normal)
+    let totalValue = salvage_module.getFleetSalvageValue(fleet, salvage_module.SalvageType.Normal)
     let expectedValue =
-      getSalvageValue(ShipClass.Cruiser, SalvageType.Normal) +
-      getSalvageValue(ShipClass.Destroyer, SalvageType.Normal) +
-      getSalvageValue(ShipClass.Scout, SalvageType.Normal)
+      salvage_module.getSalvageValue(ShipClass.Cruiser, salvage_module.SalvageType.Normal) +
+      salvage_module.getSalvageValue(ShipClass.Destroyer, salvage_module.SalvageType.Normal) +
+      salvage_module.getSalvageValue(ShipClass.Scout, salvage_module.SalvageType.Normal)
 
     check totalValue == expectedValue
 
 suite "Repair Operations":
   test "ship repair cost calculation":
-    let destroyerCost = getShipRepairCost(ShipClass.Destroyer)
+    let destroyerCost = salvage_module.getShipRepairCost(ShipClass.Destroyer)
     let destroyerBuildCost = getShipStats(ShipClass.Destroyer).buildCost
     check destroyerCost == int(float(destroyerBuildCost) * 0.25)
 
-    let dreadnoughtCost = getShipRepairCost(ShipClass.Dreadnought)
+    let dreadnoughtCost = salvage_module.getShipRepairCost(ShipClass.Dreadnought)
     let dreadnoughtBuildCost = getShipStats(ShipClass.Dreadnought).buildCost
     check dreadnoughtCost == int(float(dreadnoughtBuildCost) * 0.25)
 
   test "starbase repair cost":
-    let cost = getStarbaseRepairCost()
+    let cost = salvage_module.getStarbaseRepairCost()
     check cost > 0
     # Should be 25% of starbase build cost
 
   test "repair turns":
-    let turns = getRepairTurns()
+    let turns = salvage_module.getRepairTurns()
     check turns == 1  # Per config: ship_repair_turns = 1
 
   test "get crippled ships from fleet":
@@ -95,14 +99,16 @@ suite "Repair Operations":
       squadrons: @[squadron1, squadron2, squadron3]
     )
 
-    let crippled = getCrippledShips(fleet)
+    let crippled = salvage_module.getCrippledShips(fleet)
     check crippled.len == 2
     check crippled[0] == (0, ShipClass.Cruiser)
     check crippled[1] == (2, ShipClass.Scout)
 
   test "repair ship validation - wrong owner":
     # Create game state with colony owned by different house
-    var state = newGameState("test", 2, newStarMap(2))
+    var starmap = newStarMap(2)
+    starmap.populate()
+    var state = newGameState("test", 2, starmap)
 
     var house1 = initializeHouse("House1", "blue")
     var house2 = initializeHouse("House2", "red")
@@ -118,7 +124,7 @@ suite "Repair Operations":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(active: false, turnsRemaining: 0, violationTurn: 0),
       starbases: @[],
@@ -132,20 +138,22 @@ suite "Repair Operations":
 
     state.colonies[100] = colony
 
-    let request = RepairRequest(
-      targetType: RepairTargetType.Ship,
+    let request = salvage_module.RepairRequest(
+      targetType: salvage_module.RepairTargetType.Ship,
       shipClass: some(ShipClass.Destroyer),
       systemId: 100,
       requestingHouse: "house1"  # house1 trying to repair at house2's colony
     )
 
-    let validation = validateRepairRequest(request, state)
+    let validation = salvage_module.validateRepairRequest(request, state)
     check not validation.valid
     check validation.message.contains("another house")
 
   test "repair ship validation - no shipyard":
     # Create game state with colony but no shipyard
-    var state = newGameState("test", 2, newStarMap(2))
+    var starmap = newStarMap(2)
+    starmap.populate()
+    var state = newGameState("test", 2, starmap)
 
     var house = initializeHouse("TestHouse", "blue")
     state.houses["house1"] = house
@@ -159,7 +167,7 @@ suite "Repair Operations":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(active: false, turnsRemaining: 0, violationTurn: 0),
       starbases: @[],
@@ -173,20 +181,22 @@ suite "Repair Operations":
 
     state.colonies[100] = colony
 
-    let request = RepairRequest(
-      targetType: RepairTargetType.Ship,
+    let request = salvage_module.RepairRequest(
+      targetType: salvage_module.RepairTargetType.Ship,
       shipClass: some(ShipClass.Destroyer),
       systemId: 100,
       requestingHouse: "house1"
     )
 
-    let validation = validateRepairRequest(request, state)
+    let validation = salvage_module.validateRepairRequest(request, state)
     check not validation.valid
     check validation.message.contains("no shipyard")
 
   test "repair ship validation - insufficient funds":
     # Create game state with shipyard but no money
-    var state = newGameState("test", 2, newStarMap(2))
+    var starmap = newStarMap(2)
+    starmap.populate()
+    var state = newGameState("test", 2, starmap)
 
     var house = initializeHouse("TestHouse", "blue")
     house.treasury = 5  # Very low funds (Cruiser repair costs 25% of 60 = 15 PP)
@@ -201,7 +211,7 @@ suite "Repair Operations":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(active: false, turnsRemaining: 0, violationTurn: 0),
       starbases: @[],
@@ -215,20 +225,22 @@ suite "Repair Operations":
 
     state.colonies[100] = colony
 
-    let request = RepairRequest(
-      targetType: RepairTargetType.Ship,
+    let request = salvage_module.RepairRequest(
+      targetType: salvage_module.RepairTargetType.Ship,
       shipClass: some(ShipClass.Cruiser),  # 60 PP build cost, 15 PP repair cost
       systemId: 100,
       requestingHouse: "house1"
     )
 
-    let validation = validateRepairRequest(request, state)
+    let validation = salvage_module.validateRepairRequest(request, state)
     check not validation.valid
     check validation.message.contains("Insufficient funds")
 
   test "repair ship validation - success":
     # Create game state with shipyard and sufficient funds
-    var state = newGameState("test", 2, newStarMap(2))
+    var starmap = newStarMap(2)
+    starmap.populate()
+    var state = newGameState("test", 2, starmap)
 
     var house = initializeHouse("TestHouse", "blue")
     house.treasury = 10000  # Plenty of funds
@@ -243,7 +255,7 @@ suite "Repair Operations":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(active: false, turnsRemaining: 0, violationTurn: 0),
       starbases: @[],
@@ -257,14 +269,14 @@ suite "Repair Operations":
 
     state.colonies[100] = colony
 
-    let request = RepairRequest(
-      targetType: RepairTargetType.Ship,
+    let request = salvage_module.RepairRequest(
+      targetType: salvage_module.RepairTargetType.Ship,
       shipClass: some(ShipClass.Destroyer),
       systemId: 100,
       requestingHouse: "house1"
     )
 
-    let validation = validateRepairRequest(request, state)
+    let validation = salvage_module.validateRepairRequest(request, state)
     check validation.valid
     check validation.cost > 0
     check validation.message == "Repair approved"
@@ -310,7 +322,7 @@ suite "Upkeep Calculations":
       resources: ResourceRating.Rich,
       buildings: @[],
       production: 100,
-      underConstruction: none(ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       fighterSquadrons: @[],
       capacityViolation: CapacityViolation(active: false, turnsRemaining: 0, violationTurn: 0),
       starbases: @[

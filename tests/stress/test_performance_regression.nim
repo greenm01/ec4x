@@ -9,7 +9,7 @@
 
 import std/[times, strformat, random, tables, options, sequtils, stats]
 import unittest
-import ../../src/engine/[gamestate, resolve, orders, setup]
+import ../../src/engine/[gamestate, resolve, orders]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/core
@@ -56,7 +56,7 @@ suite "Performance: Turn Resolution Timing":
 
     echo "\n📊 Measuring baseline performance (2 houses, 100 turns)..."
 
-    var game = setupNewGame(numHouses = 2, seed = 42)
+    var game = newGame("perf-test", 2, 42)
     var metrics: seq[PerformanceMetrics] = @[]
 
     for turn in 1..100:
@@ -94,7 +94,7 @@ suite "Performance: Turn Resolution Timing":
 
     echo "\n📊 Measuring performance at max scale (12 houses, 50 turns)..."
 
-    var game = setupNewGame(numHouses = 12, seed = 999)
+    var game = newGame("perf-test-12", 12, 999)
     var metrics: seq[PerformanceMetrics] = @[]
 
     for turn in 1..50:
@@ -141,7 +141,7 @@ suite "Performance: Turn Resolution Timing":
     for numTurns in turnCounts:
       echo &"  Testing {numTurns} turns..."
 
-      var game = setupNewGame(numHouses = 3, seed = 123)
+      var game = newGame("perf-test-degrad", 3, 123)
       var times: seq[float] = @[]
 
       for turn in 1..numTurns:
@@ -176,7 +176,7 @@ suite "Performance: Turn Resolution Timing":
 
     echo "\n📊 Checking for performance variance..."
 
-    var game = setupNewGame(numHouses = 4, seed = 456)
+    var game = newGame("perf-test-var", 4, 456)
     var times: seq[float] = @[]
 
     for turn in 1..100:
@@ -215,7 +215,7 @@ suite "Performance: Memory Pressure":
 
     echo "\n📊 Testing sustained operation (500 turns)..."
 
-    var game = setupNewGame(numHouses = 3, seed = 789)
+    var game = newGame("perf-test-mem", 3, 789)
 
     # Sample state size over time
     var stateSizes: seq[tuple[turn: int, size: int]] = @[]
