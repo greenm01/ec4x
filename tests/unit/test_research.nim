@@ -91,7 +91,8 @@ suite "Tech Advancement (economy.md:4.1)":
     tree.accumulated.economic = 50
     let advance = attemptELAdvancement(tree, 1)
     check advance.isSome
-    check advance.get().toLevel == 2
+    check advance.get().advancementType == AdvancementType.EconomicLevel
+    check advance.get().elToLevel == 2
 
   test "Tech advancement requires enough TRP":
     var tree = initTechTree(TechLevel(

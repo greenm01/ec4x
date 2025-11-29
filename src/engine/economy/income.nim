@@ -209,9 +209,10 @@ proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
   let currentPU = float(colony.populationUnits)
   let capacity = float(getPlanetCapacity(colony.planetClass))
 
-  # Calculate effective growth rate with tax modifier
+  # Calculate effective growth rate with tax modifier and starbase bonus
   let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
-  let effectiveGrowthRate = baseGrowthRate * taxMultiplier
+  let starbaseBonus = getStarbaseGrowthBonus(colony)  # 5% per operational starbase, max 15%
+  let effectiveGrowthRate = baseGrowthRate * taxMultiplier * (1.0 + starbaseBonus)
 
   # Apply logistic growth: dP = r × P × (1 - P/K)
   # Limiting factor prevents growth beyond capacity

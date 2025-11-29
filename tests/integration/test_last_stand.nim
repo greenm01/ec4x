@@ -33,7 +33,8 @@ suite "Last-Stand Invasions":
       id: "house1",
       name: "Desperate House",
       treasury: 1000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # House 2 - Has a colony
@@ -41,7 +42,8 @@ suite "Last-Stand Invasions":
       id: "house2",
       name: "Victorious House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Enemy colony (house2 controls system 1)
@@ -163,7 +165,8 @@ suite "Last-Stand Invasions":
       id: "house1",
       name: "Doomed House",
       treasury: 0,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # No colonies, no fleets
@@ -181,7 +184,8 @@ suite "Last-Stand Invasions":
       id: "house1",
       name: "Hopeless House",
       treasury: 100,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Empty transport - no invasion capability
@@ -220,7 +224,8 @@ suite "Last-Stand Invasions":
       id: "house1",
       name: "Fighting House",
       treasury: 100,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Transport with marines - has invasion capability
@@ -266,14 +271,16 @@ suite "Last-Stand Blitz Operations":
       id: "house1",
       name: "Aggressive House",
       treasury: 1000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     state.houses["house2"] = House(
       id: "house2",
       name: "Target House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Target colony

@@ -37,7 +37,8 @@ proc createTestState(cstLevel: int = 10): GameState =
     id: "house1",
     name: "Test House",
     treasury: 100000,  # Enough for any unit
-    eliminated: false
+    eliminated: false,
+    techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
   )
 
   # Set tech levels (all maxed for testing)

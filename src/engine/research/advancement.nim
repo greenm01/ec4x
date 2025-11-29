@@ -2,11 +2,17 @@
 ##
 ## Tech level progression and breakthroughs per economy.md:4.1
 ##
-## Advancement rules:
-## - Levels purchased on turns 1 and 7 (bi-annual)
+## Tech Upgrade Rules:
+## - Can be purchased EVERY TURN if player has enough RP
 ## - Sequential order only (must buy level N before N+1)
-## - One level per field per upgrade cycle
-## - Breakthroughs rolled bi-annually (10% base + investment bonus)
+## - No turn restrictions on purchases
+##
+## Research Breakthrough Rules:
+## - Breakthrough rolls occur every 5 turns (turns 5, 10, 15, 20, etc.)
+## - Base 5% chance (1 on d20) + 1% per 100 RP invested (last 5 turns)
+## - Maximum 15% breakthrough chance (capped)
+## - If successful, second d20 roll determines breakthrough type
+## - Provides bonus RP, cost reductions, or free level advancements
 
 import std/[random, tables, options]
 import types, costs
@@ -14,7 +20,7 @@ import ../../common/types/tech
 import ../prestige
 import ../config/prestige_config
 
-export types.TechAdvancement, types.BreakthroughEvent, types.TechTree
+export types.ResearchAdvancement, types.AdvancementType, types.BreakthroughEvent, types.TechTree
 
 ## Maximum Tech Levels (economy.md:4.0)
 ## Caps prevent wasteful investment once maximum research levels reached
@@ -32,12 +38,13 @@ const
   maxFighterDoctrine* = 3     # FD limited to 3 doctrines
   maxAdvancedCarrierOps* = 3  # ACO limited to 3 levels
 
-## Upgrade Cycles (economy.md:4.1)
+## Breakthrough Cycles (economy.md:4.1.1)
 
-proc isUpgradeTurn*(turn: int): bool =
-  ## Check if current turn is a research breakthrough cycle
-  ## Breakthroughs occur every 6 strategic cycles
-  return (turn mod 6) == 0
+proc isBreakthroughTurn*(turn: int): bool =
+  ## Check if current turn allows research breakthrough rolls
+  ## Per economy.md:4.1.1 - Breakthroughs occur every 5 turns
+  ## Turns 5, 10, 15, 20, 25, etc.
+  return (turn mod 5) == 0
 
 ## Research Breakthroughs (economy.md:4.1.1)
 
@@ -45,28 +52,36 @@ proc rollBreakthrough*(investedRP: int, rng: var Rand): Option[BreakthroughType]
   ## Roll for research breakthrough
   ## Per economy.md:4.1.1
   ##
-  ## Base chance: 10%
-  ## +1% per 50 RP invested (last 6 turns)
+  ## Base chance: 5% (1 on d20)
+  ## +1% per 100 RP invested (last 5 turns)
+  ## Maximum 15% (capped)
 
-  let bonusChance = float(investedRP div 50) * BREAKTHROUGH_BONUS_PER_50RP
-  let totalChance = BASE_BREAKTHROUGH_CHANCE + bonusChance
+  # Validate input - negative RP should not provide bonus
+  let validRP = max(0, investedRP)
 
-  # Roll d10 (0-9)
-  let roll = rng.rand(9)
-  let threshold = int(totalChance * 10.0)
+  # Calculate bonus and total chance
+  let bonusPercent = float(validRP div 100)
+  let totalPercent = min(5.0 + bonusPercent, 15.0)  # Cap at 15%
 
-  if roll < threshold:
-    # Success! Roll for breakthrough type
-    let typeRoll = rng.rand(9)
+  # Roll d20 (1-20)
+  let roll = rng.rand(1..20)
 
-    if typeRoll <= 4:
-      return some(BreakthroughType.Minor)
-    elif typeRoll <= 6:
-      return some(BreakthroughType.Moderate)
-    elif typeRoll <= 8:
-      return some(BreakthroughType.Major)
+  # Convert percentage to number of successful rolls on d20
+  # 5% = 1 success (roll 1), 10% = 2 successes (rolls 1-2), 15% = 3 successes (rolls 1-3)
+  let successfulRolls = int(totalPercent / 5.0)  # Each 5% = 1 roll on d20
+
+  if roll <= successfulRolls:
+    # Success! Roll d20 for breakthrough type
+    let typeRoll = rng.rand(1..20)
+
+    if typeRoll <= 10:
+      return some(BreakthroughType.Minor)        # 1-10: Minor (50%)
+    elif typeRoll <= 15:
+      return some(BreakthroughType.Moderate)     # 11-15: Moderate (25%)
+    elif typeRoll <= 18:
+      return some(BreakthroughType.Major)        # 16-18: Major (15%)
     else:
-      return some(BreakthroughType.Revolutionary)
+      return some(BreakthroughType.Revolutionary) # 19-20: Revolutionary (10%)
 
   return none(BreakthroughType)
 
@@ -119,13 +134,13 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
 
 ## Tech Level Advancement
 
-proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvancement] =
+proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[ResearchAdvancement] =
   ## Attempt to advance Economic Level
   ## Returns advancement if successful
 
   # Check if already at max level
   if currentEL >= maxEconomicLevel:
-    return none(TechAdvancement)
+    return none(ResearchAdvancement)
 
   let cost = getELUpgradeCost(currentEL)
 
@@ -134,7 +149,6 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
     tree.accumulated.economic -= cost
 
     # Advance level
-    # TODO: Proper EL field (currently using economicLevel as placeholder)
     tree.levels.economicLevel = currentEL + 1
 
     # Create prestige event
@@ -145,24 +159,24 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[TechAdvan
       "Economic Level " & $currentEL & " → " & $(currentEL + 1)
     )
 
-    return some(TechAdvancement(
+    return some(ResearchAdvancement(
+      advancementType: AdvancementType.EconomicLevel,
+      elFromLevel: currentEL,
+      elToLevel: currentEL + 1,
+      elCost: cost,
       houseId: "",  # Set by caller
-      field: TechField.EconomicLevel,  # TODO: Separate EL from tech fields
-      fromLevel: currentEL,
-      toLevel: currentEL + 1,
-      cost: cost,
       prestigeEvent: some(prestigeEvent)
     ))
 
-  return none(TechAdvancement)
+  return none(ResearchAdvancement)
 
-proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[TechAdvancement] =
+proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[ResearchAdvancement] =
   ## Attempt to advance Science Level
   ## Returns advancement if successful
 
   # Check if already at max level
   if currentSL >= maxScienceLevel:
-    return none(TechAdvancement)
+    return none(ResearchAdvancement)
 
   let cost = getSLUpgradeCost(currentSL)
 
@@ -181,26 +195,23 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[TechAdvan
       "Science Level " & $currentSL & " → " & $(currentSL + 1)
     )
 
-    return some(TechAdvancement(
+    return some(ResearchAdvancement(
+      advancementType: AdvancementType.ScienceLevel,
+      slFromLevel: currentSL,
+      slToLevel: currentSL + 1,
+      slCost: cost,
       houseId: "",  # Set by caller
-      field: TechField.ScienceLevel,
-      fromLevel: currentSL,
-      toLevel: currentSL + 1,
-      cost: cost,
       prestigeEvent: some(prestigeEvent)
     ))
 
-  return none(TechAdvancement)
+  return none(ResearchAdvancement)
 
-proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechAdvancement] =
+proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[ResearchAdvancement] =
   ## Attempt to advance specific tech field
   ## Returns advancement if successful
+  ## Note: EL and SL use separate attemptELAdvancement/attemptSLAdvancement functions
 
   let currentLevel = case field
-    of TechField.EconomicLevel:
-      tree.levels.economicLevel
-    of TechField.ScienceLevel:
-      tree.levels.scienceLevel
     of TechField.ConstructionTech:
       tree.levels.constructionTech
     of TechField.WeaponsTech:
@@ -222,8 +233,6 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
 
   # Check if already at max level
   let maxLevel = case field
-    of TechField.EconomicLevel: maxEconomicLevel
-    of TechField.ScienceLevel: maxScienceLevel
     of TechField.ConstructionTech: maxConstructionTech
     of TechField.WeaponsTech: maxWeaponsTech
     of TechField.TerraformingTech: maxTerraformingTech
@@ -235,23 +244,19 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
     of TechField.AdvancedCarrierOps: maxAdvancedCarrierOps
 
   if currentLevel >= maxLevel:
-    return none(TechAdvancement)
+    return none(ResearchAdvancement)
 
   let cost = getTechUpgradeCost(field, currentLevel)
 
   # Check if enough TRP accumulated
   if field notin tree.accumulated.technology or tree.accumulated.technology[field] < cost:
-    return none(TechAdvancement)
+    return none(ResearchAdvancement)
 
   # Spend TRP
   tree.accumulated.technology[field] -= cost
 
   # Advance level
   case field
-  of TechField.EconomicLevel:
-    tree.levels.economicLevel += 1
-  of TechField.ScienceLevel:
-    tree.levels.scienceLevel += 1
   of TechField.ConstructionTech:
     tree.levels.constructionTech += 1
   of TechField.WeaponsTech:
@@ -280,11 +285,12 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[TechA
     fieldName & " " & $currentLevel & " → " & $(currentLevel + 1)
   )
 
-  return some(TechAdvancement(
+  return some(ResearchAdvancement(
+    advancementType: AdvancementType.Technology,
+    techField: field,
+    techFromLevel: currentLevel,
+    techToLevel: currentLevel + 1,
+    techCost: cost,
     houseId: "",  # Set by caller
-    field: field,
-    fromLevel: currentLevel,
-    toLevel: currentLevel + 1,
-    cost: cost,
     prestigeEvent: some(prestigeEvent)
   ))

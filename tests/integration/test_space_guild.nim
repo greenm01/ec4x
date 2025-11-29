@@ -50,7 +50,8 @@ suite "Population Transfer Mechanics":
       id: "house1",
       name: "Test House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Source colony with population
@@ -181,7 +182,8 @@ suite "Population Transfer Mechanics":
       id: "house2",
       name: "Enemy House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Make destination owned by house2
@@ -229,7 +231,8 @@ suite "Population Transfer Mechanics":
       id: "house2",
       name: "Enemy House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Make source owned by house2
@@ -377,14 +380,16 @@ suite "In-Transit Ownership Changes":
       id: "house1",
       name: "Test House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     result.houses["house2"] = House(
       id: "house2",
       name: "Enemy House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Source colony owned by house1
