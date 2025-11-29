@@ -9,7 +9,7 @@
 
 import types
 import ../../common/types/units
-import ../config/[construction_config, facilities_config, ground_units_config]
+import ../config/[construction_config, facilities_config, ground_units_config, combat_config]
 import ../squadron, ../gamestate, ../fleet
 
 export types.MaintenanceReport
@@ -42,7 +42,8 @@ proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool, fleetStatus
 
   # Active ships: full cost unless crippled
   if isCrippled:
-    return baseCost div 2  # TODO: Load from combat.toml instead of hardcoding
+    # Per combat.toml: crippled_maintenance_multiplier = 0.5
+    return int(float(baseCost) * globalCombatConfig.damage_rules.crippled_maintenance_multiplier)
   else:
     return baseCost
 
@@ -99,7 +100,10 @@ proc getBuildingMaintenance*(buildingType: string): int =
   of "Spaceport":
     return getSpaceportUpkeep()
   of "ResearchLab":
-    return 4  # TODO: Add research labs to config
+    # NOTE: Research labs are not implemented as physical buildings
+    # The game uses TRP (Technology Research Points) for research instead
+    # This is a legacy case preserved for backward compatibility
+    return 4
   of "Starbase":
     return getStarbaseUpkeep()
   else:
@@ -139,8 +143,9 @@ proc calculateRepairCost*(damage: float): int =
   ## Calculate cost to repair infrastructure damage
   ## Per operations.md:6.2.6 - bombardment damages infrastructure
   ##
-  ## Repair cost scales with damage severity
-  ## TODO: Define proper repair cost formula
+  ## Formula: damage * 100 PP
+  ## Example: 0.1 damage (10%) = 10 PP to repair
+  ## This represents the PP cost to restore damaged infrastructure
   return int(damage * 100.0)
 
 proc applyRepair*(colony: var Colony, repairPoints: int): float =
@@ -150,7 +155,8 @@ proc applyRepair*(colony: var Colony, repairPoints: int): float =
     return 0.0
 
   # Convert repair PP to damage reduction
-  # TODO: Define proper repair rate
+  # Rate: 100 PP repairs 1.0 (100%) damage
+  # This is the inverse of calculateRepairCost
   let repairAmount = float(repairPoints) / 100.0
 
   let actualRepair = min(repairAmount, colony.infrastructureDamage)
@@ -165,12 +171,11 @@ proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int) =
   ## Per economy.md:3.11
   ##
   ## Shortfall consequences:
-  ## - Infrastructure damage
-  ## - Production loss
-  ## - Prestige penalty
+  ## - Infrastructure damage (implemented below)
+  ## - Production loss (applied via infrastructureDamage modifier)
+  ## - Prestige penalty (handled by maintenance_shortfall.nim)
   ##
-  ## TODO: Implement proper shortfall mechanics
-  ## For now, add infrastructure damage
+  ## Full shortfall cascade system in maintenance_shortfall.nim
 
   if shortfall > 0:
     let damageAmount = float(shortfall) / 1000.0  # 1% damage per 10 PP shortfall
