@@ -316,7 +316,7 @@ proc updateFleetMovementHistory*(db: var IntelligenceDatabase, fleetId: FleetId,
   history.lastSeen = turn
 
   # Detect patrol patterns (if fleet visits same systems repeatedly)
-  # TODO: Pattern detection algorithm
+  # Future enhancement: Analyze history.visitedSystems for recurring patterns
 
   db.fleetMovementHistory[fleetId] = history
 

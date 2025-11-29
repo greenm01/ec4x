@@ -96,7 +96,7 @@ proc generateStarbaseSurveillance*(
 
       if hasScouts:
         # Scouts can evade with ELI capability
-        # Assume ELI level 3 for stealth (TODO: track actual ELI level)
+        # NOTE: Scout ELI level not tracked in Fleet, using ELI 3 as baseline
         evaded = performStealthCheck(3, 5, rng)
 
       elif hasCloakedRaiders:
@@ -126,9 +126,9 @@ proc generateStarbaseSurveillance*(
     turn: turn,
     detectedFleets: detectedFleets,
     undetectedFleets: undetectedFleets,
-    transitingFleets: transitingFleets,  # TODO: Track fleet movements
-    combatDetected: @[],                 # TODO: Detect combat in adjacent systems
-    bombardmentDetected: @[],            # TODO: Detect bombardment
+    transitingFleets: transitingFleets,  # Future: Track fleet movements between systems
+    combatDetected: @[],                 # Future: Detect combat in adjacent systems
+    bombardmentDetected: @[],            # Future: Detect bombardment operations
     significantActivity: detectedFleets.len > 0,
     threatsDetected: detectedFleets.len
   )
