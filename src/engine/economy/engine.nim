@@ -46,7 +46,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
   ##   Complete income phase report
 
   result = IncomePhaseReport(
-    turn: 0,  # TODO: Get from game state
+    turn: 0,  # NOTE: Legacy interface - turn tracking in GameState version
     houseReports: initTable[HouseId, HouseIncomeReport]()
   )
 
@@ -117,7 +117,7 @@ proc resolveMaintenancePhase*(colonies: var seq[Colony],
   ##   houseTreasuries: House treasuries (modified for upkeep)
 
   result = MaintenanceReport(
-    turn: 0,  # TODO: Get from game state
+    turn: 0,  # NOTE: Legacy interface - turn tracking in GameState version
     completedProjects: @[],
     houseUpkeep: initTable[HouseId, int](),
     repairsApplied: @[]
@@ -127,7 +127,8 @@ proc resolveMaintenancePhase*(colonies: var seq[Colony],
   for houseId, fleetData in houseFleetData:
     let fleetUpkeep = calculateFleetMaintenance(fleetData)
 
-    # TODO: Add building maintenance
+    # NOTE: Building maintenance not included in this legacy interface
+    # Use resolveMaintenancePhaseWithState() for full colony upkeep
     let totalUpkeep = fleetUpkeep
 
     result.houseUpkeep[houseId] = totalUpkeep
@@ -155,7 +156,8 @@ proc resolveMaintenancePhase*(colonies: var seq[Colony],
       if completed.isSome:
         result.completedProjects.add(completed.get())
 
-  # TODO: Apply repairs from allocated PP
+  # NOTE: Infrastructure repairs not implemented in this legacy interface
+  # Repair system requires full GameState for damage tracking and PP allocation
 
   return result
 
@@ -190,7 +192,9 @@ proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport 
 
       totalUpkeep += calculateFleetMaintenance(fleetData)
 
-    # TODO: Colony maintenance (facilities, ground forces)
+    # Colony maintenance (facilities, ground forces)
+    for colony in state.coloniesOwned(houseId):
+      totalUpkeep += calculateColonyUpkeep(colony)
 
     result.houseUpkeep[houseId] = totalUpkeep
 
@@ -218,6 +222,8 @@ proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport 
       if completed.isSome:
         result.completedProjects.add(completed.get())
 
-  # TODO: Apply repairs from allocated PP
+  # Infrastructure repairs handled by repair_queue.nim during Construction Phase
+  # Damaged infrastructure tracked in colony.infrastructureDamage
+  # Repairs applied via PP allocation in construction system
 
   return result
