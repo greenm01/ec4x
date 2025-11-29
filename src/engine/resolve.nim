@@ -276,10 +276,10 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
                 state.houses[attempt.target].techTree.accumulated.science =
                   max(0, state.houses[attempt.target].techTree.accumulated.science - result.srpStolen)
                 state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
-                echo "      Stole ", result.srpStolen, " SRP from ", attempt.target
+                logInfo(LogCategory.lcAI, &"    Stole {result.srpStolen} SRP from {attempt.target}")
 
           else:
-            echo "    ", attempt.attacker, " espionage DETECTED by ", attempt.target
+            logInfo(LogCategory.lcAI, &"  {attempt.attacker} espionage DETECTED by {attempt.target}")
             # Apply detection prestige penalties
             for prestigeEvent in result.attackerPrestigeEvents:
               state.houses[attempt.attacker].prestige += prestigeEvent.amount
@@ -406,7 +406,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   for houseId in state.houses.keys:
     if houseId in orders:
       when not defined(release):
-        echo "  [NEW ORDERS - COMMAND PHASE] ", $houseId, ": ", orders[houseId].fleetOrders.len, " new orders"
+        logDebug(LogCategory.lcOrders, &"[NEW ORDERS - COMMAND PHASE] {houseId}: {orders[houseId].fleetOrders.len} new orders")
       for order in orders[houseId].fleetOrders:
         # Check if this fleet has a locked permanent order (Reserve/Mothball)
         if order.fleetId in state.fleets:
@@ -416,7 +416,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             # All other orders are locked for Reserve/Mothball fleets
             if order.orderType != FleetOrderType.Reactivate:
               when not defined(release):
-                echo "    [LOCKED] Fleet ", order.fleetId, " has locked permanent order (status: ", fleet.status, "), ignoring non-Reactivate order"
+                logDebug(LogCategory.lcOrders, &"  [LOCKED] Fleet {order.fleetId} has locked permanent order (status: {fleet.status}), ignoring non-Reactivate order")
               continue
 
         allFleetOrders.add((houseId, order))
@@ -426,28 +426,28 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
   # Step 2: Add PERSISTENT orders from previous turns (not overridden this turn)
   when not defined(release):
-    echo "  [PERSISTENT ORDERS] Checking ", state.fleetOrders.len, " persistent orders from previous turns"
+    logDebug(LogCategory.lcOrders, &"[PERSISTENT ORDERS] Checking {state.fleetOrders.len} persistent orders from previous turns")
   for fleetId, persistentOrder in state.fleetOrders:
     # Skip if this fleet got a new order this turn (new order overrides persistent)
     if fleetId in newOrdersThisTurn:
       when not defined(release):
-        echo "    [OVERRIDE] Fleet ", fleetId, " persistent order overridden by new order"
+        logDebug(LogCategory.lcOrders, &"  [OVERRIDE] Fleet {fleetId} persistent order overridden by new order")
       continue
 
     # Verify fleet still exists
     if fleetId notin state.fleets:
       when not defined(release):
-        echo "    [STALE] Fleet ", fleetId, " no longer exists, dropping persistent order"
+        logDebug(LogCategory.lcOrders, &"  [STALE] Fleet {fleetId} no longer exists, dropping persistent order")
       continue
 
     # Add persistent order to execution queue
     let fleet = state.fleets[fleetId]
     allFleetOrders.add((fleet.owner, persistentOrder))
     when not defined(release):
-      echo "    [PERSISTENT] Fleet ", fleetId, " continuing order: ", $persistentOrder.orderType
+      logDebug(LogCategory.lcOrders, &"  [PERSISTENT] Fleet {fleetId} continuing order: {persistentOrder.orderType}")
 
   when not defined(release):
-    echo "  [TOTAL - COMMAND PHASE] ", allFleetOrders.len, " total fleet orders across all houses"
+    logDebug(LogCategory.lcOrders, &"[TOTAL - COMMAND PHASE] {allFleetOrders.len} total fleet orders across all houses")
 
   # Sort by priority
   allFleetOrders.sort do (a, b: (HouseId, FleetOrder)) -> int:
@@ -463,57 +463,56 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # Resolve all colonization orders simultaneously to prevent first-mover advantage
   # This must happen before the main fleet order loop
   when not defined(release):
-    echo "  [SIMULTANEOUS COLONIZATION] Resolving colonization orders fairly..."
+    logDebug(LogCategory.lcOrders, "[SIMULTANEOUS COLONIZATION] Resolving colonization orders fairly...")
 
   let colonizationResults = simultaneous.resolveColonization(state, orders, rng)
 
   when not defined(release):
-    echo "  [SIMULTANEOUS COLONIZATION] Resolved ", colonizationResults.len, " colonization attempts"
+    logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS COLONIZATION] Resolved {colonizationResults.len} colonization attempts")
     for result in colonizationResults:
-      echo "    House ", result.houseId, " Fleet ", result.fleetId, ": ", result.outcome,
-           " (prestige: +", result.prestigeAwarded, ")"
+      logDebug(LogCategory.lcOrders, &"  House {result.houseId} Fleet {result.fleetId}: {result.outcome} (prestige: +{result.prestigeAwarded})")
 
   # ===================================================================
   # SIMULTANEOUS BLOCKADE RESOLUTION
   # ===================================================================
   when not defined(release):
-    echo "  [SIMULTANEOUS BLOCKADE] Resolving blockade orders fairly..."
+    logDebug(LogCategory.lcOrders, "[SIMULTANEOUS BLOCKADE] Resolving blockade orders fairly...")
 
   let blockadeResults = simultaneous_blockade.resolveBlockades(state, orders, rng)
 
   when not defined(release):
-    echo "  [SIMULTANEOUS BLOCKADE] Resolved ", blockadeResults.len, " blockade attempts"
+    logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS BLOCKADE] Resolved {blockadeResults.len} blockade attempts")
 
   # ===================================================================
   # SIMULTANEOUS PLANETARY COMBAT RESOLUTION
   # ===================================================================
   when not defined(release):
-    echo "  [SIMULTANEOUS PLANETARY COMBAT] Resolving planetary combat orders fairly..."
+    logDebug(LogCategory.lcOrders, "[SIMULTANEOUS PLANETARY COMBAT] Resolving planetary combat orders fairly...")
 
   let planetaryCombatResults = simultaneous_planetary.resolvePlanetaryCombat(state, orders, rng)
 
   when not defined(release):
-    echo "  [SIMULTANEOUS PLANETARY COMBAT] Resolved ", planetaryCombatResults.len, " planetary combat attempts"
+    logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS PLANETARY COMBAT] Resolved {planetaryCombatResults.len} planetary combat attempts")
 
   # ===================================================================
   # SIMULTANEOUS ESPIONAGE RESOLUTION
   # ===================================================================
   when not defined(release):
-    echo "  [SIMULTANEOUS ESPIONAGE] Resolving fleet espionage orders fairly..."
+    logDebug(LogCategory.lcOrders, "[SIMULTANEOUS ESPIONAGE] Resolving fleet espionage orders fairly...")
 
   let espionageResults = simultaneous_espionage.resolveEspionage(state, orders, rng)
 
   when not defined(release):
-    echo "  [SIMULTANEOUS ESPIONAGE] Resolved ", espionageResults.len, " fleet espionage attempts"
+    logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS ESPIONAGE] Resolved {espionageResults.len} fleet espionage attempts")
 
   # Process OrderPacket.espionageAction (EBP-based espionage)
   when not defined(release):
-    echo "  [ESPIONAGE ACTIONS] Processing EBP-based espionage actions..."
+    logDebug(LogCategory.lcOrders, "[ESPIONAGE ACTIONS] Processing EBP-based espionage actions...")
 
   simultaneous_espionage.processEspionageActions(state, orders, rng)
 
   when not defined(release):
-    echo "  [ESPIONAGE ACTIONS] Completed EBP-based espionage processing"
+    logDebug(LogCategory.lcOrders, "[ESPIONAGE ACTIONS] Completed EBP-based espionage processing")
 
   # ===================================================================
   # FLEET ORDER EXECUTION
@@ -526,16 +525,16 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
     # ROBUSTNESS: Prevent duplicate orders for same fleet (from buggy AI or malicious input)
     when not defined(release):
       processCount += 1
-      echo "    [DEDUP CHECK #", processCount, "] Fleet ", order.fleetId, " - already in set: ", (order.fleetId in fleetsProcessed), " - set size: ", fleetsProcessed.len
+      logDebug(LogCategory.lcOrders, &"  [DEDUP CHECK #{processCount}] Fleet {order.fleetId} - already in set: {order.fleetId in fleetsProcessed} - set size: {fleetsProcessed.len}")
     if order.fleetId in fleetsProcessed:
-      echo "    [SKIPPED] Fleet ", order.fleetId, " (", $order.orderType, ") - already executed an order this turn"
+      logDebug(LogCategory.lcOrders, &"  [SKIPPED] Fleet {order.fleetId} ({order.orderType}) - already executed an order this turn")
       continue
 
     fleetsProcessed.incl(order.fleetId)
     when not defined(release):
-      echo "    [ADDED TO SET] Fleet ", order.fleetId, " - set size now: ", fleetsProcessed.len
+      logDebug(LogCategory.lcOrders, &"  [ADDED TO SET] Fleet {order.fleetId} - set size now: {fleetsProcessed.len}")
     when not defined(release):
-      echo "    [PROCESSING] Fleet ", order.fleetId, " order: ", $order.orderType
+      logDebug(LogCategory.lcOrders, &"  [PROCESSING] Fleet {order.fleetId} order: {order.orderType}")
 
     # PRE-EXECUTION VALIDATION: Check if order target is still valid
     # If destination became hostile, abort mission and seek home
@@ -552,7 +551,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             # Target is now enemy territory - abort mission
             shouldAbortMission = true
             when not defined(release):
-              echo "    [MISSION ABORT] Target system ", targetSystem, " is enemy-controlled - aborting"
+              logDebug(LogCategory.lcOrders, &"  [MISSION ABORT] Target system {targetSystem} is enemy-controlled - aborting")
 
     # If mission should abort, replace with Seek Home order
     var actualOrder = order
@@ -612,15 +611,15 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
         # Check if already handled by simultaneous resolution
         if simultaneous.wasColonizationHandled(colonizationResults, houseId, actualOrder.fleetId):
           when not defined(release):
-            echo "    [COLONIZE SKIP] Fleet ", actualOrder.fleetId, " already handled by simultaneous resolution"
+            logDebug(LogCategory.lcOrders, &"  [COLONIZE SKIP] Fleet {actualOrder.fleetId} already handled by simultaneous resolution")
           discard
         else:
           # Move-to-Colonize: Fleet moves to target then colonizes
           when not defined(release):
-            echo "    [BEFORE COLONIZE CALL] About to call resolveColonizationOrder for fleet ", actualOrder.fleetId
+            logDebug(LogCategory.lcOrders, &"  [BEFORE COLONIZE CALL] About to call resolveColonizationOrder for fleet {actualOrder.fleetId}")
           resolveColonizationOrder(state, houseId, actualOrder, events)
           when not defined(release):
-            echo "    [AFTER COLONIZE CALL] resolveColonizationOrder returned for fleet ", actualOrder.fleetId
+            logDebug(LogCategory.lcOrders, &"  [AFTER COLONIZE CALL] resolveColonizationOrder returned for fleet {actualOrder.fleetId}")
 
       of FleetOrderType.Bombard:
         # Check if already handled by simultaneous resolution
@@ -838,10 +837,10 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             )
             state.fleetOrders[actualOrder.fleetId] = holdOrder
             when not defined(release):
-              echo "    [ORDER COMPLETED] Fleet ", actualOrder.fleetId, " order ", $actualOrder.orderType, " completed → assigned Hold order"
+              logDebug(LogCategory.lcOrders, &"  [ORDER COMPLETED] Fleet {actualOrder.fleetId} order {actualOrder.orderType} completed → assigned Hold order")
         else:
           when not defined(release):
-            echo "    [ORDER COMPLETED] Fleet ", actualOrder.fleetId, " order ", $actualOrder.orderType, " completed (status changed)"
+            logDebug(LogCategory.lcOrders, &"  [ORDER COMPLETED] Fleet {actualOrder.fleetId} order {actualOrder.orderType} completed (status changed)")
 
     else:
       logWarn(LogCategory.lcFleet, "Fleet " & actualOrder.fleetId & " order " & $actualOrder.orderType & " FAILED: " & result.message)
@@ -895,16 +894,16 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # Most fleets benefit from auto-balancing, especially AI and reinforcement fleets.
   # =========================================================================
   when not defined(release):
-    echo "  [AUTO-BALANCE] Checking fleets for squadron auto-balancing..."
+    logDebug(LogCategory.lcFleet, "[AUTO-BALANCE] Checking fleets for squadron auto-balancing...")
   var balancedCount = 0
   for fleetId, fleet in state.fleets.mpairs:
     if fleet.autoBalanceSquadrons and fleet.squadrons.len >= 2:
       when not defined(release):
-        echo "    [AUTO-BALANCE] Fleet ", fleetId, " (", fleet.squadrons.len, " squadrons) - balancing..."
+        logDebug(LogCategory.lcFleet, &"  [AUTO-BALANCE] Fleet {fleetId} ({fleet.squadrons.len} squadrons) - balancing...")
       fleet.balanceSquadrons()
       balancedCount += 1
   when not defined(release):
-    echo "  [AUTO-BALANCE] Balanced ", balancedCount, " fleets"
+    logDebug(LogCategory.lcFleet, &"[AUTO-BALANCE] Balanced {balancedCount} fleets")
 
   # =========================================================================
   # AUTO-ASSIGN: Organize unassigned squadrons into fleets

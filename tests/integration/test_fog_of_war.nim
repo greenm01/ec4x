@@ -25,6 +25,7 @@ suite "Fog of War System":
     let adjacentSystem1 = if alphaAdjacent.len > 0: alphaAdjacent[0] else: alphaSystemId + 1
     let adjacentSystem2 = if alphaAdjacent.len > 1: alphaAdjacent[1] else: alphaSystemId + 2
 
+
     # Get a hidden system (not adjacent to alpha, at least 2 hops away)
     var hiddenSystem: uint = 0
     for sysId in starMap.systems.keys:

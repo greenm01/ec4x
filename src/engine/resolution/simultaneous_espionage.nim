@@ -201,14 +201,14 @@ proc processEspionageActions*(
       let ebpPurchased = esp_engine.purchaseEBP(state.houses[houseId].espionageBudget, packet.ebpInvestment)
       # Deduct PP from treasury (already projected in AI, but need to deduct actual cost)
       state.houses[houseId].treasury -= packet.ebpInvestment
-      echo &"  {houseId} purchased {ebpPurchased} EBP for {packet.ebpInvestment} PP"
+      logInfo(LogCategory.lcEconomy, &"{houseId} purchased {ebpPurchased} EBP for {packet.ebpInvestment} PP")
 
     if packet.cipInvestment > 0:
       let cipPurchased = esp_engine.purchaseCIP(state.houses[houseId].espionageBudget, packet.cipInvestment)
       state.houses[houseId].treasury -= packet.cipInvestment
       # Track CIP spending for diagnostics
       state.houses[houseId].lastTurnCIPSpent += packet.cipInvestment
-      echo &"  {houseId} purchased {cipPurchased} CIP for {packet.cipInvestment} PP"
+      logInfo(LogCategory.lcEconomy, &"{houseId} purchased {cipPurchased} CIP for {packet.cipInvestment} PP")
 
     # Step 2: Execute espionage action if present
     if packet.espionageAction.isNone:
@@ -219,18 +219,18 @@ proc processEspionageActions*(
     # Validate target house is not eliminated (leaderboard is public info)
     if attempt.target in state.houses:
       if state.houses[attempt.target].eliminated:
-        echo &"  {houseId} cannot target eliminated house {attempt.target}"
+        logDebug(LogCategory.lcAI, &"{houseId} cannot target eliminated house {attempt.target}")
         continue
 
     # Check if attacker has sufficient EBP
     let actionCost = esp_engine.getActionCost(attempt.action)
     if not esp_engine.canAffordAction(state.houses[houseId].espionageBudget, attempt.action):
-      echo &"  {houseId} cannot afford {attempt.action} (cost: {actionCost} EBP, has: {state.houses[houseId].espionageBudget.ebpPoints})"
+      logDebug(LogCategory.lcAI, &"{houseId} cannot afford {attempt.action} (cost: {actionCost} EBP, has: {state.houses[houseId].espionageBudget.ebpPoints})")
       continue
 
     # Spend EBP
     if not esp_engine.spendEBP(state.houses[houseId].espionageBudget, attempt.action):
-      echo &"  {houseId} failed to spend EBP for {attempt.action}"
+      logDebug(LogCategory.lcAI, &"{houseId} failed to spend EBP for {attempt.action}")
       continue
 
     # Track espionage attempt and EBP spent
@@ -250,7 +250,7 @@ proc processEspionageActions*(
     else:
       discard  # Other operations not tracked separately
 
-    echo &"  {houseId} executing {attempt.action} against {attempt.target} (cost: {actionCost} EBP)"
+    logInfo(LogCategory.lcAI, &"{houseId} executing {attempt.action} against {attempt.target} (cost: {actionCost} EBP)")
 
     # Get target's CIC level from tech tree
     let targetCICLevel = case state.houses[attempt.target].techTree.levels.counterIntelligence
@@ -278,7 +278,7 @@ proc processEspionageActions*(
     if result.success:
       # Track success for diagnostics
       state.houses[houseId].lastTurnEspionageSuccess += 1
-      echo &"    SUCCESS: {result.description}"
+      logInfo(LogCategory.lcAI, &"  SUCCESS: {result.description}")
 
       # Apply prestige changes
       for prestigeEvent in result.attackerPrestigeEvents:
@@ -296,11 +296,11 @@ proc processEspionageActions*(
           state.houses[attempt.target].techTree.accumulated.science =
             max(0, state.houses[attempt.target].techTree.accumulated.science - result.srpStolen)
           state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
-          echo &"      Stole {result.srpStolen} SRP from {attempt.target}"
+          logInfo(LogCategory.lcAI, &"    Stole {result.srpStolen} SRP from {attempt.target}")
     else:
       # Track detection for diagnostics
       state.houses[houseId].lastTurnEspionageDetected += 1
-      echo &"    DETECTED by {attempt.target}"
+      logInfo(LogCategory.lcAI, &"  DETECTED by {attempt.target}")
       # Apply detection prestige penalties
       for prestigeEvent in result.attackerPrestigeEvents:
         state.houses[attempt.attacker].prestige += prestigeEvent.amount
