@@ -12,21 +12,54 @@
 import std/[times, strformat, random, tables, options, sequtils]
 import unittest
 import stress_framework
-import ../../src/engine/[gamestate, resolve, orders, setup]
+import ../../src/engine/[gamestate, resolve, orders]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
-import ../../src/common/types/core
-import ../../src/engine/config/game_setup_config
+import ../../src/engine/economy/types as econ_types
+import ../../src/common/types/[core, planets]
 
 proc createMinimalGame(numHouses: int = 2, seed: int64 = 42): GameState =
-  ## Create a minimal game for stress testing
-  var rng = initRand(seed)
+  ## Create a minimal game for stress testing using newGame
+  result = newGame("stress_test", numHouses, seed)
 
-  # Use game setup to create valid initial state
-  let config = getGameSetupConfig()
-  var game = setupNewGame(numHouses, seed)
+  # Add houses with minimal setup
+  for i in 0..<numHouses:
+    let houseId = HouseId(&"house{i+1}")
+    result.houses[houseId] = House(
+      id: houseId,
+      name: &"House {i+1}",
+      treasury: 10000,
+      eliminated: false,
+      techTree: res_types.initTechTree()
+    )
 
-  return game
+    # Add home colony if player system exists
+    if i < result.starMap.playerSystemIds.len:
+      let systemId = result.starMap.playerSystemIds[i]
+      result.colonies[systemId] = Colony(
+        systemId: systemId,
+        owner: houseId,
+        population: 100,
+        souls: 100_000_000,
+        infrastructure: 5,
+        planetClass: PlanetClass.Benign,
+        resources: ResourceRating.Abundant,
+        buildings: @[],
+        production: 100,
+        underConstruction: none(econ_types.ConstructionProject),
+        constructionQueue: @[],
+        activeTerraforming: none(gamestate.TerraformProject),
+        unassignedSquadrons: @[],
+        unassignedSpaceLiftShips: @[],
+        fighterSquadrons: @[],
+        capacityViolation: CapacityViolation(),
+        starbases: @[],
+        spaceports: @[Spaceport(id: &"sp{i+1}", commissionedTurn: 1, docks: 5)],
+        shipyards: @[Shipyard(id: &"sy{i+1}", commissionedTurn: 1, docks: 10, isCrippled: false)]
+      )
+
+  result.turn = 1
+  result.phase = GamePhase.Active
 
 proc createNoOpOrders(houseId: HouseId, turn: int): OrderPacket =
   ## Create empty orders (fleet holds position)
@@ -78,7 +111,7 @@ suite "State Corruption: Long-Duration Simulations":
       except CatchableError as e:
         echo &"❌ Turn {turn} crashed: {e.msg}"
         fail()
-        return
+        break
 
       # Check invariants periodically
       if turn mod checkInterval == 0:
@@ -99,7 +132,8 @@ suite "State Corruption: Long-Duration Simulations":
       # Fail if any critical violations
       let critical = allViolations.filterIt(it.severity == ViolationSeverity.Critical)
       if critical.len > 0:
-        fail(&"Found {critical.len} CRITICAL violations")
+        echo &"TEST FAILED: Found {critical.len} CRITICAL violations"
+        fail()
     else:
       echo "✅ No violations detected"
 
