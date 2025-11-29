@@ -3,6 +3,7 @@
 
 import std/[unittest, tables, options, strutils]
 import ../../src/engine/[gamestate, orders, fleet, squadron, starmap, resolve]
+import ../../src/engine/research/types as res_types
 import ../../src/engine/commands/executor
 import ../../src/engine/intelligence/detection
 import ../../src/common/types/[core, units, combat]

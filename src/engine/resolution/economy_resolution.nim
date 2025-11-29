@@ -350,7 +350,10 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
           id: newFleetId,
           owner: packet.houseId,
           location: order.colonySystem,
-          squadrons: @[squadron]
+          squadrons: @[squadron],
+          spaceLiftShips: @[],
+          status: FleetStatus.Active,
+          autoBalanceSquadrons: true
         )
         echo "    Created new fleet ", newFleetId, " with squadron ", squadron.id
 
@@ -1358,7 +1361,10 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
                 id: targetFleetId,
                 owner: owner,
                 location: completed.colonyId,
-                squadrons: @[newSq]
+                squadrons: @[newSq],
+                spaceLiftShips: @[],
+                status: FleetStatus.Active,
+                autoBalanceSquadrons: true
               )
               echo "      Commissioned ", shipClass, " in new fleet ", targetFleetId
             else:
@@ -1558,67 +1564,66 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
       echo "    ", house.name, " - System ", systemId, ": ", current, "/", capacity,
            " FS (Pop: ", popCapacity, ", Infra: ", infraCapacity, ")"
 
-  # Process tech advancements on upgrade turns
-  # Per economy.md:4.1: Levels purchased on turns 1 and 7 (bi-annual)
-  if isUpgradeTurn(state.turn):
-    echo "  Tech Advancement (Upgrade Turn)"
-    for houseId, house in state.houses.mpairs:
-      # Try to advance Economic Level (EL) with accumulated ERP
-      let currentEL = house.techTree.levels.economicLevel
-      let elAdv = attemptELAdvancement(house.techTree, currentEL)
-      if elAdv.isSome:
-        let adv = elAdv.get()
-        echo "    ", house.name, ": EL ", adv.fromLevel, " → ", adv.toLevel,
-             " (spent ", adv.cost, " ERP)"
+  # Process tech advancements
+  # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP is available
+  echo "  Tech Advancement"
+  for houseId, house in state.houses.mpairs:
+    # Try to advance Economic Level (EL) with accumulated ERP
+    let currentEL = house.techTree.levels.economicLevel
+    let elAdv = attemptELAdvancement(house.techTree, currentEL)
+    if elAdv.isSome:
+      let adv = elAdv.get()
+      echo "    ", house.name, ": EL ", adv.elFromLevel, " → ", adv.elToLevel,
+           " (spent ", adv.elCost, " ERP)"
+      if adv.prestigeEvent.isSome:
+        house.prestige += adv.prestigeEvent.get().amount
+        echo "      +", adv.prestigeEvent.get().amount, " prestige"
+      events.add(GameEvent(
+        eventType: GameEventType.TechAdvance,
+        houseId: houseId,
+        description: &"Economic Level advanced to {adv.elToLevel}",
+        systemId: none(SystemId)
+      ))
+
+    # Try to advance Science Level (SL) with accumulated SRP
+    let currentSL = house.techTree.levels.scienceLevel
+    let slAdv = attemptSLAdvancement(house.techTree, currentSL)
+    if slAdv.isSome:
+      let adv = slAdv.get()
+      echo "    ", house.name, ": SL ", adv.slFromLevel, " → ", adv.slToLevel,
+           " (spent ", adv.slCost, " SRP)"
+      if adv.prestigeEvent.isSome:
+        house.prestige += adv.prestigeEvent.get().amount
+        echo "      +", adv.prestigeEvent.get().amount, " prestige"
+      events.add(GameEvent(
+        eventType: GameEventType.TechAdvance,
+        houseId: houseId,
+        description: &"Science Level advanced to {adv.slToLevel}",
+        systemId: none(SystemId)
+      ))
+
+    # Try to advance technology fields with accumulated TRP
+    for field in [TechField.ConstructionTech, TechField.WeaponsTech,
+                  TechField.TerraformingTech, TechField.ElectronicIntelligence,
+                  TechField.CounterIntelligence]:
+      let advancement = attemptTechAdvancement(house.techTree, field)
+      if advancement.isSome:
+        let adv = advancement.get()
+        echo "    ", house.name, ": ", field, " ", adv.techFromLevel, " → ", adv.techToLevel,
+             " (spent ", adv.techCost, " TRP)"
+
+        # Apply prestige if available
         if adv.prestigeEvent.isSome:
           house.prestige += adv.prestigeEvent.get().amount
           echo "      +", adv.prestigeEvent.get().amount, " prestige"
+
+        # Generate event
         events.add(GameEvent(
           eventType: GameEventType.TechAdvance,
           houseId: houseId,
-          description: &"Economic Level advanced to {adv.toLevel}",
+          description: &"{field} advanced to level {adv.techToLevel}",
           systemId: none(SystemId)
         ))
-
-      # Try to advance Science Level (SL) with accumulated SRP
-      let currentSL = house.techTree.levels.scienceLevel
-      let slAdv = attemptSLAdvancement(house.techTree, currentSL)
-      if slAdv.isSome:
-        let adv = slAdv.get()
-        echo "    ", house.name, ": SL ", adv.fromLevel, " → ", adv.toLevel,
-             " (spent ", adv.cost, " SRP)"
-        if adv.prestigeEvent.isSome:
-          house.prestige += adv.prestigeEvent.get().amount
-          echo "      +", adv.prestigeEvent.get().amount, " prestige"
-        events.add(GameEvent(
-          eventType: GameEventType.TechAdvance,
-          houseId: houseId,
-          description: &"Science Level advanced to {adv.toLevel}",
-          systemId: none(SystemId)
-        ))
-
-      # Try to advance technology fields with accumulated TRP
-      for field in [TechField.ConstructionTech, TechField.WeaponsTech,
-                    TechField.TerraformingTech, TechField.ElectronicIntelligence,
-                    TechField.CounterIntelligence]:
-        let advancement = attemptTechAdvancement(house.techTree, field)
-        if advancement.isSome:
-          let adv = advancement.get()
-          echo "    ", house.name, ": ", field, " ", adv.fromLevel, " → ", adv.toLevel,
-               " (spent ", adv.cost, " TRP)"
-
-          # Apply prestige if available
-          if adv.prestigeEvent.isSome:
-            house.prestige += adv.prestigeEvent.get().amount
-            echo "      +", adv.prestigeEvent.get().amount, " prestige"
-
-          # Generate event
-          events.add(GameEvent(
-            eventType: GameEventType.TechAdvance,
-            houseId: houseId,
-            description: &"{field} advanced to level {adv.toLevel}",
-            systemId: none(SystemId)
-          ))
 
   # Check victory condition
   let victorOpt = state.checkVictoryCondition()
@@ -1931,7 +1936,33 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       else:
         remainingProjects.add(project)
 
-    # Process completed projects
+    # =========================================================================
+    # SHIP COMMISSIONING PIPELINE
+    # =========================================================================
+    # Process completed construction projects and commission new units
+    #
+    # **Commissioning Pipeline for Combat Ships:**
+    # 1. Ship construction completes (1 turn per economy.md:5.0)
+    # 2. Ship commissioned with current tech levels
+    # 3. **Squadron Assignment** (auto-balance strength):
+    #    - Escorts try to join existing unassigned capital ship squadrons (balance)
+    #    - If no capital squadrons, escorts try to join same-class escort squadrons
+    #    - Capital ships always create new squadrons (they're flagships)
+    #    - Unjoined escorts create new squadrons
+    # 4. **Fleet Assignment** (if colony.autoAssignFleets == true):
+    #    - Calls autoBalanceSquadronsToFleets() to organize squadrons into fleets
+    #    - Balances squadron count across existing stationary Active fleets
+    #    - Creates new fleets if no candidate fleets exist
+    #
+    # **Commissioning Pipeline for Spacelift Ships (ETAC/TT):**
+    # 1. Ship commissioned to colony.unassignedSpaceLiftShips
+    # 2. If autoAssignFleets enabled, immediately joins first available fleet
+    #
+    # **Result:**
+    # - With autoAssignFleets=true (default): Ships end up in fleets, ready for orders
+    # - With autoAssignFleets=false: Ships remain in colony.unassignedSquadrons
+    # =========================================================================
+
     for project in completedProjects:
       if project.turnsRemaining <= 0:
         # Construction complete!
@@ -2034,17 +2065,26 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             # Combat ship - create squadron as normal
             let newShip = newEnhancedShip(shipClass, techLevel)
 
-            # Intelligent tactical squadron assignment
-            # Try to add escorts to existing unassigned squadrons first (battle-ready groups)
-            # Capital ships always create new squadrons (they're flagships)
+            # SQUADRON FORMATION LOGIC (Step 3 of commissioning pipeline)
+            # Goal: Create balanced, combat-ready squadrons before fleet assignment
+            #
+            # Tactical Doctrine:
+            # - **Escorts** (small/fast ships): Join existing squadrons as supporting units
+            # - **Capital ships** (large/slow): Always become squadron flagships
+            #
+            # This creates combined-arms squadrons (e.g., Battleship + 3 Destroyers)
+            # which have better tactical capabilities than single-ship squadrons
             var addedToSquadron = false
 
+            # Classify ship as escort or capital based on hull class and role
+            # Escorts: Small/fast ships (SC, FG, DD, CT, CL) - support role, expendable
+            # Capitals: Large/powerful ships (CA+, BB+, CV+) - flagship role, valuable
             let isEscort = shipClass in [
               ShipClass.Scout, ShipClass.Frigate, ShipClass.Destroyer,
               ShipClass.Corvette, ShipClass.LightCruiser
             ]
 
-            # Escorts try to join existing unassigned squadrons for balanced combat groups
+            # ESCORT ASSIGNMENT: Join existing squadrons to create balanced battle groups
             if isEscort:
               # Try to join unassigned capital ship squadrons first
               for squadron in colony.unassignedSquadrons.mitems:
@@ -2126,6 +2166,140 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     # Update construction queue with remaining (in-progress) projects
     colony.constructionQueue = remainingProjects
 
+    # =========================================================================
+    # REPAIR QUEUE PROCESSING
+    # =========================================================================
+    # Process repair queue (all repairs in parallel, similar to construction)
+    # Ships repair for 1 turn at 25% of build cost
+    # Repaired ships recommission through standard squadron pipeline
+    #
+    # **Repair Priority:**
+    # - Construction projects (priority=0) take precedence over repairs
+    # - Ship repairs (priority=1) before starbase repairs (priority=2)
+    # - Dock capacity shared between construction and repairs
+    # =========================================================================
+
+    var completedRepairs: seq[econ_types.RepairProject] = @[]
+    var remainingRepairs: seq[econ_types.RepairProject] = @[]
+
+    if colony.repairQueue.len > 0:
+      echo &"    DEBUG: System {systemId} has {colony.repairQueue.len} repairs in queue"
+
+    for repair in colony.repairQueue.mitems:
+      repair.turnsRemaining -= 1
+
+      if repair.turnsRemaining <= 0:
+        completedRepairs.add(repair)
+      else:
+        remainingRepairs.add(repair)
+
+    # Commission repaired ships through standard pipeline
+    for repair in completedRepairs:
+      case repair.targetType
+      of econ_types.RepairTargetType.Ship:
+        if repair.shipClass.isSome:
+          let shipClass = repair.shipClass.get()
+          echo "    Repair completed at system ", systemId, ": ", shipClass
+
+          # Commission repaired ship as new ship (same as construction)
+          let techLevel = state.houses[colony.owner].techTree.levels.constructionTech
+          let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
+
+          if isSpaceLift:
+            # Spacelift ships commission to unassigned list
+            let capacity = case shipClass
+              of ShipClass.TroopTransport: 1  # 1 MD (Marine Division)
+              of ShipClass.ETAC: 1            # 1 PTU (Population Transfer Unit)
+              else: 0
+
+            let spaceLiftShip = SpaceLiftShip(
+              id: "", # Will be assigned
+              shipClass: shipClass,
+              owner: colony.owner,
+              location: colony.systemId,
+              isCrippled: false,  # Repaired!
+              cargo: SpaceLiftCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: capacity
+              )
+            )
+            colony.unassignedSpaceLiftShips.add(spaceLiftShip)
+            echo "      Recommissioned ", shipClass, " as spacelift ship (repaired)"
+          else:
+            # Combat ships commission through squadron pipeline
+            let stats = getShipStats(shipClass)
+            let ship = EnhancedShip(
+              shipClass: shipClass,
+              shipType: ShipType.Military,
+              stats: stats,
+              isCrippled: false,  # Repaired!
+              name: $shipClass
+            )
+
+            # Squadron assignment logic (same as construction)
+            if shipClass in {ShipClass.Battleship, ShipClass.SuperDreadnought,
+                            ShipClass.Dreadnought, ShipClass.Carrier,
+                            ShipClass.SuperCarrier, ShipClass.HeavyCruiser,
+                            ShipClass.Cruiser}:
+              # Capital ships become flagships
+              let newSquadron = newSquadron(
+                flagship = ship,
+                id = "SQ-" & $systemId & "-" & $(colony.unassignedSquadrons.len + 1),
+                owner = colony.owner,
+                location = systemId
+              )
+              colony.unassignedSquadrons.add(newSquadron)
+              echo "      Recommissioned ", shipClass, " as new squadron flagship (repaired)"
+            else:
+              # Escorts try to join existing squadrons
+              var joined = false
+
+              # Try to join existing capital ship squadrons first
+              for sq in colony.unassignedSquadrons.mitems:
+                let flagshipClass = sq.flagship.shipClass
+                if flagshipClass in {ShipClass.Battleship, ShipClass.SuperDreadnought,
+                                    ShipClass.Dreadnought, ShipClass.Carrier,
+                                    ShipClass.SuperCarrier, ShipClass.HeavyCruiser,
+                                    ShipClass.Cruiser}:
+                  if sq.canAddShip(ship):
+                    discard sq.addShip(ship)
+                    joined = true
+                    echo "      Recommissioned ", shipClass, " joined capital squadron (repaired)"
+                    break
+
+              # If not joined, try same-class escort squadrons
+              if not joined:
+                for sq in colony.unassignedSquadrons.mitems:
+                  if sq.flagship.shipClass == shipClass:
+                    if sq.canAddShip(ship):
+                      discard sq.addShip(ship)
+                      joined = true
+                      echo "      Recommissioned ", shipClass, " joined escort squadron (repaired)"
+                      break
+
+              # If still not joined, create new escort squadron
+              if not joined:
+                let newSquadron = newSquadron(
+                  flagship = ship,
+                  id = "SQ-" & $systemId & "-" & $(colony.unassignedSquadrons.len + 1),
+                  owner = colony.owner,
+                  location = systemId
+                )
+                colony.unassignedSquadrons.add(newSquadron)
+                echo "      Recommissioned ", shipClass, " as new escort squadron (repaired)"
+
+      of econ_types.RepairTargetType.Starbase:
+        # Repair starbase at colony
+        if repair.starbaseIdx.isSome:
+          let idx = repair.starbaseIdx.get()
+          if idx >= 0 and idx < colony.starbases.len:
+            colony.starbases[idx].isCrippled = false
+            echo "    Repair completed at system ", systemId, ": Starbase-", idx
+
+    # Update repair queue
+    colony.repairQueue = remainingRepairs
+
     # LEGACY SUPPORT: Update underConstruction field for backwards compatibility
     # Keep the first in-progress project as the "active" one
     if remainingProjects.len > 0:
@@ -2137,8 +2311,11 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     # Even with mpairs, nested seq/field modifications require explicit write-back:
     # - fighterSquadrons (commissioned fighters)
     # - unassignedSpaceLiftShips (commissioned transports/ETACs)
+    # - unassignedSquadrons (repaired ships forming squadrons)
     # - population (ETAC PTU extraction cost)
     # - constructionQueue (completed/remaining projects)
+    # - repairQueue (completed/remaining repairs)
+    # - starbases (repaired starbases)
     # - underConstruction (legacy field)
     state.colonies[systemId] = colony
 
@@ -2228,50 +2405,41 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           echo "      ", houseId, " allocated ", pp, " PP → ", earnedRP.technology[field], " TRP (", field, ")",
                " (total: ", totalTRP, " TRP)"
 
-      # Check for tech advancement (every 6 turns)
-      if advancement.isUpgradeTurn(state.turn):
-        echo "      [TECH ADVANCEMENT] Turn ", state.turn, " - attempting tech advancements for ", houseId
+  # Tech advancement happens in resolveCommandPhase (not here)
+  # Per economy.md:4.1: Tech upgrades can be purchased every turn if RP is available
 
-        # Attempt EL advancement
-        let elResult = advancement.attemptELAdvancement(
-          state.houses[houseId].techTree,
-          state.houses[houseId].techTree.levels.economicLevel
+  # Research breakthroughs (every 5 turns)
+  # Per economy.md:4.1.1: Breakthrough rolls provide bonus RP, cost reductions, or free levels
+  if advancement.isBreakthroughTurn(state.turn):
+    echo "  [RESEARCH BREAKTHROUGHS] Turn ", state.turn, " - rolling for breakthroughs"
+    for houseId in state.houses.keys:
+      # Calculate total RP invested in last 5 turns
+      # NOTE: This is a simplified approximation - proper implementation would track historical RP
+      let investedRP = state.houses[houseId].lastTurnResearchERP +
+                       state.houses[houseId].lastTurnResearchSRP +
+                       state.houses[houseId].lastTurnResearchTRP
+
+      # Roll for breakthrough
+      var rng = initRand(hash(state.turn) + hash(houseId))
+      let breakthroughOpt = advancement.rollBreakthrough(investedRP * 5, rng)  # Approximate 5-turn total
+
+      if breakthroughOpt.isSome:
+        let breakthrough = breakthroughOpt.get
+        echo "    ", houseId, " BREAKTHROUGH: ", breakthrough
+
+        # Apply breakthrough effects
+        let allocation = res_types.ResearchAllocation(
+          economic: state.houses[houseId].lastTurnResearchERP,
+          science: state.houses[houseId].lastTurnResearchSRP,
+          technology: initTable[TechField, int]()
         )
-        if elResult.isSome:
-          let adv = elResult.get
-          echo "      ", houseId, " advanced EL from level ", adv.fromLevel, " to ", adv.toLevel,
-               " (cost: ", adv.cost, " ERP)"
-          # Apply prestige if present
-          if adv.prestigeEvent.isSome:
-            state.houses[houseId].prestige += adv.prestigeEvent.get.amount
-
-        # Attempt SL advancement
-        let slResult = advancement.attemptSLAdvancement(
+        let event = advancement.applyBreakthrough(
           state.houses[houseId].techTree,
-          state.houses[houseId].techTree.levels.scienceLevel
+          breakthrough,
+          allocation
         )
-        if slResult.isSome:
-          let adv = slResult.get
-          echo "      ", houseId, " advanced SL from level ", adv.fromLevel, " to ", adv.toLevel,
-               " (cost: ", adv.cost, " SRP)"
-          # Apply prestige if present
-          if adv.prestigeEvent.isSome:
-            state.houses[houseId].prestige += adv.prestigeEvent.get.amount
 
-        # Attempt tech field advancements
-        for field in TechField:
-          # Skip EL/SL as they're handled above
-          if field == TechField.EconomicLevel or field == TechField.ScienceLevel:
-            continue
-
-          let techResult = advancement.attemptTechAdvancement(state.houses[houseId].techTree, field)
-          if techResult.isSome:
-            let adv = techResult.get
-            echo "      ", houseId, " advanced ", field, " from level ", adv.fromLevel, " to ", adv.toLevel,
-                 " (cost: ", adv.cost, " TRP)"
-            # Apply prestige if present
-            if adv.prestigeEvent.isSome:
-              state.houses[houseId].prestige += adv.prestigeEvent.get.amount
+        echo "    ", houseId, " breakthrough effect applied (category: ", event.category, ")"
 
 ## Phase 3: Command
 
@@ -2339,7 +2507,10 @@ proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Co
         id: newFleetId,
         owner: colony.owner,
         location: systemId,
-        squadrons: @[squadron]
+        squadrons: @[squadron],
+        spaceLiftShips: @[],
+        status: FleetStatus.Active,
+        autoBalanceSquadrons: true
       )
       colony.unassignedSquadrons.delete(0)
       echo "    Auto-created fleet ", newFleetId, " for unassigned squadron ", squadron.id

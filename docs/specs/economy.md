@@ -473,37 +473,41 @@ The starting tech configuration ensures consistent behavior across the engine. G
 ## 4.1 Research Points (RP)
 
 Each turn, players can invest production points in RP to further their R&D efforts.
-R&D upgrades occur during bi-annual breakthrough cycles (turns 1 and 7 of each year-equivalent period). Levels must be purchased in sequential order, and only one level per R&D area each upgrade cycle. The Cipher Ledger batches research coordination across Houses' academic networks during these synchronized windows.
+
+**Tech Upgrades:** Players can purchase tech level advancements **every turn** if they have accumulated enough RP. Levels must be purchased in sequential order (cannot skip levels), but there is no turn restriction on when upgrades can occur. If you have the RP, you can advance.
+
+**Research Breakthroughs:** Separate from normal tech purchases, breakthrough checks occur automatically **every 5 turns** (turns 5, 10, 15, 20, etc.). These are low-probability bonus events that provide free RP, cost reductions, or automatic level gains.
 
 There are three areas of investment:
-- Economic RP (ERP)
-- Science RP (SRP)
-- Technology RP (TRP)
+- Economic RP (ERP) - Accumulates to purchase Economic Levels (EL)
+- Science RP (SRP) - Accumulates to purchase Science Levels (SL)
+- Technology RP (TRP) - Accumulates to purchase individual technology upgrades (CST, WEP, etc.)
 
-Economic Levels (EL) are purchased with ERP and Science Levels (SL) are purchased with SRP. Science drives engineering, and new technologies are developed and purchased directly with TRP. EL and SL are correlated.
+Economic Levels (EL) are purchased with accumulated ERP, and Science Levels (SL) are purchased with accumulated SRP. Science drives engineering, and new technologies are developed and purchased directly with accumulated TRP. EL and SL are correlated.
 
 ### 4.1.1 Research Breakthroughs
 
 Technological progress can experience sudden leaps due to unexpected Research Breakthroughs. These moments of serendipity inject variability into the game, rewarding players for consistent investment in R&D and offering the chance for significant, game-altering advances.
 
-**Research breakthroughs are triggered automatically twice per year**:
+**Research breakthroughs are triggered automatically every 5 turns**:
 
-Bi-Annual Roll (Turn 1 and Turn 7):
-- During the Income Phase of Turn 1 and Turn 7, the game system makes a 1d10 roll for each player per [Section 1.3.2](gameplay.md#132-income-phase).
-- The base chance for a breakthrough is 10%.
-- Players receive a +1% bonus for every 50 RP invested during the previous six turns (including ERP, SRP, and TRP combined).
+Breakthrough Roll (Turns 5, 10, 15, 20, 25, etc.):
+- During the Income Phase of every 5th turn, the game system makes a **1d20 roll** for each player per [Section 1.3.2](gameplay.md#132-income-phase).
+- The base chance for a breakthrough is **5%** (roll of 1 on d20).
+- Players receive a +1% bonus for every 100 RP invested during the previous five turns (including ERP, SRP, and TRP combined).
+- Maximum breakthrough chance: 15% (caps at 10 bonus percentage points from RP investment).
 - Breakthrough RP bonuses are immediately available for R&D purchases during the Command Phase of the same turn per [Section 1.3.3](gameplay.md#133-command-phase).
 
 **Breakthrough Types and Dice Roll**:
 
-If the breakthrough is successful, a second 1d10 roll determines the type of breakthrough achieved. Each result on the die corresponds to a specific breakthrough type:
+If the breakthrough is successful (roll within breakthrough chance), a second **1d20 roll** determines the type of breakthrough achieved. Each result on the die corresponds to a specific breakthrough type:
 
-| Dice Roll | Breakthrough Type           | Effect Description                                         |
-|:---------:| --------------------------- | ---------------------------------------------------------- |
-| 0-4       | **Minor Breakthrough**      | +10 ERP, SRP, or TRP based on the current investment focus |
-| 5-6       | **Moderate Breakthrough**   | 20% reduction in TRP cost for the next technology upgrade  |
-| 7-8       | **Major Breakthrough**      | Automatically advance the next SL or EL by 1 level         |
-| 9         | **Revolutionary Discovery** | Unlocks a unique technology or double-level advancement    |
+| Dice Roll (d20) | Breakthrough Type           | Effect Description                                         |
+|:---------------:| --------------------------- | ---------------------------------------------------------- |
+| 1-10            | **Minor Breakthrough**      | +10 ERP, SRP, or TRP based on the current investment focus |
+| 11-15           | **Moderate Breakthrough**   | 20% reduction in TRP cost for the next technology upgrade  |
+| 16-18           | **Major Breakthrough**      | Automatically advance the next SL or EL by 1 level         |
+| 19-20           | **Revolutionary Discovery** | Unlocks a unique technology or double-level advancement    |
 
 **Minor Breakthrough (0-4)**:
 

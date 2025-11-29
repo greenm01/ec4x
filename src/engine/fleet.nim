@@ -31,14 +31,17 @@ type
     owner*: HouseId                    # House that owns this fleet
     location*: SystemId                # Current system location
     status*: FleetStatus               # Operational status (active/reserve/mothballed)
+    autoBalanceSquadrons*: bool        # Auto-optimize squadron composition (default: true)
     # NOTE: currentOrder stored in GameState.fleetOrders table to avoid circular dependency
 
 proc newFleet*(squadrons: seq[Squadron] = @[], spaceLiftShips: seq[SpaceLiftShip] = @[],
                id: FleetId = "", owner: HouseId = "", location: SystemId = 0,
-               status: FleetStatus = FleetStatus.Active): Fleet =
+               status: FleetStatus = FleetStatus.Active,
+               autoBalanceSquadrons: bool = true): Fleet =
   ## Create a new fleet with the given squadrons and spacelift ships
   Fleet(id: id, squadrons: squadrons, spaceLiftShips: spaceLiftShips,
-        owner: owner, location: location, status: status)
+        owner: owner, location: location, status: status,
+        autoBalanceSquadrons: autoBalanceSquadrons)
 
 proc `$`*(f: Fleet): string =
   ## String representation of a fleet
@@ -194,3 +197,91 @@ proc split*(f: var Fleet, indices: seq[int]): Fleet =
     f.squadrons.delete(i)
 
   newFleet(newSquadrons)
+
+proc balanceSquadrons*(f: var Fleet) =
+  ## Auto-optimize squadron composition within fleet
+  ##
+  ## **Purpose:** Redistribute escort ships across squadrons to maximize
+  ## command capacity utilization and create balanced, effective battle groups.
+  ##
+  ## **Algorithm:**
+  ## 1. Extract all escort ships from all squadrons (preserve flagships)
+  ## 2. Sort escorts by command cost (largest first for better bin packing)
+  ## 3. Redistribute escorts across squadrons using greedy bin packing
+  ##    - Prioritize squadrons with more available capacity
+  ##    - Try to balance total command usage across squadrons
+  ##
+  ## **Result:** Each squadron uses its command capacity more efficiently
+  ## and squadrons are more evenly balanced in strength.
+  ##
+  ## **Note:** Only affects escort ships (ships array), never moves flagships
+  ##
+  ## **Performance Optimization:**
+  ## Checks if balancing is needed before doing expensive sort operation.
+  ## Only balances if there's significant imbalance (one squadron empty while another has escorts).
+
+  if f.squadrons.len < 2:
+    return  # Nothing to balance with fewer than 2 squadrons
+
+  # Performance optimization: Check if balancing is actually needed
+  # Only balance if there's at least one squadron with 0 escorts and another with 2+ escorts
+  var minEscorts = 999999
+  var maxEscorts = 0
+  for sq in f.squadrons:
+    let escortCount = sq.ships.len
+    if escortCount < minEscorts:
+      minEscorts = escortCount
+    if escortCount > maxEscorts:
+      maxEscorts = escortCount
+
+  # If all squadrons have similar escort counts (within 1), skip balancing
+  if maxEscorts - minEscorts <= 1:
+    return  # Already balanced enough, skip expensive sort
+
+  # Step 1: Extract all escorts from all squadrons
+  var allEscorts: seq[EnhancedShip] = @[]
+  for i in 0..<f.squadrons.len:
+    allEscorts.add(f.squadrons[i].ships)
+    f.squadrons[i].ships = @[]  # Clear escorts (keep flagship)
+
+  if allEscorts.len == 0:
+    return  # No escorts to balance
+
+  # Step 2: Sort escorts by command cost (descending) for better bin packing
+  # Larger ships first = better capacity utilization
+  allEscorts.sort do (a, b: EnhancedShip) -> int:
+    result = cmp(b.stats.commandCost, a.stats.commandCost)
+
+  # Step 3: Redistribute escorts using greedy algorithm
+  # Try to fill squadrons evenly, prioritizing those with most available space
+  for escort in allEscorts:
+    # Find squadron with most available command capacity that can fit this escort
+    var bestSquadronIdx = -1
+    var bestCapacity = -1
+
+    for i in 0..<f.squadrons.len:
+      let availableCapacity = f.squadrons[i].availableCommandCapacity()
+
+      # Can this squadron fit this escort?
+      if availableCapacity >= escort.stats.commandCost:
+        # Is this the squadron with most available capacity?
+        if availableCapacity > bestCapacity:
+          bestCapacity = availableCapacity
+          bestSquadronIdx = i
+
+    # Assign escort to best squadron (if any can fit)
+    if bestSquadronIdx >= 0:
+      discard f.squadrons[bestSquadronIdx].addShip(escort)
+    else:
+      # No squadron can fit this escort - add to squadron with most space anyway
+      # This handles edge cases where escort CC > any squadron's available CR
+      var maxCapacityIdx = 0
+      var maxCapacity = f.squadrons[0].availableCommandCapacity()
+      for i in 1..<f.squadrons.len:
+        let cap = f.squadrons[i].availableCommandCapacity()
+        if cap > maxCapacity:
+          maxCapacity = cap
+          maxCapacityIdx = i
+
+      # Force add (will exceed capacity, but better than losing the ship)
+      f.squadrons[maxCapacityIdx].ships.add(escort)

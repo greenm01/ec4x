@@ -150,10 +150,8 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
     let techLevels = filtered.ownHouse.techTree.levels
 
     proc getTechMax(field: TechField): int =
-      ## Get maximum level for tech field
+      ## Get maximum level for tech field (9 fields only, EL/SL handled separately)
       case field
-      of TechField.EconomicLevel: maxEconomicLevel
-      of TechField.ScienceLevel: maxScienceLevel
       of TechField.ConstructionTech: maxConstructionTech
       of TechField.WeaponsTech: maxWeaponsTech
       of TechField.TerraformingTech: maxTerraformingTech
@@ -165,10 +163,8 @@ proc generateResearchAllocation*(controller: AIController, filtered: FilteredGam
       of TechField.AdvancedCarrierOps: maxAdvancedCarrierOps
 
     proc getCurrentTechLevel(field: TechField): int =
-      ## Get current level for tech field from tree
+      ## Get current level for tech field from tree (9 fields only, EL/SL handled separately)
       case field
-      of TechField.EconomicLevel: techLevels.economicLevel
-      of TechField.ScienceLevel: techLevels.scienceLevel
       of TechField.ConstructionTech: techLevels.constructionTech
       of TechField.WeaponsTech: techLevels.weaponsTech
       of TechField.TerraformingTech: techLevels.terraformingTech

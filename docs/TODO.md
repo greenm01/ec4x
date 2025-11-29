@@ -298,8 +298,11 @@
   - ✅ Validated scout production: 12.16 scouts average (target: 5-7) - EXCEEDING TARGET ✅
   - ✅ Validated fighter production: 12-30 fighters by turn 30 (was 0 before fix)
   - ✅ Validated invasions: 95 invasions in 20-game test (was 0 before intelligence fix)
+  - ⏳ **TODO:** Implement 2x cost for spaceport construction (planet-side ships cost double vs shipyard orbital construction per economy.md:5.1) - NOT YET IMPLEMENTED
   - ⏳ **Future:** Allow CST tech to upgrade dock capacity in spaceports and shipyards
   - ⏳ **Future:** Create integration tests for construction queue system
+  - ⏳ **Future:** Increase troop transport carry capacity via tech upgrade
+  - ⏳ **Future:** New tech tree for ground unit and troop transport upgrades
   - **Impact:** Fixed scout production bottleneck, enabled proper MOEA budget allocation, multi-build per colony working
 - ✅ **Comprehensive Diagnostic Metrics - COMPLETE (2025-11-26)**
   - Expanded diagnostics from 55 to 130 columns (+136% coverage)
@@ -848,6 +851,30 @@ Currently, many AI features live in `tests/balance/ai_controller.nim` (test inte
 ### Placeholder Code
 **Status:** ✅ Clean
 
+### Build Order Integration Issue
+**Status:** ⚠️ **BLOCKER** - Needs Investigation
+
+**Problem:**
+- Construction and commissioning integration tests are failing
+- Build orders aren't being processed correctly by turn resolution system
+- Ships aren't being built, so they can't be commissioned
+
+**Impact:**
+- `test_construction_comprehensive.nim`: 1/6 tests passing (17%)
+- `test_commissioning.nim`: 0/5 tests passing (0%)
+- `test_all_units_commissioning.nim`: Created but not run (blocked)
+
+**Root Cause:**
+- Build orders → construction pipeline not working in test environment
+- Turn resolution may not be processing BuildOrder objects correctly
+- Possible issues in `src/engine/resolution/economy_resolution.nim` or `src/engine/resolve.nim`
+
+**Next Steps:**
+- Debug turn resolution with build orders
+- Add logging to track build order processing
+- Verify construction queue vs underConstruction field usage
+- Check if colony state is properly initialized for construction
+
 ---
 
 ## 📁 Documentation Status
@@ -1088,7 +1115,29 @@ The feedback loop provides clean signals for ML training:
 **Commits:** 62a1e92 (2025-11-28)
 **See Also:** `docs/ai/ADMIRAL_CFO_FEEDBACK_LOOP.md` for detailed architecture documentation
 
-#### 8. ⏸️ NICE TO HAVE - Tech Level Caps Quality-of-Life Enhancements
+#### 8. ⏸️ NICE TO HAVE - RBA Imperial Government Refactoring
+
+**Status:** ⏸️ Deferred (Long-term backlog)
+**Context:** RBA modules are functional but could benefit from organizational refactoring
+**Priority:** LOW (nice-to-have code organization, not critical functionality)
+
+**Current State:**
+- Large RBA modules (orders.nim, budget.nim) handle multiple responsibilities
+- All functionality is working correctly - this is purely organizational
+
+**Proposed Refactoring:**
+- Split large RBA modules into focused sub-modules:
+  - `orders.nim` → separate strategic vs tactical order generation
+  - `budget.nim` → separate Admiral requests from CFO allocation logic
+- Create "Imperial Government" structure with clear separation of concerns
+- **Benefits:** Easier maintenance, clearer responsibilities, better testability
+- **Estimated Effort:** 4-6 hours (refactoring + test verification)
+
+**Note:** This is purely technical debt cleanup. No new features or behavior changes.
+
+---
+
+#### 9. ⏸️ NICE TO HAVE - Tech Level Caps Quality-of-Life Enhancements
 
 **Status:** ⏸️ Deferred (Long-term backlog)
 **Context:** Tech level caps fully implemented in Phase 1 (P0) and Phase 2 (P1)

@@ -9,11 +9,12 @@
 ## - NCV (Net Colony Value): Taxed colony revenue
 ## - IU (Industrial Units): Manufacturing capacity
 
-import std/[tables, math]
-import ../../common/types/[core]
+import std/[tables, math, options]
+import ../../common/types/[core, units]
 import ../prestige  # For PrestigeEvent
 
-export core.HouseId, core.SystemId
+export core.HouseId, core.SystemId, core.FleetId
+export units.ShipClass
 export prestige.PrestigeEvent
 
 type
@@ -48,6 +49,30 @@ type
     costTotal*: int             # Total PP cost
     costPaid*: int              # PP already invested
     turnsRemaining*: int        # Estimated completion (can vary)
+
+  FacilityType* {.pure.} = enum
+    ## Facility type for construction/repair
+    Shipyard,       # Orbital shipyard (10 docks)
+    Spaceport,      # Planetary spaceport (5 docks)
+
+  RepairTargetType* {.pure.} = enum
+    ## What is being repaired
+    Ship,           # Individual ship in squadron
+    Starbase,       # Orbital starbase
+
+  RepairProject* = object
+    ## Ship/starbase repair project in queue
+    ## Ships extracted from fleets, repaired for 1 turn, then recommissioned
+    targetType*: RepairTargetType
+    facilityType*: FacilityType     # Which facility type handles this repair
+    fleetId*: Option[FleetId]       # For ship repairs (where ship came from)
+    squadronIdx*: Option[int]       # Which squadron in fleet
+    shipIdx*: Option[int]           # Index in squadron (flagship=-1, escort=0+)
+    starbaseIdx*: Option[int]       # For starbase repairs
+    shipClass*: Option[ShipClass]   # For cost calculation and recommissioning
+    cost*: int                      # PP cost (25% of build cost)
+    turnsRemaining*: int            # Usually 1
+    priority*: int                  # Lower = higher priority (construction=0, ship=1, starbase=2)
 
   CompletedProject* = object
     ## Construction project completed this turn

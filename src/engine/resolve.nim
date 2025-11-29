@@ -810,3 +810,55 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # This happens AFTER explicit orders are processed
   # Standing orders provide persistent behaviors (patrol, auto-colonize, etc.)
   executeStandingOrders(state, state.turn)
+
+  # =========================================================================
+  # SQUADRON AUTO-BALANCING WITHIN FLEETS
+  # =========================================================================
+  # Optimize squadron composition within each fleet (if enabled per-fleet)
+  #
+  # **Purpose:**
+  # Redistribute escort ships across squadrons to maximize command capacity
+  # utilization and create balanced, effective battle groups.
+  #
+  # **When This Runs:**
+  # - End of Command Phase (AFTER all fleet movements and orders complete)
+  # - Only affects fleets with `autoBalanceSquadrons = true`
+  # - Only processes fleets with 2+ squadrons
+  #
+  # **What It Does:**
+  # 1. Extracts all escort ships from all squadrons (flagships never move)
+  # 2. Sorts escorts by command cost (largest first for optimal bin packing)
+  # 3. Redistributes escorts using greedy algorithm:
+  #    - Each escort assigned to squadron with most available command capacity
+  #    - Balances command capacity usage across all squadrons in fleet
+  #    - Prevents underutilized and overcrowded squadrons
+  #
+  # **Example:**
+  # Before: Squadron 1 (BB, CR=15): 5 destroyers (FULL)
+  #         Squadron 2 (BB, CR=15): 0 escorts (EMPTY)
+  # After:  Squadron 1 (BB, CR=15): 2-3 destroyers (BALANCED)
+  #         Squadron 2 (BB, CR=15): 2-3 destroyers (BALANCED)
+  #
+  # **Benefits:**
+  # - More efficient command capacity utilization
+  # - Better distributed firepower across squadrons
+  # - AI can maintain optimal fleet organization automatically
+  # - Newly commissioned ships integrate seamlessly
+  #
+  # **Design Note:**
+  # This is enabled by default (default: true) to maintain optimal fleet organization.
+  # Players can disable it per-fleet to preserve specific formations
+  # (e.g., dedicated scout squadrons, intentional asymmetric compositions).
+  # Most fleets benefit from auto-balancing, especially AI and reinforcement fleets.
+  # =========================================================================
+  when not defined(release):
+    echo "  [AUTO-BALANCE] Checking fleets for squadron auto-balancing..."
+  var balancedCount = 0
+  for fleetId, fleet in state.fleets.mpairs:
+    if fleet.autoBalanceSquadrons and fleet.squadrons.len >= 2:
+      when not defined(release):
+        echo "    [AUTO-BALANCE] Fleet ", fleetId, " (", fleet.squadrons.len, " squadrons) - balancing..."
+      fleet.balanceSquadrons()
+      balancedCount += 1
+  when not defined(release):
+    echo "  [AUTO-BALANCE] Balanced ", balancedCount, " fleets"

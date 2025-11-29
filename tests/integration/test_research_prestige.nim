@@ -30,8 +30,9 @@ suite "Research Prestige Integration":
 
     check advOpt.isSome
     let adv = advOpt.get()
-    check adv.fromLevel == 1
-    check adv.toLevel == 2
+    check adv.advancementType == AdvancementType.EconomicLevel
+    check adv.elFromLevel == 1
+    check adv.elToLevel == 2
     check adv.prestigeEvent.isSome
 
     let prestigeEvent = adv.prestigeEvent.get()
@@ -59,8 +60,9 @@ suite "Research Prestige Integration":
 
     check advOpt.isSome
     let adv = advOpt.get()
-    check adv.fromLevel == 1
-    check adv.toLevel == 2
+    check adv.advancementType == AdvancementType.ScienceLevel
+    check adv.slFromLevel == 1
+    check adv.slToLevel == 2
     check adv.prestigeEvent.isSome
 
     let prestigeEvent = adv.prestigeEvent.get()
@@ -89,9 +91,10 @@ suite "Research Prestige Integration":
 
     check advOpt.isSome
     let adv = advOpt.get()
-    check adv.field == field
-    check adv.fromLevel == 0
-    check adv.toLevel == 1
+    check adv.advancementType == AdvancementType.Technology
+    check adv.techField == field
+    check adv.techFromLevel == 0
+    check adv.techToLevel == 1
     check adv.prestigeEvent.isSome
 
     let prestigeEvent = adv.prestigeEvent.get()

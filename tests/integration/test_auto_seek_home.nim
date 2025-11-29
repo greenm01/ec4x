@@ -84,6 +84,7 @@ suite "Automated Seek Home - ETAC Missions":
       name: "Colonizing House",
       treasury: 5000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house1"].diplomaticRelations.setDiplomaticState("house2", DiplomaticState.Enemy, 1)
@@ -94,6 +95,7 @@ suite "Automated Seek Home - ETAC Missions":
       name: "Enemy House",
       treasury: 10000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house2"].diplomaticRelations.setDiplomaticState("house1", DiplomaticState.Enemy, 1)
@@ -302,6 +304,7 @@ suite "Automated Seek Home - Guard Orders":
       name: "Defending House",
       treasury: 5000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house1"].diplomaticRelations.setDiplomaticState("house2", DiplomaticState.Enemy, 1)
@@ -311,6 +314,7 @@ suite "Automated Seek Home - Guard Orders":
       name: "Conquering House",
       treasury: 10000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house2"].diplomaticRelations.setDiplomaticState("house1", DiplomaticState.Enemy, 1)
@@ -478,6 +482,7 @@ suite "Automated Seek Home - Blockade Orders":
       name: "Blockading House",
       treasury: 5000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house1"].diplomaticRelations.setDiplomaticState("house2", DiplomaticState.Enemy, 1)
@@ -487,6 +492,7 @@ suite "Automated Seek Home - Blockade Orders":
       name: "Liberating House",
       treasury: 10000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house2"].diplomaticRelations.setDiplomaticState("house1", DiplomaticState.Enemy, 1)
@@ -621,6 +627,7 @@ suite "Automated Seek Home - Patrol Orders":
       name: "Patrol House",
       treasury: 5000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house1"].diplomaticRelations.setDiplomaticState("house2", DiplomaticState.Enemy, 1)
@@ -630,6 +637,7 @@ suite "Automated Seek Home - Patrol Orders":
       name: "Invading House",
       treasury: 10000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house2"].diplomaticRelations.setDiplomaticState("house1", DiplomaticState.Enemy, 1)
@@ -763,6 +771,7 @@ suite "Automated Seek Home - No Safe Destination":
       name: "Desperate House",
       treasury: 100,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house1"].diplomaticRelations.setDiplomaticState("house2", DiplomaticState.Enemy, 1)
@@ -772,6 +781,7 @@ suite "Automated Seek Home - No Safe Destination":
       name: "Dominant House",
       treasury: 10000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house2"].diplomaticRelations.setDiplomaticState("house1", DiplomaticState.Enemy, 1)
@@ -871,6 +881,7 @@ suite "Automated Seek Home - Multiple Fleets":
       name: "Retreating House",
       treasury: 5000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house1"].diplomaticRelations.setDiplomaticState("house2", DiplomaticState.Enemy, 1)
@@ -880,6 +891,7 @@ suite "Automated Seek Home - Multiple Fleets":
       name: "Victorious House",
       treasury: 10000,
       eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
       diplomaticRelations: initDiplomaticRelations()
     )
     state.houses["house2"].diplomaticRelations.setDiplomaticState("house1", DiplomaticState.Enemy, 1)

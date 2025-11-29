@@ -11,6 +11,7 @@
 
 import std/[unittest, tables, options]
 import ../../src/engine/[gamestate, orders, resolve, fleet, squadron]
+import ../../src/engine/economy/types as econ_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/[core, units]
@@ -20,15 +21,14 @@ suite "Ship Commissioning":
   proc createTestState(): GameState =
     var result = GameState()
     result.turn = 1
-    result.year = 2501
-    result.month = 1
     result.phase = GamePhase.Active
 
     result.houses["house1"] = House(
       id: "house1",
       name: "Test House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     result.colonies[1] = Colony(
@@ -41,7 +41,7 @@ suite "Ship Commissioning":
       resources: ResourceRating.Abundant,
       buildings: @[],
       production: 100,
-      underConstruction: none(gamestate.ConstructionProject),
+      underConstruction: none(econ_types.ConstructionProject),
       activeTerraforming: none(gamestate.TerraformProject),
       unassignedSquadrons: @[],
       unassignedSpaceLiftShips: @[],

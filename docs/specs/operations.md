@@ -8,41 +8,121 @@ Fleets move between solar systems via jump lanes:
 - If jumping into an unexplored or rival system, the maximum number of jumps is one.
 - Fleets containing crippled ships or Spacelift Command ships can not jump across restricted lanes.
 
-## 6.2 Squadron Commissioning and Fleet Assignment
+## 6.2 Ship Commissioning and Fleet Organization
 
-When ships complete construction at Spaceports or Shipyards, they are automatically commissioned into **unassigned squadrons** at the colony using intelligent tactical grouping:
+Your industrial might transforms treasury into warships through a sophisticated three-stage pipeline. Ships commissioned at Spaceports and Shipyards flow automatically through squadron formation and fleet assignment, emerging as organized battle groups ready for your command.
 
-### Ship-to-Squadron Auto-Commissioning
+### 6.2.1 The Ship-to-Fleet Pipeline
 
-**Priority for Squadron Formation**:
-1. **Capital Ships** (Battleships, Carriers, Cruisers, etc.) → Always create new squadron as flagship
-2. **Escort Ships** (Scouts, Frigates, Destroyers) → Join existing unassigned squadrons in this priority:
-   - First: Join capital ship squadrons at colony (if command capacity available)
-   - Second: Join escort squadrons of same class at colony (if no capitals available)
-   - Third: Create new squadron (if no suitable squadrons exist)
+**Stage One: Construction Completion**
 
-**Result**: Battle-ready mixed squadrons form automatically at the colony without player micromanagement.
+When construction completes (one turn for all ships), your new warship commissions immediately at its construction colony. The ship receives full combat statistics based on your current technology levels—your weapons research advances directly strengthen every newly-commissioned hull.
 
-### Squadron-to-Fleet Assignment
+**Stage Two: Squadron Formation**
 
-**Default Behavior**: Squadrons remain **unassigned** at the colony until players manually assign them to fleets using squadron management orders. This prevents interference with carefully organized player fleets and avoids assigning to fleets that are just passing through the system.
+Newly-commissioned ships join squadrons at the colony automatically, using tactical doctrine to create effective combined-arms forces:
 
-**Optional Auto-Assignment**: Players can enable per-colony **Auto-Assign Fleet Management** toggle:
-- When enabled, unassigned squadrons automatically distribute to balance combat strength across all stationary fleets at the colony
-- Each squadron assigns to the weakest fleet (by total attack strength) to maintain balanced defensive forces
-- If no fleets exist, creates a new fleet
-- Only assigns to stationary fleets (not fleets with movement orders)
-- Useful for frontier colonies where defensive fleet composition matters less
-- Core strategic worlds typically keep auto-assign disabled for manual fleet control
+**Capital Ships** (Battleships, Carriers, Cruisers):
+- Always become squadron flagships
+- Create new squadrons automatically
+- Provide command structure for escort vessels
 
-### Manual Fleet Organization
+**Escort Ships** (Scouts, Frigates, Destroyers, Light Cruisers):
+- Join existing unassigned capital ship squadrons first (if command capacity available)
+- Join same-class escort squadrons second (if no capital squadrons exist)
+- Create new escort squadrons only when no suitable squadrons exist
 
-Players use **Squadron Management Orders** to:
-- Transfer ships between squadrons (only at colonies)
-- Assign squadrons to specific fleets (new or existing)
-- Reorganize for tactical situations (e.g., single-scout squadrons for espionage)
+This intelligent grouping produces battle-ready squadrons without your intervention. A newly-commissioned Battleship automatically forms the core of a new squadron; Destroyers completing construction the next turn join that squadron automatically, creating a Battleship-plus-escorts battle group.
 
-**⚠️ Espionage Requirement**: Spy missions (SpyPlanet, SpySystem, HackStarbase) **require** single-scout squadrons. The game validates and rejects spy orders from multi-ship squadrons to prevent detection risk.
+**Stage Three: Fleet Assignment**
+
+Your colonies default to manual fleet assignment—unassigned squadrons remain at the colony until you issue Squadron Management orders. This gives you precise control over fleet composition and prevents newly-commissioned forces from inadvertently joining transient fleets.
+
+You can enable **Auto-Assign Fleet Management** per colony for automated fleet organization:
+- Unassigned squadrons distribute automatically across stationary fleets at the colony
+- New fleets create automatically if no suitable fleets exist
+- Useful for frontier worlds where you need defensive forces quickly
+- Strategic worlds benefit from manual assignment and deliberate fleet composition
+
+### 6.2.2 Command Hierarchy
+
+Your forces organize in a three-tier hierarchy optimized for both tactical flexibility and strategic control:
+
+**Fleet → Squadron → Ship**
+
+**Fleets** represent your strategic formations—groups of squadrons that move together, engage as a unit, and execute your orders. You issue missions to fleets: Move to Alpha Centauri, Bombard enemy colonies, Patrol the frontier.
+
+**Squadrons** represent tactical units within fleets—collections of ships under a flagship's command. Each squadron operates with a flagship (usually a capital ship) commanding escort vessels. The flagship's Command Rating determines how many escorts the squadron can effectively coordinate.
+
+**Ships** represent individual hulls with specific combat capabilities. Each ship has Attack Strength, Defense Strength, and Command Cost. Capital ships have high Command Ratings and become flagships; escorts have low Command Cost and support flagships in combat.
+
+### 6.2.3 Squadron Composition
+
+Squadrons organize around the flagship's command capacity. Your flagship's Command Rating (CR) determines the squadron's total capacity; each escort consumes Command Cost (CC) when assigned.
+
+Example squadron with Battleship flagship (CR=15):
+- 1 Battleship (flagship, no CC consumed)
+- 3 Destroyers (3 CC each = 9 CC total)
+- 2 Frigates (2 CC each = 4 CC total)
+- Total: 13 CC used of 15 CR available
+
+Effective squadrons use their command capacity efficiently—mixing escorts to maximize firepower while maintaining flexibility. Pure escort squadrons (Destroyer flagships commanding other Destroyers) provide screening forces; capital-led squadrons deliver concentrated firepower.
+
+### 6.2.4 Auto-Balancing Squadrons
+
+Fleets automatically optimize squadron composition each turn by default, redistributing escorts to maximize command capacity utilization across all squadrons.
+
+When enabled (default), escorts redistribute at turn end to balance command usage:
+- Flagships never move between squadrons
+- Escorts shift to squadrons with available capacity
+- All squadrons achieve similar capacity utilization
+- Combat losses rebalance automatically next turn
+
+You can disable auto-balancing per fleet for precise tactical compositions—dedicated scout squadrons for espionage, deliberate force distributions, specialized formations.
+
+### 6.2.5 Manual Squadron Management
+
+You maintain complete control over squadron composition through Squadron Management orders:
+
+**Transfer ships between squadrons** at colonies—move that Scout from the Battleship squadron to the Carrier squadron, consolidate damaged escorts into reserve squadrons, reorganize after battle.
+
+**Assign squadrons to fleets** precisely—create specialized task forces, reinforce existing fleets, establish new defensive formations.
+
+**Reorganize for tactical requirements**—form single-Scout squadrons for espionage missions (required for spy orders), create screening forces, establish carrier battle groups.
+
+**Note:** Espionage missions demand single-Scout squadrons. Multi-ship squadrons cannot execute spy orders—the risk of detection with multiple vessels makes such missions tactically unsound.
+
+### 6.2.6 Practical Examples
+
+**Reinforcement Integration:**
+
+Your homeworld commissions three Destroyers. They automatically join your existing Battleship squadron at the colony (command capacity permitting). When that fleet's auto-assignment activates, the reinforced squadron joins your nearest defensive fleet automatically, or you assign it manually to your offensive task force using Squadron Management orders.
+
+**Frontier Defense:**
+
+Your frontier colony enables auto-assign fleet management. New Cruisers commission and form squadrons automatically. Those squadrons immediately join stationary defensive fleets at the colony, creating a growing defensive force without management overhead.
+
+**Strategic Task Force:**
+
+Your strategic reserve requires precise composition. You disable auto-balancing on the reserve fleet, manually assign specific squadrons with Squadron Management orders, and maintain exact force ratios for your planned offensive. The fleet composition remains fixed despite reinforcements arriving at the base colony.
+
+### 6.2.7 Command Capacity Mechanics
+
+Your flagship's Command Rating represents its ability to coordinate supporting vessels effectively. Large capital ships command extensive battle groups; smaller vessels coordinate limited escorts.
+
+**Command Ratings by ship class:**
+- Battleships and Carriers: CR 15 (command multiple escorts)
+- Cruisers: CR 5-8 (command several escorts)
+- Destroyers and Escorts: CR 3 (command few escorts)
+- Scouts: CR 1 (operate independently or in pairs)
+
+**Command Cost** represents the coordination burden each escort places on the flagship:
+- Capital ships: CC 0 (never consume capacity, always flagships)
+- Destroyers: CC 3 (significant coordination required)
+- Frigates: CC 2 (moderate coordination required)
+- Scouts: CC 1 (minimal coordination required)
+
+Efficient squadron composition maximizes your firepower within command constraints. You can exceed command capacity temporarily (forced assignments), but the squadron operates at reduced effectiveness in combat.
 
 ## 6.3 Fleet Orders
 
@@ -420,6 +500,486 @@ An invasion fleet entering an enemy system:
 4. Only after clearing all three phases can troop transports land
 
 Attackers cannot skip phases. Guard orders mean fleets defend in orbital combat only, not space combat.
+
+## 6.4 Standing Orders
+
+Your fleets execute standing orders automatically when no explicit order exists—persistent behaviors that reduce micromanagement while maintaining strategic control. Standing orders activate only for fleets without active missions, providing default behaviors that align with your strategic intent.
+
+### 6.4.1 Standing Order Mechanics
+
+**Execution Priority:**
+
+Standing orders execute AFTER active fleet orders during each turn's Command Phase:
+1. Active fleet orders execute first (Move, Patrol, Bombard, etc.)
+2. Fleets with no active orders check for standing orders
+3. Standing orders generate appropriate fleet orders automatically
+4. Generated orders persist until completed or overridden
+
+**Override Behavior:**
+
+Your active orders always override standing orders—issue any fleet order and the standing order suspends automatically. When your active order completes, the standing order resumes execution. This gives you tactical flexibility without sacrificing automation.
+
+**Suspension and Resumption:**
+
+Standing orders suspend when you issue active orders, resume when those orders complete. A PatrolRoute standing order pauses while you manually send the fleet to intercept an enemy, then resumes the patrol route automatically after the interception order completes.
+
+### 6.4.2 Patrol Route
+
+Your fleet follows a predefined path indefinitely, looping through specified systems. Each turn, the fleet moves to the next system in the patrol route, returning to the first system after completing the circuit.
+
+**Parameters:**
+- Patrol path (sequence of system IDs)
+- Current position in path (tracked automatically)
+
+**Behavior:**
+- Fleet moves to next system in path each turn
+- Loops continuously (system 1 → 2 → 3 → 1 → ...)
+- Engages hostile forces per ROE while patrolling
+- Resumes patrol automatically after combat
+
+**Best Uses:**
+- Border patrols monitoring frontier systems
+- Trade route protection through key corridors
+- Defensive circuits around strategic colonies
+- Reconnaissance loops gathering intelligence
+
+**Example:**
+
+You establish a four-system patrol route: Alpha → Beta → Gamma → Delta. Your fleet automatically moves Alpha → Beta (turn 1), Beta → Gamma (turn 2), Gamma → Delta (turn 3), Delta → Alpha (turn 4), continuing indefinitely. If combat occurs at Beta, the fleet engages per ROE, then continues to Gamma next turn.
+
+### 6.4.3 Defend System
+
+Your fleet guards a specific system, patrolling when at the target and returning automatically if pulled away by combat or explicit orders.
+
+**Parameters:**
+- Target system to defend
+- Maximum range (jumps from target before returning)
+
+**Behavior:**
+- Fleet patrols target system when present
+- Returns immediately if moved beyond maximum range
+- Engages all hostile forces entering defended system
+- Prioritizes defending target over pursuing retreating enemies
+
+**Best Uses:**
+- Homeworld defense fleets
+- Strategic chokepoint garrisons
+- Colony protection during expansion
+- Starbase guard forces
+
+**Strategic Note:**
+
+DefendSystem provides elastic defense—fleets pursue enemies briefly but snap back to defensive position automatically. This prevents your defensive fleets from being lured away from critical systems by feints and raids.
+
+### 6.4.4 Guard Colony
+
+Your fleet maintains station at a specific colony, executing GuardPlanet orders to defend against invasions and bombardments.
+
+**Parameters:**
+- Colony system to guard
+
+**Behavior:**
+- Fleet issues GuardPlanet orders at target colony
+- Participates in orbital combat defending the colony
+- Does not pursue fleeing enemies beyond the system
+- Maintains station until enemy threat eliminated
+
+**Best Uses:**
+- High-value colony protection (advanced research colonies)
+- Capital system defense-in-depth
+- Mining colony escorts
+- Vulnerable frontier outposts
+
+**Difference from DefendSystem:**
+
+GuardColony focuses on planetary defense (orbital combat), while DefendSystem patrols the system and engages mobile enemies. GuardColony fleets participate in orbital combat mechanics; DefendSystem fleets engage before enemies reach orbit.
+
+### 6.4.5 Auto-Colonize
+
+Your ETAC fleets automatically colonize the nearest suitable unoccupied planet, executing colonization missions without explicit orders.
+
+**Parameters:**
+- Preferred planet classes (Benign, Harsh, etc.)
+- Maximum colonization range (jumps from current position)
+
+**Behavior:**
+- Scans for unoccupied planets within range
+- Prioritizes by planet class preferences
+- Issues Colonize orders to nearest suitable target
+- Continues seeking new targets after each colony established
+- Holds position if no suitable planets within range
+
+**Best Uses:**
+- Rapid expansion during early game
+- Automated frontier colonization
+- Economic AI fleet behavior
+- Reducing colonization micromanagement
+
+**Strategic Considerations:**
+
+AutoColonize fleets expand your empire automatically but follow predictable patterns. Rival houses can intercept if they identify your colonization vectors. Use AutoColonize for secondary expansion while manually directing strategic colony placements.
+
+### 6.4.6 Auto-Reinforce
+
+Your fleet automatically joins the nearest friendly fleet when damaged below a threshold, seeking safety in numbers.
+
+**Parameters:**
+- Damage threshold (percentage, e.g., 50% hull integrity)
+- Target fleet (specific fleet ID or nearest)
+
+**Behavior:**
+- Monitors fleet combat effectiveness continuously
+- Issues JoinFleet order when damage exceeds threshold
+- Seeks nearest friendly fleet if no target specified
+- Merges with target fleet for repairs and refit
+
+**Best Uses:**
+- Raiding fleets returning for repairs
+- Damaged scouts rejoining main forces
+- AI self-preservation behavior
+- Automated fleet consolidation after combat
+
+**Note:**
+
+AutoReinforce provides automatic damage control but doesn't seek shipyard repairs. Use AutoRepair (below) for fleets needing industrial refit. AutoReinforce consolidates damaged forces for combined defense and eventual repair at colonies.
+
+### 6.4.7 Auto-Repair
+
+Your fleet returns to the nearest shipyard when damaged below a threshold, seeking industrial repair facilities.
+
+**Parameters:**
+- Damage threshold (percentage hull integrity)
+- Target shipyard (specific system or nearest)
+
+**Behavior:**
+- Monitors fleet hull integrity continuously
+- Issues SeekHome to nearest shipyard colony when threshold exceeded
+- Holds at shipyard colony for repairs
+- Resumes standing orders after repairs complete
+
+**Best Uses:**
+- Capital ship preservation
+- High-value fleet maintenance
+- Automated repair logistics
+- AI fleet sustainability
+
+**Repair Mechanics:**
+
+Fleets at friendly colonies with shipyards repair automatically each turn (see Section 3.9 for repair rates). AutoRepair automates the seeking behavior; the actual repairs follow standard mechanics at the destination colony.
+
+### 6.4.8 Auto-Evade
+
+Your fleet automatically retreats to a safe system when facing overwhelming enemy forces, preserving your assets for future engagements.
+
+**Parameters:**
+- Fallback system (safe retreat destination)
+- Strength ratio trigger (e.g., 2.0 = retreat when outnumbered 2:1)
+
+**Behavior:**
+- Compares fleet strength to hostile forces each turn
+- Issues Move order to fallback system when ratio exceeded
+- Engages per ROE while retreating
+- Returns automatically when threat eliminated
+
+**Best Uses:**
+- Scout fleet self-preservation
+- Raiding force protection
+- AI defensive behavior
+- Avoiding unfavorable engagements
+
+**Tactical Considerations:**
+
+AutoEvade provides automatic force preservation but can create exploitable patterns. Enemies observing your fallback destination can ambush retreating fleets. Vary fallback destinations for strategic fleets or disable AutoEvade when seeking decisive battle.
+
+### 6.4.9 Blockade Target
+
+Your fleet maintains continuous blockade of an enemy colony, preventing production and starving the target of resources.
+
+**Parameters:**
+- Target colony system
+
+**Behavior:**
+- Issues BlockadePlanet orders at target system
+- Maintains blockade indefinitely
+- Engages relief forces automatically
+- Repairs at nearest friendly colony when damaged
+
+**Best Uses:**
+- Economic warfare against enemy production
+- Siege operations before invasion
+- Cutting off strategic resources
+- Forcing enemy fleet response
+
+**Blockade Mechanics:**
+
+Blockaded colonies cannot export production, receive reinforcements, or execute most orders (see Section 8.1 for complete blockade rules). Effective blockades require sufficient fleet strength to defeat relief forces and sustain the siege.
+
+### 6.4.10 Rules of Engagement Integration
+
+All standing orders respect your fleet's ROE setting (0-10). High ROE fleets engage aggressively while executing standing orders; low ROE fleets prioritize mission completion and retreat from unfavorable combat. Set ROE appropriately for each standing order's strategic purpose—defensive patrols use low ROE, offensive blockades use high ROE.
+
+### 6.4.11 Standing Order Management
+
+**Setting Standing Orders:**
+
+Issue standing orders through fleet command interface—select fleet, specify standing order type and parameters. Standing orders persist until explicitly cancelled or replaced.
+
+**Canceling Standing Orders:**
+
+Set standing order to None or issue active fleet orders. Active orders suspend standing orders automatically; canceling returns the fleet to no-orders state (Hold position).
+
+**Multiple Fleets, Same Standing Order:**
+
+You can assign identical standing orders to multiple fleets—three fleets with PatrolRoute orders covering different sectors, five ETAC fleets with AutoColonize orders expanding in different directions. Each fleet executes its standing order independently.
+
+**Strategic Combinations:**
+
+Combine standing orders with active tactical commands—your border patrol fleet (PatrolRoute) receives an active "Intercept enemy at Beta" order, completes the interception, then resumes patrol automatically. This blends automation with tactical control seamlessly.
+
+## 6.5 Ship Repairs and Repair Queues
+
+Your warships damaged in combat require systematic repairs at colonies with shipyard or spaceport facilities. Understanding repair mechanics ensures your fleets maintain combat readiness.
+
+### 6.5.1 Repair Fundamentals
+
+**Damage States:**
+- **Undamaged**: Full combat effectiveness
+- **Crippled**: 50% attack and defense strength, can still move and fight
+- **Destroyed**: Permanently lost (salvage value only)
+
+**Repair Requirements:**
+- Colony with operational shipyard or spaceport
+- Available dock capacity (repairs compete with construction for docks)
+- Treasury funds (25% of ship's build cost per economy.md)
+- One turn repair time
+
+**Automatic Repair Submission:**
+
+Your fleets don't need explicit repair orders. When a fleet with crippled ships stations at a colony with repair facilities and available dock capacity, crippled escorts automatically extract from squadrons and enter the repair queue. Flagships remain with their squadrons (flagship repair requires special handling).
+
+**Standing Orders for Repairs:**
+
+Fleets don't automatically return to shipyards when damaged. You must give your fleet a **standing order: AutoRepair** (see 6.4.6) to make damaged fleets automatically return to the nearest shipyard and hold for repairs. Without this standing order, damaged fleets will continue executing their current orders until you explicitly redirect them.
+
+### 6.5.2 Repair Queue Mechanics
+
+**Dock Capacity:**
+- **Shipyards**: 10 docks per facility (for capital ships and larger escorts)
+- **Spaceports**: 5 docks per facility (for smaller escorts)
+- **Shared Capacity**: Construction and repairs compete for the same docks
+
+**Priority System:**
+1. **Construction Projects** (Priority 0): Ship/building construction takes precedence
+2. **Ship Repairs** (Priority 1): Combat vessel repairs
+3. **Starbase Repairs** (Priority 2): Orbital fortress repairs
+
+**Facility Assignment:**
+
+Each repair is assigned to a facility type based on asset type:
+- **Shipyard Repairs**: Battleships, Dreadnoughts, Carriers, Heavy Cruisers, Cruisers, **Starbases**
+- **Spaceport Repairs**: Light Cruisers, Destroyers, Frigates, Scouts
+
+Construction projects can use any available dock type, but repairs are facility-specific. Starbases always require shipyard facilities (they're orbital structures, cannot be repaired at ground spaceports).
+
+### 6.5.3 Starbase Repairs and Crippled Penalties
+
+**Crippled Starbase Effects:**
+
+Crippled starbases lose ALL operational benefits until repaired:
+- **No ELI bonus**: Electronic Intelligence (ELI) surveillance disabled
+- **No population bonus**: Cannot support additional population capacity
+- **No defense bonus**: Defensive combat strength reduced to 50%
+- **Automatic repair**: Starbases at colonies with operational shipyards automatically enter repair queue
+
+**Starbase Repair Specifics:**
+
+- **Facility Required**: Shipyard only (orbital structures, cannot use spaceports)
+- **Cost**: 25% of starbase build cost (~25 PP for standard starbase)
+- **Duration**: 1 turn
+- **Priority**: Lowest (priority 2, after construction and ship repairs)
+- **Automatic**: No player action needed—crippled starbases automatically queue when shipyard capacity available
+
+**Strategic Implications:**
+
+Losing starbase surveillance during repairs creates intelligence gaps. Enemy fleets can move through your systems undetected while your starbase repairs. Protect your starbases aggressively or maintain backup surveillance (scouts, adjacent starbases).
+
+### 6.5.4 Ship Repair Pipeline
+
+**Stage One: Extraction**
+
+When your fleet arrives at a colony with repair capacity:
+1. System identifies all crippled escort ships (flagships remain with squadron)
+2. Escorts extracted from their squadrons one at a time
+3. Each ship becomes a separate repair project in the queue
+
+**Stage Two: Repair Queue**
+
+Ships enter facility-specific queues:
+- Repair projects occupy one dock each
+- Repair duration: 1 turn (all repairs complete simultaneously)
+- Cost: 25% of ship's build cost (deducted when repair completes)
+
+If dock capacity full, ships remain with their squadrons and retry next turn.
+
+**Stage Three: Recommissioning**
+
+Repaired ships recommission through the standard squadron pipeline (see 6.2.2):
+- Capital ships become new squadron flagships
+- Escorts join existing capital ship squadrons (balanced distribution)
+- Escorts join same-class escort squadrons if no capital squadrons available
+- New escort squadrons created only when no suitable squadrons exist
+
+**Stage Four: Fleet Assignment**
+
+If colony has `autoAssignFleets = true` (default):
+- Repaired squadrons automatically join existing stationary fleets at colony
+- Load-balanced across all Active fleets
+- New fleets created only if no candidate fleets exist
+
+If `autoAssignFleets = false`:
+- Squadrons remain in colony.unassignedSquadrons for manual assignment
+
+### 6.5.5 Repair Costs and Economics
+
+**Cost Structure:**
+
+Repairs cost 25% of the ship's construction cost at **shipyards** (orbital facilities):
+- Battleship (70 PP build cost) = 17-18 PP repair
+- Heavy Cruiser (35 PP build cost) = 8-9 PP repair
+
+**Spaceport Penalty:**
+
+Repairs at **spaceports** (ground-based facilities) cost 50% more due to less efficient equipment:
+- Destroyer (15 PP build cost) = 5-6 PP repair at spaceport (vs 3-4 PP at shipyard)
+- Light Cruiser (20 PP build cost) = 7-8 PP repair at spaceport (vs 5 PP at shipyard)
+- Frigate (10 PP build cost) = 3-4 PP repair at spaceport (vs 2-3 PP at shipyard)
+
+**Facility Assignment:**
+
+You cannot choose which facility repairs your ships—assignment is automatic by ship class. Build orbital shipyards for more cost-effective escort repairs if you have the industrial capacity.
+
+**Treasury Requirements:**
+
+Repair costs deducted from house treasury when repair completes. If insufficient funds, repair fails and ship remains crippled in queue (will retry next turn).
+
+**Economic Trade-offs:**
+
+Repairing a crippled battleship (17 PP) vs building new destroyer (15 PP):
+- Repair preserves expensive capital ship
+- New construction adds fleet capacity
+- Consider strategic value vs immediate need
+
+**Starbase Repairs:**
+
+Starbases cost ~25 PP to repair (25% of ~100 PP build cost). This is expensive but essential—crippled starbases lose all surveillance and defensive bonuses. Prioritize starbase repairs in critical defensive positions.
+
+### 6.5.6 Facility Vulnerability
+
+**Combat Damage to Facilities:**
+
+Per economy.md:5.0, ships under construction or repair are destroyed if:
+- Facility destroyed by orbital bombardment
+- Facility crippled by combat damage
+- Colony successfully invaded (spaceports destroyed on marine landing)
+
+**Queue Behavior:**
+- **Facility-specific repairs**: Destroyed immediately when that facility type lost
+- **Construction projects**: Can transfer to other facility types at colony (shipyard → spaceport)
+- **All facilities lost**: All construction and repair projects destroyed (no salvage value)
+
+**Strategic Implications:**
+
+Protect your industrial colonies—losing an orbital shipyard during enemy bombardment destroys all ships under repair at that facility, costing you both the repair investment and the crippled ships.
+
+### 6.5.7 Practical Examples
+
+**Example 1: Battle-Damaged Fleet Returns Home**
+
+Your battle fleet (3 battleship squadrons, 8 destroyer escorts) engages enemy forces. After combat:
+- 2 battleships crippled (remain as flagships)
+- 5 destroyers crippled
+
+You assign standing order: **AutoRepair** with target shipyard at your capital:
+1. **Turn 1**: Fleet moves toward capital (2 jumps away)
+2. **Turn 2**: Fleet arrives at capital, holds for repairs
+3. **Turn 3**: 5 crippled destroyers automatically extracted, enter spaceport repair queue
+4. **Turn 4**: Destroyers complete repairs (1 turn), recommission to new squadrons
+5. **Turn 4**: New squadrons auto-assign back to same fleet (if `autoAssignFleets = true`)
+
+**Result**: Your 5 destroyers rejoin the battle fleet as fresh squadrons. The 2 crippled battleship flagships remain with their squadrons (flagship repair requires manual intervention or scuttling/recommissioning).
+
+**Example 2: Construction vs Repair Priority**
+
+Your border fortress colony has:
+- 1 shipyard (10 docks)
+- 5 ships under construction (occupying 5 docks)
+- 5 docks available
+
+Damaged patrol fleet arrives with 7 crippled destroyers:
+1. **Turn N**: 5 destroyers extract and enter repair queue (5/10 docks used by construction + repairs)
+2. **Turn N**: 2 destroyers remain crippled with fleet (no dock capacity)
+3. **Turn N+1**: 5 ships complete construction (5 docks freed)
+4. **Turn N+1**: 2 remaining destroyers extract (now capacity available)
+5. **Turn N+1**: Original 5 destroyers complete repairs, recommission
+6. **Turn N+2**: Final 2 destroyers complete repairs, recommission
+
+**Result**: Construction takes priority, but repairs process as capacity becomes available.
+
+**Example 3: Enemy Bombardment Destroys Repairs**
+
+Your shipyard colony under siege:
+- 1 shipyard (10 docks)
+- 3 battleships under repair (priority 1)
+- 2 battleships under construction (priority 0)
+
+Enemy fleet bombards colony, destroys shipyard:
+1. **Conflict Phase**: Shipyard destroyed
+2. **Immediate Effect**: All 5 ships (construction + repairs) lost with no salvage
+3. **Economic Loss**: ~350 PP in ships + ~35 PP in repair investments = 385 PP total loss
+
+**Result**: Catastrophic industrial loss. Defend your shipyards aggressively.
+
+**Example 4: Crippled Starbase Loses Surveillance**
+
+Your border system has 1 starbase (ELI surveillance) and 1 shipyard. Enemy raid cripples the starbase:
+1. **Turn N (Conflict Phase)**: Starbase crippled in combat
+2. **Turn N (Immediate Effect)**: ELI surveillance disabled, population bonus lost
+3. **Turn N+1 (Maintenance Phase)**: Starbase automatically queued for repair at shipyard
+4. **Turn N+2**: Starbase repair completes, ELI and bonuses restored
+
+During Turn N+1 (repair in progress):
+- No surveillance of enemy fleet movements
+- Enemy fleets can transit system undetected
+- Reduced defensive strength (starbase still provides combat power, but crippled)
+
+**Result**: 1-turn intelligence blackout. Consider backup surveillance (scouts, adjacent starbases) for critical systems.
+
+### 6.5.8 Best Practices
+
+**Standing Orders Are Essential:**
+
+Without standing order AutoRepair, your damaged fleets will not automatically return to shipyards. Assign AutoRepair to all combat fleets operating far from home to ensure they seek repairs when damaged.
+
+**Repair Capacity Planning:**
+
+Build multiple repair facilities:
+- Frontline colonies: 1 spaceport (5 docks) for escort repairs
+- Industrial hubs: 2-3 shipyards (20-30 docks) for capital ship repairs
+- Dispersed repair capacity reduces single-point-of-failure risk
+
+**Flagship Damage:**
+
+Crippled flagships cannot be repaired automatically (they hold the squadron together). Options:
+- Transfer flagship role to another ship (if squadron has escorts)
+- Scuttle flagship, create new squadron with replacement
+- Accept 50% combat effectiveness until war ends
+
+**Defensive Priorities:**
+
+Your industrial colonies are high-value targets:
+- Station defensive fleets at shipyard colonies
+- Build starbases for orbital defense
+- Evacuate or suspend repairs before enemy arrival
 
 ## 7.1 Principles
 

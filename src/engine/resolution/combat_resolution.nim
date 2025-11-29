@@ -11,7 +11,7 @@ import std/[tables, options, sequtils, hashes, math, random]
 import ../../common/[types/core, types/combat, types/units, logger]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift
 import ../combat/[engine as combat_engine, types as combat_types, ground]
-import ../economy/[types as econ_types]
+import ../economy/[types as econ_types, facility_damage]
 import ../prestige
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony, resolveMovementOrder
@@ -470,7 +470,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         id: fleet.id,
         owner: fleet.owner,
         location: fleet.location,
-        status: fleet.status  # Preserve status (Active/Reserve)
+        status: fleet.status,  # Preserve status (Active/Reserve)
+        autoBalanceSquadrons: fleet.autoBalanceSquadrons  # Preserve balancing setting
       )
     else:
       # Fleet destroyed
@@ -512,7 +513,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
               id: fleet.id,
               owner: fleet.owner,
               location: fleet.location,
-              status: FleetStatus.Mothballed
+              status: FleetStatus.Mothballed,
+              autoBalanceSquadrons: fleet.autoBalanceSquadrons  # Preserve setting
             )
 
           # Destroy spacelift ships in any fleet (they were screened by orbital units)
@@ -1012,6 +1014,9 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Shields and spaceports destroyed on landing (per spec)
     updatedColony.planetaryShieldLevel = 0
     updatedColony.spaceports = @[]
+
+    # Destroy ships under construction/repair in spaceport docks (per economy.md:5.0)
+    handleFacilityDestruction(updatedColony, econ_types.FacilityType.Spaceport)
 
     # Update ground forces
     # Attacker marines that survived become garrison

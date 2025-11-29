@@ -24,7 +24,8 @@ suite "Squadron Management":
       id: "house1",
       name: "Test House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Create squadrons
@@ -257,7 +258,8 @@ suite "Fleet Organization":
       id: "house1",
       name: "Test House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Create multiple squadrons
@@ -292,7 +294,8 @@ suite "Fleet Organization":
       id: "house1",
       name: "Test House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
@@ -393,7 +396,8 @@ suite "Auto-Assignment System":
       id: "house1",
       name: "Test House",
       treasury: 10000,
-      eliminated: false
+      eliminated: false,
+      techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
     # Create unassigned squadrons with auto-assign enabled

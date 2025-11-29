@@ -91,6 +91,7 @@ type
     # Construction
     underConstruction*: Option[ConstructionProject]  # DEPRECATED: Legacy single-project field
     constructionQueue*: seq[ConstructionProject]     # NEW: Multi-project build queue
+    repairQueue*: seq[econ_types.RepairProject]      # Ships/starbases awaiting repair
     activeTerraforming*: Option[TerraformProject]    # Active terraforming project
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
@@ -320,6 +321,7 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     infrastructureDamage: 0.0,  # No damage at start
     underConstruction: none(ConstructionProject),
     constructionQueue: @[],  # NEW: Empty build queue
+    repairQueue: @[],  # Empty repair queue
     unassignedSquadrons: @[],  # No unassigned squadrons
     unassignedSpaceLiftShips: @[],  # No unassigned spacelift ships
     autoAssignFleets: true,  # Auto-assign by default
@@ -362,6 +364,7 @@ proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetCl
     infrastructureDamage: 0.0,  # No damage at start
     underConstruction: none(ConstructionProject),
     constructionQueue: @[],  # NEW: Empty build queue
+    repairQueue: @[],  # Empty repair queue
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
     autoAssignFleets: true,
@@ -636,13 +639,46 @@ proc getConstructionDockCapacity*(colony: Colony): int =
       result += shipyard.docks  # Usually 10 per shipyard
 
 proc getActiveConstructionProjects*(colony: Colony): int =
-  ## Count how many projects are currently active in the queue
+  ## Count how many projects are currently active (underConstruction + queue)
   result = colony.constructionQueue.len
+  if colony.underConstruction.isSome:
+    result += 1
+
+proc getActiveRepairProjects*(colony: Colony): int =
+  ## Count how many repair projects are currently active
+  result = colony.repairQueue.len
+
+proc getTotalActiveProjects*(colony: Colony): int =
+  ## Count total active projects (construction + repair)
+  result = colony.getActiveConstructionProjects() + colony.getActiveRepairProjects()
+
+proc getShipyardDockCapacity*(colony: Colony): int =
+  ## Calculate shipyard dock capacity (for ship repairs)
+  result = 0
+  for shipyard in colony.shipyards:
+    if not shipyard.isCrippled:
+      result += shipyard.docks  # Usually 10 per shipyard
+
+proc getSpaceportDockCapacity*(colony: Colony): int =
+  ## Calculate spaceport dock capacity (for smaller ship repairs)
+  result = 0
+  for spaceport in colony.spaceports:
+    result += spaceport.docks  # Usually 5 per spaceport
+
+proc getActiveProjectsByFacility*(colony: Colony, facilityType: econ_types.FacilityType): int =
+  ## Count active projects using a specific facility type
+  ## Construction projects can use any facility, repairs are facility-specific
+  result = colony.getActiveConstructionProjects()  # Construction uses any docks
+
+  # Add repairs specific to this facility type
+  for repair in colony.repairQueue:
+    if repair.facilityType == facilityType:
+      result += 1
 
 proc canAcceptMoreProjects*(colony: Colony): bool =
   ## Check if colony has dock capacity for more construction projects
   let capacity = colony.getConstructionDockCapacity()
-  let active = colony.getActiveConstructionProjects()
+  let active = colony.getTotalActiveProjects()  # Now includes repairs
   result = active < capacity
 
 # Turn advancement
