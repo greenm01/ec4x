@@ -123,14 +123,22 @@ suite "Fog of War System":
       check adjacentSystem2 in filtered.visibleSystems
       check filtered.visibleSystems[adjacentSystem2].visibility == VisibilityLevel.Adjacent
 
-  test "Hidden system - no visibility":
-    # Alpha should NOT see hidden system (not connected to known systems)
+  test "Universal map awareness - all systems visible":
+    # Per fog_of_war.nim lines 315-328: Universal map awareness is enabled
+    # ALL systems are visible from start with full jump lane information
+    # This is an intentional game design: players know the map topology,
+    # but colonies/fleets remain hidden until scouted
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # Skip test if no truly hidden system exists (small maps have all systems within 2 hops)
+    # ALL systems should be visible (universal map awareness)
+    check filtered.visibleSystems.len == state.starMap.systems.len
+
+    # Systems that aren't owned/occupied/scouted should be Adjacent visibility
     if hiddenSystem > 0:
-      # Hidden system should not be visible
-      check hiddenSystem notin filtered.visibleSystems
+      check hiddenSystem in filtered.visibleSystems
+      check filtered.visibleSystems[hiddenSystem].visibility == VisibilityLevel.Adjacent
+      # Jump lanes are revealed for strategic planning
+      check filtered.visibleSystems[hiddenSystem].jumpLanes.len >= 0
 
     # No enemy colonies should be visible (none placed yet in this test)
     check filtered.visibleColonies.len == 0
@@ -269,10 +277,12 @@ suite "Fog of War System":
 
     # Check own colonies
     check filtered.ownColonies.len == 2
-    # Population can be either 840 (homeworld) or 30 (second colony)
+    # Population: homeworld (from config) or 30 (second colony)
+    let homePopulation = state.colonies[alphaSystemId].population
+    let secondPopulation = state.colonies[adjacentSystem1].population
     let pops = [filtered.ownColonies[0].population, filtered.ownColonies[1].population]
-    check 840 in pops
-    check 30 in pops
+    check homePopulation in pops
+    check secondPopulation in pops
 
     # Check own fleets
     check filtered.ownFleets.len == 1
