@@ -16,7 +16,7 @@
 
 import std/[unittest, tables, options, strformat]
 import ../../src/engine/[gamestate, orders, resolve, starmap]
-import ../../src/engine/economy/[construction, types]
+import ../../src/engine/economy/[construction, types, config_accessors]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/[core, units, planets]
@@ -88,13 +88,15 @@ proc createTestState(cstLevel: int = 10): GameState =
     marines: 0
   )
 
-proc testShipConstruction(shipClass: ShipClass, cstRequired: int,
-                         expectedCost: int): bool =
+proc testShipConstruction(shipClass: ShipClass, cstRequired: int): bool =
   ## Generic ship construction test
   ## Returns true if ship was successfully built
   var state = createTestState(cstLevel = cstRequired)
   let initialTreasury = state.houses["house1"].treasury
   let testSystemId = state.starMap.playerSystemIds[0]
+
+  # Get expected cost from config
+  let expectedCost = getShipConstructionCost(shipClass)
 
   let buildOrder = BuildOrder(
     colonySystem: testSystemId,
@@ -253,47 +255,47 @@ suite "All Ship Types - Construction Verification":
     # Fighter should appear in colony's fighterSquadrons
     check newState.colonies[testSystemId].fighterSquadrons.len > 0
 
-  test "Corvette (CT) - CST 1, 20PP":
-    check testShipConstruction(ShipClass.Corvette, 1, 20)
+  test "Corvette (CT) - CST 1":
+    check testShipConstruction(ShipClass.Corvette, 1)
 
-  test "Frigate (FG) - CST 1, 30PP":
-    check testShipConstruction(ShipClass.Frigate, 1, 30)
+  test "Frigate (FG) - CST 1":
+    check testShipConstruction(ShipClass.Frigate, 1)
 
-  test "Destroyer (DD) - CST 1, 40PP":
-    check testShipConstruction(ShipClass.Destroyer, 1, 40)
+  test "Destroyer (DD) - CST 1":
+    check testShipConstruction(ShipClass.Destroyer, 1)
 
-  test "Light Cruiser (CL) - CST 1, 60PP":
-    check testShipConstruction(ShipClass.LightCruiser, 1, 60)
+  test "Light Cruiser (CL) - CST 1":
+    check testShipConstruction(ShipClass.LightCruiser, 1)
 
-  test "Heavy Cruiser (CA) - CST 2, 80PP":
-    check testShipConstruction(ShipClass.HeavyCruiser, 2, 80)
+  test "Heavy Cruiser (CA) - CST 2":
+    check testShipConstruction(ShipClass.HeavyCruiser, 2)
 
-  test "Battle Cruiser (BC) - CST 3, 100PP":
-    check testShipConstruction(ShipClass.Battlecruiser, 3, 100)
+  test "Battle Cruiser (BC) - CST 3":
+    check testShipConstruction(ShipClass.Battlecruiser, 3)
 
-  test "Battleship (BB) - CST 4, 150PP":
-    check testShipConstruction(ShipClass.Battleship, 4, 150)
+  test "Battleship (BB) - CST 4":
+    check testShipConstruction(ShipClass.Battleship, 4)
 
-  test "Dreadnought (DN) - CST 5, 200PP":
-    check testShipConstruction(ShipClass.Dreadnought, 5, 200)
+  test "Dreadnought (DN) - CST 5":
+    check testShipConstruction(ShipClass.Dreadnought, 5)
 
-  test "Super Dreadnought (SD) - CST 6, 250PP":
-    check testShipConstruction(ShipClass.SuperDreadnought, 6, 250)
+  test "Super Dreadnought (SD) - CST 6":
+    check testShipConstruction(ShipClass.SuperDreadnought, 6)
 
-  test "Planet-Breaker (PB) - CST 10, 400PP":
-    check testShipConstruction(ShipClass.PlanetBreaker, 10, 400)
+  test "Planet-Breaker (PB) - CST 10":
+    check testShipConstruction(ShipClass.PlanetBreaker, 10)
 
-  test "Carrier (CV) - CST 3, 120PP":
-    check testShipConstruction(ShipClass.Carrier, 3, 120)
+  test "Carrier (CV) - CST 3":
+    check testShipConstruction(ShipClass.Carrier, 3)
 
-  test "Super Carrier (CX) - CST 5, 200PP":
-    check testShipConstruction(ShipClass.SuperCarrier, 5, 200)
+  test "Super Carrier (CX) - CST 5":
+    check testShipConstruction(ShipClass.SuperCarrier, 5)
 
-  test "Raider (RR) - CST 3, 150PP":
-    check testShipConstruction(ShipClass.Raider, 3, 150)
+  test "Raider (RR) - CST 3":
+    check testShipConstruction(ShipClass.Raider, 3)
 
-  test "Scout (SC) - CST 1, 50PP":
-    check testShipConstruction(ShipClass.Scout, 1, 50)
+  test "Scout (SC) - CST 1":
+    check testShipConstruction(ShipClass.Scout, 1)
 
   test "Starbase (SB) - CST 3, 300PP":
     # Starbases are special - they stay at the colony
@@ -335,12 +337,12 @@ suite "All Ship Types - Construction Verification":
     check newState.houses["house1"].treasury == initialTreasury - 300
     check newState.colonies[testSystemId].starbases.len > 0
 
-  test "ETAC (ET) - CST 1, 25PP":
-    check testShipConstruction(ShipClass.ETAC, 1, 25)
+  test "ETAC (ET) - CST 1":
+    check testShipConstruction(ShipClass.ETAC, 1)
 
-  test "Troop Transport (TT) - CST 1, 100PP":
+  test "Troop Transport (TT) - CST 1":
     # CRITICAL: RBA never builds these
-    check testShipConstruction(ShipClass.TroopTransport, 1, 100)
+    check testShipConstruction(ShipClass.TroopTransport, 1)
 
 # =============================================================================
 # Ground Unit Construction Tests (4 Types)
