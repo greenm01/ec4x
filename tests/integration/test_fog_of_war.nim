@@ -16,6 +16,30 @@ suite "Fog of War System":
     var starMap = newStarMap(2)
     starMap.populate()
 
+    # Get player homeworld system IDs from the starmap
+    let alphaSystemId = starMap.playerSystemIds[0]
+    let betaSystemId = starMap.playerSystemIds[1]
+
+    # Get adjacent systems for testing
+    let alphaAdjacent = starMap.getAdjacentSystems(alphaSystemId)
+    let adjacentSystem1 = if alphaAdjacent.len > 0: alphaAdjacent[0] else: alphaSystemId + 1
+    let adjacentSystem2 = if alphaAdjacent.len > 1: alphaAdjacent[1] else: alphaSystemId + 2
+
+    # Get a hidden system (not adjacent to alpha, at least 2 hops away)
+    var hiddenSystem: uint = 0
+    for sysId in starMap.systems.keys:
+      if sysId != alphaSystemId and sysId notin alphaAdjacent:
+        # Check if it's also not adjacent to any of alpha's adjacent systems
+        let sysAdjacent = starMap.getAdjacentSystems(sysId)
+        var isTrulyHidden = true
+        for adjId in sysAdjacent:
+          if adjId == alphaSystemId or adjId in alphaAdjacent:
+            isTrulyHidden = false
+            break
+        if isTrulyHidden:
+          hiddenSystem = sysId
+          break
+
     # Create game state
     var state = newGameState("test-fow-game", 2, starMap)
     state.turn = 10
@@ -38,35 +62,35 @@ suite "Fog of War System":
       techTree: res_types.initTechTree()
     )
 
-    # Alpha colony at system 1
-    state.colonies[1] = createHomeColony(1.SystemId, "house-alpha")
+    # Alpha colony at player homeworld
+    state.colonies[alphaSystemId] = createHomeColony(alphaSystemId.SystemId, "house-alpha")
 
-    # Beta colony at system 2
-    state.colonies[2] = createHomeColony(2.SystemId, "house-beta")
+    # Beta colony at player homeworld
+    state.colonies[betaSystemId] = createHomeColony(betaSystemId.SystemId, "house-beta")
 
   test "Owned system visibility - full details":
-    # Alpha should see system 1 with full details
+    # Alpha should see their homeworld with full details
     let filtered = createFogOfWarView(state, "house-alpha")
 
     check filtered.viewingHouse == "house-alpha"
     check filtered.turn == 10
     check filtered.ownColonies.len == 1
-    check filtered.ownColonies[0].systemId == 1.uint
+    check filtered.ownColonies[0].systemId == alphaSystemId
 
-    # Check system 1 is in visible systems
-    check 1.uint in filtered.visibleSystems
-    check filtered.visibleSystems[1.uint].visibility == VisibilityLevel.Owned
-    check filtered.visibleSystems[1.uint].lastScoutedTurn == some(10)
+    # Check alpha homeworld is in visible systems
+    check alphaSystemId in filtered.visibleSystems
+    check filtered.visibleSystems[alphaSystemId].visibility == VisibilityLevel.Owned
+    check filtered.visibleSystems[alphaSystemId].lastScoutedTurn == some(10)
 
     # Check staleness
-    check filtered.getIntelStaleness(1.uint) == 0  # Current
+    check filtered.getIntelStaleness(alphaSystemId) == 0  # Current
 
   test "Occupied system visibility - fleet presence":
-    # Place Alpha fleet at system 3
+    # Place Alpha fleet at an adjacent system
     var alphaFleet = Fleet(
       id: "fleet-alpha-1",
       owner: "house-alpha",
-      location: 3.uint,
+      location: adjacentSystem1,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -76,44 +100,46 @@ suite "Fog of War System":
 
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # Alpha should see system 3 as occupied
-    check 3.uint in filtered.visibleSystems
-    check filtered.visibleSystems[3.uint].visibility == VisibilityLevel.Occupied
-    check filtered.visibleSystems[3.uint].lastScoutedTurn == some(10)
+    # Alpha should see the adjacent system as occupied
+    check adjacentSystem1 in filtered.visibleSystems
+    check filtered.visibleSystems[adjacentSystem1].visibility == VisibilityLevel.Occupied
+    check filtered.visibleSystems[adjacentSystem1].lastScoutedTurn == some(10)
 
     # Check fleet is visible
     check filtered.ownFleets.len == 1
     check filtered.ownFleets[0].id == "fleet-alpha-1"
 
   test "Adjacent system visibility - awareness only":
-    # Alpha should see sys-2 and sys-3 as adjacent (connected to owned sys-1)
+    # Alpha should see adjacent systems
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # sys-2 should be adjacent
-    check 2.uint in filtered.visibleSystems
-    check filtered.visibleSystems[2.uint].visibility == VisibilityLevel.Adjacent
-    check filtered.visibleSystems[2.uint].lastScoutedTurn.isNone
+    # Adjacent systems should be visible
+    check adjacentSystem1 in filtered.visibleSystems
+    check filtered.visibleSystems[adjacentSystem1].visibility == VisibilityLevel.Adjacent
+    check filtered.visibleSystems[adjacentSystem1].lastScoutedTurn.isNone
 
-    # sys-3 should be adjacent
-    check 3.uint in filtered.visibleSystems
-    check filtered.visibleSystems[3.uint].visibility == VisibilityLevel.Adjacent
+    if alphaAdjacent.len > 1:
+      check adjacentSystem2 in filtered.visibleSystems
+      check filtered.visibleSystems[adjacentSystem2].visibility == VisibilityLevel.Adjacent
 
   test "Hidden system - no visibility":
-    # Alpha should NOT see sys-5 (not connected to known systems)
+    # Alpha should NOT see hidden system (not connected to known systems)
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # sys-5 should not be visible
-    check 5.uint notin filtered.visibleSystems
+    # Skip test if no truly hidden system exists (small maps have all systems within 2 hops)
+    if hiddenSystem > 0:
+      # Hidden system should not be visible
+      check hiddenSystem notin filtered.visibleSystems
 
-    # Beta colony at sys-5 should not be visible
+    # No enemy colonies should be visible (none placed yet in this test)
     check filtered.visibleColonies.len == 0
 
   test "Enemy colony in occupied system - visible":
-    # Place Alpha fleet at sys-2 (Beta's colony)
+    # Place Alpha fleet at Beta's colony
     var alphaFleet = Fleet(
       id: "fleet-alpha-1",
       owner: "house-alpha",
-      location: 2.uint,
+      location: betaSystemId,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -123,21 +149,21 @@ suite "Fog of War System":
 
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # sys-2 should be occupied
-    check 2.uint in filtered.visibleSystems
-    check filtered.visibleSystems[2.uint].visibility == VisibilityLevel.Occupied
+    # Beta's system should be occupied
+    check betaSystemId in filtered.visibleSystems
+    check filtered.visibleSystems[betaSystemId].visibility == VisibilityLevel.Occupied
 
-    # Beta colony at sys-2 should be visible
+    # Beta colony should be visible
     check filtered.visibleColonies.len == 1
-    check filtered.visibleColonies[0].systemId == 2.uint
+    check filtered.visibleColonies[0].systemId == betaSystemId
     check filtered.visibleColonies[0].owner == "house-beta"
 
   test "Enemy fleet detection - same system":
-    # Place both Alpha and Beta fleets at sys-4
+    # Place both Alpha and Beta fleets at an adjacent system
     var alphaFleet = Fleet(
       id: "fleet-alpha-1",
       owner: "house-alpha",
-      location: 4.uint,
+      location: adjacentSystem1,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -148,7 +174,7 @@ suite "Fog of War System":
     var betaFleet = Fleet(
       id: "fleet-beta-1",
       owner: "house-beta",
-      location: 4.uint,
+      location: adjacentSystem1,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -162,15 +188,15 @@ suite "Fog of War System":
     check filtered.visibleFleets.len == 1
     check filtered.visibleFleets[0].fleetId == "fleet-beta-1"
     check filtered.visibleFleets[0].owner == "house-beta"
-    check filtered.visibleFleets[0].location == 4.uint
+    check filtered.visibleFleets[0].location == adjacentSystem1
     check filtered.visibleFleets[0].intelTurn == some(10)
 
   test "Enemy fleet in hidden system - not visible":
-    # Place Beta fleet at sys-5 (hidden from Alpha)
+    # Place Beta fleet at hidden system
     var betaFleet = Fleet(
       id: "fleet-beta-1",
       owner: "house-beta",
-      location: 5.uint,
+      location: hiddenSystem,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -184,11 +210,11 @@ suite "Fog of War System":
     check filtered.visibleFleets.len == 0
 
   test "Stale intel from intelligence database":
-    # Add stale colony intel for sys-2 to Alpha's intelligence
+    # Add stale colony intel for Beta's system to Alpha's intelligence
     var alphaHouse = state.houses["house-alpha"]
 
     let colonyIntel = ColonyIntelReport(
-      colonyId: 2.uint,
+      colonyId: betaSystemId,
       targetOwner: "house-beta",
       gatheredTurn: 5,  # 5 turns ago
       quality: IntelQuality.Spy,
@@ -203,13 +229,13 @@ suite "Fog of War System":
 
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # sys-2 should be scouted (stale intel)
-    check 2.uint in filtered.visibleSystems
-    check filtered.visibleSystems[2.uint].visibility == VisibilityLevel.Scouted
-    check filtered.visibleSystems[2.uint].lastScoutedTurn == some(5)
+    # Beta's system should be scouted (stale intel)
+    check betaSystemId in filtered.visibleSystems
+    check filtered.visibleSystems[betaSystemId].visibility == VisibilityLevel.Scouted
+    check filtered.visibleSystems[betaSystemId].lastScoutedTurn == some(5)
 
     # Check staleness
-    check filtered.getIntelStaleness(2.uint) == 5  # 5 turns stale
+    check filtered.getIntelStaleness(betaSystemId) == 5  # 5 turns stale
 
   test "Public information - prestige visible":
     let filtered = createFogOfWarView(state, "house-alpha")
@@ -221,14 +247,16 @@ suite "Fog of War System":
 
   test "Own assets - full details":
     # Add multiple colonies and fleets for Alpha
-    var alphaColony2 = createHomeColony(3.SystemId, "house-alpha")
+    var alphaColony2 = createHomeColony(adjacentSystem1.SystemId, "house-alpha")
     alphaColony2.population = 30
-    state.colonies[3] = alphaColony2
+    alphaColony2.populationUnits = 30
+    alphaColony2.souls = 30_000_000  # 30 PU = 30M souls
+    state.colonies[adjacentSystem1] = alphaColony2
 
     var alphaFleet = Fleet(
       id: "fleet-alpha-1",
       owner: "house-alpha",
-      location: 1.uint,
+      location: alphaSystemId,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -240,19 +268,21 @@ suite "Fog of War System":
 
     # Check own colonies
     check filtered.ownColonies.len == 2
-    check filtered.ownColonies[0].population in [100, 30]  # Either colony
-    check filtered.ownColonies[1].population in [100, 30]
+    # Population can be either 840 (homeworld) or 30 (second colony)
+    let pops = [filtered.ownColonies[0].population, filtered.ownColonies[1].population]
+    check 840 in pops
+    check 30 in pops
 
     # Check own fleets
     check filtered.ownFleets.len == 1
     check filtered.ownFleets[0].id == "fleet-alpha-1"
 
   test "Helper procs - canSeeColonyDetails":
-    # Place Alpha fleet at sys-2
+    # Place Alpha fleet at Beta's system
     var alphaFleet = Fleet(
       id: "fleet-alpha-1",
       owner: "house-alpha",
-      location: 2.uint,
+      location: betaSystemId,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -262,24 +292,25 @@ suite "Fog of War System":
 
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # Can see details at owned sys-1
-    check filtered.canSeeColonyDetails(1.uint)
+    # Can see details at owned system
+    check filtered.canSeeColonyDetails(alphaSystemId)
 
-    # Can see details at occupied sys-2
-    check filtered.canSeeColonyDetails(2.uint)
+    # Can see details at occupied system
+    check filtered.canSeeColonyDetails(betaSystemId)
 
-    # Cannot see details at adjacent sys-3
-    check not filtered.canSeeColonyDetails(3.uint)
+    # Cannot see details at adjacent system
+    if alphaAdjacent.len > 0:
+      check not filtered.canSeeColonyDetails(adjacentSystem1)
 
-    # Cannot see details at hidden sys-5
-    check not filtered.canSeeColonyDetails(5.uint)
+    # Cannot see details at hidden system
+    check not filtered.canSeeColonyDetails(hiddenSystem)
 
   test "Helper procs - canSeeFleets":
-    # Place Alpha fleet at sys-4
+    # Place Alpha fleet at an adjacent system
     var alphaFleet = Fleet(
       id: "fleet-alpha-1",
       owner: "house-alpha",
-      location: 4.uint,
+      location: adjacentSystem1,
       squadrons: @[],
       spaceLiftShips: @[],
       status: FleetStatus.Active,
@@ -289,25 +320,26 @@ suite "Fog of War System":
 
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # Can see fleets at owned sys-1
-    check filtered.canSeeFleets(1.uint)
+    # Can see fleets at owned system
+    check filtered.canSeeFleets(alphaSystemId)
 
-    # Can see fleets at occupied sys-4
-    check filtered.canSeeFleets(4.uint)
+    # Can see fleets at occupied system
+    check filtered.canSeeFleets(adjacentSystem1)
 
-    # Cannot see fleets at adjacent sys-2
-    check not filtered.canSeeFleets(2.uint)
+    # Cannot see fleets at non-occupied adjacent system
+    if alphaAdjacent.len > 1:
+      check not filtered.canSeeFleets(adjacentSystem2)
 
-    # Cannot see fleets at hidden sys-5
-    check not filtered.canSeeFleets(5.uint)
+    # Cannot see fleets at hidden system
+    check not filtered.canSeeFleets(hiddenSystem)
 
   test "Intelligence database integration":
     # Add various intel reports to Alpha
     var alphaHouse = state.houses["house-alpha"]
 
-    # Colony intel for sys-2
+    # Colony intel for Beta's system
     let colonyIntel = ColonyIntelReport(
-      colonyId: 2.uint,
+      colonyId: betaSystemId,
       targetOwner: "house-beta",
       gatheredTurn: 8,
       quality: IntelQuality.Spy,
@@ -319,9 +351,9 @@ suite "Fog of War System":
     )
     alphaHouse.intelligence.addColonyReport(colonyIntel)
 
-    # System intel for sys-4
+    # System intel for an adjacent system
     let systemIntel = SystemIntelReport(
-      systemId: 4.uint,
+      systemId: adjacentSystem1,
       gatheredTurn: 9,
       quality: IntelQuality.Visual,
       detectedFleets: @[]
@@ -332,14 +364,14 @@ suite "Fog of War System":
 
     let filtered = createFogOfWarView(state, "house-alpha")
 
-    # sys-2 should be scouted
-    check 2.uint in filtered.visibleSystems
-    check filtered.visibleSystems[2.uint].visibility == VisibilityLevel.Scouted
-    check filtered.getIntelStaleness(2.uint) == 2  # Turn 10 - turn 8
+    # Beta's system should be scouted
+    check betaSystemId in filtered.visibleSystems
+    check filtered.visibleSystems[betaSystemId].visibility == VisibilityLevel.Scouted
+    check filtered.getIntelStaleness(betaSystemId) == 2  # Turn 10 - turn 8
 
-    # sys-4 should be scouted
-    check 4.uint in filtered.visibleSystems
-    check filtered.visibleSystems[4.uint].visibility == VisibilityLevel.Scouted
-    check filtered.getIntelStaleness(4.uint) == 1  # Turn 10 - turn 9
+    # Adjacent system should be scouted
+    check adjacentSystem1 in filtered.visibleSystems
+    check filtered.visibleSystems[adjacentSystem1].visibility == VisibilityLevel.Scouted
+    check filtered.getIntelStaleness(adjacentSystem1) == 1  # Turn 10 - turn 9
 
 echo "✓ All fog of war tests compiled successfully"
