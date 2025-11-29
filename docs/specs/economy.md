@@ -946,23 +946,31 @@ Ships (excluding fighter squadrons) constructed planet-side incur a 100% PC incr
 
 ## 5.2 Planet-side Repair
 
-Ground units and fighter squadrons are repaired and refitted planet-side.
+Ground units and fighter squadrons are repaired and refitted planet-side using colony industrial capacity.
+
+**Spaceports cannot repair ships.** Spaceports are construction facilities only - they launch ships into orbit but cannot repair orbital damage.
 
 ## 5.3 Orbital Construction
 
-Shipyard construction of a ship in orbit is the standard method of commissioning a vessel, and incurs no penalty.
+Shipyard construction of a ship in orbit is the standard method of commissioning a vessel, and incurs no penalty. Shipyards are the only facilities that can repair ships.
 
 ## 5.4 Orbital Repair
 
-Ship repairs require a Shipyard. The cost of repair equals one quarter (25%) of the unit's PC.
+**Ship repairs require a Shipyard.** Spaceports cannot repair ships - only shipyards have the orbital infrastructure for ship repairs.
+
+The cost of repair equals one quarter (25%) of the ship's construction PC. All ship repairs complete in 1 turn regardless of ship class.
 
 Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 
 ```
-72.6 * 0.25 = 18.15 PP.
+72.6 PC (build cost) * 0.25 = 18.15 PP (repair cost)
 ```
 
-The logistics of repairing a ship planet-side and returning it to orbit make it economically infeasible. Ships are salvaged at colonies without restriction and earn 50 % of the original PC back to the House treasury.
+**Colonies without shipyards cannot repair crippled ships.** Ships must either:
+- Transfer to a colony with shipyard capacity, or
+- Be salvaged for 50% PC recovery
+
+Starbase repairs also require shipyards and cost 25% of the starbase's construction PC.
 
 
 

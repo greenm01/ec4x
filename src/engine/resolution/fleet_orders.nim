@@ -213,6 +213,15 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
     return
 
   var fleet = fleetOpt.get()
+
+  # Reserve and Mothballed fleets cannot move (permanently stationed at colony)
+  # Per operations.md: Both statuses represent fleets that are station-keeping
+  # - Reserve: 50% maintenance, reduced combat, can fight in orbital defense
+  # - Mothballed: 0% maintenance, must be screened, risks destruction in combat
+  if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
+    logWarn(LogCategory.lcFleet, &"Fleet {order.fleetId} cannot move - status: {fleet.status} (permanently stationed)")
+    return
+
   let targetId = order.targetSystem.get()
   let startId = fleet.location
 

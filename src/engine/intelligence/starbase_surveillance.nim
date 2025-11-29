@@ -149,7 +149,7 @@ proc processAllStarbaseSurveillance*(state: var GameState, turn: int, rng: var R
         let dishonoredCorruption = corruption.hasDishonoredCorruption(state.houses[colony.owner].dishonoredStatus)
 
         if corruptionEffect.isSome or dishonoredCorruption.isSome:
-          var corruptionRng = initRand(turn + hash(colony.owner) + int(systemId))
+          var corruptionRng = initRand(turn xor hash(colony.owner) xor int(systemId))
           var report = surveillance.get()
           let magnitude = if corruptionEffect.isSome: corruptionEffect.get().magnitude
                           else: dishonoredCorruption.get()

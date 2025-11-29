@@ -20,29 +20,11 @@ import ../assets
 
 export econ_types.RepairProject, econ_types.FacilityType, econ_types.RepairTargetType
 
-proc calculateRepairCost*(shipClass: ShipClass, facilityType: econ_types.FacilityType): int =
-  ## Calculate repair cost for a ship at specific facility type
-  ## Base cost: 25% of build cost (economy.md)
-  ## Spaceport penalty: +50% cost (less efficient ground-based repairs)
+proc calculateRepairCost*(shipClass: ShipClass): int =
+  ## Calculate repair cost for a ship
+  ## Per economy.md:5.4 - All repairs require shipyards, cost is 25% of build cost
   let stats = getShipStats(shipClass)
-  let baseCost = (stats.constructionCost.float * 0.25).int
-
-  case facilityType
-  of econ_types.FacilityType.Shipyard:
-    result = baseCost  # Standard 25% cost
-  of econ_types.FacilityType.Spaceport:
-    result = (baseCost.float * 1.5).int  # 50% more expensive (37.5% total)
-
-proc determineRepairFacility*(shipClass: ShipClass): econ_types.FacilityType =
-  ## Determine which facility type should handle repairs for a ship class
-  ## Larger ships (BB, CA) require shipyards
-  ## Smaller ships (CL, DD, FF, SC) can use spaceports
-  case shipClass
-  of ShipClass.Dreadnought, ShipClass.Battleship, ShipClass.SuperDreadnought,
-     ShipClass.Carrier, ShipClass.HeavyCruiser, ShipClass.Cruiser:
-    econ_types.FacilityType.Shipyard
-  else:
-    econ_types.FacilityType.Spaceport
+  result = (stats.constructionCost.float * 0.25).int
 
 proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
                          squadronIdx: int, shipIdx: int): Option[RepairProject] =
@@ -170,13 +152,12 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
     fleet.squadrons[squadronIdx] = squadron
     state.fleets[fleetId] = fleet
 
-  # Create repair project
-  let facilityType = determineRepairFacility(shipClass)
-  let cost = calculateRepairCost(shipClass, facilityType)
+  # Create repair project (shipyards only)
+  let cost = calculateRepairCost(shipClass)
 
   let repair = RepairProject(
     targetType: econ_types.RepairTargetType.Ship,
-    facilityType: facilityType,
+    facilityType: econ_types.FacilityType.Shipyard,
     fleetId: some(fleetId),
     squadronIdx: some(squadronIdx),
     shipIdx: some(shipIdx),
@@ -189,7 +170,7 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
 
   logInfo(LogCategory.lcEconomy,
           &"Extracted crippled {shipClass} from fleet-{fleetId} squad-{squadronIdx} " &
-          &"for repair (cost: {cost} PP, facility: {facilityType})")
+          &"for repair (cost: {cost} PP, shipyard only)")
 
   return some(repair)
 
@@ -246,6 +227,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
 
 proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
   ## Automatically submit repair requests for fleets with crippled ships at this colony
+  ## Per economy.md:5.4 - Ship repairs require shipyards (spaceports cannot repair)
   ## Called during turn resolution after fleet movements
 
   if systemId notin state.colonies:
@@ -253,12 +235,11 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
 
   var colony = state.colonies[systemId]
 
-  # Check if colony has repair facilities
+  # Check if colony has shipyard (required for all ship repairs)
   let hasShipyard = colony.shipyards.len > 0
-  let hasSpaceport = colony.spaceports.len > 0
 
-  if not hasShipyard and not hasSpaceport:
-    return  # No repair facilities
+  if not hasShipyard:
+    return  # No shipyard = no repairs
 
   # Submit starbase repairs first (they have lower priority but same facility)
   submitAutomaticStarbaseRepairs(state, systemId)
@@ -284,16 +265,13 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
       for shipIdx in 0..<squadron.ships.len:
         let ship = squadron.ships[shipIdx]
         if ship.isCrippled:
-          # Check if colony has capacity for this repair
-          let facilityType = determineRepairFacility(ship.shipClass)
-          let activeProjects = colony.getActiveProjectsByFacility(facilityType)
-          let capacity = case facilityType
-            of econ_types.FacilityType.Shipyard: colony.getShipyardDockCapacity()
-            of econ_types.FacilityType.Spaceport: colony.getSpaceportDockCapacity()
+          # Check if shipyard has capacity for this repair
+          let activeProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
+          let capacity = colony.getShipyardDockCapacity()
 
           if activeProjects >= capacity:
             logDebug(LogCategory.lcEconomy,
-                     &"Colony-{systemId} has no {facilityType} capacity for repair " &
+                     &"Colony-{systemId} has no shipyard capacity for repair " &
                      &"({activeProjects}/{capacity} docks used)")
             continue  # No capacity, skip this ship
 
@@ -303,7 +281,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
             colony.repairQueue.add(repairOpt.get())
             logInfo(LogCategory.lcEconomy,
                     &"Submitted repair for {ship.shipClass} from fleet-{fleetId} " &
-                    &"to colony-{systemId} {facilityType}")
+                    &"to colony-{systemId} shipyard")
 
   # Update colony state
   state.colonies[systemId] = colony

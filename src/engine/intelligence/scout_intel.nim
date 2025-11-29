@@ -189,7 +189,7 @@ proc processScoutIntelligence*(
   # Check if scout owner has corrupted intelligence (disinformation or dishonor)
   let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, scoutOwner)
   let dishonoredCorruption = corruption.hasDishonoredCorruption(state.houses[scoutOwner].dishonoredStatus)
-  var rng = initRand(turn + hash(scoutOwner) + int(systemId))  # Deterministic corruption per turn/house/system
+  var rng = initRand(turn xor hash(scoutOwner) xor int(systemId))  # Deterministic corruption per turn/house/system
 
   # Generate scout encounter report for fleets
   # CRITICAL: Get house once, modify intelligence, write back to persist
