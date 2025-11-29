@@ -329,18 +329,28 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
         srcFleet.squadrons = newSquadrons
         state.fleets[sourceFleetId.get()] = srcFleet
 
-        # If source fleet is now empty, remove it
+        # If source fleet is now empty, remove it and clean up orders
         if newSquadrons.len == 0:
-          state.fleets.del(sourceFleetId.get())
-          echo "    Removed empty fleet ", sourceFleetId.get()
+          let fleetId = sourceFleetId.get()
+          state.fleets.del(fleetId)
+          if fleetId in state.fleetOrders:
+            state.fleetOrders.del(fleetId)
+          if fleetId in state.standingOrders:
+            state.standingOrders.del(fleetId)
+          logInfo(LogCategory.lcEconomy, "Removed empty fleet " & $fleetId & " after squadron transfer")
 
       # Add squadron to target fleet or create new one
       if order.targetFleetId.isSome:
         # Assign to existing fleet
         let targetId = order.targetFleetId.get()
         if targetId in state.fleets:
-          state.fleets[targetId].squadrons.add(squadron)
-          echo "    Assigned squadron ", squadron.id, " to fleet ", targetId
+          let targetFleet = state.fleets[targetId]
+          # Only allow assignment to Active fleets (exclude Reserve and Mothballed)
+          if targetFleet.status != FleetStatus.Active:
+            echo "    AssignToFleet failed: Cannot assign squadrons to ", targetFleet.status, " fleets (only Active fleets allowed)"
+          else:
+            state.fleets[targetId].squadrons.add(squadron)
+            echo "    Assigned squadron ", squadron.id, " to fleet ", targetId
         else:
           echo "    AssignToFleet failed: Target fleet ", targetId, " does not exist"
       else:

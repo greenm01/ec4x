@@ -19,6 +19,7 @@ import ../iterators
 import ../../common/types/core
 import ../../common/logger
 import ../config/prestige_config
+import config_accessors  # For getShipConstructionCost
 
 type
   AssetType* {.pure.} = enum
@@ -66,43 +67,51 @@ type
     remainingShortfall*: int
     fullyResolved*: bool
 
-proc calculateFleetSalvageValue(state: GameState, fleetId: FleetId): int =
+proc calculateFleetSalvageValue*(state: GameState, fleetId: FleetId): int =
   ## Calculate 25% salvage value for a fleet (per spec 3.11)
   ## Pure calculation - no side effects
   let fleet = state.fleets[fleetId]
   var totalValue = 0
 
   for squadron in fleet.squadrons:
-    # TODO: Get actual ship construction costs from config
-    # For now, use placeholder values
-    let shipCost = 100  # Placeholder - should load from ships.toml
-    totalValue += shipCost
+    # Calculate flagship value
+    let flagshipCost = getShipConstructionCost(squadron.flagship.shipClass)
+    totalValue += flagshipCost
 
-  # 25% salvage per spec
+    # Calculate ships (non-flagship) values
+    for ship in squadron.ships:
+      let shipCost = getShipConstructionCost(ship.shipClass)
+      totalValue += shipCost
+
+  # 25% salvage per spec (economy.md:3.11)
   return (totalValue * 25) div 100
 
-proc calculateAssetSalvageValue(assetType: AssetType): int =
+proc calculateAssetSalvageValue*(assetType: AssetType): int =
   ## Calculate salvage value for infrastructure assets
-  ## Pure calculation - no side effects
+  ## Per economy.md:3.11 - 25% of construction cost
+  ## Per construction.toml [costs] section
   case assetType
   of AssetType.IndustrialUnit:
     return 1  # 1 IU = 1 PP per spec
   of AssetType.Spaceport:
-    return 25  # 25% of 100 PP cost = 25 PP
+    return 125  # 25% of 500 PP cost
   of AssetType.Shipyard:
-    return 50  # 25% of 200 PP cost = 50 PP
+    return 250  # 25% of 1000 PP cost
   of AssetType.Starbase:
-    return 75  # 25% of 300 PP cost = 75 PP
+    return 300  # 25% of 1200 PP cost
   of AssetType.GroundBattery:
-    return 5   # 25% of 20 PP cost = 5 PP
+    return 25   # 25% of 100 PP cost
   of AssetType.Army:
-    return 10  # 25% of 40 PP cost = 10 PP
+    # TODO: Get army cost from config
+    return 10  # Placeholder
   of AssetType.Marine:
-    return 15  # 25% of 60 PP cost = 15 PP
+    # TODO: Get marine cost from config
+    return 15  # Placeholder
   of AssetType.Shield:
-    return 20  # 25% of 80 PP cost = 20 PP
+    # TODO: Get shield cost from config (planetary_shield_cost not in config/construction.toml)
+    return 20  # Placeholder
 
-proc calculatePrestigePenalty(consecutiveTurns: int): int =
+proc calculatePrestigePenalty*(consecutiveTurns: int): int =
   ## Calculate prestige penalty based on consecutive missed payments
   ## Per spec 3.11: Turn 1: -8, Turn 2: -11, Turn 3: -14, Turn 4+: -17
   case consecutiveTurns
@@ -128,7 +137,7 @@ proc processShortfall*(state: GameState, houseId: HouseId, shortfall: int): Shor
     constructionCancelled: @[],
     fleetsDisbanded: @[],
     assetsStripped: @[],
-    consecutiveTurns: 1  # TODO: Track from house.shortfallTurns field
+    consecutiveTurns: state.houses[houseId].consecutiveShortfallTurns + 1
   )
 
   var remaining = shortfall
@@ -280,12 +289,13 @@ proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade) =
   ## Apply cascade to state - clear, explicit mutations
   ## Uses state_helpers for safe Table mutations
 
-  # Step 1 & 5: Update house (treasury and prestige)
+  # Step 1 & 5: Update house (treasury, prestige, and shortfall counter)
   # Combine all house mutations to avoid template redefinition
   state.withHouse(cascade.houseId):
     house.treasury = 0  # Zero treasury first
     house.treasury += cascade.salvageFromFleets + cascade.salvageFromAssets  # Add salvage
     house.prestige -= cascade.prestigePenalty  # Apply prestige penalty
+    house.consecutiveShortfallTurns += 1  # Increment shortfall counter
 
   # Step 2: Cancel construction/research
   for systemId in cascade.constructionCancelled:

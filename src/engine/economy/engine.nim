@@ -7,9 +7,11 @@
 ## Infrastructure damage from combat affects production
 
 import std/[tables, options]
-import types, income, construction, maintenance
+import types, income, construction, maintenance, maintenance_shortfall
 import ../../common/types/[core, units]
 import ../gamestate  # For unified Colony type
+import ../state_helpers  # For withHouse macro
+import ../iterators  # For activeHousesWithId, fleetsOwned
 
 export types.IncomePhaseReport, types.HouseIncomeReport, types.ColonyIncomeReport
 export types.MaintenanceReport, types.CompletedProject
@@ -100,6 +102,9 @@ proc resolveMaintenancePhase*(colonies: var seq[Colony],
                              houseTreasuries: var Table[HouseId, int]): MaintenanceReport =
   ## Resolve maintenance phase
   ##
+  ## NOTE: This is a simplified interface that doesn't support full shortfall cascade.
+  ## For full spec compliance, use resolveMaintenancePhaseWithState() which takes GameState.
+  ##
   ## Steps:
   ## 1. Advance construction projects
   ## 2. Calculate fleet/building upkeep
@@ -129,25 +134,86 @@ proc resolveMaintenancePhase*(colonies: var seq[Colony],
 
     # Deduct from treasury
     if houseId in houseTreasuries:
-      houseTreasuries[houseId] -= totalUpkeep
-
-      # Handle shortfall
-      if houseTreasuries[houseId] < 0:
-        let shortfall = -houseTreasuries[houseId]
+      # Check for shortfall BEFORE deduction (economy.md:3.11)
+      let treasury = houseTreasuries[houseId]
+      if treasury < totalUpkeep:
+        # Insufficient funds - just zero treasury (full cascade needs GameState)
+        # This path taken when called from simplified interface
         houseTreasuries[houseId] = 0
-
-        # Apply shortfall consequences to random colony
-        # TODO: Better shortfall distribution
-        for colony in colonies.mitems:
-          if colony.owner == houseId:
-            applyMaintenanceShortfall(colony, shortfall)
-            break
+        # WARNING: Proper shortfall cascade (fleet disbanding, prestige penalty)
+        # requires full GameState. This simplified version only zeroes treasury.
+      else:
+        # Full payment - deduct normally
+        houseTreasuries[houseId] -= totalUpkeep
 
   # Advance construction (upfront payment model - no PP allocation needed)
   for colony in colonies.mitems:
     if colony.underConstruction.isSome:
       # Construction advances one turn per maintenance phase
       # Payment was already made upfront when construction started
+      let completed = advanceConstruction(colony)
+      if completed.isSome:
+        result.completedProjects.add(completed.get())
+
+  # TODO: Apply repairs from allocated PP
+
+  return result
+
+proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport =
+  ## Resolve maintenance phase with full shortfall cascade support
+  ## Per economy.md:3.11 - Handles treasury shortfalls with fleet disbanding,
+  ## infrastructure stripping, and escalating prestige penalties.
+  ##
+  ## This version requires full GameState for proper cascade implementation.
+
+  result = MaintenanceReport(
+    turn: state.turn,
+    completedProjects: @[],
+    houseUpkeep: initTable[HouseId, int](),
+    repairsApplied: @[]
+  )
+
+  # Calculate upkeep and handle shortfalls for all houses
+  for (houseId, house) in state.activeHousesWithId():
+    var totalUpkeep = 0
+
+    # Fleet maintenance
+    for fleet in state.fleetsOwned(houseId):
+      # Calculate maintenance for this fleet
+      var fleetData: seq[(ShipClass, bool)] = @[]
+      for squadron in fleet.squadrons:
+        # Add flagship
+        fleetData.add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
+        # Add squadron ships (non-flagship)
+        for ship in squadron.ships:
+          fleetData.add((ship.shipClass, ship.isCrippled))
+
+      totalUpkeep += calculateFleetMaintenance(fleetData)
+
+    # TODO: Colony maintenance (facilities, ground forces)
+
+    result.houseUpkeep[houseId] = totalUpkeep
+
+    # CHECK FOR SHORTFALL BEFORE DEDUCTION (economy.md:3.11)
+    if house.treasury < totalUpkeep:
+      let shortfall = totalUpkeep - house.treasury
+
+      # Execute maintenance shortfall cascade
+      let cascade = processShortfall(state, houseId, shortfall)
+      applyShortfallCascade(state, cascade)
+      # Cascade: zeroes treasury, adds salvage, increments consecutiveShortfallTurns
+    else:
+      # Full payment - reset shortfall counter
+      state.withHouse(houseId):
+        house.consecutiveShortfallTurns = 0
+
+    # Deduct maintenance (treasury may have salvage added by cascade)
+    state.withHouse(houseId):
+      house.treasury -= totalUpkeep
+
+  # Advance construction projects
+  for (systemId, colony) in state.colonies.mpairs:
+    if colony.underConstruction.isSome:
       let completed = advanceConstruction(colony)
       if completed.isSome:
         result.completedProjects.add(completed.get())

@@ -319,7 +319,7 @@ Because this form of attack is so fast, there is less damage to the planet since
 
 ### 6.2.10 Spy on a Planet (09):
 
-This mission is reserved for Scout squadrons. The squadron will attempt to hide itself in orbit as a civilian satellite and collect military intelligence from the surface.
+This mission is reserved for Scout squadrons. The scout detaches from its fleet and operates independently, gathering intelligence continuously until detected and destroyed. **The scout is permanently consumed for this mission** - it will not return to your fleet.
 
 **Intelligence Gathered (Spy Quality):**
 
@@ -338,7 +338,7 @@ See [Section 9.1.1](intelligence.md#911-scout-reconnaissance-perfect-quality) fo
 
 ### 6.2.11 Hack a Starbase (10):
 
-This mission is reserved for Scout squadrons. The squadron will disguise itself as a civilian satellite and hack into a rival's Starbase network for the purpose of collecting economic and R&D intelligence.
+This mission is reserved for Scout squadrons. The scout detaches from its fleet and operates independently, infiltrating the target starbase network. **The scout is permanently consumed for this mission** - it will gather intelligence continuously until detected and destroyed.
 
 **Intelligence Gathered (Spy Quality):**
 
@@ -356,7 +356,7 @@ See [Section 9.1.3](intelligence.md#913-spy-operations-spy-quality) for spy oper
 
 ### 6.2.12 Spy on a System (11):
 
-This mission is reserved for Scout squadrons. The squadron will loiter in the solar system and collect military asset intelligence.
+This mission is reserved for Scout squadrons. The scout detaches from its fleet and operates independently, conducting continuous system surveillance. **The scout is permanently consumed for this mission** - it will gather intelligence each turn until detected and destroyed.
 
 **Intelligence Gathered (Spy Quality):**
 
@@ -393,7 +393,21 @@ Move to the specified system and merge with any other fleets ordered to rendezvo
 
 ### 6.2.16 Salvage (15):
 
-Salvage a fleet at the closest colony. The fleet will disband and all the ships are salvaged for 50% of their PC.
+Disband your fleet and recover resources at a friendly colony with salvage facilities. This order executes automatically, allowing you to convert obsolete or damaged fleets back into production points for new construction.
+
+**Mechanics:**
+- **Automatic Execution**: Order executes immediately when given - no transit required if already at suitable colony
+- **Facility Requirements**: Colony must have either a **spaceport** or **shipyard** to perform salvage operations
+- **Target Selection**: Fleet salvages at closest owned colony with facilities (or current location if suitable)
+- **Salvage Value**: All ships recovered for **50% of their Production Cost** (PC)
+- **Fleet Removal**: Fleet immediately disbanded - all squadrons and orders removed from game state
+- **Treasury Credit**: Salvage value added directly to house treasury
+
+**Strategic Uses:**
+- Convert obsolete early-game fleets into PP for modern ship designs
+- Recover resources from damaged fleets when repair costs exceed replacement value
+- Emergency liquidation when facing maintenance shortfalls
+- Optimize fleet composition by recycling mismatched squadrons
 
 ### 6.2.17 Place on Reserve (16):
 
@@ -755,7 +769,11 @@ Your warships damaged in combat require systematic repairs at colonies with ship
 
 **Automatic Repair Submission:**
 
-Your fleets don't need explicit repair orders. When a fleet with crippled ships stations at a colony with repair facilities and available dock capacity, crippled escorts automatically extract from squadrons and enter the repair queue. Flagships remain with their squadrons (flagship repair requires special handling).
+Your fleets don't need explicit repair orders. When a fleet with crippled ships stations at a colony with repair facilities and available dock capacity, all crippled ships (escorts and flagships) automatically extract and enter the repair queue.
+
+**Flagship Extraction:**
+- **Squadron has escorts**: The strongest escort (highest AS + DS) is promoted to flagship. The crippled flagship extracts for repair. Squadron continues operating.
+- **Squadron has no escorts**: The squadron dissolves entirely. The flagship extracts for repair. If this was the fleet's last squadron, the fleet is removed from the game.
 
 **Standing Orders for Repairs:**
 
@@ -902,11 +920,14 @@ Your battle fleet (3 battleship squadrons, 8 destroyer escorts) engages enemy fo
 You assign standing order: **AutoRepair** with target shipyard at your capital:
 1. **Turn 1**: Fleet moves toward capital (2 jumps away)
 2. **Turn 2**: Fleet arrives at capital, holds for repairs
-3. **Turn 3**: 5 crippled destroyers automatically extracted, enter spaceport repair queue
-4. **Turn 4**: Destroyers complete repairs (1 turn), recommission to new squadrons
+3. **Turn 3**: All 7 crippled ships automatically extracted:
+   - 5 destroyers enter spaceport repair queue
+   - 2 battleship flagships enter shipyard repair queue
+   - For battleship squadrons: strongest escorts promoted to new flagships
+4. **Turn 4**: All ships complete repairs (1 turn), recommission to new squadrons
 5. **Turn 4**: New squadrons auto-assign back to same fleet (if `autoAssignFleets = true`)
 
-**Result**: Your 5 destroyers rejoin the battle fleet as fresh squadrons. The 2 crippled battleship flagships remain with their squadrons (flagship repair requires manual intervention or scuttling/recommissioning).
+**Result**: Your entire fleet is restored to full combat effectiveness. Flagship extraction happens automatically with escort promotion.
 
 **Example 2: Construction vs Repair Priority**
 
@@ -967,12 +988,12 @@ Build multiple repair facilities:
 - Industrial hubs: 2-3 shipyards (20-30 docks) for capital ship repairs
 - Dispersed repair capacity reduces single-point-of-failure risk
 
-**Flagship Damage:**
+**Flagship Extraction:**
 
-Crippled flagships cannot be repaired automatically (they hold the squadron together). Options:
-- Transfer flagship role to another ship (if squadron has escorts)
-- Scuttle flagship, create new squadron with replacement
-- Accept 50% combat effectiveness until war ends
+Crippled flagships automatically extract for repair like any other crippled ship. The extraction process depends on squadron composition:
+- **Squadrons with escorts**: Strongest escort promoted to flagship, squadron continues operating
+- **Single-flagship squadrons**: Squadron dissolves, flagship repairs, fleet may be removed if empty
+- Both cases restore ships to full combat effectiveness after repair
 
 **Defensive Priorities:**
 
