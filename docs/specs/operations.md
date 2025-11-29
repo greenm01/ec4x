@@ -1,1397 +1,988 @@
-# 6.0 Movement
+# 6.0 Fleet Operations and Movement
+
+Command your fleets across the stars. Direct them with explicit orders for immediate missions or standing orders for persistent behaviors. Your strategic decisions at the fleet level drive military success—squadrons handle the tactical execution.
+
+This section covers jump lane travel, ship commissioning pipelines, fleet orders, standing orders, and repair operations. Master these systems to project power effectively across your empire.
+
+---
 
 ## 6.1 Jump Lanes
 
-Fleets move between solar systems via jump lanes:
-- If a player owns all systems along the travel path, fleets can jump two major lanes in one turn.
-- Minor and restricted jump lanes enable a single jump per turn, regardless of the destination.
-- If jumping into an unexplored or rival system, the maximum number of jumps is one.
-- Fleets containing crippled ships or Spacelift Command ships can not jump across restricted lanes.
+Your fleets travel between star systems via **jump lanes**—pre-calculated routes through hyperspace connecting adjacent systems. Jump lanes define your strategic map: systems without lanes remain unreachable, while densely connected systems become strategic crossroads.
+
+For complete details on jump lane classes, distribution, and the starmap structure, see [Section 2.1 Star Map](assets.md#21-star-map).
+
+### 6.1.2 Jump Lane Movement Rules
+
+**Movement capacity depends on lane control and lane class:**
+
+- **Controlled major lanes**: If you own all systems along the travel path, your fleets can jump two major lanes in one turn
+- **Minor and restricted lanes**: Enable a single jump per turn, regardless of the destination
+- **Unexplored or rival systems**: Limit movement to one jump maximum
+- **Lane restrictions**: Fleets containing crippled ships or Spacelift Command ships cannot traverse restricted lanes
+
+### 6.1.3 Strategic Implications
+
+**Chokepoints control empires**: Systems with few connecting lanes become natural defensive positions. Control the chokepoint and you control the region.
+
+**Connectivity determines value**: Well-connected systems with major lanes serve as staging areas and logistics hubs. Isolated systems connected only by restricted lanes require specialized defense forces without ETACs or damaged ships.
+
+**Patrol routes follow lanes**: Standing patrol orders automatically follow jump lane networks. Your fleets defend multiple systems using established lanes.
+
+**Lane class matters for expansion**: Restricted lanes prevent ETAC passage, creating natural expansion barriers. Plan colonization routes around major and minor lanes for reliable access.
+
+---
 
 ## 6.2 Ship Commissioning and Fleet Organization
 
-Your industrial might transforms treasury into warships through a sophisticated three-stage pipeline. Ships commissioned at Spaceports and Shipyards flow automatically through squadron formation and fleet assignment, emerging as organized battle groups ready for your command.
+Your industrial might produces warships and spacelift vessels. Ships move from treasury expenditure through construction yards to commissioned squadrons and finally into operational fleets. This four-stage pipeline transforms economic investment into military power.
 
-### 6.2.1 The Ship-to-Fleet Pipeline
+### 6.2.1 The Commissioning Pipeline
 
-**Stage One: Construction Completion**
+**Stage One: Build Orders**
 
-When construction completes (one turn for all ships), your new warship commissions immediately at its construction colony. The ship receives full combat statistics based on your current technology levels—your weapons research advances directly strengthen every newly-commissioned hull.
+Allocate treasury (production points) to construction projects at your colonies. Each project requires available dock capacity at either spaceports or shipyards:
 
-**Stage Two: Squadron Formation**
+**Spaceports** (Planet-side Construction):
+- Built in 1 turn, provides 5 construction docks
+- Can build any ship type
+- **100% commission penalty**: Ships (except fighters) cost double production points due to orbital launch costs
+- Fighter squadrons exempt from penalty (distributed planetary manufacturing)
+- Required prerequisite for building shipyards
 
-Newly-commissioned ships join squadrons at the colony automatically, using tactical doctrine to create effective combined-arms forces:
+**Shipyards** (Orbital Construction):
+- Built in 2 turns, requires existing spaceport, provides 10 construction docks
+- Can build any ship type at standard cost (no penalty)
+- **ONLY facility that can repair ships** - spaceports cannot repair
+- Repairs any ship class at 25% of build cost (1 turn)
+- Also repairs starbases
+- Economically superior for all non-fighter construction
 
-**Capital Ships** (Battleships, Carriers, Cruisers):
-- Always become squadron flagships
-- Create new squadrons automatically
-- Provide command structure for escort vessels
+**Ship Repair Requirements:**
+- **All ship repairs require shipyards** - spaceports cannot repair ships
+- Repair cost: 25% of build cost
+- Repair time: 1 turn for all ship classes
+- Starbase repairs also require shipyards
+- Colonies without shipyards cannot repair crippled ships (must salvage or transfer to shipyard colony)
 
-**Escort Ships** (Scouts, Frigates, Destroyers, Light Cruisers):
-- Join existing unassigned capital ship squadrons first (if command capacity available)
-- Join same-class escort squadrons second (if no capital squadrons exist)
-- Create new escort squadrons only when no suitable squadrons exist
+**Build Order Mechanics:**
+- **Upfront payment**: Full construction cost (including spaceport penalties) deducted immediately from treasury
+- **Construction time**: 1+ turns based on ship class and technology level
+- **Simultaneous projects**: Limited only by available dock capacity across all facilities
 
-This intelligent grouping produces battle-ready squadrons without your intervention. A newly-commissioned Battleship automatically forms the core of a new squadron; Destroyers completing construction the next turn join that squadron automatically, creating a Battleship-plus-escorts battle group.
+**Strategic Priority:** Build shipyards early at all major colonies. The 100% spaceport penalty makes planet-side construction economically devastating for anything except fighters. Plan ahead—commit resources turn X, receive operational ships turn X+N.
+
+**Stage Two: Construction Completion**
+
+When construction completes, your ships **immediately commission** into squadrons:
+- **Capital ships** (BB, DN, SD, CA, CL) create new squadrons as flagships
+- **Escorts** (DD, FF, CT) join existing unassigned capital squadrons based on command capacity
+- **Scouts and fighters** form single-ship squadrons for specialized missions
+- **Spacelift ships** enter the unassigned pool, ready for colonization or transport missions
+
+No intermediate "ready to commission" state—your ships transition directly from construction to operational status, just like vessels completing sea trials immediately join the active fleet.
 
 **Stage Three: Fleet Assignment**
 
-Your colonies default to manual fleet assignment—unassigned squadrons remain at the colony until you issue Squadron Management orders. This gives you precise control over fleet composition and prevents newly-commissioned forces from inadvertently joining transient fleets.
+Squadrons automatically join fleets at their construction colony, eliminating tactical micromanagement while keeping your forces operationally ready. Your newly-commissioned squadrons organize into existing stationary fleets or form new fleets automatically.
 
-You can enable **Auto-Assign Fleet Management** per colony for automated fleet organization:
-- Unassigned squadrons distribute automatically across stationary fleets at the colony
-- New fleets create automatically if no suitable fleets exist
-- Useful for frontier worlds where you need defensive forces quickly
-- Strategic worlds benefit from manual assignment and deliberate fleet composition
+**Stationary fleets receive reinforcements:**
+- Fleets with **Hold, Guard, or Patrol** orders (at same system)
+- Fleets with **defensive standing orders** (DefendSystem, GuardColony, AutoEvade)
+- Fleets with **no orders** (default stationary posture)
 
-### 6.2.2 Command Hierarchy
+**Moving fleets do not receive reinforcements:**
+- Fleets executing **movement orders** or on patrol routes
+- Fleets with **movement-based standing orders** (PatrolRoute, AutoColonize, AutoRepair)
+- **Reserve or Mothballed** fleets (intentional reduced-readiness status)
 
-Your forces organize in a three-tier hierarchy optimized for both tactical flexibility and strategic control:
+This system ensures squadrons join fleets **intentionally stationary** at your colony, not temporarily passing through. Your fleets maintain operational readiness without interrupting ongoing missions.
 
-**Fleet → Squadron → Ship**
+**Why automatic assignment?** Squadrons are **tactical assets for combat**, not strategic decision points. You command at the fleet level—issuing orders, setting patrol routes, managing fleet composition. Automatic assignment eliminates the micromanagement trap of forgetting to deploy newly-built units while preserving your strategic control through fleet orders and standing orders.
 
-**Fleets** represent your strategic formations—groups of squadrons that move together, engage as a unit, and execute your orders. You issue missions to fleets: Move to Alpha Centauri, Bombard enemy colonies, Patrol the frontier.
+**Stage Four: Fleet Operations**
 
-**Squadrons** represent tactical units within fleets—collections of ships under a flagship's command. Each squadron operates with a flagship (usually a capital ship) commanding escort vessels. The flagship's Command Rating determines how many escorts the squadron can effectively coordinate.
+Once in fleets, control your forces through **fleet orders** (one-time missions) and **standing orders** (persistent behaviors). Transfer squadrons between fleets, adjust compositions, or place fleets in Reserve/Mothballed status to control operational costs.
 
-**Ships** represent individual hulls with specific combat capabilities. Each ship has Attack Strength, Defense Strength, and Command Cost. Capital ships have high Command Ratings and become flagships; escorts have low Command Cost and support flagships in combat.
+### 6.2.2 Squadron Formation Rules
 
-### 6.2.3 Squadron Composition
+Your ships organize into squadrons based on command structure:
 
-Squadrons organize around the flagship's command capacity. Your flagship's Command Rating (CR) determines the squadron's total capacity; each escort consumes Command Cost (CC) when assigned.
+**Capital ships become flagships**: Battleships, Dreadnoughts, Super Dreadnoughts, Heavy Cruisers, and Light Cruisers create new squadrons. Each capital ship commands its own squadron.
 
-Example squadron with Battleship flagship (CR=15):
-- 1 Battleship (flagship, no CC consumed)
-- 3 Destroyers (3 CC each = 9 CC total)
-- 2 Frigates (2 CC each = 4 CC total)
-- Total: 13 CC used of 15 CR available
+**Escorts serve as wingmen**: Destroyers, Frigates, and Corvettes join capital squadrons based on the flagship's command capacity. A Battleship commands more escorts than a Light Cruiser.
 
-Effective squadrons use their command capacity efficiently—mixing escorts to maximize firepower while maintaining flexibility. Pure escort squadrons (Destroyer flagships commanding other Destroyers) provide screening forces; capital-led squadrons deliver concentrated firepower.
+**Scouts operate independently**: Scout ships form single-ship squadrons for reconnaissance missions, intelligence gathering, and espionage operations.
 
-### 6.2.4 Auto-Balancing Squadrons
+**Fighters defend colonies**: Fighter squadrons remain assigned to colonies for orbital defense, separate from fleet operations.
 
-Fleets automatically optimize squadron composition each turn by default, redistributing escorts to maximize command capacity utilization across all squadrons.
+### 6.2.3 Fleet Composition Strategy
 
-When enabled (default), escorts redistribute at turn end to balance command usage:
-- Flagships never move between squadrons
-- Escorts shift to squadrons with available capacity
-- All squadrons achieve similar capacity utilization
-- Combat losses rebalance automatically next turn
+Design your fleets for their mission profile:
 
-You can disable auto-balancing per fleet for precise tactical compositions—dedicated scout squadrons for espionage, deliberate force distributions, specialized formations.
+**Battle fleets** combine capital ships with escort screens. Your Dreadnoughts and Battleships provide firepower; Destroyers and Frigates screen against threats.
 
-### 6.2.5 Manual Squadron Management
+**Patrol fleets** use Light Cruisers with Destroyer escorts for patrol routes and border security. Balance firepower with operational cost.
 
-You maintain complete control over squadron composition through Squadron Management orders:
+**Scout fleets** deploy single-scout squadrons for intelligence gathering, system reconnaissance, and espionage missions. Small footprint, high stealth.
 
-**Transfer ships between squadrons** at colonies—move that Scout from the Battleship squadron to the Carrier squadron, consolidate damaged escorts into reserve squadrons, reorganize after battle.
+**Reserve fleets** store mothballed squadrons at major colonies for emergency mobilization. Zero maintenance cost, immediate reactivation when needed.
 
-**Assign squadrons to fleets** precisely—create specialized task forces, reinforce existing fleets, establish new defensive formations.
-
-**Reorganize for tactical requirements**—form single-Scout squadrons for espionage missions (required for spy orders), create screening forces, establish carrier battle groups.
-
-**Note:** Espionage missions demand single-Scout squadrons. Multi-ship squadrons cannot execute spy orders—the risk of detection with multiple vessels makes such missions tactically unsound.
-
-### 6.2.6 Practical Examples
-
-**Reinforcement Integration:**
-
-Your homeworld commissions three Destroyers. They automatically join your existing Battleship squadron at the colony (command capacity permitting). When that fleet's auto-assignment activates, the reinforced squadron joins your nearest defensive fleet automatically, or you assign it manually to your offensive task force using Squadron Management orders.
-
-**Frontier Defense:**
-
-Your frontier colony enables auto-assign fleet management. New Cruisers commission and form squadrons automatically. Those squadrons immediately join stationary defensive fleets at the colony, creating a growing defensive force without management overhead.
-
-**Strategic Task Force:**
-
-Your strategic reserve requires precise composition. You disable auto-balancing on the reserve fleet, manually assign specific squadrons with Squadron Management orders, and maintain exact force ratios for your planned offensive. The fleet composition remains fixed despite reinforcements arriving at the base colony.
-
-### 6.2.7 Command Capacity Mechanics
-
-Your flagship's Command Rating represents its ability to coordinate supporting vessels effectively. Large capital ships command extensive battle groups; smaller vessels coordinate limited escorts.
-
-**Command Ratings by ship class:**
-- Battleships and Carriers: CR 15 (command multiple escorts)
-- Cruisers: CR 5-8 (command several escorts)
-- Destroyers and Escorts: CR 3 (command few escorts)
-- Scouts: CR 1 (operate independently or in pairs)
-
-**Command Cost** represents the coordination burden each escort places on the flagship:
-- Capital ships: CC 0 (never consume capacity, always flagships)
-- Destroyers: CC 3 (significant coordination required)
-- Frigates: CC 2 (moderate coordination required)
-- Scouts: CC 1 (minimal coordination required)
-
-Efficient squadron composition maximizes your firepower within command constraints. You can exceed command capacity temporarily (forced assignments), but the squadron operates at reduced effectiveness in combat.
+---
 
 ## 6.3 Fleet Orders
 
-| No.  | Mission                 | Requirements                             |
-| ---- | ----------------------- | ---------------------------------------- |
-| 00   | None (hold position)    | None                                     |
-| 01   | Move Fleet (only)       | None                                     |
-| 02   | Seek home               | None                                     |
-| 03   | Patrol a System         | None                                     |
-| 04   | Guard a Starbase        | Combat ship(s)                           |
-| 05   | Guard/Blockade a Planet | Combat ship(s)                           |
-| 06   | Bombard a Planet        | Combat ship(s)                           |
-| 07   | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
-| 08   | Blitz a Planet          | Loaded Troop Transports                  |
-| 09   | Spy on a Planet         | Scout squadron                           |
-| 10\* | Hack a Starbase         | Scout squadron                           |
-| 11   | Spy on a System         | Scout squadron                           |
-| 12   | Colonize a Planet       | One ETAC                                 |
-| 13   | Join another Fleet      | None                                     |
-| 14   | Rendezvous at System    | None                                     |
-| 15   | Salvage                 | Friendly Colony System                   |
-| 16   | Place on Reserve        | At friendly colony                       |
-| 17   | Mothball Fleet          | At friendly colony with Spaceport        |
-| 18   | Reactivate Fleet        | Reserve or Mothballed fleet              |
-
-**Note:** Fleet operational status (Active, Reserve, Mothballed) affects maintenance costs and combat capability. See [Section 3.9](economy.md#39-maintenance-costs) for detailed information on Reserve and Mothballed fleets.
-
-### 6.3.1 Order Persistence and Lifecycle
-
-**Persistent Orders**: Fleet orders continue executing across turns until completed or explicitly changed by the player. Players issue orders once, and fleets autonomously execute them until the mission is accomplished.
-
-**Order Lifecycle:**
-
-1. **Order Issued**: Player submits fleet order during Command Phase
-2. **Order Persists**: Order stored and continues executing each turn
-3. **Mission Execution**: Fleet moves toward target and performs action
-4. **Auto-Completion**: Order automatically completes when objective achieved
-5. **Hold Assignment**: Fleet receives Hold (00) order after completion
+Command your fleets with 19 distinct mission types—from peaceful exploration to devastating orbital bombardment. Issue orders once; your fleets execute them persistently across turns until mission completion or your new orders override them.
 
-**Completion Criteria:**
+### 6.3.1 Active Fleet Orders
 
-- **Move (01)**: Completes when fleet reaches destination → Auto-assigned Hold (00)
-- **Seek Home (02)**: Completes when fleet reaches friendly colony → Auto-assigned Hold (00)
-- **Colonize (12)**: Completes when colony established → Auto-assigned Hold (00)
-- **Hold (00)**: Never completes, continues indefinitely until changed
-- **Patrol/Guard/Blockade (03-05)**: Never complete, continue indefinitely until changed
-- **Reserve (16)**: Completes immediately → Auto-assigned **permanent GuardPlanet** (can't be changed)
-- **Mothball (17)**: Completes immediately → Auto-assigned **permanent Hold (00)** (can't be changed)
+Explicit orders that execute until completed or overridden:
 
-**Override Behavior:**
+| No. | Mission                 | Requirements                             |
+| --- | ----------------------- | ---------------------------------------- |
+| 00  | None (hold position)    | None                                     |
+| 01  | Move Fleet (only)       | None                                     |
+| 02  | Seek home               | None                                     |
+| 03  | Patrol a System         | None                                     |
+| 04  | Guard a Starbase        | Combat ship(s)                           |
+| 05  | Guard/Blockade a Planet | Combat ship(s)                           |
+| 06  | Bombard a Planet        | Combat ship(s)                           |
+| 07  | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
+| 08  | Blitz a Planet          | Loaded Troop Transports                  |
+| 09  | Spy on a Planet         | Scout squadron                           |
+| 10  | Hack a Starbase         | Scout squadron                           |
+| 11  | Spy on a System         | Scout squadron                           |
+| 12  | Colonize a Planet       | One ETAC                                 |
+| 13  | Join another Fleet      | None                                     |
+| 14  | Rendezvous at System    | None                                     |
+| 15  | Salvage                 | Friendly Colony System                   |
+| 16  | Place on Reserve        | At friendly colony                       |
+| 17  | Mothball Fleet          | At friendly colony with Spaceport        |
+| 18  | Reactivate Fleet        | Reserve or Mothballed fleet              |
 
-- Players can change fleet orders **anytime during Command Phase**
-- New orders immediately override persistent orders
-- **Exception**: Reserve/Mothball fleets have locked orders and can't be moved
-  - Reserve fleets permanently guard their colony (use Reactivate to return to active duty)
-  - Mothballed fleets permanently hold position (use Reactivate to return to active duty)
+### 6.3.2 Hold Position (00)
 
-**Move-to-ACTION Pattern:**
+Command your fleet to hold position and await new orders. Your fleet maintains station at its current location, providing defensive presence or staging position for future operations.
 
-All action orders (Colonize, Invade, Bombard, etc.) follow Move-to-ACTION pattern:
-- Fleet automatically moves toward target each turn
-- Action executes **immediately upon arrival** (same turn)
-- No "wait after arrival" behavior
+**Use Hold to:**
+- Establish defensive positions at strategic locations
+- Stage fleets for coordinated offensives
+- Maintain presence without specific mission parameters
 
-**Example - Colonization Mission:**
-```
-Turn 1: Player issues "Colonize System 15" (3 jumps away)
-        → Fleet moves 1 jump closer
-        → Order persists
-Turn 2: Order continues automatically
-        → Fleet moves 1 jump closer
-        → Order persists
-Turn 3: Order continues automatically
-        → Fleet arrives at System 15 and colonizes SAME TURN
-        → Order completes, fleet assigned Hold (00)
-Turn 4: Fleet has Hold order (stays at colony)
-        → Waits for new player orders
-```
+### 6.3.3 Move Fleet (01)
 
-### 6.3.2 Hold Position (00):
+Move your fleet to a new solar system and hold position. Your fleet travels to the destination system, establishes presence, then awaits further orders. Use Move for strategic repositioning without immediate combat intent.
 
-Fleets are ordered to hold position and standby for new orders.
+**Use Move to:**
+- Reposition forces to emerging threat sectors
+- Establish presence at newly-colonized systems
+- Concentrate forces before major offensives
 
-### 6.3.3 Move Fleet (01):
+### 6.3.4 Seek Home (02)
 
-Move to a new solar system and hold position (00).
+Order your fleet to return to the nearest friendly colony with repair facilities. Your damaged forces automatically navigate to safe harbor for repairs and resupply.
 
-### 6.3.4 Seek Home (02):
+**Use Seek Home to:**
+- Evacuate damaged fleets from combat zones
+- Return forces for strategic redeployment
+- Consolidate scattered forces at major bases
 
-Order a fleet to seek the closest friendly solar system and hold position (00).
+### 6.3.5 Patrol a System (03)
 
-**Manual vs. Automated Seek Home:**
+Command your fleet to patrol a single solar system, maintaining defensive presence and engaging hostiles per your Rules of Engagement settings.
 
-- **Manual**: Players can issue Seek Home orders anytime during Command Phase
-- **Automated**: Game engine ONLY triggers automatic Seek Home during **combat retreat**
+**Use Patrol Single System to:**
+- Defend border systems from incursions
+- Maintain presence in contested regions
+- Screen friendly colonies from raiders
 
-**Automated Seek Home (Combat Retreat Only)**:
+### 6.3.6 Guard Starbase (04)
 
-The game engine automatically assigns Seek Home orders **exclusively during tactical withdrawal from combat**. This occurs in the **Conflict Phase** after battle resolution when fleets suffer heavy damage and trigger ROE (Rules of Engagement) withdrawal thresholds.
+Station your fleet at an orbiting starbase for defensive operations. Your fleet protects the starbase from attack, screens it during combat, and intercepts hostile forces.
 
-**Automatic Retreat Trigger:**
+**Use Guard Starbase to:**
+- Protect critical infrastructure investments
+- Create fortified defensive positions
+- Support starbase fire during orbital combat
 
-**Post-Combat Retreat** (per [Section 7.4](operations.md#74-space-combat)): When a fleet's damage exceeds ROE thresholds during battle, the fleet automatically retreats. The game immediately:
-1. Assigns Seek Home order to retreating fleet
-2. Calculates path to nearest friendly colony
-3. Begins retreat movement **in the same turn** (doesn't wait for next turn)
+### 6.3.7 Guard/Blockade Planet (05)
 
-**Retreat Destination Selection:**
+Deploy your fleet for planetary operations—either defending friendly colonies or blockading enemy planets. Your fleet maintains low orbit, participating in orbital combat or economic warfare.
 
-- Uses pathfinding to find **closest owned colony** by jump distance
-- Considers path safety (avoids known enemy systems when possible)
-- If no owned colonies exist (house lost all territory), fleet holds at current position
+**Use Guard/Blockade to:**
+- Defend high-value colonies from bombardment
+- Establish orbital blockades cutting enemy production
+- Support ground forces during invasion attempts
 
-**Important**: Fleets do NOT automatically seek home when:
-- Orders become strategically invalid (target destroyed, system captured, etc.)
-- Stationed in hostile territory
-- Completing missions in enemy space
+### 6.3.8 Bombard Planet (06)
 
-Players retain full control over fleet positioning except during combat retreat. Fleets with invalid orders will continue executing them or hold position based on order type.
+Order devastating orbital bombardment of enemy colonies. Your fleet systematically destroys infrastructure, reducing the colony's industrial capacity and effectiveness.
 
-**Example Scenario - Post-Combat Retreat**:
+**Destruction Effects:**
+- Infrastructure damage accumulates per turn
+- Reduces production capacity
+- Can destroy facilities (spaceports, shipyards)
+- May cause population casualties
 
-House Ordos attacks House Harkonnen colony with fleet of 5 cruisers. Battle goes poorly:
-- 3 cruisers destroyed
-- 2 cruisers crippled
-- ROE threshold exceeded → Tactical withdrawal triggered
+**Use Bombardment to:**
+- Prepare targets for invasion
+- Destroy enemy production capacity
+- Punish enemy aggression
+- **WARNING**: Bombardment generates massive diplomatic penalties
 
-Game automatically:
-1. Assigns Seek Home order to surviving 2 cruisers
-2. Finds nearest Ordos colony (4 jumps away)
-3. Cruisers begin retreating same turn (move 1 jump toward safety)
-4. Order persists across turns until fleet reaches safety
-5. Upon arrival, fleet assigned Hold (00) at safe colony
+### 6.3.9 Invade Planet (07)
 
-### 6.2.4 Patrol a System (03):
-
-Actively patrol a solar system, engaging hostile forces that enter the space.
-
-**Engagement Rules:**
-
-Patrol orders trigger combat engagement when:
-- Entering systems controlled by houses with Enemy diplomatic status per [Section 8.1.3](diplomacy.md#813-enemy)
-- Encountering Enemy-status forces in any territory (controlled, neutral, or contested)
-
-Patrol does NOT trigger engagement with Neutral or Non-Aggression houses unless they execute threatening fleet orders (05-08, 12) in your controlled territory per [Section 7.3.2.1](operations.md#7321-diplomatic-filtering).
-
-Patrol operations automatically gather intelligence on all foreign forces encountered per [Section 1.5.1](gameplay.md#151-fleet-encounters-and-intelligence).
-
-### 6.2.5 Guard a Starbase (04):
-
-Order a fleet to protect a Starbase and join in a combined Task Force for Orbital Combat when confronting hostile ships with orders 05 to 08.
-
-**Guard Behavior:**
-- Fleets with guard orders do NOT participate in Space Combat
-- Guard fleets only engage in Orbital Combat (defending the colony directly)
-- Allows defense layering: mobile fleets fight in space, guard fleets defend in orbit
-- Guard fleets may contain Raiders (maintains cloaking ability until orbital phase)
-
-### 6.2.6 Guard/Blockade a Planet (05):
-
-Order a fleet to block hostile forces from approaching a planet.
-
-**Guard**: Fleets on guard duty are held in rear guard to protect a colony and do NOT participate in Space Combat. Guard fleets only engage in Orbital Combat when attackers attempt to assault the colony (orders 05 to 08). Guarding fleets may contain Raiders and maintain cloaking ability until Orbital Combat begins. Not all planets will have a functional Starbase.
-
-**Blockade**: Fleets are ordered to blockade an enemy planet and do NOT engage in Space Combat unless confronted by enemy ships under order 05 (counter-blockade).
-
-Colonies under blockade reduce their GCO by 60%. Blockade effects apply immediately during the Income Phase per [Section 1.3.2](gameplay.md#132-income-phase). Blockades established during the Conflict Phase reduce GCO for that same turn's Income Phase calculation - there is no delay. Lifting a blockade immediately restores full GCO for the following turn's Income Phase.
-
-**Multiple Blockaders:** Multiple houses can blockade the same colony simultaneously, provided they each have Enemy diplomatic status with the colony owner per [Section 8.1.3](diplomacy.md#813-enemy). Houses with Neutral or Non-Aggression diplomatic status cannot blockade. The 60% GCO reduction applies regardless of the number of blockading fleets (blockade is binary: either blocked or not). All blockading houses are tracked for combat resolution purposes.
-
-**Allied Blockades:** Houses with different diplomatic relationships toward the colony owner may be present in the same system. For example, House A (Enemy status) can blockade a colony while House B (Non-Aggression status) is also present but cannot contribute to the blockade. Only Enemy-status houses contribute to blockade effects.
-
-**Prestige Penalty:** House Prestige is reduced by 2 points for each turn if the colony begins the income phase under blockade.
-
-### 6.2.7 Bombard a Planet (06):
-
-Fleets are ordered to attack a planet's defensive ground assets, including shields, ground batteries, garrisoned Army units and Marines, and Spaceports. Bombardment has a detrimental effect on a colony's PTU and IUs.
-
-### 6.2.8 Invade a Planet (07):
-
-This is a three round battle:
-
-1. Destroy all the planet's ground batteries.
-2. Pound the population centers to soften resistance and take out enemy ground troops.
-3. Send in troop transports to drop off Marines, but ONLY AFTER all ground batteries have been destroyed.
-
-Bombardment damages the planet and gives the defenders time to sabotage industry before being overrun, but gives invading Marines a better chance of seizing the planet. The invasion succeeds if all the ground batteries are destroyed and ground forces defeated.
-
-### 6.2.9 Blitz a Planet (08):
-
-Quickly infiltrate Marines onto the planet by dodging ground batteries or distracting them. Ground units must be defeated for success.
-
-Because this form of attack is so fast, there is less damage to the planet since the enemy does not have time to sabotage their factories and combat ships go light on surface bombardment.  However, Marines are at greater risk and require superior numbers (twice as many as the enemy or better) to insure victory.
-
-### 6.2.10 Spy on a Planet (09):
-
-This mission is reserved for Scout squadrons. The scout detaches from its fleet and operates independently, gathering intelligence continuously until detected and destroyed. **The scout is permanently consumed for this mission** - it will not return to your fleet.
-
-**Intelligence Gathered (Spy Quality):**
-
-Scout squadrons generate comprehensive **Colony Intelligence Reports** containing:
-- Colony population, infrastructure (IU), and defenses
-- Starbase level and construction queue (all queued projects)
-- **Economic data**: Gross Colonial Output (GCO), Net Colonial Value (NCV)
-- Orbital assets: unassigned squadrons, reserve/mothballed fleets, shipyard count
-- Significance rating: 8/10 (colony discovery is very significant)
-
-Scouts provide **Perfect quality** intelligence - all data is accurate and current. However, scout intel can be corrupted by Disinformation espionage or Dishonored status (see [Section 9.4](intelligence.md#94-intelligence-corruption)).
-
-**Stealth Consideration**: Single-scout squadrons are recommended for spy missions to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
-
-See [Section 9.1.1](intelligence.md#911-scout-reconnaissance-perfect-quality) for complete scout intelligence capabilities.
-
-### 6.2.11 Hack a Starbase (10):
-
-This mission is reserved for Scout squadrons. The scout detaches from its fleet and operates independently, infiltrating the target starbase network. **The scout is permanently consumed for this mission** - it will gather intelligence continuously until detected and destroyed.
-
-**Intelligence Gathered (Spy Quality):**
-
-Scout squadrons generate **Starbase Intelligence Reports** containing:
-- **Economic intelligence**: Treasury balance, gross/net income, current tax rate
-- **R&D intelligence**: Tech levels across all fields (Economic, Science, Technology)
-- Research allocations (ERP, SRP, TRP) and current research focus
-- Significance rating: 9/10 (house-level strategic intelligence)
-
-This provides unparalleled visibility into enemy economic strength and technological capabilities, enabling strategic planning and resource allocation decisions.
-
-**Stealth Consideration**: Single-scout squadrons are recommended for hacking missions to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
-
-See [Section 9.1.3](intelligence.md#913-spy-operations-spy-quality) for spy operation intelligence details.
-
-### 6.2.12 Spy on a System (11):
-
-This mission is reserved for Scout squadrons. The scout detaches from its fleet and operates independently, conducting continuous system surveillance. **The scout is permanently consumed for this mission** - it will gather intelligence each turn until detected and destroyed.
-
-**Intelligence Gathered (Spy Quality):**
-
-Scout squadrons generate **System Intelligence Reports** containing:
-- All fleets in system with complete composition
-- Squadron details: ship classes, counts, tech levels, hull integrity
-- Spacelift cargo manifests (troop types, quantities, damage status)
-- Standing orders and fleet behavior
-- Significance rating: 7/10 (fleet composition is tactically significant)
-
-Unlike Visual quality intelligence from regular fleet encounters, scout reports reveal exact tech levels, damage assessment, and cargo contents - critical for invasion planning and fleet engagement decisions.
-
-**Stealth Consideration**: Single-scout squadrons are recommended for system reconnaissance to avoid detection. Multi-ship squadrons significantly increase the risk of being discovered by enemy intelligence.
-
-See [Section 9.2.1](intelligence.md#921-scout-encounter-reports) for scout report types and significance ratings.
-
-### 6.2.13 Colonize a Planet (12):
-
-This mission is reserved for ETACs under fleet escort. The ETAC will land one PTU on an unoccupied planet and establish a colony. The colonists will break the ETAC down and start the long process of terraforming. New colonies start at Level I regardless of the hospitable conditions.
-
-If the planet is already occupied, the fleet will hold position (Order 00) in the solar system until directed otherwise.
-
-**Strategic Note:**
-
-Fleet Order 12 executed in systems containing another house's colony is considered a direct threat and triggers defensive engagement per [Section 7.3.2.1](#7321-diplomatic-filtering). During the expansion phase, territorial competition makes destruction of rival ETACs a strategic priority. Houses without Non-Aggression Pacts will engage colonization attempts in their controlled systems regardless of whether the colonization targets an empty planet or occurs by navigational error.
-
-### 6.2.14 Join another Fleet (13):
-
-Seek out the location of a fleet and merge. The old fleet will disband and squadrons will join the existing one. If the host fleet is destroyed, all joining fleets will abandon their mission and hold position (00).
-
-### 6.2.15 Rendezvous at System (14):
-
-Move to the specified system and merge with any other fleets ordered to rendezvous there. The fleet with the lowest ID Number becomes the host fleet.  This order is useful for assembling large fleets near enemy planets for later attack.
-
-### 6.2.16 Salvage (15):
-
-Disband your fleet and recover resources at a friendly colony with salvage facilities. This order executes automatically, allowing you to convert obsolete or damaged fleets back into production points for new construction.
-
-**Mechanics:**
-- **Automatic Execution**: Order executes immediately when given - no transit required if already at suitable colony
-- **Facility Requirements**: Colony must have either a **spaceport** or **shipyard** to perform salvage operations
-- **Target Selection**: Fleet salvages at closest owned colony with facilities (or current location if suitable)
-- **Salvage Value**: All ships recovered for **50% of their Production Cost** (PC)
-- **Fleet Removal**: Fleet immediately disbanded - all squadrons and orders removed from game state
-- **Treasury Credit**: Salvage value added directly to house treasury
-
-**Strategic Uses:**
-- Convert obsolete early-game fleets into PP for modern ship designs
-- Recover resources from damaged fleets when repair costs exceed replacement value
-- Emergency liquidation when facing maintenance shortfalls
-- Optimize fleet composition by recycling mismatched squadrons
-
-### 6.2.17 Place on Reserve (16):
-
-Place a fleet on reserve status to reduce maintenance costs while maintaining defensive capability. The fleet must be at a friendly colony.
-
-**Mechanics:**
-- Fleet automatically merges into the colony's single reserve fleet
-- All squadrons from the ordered fleet join the reserve garrison
-- Each colony is limited to **one reserve fleet** - additional fleets automatically merge
-- Reserve fleets automatically guard their colony (Order 05)
-- Fleet becomes immobile - cannot execute movement orders
-
-**Economic Impact:**
-- Maintenance cost reduced to 50% of base upkeep
-- Provides cost-effective planetary defense
-
-**Combat Capability:**
-- AS and DS reduced to 50% of normal values
-- Can defend colony if attacked
-- Cannot move or engage in offensive operations
-
-See [Section 3.9](economy.md#39-maintenance-costs) for complete details on reserve fleet economics and strategy.
-
-### 6.2.18 Mothball Fleet (17):
-
-Mothball a fleet for long-term storage, eliminating all maintenance costs. The fleet must be at a friendly colony. Ships are powered down in orbit, requiring no facilities.
+Launch ground invasion of enemy colonies. Your fleet deploys marines and army units to seize control, conducting ground combat against defending forces.
 
 **Requirements:**
-- Fleet must be at friendly colony
-- Fleet becomes completely offline (powered down in orbit)
+- Fleet must contain spacelift ships with embarked ground forces
+- Target colony must have reduced defenses (planetary shields destroyed, garrison weakened)
 
-**Mechanics:**
-- Fleet enters storage orbit at colony
-- All maintenance costs eliminated (0% upkeep)
-- Fleet cannot fight - screened during combat
-- Vulnerable to destruction if no active Task Force defends them
-- Must use Reactivate order before fleet can operate again
+**Combat Resolution:**
+- Ground forces fight defending armies
+- Orbital support from your fleet
+- Infrastructure damage during combat
+- Successful invasion transfers colony ownership
 
-**Best For:**
-- Long-term storage of excess fleets
-- Preserving ships during economic hardship
-- Strategic reserves for future conflicts
+**Use Invasion to:**
+- Conquer enemy systems
+- Capture strategic colonies intact
+- Expand your empire through force
 
-See [Section 3.9](economy.md#39-maintenance-costs) for mothballed fleet economics and vulnerability details.
+### 6.3.10 Blitz Planet (08)
 
-### 6.2.19 Reactivate Fleet (18):
+Execute rapid planetary assault combining orbital bombardment with immediate ground invasion. Your forces strike simultaneously, overwhelming defenders before they can coordinate defense.
 
-Return a reserve or mothballed fleet to active duty status.
+**Requirements:**
+- Loaded troop transports
+- Sufficient orbital superiority
 
-**Mechanics:**
-- Immediately restores fleet to active status
-- Fleet can receive new orders next turn
-- Maintenance costs return to 100% of base upkeep
-- Combat capability restored to full AS/DS
-- Movement restrictions lifted
+**Use Blitz to:**
+- Capture lightly-defended colonies rapidly
+- Exploit tactical windows before reinforcements arrive
+- Reduce siege time for strategic operations
 
-**Use Cases:**
-- Mobilize reserve forces for offensive operations
-- Reactivate mothballed ships when needed
-- Convert defensive garrisons to mobile forces
+### 6.3.11 Spy on Planet (09)
 
-# 7.0 Combat
+Deploy intelligence operatives to gather colony-level intelligence. Your scout ships conduct covert reconnaissance, gathering data on infrastructure, defenses, and economic output.
 
-Combat in EC4X occurs across three distinct combat theaters. When fleets execute invasion or blitz orders against an enemy colony, they must fight progressively through each theater to capture the planet.
+**Requirements:**
+- Fleet must contain single-ship squadrons (multi-ship squadrons too conspicuous)
+- Scout ships preferred (stealth capabilities)
 
-## Three-Phase Combat Progression
+**Intelligence Gathered:**
+- Colony infrastructure level
+- Industrial capacity
+- Military facilities (spaceports, shipyards)
+- Defensive installations (shields, batteries)
+- Economic output
 
-**Progressive Combat Requirement:**
+**Use Spy on Planet to:**
+- Assess target defenses before invasion
+- Track enemy economic development
+- Identify strategic targets for strikes
 
-Attacking forces must successfully win each combat phase before advancing to the next:
+### 6.3.12 Hack Starbase (10)
 
-**Phase 1: Space Combat** ([Section 7.3](#73-space-combat))
-- Fleet vs fleet engagements in deep space
-- Mobile task forces fighting for space superiority
-- Determined by fleet composition, tactics, and technology
-- Occurs FIRST when attackers enter a system with mobile defenders
-- Attackers must defeat or force retreat of mobile defenders to proceed to orbital combat
-- Detection mechanics apply: ELI-equipped scouts can detect cloaked Raiders
-- Ambush advantage (+4 CER): Undetected Raiders strike first with bonus in space combat only
+Conduct cyber warfare operations against enemy starbases. Your intelligence units penetrate starbase networks, extracting economic data, research information, and operational intelligence.
 
-**Phase 2: Orbital Combat** ([Section 7.4](#74-orbital-combat))
-- Attacks on defended colonies after space superiority achieved
-- Combines guard fleets, reserve fleets, starbases, and unassigned squadrons
-- Protects screened units (mothballed ships, spacelift vessels)
-- Occurs SECOND after attackers win space combat (or if no mobile defenders present)
-- Attackers must defeat orbital defenses to proceed to planetary bombardment
-- Detection mechanics apply: ELI-equipped scouts and starbases can detect cloaked Raiders
-- NO ambush advantage: Raiders detected in space remain detected; newly encountered Raiders get no +4 bonus
-- Orbital defenses cannot be "surprised" but detection still determines initiative
+**Requirements:**
+- Fleet must contain single-ship squadrons
+- Target system must have enemy starbase
 
-**Phase 3: Planetary Combat** ([Section 7.5](#75-planetary-bombardment) & [Section 7.6](#76-planetary-invasion--blitz))
-- Surface warfare after orbital supremacy achieved
-- Bombardment, invasion, and blitz operations
-- Planetary shields, ground batteries, and ground forces defend
-- Occurs THIRD after attackers win orbital combat
-- Final phase before colony capture
+**Intelligence Gathered:**
+- Research progress
+- Economic production data
+- Fleet movements
+- Strategic plans
 
-**Combat Sequence Example:**
+**Use Hack Starbase to:**
+- Steal research advances
+- Identify enemy fleet deployments
+- Discover enemy strategic intentions
+- Gain economic intelligence
 
-An invasion fleet entering an enemy system:
-1. Fights mobile defenders in space combat (if present)
-2. If victorious, proceeds to orbital combat against guard fleets, reserve, starbases
-3. If victorious, proceeds to planetary bombardment and invasion
-4. Only after clearing all three phases can troop transports land
+### 6.3.13 Spy on System (11)
 
-Attackers cannot skip phases. Guard orders mean fleets defend in orbital combat only, not space combat.
+Deploy surveillance operations to detect hostile fleet movements. Your scout ships monitor jump lane traffic, track enemy fleet positions, and provide early warning of invasions.
+
+**Intelligence Gathered:**
+- All fleets present in system
+- Fleet compositions
+- Fleet orders (if detectable)
+- Recent fleet movements
+
+**Use Spy on System to:**
+- Provide early warning of enemy attacks
+- Track hostile fleet movements
+- Identify enemy patrol patterns
+- Support strategic planning
+
+### 6.3.14 Colonize Planet (12)
+
+Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure.
+
+**Requirements:**
+- Fleet must contain at least one ETAC ship
+- ETAC must carry PTUs (Population Transfer Units)
+- Target system cannot already have a colony (one colony per system)
+
+**Results:**
+- New colony established at infrastructure Level I
+- PTUs consumed (ETAC cargo emptied)
+- Awards prestige for expansion
+- **ETAC behavior after colonization:**
+  - With AutoColonize standing order: Automatically returns home for PTU reload, then resumes colonization
+  - Without standing orders: Remains at new colony (requires manual orders)
+
+### 6.3.15 Join Another Fleet (13)
+
+Transfer your fleet to merge with another fleet at the same location. Consolidate forces, reinforce battle groups, or reorganize for strategic operations.
+
+**Use Join Fleet to:**
+- Reinforce damaged fleets with fresh squadrons
+- Consolidate scattered forces after combat
+- Create combined task forces for major operations
+
+### 6.3.16 Rendezvous at System (14)
+
+Order your fleet to travel to a designated system and await further instructions. Coordinate multi-fleet operations by designating rendezvous points.
+
+**Use Rendezvous to:**
+- Coordinate multi-fleet invasions
+- Establish staging areas for offensives
+- Organize defensive concentrations
+
+### 6.3.17 Salvage (15)
+
+Recover resources from destroyed ships and derelict facilities in friendly systems. Your fleet conducts salvage operations, recovering production points from battle debris.
+
+**Requirements:**
+- Must be at friendly colony system
+- Recent battle debris present
+
+**Use Salvage to:**
+- Recover resources after defensive battles
+- Maximize economic efficiency
+- Clean up post-battle debris
+
+### 6.3.18 Place on Reserve (16)
+
+Place your fleet in Reserve status—reduced readiness with lower maintenance costs. Reserve fleets remain stationed at their colony with 50% maintenance cost and reduced combat effectiveness.
+
+**Reserve Status Effects:**
+- Maintenance cost reduced to 50%
+- Combat effectiveness reduced (penalty TBD)
+- **Cannot move** (permanently stationed at colony)
+- Does NOT receive auto-assigned squadrons
+- Can issue Reactivate order to return to Active status
+
+**Use Reserve Status to:**
+- Reduce military budget during peacetime
+- Maintain defensive reserves at major colonies
+- Store second-line forces for emergency mobilization
+
+### 6.3.19 Mothball Fleet (17)
+
+Mothball your fleet for long-term storage—zero maintenance cost but defenseless. Mothballed fleets remain at their colony with no maintenance cost and cannot participate in combat.
+
+**Mothball Status Effects:**
+- Maintenance cost reduced to 0%
+- **Cannot fight** - defenseless if attacked
+- **Cannot move** (permanently stationed at colony)
+- Does NOT receive auto-assigned squadrons
+- Must be screened by Active fleets during orbital combat or risks destruction
+- Can issue Reactivate order to return to Active status
+
+**Use Mothball to:**
+- Store reserve forces during peacetime
+- Preserve ships for future conflicts
+- Maintain strategic reserve with minimal budget impact
+- **WARNING**: Mothballed fleets MUST be screened during combat
+
+### 6.3.20 Reactivate Fleet (18)
+
+Reactivate Reserve or Mothballed fleets to Active status. Your fleet returns to full operational readiness with 100% maintenance cost and combat effectiveness.
+
+**Reactivation Effects:**
+- Fleet status changes from Reserve/Mothballed to Active
+- Full maintenance cost resumes
+- Full combat effectiveness restored
+- Fleet can now move and execute all orders
+- Receives auto-assigned squadrons if stationary
+
+**Use Reactivate to:**
+- Mobilize reserves during wartime
+- Respond to emerging threats
+- Return mothballed fleets to operational status
+
+---
 
 ## 6.4 Standing Orders
 
-Your fleets execute standing orders automatically when no explicit order exists—persistent behaviors that reduce micromanagement while maintaining strategic control. Standing orders activate only for fleets without active missions, providing default behaviors that align with your strategic intent.
+Establish persistent fleet behaviors that execute automatically when no explicit order is given. Standing orders reduce micromanagement by codifying routine behaviors—your fleets patrol routes, defend systems, and reinforce damaged units without constant supervision.
 
-### 6.4.1 Standing Order Mechanics
+### 6.4.1 Standing Order Types
 
-**Execution Priority:**
+Persistent behaviors that execute when fleet has no active mission:
 
-Standing orders execute AFTER active fleet orders during each turn's Command Phase:
-1. Active fleet orders execute first (Move, Patrol, Bombard, etc.)
-2. Fleets with no active orders check for standing orders
-3. Standing orders generate appropriate fleet orders automatically
-4. Generated orders persist until completed or overridden
+| Type             | Purpose                                      | Movement |
+| ---------------- | -------------------------------------------- | -------- |
+| None             | No standing order (default)                  | No       |
+| PatrolRoute      | Follow patrol path indefinitely              | Yes      |
+| DefendSystem     | Guard system, engage hostiles per ROE        | No       |
+| GuardColony      | Defend specific colony                       | No       |
+| AutoColonize     | ETACs auto-colonize nearest suitable system  | Yes      |
+| AutoReinforce    | Join nearest damaged friendly fleet          | Yes      |
+| AutoRepair       | Return to shipyard when crippled             | Yes      |
+| AutoEvade        | Retreat if outnumbered per ROE               | Yes      |
+| BlockadeTarget   | Maintain blockade on enemy colony            | No       |
 
-**Override Behavior:**
+### 6.4.2 Standing Order Execution
 
-Your active orders always override standing orders—issue any fleet order and the standing order suspends automatically. When your active order completes, the standing order resumes execution. This gives you tactical flexibility without sacrificing automation.
+**Standing orders are persistent**: Once assigned, your fleet executes the standing order every turn unless you issue an explicit order.
 
-**Suspension and Resumption:**
+**Explicit orders override temporarily**: Issue a one-time order to interrupt standing order behavior. Your fleet executes the explicit order this turn, then automatically resumes its standing order next turn.
 
-Standing orders suspend when you issue active orders, resume when those orders complete. A PatrolRoute standing order pauses while you manually send the fleet to intercept an enemy, then resumes the patrol route automatically after the interception order completes.
+**Standing orders support Rules of Engagement**: Most defensive standing orders respect your ROE settings, determining when to fight and when to retreat.
 
-### 6.4.2 Patrol Route
+### 6.4.3 Patrol Route Standing Order
 
-Your fleet follows a predefined path indefinitely, looping through specified systems. Each turn, the fleet moves to the next system in the patrol route, returning to the first system after completing the circuit.
+Establish indefinite patrol routes through multiple systems. Your fleet automatically travels the route system-by-system, engaging hostiles per ROE, providing continuous defensive coverage.
 
-**Parameters:**
-- Patrol path (sequence of system IDs)
-- Current position in path (tracked automatically)
-
-**Behavior:**
-- Fleet moves to next system in path each turn
-- Loops continuously (system 1 → 2 → 3 → 1 → ...)
-- Engages hostile forces per ROE while patrolling
-- Resumes patrol automatically after combat
-
-**Best Uses:**
-- Border patrols monitoring frontier systems
-- Trade route protection through key corridors
-- Defensive circuits around strategic colonies
-- Reconnaissance loops gathering intelligence
-
-**Example:**
-
-You establish a four-system patrol route: Alpha → Beta → Gamma → Delta. Your fleet automatically moves Alpha → Beta (turn 1), Beta → Gamma (turn 2), Gamma → Delta (turn 3), Delta → Alpha (turn 4), continuing indefinitely. If combat occurs at Beta, the fleet engages per ROE, then continues to Gamma next turn.
-
-### 6.4.3 Defend System
-
-Your fleet guards a specific system, patrolling when at the target and returning automatically if pulled away by combat or explicit orders.
-
-**Parameters:**
-- Target system to defend
-- Maximum range (jumps from target before returning)
+**Configuration:**
+- Define patrol path: ordered list of systems
+- Set Rules of Engagement (0-10 scale)
+- Fleet automatically cycles through route
 
 **Behavior:**
-- Fleet patrols target system when present
-- Returns immediately if moved beyond maximum range
-- Engages all hostile forces entering defended system
-- Prioritizes defending target over pursuing retreating enemies
+- Fleet travels to next system in route
+- Engages hostiles per ROE
+- Continues to next system
+- Cycles back to start when route completes
 
-**Best Uses:**
-- Homeworld defense fleets
-- Strategic chokepoint garrisons
-- Colony protection during expansion
-- Starbase guard forces
+**Use Patrol Route to:**
+- Defend border regions spanning multiple systems
+- Maintain continuous presence in contested zones
+- Automate routine security operations
 
-**Strategic Note:**
+### 6.4.4 Defend System Standing Order
 
-DefendSystem provides elastic defense—fleets pursue enemies briefly but snap back to defensive position automatically. This prevents your defensive fleets from being lured away from critical systems by feints and raids.
+Station your fleet for permanent system defense. Your fleet remains at the system, engages hostiles per ROE, and protects colonies without requiring repeated orders.
 
-### 6.4.4 Guard Colony
-
-Your fleet maintains station at a specific colony, executing GuardPlanet orders to defend against invasions and bombardments.
-
-**Parameters:**
-- Colony system to guard
+**Configuration:**
+- Target system (usually current location)
+- Rules of Engagement (0-10 scale)
 
 **Behavior:**
-- Fleet issues GuardPlanet orders at target colony
-- Participates in orbital combat defending the colony
-- Does not pursue fleeing enemies beyond the system
-- Maintains station until enemy threat eliminated
+- Fleet remains at target system
+- Engages hostile fleets per ROE
+- Protects colonies and starbases
+- Automatically screens mothballed fleets during combat
 
-**Best Uses:**
-- High-value colony protection (advanced research colonies)
-- Capital system defense-in-depth
-- Mining colony escorts
-- Vulnerable frontier outposts
+**Use Defend System to:**
+- Create permanent defensive garrisons
+- Protect strategic colonies
+- Maintain defensive presence without micromanagement
 
-**Difference from DefendSystem:**
+### 6.4.5 Guard Colony Standing Order
 
-GuardColony focuses on planetary defense (orbital combat), while DefendSystem patrols the system and engages mobile enemies. GuardColony fleets participate in orbital combat mechanics; DefendSystem fleets engage before enemies reach orbit.
+Defend a specific colony within a system. Functionally identical to Defend System but explicitly designates which colony to prioritize during combat.
 
-### 6.4.5 Auto-Colonize
+**Use Guard Colony to:**
+- Prioritize specific colony defense in multi-colony systems
+- Designate which infrastructure to protect
+- Create colony-specific defensive postures
 
-Your ETAC fleets automatically colonize the nearest suitable unoccupied planet, executing colonization missions without explicit orders.
+### 6.4.6 Auto-Colonize Standing Order
 
-**Parameters:**
-- Preferred planet classes (Benign, Harsh, etc.)
-- Maximum colonization range (jumps from current position)
+Order ETAC fleets to autonomously identify and colonize nearest suitable systems. Your colonization fleets automatically expand your empire without explicit orders for each colony.
 
-**Behavior:**
-- Scans for unoccupied planets within range
-- Prioritizes by planet class preferences
-- Issues Colonize orders to nearest suitable target
-- Continues seeking new targets after each colony established
-- Holds position if no suitable planets within range
-
-**Best Uses:**
-- Rapid expansion during early game
-- Automated frontier colonization
-- Economic AI fleet behavior
-- Reducing colonization micromanagement
-
-**Strategic Considerations:**
-
-AutoColonize fleets expand your empire automatically but follow predictable patterns. Rival houses can intercept if they identify your colonization vectors. Use AutoColonize for secondary expansion while manually directing strategic colony placements.
-
-### 6.4.6 Auto-Reinforce
-
-Your fleet automatically joins the nearest friendly fleet when damaged below a threshold, seeking safety in numbers.
-
-**Parameters:**
-- Damage threshold (percentage, e.g., 50% hull integrity)
-- Target fleet (specific fleet ID or nearest)
+**Requirements:**
+- Fleet must contain ETACs with PTUs
 
 **Behavior:**
-- Monitors fleet combat effectiveness continuously
-- Issues JoinFleet order when damage exceeds threshold
-- Seeks nearest friendly fleet if no target specified
-- Merges with target fleet for repairs and refit
+- Fleet identifies nearest uncolonized system
+- Travels to system automatically
+- Establishes colony
+- Resumes search for next target
 
-**Best Uses:**
-- Raiding fleets returning for repairs
-- Damaged scouts rejoining main forces
-- AI self-preservation behavior
-- Automated fleet consolidation after combat
+**Use Auto-Colonize to:**
+- Automate expansion waves
+- Reduce colonization micromanagement
+- Ensure rapid territory acquisition during land grabs
 
-**Note:**
+### 6.4.7 Auto-Reinforce Standing Order
 
-AutoReinforce provides automatic damage control but doesn't seek shipyard repairs. Use AutoRepair (below) for fleets needing industrial refit. AutoReinforce consolidates damaged forces for combined defense and eventual repair at colonies.
-
-### 6.4.7 Auto-Repair
-
-Your fleet returns to the nearest shipyard when damaged below a threshold, seeking industrial repair facilities.
-
-**Parameters:**
-- Damage threshold (percentage hull integrity)
-- Target shipyard (specific system or nearest)
+Order your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers squadrons to restore combat effectiveness.
 
 **Behavior:**
-- Monitors fleet hull integrity continuously
-- Issues SeekHome to nearest shipyard colony when threshold exceeded
-- Holds at shipyard colony for repairs
-- Resumes standing orders after repairs complete
+- Fleet scans for damaged friendly fleets
+- Calculates nearest target
+- Travels to target location
+- Transfers squadrons as appropriate
+- Resumes scanning for next target
 
-**Best Uses:**
-- Capital ship preservation
-- High-value fleet maintenance
-- Automated repair logistics
-- AI fleet sustainability
+**Use Auto-Reinforce to:**
+- Maintain frontline fleet strength
+- Automate battle damage replacement
+- Create mobile reinforcement fleets
 
-**Repair Mechanics:**
+### 6.4.8 Auto-Repair Standing Order
 
-Fleets at friendly colonies with shipyards repair automatically each turn (see Section 3.9 for repair rates). AutoRepair automates the seeking behavior; the actual repairs follow standard mechanics at the destination colony.
-
-### 6.4.8 Auto-Evade
-
-Your fleet automatically retreats to a safe system when facing overwhelming enemy forces, preserving your assets for future engagements.
-
-**Parameters:**
-- Fallback system (safe retreat destination)
-- Strength ratio trigger (e.g., 2.0 = retreat when outnumbered 2:1)
+Order damaged fleets to automatically return to shipyards when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
 
 **Behavior:**
-- Compares fleet strength to hostile forces each turn
-- Issues Move order to fallback system when ratio exceeded
-- Engages per ROE while retreating
-- Returns automatically when threat eliminated
+- Fleet monitors squadron damage status
+- When crippled (threshold TBD), seeks repair
+- Identifies nearest colony with shipyard
+- Travels to repair facility
+- Conducts repairs
+- Resumes previous standing order or awaits orders
 
-**Best Uses:**
-- Scout fleet self-preservation
-- Raiding force protection
-- AI defensive behavior
-- Avoiding unfavorable engagements
+**Use Auto-Repair to:**
+- Preserve damaged units
+- Reduce fleet management micromanagement
+- Ensure damaged forces return to operational status
 
-**Tactical Considerations:**
+### 6.4.9 Auto-Evade Standing Order
 
-AutoEvade provides automatic force preservation but can create exploitable patterns. Enemies observing your fallback destination can ambush retreating fleets. Vary fallback destinations for strategic fleets or disable AutoEvade when seeking decisive battle.
+Order your fleet to automatically retreat when outnumbered per ROE settings. Your fleet continuously assesses threat levels and withdraws to safety when engagement becomes unfavorable.
 
-### 6.4.9 Blockade Target
+**Configuration:**
+- Rules of Engagement (0-10 scale) determines retreat threshold
 
-Your fleet maintains continuous blockade of an enemy colony, preventing production and starving the target of resources.
+**Behavior:**
+- Fleet monitors hostile forces in system
+- Calculates force ratio
+- If outmatched per ROE, retreats to safe system
+- Resumes mission when threat clears
 
-**Parameters:**
+**Use Auto-Evade to:**
+- Protect valuable scouts and intelligence units
+- Preserve outnumbered forces
+- Avoid unfavorable engagements
+
+### 6.4.10 Blockade Target Standing Order
+
+Maintain continuous blockade of enemy colony. Your fleet establishes orbital blockade and maintains it indefinitely, strangling enemy economy.
+
+**Configuration:**
 - Target colony system
+- Rules of Engagement (determines when to fight defending fleets)
 
 **Behavior:**
-- Issues BlockadePlanet orders at target system
-- Maintains blockade indefinitely
-- Engages relief forces automatically
-- Repairs at nearest friendly colony when damaged
+- Fleet travels to target system if not present
+- Establishes orbital blockade
+- Engages defending forces per ROE
+- Maintains blockade continuously
 
-**Best Uses:**
-- Economic warfare against enemy production
-- Siege operations before invasion
-- Cutting off strategic resources
-- Forcing enemy fleet response
+**Use Blockade Target to:**
+- Maintain long-term economic pressure
+- Weaken enemy colonies before invasion
+- Automate blockade operations
 
-**Blockade Mechanics:**
+### 6.4.11 Rules of Engagement (ROE)
 
-Blockaded colonies cannot export production, receive reinforcements, or execute most orders (see Section 8.1 for complete blockade rules). Effective blockades require sufficient fleet strength to defeat relief forces and sustain the siege.
+Configure standing order combat behavior with Rules of Engagement—a 0-10 scale determining when to fight and when to retreat.
 
-### 6.4.10 Rules of Engagement Integration
+| ROE  | Behavior                                        |
+| ---- | ----------------------------------------------- |
+| 0-2  | Extremely cautious - Retreat from any threat    |
+| 3-5  | Defensive - Fight only if superior              |
+| 6-8  | Aggressive - Fight unless clearly outnumbered   |
+| 9-10 | Suicidal - Fight to the death                   |
 
-All standing orders respect your fleet's ROE setting (0-10). High ROE fleets engage aggressively while executing standing orders; low ROE fleets prioritize mission completion and retreat from unfavorable combat. Set ROE appropriately for each standing order's strategic purpose—defensive patrols use low ROE, offensive blockades use high ROE.
+**Examples:**
+- **Patrol Route with ROE=2**: Fleet patrols border but retreats from any hostile contact
+- **Defend System with ROE=8**: Fleet defends aggressively, fighting unless outnumbered 4:1
+- **Auto-Evade with ROE=5**: Fleet retreats if enemy force equal or superior
 
-### 6.4.11 Standing Order Management
-
-**Setting Standing Orders:**
-
-Issue standing orders through fleet command interface—select fleet, specify standing order type and parameters. Standing orders persist until explicitly cancelled or replaced.
-
-**Canceling Standing Orders:**
-
-Set standing order to None or issue active fleet orders. Active orders suspend standing orders automatically; canceling returns the fleet to no-orders state (Hold position).
-
-**Multiple Fleets, Same Standing Order:**
-
-You can assign identical standing orders to multiple fleets—three fleets with PatrolRoute orders covering different sectors, five ETAC fleets with AutoColonize orders expanding in different directions. Each fleet executes its standing order independently.
-
-**Strategic Combinations:**
-
-Combine standing orders with active tactical commands—your border patrol fleet (PatrolRoute) receives an active "Intercept enemy at Beta" order, completes the interception, then resumes patrol automatically. This blends automation with tactical control seamlessly.
+---
 
 ## 6.5 Ship Repairs and Repair Queues
 
-Your warships damaged in combat require systematic repairs at colonies with shipyard or spaceport facilities. Understanding repair mechanics ensures your fleets maintain combat readiness.
+Damaged ships require shipyard facilities for repairs. Manage your repair priorities through explicit repair orders or automated repair queues. Balance repair capacity against construction demands to maintain fleet readiness.
 
-### 6.5.1 Repair Fundamentals
+### 6.5.1 Damage and Repair Mechanics
 
-**Damage States:**
-- **Undamaged**: Full combat effectiveness
-- **Crippled**: 50% attack and defense strength, can still move and fight
-- **Destroyed**: Permanently lost (salvage value only)
+**Ships accumulate damage during combat**: Hull damage, system damage, and critical hits degrade combat effectiveness. Heavily damaged ships risk destruction.
 
-**Repair Requirements:**
-- Colony with operational shipyard or spaceport
-- Available dock capacity (repairs compete with construction for docks)
-- Treasury funds (25% of ship's build cost per economy.md)
-- One turn repair time
+**Shipyards conduct repairs**: Colonies with shipyard facilities repair damaged ships. Repair speed depends on shipyard capacity and damage severity.
 
-**Automatic Repair Submission:**
+**Repairs compete with construction**: Shipyard capacity serves both repair and construction operations. Prioritize based on strategic needs—replace losses or repair existing forces.
 
-Your fleets don't need explicit repair orders. When a fleet with crippled ships stations at a colony with repair facilities and available dock capacity, all crippled ships (escorts and flagships) automatically extract and enter the repair queue.
+### 6.5.2 Repair Queues
 
-**Flagship Extraction:**
-- **Squadron has escorts**: The strongest escort (highest AS + DS) is promoted to flagship. The crippled flagship extracts for repair. Squadron continues operating.
-- **Squadron has no escorts**: The squadron dissolves entirely. The flagship extracts for repair. If this was the fleet's last squadron, the fleet is removed from the game.
+**Automatic repair prioritization**: Your shipyards automatically queue damaged ships for repair. Ships with critical damage receive priority; light damage repairs later.
 
-**Standing Orders for Repairs:**
+**Manual queue adjustment**: Override automatic prioritization by explicitly ordering specific ships to front of queue. Prioritize capital ships or critical escorts.
 
-Fleets don't automatically return to shipyards when damaged. You must give your fleet a **standing order: AutoRepair** (see 6.4.6) to make damaged fleets automatically return to the nearest shipyard and hold for repairs. Without this standing order, damaged fleets will continue executing their current orders until you explicitly redirect them.
+**Repair time scales with damage**: Lightly damaged ships repair quickly; heavily damaged ships require multiple turns. Monitor repair progress in colony management screens.
 
-### 6.5.2 Repair Queue Mechanics
+### 6.5.3 Repair Strategy
 
-**Dock Capacity:**
-- **Shipyards**: 10 docks per facility (for capital ships and larger escorts)
-- **Spaceports**: 5 docks per facility (for smaller escorts)
-- **Shared Capacity**: Construction and repairs compete for the same docks
+**Dedicated repair colonies**: Establish rear-area colonies with extensive shipyard capacity for major repairs. Damaged fleets return to repair bases.
 
-**Priority System:**
-1. **Construction Projects** (Priority 0): Ship/building construction takes precedence
-2. **Ship Repairs** (Priority 1): Combat vessel repairs
-3. **Starbase Repairs** (Priority 2): Orbital fortress repairs
+**Forward repair facilities**: Build shipyards at frontline colonies for rapid turnaround. Maintain fleet readiness near combat zones.
 
-**Facility Assignment:**
+**Emergency repairs**: Lightly damaged ships remain operational. Save shipyard capacity for critically damaged units requiring immediate attention.
 
-Each repair is assigned to a facility type based on asset type:
-- **Shipyard Repairs**: Battleships, Dreadnoughts, Carriers, Heavy Cruisers, Cruisers, **Starbases**
-- **Spaceport Repairs**: Light Cruisers, Destroyers, Frigates, Scouts
+**Auto-Repair standing orders**: Configure damaged fleets to automatically return to designated repair facilities when crippled. Reduces micromanagement of battle-damaged forces.
 
-Construction projects can use any available dock type, but repairs are facility-specific. Starbases always require shipyard facilities (they're orbital structures, cannot be repaired at ground spaceports).
+---
 
-### 6.5.3 Starbase Repairs and Crippled Penalties
+**End of Section 6**
 
-**Crippled Starbase Effects:**
+# 7.0 Combat
 
-Crippled starbases lose ALL operational benefits until repaired:
-- **No ELI bonus**: Electronic Intelligence (ELI) surveillance disabled
-- **No population bonus**: Cannot support additional population capacity
-- **No defense bonus**: Defensive combat strength reduced to 50%
-- **Automatic repair**: Starbases at colonies with operational shipyards automatically enter repair queue
+Destroy your enemies across three distinct combat theaters. Your fleets fight through space battles, orbital sieges, and planetary invasions to seize enemy colonies. Each theater demands different tactics, unit compositions, and strategic decisions.
 
-**Starbase Repair Specifics:**
+This section covers combat mechanics, engagement rules, and the progressive nature of planetary conquest. Master these systems to project power effectively and defend your empire against invasion.
 
-- **Facility Required**: Shipyard only (orbital structures, cannot use spaceports)
-- **Cost**: 25% of starbase build cost (~25 PP for standard starbase)
-- **Duration**: 1 turn
-- **Priority**: Lowest (priority 2, after construction and ship repairs)
-- **Automatic**: No player action needed—crippled starbases automatically queue when shipyard capacity available
+---
+
+## 7.1 The Three Combat Theaters
+
+Planetary conquest requires methodical progression through three combat phases. Your attacking fleets must win each theater before advancing to the next—no shortcuts, no bypassing defenses.
+
+### 7.1.1 Theater Progression
+
+**Space Combat** (First Theater)
+
+Fight enemy mobile fleets in deep space before reaching orbit. Your task forces engage defending fleets with full tactical mobility. Both sides maneuver, concentrate fire, and attempt to break enemy formations.
+
+**Who fights:**
+- Your attacking fleets
+- Enemy mobile defenders (fleets with no Guard orders, active movement orders)
+- Undetected Raiders can ambush with combat bonuses
+
+**Outcome determines:**
+- If attackers win: Proceed to orbital combat
+- If defenders win: Attackers retreat or are destroyed
+- If no mobile defenders present: Attackers proceed directly to orbital combat
+
+**Orbital Combat** (Second Theater)
+
+Assault fortified orbital defenses after achieving space superiority. Your fleets engage stationary defenders protecting the planet—guard fleets, reserve forces, starbases, and unassigned squadrons fight as a unified defensive position.
+
+**Who fights:**
+- Your surviving attack fleets (if you won space combat)
+- Enemy guard fleets (fleets with Guard/Defend orders)
+- Enemy reserve and mothballed fleets
+- Enemy starbases (orbital installations with heavy firepower)
+- Enemy unassigned squadrons at colony
+- **Screened units protected**: Mothballed ships, spacelift vessels remain behind battle lines
+
+**Outcome determines:**
+- If attackers win: Achieve orbital supremacy, proceed to planetary operations
+- If defenders win: Attackers retreat without reaching planet surface
+- If no orbital defenders: Attackers achieve supremacy unopposed
+
+**Planetary Combat** (Third Theater)
+
+Bombard planetary defenses and invade the surface after securing orbit. Your fleets destroy shields, neutralize ground batteries, and deploy invasion forces. The final phase before colony capture.
+
+**Who fights:**
+- Your bombardment fleets (any combat squadrons)
+- Your invasion forces (marines from troop transports)
+- Enemy planetary shields (reduce bombardment damage)
+- Enemy ground batteries (fire on orbiting ships and landing forces)
+- Enemy ground forces (armies and marines defend against invasion)
+
+**Outcome determines:**
+- Successful bombardment: Infrastructure destroyed, defenses weakened
+- Successful invasion: Colony captured, ownership transfers
+- Failed invasion: Your invasion forces destroyed, defenders retain control
+
+### 7.1.2 Why Progressive Combat Matters
+
+**No theater skipping**: Your fleets cannot bypass defenses. Guard orders mean enemy fleets defend in orbital combat only—they don't participate in deep space battles. This creates strategic depth: defending admirals choose which fleets defend which theater.
+
+**Resource allocation**: Attackers must maintain overwhelming force through all three phases. Winning space combat with 80% losses means facing orbital defenses with a crippled fleet. Plan for attrition.
+
+**Defender advantages**: Each theater provides natural defensive advantages. Starbases add firepower in orbital combat. Planetary shields negate bombardment. Ground batteries threaten invasion forces. Defenders fight from prepared positions.
+
+---
+
+## 7.2 Combat Fundamentals
+
+Every engagement follows consistent rules governing targeting, effectiveness, and resolution. Master these fundamentals to predict combat outcomes and design effective fleet compositions.
+
+### 7.2.1 Rules of Engagement (ROE)
+
+Set your fleet's aggression level with Rules of Engagement—a 0-10 scale determining when to retreat during combat. ROE compares your total AS to enemy total AS.
+
+**ROE Retreat Thresholds:**
+
+| ROE | Threshold | Meaning | Use Case |
+|-----|-----------|---------|----------|
+| 0 | 0.0 | Avoid all hostile forces | Pure scouts, intel gathering |
+| 1 | 999.0 | Engage only defenseless | Extreme caution |
+| 2 | 4.0 | Need 4:1 advantage | Scout fleets, recon forces |
+| 3 | 3.0 | Need 3:1 advantage | Cautious patrols |
+| 4 | 2.0 | Need 2:1 advantage | Conservative operations |
+| 5 | 1.5 | Need 3:2 advantage | Defensive posture |
+| 6 | 1.0 | Fight if equal or superior | Standard combat fleets |
+| 7 | 0.67 | Fight even at 2:3 disadvantage | Aggressive fleets |
+| 8 | 0.5 | Fight even at 1:2 disadvantage | Battle fleets |
+| 9 | 0.33 | Fight even at 1:3 disadvantage | Desperate defense |
+| 10 | 0.0 | Fight regardless of odds | Suicidal last stands, homeworld defense |
+
+**Morale Modifies Effective ROE:**
+
+Your house's prestige affects fleet morale, modifying effective ROE during combat:
+
+| Prestige | Morale Modifier | Effect on ROE |
+|----------|-----------------|---------------|
+| 0 or less | -2 | Fleets retreat much earlier (ROE 8 becomes ROE 6) |
+| 1-20 | -1 | Fleets retreat earlier (ROE 8 becomes ROE 7) |
+| 21-60 | 0 | No change |
+| 61-80 | +1 | Fleets fight longer (ROE 6 becomes ROE 7) |
+| 81+ | +2 | Fleets fight much longer (ROE 6 becomes ROE 8) |
+
+**Homeworld Defense Exception**: Fleets defending their homeworld NEVER retreat regardless of ROE or losses.
+
+**ROE affects standing orders**: PatrolRoute with ROE=2 patrols but retreats unless 4:1 advantage. DefendSystem with ROE=8 fights even at 1:2 disadvantage.
+
+**ROE does NOT affect explicit orders**: When you issue Bombard, Invade, or Attack orders, your fleet executes regardless of ROE. ROE only matters for automated retreat decisions during combat.
+
+### 7.2.2 Combat State and Damage
+
+Squadrons exist in three combat states determining effectiveness:
+
+**Undamaged** (Full Effectiveness)
+- Squadron operates at full Attack Strength (AS) and Defense Strength (DS)
+- Contributes full combat power to task force
+- Can execute all missions
+
+**Crippled** (Severely Degraded)
+- Squadron suffers major damage reducing combat effectiveness
+- Squadron flagship is crippled; escort ships may be destroyed
+- Cannot traverse restricted jump lanes
+- Requires shipyard repairs (1 turn, 25% of flagship build cost)
+- Still operational but at reduced capability
+
+**Destroyed** (Eliminated)
+- Squadron eliminated from combat
+- Flagship and all escort ships destroyed
+- Provides salvage value (50% of build cost at friendly colony)
+- Permanent loss unless rebuilt
+
+**Damage accumulation**: Squadrons take damage during combat rounds. Sufficient damage cripples squadrons (flagship crippled, escorts may be lost). Additional damage beyond crippled destroys the entire squadron. Heavy firepower can destroy squadrons directly without crippling them first.
+
+**Destruction Protection:**
+- Squadrons cannot go Undamaged → Crippled → Destroyed in the **same combat round**
+- If a squadron takes enough damage to cripple AND destroy it in one round, it stays Crippled
+- Next round, additional damage can destroy it
+- **Critical hits bypass protection**: Natural 9 on CER roll destroys immediately
+- Prevents instant-kill cheese, ensures multi-round engagements
+
+**Note**: Combat targets squadrons as tactical units. Each squadron contains one flagship plus escort ships. When a squadron is destroyed, all ships in it are lost.
+
+### 7.2.3 Task Force Formation
+
+Fleets combine into **task forces** during combat—unified battle groups that concentrate firepower and share detection.
+
+**Task force composition**:
+- All squadrons from participating fleets
+- Starbases at system (orbital combat only)
+- Fighter squadrons at colony (if carriers present)
+- Unassigned squadrons at colony (orbital combat only)
+
+**Task force benefits**:
+- Shared detection: ELI-equipped scouts detect cloaked enemies for entire task force
+- Concentrated firepower: All squadrons engage simultaneously
+- Screened units protected: Mothballed fleets and spacelift vessels stay behind combat squadrons
+
+**Multiple houses in combat**: Three-way or four-way battles resolve with each house forming separate task forces. All hostile task forces engage each other based on diplomatic status (Enemy or Neutral).
+
+### 7.2.4 Cloaking and Detection
+
+Raiders can cloak, becoming invisible until detected. Detection determines initiative and targeting.
+
+**Cloaking Mechanics:**
+- **Raiders** can activate cloaking (stealth mode)
+- Cloaked Raiders invisible until detected
+- **Detection range**: 1 jump lane (adjacent systems)
+- **Detection sources**: ELI-equipped scouts, starbases (orbital combat only)
+
+**Detection is Probabilistic:**
+- Detection is NOT automatic—it's a dice roll based on tech levels
+- ELI (Electronic Intelligence) tech level vs CLK (Cloaking) tech level
+- Multiple scouts improve detection through mesh network bonuses
+- See assets.md Section 2.4.2 for full ELI mesh network calculation
+- Starbases get +2 ELI bonus for detection
+
+**Ambush Advantage (Space Combat Only):**
+- Undetected Raiders strike first
+- **+4 Combat Effectiveness Rating (CER)** bonus
+- Attacks before enemy capital squadrons can respond
+- Ambush advantage ONLY in space combat
+
+**Detection Effects (All Combat):**
+- Detected Raiders lose ambush bonus
+- Detection shared across entire task force
+- Once detected in space combat, remain detected in orbital combat
+- Newly encountered Raiders in orbital combat get no ambush bonus (orbital defenses detect approaching threats)
 
 **Strategic Implications:**
-
-Losing starbase surveillance during repairs creates intelligence gaps. Enemy fleets can move through your systems undetected while your starbase repairs. Protect your starbases aggressively or maintain backup surveillance (scouts, adjacent starbases).
-
-### 6.5.4 Ship Repair Pipeline
-
-**Stage One: Extraction**
-
-When your fleet arrives at a colony with repair capacity:
-1. System identifies all crippled escort ships (flagships remain with squadron)
-2. Escorts extracted from their squadrons one at a time
-3. Each ship becomes a separate repair project in the queue
-
-**Stage Two: Repair Queue**
-
-Ships enter facility-specific queues:
-- Repair projects occupy one dock each
-- Repair duration: 1 turn (all repairs complete simultaneously)
-- Cost: 25% of ship's build cost (deducted when repair completes)
-
-If dock capacity full, ships remain with their squadrons and retry next turn.
-
-**Stage Three: Recommissioning**
-
-Repaired ships recommission through the standard squadron pipeline (see 6.2.2):
-- Capital ships become new squadron flagships
-- Escorts join existing capital ship squadrons (balanced distribution)
-- Escorts join same-class escort squadrons if no capital squadrons available
-- New escort squadrons created only when no suitable squadrons exist
-
-**Stage Four: Fleet Assignment**
-
-If colony has `autoAssignFleets = true` (default):
-- Repaired squadrons automatically join existing stationary fleets at colony
-- Load-balanced across all Active fleets
-- New fleets created only if no candidate fleets exist
-
-If `autoAssignFleets = false`:
-- Squadrons remain in colony.unassignedSquadrons for manual assignment
-
-### 6.5.5 Repair Costs and Economics
-
-**Cost Structure:**
-
-Repairs cost 25% of the ship's construction cost at **shipyards** (orbital facilities):
-- Battleship (70 PP build cost) = 17-18 PP repair
-- Heavy Cruiser (35 PP build cost) = 8-9 PP repair
-
-**Spaceport Penalty:**
-
-Repairs at **spaceports** (ground-based facilities) cost 50% more due to less efficient equipment:
-- Destroyer (15 PP build cost) = 5-6 PP repair at spaceport (vs 3-4 PP at shipyard)
-- Light Cruiser (20 PP build cost) = 7-8 PP repair at spaceport (vs 5 PP at shipyard)
-- Frigate (10 PP build cost) = 3-4 PP repair at spaceport (vs 2-3 PP at shipyard)
-
-**Facility Assignment:**
-
-You cannot choose which facility repairs your ships—assignment is automatic by ship class. Build orbital shipyards for more cost-effective escort repairs if you have the industrial capacity.
-
-**Treasury Requirements:**
-
-Repair costs deducted from house treasury when repair completes. If insufficient funds, repair fails and ship remains crippled in queue (will retry next turn).
-
-**Economic Trade-offs:**
-
-Repairing a crippled battleship (17 PP) vs building new destroyer (15 PP):
-- Repair preserves expensive capital ship
-- New construction adds fleet capacity
-- Consider strategic value vs immediate need
-
-**Starbase Repairs:**
-
-Starbases cost ~25 PP to repair (25% of ~100 PP build cost). This is expensive but essential—crippled starbases lose all surveillance and defensive bonuses. Prioritize starbase repairs in critical defensive positions.
-
-### 6.5.6 Facility Vulnerability
-
-**Combat Damage to Facilities:**
-
-Per economy.md:5.0, ships under construction or repair are destroyed if:
-- Facility destroyed by orbital bombardment
-- Facility crippled by combat damage
-- Colony successfully invaded (spaceports destroyed on marine landing)
-
-**Queue Behavior:**
-- **Facility-specific repairs**: Destroyed immediately when that facility type lost
-- **Construction projects**: Can transfer to other facility types at colony (shipyard → spaceport)
-- **All facilities lost**: All construction and repair projects destroyed (no salvage value)
-
-**Strategic Implications:**
-
-Protect your industrial colonies—losing an orbital shipyard during enemy bombardment destroys all ships under repair at that facility, costing you both the repair investment and the crippled ships.
-
-### 6.5.7 Practical Examples
-
-**Example 1: Battle-Damaged Fleet Returns Home**
-
-Your battle fleet (3 battleship squadrons, 8 destroyer escorts) engages enemy forces. After combat:
-- 2 battleships crippled (remain as flagships)
-- 5 destroyers crippled
-
-You assign standing order: **AutoRepair** with target shipyard at your capital:
-1. **Turn 1**: Fleet moves toward capital (2 jumps away)
-2. **Turn 2**: Fleet arrives at capital, holds for repairs
-3. **Turn 3**: All 7 crippled ships automatically extracted:
-   - 5 destroyers enter spaceport repair queue
-   - 2 battleship flagships enter shipyard repair queue
-   - For battleship squadrons: strongest escorts promoted to new flagships
-4. **Turn 4**: All ships complete repairs (1 turn), recommission to new squadrons
-5. **Turn 4**: New squadrons auto-assign back to same fleet (if `autoAssignFleets = true`)
-
-**Result**: Your entire fleet is restored to full combat effectiveness. Flagship extraction happens automatically with escort promotion.
-
-**Example 2: Construction vs Repair Priority**
-
-Your border fortress colony has:
-- 1 shipyard (10 docks)
-- 5 ships under construction (occupying 5 docks)
-- 5 docks available
-
-Damaged patrol fleet arrives with 7 crippled destroyers:
-1. **Turn N**: 5 destroyers extract and enter repair queue (5/10 docks used by construction + repairs)
-2. **Turn N**: 2 destroyers remain crippled with fleet (no dock capacity)
-3. **Turn N+1**: 5 ships complete construction (5 docks freed)
-4. **Turn N+1**: 2 remaining destroyers extract (now capacity available)
-5. **Turn N+1**: Original 5 destroyers complete repairs, recommission
-6. **Turn N+2**: Final 2 destroyers complete repairs, recommission
-
-**Result**: Construction takes priority, but repairs process as capacity becomes available.
-
-**Example 3: Enemy Bombardment Destroys Repairs**
-
-Your shipyard colony under siege:
-- 1 shipyard (10 docks)
-- 3 battleships under repair (priority 1)
-- 2 battleships under construction (priority 0)
-
-Enemy fleet bombards colony, destroys shipyard:
-1. **Conflict Phase**: Shipyard destroyed
-2. **Immediate Effect**: All 5 ships (construction + repairs) lost with no salvage
-3. **Economic Loss**: ~350 PP in ships + ~35 PP in repair investments = 385 PP total loss
-
-**Result**: Catastrophic industrial loss. Defend your shipyards aggressively.
-
-**Example 4: Crippled Starbase Loses Surveillance**
-
-Your border system has 1 starbase (ELI surveillance) and 1 shipyard. Enemy raid cripples the starbase:
-1. **Turn N (Conflict Phase)**: Starbase crippled in combat
-2. **Turn N (Immediate Effect)**: ELI surveillance disabled, population bonus lost
-3. **Turn N+1 (Maintenance Phase)**: Starbase automatically queued for repair at shipyard
-4. **Turn N+2**: Starbase repair completes, ELI and bonuses restored
-
-During Turn N+1 (repair in progress):
-- No surveillance of enemy fleet movements
-- Enemy fleets can transit system undetected
-- Reduced defensive strength (starbase still provides combat power, but crippled)
-
-**Result**: 1-turn intelligence blackout. Consider backup surveillance (scouts, adjacent starbases) for critical systems.
-
-### 6.5.8 Best Practices
-
-**Standing Orders Are Essential:**
-
-Without standing order AutoRepair, your damaged fleets will not automatically return to shipyards. Assign AutoRepair to all combat fleets operating far from home to ensure they seek repairs when damaged.
-
-**Repair Capacity Planning:**
-
-Build multiple repair facilities:
-- Frontline colonies: 1 spaceport (5 docks) for escort repairs
-- Industrial hubs: 2-3 shipyards (20-30 docks) for capital ship repairs
-- Dispersed repair capacity reduces single-point-of-failure risk
-
-**Flagship Extraction:**
-
-Crippled flagships automatically extract for repair like any other crippled ship. The extraction process depends on squadron composition:
-- **Squadrons with escorts**: Strongest escort promoted to flagship, squadron continues operating
-- **Single-flagship squadrons**: Squadron dissolves, flagship repairs, fleet may be removed if empty
-- Both cases restore ships to full combat effectiveness after repair
-
-**Defensive Priorities:**
-
-Your industrial colonies are high-value targets:
-- Station defensive fleets at shipyard colonies
-- Build starbases for orbital defense
-- Evacuate or suspend repairs before enemy arrival
-
-## 7.1 Principles
-
-### 7.1.1 Rules of Engagement (ROE)
-
-ROE dictates how aggressive your fleet will respond when engaging with the enemy from a scale of 0 to 10. The higher the ROE, the more aggressive your fleet will engage with enemy fleets of increasing relative strength to your own. With a low ROE, your fleet will attempt to retreat more readily when engaged in combat. A low ROE does not guarantee survival against a more powerful fleet. Once engaged, fleets have the opportunity to retreat only after the first round of combat.
-
-| **ROE** | **ORDERS**                                             |
-| ------- | ------------------------------------------------------ |
-| 00      | Avoid all hostile forces. (Non-combat forces)          |
-| 01      | Engage forces only if they are defenseless.            |
-| 02      | Engage forces only if your advantage is 4:1 or better. |
-| 03      | Engage forces only if your advantage is 3:1 or better. |
-| 04      | Engage forces only if your advantage is 2:1 or better. |
-| 05      | Engage forces only if your advantage is 3:2 or better. |
-| 06      | Engage hostile forces of equal or inferior strength.   |
-| 07      | Engage hostile forces even if outgunned 3:2.           |
-| 08      | Engage hostile forces even if outgunned 2:1.           |
-| 09      | Engage hostile forces even if outgunned 3:1.           |
-| 10      | Engage hostile forces regardless of their size.        |
-
-A fleet's ROE is defined when it's created, or changed any time before engaging in combat. The ROE can not be changed during combat.
-
-### 7.1.2 Combat State
-
-Squadron units and installations are either undamaged, crippled, or destroyed.
-
-**Attack Strength (AS)** represents a unit's offensive firepower and is a mutable type.
-
-**Defense Strength (DS)** represents a unit's defensive shielding and is an immutable type.
-
-**Reduced**: This term is used to describe a transition of state, e.g. undamaged to crippled, crippled to destroyed.
-
-**Undamaged**: A unit's life support systems, hull integrity, and weapons systems are fully operational.
-
-**Crippled**: When an undamaged unit's DS is equaled in battle by hits, that unit's primary defensive shielding is compromised and the unit is reduced to a crippled combat state. AS is reduced by half (rounded up).
-
-**Destroyed**: In a crippled combat state, hits equal to DS reduces a unit's state to destroyed. The unit is dead and unrecoverable.
-
-**Fighter Exception:**
-
-Fighter squadrons skip the crippled combat state due to their lightweight construction. Fighters transition directly from undamaged to destroyed when they take damage equal to or exceeding their DS. Fighters maintain full AS until destroyed. See [Section 2.4.1](assets.md#241-fighter-squadrons-carriers) for detailed fighter combat mechanics.
-
-**Unit State Propagation:**
-- If a squadron is crippled, all the ships under its command are crippled
-- If a squadron is destroyed, all the ships are likewise destroyed
-- Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed)
-- Fighter squadrons follow binary state transition (undamaged → destroyed)
-
-### 7.1.3 Cloaking and Detection
-
-Cloaked Raiders have two distinct advantages that are tracked separately:
-
-**Detection State:**
-- Determines which combat phase Raiders attack in
-- Undetected Raiders attack in Phase 1 (before all other units)
-- Detected Raiders lose initiative and attack in Phase 3 (with capital ships)
-- Detection state persists across combat phases within the same engagement
-
-**Ambush Bonus (+4 CER):**
-- Only applies in Space Combat ([Section 7.3](#73-space-combat))
-- Undetected Raiders in space combat receive +4 CER modifier on first round
-- Does NOT apply in Orbital Combat ([Section 7.4](#74-orbital-combat))
-- Rationale: Cannot ambush stationary orbital defenses
-
-**Pre-Combat Detection:**
-
-Before combat begins, ELI-equipped units (scouts and starbases) attempt to detect cloaked Raiders:
-- Roll for detection per [Section 2.4.3](assets.md#243-raiders)
-- Scouts use house ELI technology level
-- Starbases receive +2 ELI modifier for detection rolls
-- Multiple scouts form mesh network (use effective ELI calculation)
-- If detected, Raider loses initiative advantage and attacks in Phase 3
-
-**Detection State Persistence:**
-
-Once a house's Raiders are detected in Space Combat, they remain detected in subsequent Orbital Combat:
-- No new detection rolls for already-detected houses
-- Detection state tracked per house across combat phases
-- New Raiders encountering defenders for the first time get fresh detection rolls
-
-**Starbase Detection Participation:**
-
-Starbases assist in pre-combat detection regardless of which combat phase is being resolved:
-- **Space Combat**: Starbases detect cloaked Raiders but are screened and cannot fight or be targeted
-- **Orbital Combat**: Starbases detect cloaked Raiders AND participate in combat as defenders
-- Starbases at a colony contribute their detection capability (+2 ELI bonus) to all combat phases
-- Rationale: Advanced sensors on starbases provide detection support to all friendly forces in the system
-
-**Multi-Faction Cloaking:**
-
-If cloaked fleets on all sides pass undetected from one another:
-- In owned systems: Defender wins initiative
-- In neutral territory: Forces avoid engagement and continue with movement orders (combat cancelled)
-
-### 7.1.4 Morale
-
-House prestige affects crew morale and combat effectiveness. At the start of each turn, the game rolls 1D20 to determine morale status for that turn.
-
-**Morale Check Table:**
-
-*Note: Morale levels and thresholds are defined in Table 9.4. The values below match the current configuration but may change - always refer to Table 9.4 for authoritative values.*
-
-| Morale Level | Morale Threshold | Effect on Success                      |
-|:-------------|:----------------:|:---------------------------------------|
-| Collapsing   | Never succeeds   | -1 to all CER rolls this turn          |
-| VeryLow      | > 18             | No effect                              |
-| Low          | > 15             | +1 to CER for one random squadron      |
-| Normal       | > 12             | +1 to all CER rolls this turn          |
-| High         | > 9              | +1 CER + one critical auto-succeeds    |
-| VeryHigh/Exceptional | > 6     | +2 to all CER rolls this turn          |
-
-See [Table 9.4](reference.md#104-prestige) for prestige ranges that determine morale level.
-
-**Morale Effects:**
-
-- CER bonuses/penalties apply to all CER die rolls before consulting the CER table.
-- Critical auto-success (61-80 prestige): The first squadron to execute a valid attack during the turn's Conflict Phase per [Section 1.3.1](gameplay.md#131-conflict-phase) automatically achieves critical hit effects as if a natural 9 was rolled on the CER table, bypassing destruction protection and applying force reduction rules as defined in [Section 7.3.3](#733-combat-effectiveness-rating-cer). This applies to the first valid attack across all combats in the turn, regardless of system or initiative phase. If multiple combats occur, only the first attacking squadron in the earliest resolved combat receives this benefit.
-- Morale effects last for the current turn only.
-- Prestige ≤ 0 automatically triggers morale crisis without requiring a roll.
-
-**Morale Crisis (Collapsing Morale):**
-
-When a House's morale reaches Collapsing level (see [Table 9.4](reference.md#104-prestige) for prestige threshold), morale collapses:
-- All CER rolls receive -1 penalty (no morale check roll required).
-- One random fleet refuses orders and holds position for the turn.
-- Effects persist until prestige rises above the Collapsing threshold.
-
-## 7.2 Task Force Assignment
-
-All applicable fleets and Starbases relevant to the combat scenario will merge into a single Task Force.
-
-Rules of Engagement (ROE):
-
-- Task Forces adopt the highest ROE of any joining fleet.
-- Starbases do not retreat; the Task Force's ROE is set to 10.
-
-Cloaking:
-
-- Task Forces including Starbases cannot cloak.
-- All joining fleets must remain undetected for Task Force cloaking ([Section 7.1.3](#713-cloaking)).
-
-Fleet Integration:
-
-- Fleets disband, with their squadrons fighting individually under the Task Force.
-- Fighter Squadrons deploy as independent units.
-
-Cloaked fleets with movement orders can continue if they pass stealth checks; otherwise, they join combat.
-
-**Spacelift Command Protection:**
-
-Spacelift Command ships are screened behind the Task Force during combat operations and do not engage in combat. Spacelift ships are destroyed if all friendly escort fleets in their house's Task Force are destroyed or retreat while hostile forces remain in the system. The presence of non-hostile houses does not protect Spacelift ships belonging to a retreating or destroyed Task Force.
+- Scout fleets with ELI detect cloaked Raiders, negating ambush
+- Raider fleets without ELI opposition devastate unprepared enemies
+- Starbases provide detection in orbital combat (can't be surprised at home)
+
+---
 
 ## 7.3 Space Combat
 
-When multiple houses are present in a solar system, each house forms an independent Task Force from its applicable fleets and installations per [Section 7.2](#72-task-force-assignment). Houses do not combine forces into joint Task Forces, even under Non-Aggression Pacts.
+Engage enemy mobile fleets in deep space. Your task forces clash with full tactical freedom—the first theater of planetary conquest.
 
-Attacking units select targets using diplomatic filtering and priority rules defined in [Section 7.3.2](#732-target-priority-rules).
+### 7.3.1 Space Combat Participants
 
-Squadrons are not allowed to change assignments or restructure during combat engagements or retreats.
+**Mobile Fleets Engage When They Meet:**
 
-### 7.3.1 Combat Initiative and Phase Resolution
+Space combat occurs when mobile fleets encounter each other in the same system. Combat engagement depends on **diplomatic status**:
 
-Space combat resolves in initiative phases based on unit tactical characteristics. Each phase resolves completely before proceeding to the next phase. When multiple houses are present, all houses participate simultaneously in each phase according to their unit types.
+**Diplomatic Status Determines Combat:**
+- **Enemy Status**: Combat occurs automatically (always hostile)
+- **Neutral Status**: Combat occurs if Neutral fleets have **threatening orders** (Invade, Bombard, Blitz, Blockade) in system you control
+- **Neutral + Non-Threatening**: No combat (peaceful coexistence)
+- **Non-Aggression Pact**: Combat does NOT occur (pact prevents hostilities, even with threatening orders)
 
-**Combat Initiative Order:**
+**Rules of Engagement (ROE 0-10):**
 
-1. **Undetected Raiders** (Ambush Phase)
-2. **Fighter Squadrons** (Intercept Phase)
-3. **Capital Ships** (Main Engagement Phase)
+ROE determines when your fleets **retreat** during combat, not whether combat starts. Set higher ROE for aggressive stands, lower ROE for cautious retreats when outmatched.
 
-Units destroyed in an earlier phase do not participate in later phases.
+**Mobile Fleet Types** (Fight in Space Combat):
+- Fleets with **no orders** (default mobile posture)
+- Fleets with **Hold orders** (stationary but mobile-capable)
+- Fleets with **Patrol orders** (active patrol duty)
+- Fleets with **movement-based standing orders** (PatrolRoute, AutoReinforce, AutoRepair)
+- Fleets with **offensive mission orders** (Move, Invade, Bombard, Blockade)
+- **Active status fleets** without guard-specific orders
 
-**Simultaneous Attack Resolution:**
+**Who Does NOT Fight in Space Combat:**
+- **Guard fleets**: GuardStarbase, GuardPlanet, DefendSystem orders - they defend in orbital combat only
+- **Reserve fleets**: Stationed at colony, fight in orbital combat only
+- **Mothballed fleets**: Offline, screened in orbital combat, cannot fight
+- **Starbases**: Fixed installations, orbital combat only
 
-Within each phase, when multiple units attack simultaneously (same initiative tier), use the following resolution sequence:
+**Multi-Faction Combat:**
 
-1. **Target Selection**: All attacking units select their targets using [Section 7.3.2](#732-target-priority-rules)
-2. **Damage Application**: All damage is applied simultaneously after all selections are made
-3. **State Transitions**: All squadron state transitions are evaluated after all damage is applied
-4. **Overkill Handling**: If multiple attackers independently selected the same target and combined damage exceeds destruction threshold, excess damage is lost
+When three or more houses have mobile fleets in the same system:
+- **Single unified battle** with all houses present
+- Each house forms separate task force
+- Each squadron targets hostile houses based on diplomatic status
+- Enemy status: Always hostile
+- Neutral status: Hostile if they have threatening orders in your controlled system
+- Non-Aggression Pact: Never hostile
+- All combat phases (Raiders, Fighters, Capitals) resolve simultaneously with multi-faction targeting
 
-#### 7.3.1.1 Phase 1: Undetected Raiders (Ambush Phase)
+### 7.3.2 Combat Initiative and Phases
 
-Cloaked Raider fleets that successfully evaded ELI detection during the pre-combat detection phase strike first with initiative advantage.
+Space combat resolves in three phases determining strike order:
 
-**Pre-Combat Detection:**
+**Phase 1: Undetected Raiders (Ambush)**
 
-Before combat begins, all ELI-equipped units (Scouts and Starbases) in the defending force attempt to detect cloaked Raiders using the detection mechanics defined in [Section 2.4.3](assets.md#243-raiders).
+Cloaked Raiders without ELI opposition strike first with +4 CER bonus. Devastating alpha strike before enemy responds.
 
-For each defending ELI unit:
-- Calculate effective ELI level (weighted average, dominant tech penalty, mesh network modifier)
-- Starbases receive +2 ELI modifier for detection rolls in all combat phases
-- Starbases participate in detection for both Space Combat and Orbital Combat
-- In Space Combat, starbases detect but cannot fight or be targeted (screened)
-- Roll detection against each attacking cloaked fleet's highest CLK rating
-- If detected, the Raider fleet loses initiative advantage and attacks in Phase 3 instead
+**Conditions:**
+- Raiders present in task force
+- No enemy ELI-equipped scouts to detect them
+- Raiders get ambush bonus (+4 CER)
 
-**Detection State Tracking:**
+**Phase 2: Fighter Squadrons (Intercept)**
 
-Detection state is tracked per house and persists across combat phases:
-- Raiders detected in Space Combat remain detected in subsequent Orbital Combat
-- No new detection rolls for already-detected houses in Orbital Combat
-- New Raiders (not present in Space Combat) get fresh detection rolls in Orbital Combat
+Carrier-launched fighters engage after Raiders but before capital ships. Fast interceptors screen the main fleet.
 
-**Ambush Resolution:**
+**Conditions:**
+- Carriers present with loaded fighter squadrons
+- Fighters launch and engage enemy formations
+- **Fighters do NOT roll CER**—they deal full AS as damage (100% effectiveness always)
 
-Undetected Raiders attack before any defending units can respond:
-- **Space Combat Only:** Raiders receive +4 die roll modifier on CER roll (ambush bonus)
-- **Orbital Combat:** Raiders attack in Phase 1 but do NOT receive +4 ambush bonus (cannot ambush prepared defenses)
-- Each Raider squadron independently selects targets using [Section 7.3.2](#732-target-priority-rules)
-- All Raider squadrons select targets, then all damage is applied simultaneously
-- All state transitions are evaluated after all damage is applied
-- Destroyed targets do not return fire
-- Multiple undetected Raider squadrons attack simultaneously in this phase
+**Fighter Tactical Employment:**
 
-See [Section 7.3.3](#733-combat-effectiveness-rating-cer) for full CER modifier details.
+Fighters excel as force multipliers and screening units. Use them strategically:
 
-#### 7.3.1.2 Phase 2: Fighter Squadrons (Intercept Phase)
+**The Carrier/Fighter Dynamic:**
 
-All fighter squadrons in the system attack simultaneously, regardless of ownership or deployment status.
+Carriers and fighters form a symbiotic combat relationship with unique vulnerabilities:
 
-**Fighter Combat Behavior:**
+- **Fighters protect carriers**: Fighters engage in Phase 2, eliminating enemy fighters and carriers before your carriers face fire in Phase 3
+- **Carriers enable fighters**: Embarked fighters deploy anywhere without colony infrastructure
+- **Mutual dependence**: If your carrier dies, all embarked fighters die with it—no survival, no re-embarkment
+- **Strategic implication**: Lose your carriers early and your fighters deploy but become stranded; lose your fighters and your carriers become priority targets
 
-**Colony-Owned Fighters:**
-- Always participate in system defense
-- Never retreat independently from combat
-- Fight until destroyed or enemy eliminated
+**Carrier Strike Groups:**
+- Carriers with embarked fighters project power without colony infrastructure
+- 5-10 embarked fighters deploy instantly when carrier enters combat
+- **Critical**: Protect carriers at all costs—carrier destruction means fighter destruction
+- Fighters re-embark after combat (remain carrier-owned)
+- Use fighters to screen carriers from enemy fire
 
-**Carrier-Owned Fighters:**
-- Automatically deploy when carrier enters combat
-- Retreat only when carrier retreats
+**Colony Defense:**
+- Planet-based fighters never retreat (fight to the death)
+- Ideal for fortress colonies and chokepoints
+- Colony fighters + carrier fighters stack for overwhelming local superiority
+- Example: 8 colony fighters + 5 carrier fighters = 13 FS in battle
 
-All fighters attack using target priority rules defined in [Section 7.3.2](#732-target-priority-rules). Each fighter squadron applies its full AS as damage to its selected target.
+**Fighter vs Fighter Combat:**
+- Fighters prioritize enemy fighters first (counter-air mission)
+- Winning fighter superiority protects capital squadrons
+- Losing fighter superiority exposes your fleet to enemy fighter strikes
 
-**Fighter State Transitions:**
+**Anti-Carrier Operations:**
+- Fighters target carriers (Bucket 2) after enemy fighters eliminated
+- Stripping enemy carriers eliminates their fighter advantage
+- Concentrate fighters to overwhelm carrier defenses
 
-Fighter squadrons skip the crippled state due to their lightweight construction. Fighters transition directly from undamaged to destroyed when they take damage equal to or exceeding their DS.
+**Screening Role:**
+- Fighters absorb enemy fire before capital squadrons engage
+- Low DS means fighters die quickly but buy time
+- Sacrificial screening protects high-value battleships and dreadnoughts
 
-**Fighter Independence During Combat:**
+**Fighter Fragility:**
+- Fighters skip crippled state: Undamaged → Destroyed
+- No retreat, no repairs—fighters are expendable
+- Replace losses through colony production (requires capacity)
 
-Fighter squadrons remain fully operational throughout combat regardless of:
-- Starbase damage or destruction
-- Population losses from orbital bombardment
-- Infrastructure capacity violations
+**Phase 3: Capital Squadrons (Main Engagement)**
 
-Capacity violations resulting from combat damage are evaluated at the end of combat resolution. The 2-turn grace period for resolving violations begins on the following turn (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers)).
+Battleship, Dreadnought, Cruiser, and Destroyer squadrons exchange fire. The decisive engagement phase.
 
-**Carrier-Owned Fighter Post-Combat:**
-
-**In Hostile/Neutral Systems:**
-- After combat ends:
-  - If carrier survives: fighters re-embark immediately or be destroyed
-  - If carrier destroyed: all carrier-owned fighters destroyed
-  - If carrier withdraws: carrier-owned fighters must withdraw with carrier or be destroyed
-- No ownership transfer occurs
-
-**In Friendly/Controlled Systems:**
-- After combat: carrier-owned fighters re-embark immediately, remain carrier-owned
-- No ownership transfer unless permanent deployment executed outside combat (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
-
-#### 7.3.1.3 Phase 3: Capital Ships (Main Engagement Phase)
-
-All capital ships attack by squadron in this phase. Squadron attack order is determined by flagship Command Rating (CR).
-
-**Attack Order Resolution:**
-
-1. Squadrons attack in descending order by flagship CR (highest CR attacks first)
-2. Squadrons with equal CR attack simultaneously using simultaneous attack resolution
-3. For each CR tier (attacking simultaneously):
-   - Each squadron rolls for CER (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
-   - Each squadron selects target using [Section 7.3.2](#732-target-priority-rules)
-   - All squadrons in this CR tier complete selections
-   - All damage is applied simultaneously
-   - All state transitions are evaluated after all damage is applied
-4. Destroyed squadrons do not return fire in subsequent CR tiers
-
-**Squadron Combat Mechanics:**
-
-A squadron fights as a unified tactical unit with pooled combat values:
-
-- **Squadron AS**: Sum of all ships' AS values under flagship command
-- **Squadron DS**: Sum of all ships' DS values under flagship command
-- **Damage Application**: All damage is applied to the squadron as a single entity
-- **State Transitions**: Squadron state (undamaged/crippled/destroyed) applies uniformly to all ships in the squadron
-
-**Squadron State Propagation:**
-
-When a squadron transitions state, all ships under its command transition simultaneously:
-- **Undamaged → Crippled**: All ships in the squadron become crippled
-- **Crippled → Destroyed**: All ships in the squadron are destroyed
-- Individual ships within a squadron cannot have different states during combat
-
-**Squadron Composition During Combat:**
-
-Command Capacity (CC) is a fleet formation constraint validated during fleet commissioning and reorganization in the Command Phase per [Section 1.3.3](gameplay.md#133-command-phase). Once combat begins, squadrons fight as integrated tactical units regardless of CC/CR ratios. Players can reorganize squadrons to restore CC/CR compliance during the Command Phase after combat concludes.
-
-### 7.3.2 Target Priority Rules
-
-All attacking units (squadrons, fighters, and Starbases) select targets using the following priority system.
-
-**Terminology:**
-- **Fighter squadron**: A squadron consisting entirely of fighter craft with no capital ship flagship (bucket 4)
-- **Capital ship squadron**: A squadron led by a capital ship flagship (buckets 1, 2, or 3)
-
-#### 7.3.2.1 Diplomatic Filtering
-
-Before applying target priority rules, attacking units must identify valid targets based on diplomatic relationships as defined in [Section 8.1](diplomacy.md#81-diplomacy).
-
-**Hostile Force Identification:**
-
-An attacking unit may only target Task Forces from houses considered hostile. A house is considered hostile if any of the following conditions apply:
-
-1. The houses have Enemy diplomatic status per [Section 8.1.3](diplomacy.md#813-enemy)
-2. The target Task Force contains fleets with orders 05 through 08 or 12 directed at the attacking house's controlled systems per [Section 8.1.5](diplomacy.md#815-territorial-control)
-3. The target Task Force is executing patrol orders in territory controlled by the attacking house and the houses do not have a Non-Aggression Pact per [Section 8.1.2](diplomacy.md#812-non-aggression-pacts)
-4. The target Task Force has engaged the attacking house's forces in previous rounds of the current engagement
-
-**Fleet Order Targeting Restrictions:**
-
-Certain fleet orders have additional targeting restrictions beyond diplomatic filtering:
-
-1. **Blockade (Fleet Order 05)**: Fleets blockading an enemy planet may only target enemy fleets with Fleet Order 05 (Guard/Blockade) at that same planet
-2. **Guard (Fleet Order 05)**: Fleets guarding a planet may only target enemy fleets with orders 05 through 08 or 12 (threatening orders)
-
-**No Valid Targets:**
-
-If an attacking squadron has no valid hostile targets available due to diplomatic filtering or fleet order restrictions, that squadron does not attack during the current phase. The squadron remains in the engagement and may attack in subsequent combat rounds if hostile targets become available.
-
-#### 7.3.2.2 Bucket Classification
-
-Every squadron and installation is assigned to a bucket based on its type:
-
-| Bucket (Priority Order) | Unit Type | Base Weight |
-|------------------------|-----------|-------------|
-| **1 – Raider**         | Squadron with Raider flagship | 1.0 |
-| **2 – Capital**        | Squadron with Cruiser or Carrier flagship | 2.0 |
-| **3 – Destroyer**      | Squadron with Destroyer flagship | 3.0 |
-| **4 – Fighter**        | Fighter squadron (no capital ship flagship) | 4.0 |
-| **5 – Starbase**       | Orbital installation | 5.0 |
-
-**Notes:**
-- Fighter squadrons consist entirely of fighter craft and have no capital ship flagship
-- Starbases are orbital installations, not squadrons
-- Lower bucket numbers indicate higher targeting priority
-
-#### 7.3.2.3 Special Rule: Fighter Squadron Targeting
-
-When a fighter squadron attacks:
-
-1. **Check for enemy fighters:** If any enemy fighter squadrons (bucket 4) exist among hostile Task Forces, build candidate list from all enemy fighter squadrons only
-2. **If enemy fighters exist:** Compute weights and select target using weighted random selection (see 7.3.2.5)
-3. **If no enemy fighters exist:** Fall back to standard bucket order targeting (7.3.2.4)
-
-#### 7.3.2.4 Standard Bucket Order Targeting
-
-For all non-fighter attackers (capital ship squadrons, Raiders, Starbases) and fighters when no enemy fighters exist:
-
-1. **Walk bucket order:** Raider (1) → Capital (2) → Destroyer (3) → Fighter (4) → Starbase (5)
-2. **Build candidate pool:** For each bucket in order, collect all enemy units from hostile Task Forces matching that bucket
-3. **Select first non-empty bucket:** The first bucket containing at least one enemy unit becomes the candidate pool
-4. **Apply weighted random selection:** Select target from candidate pool using weights (see 7.3.2.5)
-5. **No valid targets:** If no enemy units exist in any bucket from hostile houses, the attacker does not fire this phase
-
-#### 7.3.2.5 Weighted Random Target Selection
-
-Once a candidate pool is determined from hostile Task Forces:
-
-1. **Calculate weight for each candidate:**
-   ```
-   Weight = Base_Weight(bucket) × Crippled_Modifier
-   ```
-   Where:
-   - `Base_Weight(bucket)` is from the bucket classification table (7.3.2.2)
-   - `Crippled_Modifier` = 2.0 if unit is crippled, 1.0 if undamaged
-
-2. **Perform weighted random draw:**
-   - Use PRNG seeded with SHA-256 hash of string `"{gameId}-{turnNumber}-{combatId}-{phaseNumber}-{roundNumber}"` modulo 2^32
-   - Alternatively, custom seed can be specified for testing or alternate outcomes
-   - Select target based on weighted probability distribution
-   - Standard weighted random selection algorithm (available in most programming language standard libraries)
-
-3. **Apply damage to selected target:**
-   - Fighters: Apply full AS as damage
-   - Other units: Apply CER × AS as damage (see [Section 7.3.3](#733-combat-effectiveness-rating-cer))
+**Conditions:**
+- All capital squadrons and escorts engage
+- Standard CER calculations
+- Majority of combat damage occurs here
 
 ### 7.3.3 Combat Effectiveness Rating (CER)
 
-After determining combat initiative order and resolving detection checks, combat proceeds in rounds. At the beginning of each combat round (for phases that use CER), each attacking unit rolls independently for Combat Effectiveness Rating.
+CER determines strike effectiveness—how much damage your squadrons inflict. Each attacking squadron rolls for CER independently.
 
-Each squadron rolls once for CER and applies CER × (squadron total AS).
+**CER Calculation Process:**
+
+1. **Roll 1d10** (result 0-9, treat 10 as 0)
+2. **Add modifiers**:
+   - Scouts in task force: +1
+   - Morale modifier (see table below): -1 to +2
+   - Surprise (first round only): +3
+   - Ambush (Raiders, space combat, first round): +4
+3. **Look up effectiveness multiplier**:
+
+**Morale Check CER Bonuses:**
+
+At the start of each turn, roll 1d20 to determine morale effects for that turn:
+
+| Morale Level | Morale Threshold | Effect on Success |
+|:-------------|:----------------:|:------------------|
+| Collapsing   | Never succeeds   | -1 to all CER rolls this turn |
+| VeryLow      | > 18             | No effect |
+| Low          | > 15             | +1 to CER for one random squadron |
+| Normal       | > 12             | +1 to all CER rolls this turn |
+| High         | > 9              | +1 CER + one critical auto-succeeds |
+| VeryHigh/Exceptional | > 6      | +2 to all CER rolls this turn |
+
+*Note: Morale levels and thresholds defined by house prestige—see reference.md for current configuration*
 
 **CER Table:**
 
@@ -1401,579 +992,581 @@ Each squadron rolls once for CER and applies CER × (squadron total AS).
 | 3, 4                       | One Half (0.50) (round up)       |
 | 5, 6                       | Three Quarters (0.75) (round up) |
 | 7, 8                       | One (1)                          |
-| 9\*                        | One\* (1)                        |
+| 9*                         | One* (1)                         |
 | 9+                         | One (1)                          |
 
-\*If the die roll is a natural nine before any required modification, then a critical hit is achieved
+*If the die roll is a natural nine before any required modification, then a critical hit is achieved
 
-**Die Roll Modifiers:**
-
-| Modifier | Value | Notes                                  | Applicable Phases |
-| -------- |:-----:| -------------------------------------- | ----------------- |
-| Scouts   | +1    | Maximum benefit for all Scouts in Task Force | All CER phases |
-| Morale   | -1 to +2 | Per turn morale check (see [Section 7.1.4](#714-morale)) | All CER phases |
-| Surprise | +3    | First round only                       | Phase 1 only      |
-| Ambush   | +4    | First round only, Space Combat ONLY    | Phase 1 (Space Combat only) |
-
-**Ambush Modifier Restriction:**
-
-The +4 Ambush modifier applies ONLY in Space Combat. In Orbital Combat, undetected Raiders still attack in Phase 1 (initiative advantage) but do NOT receive the +4 CER bonus. Rationale: Cannot ambush stationary orbital defenses waiting in prepared defensive positions.
-
-**CER Application:**
-
-**Phase 2 (Fighter Squadrons):**
-- Fighters do NOT use CER
-- Each fighter squadron independently selects a target using [Section 7.3.2](#732-target-priority-rules)
-- Each fighter squadron applies its full AS as damage to its selected target
-- All selections are made, then all damage is applied simultaneously
-- Fighter squadrons transition from undamaged to destroyed when damage ≥ DS (no crippled state)
-
-**Phases 1 and 3 (Raiders and Capital Ships):**
-- Each attacking squadron rolls independently for CER
-- Calculate total hits: `Total Hits = CER × Squadron_AS`
-- Squadron selects target using [Section 7.3.2](#732-target-priority-rules)
-- All squadrons in the same initiative tier complete target selection
-- All damage is applied simultaneously
-- All state transitions are evaluated after all damage is applied
-
-**Squadron State Transitions:**
-
-After all damage is applied in a phase:
-
-1. **Undamaged → Crippled**: If total damage to an undamaged squadron ≥ squadron DS, the squadron becomes crippled
-2. **Crippled → Destroyed**: If total damage to a crippled squadron ≥ squadron DS, the squadron is destroyed
-3. **Destruction Protection**: A squadron may not transition from undamaged → crippled → destroyed within the same combat round, even if damage accumulates across multiple attack phases (Phase 2 then Phase 3). The squadron must survive until the next round begins before it can be destroyed.
-4. **State Propagation**: All ships in the squadron transition to the squadron's new state simultaneously
-
-**Crippled Squadron Effects:**
-
-When a squadron becomes crippled:
-- All ships in the squadron are crippled
-- Squadron AS is multiplied by 0.5, rounded up to the nearest whole number
-- Squadron DS remains unchanged (used for calculating destruction threshold)
-- Crippled squadrons receive 2× targeting weight modifier per [Section 7.3.2.5](#7325-weighted-random-target-selection)
-
-Destroyed squadrons are eliminated from combat and the Task Force loses their associated die roll modifiers (e.g. Scouts).
+4. **Calculate damage**: Total Hits = Squadron AS × CER Multiplier (round up)
 
 **Critical Hits:**
-
-Critical hits (natural 9 on die roll before modifiers) have special effects:
-
-1. **Bypass Destruction Protection**: The squadron can be destroyed in the same round it is crippled, even across multiple phases
-2. **Force Reduction**: If the critical hit deals insufficient damage to reduce the selected target (hits < target DS), then the squadron with the lowest current DS in the target Task Force is reduced instead (undamaged → crippled, or crippled → destroyed)
-3. **Prestige Award**: The house that achieves a critical hit causing squadron destruction is awarded prestige for the kill, even in multi-house combat scenarios
+- **Natural roll of 9** (before modifiers) = Critical Hit
+- Bypasses destruction protection (can destroy Undamaged → Destroyed in one round)
+- **Force Reduction**: If critical hit damage insufficient to reduce target (damage < target DS), the **weakest squadron** in enemy task force is reduced instead (lowest DS squadron takes the hit)
 
 **Overkill Damage:**
 
-When multiple attackers independently select the same target during simultaneous attack resolution:
-- Combined damage from all attackers is applied to the target
-- If combined damage would destroy a squadron in the same round it is crippled, and no critical hit was rolled, destruction protection applies
-- The squadron becomes crippled, and excess damage beyond the crippling threshold is lost
-- If any attacking squadron rolled a critical hit against this target, destruction protection is bypassed and the squadron is destroyed
+When multiple squadrons independently target the same enemy squadron:
+- **Combined damage** from all attackers applies to target
+- If combined damage would destroy squadron in same round it's crippled:
+  - **If ANY attacker rolled critical**: Destruction protection bypassed, squadron destroyed
+  - **If NO critical hit**: Destruction protection applies, squadron stays crippled, excess damage lost
+- Prevents multiple attackers from wasting firepower on already-dead targets
 
-**Multi-House Combat Prestige Attribution:**
+**Example:**
+- Battleship squadron: AS 50
+- Roll: 5 (natural)
+- Modifiers: +1 (scouts) +1 (high morale) = +2
+- Modified roll: 7 → CER 1.00×
+- Damage: 50 × 1.00 = 50 hits
 
-When three or more houses participate in combat:
-- **FleetVictory** prestige is awarded to the house that dealt the crippling blow to the final squadron in that Task Force - see [Table 9.4](reference.md#104-prestige)
-- If a squadron is destroyed in the same round it is crippled (via critical hit or overkill with critical), prestige goes to the house that dealt the crippling blow
-- If multiple houses attack simultaneously and a squadron is destroyed (already crippled from previous round), all attacking houses share prestige equally (rounded down, minimum 1 per house)
-- **FleetVictory** prestige is awarded to all houses engaged with the retreating Task Force, divided evenly (rounded down, minimum 1 per house) - see [Table 9.4](reference.md#104-prestige)
-- Track damage sources to determine which house dealt the crippling blow for prestige awards
+### 7.3.4 Target Selection
 
-### 7.3.4 Rounds
+Squadrons target enemies using priority buckets—categories determining which enemies to shoot first.
 
-Combat continues in rounds until one side is completely destroyed or manages a retreat.
+**Targeting Priority Buckets:**
 
-All units attack in their designated phase regardless of damage sustained during the round.
+| Bucket | Unit Type | Base Weight | Priority |
+|--------|-----------|-------------|----------|
+| **1 – Raider** | Squadron with Raider flagship | 1.0 | Highest |
+| **2 – Capital** | Squadron with Cruiser or Carrier flagship | 2.0 | High |
+| **3 – Destroyer** | Squadron with Destroyer flagship | 3.0 | Medium |
+| **4 – Fighter** | Fighter squadron (no capital flagship) | 4.0 | Low |
+| **5 – Starbase** | Orbital installation | 5.0 | Lowest |
 
-After all phases complete and hits are applied:
+**Notes:**
+- Lower bucket numbers = higher targeting priority
+- Fighter squadrons consist entirely of fighter craft (no capital ship flagship)
+- Starbases are orbital installations, not squadrons
+- Targeting walks buckets in order: Raider → Capital → Destroyer → Fighter → Starbase
 
-1. **Casualty Assessment**: Mark all crippled and destroyed units (colony-owned and carrier-owned fighters tracked separately)
-2. **Capacity Violation Checks**: Evaluate colonies for fighter capacity violations (only colony-owned fighters count toward capacity)
-3. **Recalculate AS**: Determine total AS of all surviving Task Forces
-4. **ROE Check**: Each Task Force evaluates retreat conditions independently according to [Section 7.1.1](#711-rules-of-engagement-roe)
+**Special Rule: Fighter Squadron Targeting**
 
-**Multi-Faction Retreat Evaluation:**
+Fighter squadrons launched from carriers target enemy fighters first (fighter-vs-fighter combat), then proceed to standard bucket priority if no enemy fighters remain.
 
-When multiple houses are present in combat, each Task Force independently evaluates retreat by comparing its total combat strength against the combined strength of all hostile Task Forces.
+**Weighted Random Selection**
 
-To evaluate retreat:
-1. Sum the total AS of all Task Forces identified as hostile per [Section 7.3.2.1](#7321-diplomatic-filtering)
-2. Compare this combined hostile strength against the evaluating house's own Task Force strength
-3. Apply morale modifier to effective ROE (see below)
-4. Apply the modified ROE threshold from [Section 7.1.1](#711-rules-of-engagement-roe) to determine if retreat is warranted
-5. Apply homeworld defense exception (see below)
+Within each bucket, targets selected randomly weighted by Defense Strength—tougher squadrons (higher DS) more likely to be targeted. This represents fire concentration on the biggest threats.
 
-**Homeworld Defense Exception:**
+**Crippled Squadron Targeting:**
+- Crippled squadrons get **2× targeting weight**
+- Makes them more likely to be finished off
+- Represents opportunistic fire on damaged enemies
+- Example: Crippled Battleship (DS 40) has targeting weight of 80
 
-Houses never voluntarily retreat from their homeworld system regardless of ROE evaluation:
-- If a house is defending their homeworld system (original starting colony per [Section 8.1.5](diplomacy.md#815-territorial-control)), that house's forces always remain and fight to the death
-- Homeworld defense overrides all ROE thresholds and morale modifiers
-- Forces are not destroyed by the exception; they fight normally but cannot choose to retreat
-- Exception only prevents voluntary retreat; forces can still be destroyed in combat
-- Rationale: Abandoning your capital is political suicide; admirals fight to the death defending the homeworld
+### 7.3.5 Combat Rounds
 
-Non-homeworld colonies follow standard ROE evaluation and may be tactically abandoned if ROE indicates retreat.
+Combat resolves in rounds—simultaneous exchanges of fire continuing until one side retreats or is destroyed.
 
-**Morale ROE Modifier:**
+**Round Sequence:**
 
-House morale affects combat behavior by modifying effective ROE for retreat evaluation. See [Table 9.4](reference.md#104-prestige) for morale level definitions.
+1. **Target Selection**: Both sides assign targets per priority buckets
+2. **Damage Calculation**: Calculate damage based on AS, CER, and target DS
+3. **Apply Damage**: Squadrons crippled or destroyed
+4. **Update Combat State**: Remove destroyed squadrons, update crippled squadrons
+5. **Retreat Check**: Losing side checks morale and ROE for retreat decision
+6. **Repeat**: Continue until combat ends
 
-| Morale Level     | Morale ROE Modifier | Effect                                      |
-|:-----------------|:-------------------:|:--------------------------------------------|
-| Collapsing       | -2                  | Retreat much more readily                   |
-| VeryLow          | -1                  | Retreat more readily                        |
-| Low              | 0                   | No modification                             |
-| Normal           | 0                   | No modification                             |
-| High             | +1                  | Fight more aggressively, retreat less often |
-| VeryHigh         | +1                  | Fight more aggressively, retreat less often |
-| Exceptional      | +2                  | Fight much more aggressively                |
+**Maximum Rounds**: 20 rounds per combat (prevents infinite combat)
 
-**Application:**
-- Effective ROE = Base ROE + Morale ROE Modifier
-- Example: A fleet with ROE 6 (engage equal or inferior) and Exceptional morale has effective ROE 8 (engage even if outgunned 2:1)
-- Example: A fleet with ROE 6 and Collapsing morale has effective ROE 4 (engage only if 2:1 advantage)
-- Morale modifier applies only to retreat evaluation, not to fleet orders or diplomatic status
-- Minimum effective ROE is 0 (flee from all combat), maximum is 10 (fight to the death)
-- Homeworld defense exception overrides morale-modified ROE
+**Round Duration**: Each round represents approximately 30-60 minutes of engagement time
 
-One house retreating does not force other houses to retreat. Combat continues between remaining Task Forces.
+**Desperation Mechanics:**
+
+If combat stalls (5 consecutive rounds without any squadron state changes):
+- Both sides get **+2 CER bonus** for one "desperation round"
+- Represents desperate all-out attacks to break the stalemate
+- After desperation round, combat continues normally
+- If still no progress after desperation, moves toward 20-round stalemate
+
+### 7.3.6 Retreat Mechanics
+
+Losing fleets can retreat before total destruction. Retreat saves surviving squadrons but concedes the battlefield.
+
+**Retreat Triggers:**
+- CER disadvantage exceeds threshold (significantly outmatched)
+- Losses exceed acceptable percentage per ROE settings
+- Morale collapse (excessive casualties break formation)
+- Commander discretion (standing orders respect ROE retreat thresholds)
+
+**Retreat Consequences:**
+- Retreating fleet moves to nearest friendly system via jump lanes
+- Attackers who retreat fail their mission (invasion aborted, bombardment incomplete)
+- Defenders who retreat cede space superiority (attackers proceed to orbital combat)
+- Crippled squadrons may be lost during retreat if cannot traverse restricted lanes
+
+**Pursuit**: Victorious fleet does NOT automatically pursue retreating enemies. Pursuit requires explicit orders (Move to follow) or standing orders (PatrolRoute, AutoReinforce).
 
 **Multi-House Retreat Priority:**
 
-When multiple houses attempt to retreat simultaneously:
-1. Houses retreat in ascending order of total Task Force AS (weakest first)
-2. When multiple houses have equal AS, retreat priority is determined by house ID (ascending alphanumeric order)
-3. After each house retreats, remaining houses re-evaluate ROE against remaining hostile forces
-4. Re-evaluation may cause a house to cancel its retreat and continue fighting
-5. Process continues until all retreat decisions are finalized
-
-**Simultaneous Retreat Resolution:**
-
-If multiple Task Forces simultaneously attempt to retreat after Round 1, and re-evaluation confirms all still wish to retreat:
-1. All houses evaluate retreat intentions simultaneously
-2. If all hostile Task Forces attempt to retreat after re-evaluation, all successfully disengage
-3. All retreating forces withdraw to their designated fallback systems
-4. No combat occurs - treat as mutual withdrawal
-5. No prestige is awarded or lost for mutual withdrawal
-
-**Combat Duration Limit:**
-
-If combat continues for 20 consecutive rounds without any squadron being destroyed, retreating, or state transition occurring:
-1. All Task Forces are forced to disengage due to ammunition and fuel depletion
-2. All forces withdraw per post-combat positioning rules below
-3. No prestige is awarded for this engagement
-4. This represents a tactical stalemate
-
-**Combat Termination Conditions:**
-
-Combat ends when any of the following conditions are met:
-
-- Only one Task Force remains in the system
-- All remaining Task Forces are non-hostile to each other per [Section 7.3.2.1](#7321-diplomatic-filtering)
-- All Task Forces have retreated from the engagement
-- Tactical stalemate declared after desperation round (see [Section 7.3.4.1](#7341-desperation-tactics))
-- 20 consecutive rounds have elapsed without resolution (forced stalemate)
-
-If combat reduces the engagement such that all remaining Task Forces are non-hostile to each other, combat immediately ceases even if multiple houses remain in the system. This occurs when all Enemy relationships have been eliminated through retreat or destruction, leaving only Neutral or Non-Aggression relationships.
-
-If more than one hostile Task Force remains and no retreat occurs, proceed to the next combat round.
-
-#### 7.3.4.1 Desperation Tactics
-
-When combat stalls with neither side able to inflict damage, commanders resort to desperate, high-risk maneuvers in a final attempt to break the deadlock.
-
-**Trigger Condition:**
-
-If 5 consecutive combat rounds elapse without any squadron state changes (no squadrons crippled or destroyed), both Task Forces immediately execute one desperation round.
-
-**Desperation Round:**
-
-- Both Task Forces receive +2 CER modifier on all attack rolls
-- This bonus applies to Ambush phase and Main Engagement phase
-- The bonus stacks with all other modifiers (scouts, morale, surprise, ambush)
-- Fighters are unaffected (they do not use CER rolls)
-
-**Narrative:** Desperate commanders order aggressive, high-risk tactics: fighters commit to closer strafing runs despite increased exposure, capital ships drop auxiliary shields to redirect power to weapons, and cloaked raiders decloak for point-blank attack runs.
-
-**Resolution:**
-
-After the desperation round resolves:
-
-- **If any squadron state changes occurred**: Reset the no-progress counter. Combat continues normally.
-- **If no state changes occurred**: Declare **Tactical Stalemate** immediately. Combat ends with no victor.
-
-**Tactical Stalemate vs Forced Stalemate:**
-
-- **Tactical Stalemate**: Neither side can damage the other despite desperate tactics (triggers after desperation round fails)
-- **Forced Stalemate**: Maximum combat duration reached (20 total rounds)
-
-Both result in no victor and apply identical post-combat positioning rules.
-
-**Post-Combat Positioning:**
-
-After combat terminates but before Task Forces disband, determine final fleet positioning based on retreat evaluation and system ownership:
-
-**If combat ended via retreat orders:**
-- Forces that executed retreat orders arrive at their designated fallback systems per [Section 7.3.5](#735-retreat)
-- Forces that remained in combat stay in the current system
-
-**If combat ended without retreat execution (mutual withdrawal, stalemate, or total destruction of one side):**
-
-Apply positioning rules based on system ownership status:
-
-**1. Systems with Colony Present (Owned Systems):**
-
-**System Owner Forces:**
-
-**If Homeworld System:**
-- Forces always remain in system (hold position 00)
-- Cannot choose to retreat even if modified ROE indicates retreat
-- Homeworld defense is absolute; admirals fight to the death
-- Only exception: All forces destroyed in combat
-
-**If Non-Homeworld Colony:**
-- Remain in system and hold position (Fleet Order 00)
-- Exception: If owner's modified ROE (base ROE + morale modifier) indicated retreat was desired, owner may choose to retreat to fallback system
-- Owner forces never automatically abandon territory unless choosing to retreat
-
-**Non-Owner Forces:**
-
-Evaluate positioning based on whether owner forces remain present:
-
-**If Owner Forces Present (Active Defense):**
-- Non-owner forces cannot maintain presence while owner actively defends
-- All non-owner forces must withdraw to their closest friendly system per [Section 7.3.5](#735-retreat)
-- Rationale: Cannot occupy territory under active defense
-
-**If Owner Forces Absent (No Active Defense):**
-- If modified ROE indicated retreat: Execute retreat to fallback system per [Section 7.3.5](#735-retreat)
-- If modified ROE indicated stay: Remain in system and hold position (Fleet Order 00)
-- System state becomes "Under Siege" - non-owner forces may execute blockade (Fleet Order 05), bombardment (06), invasion (07), or blitz (08) orders
-- Multiple non-owner houses may remain if all indicated stay (multi-faction siege)
-- Rationale: Victorious forces can besiege undefended or abandoned colonies
-
-**2. Contested Systems (No Colony Present):**
-
-**All Forces:**
-- If modified ROE indicated retreat: Execute retreat to fallback system per [Section 7.3.5](#735-retreat)
-- If modified ROE indicated stay: Remain in system and hold position (Fleet Order 00)
-- Multiple houses may remain simultaneously
-- System remains contested until a house establishes colony via Fleet Order 12
-
-**Forced Withdrawal Mechanics:**
-
-When forces must withdraw (non-owner in owned system, or ROE-based retreat):
-- Use retreat destination priority from [Section 7.3.5](#735-retreat)
-- Crippled ships cannot use restricted lanes (must seek alternative routes)
-- Carriers execute emergency withdrawal with all embarked fighters
-- Crippled carriers can withdraw at full fighter capacity
-- Withdrawing fighters cannot attack or be targeted during withdrawal
-- Spacelift Command ships accompany their house's forces during withdrawal
-- Spacelift ships are not destroyed during forced post-combat withdrawal
-
-**System Control Status:**
-
-After post-combat positioning, update system status for game state tracking:
-
-- **Controlled**: Owner colony present, owner forces present
-- **Undefended**: Owner colony present, no owner forces, no hostile forces
-- **Under Siege**: Owner colony present, hostile forces present (may execute blockade/bombardment/invasion orders)
-- **Contested**: No colony present (regardless of forces present)
-
-System status changes do not transfer ownership. Ownership transfers only via successful planetary invasion per [Section 7.6](#76-planetary-invasion-blitz) or abandonment/destruction of colony.
-
-### 7.3.5 Retreat
-
-A Task Force may retreat from combat after the first round, in accordance with their ROE, and between rounds thereafter.
-
-**Retreat Mechanics:**
-
-Squadrons in a retreating Task Force fall back to their original fleet formations and flee to a friendly star system via available jump lanes. Friendly systems are those controlled by the retreating house via colony presence per [Section 8.1.5](diplomacy.md#815-territorial-control).
-
-**Retreat Destination Priority:**
-
-1. **Player-Designated Fallback**: If the fleet was assigned a fallback system during the Command Phase, retreat to that system
-2. **Closest Friendly System**: If no designation exists, retreat to the closest friendly system without hostile forces present
-3. **Next Tier Systems**: If all adjacent friendly systems contain hostile forces, retreat to systems 2 jumps away
-4. **Fight to the Death**: If no valid retreat destination exists, the Task Force must continue fighting until destroyed
-
-**No Retreat Sanctuary:**
-
-Retreating fleets arriving in a new system do not receive sanctuary protection. If hostile forces are present at the retreat destination, the retreating fleet immediately engages in combat according to standard engagement rules. Fleets should plan retreat routes to avoid hostile territory.
-
-**Retreat Restrictions:**
-
-- Colony-owned fighters never retreat from combat
-- If colony-owned fighters remain, they screen their retreating Task Force
-- Combat continues until all colony-owned fighters are destroyed
-- Spacelift Command ships are destroyed if their escort fleets are destroyed or retreat while hostile forces remain in the system per [Section 7.2](#72-task-force-assignment)
-- Crippled ships can retreat normally through major and minor jump lanes
-- Crippled ships cannot retreat through restricted lanes and must seek alternative routes
-
-**Carrier-Owned Fighter Retreat:**
-
-Carrier-owned fighters do not retreat independently. They retreat only when their carrier retreats.
-
-**In Hostile/Neutral Systems:**
-- Carrier-owned fighters withdraw with retreating carrier (emergency withdrawal, no re-embark time required)
-- Crippled carriers can perform emergency withdrawal with carrier-owned fighters at full capacity
-- Destroyed carriers result in all their embarked fighters being destroyed
-- Fighters left behind (carrier destroyed during retreat) are destroyed
-
-**In Friendly Systems:**
-- Carrier-owned fighters withdraw with carrier (emergency withdrawal, no re-embark time)
-- Carrier-owned fighters remain carrier-owned, do not transfer to colony
-- Crippled carriers can perform emergency withdrawal with carrier-owned fighters at full capacity
-**Colony-Owned Fighters:**
-- Never retreat independently from combat
-- Screen retreating friendly forces
-- Fight until destroyed
-
-**Withdrawing Fighter Combat Participation:**
-
-Fighters withdrawing with retreating carriers do not participate in rearguard combat during the retreat round. They are considered to be embarking on their carriers and cannot attack or be targeted during the withdrawal process.
-
-### 7.3.6 End of Space Combat
-
-After the last round of combat and post-combat positioning is resolved per [Section 7.3.4](#734-rounds), surviving Task Forces disband and squadrons rejoin their original fleets at their current locations.
-
-**Post-Combat Resolution:**
-
-1. **Squadron Reorganization**: All squadrons return to their original fleet assignments at their current system locations
-2. **Repair Requirements**: Crippled squadrons require shipyard repairs (1 turn, 25% of squadron PC)
-3. **Carrier Fighter Re-embark**: Carrier-owned fighters temporarily deployed re-embark immediately after combat
-4. **Fighter Capacity Violations**: Colonies exceeding fighter capacity limits begin the 2-turn grace period for resolving violations per [Section 2.4.1](assets.md#241-fighter-squadrons-carriers)
-5. **System Control Status Update**: Update system control status based on post-combat positioning results (controlled/occupied/contested)
-
-Destroyed ships cannot be salvaged from battle wreckage. Salvage operations apply only to active fleets intentionally decommissioned via Fleet Order 15 per [Section 6.2.16](#6216-salvage-15).
-
-**Fighter Ownership After Combat:**
-
-- Colony-owned fighters remain colony-owned
-- Carrier-owned fighters re-embark immediately and remain carrier-owned
-- No automatic ownership transfers occur as result of combat
-- Players must execute permanent deployment procedure to transfer carrier-owned fighters to colony ownership (see [Section 2.4.1](assets.md#241-fighter-squadrons-carriers))
-
-**Prestige Awards:**
-
-Prestige is awarded after combat resolution:
-- **FleetVictory** prestige for destroying an enemy Task Force (awarded to house that dealt crippling blow to final squadron) - see [Table 9.4](reference.md#104-prestige)
-- **FleetVictory** prestige for forcing an enemy Task Force to retreat (divided among all engaged houses) - see [Table 9.4](reference.md#104-prestige)
-- **StarbaseDestroyed** prestige for destroying an enemy Starbase - see [Table 9.4](reference.md#104-prestige)
-- **StarbaseDestroyed** penalty for losing a Starbase - see [Table 9.4](reference.md#104-prestige)
-- **DishonoredExpires** penalty for being ambushed by a cloaked fleet (if Raiders achieved surprise in Phase 1) - see [Table 9.4](reference.md#104-prestige)
-- No prestige awarded or lost for mutual withdrawal, forced stalemate, or forced post-combat withdrawal
+When 3+ houses attempt to retreat simultaneously:
+1. **Weakest retreats first**: Houses retreat in ascending order of total AS (weakest first)
+2. **Ties broken by house ID**: If equal AS, alphanumeric house ID order
+3. **Re-evaluation**: After each retreat, remaining houses re-check ROE against new enemy strength
+4. **Cancel option**: Re-evaluation may cause house to cancel retreat and continue fighting
+5. **One retreats**: Other houses continue battling until their own ROE triggers
+
+### 7.3.7 Victory Conditions
+
+Space combat ends when:
+
+**Attacker Victory:**
+- All mobile defenders destroyed or retreated
+- Attackers achieve space superiority
+- **Result**: Proceed to orbital combat phase
+
+**Defender Victory:**
+- All attackers destroyed or retreated
+- Defenders maintain space control
+- **Result**: Attackers repelled, mission failed
+
+**Mutual Withdrawal:**
+- Both sides retreat simultaneously
+- Rare but possible with evenly matched forces
+- **Result**: Status quo maintained, no territorial change
+
+**Multi-House Prestige Attribution:**
+
+When 3+ houses participate in combat, prestige for kills is awarded based on who dealt the crippling blow:
+- **Squadron destroyed**: House that dealt crippling blow gets prestige
+- **Already-crippled squadron finished off**: All attacking houses share prestige equally (minimum 1 per house)
+- **Fleet retreats**: All houses engaged with retreating fleet share prestige equally
+- **Critical**: Track damage sources to determine crippling blow attribution
+
+---
 
 ## 7.4 Orbital Combat
 
-Orbital combat occurs when hostile fleets attack a defended colony after winning Space Combat (or if no mobile defenders were present). The defending house combines all available orbital forces into a unified defense.
+Assault fortified colony defenses after winning space superiority. Your fleets engage guard forces, reserve fleets, starbases, and orbital squadrons in a unified defensive position.
 
-**Attacker Composition:**
-- Only fleets that survived Space Combat (if it occurred)
-- Attackers with invasion/blitz orders (07, 08) must win Orbital Combat to proceed to planetary assault
+### 7.4.1 Orbital Combat Participants
 
-**Orbital Defenders Include:**
-- **Guard Fleets:** Active fleets with orders 04 or 05 (did not fight in space combat)
-- **Reserve Fleets:** Orbital garrison with 50% AS/DS (per [Section 3.9](economy.md#39-maintenance-costs))
-- **Mothballed Fleets:** Partially reactivated, 50% AS/DS (per [Section 3.9](economy.md#39-maintenance-costs))
-- **Starbases:** Fixed defensive installations with special combat bonuses
-- **Unassigned Squadrons:** Ships at colony not yet assigned to fleets
-- **Screened Units (Non-Combatants):**
-  - Spacelift ships (transport/colonization vessels)
+**Attackers** (If They Won Space Combat):
+- All surviving attack fleets from space combat
+- Any fleets that bypassed space combat (if no mobile defenders present)
 
-Orbital defenders form a unified Task Force per [Section 7.2](#72-task-force-assignment).
+**Orbital Defenders** (All Fight Simultaneously):
+- **Guard fleets**: Fleets with GuardStarbase, GuardPlanet, DefendSystem orders
+- **Reserve fleets**: 50% maintenance fleets stationed at colony (reduced combat effectiveness)
+- **Mothballed fleets**: 0% maintenance fleets (CANNOT FIGHT - must be screened)
+- **Starbases**: Orbital installations with heavy firepower and detection capability
+- **Unassigned squadrons**: Combat squadrons at colony not assigned to fleets
+- **Fighter squadrons**: Colony-based fighters (if not already loaded on carriers)
 
-### 7.4.1 Combat Resolution
+**Screened Units (Protected, Do Not Fight):**
+- Mothballed ships (offline, defenseless)
+- Spacelift vessels (no combat capability)
+- These units hide behind defending task force; destroyed if defenders eliminated
 
-Orbital combat uses the same mechanics as [Section 7.3](#73-space-combat) with these key differences:
+### 7.4.2 Orbital Combat Differences from Space Combat
 
-**Detection vs Ambush:**
-- **Detection Rolls:** ELI-equipped scouts and starbases attempt to detect cloaked Raiders (per [Section 7.1.3](#713-cloaking-and-detection))
-- **Detection State Persistence:** Raiders detected in Space Combat remain detected (no new detection roll)
-- **NO Ambush Bonus:** Undetected Raiders attack in Phase 1 but do NOT receive +4 CER modifier
-- **Rationale:** Cannot ambush stationary orbital defenses waiting in prepared positions
+**No Ambush Bonus:**
+- Orbital defenses detect all approaching threats
+- Raiders get NO +4 CER bonus in orbital combat
+- Detection sharing still works (starbases provide detection)
 
-**Reserve and Mothballed Fleet Penalties:**
-- Reserve fleets fight at 50% of their normal AS/DS values
-- Mothballed fleets fight at 50% of their normal AS/DS values (partial emergency reactivation)
-- Still provide valuable defensive capability at reduced maintenance cost
+**Starbases Participate:**
+- Starbases add significant AS/DS to defender task force
+- Fixed installations with heavy firepower
+- Cannot retreat—fight to destruction or victory
 
-**Starbase Special Rules:**
-1. **Critical Hit Protection:** If a player rolls a critical hit against a Starbase on the first attempt, re-roll a second time. The second roll stands regardless of result.
-2. **Starbase Bonus:** Starbases receive an extra +2 die roll modifier on all CER rolls.
-3. **Starbase Detection Bonus:** Starbases receive +2 ELI modifier for pre-combat detection rolls against cloaked Raiders.
-4. **Starbase State Transitions:** Starbases follow the same state transitions as squadrons (undamaged → crippled → destroyed) as defined in [Section 7.1.2](#712-combat-state).
-5. **Starbase Targeting:** Starbases are assigned to bucket 5 and can be targeted using the rules in [Section 7.3.2](#732-target-priority-rules). Crippled Starbases receive the 2x targeting weight modifier.
+**Reduced Mobility:**
+- Defenders fight from fortified positions
+- Attackers cannot maneuver as freely (planetary gravity well)
+- Retreat harder for attackers (must break orbit under fire)
 
-Starbases are fortified with superior AI and sensors, making them formidable defensive platforms with high defensive capabilities.
+**Screened Unit Vulnerability:**
+- If defenders eliminated, screened units exposed
+- Mothballed ships destroyed if not protected
+- Spacelift vessels destroyed if defenders fail
 
-### 7.4.2 Screened Unit Vulnerability
+### 7.4.3 Reserve Fleet Combat Penalty
 
-Spacelift ships do not participate in orbital combat - they are screened behind defending forces.
+Reserve fleets fight at reduced effectiveness:
+- **Reduced AS/DS**: Half combat strength (maintenance savings = readiness trade-off)
+- Still better than no defense
+- Can be reactivated to full strength (Reactivate order, returns to Active status)
 
-**Mothballed Fleet Emergency Reactivation:**
+### 7.4.4 Victory Conditions
 
-When orbital combat begins, mothballed fleets undergo emergency partial reactivation:
-- Mothballed fleets fight at 50% AS/DS (same as reserve status)
-- Emergency reactivation is automatic and immediate (no turn delay)
-- After combat, surviving mothballed fleets return to mothballed status
-- Allows desperate defense using stored ships without full reactivation cost
+**Attacker Victory:**
+- All orbital defenders destroyed or retreated
+- Attackers achieve orbital supremacy
+- **Result**: Proceed to planetary bombardment/invasion phase
 
-**If all orbital defenders are destroyed:**
-- All spacelift ships at the colony are destroyed
-- Spaceports become vulnerable to attack
-- Colony is undefended and vulnerable to bombardment/invasion
+**Defender Victory:**
+- All attackers destroyed or retreated
+- Orbital defenses hold
+- **Result**: Colony remains secure, invasion repelled
 
-**If any defenders survive:**
-- Screened spacelift units remain safe
-- Colony maintains orbital defense
+**Screened Unit Loss:**
+- If attackers win, mothballed/spacelift units destroyed
+- Significant economic and strategic loss
+- Defenders should activate mothballed fleets before combat if threatened
+
+---
 
 ## 7.5 Planetary Bombardment
 
-After orbital supremacy is achieved, planets are vulnerable to surface attack. Planetary shields, ground batteries, and ground forces are the last line of defense before invasion or blitz.
+Destroy enemy infrastructure and defenses from orbit after achieving orbital supremacy. Your fleets systematically dismantle planetary shields, neutralize ground batteries, and reduce industrial capacity.
 
-Like space combat, planetary bombardment is simultaneous. No more than three combat rounds are conducted per turn.
+### 7.5.1 Bombardment Execution
 
-### 7.5.1 Determine Hits
+**Requirements:**
+- Orbital supremacy achieved (won orbital combat)
+- Combat-capable squadrons present (AS > 0)
+- Bombard order issued to fleet
 
-The attacking player will total the AS value of their fleet's surviving squadrons and the defending player will total the AS strength of all remaining ground batteries. Both players roll on the Bombardment Table.
+**Bombardment Process:**
 
-**Bombardment Table**:
+Each turn of bombardment (up to 3 rounds), your fleet attacks planetary defenses. Shields reduce incoming damage, but hits penetrate to damage batteries, ground forces, and infrastructure simultaneously:
 
-| **1D10 Die Roll** | **Bombardment CER**           |
-| ----------------- | ----------------------------- |
+**Bombardment Damage Flow:**
+
+1. **Calculate Bombardment Hits** (AS × CER)
+   - Your fleet's total Attack Strength
+   - Roll 1d10 on Bombardment CER table (see below)
+   - Planet-Breaker AS counted separately (bypasses shields)
+
+**Bombardment CER Table:**
+
+| **1D10 Die Roll** | **Bombardment CER** |
+| ----------------- | ------------------- |
 | 0, 1, 2           | One Quarter (0.25) (round up) |
-| 3, 4, 5           | One Half (0.50) (round up)    |
-| 6, 7, 8           | One (1)                       |
-| 9\*               | One\* (1)                     |
+| 3, 4, 5           | One Half (0.50) (round up) |
+| 6, 7, 8           | One (1) |
+| 9*                | One* (1) |
 
-\* Critical hits are only applied against attacking squadrons
+*Critical hits apply only against attacking squadrons (ground batteries firing back), not against ground targets
 
-The CER multiplied by AS equals the number of hits on the enemy.
+2. **Shields Reduce Conventional Hits**
+   - Planetary shields reduce conventional ship damage by percentage (20%-70% based on SLD level)
+   - Planet-Breaker hits bypass shields entirely
+   - Total effective hits = Planet-Breaker hits + (reduced conventional hits)
+
+3. **Hits Flow Through Defenses in Order:**
+   - **First**: Ground batteries absorb hits (crippled, then destroyed)
+   - **Excess hits**: Damage ground forces (armies and marines)
+   - **Remaining excess**: Destroy infrastructure (IU loss)
+
+**Key Mechanics:**
+- Shields slow damage but don't prevent it—batteries, forces, and infrastructure can be damaged in the same turn
+- Ground batteries fire back each round (can cripple/destroy bombarding squadrons)
+- Multiple bombardment turns gradually overwhelm defenses
+- Higher shield levels reduce more damage, prolonging defensive survival
 
 ### 7.5.2 Planetary Shields
 
-If a planet is protected by shields, the defending player will roll on the table below to determine the number of hits blocked.
+Shields reduce bombardment damage from conventional ships. Higher shield levels block larger percentages of incoming hits.
 
-<!-- SHIELD_EFFECTIVENESS_TABLE_START -->
+**Shield Levels and Damage Reduction:**
+
 | SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
 |:---------:|:--------:|:---------:|:-----------------:|
-| SLD1      | 15       | > 17      | 25%               |
-| SLD2      | 30       | > 14      | 30%               |
-| SLD3      | 45       | > 11      | 35%               |
-| SLD4      | 60       | > 8      | 40%               |
-| SLD5      | 75       | > 5      | 45%               |
-| SLD6      | 90       | > 2      | 50%               |
+| SLD1      | 15%      | > 17      | 25%               |
+| SLD2      | 30%      | > 14      | 30%               |
+| SLD3      | 45%      | > 11      | 35%               |
+| SLD4      | 60%      | > 8       | 40%               |
+| SLD5      | 75%      | > 5       | 45%               |
+| SLD6      | 90%      | > 2       | 50%               |
 
-*Source: config/combat.toml [planetary_shields] section*
-<!-- SHIELD_EFFECTIVENESS_TABLE_END -->
+**Shield Mechanics:**
+- Each bombardment round, roll 1d20 to see if shields activate
+- If roll meets or exceeds threshold, shield blocks percentage of conventional hits
+- Shields reduce hits, they don't prevent them—damage still penetrates to batteries/infrastructure
+- Planet-Breaker hits bypass shields entirely (no reduction)
+- Shields remain active throughout bombardment (don't "degrade" or "get destroyed")
+- Shields only destroyed when Marines land during invasion
 
-Reduce the attacking player's hits by the percentage, rounding up. This is the number of effective hits.
+**Planet-Breaker Advantage:**
 
-Example: A fleet with AS of 75 bombards a planet protected by a SLD3 shield, and the defending player rolls a 15.
-
-```
-Hits = 75 * (1 - .35) = 49
-```
-
-Note that shields can only be destroyed by Marines during planetary invasion.
-
-**Planet-Breaker Shield Penetration:**
-
-Planet-Breakers completely bypass planetary shields during bombardment per [Section 2.4.8](assets.md#248-planet-breaker). When calculating bombardment damage:
-
-1. **Separate AS calculations:**
-   - Planet-Breaker AS is calculated separately from other ships
-   - Other ships' AS is subject to normal shield mechanics above
-
-2. **Planet-Breaker bombardment:**
-   - Roll CER for Planet-Breaker squadrons independently
-   - Apply `CER × Planet-Breaker AS` directly to ground batteries (no shield roll)
-   - Planet-Breaker damage bypasses all shield levels (SLD1-SLD6)
-
-3. **Mixed fleet bombardment:**
-   - If Task Force contains both Planet-Breakers and conventional ships, resolve separately:
-     - Planet-Breaker hits: Apply directly to ground batteries
-     - Conventional ship hits: Apply shield reduction, then apply to ground batteries
-   - Defender allocates damage from both sources to ground batteries
-
-This creates strategic choices for defenders: shields protect against conventional bombardment but are useless against Planet-Breakers, while ground batteries defend against both.
+Planet-Breaker ships bypass ALL shield levels:
+- Planet-Breaker AS ignores shield reduction completely
+- Mixed fleets: Planet-Breaker AS + (reduced conventional AS) = total hits
+- Expensive (400 PP) but essential for high-shield fortress worlds
+- Strategic siege weapon for heavily defended targets
 
 ### 7.5.3 Ground Batteries
 
-The player who rolled the die will determine where hits are applied. Because ground batteries are all the same, selecting which ground batteries to target is moot. Unlike ships in squadrons, ground batteries are reduced as individual units.
+Ground-based defensive installations fire on orbiting ships. Batteries threaten bombarding fleets and invasion forces.
 
-The following **restrictions** apply:
-1. If the number of hits equal the opposing unit's DS, the unit is reduced.
-2. Units are not destroyed until all other units are crippled.
-3. Excess hits leftover against Ground Batteries are summed.
-4. Excess hits are lost against squadrons if restrictions apply.
+**Ground Battery Mechanics:**
+- Each battery has attack strength
+- Targets orbiting ships randomly
+- Can cripple or destroy bombarding vessels
+- Battery fire continues until batteries destroyed
+- Multiple batteries = sustained defensive fire
 
-Crippled units multiply their AS by 0.5, rounded up to the nearest whole number.
+**Neutralizing Batteries:**
+- Bombardment hits damage batteries first (before ground forces or infrastructure)
+- Shields reduce conventional hits but don't prevent battery damage
+- Each battery can be crippled (reduced AS) then destroyed
+- All batteries must be destroyed before invasion can proceed
 
-**Critical Hits**:
+**Strategic Considerations:**
+- High battery count = dangerous bombardment
+- Weak bombarding fleet risks losses to battery fire
+- Alternative: Starve colony via blockade instead of bombardment
 
-Critical hits are a special case, and only apply against the attacking fleet. Restriction #2 in the list above is nullified.
+### 7.5.4 Infrastructure Damage
 
-Additionally, if a player takes a critical hit and is unable to reduce a unit according to restriction #1 above, then the squadron with the lowest DS is reduced.
+Excess bombardment hits (after damaging batteries and ground forces) destroy colony infrastructure:
 
-Proceed to the next section.
+**Infrastructure Damage Effects:**
+- **Production loss**: Each percentage point reduces GDP
+- **Facility destruction**: Spaceports, shipyards can be destroyed
+- **Population casualties**: Souls lost to bombardment
+- **Morale impact**: Defender prestige loss, attacker diplomatic penalties
 
-### 7.5.4 Ground Units & Civilian Infrastructure
+**Damage Accumulation:**
+- Infrastructure damage percentage increases each bombardment turn
+- 10% damage = 10% production loss
+- 50% damage = colony crippled
+- 100% damage = colony ruins (remains colonized but devastated)
 
-The attacking player will apply unused hits towards ground forces (Armies or Marines):
-1. If the number of hits equal the opposing unit's DS, the unit is reduced.
-2. Units are not destroyed until all other units are crippled.
-3. Excess hits are lost if restrictions apply.
+**Repair Costs:**
+- Damaged infrastructure requires PP investment to repair
+- Repair time scales with damage percentage
+- Captured colonies often require extensive rebuilding
 
-Finally, if there are unused hits left over from ground batteries and ground forces, subtract the number of hits from the planet's IU. If there is no remaining IU, apply hits to the planet's PU instead.
+### 7.5.5 Bombardment Strategy
 
-If there are remaining rounds (max 3), return to [Section 7.5.1](#751-determine-hits) and repeat.
+**Prolonged Siege:**
+- Bombard over multiple turns to systematically destroy defenses
+- Reduces invasion risk by eliminating batteries and shields
+- Expensive in time and fleet commitment
+- Generates diplomatic penalties
 
-## 7.6 Planetary Invasion & Blitz
+**Quick Assault:**
+- Minimal bombardment, immediate invasion
+- Risks heavy invasion casualties
+- Captures infrastructure intact
+- Faster conquest but higher military cost
 
-Combat is simultaneous, and the following table is used to determine the CER.
+**Blockade Alternative:**
+- Blockade colony instead of bombardment (GuardPlanet/BlockadePlanet orders)
+- Cuts production 50% without destruction
+- Starves defenders over time
+- Less diplomatic penalty than bombardment
 
-**Ground Combat Table**:
+---
 
-| **1D10 Die Roll** | **Ground Combat CER**           |
-| ----------------- | ------------------------------- |
-| 0, 1, 2           | One Half (0.5) (round up)       |
-| 3, 4, 5, 6        | One (1)                         |
-| 7, 8              | One and a half (1.5) (round up) |
-| 9                 | Two (2)                         |
+## 7.6 Planetary Invasion and Blitz
+
+Seize enemy colonies by landing ground forces after achieving orbital supremacy. Your marines and armies fight defending ground forces for control of the planet surface.
 
 ### 7.6.1 Planetary Invasion
 
-To land Marines on a planet during ground invasion, all the surface Ground Batteries must be destroyed. First conduct *one round* of planetary bombardment from [Section 7.5](#75-planetary-bombardment). If there are remaining Ground Batteries, the mission fails.
+Land ground forces to conquer enemy colonies. Invasion requires orbital supremacy, loaded troop transports, and overwhelming ground superiority.
 
-If all ground batteries are destroyed, the Marines are dropped onto the surface. Planetary shields and Spaceports are immediately destroyed.
+**Invasion Requirements:**
+- Orbital supremacy achieved (won orbital combat)
+- **ALL ground batteries destroyed** (mandatory—batteries fire on landing transports)
+- Troop Transports with loaded Marines (MD = Marine Division)
+- Invade order issued to fleet
 
-Both sides total the AS strength of their Armies and Marines, and roll on the Ground Combat Table for the CER. The CER multiplied by AS is the number of hits. Armies and Marines are treated as individual units for the purposes of combat reduction.
+**Invasion Process:**
 
-The player who rolled the die will determine where hits are applied, with the following restrictions:
-1. If the number of hits equal the opposing unit's DS, the unit is reduced.
-2. Units are not destroyed until all other units are crippled.
-3. Excess hits are lost if restrictions apply.
+1. **Bombardment Round**
+   - Conduct ONE round of bombardment first (Section 7.5)
+   - Ground batteries must be destroyed before landing
+   - If batteries remain after bombardment round, invasion fails (cannot land)
+   - If all batteries destroyed, proceed to landing
 
-Crippled units multiply their AS by 0.5, rounded up to the nearest whole number.
+2. **Landing Phase**
+   - Marines land—shields and spaceports immediately destroyed upon landing
+   - Transports unload marines (troops committed to battle)
 
-Repeat the process until one side is completely destroyed.
+3. **Ground Combat Phase**
+   - **Both sides roll 1d10 on Ground Combat Table**
+   - Calculate hits: AS × Ground CER → damage to enemy forces
+   - Apply hits to ground units (cripple, then destroy)
+   - Repeat rounds until one side eliminated
 
-If the planet is conquered, loyal House citizens destroy 50% of the colony's remaining IU before order is restored.
+**Ground Combat Table:**
+
+| 1d10 Roll | Ground CER Multiplier |
+|-----------|-----------------------|
+| 0-2 | 0.5× (round up) |
+| 3-6 | 1.0× |
+| 7-8 | 1.5× (round up) |
+| 9 | 2.0× |
+
+**Ground Forces:**
+
+**Attackers:**
+- Marines from Troop Transports (1 MD per transport)
+- Each MD: AS 10, DS 10 (from config)
+- Marines fight at full strength
+
+**Defenders:**
+- Ground Armies (garrison forces): AS 8, DS 8 each
+- Defending Marines (colony-based): AS 10, DS 10 each
+- Combined ground strength
+
+**Combat Resolution:**
+
+Both sides roll each round, exchange fire, until one side eliminated:
+- Units crippled: AS reduced to 50%
+- Crippled units destroyed if all others crippled
+- Battle continues until total elimination
+- **If attackers win**: Colony captured, **50% IU destroyed** by loyal citizens before order restored
+- **If defenders win**: Invasion repelled, attacker marines destroyed
 
 ### 7.6.2 Planetary Blitz
 
-Fleets and Ground batteries conduct one round of combat in accordance with [Section 7.5](#75-planetary-bombardment), with the exception that ground units and civilian infrastructure are not targeted ([Section 7.5.4](#754-ground-units-civilian-infrastructure)). Troop transports are included as individual units within the attacking player's fleet and may be destroyed on their way down to the surface by Ground Batteries.
+Conduct rapid combined bombardment + invasion operations. Blitz sacrifices safety for speed—marines land under fire from ground batteries.
 
-Because of quick insertion and Ground Battery evasion, surviving Marines that manage to land in their troop transports multiply AS by 0.5 (rounding up).
+**Blitz Requirements:**
+- Orbital supremacy achieved
+- Loaded Troop Transports present
+- Blitz order issued to fleet
+- **No requirement for weak defenses**—blitz works against any target (risky against strong defenses)
 
-Ground battle occurs in a similar fashion to [Section 7.6.1](#761-planetary-invasion), with the exception that IUs are not destroyed if the planet is conquered. All remaining planet assets are seized by the invading House, including IU, shields, spaceports, and ground batteries.
+**Blitz Mechanics:**
 
+Blitz combines bombardment and ground combat in compressed sequence:
 
+1. **Bombardment Round (Transports Vulnerable)**
+   - Conduct ONE round of bombardment (Section 7.5)
+   - **Ground batteries fire at Troop Transports** (included as units in fleet)
+   - Transports can be destroyed before landing marines
+   - No civilian infrastructure targeted (avoid damage to assets)
 
+2. **Landing Phase (If Transports Survive)**
+   - Marines land immediately (don't wait for batteries eliminated)
+   - **Marines fight at 0.5× AS** (quick insertion penalty, evading batteries)
+   - Shields, spaceports, batteries seized intact if successful
 
+3. **Ground Combat**
+   - Same Ground Combat Table as invasion (1d10 roll)
+   - Marines at half AS disadvantage
+   - Repeat rounds until one side eliminated
+   - **If attackers win**: All assets seized intact (**0% IU destroyed**)
+   - **If defenders win**: Invasion repelled, attacker marines destroyed
 
+**When to Use Blitz:**
 
+**Advantages:**
+- Seizes colony infrastructure intact (no IU loss on victory)
+- Captures shields, batteries, spaceports
+- Faster than methodical bombardment + invasion
+- Good against weak defenses
 
+**Risks:**
+- Transports vulnerable during bombardment round (can be destroyed)
+- Marines fight at half AS (quick insertion penalty)
+- High casualty risk against strong ground batteries
+- Dangerous against heavily fortified colonies (high shields, many batteries, large garrison)
+
+### 7.6.3 Invasion Strategy
+
+**Overwhelming Force:**
+- Bring 2:1 marine superiority minimum
+- Reduces casualties, ensures victory
+- Expensive but decisive
+
+**Bombardment Preparation:**
+- Destroy shields and batteries before invasion
+- Reduces marine casualties during landing
+- Preserves marine strength for ground combat
+- Takes more time but safer
+
+**Blockade + Starvation:**
+- Blockade colony for multiple turns
+- Production halved, garrison weakens over time
+- Invade after defenders weakened
+- Minimizes military losses, maximizes time cost
+
+**Blitz Expansion:**
+- Use blitz against weak frontier colonies during land grabs
+- Speed captures territory before rivals
+- Accept higher casualties for strategic advantage
+- Effective early-game expansion tool
+
+---
+
+## 7.7 Combat Examples
+
+Practical scenarios demonstrating combat theater progression and strategic decision-making.
+
+### 7.7.1 Example: Standard Planetary Invasion
+
+**Scenario**: House Atreides invades House Harkonnen colony at Giedi Prime.
+
+**Turn 1 - Space Combat:**
+- Atreides fleet (3 Battleships, 6 Destroyers) enters Giedi Prime
+- Harkonnen mobile defender (2 Cruisers, 4 Frigates) intercepts
+- Space combat: Atreides wins (superior firepower), 1 Battleship crippled
+- Harkonnen fleet retreats to adjacent system
+- **Result**: Atreides achieves space superiority, advances to orbital combat
+
+**Turn 2 - Orbital Combat:**
+- Atreides surviving fleet (2 Battleships, 1 crippled, 6 Destroyers) engages orbital defenses
+- Harkonnen orbital defense: 1 Guard fleet (Light Cruiser + 3 Destroyers), 2 Starbases, 5 unassigned squadrons
+- Orbital combat: Atreides wins (overwhelming numbers), 2 Destroyers destroyed
+- Harkonnen starbases destroyed, guard fleet eliminated
+- **Result**: Atreides achieves orbital supremacy, proceeds to bombardment
+
+**Turn 3-5 - Bombardment:**
+- Atreides bombards SLD-4 shield (4 turns to destroy)
+- Ground batteries fire back, cripple 1 Destroyer
+- Turn 5: Shield destroyed, batteries neutralized
+- **Result**: Planet defenses eliminated, ready for invasion
+
+**Turn 6 - Invasion:**
+- Atreides lands 6 Marine Divisions
+- Harkonnen garrison: 3 Armies + 2 Marine Divisions
+- Ground combat: Atreides 6 MD vs. Harkonnen 5 ground units
+- Atreides wins (slight superiority), 2 MD lost
+- **Result**: Colony captured, ownership transfers to Atreides
+
+**Total Cost**: 6 turns, 1 Battleship crippled, 2 Destroyers destroyed, 2 Marine Divisions lost, 1 Destroyer crippled by batteries
+
+### 7.7.2 Example: Blitz Operation
+
+**Scenario**: House Corrino blitzes weakly defended rebel colony.
+
+**Turn 1 - Space Combat:**
+- Corrino fleet (1 Battle Cruiser, 4 Destroyers, 2 Troop Transports) enters system
+- No mobile defenders present
+- **Result**: Automatic space superiority, proceed to orbital combat
+
+**Turn 1 - Orbital Combat (Same Turn):**
+- Rebel defense: 1 unassigned squadron (Light Cruiser), no starbases
+- Corrino wins easily, Light Cruiser destroyed
+- **Result**: Orbital supremacy achieved
+
+**Turn 1 - Blitz Operation (Same Turn):**
+- Corrino issues Blitz order
+- Fleet bombards while transports land simultaneously
+- Minimal shield (SLD-1), few batteries
+- 2 Marine Divisions land and engage
+- Rebel garrison: 1 Army
+- Blitz successful: Colony captured
+- **Result**: Colony captured in single turn
+
+**Total Cost**: 1 turn, no ship losses, minor marine casualties
+
+**Comparison**: Standard invasion would take 4-5 turns (bombardment + invasion). Blitz sacrificed methodical approach for speed, accepting slightly higher marine casualties.
+
+### 7.7.3 Example: Failed Invasion
+
+**Scenario**: House Ordos attempts invasion of heavily fortified Ix.
+
+**Turn 1 - Space Combat:**
+- Ordos fleet (2 Dreadnoughts, 4 Cruisers) enters Ix
+- Ix mobile defense (3 Battle Cruisers, 8 Destroyers, ELI scout)
+- ELI scout detects Ordos Raider (no ambush bonus)
+- Space combat: Ordos loses (outnumbered, no ambush advantage)
+- 1 Dreadnought destroyed, 2 Cruisers crippled
+- **Result**: Ordos fleet retreats to friendly system, invasion fails before reaching orbit
+
+**Lessons**:
+- Space superiority crucial—cannot skip theater
+- ELI detection negated Raider ambush advantage
+- Ordos should have brought overwhelming force or reconnoitered first
+
+---
+
+**End of Section 7**
