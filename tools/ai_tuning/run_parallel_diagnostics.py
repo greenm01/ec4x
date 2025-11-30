@@ -134,23 +134,25 @@ def compile_simulation() -> bool:
         print(f"✗ Compilation failed:\n{e.stderr}")
         return False
 
-def run_single_game(args: Tuple[int, int, int]) -> Tuple[int, int, bool, str]:
+def run_single_game(args: Tuple[int, int, int, int]) -> Tuple[int, int, bool, str]:
     """
     Run a single simulation game.
 
     Args:
-        args: (game_num, seed, turns)
+        args: (game_num, seed, turns, num_players)
 
     Returns:
         (game_num, seed, success, message)
     """
-    game_num, seed, turns = args
+    game_num, seed, turns, num_players = args
     output_file = OUTPUT_DIR / f"game_{seed}.csv"
 
     try:
         # Run simulation and capture output
+        # Command: run_simulation TURNS SEED MAP_RINGS NUM_PLAYERS
+        # Use num_players for map_rings (1 ring per player)
         result = subprocess.run(
-            [str(RUN_SIMULATION_BIN), str(turns), str(seed)],
+            [str(RUN_SIMULATION_BIN), str(turns), str(seed), str(num_players), str(num_players)],
             capture_output=True,
             text=True,
             timeout=300,  # 5 minute timeout per game
@@ -180,6 +182,7 @@ def main():
     num_games = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_NUM_GAMES
     turns_per_game = int(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_TURNS_PER_GAME
     num_jobs = int(sys.argv[3]) if len(sys.argv) > 3 else DEFAULT_NUM_JOBS
+    num_players = int(sys.argv[4]) if len(sys.argv) > 4 else 4  # Default to 4 players
 
     print("=" * 70)
     print("EC4X Parallel Diagnostic Runner")
@@ -187,6 +190,7 @@ def main():
     print(f"Configuration:")
     print(f"  Games:           {num_games}")
     print(f"  Turns per game:  {turns_per_game}")
+    print(f"  Players:         {num_players}")
     print(f"  Parallel jobs:   {num_jobs}")
     print(f"  CPU cores:       {cpu_count()} logical cores detected")
     print(f"  Output:          {OUTPUT_DIR}")
@@ -213,7 +217,7 @@ def main():
     print()
 
     # Prepare game arguments
-    game_args = [(i + 1, seed, turns_per_game) for i, seed in enumerate(seeds)]
+    game_args = [(i + 1, seed, turns_per_game, num_players) for i, seed in enumerate(seeds)]
 
     # Run simulations in parallel
     print(f"Starting parallel execution with {num_jobs} jobs...")

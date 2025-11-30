@@ -84,3 +84,12 @@ strategies = ["Aggressive", "Economic", "Espionage", "Diplomatic", "Balanced", "
 turns = 7
 map_rings = 5
 num_games = 10
+
+# Large-scale 12-strategy balance test - 1,000 games for comprehensive analysis
+[[scenarios]]
+name = "balance_1k_12_strategies"
+description = "1,000 games with all 12 strategies for unit cost and tech tree scaling analysis"
+strategies = ["Aggressive", "Economic", "Espionage", "Diplomatic", "Balanced", "Turtle", "Expansionist", "TechRush", "Raider", "MilitaryIndustrial", "Opportunistic", "Isolationist"]
+turns = 15
+map_rings = 0
+num_games = 1000

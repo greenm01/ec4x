@@ -8,7 +8,7 @@
 ## - Stellaris weight-based AI system
 ## - Priority-based task assignment (Game Developer 2015)
 
-import std/[tables, options, algorithm, strformat, sequtils]
+import std/[tables, options, algorithm, strformat, sequtils, strutils]
 import ../common/types
 import ../../engine/[gamestate, orders, fleet, logger, fog_of_war, squadron]
 import ../../engine/economy/construction  # For budget execution
@@ -1177,6 +1177,85 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
           logWarn(LogCategory.lcAI,
                   &"{controller.houseId} Admiral requirement unfulfilled (insufficient {req.buildObjective} budget): " &
                   &"{req.quantity}× {shipClass} (need {totalCost}PP)")
+      else:
+        # Handle non-ship requirements (ground units, buildings, tech, espionage, etc.)
+        # Per user requirement: "the CFO should handle ALL game assets and services that cost PP"
+
+        # Determine what type of non-ship asset this is based on the reason field
+        let reason = req.reason.toLowerAscii()
+        var buildingType: Option[string] = none(string)
+        var isGroundUnit = false
+        var unitType = ""  # "Army", "Marine", or ""
+
+        # Parse the requirement to determine what to build
+        if "ground batteries" in reason or "ground battery" in reason:
+          buildingType = some("GroundBattery")
+        elif "planetary shield" in reason:
+          buildingType = some("PlanetaryShield")
+        elif "ground armies" in reason or "army" in reason:
+          isGroundUnit = true
+          unitType = "Army"
+        elif "marines" in reason or "marine" in reason:
+          isGroundUnit = true
+          unitType = "Marine"
+        # TODO: Add handlers for tech research, espionage, and other PP expenditures
+        else:
+          # Unknown non-ship requirement - log and skip for now
+          logWarn(LogCategory.lcAI,
+                  &"{controller.houseId} CFO: Unknown non-ship requirement: {req.reason}")
+          cfoFeedback.unfulfilledRequirements.add(req)
+          continue
+
+        # Calculate cost based on type
+        var totalCost = 0
+        if buildingType.isSome:
+          totalCost = getBuildingCost(buildingType.get()) * req.quantity
+        elif isGroundUnit:
+          if unitType == "Army":
+            totalCost = getArmyBuildCost() * req.quantity
+          elif unitType == "Marine":
+            totalCost = getMarineBuildCost() * req.quantity
+
+        if tracker.canAfford(req.buildObjective, totalCost):
+          # Budget available - create build order for non-ship asset
+          if buildingType.isSome:
+            # Building (ground battery, planetary shield, etc.)
+            result.add(BuildOrder(
+              colonySystem: col.systemId,
+              buildType: BuildType.Building,
+              quantity: req.quantity,
+              shipClass: none(ShipClass),
+              buildingType: buildingType,
+              industrialUnits: 0
+            ))
+          elif isGroundUnit:
+            # Ground units (armies, marines) - use Building type with special naming
+            result.add(BuildOrder(
+              colonySystem: col.systemId,
+              buildType: BuildType.Building,
+              quantity: req.quantity,
+              shipClass: none(ShipClass),
+              buildingType: some(unitType),  # "Army" or "Marine"
+              industrialUnits: 0
+            ))
+
+          tracker.recordSpending(req.buildObjective, totalCost)
+          cfoFeedback.fulfilledRequirements.add(req)
+          cfoFeedback.totalBudgetSpent += totalCost
+
+          let assetName = if buildingType.isSome: buildingType.get() else: unitType
+          logInfo(LogCategory.lcAI,
+                  &"{controller.houseId} Fulfilled Admiral requirement: " &
+                  &"{req.quantity}× {assetName} at {col.systemId} " &
+                  &"(priority={req.priority}, cost={totalCost}PP, reason={req.reason})")
+        else:
+          # Insufficient budget
+          cfoFeedback.unfulfilledRequirements.add(req)
+          cfoFeedback.totalUnfulfilledCost += totalCost
+          let assetName = if buildingType.isSome: buildingType.get() else: unitType
+          logWarn(LogCategory.lcAI,
+                  &"{controller.houseId} Admiral requirement unfulfilled (insufficient {req.buildObjective} budget): " &
+                  &"{req.quantity}× {assetName} (need {totalCost}PP)")
 
   # Sort colonies prioritizing shipyards over spaceports (economy.md:5.1, 5.3)
   # Shipyard construction has no penalty, spaceport construction has 100% PC increase
