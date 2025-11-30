@@ -241,6 +241,39 @@ type
     activeProjects*: seq[string]  # Item IDs being built
     completedSinceLastVisit*: seq[string]  # What was completed
 
+  PopulationTransferStatus* {.pure.} = enum
+    ## Status of a Space Guild population transfer (for YOUR OWN transfers only)
+    ## Space Guild maintains client confidentiality - other houses cannot spy on transfers
+    Initiated       # Transfer order placed with Guild
+    InTransit       # Colonists en route
+    Delivered       # Successfully delivered to destination
+    Redirected      # Delivered to alternate location (destination compromised)
+    Failed          # Could not deliver (house eliminated)
+
+  PopulationTransferStatusReport* = object
+    ## Status report from Space Guild on YOUR house's population transfers
+    ## Guild provides updates to clients on their own transfers
+    ## Other houses CANNOT see these reports (client confidentiality)
+    transferId*: string
+    turn*: int                    # When this status update was generated
+    status*: PopulationTransferStatus
+
+    # Transfer details (YOUR contract details)
+    sourceSystem*: SystemId
+    intendedDestination*: SystemId
+    ptuAmount*: int
+    costPaid*: int
+
+    # Status-specific information
+    actualDestination*: Option[SystemId]  # Where colonists were delivered (if redirected)
+    estimatedArrival*: Option[int]        # Arrival turn (if in transit)
+    redirectionReason*: Option[string]    # Why alternate delivery was needed
+    failureReason*: Option[string]        # Why transfer failed
+
+    # In-transit tracking (Guild provides route visibility to client)
+    travelRoute*: Option[seq[SystemId]]   # Full route from source to destination
+    currentLocation*: Option[SystemId]    # Where starliner currently is (if in transit)
+
   IntelligenceDatabase* = object
     ## Collection of all intelligence reports for a house
     ## Stored per-house in GameState
@@ -258,6 +291,9 @@ type
     # Starbase surveillance
     starbaseSurveillance*: seq[StarbaseSurveillanceReport]  # Automated starbase sensor reports
 
+    # Space Guild transfer status (YOUR OWN transfers only - Guild maintains client confidentiality)
+    populationTransferStatus*: Table[string, PopulationTransferStatusReport]  # Keyed by transferId
+
 proc newIntelligenceDatabase*(): IntelligenceDatabase =
   ## Create empty intelligence database
   result.colonyReports = initTable[SystemId, ColonyIntelReport]()
@@ -269,6 +305,7 @@ proc newIntelligenceDatabase*(): IntelligenceDatabase =
   result.fleetMovementHistory = initTable[FleetId, FleetMovementHistory]()
   result.constructionActivity = initTable[SystemId, ConstructionActivityReport]()
   result.starbaseSurveillance = @[]
+  result.populationTransferStatus = initTable[string, PopulationTransferStatusReport]()
 
 proc addColonyReport*(db: var IntelligenceDatabase, report: ColonyIntelReport) =
   ## Add or update colony intelligence report
@@ -297,6 +334,11 @@ proc addScoutEncounter*(db: var IntelligenceDatabase, report: ScoutEncounterRepo
 proc addStarbaseSurveillance*(db: var IntelligenceDatabase, report: StarbaseSurveillanceReport) =
   ## Add starbase surveillance report
   db.starbaseSurveillance.add(report)
+
+proc addPopulationTransferStatus*(db: var IntelligenceDatabase, report: PopulationTransferStatusReport) =
+  ## Add or update Space Guild population transfer status report
+  ## Only for YOUR OWN house's transfers - Guild maintains client confidentiality
+  db.populationTransferStatus[report.transferId] = report
 
 proc updateFleetMovementHistory*(db: var IntelligenceDatabase, fleetId: FleetId, owner: HouseId, systemId: SystemId, turn: int) =
   ## Update fleet movement tracking with new sighting
