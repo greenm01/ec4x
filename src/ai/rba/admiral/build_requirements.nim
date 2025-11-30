@@ -672,7 +672,7 @@ proc assessStrategicAssets*(
     let groundBatteryCost = getBuildingCost("GroundBattery")
     let req = BuildRequirement(
       requirementType: RequirementType.Infrastructure,
-      priority: RequirementPriority.Low,
+      priority: RequirementPriority.Medium,  # Medium priority: baseline colony defense
       shipClass: none(ShipClass),
       quantity: targetBatteries - totalGroundBatteries,
       buildObjective: BuildObjective.Defense,
@@ -689,7 +689,7 @@ proc assessStrategicAssets*(
     let armyCost = getArmyBuildCost()
     let req = BuildRequirement(
       requirementType: RequirementType.DefenseGap,
-      priority: RequirementPriority.Low,
+      priority: RequirementPriority.Medium,  # Medium priority: baseline colony defense
       shipClass: none(ShipClass),
       quantity: targetArmies - totalArmies,
       buildObjective: BuildObjective.Defense,
