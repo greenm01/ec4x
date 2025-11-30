@@ -378,6 +378,28 @@ task convertToParquet, "Convert CSV diagnostics to Parquet format":
 
 # Data Analysis Tasks (Terminal-Based)
 
+task analyzePerformance, "Analyze RBA strategy performance from diagnostic CSVs":
+  echo "Analyzing RBA performance by strategy..."
+  exec "python3 tools/ai_tuning/analyze_performance.py"
+
+task balanceDiagnostic, "Run 100-game diagnostic + analysis":
+  echo "Cleaning old diagnostic data..."
+  exec "rm -rf balance_results/diagnostics"
+  exec "mkdir -p balance_results/diagnostics"
+  echo "Running 100-game diagnostic..."
+  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 100 7 16 --no-archive"
+  echo "\n📊 Analyzing results..."
+  exec "python3 tools/ai_tuning/analyze_performance.py"
+
+task balanceQuickCheck, "Quick balance check (20 games + analysis)":
+  echo "Cleaning old diagnostic data..."
+  exec "rm -rf balance_results/diagnostics"
+  exec "mkdir -p balance_results/diagnostics"
+  echo "Running quick balance check (20 games)..."
+  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 20 7 8 --no-archive"
+  echo "\n📊 Analyzing results..."
+  exec "python3 tools/ai_tuning/analyze_performance.py"
+
 task analyzeBalance, "Full analysis workflow: convert → analyze → report":
   echo "Running full balance analysis workflow..."
   echo "\n=== Step 1: Convert CSV to Parquet ==="

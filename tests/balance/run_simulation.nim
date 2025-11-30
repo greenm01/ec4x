@@ -96,11 +96,13 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
     game = turnResult.newState
 
     # Collect diagnostic metrics after turn resolution
-    for houseId in houseIds:
+    for i, houseId in houseIds:
       let prevOpt = if houseId in prevMetrics: some(prevMetrics[houseId]) else: none(DiagnosticMetrics)
       # Pass orders for this house to track espionage missions
       let ordersOpt = if houseId in ordersTable: some(ordersTable[houseId]) else: none(OrderPacket)
-      let metrics = collectDiagnostics(game, houseId, prevOpt, ordersOpt)
+      # Get strategy from corresponding controller
+      let strategy = controllers[i].strategy
+      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt)
       allDiagnostics.add(metrics)
       prevMetrics[houseId] = metrics
 

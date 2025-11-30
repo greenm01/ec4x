@@ -6,12 +6,14 @@
 import std/[tables, strformat, streams, options]
 import ../../src/engine/[gamestate, fleet, squadron, orders, logger]
 import ../../src/common/types/[core, units]
+import ../../src/ai/common/types
 
 type
   DiagnosticMetrics* = object
     ## Metrics collected per house, per turn
     turn*: int
     houseId*: HouseId
+    strategy*: AIStrategy  # AI strategy/personality archetype
 
     # Economy (Core)
     treasuryBalance*: int
@@ -218,11 +220,12 @@ type
     turnLimit*: int
     metrics*: seq[DiagnosticMetrics]  # All collected metrics
 
-proc initDiagnosticMetrics*(turn: int, houseId: HouseId): DiagnosticMetrics =
+proc initDiagnosticMetrics*(turn: int, houseId: HouseId, strategy: AIStrategy = AIStrategy.Balanced): DiagnosticMetrics =
   ## Initialize empty diagnostic metrics for a house at a turn
   result = DiagnosticMetrics(
     turn: turn,
     houseId: houseId,
+    strategy: strategy,
 
     # Economy
     treasuryBalance: 0,
@@ -855,10 +858,11 @@ proc countEspionageMissions*(orders: OrderPacket): tuple[spyPlanet: int, hackSta
       discard
 
 proc collectDiagnostics*(state: GameState, houseId: HouseId,
+                        strategy: AIStrategy,
                         prevMetrics: Option[DiagnosticMetrics] = none(DiagnosticMetrics),
                         orders: Option[OrderPacket] = none(OrderPacket)): DiagnosticMetrics =
   ## Collect all diagnostic metrics for a house at current turn
-  result = initDiagnosticMetrics(state.turn, houseId)
+  result = initDiagnosticMetrics(state.turn, houseId, strategy)
 
   # Collect from different subsystems
   let econ = collectEconomyMetrics(state, houseId, prevMetrics)
@@ -1076,7 +1080,7 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
 
 proc writeCSVHeader*(file: File) =
   ## Write CSV header row with ALL game metrics
-  file.writeLine("turn,house," &
+  file.writeLine("turn,house,strategy," &
                  # Economy (Core)
                  "treasury,production,pu_growth,zero_spend_turns," &
                  "gco,nhv,tax_rate,total_iu,total_pu,total_ptu,pop_growth_rate," &
@@ -1132,7 +1136,7 @@ proc writeCSVHeader*(file: File) =
 
 proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
   ## Write metrics as CSV row with ALL fields
-  file.writeLine(&"{metrics.turn},{metrics.houseId}," &
+  file.writeLine(&"{metrics.turn},{metrics.houseId},{metrics.strategy}," &
                  # Economy (Core)
                  &"{metrics.treasuryBalance},{metrics.productionPerTurn},{metrics.puGrowth},{metrics.zeroSpendTurns}," &
                  &"{metrics.grossColonyOutput},{metrics.netHouseValue},{metrics.taxRate}," &
