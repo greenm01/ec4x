@@ -293,12 +293,12 @@ suite "Upkeep Calculations":
     let dreadnoughtUpkeep = getShipMaintenanceCost(ShipClass.Dreadnought, false)
     check dreadnoughtUpkeep == 10  # Per ships.toml
 
-  test "crippled ship upkeep increase":
+  test "crippled ship upkeep decrease":
     let normalUpkeep = getShipMaintenanceCost(ShipClass.Destroyer, false)
     let crippledUpkeep = getShipMaintenanceCost(ShipClass.Destroyer, true)
 
-    # Crippled ships cost 50% more
-    check crippledUpkeep == normalUpkeep + (normalUpkeep div 2)
+    # Crippled ships cost 50% (half cost) per combat.toml
+    check crippledUpkeep == normalUpkeep div 2
 
   test "facility upkeep costs":
     check getSpaceportUpkeep() == 5    # Per facilities.toml
