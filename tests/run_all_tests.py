@@ -93,11 +93,19 @@ def run_test(test_file: Path, test_type: str, timeout: int = 120) -> TestResult:
 
         # Parse output for test results
         output = result.stdout + result.stderr
-        passed_matches = re.findall(r'\[OK\]', output)
-        failed_matches = re.findall(r'\[FAILED\]', output)
 
-        passed_count = len(passed_matches)
-        failed_count = len(failed_matches)
+        # Try unittest2 format first (has [Summary] line)
+        summary_match = re.search(r'\[Summary\]\s+(\d+)\s+tests?\s+run.*?:\s+(\d+)\s+OK,\s+(\d+)\s+FAILED', output)
+        if summary_match:
+            total_tests = int(summary_match.group(1))
+            passed_count = int(summary_match.group(2))
+            failed_count = int(summary_match.group(3))
+        else:
+            # Fall back to unittest format (count [OK] and [FAILED] markers)
+            passed_matches = re.findall(r'\[OK\]', output)
+            failed_matches = re.findall(r'\[FAILED\]', output)
+            passed_count = len(passed_matches)
+            failed_count = len(failed_matches)
 
         if result.returncode != 0:
             # Check for compilation errors
