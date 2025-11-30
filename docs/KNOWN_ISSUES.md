@@ -83,6 +83,94 @@ This document tracks known architectural limitations and design issues that affe
 
 ---
 
+## -4. Population Transfer System Initialization Failure
+
+**Status:** ✅ **RESOLVED** (2025-11-29)
+**Discovered:** 2025-11-29 during test suite execution
+**Impact:** All population transfer tests failing, Space Guild transfers non-functional
+
+### Problem Description
+
+The population transfer system was completely non-functional due to uninitialized configuration, causing all 35 integration tests that depended on population transfers to fail.
+
+**Root Cause:**
+- `globalPopulationConfig` in `src/engine/population/types.nim` was declared but never initialized
+- `max_concurrent_transfers` remained at 0 (default value)
+- All population transfer orders were rejected with "Maximum 0 concurrent transfers reached"
+
+**Evidence:**
+- Test suite showed 13 failing test files before fix
+- All failures traced back to population transfer rejection
+- Space Guild transfers couldn't execute
+- No population could be moved between colonies
+
+### Solution Implemented
+
+**1. Config Initialization** (`src/engine/config/population_config.nim:92-123`)
+Added initialization code that bridges TOML config to legacy global variable:
+
+```nim
+## Initialize legacy global config (population/types.nim)
+pop_types.globalPopulationConfig = pop_types.PopulationTransferConfig(
+  soulsPerPtu: config.ptu_definition.souls_per_ptu,
+  ptuSizeMillions: config.ptu_definition.ptu_size_millions,
+  # ... 26 more fields mapped from TOML config
+  maxConcurrentTransfers: config.transfer_limits.max_concurrent_transfers,
+  # ...
+)
+```
+
+**2. Space Guild Best-Faith Delivery** (`src/engine/resolution/economy_resolution.nim:872-889`)
+Implemented proper fallback logic when destination is conquered during transit:
+- Space Guild now tries: destination → source → any owned colony → lost (only if house eliminated)
+- Matches behavior for blockaded/collapsed destinations per `config/population.toml`
+- Changed `dest_conquered_behavior` from "lost" to "closest_owned"
+
+**3. Test Improvements** (`tests/integration/test_space_guild.nim:463-551`)
+- Added scout fleets along pathfinding route for fog-of-war visibility compliance
+- Fixed PTU amounts for exact population unit conversions (20 PTU = 1 PU)
+- Fixed turn loop timing to include arrival turn
+- Updated test expectations to match Space Guild best-faith delivery behavior
+
+### Results
+
+**Before Fix:**
+- 35/35 integration test files tracked (13 shown as errors, many actually passing when run individually)
+- 40 test cases failing due to population transfer initialization
+- 0% population transfers working
+
+**After Fix:**
+- **35/35 integration test files PASSING** ✅
+- **669/669 test cases PASSING** ✅
+- **0 failures**
+- 100% population transfers working
+
+**Testing:** Full integration test suite validation with 60-second timeout per test
+
+### Files Modified
+
+**Configuration:**
+- `src/engine/config/population_config.nim` - Added 33 lines of initialization code
+
+**Engine:**
+- `src/engine/resolution/economy_resolution.nim` - Updated Space Guild delivery logic
+
+**Tests:**
+- `tests/integration/test_space_guild.nim` - Fixed visibility, timing, and PTU amounts
+
+### Related Commits
+
+- **2feb50b:** fix(population): Initialize globalPopulationConfig and implement Space Guild best-faith delivery (2025-11-29)
+
+### Benefits
+
+1. **System Functional**: Population transfers now work correctly
+2. **Space Guild Realistic**: Best-faith effort matches real-world neutral carrier behavior
+3. **Fog-of-War Compliant**: Tests properly grant visibility via scout fleets
+4. **Test Suite Clean**: All integration tests passing with proper infrastructure
+
+---
+
 ## -3. Sequential Order Processing Bias (Non-Deterministic First-Mover Advantage)
 
 **Status:** ✅ **RESOLVED** (2025-11-27)

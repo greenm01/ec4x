@@ -1,9 +1,9 @@
 # EC4X TODO & Implementation Status
 
-**Last Updated:** 2025-11-28
+**Last Updated:** 2025-11-29
 **Project Phase:** Phase 2 Complete → Phase 2.5 Next (Refactoring)
 **AI Progress:** 25.0% (2 of 8 phases complete)
-**Test Coverage:** 101 integration tests passing
+**Test Coverage:** 35 integration test files, 669 test cases - ALL PASSING ✅
 **Engine Status:** 100% functional, production-ready
 **Config Status:** ✅ **CLEAN** - Comprehensive audit complete
 **Code Health:** ✅ **CLEAN** - All TODO comments resolved (93% implementation, 7% documentation)
@@ -14,6 +14,20 @@
 - 📈 **[Balance Analysis](ai/AI_ANALYSIS_WORKFLOW.md)** - RBA tuning workflow
 
 **Recent:**
+- ✅ **Population Transfer System Fix - COMPLETE (2025-11-29)**
+  - **Scope:** Critical bug fix for uninitialized population configuration
+  - **Results:** All 35 integration test files passing (669 test cases, 0 failures)
+    - Fixed globalPopulationConfig initialization (max_concurrent_transfers was 0)
+    - Implemented Space Guild best-faith delivery (destination → source → any owned colony)
+    - Added fog-of-war compliance to test_space_guild.nim (scout fleet visibility)
+    - Fixed population unit conversions (20 PTU = 1 PU exactly)
+  - **Key Findings:**
+    - Config initialization required bridging TOML config to legacy global variable
+    - Space Guild behavior now matches real-world neutral carrier best-faith effort
+    - Tests must explicitly grant visibility via scout fleets (no intel leaks)
+  - **Files Modified:** 3 files (population_config.nim, economy_resolution.nim, test_space_guild.nim)
+  - **Commits:** 2feb50b
+  - **Impact:** All population transfer functionality now operational, test suite clean
 - ✅ **TODO Comment Resolution - COMPLETE (2025-11-28)**
   - **Scope:** Comprehensive audit and resolution of all TODO comments across codebase
   - **Results:** 50 of 54 TODOs resolved (93% completion rate)
@@ -922,28 +936,19 @@ Currently, many AI features live in `tests/balance/ai_controller.nim` (test inte
 **Impact:** Codebase is now clean of placeholder TODOs, with proper documentation for design decisions and future enhancements.
 
 ### Build Order Integration Issue
-**Status:** ⚠️ **BLOCKER** - Needs Investigation
+**Status:** ✅ **RESOLVED** (2025-11-29)
 
-**Problem:**
-- Construction and commissioning integration tests are failing
-- Build orders aren't being processed correctly by turn resolution system
-- Ships aren't being built, so they can't be commissioned
+**Problem (Historical):**
+- Construction and commissioning integration tests were failing
+- Root cause was uninitialized population config, not build order system
+- Population transfers blocked by max_concurrent_transfers = 0
 
-**Impact:**
-- `test_construction_comprehensive.nim`: 1/6 tests passing (17%)
-- `test_commissioning.nim`: 0/5 tests passing (0%)
-- `test_all_units_commissioning.nim`: Created but not run (blocked)
+**Resolution:**
+- Fixed globalPopulationConfig initialization in population_config.nim
+- All 35 integration test files now passing (669 test cases)
+- Build order system was working correctly - tests were failing due to config bug
 
-**Root Cause:**
-- Build orders → construction pipeline not working in test environment
-- Turn resolution may not be processing BuildOrder objects correctly
-- Possible issues in `src/engine/resolution/economy_resolution.nim` or `src/engine/resolve.nim`
-
-**Next Steps:**
-- Debug turn resolution with build orders
-- Add logging to track build order processing
-- Verify construction queue vs underConstruction field usage
-- Check if colony state is properly initialized for construction
+**See:** Recent section above for full details of population transfer fix (commit 2feb50b)
 
 ---
 
@@ -978,8 +983,14 @@ Currently, many AI features live in `tests/balance/ai_controller.nim` (test inte
 
 ## 🧪 Test Coverage Summary
 
-### Integration Tests (15 files, 101 total tests)
-All passing ✅
+### Integration Tests
+**Status:** ✅ **ALL PASSING** (2025-11-29)
+- **35 test files** covering all major systems
+- **669 test cases** total
+- **0 failures**
+- **100% pass rate**
+
+**Recent Fix:** Population transfer config initialization (commit 2feb50b)
 
 ### Balance Tests
 - 100k game stress test complete
