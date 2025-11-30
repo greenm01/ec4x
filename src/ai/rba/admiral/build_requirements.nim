@@ -420,74 +420,96 @@ proc assessStrategicAssets*(
   let cstLevel = house.techTree.levels.constructionTech
   let personality = controller.personality
 
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Admiral: Generating strategic assets (Act={currentAct}, CST={cstLevel})")
+
   # =============================================================================
   # CARRIERS & FIGHTERS (CST 3+)
   # =============================================================================
+  # BUDGETING STRATEGY:
+  #   - Colony-defense fighters = Military budget (treat like escorts: DD, CA)
+  #   - Carriers = SpecialUnits budget (strategic mobility platforms)
+  #   - Embarked fighters = SpecialUnits budget (offensive strike capability)
+  #
+  # BUILD STRATEGY:
+  #   - Build fighters FIRST for colony defense (cheap, immediate value)
+  #   - Build carriers LATER for offensive projection (expensive, strategic)
   if cstLevel >= 3:
     # Count existing carriers and fighters
     var carrierCount = 0
     var fighterCount = 0
-    var totalCarrierCapacity = 0
+    var colonyFighterCount = 0
+    var embarkedFighterCount = 0
 
     for fleet in filtered.ownFleets:
       for squadron in fleet.squadrons:
         if squadron.flagship.shipClass == ShipClass.Carrier:
           carrierCount += 1
-          totalCarrierCapacity += 3  # Simplified: CV holds 3
-          fighterCount += squadron.embarkedFighters.len
+          embarkedFighterCount += squadron.embarkedFighters.len
         elif squadron.flagship.shipClass == ShipClass.SuperCarrier:
           carrierCount += 1
-          totalCarrierCapacity += 5  # Simplified: CX holds 5
-          fighterCount += squadron.embarkedFighters.len
+          embarkedFighterCount += squadron.embarkedFighters.len
 
-    # Count colony-based fighters
+    # Count colony-based fighters (available for defense or later embarkation)
     for colony in filtered.ownColonies:
-      fighterCount += colony.fighterSquadrons.len
+      colonyFighterCount += colony.fighterSquadrons.len
 
-    # Aggressive houses want carriers for power projection
-    let wantsCarriers = personality.aggression > 0.5 or currentAct >= GameAct.Act2_RisingTensions
+    fighterCount = colonyFighterCount + embarkedFighterCount
 
-    if wantsCarriers:
-      # Request carriers based on fleet size and game phase
-      let targetCarriers = case currentAct
-        of GameAct.Act1_LandGrab: 1  # One carrier for expansion
-        of GameAct.Act2_RisingTensions: 2  # Two carriers for rising tensions
-        of GameAct.Act3_TotalWar: 3  # Three carriers for total war
-        of GameAct.Act4_Endgame: 4  # Four carriers for endgame
+    # PHASE 1: Request fighters for colony defense (Military budget)
+    # These are defensive assets, like escorts (DD/CA)
+    # Target: 2-8 fighters per game act for flexible defense/offense
+    let targetFighters = case currentAct
+      of GameAct.Act1_LandGrab: 2        # Basic defensive coverage
+      of GameAct.Act2_RisingTensions: 4  # Increased threat level
+      of GameAct.Act3_TotalWar: 6        # Full defensive commitment
+      of GameAct.Act4_Endgame: 8         # Maximum fighter production
 
-      if carrierCount < targetCarriers:
-        let carrierCost = if cstLevel >= 5: 200 else: 120
-        let carrierClass = if cstLevel >= 5: ShipClass.SuperCarrier else: ShipClass.Carrier
+    if fighterCount < targetFighters:
+      let fighterCost = getShipConstructionCost(ShipClass.Fighter)
+      let neededFighters = targetFighters - fighterCount
 
+      # Request fighters individually to enable incremental fulfillment
+      # Individual requests allow CFO to build what budget permits
+      for i in 0..<neededFighters:
         let req = BuildRequirement(
-          requirementType: RequirementType.StrategicAsset,
+          requirementType: RequirementType.DefenseGap,  # Defense fighters fill defensive gap
           priority: RequirementPriority.Medium,
-          shipClass: some(carrierClass),
-          quantity: targetCarriers - carrierCount,
-          buildObjective: BuildObjective.SpecialUnits,
+          shipClass: some(ShipClass.Fighter),
+          quantity: 1,  # Request one at a time for incremental fulfillment
+          buildObjective: BuildObjective.Military,  # Use Military budget, not SpecialUnits
           targetSystem: none(SystemId),
-          estimatedCost: carrierCost * (targetCarriers - carrierCount),
-          reason: &"Carrier strike force (have {carrierCount}/{targetCarriers})"
+          estimatedCost: fighterCost,
+          reason: &"Fighter defense squadron #{i+1} (have {fighterCount+i}/{targetFighters})"
         )
-        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x {carrierClass} ({req.estimatedCost}PP) - {req.reason}")
         result.add(req)
 
-      # Request fighters to fill carrier capacity
-      let targetFighters = totalCarrierCapacity
-      if fighterCount < targetFighters:
-        let fighterCost = getShipConstructionCost(ShipClass.Fighter)
-        let req = BuildRequirement(
-          requirementType: RequirementType.StrategicAsset,
-          priority: RequirementPriority.Low,
-          shipClass: some(ShipClass.Fighter),
-          quantity: targetFighters - fighterCount,
-          buildObjective: BuildObjective.SpecialUnits,
-          targetSystem: none(SystemId),
-          estimatedCost: fighterCost * (targetFighters - fighterCount),
-          reason: &"Fighter wings for carriers (have {fighterCount}/{targetFighters})"
-        )
-        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Fighter ({req.estimatedCost}PP) - {req.reason}")
-        result.add(req)
+      logInfo(LogCategory.lcAI, &"Admiral requests: {neededFighters}x Fighter (colony defense, 1 at a time, {fighterCost}PP each)")
+
+    # PHASE 2: Request carriers for offensive projection (SpecialUnits budget)
+    # Carriers are strategic mobility platforms - only build if we have fighters
+    let targetCarriers = case currentAct
+      of GameAct.Act1_LandGrab: 1  # One carrier for expansion
+      of GameAct.Act2_RisingTensions: 2  # Two carriers for rising tensions
+      of GameAct.Act3_TotalWar: 3  # Three carriers for total war
+      of GameAct.Act4_Endgame: 4  # Four carriers for endgame
+
+    if carrierCount < targetCarriers and fighterCount >= 2:  # Only request carriers if we have fighters
+      let carrierClass = if cstLevel >= 5: ShipClass.SuperCarrier else: ShipClass.Carrier
+      let carrierCost = getShipConstructionCost(carrierClass)
+
+      let req = BuildRequirement(
+        requirementType: RequirementType.StrategicAsset,
+        priority: RequirementPriority.Low,  # Lower priority: expensive, strategic (not urgent)
+        shipClass: some(carrierClass),
+        quantity: targetCarriers - carrierCount,
+        buildObjective: BuildObjective.SpecialUnits,  # Carriers use SpecialUnits budget
+        targetSystem: none(SystemId),
+        estimatedCost: carrierCost * (targetCarriers - carrierCount),
+        reason: &"Carrier mobility platform (have {carrierCount}/{targetCarriers}, {fighterCount} fighters available)"
+      )
+      logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x {carrierClass} ({req.estimatedCost}PP) - {req.reason}")
+      result.add(req)
 
   # =============================================================================
   # STARBASES (for fighter support & colony defense)
@@ -576,13 +598,14 @@ proc assessStrategicAssets*(
 
   if totalCapitalShips < targetCapitalShips:
     # Choose capital ship type based on CST level and personality
-    let (capitalClass, capitalCost) =
+    let capitalClass =
       if cstLevel >= 5 and personality.aggression > 0.7:
-        (ShipClass.Dreadnought, 180)  # Aggressive: DNs for firepower
+        ShipClass.Dreadnought  # Aggressive: DNs for firepower
       elif cstLevel >= 4:
-        (ShipClass.Battleship, 120)  # Standard: BBs for balance
+        ShipClass.Battleship  # Standard: BBs for balance
       else:
-        (ShipClass.Battlecruiser, 80)  # Early: BCs for mobility
+        ShipClass.Battlecruiser  # Early: BCs for mobility
+    let capitalCost = getShipConstructionCost(capitalClass)
 
     let req = BuildRequirement(
       requirementType: RequirementType.OffensivePrep,
@@ -761,6 +784,9 @@ proc generateBuildRequirements*(
   currentAct: GameAct
 ): BuildRequirements =
   ## Main entry point: Generate all build requirements from Admiral analysis
+
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Admiral: Generating build requirements (Act={currentAct})")
 
   # Assess gaps (personality-driven)
   let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct)

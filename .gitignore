@@ -61,7 +61,7 @@ flake.lock
 # Compiled binaries - Pattern-based exclusions
 /client
 /moderator
-main
+/main
 
 # All executables in src/ and tests/ (but not .nim files)
 src/**/[!.]*.exe
