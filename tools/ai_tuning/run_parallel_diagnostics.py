@@ -102,7 +102,7 @@ def compile_simulation() -> bool:
     Compile run_simulation with FORCE RECOMPILE to prevent stale binary bugs.
 
     Per UNKNOWN_UNKNOWNS_FINDINGS_2025-11-25.md:
-    - ALWAYS recompile to ensure dependencies (ai_controller.nim, etc.) are fresh
+    - ALWAYS recompile to ensure dependencies (RBA modules, engine, etc.) are fresh
     - Verify binary is less than 5 minutes old after compilation
     - This prevents the "stale binary meta-bug" that cost 4+ hours of debugging
     """

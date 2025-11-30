@@ -11,6 +11,7 @@
 import std/[os, tables, strformat]
 import toml_serialization
 import ../../engine/config/validators
+import ../../engine/logger
 
 # ==============================================================================
 # Strategy Personalities
@@ -326,7 +327,7 @@ proc loadRBAConfig*(configPath: string = "config/rba.toml"): RBAConfig =
   # Validate configuration after loading
   validateRBAConfig(result)
 
-  echo "[Config] Loaded RBA configuration from ", configPath
+  logInfo(LogCategory.lcAI, &"Loaded RBA configuration from {configPath}")
 
 ## Global configuration instance
 ## Loaded once at module initialization
@@ -340,7 +341,7 @@ proc reloadRBAConfig*() =
   ## - Genetic algorithm parameter evolution
   ## - Iterative tuning during development
   globalRBAConfig = loadRBAConfig()
-  echo "[Config] Reloaded RBA configuration"
+  logInfo(LogCategory.lcAI, "Reloaded RBA configuration")
 
 proc reloadRBAConfigFromPath*(configPath: string) =
   ## Reload configuration from custom path
@@ -348,4 +349,4 @@ proc reloadRBAConfigFromPath*(configPath: string) =
   ## - Testing evolved configs from genetic algorithm
   ## - A/B testing different parameter sets
   globalRBAConfig = loadRBAConfig(configPath)
-  echo "[Config] Reloaded RBA configuration from ", configPath
+  logInfo(LogCategory.lcAI, &"Reloaded RBA configuration from {configPath}")
