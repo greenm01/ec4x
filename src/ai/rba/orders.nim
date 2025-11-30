@@ -312,8 +312,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   remainingTreasury -= espionageTotalInvestment
   reservedBudgets["espionage"] = espionageTotalInvestment
 
-  logInfo(LogCategory.lcAI,
-          &"DIAGNOSTIC: {controller.houseId} Espionage budget BEFORE builds: " &
+  logDebug(LogCategory.lcAI,
+          &"{controller.houseId} Espionage budget before builds: " &
           &"treasury={filtered.ownHouse.treasury}, investment={espionageTotalInvestment}PP " &
           &"({int(espionageInvestmentPct * 100)}%), EBP={espionageEBPInvestment}, CIP={espionageCIPInvestment}, " &
           &"remaining={remainingTreasury}PP")
@@ -396,8 +396,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     else:
       scoutCount < globalRBAConfig.orders.scout_count_act3_plus  # Act 3+: 9 scouts for full ELI mesh + espionage support
 
-  logInfo(LogCategory.lcAI,
-          &"DIAGNOSTIC: {controller.houseId} Scout decision - Act={currentAct}, " &
+  logDebug(LogCategory.lcAI,
+          &"{controller.houseId} Scout decision - Act={currentAct}, " &
           &"scoutCount={scoutCount}, needScouts={needScouts}")
 
   # ==========================================================================
@@ -451,10 +451,6 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let needCarriers = cst >= 3 and needFighters  # Carriers support fighters (matches ships.toml tech_level)
   let needTransports = cst >= 1 and p.aggression > 0.3  # Troop transports (lowered aggression from 0.4 to 0.3)
   let needRaiders = cst >= 2 and p.aggression > 0.5  # Raiders (lowered CST from 3 to 2, aggression from 0.6 to 0.5)
-
-  # DIAGNOSTIC LOGGING: Track fighter build pipeline
-  logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] {controller.houseId} needs: " &
-          &"fighters={needFighters}, carriers={needCarriers}, CST={cst}, aggression={p.aggression}")
 
   # Admiral-CFO Feedback Loop: Iteratively adjust priorities until budget fits
   # MAX_ITERATIONS is enforced in reprioritizeRequirements() to prevent infinite loops
