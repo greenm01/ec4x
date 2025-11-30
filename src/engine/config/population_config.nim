@@ -88,3 +88,36 @@ proc ptuSizeMillions*(): float =
 proc reloadPopulationConfig*() =
   ## Reload configuration from file
   config = loadPopulationConfig()
+
+## Initialize legacy global config (population/types.nim)
+## TODO: Refactor to use new config structure throughout codebase
+
+import ../population/types as pop_types
+
+pop_types.globalPopulationConfig = pop_types.PopulationTransferConfig(
+  soulsPerPtu: config.ptu_definition.souls_per_ptu,
+  ptuSizeMillions: config.ptu_definition.ptu_size_millions,
+  edenCost: config.transfer_costs.eden_cost,
+  lushCost: config.transfer_costs.lush_cost,
+  benignCost: config.transfer_costs.benign_cost,
+  harshCost: config.transfer_costs.harsh_cost,
+  hostileCost: config.transfer_costs.hostile_cost,
+  desolateCost: config.transfer_costs.desolate_cost,
+  extremeCost: config.transfer_costs.extreme_cost,
+  turnsPerJump: config.transfer_time.turns_per_jump,
+  minimumTurns: config.transfer_time.minimum_turns,
+  costIncreasePerJump: config.transfer_modifiers.cost_increase_per_jump,
+  minPtuTransfer: config.transfer_limits.min_ptu_transfer,
+  minSourcePuRemaining: config.transfer_limits.min_source_pu_remaining,
+  maxConcurrentTransfers: config.transfer_limits.max_concurrent_transfers,
+  sourceConqueredBehavior: config.transfer_risks.source_conquered_behavior,
+  destConqueredBehavior: config.transfer_risks.dest_conquered_behavior,
+  destBlockadedBehavior: config.transfer_risks.dest_blockaded_behavior,
+  minTreasuryForTransfer: config.ai_strategy.min_treasury_for_transfer,
+  minSourcePopulation: config.ai_strategy.min_source_population,
+  maxDestPopulation: config.ai_strategy.max_dest_population,
+  recentColonyAgeTurns: config.ai_strategy.recent_colony_age_turns,
+  ptuPerTransfer: config.ai_strategy.ptu_per_transfer,
+  minEconomicFocus: config.ai_strategy.min_economic_focus,
+  minExpansionDrive: config.ai_strategy.min_expansion_drive
+)

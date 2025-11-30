@@ -10,7 +10,7 @@
 ## - Transfer validation (source/destination ownership, capacity)
 
 import std/[unittest, tables, options]
-import ../../src/engine/[gamestate, orders, resolve, starmap]
+import ../../src/engine/[gamestate, orders, resolve, starmap, fleet]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/economy/types as econ_types
@@ -460,10 +460,32 @@ suite "In-Transit Ownership Changes":
 
     result
 
-  test "Colonists lost when destination conquered during transit":
+  test "Colonists returned to source when destination conquered during transit":
     var state = createTestState()
     let sourceSystemId = state.starMap.playerSystemIds[0]
     let destSystemId = state.starMap.playerSystemIds[1]
+
+    # Grant visibility on path by placing scout fleets (fog of war requirement)
+    # Find path between systems and add fleets for visibility
+    let dummyFleet = Fleet(
+      id: "path_calc",
+      owner: "house1",
+      location: sourceSystemId,
+      squadrons: @[],
+      spaceliftShips: @[]
+    )
+    let pathResult = state.starMap.findPath(sourceSystemId, destSystemId, dummyFleet)
+    if pathResult.found:
+      # Add scout fleet at each system in path for visibility
+      for i, systemId in pathResult.path:
+        let scoutFleet = Fleet(
+          id: "scout_" & $i,
+          owner: "house1",
+          location: systemId,
+          squadrons: @[],
+          spaceliftShips: @[]
+        )
+        state.fleets["scout_" & $i] = scoutFleet
 
     let initialSourcePop = state.colonies[sourceSystemId].population
     let initialDestPop = state.colonies[destSystemId].population
@@ -472,7 +494,7 @@ suite "In-Transit Ownership Changes":
     let transferOrder = PopulationTransferOrder(
       sourceColony: sourceSystemId,
       destColony: destSystemId,
-      ptuAmount: 10  # 10 PTU = 1 PU
+      ptuAmount: 20  # 20 PTU = 1 PU (1 PTU = 50k souls = 0.05 million)
     )
 
     var packet = OrderPacket(
@@ -504,25 +526,31 @@ suite "In-Transit Ownership Changes":
     # Verify in-transit entry created
     check state.populationInTransit.len == 1
 
-    # Simulate conquest: change destination ownership to house2
+    # Get arrival turn from the in-transit entry
+    let arrivalTurn = state.populationInTransit[0].arrivalTurn
+
+    # Simulate conquest: change destination ownership to house2 (during transit)
     state.colonies[destSystemId].owner = "house2"
 
-    # Turn 2: Transfer arrives, but destination is now enemy-controlled
-    packet.turn = state.turn
+    # Advance turns until arrival (no new transfers)
     packet.populationTransfers = @[]  # No new transfers
-    orders["house1"] = packet
+    while state.turn <= arrivalTurn:
+      packet.turn = state.turn
+      orders["house1"] = packet
+      let result = resolveTurn(state, orders)
+      state = result.newState
+      if state.populationInTransit.len == 0:
+        break  # Transfer arrived and processed
 
-    let result2 = resolveTurn(state, orders)
-    state = result2.newState
-
-    # Verify in-transit cleared
+    # Verify in-transit cleared (colonists delivered somewhere)
     check state.populationInTransit.len == 0
 
-    # Verify destination population UNCHANGED (colonists lost, not delivered)
+    # Verify destination population UNCHANGED (not delivered there, it's conquered)
     check state.colonies[destSystemId].population == initialDestPop
 
-    # Verify source population stayed reduced (colonists don't return)
-    check state.colonies[sourceSystemId].population < initialSourcePop
+    # Verify source population RESTORED (Guild returned colonists to source)
+    # Source is closest owned colony, so colonists delivered back
+    check state.colonies[sourceSystemId].population == initialSourcePop
 
   test "Colonists returned when destination blockaded during transit":
     # NOTE: This test is currently disabled because it requires starmap/jump lane data
