@@ -1,0 +1,322 @@
+## Protostrator Diplomatic Requirements Module
+##
+## Byzantine Imperial Protostrator - Diplomatic Requirements Generation
+##
+## Generates diplomatic requirements with priorities for Basileus mediation
+## Intelligence-driven diplomacy (NAPs with strong enemies, wars against weak)
+
+import std/[tables, options, strformat, sequtils, strutils]
+import ../../../common/types/[core, diplomacy]
+import ../../../engine/[gamestate, fog_of_war, logger]
+import ../../../engine/diplomacy/types as dip_types
+import ../controller_types
+import ../../common/types as ai_types
+
+proc evaluateWarReadiness(
+  ownPrestige: int,
+  targetPrestige: int,
+  ownColonies: int,
+  targetColonies: int,
+  hasVulnerableColonies: bool,
+  sharedBorders: int,
+  targetAllies: int,
+  currentAct: ai_types.GameAct,
+  personality: AIPersonality
+): tuple[shouldDeclare: bool, score: float, reason: string] =
+  ## Multi-factor war evaluation system (user-selected threshold: 3.0)
+  ##
+  ## Factors:
+  ## 1. Prestige gap (act-adjusted thresholds)
+  ## 2. Vulnerable colonies detected
+  ## 3. Land hunger (own colonies < 6)
+  ## 4. Border friction (shared borders >= 2)
+  ## 5. Diplomatic isolation (target has no allies)
+  ## 6. Personality scaling (aggression multiplier)
+
+  var score = 0.0
+  var reasons: seq[string] = @[]
+
+  let prestigeGap = ownPrestige - targetPrestige
+
+  # Factor 1: Prestige gap (act-adjusted thresholds)
+  let actThreshold = case currentAct
+    of ai_types.GameAct.Act1_LandGrab: -400
+    of ai_types.GameAct.Act2_RisingTensions: -200
+    of ai_types.GameAct.Act3_TotalWar: -100
+    of ai_types.GameAct.Act4_Endgame: 0
+
+  if prestigeGap < actThreshold:
+    score += 2.0
+    reasons.add(&"prestige lead ({prestigeGap})")
+
+  # Factor 2: Vulnerable colonies detected
+  if hasVulnerableColonies:
+    score += 1.5
+    reasons.add("vulnerable colonies")
+
+  # Factor 3: Land hunger
+  if ownColonies < 6 and currentAct >= ai_types.GameAct.Act2_RisingTensions:
+    score += 1.5
+    reasons.add(&"land hunger ({ownColonies} colonies)")
+
+  # Factor 4: Border friction
+  if sharedBorders >= 2:
+    score += 0.5 * sharedBorders.float
+    reasons.add(&"{sharedBorders} shared borders")
+
+  # Factor 5: Diplomatic isolation
+  if targetAllies == 0:
+    score += 1.0
+    reasons.add("target isolated")
+
+  # Factor 6: Scale by personality aggression
+  score *= personality.aggression
+
+  let shouldDeclare = score >= 3.0
+  let reason = if shouldDeclare: reasons.join(", ") else: ""
+
+  return (shouldDeclare, score, reason)
+
+proc countSharedBorders(intelSnapshot: IntelligenceSnapshot, ownHouse: HouseId, targetHouse: HouseId): int =
+  ## Count systems where we share borders with the target house
+  result = 0
+
+  # Find our colonies
+  var ownColonySystems: seq[SystemId] = @[]
+  for (systemId, owner) in intelSnapshot.knownEnemyColonies:
+    if owner == ownHouse:
+      ownColonySystems.add(systemId)
+
+  # Find target colonies
+  var targetColonySystems: seq[SystemId] = @[]
+  for (systemId, owner) in intelSnapshot.knownEnemyColonies:
+    if owner == targetHouse:
+      targetColonySystems.add(systemId)
+
+  # Count adjacent pairs
+  for ownSys in ownColonySystems:
+    for targetSys in targetColonySystems:
+      # Simple adjacency check - systems are adjacent if within reasonable distance
+      # TODO: Use actual jump lane data when available
+      result += 1
+      break  # Count each of our colonies once
+
+proc countAllies(filtered: FilteredGameState, houseId: HouseId): int =
+  ## Count how many houses have NAP/Alliance with the target
+  result = 0
+  for pair, state in filtered.houseDiplomacy.pairs:
+    let (house1, house2) = pair
+    if (house1 == houseId or house2 == houseId) and state == dip_types.DiplomaticState.NonAggression:
+      result += 1
+
+proc generateDiplomaticRequirements*(
+  controller: AIController,
+  filtered: FilteredGameState,
+  intelSnapshot: IntelligenceSnapshot
+): DiplomaticRequirements =
+  ## Generate diplomatic requirements with intelligence-driven priorities
+  ##
+  ## Priority tiers:
+  ## - Critical: Emergency peace with overwhelming enemies
+  ## - High: NAPs with stronger powers, war declarations against vulnerable enemies
+  ## - Medium: Alliance proposals, pact renewals
+  ## - Low: Opportunistic diplomacy, relationship maintenance
+  ## - Deferred: Luxury diplomacy (non-strategic pacts)
+  ##
+  ## NOTE: Diplomacy costs 0 PP, so no budget feedback needed
+  ## Basileus provides feedback on priority conflicts only
+
+  result.requirements = @[]
+  result.generatedTurn = filtered.turn
+  result.iteration = 0
+
+  let p = controller.personality
+  let house = filtered.ownHouse
+  let myPrestige = house.prestige
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Protostrator: Generating diplomatic requirements " &
+          &"(prestige={myPrestige}, diplomacyValue={p.diplomacyValue:.2f})")
+
+  # === Analyze other houses for diplomatic opportunities ===
+  type DiplomaticTarget = object
+    houseId: HouseId
+    prestige: int
+    prestigeGap: int  # positive = they're stronger
+    currentRelation: dip_types.DiplomaticState
+    recommendedAction: DiplomaticRequirementType
+    priority: RequirementPriority
+    reason: string
+
+  var diplomaticTargets: seq[DiplomaticTarget] = @[]
+
+  for houseId, prestige in filtered.housePrestige:
+    if houseId == controller.houseId:
+      continue
+
+    let prestigeGap = prestige - myPrestige
+    let relation = dip_types.getDiplomaticState(house.diplomaticRelations, houseId)
+
+    var target = DiplomaticTarget(
+      houseId: houseId,
+      prestige: prestige,
+      prestigeGap: prestigeGap,
+      currentRelation: relation,
+      recommendedAction: DiplomaticRequirementType.MaintainRelations,
+      priority: RequirementPriority.Low,
+      reason: ""
+    )
+
+    # === DECISION LOGIC: Determine recommended action ===
+
+    case relation
+    of dip_types.DiplomaticState.Neutral:
+      # No current pact - evaluate strategic position
+      if prestigeGap > 500:
+        # Much stronger enemy - seek NAP to avoid conflict
+        target.recommendedAction = DiplomaticRequirementType.ProposePact
+        target.priority = RequirementPriority.Critical
+        target.reason = &"NAP with overwhelming power {houseId} (prestige gap: {prestigeGap})"
+      elif prestigeGap > 200:
+        # Moderately stronger - NAP if diplomatic-focused
+        if p.diplomacyValue > 0.6:
+          target.recommendedAction = DiplomaticRequirementType.ProposePact
+          target.priority = RequirementPriority.High
+          target.reason = &"NAP with stronger power {houseId} (prestige gap: {prestigeGap})"
+      else:
+        # Multi-factor war evaluation
+        # Check if they have vulnerable colonies
+        var hasVulnerableColonies = false
+        for targetSystem in intelSnapshot.highValueTargets:
+          for (systemId, owner) in intelSnapshot.knownEnemyColonies:
+            if owner == houseId and systemId == targetSystem:
+              hasVulnerableColonies = true
+              break
+
+        # Count our colonies and target colonies
+        let ownColonies = filtered.ownColonies.len
+        var targetColonies = 0
+        for (systemId, owner) in intelSnapshot.knownEnemyColonies:
+          if owner == houseId:
+            targetColonies += 1
+
+        # Calculate shared borders and allies
+        let sharedBorders = countSharedBorders(intelSnapshot, controller.houseId, houseId)
+        let targetAllies = countAllies(filtered, houseId)
+
+        # Get current game act
+        let currentAct = ai_types.getCurrentGameAct(filtered.turn)
+
+        # Evaluate war readiness with multi-factor system
+        let warEval = evaluateWarReadiness(
+          myPrestige, prestige,
+          ownColonies, targetColonies,
+          hasVulnerableColonies,
+          sharedBorders, targetAllies,
+          currentAct, p
+        )
+
+        if warEval.shouldDeclare:
+          target.recommendedAction = DiplomaticRequirementType.DeclareWar
+          target.priority = RequirementPriority.High
+          target.reason = &"War against {houseId}: {warEval.reason} (score: {warEval.score:.1f})"
+
+    of dip_types.DiplomaticState.NonAggression:
+      # Have NAP - maintain or upgrade to alliance
+      if prestigeGap > 300 and p.diplomacyValue > 0.7:
+        # Strong ally - consider alliance
+        target.recommendedAction = DiplomaticRequirementType.ProposePact
+        target.priority = RequirementPriority.Medium
+        target.reason = &"Upgrade NAP to Alliance with {houseId} (mutual benefit)"
+      else:
+        # Maintain NAP
+        target.recommendedAction = DiplomaticRequirementType.MaintainRelations
+        target.priority = RequirementPriority.Low
+        target.reason = &"Maintain NAP with {houseId}"
+
+    # Note: Alliance state not yet implemented in diplomacy system
+    # of dip_types.DiplomaticState.Alliance:
+    #   target.recommendedAction = DiplomaticRequirementType.MaintainRelations
+    #   target.priority = RequirementPriority.Low
+    #   target.reason = &"Maintain Alliance with {houseId}"
+
+    of dip_types.DiplomaticState.Enemy:
+      # At war - evaluate if peace is needed
+      if prestigeGap > 600:
+        # Overwhelming enemy - seek peace urgently
+        target.recommendedAction = DiplomaticRequirementType.SeekPeace
+        target.priority = RequirementPriority.Critical
+        target.reason = &"Emergency peace with overwhelming {houseId} (gap: {prestigeGap})"
+      elif prestigeGap > 300 and p.aggression < 0.4:
+        # Stronger enemy - seek peace if not aggressive
+        target.recommendedAction = DiplomaticRequirementType.SeekPeace
+        target.priority = RequirementPriority.High
+        target.reason = &"Peace with stronger {houseId} (gap: {prestigeGap})"
+      else:
+        # Continue war (either winning or aggressive personality)
+        target.recommendedAction = DiplomaticRequirementType.MaintainRelations
+        target.priority = RequirementPriority.Low
+        target.reason = &"Continue war with {houseId}"
+
+    # Add target if action is needed
+    if target.recommendedAction != DiplomaticRequirementType.MaintainRelations or
+       target.priority >= RequirementPriority.High:
+      diplomaticTargets.add(target)
+
+  # === GENERATE REQUIREMENTS ===
+  for target in diplomaticTargets:
+    # Determine pact type for proposals
+    var pactType: Option[PactType] = none(PactType)
+    if target.recommendedAction == DiplomaticRequirementType.ProposePact:
+      # Default to NAP, unless upgrading to Alliance
+      if target.currentRelation == dip_types.DiplomaticState.NonAggression:
+        pactType = some(PactType.Alliance)
+      else:
+        pactType = some(PactType.NAP)
+
+    result.requirements.add(DiplomaticRequirement(
+      requirementType: target.recommendedAction,
+      priority: target.priority,
+      targetHouse: target.houseId,
+      pactType: pactType,
+      estimatedCost: 0,  # Diplomacy costs 0 PP
+      reason: target.reason,
+      expectedBenefit: case target.recommendedAction
+        of DiplomaticRequirementType.ProposePact:
+          "Secure borders and avoid costly conflicts"
+        of DiplomaticRequirementType.DeclareWar:
+          "Expand territory and prestige through conquest"
+        of DiplomaticRequirementType.SeekPeace:
+          "End costly war and rebuild strength"
+        else:
+          "Maintain diplomatic stability"
+    ))
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Protostrator: Generated {result.requirements.len} diplomatic requirements")
+
+  return result
+
+proc reprioritizeDiplomaticRequirements*(
+  originalRequirements: DiplomaticRequirements,
+  basileusFeedback: string  # Future: Basileus priority conflict feedback
+): DiplomaticRequirements =
+  ## Reprioritize diplomatic requirements based on Basileus feedback
+  ##
+  ## NOTE: Diplomacy costs 0 PP, so no Treasurer feedback needed
+  ## This function handles priority conflicts from Basileus (future implementation)
+
+  result = DiplomaticRequirements(
+    requirements: originalRequirements.requirements,
+    generatedTurn: originalRequirements.generatedTurn,
+    iteration: originalRequirements.iteration + 1
+  )
+
+  # For now, no reprioritization needed (diplomacy costs 0 PP)
+  # Future: Handle Basileus feedback on priority conflicts
+  # e.g., "War declaration conflicts with NAP proposal to ally"
+
+  logInfo(LogCategory.lcAI,
+          &"Protostrator: Diplomatic requirements unchanged (iteration {result.iteration})")
+
+  return result

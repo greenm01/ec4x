@@ -7,10 +7,18 @@ import ../../common/types/[core, tech, units]
 import ../../engine/[gamestate, fog_of_war, orders, logger, fleet]
 import ../../engine/economy/construction  # For getShipConstructionCost
 import ../../engine/research/types as res_types
+<<<<<<< HEAD
 import ../../engine/research/advancement  # For max tech level constants
 import ../common/types as ai_types  # For getCurrentGameAct, GameAct
 import ./[controller_types, budget, espionage, economic, tactical, strategic, diplomacy, intelligence, logistics, standing_orders_manager, admiral]
 import ./config  # RBA configuration system
+=======
+import ../common/types as ai_types
+import ./[controller_types, budget, drungarius, eparch, tactical, strategic, protostrator, intelligence, logistics, standing_orders_manager, domestikos, logothete]
+import ./config
+import ./orders/[utils, phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, phase4_feedback]
+import ./basileus/[personality, execution]  # For AdvisorType and centralized execution
+>>>>>>> 81f0a02 (feat(ai): Implement Byzantine Basileus combat enhancement system)
 
 export core, orders, standing_orders_manager
 
@@ -330,7 +338,45 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # BUILD ORDERS (Using RBA Budget Module)
   # ==========================================================================
+<<<<<<< HEAD
   # Generate build orders using multi-objective budget allocation
+=======
+  var allocation = mediateAndAllocateBudget(controller, filtered, currentAct)
+
+  # ==========================================================================
+  # PHASE 3: REQUIREMENT EXECUTION
+  # ==========================================================================
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Phase 3: Requirement Execution ===")
+
+  # Execute research allocation (via Basileus)
+  let researchBudget = allocation.budgets.getOrDefault(controller_types.AdvisorType.Logothete, 0)
+  result.researchAllocation = execution.executeResearchAllocation(controller, filtered, researchBudget)
+
+  # Execute espionage action
+  result.espionageAction = executeEspionageAction(controller, filtered, allocation, rng)
+
+  # Set EBP/CIP investment from allocation
+  # Extract from Drungarius requirements
+  if controller.drungariusRequirements.isSome:
+    for req in controller.drungariusRequirements.get().requirements:
+      case req.requirementType
+      of EspionageRequirementType.EBPInvestment:
+        result.ebpInvestment += req.estimatedCost
+      of EspionageRequirementType.CIPInvestment:
+        result.cipInvestment += req.estimatedCost
+      else:
+        discard
+
+  # Execute terraform orders
+  result.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
+
+  # Execute diplomatic actions (via Basileus)
+  result.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
+
+  # Execute build orders (using existing budget module for now)
+  # TODO: Refactor budget.nim to use Domestikos requirements directly
+>>>>>>> 81f0a02 (feat(ai): Implement Byzantine Basileus combat enhancement system)
   let myColonies = getOwnedColonies(filtered, controller.houseId)
 
   # Calculate context flags for build decision-making
@@ -482,8 +528,17 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
                 &"{controller.houseId} Admiral-CFO feedback loop: Re-running budget with reprioritized requirements " &
                 &"(iteration {reprioritized.iteration})")
 
+<<<<<<< HEAD
         # Update controller with reprioritized requirements
         controller.admiralRequirements = some(reprioritized)
+=======
+    # Re-execute requirements (via Basileus)
+    let researchBudgetFeedback = allocation.budgets.getOrDefault(controller_types.AdvisorType.Logothete, 0)
+    result.researchAllocation = execution.executeResearchAllocation(controller, filtered, researchBudgetFeedback)
+    result.espionageAction = executeEspionageAction(controller, filtered, allocation, rng)
+    result.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
+    result.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
+>>>>>>> 81f0a02 (feat(ai): Implement Byzantine Basileus combat enhancement system)
 
         # Clear previous CFO feedback for new iteration
         controller.cfoFeedback = none(CFOFeedback)
@@ -517,11 +572,23 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # STRATEGIC OPERATIONS PLANNING
   # ==========================================================================
+<<<<<<< HEAD
   # Identify invasion opportunities and plan coordinated operations
   # This populates controller.operations which are then executed in fleet orders
   # Strategic planning happens in ALL acts - personality determines invasion timing
   if p.aggression > 0.4:
     let invasionTargets = identifyInvasionOpportunities(controller, filtered)
+=======
+  # Act-aware invasion planning (user preference: undefended only in Act 1)
+  let allowInvasions = case currentAct
+    of ai_types.GameAct.Act1_LandGrab:
+      false  # Will be conditionally allowed in identifyInvasionOpportunities
+    else:
+      p.aggression > 0.4
+
+  if allowInvasions or currentAct == ai_types.GameAct.Act1_LandGrab:
+    let invasionTargets = identifyInvasionOpportunities(controller, filtered, currentAct)
+>>>>>>> 81f0a02 (feat(ai): Implement Byzantine Basileus combat enhancement system)
 
     # Plan invasions for all viable targets (no artificial limit)
     for targetSystem in invasionTargets:

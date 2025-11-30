@@ -385,10 +385,13 @@ proc identifyVulnerableTargets*(controller: var AIController, filtered: Filtered
 
   result.sort(proc(a, b: auto): int = cmp(a.relativeStrength, b.relativeStrength))
 
-proc identifyInvasionOpportunities*(controller: var AIController, filtered: FilteredGameState): seq[SystemId] =
+proc identifyInvasionOpportunities*(controller: var AIController, filtered: FilteredGameState, currentAct: GameAct): seq[SystemId] =
   ## Identify enemy colonies that warrant coordinated invasion
   ## USES INTELLIGENCE REPORTS: Combines current visibility with intelligence database
   ## This allows invasion planning even when scouts aren't actively watching targets
+  ##
+  ## Act 1 behavior (user preference): Only undefended colonies allowed ("border incidents")
+  ## Act 2+: All vulnerable colonies based on aggression and strength ratios
   result = @[]
 
   let vulnerableTargets = controller.identifyVulnerableTargets(filtered)
@@ -498,6 +501,11 @@ proc identifyInvasionOpportunities*(controller: var AIController, filtered: Filt
     if defenseStrength >= 200:
       skippedDefense += 1
       continue
+
+    # Act 1 filter: Only allow undefended colonies (border incidents)
+    if currentAct == GameAct.Act1_LandGrab:
+      if defenseStrength > 0:
+        continue  # Skip defended colonies in Act 1
 
     result.add(enemyCol.systemId)
 
