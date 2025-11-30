@@ -1,4 +1,0 @@
-nimTitle	ai_special_modes	engine/ai_special_modes.html	module src/engine/ai_special_modes		0
-nim	getDefensiveCollapseOrders	engine/ai_special_modes.html#getDefensiveCollapseOrders,GameState,HouseId	proc getDefensiveCollapseOrders(state: GameState; houseId: HouseId): seq[\n    (FleetId, FleetOrder)]		31
-nim	getAutopilotOrders	engine/ai_special_modes.html#getAutopilotOrders,GameState,HouseId	proc getAutopilotOrders(state: GameState; houseId: HouseId): seq[\n    (FleetId, FleetOrder)]		134
-nim	updateMIAStatus	engine/ai_special_modes.html#updateMIAStatus,GameState,seq[HouseId]	proc updateMIAStatus(state: var GameState; housesWithOrders: seq[HouseId])		227

@@ -1,6 +1,0 @@
-nimTitle	simultaneous_blockade	engine/resolution/simultaneous_blockade.html	module src/engine/resolution/simultaneous_blockade		0
-nim	collectBlockadeIntents	engine/resolution/simultaneous_blockade.html#collectBlockadeIntents,GameState,Table[HouseId,OrderPacket]	proc collectBlockadeIntents(state: GameState; orders: Table[HouseId, OrderPacket]): seq[\n    BlockadeIntent]		16
-nim	detectBlockadeConflicts	engine/resolution/simultaneous_blockade.html#detectBlockadeConflicts,seq[BlockadeIntent]	proc detectBlockadeConflicts(intents: seq[BlockadeIntent]): seq[BlockadeConflict]		55
-nim	resolveBlockadeConflict	engine/resolution/simultaneous_blockade.html#resolveBlockadeConflict,GameState,BlockadeConflict,Rand	proc resolveBlockadeConflict(state: var GameState; conflict: BlockadeConflict;\n                        rng: var Rand): seq[BlockadeResult]		73
-nim	resolveBlockades	engine/resolution/simultaneous_blockade.html#resolveBlockades,GameState,Table[HouseId,OrderPacket],Rand	proc resolveBlockades(state: var GameState; orders: Table[HouseId, OrderPacket];\n                 rng: var Rand): seq[BlockadeResult]		131
-nim	wasBlockadeHandled	engine/resolution/simultaneous_blockade.html#wasBlockadeHandled,seq[BlockadeResult],HouseId,FleetId	proc wasBlockadeHandled(results: seq[BlockadeResult]; houseId: HouseId;\n                   fleetId: FleetId): bool		149

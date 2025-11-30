@@ -1,9 +1,0 @@
-nimTitle	ground_units_config	engine/config/ground_units_config.html	module src/engine/config/ground_units_config		0
-nim	PlanetaryShieldConfig	engine/config/ground_units_config.html#PlanetaryShieldConfig	object PlanetaryShieldConfig		11
-nim	GroundBatteryConfig	engine/config/ground_units_config.html#GroundBatteryConfig	object GroundBatteryConfig		24
-nim	ArmyConfig	engine/config/ground_units_config.html#ArmyConfig	object ArmyConfig		37
-nim	MarineDivisionConfig	engine/config/ground_units_config.html#MarineDivisionConfig	object MarineDivisionConfig		51
-nim	GroundUnitsConfig	engine/config/ground_units_config.html#GroundUnitsConfig	object GroundUnitsConfig		66
-nim	loadGroundUnitsConfig	engine/config/ground_units_config.html#loadGroundUnitsConfig,string	proc loadGroundUnitsConfig(configPath: string = "config/ground_units.toml"): GroundUnitsConfig		73
-nim	globalGroundUnitsConfig	engine/config/ground_units_config.html#globalGroundUnitsConfig	var globalGroundUnitsConfig		87
-nim	reloadGroundUnitsConfig	engine/config/ground_units_config.html#reloadGroundUnitsConfig	proc reloadGroundUnitsConfig()		91

@@ -1,5 +1,0 @@
-nimTitle	engine	engine/combat/engine.html	module src/engine/combat/engine		0
-nim	resolveCombat	engine/combat/engine.html#resolveCombat,BattleContext	proc resolveCombat(context: BattleContext): CombatResult		17
-nim	initializeCombatSquadron	engine/combat/engine.html#initializeCombatSquadron,Squadron	proc initializeCombatSquadron(squadron: Squadron): CombatSquadron		263
-nim	initializeTaskForce	engine/combat/engine.html#initializeTaskForce,HouseId,seq[Squadron],int,int,bool,int,int	proc initializeTaskForce(house: HouseId; squadrons: seq[Squadron]; roe: int;\n                    prestige: int = 50; isHomeworld: bool = false;\n                    eliLevel: int = 1; clkLevel: int = 1): TaskForce		277
-nim	quickBattle	engine/combat/engine.html#quickBattle,TaskForce,TaskForce,SystemId,int64	proc quickBattle(attacker: TaskForce; defender: TaskForce; systemId: SystemId = 0;\n            seed: int64 = 12345): CombatResult		337
