@@ -281,24 +281,26 @@ reloadRBAConfigFromPath("evolved_gen42.toml")  # Load custom config
 src/
 ├── engine/              # 13 major systems (combat, economy, etc.)
 │   └── fog_of_war.nim   # FoW filtering (mandatory for AI)
-├── ai/rba/              # Rule-Based Advisor (modular AI)
-│   ├── player.nim       # Public API
-│   ├── controller.nim   # Strategy profiles
-│   ├── intelligence.nim # Intel gathering
-│   ├── diplomacy.nim    # Diplomatic assessment
-│   ├── tactical.nim     # Fleet operations
-│   ├── strategic.nim    # Combat assessment
-│   └── budget.nim       # Budget allocation
+├── ai/
+│   ├── rba/             # Rule-Based Advisor (production AI)
+│   │   ├── player.nim       # Public API
+│   │   ├── controller.nim   # Strategy profiles
+│   │   ├── intelligence.nim # Intel gathering
+│   │   ├── diplomacy.nim    # Diplomatic assessment
+│   │   ├── tactical.nim     # Fleet operations
+│   │   ├── strategic.nim    # Combat assessment
+│   │   └── budget.nim       # Budget allocation
+│   ├── training/        # Neural network training exports
+│   │   └── export.nim       # 600-dim state encoding
+│   └── common/          # Shared AI types (AIStrategy, etc.)
 
-tests/balance/           # Balance testing (regression)
-│   ├── ai_controller.nim # Thin wrapper (imports src/ai/rba/)
-│   ├── run_simulation.nim # Test binary
-│   └── diagnostics.nim   # Metric logging
+tests/balance/           # Balance testing (uses production RBA)
+│   ├── run_simulation.nim # Test harness (uses src/ai/rba/)
+│   └── diagnostics.nim    # Metric logging (130 columns)
 
-tools/ai_tuning/         # AI optimization (genetic algorithms)
-│   ├── evolve_ai.nim     # Evolution runner
-│   ├── coevolution.nim   # Competitive co-evolution
-│   └── *.py              # Analysis scripts
+tools/ai_tuning/         # AI optimization
+│   ├── run_parallel_diagnostics.py  # Parallel game runner
+│   └── *.py                         # Analysis scripts
 
 docs/
 ├── ai/                  # AI system documentation

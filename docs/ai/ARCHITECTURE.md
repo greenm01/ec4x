@@ -11,17 +11,24 @@ EC4X's AI uses a **modular Rule-Based Advisor (RBA)** architecture. The system i
 ## Module Structure
 
 ```
-src/ai/rba/
-├── player.nim              # Public API (14 lines)
-├── controller_types.nim    # Type definitions (16 lines)
-├── controller.nim          # Strategy profiles (169 lines)
-├── budget.nim             # Budget allocation (328 lines)
-├── intelligence.nim       # Intel gathering (310 lines)
-├── diplomacy.nim          # Diplomatic assessment (224 lines)
-├── tactical.nim           # Fleet operations (404 lines)
-└── strategic.nim          # Combat assessment (257 lines)
+src/ai/
+├── rba/                         # Rule-Based Advisor (production AI)
+│   ├── player.nim              # Public API (14 lines)
+│   ├── controller_types.nim    # Type definitions (16 lines)
+│   ├── controller.nim          # Strategy profiles (169 lines)
+│   ├── config.nim              # TOML configuration loader (353 lines)
+│   ├── budget.nim             # Budget allocation (328 lines)
+│   ├── intelligence.nim       # Intel gathering (310 lines)
+│   ├── diplomacy.nim          # Diplomatic assessment (224 lines)
+│   ├── tactical.nim           # Fleet operations (404 lines)
+│   └── strategic.nim          # Combat assessment (257 lines)
+├── training/                    # Neural network training (NEW)
+│   └── export.nim              # 600-dim state encoding (369 lines)
+└── common/                      # Shared AI types
+    └── types.nim               # AIStrategy, AIPersonality, etc.
 
-Total: 1,722 lines (vs 3,679-line monolith)
+Total RBA: 2,075 lines (vs 3,679-line monolith)
+Total AI: 2,444 lines
 ```
 
 ---
@@ -330,6 +337,90 @@ let scoutBudget = (totalProduction * 10) div 100        # 10% for recon
 - High `economicFocus` → More infrastructure budget
 - High `expansionDrive` → More ETAC budget
 - High `techPriority` → More research facility budget
+
+---
+
+### 9. Training Export (`training/export.nim`)
+
+**Responsibility:** Export game state and AI decisions for neural network training
+
+**Key Functions:**
+
+```nim
+# State encoding (600 dimensions)
+proc encodeGameState*(state: GameState, houseId: HouseId): seq[float]
+
+# Action encoding (multi-head output)
+proc encodeOrders*(orders: OrderPacket, state: GameState): tuple[
+  diplomatic: Option[DiplomaticActionEncoding],
+  fleets: seq[FleetActionEncoding],
+  build: BuildPriorityEncoding,
+  research: ResearchEncoding
+]
+
+# JSON export for PyTorch pipeline
+proc exportTrainingExample*(turn: int, state: GameState, houseId: HouseId,
+                           strategy: AIStrategy, orders: OrderPacket): JsonNode
+```
+
+**State Vector Layout (600 dimensions):**
+```nim
+# 0-99: House status (treasury, prestige, tech levels)
+result[0] = float(house.treasury) / 10000.0
+result[1] = float(house.prestige) / 1000.0
+result[2-12] = tech levels (normalized to 0-1)
+
+# 100-199: Colony information (top 10 colonies, 10 dims each)
+# Sorted by production (populationUnits)
+
+# 200-399: Fleet information (top 20 fleets, 10 dims each)
+# Sorted by combat strength
+
+# 400-499: Diplomatic relations (up to 25 houses, 4 dims each)
+# One-hot encoded diplomatic state + relative strength
+
+# 500-599: Strategic situation (threats, opportunities)
+# Total production, threat ratios, military/economic ratios, game act
+```
+
+**Action Encoding (Multi-Head):**
+```nim
+type DiplomaticActionEncoding* = object
+  actionType*: int     # 0-3: None, ProposeNAP, DeclareEnemy, SetNeutral
+  targetHouse*: int    # 0-3: house index
+
+type FleetActionEncoding* = object
+  fleetIndex*: int           # Index in our fleet list
+  orderType*: int            # 0-2: Hold, Move, Patrol
+  targetSystemIndex*: int    # -1 for none, else system index
+
+type BuildPriorityEncoding* = object
+  military*: float    # 0-1: priority for military builds
+  economic*: float    # 0-1: priority for economic builds
+  defense*: float     # 0-1: priority for defensive builds
+
+type ResearchEncoding* = object
+  economic*: float    # 0-1: allocation to economic research
+  science*: float     # 0-1: allocation to science
+  weapons*: float     # 0-1: allocation to weapons
+  other*: float       # 0-1: allocation to other tech
+```
+
+**Usage for Phase 3 (Bootstrap Data Generation):**
+```nim
+# In test harness (tests/balance/export_training_data.nim)
+for turn in 1..maxTurns:
+  let state = runTurn(game)
+
+  for houseId, house in state.houses:
+    # Get AI's decision
+    let orders = generateAIOrders(aiController, filteredView, rng)
+
+    # Export training example
+    let example = exportTrainingExample(turn, state, houseId,
+                                       aiController.strategy, orders)
+    trainingFile.write($example & "\n")
+```
 
 ---
 
