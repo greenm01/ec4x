@@ -213,3 +213,22 @@ tests/unit/test_research
 tests/balance/test_economy_balance
 tests/balance/run_simulation
 tests/balance/.build_git_hash
+
+# Compiled test binaries (no extension, executable)
+tests/test_*[!.nim][!.py][!.sh]
+tests/*/test_*[!.nim][!.py][!.sh]
+tests/*/*/test_*[!.nim][!.py][!.sh]
+tests/run_*[!.nim][!.py][!.sh]
+tests/*/run_*[!.nim][!.py][!.sh]
+
+# All executables in tests/ (blanket rule)
+tests/**/*
+!tests/**/*.nim
+!tests/**/*.py
+!tests/**/*.sh
+!tests/**/*.toml
+!tests/**/*.md
+!tests/**/*.txt
+!tests/**/*.csv
+!tests/**/
+
