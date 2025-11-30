@@ -40,7 +40,7 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 
 ## Development Status
 
-**Engine Complete - AI Training Phase**
+**Phase 2.5 Complete - Ready for Neural Network Training**
 
 ✅ **Complete Game Engine (13 Major Systems):**
 - Combat system (space battles, ground combat, starbases)
@@ -55,31 +55,50 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 - Turn resolution (4-phase turn structure)
 - Fleet management (movement, merge/split operations)
 - Star map generation (procedural, 2-12 players)
-- Configuration system (13 TOML files, 2000+ parameters)
+- Configuration system (14 TOML files, 2000+ parameters)
 
 **Test Coverage:** 101+ integration tests passing, all systems verified
 
-🤖 **Current Phase - AI Development:**
-- ✅ Modular Rule-Based Advisor (RBA) implemented (8 modules, 1,722 lines)
-- ✅ 12 distinct AI personalities (Aggressive, Economic, Espionage, Diplomatic, etc.)
-- ✅ Fog-of-war aware decision making
-- ✅ Genetic algorithm optimization tools (personality evolution)
-- ✅ 4-act game structure awareness (Land Grab → Rising Tensions → Total War → Endgame)
-- ⏳ Balance testing and tuning (400+ game validation)
-- ⏳ Neural network training pipeline (future: AlphaZero-style self-play)
+✅ **Production Rule-Based AI (Complete):**
+- **8 specialized modules:** intelligence, diplomacy, tactical, strategic, budget, orders, admiral, config
+- **12 personality archetypes:** Aggressive, Economic, Espionage, Diplomatic, Balanced, Turtle, Expansionist, Tech Rush, Raider, Military Industrial, Opportunistic, Isolationist
+- **Fog-of-war compliant:** Type-level enforcement via FilteredGameState
+- **TOML-configurable:** All parameters tunable without recompilation (config/rba.toml)
+- **Diagnostic framework:** 130 metrics tracked for balance analysis
+- **Genetic algorithms:** Personality evolution and competitive co-evolution
+- **4-act awareness:** Adaptive strategy across game phases
 
-**AI Architecture:** Modular expert system with personality-driven behavior
-- 8 specialized subsystems: intelligence, diplomacy, tactical, strategic, budget
-- 12 personality archetypes with 6 continuous traits (aggression, risk, economy, expansion, diplomacy, tech)
-- Genetic algorithms for personality optimization and exploit discovery
-- Competitive co-evolution for balance testing
-- See [AI System Documentation](docs/ai/README.md) for details
+✅ **Neural Network Training Infrastructure (Phase 2.5 - Complete 2025-11-29):**
+- **Training export module:** 600-dimensional state encoding (src/ai/training/export.nim)
+- **Multi-head action encoding:** Diplomatic, fleet, build, and research decisions
+- **JSON export pipeline:** PyTorch-compatible training data format
+- **Clean architecture:** Zero duplication between test and production code
+- **Production logging:** All AI code uses structured logging (no echo statements)
 
-🔮 **Future Phases:**
-- Neural network training (PyTorch + ROCm GPU acceleration)
-- ONNX inference integration (Nim + ONNX Runtime)
-- UI development (TUI for order entry, game visualization)
-- Network integration (Nostr protocol, decentralized multiplayer)
+📊 **Progress: 31.3% Complete (2.5 of 8 phases)**
+
+**Completed Phases:**
+- ✅ Phase 1: Environment Setup (PyTorch + ROCm, ONNX Runtime)
+- ✅ Phase 2: Rule-Based AI Enhancements (8 modules, 12 personalities, FoW integration)
+- ✅ Phase 2.5: RBA Migration (production training export, clean architecture)
+
+**Next Phase (Phase 3):**
+- ⏳ Bootstrap data generation (10,000 games → 1.6M training examples)
+- ⏳ State-action-outcome recording
+- ⏳ Train/validation split (80/20)
+
+**Future Phases:**
+- Phase 4: Supervised learning (policy + value networks, ONNX export)
+- Phase 5: Nim integration (ONNX Runtime, playable neural AI)
+- Phase 6: Self-play reinforcement learning (AlphaZero-style)
+- Phase 7: Production deployment (difficulty levels, model packaging)
+
+**Repository Health:**
+- Clean git history (binaries purged with git-filter-repo)
+- Repository size: 26MB
+- Comprehensive .gitignore (no binary tracking issues)
+
+See **[AI Development Status](docs/ai/STATUS.md)** for detailed phase breakdown and metrics.
 
 ## Documentation
 
@@ -88,9 +107,13 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 
 ### AI System
 - **[AI Documentation](docs/ai/README.md)** - AI system overview and navigation
-- **[AI Architecture](docs/ai/ARCHITECTURE.md)** - Modular RBA system design (8 subsystems)
+- **[AI Development Status](docs/ai/STATUS.md)** - Phase progress (31.3% complete)
+- **[AI Architecture](docs/ai/ARCHITECTURE.md)** - Modular RBA system design (8 subsystems + training export)
 - **[AI Personalities](docs/ai/PERSONALITIES.md)** - 12 strategy archetypes explained
 - **[Decision Framework](docs/ai/DECISION_FRAMEWORK.md)** - How AI makes decisions
+
+### Milestones
+- **[RBA Migration Complete](docs/milestones/RBA_MIGRATION_COMPLETE.md)** - Phase 2.5 completion (2025-11-29)
 
 ### Testing & Balance
 - **[Testing Overview](docs/testing/README.md)** - Testing levels and methodology
