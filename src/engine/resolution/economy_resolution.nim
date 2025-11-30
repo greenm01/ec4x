@@ -91,12 +91,15 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
 
     # Check if colony has dock capacity for more construction projects
     # NEW: Build queue system - colonies can have multiple projects up to dock capacity
-    # EXCEPTION: Fighters are built planet-side and don't consume dock capacity (economy.md:3.10)
+    # EXCEPTIONS (built planet-side, don't consume dock capacity):
+    # - Fighters: Built planet-side via distributed manufacturing (economy.md:3.10)
+    # - Buildings: Infrastructure built with planet-side industry (Spaceports, Shipyards, Starbases, etc.)
     let isFighter = (order.buildType == BuildType.Ship and
                      order.shipClass.isSome and
                      order.shipClass.get() == ShipClass.Fighter)
+    let isFacility = (order.buildType == BuildType.Building)
 
-    if not isFighter and not colony.canAcceptMoreProjects():
+    if not isFighter and not isFacility and not colony.canAcceptMoreProjects():
       let capacity = colony.getConstructionDockCapacity()
       let active = colony.getActiveConstructionProjects()
       let errorMsg = &"System {order.colonySystem} at capacity ({active}/{capacity} docks used) - cannot accept more projects"
@@ -866,26 +869,19 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
 
     var destColony = state.colonies[transfer.destSystem]
 
-    # Check if destination conquered (no longer owned by originating house)
-    if destColony.owner != transfer.houseId:
-      # dest_conquered_behavior = "lost"
-      echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination conquered by ", destColony.owner
-      arrivedTransfers.add(idx)
-      events.add(GameEvent(
-        eventType: GameEventType.PopulationTransfer,
-        houseId: transfer.houseId,
-        description: $transfer.ptuAmount & " PTU lost - destination " & $transfer.destSystem & " conquered",
-        systemId: some(transfer.destSystem)
-      ))
-      continue
-
-    # Check if destination blockaded or collapsed
+    # Check if destination requires alternative delivery
+    # Space Guild makes best-faith effort to deliver somewhere safe
     # Per config/population.toml: dest_blockaded_behavior = "closest_owned"
     # Per config/population.toml: dest_collapsed_behavior = "closest_owned"
+    # Per config/population.toml: dest_conquered_behavior = "closest_owned" (NEW)
     var needsAlternativeDestination = false
     var alternativeReason = ""
 
-    if destColony.blockaded:
+    if destColony.owner != transfer.houseId:
+      # Destination conquered - Guild tries to find alternative colony
+      needsAlternativeDestination = true
+      alternativeReason = "conquered by " & $destColony.owner
+    elif destColony.blockaded:
       needsAlternativeDestination = true
       alternativeReason = "blockaded"
     elif destColony.souls < soulsPerPtu():
