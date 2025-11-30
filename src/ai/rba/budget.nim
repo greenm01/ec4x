@@ -747,11 +747,6 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
   ## - Standalone fighters only built if carriers exist in ownFleets
   result = @[]
 
-  # DIAGNOSTIC LOGGING: Track function entry
-  logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] buildSpecialUnitsOrders called: colony={colony.systemId}, " &
-          &"needFighters={needFighters}, budget={tracker.getRemainingBudget(SpecialUnits)}PP")
-
-
   # Priority: Super Carriers → Carriers → Transports → Raiders → Fighters
   # NOTE: Expensive ships (carriers, transports, raiders) require affordability check
   # Cheap fighters can always be built if budget allocated (like scouts)
@@ -878,19 +873,11 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
           totalCarrierSlots += max(0, 5 - embarked)
           hasCarrierCapacity = true
 
-    # DIAGNOSTIC LOGGING: Track fighter build decision
-    logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Colony {colony.systemId} fighter check: " &
-            &"currentFS={currentFighters}, colonyCapacity={colonyCapacity} ({operationalStarbases} starbases), " &
-            &"carrierSlots={totalCarrierSlots}, canBuild={hasColonyCapacity or hasCarrierCapacity}")
-
     # Build fighters if EITHER:
     # - Path 1: Colony has capacity (defense fighters), OR
     # - Path 2: Carriers have available hangar space (direct commissioning)
     if hasColonyCapacity or hasCarrierCapacity:
       while tracker.canAfford(SpecialUnits, fighterCost):
-        let pathType = if hasColonyCapacity: "colony-defense" else: "carrier-direct"
-        logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Building fighter at colony {colony.systemId} " &
-                 &"(remaining={tracker.getRemainingBudget(SpecialUnits)}PP, path={pathType})")
         result.add(BuildOrder(
           colonySystem: colony.systemId,
           buildType: BuildType.Ship,
@@ -900,9 +887,6 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
           industrialUnits: 0
         ))
         tracker.recordSpending(SpecialUnits, fighterCost)
-    else:
-      logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] Skipping fighter construction at colony {colony.systemId}: " &
-              &"no colony capacity (need starbases) and no carrier hangar space available")
 
 proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,
                       planetBreakerCount: int, colonyCount: int,
@@ -1093,8 +1077,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # Now: Single tracker enforces house-wide budget limit
   var tracker = initBudgetTracker(controller.houseId, availableBudget, allocation)
 
-  # DIAGNOSTIC: Log budget allocation breakdown (INCLUDING SpecialUnits to debug carrier issue)
-  logInfo(LogCategory.lcAI,
+  logDebug(LogCategory.lcAI,
     &"{controller.houseId} Budget allocation ({act}): " &
     &"total={availableBudget}PP, " &
     &"Expansion={int(allocation[Expansion]*float(availableBudget))}PP, " &
@@ -1260,11 +1243,6 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     # Build queue system allows multiple simultaneous projects per colony
     # BudgetTracker prevents overspending across ALL colonies
     # Engine will enforce dock capacity limits (spaceports: 5, shipyards: 10)
-
-    # DIAGNOSTIC LOGGING: Track SpecialUnits budget at colony loop entry
-    if colony == coloniesToBuild[0]:  # Log once per house per turn
-      logInfo(LogCategory.lcAI, &"[FIGHTER DEBUG] {tracker.houseId}: Processing {coloniesToBuild.len} colonies, " &
-              &"SpecialUnits budget={tracker.getRemainingBudget(SpecialUnits)}PP")
 
     # DYNAMIC NEED RECALCULATION
     # Recalculate need flags using PROJECTED counts (current + built this turn)
