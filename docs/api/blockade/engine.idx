@@ -1,8 +1,0 @@
-nimTitle	engine	blockade/engine.html	module src/engine/blockade/engine		0
-nim	isSystemBlockaded	blockade/engine.html#isSystemBlockaded,GameState,SystemId,HouseId	proc isSystemBlockaded(state: GameState; systemId: SystemId; colonyOwner: HouseId): (\n    bool, seq[HouseId])		12
-nim	applyBlockades	blockade/engine.html#applyBlockades,GameState	proc applyBlockades(state: var GameState)		53
-nim	getBlockadePenalty	blockade/engine.html#getBlockadePenalty,Colony	proc getBlockadePenalty(colony: Colony): float		83
-nim	calculateBlockadePrestigePenalty	blockade/engine.html#calculateBlockadePrestigePenalty,GameState,HouseId	proc calculateBlockadePrestigePenalty(state: GameState; houseId: HouseId): int		94
-nim	getBlockadedColonies	blockade/engine.html#getBlockadedColonies,GameState,HouseId	proc getBlockadedColonies(state: GameState; houseId: HouseId): seq[Colony]		113
-nim	getBlockadingFleets	blockade/engine.html#getBlockadingFleets,GameState,SystemId	proc getBlockadingFleets(state: GameState; systemId: SystemId): seq[Fleet]		121
-nim	canBreakBlockade	blockade/engine.html#canBreakBlockade,GameState,SystemId,Fleet	proc canBreakBlockade(state: GameState; systemId: SystemId; reliefFleet: Fleet): bool		146

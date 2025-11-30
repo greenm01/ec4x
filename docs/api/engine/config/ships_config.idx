@@ -1,7 +1,0 @@
-nimTitle	ships_config	engine/config/ships_config.html	module src/engine/config/ships_config		0
-nim	ShipStatsConfig	engine/config/ships_config.html#ShipStatsConfig	object ShipStatsConfig		11
-nim	ConstructionTimesConfig	engine/config/ships_config.html#ConstructionTimesConfig	object ConstructionTimesConfig		25
-nim	ShipsConfig	engine/config/ships_config.html#ShipsConfig	object ShipsConfig		48
-nim	loadShipsConfig	engine/config/ships_config.html#loadShipsConfig,string	proc loadShipsConfig(configPath: string = "config/ships.toml"): ShipsConfig		73
-nim	globalShipsConfig	engine/config/ships_config.html#globalShipsConfig	var globalShipsConfig		87
-nim	reloadShipsConfig	engine/config/ships_config.html#reloadShipsConfig	proc reloadShipsConfig()		91

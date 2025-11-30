@@ -1,3 +1,0 @@
-nimTitle	action_descriptors	engine/espionage/action_descriptors.html	module src/engine/espionage/action_descriptors		0
-nim	ActionDescriptor	engine/espionage/action_descriptors.html#ActionDescriptor	object ActionDescriptor		16
-nim	getActionDescriptor	engine/espionage/action_descriptors.html#getActionDescriptor,EspionageAction	proc getActionDescriptor(action: EspionageAction): ActionDescriptor		42

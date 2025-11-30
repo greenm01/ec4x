@@ -1,5 +1,0 @@
-nimTitle	types	engine/population/types.html	module src/engine/population/types		0
-nim	PopulationInTransit	engine/population/types.html#PopulationInTransit	object PopulationInTransit		8
-nim	TransferStatus	engine/population/types.html#TransferStatus	enum TransferStatus		18
-nim	PopulationTransferConfig	engine/population/types.html#PopulationTransferConfig	object PopulationTransferConfig		25
-nim	globalPopulationConfig	engine/population/types.html#globalPopulationConfig	var globalPopulationConfig		67

@@ -1,3 +1,0 @@
-nimTitle	planets	_._/_._/common/types/planets.html	module src/common/types/planets		0
-nim	PlanetClass	_._/_._/common/types/planets.html#PlanetClass	enum PlanetClass		9
-nim	ResourceRating	_._/_._/common/types/planets.html#ResourceRating	enum ResourceRating		20

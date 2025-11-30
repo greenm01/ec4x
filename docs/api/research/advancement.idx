@@ -1,7 +1,0 @@
-nimTitle	advancement	research/advancement.html	module src/engine/research/advancement		0
-nim	isUpgradeTurn	research/advancement.html#isUpgradeTurn,int	proc isUpgradeTurn(turn: int): bool		21
-nim	rollBreakthrough	research/advancement.html#rollBreakthrough,int,Rand	proc rollBreakthrough(investedRP: int; rng: var Rand): Option[BreakthroughType]		29
-nim	applyBreakthrough	research/advancement.html#applyBreakthrough,TechTree,BreakthroughType,ResearchAllocation	proc applyBreakthrough(tree: var TechTree; breakthrough: BreakthroughType;\n                  allocation: ResearchAllocation): BreakthroughEvent		58
-nim	attemptELAdvancement	research/advancement.html#attemptELAdvancement,TechTree,int	proc attemptELAdvancement(tree: var TechTree; currentEL: int): Option[TechAdvancement]		107
-nim	attemptSLAdvancement	research/advancement.html#attemptSLAdvancement,TechTree,int	proc attemptSLAdvancement(tree: var TechTree; currentSL: int): Option[TechAdvancement]		140
-nim	attemptTechAdvancement	research/advancement.html#attemptTechAdvancement,TechTree,TechField	proc attemptTechAdvancement(tree: var TechTree; field: TechField): Option[\n    TechAdvancement]		173

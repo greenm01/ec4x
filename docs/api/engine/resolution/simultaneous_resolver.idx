@@ -1,7 +1,0 @@
-nimTitle	simultaneous_resolver	engine/resolution/simultaneous_resolver.html	module src/engine/resolution/simultaneous_resolver		0
-nim	resolveConflictByStrength	engine/resolution/simultaneous_resolver.html#resolveConflictByStrength,seq[IntentType],proc(IntentType),int64,Rand	proc resolveConflictByStrength[IntentType](intents: seq[IntentType]; strengthGetter: proc (\n    intent: IntentType): int; tiebreakerSeed: int64; rng: var Rand): IntentType		10
-nim	colonizationStrength	engine/resolution/simultaneous_resolver.html#colonizationStrength,ColonizationIntent	proc colonizationStrength(intent: ColonizationIntent): int		55
-nim	planetaryCombatStrength	engine/resolution/simultaneous_resolver.html#planetaryCombatStrength,PlanetaryCombatIntent	proc planetaryCombatStrength(intent: PlanetaryCombatIntent): int		59
-nim	blockadeStrength	engine/resolution/simultaneous_resolver.html#blockadeStrength,BlockadeIntent	proc blockadeStrength(intent: BlockadeIntent): int		63
-nim	espionageStrength	engine/resolution/simultaneous_resolver.html#espionageStrength,EspionageIntent	proc espionageStrength(intent: EspionageIntent): int		67
-nim	tiebreakerSeed	engine/resolution/simultaneous_resolver.html#tiebreakerSeed,int,SystemId	proc tiebreakerSeed(turn: int; targetId: SystemId): int64		71

@@ -1,8 +1,0 @@
-nimTitle	units	_._/_._/common/types/units.html	module src/common/types/units		0
-nim	ShipClass	_._/_._/common/types/units.html#ShipClass	enum ShipClass		9
-nim	ShipStats	_._/_._/common/types/units.html#ShipStats	object ShipStats		32
-nim	ShipType	_._/_._/common/types/units.html#ShipType	enum ShipType		46
-nim	GroundUnitType	_._/_._/common/types/units.html#GroundUnitType	enum GroundUnitType		56
-nim	GroundUnitStats	_._/_._/common/types/units.html#GroundUnitStats	object GroundUnitStats		64
-nim	FacilityType	_._/_._/common/types/units.html#FacilityType	enum FacilityType		81
-nim	FacilityStats	_._/_._/common/types/units.html#FacilityStats	object FacilityStats		87
