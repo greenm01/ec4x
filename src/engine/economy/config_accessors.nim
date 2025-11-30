@@ -8,7 +8,7 @@
 
 import std/macros
 import ../../common/types/units
-import ../config/[ships_config, construction_config, facilities_config]
+import ../config/[ships_config, construction_config, facilities_config, ground_units_config]
 
 ## Ship Config Accessor Macro
 
@@ -204,6 +204,33 @@ proc getShipCSTRequirement*(shipClass: ShipClass): int =
   ## Returns 0 for ground units (no CST requirement)
   getShipField(shipClass, tech_level, globalShipsConfig)
 
+## Ground Units Cost Accessors
+## Added for Phase 1 RBA cost accessor fixes
+
+proc getPlanetaryShieldCost*(sldLevel: int): int =
+  ## Get construction cost for planetary shield by SLD tech level
+  ## Returns cost from construction.toml for SLD1-6 shields
+  ## Returns 0 for invalid levels
+  case sldLevel
+  of 1: globalConstructionConfig.costs.planetary_shield_sld1_cost
+  of 2: globalConstructionConfig.costs.planetary_shield_sld2_cost
+  of 3: globalConstructionConfig.costs.planetary_shield_sld3_cost
+  of 4: globalConstructionConfig.costs.planetary_shield_sld4_cost
+  of 5: globalConstructionConfig.costs.planetary_shield_sld5_cost
+  of 6: globalConstructionConfig.costs.planetary_shield_sld6_cost
+  else: 0
+
+proc getArmyBuildCost*(): int =
+  ## Get construction cost for army division
+  ## Returns build_cost from ground_units.toml
+  globalGroundUnitsConfig.army.build_cost
+
+proc getMarineBuildCost*(): int =
+  ## Get construction cost for marine division
+  ## Returns build_cost from ground_units.toml
+  globalGroundUnitsConfig.marine_division.build_cost
+
 ## Export for use in construction.nim
 export getShipConstructionCost, getShipBaseBuildTime, getShipCSTRequirement
 export getBuildingCost, getBuildingTime, requiresSpaceport
+export getPlanetaryShieldCost, getArmyBuildCost, getMarineBuildCost

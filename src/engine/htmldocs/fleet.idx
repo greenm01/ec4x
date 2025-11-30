@@ -1,0 +1,23 @@
+nimTitle	fleet	fleet.html	module src/engine/fleet		0
+nim	FleetStatus	fleet.html#FleetStatus	enum FleetStatus		20
+nim	Fleet	fleet.html#Fleet	object Fleet		26
+nim	newFleet	fleet.html#newFleet,seq[Squadron],seq[SpaceLiftShip],FleetId,HouseId,SystemId,FleetStatus,bool	proc newFleet(squadrons: seq[Squadron] = @[];\n         spaceLiftShips: seq[SpaceLiftShip] = @[]; id: FleetId = "";\n         owner: HouseId = ""; location: SystemId = 0;\n         status: FleetStatus = FleetStatus.Active;\n         autoBalanceSquadrons: bool = true): Fleet		37
+nim	`$`	fleet.html#$,Fleet	proc `$`(f: Fleet): string		46
+nim	len	fleet.html#len,Fleet	proc len(f: Fleet): int		68
+nim	isEmpty	fleet.html#isEmpty,Fleet	proc isEmpty(f: Fleet): bool		72
+nim	add	fleet.html#add,Fleet,Squadron	proc add(f: var Fleet; squadron: Squadron)		76
+nim	remove	fleet.html#remove,Fleet,int	proc remove(f: var Fleet; index: int)		80
+nim	clear	fleet.html#clear,Fleet	proc clear(f: var Fleet)		85
+nim	canTraverse	fleet.html#canTraverse,Fleet,LaneType	proc canTraverse(f: Fleet; laneType: LaneType): bool		89
+nim	combatStrength	fleet.html#combatStrength,Fleet	proc combatStrength(f: Fleet): int		108
+nim	isCloaked	fleet.html#isCloaked,Fleet	proc isCloaked(f: Fleet): bool		114
+nim	transportCapacity	fleet.html#transportCapacity,Fleet	proc transportCapacity(f: Fleet): int		130
+nim	hasCombatShips	fleet.html#hasCombatShips,Fleet	proc hasCombatShips(f: Fleet): bool		138
+nim	hasTransportShips	fleet.html#hasTransportShips,Fleet	proc hasTransportShips(f: Fleet): bool		145
+nim	combatSquadrons	fleet.html#combatSquadrons,Fleet	proc combatSquadrons(f: Fleet): seq[Squadron]		153
+nim	spaceLiftShipsSeq	fleet.html#spaceLiftShipsSeq,Fleet	proc spaceLiftShipsSeq(f: Fleet): seq[SpaceLiftShip]		160
+nim	crippledSquadrons	fleet.html#crippledSquadrons,Fleet	proc crippledSquadrons(f: Fleet): seq[Squadron]		165
+nim	effectiveSquadrons	fleet.html#effectiveSquadrons,Fleet	proc effectiveSquadrons(f: Fleet): seq[Squadron]		172
+nim	merge	fleet.html#merge,Fleet,Fleet	proc merge(f1: var Fleet; f2: Fleet)		179
+nim	split	fleet.html#split,Fleet,seq[int]	proc split(f: var Fleet; indices: seq[int]): Fleet		185
+nim	balanceSquadrons	fleet.html#balanceSquadrons,Fleet	proc balanceSquadrons(f: var Fleet)		201

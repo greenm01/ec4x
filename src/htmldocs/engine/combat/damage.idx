@@ -1,0 +1,11 @@
+nimTitle	damage	engine/combat/damage.html	module src/engine/combat/damage		0
+nim	applyDamageToSquadron	engine/combat/damage.html#applyDamageToSquadron,CombatSquadron,int,int,bool	proc applyDamageToSquadron(squadron: var CombatSquadron; damage: int;\n                      roundNumber: int; isCriticalHit: bool): StateChange		13
+nim	resetRoundDamage	engine/combat/damage.html#resetRoundDamage,CombatSquadron	proc resetRoundDamage(squadron: var CombatSquadron)		87
+nim	findWeakestSquadron	engine/combat/damage.html#findWeakestSquadron,TaskForce	proc findWeakestSquadron(taskForce: TaskForce): Option[SquadronId]		94
+nim	applyForceReduction	engine/combat/damage.html#applyForceReduction,TaskForce,SquadronId,int,int	proc applyForceReduction(taskForce: var TaskForce; targetId: SquadronId; damage: int;\n                    roundNumber: int): StateChange		115
+nim	applySimultaneousDamage	engine/combat/damage.html#applySimultaneousDamage,TaskForce,seq[tuple[SquadronId,int,bool]],int	proc applySimultaneousDamage(taskForce: var TaskForce; damageMap: seq[\n    tuple[squadronId: SquadronId, damage: int, isCritical: bool]];\n                        roundNumber: int): seq[StateChange]		179
+nim	isDestroyed	engine/combat/damage.html#isDestroyed,CombatSquadron	proc isDestroyed(squadron: CombatSquadron): bool		222
+nim	isCrippled	engine/combat/damage.html#isCrippled,CombatSquadron	proc isCrippled(squadron: CombatSquadron): bool		226
+nim	getAliveSquadrons	engine/combat/damage.html#getAliveSquadrons,TaskForce	proc getAliveSquadrons(taskForce: TaskForce): seq[CombatSquadron]		230
+nim	countAlive	engine/combat/damage.html#countAlive,TaskForce	proc countAlive(taskForce: TaskForce): int		237
+nim	`$`	engine/combat/damage.html#$,StateChange	proc `$`(change: StateChange): string		246

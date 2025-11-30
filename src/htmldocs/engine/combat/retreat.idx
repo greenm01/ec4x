@@ -1,0 +1,10 @@
+nimTitle	retreat	engine/combat/retreat.html	module src/engine/combat/retreat		0
+nim	roeThresholds	engine/combat/retreat.html#roeThresholds	const roeThresholds		14
+nim	getMoraleROEModifier	engine/combat/retreat.html#getMoraleROEModifier,int	proc getMoraleROEModifier(prestige: int): int		28
+nim	evaluateRetreat	engine/combat/retreat.html#evaluateRetreat,TaskForce,seq[TaskForce],int	proc evaluateRetreat(taskForce: TaskForce; allTaskForces: seq[TaskForce];\n                prestige: int): RetreatEvaluation		42
+nim	getRetreatPriority	engine/combat/retreat.html#getRetreatPriority,seq[TaskForce]	proc getRetreatPriority(taskForces: seq[TaskForce]): seq[HouseId]		117
+nim	checkCombatTermination	engine/combat/retreat.html#checkCombatTermination,seq[TaskForce],int	proc checkCombatTermination(taskForces: seq[TaskForce];\n                       consecutiveRoundsNoChange: int): tuple[shouldEnd: bool,\n    reason: string, victor: Option[HouseId]]		141
+nim	hasProgressThisRound	engine/combat/retreat.html#hasProgressThisRound,seq[RoundResult]	proc hasProgressThisRound(roundResults: seq[RoundResult]): bool		171
+nim	canRetreat	engine/combat/retreat.html#canRetreat,TaskForce,int	proc canRetreat(taskForce: TaskForce; roundNumber: int): bool		181
+nim	executeRetreat	engine/combat/retreat.html#executeRetreat,seq[TaskForce],HouseId	proc executeRetreat(taskForces: var seq[TaskForce]; houseId: HouseId)		194
+nim	`$`	engine/combat/retreat.html#$,RetreatEvaluation	proc `$`(eval: RetreatEvaluation): string		206

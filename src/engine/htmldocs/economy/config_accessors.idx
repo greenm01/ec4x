@@ -1,0 +1,9 @@
+nimTitle	config_accessors	economy/config_accessors.html	module src/engine/economy/config_accessors		0
+nim	getShipField	economy/config_accessors.html#getShipField.m,ShipClass,untyped,untyped	macro getShipField(shipClass: ShipClass; fieldName: untyped; config: untyped): untyped		15
+nim	getConstructionTimeField	economy/config_accessors.html#getConstructionTimeField.m,ShipClass,untyped	macro getConstructionTimeField(shipClass: ShipClass; config: untyped): untyped		72
+nim	getShipConstructionCost	economy/config_accessors.html#getShipConstructionCost,ShipClass	proc getShipConstructionCost(shipClass: ShipClass): int		125
+nim	getShipBaseBuildTime	economy/config_accessors.html#getShipBaseBuildTime,ShipClass	proc getShipBaseBuildTime(shipClass: ShipClass): int		131
+nim	getBuildingCost	economy/config_accessors.html#getBuildingCost,string	proc getBuildingCost(buildingType: string): int		185
+nim	getBuildingTime	economy/config_accessors.html#getBuildingTime,string	proc getBuildingTime(buildingType: string): int		190
+nim	requiresSpaceport	economy/config_accessors.html#requiresSpaceport,string	proc requiresSpaceport(buildingType: string): bool		196
+nim	getShipCSTRequirement	economy/config_accessors.html#getShipCSTRequirement,ShipClass	proc getShipCSTRequirement(shipClass: ShipClass): int		201

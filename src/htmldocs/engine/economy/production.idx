@@ -1,0 +1,8 @@
+nimTitle	production	engine/economy/production.html	module src/engine/economy/production		0
+nim	getRawIndex	engine/economy/production.html#getRawIndex,PlanetClass,ResourceRating	proc getRawIndex(planetClass: PlanetClass; resources: ResourceRating): float		24
+nim	getEconomicLevelModifier	engine/economy/production.html#getEconomicLevelModifier,int	proc getEconomicLevelModifier(techLevel: int): float		81
+nim	getProductivityGrowth	engine/economy/production.html#getProductivityGrowth,int	proc getProductivityGrowth(taxRate: int): float		92
+nim	calculateGrossOutput	engine/economy/production.html#calculateGrossOutput,Colony,int	proc calculateGrossOutput(colony: Colony; elTechLevel: int): int		103
+nim	calculateNetValue	engine/economy/production.html#calculateNetValue,int,int	proc calculateNetValue(grossOutput: int; taxRate: int): int		121
+nim	calculateProductionOutput	engine/economy/production.html#calculateProductionOutput,Colony,int	proc calculateProductionOutput(colony: Colony; elTechLevel: int): ProductionOutput		129
+nim	applyInfrastructureDamage	engine/economy/production.html#applyInfrastructureDamage,Colony	proc applyInfrastructureDamage(colony: var Colony)		149

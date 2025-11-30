@@ -1,0 +1,14 @@
+nimTitle	costs	costs.html	module src/engine/research/costs		0
+nim	calculateERPCost	costs.html#calculateERPCost,int	proc calculateERPCost(gho: int): float		19
+nim	convertPPToERP	costs.html#convertPPToERP,int,int	proc convertPPToERP(pp: int; gho: int): int		24
+nim	getELUpgradeCost	costs.html#getELUpgradeCost,int	proc getELUpgradeCost(currentLevel: int): int		29
+nim	getELModifier	costs.html#getELModifier,int	proc getELModifier(level: int): float		36
+nim	calculateSRPCost	costs.html#calculateSRPCost,int	proc calculateSRPCost(currentSL: int): float		44
+nim	convertPPToSRP	costs.html#convertPPToSRP,int,int	proc convertPPToSRP(pp: int; currentSL: int): int		49
+nim	getSLUpgradeCost	costs.html#getSLUpgradeCost,int	proc getSLUpgradeCost(currentLevel: int): int		54
+nim	getSLModifier	costs.html#getSLModifier,int	proc getSLModifier(level: int): float		61
+nim	getTRPCost	costs.html#getTRPCost,TechField,int,int	proc getTRPCost(techField: TechField; slLevel: int; gho: int): float		73
+nim	convertPPToTRP	costs.html#convertPPToTRP,int,TechField,int,int	proc convertPPToTRP(pp: int; techField: TechField; slLevel: int; gho: int): int		83
+nim	getTechUpgradeCost	costs.html#getTechUpgradeCost,TechField,int	proc getTechUpgradeCost(techField: TechField; currentLevel: int): int		88
+nim	allocateResearch	costs.html#allocateResearch,ResearchAllocation,int,int	proc allocateResearch(allocation: ResearchAllocation; gho: int; slLevel: int): ResearchPoints		97
+nim	calculateTotalRPInvested	costs.html#calculateTotalRPInvested,ResearchAllocation	proc calculateTotalRPInvested(allocation: ResearchAllocation): int		125

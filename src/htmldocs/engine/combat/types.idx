@@ -1,0 +1,25 @@
+nimTitle	types	engine/combat/types.html	module src/engine/combat/types		0
+nim	CombatPhase	engine/combat/types.html#CombatPhase	enum CombatPhase		21
+nim	CERModifier	engine/combat/types.html#CERModifier	enum CERModifier		29
+nim	CERRoll	engine/combat/types.html#CERRoll	object CERRoll		35
+nim	TargetBucket	engine/combat/types.html#TargetBucket	enum TargetBucket		44
+nim	CombatSquadron	engine/combat/types.html#CombatSquadron	object CombatSquadron		53
+nim	TaskForce	engine/combat/types.html#TaskForce	object TaskForce		63
+nim	RoundResult	engine/combat/types.html#RoundResult	object RoundResult		75
+nim	AttackResult	engine/combat/types.html#AttackResult	object AttackResult		81
+nim	StateChange	engine/combat/types.html#StateChange	object StateChange		89
+nim	RetreatEvaluation	engine/combat/types.html#RetreatEvaluation	object RetreatEvaluation		96
+nim	CombatResult	engine/combat/types.html#CombatResult	object CombatResult		106
+nim	BattleContext	engine/combat/types.html#BattleContext	object BattleContext		117
+nim	getCurrentAS	engine/combat/types.html#getCurrentAS,CombatSquadron	proc getCurrentAS(cs: CombatSquadron): int		128
+nim	getCurrentDS	engine/combat/types.html#getCurrentDS,CombatSquadron	proc getCurrentDS(cs: CombatSquadron): int		145
+nim	isAlive	engine/combat/types.html#isAlive,CombatSquadron	proc isAlive(cs: CombatSquadron): bool		156
+nim	canBeTargeted	engine/combat/types.html#canBeTargeted,CombatSquadron	proc canBeTargeted(cs: CombatSquadron): bool		160
+nim	totalAS	engine/combat/types.html#totalAS,TaskForce	proc totalAS(tf: TaskForce): int		166
+nim	aliveSquadrons	engine/combat/types.html#aliveSquadrons,TaskForce	proc aliveSquadrons(tf: TaskForce): seq[CombatSquadron]		172
+nim	isEliminated	engine/combat/types.html#isEliminated,TaskForce	proc isEliminated(tf: TaskForce): bool		179
+nim	lookupCER	engine/combat/types.html#lookupCER,int	proc lookupCER(modifiedRoll: int): float		188
+nim	isCritical	engine/combat/types.html#isCritical,int	proc isCritical(naturalRoll: int): bool		200
+nim	classifyBucket	engine/combat/types.html#classifyBucket,Squadron	proc classifyBucket(sq: Squadron): TargetBucket		207
+nim	baseWeight	engine/combat/types.html#baseWeight,TargetBucket	proc baseWeight(bucket: TargetBucket): float		227
+nim	calculateTargetWeight	engine/combat/types.html#calculateTargetWeight,CombatSquadron	proc calculateTargetWeight(cs: CombatSquadron): float		236

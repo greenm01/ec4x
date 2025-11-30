@@ -1,0 +1,4 @@
+nimTitle	starbase_surveillance	engine/intelligence/starbase_surveillance.html	module src/engine/intelligence/starbase_surveillance		0
+nim	performStealthCheck	engine/intelligence/starbase_surveillance.html#performStealthCheck,int,int,Rand	proc performStealthCheck(stealthLevel: int; sensorLevel: int = 5; rng: var Rand): bool		18
+nim	generateStarbaseSurveillance	engine/intelligence/starbase_surveillance.html#generateStarbaseSurveillance,GameState,SystemId,HouseId,int,Rand	proc generateStarbaseSurveillance(state: var GameState; starbaseSystemId: SystemId;\n                             starbaseOwner: HouseId; turn: int; rng: var Rand): Option[\n    StarbaseSurveillanceReport]		37
+nim	processAllStarbaseSurveillance	engine/intelligence/starbase_surveillance.html#processAllStarbaseSurveillance,GameState,int,Rand	proc processAllStarbaseSurveillance(state: var GameState; turn: int; rng: var Rand)		138

@@ -11,7 +11,8 @@
 import std/[tables, options, algorithm, strformat, sequtils]
 import ../common/types
 import ../../engine/[gamestate, orders, fleet, logger, fog_of_war, squadron]
-import ../../engine/economy/construction  # For getShipConstructionCost
+import ../../engine/economy/construction  # For budget execution
+import ../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../common/types/[core, units]
 import ./config  # RBA configuration system (globalRBAConfig)
 import ./cfo     # CFO module for budget allocation
@@ -180,7 +181,7 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
   # **CRITICAL FOR SCOUTS**: Without this, scouts can't be built at new colonies!
   # Required prerequisite for Shipyard, enables ship production (but at 2x cost)
   if not hasSpaceport and not hasShipyard:
-    let spaceportCost = 100  # from facilities.toml
+    let spaceportCost = getBuildingCost("Spaceport")
     if tracker.canAfford(Expansion, spaceportCost):
       logInfo(LogCategory.lcAI,
               &"{tracker.houseId} Colony {colony.systemId}: Building Spaceport " &
@@ -200,7 +201,7 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
   # This is THE most cost-effective investment: eliminates 2x ship construction penalty
   # Shipyards pay for themselves after just 2-3 ships due to 50% cost savings
   if hasSpaceport and not hasShipyard:
-    let shipyardCost = 150  # from facilities.toml
+    let shipyardCost = getBuildingCost("Shipyard")
     if tracker.canAfford(Expansion, shipyardCost):
       logInfo(LogCategory.lcAI,
               &"{tracker.houseId} Colony {colony.systemId}: Building Shipyard #1 (eliminates 2x spaceport penalty)")
@@ -223,7 +224,7 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
     # Build additional Shipyards until we have good dock capacity
     # Target: 2-3 Shipyards per colony (20-30 docks) for healthy production scaling
     if currentShipyards < 3:
-      let shipyardCost = 150  # from facilities.toml
+      let shipyardCost = getBuildingCost("Shipyard")
       if tracker.canAfford(Expansion, shipyardCost):
         logInfo(LogCategory.lcAI,
                 &"{tracker.houseId} Colony {colony.systemId}: Building Shipyard #{currentShipyards + 1} " &
@@ -246,7 +247,7 @@ proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
   result = @[]
 
   if needDefenses and not hasStarbase:
-    let starbaseCost = 300
+    let starbaseCost = getShipConstructionCost(ShipClass.Starbase)
     if tracker.canAfford(Defense, starbaseCost):
       result.add(BuildOrder(
         colonySystem: colony.systemId,
@@ -259,7 +260,7 @@ proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
       tracker.recordSpending(Defense, starbaseCost)
 
   # Ground batteries (cheap defense)
-  let groundBatteryCost = 20
+  let groundBatteryCost = getBuildingCost("GroundBattery")
   while tracker.canAfford(Defense, groundBatteryCost) and colony.groundBatteries < 5:
     result.add(BuildOrder(
       colonySystem: colony.systemId,
@@ -758,7 +759,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
   # Prefer Super Carriers (CST 5) over regular Carriers when available
   # CRITICAL: Carriers are strategic assets - prioritize them even if budget is tight
   if needCarriers and cstLevel >= 5:
-    let superCarrierCost = 200
+    let superCarrierCost = getShipConstructionCost(ShipClass.SuperCarrier)
     if tracker.canAfford(SpecialUnits, superCarrierCost):
       result.add(BuildOrder(
         colonySystem: colony.systemId,
@@ -787,7 +788,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         fightersBuilt += 1
 
   elif needCarriers and cstLevel >= 3:  # Matches ships.toml tech_level - carriers are strategic assets
-    let carrierCost = 120
+    let carrierCost = getShipConstructionCost(ShipClass.Carrier)
     if tracker.canAfford(SpecialUnits, carrierCost):
       result.add(BuildOrder(
         colonySystem: colony.systemId,
@@ -818,7 +819,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
   # Transports bypass canAffordMoreShips gate like scouts/fighters
   # They're strategic assets for invasion gameplay, controlled by budget allocation
   if needTransports:
-    let transportCost = 100
+    let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
     if tracker.canAfford(SpecialUnits, transportCost):
       logDebug(LogCategory.lcAI,
                &"Building transport at colony {colony.systemId} " &
@@ -834,7 +835,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
       tracker.recordSpending(SpecialUnits, transportCost)
 
   if canAffordMoreShips and needRaiders:
-    let raiderCost = 100
+    let raiderCost = getShipConstructionCost(ShipClass.Raider)
     if tracker.canAfford(SpecialUnits, raiderCost):
       result.add(BuildOrder(
         colonySystem: colony.systemId,
@@ -930,7 +931,7 @@ proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,
   if not needSiege or cstLevel < 10 or planetBreakerCount >= colonyCount:
     return
 
-  let planetBreakerCost = 400
+  let planetBreakerCost = getShipConstructionCost(ShipClass.PlanetBreaker)
   if tracker.canAfford(SpecialUnits, planetBreakerCost):
     logDebug(LogCategory.lcAI,
              &"Building Planet-Breaker at colony {colony.systemId} " &

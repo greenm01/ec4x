@@ -1,0 +1,20 @@
+nimTitle	types	types.html	module src/engine/economy/types		0
+nim	ProductionOutput	types.html#ProductionOutput	object ProductionOutput		23
+nim	IndustrialUnits	types.html#IndustrialUnits	object IndustrialUnits		32
+nim	ConstructionType	types.html#ConstructionType	enum ConstructionType		39
+nim	ConstructionProject	types.html#ConstructionProject	object ConstructionProject		45
+nim	FacilityType	types.html#FacilityType	enum FacilityType		53
+nim	RepairTargetType	types.html#RepairTargetType	enum RepairTargetType		58
+nim	RepairProject	types.html#RepairProject	object RepairProject		63
+nim	CompletedProject	types.html#CompletedProject	object CompletedProject		77
+nim	TaxPolicy	types.html#TaxPolicy	object TaxPolicy		85
+nim	TreasuryTransaction	types.html#TreasuryTransaction	object TreasuryTransaction		90
+nim	TransactionCategory	types.html#TransactionCategory	enum TransactionCategory		96
+nim	ColonyIncomeReport	types.html#ColonyIncomeReport	object ColonyIncomeReport		107
+nim	HouseIncomeReport	types.html#HouseIncomeReport	object HouseIncomeReport		118
+nim	IncomePhaseReport	types.html#IncomePhaseReport	object IncomePhaseReport		133
+nim	MaintenanceReport	types.html#MaintenanceReport	object MaintenanceReport		140
+nim	TAX_HIGH_THRESHOLD	types.html#TAX_HIGH_THRESHOLD	const TAX_HIGH_THRESHOLD		151
+nim	BASE_IU_COST	types.html#BASE_IU_COST	const BASE_IU_COST		154
+nim	calculatePTU	types.html#calculatePTU,int	proc calculatePTU(pu: int): int		161
+nim	calculatePU	types.html#calculatePU,int	proc calculatePU(ptu: int): int		182
