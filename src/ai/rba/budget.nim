@@ -1085,19 +1085,22 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     availableBudget       # CFO needs total budget to calculate percentages
   )
 
+  # NOTE: Diagnostic logging removed after verification that Strategic Triage fix works
+
   # 2. Initialize BudgetTracker with full house budget
   # CRITICAL: Single tracker prevents overspending across all colonies
   # Previous bug: Per-colony budgets → 3 colonies × 550 PP = 1650 PP spent (house only had 1000!)
   # Now: Single tracker enforces house-wide budget limit
   var tracker = initBudgetTracker(controller.houseId, availableBudget, allocation)
 
-  # DIAGNOSTIC: Log budget allocation breakdown
+  # DIAGNOSTIC: Log budget allocation breakdown (INCLUDING SpecialUnits to debug carrier issue)
   logInfo(LogCategory.lcAI,
     &"{controller.houseId} Budget allocation ({act}): " &
     &"total={availableBudget}PP, " &
     &"Expansion={int(allocation[Expansion]*float(availableBudget))}PP, " &
     &"Reconnaissance={int(allocation[Reconnaissance]*float(availableBudget))}PP, " &
-    &"Military={int(allocation[Military]*float(availableBudget))}PP")
+    &"Military={int(allocation[Military]*float(availableBudget))}PP, " &
+    &"SpecialUnits={int(allocation[SpecialUnits]*float(availableBudget))}PP")
 
   # 3. Generate orders for each objective within budget
   result = @[]
@@ -1117,12 +1120,22 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
   if admiralRequirements.isSome:
     let reqs = admiralRequirements.get()
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} CFO: Processing {reqs.requirements.len} Admiral requirements")
     for req in reqs.requirements:
       # Process requirements in priority order (already sorted by Admiral)
       # Skip Deferred requirements (low urgency)
       if req.priority == RequirementPriority.Deferred:
+        let itemName = if req.shipClass.isSome: $req.shipClass.get() else: req.reason
+        logDebug(LogCategory.lcAI,
+                 &"{controller.houseId} CFO: Deferring {req.quantity}× {itemName} (priority={req.priority})")
         cfoFeedback.deferredRequirements.add(req)
         continue
+
+      let itemName = if req.shipClass.isSome: $req.shipClass.get() else: req.reason
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} CFO: Processing {req.quantity}× {itemName} " &
+               &"(priority={req.priority}, cost={req.estimatedCost}PP)")
 
       # Find best colony to build (prefer target system if specified)
       var buildColony: Option[Colony] = none(Colony)
@@ -1143,7 +1156,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
       if buildColony.isNone:
         logWarn(LogCategory.lcAI,
-                &"{controller.houseId} Admiral requirement cannot be fulfilled: " &
+                &"{controller.houseId} CFO: Admiral requirement cannot be fulfilled: " &
                 &"no colonies with shipyard/spaceport (need {req.quantity}× {req.shipClass.get()})")
         cfoFeedback.unfulfilledRequirements.add(req)
         cfoFeedback.totalUnfulfilledCost += req.estimatedCost

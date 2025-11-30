@@ -200,8 +200,8 @@ command_cost = 3
 command_rating = 8
 carry_limit = 3
 tech_level = 3
-build_cost = 120
-upkeep_cost = 4  # MC = 3% of 120 = 3.6 → round to 4
+build_cost = 80  # BALANCE: Reduced from 120→80 for mid-game viability (80PP = 4x fighter cost)
+upkeep_cost = 3  # MC = 4% of 80 = 3.2 → round to 3
 special_capability = "CAR3"
 
 [supercarrier]
@@ -229,7 +229,7 @@ defense_strength = 3
 command_cost = 0  # Fighters don't use CC
 command_rating = 0
 tech_level = 3
-build_cost = 20
+build_cost = 20  # Official spec cost
 upkeep_cost = 1  # MC = 5% of 20 = 1
 special_capability = ""
 
