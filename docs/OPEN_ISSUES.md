@@ -1,11 +1,12 @@
 # EC4X Open Issues & Gaps
 
-**Last Updated:** 2025-11-27 (Post-Simultaneous Resolution: Sequential Bias Eliminated)
+**Last Updated:** 2025-11-29 (Post-Population Transfer Fix: All Tests Passing)
 
 This is the SINGLE source of truth for known bugs, missing features, and technical debt.
 When an issue is fixed, check it off and update STATUS.md.
 
 **Recently Resolved:**
+- ✅ **Population Transfer System Initialization** (2025-11-29) - Fixed uninitialized globalPopulationConfig causing all 35 integration tests to fail. Implemented Space Guild best-faith delivery. All 669 test cases now passing. See KNOWN_ISSUES.md #-4 for details.
 - ✅ **Sequential Order Processing Bias** (2025-11-27) - Implemented simultaneous resolution for all competitive orders (colonization, blockade, planetary combat, espionage). Win rates dropped from 87-93% to 56.2% max. System is now fully deterministic and reproducible. See KNOWN_ISSUES.md #-3 for details.
 
 ---
