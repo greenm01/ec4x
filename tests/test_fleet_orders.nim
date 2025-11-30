@@ -3,7 +3,7 @@
 
 import std/[unittest, options, tables, strutils]
 import ../src/common/[hex, system, types/core, types/units]
-import ../src/engine/[gamestate, orders, fleet, squadron, starmap]
+import ../src/engine/[gamestate, orders, fleet, squadron, starmap, spacelift]
 import ../src/engine/commands/executor
 
 # =============================================================================
@@ -286,6 +286,9 @@ suite "Order 04: Guard Starbase":
     let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
 
+    # Add starbase to colony
+    state.colonies[1].starbases.add(Starbase(id: "sb1", commissionedTurn: 1, isCrippled: false))
+
     let order = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetOrderType.GuardStarbase,
@@ -402,17 +405,24 @@ suite "Order 06-08: Combat Orders":
   test "Invade order requires combat ships and transports":
     var state = createTestGameState()
 
-    # Create fleet with destroyer and transport
+    # Create fleet with destroyer and loaded troop transport
     let destroyer = newEnhancedShip(ShipClass.Destroyer)
-    let transport = newEnhancedShip(ShipClass.TroopTransport)
+    var transport = SpaceLiftShip(
+      id: "transport1",
+      shipClass: ShipClass.TroopTransport,
+      owner: "house1",
+      location: 2,
+      isCrippled: false,
+      cargo: SpaceLiftCargo(cargoType: CargoType.Marines, quantity: 1, capacity: 1)
+    )
     var sq1 = newSquadron(destroyer)
-    var sq2 = newSquadron(transport)
 
     let fleet = Fleet(
       id: "invasion_fleet",
       owner: "house1",
       location: 2,
-      squadrons: @[sq1, sq2]
+      squadrons: @[sq1],
+      spaceLiftShips: @[transport]
     )
     state.fleets[fleet.id] = fleet
 
@@ -431,14 +441,21 @@ suite "Order 06-08: Combat Orders":
 
   test "Blitz order requires troop transports":
     var state = createTestGameState()
-    let transport = newEnhancedShip(ShipClass.TroopTransport)
-    var sq = newSquadron(transport)
+    var transport = SpaceLiftShip(
+      id: "transport2",
+      shipClass: ShipClass.TroopTransport,
+      owner: "house1",
+      location: 2,
+      isCrippled: false,
+      cargo: SpaceLiftCargo(cargoType: CargoType.Marines, quantity: 1, capacity: 1)
+    )
 
     let fleet = Fleet(
       id: "blitz_fleet",
       owner: "house1",
       location: 2,
-      squadrons: @[sq]
+      squadrons: @[],
+      spaceLiftShips: @[transport]
     )
     state.fleets[fleet.id] = fleet
 
@@ -485,6 +502,9 @@ suite "Order 09-11: Spy Orders":
     var state = createTestGameState()
     let scout = newEnhancedShip(ShipClass.Scout)
     var sq = newSquadron(scout)
+
+    # Add starbase to colony at system 2
+    state.colonies[2].starbases.add(Starbase(id: "sb2", commissionedTurn: 1, isCrippled: false))
 
     let fleet = Fleet(
       id: "hack_fleet",
@@ -540,14 +560,21 @@ suite "Order 09-11: Spy Orders":
 suite "Order 12: Colonize":
   test "Colonize requires ETAC":
     var state = createTestGameState()
-    let etac = newEnhancedShip(ShipClass.ETAC)
-    var sq = newSquadron(etac)
+    var etac = SpaceLiftShip(
+      id: "etac1",
+      shipClass: ShipClass.ETAC,
+      owner: "house1",
+      location: 1,
+      isCrippled: false,
+      cargo: SpaceLiftCargo(cargoType: CargoType.Colonists, quantity: 1, capacity: 1)
+    )
 
     let fleet = Fleet(
       id: "colony_fleet",
       owner: "house1",
       location: 1,
-      squadrons: @[sq]
+      squadrons: @[],
+      spaceLiftShips: @[etac]
     )
     state.fleets[fleet.id] = fleet
 
@@ -698,6 +725,9 @@ suite "Order 15: Salvage":
     var state = createTestGameState()
     let fleet = createTestFleet("house1", 1, "TestFleet")
     state.fleets[fleet.id] = fleet
+
+    # Add spaceport to colony for salvage operations
+    state.colonies[1].spaceports.add(Spaceport(id: "sp1", commissionedTurn: 1, docks: 5))
 
     let order = FleetOrder(
       fleetId: fleet.id,
