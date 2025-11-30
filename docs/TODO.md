@@ -1199,188 +1199,23 @@ The feedback loop provides clean signals for ML training:
 #### 8. 🎯 HIGH PRIORITY - Imperial Administrators & House Duke Coordination
 
 **Status:** ⏳ TODO - Critical for improved RBA strategic intelligence
-**Context:** Currently only Admiral and CFO exist - need competing advisors mediated by House Duke
 **Priority:** HIGH (significantly improves AI strategic decision-making)
+**Estimated Effort:** 20-30 hours for complete Imperial Government
 
-**Current Architecture:**
-```
-Admiral → BuildRequirements → CFO → Budget Allocation → Orders
-```
+**Context:**
+Currently only Admiral and CFO exist. Need competing advisors (Science Advisor, Spymaster, Diplomat, Economic Advisor) mediated by House Duke strategic coordinator. This creates realistic budget competition and emergent strategic behavior.
 
-**Proposed Architecture (Imperial Government):**
-```
-                        House Duke (Strategic Coordinator)
-                               ↓
-                    Analyzes competing advisor feedback
-                    Resolves priority conflicts
-                    Makes final strategic decisions
-                               ↓
-        ┌──────────────────┬────────────────┬──────────────────┬─────────────────┐
-        ↓                  ↓                ↓                  ↓                 ↓
-    Admiral          Science Advisor    Spymaster        Diplomat          Economic Advisor
-  (Military         (Research          (Espionage       (Alliances        (Taxation
-   Procurement)      Priorities)        Operations)      & Trade)          & Infrastructure)
-        ↓                  ↓                ↓                  ↓                 ↓
-              All generate Requirements with priority/budget requests
-                               ↓
-                         CFO (Budget Master)
-                               ↓
-                    Allocates PP across competing demands
-                    Returns feedback on fulfilled/unfulfilled
-                               ↓
-                  House Duke adjusts priorities iteratively
-                               ↓
-                         Final OrderPacket
-```
+**Architecture:**
+Multi-advisor system where House Duke analyzes feedback from all advisors, resolves priority conflicts based on strategic situation, and implements personality-driven preferences through iterative feedback loop with CFO.
 
-**Why This Architecture:**
-1. **Competing Demands**: Advisors naturally compete for limited PP budget
-   - Admiral wants ships (Military budget 20-25%)
-   - Science Advisor wants research (Technology budget 15-20%)
-   - Spymaster wants EBP/CIP (Espionage budget 2-5%)
-   - Diplomat wants diplomatic investments (if any cost PP)
-   - Economic Advisor wants infrastructure (Economy budget 10-15%)
+**Implementation Phases:**
+1. Science Advisor (4-6 hours) - Research priorities
+2. Spymaster (4-6 hours) - Espionage operations
+3. House Duke (6-8 hours) - Strategic coordinator
+4. Diplomat (3-4 hours) - Alliance management
+5. Economic Advisor (3-4 hours, optional) - Infrastructure/taxation
 
-2. **House Duke Mediates**: Strategic coordinator resolves conflicts
-   - Analyzes advisor feedback (unfulfilled requirements)
-   - Adjusts priorities based on strategic situation (game Act, threats, opportunities)
-   - Implements personality-driven preferences (Aggressive → Admiral priority, Economic → Science priority)
-   - Breaks deadlocks when multiple advisors demand same resources
-
-3. **Feedback Loop**: Iterative convergence (like Admiral-CFO loop, but multi-way)
-   ```
-   Iteration 0: All advisors generate initial requirements
-   CFO attempts to fulfill → Returns feedback
-   House Duke analyzes shortfalls → Adjusts priorities
-   Iteration 1: Advisors regenerate with adjusted priorities
-   CFO re-attempts → Returns feedback
-   Repeat until convergence (MAX_ITERATIONS = 3)
-   ```
-
-**Advisors to Implement:**
-
-1. **Admiral** (✅ Already exists)
-   - Military procurement (ships, ground units, starbases)
-   - Defense gap analysis
-   - Offensive capability assessment
-
-2. **Science Advisor** (⏳ TODO)
-   - Research priorities (ERP/SRP/TRP allocation)
-   - Tech tree path analysis
-   - Breakthrough timing optimization
-   - Module: `src/ai/rba/science_advisor.nim`
-
-3. **Spymaster** (⏳ TODO)
-   - Espionage operations (spy, hack, propaganda)
-   - EBP/CIP budget requests
-   - Counter-intelligence priorities
-   - Intel gathering targeting
-   - Module: `src/ai/rba/spymaster.nim`
-
-4. **Diplomat** (⏳ TODO)
-   - Alliance formation recommendations
-   - Trade agreement analysis
-   - Peace negotiation strategies
-   - Pact violation risk assessment
-   - Module: `src/ai/rba/diplomat.nim`
-
-5. **Economic Advisor** (⏳ TODO - Optional)
-   - Infrastructure prioritization (shipyards, spaceports)
-   - Taxation policy recommendations
-   - Population transfer strategies
-   - Terraforming project selection
-   - Module: `src/ai/rba/economic_advisor.nim`
-
-6. **House Duke** (⏳ TODO - Critical Coordinator)
-   - Strategic situation analysis (Act, threats, opportunities)
-   - Advisor priority mediation
-   - Personality-driven preference weights
-   - Iterative feedback loop coordination
-   - Final strategic decision authority
-   - Module: `src/ai/rba/house_duke.nim`
-
-**Implementation Steps:**
-
-**Phase 1: Science Advisor** (Estimated: 4-6 hours)
-- Create `science_advisor.nim` with tech priority analysis
-- Generate research requirements (ERP/SRP/TRP allocations)
-- Integrate with CFO budget system
-- Test with Admiral in competition
-
-**Phase 2: Spymaster** (Estimated: 4-6 hours)
-- Create `spymaster.nim` with espionage targeting
-- Generate espionage requirements (EBP/CIP purchases, missions)
-- Integrate with CFO budget system
-- Test 3-way competition (Admiral, Science, Spy)
-
-**Phase 3: House Duke Coordinator** (Estimated: 6-8 hours)
-- Create `house_duke.nim` with priority mediation
-- Implement multi-advisor feedback loop
-- Add personality-driven preference weights
-- Conflict resolution heuristics
-- Test complete Imperial Government
-
-**Phase 4: Diplomat** (Estimated: 3-4 hours)
-- Create `diplomat.nim` with alliance analysis
-- Generate diplomatic requirements
-- Integrate with House Duke
-
-**Phase 5: Economic Advisor** (Optional, Estimated: 3-4 hours)
-- Create `economic_advisor.nim`
-- Infrastructure and taxation recommendations
-- Integrate with House Duke
-
-**Benefits:**
-1. **More Sophisticated AI**: Multiple specialized advisors → better strategic decisions
-2. **Emergent Behavior**: Competition naturally creates interesting strategic trade-offs
-3. **Personality Differentiation**: House Duke weights advisor priorities differently per personality
-4. **Extensibility**: Easy to add new advisors (Propaganda Minister, Fleet Marshal, etc.)
-5. **Realistic Simulation**: Mirrors real government with competing departments/priorities
-
-**Control Theory:**
-This is a **multi-input, single-output (MISO) control system** with negative feedback:
-- **Inputs**: Multiple advisor requirements (competing demands)
-- **Output**: Final OrderPacket (unified strategy)
-- **Controller**: House Duke (priority mediator)
-- **Feedback**: CFO fulfillment status (error signals)
-- **Convergence**: Iterative adjustment until stable or MAX_ITERATIONS
-
-**ML Training Benefits:**
-- Rich training signals from multi-advisor competition
-- House Duke decisions provide high-level strategic examples
-- Advisor priority weights become learnable parameters
-- Feedback loop convergence metrics measure strategic coherence
-
-**Documentation:**
-- Create `docs/ai/IMPERIAL_GOVERNMENT_ARCHITECTURE.md`
-- Document advisor responsibilities, feedback loops, House Duke mediation
-- Control theory analysis of MISO feedback system
-- ML integration opportunities
-
-**Files to Create:**
-- `src/ai/rba/house_duke.nim` - Strategic coordinator
-- `src/ai/rba/science_advisor.nim` - Research priorities
-- `src/ai/rba/spymaster.nim` - Espionage operations
-- `src/ai/rba/diplomat.nim` - Alliance management
-- `src/ai/rba/economic_advisor.nim` - Infrastructure/taxation (optional)
-
-**Files to Modify:**
-- `src/ai/rba/orders.nim` - Integrate House Duke coordination
-- `src/ai/rba/controller_types.nim` - Add advisor requirement types
-- `src/ai/rba/budget.nim` - Handle multiple advisor inputs
-
-**Total Estimated Effort:** 20-30 hours for complete Imperial Government
-**Phased Approach:** Can implement incrementally (Science → Spy → Duke → Diplomat → Economic)
-
-**Next Steps After Ground Unit Fix:**
-1. Implement Science Advisor (simplest, immediate value)
-2. Implement Spymaster (espionage currently ad-hoc in orders.nim)
-3. Implement House Duke (coordinates the two existing advisors)
-4. Add remaining advisors incrementally
-
-**See Also:**
-- Current Admiral-CFO feedback loop: `docs/ai/ADMIRAL_CFO_FEEDBACK_LOOP.md`
-- Ground unit fix: `docs/ai/balance/ground-unit-fix-2025-11-30.md`
+**See:** `docs/ai/balance/cfo-non-ship-expenditures-and-imperial-government.md` for detailed architecture proposal, control theory analysis, advisor specifications, and implementation plan.
 
 ---
 
