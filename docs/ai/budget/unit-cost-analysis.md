@@ -26,11 +26,19 @@ EFFICIENCY ANALYSIS
 ================================================================================
 
 Most Efficient (lowest PP per power point):
-  FS   Fighter Squadron       2.86 PP/pwr (20PP / 7pwr)
+  FS   Fighter Squadron       2.86 PP/pwr (20PP / 7pwr) *GLASS CANNON*
   BC   Battle Cruiser         2.94 PP/pwr (100PP / 34pwr)
   SB   Starbase               3.16 PP/pwr (300PP / 95pwr)
   CA   Heavy Cruiser          3.20 PP/pwr (80PP / 25pwr)
   BB   Battleship             3.33 PP/pwr (150PP / 45pwr)
+
+FIGHTER DESIGN NOTES:
+- Fighters are CONSUMABLES, not investments
+- No damage states: go straight from undamaged → destroyed
+- Cannot be repaired (unlike capital ships)
+- High attrition rate requires constant replacement
+- Low cost (20PP) compensates for disposable nature
+- Most efficient PP/pwr ratio BY DESIGN
 
 Least Efficient (highest PP per power point):
   CV   Carrier                5.22 PP/pwr (120PP / 23pwr)
