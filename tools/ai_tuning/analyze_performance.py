@@ -210,25 +210,52 @@ def main():
     print("\n🏆 VICTORY ANALYSIS\n")
 
     # Calculate wins: count how many times this strategy had the highest prestige
-    # First, find the max prestige per game
-    max_prestige_per_game = (final_turn
-        .group_by(["turn"])  # Group by turn to handle multiple games
-        .agg(pl.col("prestige").max().alias("max_prestige"))
-    )
+    # Need to add game_id from CSV filename to properly group by game
+    # For now, we'll use a workaround: assume each game has unique turn+house combinations
+    # and group by combinations of turn values to identify separate games
 
-    # Join back to get wins
-    final_with_max = final_turn.join(max_prestige_per_game, on="turn")
-    final_with_max = final_with_max.with_columns(
-        (pl.col("prestige") == pl.col("max_prestige")).alias("is_winner")
-    )
+    # Better approach: Add game_id when reading CSVs
+    # Read all CSV files again with game_id
+    dfs_with_id = []
+    for csv_file in csv_files:
+        try:
+            df = pl.read_csv(csv_file)
+            game_num = int(csv_file.stem.split("_")[1])
+            df = df.with_columns(pl.lit(game_num).alias("game_id"))
+            dfs_with_id.append(df)
+        except Exception as e:
+            pass
 
-    victories = (final_with_max
-        .group_by("strategy")
-        .agg([
+    if dfs_with_id:
+        combined_with_id = pl.concat(dfs_with_id)
+        final_turn_with_id = combined_with_id.filter(pl.col("turn") == max_turn)
+
+        # Find max prestige per game
+        max_prestige_per_game = (final_turn_with_id
+            .group_by("game_id")
+            .agg(pl.col("prestige").max().alias("max_prestige"))
+        )
+
+        # Join and mark winners
+        final_with_max = final_turn_with_id.join(max_prestige_per_game, on="game_id")
+        final_with_max = final_with_max.with_columns(
+            (pl.col("prestige") == pl.col("max_prestige")).alias("is_winner")
+        )
+
+        victories = (final_with_max
+            .group_by("strategy")
+            .agg([
+                pl.len().alias("games"),
+                pl.col("is_winner").sum().alias("wins"),
+            ])
+            .sort("wins", descending=True)
+        )
+    else:
+        # Fallback if game_id extraction fails
+        victories = final_turn.group_by("strategy").agg([
             pl.len().alias("games"),
-            pl.col("is_winner").sum().alias("wins"),
+            pl.lit(0).alias("wins"),
         ])
-    )
 
     for row in victories.iter_rows(named=True):
         win_rate = (row['wins'] / row['games'] * 100) if row['games'] > 0 else 0

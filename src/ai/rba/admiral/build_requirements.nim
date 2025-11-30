@@ -16,6 +16,7 @@ import std/[options, tables, sequtils, algorithm, strformat]
 import ../../../common/system
 import ../../../common/types/[core, units]
 import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron, spacelift]
+import ../../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../common/types as ai_common_types  # For BuildObjective
 import ../controller_types  # For BuildRequirements types
 import ../config
@@ -474,6 +475,7 @@ proc assessStrategicAssets*(
       # Request fighters to fill carrier capacity
       let targetFighters = totalCarrierCapacity
       if fighterCount < targetFighters:
+        let fighterCost = getShipConstructionCost(ShipClass.Fighter)
         let req = BuildRequirement(
           requirementType: RequirementType.StrategicAsset,
           priority: RequirementPriority.Low,
@@ -481,7 +483,7 @@ proc assessStrategicAssets*(
           quantity: targetFighters - fighterCount,
           buildObjective: BuildObjective.SpecialUnits,
           targetSystem: none(SystemId),
-          estimatedCost: 20 * (targetFighters - fighterCount),
+          estimatedCost: fighterCost * (targetFighters - fighterCount),
           reason: &"Fighter wings for carriers (have {fighterCount}/{targetFighters})"
         )
         logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Fighter ({req.estimatedCost}PP) - {req.reason}")
@@ -504,6 +506,7 @@ proc assessStrategicAssets*(
       requiredStarbases += (currentFighters + 4) div 5  # Ceiling division
 
   if requiredStarbases > totalStarbases:
+    let starbaseCost = getShipConstructionCost(ShipClass.Starbase)
     let req = BuildRequirement(
       requirementType: RequirementType.Infrastructure,
       priority: RequirementPriority.High,  # Urgent - prevents fighter disbanding
@@ -511,7 +514,7 @@ proc assessStrategicAssets*(
       quantity: requiredStarbases - totalStarbases,
       buildObjective: BuildObjective.Defense,
       targetSystem: none(SystemId),
-      estimatedCost: 30 * (requiredStarbases - totalStarbases),  # Starbase cost
+      estimatedCost: starbaseCost * (requiredStarbases - totalStarbases),
       reason: &"Starbase infrastructure for fighters (have {totalStarbases}, need {requiredStarbases})"
     )
     logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Starbase ({req.estimatedCost}PP) - {req.reason}")
@@ -531,6 +534,7 @@ proc assessStrategicAssets*(
       let targetTransports = filtered.ownColonies.len div 3  # ~1 transport per 3 colonies
 
       if transportCount < targetTransports:
+        let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
         let req = BuildRequirement(
           requirementType: RequirementType.StrategicAsset,
           priority: RequirementPriority.Low,
@@ -538,7 +542,7 @@ proc assessStrategicAssets*(
           quantity: targetTransports - transportCount,
           buildObjective: BuildObjective.SpecialUnits,
           targetSystem: none(SystemId),
-          estimatedCost: 100 * (targetTransports - transportCount),
+          estimatedCost: transportCost * (targetTransports - transportCount),
           reason: &"Invasion transports (have {transportCount}/{targetTransports})"
         )
         logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x TroopTransport ({req.estimatedCost}PP) - {req.reason}")
@@ -625,6 +629,7 @@ proc assessStrategicAssets*(
 
   let targetShields = highValueColonies.len
   if shieldedColonies < targetShields:
+    let planetaryShieldCost = getPlanetaryShieldCost(1)  # SLD1 shields
     let req = BuildRequirement(
       requirementType: RequirementType.Infrastructure,
       priority: RequirementPriority.Medium,
@@ -632,7 +637,7 @@ proc assessStrategicAssets*(
       quantity: targetShields - shieldedColonies,
       buildObjective: BuildObjective.Defense,
       targetSystem: none(SystemId),
-      estimatedCost: 50 * (targetShields - shieldedColonies),
+      estimatedCost: planetaryShieldCost * (targetShields - shieldedColonies),
       reason: &"Planetary shields for high-value colonies (have {shieldedColonies}/{targetShields})"
     )
     logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
@@ -641,6 +646,7 @@ proc assessStrategicAssets*(
   # Ground batteries for colony defense
   let targetBatteries = filtered.ownColonies.len * 3  # 3 batteries per colony baseline
   if totalGroundBatteries < targetBatteries:
+    let groundBatteryCost = getBuildingCost("GroundBattery")
     let req = BuildRequirement(
       requirementType: RequirementType.Infrastructure,
       priority: RequirementPriority.Low,
@@ -648,7 +654,7 @@ proc assessStrategicAssets*(
       quantity: targetBatteries - totalGroundBatteries,
       buildObjective: BuildObjective.Defense,
       targetSystem: none(SystemId),
-      estimatedCost: 5 * (targetBatteries - totalGroundBatteries),  # Batteries are cheap
+      estimatedCost: groundBatteryCost * (targetBatteries - totalGroundBatteries),
       reason: &"Ground batteries for colony defense (have {totalGroundBatteries}/{targetBatteries})"
     )
     logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x GroundBattery ({req.estimatedCost}PP) - {req.reason}")
@@ -657,6 +663,7 @@ proc assessStrategicAssets*(
   # Armies for colony defense
   let targetArmies = filtered.ownColonies.len * 2  # 2 armies per colony baseline
   if totalArmies < targetArmies:
+    let armyCost = getArmyBuildCost()
     let req = BuildRequirement(
       requirementType: RequirementType.DefenseGap,
       priority: RequirementPriority.Low,
@@ -664,7 +671,7 @@ proc assessStrategicAssets*(
       quantity: targetArmies - totalArmies,
       buildObjective: BuildObjective.Defense,
       targetSystem: none(SystemId),
-      estimatedCost: 10 * (targetArmies - totalArmies),
+      estimatedCost: armyCost * (targetArmies - totalArmies),
       reason: &"Ground armies for colony defense (have {totalArmies}/{targetArmies})"
     )
     logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Army ({req.estimatedCost}PP) - {req.reason}")
@@ -680,6 +687,7 @@ proc assessStrategicAssets*(
     if transportCount > 0:
       let targetMarines = transportCount * 1  # 1 MD per transport (full capacity)
       if totalMarinesAll < targetMarines:
+        let marineCost = getMarineBuildCost()
         let req = BuildRequirement(
           requirementType: RequirementType.OffensivePrep,
           priority: RequirementPriority.Low,
@@ -687,7 +695,7 @@ proc assessStrategicAssets*(
           quantity: targetMarines - totalMarinesAll,
           buildObjective: BuildObjective.Military,
           targetSystem: none(SystemId),
-          estimatedCost: 15 * (targetMarines - totalMarinesAll),
+          estimatedCost: marineCost * (targetMarines - totalMarinesAll),
           reason: &"Marines for invasion operations (have {totalMarinesAll}/{targetMarines})"
         )
         logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Marines ({req.estimatedCost}PP) - {req.reason}")
@@ -707,6 +715,7 @@ proc assessStrategicAssets*(
       let targetRaiders = 2  # Small raider force
 
       if raiderCount < targetRaiders:
+        let raiderCost = getShipConstructionCost(ShipClass.Raider)
         let req = BuildRequirement(
           requirementType: RequirementType.StrategicAsset,
           priority: RequirementPriority.Low,
@@ -714,7 +723,7 @@ proc assessStrategicAssets*(
           quantity: targetRaiders - raiderCount,
           buildObjective: BuildObjective.Military,
           targetSystem: none(SystemId),
-          estimatedCost: 60 * (targetRaiders - raiderCount),
+          estimatedCost: raiderCost * (targetRaiders - raiderCount),
           reason: &"Raider harassment force (have {raiderCount}/{targetRaiders})"
         )
         logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Raider ({req.estimatedCost}PP) - {req.reason}")
