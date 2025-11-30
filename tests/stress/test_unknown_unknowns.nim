@@ -68,27 +68,30 @@ proc collectGameMetrics(game: GameState, gameId: int, turn: int, violations: seq
   for fleet in game.fleets.values:
     squadronCount += fleet.squadrons.len
 
+  # Handle empty sequences (all houses eliminated)
+  let hasHouses = prestiges.len > 0
+
   result = GameMetrics(
     gameId: gameId,
     finalTurn: turn,
     totalViolations: violations.len,
     criticalViolations: violations.filterIt(it.severity == ViolationSeverity.Critical).len,
 
-    avgFinalPrestige: prestiges.mean(),
-    minFinalPrestige: prestiges.min(),
-    maxFinalPrestige: prestiges.max(),
+    avgFinalPrestige: if hasHouses: prestiges.mean() else: 0,
+    minFinalPrestige: if hasHouses: prestiges.min() else: 0,
+    maxFinalPrestige: if hasHouses: prestiges.max() else: 0,
 
-    avgFinalTreasury: treasuries.mean(),
-    minFinalTreasury: treasuries.min(),
+    avgFinalTreasury: if hasHouses: treasuries.mean() else: 0,
+    minFinalTreasury: if hasHouses: treasuries.min() else: 0,
 
-    avgTechLevel: techLevels.mean(),
+    avgTechLevel: if hasHouses: techLevels.mean() else: 0,
 
     totalFleets: game.fleets.len,
     totalColonies: game.colonies.len,
     totalSquadrons: squadronCount,
 
-    negativePrestige: prestiges.anyIt(it < 0),
-    negativeTreasury: treasuries.anyIt(it < 0),
+    negativePrestige: if hasHouses: prestiges.anyIt(it < 0) else: false,
+    negativeTreasury: if hasHouses: treasuries.anyIt(it < 0) else: false,
     zeroColonies: game.colonies.len == 0
   )
 

@@ -235,6 +235,9 @@ type
 
 # Initialization
 
+# Forward declaration
+proc initializeHousesAndHomeworlds*(state: var GameState)
+
 proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
   ## Create a new game with full setup including starmap generation
   ##
@@ -271,6 +274,9 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     populationInTransit: @[],
     pendingProposals: @[]
   )
+
+  # Create houses and homeworld colonies
+  result.initializeHousesAndHomeworlds()
 
 proc validateTechTree*(techTree: TechTree) =
   ## Validate that technology levels are within valid ranges
@@ -417,6 +423,26 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     blockadedBy: @[],
     blockadeTurns: 0
   )
+
+proc initializeHousesAndHomeworlds*(state: var GameState) =
+  ## Initialize houses and their homeworld colonies
+  ## Called during game setup to create starting conditions
+  let playerCount = state.starMap.playerCount
+
+  for playerIdx in 0 ..< playerCount:
+    let houseName = "House" & $(playerIdx + 1)
+    let houseId = "house" & $(playerIdx + 1)
+    let houseColor = ["blue", "red", "green", "yellow", "purple", "orange", "cyan", "magenta", "brown", "pink", "gray", "white"][playerIdx mod 12]
+
+    # Create and add house
+    var house = initializeHouse(houseName, houseColor)
+    house.id = houseId
+    state.houses[houseId] = house
+
+    # Create homeworld colony at player's designated homeworld system
+    let homeworldSystemId = state.starMap.playerSystemIds[playerIdx]
+    let homeworld = createHomeColony(homeworldSystemId, houseId)
+    state.colonies[homeworldSystemId] = homeworld
 
 proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetClass, resources: ResourceRating): Colony =
   ## Create a new ETAC-colonized system with 1 PTU (50k souls)
