@@ -51,7 +51,7 @@ class Colors:
 def print_header():
     """Print test runner header"""
     print("╔════════════════════════════════════════════════╗")
-    print("║  EC4X Comprehensive Test Suite Runner         ║")
+    print("║  EC4X Comprehensive Test Suite Runner          ║")
     print("╚════════════════════════════════════════════════╝")
     print()
 
@@ -291,7 +291,7 @@ def print_summary(results: List[TestResult], df: Optional[pl.DataFrame] = None):
         # Aggregate stats by type
         if len(test_types) > 1:
             agg_stats = df.group_by('test_type').agg([
-                pl.count().alias('files'),
+                pl.len().alias('files'),
                 pl.sum('total_tests').alias('test_cases'),
                 pl.sum('passed').alias('passed_cases'),
                 pl.sum('failed').alias('failed_cases'),
