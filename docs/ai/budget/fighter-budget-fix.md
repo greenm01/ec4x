@@ -31,6 +31,13 @@ This insight revealed that defensive fighters should be treated as regular milit
 - SpecialUnits budget is smaller (10% baseline, 30-80PP typical)
 - This aligns budget allocation with game semantics
 
+**Fighter Design Characteristics:**
+- **Glass cannon**: No damage states, destroyed instantly when hit
+- **Non-repairable**: Unlike capital ships, fighters can't be repaired
+- **High attrition**: Consumable units requiring constant replacement
+- **Low cost (20PP)**: Compensates for disposable nature
+- This is why fighters are the most efficient combat unit (2.86 PP/pwr)
+
 ## Implementation
 
 ### Admiral Build Requirements (build_requirements.nim)
