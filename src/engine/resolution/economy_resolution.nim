@@ -61,7 +61,7 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.C
 proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process construction orders for a house with budget validation
   ## Prevents overspending by tracking committed costs
-  echo "    Processing build orders for ", state.houses[packet.houseId].name
+  logInfo(LogCategory.lcEconomy, &"Processing build orders for {state.houses[packet.houseId].name}")
 
   # Initialize budget validation context
   # Use CURRENT treasury from state (NOT snapshot from OrderPacket)
@@ -128,7 +128,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       # Infrastructure investment (IU expansion)
       let units = order.industrialUnits
       if units <= 0:
-        echo "      Infrastructure order failed: invalid unit count ", units
+        logError(LogCategory.lcEconomy, &"Infrastructure order failed: invalid unit count {units}")
         continue
 
       project = construction.createIndustrialProject(colony, units)
@@ -137,7 +137,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
     of BuildType.Ship:
       # Ship construction
       if order.shipClass.isNone:
-        echo "      Ship construction failed: no ship class specified"
+        logError(LogCategory.lcEconomy, &"Ship construction failed: no ship class specified")
         continue
 
       let shipClass = order.shipClass.get()
@@ -147,7 +147,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
     of BuildType.Building:
       # Building construction
       if order.buildingType.isNone:
-        echo "      Building construction failed: no building type specified"
+        logError(LogCategory.lcEconomy, &"Building construction failed: no building type specified")
         continue
 
       let buildingType = order.buildingType.get()
@@ -176,9 +176,10 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
 
       let queuePos = mutableColony.constructionQueue.len
       let capacity = mutableColony.getConstructionDockCapacity()
-      echo "      Started construction at system ", order.colonySystem, ": ", projectDesc
-      echo "        Cost: ", project.costTotal, " PP, Est. ", project.turnsRemaining, " turns (Queue: ", queuePos, "/", capacity, " docks)"
-      echo "        Treasury: ", oldTreasury, " PP → ", house.treasury, " PP"
+      logInfo(LogCategory.lcEconomy,
+        &"Started construction at system-{order.colonySystem}: {projectDesc} " &
+        &"(Cost: {project.costTotal} PP, Est. {project.turnsRemaining} turns, " &
+        &"Queue: {queuePos}/{capacity} docks, Treasury: {oldTreasury} → {house.treasury} PP)")
 
       # Generate event
       events.add(GameEvent(
@@ -188,7 +189,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
         systemId: some(order.colonySystem)
       ))
     else:
-      echo "      Construction start failed at system ", order.colonySystem
+      logError(LogCategory.lcEconomy, &"Construction start failed at system-{order.colonySystem}")
 
   # Log budget validation summary
   let successfulOrders = packet.buildOrders.len - budgetContext.rejectedOrders
@@ -203,23 +204,23 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
   for order in packet.squadronManagement:
     # Validate colony exists and is owned by house
     if order.colonySystem notin state.colonies:
-      echo "    Squadron management failed: System ", order.colonySystem, " has no colony"
+      logError(LogCategory.lcFleet, &"Squadron management failed: System-{order.colonySystem} has no colony")
       continue
 
     var colony = state.colonies[order.colonySystem]
     if colony.owner != packet.houseId:
-      echo "    Squadron management failed: ", packet.houseId, " does not own system ", order.colonySystem
+      logError(LogCategory.lcFleet, &"Squadron management failed: {packet.houseId} does not own system-{order.colonySystem}")
       continue
 
     case order.action
     of SquadronManagementAction.TransferShip:
       # Transfer ship between squadrons at this colony
       if order.sourceSquadronId.isNone or order.shipIndex.isNone:
-        echo "    TransferShip failed: Missing source squadron or ship index"
+        logError(LogCategory.lcFleet, &"TransferShip failed: Missing source squadron or ship index")
         continue
 
       if order.targetSquadronId.isNone:
-        echo "    TransferShip failed: Missing target squadron"
+        logError(LogCategory.lcFleet, &"TransferShip failed: Missing target squadron")
         continue
 
       # Find source and target squadrons in fleets at this colony
@@ -240,7 +241,7 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
             break
 
       if sourceFleet.isNone:
-        echo "    TransferShip failed: Source squadron ", order.sourceSquadronId.get(), " not found"
+        logError(LogCategory.lcFleet, &"TransferShip failed: Source squadron {order.sourceSquadronId.get()} not found")
         continue
 
       # Locate target squadron
@@ -255,7 +256,7 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
             break
 
       if targetFleet.isNone:
-        echo "    TransferShip failed: Target squadron ", order.targetSquadronId.get(), " not found"
+        logError(LogCategory.lcFleet, &"TransferShip failed: Target squadron {order.targetSquadronId.get()} not found")
         continue
 
       # Remove ship from source squadron
@@ -263,12 +264,12 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
       var sourceSquad = state.fleets[sourceFleet.get()].squadrons[sourceSquadIndex]
 
       if shipIndex < 0 or shipIndex >= sourceSquad.ships.len:
-        echo "    TransferShip failed: Invalid ship index ", shipIndex, " (squadron has ", sourceSquad.ships.len, " ships)"
+        logError(LogCategory.lcFleet, &"TransferShip failed: Invalid ship index {shipIndex} (squadron has {sourceSquad.ships.len} ships)")
         continue
 
       let shipOpt = sourceSquad.removeShip(shipIndex)
       if shipOpt.isNone:
-        echo "    TransferShip failed: Could not remove ship from source squadron"
+        logError(LogCategory.lcFleet, &"TransferShip failed: Could not remove ship from source squadron")
         continue
 
       let ship = shipOpt.get()
@@ -277,7 +278,7 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
       var targetSquad = state.fleets[targetFleet.get()].squadrons[targetSquadIndex]
 
       if not targetSquad.addShip(ship):
-        echo "    TransferShip failed: Could not add ship to target squadron (may be full or incompatible)"
+        logError(LogCategory.lcFleet, &"TransferShip failed: Could not add ship to target squadron (may be full or incompatible)")
         # Put ship back in source squadron
         discard sourceSquad.addShip(ship)
         state.fleets[sourceFleet.get()].squadrons[sourceSquadIndex] = sourceSquad
@@ -287,12 +288,12 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
       state.fleets[sourceFleet.get()].squadrons[sourceSquadIndex] = sourceSquad
       state.fleets[targetFleet.get()].squadrons[targetSquadIndex] = targetSquad
 
-      echo "    Transferred ship from ", order.sourceSquadronId.get(), " to ", order.targetSquadronId.get()
+      logInfo(LogCategory.lcFleet, &"Transferred ship from {order.sourceSquadronId.get()} to {order.targetSquadronId.get()}")
 
     of SquadronManagementAction.AssignToFleet:
       # Assign existing squadron to fleet (move between fleets or create new fleet)
       if order.squadronId.isNone:
-        echo "    AssignToFleet failed: No squadron ID specified"
+        logError(LogCategory.lcFleet, &"AssignToFleet failed: No squadron ID specified")
         continue
 
       # Find squadron in existing fleets at this colony
@@ -323,7 +324,7 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
             break
 
       if foundSquadron.isNone:
-        echo "    AssignToFleet failed: Squadron ", order.squadronId.get(), " not found at system"
+        logError(LogCategory.lcFleet, &"AssignToFleet failed: Squadron {order.squadronId.get()} not found at system")
         continue
 
       let squadron = foundSquadron.get()
@@ -375,7 +376,7 @@ proc resolveSquadronManagement*(state: var GameState, packet: OrderPacket, event
           status: FleetStatus.Active,
           autoBalanceSquadrons: true
         )
-        echo "    Created new fleet ", newFleetId, " with squadron ", squadron.id
+        logInfo(LogCategory.lcFleet, &"Created new fleet {newFleetId} with squadron {squadron.id}")
 
     # Update colony in state
     state.colonies[order.colonySystem] = colony
@@ -385,29 +386,29 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
   for order in packet.cargoManagement:
     # Validate colony exists and is owned by house
     if order.colonySystem notin state.colonies:
-      echo "    Cargo management failed: System ", order.colonySystem, " has no colony"
+      logError(LogCategory.lcEconomy, &"Cargo management failed: System-{order.colonySystem} has no colony")
       continue
 
     let colony = state.colonies[order.colonySystem]
     if colony.owner != packet.houseId:
-      echo "    Cargo management failed: ", packet.houseId, " does not own system ", order.colonySystem
+      logError(LogCategory.lcEconomy, &"Cargo management failed: {packet.houseId} does not own system-{order.colonySystem}")
       continue
 
     # Validate fleet exists and is at colony
     let fleetOpt = state.getFleet(order.fleetId)
     if fleetOpt.isNone:
-      echo "    Cargo management failed: Fleet ", order.fleetId, " does not exist"
+      logError(LogCategory.lcEconomy, &"Cargo management failed: Fleet {order.fleetId} does not exist")
       continue
 
     let fleet = fleetOpt.get()
     if fleet.location != order.colonySystem:
-      echo "    Cargo management failed: Fleet ", order.fleetId, " not at colony ", order.colonySystem
+      logError(LogCategory.lcEconomy, &"Cargo management failed: Fleet {order.fleetId} not at colony {order.colonySystem}")
       continue
 
     case order.action
     of CargoManagementAction.LoadCargo:
       if order.cargoType.isNone:
-        echo "    LoadCargo failed: No cargo type specified"
+        logError(LogCategory.lcEconomy, &"LoadCargo failed: No cargo type specified")
         continue
 
       let cargoType = order.cargoType.get()
@@ -437,7 +438,7 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
         else: 0
 
       if availableUnits <= 0:
-        echo "    LoadCargo failed: No ", cargoType, " available at ", order.colonySystem
+        logError(LogCategory.lcEconomy, &"LoadCargo failed: No {cargoType} available at system-{order.colonySystem}")
         continue
 
       # If quantity = 0, load all available
@@ -473,7 +474,7 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
         if mutableShip.loadCargo(cargoType, loadAmount):
           totalLoaded += loadAmount
           remainingToLoad -= loadAmount
-          echo "    Loaded ", loadAmount, " ", cargoType, " onto ", ship.shipClass, " ", ship.id
+          logDebug(LogCategory.lcEconomy, &"Loaded {loadAmount} {cargoType} onto {ship.shipClass} {ship.id}")
 
         modifiedShips.add(mutableShip)
 
@@ -489,7 +490,7 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
           colony.souls -= soulsToLoad
           # Update display field (population in millions)
           colony.population = colony.souls div 1_000_000
-          echo "    Removed ", totalLoaded, " PTU (", soulsToLoad, " souls, ", totalLoaded.float * ptuSizeMillions(), "M) from colony"
+          logDebug(LogCategory.lcEconomy, &"Removed {totalLoaded} PTU ({soulsToLoad} souls, {totalLoaded.float * ptuSizeMillions()}M) from colony")
         else:
           discard
 
@@ -497,7 +498,7 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
         fleet.spaceLiftShips = modifiedShips
         state.fleets[order.fleetId] = fleet
         state.colonies[order.colonySystem] = colony
-        echo "    Successfully loaded ", totalLoaded, " ", cargoType, " at ", order.colonySystem
+        logInfo(LogCategory.lcEconomy, &"Successfully loaded {totalLoaded} {cargoType} at system-{order.colonySystem}")
 
     of CargoManagementAction.UnloadCargo:
       # Get mutable colony and fleet
@@ -523,7 +524,7 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
         case cargoType
         of CargoType.Marines:
           colony.marines += quantity
-          echo "    Unloaded ", quantity, " Marines from ", ship.id, " to colony"
+          logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} Marines from {ship.id} to colony")
         of CargoType.Colonists:
           # Colonists are delivered to population: 1 PTU = 50k souls
           # Use souls field for exact counting (no rounding errors)
@@ -531,7 +532,7 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
           colony.souls += soulsToUnload
           # Update display field (population in millions)
           colony.population = colony.souls div 1_000_000
-          echo "    Unloaded ", quantity, " PTU (", soulsToUnload, " souls, ", quantity.float * ptuSizeMillions(), "M) from ", ship.id, " to colony"
+          logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from {ship.id} to colony")
         else:
           discard
 
@@ -542,7 +543,7 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
         fleet.spaceLiftShips = modifiedShips
         state.fleets[order.fleetId] = fleet
         state.colonies[order.colonySystem] = colony
-        echo "    Successfully unloaded ", totalUnloaded, " ", unloadedType, " at ", order.colonySystem
+        logInfo(LogCategory.lcEconomy, &"Successfully unloaded {totalUnloaded} {unloadedType} at system-{order.colonySystem}")
 
 proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process terraforming orders - initiate new terraforming projects
@@ -550,22 +551,22 @@ proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: 
   for order in packet.terraformOrders:
     # Validate colony exists and is owned by house
     if order.colonySystem notin state.colonies:
-      echo "    Terraforming failed: System ", order.colonySystem, " has no colony"
+      logError(LogCategory.lcEconomy, &"Terraforming failed: System-{order.colonySystem} has no colony")
       continue
 
     var colony = state.colonies[order.colonySystem]
     if colony.owner != packet.houseId:
-      echo "    Terraforming failed: ", packet.houseId, " does not own system ", order.colonySystem
+      logError(LogCategory.lcEconomy, &"Terraforming failed: {packet.houseId} does not own system-{order.colonySystem}")
       continue
 
     # Check if already terraforming
     if colony.activeTerraforming.isSome:
-      echo "    Terraforming failed: ", order.colonySystem, " already has active terraforming project"
+      logError(LogCategory.lcEconomy, &"Terraforming failed: System-{order.colonySystem} already has active terraforming project")
       continue
 
     # Get house tech level
     if packet.houseId notin state.houses:
-      echo "    Terraforming failed: House ", packet.houseId, " not found"
+      logError(LogCategory.lcEconomy, &"Terraforming failed: House {packet.houseId} not found")
       continue
 
     let house = state.houses[packet.houseId]
@@ -575,7 +576,7 @@ proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: 
     let currentClass = ord(colony.planetClass) + 1  # Convert enum to class number (1-7)
     if not res_effects.canTerraform(currentClass, terLevel):
       let targetClass = currentClass + 1
-      echo "    Terraforming failed: TER level ", terLevel, " insufficient for class ", currentClass, " -> ", targetClass, " (requires TER ", targetClass, ")"
+      logError(LogCategory.lcEconomy, &"Terraforming failed: TER level {terLevel} insufficient for class {currentClass} → {targetClass} (requires TER {targetClass})")
       continue
 
     # Calculate costs and duration
@@ -585,7 +586,7 @@ proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: 
 
     # Check house treasury has sufficient PP
     if house.treasury < ppCost:
-      echo "    Terraforming failed: Insufficient PP (need ", ppCost, ", have ", house.treasury, ")"
+      logError(LogCategory.lcEconomy, &"Terraforming failed: Insufficient PP (need {ppCost}, have {house.treasury})")
       continue
 
     # Deduct PP cost from house treasury
@@ -613,8 +614,9 @@ proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: 
       of 7: "Eden"
       else: "Unknown"
 
-    echo "    ", house.name, " initiated terraforming of ", order.colonySystem,
-         " to ", className, " (class ", targetClass, ") - Cost: ", ppCost, " PP, Duration: ", turnsRequired, " turns"
+    logInfo(LogCategory.lcEconomy,
+      &"{house.name} initiated terraforming of system-{order.colonySystem} " &
+      &"to {className} (class {targetClass}) - Cost: {ppCost} PP, Duration: {turnsRequired} turns")
 
     events.add(GameEvent(
       eventType: GameEventType.TerraformComplete,
@@ -740,33 +742,34 @@ proc calculateTransferCost(planetClass: PlanetClass, ptuAmount: int, jumps: int)
 proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process Space Guild population transfers between colonies
   ## Source: docs/specs/economy.md Section 3.7, config/population.toml
-  echo "    Processing population transfers for ", state.houses[packet.houseId].name
+  logDebug(LogCategory.lcEconomy, &"Processing population transfers for {state.houses[packet.houseId].name}")
 
   for transfer in packet.populationTransfers:
     # Validate source colony exists and is owned by house
     if transfer.sourceColony notin state.colonies:
-      echo "      Transfer failed: source colony ", transfer.sourceColony, " not found"
+      logError(LogCategory.lcEconomy, &"Transfer failed: source colony {transfer.sourceColony} not found")
       continue
 
     var sourceColony = state.colonies[transfer.sourceColony]
     if sourceColony.owner != packet.houseId:
-      echo "      Transfer failed: source colony ", transfer.sourceColony, " not owned by ", packet.houseId
+      logError(LogCategory.lcEconomy, &"Transfer failed: source colony {transfer.sourceColony} not owned by {packet.houseId}")
       continue
 
     # Validate destination colony exists and is owned by house
     if transfer.destColony notin state.colonies:
-      echo "      Transfer failed: destination colony ", transfer.destColony, " not found"
+      logError(LogCategory.lcEconomy, &"Transfer failed: destination colony {transfer.destColony} not found")
       continue
 
     var destColony = state.colonies[transfer.destColony]
     if destColony.owner != packet.houseId:
-      echo "      Transfer failed: destination colony ", transfer.destColony, " not owned by ", packet.houseId
+      logError(LogCategory.lcEconomy, &"Transfer failed: destination colony {transfer.destColony} not owned by {packet.houseId}")
       continue
 
     # Critical validation: Destination must have ≥1 PTU (50k souls) to be a functional colony
     if destColony.souls < soulsPerPtu():
-      echo "      Transfer failed: destination colony ", transfer.destColony, " has only ", destColony.souls,
-           " souls (needs ≥", soulsPerPtu(), " to accept transfers)"
+      logError(LogCategory.lcEconomy,
+        &"Transfer failed: destination colony {transfer.destColony} has only {destColony.souls} " &
+        &"souls (needs ≥{soulsPerPtu()} to accept transfers)")
       continue
 
     # Convert PTU amount to souls for exact transfer
@@ -774,15 +777,17 @@ proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, even
 
     # Validate source has enough souls (can transfer any amount, even fractional PTU)
     if sourceColony.souls < soulsToTransfer:
-      echo "      Transfer failed: source colony ", transfer.sourceColony, " has only ", sourceColony.souls,
-           " souls (needs ", soulsToTransfer, " for ", transfer.ptuAmount, " PTU)"
+      logError(LogCategory.lcEconomy,
+        &"Transfer failed: source colony {transfer.sourceColony} has only {sourceColony.souls} " &
+        &"souls (needs {soulsToTransfer} for {transfer.ptuAmount} PTU)")
       continue
 
     # Check concurrent transfer limit (max 5 per house per config/population.toml)
     let activeTransfers = state.populationInTransit.filterIt(it.houseId == packet.houseId)
     if activeTransfers.len >= globalPopulationConfig.max_concurrent_transfers:
-      echo "      Transfer rejected: Maximum ", globalPopulationConfig.max_concurrent_transfers,
-           " concurrent transfers reached (house has ", activeTransfers.len, " active)"
+      logWarn(LogCategory.lcEconomy,
+        &"Transfer rejected: Maximum {globalPopulationConfig.max_concurrent_transfers} " &
+        &"concurrent transfers reached (house has {activeTransfers.len} active)")
       continue
 
     # Calculate transit time and jump distance
@@ -790,9 +795,9 @@ proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, even
 
     # Check if Guild can complete the transfer (path must be known and not blocked)
     if transitTime < 0:
-      echo "      Transfer failed: No safe Guild route between ",
-           transfer.sourceColony, " and ", transfer.destColony,
-           " (requires scouted path through friendly/neutral territory)"
+      logError(LogCategory.lcEconomy,
+        &"Transfer failed: No safe Guild route between {transfer.sourceColony} and {transfer.destColony} " &
+        &"(requires scouted path through friendly/neutral territory)")
       continue
 
     let arrivalTurn = state.turn + transitTime
@@ -804,7 +809,7 @@ proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, even
     # Check house treasury and deduct cost
     var house = state.houses[packet.houseId]
     if house.treasury < cost:
-      echo "      Transfer failed: Insufficient funds (need ", cost, " PP, have ", house.treasury, " PP)"
+      logError(LogCategory.lcEconomy, &"Transfer failed: Insufficient funds (need {cost} PP, have {house.treasury} PP)")
       continue
 
     # Deduct cost from treasury
@@ -829,8 +834,9 @@ proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, even
     )
     state.populationInTransit.add(inTransit)
 
-    echo "      Space Guild transporting ", transfer.ptuAmount, " PTU (", soulsToTransfer, " souls) from ",
-         transfer.sourceColony, " to ", transfer.destColony, " (arrives turn ", arrivalTurn, ", cost: ", cost, " PP)"
+    logInfo(LogCategory.lcEconomy,
+      &"Space Guild transporting {transfer.ptuAmount} PTU ({soulsToTransfer} souls) from " &
+      &"{transfer.sourceColony} to {transfer.destColony} (arrives turn {arrivalTurn}, cost: {cost} PP)")
 
     events.add(GameEvent(
       eventType: GameEventType.PopulationTransfer,
@@ -844,7 +850,7 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
   ## Implements risk handling per config/population.toml [transfer_risks]
   ## Per config: dest_blockaded_behavior = "closest_owned"
   ## Per config: dest_collapsed_behavior = "closest_owned"
-  echo "  [Processing Space Guild Arrivals]"
+  logDebug(LogCategory.lcGeneral, &"[Processing Space Guild Arrivals]")
 
   var arrivedTransfers: seq[int] = @[]  # Indices to remove after processing
 
@@ -857,7 +863,7 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
     # Check destination status
     if transfer.destSystem notin state.colonies:
       # Destination colony no longer exists
-      echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination colony destroyed"
+      logWarn(LogCategory.lcEconomy, &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - destination colony destroyed")
       arrivedTransfers.add(idx)
       events.add(GameEvent(
         eventType: GameEventType.PopulationTransfer,
@@ -900,8 +906,9 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
         altColony.population = altColony.souls div 1_000_000
         state.colonies[altSystemId] = altColony
 
-        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU redirected to ", altSystemId,
-             " - original destination ", transfer.destSystem, " ", alternativeReason
+        logWarn(LogCategory.lcEconomy,
+          &"Transfer {transfer.id}: {transfer.ptuAmount} PTU redirected to {altSystemId} " &
+          &"- original destination {transfer.destSystem} {alternativeReason}")
         events.add(GameEvent(
           eventType: GameEventType.PopulationTransfer,
           houseId: transfer.houseId,
@@ -910,7 +917,8 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
         ))
       else:
         # No owned colonies - colonists are lost
-        echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination ", alternativeReason, ", no owned colonies available"
+        logWarn(LogCategory.lcEconomy,
+          &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - destination {alternativeReason}, no owned colonies available")
         events.add(GameEvent(
           eventType: GameEventType.PopulationTransfer,
           houseId: transfer.houseId,
@@ -926,7 +934,8 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
     destColony.population = destColony.souls div 1_000_000
     state.colonies[transfer.destSystem] = destColony
 
-    echo "    Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU arrived at ", transfer.destSystem, " (", soulsToDeliver, " souls)"
+    logInfo(LogCategory.lcEconomy,
+      &"Transfer {transfer.id}: {transfer.ptuAmount} PTU arrived at {transfer.destSystem} ({soulsToDeliver} souls)")
     events.add(GameEvent(
       eventType: GameEventType.PopulationTransfer,
       houseId: transfer.houseId,
@@ -972,8 +981,8 @@ proc processTerraformingProjects(state: var GameState, events: var seq[GameEvent
         of 7: "Eden"
         else: "Unknown"
 
-      echo "    ", house.name, " completed terraforming of ", colonyId,
-           " to ", className, " (class ", project.targetClass, ")"
+      logInfo(LogCategory.lcEconomy,
+        &"{house.name} completed terraforming of {colonyId} to {className} (class {project.targetClass})")
 
       events.add(GameEvent(
         eventType: GameEventType.TerraformComplete,
@@ -983,14 +992,14 @@ proc processTerraformingProjects(state: var GameState, events: var seq[GameEvent
         systemId: some(colonyId)
       ))
     else:
-      echo "    ", house.name, " terraforming ", colonyId,
-           ": ", project.turnsRemaining, " turn(s) remaining"
+      logDebug(LogCategory.lcEconomy,
+        &"{house.name} terraforming {colonyId}: {project.turnsRemaining} turn(s) remaining")
       # Update project
       colony.activeTerraforming = some(project)
 
 proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], orders: Table[HouseId, OrderPacket]) =
   ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
-  echo "  [Maintenance Phase]"
+  logDebug(LogCategory.lcGeneral, &"[Maintenance Phase]")
 
   # Decrement ongoing espionage effect counters
   var remainingEffects: seq[esp_types.OngoingEffect] = @[]
@@ -1000,10 +1009,10 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
     if updatedEffect.turnsRemaining > 0:
       remainingEffects.add(updatedEffect)
-      echo "    Effect on ", updatedEffect.targetHouse, " expires in ",
-           updatedEffect.turnsRemaining, " turn(s)"
+      logDebug(LogCategory.lcGeneral,
+        &"Effect on {updatedEffect.targetHouse} expires in {updatedEffect.turnsRemaining} turn(s)")
     else:
-      echo "    Effect on ", updatedEffect.targetHouse, " has expired"
+      logDebug(LogCategory.lcGeneral, &"Effect on {updatedEffect.targetHouse} has expired")
 
   state.ongoingEffects = remainingEffects
 
@@ -1014,7 +1023,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
       if proposal.expiresIn <= 0:
         proposal.status = dip_proposals.ProposalStatus.Expired
-        echo "    Proposal ", proposal.id, " expired (", proposal.proposer, " -> ", proposal.target, ")"
+        logDebug(LogCategory.lcGeneral, &"Proposal {proposal.id} expired ({proposal.proposer} → {proposal.target})")
 
   # Clean up old proposals (keep 10 turn history)
   let currentTurn = state.turn
@@ -1036,14 +1045,14 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
       house.dishonoredStatus.turnsRemaining -= 1
       if house.dishonoredStatus.turnsRemaining <= 0:
         house.dishonoredStatus.active = false
-        echo "    ", house.name, " is no longer dishonored"
+        logInfo(LogCategory.lcGeneral, &"{house.name} is no longer dishonored")
 
     # Update diplomatic isolation
     if house.diplomaticIsolation.active:
       house.diplomaticIsolation.turnsRemaining -= 1
       if house.diplomaticIsolation.turnsRemaining <= 0:
         house.diplomaticIsolation.active = false
-        echo "    ", house.name, " is no longer diplomatically isolated"
+        logInfo(LogCategory.lcGeneral, &"{house.name} is no longer diplomatically isolated")
 
   # Convert colonies table to sequence for maintenance phase
   # NOTE: No type conversion needed - gamestate.Colony has all economic fields
@@ -1082,12 +1091,12 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
     # CRITICAL: Get, modify, write back to persist
     var house = state.houses[houseId]
     house.treasury = houseTreasuries[houseId]
-    echo "    ", house.name, ": -", upkeep, " PP maintenance"
+    logInfo(LogCategory.lcEconomy, &"{house.name}: -{upkeep} PP maintenance")
     state.houses[houseId] = house
 
   # Report and handle completed projects
   for completed in maintenanceReport.completedProjects:
-    echo "    Completed: ", completed.projectType, " at system ", completed.colonyId
+    logDebug(LogCategory.lcEconomy, &"Completed: {completed.projectType} at system-{completed.colonyId}")
 
     # Special handling for fighter squadrons
     # Fighters can come through as either:
@@ -1109,7 +1118,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
         colony.fighterSquadrons.add(fighterSq)
 
-        echo "      Commissioned fighter squadron ", fighterSq.id, " at ", completed.colonyId
+        logInfo(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {completed.colonyId}")
 
         # Fighters remain at colony by default - player must manually load onto carriers
         # Per assets.md:2.4.1 - fighters are colony-owned until explicitly transferred
@@ -1141,9 +1150,10 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         colony.starbases.add(starbase)
         state.colonies[completed.colonyId] = colony
 
-        echo "      Commissioned starbase ", starbase.id, " at ", completed.colonyId
-        echo "        Total operational starbases: ", getOperationalStarbaseCount(colony)
-        echo "        Growth bonus: ", int(getStarbaseGrowthBonus(colony) * 100.0), "%"
+        logInfo(LogCategory.lcEconomy,
+          &"Commissioned starbase {starbase.id} at {completed.colonyId} " &
+          &"(Total operational: {getOperationalStarbaseCount(colony)}, " &
+          &"Growth bonus: {int(getStarbaseGrowthBonus(colony) * 100.0)}%)")
 
         # Generate event
         events.add(GameEvent(
@@ -1169,8 +1179,9 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         colony.spaceports.add(spaceport)
         state.colonies[completed.colonyId] = colony
 
-        echo "      Commissioned spaceport ", spaceport.id, " at ", completed.colonyId
-        echo "        Total construction docks: ", getTotalConstructionDocks(colony)
+        logInfo(LogCategory.lcEconomy,
+          &"Commissioned spaceport {spaceport.id} at {completed.colonyId} " &
+          &"(Total construction docks: {getTotalConstructionDocks(colony)})")
 
         events.add(GameEvent(
           eventType: GameEventType.BuildingCompleted,
@@ -1187,7 +1198,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
         # Validate spaceport prerequisite
         if not hasSpaceport(colony):
-          echo "      ERROR: Shipyard construction failed - no spaceport at ", completed.colonyId
+          logError(LogCategory.lcEconomy, &"Shipyard construction failed - no spaceport at {completed.colonyId}")
           # This shouldn't happen if build validation worked correctly
           continue
 
@@ -1202,8 +1213,9 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         colony.shipyards.add(shipyard)
         state.colonies[completed.colonyId] = colony
 
-        echo "      Commissioned shipyard ", shipyard.id, " at ", completed.colonyId
-        echo "        Total construction docks: ", getTotalConstructionDocks(colony)
+        logInfo(LogCategory.lcEconomy,
+          &"Commissioned shipyard {shipyard.id} at {completed.colonyId} " &
+          &"(Total construction docks: {getTotalConstructionDocks(colony)})")
 
         events.add(GameEvent(
           eventType: GameEventType.BuildingCompleted,
@@ -1222,8 +1234,9 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         colony.groundBatteries += 1
         state.colonies[completed.colonyId] = colony
 
-        echo "      Deployed ground battery at ", completed.colonyId
-        echo "        Total ground defenses: ", getTotalGroundDefense(colony)
+        logInfo(LogCategory.lcEconomy,
+          &"Deployed ground battery at {completed.colonyId} " &
+          &"(Total ground defenses: {getTotalGroundDefense(colony)})")
 
         events.add(GameEvent(
           eventType: GameEventType.BuildingCompleted,
@@ -1244,8 +1257,9 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         colony.planetaryShieldLevel = min(newLevel, 6)  # Max SLD6
         state.colonies[completed.colonyId] = colony
 
-        echo "      Deployed planetary shield SLD", colony.planetaryShieldLevel, " at ", completed.colonyId
-        echo "        Block chance: ", int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0), "%"
+        logInfo(LogCategory.lcEconomy,
+          &"Deployed planetary shield SLD{colony.planetaryShieldLevel} at {completed.colonyId} " &
+          &"(Block chance: {int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0)}%)")
 
         events.add(GameEvent(
           eventType: GameEventType.BuildingCompleted,
@@ -1265,19 +1279,22 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         const minViablePopulation = 1_000_000  # 1 PU minimum for colony viability
 
         if colony.souls < marinePopCost:
-          echo "      WARNING: Colony ", completed.colonyId, " lacks population to recruit Marines (",
-               colony.souls, " souls < ", marinePopCost, ")"
+          logWarn(LogCategory.lcEconomy,
+            &"Colony {completed.colonyId} lacks population to recruit Marines " &
+            &"({colony.souls} souls < {marinePopCost})")
         elif colony.souls - marinePopCost < minViablePopulation:
-          echo "      WARNING: Colony ", completed.colonyId, " cannot recruit Marines - would leave colony below minimum viable size (",
-               colony.souls - marinePopCost, " < ", minViablePopulation, " souls)"
+          logWarn(LogCategory.lcEconomy,
+            &"Colony {completed.colonyId} cannot recruit Marines - would leave colony below minimum viable size " &
+            &"({colony.souls - marinePopCost} < {minViablePopulation} souls)")
         else:
           colony.marines += 1  # Add 1 Marine Division
           colony.souls -= marinePopCost  # Deduct recruited souls
           colony.population = colony.souls div 1_000_000  # Update display population
           state.colonies[completed.colonyId] = colony
 
-          echo "      Recruited Marine Division at ", completed.colonyId
-          echo "        Total Marines: ", colony.marines, " MD (", colony.souls, " souls remaining)"
+          logInfo(LogCategory.lcEconomy,
+            &"Recruited Marine Division at {completed.colonyId} " &
+            &"(Total Marines: {colony.marines} MD, {colony.souls} souls remaining)")
 
           events.add(GameEvent(
             eventType: GameEventType.UnitRecruited,
@@ -1297,19 +1314,22 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         const minViablePopulation = 1_000_000  # 1 PU minimum for colony viability
 
         if colony.souls < armyPopCost:
-          echo "      WARNING: Colony ", completed.colonyId, " lacks population to muster Army (",
-               colony.souls, " souls < ", armyPopCost, ")"
+          logWarn(LogCategory.lcEconomy,
+            &"Colony {completed.colonyId} lacks population to muster Army " &
+            &"({colony.souls} souls < {armyPopCost})")
         elif colony.souls - armyPopCost < minViablePopulation:
-          echo "      WARNING: Colony ", completed.colonyId, " cannot muster Army - would leave colony below minimum viable size (",
-               colony.souls - armyPopCost, " < ", minViablePopulation, " souls)"
+          logWarn(LogCategory.lcEconomy,
+            &"Colony {completed.colonyId} cannot muster Army - would leave colony below minimum viable size " &
+            &"({colony.souls - armyPopCost} < {minViablePopulation} souls)")
         else:
           colony.armies += 1  # Add 1 Army Division
           colony.souls -= armyPopCost  # Deduct recruited souls
           colony.population = colony.souls div 1_000_000  # Update display population
           state.colonies[completed.colonyId] = colony
 
-          echo "      Mustered Army Division at ", completed.colonyId
-          echo "        Total Armies: ", colony.armies, " AA (", colony.souls, " souls remaining)"
+          logInfo(LogCategory.lcEconomy,
+            &"Mustered Army Division at {completed.colonyId} " &
+            &"(Total Armies: {colony.armies} AA, {colony.souls} souls remaining)")
 
           events.add(GameEvent(
             eventType: GameEventType.UnitRecruited,
@@ -1531,7 +1551,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
           description: house.name & " has been eliminated - " & reason & "!",
           systemId: none(SystemId)
         ))
-        echo "    ", house.name, " eliminated! (", reason, ")"
+        logInfo(LogCategory.lcGeneral, &"{house.name} eliminated! ({reason})")
         continue
 
     # Defensive collapse: prestige < threshold for consecutive turns
@@ -1540,9 +1560,9 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
     if house.prestige < gameplayConfig.elimination.defensive_collapse_threshold:
       houseToUpdate.negativePrestigeTurns += 1
-      echo "    ", house.name, " at risk: prestige ", house.prestige,
-           " (", houseToUpdate.negativePrestigeTurns, "/",
-           gameplayConfig.elimination.defensive_collapse_turns, " turns until elimination)"
+      logWarn(LogCategory.lcGeneral,
+        &"{house.name} at risk: prestige {house.prestige} " &
+        &"({houseToUpdate.negativePrestigeTurns}/{gameplayConfig.elimination.defensive_collapse_turns} turns until elimination)")
 
       if houseToUpdate.negativePrestigeTurns >= gameplayConfig.elimination.defensive_collapse_turns:
         houseToUpdate.eliminated = true
@@ -1553,7 +1573,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
           description: house.name & " has collapsed from negative prestige!",
           systemId: none(SystemId)
         ))
-        echo "    ", house.name, " eliminated by defensive collapse!"
+        logInfo(LogCategory.lcGeneral, &"{house.name} eliminated by defensive collapse!")
     else:
       # Reset counter when prestige recovers
       houseToUpdate.negativePrestigeTurns = 0
@@ -1562,7 +1582,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
     state.houses[houseId] = houseToUpdate
 
   # Check squadron limits (military.toml)
-  echo "  Checking squadron limits..."
+  logDebug(LogCategory.lcGeneral, &"Checking squadron limits...")
   for houseId, house in state.houses:
     if house.eliminated:
       continue
@@ -1572,17 +1592,18 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
     let totalPU = state.getHousePopulationUnits(houseId)
 
     if current > limit:
-      echo "    WARNING: ", house.name, " over squadron limit!"
-      echo "      Current: ", current, " squadrons, Limit: ", limit, " (", totalPU, " PU)"
+      logWarn(LogCategory.lcFleet,
+        &"{house.name} over squadron limit! " &
+        &"(Current: {current} squadrons, Limit: {limit}, {totalPU} PU)")
       # Note: In full implementation, this would trigger grace period timer
       # and eventual auto-disband per military.toml:capacity_violation_grace_period
     elif current == limit:
-      echo "    ", house.name, ": At squadron limit (", current, "/", limit, ")"
+      logDebug(LogCategory.lcFleet, &"{house.name}: At squadron limit ({current}/{limit})")
     else:
-      echo "    ", house.name, ": ", current, "/", limit, " squadrons (", totalPU, " PU)"
+      logDebug(LogCategory.lcFleet, &"{house.name}: {current}/{limit} squadrons ({totalPU} PU)")
 
   # Check fighter squadron capacity violations (assets.md:2.4.1)
-  echo "  Checking fighter squadron capacity..."
+  logDebug(LogCategory.lcGeneral, &"Checking fighter squadron capacity...")
   let militaryConfig = globalMilitaryConfig.fighter_mechanics
 
   for systemId, colony in state.colonies.mpairs:
@@ -1620,30 +1641,29 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
           turnsRemaining: militaryConfig.capacity_violation_grace_period,
           violationTurn: state.turn
         )
-        echo "    WARNING: ", house.name, " - System ", systemId, " over fighter capacity!"
-        echo "      Current: ", current, " FS, Capacity: ", capacity,
-             " (Pop: ", popCapacity, ", Infra: ", infraCapacity, ")"
-        echo "      Violation type: ", violationType
-        echo "      Grace period: ", militaryConfig.capacity_violation_grace_period, " turns"
+        logWarn(LogCategory.lcFleet,
+          &"{house.name} - System-{systemId} over fighter capacity! " &
+          &"(Current: {current} FS, Capacity: {capacity}, Pop: {popCapacity}, Infra: {infraCapacity}) " &
+          &"Violation type: {violationType}, Grace period: {militaryConfig.capacity_violation_grace_period} turns")
       else:
         # Existing violation - decrement timer
         colony.capacityViolation.turnsRemaining -= 1
-        echo "    ", house.name, " - System ", systemId, " capacity violation continues"
-        echo "      Current: ", current, " FS, Capacity: ", capacity
-        echo "      Grace period remaining: ", colony.capacityViolation.turnsRemaining, " turn(s)"
+        logWarn(LogCategory.lcFleet,
+          &"{house.name} - System-{systemId} capacity violation continues " &
+          &"(Current: {current} FS, Capacity: {capacity}, Grace period: {colony.capacityViolation.turnsRemaining} turn(s))")
 
         # Check if grace period expired
         if colony.capacityViolation.turnsRemaining <= 0:
           # Auto-disband excess fighters (oldest first)
           let excess = current - capacity
-          echo "      Grace period expired! Auto-disbanding ", excess, " excess fighter squadron(s)"
+          logWarn(LogCategory.lcFleet, &"Grace period expired! Auto-disbanding {excess} excess fighter squadron(s)")
 
           # Remove oldest squadrons first
           for i in 0..<excess:
             if colony.fighterSquadrons.len > 0:
               let disbanded = colony.fighterSquadrons[0]
               colony.fighterSquadrons.delete(0)
-              echo "        Disbanded: ", disbanded.id
+              logDebug(LogCategory.lcFleet, &"Disbanded: {disbanded.id}")
 
           # Clear violation
           colony.capacityViolation = CapacityViolation(
@@ -1663,7 +1683,7 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
     elif colony.capacityViolation.active:
       # Was in violation but now resolved
-      echo "    ", house.name, " - System ", systemId, " capacity violation resolved!"
+      logInfo(LogCategory.lcFleet, &"{house.name} - System-{systemId} capacity violation resolved!")
       colony.capacityViolation = CapacityViolation(
         active: false,
         violationType: "",
@@ -1672,23 +1692,24 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
       )
     elif current > 0:
       # Normal status report
-      echo "    ", house.name, " - System ", systemId, ": ", current, "/", capacity,
-           " FS (Pop: ", popCapacity, ", Infra: ", infraCapacity, ")"
+      logDebug(LogCategory.lcFleet,
+        &"{house.name} - System-{systemId}: {current}/{capacity} FS " &
+        &"(Pop: {popCapacity}, Infra: {infraCapacity})")
 
   # Process tech advancements
   # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP is available
-  echo "  Tech Advancement"
+  logDebug(LogCategory.lcGeneral, &"Tech Advancement")
   for houseId, house in state.houses.mpairs:
     # Try to advance Economic Level (EL) with accumulated ERP
     let currentEL = house.techTree.levels.economicLevel
     let elAdv = attemptELAdvancement(house.techTree, currentEL)
     if elAdv.isSome:
       let adv = elAdv.get()
-      echo "    ", house.name, ": EL ", adv.elFromLevel, " → ", adv.elToLevel,
-           " (spent ", adv.elCost, " ERP)"
+      logInfo(LogCategory.lcResearch,
+        &"{house.name}: EL {adv.elFromLevel} → {adv.elToLevel} (spent {adv.elCost} ERP)")
       if adv.prestigeEvent.isSome:
         house.prestige += adv.prestigeEvent.get().amount
-        echo "      +", adv.prestigeEvent.get().amount, " prestige"
+        logDebug(LogCategory.lcResearch, &"+{adv.prestigeEvent.get().amount} prestige")
       events.add(GameEvent(
         eventType: GameEventType.TechAdvance,
         houseId: houseId,
@@ -1701,11 +1722,11 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
     let slAdv = attemptSLAdvancement(house.techTree, currentSL)
     if slAdv.isSome:
       let adv = slAdv.get()
-      echo "    ", house.name, ": SL ", adv.slFromLevel, " → ", adv.slToLevel,
-           " (spent ", adv.slCost, " SRP)"
+      logInfo(LogCategory.lcResearch,
+        &"{house.name}: SL {adv.slFromLevel} → {adv.slToLevel} (spent {adv.slCost} SRP)")
       if adv.prestigeEvent.isSome:
         house.prestige += adv.prestigeEvent.get().amount
-        echo "      +", adv.prestigeEvent.get().amount, " prestige"
+        logDebug(LogCategory.lcResearch, &"+{adv.prestigeEvent.get().amount} prestige")
       events.add(GameEvent(
         eventType: GameEventType.TechAdvance,
         houseId: houseId,
@@ -1720,13 +1741,13 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
       let advancement = attemptTechAdvancement(house.techTree, field)
       if advancement.isSome:
         let adv = advancement.get()
-        echo "    ", house.name, ": ", field, " ", adv.techFromLevel, " → ", adv.techToLevel,
-             " (spent ", adv.techCost, " TRP)"
+        logInfo(LogCategory.lcResearch,
+          &"{house.name}: {field} {adv.techFromLevel} → {adv.techToLevel} (spent {adv.techCost} TRP)")
 
         # Apply prestige if available
         if adv.prestigeEvent.isSome:
           house.prestige += adv.prestigeEvent.get().amount
-          echo "      +", adv.prestigeEvent.get().amount, " prestige"
+          logDebug(LogCategory.lcResearch, &"+{adv.prestigeEvent.get().amount} prestige")
 
         # Generate event
         events.add(GameEvent(
@@ -1749,12 +1770,12 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         victorName = house.name
         break
 
-    echo "  *** ", victorName, " has won the game! ***"
+    logInfo(LogCategory.lcGeneral, &"*** {victorName} has won the game! ***")
 proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacket]) =
   ## Phase 2: Collect income and allocate resources
   ## Production is calculated AFTER conflict, so damaged infrastructure produces less
   ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
-  echo "  [Income Phase]"
+  logDebug(LogCategory.lcGeneral, &"[Income Phase]")
 
   # Apply blockade status to all colonies
   # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
@@ -1769,18 +1790,18 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
       case effect.effectType
       of esp_types.EffectType.SRPReduction:
-        echo "    ", effect.targetHouse, " affected by SRP reduction (-",
-             int(effect.magnitude * 100), "%)"
+        logDebug(LogCategory.lcGeneral,
+          &"{effect.targetHouse} affected by SRP reduction (-{int(effect.magnitude * 100)}%)")
       of esp_types.EffectType.NCVReduction:
-        echo "    ", effect.targetHouse, " affected by NCV reduction (-",
-             int(effect.magnitude * 100), "%)"
+        logDebug(LogCategory.lcGeneral,
+          &"{effect.targetHouse} affected by NCV reduction (-{int(effect.magnitude * 100)}%)")
       of esp_types.EffectType.TaxReduction:
-        echo "    ", effect.targetHouse, " affected by tax reduction (-",
-             int(effect.magnitude * 100), "%)"
+        logDebug(LogCategory.lcGeneral,
+          &"{effect.targetHouse} affected by tax reduction (-{int(effect.magnitude * 100)}%)")
       of esp_types.EffectType.StarbaseCrippled:
         if effect.targetSystem.isSome:
           let systemId = effect.targetSystem.get()
-          echo "    Starbase at system ", systemId, " is crippled"
+          logDebug(LogCategory.lcGeneral, &"Starbase at system-{systemId} is crippled")
 
           # Apply crippled state to starbase in colony
           if systemId in state.colonies:
@@ -1789,13 +1810,13 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               for starbase in colony.starbases.mitems:
                 if not starbase.isCrippled:
                   starbase.isCrippled = true
-                  echo "      Applied crippled state to starbase ", starbase.id
+                  logDebug(LogCategory.lcGeneral, &"Applied crippled state to starbase {starbase.id}")
               state.colonies[systemId] = colony
       of esp_types.EffectType.IntelBlocked:
-        echo "    ", effect.targetHouse, " protected by counter-intelligence sweep"
+        logDebug(LogCategory.lcGeneral, &"{effect.targetHouse} protected by counter-intelligence sweep")
       of esp_types.EffectType.IntelCorrupted:
-        echo "    ", effect.targetHouse, "'s intelligence corrupted by disinformation (+/-",
-             int(effect.magnitude * 100), "% variance)"
+        logDebug(LogCategory.lcGeneral,
+          &"{effect.targetHouse}'s intelligence corrupted by disinformation (+/-{int(effect.magnitude * 100)}% variance)")
 
   state.ongoingEffects = activeEffects
 
@@ -1819,8 +1840,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           state.houses[houseId].espionageBudget.ebpInvested = ebpCost
           state.houses[houseId].espionageBudget.cipInvested = cipCost
 
-          echo "    ", houseId, " purchased ", packet.ebpInvestment, " EBP, ",
-               packet.cipInvestment, " CIP (", totalCost, " PP)"
+          logInfo(LogCategory.lcEconomy,
+            &"{houseId} purchased {packet.ebpInvestment} EBP, {packet.cipInvestment} CIP ({totalCost} PP)")
 
           # Check for over-investment penalty (configurable threshold from espionage.toml)
           let turnBudget = state.houses[houseId].espionageBudget.turnBudget
@@ -1832,9 +1853,9 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             if investmentPercent > threshold:
               let prestigePenalty = -(investmentPercent - threshold) * globalEspionageConfig.investment.penalty_per_percent
               state.houses[houseId].prestige += prestigePenalty
-              echo "      Over-investment penalty: ", prestigePenalty, " prestige"
+              logWarn(LogCategory.lcEconomy, &"Over-investment penalty: {prestigePenalty} prestige")
         else:
-          echo "    ", houseId, " insufficient funds for EBP/CIP purchase"
+          logError(LogCategory.lcEconomy, &"{houseId} insufficient funds for EBP/CIP purchase")
 
   # Process spy scout detection and intelligence gathering
   # Per assets.md:2.4.2: "For every turn that a spy Scout operates in unfriendly
@@ -1904,15 +1925,16 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
         let detectionResult = detectSpyScout(detectorUnit, scout.eliLevel, rng)
 
         if detectionResult.detected:
-          echo "    Spy scout ", scoutId, " detected by ", rivalHouse,
-               " (ELI ", detectionResult.effectiveELI, " vs ", scout.eliLevel,
-               ", rolled ", detectionResult.roll, " > ", detectionResult.threshold, ")"
+          logInfo(LogCategory.lcGeneral,
+            &"Spy scout {scoutId} detected by {rivalHouse} " &
+            &"(ELI {detectionResult.effectiveELI} vs {scout.eliLevel}, " &
+            &"rolled {detectionResult.roll} > {detectionResult.threshold})")
           wasDetected = true
           break
 
     if wasDetected:
       # Scout is destroyed, don't add to surviving scouts
-      echo "    Spy scout ", scoutId, " destroyed"
+      logInfo(LogCategory.lcGeneral, &"Spy scout {scoutId} destroyed")
     else:
       # Scout survives and gathers intelligence
       survivingScouts[scoutId] = scout
@@ -1924,29 +1946,30 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       # - Tracks construction activity over multiple visits
       case scout.mission
       of SpyMissionType.SpyOnPlanet:
-        echo "    Spy scout ", scoutId, " gathering planetary intelligence at system ", scoutLocation
+        logDebug(LogCategory.lcGeneral, &"Spy scout {scoutId} gathering planetary intelligence at system-{scoutLocation}")
         scout_intel.processScoutIntelligence(state, scoutId, scout.owner, scoutLocation)
-        echo "      Enhanced colony intel: population, industry, defenses, construction tracking"
+        logDebug(LogCategory.lcGeneral, &"Enhanced colony intel: population, industry, defenses, construction tracking")
 
       of SpyMissionType.HackStarbase:
-        echo "    Spy scout ", scoutId, " hacking starbase at system ", scoutLocation
+        logDebug(LogCategory.lcGeneral, &"Spy scout {scoutId} hacking starbase at system-{scoutLocation}")
         let report = intel_gen.generateStarbaseIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
         if report.isSome:
           var house = state.houses[scout.owner]
           house.intelligence.addStarbaseReport(report.get())
           state.houses[scout.owner] = house
-          echo "      Intel: Treasury ", report.get().treasuryBalance.get(0), " PP, Tax rate ", report.get().taxRate.get(0.0), "%"
+          logDebug(LogCategory.lcGeneral,
+            &"Intel: Treasury {report.get().treasuryBalance.get(0)} PP, Tax rate {report.get().taxRate.get(0.0)}%")
 
       of SpyMissionType.SpyOnSystem:
-        echo "    Spy scout ", scoutId, " conducting system surveillance at ", scoutLocation
+        logDebug(LogCategory.lcGeneral, &"Spy scout {scoutId} conducting system surveillance at {scoutLocation}")
         scout_intel.processScoutIntelligence(state, scoutId, scout.owner, scoutLocation)
-        echo "      Enhanced system intel: fleet composition, movement patterns, cargo details"
+        logDebug(LogCategory.lcGeneral, &"Enhanced system intel: fleet composition, movement patterns, cargo details")
 
   # Update spy scouts in game state (remove detected ones)
   state.spyScouts = survivingScouts
 
   # Process starbase surveillance (continuous monitoring every turn)
-  echo "  Processing starbase surveillance..."
+  logDebug(LogCategory.lcGeneral, &"Processing starbase surveillance...")
   var survRng = initRand(state.turn + 12345)  # Unique seed for surveillance
   starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng)
 
@@ -1997,7 +2020,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     house.treasury = houseTreasuries[houseId]
     # Store income report for intelligence gathering (HackStarbase missions)
     house.latestIncomeReport = some(houseReport)
-    echo "    ", house.name, ": +", houseReport.totalNet, " PP (Gross: ", houseReport.totalGross, ")"
+    logInfo(LogCategory.lcEconomy,
+      &"{house.name}: +{houseReport.totalNet} PP (Gross: {houseReport.totalGross})")
 
     # Update colony production fields from income reports
     for colonyReport in houseReport.colonies:
@@ -2010,9 +2034,9 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     # Apply prestige events from economic activities
     for event in houseReport.prestigeEvents:
       house.prestige += event.amount
-      echo "      Prestige: ",
-           (if event.amount > 0: "+" else: ""), event.amount,
-           " (", event.description, ") -> ", house.prestige
+      let sign = if event.amount > 0: "+" else: ""
+      logDebug(LogCategory.lcEconomy,
+        &"Prestige: {sign}{event.amount} ({event.description}) → {house.prestige}")
 
     # Write back modified house
     state.houses[houseId] = house
@@ -2023,8 +2047,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     if blockadePenalty < 0:
       let blockadedCount = blockade_engine.getBlockadedColonies(state, houseId).len
       state.houses[houseId].prestige += blockadePenalty
-      echo "      Prestige: ", blockadePenalty, " (", blockadedCount,
-           " colonies under blockade) -> ", state.houses[houseId].prestige
+      logWarn(LogCategory.lcEconomy,
+        &"Prestige: {blockadePenalty} ({blockadedCount} colonies under blockade) → {state.houses[houseId].prestige}")
 
   # Process construction completion - decrement turns and complete projects
   # NEW: Process ALL projects in construction queue (not just legacy single project)
@@ -2035,9 +2059,9 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
     # DEBUG: Log queue contents
     if colony.constructionQueue.len > 0:
-      echo &"    DEBUG: System {systemId} has {colony.constructionQueue.len} projects in queue"
+      logDebug(LogCategory.lcEconomy, &"System-{systemId} has {colony.constructionQueue.len} projects in construction queue")
       for project in colony.constructionQueue:
-        echo &"      - {project.itemId}: {project.turnsRemaining} turns remaining"
+        logDebug(LogCategory.lcEconomy, &"  - {project.itemId}: {project.turnsRemaining} turns remaining")
 
     for project in colony.constructionQueue.mitems:
       project.turnsRemaining -= 1
@@ -2077,7 +2101,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     for project in completedProjects:
       if project.turnsRemaining <= 0:
         # Construction complete!
-        echo "    Construction completed at system ", systemId, ": ", project.itemId
+        logDebug(LogCategory.lcEconomy, &"Construction completed at system-{systemId}: {project.itemId}")
 
         case project.projectType
         of econ_types.ConstructionType.Ship:
@@ -2101,7 +2125,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             )
 
             colony.fighterSquadrons.add(fighterSq)
-            echo "      Commissioned fighter squadron ", fighterSq.id, " at ", systemId, " (Path 1)"
+            logDebug(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {systemId} (Path 1)")
 
             # Path 2: Auto-load onto carriers at same colony (assets.md:2.4.1)
             # Find carriers at this colony with available hangar space
@@ -2124,7 +2148,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                       # Remove from colony (transfer ownership)
                       colony.fighterSquadrons.delete(colony.fighterSquadrons.len - 1)
 
-                      echo "        Auto-loaded ", fighterSq.id, " onto carrier ", fleetId, " (Path 2, ", currentLoad + 1, "/", maxCapacity, " capacity)"
+                      logDebug(LogCategory.lcFleet,
+                        &"Auto-loaded {fighterSq.id} onto carrier {fleetId} (Path 2, {currentLoad + 1}/{maxCapacity} capacity)")
                       # Exit both loops after successful auto-load
                       break
                   if squadron.embarkedFighters.len > 0:  # Fighter was loaded
@@ -2231,7 +2256,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                 ]
                 if flagshipIsCapital and squadron.canAddShip(newShip):
                   squadron.ships.add(newShip)
-                  echo "      Commissioned ", shipClass, " and added to unassigned capital squadron ", squadron.id
+                  logDebug(LogCategory.lcEconomy, &"Commissioned {shipClass} and added to unassigned capital squadron {squadron.id}")
                   addedToSquadron = true
                   break
 
@@ -2240,7 +2265,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                 for squadron in colony.unassignedSquadrons.mitems:
                   if squadron.flagship.shipClass == shipClass and squadron.canAddShip(newShip):
                     squadron.ships.add(newShip)
-                    echo "      Commissioned ", shipClass, " and added to unassigned escort squadron ", squadron.id
+                    logDebug(LogCategory.lcEconomy, &"Commissioned {shipClass} and added to unassigned escort squadron {squadron.id}")
                     addedToSquadron = true
                     break
 
@@ -2249,7 +2274,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
               let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
               colony.unassignedSquadrons.add(newSquadron)
-              echo "      Commissioned ", shipClass, " into new unassigned squadron at ", systemId
+              logDebug(LogCategory.lcEconomy, &"Commissioned {shipClass} into new unassigned squadron at {systemId}")
 
             # Fleet Organization: Automatically organize newly-commissioned squadrons into fleets
             # This completes the economic production pipeline: Treasury → Construction → Commissioning → Fleet
@@ -2268,7 +2293,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               docks: 5  # 5 construction docks per spaceport
             )
             colony.spaceports.add(spaceport)
-            echo "      Added Spaceport to system ", systemId
+            logDebug(LogCategory.lcEconomy, &"Added Spaceport to system-{systemId}")
 
           elif project.itemId == "Shipyard":
             let shipyardId = colony.owner & "_shipyard_" & $systemId & "_" & $state.turn
@@ -2278,26 +2303,26 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               docks: 10  # 10 construction docks per shipyard
             )
             colony.shipyards.add(shipyard)
-            echo "      Added Shipyard to system ", systemId
+            logDebug(LogCategory.lcEconomy, &"Added Shipyard to system-{systemId}")
 
           elif project.itemId == "GroundBattery":
             colony.groundBatteries += 1
-            echo "      Added Ground Battery to system ", systemId
+            logDebug(LogCategory.lcEconomy, &"Added Ground Battery to system-{systemId}")
 
           elif project.itemId == "PlanetaryShield":
             # Set planetary shield level based on house's SLD tech
             colony.planetaryShieldLevel = state.houses[colony.owner].techTree.levels.shieldTech
-            echo "      Added Planetary Shield (SLD", colony.planetaryShieldLevel, ") to system ", systemId
+            logDebug(LogCategory.lcEconomy, &"Added Planetary Shield (SLD{colony.planetaryShieldLevel}) to system-{systemId}")
 
         of econ_types.ConstructionType.Industrial:
           # IU investment - industrial capacity was added when project started
           # Just log completion
-          echo "      Industrial expansion completed at system ", systemId
+          logDebug(LogCategory.lcEconomy, &"Industrial expansion completed at system-{systemId}")
 
         of econ_types.ConstructionType.Infrastructure:
           # Infrastructure was already added during creation
           # Just log completion
-          echo "      Infrastructure expansion completed at system ", systemId
+          logDebug(LogCategory.lcEconomy, &"Infrastructure expansion completed at system-{systemId}")
 
     # Update construction queue with remaining (in-progress) projects
     colony.constructionQueue = remainingProjects
@@ -2319,7 +2344,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     var remainingRepairs: seq[econ_types.RepairProject] = @[]
 
     if colony.repairQueue.len > 0:
-      echo &"    DEBUG: System {systemId} has {colony.repairQueue.len} repairs in queue"
+      logDebug(LogCategory.lcEconomy, &"System-{systemId} has {colony.repairQueue.len} repairs in queue")
 
     for repair in colony.repairQueue.mitems:
       repair.turnsRemaining -= 1
@@ -2335,7 +2360,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       of econ_types.RepairTargetType.Ship:
         if repair.shipClass.isSome:
           let shipClass = repair.shipClass.get()
-          echo "    Repair completed at system ", systemId, ": ", shipClass
+          logInfo(LogCategory.lcEconomy, &"Repair completed at system-{systemId}: {shipClass}")
 
           # Commission repaired ship as new ship (same as construction)
           let techLevel = state.houses[colony.owner].techTree.levels.constructionTech
@@ -2361,7 +2386,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               )
             )
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
-            echo "      Recommissioned ", shipClass, " as spacelift ship (repaired)"
+            logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} as spacelift ship (repaired)")
           else:
             # Combat ships commission through squadron pipeline
             let stats = getShipStats(shipClass)
@@ -2386,7 +2411,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                 location = systemId
               )
               colony.unassignedSquadrons.add(newSquadron)
-              echo "      Recommissioned ", shipClass, " as new squadron flagship (repaired)"
+              logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} as new squadron flagship (repaired)")
             else:
               # Escorts try to join existing squadrons
               var joined = false
@@ -2401,7 +2426,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                   if sq.canAddShip(ship):
                     discard sq.addShip(ship)
                     joined = true
-                    echo "      Recommissioned ", shipClass, " joined capital squadron (repaired)"
+                    logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} joined capital squadron (repaired)")
                     break
 
               # If not joined, try same-class escort squadrons
@@ -2411,7 +2436,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                     if sq.canAddShip(ship):
                       discard sq.addShip(ship)
                       joined = true
-                      echo "      Recommissioned ", shipClass, " joined escort squadron (repaired)"
+                      logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} joined escort squadron (repaired)")
                       break
 
               # If still not joined, create new escort squadron
@@ -2423,7 +2448,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                   location = systemId
                 )
                 colony.unassignedSquadrons.add(newSquadron)
-                echo "      Recommissioned ", shipClass, " as new escort squadron (repaired)"
+                logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} as new escort squadron (repaired)")
 
       of econ_types.RepairTargetType.Starbase:
         # Repair starbase at colony
@@ -2431,7 +2456,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           let idx = repair.starbaseIdx.get()
           if idx >= 0 and idx < colony.starbases.len:
             colony.starbases[idx].isCrippled = false
-            echo "    Repair completed at system ", systemId, ": Starbase-", idx
+            logInfo(LogCategory.lcEconomy, &"Repair completed at system-{systemId}: Starbase-{idx}")
 
     # Update repair queue
     colony.repairQueue = remainingRepairs
@@ -2490,14 +2515,16 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
         for field, pp in scaledAllocation.technology:
           totalResearchCost += pp
 
-        echo "      ", houseId, " research budget scaled down by ", int(affordablePercent * 100), "% due to treasury constraints"
+        logWarn(LogCategory.lcResearch,
+          &"{houseId} research budget scaled down by {int(affordablePercent * 100)}% due to treasury constraints")
 
       # Deduct research cost from treasury (CRITICAL FIX)
       # Research competes with builds for treasury resources
       if totalResearchCost > 0:
         state.houses[houseId].treasury -= totalResearchCost
-        echo "      ", houseId, " spent ", totalResearchCost, " PP on research (treasury: ",
-             state.houses[houseId].treasury + totalResearchCost, " → ", state.houses[houseId].treasury, ")"
+        logInfo(LogCategory.lcResearch,
+          &"{houseId} spent {totalResearchCost} PP on research " &
+          &"(treasury: {state.houses[houseId].treasury + totalResearchCost} → {state.houses[houseId].treasury})")
 
       # Calculate GHO for this house
       var gho = 0
@@ -2530,16 +2557,18 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
       # Log allocations (use SCALED allocation for accurate reporting)
       if scaledAllocation.economic > 0:
-        echo "      ", houseId, " allocated ", scaledAllocation.economic, " PP → ", earnedRP.economic, " ERP",
-             " (total: ", state.houses[houseId].techTree.accumulated.economic, " ERP)"
+        logDebug(LogCategory.lcResearch,
+          &"{houseId} allocated {scaledAllocation.economic} PP → {earnedRP.economic} ERP " &
+          &"(total: {state.houses[houseId].techTree.accumulated.economic} ERP)")
       if scaledAllocation.science > 0:
-        echo "      ", houseId, " allocated ", scaledAllocation.science, " PP → ", earnedRP.science, " SRP",
-             " (total: ", state.houses[houseId].techTree.accumulated.science, " SRP)"
+        logDebug(LogCategory.lcResearch,
+          &"{houseId} allocated {scaledAllocation.science} PP → {earnedRP.science} SRP " &
+          &"(total: {state.houses[houseId].techTree.accumulated.science} SRP)")
       for field, pp in scaledAllocation.technology:
         if pp > 0 and field in earnedRP.technology:
           let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
-          echo "      ", houseId, " allocated ", pp, " PP → ", earnedRP.technology[field], " TRP (", field, ")",
-               " (total: ", totalTRP, " TRP)"
+          logDebug(LogCategory.lcResearch,
+            &"{houseId} allocated {pp} PP → {earnedRP.technology[field]} TRP ({field}) (total: {totalTRP} TRP)")
 
   # Tech advancement happens in resolveCommandPhase (not here)
   # Per economy.md:4.1: Tech upgrades can be purchased every turn if RP is available
@@ -2547,7 +2576,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
   # Research breakthroughs (every 5 turns)
   # Per economy.md:4.1.1: Breakthrough rolls provide bonus RP, cost reductions, or free levels
   if advancement.isBreakthroughTurn(state.turn):
-    echo "  [RESEARCH BREAKTHROUGHS] Turn ", state.turn, " - rolling for breakthroughs"
+    logDebug(LogCategory.lcResearch, &"[RESEARCH BREAKTHROUGHS] Turn {state.turn} - rolling for breakthroughs")
     for houseId in state.houses.keys:
       # Calculate total RP invested in last 5 turns
       # NOTE: This is a simplified approximation - proper implementation would track historical RP
@@ -2561,7 +2590,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
       if breakthroughOpt.isSome:
         let breakthrough = breakthroughOpt.get
-        echo "    ", houseId, " BREAKTHROUGH: ", breakthrough
+        logInfo(LogCategory.lcResearch, &"{houseId} BREAKTHROUGH: {breakthrough}")
 
         # Apply breakthrough effects
         let allocation = res_types.ResearchAllocation(
@@ -2575,7 +2604,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           allocation
         )
 
-        echo "    ", houseId, " breakthrough effect applied (category: ", event.category, ")"
+        logDebug(LogCategory.lcResearch, &"{houseId} breakthrough effect applied (category: {event.category})")
 
 ## Phase 3: Command
 
@@ -2674,7 +2703,7 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.C
         autoBalanceSquadrons: true
       )
       colony.unassignedSquadrons.delete(0)
-      echo "    Auto-created fleet ", newFleetId, " for unassigned squadron ", squadron.id
+      logDebug(LogCategory.lcFleet, &"Auto-created fleet {newFleetId} for unassigned squadron {squadron.id}")
     return
 
   # Calculate target squadron count per fleet (balanced distribution)
@@ -2781,4 +2810,4 @@ when false:
       state.fleets[carrier.fleetId] = fleet
 
     if loadedCount > 0:
-      echo "    Auto-loaded ", loadedCount, " fighters to carriers at ", systemId
+      logDebug(LogCategory.lcFleet, &"Auto-loaded {loadedCount} fighters to carriers at {systemId}")
