@@ -45,8 +45,9 @@ Thumbs.db
 *.log
 logs/
 
-# Generated documentation (HTML)
+# Generated documentation (HTML and CSS)
 *.html
+*.css
 docs/api/
 
 # Nix flake lock file (dependency lock)
