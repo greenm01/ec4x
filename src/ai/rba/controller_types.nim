@@ -200,6 +200,7 @@ type
     fallbackRoutes*: seq[FallbackRoute]
     homeworld*: SystemId  # Primary fallback and repair location
     standingOrders*: Table[FleetId, StandingOrder]  # QoL: Standing orders for routine tasks
+    offensiveFleetOrders*: seq[FleetOrder]  # Domestikos offensive operations (Move, Attack, etc.)
     pendingIntelUpdates*: seq[ReconUpdate]  # Reconnaissance missions scheduled for intel gathering
     # Multi-advisor requirements and feedback (Basileus integration)
     domestikosRequirements*: Option[BuildRequirements]  # Military build requirements

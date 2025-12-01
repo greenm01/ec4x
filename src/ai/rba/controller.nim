@@ -58,7 +58,8 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     reserves: @[],
     fallbackRoutes: @[],
     homeworld: homeworld,
-    standingOrders: initTable[FleetId, StandingOrder]()
+    standingOrders: initTable[FleetId, StandingOrder](),
+    offensiveFleetOrders: @[]
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
@@ -73,7 +74,8 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     reserves: @[],
     fallbackRoutes: @[],
     homeworld: homeworld,
-    standingOrders: initTable[FleetId, StandingOrder]()
+    standingOrders: initTable[FleetId, StandingOrder](),
+    offensiveFleetOrders: @[]
   )
 
 # =============================================================================
