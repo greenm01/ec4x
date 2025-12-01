@@ -285,6 +285,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   result.fleetOrders = filteredTacticalOrders
   result.fleetOrders.add(logisticsOrders.fleetOrders)
+  result.fleetOrders.add(controller.offensiveFleetOrders)  # Add Domestikos offensive operations
 
   # ==========================================================================
   # SUMMARY

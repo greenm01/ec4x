@@ -10,6 +10,7 @@ import std/[options, sequtils, tables, strformat, sets]
 import ../../../common/system
 import ../../../common/types/[core, diplomacy]
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger]
+import ../../../engine/diplomacy/types as dip_types  # For isEnemy
 import ../controller_types
 import ../config
 import ./staging
@@ -87,17 +88,16 @@ proc generateProbingOrders*(
   if availableScouts.len == 0:
     return result
 
-  # Find enemy colonies to probe (from intelligence reports)
+  # Find enemy colonies to probe (from current visibility)
   var probingTargets: seq[SystemId] = @[]
 
-  # Check for known enemy colonies from own house intelligence
-  for systemId, colonyReport in filtered.ownHouse.intelligence.colonyReports:
-    if colonyReport.targetOwner == controller.houseId:
+  # Check currently visible enemy colonies
+  for visibleColony in filtered.visibleColonies:
+    if visibleColony.owner == controller.houseId:
       continue  # Skip own colonies
 
-    # Add all non-self colonies as potential probing targets
-    # TODO: Filter by diplomatic stance when diplomacy fully implemented
-    probingTargets.add(systemId)
+    # Probe all enemy colonies (scouting mission, not attack)
+    probingTargets.add(visibleColony.systemId)
 
   if probingTargets.len == 0:
     return result
@@ -141,7 +141,7 @@ proc generateCounterAttackOrders*(
   if availableAttackers.len == 0:
     return result
 
-  # Find vulnerable enemy colonies
+  # Find vulnerable enemy colonies from CURRENT visibility (not historical intel)
   type VulnerableTarget = object
     systemId: SystemId
     enemyHouse: HouseId
@@ -149,36 +149,33 @@ proc generateCounterAttackOrders*(
 
   var vulnerableTargets: seq[VulnerableTarget] = @[]
 
-  # Check enemy colonies from intelligence database
-  for systemId, colonyReport in filtered.ownHouse.intelligence.colonyReports:
-    if colonyReport.targetOwner == controller.houseId:
+  # Check currently visible enemy colonies
+  for visibleColony in filtered.visibleColonies:
+    if visibleColony.owner == controller.houseId:
       continue  # Skip own colonies
 
     # Check diplomatic stance - only counter-attack enemies
-    # TODO: Use isEnemy when diplomacy module fully imported
-    # For now, assume all non-self colonies are potential targets in Act 1
-    # let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(colonyReport.targetOwner)
-    # if not isEnemy:
-    #   continue  # Skip allies/neutrals
+    let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
+    if not isEnemy:
+      continue  # Skip allies/neutrals
 
-    # Check for fleet presence using fleet movement history
-    # This aggregates all sightings (scouts, combat, any observation)
+    # Check for visible defending fleets at this location
     var hasDefenders = false
-    for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
-      # Check if this is an enemy fleet at our target colony
-      if history.owner == colonyReport.targetOwner and history.lastKnownLocation == systemId:
+    for visibleFleet in filtered.visibleFleets:
+      if visibleFleet.owner == visibleColony.owner and visibleFleet.location == visibleColony.systemId:
         hasDefenders = true
         break
 
-    # Only target undefended colonies
+    # Only target undefended or lightly defended enemy colonies
     if not hasDefenders:
       # Undefended colony - high priority target
       var priority = 100.0
-      priority += colonyReport.industry.float * 2.0
+      if visibleColony.estimatedIndustry.isSome:
+        priority += visibleColony.estimatedIndustry.get().float * 2.0
 
       vulnerableTargets.add(VulnerableTarget(
-        systemId: systemId,
-        enemyHouse: colonyReport.targetOwner,
+        systemId: visibleColony.systemId,
+        enemyHouse: visibleColony.owner,
         priority: priority
       ))
 

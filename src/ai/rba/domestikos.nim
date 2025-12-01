@@ -185,23 +185,27 @@ proc generateDomestikosOrders*(
       offensiveFleetOrders.add(counterAttackOrders)
 
   of DomestikosStrategy.MaintainFormations:
-    # Act 3+: Preserve existing battle groups, limited reorganization
-    # Only counter-attack if very aggressive
-    if controller.personality.aggression > 0.7:
+    # Act 3+: Total war - active combat operations
+    # Counter-attack vulnerable targets (any aggression level during war)
+    if controller.personality.aggression > 0.3:
       let counterAttackOrders = generateCounterAttackOrders(
         filtered, analyses, controller
       )
       offensiveFleetOrders.add(counterAttackOrders)
+
+    # Probe enemy defenses with scouts
+    let probingOrders = generateProbingOrders(
+      filtered, analyses, controller
+    )
+    offensiveFleetOrders.add(probingOrders)
 
   of DomestikosStrategy.ProbingAttacks, DomestikosStrategy.DefensiveConsolidation,
      DomestikosStrategy.OpportunisticCounter:
     # Special strategies - not yet implemented
     discard
 
-  # Note: Offensive fleet orders are returned through a separate mechanism
-  # (We'd need to modify the return type or store them in controller state)
-  # For now, we only return standing orders (defensive assignments)
-  # TODO: Extend to return both standing orders and fleet orders
+  # Store offensive fleet orders in controller for later execution
+  controller.offensiveFleetOrders = offensiveFleetOrders
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Domestikos: Generated {result.len} standing orders, " &
