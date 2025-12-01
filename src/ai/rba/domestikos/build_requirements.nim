@@ -1,4 +1,4 @@
-## Build Requirements Module - Admiral Strategic Analysis
+## Build Requirements Module - Domestikos Strategic Analysis
 ##
 ## Generates build requirements based on tactical gap analysis.
 ## Enables requirements-driven ship production instead of hardcoded thresholds.
@@ -10,7 +10,7 @@
 ## - Priority-based requirement generation
 ## - Escalation for persistent gaps (adaptive AI)
 ##
-## Integration: Called by Admiral module, consumed by build system
+## Integration: Called by Domestikos module, consumed by build system
 
 import std/[options, tables, sequtils, algorithm, strformat]
 import ../../../common/system
@@ -22,10 +22,7 @@ import ../controller_types  # For BuildRequirements types
 import ../config
 import ./fleet_analysis
 
-# Import types from parent Admiral module
-{.push used.}
-from ../admiral import FleetAnalysis, FleetUtilization
-{.pop.}
+# FleetAnalysis and FleetUtilization types now imported from ./fleet_analysis directly
 
 # Re-export types from controller_types for convenience
 export controller_types.RequirementPriority
@@ -71,7 +68,7 @@ proc escalateSeverity*(
 
   result = baseSeverity
 
-  let config = globalRBAConfig.admiral
+  let config = globalRBAConfig.domestikos
   case baseSeverity
   of RequirementPriority.Low:
     if turnsUndefended >= config.escalation_low_to_medium_turns:
@@ -151,7 +148,7 @@ proc estimateLocalThreat(
   ## Checks for enemy fleets within threat_assessment_radius
   result = 0.0
 
-  let config = globalRBAConfig.admiral
+  let config = globalRBAConfig.domestikos
   let radius = config.threat_assessment_radius
 
   # Check intelligence database for enemy fleets nearby
@@ -214,7 +211,7 @@ proc calculateGapSeverity(
   ##   - High risk: Still aggressive, only defend high-value/threatened
   ##   - Medium risk: Balanced defense, standard thresholds
   ##   - Low risk: Cautious, defend everything proactively
-  let config = globalRBAConfig.admiral
+  let config = globalRBAConfig.domestikos
 
   # Homeworld always protected (all acts, all personalities)
   if colonyPriority > 500.0 and currentDefenders == 0:
@@ -405,7 +402,7 @@ proc assessStrategicAssets*(
   controller: AIController,
   currentAct: GameAct
 ): seq[BuildRequirement] =
-  ## Comprehensive strategic asset assessment - Admiral requests ALL needed assets
+  ## Comprehensive strategic asset assessment - Domestikos requests ALL needed assets
   ## Covers:
   ##   - Capital Ships: Dreadnoughts, Battleships, Battlecruisers (main battle line)
   ##   - Carriers & Fighters: Power projection and strike warfare
@@ -413,7 +410,7 @@ proc assessStrategicAssets*(
   ##   - Ground Units: Armies, Marines, Planetary Shields, Ground Batteries
   ##   - Transports: Invasion capability and logistics
   ##   - Raiders: Harassment and asymmetric warfare
-  ## CFO decides what's affordable based on budget reality
+  ## Treasurer decides what's affordable based on budget reality
   result = @[]
 
   let house = filtered.ownHouse
@@ -421,7 +418,7 @@ proc assessStrategicAssets*(
   let personality = controller.personality
 
   logDebug(LogCategory.lcAI,
-           &"{controller.houseId} Admiral: Generating strategic assets (Act={currentAct}, CST={cstLevel})")
+           &"{controller.houseId} Domestikos: Generating strategic assets (Act={currentAct}, CST={cstLevel})")
 
   # =============================================================================
   # CARRIERS & FIGHTERS (CST 3+)
@@ -470,7 +467,7 @@ proc assessStrategicAssets*(
       let neededFighters = targetFighters - fighterCount
 
       # Request fighters individually to enable incremental fulfillment
-      # Individual requests allow CFO to build what budget permits
+      # Individual requests allow Treasurer to build what budget permits
       for i in 0..<neededFighters:
         let req = BuildRequirement(
           requirementType: RequirementType.DefenseGap,  # Defense fighters fill defensive gap
@@ -484,7 +481,7 @@ proc assessStrategicAssets*(
         )
         result.add(req)
 
-      logInfo(LogCategory.lcAI, &"Admiral requests: {neededFighters}x Fighter (colony defense, 1 at a time, {fighterCost}PP each)")
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {neededFighters}x Fighter (colony defense, 1 at a time, {fighterCost}PP each)")
 
     # PHASE 2: Request carriers for offensive projection (SpecialUnits budget)
     # Carriers are strategic mobility platforms - only build if we have fighters
@@ -508,7 +505,7 @@ proc assessStrategicAssets*(
         estimatedCost: carrierCost * (targetCarriers - carrierCount),
         reason: &"Carrier mobility platform (have {carrierCount}/{targetCarriers}, {fighterCount} fighters available)"
       )
-      logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x {carrierClass} ({req.estimatedCost}PP) - {req.reason}")
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x {carrierClass} ({req.estimatedCost}PP) - {req.reason}")
       result.add(req)
 
   # =============================================================================
@@ -539,7 +536,7 @@ proc assessStrategicAssets*(
       estimatedCost: starbaseCost * (requiredStarbases - totalStarbases),
       reason: &"Starbase infrastructure for fighters (have {totalStarbases}, need {requiredStarbases})"
     )
-    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Starbase ({req.estimatedCost}PP) - {req.reason}")
+    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x Starbase ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
   # =============================================================================
@@ -567,7 +564,7 @@ proc assessStrategicAssets*(
           estimatedCost: transportCost * (targetTransports - transportCount),
           reason: &"Invasion transports (have {transportCount}/{targetTransports})"
         )
-        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x TroopTransport ({req.estimatedCost}PP) - {req.reason}")
+        logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x TroopTransport ({req.estimatedCost}PP) - {req.reason}")
         result.add(req)
 
   # =============================================================================
@@ -617,7 +614,7 @@ proc assessStrategicAssets*(
       estimatedCost: capitalCost * (targetCapitalShips - totalCapitalShips),
       reason: &"Capital ship battle line (have {totalCapitalShips}/{targetCapitalShips})"
     )
-    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x {capitalClass} ({req.estimatedCost}PP) - {req.reason}")
+    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x {capitalClass} ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
   # =============================================================================
@@ -663,7 +660,7 @@ proc assessStrategicAssets*(
       estimatedCost: planetaryShieldCost * (targetShields - shieldedColonies),
       reason: &"Planetary shields for high-value colonies (have {shieldedColonies}/{targetShields})"
     )
-    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
+    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
   # Ground batteries for colony defense
@@ -680,7 +677,7 @@ proc assessStrategicAssets*(
       estimatedCost: groundBatteryCost * (targetBatteries - totalGroundBatteries),
       reason: &"Ground batteries for colony defense (have {totalGroundBatteries}/{targetBatteries})"
     )
-    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x GroundBattery ({req.estimatedCost}PP) - {req.reason}")
+    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x GroundBattery ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
   # Armies for colony defense
@@ -697,7 +694,7 @@ proc assessStrategicAssets*(
       estimatedCost: armyCost * (targetArmies - totalArmies),
       reason: &"Ground armies for colony defense (have {totalArmies}/{targetArmies})"
     )
-    logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Army ({req.estimatedCost}PP) - {req.reason}")
+    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x Army ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
   # Marines for offensive operations (if aggressive and have transports)
@@ -721,7 +718,7 @@ proc assessStrategicAssets*(
           estimatedCost: marineCost * (targetMarines - totalMarinesAll),
           reason: &"Marines for invasion operations (have {totalMarinesAll}/{targetMarines})"
         )
-        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Marines ({req.estimatedCost}PP) - {req.reason}")
+        logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x Marines ({req.estimatedCost}PP) - {req.reason}")
         result.add(req)
 
   # =============================================================================
@@ -749,7 +746,7 @@ proc assessStrategicAssets*(
           estimatedCost: raiderCost * (targetRaiders - raiderCount),
           reason: &"Raider harassment force (have {raiderCount}/{targetRaiders})"
         )
-        logInfo(LogCategory.lcAI, &"Admiral requests: {req.quantity}x Raider ({req.estimatedCost}PP) - {req.reason}")
+        logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x Raider ({req.estimatedCost}PP) - {req.reason}")
         result.add(req)
 
 # =============================================================================
@@ -780,13 +777,15 @@ proc generateBuildRequirements*(
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
   defensiveAssignments: Table[FleetId, StandingOrder],
-  controller: AIController,
-  currentAct: GameAct
+  controller: var AIController,
+  currentAct: GameAct,
+  intelSnapshot: IntelligenceSnapshot
 ): BuildRequirements =
-  ## Main entry point: Generate all build requirements from Admiral analysis
+  ## Main entry point: Generate all build requirements from Domestikos analysis
+  ## Now accepts IntelligenceSnapshot from Drungarius for threat-aware prioritization
 
   logDebug(LogCategory.lcAI,
-           &"{controller.houseId} Admiral: Generating build requirements (Act={currentAct})")
+           &"{controller.houseId} Domestikos: Generating build requirements (Act={currentAct})")
 
   # Assess gaps (personality-driven)
   let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct)
@@ -827,14 +826,14 @@ proc generateBuildRequirements*(
   )
 
   logInfo(LogCategory.lcAI,
-          &"Admiral generated {requirements.len} build requirements " &
+          &"Domestikos generated {requirements.len} build requirements " &
           &"(Critical={result.criticalCount}, High={result.highCount}, Total={result.totalEstimatedCost}PP)")
 
 proc reprioritizeRequirements*(
   originalRequirements: BuildRequirements,
   treasurerFeedback: TreasurerFeedback
 ): BuildRequirements =
-  ## Admiral reprioritizes requirements based on Treasurer feedback
+  ## Domestikos reprioritizes requirements based on Treasurer feedback
   ##
   ## Strategy:
   ## 1. Start with unfulfilled requirements
@@ -847,7 +846,7 @@ proc reprioritizeRequirements*(
 
   if originalRequirements.iteration >= MAX_ITERATIONS:
     logWarn(LogCategory.lcAI,
-            &"Admiral reprioritization limit reached ({MAX_ITERATIONS} iterations). " &
+            &"Domestikos reprioritization limit reached ({MAX_ITERATIONS} iterations). " &
             &"Accepting unfulfilled requirements.")
     return originalRequirements
 
@@ -856,7 +855,7 @@ proc reprioritizeRequirements*(
     return originalRequirements
 
   logInfo(LogCategory.lcAI,
-          &"Admiral reprioritizing {treasurerFeedback.unfulfilledRequirements.len} unfulfilled requirements " &
+          &"Domestikos reprioritizing {treasurerFeedback.unfulfilledRequirements.len} unfulfilled requirements " &
           &"(iteration {originalRequirements.iteration + 1}, shortfall: {treasurerFeedback.totalUnfulfilledCost}PP)")
 
   # Strategy: Keep only Critical requirements, downgrade High→Medium, Medium→Low
@@ -877,17 +876,17 @@ proc reprioritizeRequirements*(
       # Downgrade High → Medium (important but not critical)
       adjustedReq.priority = RequirementPriority.Medium
       logDebug(LogCategory.lcAI,
-               &"Admiral: Downgrading '{req.reason}' (High → Medium)")
+               &"Domestikos: Downgrading '{req.reason}' (High → Medium)")
     of RequirementPriority.Medium:
       # Downgrade Medium → Low (nice-to-have)
       adjustedReq.priority = RequirementPriority.Low
       logDebug(LogCategory.lcAI,
-               &"Admiral: Downgrading '{req.reason}' (Medium → Low)")
+               &"Domestikos: Downgrading '{req.reason}' (Medium → Low)")
     of RequirementPriority.Low:
       # Downgrade Low → Deferred (skip this round)
       adjustedReq.priority = RequirementPriority.Deferred
       logDebug(LogCategory.lcAI,
-               &"Admiral: Deferring '{req.reason}' (Low → Deferred)")
+               &"Domestikos: Deferring '{req.reason}' (Low → Deferred)")
     of RequirementPriority.Deferred:
       # Already deferred, keep as deferred
       adjustedReq.priority = RequirementPriority.Deferred
@@ -912,5 +911,5 @@ proc reprioritizeRequirements*(
   )
 
   logInfo(LogCategory.lcAI,
-          &"Admiral reprioritized requirements: {result.requirements.len} total " &
+          &"Domestikos reprioritized requirements: {result.requirements.len} total " &
           &"(Critical={result.criticalCount}, High={result.highCount}, iteration={result.iteration})")

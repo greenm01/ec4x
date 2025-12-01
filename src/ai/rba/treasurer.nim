@@ -1,28 +1,28 @@
-## CFO (Chief Financial Officer) Module - Budget Allocation Strategy
+## Treasurer Module - Budget Allocation Strategy
 ##
 ## Public API for the RBA budget allocation system.
 ##
 ## Responsibilities:
 ## - Calculate budget allocation percentages across build objectives
-## - Consult with Admiral requirements for dynamic allocation
+## - Consult with Domestikos requirements for dynamic allocation
 ## - Maintain strategic balance (minimum reserves for recon/expansion)
 ##
 ## This module answers the question: "How much PP should each objective get?"
 ## (The budget module answers: "What ships should we build with that PP?")
 ##
 ## Architecture:
-## - cfo/allocation.nim: Core allocation logic (baseline + personality + normalization)
-## - cfo/consultation.nim: Admiral consultation logic (requirements-driven adjustment)
+## - treasurer/allocation.nim: Core allocation logic (baseline + personality + normalization)
+## - treasurer/consultation.nim: Domestikos consultation logic (requirements-driven adjustment)
 ##
 ## Usage:
 ## ```nim
-## import ai/rba/cfo
+## import ai/rba/treasurer
 ##
-## let allocation = cfo.allocateBudget(
+## let allocation = treasurer.allocateBudget(
 ##   act = GameAct.Act2_RisingTensions,
 ##   personality = aiPersonality,
 ##   isUnderThreat = false,
-##   domestikosRequirements = some(requirements),
+##   admiralRequirements = some(requirements),
 ##   availableBudget = 300
 ## )
 ## # Returns: Table[BuildObjective, float] where sum(values) == 1.0
@@ -30,7 +30,7 @@
 
 import std/[tables, options]
 import ../common/types
-import ./cfo/allocation
+import ./treasurer/allocation
 
 # Re-export the main public API
 export allocation.allocateBudget

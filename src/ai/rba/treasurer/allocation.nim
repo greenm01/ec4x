@@ -1,11 +1,11 @@
 ## Budget Allocation Logic - Strategic Resource Distribution
 ##
-## This module converts game state + Admiral requirements → Budget percentages
+## This module converts game state + Domestikos requirements → Budget percentages
 ##
 ## Responsibilities:
 ## - Extract baseline allocation from config (Act-specific percentages)
 ## - Apply personality modifiers (aggressive → more military, etc.)
-## - Consult Admiral requirements for dynamic adjustment
+## - Consult Domestikos requirements for dynamic adjustment
 ## - Apply threat response (emergency military boost)
 ## - Normalize to ensure sum = 1.0
 
@@ -84,7 +84,7 @@ proc applyThreatBoost*(allocation: var BudgetAllocation) =
 proc normalizeAllocation*(allocation: var BudgetAllocation) =
   ## Ensure allocation percentages sum to exactly 1.0
   ##
-  ## After all adjustments (personality, Admiral consultation, threat response),
+  ## After all adjustments (personality, Domestikos consultation, threat response),
   ## the percentages may not sum to 1.0. This normalizes them.
 
   var total = 0.0
@@ -99,22 +99,22 @@ proc allocateBudget*(
   act: GameAct,
   personality: AIPersonality,
   isUnderThreat: bool = false,
-  domestikosRequirements: Option[BuildRequirements] = none(BuildRequirements),
+  admiralRequirements: Option[BuildRequirements] = none(BuildRequirements),
   availableBudget: int = 0
 ): BudgetAllocation =
-  ## Main budget allocation function - CFO's primary responsibility
+  ## Main budget allocation function - Treasurer's primary responsibility
   ##
   ## Returns percentage allocation across objectives (sums to 1.0)
   ##
   ## Process:
   ## 1. Start with baseline from config (strategic intent)
   ## 2. Apply personality modifiers (AI behavior diversity)
-  ## 3. **NEW**: Consult Admiral requirements (dynamic adjustment)
+  ## 3. **NEW**: Consult Domestikos requirements (dynamic adjustment)
   ## 4. Apply threat response if needed (emergency military boost)
   ## 5. Normalize to ensure sum = 1.0
   ##
   ## Backward Compatible:
-  ## - If domestikosRequirements is none, behaves exactly like old system
+  ## - If admiralRequirements is none, behaves exactly like old system
   ## - Falls back to static config percentages
 
   # 1. Baseline from config
@@ -123,9 +123,9 @@ proc allocateBudget*(
   # 2. Personality modifiers
   applyPersonalityModifiers(result, personality, act)
 
-  # 3. Admiral consultation (NEW - CFO-Admiral consultation system)
-  if domestikosRequirements.isSome and availableBudget > 0:
-    consultAdmiralRequirements(result, domestikosRequirements.get(), availableBudget)
+  # 3. Domestikos consultation (NEW - Treasurer-Domestikos consultation system)
+  if admiralRequirements.isSome and availableBudget > 0:
+    consultDomestikosRequirements(result, admiralRequirements.get(), availableBudget)
 
   # 4. Threat response
   if isUnderThreat:

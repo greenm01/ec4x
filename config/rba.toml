@@ -249,8 +249,8 @@ low_threshold = 0.2
 # ==============================================================================
 # Strategic fleet rebalancing for act-specific objectives
 
-[admiral]
-enabled = true                      # Enable admiral module for colony defense distribution
+[domestikos]
+enabled = true                      # Enable domestikos module for colony defense distribution
 split_threshold_act1 = 2            # Split fleets with 2+ ships in Act 1
 merge_threshold_act2 = 3            # Merge when 3+ idle single-ship fleets
 rendezvous_preference = "homeworld" # Where to merge fleets: homeworld, frontline, center

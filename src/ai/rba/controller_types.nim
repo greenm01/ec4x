@@ -6,11 +6,22 @@ import std/[tables, options]
 import ../common/types
 import ../../engine/gamestate  # For FallbackRoute
 import ../../engine/order_types  # For StandingOrder
-import ../../common/types/[core, units]  # For ShipClass
+import ../../common/types/[core, units, diplomacy, planets]  # For ShipClass, PlanetClass
+import ../../engine/espionage/types as esp_types  # For EspionageAction
+import ../../engine/diplomacy/proposals as dip_proposals  # For ProposalType
 
 # Forward declarations for Admiral integration
-# Full types defined in admiral/build_requirements.nim
+# Full types defined in domestikos/build_requirements.nim
 type
+  AdvisorType* {.pure.} = enum
+    ## Imperial Byzantine Government advisors
+    Domestikos       # Military commander
+    Logothete        # Research & technology
+    Drungarius       # Intelligence & espionage
+    Eparch           # Economic & infrastructure
+    Protostrator     # Diplomacy & foreign affairs
+    Treasurer        # Budget & finance
+
   RequirementPriority* {.pure.} = enum
     Critical, High, Medium, Low, Deferred
 
@@ -38,19 +49,139 @@ type
     iteration*: int  # Feedback loop iteration (0 = initial, 1+ = reprioritized)
 
   RequirementFulfillmentStatus* {.pure.} = enum
-    ## Tracks whether a requirement was fulfilled by CFO
-    Fulfilled,    # CFO had budget and fulfilled the requirement
-    Unfulfilled,  # CFO couldn't afford this requirement
+    ## Tracks whether a requirement was fulfilled by Treasurer
+    Fulfilled,    # Treasurer had budget and fulfilled the requirement
+    Unfulfilled,  # Treasurer couldn't afford this requirement
     Deferred      # Low priority, intentionally skipped
 
-  CFOFeedback* = object
-    ## CFO's feedback to Admiral on which requirements were fulfilled
+  TreasurerFeedback* = object
+    ## Treasurer's feedback to Admiral on which requirements were fulfilled
     fulfilledRequirements*: seq[BuildRequirement]
     unfulfilledRequirements*: seq[BuildRequirement]
     deferredRequirements*: seq[BuildRequirement]
     totalBudgetAvailable*: int
     totalBudgetSpent*: int
     totalUnfulfilledCost*: int
+
+  ResearchRequirement* = object
+    ## Science Advisor requirement for research investment
+    techField*: Option[TechField]  # Some = TRP field, None = ERP/SRP
+    priority*: RequirementPriority
+    estimatedCost*: int
+    reason*: string
+    expectedBenefit*: string  # e.g., "Unlocks Dreadnoughts at CST 5"
+
+  ResearchRequirements* = object
+    ## Collection of research requirements from Science Advisor
+    requirements*: seq[ResearchRequirement]
+    totalEstimatedCost*: int
+    generatedTurn*: int
+    iteration*: int  # Feedback loop counter
+
+  ScienceFeedback* = object
+    ## Treasurer's feedback to Science Advisor on research allocation
+    fulfilledRequirements*: seq[ResearchRequirement]
+    unfulfilledRequirements*: seq[ResearchRequirement]
+    totalRPAvailable*: int
+    totalRPSpent*: int
+
+  EspionageRequirementType* {.pure.} = enum
+    EBPInvestment, CIPInvestment, Operation
+
+  EspionageRequirement* = object
+    ## Drungarius requirement for espionage operations
+    requirementType*: EspionageRequirementType
+    priority*: RequirementPriority
+    targetHouse*: Option[HouseId]
+    operation*: Option[esp_types.EspionageAction]
+    estimatedCost*: int  # PP cost for EBP/CIP
+    reason*: string
+
+  EspionageRequirements* = object
+    ## Collection of espionage requirements from Drungarius
+    requirements*: seq[EspionageRequirement]
+    totalEstimatedCost*: int
+    generatedTurn*: int
+    iteration*: int
+
+  DrungariusFeedback* = object
+    ## Treasurer's feedback to Drungarius on espionage budget
+    fulfilledRequirements*: seq[EspionageRequirement]
+    unfulfilledRequirements*: seq[EspionageRequirement]
+    totalBudgetAvailable*: int
+    totalBudgetSpent*: int
+
+  EconomicRequirementType* {.pure.} = enum
+    Facility, Terraforming, TaxPolicy, PopulationTransfer
+
+  EconomicRequirement* = object
+    ## Eparch requirement for infrastructure and economy
+    requirementType*: EconomicRequirementType
+    priority*: RequirementPriority
+    targetColony*: SystemId
+    facilityType*: Option[string]  # "Shipyard", "Spaceport"
+    terraformTarget*: Option[PlanetClass]
+    estimatedCost*: int
+    reason*: string
+
+  EconomicRequirements* = object
+    ## Collection of economic requirements from Eparch
+    requirements*: seq[EconomicRequirement]
+    totalEstimatedCost*: int
+    generatedTurn*: int
+    iteration*: int
+
+  EparchFeedback* = object
+    ## Treasurer's feedback to Eparch on economic budget
+    fulfilledRequirements*: seq[EconomicRequirement]
+    unfulfilledRequirements*: seq[EconomicRequirement]
+    totalBudgetAvailable*: int
+    totalBudgetSpent*: int
+
+  DiplomaticRequirementType* {.pure.} = enum
+    ProposePact, BreakPact, DeclareWar, SeekPeace, MaintainRelations
+
+  DiplomaticRequirement* = object
+    ## Protostrator requirement for diplomatic actions
+    requirementType*: DiplomaticRequirementType
+    priority*: RequirementPriority
+    targetHouse*: HouseId
+    proposalType*: Option[dip_proposals.ProposalType]
+    estimatedCost*: int  # Usually 0, but could include bribes/tribute in future
+    reason*: string
+    expectedBenefit*: string
+
+  DiplomaticRequirements* = object
+    ## Collection of diplomatic requirements from Protostrator
+    requirements*: seq[DiplomaticRequirement]
+    generatedTurn*: int
+    iteration*: int
+
+  # Note: Diplomacy doesn't cost PP, so no ProtostratorFeedback from Treasurer
+  # Basileus provides feedback on priority conflicts only
+
+  ThreatLevel* {.pure.} = enum
+    ## Threat assessment levels for intelligence reports
+    None, Low, Moderate, High, Critical
+
+  FleetMovement* = object
+    ## Tracked enemy fleet movement for intelligence
+    fleetId*: FleetId
+    owner*: HouseId
+    lastKnownLocation*: SystemId
+    lastSeenTurn*: int
+    estimatedStrength*: int
+
+  IntelligenceSnapshot* = object
+    ## Consolidated intelligence from Drungarius for all advisors
+    ## Combines fog-of-war visibility, reconnaissance reports, and espionage data
+    turn*: int
+    knownEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]]
+    enemyFleetMovements*: Table[HouseId, seq[FleetMovement]]
+    highValueTargets*: seq[SystemId]  # Weak enemy colonies
+    threatAssessment*: Table[SystemId, ThreatLevel]
+    staleIntelSystems*: seq[SystemId]  # Systems needing reconnaissance
+    espionageOpportunities*: seq[HouseId]  # Houses to target for espionage
 
 type
   ReconUpdate* = object
@@ -70,5 +201,13 @@ type
     homeworld*: SystemId  # Primary fallback and repair location
     standingOrders*: Table[FleetId, StandingOrder]  # QoL: Standing orders for routine tasks
     pendingIntelUpdates*: seq[ReconUpdate]  # Reconnaissance missions scheduled for intel gathering
-    admiralRequirements*: Option[BuildRequirements]  # Phase 3: Admiral build requirements
-    cfoFeedback*: Option[CFOFeedback]  # Phase 3: CFO feedback on requirement fulfillment
+    # Multi-advisor requirements and feedback (Basileus integration)
+    domestikosRequirements*: Option[BuildRequirements]  # Military build requirements
+    logotheteRequirements*: Option[ResearchRequirements]  # Research priorities
+    drungariusRequirements*: Option[EspionageRequirements]  # Espionage operations
+    eparchRequirements*: Option[EconomicRequirements]  # Infrastructure and economy
+    protostratorRequirements*: Option[DiplomaticRequirements]  # Diplomatic actions
+    treasurerFeedback*: Option[TreasurerFeedback]  # Treasurer feedback on build fulfillment
+    scienceFeedback*: Option[ScienceFeedback]  # Treasurer feedback on research allocation
+    drungariusFeedback*: Option[DrungariusFeedback]  # Treasurer feedback on espionage budget
+    eparchFeedback*: Option[EparchFeedback]  # Treasurer feedback on economic budget
