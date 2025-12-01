@@ -97,13 +97,15 @@ type
 
   DiplomaticActionType* {.pure.} = enum
     ## Diplomatic actions per diplomacy.md:8.1
-    ProposeNonAggressionPact,  # Propose pact with another house
+    ## 4-level diplomatic system: Neutral, Ally (allies), Hostile, Enemy
+    ProposeAllyPact,  # Propose pact with another house (→ Ally)
     AcceptProposal,            # Accept pending proposal
     RejectProposal,            # Reject pending proposal
     WithdrawProposal,          # Cancel own proposal
-    BreakPact,                 # Break existing non-aggression pact
-    DeclareEnemy,              # Set diplomatic status to Enemy
-    SetNeutral                 # Set diplomatic status to Neutral
+    BreakPact,                 # Break existing non-aggression pact (→ Neutral)
+    DeclareHostile,            # Escalate to Hostile (deep space combat)
+    DeclareEnemy,              # Escalate to Enemy (open war, planetary attacks)
+    SetNeutral                 # De-escalate to Neutral (peace)
 
   PopulationTransferOrder* = object
     ## Space Guild population transfer between colonies

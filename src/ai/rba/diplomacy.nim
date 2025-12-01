@@ -169,7 +169,7 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
 
     result.recommendEnemy = enemyScore > 0.6
 
-  of dip_types.DiplomaticState.NonAggression:
+  of dip_types.DiplomaticState.Ally:
     # Should we break the pact?
     var breakScore = 0.0
 
