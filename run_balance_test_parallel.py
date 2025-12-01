@@ -226,7 +226,8 @@ def main():
 
     print(f"\n{'='*70}")
     print(f"All workers completed in {elapsed_time:.1f} seconds")
-    print(f"Average time per game: {elapsed_time / len(all_results):.2f} seconds")
+    if len(all_results) > 0:
+        print(f"Average time per game: {elapsed_time / len(all_results):.2f} seconds")
     print(f"{'='*70}")
 
     # Aggregate and print results

@@ -29,9 +29,9 @@ import ../../engine/economy/maintenance
 import ../common/types as ai_types
 import ./controller_types
 import ./config  # RBA configuration system
-import ./intelligence  # For system analysis
+import ./intelligence  # For system analysis, getOwnedColonies
 import ./shared/colony_assessment  # Shared defense assessment
-import ./diplomacy     # For getOwnedColonies, getOwnedFleets
+import ./protostrator/assessment  # For getOwnedFleets
 import ./strategic     # For threat assessment
 
 ## =============================================================================

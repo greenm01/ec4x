@@ -9,6 +9,7 @@ import std/[tables, options, strformat, sequtils, strutils]
 import ../../../common/types/[core, diplomacy]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/diplomacy/types as dip_types
+import ../../../engine/diplomacy/proposals as dip_proposals
 import ../controller_types
 import ../../common/types as ai_types
 
@@ -265,20 +266,17 @@ proc generateDiplomaticRequirements*(
 
   # === GENERATE REQUIREMENTS ===
   for target in diplomaticTargets:
-    # Determine pact type for proposals
-    var pactType: Option[PactType] = none(PactType)
+    # Determine proposal type for pact proposals
+    var proposalType: Option[dip_proposals.ProposalType] = none(dip_proposals.ProposalType)
     if target.recommendedAction == DiplomaticRequirementType.ProposePact:
-      # Default to NAP, unless upgrading to Alliance
-      if target.currentRelation == dip_types.DiplomaticState.NonAggression:
-        pactType = some(PactType.Alliance)
-      else:
-        pactType = some(PactType.NAP)
+      # Only NonAggressionPact is currently implemented in diplomacy engine
+      proposalType = some(dip_proposals.ProposalType.NonAggressionPact)
 
     result.requirements.add(DiplomaticRequirement(
       requirementType: target.recommendedAction,
       priority: target.priority,
       targetHouse: target.houseId,
-      pactType: pactType,
+      proposalType: proposalType,
       estimatedCost: 0,  # Diplomacy costs 0 PP
       reason: target.reason,
       expectedBenefit: case target.recommendedAction

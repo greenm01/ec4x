@@ -15,7 +15,7 @@ import ../../engine/economy/construction  # For budget execution
 import ../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../common/types/[core, units]
 import ./config  # RBA configuration system (globalRBAConfig)
-import ./cfo     # CFO module for budget allocation
+import ./treasurer     # Treasurer module for budget allocation
 
 # =============================================================================
 # Budget Tracker - Running Budget Management
@@ -114,8 +114,8 @@ proc logBudgetSummary*(tracker: BudgetTracker) =
 # =============================================================================
 # Budget Allocation by Game Act
 # =============================================================================
-# MOVED TO: src/ai/rba/cfo/allocation.nim
-# Budget allocation is now handled by the CFO (Chief Financial Officer) module
+# MOVED TO: src/ai/rba/treasurer/allocation.nim
+# Budget allocation is now handled by the Treasurer module
 # This module focuses on build execution (WHAT to build with allocated PP)
 
 proc calculateObjectiveBudgets*(treasury: int, allocation: BudgetAllocation): Table[BuildObjective, int] =
@@ -1050,8 +1050,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                                    scoutCount: int,
                                    planetBreakerCount: int,
                                    availableBudget: int,
-                                   # Phase 3: Admiral requirements (optional)
-                                   admiralRequirements: Option[BuildRequirements] = none(BuildRequirements)): seq[BuildOrder] =
+                                   # Phase 3: Domestikos requirements (optional)
+                                   domestikosRequirements: Option[BuildRequirements] = none(BuildRequirements)): seq[BuildOrder] =
   ## Generate build orders using budget allocation system
   ##
   ## This replaces the sequential priority system with multi-objective allocation
@@ -1060,13 +1060,13 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   ## Otherwise AI will overspend and enter maintenance death spiral
 
   # 1. Calculate budget allocation percentages
-  # NEW: CFO module handles allocation with Admiral consultation
-  var allocation = cfo.allocateBudget(
+  # NEW: Treasurer module handles allocation with Domestikos consultation
+  var allocation = treasurer.allocateBudget(
     act,
     personality,
     isUnderThreat,
-    admiralRequirements,  # CFO consults Admiral requirements
-    availableBudget       # CFO needs total budget to calculate percentages
+    domestikosRequirements,  # Treasurer consults Domestikos requirements
+    availableBudget       # Treasurer needs total budget to calculate percentages
   )
 
   # NOTE: Diagnostic logging removed after verification that Strategic Triage fix works
@@ -1088,11 +1088,11 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   # 3. Generate orders for each objective within budget
   result = @[]
 
-  # 3.1. PHASE 3: Process Admiral Requirements FIRST (before colony loop)
-  # Admiral requirements have absolute priority (Critical > High > Medium)
+  # 3.1. PHASE 3: Process Domestikos Requirements FIRST (before colony loop)
+  # Domestikos requirements have absolute priority (Critical > High > Medium)
   # This ensures tactical needs drive production instead of hardcoded thresholds
-  # Track CFO feedback for Admiral-CFO feedback loop
-  var cfoFeedback = CFOFeedback(
+  # Track Treasurer feedback for Domestikos-Treasurer feedback loop
+  var treasurerFeedback = TreasurerFeedback(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     deferredRequirements: @[],
@@ -1101,23 +1101,23 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     totalUnfulfilledCost: 0
   )
 
-  if admiralRequirements.isSome:
-    let reqs = admiralRequirements.get()
+  if domestikosRequirements.isSome:
+    let reqs = domestikosRequirements.get()
     logDebug(LogCategory.lcAI,
-             &"{controller.houseId} CFO: Processing {reqs.requirements.len} Admiral requirements")
+             &"{controller.houseId} Treasurer: Processing {reqs.requirements.len} Domestikos requirements")
     for req in reqs.requirements:
-      # Process requirements in priority order (already sorted by Admiral)
+      # Process requirements in priority order (already sorted by Domestikos)
       # Skip Deferred requirements (low urgency)
       if req.priority == RequirementPriority.Deferred:
         let itemName = if req.shipClass.isSome: $req.shipClass.get() else: req.reason
         logDebug(LogCategory.lcAI,
-                 &"{controller.houseId} CFO: Deferring {req.quantity}× {itemName} (priority={req.priority})")
-        cfoFeedback.deferredRequirements.add(req)
+                 &"{controller.houseId} Treasurer: Deferring {req.quantity}× {itemName} (priority={req.priority})")
+        treasurerFeedback.deferredRequirements.add(req)
         continue
 
       let itemName = if req.shipClass.isSome: $req.shipClass.get() else: req.reason
       logDebug(LogCategory.lcAI,
-               &"{controller.houseId} CFO: Processing {req.quantity}× {itemName} " &
+               &"{controller.houseId} Treasurer: Processing {req.quantity}× {itemName} " &
                &"(priority={req.priority}, cost={req.estimatedCost}PP)")
 
       # Find best colony to build (prefer target system if specified)
@@ -1139,10 +1139,10 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
       if buildColony.isNone:
         logWarn(LogCategory.lcAI,
-                &"{controller.houseId} CFO: Admiral requirement cannot be fulfilled: " &
+                &"{controller.houseId} Treasurer: Domestikos requirement cannot be fulfilled: " &
                 &"no colonies with shipyard/spaceport (need {req.quantity}× {req.shipClass.get()})")
-        cfoFeedback.unfulfilledRequirements.add(req)
-        cfoFeedback.totalUnfulfilledCost += req.estimatedCost
+        treasurerFeedback.unfulfilledRequirements.add(req)
+        treasurerFeedback.totalUnfulfilledCost += req.estimatedCost
         continue
 
       # Try to allocate budget for this requirement
@@ -1163,23 +1163,23 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
             industrialUnits: 0
           ))
           tracker.recordSpending(req.buildObjective, totalCost)
-          cfoFeedback.fulfilledRequirements.add(req)
-          cfoFeedback.totalBudgetSpent += totalCost
+          treasurerFeedback.fulfilledRequirements.add(req)
+          treasurerFeedback.totalBudgetSpent += totalCost
 
           logInfo(LogCategory.lcAI,
-                  &"{controller.houseId} Fulfilled Admiral requirement: " &
+                  &"{controller.houseId} Fulfilled Domestikos requirement: " &
                   &"{req.quantity}× {shipClass} at {col.systemId} " &
                   &"(priority={req.priority}, cost={totalCost}PP, reason={req.reason})")
         else:
           # Insufficient budget
-          cfoFeedback.unfulfilledRequirements.add(req)
-          cfoFeedback.totalUnfulfilledCost += totalCost
+          treasurerFeedback.unfulfilledRequirements.add(req)
+          treasurerFeedback.totalUnfulfilledCost += totalCost
           logWarn(LogCategory.lcAI,
-                  &"{controller.houseId} Admiral requirement unfulfilled (insufficient {req.buildObjective} budget): " &
+                  &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
                   &"{req.quantity}× {shipClass} (need {totalCost}PP)")
       else:
         # Handle non-ship requirements (ground units, buildings, tech, espionage, etc.)
-        # Per user requirement: "the CFO should handle ALL game assets and services that cost PP"
+        # Per user requirement: "the Treasurer should handle ALL game assets and services that cost PP"
 
         # Determine what type of non-ship asset this is based on the reason field
         let reason = req.reason.toLowerAscii()
@@ -1202,8 +1202,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
         else:
           # Unknown non-ship requirement - log and skip for now
           logWarn(LogCategory.lcAI,
-                  &"{controller.houseId} CFO: Unknown non-ship requirement: {req.reason}")
-          cfoFeedback.unfulfilledRequirements.add(req)
+                  &"{controller.houseId} Treasurer: Unknown non-ship requirement: {req.reason}")
+          treasurerFeedback.unfulfilledRequirements.add(req)
           continue
 
         # Calculate cost based on type
@@ -1240,21 +1240,21 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
             ))
 
           tracker.recordSpending(req.buildObjective, totalCost)
-          cfoFeedback.fulfilledRequirements.add(req)
-          cfoFeedback.totalBudgetSpent += totalCost
+          treasurerFeedback.fulfilledRequirements.add(req)
+          treasurerFeedback.totalBudgetSpent += totalCost
 
           let assetName = if buildingType.isSome: buildingType.get() else: unitType
           logInfo(LogCategory.lcAI,
-                  &"{controller.houseId} Fulfilled Admiral requirement: " &
+                  &"{controller.houseId} Fulfilled Domestikos requirement: " &
                   &"{req.quantity}× {assetName} at {col.systemId} " &
                   &"(priority={req.priority}, cost={totalCost}PP, reason={req.reason})")
         else:
           # Insufficient budget
-          cfoFeedback.unfulfilledRequirements.add(req)
-          cfoFeedback.totalUnfulfilledCost += totalCost
+          treasurerFeedback.unfulfilledRequirements.add(req)
+          treasurerFeedback.totalUnfulfilledCost += totalCost
           let assetName = if buildingType.isSome: buildingType.get() else: unitType
           logWarn(LogCategory.lcAI,
-                  &"{controller.houseId} Admiral requirement unfulfilled (insufficient {req.buildObjective} budget): " &
+                  &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
                   &"{req.quantity}× {assetName} (need {totalCost}PP)")
 
   # Sort colonies prioritizing shipyards over spaceports (economy.md:5.1, 5.3)
@@ -1325,14 +1325,15 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
     # DYNAMIC NEED RECALCULATION
     # Recalculate need flags using PROJECTED counts (current + built this turn)
-    # INCREASED THRESHOLDS: Target 5-7 scouts for robust ELI mesh coverage
+    # NOTE: Scouts only useful in Act 2+ for espionage (spying on enemy colonies)
+    # In Act 1, any ship can explore and reveal map, so scouts provide no advantage
     let projectedNeedScouts = case act
       of GameAct.Act1_LandGrab:
-        projectedScoutCount < 5  # Was 3
+        false  # Don't build scouts in Act 1 (any ship can explore)
       of GameAct.Act2_RisingTensions:
-        projectedScoutCount < 7  # Was 6
+        projectedScoutCount < 7  # Build scouts for espionage
       else:
-        projectedScoutCount < 9  # Was 8
+        projectedScoutCount < 9  # More scouts for full ELI mesh coverage
 
     # Defense orders: Available at ALL colonies (planet-side construction)
     result.add(buildDefenseOrders(colony, tracker, needDefenses, hasStarbase))
@@ -1398,10 +1399,10 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   let report = generateBudgetReport(tracker, filtered.turn)
   logBudgetReport(report)
 
-  # Store CFO feedback for Admiral-CFO feedback loop
-  if admiralRequirements.isSome:
-    controller.cfoFeedback = some(cfoFeedback)
-    if cfoFeedback.unfulfilledRequirements.len > 0:
+  # Store Treasurer feedback for Domestikos-Treasurer feedback loop
+  if domestikosRequirements.isSome:
+    controller.treasurerFeedback = some(treasurerFeedback)
+    if treasurerFeedback.unfulfilledRequirements.len > 0:
       logInfo(LogCategory.lcAI,
-              &"{controller.houseId} CFO Feedback: {cfoFeedback.fulfilledRequirements.len} fulfilled, " &
-              &"{cfoFeedback.unfulfilledRequirements.len} unfulfilled (shortfall: {cfoFeedback.totalUnfulfilledCost}PP)")
+              &"{controller.houseId} Treasurer Feedback: {treasurerFeedback.fulfilledRequirements.len} fulfilled, " &
+              &"{treasurerFeedback.unfulfilledRequirements.len} unfulfilled (shortfall: {treasurerFeedback.totalUnfulfilledCost}PP)")

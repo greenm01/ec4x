@@ -16,6 +16,7 @@ import std/[options, tables, strformat]
 import ../../../common/types/[core, diplomacy]
 import ../../../engine/[gamestate, fog_of_war, logger, orders]
 import ../../../engine/research/types as res_types
+import ../../../engine/diplomacy/proposals as dip_proposals
 import ../controller_types
 import ../../common/types as ai_types
 import ../logothete/allocation
@@ -57,10 +58,10 @@ proc executeDiplomaticActions*(
               &"  IMPERIAL DECREE: Declaring war on {req.targetHouse} - {req.reason}")
 
     of DiplomaticRequirementType.ProposePact:
-      if req.pactType.isSome:
-        let pactType = req.pactType.get()
-        case pactType
-        of PactType.NAP:
+      if req.proposalType.isSome:
+        let propType = req.proposalType.get()
+        case propType
+        of dip_proposals.ProposalType.NonAggressionPact:
           result.add(DiplomaticAction(
             targetHouse: req.targetHouse,
             actionType: DiplomaticActionType.ProposeNonAggressionPact,
@@ -70,9 +71,9 @@ proc executeDiplomaticActions*(
           logInfo(LogCategory.lcAI,
                   &"  Proposing NAP to {req.targetHouse}: {req.reason}")
         else:
-          # Alliance not yet implemented in diplomacy system
+          # Other proposal types not yet implemented in diplomacy system
           logWarn(LogCategory.lcAI,
-                  &"  Pact type {pactType} not yet implemented, skipping proposal to {req.targetHouse}")
+                  &"  Proposal type {propType} not yet implemented, skipping proposal to {req.targetHouse}")
 
     of DiplomaticRequirementType.BreakPact:
       result.add(DiplomaticAction(

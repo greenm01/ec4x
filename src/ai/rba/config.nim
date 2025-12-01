@@ -198,7 +198,7 @@ type
     # Threat assessment
     threat_assessment*: ThreatAssessmentConfig
     # Admiral module (fleet rebalancing)
-    admiral*: AdmiralConfig
+    domestikos*: AdmiralConfig
 
 # ==============================================================================
 # Config Validation

@@ -12,7 +12,7 @@ import ../../common/types/[core, planets]
 import ./controller_types
 import ./config  # RBA configuration system
 import ./intelligence  # For isSystemColonized, getColony
-import ./diplomacy  # For getOwnedFleets
+import ./protostrator/assessment  # For getOwnedFleets
 import ./shared/colony_assessment  # Shared defense assessment
 
 # =============================================================================
