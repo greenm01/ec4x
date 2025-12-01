@@ -21,7 +21,7 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
 
       for action in packet.diplomaticActions:
         case action.actionType
-        of DiplomaticActionType.ProposeNonAggressionPact:
+        of DiplomaticActionType.ProposeAllyPact:
           # Pact proposal system per docs/architecture/diplomacy_proposals.md
           # Creates pending proposal that target must accept/reject
           logResolve("Non-Aggression Pact proposed",
@@ -38,7 +38,7 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
                 id: dip_proposals.generateProposalId(state.turn, houseId, action.targetHouse),
                 proposer: houseId,
                 target: action.targetHouse,
-                proposalType: dip_proposals.ProposalType.NonAggressionPact,
+                proposalType: dip_proposals.ProposalType.AllyPact,
                 submittedTurn: state.turn,
                 expiresIn: 3,  # 3 turns to respond
                 status: dip_proposals.ProposalStatus.Pending,
@@ -186,7 +186,7 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
             action.targetHouse
           )
 
-          if currentState == dip_types.DiplomaticState.NonAggression:
+          if currentState == dip_types.DiplomaticState.Ally:
             # Record violation
             discard dip_engine.recordViolation(
               state.houses[houseId].violationHistory,
@@ -268,6 +268,29 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
           else:
             logWarn("Diplomacy", "No pact exists to break",
                     "house=", $houseId, " target=", $action.targetHouse)
+
+        of DiplomaticActionType.DeclareHostile:
+          logResolve("Declared Hostile",
+                     "declarer=", $houseId, " target=", $action.targetHouse)
+
+          # Get mutable copy of house to modify diplomatic relations
+          var house = state.houses[houseId]
+          dip_engine.setDiplomaticState(
+            house.diplomaticRelations,
+            action.targetHouse,
+            dip_types.DiplomaticState.Hostile,
+            state.turn
+          )
+          # Write back modified house to persist changes
+          state.houses[houseId] = house
+
+          # Generate hostility declaration intelligence
+          diplomatic_intel.generateHostilityDeclarationIntel(
+            state,
+            houseId,
+            action.targetHouse,
+            state.turn
+          )
 
         of DiplomaticActionType.DeclareEnemy:
           logResolve("Declared Enemy",

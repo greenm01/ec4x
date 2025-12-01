@@ -26,18 +26,18 @@ proc proposePact*(relations: var DiplomaticRelations, otherHouse: HouseId,
 
   # Check current state
   let currentState = getDiplomaticState(relations, otherHouse)
-  if currentState == DiplomaticState.NonAggression:
+  if currentState == DiplomaticState.Ally:
     return none(DiplomaticEvent)  # Already in pact
 
   # Establish pact
   let oldState = currentState
-  setDiplomaticState(relations, otherHouse, DiplomaticState.NonAggression, turn)
+  setDiplomaticState(relations, otherHouse, DiplomaticState.Ally, turn)
 
   return some(DiplomaticEvent(
     houseId: "",  # Set by caller
     otherHouse: otherHouse,
     oldState: oldState,
-    newState: DiplomaticState.NonAggression,
+    newState: DiplomaticState.Ally,
     turn: turn,
     reason: "Non-Aggression Pact established",
     prestigeEvents: @[]
@@ -156,7 +156,7 @@ proc handleCombatViolation*(violatorRelations: var DiplomaticRelations,
   return DiplomaticEvent(
     houseId: violator,
     otherHouse: victim,
-    oldState: DiplomaticState.NonAggression,
+    oldState: DiplomaticState.Ally,
     newState: DiplomaticState.Enemy,
     turn: turn,
     reason: "Non-Aggression Pact violated (automatic war declaration)",

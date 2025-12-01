@@ -169,6 +169,7 @@ type
 type
   DiplomaticAssessment* = object
     ## Assessment of diplomatic situation with target house
+    ## 4-level diplomatic system: Neutral, Ally, Hostile, Enemy
     targetHouse*: HouseId
     relativeMilitaryStrength*: float  # Our strength / their strength (1.0 = equal)
     relativeEconomicStrength*: float  # Our economy / their economy (1.0 = equal)
@@ -176,9 +177,11 @@ type
     geographicProximity*: int         # Number of neighboring systems
     violationRisk*: float             # 0.0-1.0: Risk they violate pact
     currentState*: dip_types.DiplomaticState
-    recommendPact*: bool              # Should we propose/maintain pact?
+    recommendPact*: bool              # Should we propose/maintain pact (Ally)?
     recommendBreak*: bool             # Should we break existing pact?
-    recommendEnemy*: bool             # Should we declare enemy?
+    recommendHostile*: bool           # Should we escalate to Hostile?
+    recommendEnemy*: bool             # Should we escalate to Enemy?
+    recommendNeutral*: bool           # Should we de-escalate to Neutral?
 
 # =============================================================================
 # Garrison & Defense Planning Types

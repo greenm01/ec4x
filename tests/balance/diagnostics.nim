@@ -524,8 +524,11 @@ proc collectDiplomaticMetrics(state: GameState, houseId: HouseId): DiagnosticMet
     case dipState
     of DiplomaticState.Enemy:
       enemyCount += 1
-    of DiplomaticState.NonAggression:
+    of DiplomaticState.Ally:
       pactsCount += 1
+    of DiplomaticState.Hostile:
+      # Count hostile as enemies for diagnostics
+      enemyCount += 1
     of DiplomaticState.Neutral:
       neutralCount += 1
 

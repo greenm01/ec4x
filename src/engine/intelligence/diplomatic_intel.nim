@@ -8,6 +8,48 @@ import types as intel_types
 import ../gamestate
 import ../diplomacy/types as dip_types
 
+proc generateHostilityDeclarationIntel*(
+  state: var GameState,
+  declaringHouse: HouseId,
+  targetHouse: HouseId,
+  turn: int
+) =
+  ## Generate intelligence reports when hostility is declared
+  ## All houses receive this intelligence (public event)
+
+  # Notify all houses of the hostility declaration
+  for houseId in state.houses.keys:
+    let significance = if houseId == declaringHouse or houseId == targetHouse:
+      7  # High significance for direct participants
+    else:
+      5  # Moderate significance for observers
+
+    let description = if houseId == declaringHouse:
+      &"TENSIONS ESCALATE: Your house has declared {targetHouse} as hostile. Deep space combat authorized."
+    elif houseId == targetHouse:
+      &"ALERT: {declaringHouse} has declared your house hostile! Expect deep space engagements."
+    else:
+      &"DIPLOMATIC UPDATE: {declaringHouse} has declared {targetHouse} hostile. Tensions rising in the galaxy."
+
+    let report = intel_types.ScoutEncounterReport(
+      reportId: &"{houseId}-hostility-declaration-{turn}-{declaringHouse}-{targetHouse}",
+      scoutId: "diplomatic-corps",
+      turn: turn,
+      systemId: 0.SystemId,  # No specific system
+      encounterType: intel_types.ScoutEncounterType.DiplomaticActivity,
+      observedHouses: @[declaringHouse, targetHouse],
+      fleetDetails: @[],
+      colonyDetails: none(intel_types.ColonyIntelReport),
+      fleetMovements: @[],
+      description: description,
+      significance: significance
+    )
+
+    # CRITICAL: Get, modify, write back to persist
+    var house = state.houses[houseId]
+    house.intelligence.addScoutEncounter(report)
+    state.houses[houseId] = house
+
 proc generateWarDeclarationIntel*(
   state: var GameState,
   declaringHouse: HouseId,

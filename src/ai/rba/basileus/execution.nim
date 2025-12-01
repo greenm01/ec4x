@@ -30,7 +30,7 @@ proc executeDiplomaticActions*(
   ##
   ## Converts Protostrator requirements to diplomatic actions:
   ## - DeclareWar → DeclareEnemy
-  ## - ProposePact → ProposeNonAggressionPact (or future Alliance)
+  ## - ProposePact → ProposeAllyPact (or future Alliance)
   ## - BreakPact → BreakPact
   ## - SeekPeace → SetNeutral
   ## - MaintainRelations → No action
@@ -61,10 +61,10 @@ proc executeDiplomaticActions*(
       if req.proposalType.isSome:
         let propType = req.proposalType.get()
         case propType
-        of dip_proposals.ProposalType.NonAggressionPact:
+        of dip_proposals.ProposalType.AllyPact:
           result.add(DiplomaticAction(
             targetHouse: req.targetHouse,
-            actionType: DiplomaticActionType.ProposeNonAggressionPact,
+            actionType: DiplomaticActionType.ProposeAllyPact,
             proposalId: none(string),
             message: some(req.reason)
           ))

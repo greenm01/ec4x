@@ -11,7 +11,7 @@ export dip_types
 
 type
   ProposalType* {.pure.} = enum
-    NonAggressionPact    # Initial implementation
+    AllyPact    # Initial implementation
     TradeAgreement       # Future: resource trading
     MilitaryAlliance     # Future: joint operations
     TechnologySharing    # Future: research cooperation

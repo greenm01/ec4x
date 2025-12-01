@@ -290,13 +290,14 @@ proc generateDiplomaticSection(oldState: GameState, newState: GameState, perspec
       let relation = dip_types.getDiplomaticState(house.diplomaticRelations, otherId)
       let statusStr = case relation
         of DiplomaticState.Enemy: "WAR"
-        of DiplomaticState.NonAggression: "Non-Aggression Pact"
+        of DiplomaticState.Hostile: "Hostile (Deep Space Combat)"
+        of DiplomaticState.Ally: "Non-Aggression Pact"
         of DiplomaticState.Neutral: "Neutral"
 
-      let priorityMark = if relation == DiplomaticState.Enemy: "⚠ " else: ""
+      let priorityMark = if relation in {DiplomaticState.Enemy, DiplomaticState.Hostile}: "⚠ " else: ""
       result.lines.add(&"{priorityMark}{otherHouse.name}: {statusStr}")
 
-      if relation == DiplomaticState.Enemy:
+      if relation in {DiplomaticState.Enemy, DiplomaticState.Hostile}:
         result.priority = ReportPriority.Important
 
 proc generateAlertsSection(events: seq[GameEvent], newState: GameState, perspective: HouseId): ReportSection =

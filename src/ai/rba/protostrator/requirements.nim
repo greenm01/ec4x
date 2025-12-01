@@ -114,7 +114,7 @@ proc countAllies(filtered: FilteredGameState, houseId: HouseId): int =
   result = 0
   for pair, state in filtered.houseDiplomacy.pairs:
     let (house1, house2) = pair
-    if (house1 == houseId or house2 == houseId) and state == dip_types.DiplomaticState.NonAggression:
+    if (house1 == houseId or house2 == houseId) and state == dip_types.DiplomaticState.Ally:
       result += 1
 
 proc generateDiplomaticRequirements*(
@@ -229,7 +229,7 @@ proc generateDiplomaticRequirements*(
           target.priority = RequirementPriority.High
           target.reason = &"War against {houseId}: {warEval.reason} (score: {warEval.score:.1f})"
 
-    of dip_types.DiplomaticState.NonAggression:
+    of dip_types.DiplomaticState.Ally:
       # Have NAP - maintain or upgrade to alliance
       if prestigeGap > 300 and p.diplomacyValue > 0.7:
         # Strong ally - consider alliance
@@ -241,6 +241,30 @@ proc generateDiplomaticRequirements*(
         target.recommendedAction = DiplomaticRequirementType.MaintainRelations
         target.priority = RequirementPriority.Low
         target.reason = &"Maintain NAP with {houseId}"
+
+    of dip_types.DiplomaticState.Hostile:
+      # Tensions escalated from deep space combat
+      # Decide: escalate to war or de-escalate to neutral
+      if prestigeGap > 400:
+        # Much stronger enemy - seek de-escalation urgently
+        target.recommendedAction = DiplomaticRequirementType.SeekPeace
+        target.priority = RequirementPriority.High
+        target.reason = &"De-escalate tensions with stronger {houseId} (gap: {prestigeGap})"
+      elif prestigeGap > 200 and p.aggression < 0.5:
+        # Moderately stronger, non-aggressive - seek de-escalation
+        target.recommendedAction = DiplomaticRequirementType.SeekPeace
+        target.priority = RequirementPriority.Medium
+        target.reason = &"De-escalate with {houseId} to avoid full war"
+      elif prestigeGap < -200 and p.aggression > 0.6:
+        # Much weaker enemy, aggressive personality - escalate to war
+        target.recommendedAction = DiplomaticRequirementType.DeclareWar
+        target.priority = RequirementPriority.High
+        target.reason = &"Escalate hostilities to war with weaker {houseId}"
+      else:
+        # Maintain hostile state (continue deep space skirmishes)
+        target.recommendedAction = DiplomaticRequirementType.MaintainRelations
+        target.priority = RequirementPriority.Low
+        target.reason = &"Continue hostile tensions with {houseId}"
 
     # Note: Alliance state not yet implemented in diplomacy system
     # of dip_types.DiplomaticState.Alliance:
@@ -276,8 +300,8 @@ proc generateDiplomaticRequirements*(
     # Determine proposal type for pact proposals
     var proposalType: Option[dip_proposals.ProposalType] = none(dip_proposals.ProposalType)
     if target.recommendedAction == DiplomaticRequirementType.ProposePact:
-      # Only NonAggressionPact is currently implemented in diplomacy engine
-      proposalType = some(dip_proposals.ProposalType.NonAggressionPact)
+      # Only AllyPact is currently implemented in diplomacy engine
+      proposalType = some(dip_proposals.ProposalType.AllyPact)
 
     result.requirements.add(DiplomaticRequirement(
       requirementType: target.recommendedAction,

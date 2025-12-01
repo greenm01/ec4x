@@ -49,7 +49,7 @@ type
 # Note: Sub-modules will import these types directly from this file
 
 # Now import sub-modules (they will see our type definitions)
-import ./domestikos/[fleet_analysis, defensive_ops, offensive_ops, staging, build_requirements]
+import ./domestikos/[fleet_analysis, defensive_ops, offensive_ops, staging, build_requirements, exploration_ops]
 
 # Export build_requirements functions for Domestikos-Treasurer feedback loop
 export build_requirements.reprioritizeRequirements
@@ -158,9 +158,12 @@ proc generateDomestikosOrders*(
 
   case strategy
   of DomestikosStrategy.SplitForExploration:
-    # Act 1: Keep fleets dispersed for exploration (no merging)
-    # Defense is priority - no offensive ops in Act 1
-    discard
+    # Act 1: Exploration to build intelligence
+    let explorationOrders = generateExplorationOrders(
+      filtered, analyses, controller
+    )
+    # Add as fleet orders (one-time move commands to unexplored systems)
+    offensiveFleetOrders.add(explorationOrders)
 
   of DomestikosStrategy.MergeForCombat:
     # Act 2: Consolidate idle fleets for combat operations

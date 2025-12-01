@@ -142,7 +142,7 @@ proc encodeGameState*(state: GameState, houseId: HouseId): seq[float] =
 
       # One-hot encode diplomatic state
       result[idx] = (if dipState == dip_types.DiplomaticState.Neutral: 1.0 else: 0.0); inc idx
-      result[idx] = (if dipState == dip_types.DiplomaticState.NonAggression: 1.0 else: 0.0); inc idx
+      result[idx] = (if dipState == dip_types.DiplomaticState.Ally: 1.0 else: 0.0); inc idx
       result[idx] = (if dipState == dip_types.DiplomaticState.Enemy: 1.0 else: 0.0); inc idx
 
       # Relative strength (their prestige / our prestige)
@@ -230,7 +230,7 @@ proc encodeOrders*(orders: OrderPacket, state: GameState): tuple[
   if orders.diplomaticActions.len > 0:
     let dipAction = orders.diplomaticActions[0]
     let actionTypeInt = case dipAction.actionType
-      of DiplomaticActionType.ProposeNonAggressionPact: 1
+      of DiplomaticActionType.ProposeAllyPact: 1
       of DiplomaticActionType.DeclareEnemy: 2
       of DiplomaticActionType.SetNeutral: 3
       of DiplomaticActionType.BreakPact: 3  # Map to SetNeutral

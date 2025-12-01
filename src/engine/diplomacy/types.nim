@@ -3,7 +3,7 @@
 ## Type definitions for diplomatic relations per diplomacy.md:8.1
 ##
 ## Core diplomatic concepts:
-## - DiplomaticState: Neutral, NonAggression, Enemy
+## - DiplomaticState: Neutral, Ally, Enemy
 ## - Violations: Track pact violations and penalties
 ## - Dishonored Status: Reputational damage after violation
 
@@ -146,11 +146,20 @@ proc setDiplomaticState*(relations: var DiplomaticRelations, otherHouse: HouseId
 
 proc isInPact*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
   ## Check if in non-aggression pact with house
-  return getDiplomaticState(relations, otherHouse) == DiplomaticState.NonAggression
+  return getDiplomaticState(relations, otherHouse) == DiplomaticState.Ally
 
 proc isEnemy*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
-  ## Check if house is enemy
+  ## Check if house is enemy (open war)
   return getDiplomaticState(relations, otherHouse) == DiplomaticState.Enemy
+
+proc isHostile*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
+  ## Check if house is hostile (tensions escalated)
+  return getDiplomaticState(relations, otherHouse) == DiplomaticState.Hostile
+
+proc isHostileOrEnemy*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
+  ## Check if house is hostile or enemy (any combat allowed)
+  let state = getDiplomaticState(relations, otherHouse)
+  return state in {DiplomaticState.Hostile, DiplomaticState.Enemy}
 
 proc canFormPact*(history: ViolationHistory): bool =
   ## Check if house can form new non-aggression pacts (not isolated)

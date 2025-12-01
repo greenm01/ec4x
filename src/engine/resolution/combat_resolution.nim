@@ -13,6 +13,8 @@ import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../logger
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
+import ../diplomacy/[types as dip_types, engine as dip_engine]
+import ../intelligence/diplomatic_intel
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony, resolveMovementOrder
 import ../intelligence/[types as intel_types, combat_intel]
@@ -25,6 +27,90 @@ proc getTargetBucket(shipClass: ShipClass): TargetBucket =
   of ShipClass.Destroyer: TargetBucket.Destroyer
   of ShipClass.Starbase: TargetBucket.Starbase
   else: TargetBucket.Capital
+
+proc autoEscalateDiplomacy(
+  state: var GameState,
+  combatOutcome: CombatResult,
+  combatPhase: string,
+  fleetsInCombat: seq[(FleetId, Fleet)]
+) =
+  ## Auto-escalate diplomatic status based on combat actions
+  ## - Space Combat → Hostile (deep space engagement)
+  ## - Orbital Combat → Enemy (planetary attack)
+  ## Per approved 4-level diplomacy system
+
+  if combatOutcome.totalRounds == 0:
+    return  # No combat occurred
+
+  # Determine target diplomatic state based on combat phase
+  let targetState = if combatPhase == "Space Combat":
+    dip_types.DiplomaticState.Hostile  # Deep space combat escalates to Hostile
+  else:
+    dip_types.DiplomaticState.Enemy  # Orbital combat escalates to Enemy
+
+  # Collect all houses involved in combat
+  var housesInvolved: seq[HouseId] = @[]
+  for (fleetId, fleet) in fleetsInCombat:
+    if fleet.owner notin housesInvolved:
+      housesInvolved.add(fleet.owner)
+
+  # Auto-escalate diplomatic relations between all pairs of combatants
+  for i in 0..<housesInvolved.len:
+    for j in (i+1)..<housesInvolved.len:
+      let house1 = housesInvolved[i]
+      let house2 = housesInvolved[j]
+
+      # Get current diplomatic states
+      let currentState1 = dip_engine.getDiplomaticState(
+        state.houses[house1].diplomaticRelations,
+        house2
+      )
+      let currentState2 = dip_engine.getDiplomaticState(
+        state.houses[house2].diplomaticRelations,
+        house1
+      )
+
+      # Only escalate if current state is less hostile than target
+      # Neutral (0) < Ally (1) < Hostile (2) < Enemy (3)
+      if ord(currentState1) < ord(targetState):
+        var house = state.houses[house1]
+        dip_engine.setDiplomaticState(
+          house.diplomaticRelations,
+          house2,
+          targetState,
+          state.turn
+        )
+        state.houses[house1] = house
+
+        logResolve("Auto-escalation",
+                   "phase=", combatPhase, " house=", $house1, " target=", $house2,
+                   " oldState=", $currentState1, " newState=", $targetState)
+
+        # Generate intelligence about escalation
+        if targetState == dip_types.DiplomaticState.Hostile:
+          diplomatic_intel.generateHostilityDeclarationIntel(state, house1, house2, state.turn)
+        else:
+          diplomatic_intel.generateWarDeclarationIntel(state, house1, house2, state.turn)
+
+      if ord(currentState2) < ord(targetState):
+        var house = state.houses[house2]
+        dip_engine.setDiplomaticState(
+          house.diplomaticRelations,
+          house1,
+          targetState,
+          state.turn
+        )
+        state.houses[house2] = house
+
+        logResolve("Auto-escalation",
+                   "phase=", combatPhase, " house=", $house2, " target=", $house1,
+                   " oldState=", $currentState2, " newState=", $targetState)
+
+        # Generate intelligence about escalation
+        if targetState == dip_types.DiplomaticState.Hostile:
+          diplomatic_intel.generateHostilityDeclarationIntel(state, house2, house1, state.turn)
+        else:
+          diplomatic_intel.generateWarDeclarationIntel(state, house2, house1, state.turn)
 
 proc executeCombat(
   state: var GameState,
@@ -314,6 +400,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     logCombat("Combat result", "survivors=", $spaceCombatSurvivors.len)
     if detectedInSpace.len > 0:
       logCombat("Cloaked detection", "detected=", $detectedInSpace.len)
+
+    # Auto-escalate diplomatic relations after space combat
+    autoEscalateDiplomacy(state, spaceCombatOutcome, "Space Combat", spaceCombatFleets)
+
   elif attackingFleets.len > 0:
     # No mobile defenders - attackers proceed directly to orbital combat
     logCombat("No space combat - no mobile defenders")
@@ -400,6 +490,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         logCombat("Orbital combat complete", "rounds=", $orbitalCombatOutcome.totalRounds)
         if detected.len > detectedInSpace.len:
           logCombat("Additional detection in orbital phase", "count=", $(detected.len - detectedInSpace.len))
+
+        # Auto-escalate diplomatic relations after orbital combat
+        autoEscalateDiplomacy(state, orbitalCombatOutcome, "Orbital Combat", orbitalCombatFleets)
+
       else:
         logCombat("No surviving attacker fleets for orbital combat")
     else:

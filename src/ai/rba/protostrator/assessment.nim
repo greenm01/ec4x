@@ -156,22 +156,27 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
 
     result.recommendPact = pactScore > 0.5
 
-    # Should we declare enemy?
+    # Should we escalate to Hostile or Enemy?
+    var hostileScore = 0.0
     var enemyScore = 0.0
 
     # Aggressive personality
+    hostileScore += p.aggression * 0.3
     enemyScore += p.aggression * 0.5
 
     # Weaker target
     if result.relativeMilitaryStrength > 1.5:
+      hostileScore += 0.2
       enemyScore += 0.3
 
     # Low diplomacy value
+    hostileScore += (1.0 - p.diplomacyValue) * 0.2
     enemyScore += (1.0 - p.diplomacyValue) * 0.3
 
-    result.recommendEnemy = enemyScore > 0.6
+    result.recommendHostile = hostileScore > 0.5
+    result.recommendEnemy = enemyScore > 0.7  # Higher threshold for war
 
-  of dip_types.DiplomaticState.NonAggression:
+  of dip_types.DiplomaticState.Ally:
     # Should we break the pact?
     var breakScore = 0.0
 
@@ -190,6 +195,28 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
     breakScore += p.riskTolerance * 0.2
 
     result.recommendBreak = breakScore > 0.7  # High threshold for violation
+
+  of dip_types.DiplomaticState.Hostile:
+    # Hostile state - tensions escalated, should we escalate to war or de-escalate?
+    var escalateScore = 0.0
+    var deescalateScore = 0.0
+
+    # Aggressive personality wants war
+    escalateScore += p.aggression * 0.5
+
+    # Weaker target = escalate
+    if result.relativeMilitaryStrength > 1.3:
+      escalateScore += 0.3
+
+    # Much stronger enemy = de-escalate
+    if result.relativeMilitaryStrength < 0.6:
+      deescalateScore += 0.5
+
+    # High diplomacy value = prefer de-escalation
+    deescalateScore += p.diplomacyValue * 0.4
+
+    result.recommendEnemy = escalateScore > 0.6
+    result.recommendNeutral = deescalateScore > 0.5
 
   of dip_types.DiplomaticState.Enemy:
     # Should we normalize relations?
