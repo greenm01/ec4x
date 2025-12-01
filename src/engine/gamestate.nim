@@ -209,6 +209,11 @@ type
     lastTurnEBPSpent*: int           # EBP spent on operations
     lastTurnCIPSpent*: int           # CIP spent on counter-intel
 
+    # Combat tracking (for diagnostics)
+    lastTurnSpaceCombatWins*: int    # Space battles won
+    lastTurnSpaceCombatLosses*: int  # Space battles lost
+    lastTurnSpaceCombatTotal*: int   # Total space combat engagements
+
     # Safe retreat routes (automatic seek-home behavior)
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference

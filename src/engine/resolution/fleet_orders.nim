@@ -454,6 +454,75 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
     systemId: some(targetId)
   ))
 
+proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
+                            events: var seq[GameEvent]) =
+  ## Perform long-range planetary reconnaissance (Order 19)
+  ## Ship approaches system edge, scans planet, retreats to deep space
+  ## Gathers: planet owner (if colonized) and planet class (production potential)
+  if order.targetSystem.isNone:
+    return
+
+  let targetId = order.targetSystem.get()
+  let fleet = state.fleets.getOrDefault(order.fleetId)
+
+  if fleet.location != targetId:
+    # Not at target yet, continue moving
+    return
+
+  # Fleet is at system - perform long-range scan
+  var house = state.houses[houseId]
+
+  # Gather intel on planet
+  if targetId in state.colonies:
+    let colony = state.colonies[targetId]
+
+    # Create minimal colony intel report from long-range scan
+    # ViewWorld only gathers: owner + planet class (no detailed statistics)
+    let intelReport = ColonyIntelReport(
+      colonyId: targetId,
+      targetOwner: colony.owner,
+      gatheredTurn: state.turn,
+      quality: intel_types.IntelQuality.Scan,  # Long-range scan quality
+      # Colony stats: minimal info from long-range scan
+      population: 0,               # Unknown from long range
+      industry: 0,                 # Unknown from long range
+      defenses: 0,                 # Unknown from long range
+      starbaseLevel: 0,            # Unknown from long range
+      constructionQueue: @[],      # Unknown from long range
+      # Economic intel: not available from long-range scan
+      grossOutput: none(int),
+      taxRevenue: none(int),
+      # Orbital defenses: not visible from deep space approach
+      unassignedSquadronCount: 0,
+      reserveFleetCount: 0,
+      mothballedFleetCount: 0,
+      shipyardCount: 0
+    )
+
+    house.intelligence.colonyReports[targetId] = intelReport
+    logInfo(LogCategory.lcFleet,
+            &"{house.name} viewed world at {targetId}: Owner={colony.owner}, Class={colony.planetClass}")
+  else:
+    # Uncolonized system - no intel report needed
+    # Just log that we found an uncolonized system
+    if targetId in state.starMap.systems:
+      let system = state.starMap.systems[targetId]
+      logInfo(LogCategory.lcFleet,
+              &"{house.name} viewed uncolonized system at {targetId}")
+
+  state.houses[houseId] = house
+
+  # Generate event
+  events.add(GameEvent(
+    eventType: GameEventType.IntelGathered,
+    houseId: houseId,
+    description: &"Completed long-range scan of system {targetId}",
+    systemId: some(targetId)
+  ))
+
+  # Order completes - fleet remains at system (player must issue new orders)
+  # NOTE: Fleet is in deep space, not orbit, so no orbital combat triggered
+
 proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
   ## Automatically load available marines/colonists onto empty transports at colonies
   ## Only auto-load if no manual cargo order exists for that fleet

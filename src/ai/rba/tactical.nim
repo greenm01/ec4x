@@ -606,7 +606,38 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
         else:
           logDebug(LogCategory.lcAI, &"    → No colonization targets found (map fully colonized?)")
 
-      # Priority 1b: Combat ships explore aggressively
+      # Priority 1b: View World missions for unexamined systems (Act 1 intelligence gathering)
+      if hasCombatShips:
+        # Check for unexamined systems (no intel report on file)
+        var viewTarget: Option[SystemId] = none(SystemId)
+        var minDist = 999
+        let fromCoords = filtered.starMap.systems[fleet.location].coords
+
+        for systemId, visSystem in filtered.visibleSystems:
+          # Skip if we already have intelligence on this system
+          if systemId in filtered.ownHouse.intelligence.colonyReports:
+            continue
+
+          # Only view systems we haven't visited yet
+          let coords = filtered.starMap.systems[systemId].coords
+          let dx = abs(coords.q - fromCoords.q)
+          let dy = abs(coords.r - fromCoords.r)
+          let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
+          let dist = (dx + dy + dz) div 2
+
+          if dist < minDist and dist > 0:  # dist > 0 excludes current location
+            minDist = dist
+            viewTarget = some(systemId)
+
+        if viewTarget.isSome:
+          order.orderType = FleetOrderType.ViewWorld
+          order.targetSystem = viewTarget
+          order.targetFleet = none(FleetId)
+          logInfo(LogCategory.lcAI, &"    → VIEW WORLD {viewTarget.get()} (Act 1: Intelligence gathering)")
+          result.add(order)
+          continue
+
+      # Priority 1c: Combat ships explore aggressively
       if hasCombatShips:
         # Build set of systems already targeted by our other fleets this turn
         var alreadyTargeted = initHashSet[SystemId]()

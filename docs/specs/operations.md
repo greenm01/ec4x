@@ -159,6 +159,7 @@ Explicit orders that execute until completed or overridden:
 | 16  | Place on Reserve        | At friendly colony                       |
 | 17  | Mothball Fleet          | At friendly colony with Spaceport        |
 | 18  | Reactivate Fleet        | Reserve or Mothballed fleet              |
+| 19  | View a World            | Any ship type                            |
 
 ### 6.3.2 Hold Position (00)
 
@@ -415,6 +416,33 @@ Reactivate Reserve or Mothballed fleets to Active status. Your fleet returns to 
 - Mobilize reserves during wartime
 - Respond to emerging threats
 - Return mothballed fleets to operational status
+
+### 6.3.21 View a World (19)
+
+Send a fleet to perform long-range planetary reconnaissance from the edge of a solar system. Your ship approaches the system edge, conducts a long-range scan of the planet, then backs off into deep space—gathering intelligence without orbital approach or detection risk.
+
+**Intelligence Gathered:**
+- **Planet Owner**: Which house controls the colony (if colonized)
+- **Planet Class**: Production potential (Barren, Arid, Terran, etc.)
+- **Strategic Value**: Assess colonization priority for ETACs
+
+**Tactical Advantages:**
+- **Deep Space Approach**: Ship remains in deep space, avoiding orbital combat
+- **Any Ship Type**: No specialized equipment required
+- **Early Intelligence**: Identify valuable targets before committing ETACs
+- **Diplomatic Safety**: No hostile act, safe for gathering intel on neutrals
+
+**Use View a World to:**
+- Scout uncolonized systems before ETAC deployment
+- Identify high-value planets (Terran, Ocean) for priority colonization
+- Map enemy territory and production capacity
+- Gather intelligence on neutral/hostile colonies without triggering combat
+
+**Early Game Strategy:**
+- Act 1 AI sends combat fleets to View uncolonized systems
+- Intelligence informs ETAC targeting decisions
+- Enables "land grab" strategy based on planet quality
+- Allows bumping into other houses for diplomatic contact
 
 ---
 

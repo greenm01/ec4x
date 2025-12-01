@@ -122,6 +122,30 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Phase 1: Conflict (combat, infrastructure damage, espionage)
   resolveConflictPhase(result.newState, effectiveOrders, result.combatReports, result.events, rng)
 
+  # Update combat statistics from combat reports (for diagnostics)
+  for report in result.combatReports:
+    if report.victor.isSome:
+      let victorId = report.victor.get()
+      # Victor gets a win
+      result.newState.houses[victorId].lastTurnSpaceCombatWins += 1
+      result.newState.houses[victorId].lastTurnSpaceCombatTotal += 1
+
+      # Losers get losses
+      for attackerId in report.attackers:
+        if attackerId != victorId:
+          result.newState.houses[attackerId].lastTurnSpaceCombatLosses += 1
+          result.newState.houses[attackerId].lastTurnSpaceCombatTotal += 1
+      for defenderId in report.defenders:
+        if defenderId != victorId:
+          result.newState.houses[defenderId].lastTurnSpaceCombatLosses += 1
+          result.newState.houses[defenderId].lastTurnSpaceCombatTotal += 1
+    else:
+      # No victor - all participants get combat counted but no win/loss
+      for houseId in report.attackers:
+        result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
+      for houseId in report.defenders:
+        result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
+
   # Phase 2: Income (resource collection)
   resolveIncomePhase(result.newState, effectiveOrders)
 
@@ -786,6 +810,9 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
             # Clear the permanent order that was assigned during Reserve/Mothball
             state.fleetOrders.del(actualOrder.fleetId)
+      of FleetOrderType.ViewWorld:
+        # Move-to-View: Fleet moves to target then performs long-range scan
+        resolveViewWorldOrder(state, houseId, actualOrder, events)
       else:
         discard
 
@@ -799,6 +826,11 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
             orderCompleted = true
       of FleetOrderType.Move, FleetOrderType.SeekHome:
         # Movement completes when fleet reaches destination
+        if actualOrder.fleetId in state.fleets and actualOrder.targetSystem.isSome:
+          if state.fleets[actualOrder.fleetId].location == actualOrder.targetSystem.get():
+            orderCompleted = true
+      of FleetOrderType.ViewWorld:
+        # ViewWorld completes when fleet reaches target and performs scan
         if actualOrder.fleetId in state.fleets and actualOrder.targetSystem.isSome:
           if state.fleets[actualOrder.fleetId].location == actualOrder.targetSystem.get():
             orderCompleted = true
