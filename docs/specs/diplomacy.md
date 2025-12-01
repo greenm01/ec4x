@@ -2,13 +2,11 @@
 
 ## 8.1 Diplomacy
 
-In EC4X, diplomacy includes Neutral, Enemy, and Non-Aggression categories. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy can play a pivotal role alongside the sword. Your primary directive remains to decisively manage your adversaries, leveraging both military might and diplomatic cunning.
+In EC4X, diplomacy includes enemy, hostile, neutral, and ally classifications. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy can play a pivotal role alongside the sword. Your primary directive remains to decisively manage your adversaries, leveraging both military might and diplomatic cunning.
 
-### 8.1.1 Neutral
+TODO: provide a table of the four diplomatic states. Show automatic triggers and distinguish between intentional diplomatic actions. Provide an explanation of the treaty system.
 
-Fleets are instructed to avoid initiating hostilities with the designated neutral House outside of the player's controlled territory. This status allows for coexistence in neutral or contested spaces without immediate aggression.
-
-### 8.1.2 Non-Aggression Pacts
+### 8.1.1 Allies
 
 Houses can enter into formal or informal agreements to not attack each other, allowing for cooperation or at least a mutual stance of non-hostility.
 
@@ -19,7 +17,7 @@ This can include:
 
 **Violation Consequences:**
 
-Attacking a Non-Aggression partner constitutes immediate pact violation. When a violation is detected during the Conflict Phase per [Section 1.3.1](gameplay.md#131-conflict-phase), the diplomatic status automatically converts to Enemy and takes effect at the start of the next turn's Conflict Phase.
+Attacking an ally partner constitutes immediate pact violation. When a violation is detected during the Conflict Phase per [Section 1.3.1](gameplay.md#131-conflict-phase), the diplomatic status automatically converts to Enemy and takes effect at the start of the next turn's Conflict Phase.
 
 **Penalties for Violating House:**
 - **Immediate Prestige Loss:** **PactViolation** penalty - see [Table 9.4](reference.md#104-prestige)
@@ -28,21 +26,29 @@ Attacking a Non-Aggression partner constitutes immediate pact violation. When a 
 - **Repeat Violations:** Each subsequent violation within 10 turns incurs **RepeatViolation** penalty - see [Table 9.4](reference.md#104-prestige)
 
 **Diplomatic Reinstatement:**
-Non-Aggression Pacts cannot be reinstated between the same houses for 5 turns after violation. The Dishonored status and diplomatic isolation apply to all houses, not just the betrayed partner, reflecting widespread loss of trust in the galactic community.
+Alliance Pacts cannot be reinstated between the same houses for 5 turns after violation. The Dishonored status and diplomatic isolation apply to all houses, not just the betrayed partner, reflecting widespread loss of trust in the galactic community.
 
-### 8.1.3 Enemy
+### 8.1.2 Neutral
+
+Fleets are instructed to avoid initiating hostilities with the designated neutral House outside of the player's controlled territory. This status allows for coexistence in neutral or contested spaces without immediate aggression.
+
+### 8.1.3 Hostile
+
+Combat engangements in deep space trigger hostile status between houses.
+
+### 8.1.4 Enemy
 
 Fleets are commanded to engage with the forces of the declared enemy House at every opportunity, both within and outside controlled territories.
 
 This state leads to full-scale warfare where all encounters are treated as hostile, pushing for direct and aggressive confrontations.
 
-### 8.1.4 Defense Protocol
+### 8.1.5 Defense Protocol
 
-Regardless of diplomatic status, all units will defend home planets against any foreign incursions with maximum aggression.
+Regardless of diplomatic status, all units will defend house colonies against any foreign incursions with maximum aggression.
 
-Fleets will retaliate against direct attacks regardless of diplomatic state, in accordance with ROE.
+Fleets will retaliate against direct colony attacks regardless of diplomatic state, in accordance with ROE.
 
-### 8.1.5 Territorial Control
+### 8.1.6 Territorial Control
 
 A house controls territory in systems containing its colony. Each system can contain only one colony per the colonization rules in [Section 6.2.13](operations.md#6213-colonize-a-planet-12).
 
