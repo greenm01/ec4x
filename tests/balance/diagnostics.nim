@@ -3,7 +3,7 @@
 ## Tracks per-house, per-turn metrics to identify systematic AI failures
 ## Per Grok gap analysis: "Run diagnostics. Let the numbers tell you exactly what's missing."
 
-import std/[tables, strformat, streams, options]
+import std/[tables, strformat, streams, options, strutils]
 import ../../src/engine/[gamestate, fleet, squadron, orders, logger]
 import ../../src/engine/diplomacy/types as dip_types
 import ../../src/common/types/[core, units, diplomacy]
@@ -71,13 +71,20 @@ type
     cloakedAmbushSuccess*: int       # Successful cloaked raider ambushes
     shieldsActivatedCount*: int      # Times planetary shields blocked hits
 
-    # Diplomatic Status (from diplomacy.toml)
-    activePactsCount*: int           # Current active Non-Aggression Pacts
+    # Diplomatic Status (4-level system: Neutral, Ally, Hostile, Enemy)
+    allyStatusCount*: int            # Houses at Ally status (formal pacts)
+    hostileStatusCount*: int         # Houses at Hostile status (deep space combat)
+    enemyStatusCount*: int           # Houses at Enemy status (open war)
+    neutralStatusCount*: int         # Houses at Neutral status (default)
     pactViolationsTotal*: int        # Cumulative pact violations (lifetime)
     dishonoredStatusActive*: bool    # Currently dishonored?
     diplomaticIsolationTurns*: int   # Turns remaining in isolation
-    enemyStatusCount*: int           # Houses at Enemy status
-    neutralStatusCount*: int         # Houses at Neutral status
+
+    # Treaty Activity Metrics
+    pactFormationsTotal*: int        # Cumulative pacts formed (lifetime)
+    pactBreaksTotal*: int            # Cumulative pacts broken (lifetime)
+    hostilityDeclarationsTotal*: int # Cumulative escalations to Hostile (lifetime)
+    warDeclarationsTotal*: int       # Cumulative escalations to Enemy (lifetime)
 
     # Espionage Activity (from espionage.toml)
     espionageSuccessCount*: int      # Successful espionage operations
@@ -212,6 +219,9 @@ type
     etacsWithoutOrders*: int      # ETACs sitting idle (not colonizing)
     etacsInTransit*: int          # ETACs moving to targets
 
+    # Bilateral Diplomatic Relations (semicolon-separated: houseId:state)
+    bilateralRelations*: string   # e.g., "house-harkonnen:Hostile;house-ordos:Neutral"
+
   DiagnosticSession* = object
     ## Collection of all diagnostics for a game session
     gameId*: string
@@ -262,8 +272,12 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId, strategy: AIStrategy = 
     cloakedAmbushSuccess: 0, shieldsActivatedCount: 0,
 
     # Diplomatic Status
-    activePactsCount: 0, pactViolationsTotal: 0, dishonoredStatusActive: false,
-    diplomaticIsolationTurns: 0, enemyStatusCount: 0, neutralStatusCount: 0,
+    allyStatusCount: 0, hostileStatusCount: 0, enemyStatusCount: 0, neutralStatusCount: 0,
+    pactViolationsTotal: 0, dishonoredStatusActive: false, diplomaticIsolationTurns: 0,
+
+    # Treaty Activity Metrics
+    pactFormationsTotal: 0, pactBreaksTotal: 0,
+    hostilityDeclarationsTotal: 0, warDeclarationsTotal: 0,
 
     # Espionage Activity
     espionageSuccessCount: 0, espionageFailureCount: 0, espionageDetectedCount: 0,
@@ -323,7 +337,10 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId, strategy: AIStrategy = 
 
     # Orders
     invalidOrders: 0,
-    totalOrders: 0
+    totalOrders: 0,
+
+    # Bilateral Diplomatic Relations
+    bilateralRelations: ""
   )
 
 proc collectEconomyMetrics(state: GameState, houseId: HouseId,
@@ -509,8 +526,9 @@ proc collectDiplomaticMetrics(state: GameState, houseId: HouseId): DiagnosticMet
 
   let house = state.houses.getOrDefault(houseId)
 
-  # Count diplomatic relationships
-  var pactsCount = 0
+  # Count diplomatic relationships (4-level system)
+  var allyCount = 0
+  var hostileCount = 0
   var enemyCount = 0
   var neutralCount = 0
 
@@ -522,17 +540,17 @@ proc collectDiplomaticMetrics(state: GameState, houseId: HouseId): DiagnosticMet
     # This is the authoritative source used by combat and fleet orders
     let dipState = house.diplomaticRelations.getDiplomaticState(otherHouseId)
     case dipState
-    of DiplomaticState.Enemy:
-      enemyCount += 1
-    of DiplomaticState.Ally:
-      pactsCount += 1
-    of DiplomaticState.Hostile:
-      # Count hostile as enemies for diagnostics
-      enemyCount += 1
     of DiplomaticState.Neutral:
       neutralCount += 1
+    of DiplomaticState.Ally:
+      allyCount += 1
+    of DiplomaticState.Hostile:
+      hostileCount += 1
+    of DiplomaticState.Enemy:
+      enemyCount += 1
 
-  result.activePactsCount = pactsCount
+  result.allyStatusCount = allyCount
+  result.hostileStatusCount = hostileCount
   result.enemyStatusCount = enemyCount
   result.neutralStatusCount = neutralCount
 
@@ -540,6 +558,29 @@ proc collectDiplomaticMetrics(state: GameState, houseId: HouseId): DiagnosticMet
   result.pactViolationsTotal = house.violationHistory.violations.len
   result.dishonoredStatusActive = house.dishonoredStatus.active
   result.diplomaticIsolationTurns = house.diplomaticIsolation.turnsRemaining
+
+  # Treaty activity metrics (cumulative counts)
+  # TODO: Implement historical tracking of diplomatic events
+  # For now, these remain at 0 as we don't track historical formations/breaks
+  result.pactFormationsTotal = 0
+  result.pactBreaksTotal = 0
+  result.hostilityDeclarationsTotal = 0
+  result.warDeclarationsTotal = 0
+
+  # Bilateral relations (dynamic for any number of houses)
+  # Format: "houseId:state;houseId:state;..." (up to 12 houses)
+  var relations: seq[string] = @[]
+  for otherHouseId, otherHouse in state.houses:
+    if otherHouseId == houseId or otherHouse.eliminated:
+      continue
+    let dipState = house.diplomaticRelations.getDiplomaticState(otherHouseId)
+    let stateStr = case dipState
+      of DiplomaticState.Neutral: "N"
+      of DiplomaticState.Ally: "A"
+      of DiplomaticState.Hostile: "H"
+      of DiplomaticState.Enemy: "E"
+    relations.add(&"{otherHouseId}:{stateStr}")
+  result.bilateralRelations = relations.join(";")
 
 proc collectHouseStatusMetrics(state: GameState, houseId: HouseId): DiagnosticMetrics =
   ## Collect house operational status metrics
@@ -1032,13 +1073,23 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.cloakedAmbushSuccess = mil.cloakedAmbushSuccess
   result.shieldsActivatedCount = mil.shieldsActivatedCount
 
-  # Diplomatic Status
-  result.activePactsCount = dip.activePactsCount
+  # Diplomatic Status (4-level system)
+  result.allyStatusCount = dip.allyStatusCount
+  result.hostileStatusCount = dip.hostileStatusCount
+  result.enemyStatusCount = dip.enemyStatusCount
+  result.neutralStatusCount = dip.neutralStatusCount
   result.pactViolationsTotal = dip.pactViolationsTotal
   result.dishonoredStatusActive = dip.dishonoredStatusActive
   result.diplomaticIsolationTurns = dip.diplomaticIsolationTurns
-  result.enemyStatusCount = dip.enemyStatusCount
-  result.neutralStatusCount = dip.neutralStatusCount
+
+  # Treaty Activity Metrics
+  result.pactFormationsTotal = dip.pactFormationsTotal
+  result.pactBreaksTotal = dip.pactBreaksTotal
+  result.hostilityDeclarationsTotal = dip.hostilityDeclarationsTotal
+  result.warDeclarationsTotal = dip.warDeclarationsTotal
+
+  # Bilateral Diplomatic Relations
+  result.bilateralRelations = dip.bilateralRelations
 
   # Espionage Activity (tracked from turn resolution)
   let house = state.houses.getOrDefault(houseId)
@@ -1102,9 +1153,11 @@ proc writeCSVHeader*(file: File) =
                  # Combat Performance
                  "combat_cer_avg,bombard_rounds,ground_victories,retreats," &
                  "crit_hits_dealt,crit_hits_received,cloaked_ambush,shields_activated," &
-                 # Diplomatic Status
-                 "active_pacts,pact_violations,dishonored,diplo_isolation_turns," &
-                 "enemy_count,neutral_count," &
+                 # Diplomatic Status (4-level system)
+                 "ally_count,hostile_count,enemy_count,neutral_count," &
+                 "pact_violations,dishonored,diplo_isolation_turns," &
+                 # Treaty Activity Metrics
+                 "pact_formations,pact_breaks,hostility_declarations,war_declarations," &
                  # Espionage Activity
                  "espionage_success,espionage_failure,espionage_detected," &
                  "tech_thefts,sabotage_ops,assassinations,cyber_attacks," &
@@ -1139,7 +1192,9 @@ proc writeCSVHeader*(file: File) =
                  # Defense
                  "undefended_colonies,total_colonies,mothball_used,mothball_total," &
                  # Orders
-                 "invalid_orders,total_orders")
+                 "invalid_orders,total_orders," &
+                 # Bilateral Diplomatic Relations (dynamic, semicolon-separated)
+                 "bilateral_relations")
 
 proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
   ## Write metrics as CSV row with ALL fields
@@ -1159,9 +1214,11 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Combat Performance
                  &"{metrics.combatCERAverage},{metrics.bombardmentRoundsTotal},{metrics.groundCombatVictories},{metrics.retreatsExecuted}," &
                  &"{metrics.criticalHitsDealt},{metrics.criticalHitsReceived},{metrics.cloakedAmbushSuccess},{metrics.shieldsActivatedCount}," &
-                 # Diplomatic Status
-                 &"{metrics.activePactsCount},{metrics.pactViolationsTotal},{metrics.dishonoredStatusActive},{metrics.diplomaticIsolationTurns}," &
-                 &"{metrics.enemyStatusCount},{metrics.neutralStatusCount}," &
+                 # Diplomatic Status (4-level system)
+                 &"{metrics.allyStatusCount},{metrics.hostileStatusCount},{metrics.enemyStatusCount},{metrics.neutralStatusCount}," &
+                 &"{metrics.pactViolationsTotal},{metrics.dishonoredStatusActive},{metrics.diplomaticIsolationTurns}," &
+                 # Treaty Activity Metrics
+                 &"{metrics.pactFormationsTotal},{metrics.pactBreaksTotal},{metrics.hostilityDeclarationsTotal},{metrics.warDeclarationsTotal}," &
                  # Espionage Activity
                  &"{metrics.espionageSuccessCount},{metrics.espionageFailureCount},{metrics.espionageDetectedCount}," &
                  &"{metrics.techTheftsSuccessful},{metrics.sabotageOperations},{metrics.assassinationAttempts},{metrics.cyberAttacksLaunched}," &
@@ -1200,7 +1257,9 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.coloniesWithoutDefense},{metrics.totalColonies}," &
                  &"{metrics.mothballedFleetsUsed},{metrics.mothballedFleetsTotal}," &
                  # Orders
-                 &"{metrics.invalidOrders},{metrics.totalOrders}")
+                 &"{metrics.invalidOrders},{metrics.totalOrders}," &
+                 # Bilateral Diplomatic Relations
+                 &"{metrics.bilateralRelations}")
 
 proc writeDiagnosticsCSV*(filename: string, metrics: seq[DiagnosticMetrics]) =
   ## Write all diagnostics to CSV file
