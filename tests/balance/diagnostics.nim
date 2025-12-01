@@ -521,7 +521,7 @@ proc collectDiplomaticMetrics(state: GameState, houseId: HouseId): DiagnosticMet
     let dipKey = if houseId < otherHouseId: (houseId, otherHouseId) else: (otherHouseId, houseId)
     if dipKey in state.diplomacy:
       let dipState = state.diplomacy[dipKey]
-      case dipState.state
+      case dipState
       of DiplomaticState.Enemy:
         enemyCount += 1
       of DiplomaticState.NonAggression:
