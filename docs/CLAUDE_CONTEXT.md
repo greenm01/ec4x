@@ -7,7 +7,7 @@
 ## Critical Rules (Never Forget)
 
 1. **All enums MUST be `{.pure.}`**
-2. **No hardcoded balance values** - use TOML configs
+2. **No hardcoded game variables** - use TOML configs
 3. **Follow NEP-1** - see STYLE_GUIDE.md
 4. **Update TODO.md** after milestones
 5. **Run tests before commits** - `nimble test`
