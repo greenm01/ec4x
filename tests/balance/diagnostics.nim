@@ -5,6 +5,7 @@
 
 import std/[tables, strformat, streams, options]
 import ../../src/engine/[gamestate, fleet, squadron, orders, logger]
+import ../../src/engine/diplomacy/types as dip_types
 import ../../src/common/types/[core, units, diplomacy]
 import ../../src/ai/common/types
 
@@ -517,19 +518,15 @@ proc collectDiplomaticMetrics(state: GameState, houseId: HouseId): DiagnosticMet
     if otherHouseId == houseId or otherHouse.eliminated:
       continue
 
-    # Check diplomatic state
-    let dipKey = if houseId < otherHouseId: (houseId, otherHouseId) else: (otherHouseId, houseId)
-    if dipKey in state.diplomacy:
-      let dipState = state.diplomacy[dipKey]
-      case dipState
-      of DiplomaticState.Enemy:
-        enemyCount += 1
-      of DiplomaticState.NonAggression:
-        pactsCount += 1
-      of DiplomaticState.Neutral:
-        neutralCount += 1
-    else:
-      # No diplomatic relation recorded = neutral by default
+    # Check diplomatic state from house's diplomaticRelations
+    # This is the authoritative source used by combat and fleet orders
+    let dipState = house.diplomaticRelations.getDiplomaticState(otherHouseId)
+    case dipState
+    of DiplomaticState.Enemy:
+      enemyCount += 1
+    of DiplomaticState.NonAggression:
+      pactsCount += 1
+    of DiplomaticState.Neutral:
       neutralCount += 1
 
   result.activePactsCount = pactsCount
