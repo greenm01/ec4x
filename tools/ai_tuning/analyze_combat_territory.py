@@ -39,37 +39,88 @@ def analyze_combat_and_territory(diagnostics_dir: Path):
     print(f"Loaded {len(df)} rows from {num_games} games ({max_turn} turns each)\n")
 
     # ========================================================================
-    # WARS AND DIPLOMACY
+    # WARS AND DIPLOMACY (4-Level System: Neutral, Ally, Hostile, Enemy)
     # ========================================================================
     print("="*70)
-    print("WARS AND DIPLOMATIC STATE")
+    print("DIPLOMATIC STATE (4-Level System)")
     print("="*70)
 
-    # Count wars (enemy_count > 0)
-    wars_df = df.filter(pl.col('enemy_count') > 0)
-    games_with_wars = wars_df['game_seed'].n_unique()
-    total_war_states = len(wars_df)
+    # Total diplomatic states across all games
+    total_ally = df['ally_count'].sum()
+    total_hostile = df['hostile_count'].sum()
+    total_enemy = df['enemy_count'].sum()
+    total_neutral = df['neutral_count'].sum()
 
-    print(f"Games with at least 1 war: {games_with_wars}/{num_games} ({games_with_wars/num_games*100:.1f}%)")
-    print(f"Total house-turn war states: {total_war_states}")
+    print(f"Total diplomatic relationships across all games:")
+    print(f"  Ally (pacts):         {total_ally:5d}")
+    print(f"  Hostile (tensions):   {total_hostile:5d}")
+    print(f"  Enemy (open war):     {total_enemy:5d}")
+    print(f"  Neutral (default):    {total_neutral:5d}")
 
-    if games_with_wars > 0:
-        # Average enemies per house when at war
-        avg_enemies = wars_df['enemy_count'].mean()
-        print(f"Average enemies when at war: {avg_enemies:.2f}")
+    # Games with various diplomatic states
+    games_with_allies = df.filter(pl.col('ally_count') > 0)['game_seed'].n_unique()
+    games_with_hostile = df.filter(pl.col('hostile_count') > 0)['game_seed'].n_unique()
+    games_with_wars = df.filter(pl.col('enemy_count') > 0)['game_seed'].n_unique()
 
-        # Wars by turn
-        wars_by_turn = (wars_df
+    print(f"\nGames with diplomatic activity:")
+    print(f"  At least 1 alliance: {games_with_allies}/{num_games} ({games_with_allies/num_games*100:.1f}%)")
+    print(f"  At least 1 hostile:  {games_with_hostile}/{num_games} ({games_with_hostile/num_games*100:.1f}%)")
+    print(f"  At least 1 war:      {games_with_wars}/{num_games} ({games_with_wars/num_games*100:.1f}%)")
+
+    # Diplomatic escalation by turn
+    if games_with_wars > 0 or games_with_hostile > 0:
+        diplo_by_turn = (df
             .group_by('turn')
-            .agg(pl.col('enemy_count').sum().alias('total_enemies'))
+            .agg([
+                pl.col('ally_count').sum().alias('allies'),
+                pl.col('hostile_count').sum().alias('hostile'),
+                pl.col('enemy_count').sum().alias('enemies')
+            ])
             .sort('turn')
         )
 
-        print(f"\nWar activity by turn:")
-        for row in wars_by_turn.iter_rows(named=True):
-            print(f"  Turn {row['turn']:2d}: {row['total_enemies']:3d} total enemy relationships")
+        print(f"\nDiplomatic state evolution by turn:")
+        print(f"  Turn | Allies | Hostile | Enemies")
+        print(f"  -----|--------|---------|--------")
+        for row in diplo_by_turn.iter_rows(named=True):
+            print(f"    {row['turn']:2d} |   {row['allies']:4d} |   {row['hostile']:5d} |  {row['enemies']:6d}")
     else:
-        print("⚠️  NO WARS DETECTED - Byzantine Basileus may not be working!")
+        print("⚠️  NO WARS OR HOSTILE STATES - Diplomatic escalation may not be working!")
+
+    # Detect escalation events from bilateral relations
+    # Format: "houseId:state;houseId:state" where state = N/A/H/E
+    print(f"\n{'='*70}")
+    print("AUTO-ESCALATION DETECTION (from bilateral_relations)")
+    print("="*70)
+
+    # Filter to rows with bilateral relations data
+    relations_df = df.filter(pl.col('bilateral_relations').str.len_chars() > 0)
+
+    if len(relations_df) > 0:
+        # Count state types across all bilateral relationships
+        hostile_pairs = relations_df.filter(pl.col('bilateral_relations').str.contains(':H'))
+        enemy_pairs = relations_df.filter(pl.col('bilateral_relations').str.contains(':E'))
+        ally_pairs = relations_df.filter(pl.col('bilateral_relations').str.contains(':A'))
+
+        print(f"Detected relationship changes:")
+        print(f"  House-turns with Hostile relations: {len(hostile_pairs)}")
+        print(f"  House-turns with Enemy relations:   {len(enemy_pairs)}")
+        print(f"  House-turns with Ally relations:    {len(ally_pairs)}")
+
+        # Show first few escalation examples
+        if len(hostile_pairs) > 0:
+            print(f"\nSample Hostile escalations:")
+            sample_hostile = hostile_pairs.select(['turn', 'house', 'bilateral_relations']).head(3)
+            for row in sample_hostile.iter_rows(named=True):
+                print(f"  Turn {row['turn']}: {row['house']} - {row['bilateral_relations']}")
+
+        if len(enemy_pairs) > 0:
+            print(f"\nSample Enemy escalations:")
+            sample_enemy = enemy_pairs.select(['turn', 'house', 'bilateral_relations']).head(3)
+            for row in sample_enemy.iter_rows(named=True):
+                print(f"  Turn {row['turn']}: {row['house']} - {row['bilateral_relations']}")
+    else:
+        print("⚠️  No bilateral relations data found in diagnostics")
 
     # ========================================================================
     # COMBAT ENGAGEMENTS
