@@ -2,9 +2,7 @@
 
 ## 2.1 Star Map
 
-The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system at ring 0. For example, a 4-player game has 4 rings (rings 1-4) plus the center hub at ring 0.
-
-The center of the map is a special hub occupied by the last holdouts of the former imperial Empire. This system is heavily guarded by fighter squadrons and the home planet is fortified against invasion. The former Emperor has no offensive ships to speak of, which were scuttled by their crews at the height of the collapse. This is prime territory ripe for the taking. He who controls the hub holds great strategic power.
+The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system at ring 0. For example, a 4-player game has 4 rings (rings 1-4) plus the center hub at ring 0. The center hub is gauranteed to have six lanes of travel.
 
 Solar systems have special traits and are procedurally generated. They are filled with planets, moons, and gas giants that are variable in their suitability for colonization and production.
 
