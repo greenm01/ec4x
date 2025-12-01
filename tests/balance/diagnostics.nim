@@ -603,11 +603,13 @@ proc collectMilitaryMetrics(state: GameState, houseId: HouseId): DiagnosticMetri
   ## Collect military-related metrics
   result = initDiagnosticMetrics(state.turn, houseId)
 
-  # TODO: Track combat results from turn resolution
-  # For now, initialize to zero (will be updated by turn resolution tracking)
-  result.spaceCombatWins = 0
-  result.spaceCombatLosses = 0
-  result.spaceCombatTotal = 0
+  # Combat statistics tracked during turn resolution
+  let house = state.houses[houseId]
+  result.spaceCombatWins = house.lastTurnSpaceCombatWins
+  result.spaceCombatLosses = house.lastTurnSpaceCombatLosses
+  result.spaceCombatTotal = house.lastTurnSpaceCombatTotal
+
+  # TODO: Track orbital combat and raider metrics
   result.orbitalFailures = 0
   result.orbitalTotal = 0
   result.raiderAmbushSuccess = 0

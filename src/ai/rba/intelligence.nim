@@ -290,6 +290,34 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
     result.add(intel)
 
 # =============================================================================
+# Fog-of-War Strategic Assessment
+# =============================================================================
+
+proc countUncolonizedSystems*(filtered: FilteredGameState): int =
+  ## Count uncolonized systems visible through fog-of-war
+  ## Used for dynamic ETAC production decisions
+  ##
+  ## RESPECTS FOG-OF-WAR: Only counts systems we can see
+  ## - Visible systems from exploration and intel reports
+  ## - Unknown systems beyond fog-of-war are NOT counted
+  ## - Enables dynamic expansion strategy based on known opportunities
+  result = 0
+
+  for systemId, visSystem in filtered.visibleSystems:
+    # Check if this system has a colony (owned by anyone)
+    var isColonized = false
+
+    # Check visible colonies
+    for colony in filtered.visibleColonies:
+      if colony.systemId == systemId:
+        isColonized = true
+        break
+
+    # Count uncolonized systems
+    if not isColonized:
+      result += 1
+
+# =============================================================================
 # Travel Time & ETA Calculations
 # =============================================================================
 # NOTE: These functions have been moved to src/engine/starmap.nim

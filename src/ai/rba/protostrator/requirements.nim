@@ -13,6 +13,55 @@ import ../../../engine/diplomacy/proposals as dip_proposals
 import ../controller_types
 import ../../common/types as ai_types
 
+# =============================================================================
+# Dynamic Prestige Threshold Calculation
+# =============================================================================
+
+proc calculateDynamicThresholds(filtered: FilteredGameState): tuple[overwhelming: int, moderate: int, strong: int] =
+  ## Calculate dynamic prestige thresholds based on average prestige across all houses
+  ## Replaces hardcoded values (500, 200, 300) with game-state-responsive thresholds
+  ##
+  ## Scales with:
+  ## - Map size (more colonies = higher prestige)
+  ## - Game progression (prestige grows over time)
+  ## - Number of active houses (elimination affects averages)
+  ##
+  ## Returns: (overwhelming, moderate, strong) prestige gap thresholds
+
+  var totalPrestige = 0
+  var houseCount = 0
+
+  # Calculate average prestige across all active houses
+  for houseId, prestige in filtered.housePrestige:
+    if not filtered.houseEliminated.getOrDefault(houseId, false):
+      totalPrestige += prestige
+      houseCount += 1
+
+  # Prevent division by zero
+  if houseCount == 0:
+    # Fallback to legacy hardcoded values if no houses exist
+    return (overwhelming: 500, moderate: 200, strong: 300)
+
+  let avgPrestige = totalPrestige div houseCount
+
+  # Dynamic thresholds as % of average prestige
+  # - Overwhelming: 35% of average (seek NAP to avoid conflict)
+  # - Moderate: 15% of average (NAP if diplomatic-focused)
+  # - Strong: 25% of average (strong ally threshold)
+  #
+  # These percentages scale naturally with game progression:
+  # Early game (avg ~300): overwhelming=105, moderate=45, strong=75
+  # Mid game (avg ~800): overwhelming=280, moderate=120, strong=200
+  # Late game (avg ~1500): overwhelming=525, moderate=225, strong=375
+  result.overwhelming = (avgPrestige * 35) div 100
+  result.moderate = (avgPrestige * 15) div 100
+  result.strong = (avgPrestige * 25) div 100
+
+  # Apply minimum thresholds to prevent division-by-zero issues in early game
+  result.overwhelming = max(result.overwhelming, 50)
+  result.moderate = max(result.moderate, 20)
+  result.strong = max(result.strong, 30)
+
 proc evaluateWarReadiness(
   ownPrestige: int,
   targetPrestige: int,
@@ -138,6 +187,10 @@ proc generateDiplomaticRequirements*(
   result.generatedTurn = filtered.turn
   result.iteration = 0
 
+  # Calculate dynamic prestige thresholds based on game state
+  # Replaces hardcoded values (500, 200, 300) with adaptive thresholds
+  let thresholds = calculateDynamicThresholds(filtered)
+
   let p = controller.personality
   let house = filtered.ownHouse
   let myPrestige = house.prestige
@@ -180,12 +233,12 @@ proc generateDiplomaticRequirements*(
     case relation
     of dip_types.DiplomaticState.Neutral:
       # No current pact - evaluate strategic position
-      if prestigeGap > 500:
+      if prestigeGap > thresholds.overwhelming:
         # Much stronger enemy - seek NAP to avoid conflict
         target.recommendedAction = DiplomaticRequirementType.ProposePact
         target.priority = RequirementPriority.Critical
         target.reason = &"NAP with overwhelming power {houseId} (prestige gap: {prestigeGap})"
-      elif prestigeGap > 200:
+      elif prestigeGap > thresholds.moderate:
         # Moderately stronger - NAP if diplomatic-focused
         if p.diplomacyValue > 0.6:
           target.recommendedAction = DiplomaticRequirementType.ProposePact
@@ -231,7 +284,7 @@ proc generateDiplomaticRequirements*(
 
     of dip_types.DiplomaticState.Ally:
       # Have NAP - maintain or upgrade to alliance
-      if prestigeGap > 300 and p.diplomacyValue > 0.7:
+      if prestigeGap > thresholds.strong and p.diplomacyValue > 0.7:
         # Strong ally - consider alliance
         target.recommendedAction = DiplomaticRequirementType.ProposePact
         target.priority = RequirementPriority.Medium

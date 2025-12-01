@@ -125,10 +125,21 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
         militaryCount += 1
 
   let isUnderThreat = filtered.visibleFleets.anyIt(it.owner != controller.houseId)
+
+  # Dynamic ETAC production based on fog-of-war visibility
+  # Continue building ETACs as long as there are visible uncolonized systems
+  # This scales with map size and adapts to intelligence gathered
+  let uncolonizedSystemsVisible = intelligence.countUncolonizedSystems(filtered)
   let needETACs = case currentAct
-    of ai_types.GameAct.Act1_LandGrab: true
-    of ai_types.GameAct.Act2_RisingTensions: myColonies.len < 8
-    else: false
+    of ai_types.GameAct.Act1_LandGrab:
+      # Act 1: Always build ETACs (land grab phase)
+      uncolonizedSystemsVisible > 0
+    of ai_types.GameAct.Act2_RisingTensions:
+      # Act 2: Build ETACs if we see uncolonized systems (opportunistic expansion)
+      uncolonizedSystemsVisible > 0
+    else:
+      # Act 3+: Stop ETAC production (focus on military/consolidation)
+      false
 
   # NOTE: Scouts only useful in Act 2+ for espionage (spying on enemy colonies)
   # In Act 1, any ship can explore and reveal map, so scouts provide no advantage

@@ -26,6 +26,7 @@ type
     Reserve           # Place fleet on reserve status (50% maint, half AS/DS, can't move)
     Mothball          # Mothball fleet (0% maint, offline, screened in combat)
     Reactivate        # Return reserve/mothballed fleet to active duty
+    ViewWorld         # Long-range planetary reconnaissance (Order 19)
 
   FleetOrder* = object
     ## Persistent fleet order that continues until completed or overridden

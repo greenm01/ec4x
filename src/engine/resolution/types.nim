@@ -14,7 +14,7 @@ type
     ColonyEstablished, SystemCaptured, ColonyCaptured, TerraformComplete,
     Battle, BattleOccurred, Bombardment, FleetDestroyed, InvasionRepelled,
     ConstructionStarted, ShipCommissioned, BuildingCompleted, UnitRecruited, UnitDisbanded,
-    TechAdvance, HouseEliminated, PopulationTransfer
+    TechAdvance, HouseEliminated, PopulationTransfer, IntelGathered
 
   CombatReport* = object
     systemId*: SystemId

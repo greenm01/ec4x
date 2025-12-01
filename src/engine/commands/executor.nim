@@ -37,6 +37,7 @@ proc executeSalvageOrder(state: var GameState, fleet: Fleet, order: FleetOrder):
 proc executeReserveOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
 proc executeMothballOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
 proc executeReactivateOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
+proc executeViewWorldOrder(state: var GameState, fleet: Fleet, order: FleetOrder): OrderExecutionResult
 
 # =============================================================================
 # Order Execution Dispatcher
@@ -111,6 +112,8 @@ proc executeFleetOrder*(
     result = executeMothballOrder(state, fleet, order)
   of FleetOrderType.Reactivate:
     result = executeReactivateOrder(state, fleet, order)
+  of FleetOrderType.ViewWorld:
+    result = executeViewWorldOrder(state, fleet, order)
 
 # =============================================================================
 # Order 00: Hold Position
@@ -1316,4 +1319,30 @@ proc executeReactivateOrder(
     success: true,
     message: "Fleet " & $fleet.id & " returned to active duty",
     eventsGenerated: @["Fleet reactivated"]
+  )
+
+# =============================================================================
+# Order 19: View World (Long-Range Planetary Reconnaissance)
+# =============================================================================
+
+proc executeViewWorldOrder(
+  state: var GameState,
+  fleet: Fleet,
+  order: FleetOrder
+): OrderExecutionResult =
+  ## Order 19: Perform long-range scan of planet from system edge
+  ## Gathers: planet owner (if colonized) + planet class (production potential)
+  ## Resolution logic handled by resolveViewWorldOrder in fleet_orders.nim
+
+  if order.targetSystem.isNone:
+    return OrderExecutionResult(
+      success: false,
+      message: "View World order requires target system",
+      eventsGenerated: @[]
+    )
+
+  result = OrderExecutionResult(
+    success: true,
+    message: "Fleet " & $fleet.id & " viewing world at " & $order.targetSystem.get(),
+    eventsGenerated: @["Long-range planetary scan initiated"]
   )
