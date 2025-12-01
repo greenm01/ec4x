@@ -680,10 +680,8 @@ Marines fight alongside the Army if garrisoned planet-side.
 
 ## 2.5 Space Guilds
 
-A vast decentralized network of trade, commerce, transport, industry, tech, and mining activities occur between and within House colonies. Most of this activity is abstracted away and occurs in the background of EC4X's strategic focus. Commercial civilian ships freely ply the jump lanes between colonies.
+A vast decentralized network of trade, commerce, transport, industry, tech, and mining activities occur between and within House colonies, facilitated by the Space Guilds. Most of this activity is abstracted away and occurs in the background of EC4X's strategic focus. Guild ships stealthily ply the jump lanes between colonies without interaction or communication with military assets.
 
-Numerous Space Guilds compete for business in unregulated, private capital markets.
+Numerous Space Guilds compete for business in unregulated, private capital markets. The Space Guilds are neutral non-player-characters (NPC) with zero loyalty to any House. 
 
-The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price.
-
-
+The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price. They will not freely leak intelligence.
