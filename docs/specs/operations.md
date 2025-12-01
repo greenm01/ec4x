@@ -132,7 +132,7 @@ Design your fleets for their mission profile:
 
 ## 6.3 Fleet Orders
 
-Command your fleets with 19 distinct mission types—from peaceful exploration to devastating orbital bombardment. Issue orders once; your fleets execute them persistently across turns until mission completion or your new orders override them.
+Command your fleets with 20 distinct mission types—from peaceful exploration to devastating orbital bombardment. Issue orders once; your fleets execute them persistently across turns until mission completion or your new orders override them.
 
 ### 6.3.1 Active Fleet Orders
 
@@ -423,7 +423,7 @@ Send a fleet to perform long-range planetary reconnaissance from the edge of a s
 
 **Intelligence Gathered:**
 - **Planet Owner**: Which house controls the colony (if colonized)
-- **Planet Class**: Production potential (Barren, Arid, Terran, etc.)
+- **Planet Class**: Production potential (Hostile, Benign, Lush, etc.)
 - **Strategic Value**: Assess colonization priority for ETACs
 
 **Tactical Advantages:**
@@ -433,16 +433,10 @@ Send a fleet to perform long-range planetary reconnaissance from the edge of a s
 - **Diplomatic Safety**: No hostile act, safe for gathering intel on neutrals
 
 **Use View a World to:**
-- Scout uncolonized systems before ETAC deployment
-- Identify high-value planets (Terran, Ocean) for priority colonization
+- Recon uncolonized systems before ETAC deployment
+- Identify high-value planets (Eden, Lush) for priority colonization
 - Map enemy territory and production capacity
 - Gather intelligence on neutral/hostile colonies without triggering combat
-
-**Early Game Strategy:**
-- Act 1 AI sends combat fleets to View uncolonized systems
-- Intelligence informs ETAC targeting decisions
-- Enables "land grab" strategy based on planet quality
-- Allows bumping into other houses for diplomatic contact
 
 ---
 
