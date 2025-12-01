@@ -272,12 +272,17 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
         of DiplomaticActionType.DeclareEnemy:
           logResolve("Declared Enemy",
                      "declarer=", $houseId, " target=", $action.targetHouse)
+
+          # Get mutable copy of house to modify diplomatic relations
+          var house = state.houses[houseId]
           dip_engine.setDiplomaticState(
-            state.houses[houseId].diplomaticRelations,
+            house.diplomaticRelations,
             action.targetHouse,
             dip_types.DiplomaticState.Enemy,
             state.turn
           )
+          # Write back modified house to persist changes
+          state.houses[houseId] = house
 
           # Generate war declaration intelligence
           diplomatic_intel.generateWarDeclarationIntel(
@@ -290,12 +295,17 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
         of DiplomaticActionType.SetNeutral:
           logResolve("Set to Neutral",
                      "house=", $houseId, " target=", $action.targetHouse)
+
+          # Get mutable copy of house to modify diplomatic relations
+          var house = state.houses[houseId]
           dip_engine.setDiplomaticState(
-            state.houses[houseId].diplomaticRelations,
+            house.diplomaticRelations,
             action.targetHouse,
             dip_types.DiplomaticState.Neutral,
             state.turn
           )
+          # Write back modified house to persist changes
+          state.houses[houseId] = house
 
           # Generate peace treaty intelligence
           diplomatic_intel.generatePeaceTreatyIntel(

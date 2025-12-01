@@ -40,13 +40,20 @@ proc evaluateWarReadiness(
   let prestigeGap = ownPrestige - targetPrestige
 
   # Factor 1: Prestige gap (act-adjusted thresholds)
+  # prestigeGap = ownPrestige - targetPrestige, so POSITIVE = we're ahead
+  # We want to declare war when we have a prestige LEAD, so prestigeGap should be POSITIVE
+  # Thresholds based on observed prestige progression:
+  #   Turn 2-7 (Act1): ~600-1600 prestige, gaps ~200-400
+  #   Turn 8-15 (Act2): ~1600-3500 prestige, gaps ~400-800
+  #   Turn 16-25 (Act3): ~3500-5500 prestige, gaps ~800-1200
+  #   Turn 26+ (Act4): ~5500+ prestige, gaps ~1000+
   let actThreshold = case currentAct
-    of ai_types.GameAct.Act1_LandGrab: -400
-    of ai_types.GameAct.Act2_RisingTensions: -200
-    of ai_types.GameAct.Act3_TotalWar: -100
-    of ai_types.GameAct.Act4_Endgame: 0
+    of ai_types.GameAct.Act1_LandGrab: 150   # Need moderate lead in Act 1 (early expansion, avoid early wars)
+    of ai_types.GameAct.Act2_RisingTensions: 100  # Smaller lead in Act 2 (rising tensions)
+    of ai_types.GameAct.Act3_TotalWar: 0   # Any lead in Act 3 (total war)
+    of ai_types.GameAct.Act4_Endgame: -100      # Can even declare when slightly behind in Act 4 (desperate endgame)
 
-  if prestigeGap < actThreshold:
+  if prestigeGap > actThreshold:
     score += 2.0
     reasons.add(&"prestige lead ({prestigeGap})")
 
