@@ -678,44 +678,50 @@ proc executeSpyPlanetOrder(
           eventsGenerated: @[]
         )
 
-  # Check fleet has exactly one Scout
-  var scoutCount = 0
-  var scoutELI = 0
+  # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
+  var totalScouts = 0
+  var scoutELI = 0  # Use first scout's ELI level
 
   for squadron in fleet.squadrons:
-    if squadron.flagship.shipClass == ShipClass.Scout:
-      scoutCount += 1
+    totalScouts += 1
+    if scoutELI == 0:  # Take ELI from first scout
       scoutELI = squadron.flagship.stats.techLevel
-
-  if scoutCount != 1:
-    return OrderExecutionResult(
-      success: false,
-      message: "Spy Planet requires exactly one Scout (found " & $scoutCount & ")",
-      eventsGenerated: @[]
-    )
 
   # Deploy spy scout (already validated targetSystem above)
 
-  # Create spy scout and add to game state
+  # Calculate jump lane path from current location to target
+  let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+
+  if path.path.len == 0:
+    return OrderExecutionResult(
+      success: false,
+      message: "No jump lane route to " & $targetSystem,
+      eventsGenerated: @[]
+    )
+
+  # Create spy scout with travel state
   let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
   let spyScout = SpyScout(
     id: spyId,
     owner: fleet.owner,
-    location: targetSystem,
+    location: fleet.location,           # Starting location (not target)
     eliLevel: scoutELI,
     mission: SpyMissionType.SpyOnPlanet,
     commissionedTurn: state.turn,
-    detected: false
+    detected: false,
+    # NEW: Travel tracking
+    state: SpyScoutState.Traveling,     # Traveling state
+    targetSystem: targetSystem,          # Final destination
+    travelPath: path.path,               # Jump lane route
+    currentPathIndex: 0,                 # Start at beginning
+    mergedScoutCount: totalScouts        # All scouts in fleet (mesh network bonus)
   )
 
   state.spyScouts[spyId] = spyScout
 
-  # Remove scout from fleet (it operates independently now, permanently consumed)
+  # Remove ALL scouts from fleet (they all become the spy scout)
   var updatedFleet = fleet
-  for i in 0..<updatedFleet.squadrons.len:
-    if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
-      updatedFleet.squadrons.delete(i)
-      break
+  updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
 
   # Check if fleet is now empty and clean up if needed
   if updatedFleet.isEmpty():
@@ -732,10 +738,10 @@ proc executeSpyPlanetOrder(
 
   result = OrderExecutionResult(
     success: true,
-    message: "Scout deployed to spy on planet at " & $targetSystem,
+    message: "Scout deployed, traveling to " & $targetSystem & " (" & $path.path.len & " jumps)",
     eventsGenerated: @[
       "Spy scout deployed (ELI " & $scoutELI & ")",
-      "Intelligence gathering mission started"
+      "Scout traveling to target via jump lanes"
     ]
   )
 
@@ -786,42 +792,48 @@ proc executeHackStarbaseOrder(
         eventsGenerated: @[]
       )
 
-  # Check fleet has exactly one Scout
-  var scoutCount = 0
-  var scoutELI = 0
+  # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
+  var totalScouts = 0
+  var scoutELI = 0  # Use first scout's ELI level
 
   for squadron in fleet.squadrons:
-    if squadron.flagship.shipClass == ShipClass.Scout:
-      scoutCount += 1
+    totalScouts += 1
+    if scoutELI == 0:  # Take ELI from first scout
       scoutELI = squadron.flagship.stats.techLevel
 
-  if scoutCount != 1:
+  # Calculate jump lane path from current location to target
+  let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+
+  if path.path.len == 0:
     return OrderExecutionResult(
       success: false,
-      message: "Hack Starbase requires exactly one Scout (found " & $scoutCount & ")",
+      message: "No jump lane route to " & $targetSystem,
       eventsGenerated: @[]
     )
 
-  # Create spy scout and add to game state
+  # Create spy scout with travel state
   let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
   let spyScout = SpyScout(
     id: spyId,
     owner: fleet.owner,
-    location: targetSystem,
+    location: fleet.location,           # Starting location (not target)
     eliLevel: scoutELI,
     mission: SpyMissionType.HackStarbase,
     commissionedTurn: state.turn,
-    detected: false
+    detected: false,
+    # NEW: Travel tracking
+    state: SpyScoutState.Traveling,     # Traveling state
+    targetSystem: targetSystem,          # Final destination
+    travelPath: path.path,               # Jump lane route
+    currentPathIndex: 0,                 # Start at beginning
+    mergedScoutCount: totalScouts        # All scouts in fleet (mesh network bonus)
   )
 
   state.spyScouts[spyId] = spyScout
 
-  # Remove scout from fleet (it operates independently now, permanently consumed)
+  # Remove ALL scouts from fleet (they all become the spy scout)
   var updatedFleet = fleet
-  for i in 0..<updatedFleet.squadrons.len:
-    if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
-      updatedFleet.squadrons.delete(i)
-      break
+  updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
 
   # Check if fleet is now empty and clean up if needed
   if updatedFleet.isEmpty():
@@ -838,10 +850,10 @@ proc executeHackStarbaseOrder(
 
   result = OrderExecutionResult(
     success: true,
-    message: "Scout infiltrating starbase at " & $targetSystem,
+    message: "Scout deployed, traveling to " & $targetSystem & " (" & $path.path.len & " jumps)",
     eventsGenerated: @[
       "Spy scout deployed (ELI " & $scoutELI & ")",
-      "Starbase hacking mission started"
+      "Scout traveling to hack starbase"
     ]
   )
 
@@ -878,42 +890,48 @@ proc executeSpySystemOrder(
           eventsGenerated: @[]
         )
 
-  # Check fleet has exactly one Scout
-  var scoutCount = 0
-  var scoutELI = 0
+  # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
+  var totalScouts = 0
+  var scoutELI = 0  # Use first scout's ELI level
 
   for squadron in fleet.squadrons:
-    if squadron.flagship.shipClass == ShipClass.Scout:
-      scoutCount += 1
+    totalScouts += 1
+    if scoutELI == 0:  # Take ELI from first scout
       scoutELI = squadron.flagship.stats.techLevel
 
-  if scoutCount != 1:
+  # Calculate jump lane path from current location to target
+  let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+
+  if path.path.len == 0:
     return OrderExecutionResult(
       success: false,
-      message: "Spy System requires exactly one Scout (found " & $scoutCount & ")",
+      message: "No jump lane route to " & $targetSystem,
       eventsGenerated: @[]
     )
 
-  # Create spy scout and add to game state
+  # Create spy scout with travel state
   let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
   let spyScout = SpyScout(
     id: spyId,
     owner: fleet.owner,
-    location: targetSystem,
+    location: fleet.location,           # Starting location (not target)
     eliLevel: scoutELI,
     mission: SpyMissionType.SpyOnSystem,
     commissionedTurn: state.turn,
-    detected: false
+    detected: false,
+    # NEW: Travel tracking
+    state: SpyScoutState.Traveling,     # Traveling state
+    targetSystem: targetSystem,          # Final destination
+    travelPath: path.path,               # Jump lane route
+    currentPathIndex: 0,                 # Start at beginning
+    mergedScoutCount: totalScouts        # All scouts in fleet (mesh network bonus)
   )
 
   state.spyScouts[spyId] = spyScout
 
-  # Remove scout from fleet (it operates independently now, permanently consumed)
+  # Remove ALL scouts from fleet (they all become the spy scout)
   var updatedFleet = fleet
-  for i in 0..<updatedFleet.squadrons.len:
-    if updatedFleet.squadrons[i].flagship.shipClass == ShipClass.Scout:
-      updatedFleet.squadrons.delete(i)
-      break
+  updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
 
   # Check if fleet is now empty and clean up if needed
   if updatedFleet.isEmpty():
@@ -930,10 +948,10 @@ proc executeSpySystemOrder(
 
   result = OrderExecutionResult(
     success: true,
-    message: "Scout deployed to spy on system " & $targetSystem,
+    message: "Scout deployed, traveling to " & $targetSystem & " (" & $path.path.len & " jumps)",
     eventsGenerated: @[
       "Spy scout deployed (ELI " & $scoutELI & ")",
-      "System surveillance mission started"
+      "Scout traveling to survey system"
     ]
   )
 
@@ -992,6 +1010,14 @@ proc executeJoinFleetOrder(
   ## Order 13: Seek and merge with another fleet
   ## Old fleet disbands, squadrons join target
   ## Per operations.md:6.2.14
+  ##
+  ## SCOUT MESH NETWORK BENEFITS:
+  ## When merging scout squadrons, they automatically gain mesh network ELI bonuses:
+  ## - 2-3 scouts: +1 ELI bonus
+  ## - 4-5 scouts: +2 ELI bonus
+  ## - 6+ scouts: +3 ELI bonus (maximum)
+  ## These bonuses apply to detection, counter-intelligence, and spy missions.
+  ## See assets.md:2.4.2 for mesh network modifier table.
 
   if order.targetFleet.isNone:
     return OrderExecutionResult(
@@ -1001,6 +1027,55 @@ proc executeJoinFleetOrder(
     )
 
   let targetFleetId = order.targetFleet.get()
+
+  # Check if target is a SpyScout object
+  if targetFleetId in state.spyScouts:
+    # Normal fleet joining spy scout - convert spy scout to squadrons, merge into normal fleet
+    let spyScout = state.spyScouts[targetFleetId]
+
+    # Check same owner
+    if spyScout.owner != fleet.owner:
+      return OrderExecutionResult(
+        success: false,
+        message: "Cannot join spy scout owned by different house",
+        eventsGenerated: @[]
+      )
+
+    # Check same location
+    if spyScout.location != fleet.location:
+      return OrderExecutionResult(
+        success: false,
+        message: "Fleet and spy scout must be at same location to join",
+        eventsGenerated: @[]
+      )
+
+    # Convert spy scout back to squadrons
+    var updatedFleet = fleet
+    let scoutShip = newEnhancedShip(ShipClass.Scout, techLevel = spyScout.eliLevel)
+
+    for i in 0..<spyScout.mergedScoutCount:
+      let squadron = newSquadron(scoutShip, spyScout.id & "-sq-" & $i, spyScout.owner, spyScout.location)
+      updatedFleet.squadrons.add(squadron)
+
+    # Update the normal fleet (now contains scouts)
+    state.fleets[fleet.id] = updatedFleet
+
+    # Remove spy scout object
+    state.spyScouts.del(targetFleetId)
+    if targetFleetId in state.spyScoutOrders:
+      state.spyScoutOrders.del(targetFleetId)
+
+    logInfo(LogCategory.lcFleet, "Fleet " & $fleet.id & " absorbed spy scout " & $targetFleetId &
+            " (" & $spyScout.mergedScoutCount & " scout squadrons added)")
+
+    return OrderExecutionResult(
+      success: true,
+      message: "Fleet " & $fleet.id & " absorbed spy scout " & $targetFleetId &
+              " (" & $spyScout.mergedScoutCount & " scouts merged)",
+      eventsGenerated: @["Spy scout " & $targetFleetId & " merged into fleet " & $fleet.id]
+    )
+
+  # Target is a normal fleet
   let targetFleetOpt = state.getFleet(targetFleetId)
 
   if targetFleetOpt.isNone:
@@ -1064,6 +1139,14 @@ proc executeRendezvousOrder(
   ## Order 14: Move to system and merge with other rendezvous fleets
   ## Lowest fleet ID becomes host
   ## Per operations.md:6.2.15
+  ##
+  ## SCOUT MESH NETWORK BENEFITS:
+  ## When multiple scout squadrons rendezvous, they automatically gain mesh network ELI bonuses:
+  ## - 2-3 scouts: +1 ELI bonus
+  ## - 4-5 scouts: +2 ELI bonus
+  ## - 6+ scouts: +3 ELI bonus (maximum)
+  ## All squadrons (including scouts) from all rendezvous fleets are merged into the host fleet.
+  ## See assets.md:2.4.2 for mesh network modifier table.
 
   if order.targetSystem.isNone:
     return OrderExecutionResult(
@@ -1088,6 +1171,19 @@ proc executeRendezvousOrder(
   var rendezvousFleets: seq[Fleet] = @[]
   rendezvousFleets.add(fleet)
 
+  # Collect spy scouts with Rendezvous orders at this system
+  var rendezvousSpyScouts: seq[SpyScout] = @[]
+  for spyScoutId, spyScout in state.spyScouts:
+    # Check if at same location and owned by same house
+    if spyScout.location == targetSystem and spyScout.owner == fleet.owner:
+      # Check if has Rendezvous order to same system
+      if spyScoutId in state.spyScoutOrders:
+        let spyOrder = state.spyScoutOrders[spyScoutId]
+        if spyOrder.orderType == SpyScoutOrderType.Rendezvous and
+           spyOrder.targetSystem.isSome and
+           spyOrder.targetSystem.get() == targetSystem:
+          rendezvousSpyScouts.add(spyScout)
+
   # Collect all fleets with Rendezvous orders at this system
   for fleetId, otherFleet in state.fleets:
     if fleetId == fleet.id:
@@ -1103,8 +1199,8 @@ proc executeRendezvousOrder(
            otherOrder.targetSystem.get() == targetSystem:
           rendezvousFleets.add(otherFleet)
 
-  # If only this fleet, wait for others
-  if rendezvousFleets.len == 1:
+  # If only this fleet and no spy scouts, wait for others
+  if rendezvousFleets.len == 1 and rendezvousSpyScouts.len == 0:
     return OrderExecutionResult(
       success: true,
       message: "Fleet " & $fleet.id & " waiting at rendezvous point " & $targetSystem,
@@ -1142,12 +1238,34 @@ proc executeRendezvousOrder(
     mergedCount += 1
     logInfo(LogCategory.lcFleet, "Fleet " & $f.id & " merged into rendezvous host " & $lowestId & " (source fleet removed)")
 
+  # Merge spy scouts into host fleet (convert to squadrons)
+  var scoutsMerged = 0
+  for spyScout in rendezvousSpyScouts:
+    let scoutShip = newEnhancedShip(ShipClass.Scout, techLevel = spyScout.eliLevel)
+
+    for i in 0..<spyScout.mergedScoutCount:
+      let squadron = newSquadron(scoutShip, spyScout.id & "-sq-" & $i, spyScout.owner, spyScout.location)
+      hostFleet.squadrons.add(squadron)
+
+    # Remove spy scout object
+    state.spyScouts.del(spyScout.id)
+    if spyScout.id in state.spyScoutOrders:
+      state.spyScoutOrders.del(spyScout.id)
+
+    scoutsMerged += spyScout.mergedScoutCount
+    logInfo(LogCategory.lcFleet, "Spy scout " & $spyScout.id & " merged into rendezvous host " & $lowestId &
+            " (" & $spyScout.mergedScoutCount & " scout squadrons added)")
+
   # Update host fleet
   state.fleets[lowestId] = hostFleet
 
+  var message = "Rendezvous complete at " & $targetSystem & ": " & $mergedCount & " fleets merged into " & $lowestId
+  if scoutsMerged > 0:
+    message = message & ", " & $scoutsMerged & " scouts merged"
+
   result = OrderExecutionResult(
     success: true,
-    message: "Rendezvous complete at " & $targetSystem & ": " & $mergedCount & " fleets merged into " & $lowestId,
+    message: message,
     eventsGenerated: @["Rendezvous complete: " & $(rendezvousFleets.len) & " fleets merged"]
   )
 

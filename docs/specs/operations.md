@@ -149,9 +149,9 @@ Explicit orders that execute until completed or overridden:
 | 06  | Bombard a Planet        | Combat ship(s)                           |
 | 07  | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
 | 08  | Blitz a Planet          | Loaded Troop Transports                  |
-| 09  | Spy on a Planet         | Scout squadron                           |
-| 10  | Hack a Starbase         | Scout squadron                           |
-| 11  | Spy on a System         | Scout squadron                           |
+| 09  | Spy on a Planet         | Scout-only fleet (1+ scout squadrons)    |
+| 10  | Hack a Starbase         | Scout-only fleet (1+ scout squadrons)    |
+| 11  | Spy on a System         | Scout-only fleet (1+ scout squadrons)    |
 | 12  | Colonize a Planet       | One ETAC                                 |
 | 13  | Join another Fleet      | None                                     |
 | 14  | Rendezvous at System    | None                                     |
@@ -268,8 +268,44 @@ Execute rapid planetary assault combining orbital bombardment with immediate gro
 Deploy intelligence operatives to gather colony-level intelligence. Your scout ships conduct covert reconnaissance, gathering data on infrastructure, defenses, and economic output.
 
 **Requirements:**
-- Fleet must contain single-ship squadrons (multi-ship squadrons too conspicuous)
-- Scout ships preferred (stealth capabilities)
+- Fleet must contain **only Scout squadrons** (no combat ships or spacelift)
+- One or more scout squadrons allowed (multi-scout deployments supported)
+- Spy scouts are consumed permanently when deployed (cannot be recovered)
+
+**Mesh Network Bonuses:**
+
+Multiple scouts working together gain enhanced Electronic Intelligence (ELI) bonuses:
+- **2-3 scouts:** +1 ELI bonus to detection and stealth
+- **4-5 scouts:** +2 ELI bonus
+- **6+ scouts:** +3 ELI bonus (maximum)
+
+Deploy larger scout formations for improved survival rates and better intelligence penetration. Scout mesh networks can be created by deploying multiple scouts together or by merging spy scout fleets using Order 13 (Join Fleet) or Order 14 (Rendezvous).
+
+**Spy Scout Travel Mechanics:**
+
+Spy scouts travel through jump lanes following normal movement rules ([Section 6.1.2](#612-jump-lane-movement)):
+- **Controlled Major Lanes:** 2 jumps per turn when spy owner controls all systems along the major lane path
+- **Minor/Restricted Lanes or Rival Territory:** 1 jump per turn
+- **Detection Checks:** Detection rolls occur at each intermediate system during travel
+- **Ally Detection:** If detected by allied forces during transit, scouts are not destroyed (allies share intelligence)
+- **Enemy Detection:** If detected by hostile/neutral forces, spy scouts are destroyed immediately
+
+**Spy-vs-Spy Encounters:**
+
+When spy scouts from different houses operate in the same system:
+
+**Allied Scouts:**
+- **No detection combat** - allies share intelligence but don't engage
+- Both houses receive intel reports about the encounter
+- Promotes intelligence coordination among allied houses
+
+**Hostile/Neutral Scouts:**
+- Each spy scout makes independent detection rolls against rival scouts
+- Detection uses standard ELI detection tables (see [assets.md Section 2.4.2](assets.md#242-scouts))
+- **Mutual Detection:** Both scouts detect each other → both destroyed, both houses get intel reports
+- **One-Sided Detection:** Only one scout detects the other → one survives, one destroyed, detector gets intel report
+- **Stealth Stalemate:** Neither detects the other → both continue missions, no intel reports generated
+- Detection (when it occurs) triggers **Hostile** diplomatic escalation
 
 **Intelligence Gathered:**
 - Colony infrastructure level
@@ -288,8 +324,12 @@ Deploy intelligence operatives to gather colony-level intelligence. Your scout s
 Conduct cyber warfare operations against enemy starbases. Your intelligence units penetrate starbase networks, extracting economic data, research information, and operational intelligence.
 
 **Requirements:**
-- Fleet must contain single-ship squadrons
+- Fleet must contain **only Scout squadrons** (no combat ships or spacelift)
+- One or more scout squadrons allowed (multi-scout deployments supported)
 - Target system must have enemy starbase
+- Spy scouts are consumed permanently when deployed (cannot be recovered)
+
+**Spy Scout Travel & Mesh Bonuses:** See Order 09 (Spy on Planet) for travel mechanics, detection rules, and mesh network bonuses
 
 **Intelligence Gathered:**
 - Research progress
@@ -306,6 +346,13 @@ Conduct cyber warfare operations against enemy starbases. Your intelligence unit
 ### 6.3.13 Spy on System (11)
 
 Deploy surveillance operations to detect hostile fleet movements. Your scout ships monitor jump lane traffic, track enemy fleet positions, and provide early warning of invasions.
+
+**Requirements:**
+- Fleet must contain **only Scout squadrons** (no combat ships or spacelift)
+- One or more scout squadrons allowed (multi-scout deployments supported)
+- Spy scouts are consumed permanently when deployed (cannot be recovered)
+
+**Spy Scout Travel & Mesh Bonuses:** See Order 09 (Spy on Planet) for travel mechanics, detection rules, and mesh network bonuses
 
 **Intelligence Gathered:**
 - All fleets present in system
@@ -338,21 +385,56 @@ Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Trans
 
 ### 6.3.15 Join Another Fleet (13)
 
-Transfer your fleet to merge with another fleet at the same location. Consolidate forces, reinforce battle groups, or reorganize for strategic operations.
+Transfer your fleet to merge with another fleet at the same location. Consolidate forces, reinforce battle groups, or reorganize for strategic operations. All squadrons and spacelift ships from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
 
 **Use Join Fleet to:**
 - Reinforce damaged fleets with fresh squadrons
 - Consolidate scattered forces after combat
 - Create combined task forces for major operations
+- **Merge scout squadrons** to gain mesh network ELI bonuses before spy missions
+
+**Scout Mesh Network Formation:**
+
+When joining fleets containing scout squadrons, the scouts automatically gain mesh network bonuses based on total scout count (see [assets.md Section 2.4.2](assets.md#242-scouts) for mesh network modifier table):
+- **2-3 scouts:** +1 ELI bonus
+- **4-5 scouts:** +2 ELI bonus
+- **6+ scouts:** +3 ELI bonus (maximum)
+
+**Tactical Example:**
+1. Commission 3 single-scout squadrons at a staging system
+2. Use Order 13 to merge scout fleets together
+3. Deploy the consolidated 3-scout squadron on a spy mission
+4. Benefit from +1 mesh network ELI bonus during mission and detection rolls
+
+**Spy Scout Fleet Merging:**
+
+Order 13 works with spy scout fleets deployed on intelligence missions (Orders 09/10/11):
+- **Normal Fleet → Spy Scout Fleet:** The spy scouts convert back to squadrons and join the normal fleet, spy scout fleet disbanded
+- **Spy Scout Fleet → Normal Fleet:** The spy scouts convert back to squadrons and join the target fleet, spy scout fleet disbanded
+- **Spy Scout Fleet → Spy Scout Fleet:** Scouts merge together, increasing mesh network bonuses (up to +3 ELI maximum)
+
+Spy scout fleets operate transparently like normal fleets but accept limited orders (Hold, Move, spy missions, Join, Rendezvous, Salvage, Reserve/Mothball, ViewWorld)
 
 ### 6.3.16 Rendezvous at System (14)
 
-Order your fleet to travel to a designated system and await further instructions. Coordinate multi-fleet operations by designating rendezvous points.
+Order your fleet to travel to a designated system and await further instructions. Coordinate multi-fleet operations by designating rendezvous points. Multiple fleets with Rendezvous orders to the same system automatically merge when they arrive, with all forces consolidating into the fleet with the lowest ID.
 
 **Use Rendezvous to:**
 - Coordinate multi-fleet invasions
 - Establish staging areas for offensives
 - Organize defensive concentrations
+- Merge spy scout fleets with normal fleets
+
+**Spy Scout Fleet Integration:**
+
+Spy scout fleets deployed on intelligence missions (Orders 09/10/11) can participate in rendezvous operations:
+- Spy scouts with Rendezvous orders to the same system are automatically collected
+- When rendezvous completes, spy scouts convert back to squadrons
+- All scout squadrons merge into the host fleet (lowest fleet ID)
+- Spy scout fleets are disbanded after merging
+- Mesh network bonuses preserved through scout counts
+
+This allows spy scouts to rejoin normal operations after completing intelligence missions or to merge with other forces for combined operations
 
 ### 6.3.17 Salvage (15)
 

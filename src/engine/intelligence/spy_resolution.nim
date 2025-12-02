@@ -5,6 +5,8 @@ import std/[tables, options, sequtils]
 import ../../common/types/core
 import ../gamestate, ../fleet
 import detection
+import types as intel_types  # For DetectionEventType, ScoutLossEvent
+import ../diplomacy/engine as dip_engine  # For getDiplomaticState
 
 # =============================================================================
 # Spy Scout Detection Resolution
@@ -60,11 +62,75 @@ proc resolveSpyDetection*(state: var GameState): seq[string] =
           if detectionResult.detected:
             # Spy scout detected and destroyed
             destroyedSpies.add(spyId)
+
+            # Record scout loss event for diplomatic processing
+            # SpyScoutDetected = caught red-handed on mission (Hostile escalation)
+            let event = intel_types.ScoutLossEvent(
+              scoutId: spyId,
+              owner: spy.owner,
+              location: spy.location,
+              detectorHouse: fleet.owner,
+              eventType: intel_types.DetectionEventType.SpyScoutDetected,
+              turn: state.turn
+            )
+            state.scoutLossEvents.add(event)
+
             result.add("Spy scout " & spyId & " detected by " & $fleet.owner &
                       " (Roll: " & $detectionResult.roll & " > " &
                       $detectionResult.threshold & ", ELI: " &
                       $detectionResult.effectiveELI & ")")
             break  # Scout destroyed, no need to check more fleets
+
+    # Check detection by rival spy scouts (spy-vs-spy)
+    if spyId notin destroyedSpies:
+      for otherSpyId, otherSpy in state.spyScouts:
+        # Skip self, already detected, and friendly scouts
+        if otherSpyId == spyId or otherSpy.detected or otherSpy.owner == spy.owner:
+          continue
+
+        # Only check if both scouts are in the same system
+        if otherSpy.location == system:
+          # Check diplomatic relations - allies don't fight each other
+          let dipState = dip_engine.getDiplomaticState(
+            state.houses[otherSpy.owner].diplomaticRelations,
+            spy.owner
+          )
+
+          if dipState == DiplomaticState.Ally:
+            # Allies share intelligence about each other's scouts but don't engage
+            result.add("Spy scout " & spyId & " encountered allied spy scout " &
+                      otherSpyId & " (intelligence shared)")
+            continue  # No detection combat between allies
+          # Spy scouts can detect each other using ELI detection
+          # Each scout acts as a single-unit ELI detector
+          let detectorUnit = ELIUnit(
+            eliLevels: @[otherSpy.eliLevel],
+            isStarbase: false
+          )
+
+          let detectionResult = detectSpyScout(detectorUnit, spy.eliLevel)
+
+          if detectionResult.detected:
+            # Spy scout detected by rival spy scout
+            destroyedSpies.add(spyId)
+
+            # Record scout loss event for diplomatic processing
+            let event = intel_types.ScoutLossEvent(
+              scoutId: spyId,
+              owner: spy.owner,
+              location: spy.location,
+              detectorHouse: otherSpy.owner,
+              eventType: intel_types.DetectionEventType.SpyScoutDetected,
+              turn: state.turn
+            )
+            state.scoutLossEvents.add(event)
+
+            result.add("Spy scout " & spyId & " detected by rival spy scout " &
+                      otherSpyId & " (Roll: " & $detectionResult.roll & " > " &
+                      $detectionResult.threshold & ", ELI: " &
+                      $detectionResult.effectiveELI & ")")
+            break  # Scout destroyed, no need to check more scouts
+          # else: Detection failed - stealth stalemate, no intel report generated
 
     # Check detection by enemy starbases
     if spyId notin destroyedSpies:
@@ -92,6 +158,19 @@ proc resolveSpyDetection*(state: var GameState): seq[string] =
 
             if detectionResult.detected:
               destroyedSpies.add(spyId)
+
+              # Record scout loss event for diplomatic processing
+              # SpyScoutDetected = caught red-handed on mission (Hostile escalation)
+              let event = intel_types.ScoutLossEvent(
+                scoutId: spyId,
+                owner: spy.owner,
+                location: spy.location,
+                detectorHouse: colony.owner,
+                eventType: intel_types.DetectionEventType.SpyScoutDetected,
+                turn: state.turn
+              )
+              state.scoutLossEvents.add(event)
+
               result.add("Spy scout " & spyId & " detected by starbase at " &
                         $system & " (Roll: " & $detectionResult.roll & " > " &
                         $detectionResult.threshold & ", ELI: " &
@@ -176,3 +255,11 @@ proc resolveIntelligenceGathering*(state: GameState): Table[HouseId, seq[string]
           result[spy.owner] = @[]
 
         result[spy.owner].add(intel.get())
+
+# =============================================================================
+# Spy Scout Merging
+# =============================================================================
+
+# NOTE: Automatic spy scout merging removed - players control merging via explicit orders
+# Use SpyScoutOrder.JoinSpyScout to merge spy scouts together
+# Mesh network bonuses calculated from mergedScoutCount field

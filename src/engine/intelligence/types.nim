@@ -7,6 +7,29 @@ import std/[tables, options]
 import ../../common/types/[core, tech]
 
 type
+  DetectionEventType* {.pure.} = enum
+    ## Classification of how a scout was lost
+    SpyScoutDetected      # Spy caught red-handed on mission (→ Hostile escalation)
+    CombatLoss            # Scout destroyed in normal combat (→ per combat rules)
+    TravelIntercepted     # Spy caught traveling through system (→ NO escalation)
+
+  ScoutLossEvent* = object
+    ## Record of scout loss for diplomatic processing
+    scoutId*: string
+    owner*: HouseId
+    location*: SystemId
+    detectorHouse*: HouseId
+    eventType*: DetectionEventType
+    turn*: int
+
+  DetectionResult* = object
+    ## Result of detection check
+    detected*: bool
+    detectorHouse*: HouseId
+    isAllyDetection*: bool    # Ally detected (no destruction/escalation)
+    roll*: int
+    threshold*: int
+
   IntelQuality* {.pure.} = enum
     ## Quality/source of intelligence
     Visual     # Visual detection from fleet presence

@@ -137,6 +137,36 @@ type
 
 # Order validation
 
+proc validateSpyScoutOrder(spyScoutId: string, orderType: FleetOrderType,
+                          state: GameState): ValidationResult =
+  ## Validate orders for spy scout "fleets" (SpyScout objects)
+  ## Allowed orders: 01 (Hold), 02 (Move), 09/10/11 (Spy missions),
+  ##                 13/14 (Join/Rendezvous), 15 (Salvage),
+  ##                 16/17 (Reserve/Mothball), 19 (ViewWorld)
+  ## Note: Spy scouts use SpyScoutOrder system, but validation happens here
+
+  const allowedOrders = {
+    FleetOrderType.Hold,
+    FleetOrderType.Move,
+    FleetOrderType.SpyPlanet,
+    FleetOrderType.SpySystem,
+    FleetOrderType.HackStarbase,
+    FleetOrderType.JoinFleet,
+    FleetOrderType.Rendezvous,
+    FleetOrderType.Salvage,
+    FleetOrderType.Reserve,
+    FleetOrderType.Mothball,
+    FleetOrderType.ViewWorld
+  }
+
+  if orderType notin allowedOrders:
+    return ValidationResult(
+      valid: false,
+      error: "Spy scout fleets cannot perform " & $orderType & " operations"
+    )
+
+  return ValidationResult(valid: true)
+
 proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: HouseId): ValidationResult =
   ## Validate a fleet order against current game state
   ## Checks:
@@ -145,6 +175,10 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
   ## - Target validity (system exists, path exists)
   ## - Required capabilities (spacelift, combat, scout)
   result = ValidationResult(valid: true, error: "")
+
+  # NEW: Check if this is actually a SpyScout "fleet"
+  if order.fleetId in state.spyScouts:
+    return validateSpyScoutOrder(order.fleetId, order.orderType, state)
 
   # Check fleet exists
   let fleetOpt = state.getFleet(order.fleetId)
@@ -254,26 +288,28 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
              &"{order.targetSystem.get()}")
 
   of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
-    # Spy missions require single-scout squadrons for stealth
-    # Multi-ship squadrons significantly increase detection risk
-    if fleet.squadrons.len != 1:
+    # Spy missions require scout-only fleets (no combat ships or spacelift)
+    # Multiple scouts can merge for mesh network ELI bonuses
+    if fleet.squadrons.len == 0:
       logWarn(LogCategory.lcOrders,
               &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"spy missions require single squadron (found {fleet.squadrons.len})")
-      return ValidationResult(valid: false, error: "Spy missions require single squadron")
+              &"requires at least one Scout squadron")
+      return ValidationResult(valid: false, error: "Spy missions require at least one Scout squadron")
 
-    let squadron = fleet.squadrons[0]
-    if squadron.flagship.shipClass != ShipClass.Scout:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"spy missions require Scout (found {squadron.flagship.shipClass})")
-      return ValidationResult(valid: false, error: "Spy missions require Scout squadron")
+    # Check all squadrons are scouts (no combat ships)
+    for squadron in fleet.squadrons:
+      if squadron.flagship.shipClass != ShipClass.Scout:
+        logWarn(LogCategory.lcOrders,
+                &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+                &"spy missions require scout-only fleet (found {squadron.flagship.shipClass})")
+        return ValidationResult(valid: false, error: "Spy missions require scout-only fleet (no combat ships)")
 
-    if squadron.ships.len > 0:
+    # Check no spacelift ships
+    if fleet.spaceLiftShips.len > 0:
       logWarn(LogCategory.lcOrders,
               &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"single-scout only (found {squadron.ships.len + 1} ships)")
-      return ValidationResult(valid: false, error: "Spy missions require single-scout squadron (no additional ships)")
+              &"spy missions cannot include spacelift ships")
+      return ValidationResult(valid: false, error: "Spy missions require scout-only fleet (no spacelift)")
 
     if order.targetSystem.isNone:
       logWarn(LogCategory.lcOrders,
