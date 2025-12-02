@@ -18,6 +18,7 @@ import commands/executor
 import commands/spy_scout_orders
 import intelligence/espionage_intel
 import intelligence/spy_travel
+import economy/repair_queue
 import intelligence/spy_resolution
 # Import resolution modules
 import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_blockade, simultaneous_espionage]
@@ -148,6 +149,19 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
       for houseId in report.defenders:
         result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
+
+  # === AUTOMATIC REPAIR SUBMISSION (CONDITIONAL) ===
+  # Extract crippled ships from fleets at colonies with auto-repair enabled
+  # Must happen AFTER combat (creates crippled ships) and BEFORE economy (processes repairs)
+  logInfo(LogCategory.lcEconomy, "=== Repair Submission Phase ===")
+  for systemId, colony in result.newState.colonies:
+    if colony.autoRepairEnabled:
+      submitAutomaticRepairs(result.newState, systemId)
+      logDebug(LogCategory.lcEconomy,
+               &"Auto-repair enabled: Submitted repairs at {systemId}")
+    else:
+      logDebug(LogCategory.lcEconomy,
+               &"Auto-repair disabled: Skipping {systemId}")
 
   # Phase 2: Income (resource collection)
   resolveIncomePhase(result.newState, effectiveOrders)

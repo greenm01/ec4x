@@ -498,12 +498,10 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
           return ValidationResult(valid: false,
                                  error: &"Build order: {buildingType} requires operational shipyard")
 
-    # Check for duplicate build orders at same colony (can only build one thing at a time)
-    if colony.underConstruction.isSome:
-      logWarn(LogCategory.lcOrders,
-              &"{packet.houseId} Build order REJECTED: {order.colonySystem} " &
-              &"already has active construction")
-      return ValidationResult(valid: false, error: "Build order: Colony at system " & $order.colonySystem & " already has active construction")
+    # NOTE: Multiple build orders per colony per turn are supported (queue system)
+    # Dock capacity is validated during resolution (economy_resolution.nim:102-108)
+    # Orders beyond capacity remain queued for future turns
+    # This allows unlimited PP spending per turn (limited by treasury + dock capacity)
 
     validBuildOrders += 1
     logDebug(LogCategory.lcOrders,

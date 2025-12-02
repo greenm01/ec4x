@@ -92,3 +92,20 @@ type
     lastExecutedTurn*: int             # Last turn this executed
     executionCount*: int               # Times executed
     suspended*: bool                   # Temporarily disabled (explicit order override)
+
+  # =============================================================================
+  # Colony Management Orders
+  # =============================================================================
+
+  ColonyManagementAction* {.pure.} = enum
+    ## Colony-level management actions for player control
+    SetTaxRate        # Adjust colony tax rate (0-100)
+    SetAutoRepair     # Toggle automatic repair submission
+
+  ColonyManagementOrder* = object
+    ## Colony management order specification
+    colonyId*: SystemId
+    action*: ColonyManagementAction
+    # Parameters depend on action type
+    taxRate*: int                # For SetTaxRate (0-100)
+    enableAutoRepair*: bool      # For SetAutoRepair (true/false)
