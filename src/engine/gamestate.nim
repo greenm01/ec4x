@@ -89,9 +89,10 @@ type
     infrastructureDamage*: float  # 0.0-1.0, from bombardment (from economy/types.nim)
 
     # Construction
-    underConstruction*: Option[ConstructionProject]  # DEPRECATED: Legacy single-project field
-    constructionQueue*: seq[ConstructionProject]     # NEW: Multi-project build queue
+    underConstruction*: Option[ConstructionProject]  # DEPRECATED: Legacy single-project field (kept for backward compatibility, DO NOT use for validation)
+    constructionQueue*: seq[ConstructionProject]     # NEW: Multi-project build queue (parallel processing based on dock capacity)
     repairQueue*: seq[econ_types.RepairProject]      # Ships/starbases awaiting repair
+    autoRepairEnabled*: bool                         # Enable automatic repair submission (defaults false, player-controlled)
     activeTerraforming*: Option[TerraformProject]    # Active terraforming project
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
@@ -445,6 +446,7 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     underConstruction: none(ConstructionProject),
     constructionQueue: @[],  # NEW: Empty build queue
     repairQueue: @[],  # Empty repair queue
+    autoRepairEnabled: false,  # Default OFF - player must enable
     unassignedSquadrons: @[],  # No unassigned squadrons
     unassignedSpaceLiftShips: @[],  # No unassigned spacelift ships
     fighterSquadrons: @[],  # No fighters at start
@@ -507,6 +509,7 @@ proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetCl
     underConstruction: none(ConstructionProject),
     constructionQueue: @[],  # NEW: Empty build queue
     repairQueue: @[],  # Empty repair queue
+    autoRepairEnabled: false,  # Default OFF - player must enable
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
     fighterSquadrons: @[],
