@@ -545,6 +545,33 @@ proc resolveCargoManagement*(state: var GameState, packet: OrderPacket, events: 
         state.colonies[order.colonySystem] = colony
         logInfo(LogCategory.lcEconomy, &"Successfully unloaded {totalUnloaded} {unloadedType} at system-{order.colonySystem}")
 
+proc resolveColonyManagementOrders*(state: var GameState, packet: OrderPacket) =
+  ## Process colony management orders - tax rates, auto-repair toggles, etc.
+  for order in packet.colonyManagement:
+    # Validate colony exists and is owned (should have been validated already)
+    if order.colonyId notin state.colonies:
+      logError(LogCategory.lcEconomy, &"Colony management failed: System-{order.colonyId} has no colony")
+      continue
+
+    var colony = state.colonies[order.colonyId]
+    if colony.owner != packet.houseId:
+      logError(LogCategory.lcEconomy, &"Colony management failed: {packet.houseId} does not own system-{order.colonyId}")
+      continue
+
+    # Execute action
+    case order.action
+    of ColonyManagementAction.SetTaxRate:
+      colony.taxRate = order.taxRate
+      logInfo(LogCategory.lcEconomy, &"Colony-{order.colonyId} tax rate set to {order.taxRate}%")
+
+    of ColonyManagementAction.SetAutoRepair:
+      colony.autoRepairEnabled = order.enableAutoRepair
+      let status = if order.enableAutoRepair: "enabled" else: "disabled"
+      logInfo(LogCategory.lcEconomy, &"Colony-{order.colonyId} auto-repair {status}")
+
+    # Write back
+    state.colonies[order.colonyId] = colony
+
 proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
   ## Process terraforming orders - initiate new terraforming projects
   ## Per economy.md Section 4.7
