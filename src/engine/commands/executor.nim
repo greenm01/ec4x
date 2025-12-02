@@ -6,6 +6,7 @@ import ../../common/types/[core, units]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../state_helpers, ../logger, ../starmap
 import ../intelligence/detection
 import ../combat/[types as combat_types]
+import ../resolution/[types as resolution_types, fleet_orders]
 
 type
   OrderExecutionResult* = object
@@ -1079,10 +1080,15 @@ proc executeJoinFleetOrder(
   let targetFleetOpt = state.getFleet(targetFleetId)
 
   if targetFleetOpt.isNone:
+    # Target fleet destroyed or deleted - clear the order and fall back to standing orders
+    # Standing orders will be used automatically by the order resolution system
+    if fleet.id in state.fleetOrders:
+      state.fleetOrders.del(fleet.id)
+
     return OrderExecutionResult(
       success: false,
-      message: "Target fleet " & $targetFleetId & " not found",
-      eventsGenerated: @[]
+      message: "Target fleet " & $targetFleetId & " not found (destroyed or deleted). Order cancelled, falling back to standing orders.",
+      eventsGenerated: @["Fleet " & $fleet.id & " order cancelled: target " & $targetFleetId & " no longer exists"]
     )
 
   let targetFleet = targetFleetOpt.get()
@@ -1095,15 +1101,60 @@ proc executeJoinFleetOrder(
       eventsGenerated: @[]
     )
 
-  # Check same location
+  # Check if at same location - if not, move toward target
   if targetFleet.location != fleet.location:
-    return OrderExecutionResult(
-      success: false,
-      message: "Fleets must be at same location to join",
-      eventsGenerated: @[]
+    # Fleet will follow target - use centralized movement system
+    # Create a movement order to target's current location
+    let movementOrder = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.Move,
+      targetSystem: some(targetFleet.location),
+      targetFleet: none(FleetId),
+      priority: order.priority
     )
 
-  # Merge squadrons and spacelift ships into target fleet
+    # Use the centralized movement arbiter (handles all lane logic, pathfinding, etc.)
+    # This respects DoD principles - movement logic in ONE place
+    var events: seq[resolution_types.GameEvent] = @[]
+    resolveMovementOrder(state, fleet.owner, movementOrder, events)
+
+    # Check if movement succeeded by comparing fleet location
+    let updatedFleetOpt = state.getFleet(fleet.id)
+    if updatedFleetOpt.isNone:
+      return OrderExecutionResult(
+        success: false,
+        message: "Fleet " & $fleet.id & " disappeared during movement",
+        eventsGenerated: @[]
+      )
+
+    let movedFleet = updatedFleetOpt.get()
+
+    # Check if fleet actually moved (pathfinding succeeded)
+    if movedFleet.location == fleet.location:
+      # Fleet didn't move - no path found to target
+      # Cancel order and fall back to standing orders
+      if fleet.id in state.fleetOrders:
+        state.fleetOrders.del(fleet.id)
+
+      return OrderExecutionResult(
+        success: false,
+        message: "No path to target fleet " & $targetFleetId & " at system " & $targetFleet.location & ". Order cancelled.",
+        eventsGenerated: @["Fleet " & $fleet.id & " cannot reach target"]
+      )
+
+    # If still not at target location, keep order persistent
+    if movedFleet.location != targetFleet.location:
+      # Keep the Join Fleet order active so it continues pursuit next turn
+      # Order remains in fleetOrders table
+      return OrderExecutionResult(
+        success: true,
+        message: "Fleet " & $fleet.id & " moving toward " & $targetFleetId & " (now at system " & $movedFleet.location & ")",
+        eventsGenerated: @["Fleet " & $fleet.id & " pursuing " & $targetFleetId]
+      )
+
+    # If we got here, fleet reached target - fall through to merge logic below
+
+  # At same location - merge squadrons and spacelift ships into target fleet
   var updatedTargetFleet = targetFleet
   for squadron in fleet.squadrons:
     updatedTargetFleet.squadrons.add(squadron)
@@ -1362,27 +1413,95 @@ proc executeReserveOrder(
   fleet: Fleet,
   order: FleetOrder
 ): OrderExecutionResult =
-  ## Place fleet on reserve status
-  ## Per economy.md:3.9 - 50% maintenance, half AS/DS, can't move, must be at colony
+  ## Place fleet on Reserve status (50% maintenance, half AS/DS, can't move)
+  ## Per economy.md:3.9
+  ## If not at friendly colony, auto-seeks nearest friendly colony first
 
-  # Validate fleet is at a colony
-  if fleet.location notin state.colonies:
-    return OrderExecutionResult(
-      success: false,
-      message: "Fleet must be at a colony to be placed on reserve"
-    )
+  # Check if already at a friendly colony
+  var atFriendlyColony = false
+  if fleet.location in state.colonies:
+    let colony = state.colonies[fleet.location]
+    if colony.owner == fleet.owner:
+      atFriendlyColony = true
 
-  let colony = state.colonies[fleet.location]
-  if colony.owner != fleet.owner:
-    return OrderExecutionResult(
-      success: false,
-      message: "Fleet must be at a friendly colony to be placed on reserve"
-    )
+  # If not at friendly colony, find closest one and move there
+  if not atFriendlyColony:
+    # Find all friendly colonies
+    var friendlyColonies: seq[SystemId] = @[]
+    for colonyId, colony in state.colonies:
+      if colony.owner == fleet.owner:
+        friendlyColonies.add(colonyId)
+
+    if friendlyColonies.len == 0:
+      return OrderExecutionResult(
+        success: false,
+        message: "No friendly colonies available for reserve status",
+        eventsGenerated: @[]
+      )
+
+    # Find closest colony using pathfinding
+    var closestColony = friendlyColonies[0]
+    var minDistance = int.high
+
+    for colonyId in friendlyColonies:
+      let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
+      if pathResult.found:
+        let distance = pathResult.path.len - 1
+        if distance < minDistance:
+          minDistance = distance
+          closestColony = colonyId
+
+    # Not at colony yet - move toward it
+    if fleet.location != closestColony:
+      # Create movement order to target colony
+      let moveOrder = FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Move,
+        targetSystem: some(closestColony),
+        targetFleet: none(FleetId),
+        priority: order.priority
+      )
+
+      # Use centralized movement arbiter
+      var events: seq[resolution_types.GameEvent] = @[]
+      resolveMovementOrder(state, fleet.owner, moveOrder, events)
+
+      # Check if fleet moved
+      let updatedFleetOpt = state.getFleet(fleet.id)
+      if updatedFleetOpt.isNone:
+        return OrderExecutionResult(
+          success: false,
+          message: "Fleet " & $fleet.id & " disappeared during movement",
+          eventsGenerated: @[]
+        )
+
+      let movedFleet = updatedFleetOpt.get()
+
+      # Check if actually moved (pathfinding succeeded)
+      if movedFleet.location == fleet.location:
+        # Fleet didn't move - no path found
+        return OrderExecutionResult(
+          success: false,
+          message: "No path to nearest friendly colony. Order cancelled.",
+          eventsGenerated: @["Fleet " & $fleet.id & " cannot reach colony"]
+        )
+
+      # Keep order persistent - will execute when fleet arrives
+      return OrderExecutionResult(
+        success: true,
+        message: "Fleet " & $fleet.id & " moving to colony for reserve status (" & $minDistance & " jumps)",
+        eventsGenerated: @["Fleet seeking colony for Reserve"]
+      )
+
+  # At friendly colony - apply reserve status
+  var updatedFleet = fleet
+  updatedFleet.status = FleetStatus.Reserve
+  state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " placed on reserve (50% maint, half AS/DS)",
-    eventsGenerated: @["Fleet placed on reserve status"]
+    message: "Fleet " & $fleet.id & " placed on reserve at " & $fleet.location & " (50% maint, half AS/DS)",
+    eventsGenerated: @["Fleet " & $fleet.id & " placed on reserve status"]
   )
 
 proc executeMothballOrder(
@@ -1390,34 +1509,95 @@ proc executeMothballOrder(
   fleet: Fleet,
   order: FleetOrder
 ): OrderExecutionResult =
-  ## Mothball fleet
-  ## Per economy.md:3.9 - 0% maintenance, offline, screened in combat, must be at colony with spaceport
+  ## Mothball fleet (0% maintenance, offline, screened in combat)
+  ## Per economy.md:3.9
+  ## If not at friendly colony with spaceport, auto-seeks nearest one first
 
-  # Validate fleet is at a colony
-  if fleet.location notin state.colonies:
-    return OrderExecutionResult(
-      success: false,
-      message: "Fleet must be at a colony to be mothballed"
-    )
+  # Check if already at a friendly colony with spaceport
+  var atFriendlyColonyWithSpaceport = false
+  if fleet.location in state.colonies:
+    let colony = state.colonies[fleet.location]
+    if colony.owner == fleet.owner and colony.spaceports.len > 0:
+      atFriendlyColonyWithSpaceport = true
 
-  let colony = state.colonies[fleet.location]
-  if colony.owner != fleet.owner:
-    return OrderExecutionResult(
-      success: false,
-      message: "Fleet must be at a friendly colony to be mothballed"
-    )
+  # If not at friendly colony with spaceport, find closest one and move there
+  if not atFriendlyColonyWithSpaceport:
+    # Find all friendly colonies with spaceports
+    var friendlyColoniesWithSpaceports: seq[SystemId] = @[]
+    for colonyId, colony in state.colonies:
+      if colony.owner == fleet.owner and colony.spaceports.len > 0:
+        friendlyColoniesWithSpaceports.add(colonyId)
 
-  # Per spec: mothballed ships stored at spaceport
-  if colony.spaceports.len == 0:
-    return OrderExecutionResult(
-      success: false,
-      message: "Colony must have a spaceport to mothball ships"
-    )
+    if friendlyColoniesWithSpaceports.len == 0:
+      return OrderExecutionResult(
+        success: false,
+        message: "No friendly colonies with spaceports available for mothball",
+        eventsGenerated: @[]
+      )
+
+    # Find closest colony using pathfinding
+    var closestColony = friendlyColoniesWithSpaceports[0]
+    var minDistance = int.high
+
+    for colonyId in friendlyColoniesWithSpaceports:
+      let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
+      if pathResult.found:
+        let distance = pathResult.path.len - 1
+        if distance < minDistance:
+          minDistance = distance
+          closestColony = colonyId
+
+    # Not at colony yet - move toward it
+    if fleet.location != closestColony:
+      # Create movement order to target colony
+      let moveOrder = FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Move,
+        targetSystem: some(closestColony),
+        targetFleet: none(FleetId),
+        priority: order.priority
+      )
+
+      # Use centralized movement arbiter
+      var events: seq[resolution_types.GameEvent] = @[]
+      resolveMovementOrder(state, fleet.owner, moveOrder, events)
+
+      # Check if fleet moved
+      let updatedFleetOpt = state.getFleet(fleet.id)
+      if updatedFleetOpt.isNone:
+        return OrderExecutionResult(
+          success: false,
+          message: "Fleet " & $fleet.id & " disappeared during movement",
+          eventsGenerated: @[]
+        )
+
+      let movedFleet = updatedFleetOpt.get()
+
+      # Check if actually moved (pathfinding succeeded)
+      if movedFleet.location == fleet.location:
+        # Fleet didn't move - no path found
+        return OrderExecutionResult(
+          success: false,
+          message: "No path to nearest colony with spaceport. Order cancelled.",
+          eventsGenerated: @["Fleet " & $fleet.id & " cannot reach colony"]
+        )
+
+      # Keep order persistent - will execute when fleet arrives
+      return OrderExecutionResult(
+        success: true,
+        message: "Fleet " & $fleet.id & " moving to colony for mothball (" & $minDistance & " jumps)",
+        eventsGenerated: @["Fleet seeking colony for Mothball"]
+      )
+
+  # At friendly colony with spaceport - apply mothball status
+  var updatedFleet = fleet
+  updatedFleet.status = FleetStatus.Mothballed
+  state.fleets[fleet.id] = updatedFleet
 
   result = OrderExecutionResult(
     success: true,
-    message: "Fleet " & $fleet.id & " mothballed (0% maint, offline)",
-    eventsGenerated: @["Fleet mothballed"]
+    message: "Fleet " & $fleet.id & " mothballed at " & $fleet.location & " (0% maint, offline)",
+    eventsGenerated: @["Fleet " & $fleet.id & " mothballed"]
   )
 
 proc executeReactivateOrder(

@@ -140,6 +140,8 @@ type BuildingConfig = object
   cost: int
   time: int
   requiresSpaceport: bool
+  requiresShipyard: bool
+  cstRequirement: int
 
 proc getBuildingConfig(buildingType: string): BuildingConfig =
   ## Single lookup for all building properties
@@ -153,34 +155,44 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
     BuildingConfig(
       cost: facilitiesConfig.shipyard.build_cost,
       time: facilitiesConfig.shipyard.build_time,
-      requiresSpaceport: facilitiesConfig.shipyard.requires_spaceport
+      requiresSpaceport: facilitiesConfig.shipyard.requires_spaceport,
+      requiresShipyard: false,
+      cstRequirement: 0  # No CST requirement
     )
   of "Spaceport":
     BuildingConfig(
       cost: facilitiesConfig.spaceport.build_cost,
       time: facilitiesConfig.spaceport.build_time,
-      requiresSpaceport: false
+      requiresSpaceport: false,
+      requiresShipyard: false,
+      cstRequirement: 0
     )
   of "Starbase":
     BuildingConfig(
       cost: constructionConfig.starbase_cost,
       time: constructionTimes.starbase_turns,
-      requiresSpaceport: false
+      requiresSpaceport: false,
+      requiresShipyard: constructionTimes.starbase_requires_shipyard,
+      cstRequirement: globalShipsConfig.starbase.tech_level  # CST3 from ships.toml
     )
   of "GroundBattery":
     BuildingConfig(
       cost: constructionConfig.ground_battery_cost,
       time: constructionTimes.ground_battery_turns,
-      requiresSpaceport: false
+      requiresSpaceport: false,
+      requiresShipyard: false,
+      cstRequirement: 0
     )
   of "FighterSquadron":
     BuildingConfig(
       cost: constructionConfig.fighter_squadron_cost,
       time: 1,
-      requiresSpaceport: false
+      requiresSpaceport: false,
+      requiresShipyard: false,
+      cstRequirement: 0
     )
   else:
-    BuildingConfig(cost: 50, time: 1, requiresSpaceport: false)
+    BuildingConfig(cost: 50, time: 1, requiresSpaceport: false, requiresShipyard: false, cstRequirement: 0)
 
 proc getBuildingCost*(buildingType: string): int =
   ## Get construction cost for building type from config
@@ -197,6 +209,17 @@ proc requiresSpaceport*(buildingType: string): bool =
   ## Check if building requires a spaceport
   ## REFACTORED: Was 9 lines, now single lookup
   getBuildingConfig(buildingType).requiresSpaceport
+
+proc requiresShipyard*(buildingType: string): bool =
+  ## Check if building requires a shipyard (e.g., Starbase requires shipyard)
+  ## Per construction.toml: starbase_requires_shipyard = true
+  getBuildingConfig(buildingType).requiresShipyard
+
+proc getBuildingCSTRequirement*(buildingType: string): int =
+  ## Get CST tech level required to build building type
+  ## Per ships.toml: Starbase has tech_level = 3 (CST3 requirement)
+  ## Returns 0 for buildings with no CST requirement
+  getBuildingConfig(buildingType).cstRequirement
 
 proc getShipCSTRequirement*(shipClass: ShipClass): int =
   ## Get CST tech level required to build ship class
@@ -232,5 +255,5 @@ proc getMarineBuildCost*(): int =
 
 ## Export for use in construction.nim
 export getShipConstructionCost, getShipBaseBuildTime, getShipCSTRequirement
-export getBuildingCost, getBuildingTime, requiresSpaceport
+export getBuildingCost, getBuildingTime, requiresSpaceport, requiresShipyard, getBuildingCSTRequirement
 export getPlanetaryShieldCost, getArmyBuildCost, getMarineBuildCost

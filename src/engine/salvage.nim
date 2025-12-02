@@ -14,6 +14,7 @@
 import std/[tables, options, sequtils]
 import ../common/types/[core, units]
 import squadron, fleet, gamestate
+import economy/types as econ_types
 import config/[military_config, construction_config, ships_config, facilities_config]
 
 export HouseId, SystemId, FleetId, ShipClass
@@ -192,7 +193,13 @@ proc validateRepairRequest*(request: RepairRequest, state: GameState): RepairVal
     result.message = "Insufficient funds (need " & $cost & " PP, have " & $house.treasury & " PP)"
     return
 
-  # TODO: Check shipyard has available docks (requires tracking active repair projects)
+  # Check shipyard dock capacity (repairs require available docks)
+  let activeProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
+  let capacity = colony.getShipyardDockCapacity()
+
+  if activeProjects >= capacity:
+    result.message = "All shipyard docks occupied (" & $activeProjects & "/" & $capacity & " in use)"
+    return
 
   result.valid = true
   result.cost = cost
