@@ -134,6 +134,13 @@ type
     HackStarbase    # Order 10: Infiltrate starbase network
     SpyOnSystem     # Order 11: System reconnaissance
 
+  SpyScoutState* {.pure.} = enum
+    ## Operational state of spy scout
+    Traveling    # En route to target
+    OnMission    # Arrived at target, gathering intel
+    Returning    # Mission complete, returning home (optional)
+    Detected     # Detected and marked for destruction
+
   SpyScout* = object
     ## Independent spy scout on intelligence mission
     ## Per assets.md:2.4.2
@@ -144,6 +151,32 @@ type
     mission*: SpyMissionType      # Type of intelligence mission
     commissionedTurn*: int        # Turn scout was deployed
     detected*: bool               # Has scout been detected and destroyed
+
+    # Travel tracking (NEW)
+    state*: SpyScoutState         # Current operational state
+    targetSystem*: SystemId       # Final mission destination
+    travelPath*: seq[SystemId]    # Planned jump lane path
+    currentPathIndex*: int        # Progress through path (0-based)
+    mergedScoutCount*: int        # Number of scouts merged (for mesh bonus)
+
+  SpyScoutOrderType* {.pure.} = enum
+    ## Order types for spy scout fleets
+    ## Transparent to user - spy scouts behave like normal fleets
+    Hold              # Stay at current location on mission
+    Move              # Travel to target system
+    JoinSpyScout      # Merge with another spy scout (mesh network bonus)
+    JoinFleet         # Merge with normal fleet (becomes squadron, spy scout deleted)
+    Rendezvous        # Meet with other spy scouts/fleets at location
+    CancelMission     # Abort mission and return home
+
+  SpyScoutOrder* = object
+    ## Order for individual spy scout (parallel to FleetOrder)
+    spyScoutId*: string
+    orderType*: SpyScoutOrderType
+    targetSystem*: Option[SystemId]
+    targetSpyScout*: Option[string]      # For JoinSpyScout
+    targetFleet*: Option[FleetId]        # For JoinFleet
+    priority*: int
 
   FallbackRoute* = object
     ## Designated safe retreat route for a region
@@ -235,6 +268,8 @@ type
     turnDeadline*: int64          # Unix timestamp
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
     spyScouts*: Table[string, SpyScout]  # Active spy scouts on intelligence missions
+    spyScoutOrders*: Table[string, SpyScoutOrder]  # Orders for spy scouts (parallel to fleetOrders)
+    scoutLossEvents*: seq[intel_types.ScoutLossEvent]  # Scout losses for diplomatic processing (NEW)
     populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
     pendingProposals*: seq[dip_proposals.PendingProposal]  # Pending diplomatic proposals
 
@@ -276,6 +311,7 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     ongoingEffects: @[],
     spyScouts: initTable[string, SpyScout](),
+    spyScoutOrders: initTable[string, SpyScoutOrder](),
     populationInTransit: @[],
     pendingProposals: @[]
   )
@@ -331,6 +367,7 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     ongoingEffects: @[],
     spyScouts: initTable[string, SpyScout](),
+    spyScoutOrders: initTable[string, SpyScoutOrder](),
     populationInTransit: @[],
     pendingProposals: @[]
   )

@@ -1,0 +1,220 @@
+## Spy Scout Travel Resolution
+## Implements jump lane travel for spy scouts per assets.md:2.4.2
+##
+## Spy scouts travel through jump lanes following normal movement rules:
+## - Controlled major lanes: 2 jumps/turn
+## - Minor/restricted lanes or rival territory: 1 jump/turn
+## - Detection checks at each intermediate system
+
+import std/[tables, sequtils]
+import ../../common/types/[core, combat]
+import ../gamestate, ../fleet, ../starmap
+import ../diplomacy/engine as dip_engine
+import detection, types as intel_types
+
+proc recordScoutLoss*(state: var GameState, scoutId: string,
+                     eventType: intel_types.DetectionEventType,
+                     detectorHouse: HouseId) =
+  ## Record scout loss event for diplomatic processing
+  if scoutId notin state.spyScouts:
+    return  # Scout already removed
+
+  let event = intel_types.ScoutLossEvent(
+    scoutId: scoutId,
+    owner: state.spyScouts[scoutId].owner,
+    location: state.spyScouts[scoutId].location,
+    detectorHouse: detectorHouse,
+    eventType: eventType,
+    turn: state.turn
+  )
+
+  state.scoutLossEvents.add(event)
+
+proc checkPathControl(state: GameState, spy: SpyScout): bool =
+  ## Check if spy owner controls all systems from current location to target
+  ## Required for 2-jump major lane movement
+  for i in spy.currentPathIndex..<spy.travelPath.len:
+    let systemId = spy.travelPath[i]
+    if systemId in state.colonies:
+      let colony = state.colonies[systemId]
+      if colony.owner != spy.owner:
+        return false  # Rival territory, no control bonus
+    else:
+      return false  # Unexplored system, no control bonus
+  return true
+
+proc calculateScoutMovement(state: GameState, spy: SpyScout): int =
+  ## Calculate movement allowance for spy scout this turn
+  ## Per operations.md:6.1.2 Jump Lane Movement Rules
+
+  if spy.currentPathIndex >= spy.travelPath.len:
+    return 0
+
+  let currentSystem = spy.location
+  let nextSystem = spy.travelPath[spy.currentPathIndex]
+
+  # Find lane between current and next system
+  var laneType = LaneType.Minor  # Default
+  for lane in state.starMap.lanes:
+    if (lane.source == currentSystem and lane.destination == nextSystem) or
+       (lane.destination == currentSystem and lane.source == nextSystem):
+      laneType = lane.laneType
+      break
+
+  # Check if this is a major lane with full control
+  if laneType == LaneType.Major:
+    # Check if spy owner controls all systems on the path ahead
+    let controlsPath = checkPathControl(state, spy)
+    if controlsPath:
+      return 2  # Can move 2 jumps on controlled major lanes
+
+  # Minor lanes, restricted lanes, or non-controlled systems
+  return 1  # Standard 1 jump per turn
+
+proc checkTravelDetection(state: GameState, spyId: string,
+                         systemId: SystemId): intel_types.DetectionResult =
+  ## Check if traveling spy scout is detected in a system
+  ## Uses same detection tables as stationary spy scouts
+  ## Per assets.md detection tables in config/espionage.toml
+
+  let spy = state.spyScouts[spyId]
+
+  # Check detection by rival fleets
+  for fleet in state.fleets.values:
+    if fleet.location == systemId and fleet.owner != spy.owner:
+      # Check diplomatic relations - allies don't interdict
+      let dipState = dip_engine.getDiplomaticState(
+        state.houses[fleet.owner].diplomaticRelations,
+        spy.owner
+      )
+
+      if dipState == DiplomaticState.Ally:
+        # Allies share intelligence but don't destroy scouts
+        return intel_types.DetectionResult(
+          detected: true,
+          detectorHouse: fleet.owner,
+          isAllyDetection: true,  # Flag for special handling
+          roll: 0,
+          threshold: 0
+        )
+
+      let detectorUnit = createELIUnit(fleet.squadrons, isStarbase = false)
+      if detectorUnit.eliLevels.len > 0:
+        let detResult = detectSpyScout(detectorUnit, spy.eliLevel)
+        if detResult.detected:
+          return intel_types.DetectionResult(
+            detected: true,
+            detectorHouse: fleet.owner,
+            isAllyDetection: false,
+            roll: detResult.roll,
+            threshold: detResult.threshold
+          )
+
+  # Check detection by starbases
+  if systemId in state.colonies:
+    let colony = state.colonies[systemId]
+    if colony.owner != spy.owner:
+      # Check diplomatic relations
+      let dipState = dip_engine.getDiplomaticState(
+        state.houses[colony.owner].diplomaticRelations,
+        spy.owner
+      )
+
+      if dipState == DiplomaticState.Ally:
+        # Ally detection - no destruction
+        return intel_types.DetectionResult(
+          detected: true,
+          detectorHouse: colony.owner,
+          isAllyDetection: true,
+          roll: 0,
+          threshold: 0
+        )
+
+      if colony.starbases.len > 0:
+        # Starbase detection with +2 bonus
+        # Get highest ELI level from house
+        # NOTE: ELI (Electronic Intelligence) is a specific military tech, NOT EL (Economic Level)
+        let houseELI = state.houses[colony.owner].techTree.levels.electronicIntelligence
+        let starbaseELI = ELIUnit(
+          eliLevels: @[houseELI],
+          isStarbase: true
+        )
+
+        let sbResult = detectSpyScout(starbaseELI, spy.eliLevel)
+        if sbResult.detected:
+          return intel_types.DetectionResult(
+            detected: true,
+            detectorHouse: colony.owner,
+            isAllyDetection: false,
+            roll: sbResult.roll,
+            threshold: sbResult.threshold
+          )
+
+  return intel_types.DetectionResult(detected: false, detectorHouse: "",
+                                     isAllyDetection: false, roll: 0, threshold: 0)
+
+proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
+  ## Move traveling spy scouts following normal jump lane movement rules:
+  ## - Controlled major lanes: 2 jumps/turn
+  ## - Minor/restricted lanes or rival territory: 1 jump/turn
+  ## Perform detection checks at intermediate systems
+  result = @[]
+
+  for spyId, spy in state.spyScouts:
+    if spy.state != SpyScoutState.Traveling:
+      continue
+
+    # Calculate movement capacity for this turn
+    let movementAllowance = calculateScoutMovement(state, spy)
+
+    # Move scout up to movement allowance
+    var jumpsThisTurn = 0
+    var updatedSpy = spy
+
+    while updatedSpy.currentPathIndex < updatedSpy.travelPath.len and jumpsThisTurn < movementAllowance:
+      let nextSystem = updatedSpy.travelPath[updatedSpy.currentPathIndex]
+
+      # Update scout location
+      updatedSpy.location = nextSystem
+      updatedSpy.currentPathIndex += 1
+      jumpsThisTurn += 1
+
+      # Check if arrived at target
+      if nextSystem == updatedSpy.targetSystem:
+        updatedSpy.state = SpyScoutState.OnMission
+        state.spyScouts[spyId] = updatedSpy
+        result.add("Spy scout " & spyId & " arrived at target " & $nextSystem &
+                  " (" & $jumpsThisTurn & " jumps)")
+        break  # Stop moving, arrived at destination
+
+      # Perform detection check at intermediate system
+      let detectionResult = checkTravelDetection(state, spyId, nextSystem)
+      if detectionResult.detected:
+        if detectionResult.isAllyDetection:
+          # Ally detected scout during transit - no destruction, no escalation
+          result.add("Spy scout " & spyId & " detected by ally " &
+                    $detectionResult.detectorHouse & " in transit through " &
+                    $nextSystem & " (allowed passage)")
+          # Optionally: notify spy owner that their ally saw the scout
+        else:
+          # Non-ally detected scout - destroy but NO escalation for passive transit
+          updatedSpy.state = SpyScoutState.Detected
+          updatedSpy.detected = true
+          state.spyScouts[spyId] = updatedSpy
+
+          # Record as travel interception (NO automatic escalation for transit)
+          recordScoutLoss(state, spyId, intel_types.DetectionEventType.TravelIntercepted,
+                         detectionResult.detectorHouse)
+
+          result.add("Spy scout " & spyId & " detected traveling through " &
+                    $nextSystem & " by " & $detectionResult.detectorHouse &
+                    " (destroyed)")
+          break  # Stop moving, scout destroyed
+
+    # Update scout if still traveling and made progress
+    if spy.state == SpyScoutState.Traveling and jumpsThisTurn > 0 and
+       updatedSpy.state == SpyScoutState.Traveling:
+      state.spyScouts[spyId] = updatedSpy
+      result.add("Spy scout " & spyId & " traveled " & $jumpsThisTurn &
+                " jump" & (if jumpsThisTurn > 1: "s" else: "") &
+                " (undetected)")

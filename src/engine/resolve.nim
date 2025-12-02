@@ -15,7 +15,10 @@ import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
 import research/[types as res_types_research]
 import commands/executor
+import commands/spy_scout_orders
 import intelligence/espionage_intel
+import intelligence/spy_travel
+import intelligence/spy_resolution
 # Import resolution modules
 import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_blockade, simultaneous_espionage]
 
@@ -186,6 +189,13 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
   logInfo("Resolve", "=== Conflict Phase ===", "turn=", $state.turn)
   logRNG("Using RNG for combat resolution", "seed=", $state.turn)
 
+  # Resolve spy scout detection BEFORE combat
+  # Spy scouts that go undetected remain hidden and don't participate in combat
+  # Per assets.md:2.4.2 - detection checks occur each turn for active spy scouts
+  let detectionResults = spy_resolution.resolveSpyDetection(state)
+  for msg in detectionResults:
+    logInfo("Intelligence", "Spy detection", msg)
+
   # Find all systems with hostile fleets
   var combatSystems: seq[SystemId] = @[]
 
@@ -245,6 +255,13 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
   # Resolve combat in each system (operations.md:7.0)
   for systemId in combatSystems:
     resolveBattle(state, systemId, orders, combatReports, events, rng)
+
+  # Move traveling spy scouts through jump lanes
+  # Per assets.md:2.4.2 - scouts travel 1-2 jumps per turn based on lane control
+  # Detection checks occur at intermediate systems
+  let travelResults = spy_travel.resolveSpyScoutTravel(state)
+  for msg in travelResults:
+    logInfo("Intelligence", "Spy scout travel", msg)
 
   # Process espionage actions (per gameplay.md:1.3.1 - resolved in Conflict Phase)
   # NOTE: Now handled by SIMULTANEOUS ESPIONAGE RESOLUTION (see Command Phase)
@@ -397,6 +414,14 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
 
   # Process diplomatic actions
   resolveDiplomaticActions(state, orders)
+
+  # Process scout detection escalations (from Conflict Phase spy detections)
+  # SpyScoutDetected events trigger Hostile escalation
+  resolveScoutDetectionEscalations(state)
+
+  # Process spy scout orders (join, move, rendezvous)
+  # Spy scouts can merge with each other or with normal fleets
+  spy_scout_orders.resolveSpyScoutOrders(state)
 
   # Process squadron management orders (form squadrons, transfer ships, assign to fleets)
   for houseId in state.houses.keys:

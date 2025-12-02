@@ -20,7 +20,7 @@ type
     SpyPlanet         # Intelligence gathering on planet
     SpySystem         # Reconnaissance of system
     HackStarbase      # Electronic warfare
-    JoinFleet         # Merge with another fleet
+    JoinFleet         # Merge with another fleet (scouts gain mesh network ELI bonus)
     Rendezvous        # Coordinate movement with fleet
     Salvage           # Recover wreckage
     Reserve           # Place fleet on reserve status (50% maint, half AS/DS, can't move)

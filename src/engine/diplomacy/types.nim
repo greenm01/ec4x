@@ -8,7 +8,7 @@
 ## - Dishonored Status: Reputational damage after violation
 
 import std/tables
-import ../../common/types/[core, diplomacy]
+import ../../common/types/[core, diplomacy, units]
 import ../prestige
 import ../config/[prestige_config, prestige_multiplier, diplomacy_config]
 
@@ -16,6 +16,7 @@ export core.HouseId
 export diplomacy.DiplomaticState
 export prestige.PrestigeEvent
 export diplomacy_config.globalDiplomacyConfig
+export units.ShipClass
 
 type
   ## Diplomatic Relations
@@ -74,6 +75,37 @@ type
     turn*: int
     events*: seq[DiplomaticEvent]
     violations*: seq[ViolationRecord]
+
+  ## Fleet Classification for Escalation Rules
+
+  FleetClassification* {.pure.} = enum
+    ## Classify fleets for diplomatic escalation purposes
+    ## Scout-only fleets trigger "Hostile" escalation
+    ## Combat/mixed fleets trigger "Enemy" escalation
+    ScoutOnly      # Only contains Scout squadrons (→ Hostile)
+    Combat         # Contains combat squadrons (capital ships, escorts, raiders) (→ Enemy)
+    Mixed          # Contains both scouts and combat squadrons (→ Enemy)
+
+## Fleet Classification Helper
+
+proc classifyFleet*(fleet: auto): FleetClassification =
+  ## Classify a fleet based on squadron composition
+  ## Used to determine appropriate diplomatic escalation level
+  var hasScouts = false
+  var hasCombat = false
+
+  for squadron in fleet.squadrons:
+    if squadron.flagship.shipClass == ShipClass.Scout:
+      hasScouts = true
+    else:
+      hasCombat = true
+
+  if hasScouts and hasCombat:
+    return FleetClassification.Mixed
+  elif hasScouts:
+    return FleetClassification.ScoutOnly
+  else:
+    return FleetClassification.Combat
 
 ## Configuration accessors per diplomacy.md:8.1.2
 ## Values loaded from diplomacy.toml and prestige.toml

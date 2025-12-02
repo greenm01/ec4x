@@ -12,6 +12,7 @@ import ../diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_
 import ../config/diplomacy_config
 import ../prestige
 import ../intelligence/diplomatic_intel
+import ../intelligence/types as intel_types  # For DetectionEventType
 
 proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, OrderPacket]) =
   ## Process diplomatic actions (per gameplay.md:1.3.3 - Command Phase)
@@ -337,3 +338,56 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
             action.targetHouse,
             state.turn
           )
+
+proc resolveScoutDetectionEscalations*(state: var GameState) =
+  ## Process scout loss events and trigger appropriate diplomatic escalations
+  ## Per scout mechanics revision: SpyScoutDetected → Hostile escalation
+  ## Escalation only goes UP, never down: Neutral → Hostile → Enemy
+
+  for event in state.scoutLossEvents:
+    # Only process SpyScoutDetected events for escalation
+    # TravelIntercepted and CombatLoss don't trigger escalation
+    if event.eventType != intel_types.DetectionEventType.SpyScoutDetected:
+      continue
+
+    # Skip if either house is eliminated
+    if event.owner notin state.houses or event.detectorHouse notin state.houses:
+      continue
+    if state.houses[event.owner].eliminated or state.houses[event.detectorHouse].eliminated:
+      continue
+
+    # Get current diplomatic state
+    let currentState = dip_engine.getDiplomaticState(
+      state.houses[event.detectorHouse].diplomaticRelations,
+      event.owner
+    )
+
+    # Spy scout detection triggers Hostile escalation
+    # Only escalate if currently Neutral (don't escalate Ally or downgrade Enemy)
+    if currentState == dip_types.DiplomaticState.Neutral:
+      # Escalate to Hostile
+      var detectorHouse = state.houses[event.detectorHouse]
+      dip_engine.setDiplomaticState(
+        detectorHouse.diplomaticRelations,
+        event.owner,
+        dip_types.DiplomaticState.Hostile,
+        state.turn
+      )
+      state.houses[event.detectorHouse] = detectorHouse
+
+      logInfo("Diplomacy", "Spy detection escalation",
+             "detector=", $event.detectorHouse,
+             "spy_owner=", $event.owner,
+             "escalated=", "Neutral → Hostile",
+             "reason=", "spy scout detected")
+
+      # Generate diplomatic intelligence about the escalation
+      diplomatic_intel.generateHostilityDeclarationIntel(
+        state,
+        event.detectorHouse,
+        event.owner,
+        state.turn
+      )
+
+  # Clear processed events
+  state.scoutLossEvents = @[]
