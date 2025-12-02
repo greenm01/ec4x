@@ -88,9 +88,9 @@ type
     taxRate*: int                 # 0-100 (usually house-wide, but can override per-colony)
     infrastructureDamage*: float  # 0.0-1.0, from bombardment (from economy/types.nim)
 
-    # Construction
-    underConstruction*: Option[ConstructionProject]  # DEPRECATED: Legacy single-project field (kept for backward compatibility, DO NOT use for validation)
-    constructionQueue*: seq[ConstructionProject]     # NEW: Multi-project build queue (parallel processing based on dock capacity)
+    # Construction - Dual-slot architecture (active + queue pattern)
+    underConstruction*: Option[ConstructionProject]  # Active project slot: Advances each turn, DO NOT use for validation
+    constructionQueue*: seq[ConstructionProject]     # Queued projects: Waiting for dock capacity, processed in parallel
     repairQueue*: seq[econ_types.RepairProject]      # Ships/starbases awaiting repair
     autoRepairEnabled*: bool                         # Enable automatic repair submission (defaults false, player-controlled)
     activeTerraforming*: Option[TerraformProject]    # Active terraforming project

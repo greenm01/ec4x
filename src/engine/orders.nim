@@ -105,6 +105,7 @@ type
     squadronManagement*: seq[SquadronManagementOrder]    # Ship commissioning and squadron formation
     cargoManagement*: seq[CargoManagementOrder]          # Cargo loading/unloading at colonies
     terraformOrders*: seq[TerraformOrder]                # Terraforming projects
+    colonyManagement*: seq[ColonyManagementOrder]        # Colony-level management (tax rates, auto-repair, etc.)
 
     # Espionage budget allocation (diplomacy.md:8.2)
     espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
@@ -535,6 +536,26 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
     # Can't target self
     if action.targetHouse == packet.houseId:
       return ValidationResult(valid: false, error: "Diplomatic action: Cannot target own house")
+
+  # Validate colony management orders
+  for order in packet.colonyManagement:
+    # Check colony exists
+    if order.colonyId notin state.colonies:
+      return ValidationResult(valid: false, error: "Colony management: Colony does not exist at " & $order.colonyId)
+
+    # Check ownership
+    let colony = state.colonies[order.colonyId]
+    if colony.owner != packet.houseId:
+      return ValidationResult(valid: false, error: "Colony management: House does not own colony at " & $order.colonyId)
+
+    # Validate action-specific parameters
+    case order.action
+    of ColonyManagementAction.SetTaxRate:
+      if order.taxRate < 0 or order.taxRate > 100:
+        return ValidationResult(valid: false, error: "Colony management: Tax rate must be 0-100")
+    of ColonyManagementAction.SetAutoRepair:
+      # Boolean flag, no validation needed
+      discard
 
   # All validations passed
   logInfo(LogCategory.lcOrders,

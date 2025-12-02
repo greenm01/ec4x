@@ -421,6 +421,11 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
     if houseId in orders:
       resolveBuildOrders(state, orders[houseId], events)
 
+  # Process colony management orders (tax rates, auto-repair toggles)
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      resolveColonyManagementOrders(state, orders[houseId])
+
   # Process Space Guild population transfers
   for houseId in state.houses.keys:
     if houseId in orders:
