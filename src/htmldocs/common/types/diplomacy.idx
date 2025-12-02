@@ -1,3 +1,3 @@
 nimTitle	diplomacy	common/types/diplomacy.html	module src/common/types/diplomacy		0
 nim	DiplomaticState	common/types/diplomacy.html#DiplomaticState	enum DiplomaticState		11
-nim	PrestigeChange	common/types/diplomacy.html#PrestigeChange	object PrestigeChange		17
+nim	PrestigeChange	common/types/diplomacy.html#PrestigeChange	object PrestigeChange		22

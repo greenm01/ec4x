@@ -1,17 +1,20 @@
 nimTitle	types	engine/economy/types.html	module src/engine/economy/types		0
-nim	ProductionOutput	engine/economy/types.html#ProductionOutput	object ProductionOutput		22
-nim	IndustrialUnits	engine/economy/types.html#IndustrialUnits	object IndustrialUnits		31
-nim	ConstructionType	engine/economy/types.html#ConstructionType	enum ConstructionType		38
-nim	ConstructionProject	engine/economy/types.html#ConstructionProject	object ConstructionProject		44
-nim	CompletedProject	engine/economy/types.html#CompletedProject	object CompletedProject		52
-nim	TaxPolicy	engine/economy/types.html#TaxPolicy	object TaxPolicy		60
-nim	TreasuryTransaction	engine/economy/types.html#TreasuryTransaction	object TreasuryTransaction		65
-nim	TransactionCategory	engine/economy/types.html#TransactionCategory	enum TransactionCategory		71
-nim	ColonyIncomeReport	engine/economy/types.html#ColonyIncomeReport	object ColonyIncomeReport		82
-nim	HouseIncomeReport	engine/economy/types.html#HouseIncomeReport	object HouseIncomeReport		93
-nim	IncomePhaseReport	engine/economy/types.html#IncomePhaseReport	object IncomePhaseReport		108
-nim	MaintenanceReport	engine/economy/types.html#MaintenanceReport	object MaintenanceReport		115
-nim	TAX_HIGH_THRESHOLD	engine/economy/types.html#TAX_HIGH_THRESHOLD	const TAX_HIGH_THRESHOLD		126
-nim	BASE_IU_COST	engine/economy/types.html#BASE_IU_COST	const BASE_IU_COST		129
-nim	calculatePTU	engine/economy/types.html#calculatePTU,int	proc calculatePTU(pu: int): int		136
-nim	calculatePU	engine/economy/types.html#calculatePU,int	proc calculatePU(ptu: int): int		157
+nim	ProductionOutput	engine/economy/types.html#ProductionOutput	object ProductionOutput		23
+nim	IndustrialUnits	engine/economy/types.html#IndustrialUnits	object IndustrialUnits		32
+nim	ConstructionType	engine/economy/types.html#ConstructionType	enum ConstructionType		39
+nim	ConstructionProject	engine/economy/types.html#ConstructionProject	object ConstructionProject		45
+nim	FacilityType	engine/economy/types.html#FacilityType	enum FacilityType		53
+nim	RepairTargetType	engine/economy/types.html#RepairTargetType	enum RepairTargetType		58
+nim	RepairProject	engine/economy/types.html#RepairProject	object RepairProject		63
+nim	CompletedProject	engine/economy/types.html#CompletedProject	object CompletedProject		77
+nim	TaxPolicy	engine/economy/types.html#TaxPolicy	object TaxPolicy		85
+nim	TreasuryTransaction	engine/economy/types.html#TreasuryTransaction	object TreasuryTransaction		90
+nim	TransactionCategory	engine/economy/types.html#TransactionCategory	enum TransactionCategory		96
+nim	ColonyIncomeReport	engine/economy/types.html#ColonyIncomeReport	object ColonyIncomeReport		107
+nim	HouseIncomeReport	engine/economy/types.html#HouseIncomeReport	object HouseIncomeReport		118
+nim	IncomePhaseReport	engine/economy/types.html#IncomePhaseReport	object IncomePhaseReport		133
+nim	MaintenanceReport	engine/economy/types.html#MaintenanceReport	object MaintenanceReport		140
+nim	TAX_HIGH_THRESHOLD	engine/economy/types.html#TAX_HIGH_THRESHOLD	const TAX_HIGH_THRESHOLD		151
+nim	BASE_IU_COST	engine/economy/types.html#BASE_IU_COST	const BASE_IU_COST		154
+nim	calculatePTU	engine/economy/types.html#calculatePTU,int	proc calculatePTU(pu: int): int		161
+nim	calculatePU	engine/economy/types.html#calculatePU,int	proc calculatePU(ptu: int): int		182

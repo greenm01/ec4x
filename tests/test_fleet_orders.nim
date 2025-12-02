@@ -635,10 +635,21 @@ suite "Order 13: Join Fleet":
     check result.success == true
     check result.message.contains("joining")
 
-  test "Join fleet at different location fails":
-    var state = createTestGameState()
-    let fleet1 = createTestFleet("house1", 1, "Fleet1")
-    let fleet2 = createTestFleet("house1", 2, "Fleet2")
+  test "Join fleet at different location tries to move toward target":
+    # Use full game with 6 players for larger map with more lanes
+    var state = newGame("test", 6)
+
+    # Find two connected systems from the starmap
+    var sys1, sys2: SystemId
+    if state.starMap.lanes.len > 0:
+      sys1 = state.starMap.lanes[0].source
+      sys2 = state.starMap.lanes[0].destination
+    else:
+      sys1 = 1
+      sys2 = 2
+
+    let fleet1 = createTestFleet("house1", sys1, "Fleet1")
+    let fleet2 = createTestFleet("house1", sys2, "Fleet2")
 
     state.fleets[fleet1.id] = fleet1
     state.fleets[fleet2.id] = fleet2
@@ -653,8 +664,9 @@ suite "Order 13: Join Fleet":
 
     let result = executeFleetOrder(state, "house1", order)
 
-    check result.success == false
-    check result.message.contains("same location")
+    # New behavior: accepts order and either moves toward target or merges if adjacent
+    check result.success == true
+    check (result.message.contains("moving toward") or result.message.contains("merged"))
 
   test "Join fleet of different house fails":
     var state = createTestGameState()
@@ -850,7 +862,8 @@ suite "Order 16: Reserve Fleet":
     let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
-    # Remove colony at sys2
+    # Remove ALL colonies for house1 (colony 1)
+    state.colonies.del(1)
     state.colonies.del(2)
 
     let order = FleetOrder(
@@ -863,11 +876,14 @@ suite "Order 16: Reserve Fleet":
 
     let result = executeFleetOrder(state, "house1", order)
 
+    # New behavior: accepts order but fails due to no friendly colonies
     check result.success == false
-    check result.message.contains("must be at a colony")
+    check result.message.contains("No friendly colonies available")
 
-  test "Reserve order at enemy colony fails":
-    var state = createTestGameState()
+  test "Reserve order at enemy colony tries to move to friendly colony":
+    # Use full game initialization to get proper starmap with lanes
+    var state = newGame("test", 2)
+
     let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
@@ -881,8 +897,9 @@ suite "Order 16: Reserve Fleet":
 
     let result = executeFleetOrder(state, "house1", order)
 
-    check result.success == false
-    check result.message.contains("friendly colony")
+    # New behavior: accepts order and moves toward friendly colony
+    check result.success == true
+    check result.message.contains("moving to colony")
 
 # =============================================================================
 # Order 17: Mothball Fleet Tests
@@ -930,12 +947,13 @@ suite "Order 17: Mothball Fleet":
     check result.success == false
     check result.message.contains("spaceport")
 
-  test "Mothball order without colony fails":
+  test "Mothball order without friendly colony with spaceport fails":
     var state = createTestGameState()
     let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
-    # Remove colony
+    # Remove ALL colonies (no friendly colonies with spaceports exist)
+    state.colonies.del(1)
     state.colonies.del(2)
 
     let order = FleetOrder(
@@ -948,16 +966,22 @@ suite "Order 17: Mothball Fleet":
 
     let result = executeFleetOrder(state, "house1", order)
 
+    # New behavior: accepts order but fails due to no friendly colonies with spaceports
     check result.success == false
-    check result.message.contains("must be at a colony")
+    check result.message.contains("No friendly colonies with spaceports available")
 
-  test "Mothball order at enemy colony fails":
-    var state = createTestGameState()
+  test "Mothball order at enemy colony tries to move to friendly colony with spaceport":
+    # Use full game initialization to get proper starmap with lanes
+    var state = newGame("test", 2)
+
     let fleet = createTestFleet("house1", 2, "TestFleet")
     state.fleets[fleet.id] = fleet
 
-    # Add spaceport to enemy colony
-    state.colonies[2].spaceports.add(Spaceport(id: "sp2", commissionedTurn: 1, docks: 5))
+    # Find a friendly colony and add spaceport
+    for colonyId, colony in state.colonies:
+      if colony.owner == "house1":
+        state.colonies[colonyId].spaceports.add(Spaceport(id: "sp1", commissionedTurn: 1, docks: 5))
+        break
 
     let order = FleetOrder(
       fleetId: fleet.id,
@@ -969,8 +993,9 @@ suite "Order 17: Mothball Fleet":
 
     let result = executeFleetOrder(state, "house1", order)
 
-    check result.success == false
-    check result.message.contains("friendly colony")
+    # New behavior: accepts order and moves toward friendly colony with spaceport
+    check result.success == true
+    check result.message.contains("moving to colony")
 
 # =============================================================================
 # Order 18: Reactivate Fleet Tests

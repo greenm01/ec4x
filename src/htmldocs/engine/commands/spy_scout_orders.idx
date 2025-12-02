@@ -1,0 +1,5 @@
+nimTitle	spy_scout_orders	engine/commands/spy_scout_orders.html	module src/engine/commands/spy_scout_orders		0
+nim	executeSpyScoutJoinFleet	engine/commands/spy_scout_orders.html#executeSpyScoutJoinFleet,GameState,SpyScout,FleetId	proc executeSpyScoutJoinFleet(state: var GameState; spyScout: SpyScout;\n                         targetFleetId: FleetId): bool		14
+nim	executeSpyScoutJoinSpyScout	engine/commands/spy_scout_orders.html#executeSpyScoutJoinSpyScout,GameState,string,string	proc executeSpyScoutJoinSpyScout(state: var GameState; sourceId: string;\n                            targetId: string): bool		61
+nim	executeSpyScoutMove	engine/commands/spy_scout_orders.html#executeSpyScoutMove,GameState,SpyScout,SystemId	proc executeSpyScoutMove(state: var GameState; spyScout: SpyScout;\n                    targetSystem: SystemId): bool		112
+nim	resolveSpyScoutOrders	engine/commands/spy_scout_orders.html#resolveSpyScoutOrders,GameState	proc resolveSpyScoutOrders(state: var GameState)		145

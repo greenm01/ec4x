@@ -838,6 +838,18 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
       of FleetOrderType.ViewWorld:
         # Move-to-View: Fleet moves to target then performs long-range scan
         resolveViewWorldOrder(state, houseId, actualOrder, events)
+      of FleetOrderType.Salvage:
+        # Salvage: Fleet seeks home to friendly colony, then scraps ships for PP
+        # executeSalvageOrder handles everything (validation, movement, execution)
+        let result = executeFleetOrder(state, houseId, actualOrder)
+        if result.success:
+          for eventDesc in result.eventsGenerated:
+            events.add(GameEvent(
+              eventType: GameEventType.UnitDisbanded,
+              houseId: houseId,
+              description: eventDesc,
+              systemId: none(SystemId)
+            ))
       else:
         discard
 

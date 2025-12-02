@@ -8,16 +8,17 @@ nim	newStarMap	engine/starmap.html#newStarMap,int,int64	proc newStarMap(playerCo
 nim	getAdjacentSystems	engine/starmap.html#getAdjacentSystems,StarMap,uint	proc getAdjacentSystems(starMap: StarMap; systemId: uint): seq[uint]		135
 nim	countHexNeighbors	engine/starmap.html#countHexNeighbors,StarMap,Hex	proc countHexNeighbors(starMap: StarMap; coords: Hex): int		138
 nim	validateConnectivity	engine/starmap.html#validateConnectivity,StarMap	proc validateConnectivity(starMap: StarMap): bool		340
-nim	canFleetTraverseLane	engine/starmap.html#canFleetTraverseLane,Fleet,LaneType	proc canFleetTraverseLane(fleet: Fleet; laneType: LaneType): bool		358
-nim	weight	engine/starmap.html#weight,LaneType	proc weight(laneType: LaneType): uint32		372
-nim	findPath	engine/starmap.html#findPath,StarMap,uint,uint,Fleet	proc findPath(starMap: StarMap; start: uint; goal: uint; fleet: Fleet): PathResult		382
-nim	populate	engine/starmap.html#populate,StarMap	proc populate(starMap: var StarMap)		451
-nim	starMap	engine/starmap.html#starMap,int	proc starMap(playerCount: int): StarMap		471
-nim	getStarMapStats	engine/starmap.html#getStarMapStats,StarMap	proc getStarMapStats(starMap: StarMap): string		477
-nim	verifyGameRules	engine/starmap.html#verifyGameRules,StarMap	proc verifyGameRules(starMap: StarMap): bool		499
-nim	isReachable	engine/starmap.html#isReachable,StarMap,uint,uint,Fleet	proc isReachable(starMap: StarMap; start: uint; goal: uint; fleet: Fleet): bool		522
-nim	findPathsInRange	engine/starmap.html#findPathsInRange,StarMap,uint,uint32,Fleet	proc findPathsInRange(starMap: StarMap; start: uint; maxCost: uint32; fleet: Fleet): seq[\n    uint]		527
-nim	getPathCost	engine/starmap.html#getPathCost,StarMap,seq[uint],Fleet	proc getPathCost(starMap: StarMap; path: seq[uint]; fleet: Fleet): uint32		556
-nim	playerSystems	engine/starmap.html#playerSystems,StarMap,uint	proc playerSystems(starMap: StarMap; playerId: uint): seq[System]		575
-nim	calculateETA	engine/starmap.html#calculateETA,StarMap,SystemId,SystemId,Fleet	proc calculateETA(starMap: StarMap; fromSystem: SystemId; toSystem: SystemId;\n             fleet: Fleet): Option[int]		587
-nim	calculateMultiFleetETA	engine/starmap.html#calculateMultiFleetETA,StarMap,SystemId,seq[Fleet]	proc calculateMultiFleetETA(starMap: StarMap; assemblyPoint: SystemId;\n                       fleets: seq[Fleet]): Option[int]		615
+nim	validateHomeworldLanes	engine/starmap.html#validateHomeworldLanes,StarMap	proc validateHomeworldLanes(starMap: StarMap): seq[string]		358
+nim	canFleetTraverseLane	engine/starmap.html#canFleetTraverseLane,Fleet,LaneType	proc canFleetTraverseLane(fleet: Fleet; laneType: LaneType): bool		382
+nim	weight	engine/starmap.html#weight,LaneType	proc weight(laneType: LaneType): uint32		396
+nim	findPath	engine/starmap.html#findPath,StarMap,uint,uint,Fleet	proc findPath(starMap: StarMap; start: uint; goal: uint; fleet: Fleet): PathResult		406
+nim	populate	engine/starmap.html#populate,StarMap	proc populate(starMap: var StarMap)		475
+nim	starMap	engine/starmap.html#starMap,int	proc starMap(playerCount: int): StarMap		500
+nim	getStarMapStats	engine/starmap.html#getStarMapStats,StarMap	proc getStarMapStats(starMap: StarMap): string		506
+nim	verifyGameRules	engine/starmap.html#verifyGameRules,StarMap	proc verifyGameRules(starMap: StarMap): bool		528
+nim	isReachable	engine/starmap.html#isReachable,StarMap,uint,uint,Fleet	proc isReachable(starMap: StarMap; start: uint; goal: uint; fleet: Fleet): bool		550
+nim	findPathsInRange	engine/starmap.html#findPathsInRange,StarMap,uint,uint32,Fleet	proc findPathsInRange(starMap: StarMap; start: uint; maxCost: uint32; fleet: Fleet): seq[\n    uint]		555
+nim	getPathCost	engine/starmap.html#getPathCost,StarMap,seq[uint],Fleet	proc getPathCost(starMap: StarMap; path: seq[uint]; fleet: Fleet): uint32		584
+nim	playerSystems	engine/starmap.html#playerSystems,StarMap,uint	proc playerSystems(starMap: StarMap; playerId: uint): seq[System]		603
+nim	calculateETA	engine/starmap.html#calculateETA,StarMap,SystemId,SystemId,Fleet	proc calculateETA(starMap: StarMap; fromSystem: SystemId; toSystem: SystemId;\n             fleet: Fleet): Option[int]		615
+nim	calculateMultiFleetETA	engine/starmap.html#calculateMultiFleetETA,StarMap,SystemId,seq[Fleet]	proc calculateMultiFleetETA(starMap: StarMap; assemblyPoint: SystemId;\n                       fleets: seq[Fleet]): Option[int]		643

@@ -1,5 +1,6 @@
 nimTitle	prestige_multiplier	engine/config/prestige_multiplier.html	module src/engine/config/prestige_multiplier		0
 nim	currentMultiplier	engine/config/prestige_multiplier.html#currentMultiplier	var currentMultiplier		10
 nim	initializePrestigeMultiplier	engine/config/prestige_multiplier.html#initializePrestigeMultiplier,int,int	proc initializePrestigeMultiplier(numSystems: int; numPlayers: int)		12
-nim	getPrestigeMultiplier	engine/config/prestige_multiplier.html#getPrestigeMultiplier	proc getPrestigeMultiplier(): float		19
-nim	applyMultiplier	engine/config/prestige_multiplier.html#applyMultiplier,int	proc applyMultiplier(baseValue: int): int		28
+nim	setPrestigeMultiplierForTesting	engine/config/prestige_multiplier.html#setPrestigeMultiplierForTesting,float	proc setPrestigeMultiplierForTesting(multiplier: float)		19
+nim	getPrestigeMultiplier	engine/config/prestige_multiplier.html#getPrestigeMultiplier	proc getPrestigeMultiplier(): float		24
+nim	applyMultiplier	engine/config/prestige_multiplier.html#applyMultiplier,int	proc applyMultiplier(baseValue: int): int		33

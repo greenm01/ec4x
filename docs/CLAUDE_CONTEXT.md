@@ -8,14 +8,14 @@
 
 1. **All enums MUST be `{.pure.}`**
 2. **No hardcoded game variables** - use TOML configs
-3. **Follow NEP-1** - see STYLE_GUIDE.md
-4. **Update TODO.md** after milestones
-5. **Run tests before commits** - `nimble test`
-6. **Max 7 markdown files in /docs root** - archive old docs to `/docs/archive/[date]/`
-7. **Add focused doc comments** when touching engine code
-8. **Engine respects fog-of-war** - use house.intelligence, not omniscient state
-9. **Use proper logging** - `std/logging`, NOT echo statements
-10. **🔴 ALWAYS use nimble tasks** - NEVER run Python/bash/nim directly
+3. **Follow DRY and existing DoD patterns**
+4. **Follow NEP-1** - see STYLE_GUIDE.md
+5. **Update TODO.md** after milestones
+6. **Run tests before commits** - `nimble test`
+7. **Max 7 markdown files in /docs root** - archive old docs to `/docs/archive/[date]/`
+8. **Add focused doc comments** when touching engine code
+9. **Engine respects fog-of-war** - use house.intelligence, not omniscient state
+10. **Use proper logging** - `std/logging`, NOT echo statements
 
 ---
 

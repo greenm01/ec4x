@@ -5,4 +5,8 @@ nim	getShipConstructionCost	engine/economy/config_accessors.html#getShipConstruc
 nim	getShipBaseBuildTime	engine/economy/config_accessors.html#getShipBaseBuildTime,ShipClass	proc getShipBaseBuildTime(shipClass: ShipClass): int		131
 nim	getBuildingCost	engine/economy/config_accessors.html#getBuildingCost,string	proc getBuildingCost(buildingType: string): int		185
 nim	getBuildingTime	engine/economy/config_accessors.html#getBuildingTime,string	proc getBuildingTime(buildingType: string): int		190
-nim	requiresSpaceport	engine/economy/config_accessors.html#requiresSpaceport,string	proc requiresSpaceport(buildingType: string): bool		195
+nim	requiresSpaceport	engine/economy/config_accessors.html#requiresSpaceport,string	proc requiresSpaceport(buildingType: string): bool		196
+nim	getShipCSTRequirement	engine/economy/config_accessors.html#getShipCSTRequirement,ShipClass	proc getShipCSTRequirement(shipClass: ShipClass): int		201
+nim	getPlanetaryShieldCost	engine/economy/config_accessors.html#getPlanetaryShieldCost,int	proc getPlanetaryShieldCost(sldLevel: int): int		210
+nim	getArmyBuildCost	engine/economy/config_accessors.html#getArmyBuildCost	proc getArmyBuildCost(): int		223
+nim	getMarineBuildCost	engine/economy/config_accessors.html#getMarineBuildCost	proc getMarineBuildCost(): int		228

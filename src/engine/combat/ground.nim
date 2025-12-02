@@ -71,6 +71,7 @@ type
     defenderCasualties*: seq[GroundUnit]
     infrastructureDestroyed*: int  # IU lost (50% on invasion success)
     assetsSeized*: bool  # True for blitz, false for invasion
+    batteriesDestroyed*: int  # Ground batteries destroyed (blitz Phase 1 bombardment)
 
 ## Bombardment CER Table (Section 7.5.1)
 
@@ -499,11 +500,15 @@ proc conductBlitz*(
 
   var rng = initRNG(seed)
   result = InvasionResult()
+  result.batteriesDestroyed = 0  # Initialize battery count
 
   # Phase 1: One round of bombardment (transports vulnerable)
   # Section 7.6.2: "Troop transports are included as individual units"
   # Note: This would need mutable fleet access, simplified for now
-  discard resolveBombardmentRound(attackingFleet, defense, rng)
+  let bombardmentResult = resolveBombardmentRound(attackingFleet, defense, rng)
+
+  # Track battery destruction for intelligence reporting
+  result.batteriesDestroyed = bombardmentResult.batteriesDestroyed
 
   # Check if transports survived (simplified - track in fleet)
   # In full implementation, transports would be in attackingFleet

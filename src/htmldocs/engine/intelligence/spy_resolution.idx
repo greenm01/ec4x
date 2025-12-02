@@ -1,0 +1,4 @@
+nimTitle	spy_resolution	engine/intelligence/spy_resolution.html	module src/engine/intelligence/spy_resolution		0
+nim	resolveSpyDetection	engine/intelligence/spy_resolution.html#resolveSpyDetection,GameState	proc resolveSpyDetection(state: var GameState): seq[string]		15
+nim	gatherIntelligence	engine/intelligence/spy_resolution.html#gatherIntelligence,GameState,SpyScout	proc gatherIntelligence(state: GameState; spy: SpyScout): Option[string]		187
+nim	resolveIntelligenceGathering	engine/intelligence/spy_resolution.html#resolveIntelligenceGathering,GameState	proc resolveIntelligenceGathering(state: GameState): Table[HouseId, seq[string]]		243

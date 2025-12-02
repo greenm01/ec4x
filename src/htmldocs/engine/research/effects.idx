@@ -1,18 +1,13 @@
 nimTitle	effects	engine/research/effects.html	module src/engine/research/effects		0
-nim	getEconomicBonus	engine/research/effects.html#getEconomicBonus,int	proc getEconomicBonus(elLevel: int): float		20
-nim	applyEconomicBonus	engine/research/effects.html#applyEconomicBonus,int,int	proc applyEconomicBonus(gco: int; elLevel: int): int		25
-nim	getWeaponsBonus	engine/research/effects.html#getWeaponsBonus,int	proc getWeaponsBonus(wepLevel: int): float		32
-nim	applyWeaponsBonus	engine/research/effects.html#applyWeaponsBonus,int,int	proc applyWeaponsBonus(baseAS: int; wepLevel: int): int		37
-nim	applyDefenseBonus	engine/research/effects.html#applyDefenseBonus,int,int	proc applyDefenseBonus(baseDS: int; wepLevel: int): int		42
-nim	getSquadronLimit	engine/research/effects.html#getSquadronLimit,int	proc getSquadronLimit(cstLevel: int): int		50
-nim	getConstructionSpeedBonus	engine/research/effects.html#getConstructionSpeedBonus,int	proc getConstructionSpeedBonus(cstLevel: int): float		58
-nim	getELIDetectionBonus	engine/research/effects.html#getELIDetectionBonus,int	proc getELIDetectionBonus(eliLevel: int): int		67
-nim	getELICounterCloakBonus	engine/research/effects.html#getELICounterCloakBonus,int	proc getELICounterCloakBonus(eliLevel: int): int		75
-nim	getTerraformingBaseCost	engine/research/effects.html#getTerraformingBaseCost,int	proc getTerraformingBaseCost(currentClass: int): int		81
-nim	getTerraformingSpeed	engine/research/effects.html#getTerraformingSpeed,int	proc getTerraformingSpeed(terLevel: int): int		101
-nim	canTerraform	engine/research/effects.html#canTerraform,int,int	proc canTerraform(currentClass: int; terLevel: int): bool		107
-nim	getCloakingDetectionDifficulty	engine/research/effects.html#getCloakingDetectionDifficulty,int	proc getCloakingDetectionDifficulty(clkLevel: int): int		117
-nim	getPlanetaryShieldStrength	engine/research/effects.html#getPlanetaryShieldStrength,int	proc getPlanetaryShieldStrength(sldLevel: int): int		127
-nim	getCICCounterEspionageBonus	engine/research/effects.html#getCICCounterEspionageBonus,int	proc getCICCounterEspionageBonus(cicLevel: int): int		136
-nim	getFighterDoctrineBonus	engine/research/effects.html#getFighterDoctrineBonus,int	proc getFighterDoctrineBonus(fdLevel: int): float		144
-nim	getCarrierCapacityBonus	engine/research/effects.html#getCarrierCapacityBonus,int	proc getCarrierCapacityBonus(acoLevel: int): int		152
+nim	getEconomicBonus	engine/research/effects.html#getEconomicBonus,int	proc getEconomicBonus(elLevel: int): float		25
+nim	applyEconomicBonus	engine/research/effects.html#applyEconomicBonus,int,int	proc applyEconomicBonus(gco: int; elLevel: int): int		30
+nim	getWeaponsBonus	engine/research/effects.html#getWeaponsBonus,int	proc getWeaponsBonus(wepLevel: int): float		37
+nim	applyWeaponsBonus	engine/research/effects.html#applyWeaponsBonus,int,int	proc applyWeaponsBonus(baseAS: int; wepLevel: int): int		42
+nim	applyDefenseBonus	engine/research/effects.html#applyDefenseBonus,int,int	proc applyDefenseBonus(baseDS: int; wepLevel: int): int		47
+nim	getConstructionCapacityMultiplier	engine/research/effects.html#getConstructionCapacityMultiplier,int	proc getConstructionCapacityMultiplier(cstLevel: int): float		55
+nim	getELICounterCloakBonus	engine/research/effects.html#getELICounterCloakBonus,int	proc getELICounterCloakBonus(eliLevel: int): int		65
+nim	getTerraformingBaseCost	engine/research/effects.html#getTerraformingBaseCost,int	proc getTerraformingBaseCost(currentClass: int): int		72
+nim	getTerraformingSpeed	engine/research/effects.html#getTerraformingSpeed,int	proc getTerraformingSpeed(terLevel: int): int		92
+nim	canTerraform	engine/research/effects.html#canTerraform,int,int	proc canTerraform(currentClass: int; terLevel: int): bool		98
+nim	getCarrierCapacityCV	engine/research/effects.html#getCarrierCapacityCV,int	proc getCarrierCapacityCV(acoLevel: int): int		131
+nim	getCarrierCapacityCX	engine/research/effects.html#getCarrierCapacityCX,int	proc getCarrierCapacityCX(acoLevel: int): int		139

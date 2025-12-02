@@ -1,7 +1,18 @@
 nimTitle	advancement	engine/research/advancement.html	module src/engine/research/advancement		0
-nim	isUpgradeTurn	engine/research/advancement.html#isUpgradeTurn,int	proc isUpgradeTurn(turn: int): bool		21
-nim	rollBreakthrough	engine/research/advancement.html#rollBreakthrough,int,Rand	proc rollBreakthrough(investedRP: int; rng: var Rand): Option[BreakthroughType]		28
-nim	applyBreakthrough	engine/research/advancement.html#applyBreakthrough,TechTree,BreakthroughType,ResearchAllocation	proc applyBreakthrough(tree: var TechTree; breakthrough: BreakthroughType;\n                  allocation: ResearchAllocation): BreakthroughEvent		57
-nim	attemptELAdvancement	engine/research/advancement.html#attemptELAdvancement,TechTree,int	proc attemptELAdvancement(tree: var TechTree; currentEL: int): Option[TechAdvancement]		106
-nim	attemptSLAdvancement	engine/research/advancement.html#attemptSLAdvancement,TechTree,int	proc attemptSLAdvancement(tree: var TechTree; currentSL: int): Option[TechAdvancement]		139
-nim	attemptTechAdvancement	engine/research/advancement.html#attemptTechAdvancement,TechTree,TechField	proc attemptTechAdvancement(tree: var TechTree; field: TechField): Option[\n    TechAdvancement]		171
+nim	maxEconomicLevel	engine/research/advancement.html#maxEconomicLevel	const maxEconomicLevel		29
+nim	maxScienceLevel	engine/research/advancement.html#maxScienceLevel	const maxScienceLevel		30
+nim	maxConstructionTech	engine/research/advancement.html#maxConstructionTech	const maxConstructionTech		31
+nim	maxWeaponsTech	engine/research/advancement.html#maxWeaponsTech	const maxWeaponsTech		32
+nim	maxTerraformingTech	engine/research/advancement.html#maxTerraformingTech	const maxTerraformingTech		33
+nim	maxElectronicIntelligence	engine/research/advancement.html#maxElectronicIntelligence	const maxElectronicIntelligence		34
+nim	maxCloakingTech	engine/research/advancement.html#maxCloakingTech	const maxCloakingTech		35
+nim	maxShieldTech	engine/research/advancement.html#maxShieldTech	const maxShieldTech		36
+nim	maxCounterIntelligence	engine/research/advancement.html#maxCounterIntelligence	const maxCounterIntelligence		37
+nim	maxFighterDoctrine	engine/research/advancement.html#maxFighterDoctrine	const maxFighterDoctrine		38
+nim	maxAdvancedCarrierOps	engine/research/advancement.html#maxAdvancedCarrierOps	const maxAdvancedCarrierOps		39
+nim	isBreakthroughTurn	engine/research/advancement.html#isBreakthroughTurn,int	proc isBreakthroughTurn(turn: int): bool		43
+nim	rollBreakthrough	engine/research/advancement.html#rollBreakthrough,int,Rand	proc rollBreakthrough(investedRP: int; rng: var Rand): Option[BreakthroughType]		51
+nim	applyBreakthrough	engine/research/advancement.html#applyBreakthrough,TechTree,BreakthroughType,ResearchAllocation	proc applyBreakthrough(tree: var TechTree; breakthrough: BreakthroughType;\n                  allocation: ResearchAllocation): BreakthroughEvent		88
+nim	attemptELAdvancement	engine/research/advancement.html#attemptELAdvancement,TechTree,int	proc attemptELAdvancement(tree: var TechTree; currentEL: int): Option[\n    ResearchAdvancement]		140
+nim	attemptSLAdvancement	engine/research/advancement.html#attemptSLAdvancement,TechTree,int	proc attemptSLAdvancement(tree: var TechTree; currentSL: int): Option[\n    ResearchAdvancement]		177
+nim	attemptTechAdvancement	engine/research/advancement.html#attemptTechAdvancement,TechTree,TechField	proc attemptTechAdvancement(tree: var TechTree; field: TechField): Option[\n    ResearchAdvancement]		214

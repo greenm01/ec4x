@@ -1,2 +1,3 @@
 nimTitle	diplomatic_resolution	engine/resolution/diplomatic_resolution.html	module src/engine/resolution/diplomatic_resolution		0
-nim	resolveDiplomaticActions	engine/resolution/diplomatic_resolution.html#resolveDiplomaticActions,GameState,Table[HouseId,OrderPacket]	proc resolveDiplomaticActions(state: var GameState;\n                         orders: Table[HouseId, OrderPacket])		16
+nim	resolveDiplomaticActions	engine/resolution/diplomatic_resolution.html#resolveDiplomaticActions,GameState,Table[HouseId,OrderPacket]	proc resolveDiplomaticActions(state: var GameState;\n                         orders: Table[HouseId, OrderPacket])		17
+nim	resolveScoutDetectionEscalations	engine/resolution/diplomatic_resolution.html#resolveScoutDetectionEscalations,GameState	proc resolveScoutDetectionEscalations(state: var GameState)		342

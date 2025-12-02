@@ -51,6 +51,39 @@ type
     cargoType*: Option[CargoType]        # Type of cargo (Marines, Colonists)
     quantity*: Option[int]               # Amount to load/unload (0 = all available)
 
+  FleetManagementAction* {.pure.} = enum
+    ## Administrative fleet reorganization actions
+    ## Execute immediately during order submission (0 turns, at friendly colonies)
+    DetachShips,   # Split ships from fleet to create new fleet
+    TransferShips, # Move ships from source fleet to target fleet
+    MergeFleets    # Merge entire source fleet into target fleet (0 turns, at colony)
+
+  FleetManagementCommand* = object
+    ## Immediate-execution fleet management command
+    ## Executes synchronously during order submission phase (NOT in OrderPacket)
+    ## Allows player to reorganize fleets at colonies, then issue orders for next turn
+    houseId*: HouseId
+    sourceFleetId*: FleetId
+    action*: FleetManagementAction
+
+    # Ship selection (by index in flat ship list from getAllShips())
+    # Includes both combat ships AND spacelift ships
+    # Note: Not used for MergeFleets (merges entire fleet)
+    shipIndices*: seq[int]
+
+    # For DetachShips: new fleet details
+    newFleetId*: Option[FleetId]  # Optional custom ID for new fleet
+
+    # For TransferShips and MergeFleets: target fleet
+    targetFleetId*: Option[FleetId]  # Existing fleet at same colony
+
+  FleetManagementResult* = object
+    ## Result of fleet management command execution
+    success*: bool
+    error*: string
+    newFleetId*: Option[FleetId]  # For DetachShips action
+    warnings*: seq[string]        # Non-fatal issues (e.g., squadron rebalancing)
+
   TerraformOrder* = object
     ## Order to terraform a planet to next class
     ## Per economy.md Section 4.7
@@ -440,6 +473,31 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
           return ValidationResult(valid: false,
                                  error: &"Build order: {shipClass} requires CST{required_cst}, house has CST{house_cst}")
 
+    # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
+    if order.buildType == BuildType.Building and order.buildingType.isSome:
+      let buildingType = order.buildingType.get()
+
+      # Check CST requirement (e.g., Starbase requires CST3)
+      let required_cst = getBuildingCSTRequirement(buildingType)
+      if required_cst > 0 and packet.houseId in state.houses:
+        let house = state.houses[packet.houseId]
+        let house_cst = house.techTree.levels.constructionTech
+
+        if house_cst < required_cst:
+          logWarn(LogCategory.lcOrders,
+                  &"{packet.houseId} Build order REJECTED: {buildingType} requires CST{required_cst}, " &
+                  &"house has CST{house_cst}")
+          return ValidationResult(valid: false,
+                                 error: &"Build order: {buildingType} requires CST{required_cst}, house has CST{house_cst}")
+
+      # Check shipyard prerequisite (e.g., Starbase requires shipyard)
+      if requiresShipyard(buildingType):
+        if not hasOperationalShipyard(colony):
+          logWarn(LogCategory.lcOrders,
+                  &"{packet.houseId} Build order REJECTED: {buildingType} requires operational shipyard at {order.colonySystem}")
+          return ValidationResult(valid: false,
+                                 error: &"Build order: {buildingType} requires operational shipyard")
+
     # Check for duplicate build orders at same colony (can only build one thing at a time)
     if colony.underConstruction.isSome:
       logWarn(LogCategory.lcOrders,
@@ -623,6 +681,8 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
     return ValidationResult(valid: false,
                            error: &"Build order: Colony not found at system {order.colonySystem}")
 
+  let colony = state.colonies[order.colonySystem]
+
   # Check CST tech requirement for ships (economy.md:4.5)
   if order.buildType == BuildType.Ship and order.shipClass.isSome:
     let shipClass = order.shipClass.get()
@@ -640,6 +700,33 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
                 &"house has CST{house_cst}")
         return ValidationResult(valid: false,
                                error: &"Build order: {shipClass} requires CST{required_cst}, house has CST{house_cst}")
+
+  # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
+  if order.buildType == BuildType.Building and order.buildingType.isSome:
+    let buildingType = order.buildingType.get()
+
+    # Check CST requirement (e.g., Starbase requires CST3)
+    let required_cst = getBuildingCSTRequirement(buildingType)
+    if required_cst > 0 and houseId in state.houses:
+      let house = state.houses[houseId]
+      let house_cst = house.techTree.levels.constructionTech
+
+      if house_cst < required_cst:
+        ctx.rejectedOrders += 1
+        logWarn(LogCategory.lcEconomy,
+                &"{houseId} Build order REJECTED: {buildingType} requires CST{required_cst}, " &
+                &"house has CST{house_cst}")
+        return ValidationResult(valid: false,
+                               error: &"Build order: {buildingType} requires CST{required_cst}, house has CST{house_cst}")
+
+    # Check shipyard prerequisite (e.g., Starbase requires shipyard)
+    if requiresShipyard(buildingType):
+      if not hasOperationalShipyard(colony):
+        ctx.rejectedOrders += 1
+        logWarn(LogCategory.lcEconomy,
+                &"{houseId} Build order REJECTED: {buildingType} requires operational shipyard at {order.colonySystem}")
+        return ValidationResult(valid: false,
+                               error: &"Build order: {buildingType} requires operational shipyard")
 
   # Calculate cost
   let cost = calculateBuildOrderCost(order, state)

@@ -1390,8 +1390,10 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
       updatedColony.armies = int(float(survivingDefenders) * armyFraction)
       updatedColony.marines = survivingDefenders - updatedColony.armies
 
-    # Update ground batteries (some may have been destroyed)
-    # TODO: Track which batteries were destroyed in blitz result
+    # Update ground batteries (destroyed during Phase 1 bombardment)
+    updatedColony.groundBatteries -= result.batteriesDestroyed
+    if updatedColony.groundBatteries < 0:
+      updatedColony.groundBatteries = 0
 
     # All attacker marines destroyed - unload ALL marines from spacelift ships
     # Marines cannot retreat once they've landed on the planet
@@ -1419,5 +1421,6 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     colony.marines,
     result.success,
     result.attackerCasualties.len,
-    result.defenderCasualties.len
+    result.defenderCasualties.len,
+    result.batteriesDestroyed
   )

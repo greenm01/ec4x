@@ -1,0 +1,23 @@
+nimTitle	iterators	engine/iterators.html	module src/engine/iterators		0
+nim	coloniesOwned	engine/iterators.html#coloniesOwned.i,GameState,HouseId	iterator coloniesOwned(state: GameState; houseId: HouseId): Colony		24
+nim	coloniesOwnedWithId	engine/iterators.html#coloniesOwnedWithId.i,GameState,HouseId	iterator coloniesOwnedWithId(state: GameState; houseId: HouseId): tuple[id: SystemId,\n    colony: Colony]		35
+nim	fleetsOwned	engine/iterators.html#fleetsOwned.i,GameState,HouseId	iterator fleetsOwned(state: GameState; houseId: HouseId): Fleet		46
+nim	fleetsOwnedWithId	engine/iterators.html#fleetsOwnedWithId.i,GameState,HouseId	iterator fleetsOwnedWithId(state: GameState; houseId: HouseId): tuple[id: FleetId,\n    fleet: Fleet]		57
+nim	spyScoutsOwned	engine/iterators.html#spyScoutsOwned.i,GameState,HouseId	iterator spyScoutsOwned(state: GameState; houseId: HouseId): SpyScout		68
+nim	spyScoutsOwnedWithId	engine/iterators.html#spyScoutsOwnedWithId.i,GameState,HouseId	iterator spyScoutsOwnedWithId(state: GameState; houseId: HouseId): tuple[id: string,\n    scout: SpyScout]		80
+nim	fleetsAtSystem	engine/iterators.html#fleetsAtSystem.i,GameState,SystemId	iterator fleetsAtSystem(state: GameState; systemId: SystemId): Fleet		88
+nim	fleetsAtSystemWithId	engine/iterators.html#fleetsAtSystemWithId.i,GameState,SystemId	iterator fleetsAtSystemWithId(state: GameState; systemId: SystemId): tuple[id: FleetId,\n    fleet: Fleet]		99
+nim	fleetsAtSystemForHouse	engine/iterators.html#fleetsAtSystemForHouse.i,GameState,SystemId,HouseId	iterator fleetsAtSystemForHouse(state: GameState; systemId: SystemId; houseId: HouseId): Fleet		111
+nim	fleetsAtSystemForHouseWithId	engine/iterators.html#fleetsAtSystemForHouseWithId.i,GameState,SystemId,HouseId	iterator fleetsAtSystemForHouseWithId(state: GameState; systemId: SystemId;\n                             houseId: HouseId): tuple[id: FleetId, fleet: Fleet]		122
+nim	spyScoutsAtSystem	engine/iterators.html#spyScoutsAtSystem.i,GameState,SystemId	iterator spyScoutsAtSystem(state: GameState; systemId: SystemId): SpyScout		128
+nim	spyScoutsAtSystemWithId	engine/iterators.html#spyScoutsAtSystemWithId.i,GameState,SystemId	iterator spyScoutsAtSystemWithId(state: GameState; systemId: SystemId): tuple[id: string,\n    scout: SpyScout]		138
+nim	blockadedColonies	engine/iterators.html#blockadedColonies.i,GameState	iterator blockadedColonies(state: GameState): Colony		146
+nim	blockadedColoniesWithId	engine/iterators.html#blockadedColoniesWithId.i,GameState	iterator blockadedColoniesWithId(state: GameState): tuple[id: SystemId, colony: Colony]		157
+nim	fleetsWithOrders	engine/iterators.html#fleetsWithOrders.i,GameState	iterator fleetsWithOrders(state: GameState): tuple[id: FleetId, fleet: Fleet,\n    order: FleetOrder]		163
+nim	fleetsWithStandingOrders	engine/iterators.html#fleetsWithStandingOrders.i,GameState	iterator fleetsWithStandingOrders(state: GameState): tuple[id: FleetId, fleet: Fleet,\n    order: StandingOrder]		173
+nim	eliminatedHouses	engine/iterators.html#eliminatedHouses.i,GameState	iterator eliminatedHouses(state: GameState): House		183
+nim	activeHouses	engine/iterators.html#activeHouses.i,GameState	iterator activeHouses(state: GameState): House		193
+nim	activeHousesWithId	engine/iterators.html#activeHousesWithId.i,GameState	iterator activeHousesWithId(state: GameState): tuple[id: HouseId, house: House]		203
+nim	allColoniesWithId	engine/iterators.html#allColoniesWithId.i,GameState	iterator allColoniesWithId(state: GameState): tuple[id: SystemId, colony: Colony]		216
+nim	allFleetsWithId	engine/iterators.html#allFleetsWithId.i,GameState	iterator allFleetsWithId(state: GameState): tuple[id: FleetId, fleet: Fleet]		226
+nim	allHousesWithId	engine/iterators.html#allHousesWithId.i,GameState	iterator allHousesWithId(state: GameState): tuple[id: HouseId, house: House]		236

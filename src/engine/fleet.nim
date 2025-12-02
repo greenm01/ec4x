@@ -285,3 +285,81 @@ proc balanceSquadrons*(f: var Fleet) =
 
       # Force add (will exceed capacity, but better than losing the ship)
       f.squadrons[maxCapacityIdx].ships.add(escort)
+
+# ============================================================================
+# Fleet Management Command Support (for administrative ship reorganization)
+# ============================================================================
+
+proc convertSpaceLiftToEnhanced(ship: SpaceLiftShip): EnhancedShip =
+  ## Convert SpaceLiftShip to EnhancedShip for unified ship listing
+  ## Used by getAllShips() to present flat list to player
+  result = EnhancedShip(
+    shipClass: ship.shipClass,
+    shipType: ShipType.Spacelift,
+    stats: getShipStats(ship.shipClass),  # Get stats from ship class
+    isCrippled: ship.isCrippled,
+    name: ship.id  # Use ship ID as name
+  )
+
+proc getAllShips*(f: Fleet): seq[EnhancedShip] =
+  ## Get flat list of all ships in fleet for player UI
+  ## Order: squadron flagships + escorts, then spacelift ships
+  ## Used by FleetManagementCommand to present ships to player
+  ## Player selects ships by index in this list
+  result = @[]
+
+  # Add all squadron ships (flagship first, then escorts)
+  for sq in f.squadrons:
+    result.add(sq.flagship)
+    for ship in sq.ships:
+      result.add(ship)
+
+  # Add spacelift ships (converted to EnhancedShip)
+  for ship in f.spaceLiftShips:
+    result.add(convertSpaceLiftToEnhanced(ship))
+
+proc translateShipIndicesToSquadrons*(f: Fleet, indices: seq[int]):
+    tuple[squadronIndices: seq[int], spaceliftIndices: seq[int]] =
+  ## Convert flat ship indices (from getAllShips()) to squadron/spacelift indices
+  ## Player selects ships by index, this translates to backend structure
+  ##
+  ## Note: Squadron index means "remove entire squadron"
+  ## (flagship always moves with its escorts)
+  ##
+  ## Returns:
+  ##   squadronIndices: Which squadrons to remove (by squadron index)
+  ##   spaceliftIndices: Which spacelift ships to remove (by spacelift array index)
+
+  var squadronIndices: seq[int] = @[]
+  var spaceliftIndices: seq[int] = @[]
+  var shipIndexToSquadron: seq[int] = @[]  # Maps ship index → squadron index
+
+  # Build mapping: ship index → squadron index
+  for sqIdx, sq in f.squadrons:
+    shipIndexToSquadron.add(sqIdx)  # Flagship
+    for _ in sq.ships:
+      shipIndexToSquadron.add(sqIdx)  # Each escort
+
+  # Calculate where spacelift ships start in flat list
+  let spaceliftStartIdx = shipIndexToSquadron.len
+
+  # Track which squadrons have ANY ship selected
+  var squadronsToRemove: seq[bool] = newSeq[bool](f.squadrons.len)
+
+  # Process each selected ship index
+  for idx in indices:
+    if idx < spaceliftStartIdx:
+      # Ship is in a squadron - mark entire squadron for removal
+      let sqIdx = shipIndexToSquadron[idx]
+      squadronsToRemove[sqIdx] = true
+    else:
+      # Ship is a spacelift ship
+      let spaceliftIdx = idx - spaceliftStartIdx
+      spaceliftIndices.add(spaceliftIdx)
+
+  # Build final squadron indices list
+  for sqIdx in 0..<f.squadrons.len:
+    if squadronsToRemove[sqIdx]:
+      squadronIndices.add(sqIdx)
+
+  result = (squadronIndices: squadronIndices, spaceliftIndices: spaceliftIndices)

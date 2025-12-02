@@ -1,0 +1,3 @@
+nimTitle	spy_travel	engine/intelligence/spy_travel.html	module src/engine/intelligence/spy_travel		0
+nim	recordScoutLoss	engine/intelligence/spy_travel.html#recordScoutLoss,GameState,string,,HouseId	proc recordScoutLoss(state: var GameState; scoutId: string;\n                eventType: intel_types.DetectionEventType;\n                detectorHouse: HouseId)		15
+nim	resolveSpyScoutTravel	engine/intelligence/spy_travel.html#resolveSpyScoutTravel,GameState	proc resolveSpyScoutTravel(state: var GameState): seq[string]		156

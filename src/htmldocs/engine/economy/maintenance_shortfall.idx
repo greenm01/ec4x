@@ -1,0 +1,10 @@
+nimTitle	maintenance_shortfall	engine/economy/maintenance_shortfall.html	module src/engine/economy/maintenance_shortfall		0
+nim	AssetType	engine/economy/maintenance_shortfall.html#AssetType	enum AssetType		26
+nim	StrippedAsset	engine/economy/maintenance_shortfall.html#StrippedAsset	object StrippedAsset		37
+nim	ShortfallCascade	engine/economy/maintenance_shortfall.html#ShortfallCascade	object ShortfallCascade		43
+nim	calculateFleetSalvageValue	engine/economy/maintenance_shortfall.html#calculateFleetSalvageValue,GameState,FleetId	proc calculateFleetSalvageValue(state: GameState; fleetId: FleetId): int		71
+nim	calculateAssetSalvageValue	engine/economy/maintenance_shortfall.html#calculateAssetSalvageValue,AssetType	proc calculateAssetSalvageValue(assetType: AssetType): int		90
+nim	calculatePrestigePenalty	engine/economy/maintenance_shortfall.html#calculatePrestigePenalty,int	proc calculatePrestigePenalty(consecutiveTurns: int): int		115
+nim	processShortfall	engine/economy/maintenance_shortfall.html#processShortfall,GameState,HouseId,int	proc processShortfall(state: GameState; houseId: HouseId; shortfall: int): ShortfallCascade		124
+nim	applyShortfallCascade	engine/economy/maintenance_shortfall.html#applyShortfallCascade,GameState,ShortfallCascade	proc applyShortfallCascade(state: var GameState; cascade: ShortfallCascade)		291
+nim	resolveMaintenanceShortfalls	engine/economy/maintenance_shortfall.html#resolveMaintenanceShortfalls,GameState	proc resolveMaintenanceShortfalls(state: var GameState)		360

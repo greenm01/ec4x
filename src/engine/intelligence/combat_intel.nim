@@ -237,7 +237,8 @@ proc generateBlitzIntelligence*(
   defendingMarines: int,
   blitzSuccess: bool,
   attackerCasualties: int,
-  defenderCasualties: int
+  defenderCasualties: int,
+  batteriesDestroyed: int
 ) =
   ## Generate intelligence reports for planetary blitz assault
   ## Both attacker and defender receive detailed after-action reports
@@ -278,7 +279,10 @@ proc generateBlitzIntelligence*(
       assetInfo.add(&"Industrial: {colony.industrial.units} IU")
       assetInfo.add(&"Population: {colony.population} PU")
       assetInfo.add(&"Defense: {colony.armies} Armies, {colony.marines} Marines")
-      assetInfo.add(&"Ground Batteries: {colony.groundBatteries}")
+      if batteriesDestroyed > 0:
+        assetInfo.add(&"Ground Batteries: {colony.groundBatteries} ({batteriesDestroyed} destroyed in bombardment)")
+      else:
+        assetInfo.add(&"Ground Batteries: {colony.groundBatteries}")
 
   # Attacker's blitz report
   let attackerOutcome = if blitzSuccess:

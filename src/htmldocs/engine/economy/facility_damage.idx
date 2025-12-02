@@ -1,0 +1,4 @@
+nimTitle	facility_damage	engine/economy/facility_damage.html	module src/engine/economy/facility_damage		0
+nim	clearFacilityQueues	engine/economy/facility_damage.html#clearFacilityQueues,Colony,	proc clearFacilityQueues(colony: var Colony; facilityType: econ_types.FacilityType)		13
+nim	clearAllConstructionQueues	engine/economy/facility_damage.html#clearAllConstructionQueues,Colony	proc clearAllConstructionQueues(colony: var Colony)		42
+nim	handleFacilityDestruction	engine/economy/facility_damage.html#handleFacilityDestruction,Colony,	proc handleFacilityDestruction(colony: var Colony;\n                          facilityType: econ_types.FacilityType)		67

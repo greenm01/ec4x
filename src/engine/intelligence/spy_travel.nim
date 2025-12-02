@@ -6,11 +6,12 @@
 ## - Minor/restricted lanes or rival territory: 1 jump/turn
 ## - Detection checks at each intermediate system
 
-import std/[tables, sequtils]
+import std/[tables, sequtils, options]
 import ../../common/types/[core, combat]
-import ../gamestate, ../fleet, ../starmap
+import ../gamestate, ../fleet, ../starmap, ../orders
 import ../diplomacy/engine as dip_engine
 import detection, types as intel_types
+import ../resolution/[fleet_orders, types as resolution_types]
 
 proc recordScoutLoss*(state: var GameState, scoutId: string,
                      eventType: intel_types.DetectionEventType,
@@ -154,48 +155,54 @@ proc checkTravelDetection(state: GameState, spyId: string,
                                      isAllyDetection: false, roll: 0, threshold: 0)
 
 proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
-  ## Move traveling spy scouts following normal jump lane movement rules:
-  ## - Controlled major lanes: 2 jumps/turn
-  ## - Minor/restricted lanes or rival territory: 1 jump/turn
-  ## Perform detection checks at intermediate systems
+  ## Move traveling spy scouts using centralized movement arbiter (DoD compliance)
+  ## - Uses resolveMovementOrder() for all movement logic
+  ## - Performs detection checks at intermediate systems
   result = @[]
 
   for spyId, spy in state.spyScouts:
     if spy.state != SpyScoutState.Traveling:
       continue
 
-    # Calculate movement capacity for this turn
-    let movementAllowance = calculateScoutMovement(state, spy)
+    # Determine target for this turn's movement
+    # Scout moves toward final targetSystem
+    let targetSystem = spy.targetSystem
 
-    # Move scout up to movement allowance
-    var jumpsThisTurn = 0
-    var updatedSpy = spy
+    # Create movement order for spy scout
+    let moveOrder = FleetOrder(
+      fleetId: spyId,  # Spy scout ID used as fleet ID
+      orderType: FleetOrderType.Move,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0
+    )
 
-    while updatedSpy.currentPathIndex < updatedSpy.travelPath.len and jumpsThisTurn < movementAllowance:
-      let nextSystem = updatedSpy.travelPath[updatedSpy.currentPathIndex]
+    # Use centralized movement arbiter (DoD compliance)
+    var events: seq[resolution_types.GameEvent] = @[]
+    let oldLocation = spy.location
 
-      # Update scout location
-      updatedSpy.location = nextSystem
-      updatedSpy.currentPathIndex += 1
-      jumpsThisTurn += 1
+    fleet_orders.resolveMovementOrder(
+      state,
+      spy.owner,
+      moveOrder,
+      events,
+      spyScoutId = some(spyId)  # Signals spy scout mode
+    )
 
-      # Check if arrived at target
-      if nextSystem == updatedSpy.targetSystem:
-        updatedSpy.state = SpyScoutState.OnMission
-        state.spyScouts[spyId] = updatedSpy
-        result.add("Spy scout " & spyId & " arrived at target " & $nextSystem &
-                  " (" & $jumpsThisTurn & " jumps)")
-        break  # Stop moving, arrived at destination
+    # Check if scout moved
+    var updatedSpy = state.spyScouts[spyId]
+    let newLocation = updatedSpy.location
 
-      # Perform detection check at intermediate system
-      let detectionResult = checkTravelDetection(state, spyId, nextSystem)
+    if newLocation != oldLocation:
+      # Scout moved - perform detection check at new location
+      let detectionResult = checkTravelDetection(state, spyId, newLocation)
+
       if detectionResult.detected:
         if detectionResult.isAllyDetection:
           # Ally detected scout during transit - no destruction, no escalation
           result.add("Spy scout " & spyId & " detected by ally " &
                     $detectionResult.detectorHouse & " in transit through " &
-                    $nextSystem & " (allowed passage)")
-          # Optionally: notify spy owner that their ally saw the scout
+                    $newLocation & " (allowed passage)")
         else:
           # Non-ally detected scout - destroy but NO escalation for passive transit
           updatedSpy.state = SpyScoutState.Detected
@@ -207,14 +214,15 @@ proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
                          detectionResult.detectorHouse)
 
           result.add("Spy scout " & spyId & " detected traveling through " &
-                    $nextSystem & " by " & $detectionResult.detectorHouse &
+                    $newLocation & " by " & $detectionResult.detectorHouse &
                     " (destroyed)")
-          break  # Stop moving, scout destroyed
+          continue  # Scout destroyed, skip to next scout
 
-    # Update scout if still traveling and made progress
-    if spy.state == SpyScoutState.Traveling and jumpsThisTurn > 0 and
-       updatedSpy.state == SpyScoutState.Traveling:
-      state.spyScouts[spyId] = updatedSpy
-      result.add("Spy scout " & spyId & " traveled " & $jumpsThisTurn &
-                " jump" & (if jumpsThisTurn > 1: "s" else: "") &
-                " (undetected)")
+      # Check if arrived at target
+      if newLocation == spy.targetSystem:
+        updatedSpy.state = SpyScoutState.OnMission
+        state.spyScouts[spyId] = updatedSpy
+        result.add("Spy scout " & spyId & " arrived at target " & $newLocation)
+      else:
+        # Still traveling
+        result.add("Spy scout " & spyId & " traveled to system " & $newLocation & " (undetected)")
