@@ -22,20 +22,32 @@ proc generateEconomicRequirements*(
   logDebug(LogCategory.lcAI,
            &"{controller.houseId} Eparch: Generating economic requirements")
 
-  var requirements: seq[Requirement] = @[]
+  var requirements: seq[EconomicRequirement] = @[]
   var totalCost = 0
 
   # Generate IU investment opportunities
   let iuOpportunities = generateIUInvestmentRecommendations(controller, filtered)
 
   for opportunity in iuOpportunities:
-    # Convert IU investment opportunity to Requirement
-    requirements.add(Requirement(
-      requirementType: RequirementType.Economic,
-      priority: opportunity.priority,
+    # Convert float priority (0.0-1.0) to RequirementPriority enum
+    let priorityEnum = if opportunity.priority >= 0.75:
+                         RequirementPriority.Critical
+                       elif opportunity.priority >= 0.50:
+                         RequirementPriority.High
+                       elif opportunity.priority >= 0.25:
+                         RequirementPriority.Medium
+                       else:
+                         RequirementPriority.Low
+
+    # Convert IU investment opportunity to EconomicRequirement
+    requirements.add(EconomicRequirement(
+      requirementType: EconomicRequirementType.IUInvestment,
+      priority: priorityEnum,
+      targetColony: opportunity.colonyId,
+      facilityType: none(string),  # Not a facility
+      terraformTarget: none(PlanetClass),  # Not terraforming
       estimatedCost: opportunity.investmentCost,
-      description: opportunity.reason,
-      targetSystem: some(opportunity.colonyId)
+      reason: opportunity.reason
     ))
     totalCost += opportunity.investmentCost
 
@@ -51,21 +63,27 @@ proc generateEconomicRequirements*(
   for order in terraformOrders:
     # Terraforming is high priority (permanent population capacity increase)
     # Priority scaled by cost (expensive upgrades need higher priority)
-    let priority = 0.7 + (float(order.ppCost) / 5000.0)  # 0.7-0.9 range
+    let priorityScore = 0.7 + (float(order.ppCost) / 5000.0)  # 0.7-0.9 range
+    let priorityEnum = if priorityScore >= 0.75:
+                         RequirementPriority.Critical
+                       else:
+                         RequirementPriority.High
 
-    requirements.add(Requirement(
-      requirementType: RequirementType.Economic,
-      priority: priority,
+    requirements.add(EconomicRequirement(
+      requirementType: EconomicRequirementType.Terraforming,
+      priority: priorityEnum,
+      targetColony: order.colonySystem,
+      facilityType: none(string),  # Not a facility
+      terraformTarget: some(order.targetPlanetClass),
       estimatedCost: order.ppCost,
-      description: "Terraform colony to improve capacity and productivity",
-      targetSystem: some(order.colonySystem)
+      reason: "Terraform colony to improve capacity and productivity"
     ))
     totalCost += order.ppCost
 
     logDebug(LogCategory.lcAI,
              &"{controller.houseId} Eparch: Terraforming opportunity at {order.colonySystem}: " &
              &"upgrade for {order.ppCost} PP in {order.turnsRemaining} turns " &
-             &"(priority {priority:.2f})")
+             &"(priority {priorityScore:.2f})")
 
   result = EconomicRequirements(
     requirements: requirements,
