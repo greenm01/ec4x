@@ -3,7 +3,7 @@
 ## Evaluates IU investment opportunities and calculates ROI
 ## Understands passive IU growth rates and when manual investment is beneficial
 
-import std/[options, math]
+import std/[options, math, algorithm]
 import ../../../common/types/[core, units]
 import ../../../engine/gamestate
 import ../../../engine/fog_of_war
@@ -172,7 +172,7 @@ proc generateIUInvestmentRecommendations*(
   for colony in filtered.ownColonies:
     let opportunity = evaluateIUInvestment(
       colony,
-      house.techLevels.economicLevel,
+      house.techTree.levels.economicLevel,
       house.treasury,
       filtered.turn,
       controller.strategy
