@@ -113,7 +113,7 @@ type
     totalBudgetSpent*: int
 
   EconomicRequirementType* {.pure.} = enum
-    Facility, Terraforming, TaxPolicy, PopulationTransfer
+    Facility, Terraforming, TaxPolicy, PopulationTransfer, IUInvestment
 
   EconomicRequirement* = object
     ## Eparch requirement for infrastructure and economy
