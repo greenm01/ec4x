@@ -4,9 +4,9 @@
 ## without requiring full AI implementation.
 
 import std/[json, tables, times, strformat, random, math, algorithm, strutils, os]
-import ../../src/engine/[gamestate, orders]
-import ../../src/common/types/[core, units, planets, tech]
-import ../../src/engine/config/[gameplay_config, prestige_config]
+import ../../engine/[gamestate, orders]
+import ../../common/types/[core, units, planets, tech]
+import ../../engine/config/[gameplay_config, prestige_config]
 
 # =============================================================================
 # Simplified Test Data Generation

@@ -7,8 +7,8 @@
 ## metrics, and context for balance evaluation.
 
 import std/[json, tables, options, strformat, times, os]
-import ../../src/engine/[gamestate, resolve, orders]
-import ../../src/common/types/[core, units, planets, tech]
+import ../../engine/[gamestate, resolve, orders]
+import ../../common/types/[core, units, planets, tech]
 
 # =============================================================================
 # JSON Export Types

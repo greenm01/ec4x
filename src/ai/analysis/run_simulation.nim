@@ -5,13 +5,13 @@
 
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
 import game_setup, diagnostics, balance_test_config  # Test-specific modules
-import ../../src/ai/rba/player as ai
-import ../../src/ai/common/types  # For AIStrategy type
-import ../../src/engine/[gamestate, resolve, orders, fog_of_war, setup]
-import ../../src/common/types/core
-import ../../src/client/reports/turn_report
-import ../../src/engine/research/types as res_types
-import ../../src/engine/espionage/types as esp_types
+import ../../ai/rba/player as ai
+import ../../ai/common/types  # For AIStrategy type
+import ../../engine/[gamestate, resolve, orders, fog_of_war, setup]
+import ../../common/types/core
+import ../../client/reports/turn_report
+import ../../engine/research/types as res_types
+import ../../engine/espionage/types as esp_types
 
 proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 3): JsonNode =
   ## Run a full game simulation with AI players

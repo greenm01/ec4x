@@ -7,13 +7,15 @@ license       = "MIT"
 srcDir        = "src"
 binDir        = "bin"
 # Note: nimble will look for src/main/moderator.nim and src/main/client.nim
-bin           = @["main/moderator", "main/client"]  # daemon not ready yet (needs Nostr dependencies)
+bin           = @["main/moderator", "main/client", "cli/ec4x"]  # daemon not ready yet (needs Nostr dependencies)
 
 # Dependencies
 
 requires "nim >= 2.0.0"
 requires "cligen >= 1.7.0"
 requires "toml_serialization >= 0.2.0"
+requires "datamancer >= 0.4.0"
+requires "terminaltables >= 0.1.0"
 
 # Future Nostr dependencies (TODO: uncomment when implementing)
 # requires "websocket >= 0.5.0"
@@ -224,67 +226,77 @@ task demo, "Build and run a quick demo":
 
 # Balance Testing Tasks
 
-task buildBalance, "Build balance test simulation binary":
-  echo "Building balance test simulation binary..."
+task buildSimulation, "Build simulation binary":
+  echo "Building simulation binary..."
   echo "Using --forceBuild to ensure clean compilation"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
-  echo "Balance test binary built successfully!"
-  echo "Git hash: $(cat tests/balance/.build_git_hash)"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  echo "Simulation binary built successfully!"
+  echo "Git hash: $(cat bin/.build_git_hash)"
 
 task testBalanceQuick, "Quick balance validation (7 turns, 20 games)":
   echo "Running quick balance validation (7 turns, 20 games)..."
-  echo "Cleaning old diagnostics to prevent confusion..."
-  exec "rm -rf balance_results/diagnostics/*.csv"
-  echo "Forcing clean rebuild to prevent stale binary bugs..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
+  echo "Cleaning old diagnostics..."
+  exec "bin/ec4x 'data clean-all' --backup"
+  echo "Building simulation binary..."
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 8 --games 20 --turns 7"
+  echo "Analyzing results..."
+  exec "bin/ec4x 'analyze all'"
   echo "Quick balance validation completed!"
 
 task testBalanceAct1, "Act 1: Land Grab (7 turns, 100 games)":
   echo "Running Act 1 validation (7 turns, 100 games)..."
-  echo "Cleaning old diagnostics to prevent confusion..."
-  exec "rm -rf balance_results/diagnostics/*.csv"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
+  echo "Cleaning old diagnostics..."
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
+  echo "Analyzing results..."
+  exec "bin/ec4x 'analyze all'"
   echo "Act 1 validation completed!"
 
 task testBalanceAct2, "Act 2: Rising Tensions (15 turns, 100 games)":
   echo "Running Act 2 validation (15 turns, 100 games)..."
-  echo "Cleaning old diagnostics to prevent confusion..."
-  exec "rm -rf balance_results/diagnostics/*.csv"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
+  echo "Cleaning old diagnostics..."
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 15"
+  echo "Analyzing results..."
+  exec "bin/ec4x 'analyze all'"
   echo "Act 2 validation completed!"
 
 task testBalanceAct3, "Act 3: Total War (25 turns, 100 games)":
   echo "Running Act 3 validation (25 turns, 100 games)..."
-  echo "Cleaning old diagnostics to prevent confusion..."
-  exec "rm -rf balance_results/diagnostics/*.csv"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
+  echo "Cleaning old diagnostics..."
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 25"
+  echo "Analyzing results..."
+  exec "bin/ec4x 'analyze all'"
   echo "Act 3 validation completed!"
 
 task testBalanceAct4, "Act 4: Endgame (30 turns, 100 games)":
   echo "Running Act 4 validation (30 turns, 100 games)..."
-  echo "Cleaning old diagnostics to prevent confusion..."
-  exec "rm -rf balance_results/diagnostics/*.csv"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
+  echo "Cleaning old diagnostics..."
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
+  echo "Analyzing results..."
+  exec "bin/ec4x 'analyze all'"
   echo "Act 4 validation completed!"
 
 task testBalanceAll4Acts, "Test all 4 acts sequentially (7, 15, 25, 30 turns)":
   echo "Running complete 4-act validation suite..."
-  echo "Cleaning old diagnostics to prevent confusion..."
-  exec "rm -rf balance_results/diagnostics/*.csv"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
-  echo "Git hash: $(cat tests/balance/.build_git_hash)"
+  echo "Cleaning old diagnostics..."
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  echo "Git hash: $(cat bin/.build_git_hash)"
   echo "\n=== Act 1: Land Grab (7 turns) ==="
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
   echo "\n=== Act 2: Rising Tensions (15 turns) ==="
@@ -293,248 +305,217 @@ task testBalanceAll4Acts, "Test all 4 acts sequentially (7, 15, 25, 30 turns)":
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 25"
   echo "\n=== Act 4: Endgame (30 turns) ==="
   exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
+  echo "\nAnalyzing all results..."
+  exec "bin/ec4x 'analyze all'"
   echo "\nAll 4 acts validated! Total: 400 games"
 
 task cleanBalance, "Clean balance test artifacts":
   echo "Cleaning balance test artifacts..."
-  exec "rm -f tests/balance/run_simulation"
-  exec "rm -rf balance_results/diagnostics/*.csv"
-  exec "rm -f balance_results/diagnostics_combined.parquet"
-  exec "rm -f balance_results/summary.json"
+  exec "rm -f bin/run_simulation"
+  exec "bin/ec4x 'data clean'"
   echo "Balance test artifacts cleaned!"
-  echo "Note: Restic archives preserved in ~/.ec4x_test_data"
 
-task cleanBalanceAll, "Clean ALL balance data including restic archives":
-  echo "Cleaning ALL balance test data (including restic archives)..."
-  exec "rm -f tests/balance/run_simulation"
-  exec "rm -rf balance_results/*"
-  exec "rm -rf ~/.ec4x_test_data"
-  echo "All balance data cleaned (including archived diagnostics)!"
+task cleanBalanceAll, "Clean ALL balance data including archives":
+  echo "Cleaning ALL balance test data (including archives)..."
+  exec "rm -f bin/run_simulation"
+  exec "bin/ec4x 'data clean-all'"
+  echo "All balance data cleaned!"
   echo "⚠ Warning: This deletes historical test data permanently"
 
-task cleanDiagnostics, "Clean diagnostic CSVs only (keeps Parquet/summary)":
+task cleanDiagnostics, "Clean diagnostic CSVs only":
   echo "Cleaning diagnostic CSV files..."
   exec "rm -rf balance_results/diagnostics/*.csv"
   echo "Diagnostic CSV files cleaned!"
-  echo "Kept: summary.json and diagnostics_combined.parquet"
 
 task listArchives, "List all archived diagnostic runs":
   echo "Listing archived diagnostic runs..."
-  exec "python3 tools/ai_tuning/manage_archives.py list"
+  exec "bin/ec4x 'data archives'"
 
-task archiveStats, "Show restic archive statistics":
-  echo "Showing archive statistics..."
-  exec "python3 tools/ai_tuning/manage_archives.py stats"
-
-task pruneArchives, "Prune old archives (keep last 10)":
-  echo "Pruning old diagnostic archives..."
-  exec "python3 tools/ai_tuning/manage_archives.py prune 10"
-  echo "Note: To keep different number: python3 tools/ai_tuning/manage_archives.py prune <N>"
+task archiveStats, "Show analysis data status":
+  echo "Showing analysis data status..."
+  exec "bin/ec4x 'data info'"
 
 # Advanced Balance Testing Tasks
 
 task testBalanceDiagnostics, "Run diagnostic tests with CSV output (50 games, 30 turns)":
   echo "Running diagnostic balance tests (50 games, 30 turns)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
-  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 50 30 16"
-  echo "Diagnostic tests completed! Results in balance_results/diagnostics/"
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 50 --turns 30"
+  echo "Analyzing results..."
+  exec "bin/ec4x 'analyze all'"
+  echo "Diagnostic tests completed! Results in balance_results/"
 
 task testUnknownUnknowns, "Unknown-unknowns detection (200 games, full diagnostics)":
   echo "Running unknown-unknowns detection suite (200 games, 30 turns)..."
   echo "This generates comprehensive CSV data for pattern analysis"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
-  echo "Git hash: $(cat tests/balance/.build_git_hash)"
-  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 200 30 16"
-  echo "\nRunning automatic gap analysis..."
-  exec "python3 tools/ai_tuning/analyze_phase2_gaps.py"
-  echo "\nGenerating AI-friendly summary..."
-  exec "python3 tools/ai_tuning/generate_summary.py --format json --output balance_results/summary.json"
-  echo "Summary written to balance_results/summary.json"
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  echo "Git hash: $(cat bin/.build_git_hash)"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 200 --turns 30"
+  echo "\nGenerating all analysis reports..."
+  exec "bin/ec4x 'analyze all'"
   echo "\nUnknown-unknowns detection completed!"
-  echo "Review analysis output above for anomalies and red flags."
+  echo "Check balance_results/reports/latest.md for detailed analysis"
 
-task analyzeDiagnostics, "Analyze diagnostic CSV files for Phase 2 gaps":
-  echo "Analyzing diagnostic data for Phase 2 gaps..."
-  exec "python3 tools/ai_tuning/analyze_phase2_gaps.py"
+# Data Analysis Tasks (Pure Nim - using ec4x CLI)
+# NOTE: All Python-based analysis tasks have been replaced with ec4x commands
 
-task analyzeProgression, "Analyze 4-act game progression":
-  echo "Analyzing 4-act progression..."
-  exec "python3 tools/ai_tuning/analyze_4act_progression.py"
-
-task summarizeDiagnostics, "Generate AI-friendly JSON summary (minimal tokens)":
-  echo "Generating AI-friendly diagnostic summary..."
-  exec "python3 tools/ai_tuning/generate_summary.py --format json --output balance_results/summary.json"
-  echo "Summary written to balance_results/summary.json"
-  echo ""
-  echo "Human-readable version:"
-  exec "python3 tools/ai_tuning/generate_summary.py --format human"
-
-task convertToParquet, "Convert CSV diagnostics to Parquet format":
-  echo "Converting diagnostic CSVs to Parquet..."
-  exec "python3 tools/ai_tuning/convert_to_parquet.py"
-  echo "Conversion complete! Use Polars to analyze balance_results/diagnostics_combined.parquet"
-
-# Data Analysis Tasks (Terminal-Based)
-
-task analyzePerformance, "Analyze RBA strategy performance from diagnostic CSVs":
-  echo "Analyzing RBA performance by strategy..."
-  exec "python3 tools/ai_tuning/analyze_performance.py"
+task analyzePerformance, "Analyze RBA strategy performance (REPLACED - use analyzeFull)":
+  echo "⚠️  This task has been replaced by 'analyzeFull' using pure Nim"
+  echo "Use: nimble analyzeFull"
+  exec "bin/ec4x 'analyze full'"
 
 task balanceDiagnostic, "Run 100-game diagnostic + analysis":
   echo "Cleaning old diagnostic data..."
-  exec "rm -rf balance_results/diagnostics"
-  exec "mkdir -p balance_results/diagnostics"
+  exec "bin/ec4x 'data clean-all' --backup"
   echo "Running 100-game diagnostic..."
-  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 100 7 16 --no-archive"
-  echo "\n📊 Analyzing results..."
-  exec "python3 tools/ai_tuning/analyze_performance.py"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
+  echo "\nAnalyzing results..."
+  exec "bin/ec4x 'analyze all'"
 
 task balanceQuickCheck, "Quick balance check (20 games + analysis)":
   echo "Cleaning old diagnostic data..."
-  exec "rm -rf balance_results/diagnostics"
-  exec "mkdir -p balance_results/diagnostics"
+  exec "bin/ec4x 'data clean-all' --backup"
   echo "Running quick balance check (20 games)..."
-  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 20 7 8 --no-archive"
-  echo "\n📊 Analyzing results..."
-  exec "python3 tools/ai_tuning/analyze_performance.py"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "python3 run_balance_test_parallel.py --workers 8 --games 20 --turns 7"
+  echo "\nAnalyzing results..."
+  exec "bin/ec4x 'analyze all'"
 
-task analyzeBalance, "Full analysis workflow: convert → analyze → report":
+task analyzeBalance, "Full analysis workflow (all report formats)":
   echo "Running full balance analysis workflow..."
-  echo "\n=== Step 1: Convert CSV to Parquet ==="
-  exec "python3 tools/ai_tuning/convert_to_parquet.py"
-  echo "\n=== Step 2: Phase 2 Gap Analysis ==="
-  exec "python3 -m analysis.cli phase2"
-  echo "\n=== Step 3: Generate Markdown Report ==="
-  exec "python3 -m analysis.reports balance_results/diagnostics_combined.parquet balance_results/analysis_report.md"
+  exec "bin/ec4x 'analyze all'"
   echo "\n✅ Analysis complete!"
-  echo "   • Parquet: balance_results/diagnostics_combined.parquet"
-  echo "   • Report: balance_results/analysis_report.md"
+  echo "   • Terminal:  balance_results/reports/terminal_*.txt"
+  echo "   • Compact:   balance_results/summaries/compact_*.md"
+  echo "   • Detailed:  balance_results/reports/detailed_*.md"
+  echo "   • Latest:    balance_results/reports/latest.md"
 
 task balanceSummary, "Quick terminal summary of diagnostic data":
-  # Ensure Parquet file exists (auto-convert if needed)
-  if not fileExists("balance_results/diagnostics_combined.parquet"):
-    echo "Converting CSV to Parquet..."
-    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
-  echo "Showing balance summary..."
-  exec "python3 -m analysis.cli summary"
-
-task balanceByHouse, "Aggregate metrics by house":
-  # Ensure Parquet file exists (auto-convert if needed)
-  if not fileExists("balance_results/diagnostics_combined.parquet"):
-    echo "Converting CSV to Parquet..."
-    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
-  echo "Analyzing metrics by house..."
-  exec "python3 -m analysis.cli by-house"
-
-task balanceByTurn, "Aggregate metrics by turn":
-  # Ensure Parquet file exists (auto-convert if needed)
-  if not fileExists("balance_results/diagnostics_combined.parquet"):
-    echo "Converting CSV to Parquet..."
-    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
-  echo "Analyzing metrics by turn..."
-  exec "python3 -m analysis.cli by-turn"
-
-task balanceOutliers, "Detect outliers in key metrics":
-  # Ensure Parquet file exists (auto-convert if needed)
-  if not fileExists("balance_results/diagnostics_combined.parquet"):
-    echo "Converting CSV to Parquet..."
-    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
-  echo "Detecting outliers in key metrics..."
-  echo "\n--- Total Fighters ---"
-  exec "python3 -m analysis.cli outliers total_fighters"
-  echo "\n--- Capacity Violations ---"
-  exec "python3 -m analysis.cli outliers capacity_violations"
-  echo "\n--- Invalid Orders ---"
-  exec "python3 -m analysis.cli outliers invalid_orders"
-
-task balancePhase2, "Phase 2 gap analysis (terminal output)":
-  # Ensure Parquet file exists (auto-convert if needed)
-  if not fileExists("balance_results/diagnostics_combined.parquet"):
-    echo "Converting CSV to Parquet..."
-    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
-  echo "Running Phase 2 gap analysis..."
-  exec "python3 -m analysis.cli phase2"
-
-task balanceExport, "Export summary data to CSV for Excel/LibreOffice":
-  # Ensure Parquet file exists (auto-convert if needed)
-  if not fileExists("balance_results/diagnostics_combined.parquet"):
-    echo "Converting CSV to Parquet..."
-    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
-  echo "Exporting summary data to CSV..."
-  exec "python3 -m analysis.cli export balance_results/summary_by_house.csv --type by_house"
-  echo "✅ Exported to balance_results/summary_by_house.csv"
-  echo "   Open in Excel/LibreOffice for pivot tables and charts"
+  exec "bin/ec4x 'analyze summary'"
 
 task balanceReport, "Generate Markdown report (git-committable)":
-  # Ensure Parquet file exists (auto-convert if needed)
-  if not fileExists("balance_results/diagnostics_combined.parquet"):
-    echo "Converting CSV to Parquet..."
-    exec "python3 tools/ai_tuning/convert_to_parquet.py --diagnostics-dir balance_results/diagnostics --output balance_results/diagnostics_combined.parquet"
-  echo "Generating Markdown analysis report..."
-  exec "python3 -m analysis.reports balance_results/diagnostics_combined.parquet balance_results/analysis_report.md"
-  echo "✅ Report generated: balance_results/analysis_report.md"
+  echo "Generating detailed markdown report..."
+  exec "bin/ec4x 'analyze detailed'"
+  echo "✅ Report generated: See balance_results/reports/latest.md"
   echo "   Commit to git for documentation"
 
 task testMapSizes, "Test balance across different map sizes":
   echo "Testing different map sizes (4, 8, 12 players)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 run_map_size_test.py"
   echo "Map size tests completed!"
 
 task testStressAI, "AI stress test (1000 games, crash and behavior detection)":
   echo "Running AI stress test (1000 games, 30 turns each)..."
   echo "This tests AI stability and identifies edge cases"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "git rev-parse --short HEAD > tests/balance/.build_git_hash"
-  echo "Git hash: $(cat tests/balance/.build_git_hash)"
-  exec "python3 tests/balance/run_parallel_diagnostics.py 1000 30 16"
-  echo "AI stress test completed! Check balance_results/diagnostics/ for anomalies"
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  echo "Git hash: $(cat bin/.build_git_hash)"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 1000 --turns 30"
+  echo "\nAnalyzing results..."
+  exec "bin/ec4x 'analyze all'"
+  echo "AI stress test completed! Check balance_results/reports/latest.md"
 
 # AI Tuning & Optimization Tasks
 
 task buildAITuning, "Build AI tuning tools (genetic algorithm)":
   echo "Building AI tuning tools..."
-  mkDir "tools/ai_tuning/bin"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/genetic_ai tools/ai_tuning/genetic_ai.nim"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/evolve_ai tools/ai_tuning/evolve_ai.nim"
-  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/coevolution tools/ai_tuning/coevolution.nim"
+  mkDir "bin"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/genetic_ai src/ai/tuning/genetic/genetic_ai.nim"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/evolve_ai src/ai/tuning/genetic/evolve_ai.nim"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/coevolution src/ai/tuning/genetic/coevolution.nim"
   echo "AI tuning tools built successfully!"
-  echo "Binaries: tools/ai_tuning/bin/{genetic_ai,evolve_ai,coevolution}"
+  echo "Binaries: bin/{genetic_ai,evolve_ai,coevolution}"
 
 task evolveAI, "Evolve AI personalities via genetic algorithm (50 gen, 20 pop)":
   echo "Evolving AI personalities via genetic algorithm..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/evolve_ai tools/ai_tuning/evolve_ai.nim"
-  exec "tools/ai_tuning/bin/evolve_ai --generations 50 --population 20 --games 4"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/evolve_ai src/ai/tuning/genetic/evolve_ai.nim"
+  exec "bin/evolve_ai --generations 50 --population 20 --games 4"
   echo "Evolution completed! Results in balance_results/evolution/"
 
 task evolveAIQuick, "Quick AI evolution test (10 gen, 10 pop)":
   echo "Running quick AI evolution test..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/evolve_ai tools/ai_tuning/evolve_ai.nim"
-  exec "tools/ai_tuning/bin/evolve_ai --generations 10 --population 10 --games 2"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/evolve_ai src/ai/tuning/genetic/evolve_ai.nim"
+  exec "bin/evolve_ai --generations 10 --population 10 --games 2"
   echo "Quick evolution completed! Results in balance_results/evolution/"
 
 task coevolveAI, "Competitive co-evolution (4 species, 20 generations)":
   echo "Running competitive co-evolution..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tools/ai_tuning/bin/coevolution tools/ai_tuning/coevolution.nim"
-  exec "tools/ai_tuning/bin/coevolution"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/coevolution src/ai/tuning/genetic/coevolution.nim"
+  exec "bin/coevolution"
   echo "Co-evolution completed! Results in balance_results/coevolution/"
 
 task tuneAIDiagnostics, "Run diagnostics for AI tuning (100 games, full CSV)":
   echo "Running AI tuning diagnostics (100 games, 30 turns)..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:tests/balance/run_simulation tests/balance/run_simulation.nim"
-  exec "python3 tools/ai_tuning/run_parallel_diagnostics.py 100 30 16"
-  echo "\nAnalyzing Phase 2 gaps..."
-  exec "python3 tools/ai_tuning/analyze_phase2_gaps.py"
-  echo "\nAnalyzing 4-act progression..."
-  exec "python3 tools/ai_tuning/analyze_4act_progression.py"
+  exec "bin/ec4x 'data clean-all' --backup"
+  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "python3 run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
+  echo "\nAnalyzing results..."
+  exec "bin/ec4x 'analyze all'"
   echo "AI tuning diagnostics completed!"
 
 task cleanAITuning, "Clean AI tuning artifacts":
   echo "Cleaning AI tuning artifacts..."
-  exec "rm -rf tools/ai_tuning/bin/"
+  exec "rm -f bin/genetic_ai bin/evolve_ai bin/coevolution"
   exec "rm -rf balance_results/evolution/"
   exec "rm -rf balance_results/coevolution/"
   echo "AI tuning artifacts cleaned!"
+
+# ==============================================================================
+# EC4X Analysis CLI Tasks (Pure Nim - replaces Python scripts)
+# ==============================================================================
+
+task analyzeSummary, "Quick diagnostic summary (terminal)":
+  echo "Generating quick summary..."
+  exec "bin/ec4x --summary"
+
+task analyzeFull, "Full diagnostic analysis (terminal with tables)":
+  echo "Generating full terminal analysis..."
+  exec "bin/ec4x --full"
+
+task analyzeCompact, "Generate compact AI-friendly summary (~1500 tokens)":
+  echo "Generating compact markdown summary..."
+  exec "bin/ec4x --compact"
+
+task analyzeDetailed, "Generate detailed markdown report":
+  echo "Generating detailed markdown report..."
+  exec "bin/ec4x --detailed"
+
+task analyzeAll, "Generate all report formats":
+  echo "Generating all report formats..."
+  exec "bin/ec4x --all"
+
+task dataInfo, "Show current analysis data status":
+  exec "bin/ec4x --info"
+
+task dataClean, "Clean old analysis data (keep last 5 reports, 10 summaries)":
+  exec "bin/ec4x --clean"
+
+task dataCleanAll, "Clean ALL analysis data with backup":
+  exec "bin/ec4x --clean-all"
+
+task dataArchives, "List archived diagnostic backups":
+  exec "bin/ec4x --archives"
+
+# Build ec4x CLI tool
+task buildAnalysis, "Build ec4x analysis CLI tool":
+  echo "Building ec4x analysis CLI..."
+  mkDir "bin"
+  exec "nim c -d:release --opt:speed -o:bin/ec4x src/cli/ec4x.nim"
+  echo "ec4x CLI built successfully: bin/ec4x"
+  echo ""
+  echo "Usage examples:"
+  echo "  bin/ec4x --summary          # Quick summary"
+  echo "  bin/ec4x --full             # Full analysis with tables"
+  echo "  bin/ec4x --compact          # Token-efficient (~1500 tokens)"
+  echo "  bin/ec4x --all              # All formats"
+  echo "  bin/ec4x --info             # Show data status"
+  echo "  bin/ec4x --help             # Full help"
+

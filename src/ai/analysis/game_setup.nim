@@ -4,10 +4,10 @@
 ## Uses existing engine initialization functions
 
 import std/[tables, options, random, strformat, sequtils, strutils, algorithm]
-import ../../src/engine/[gamestate, starmap, fleet, squadron, spacelift]
-import ../../src/engine/config/[prestige_multiplier, house_themes, gameplay_config]
-import ../../src/common/types/[core, units, planets, tech]
-import ../../src/common/[hex, system]
+import ../../engine/[gamestate, starmap, fleet, squadron, spacelift]
+import ../../engine/config/[prestige_multiplier, house_themes, gameplay_config]
+import ../../common/types/[core, units, planets, tech]
+import ../../common/[hex, system]
 
 export gamestate.initializeHouse, gamestate.createHomeColony
 export squadron.createSquadron
