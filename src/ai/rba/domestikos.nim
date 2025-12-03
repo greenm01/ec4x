@@ -49,10 +49,12 @@ type
 # Note: Sub-modules will import these types directly from this file
 
 # Now import sub-modules (they will see our type definitions)
-import ./domestikos/[fleet_analysis, defensive_ops, offensive_ops, staging, build_requirements, exploration_ops]
+import ./domestikos/[fleet_analysis, defensive_ops, offensive_ops, staging, build_requirements, exploration_ops, fleet_management]
 
 # Export build_requirements functions for Domestikos-Treasurer feedback loop
 export build_requirements.reprioritizeRequirements
+# Export fleet_management for ZeroTurnCommand operations
+export fleet_management.generateFleetManagementCommands
 
 proc determineStrategy(currentAct: ai_types.GameAct, personality: AIPersonality): DomestikosStrategy =
   ## Determine domestikos strategy based on game act and AI personality
@@ -210,8 +212,18 @@ proc generateDomestikosOrders*(
   # Store offensive fleet orders in controller for later execution
   controller.offensiveFleetOrders = offensiveFleetOrders
 
+  # Step 5: Generate fleet management zero-turn commands (merge/detach/transfer)
+  # These execute immediately when fleets are at friendly colonies
+  let fleetManagementCommands = fleet_management.generateFleetManagementCommands(
+    filtered, analyses, currentAct, controller.houseId
+  )
+
+  # Store in controller for orders.nim to add to AIOrderSubmission
+  controller.fleetManagementCommands = fleetManagementCommands
+
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Domestikos: Generated {result.len} standing orders, " &
-          &"{offensiveFleetOrders.len} offensive fleet orders")
+          &"{offensiveFleetOrders.len} offensive fleet orders, " &
+          &"{fleetManagementCommands.len} fleet management commands")
 
   return result

@@ -237,63 +237,63 @@ task buildSimulation, "Build simulation binary":
 task testBalanceQuick, "Quick balance validation (7 turns, 20 games)":
   echo "Running quick balance validation (7 turns, 20 games)..."
   echo "Cleaning old diagnostics..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   echo "Building simulation binary..."
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 7"
   echo "Analyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "Quick balance validation completed!"
 
 task testBalanceAct1, "Act 1: Land Grab (7 turns, 100 games)":
   echo "Running Act 1 validation (7 turns, 100 games)..."
   echo "Cleaning old diagnostics..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
   echo "Analyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "Act 1 validation completed!"
 
 task testBalanceAct2, "Act 2: Rising Tensions (15 turns, 100 games)":
   echo "Running Act 2 validation (15 turns, 100 games)..."
   echo "Cleaning old diagnostics..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 15"
   echo "Analyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "Act 2 validation completed!"
 
 task testBalanceAct3, "Act 3: Total War (25 turns, 100 games)":
   echo "Running Act 3 validation (25 turns, 100 games)..."
   echo "Cleaning old diagnostics..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 25"
   echo "Analyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "Act 3 validation completed!"
 
 task testBalanceAct4, "Act 4: Endgame (30 turns, 100 games)":
   echo "Running Act 4 validation (30 turns, 100 games)..."
   echo "Cleaning old diagnostics..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
   echo "Analyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "Act 4 validation completed!"
 
 task testBalanceAll4Acts, "Test all 4 acts sequentially (7, 15, 25, 30 turns)":
   echo "Running complete 4-act validation suite..."
   echo "Cleaning old diagnostics..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   echo "Git hash: $(cat bin/.build_git_hash)"
@@ -306,7 +306,7 @@ task testBalanceAll4Acts, "Test all 4 acts sequentially (7, 15, 25, 30 turns)":
   echo "\n=== Act 4: Endgame (30 turns) ==="
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
   echo "\nAnalyzing all results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "\nAll 4 acts validated! Total: 400 games"
 
 task cleanBalance, "Clean balance test artifacts":
@@ -318,7 +318,7 @@ task cleanBalance, "Clean balance test artifacts":
 task cleanBalanceAll, "Clean ALL balance data including archives":
   echo "Cleaning ALL balance test data (including archives)..."
   exec "rm -f bin/run_simulation"
-  exec "bin/ec4x 'data clean-all'"
+  exec "bin/ec4x --clean-all"
   echo "All balance data cleaned!"
   echo "⚠ Warning: This deletes historical test data permanently"
 
@@ -339,24 +339,24 @@ task archiveStats, "Show analysis data status":
 
 task testBalanceDiagnostics, "Run diagnostic tests with CSV output (50 games, 30 turns)":
   echo "Running diagnostic balance tests (50 games, 30 turns)..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 50 --turns 30"
   echo "Analyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "Diagnostic tests completed! Results in balance_results/"
 
 task testUnknownUnknowns, "Unknown-unknowns detection (200 games, full diagnostics)":
   echo "Running unknown-unknowns detection suite (200 games, 30 turns)..."
   echo "This generates comprehensive CSV data for pattern analysis"
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   echo "Git hash: $(cat bin/.build_git_hash)"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 200 --turns 30"
   echo "\nGenerating all analysis reports..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "\nUnknown-unknowns detection completed!"
   echo "Check balance_results/reports/latest.md for detailed analysis"
 
@@ -370,25 +370,25 @@ task analyzePerformance, "Analyze RBA strategy performance (REPLACED - use analy
 
 task balanceDiagnostic, "Run 100-game diagnostic + analysis":
   echo "Cleaning old diagnostic data..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   echo "Running 100-game diagnostic..."
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
   echo "\nAnalyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
 
 task balanceQuickCheck, "Quick balance check (20 games + analysis)":
   echo "Cleaning old diagnostic data..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   echo "Running quick balance check (20 games)..."
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "python3 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 7"
   echo "\nAnalyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
 
 task analyzeBalance, "Full analysis workflow (all report formats)":
   echo "Running full balance analysis workflow..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "\n✅ Analysis complete!"
   echo "   • Terminal:  balance_results/reports/terminal_*.txt"
   echo "   • Compact:   balance_results/summaries/compact_*.md"
@@ -414,13 +414,13 @@ task testMapSizes, "Test balance across different map sizes":
 task testStressAI, "AI stress test (1000 games, crash and behavior detection)":
   echo "Running AI stress test (1000 games, 30 turns each)..."
   echo "This tests AI stability and identifies edge cases"
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   echo "Git hash: $(cat bin/.build_git_hash)"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 1000 --turns 30"
   echo "\nAnalyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "AI stress test completed! Check balance_results/reports/latest.md"
 
 # AI Tuning & Optimization Tasks
@@ -454,11 +454,11 @@ task coevolveAI, "Competitive co-evolution (4 species, 20 generations)":
 
 task tuneAIDiagnostics, "Run diagnostics for AI tuning (100 games, full CSV)":
   echo "Running AI tuning diagnostics (100 games, 30 turns)..."
-  exec "bin/ec4x 'data clean-all' --backup"
+  exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 30"
   echo "\nAnalyzing results..."
-  exec "bin/ec4x 'analyze all'"
+  exec "bin/ec4x --all"
   echo "AI tuning diagnostics completed!"
 
 task cleanAITuning, "Clean AI tuning artifacts":

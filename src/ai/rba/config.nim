@@ -143,6 +143,9 @@ type
     merge_threshold_act2*: int
     rendezvous_preference*: string
 
+    # ZeroTurnCommand Fleet Management (merge/detach/transfer)
+    fleet_management_enabled*: bool
+
     # Phase 3: Build Requirements System
     build_requirements_enabled*: bool
     defense_gap_detection_enabled*: bool
