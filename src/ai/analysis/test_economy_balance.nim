@@ -7,11 +7,11 @@
 ## - Early/mid/late game economies
 
 import std/[unittest, tables, strformat, math, strutils, options]
-import ../../src/engine/economy/[types, production, income, construction]
-import ../../src/engine/research/[costs, advancement]
-import ../../src/engine/gamestate  # For Colony type
-import ../../src/engine/config/economy_config  # For growth rate config
-import ../../src/common/types/[core, planets, units]
+import ../../engine/economy/[types, production, income, construction]
+import ../../engine/research/[costs, advancement]
+import ../../engine/gamestate  # For Colony type
+import ../../engine/config/economy_config  # For growth rate config
+import ../../common/types/[core, planets, units]
 
 type
   EconomySnapshot* = object

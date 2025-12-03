@@ -5,7 +5,7 @@
 
 import std/[os, strformat]
 import toml_serialization
-import ../../src/ai/common/types  # For AIStrategy type
+import ../../ai/common/types  # For AIStrategy type
 
 # ==============================================================================
 # Configuration Types

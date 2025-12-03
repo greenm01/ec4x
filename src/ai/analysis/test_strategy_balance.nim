@@ -5,11 +5,11 @@
 
 import std/[tables, options, random]
 import balance_framework
-import ../../src/engine/[gamestate, resolve, orders, starmap]
-import ../../src/engine/espionage/types as esp_types
-import ../../src/engine/research/types as res_types
-import ../../src/common/types/[core, units, planets, tech]
-import ../../src/engine/config/gameplay_config
+import ../../engine/[gamestate, resolve, orders, starmap]
+import ../../engine/espionage/types as esp_types
+import ../../engine/research/types as res_types
+import ../../common/types/[core, units, planets, tech]
+import ../../engine/config/gameplay_config
 
 # =============================================================================
 # AI Strategy Types

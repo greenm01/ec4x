@@ -4,10 +4,10 @@
 ## Per Grok gap analysis: "Run diagnostics. Let the numbers tell you exactly what's missing."
 
 import std/[tables, strformat, streams, options, strutils]
-import ../../src/engine/[gamestate, fleet, squadron, orders, logger]
-import ../../src/engine/diplomacy/types as dip_types
-import ../../src/common/types/[core, units, diplomacy]
-import ../../src/ai/common/types
+import ../../engine/[gamestate, fleet, squadron, orders, logger]
+import ../../engine/diplomacy/types as dip_types
+import ../../common/types/[core, units, diplomacy]
+import ../common/types
 
 type
   DiagnosticMetrics* = object

@@ -5,8 +5,8 @@
 
 import std/[cpuinfo, strformat]
 import genetic_ai, game_setup, ai_controller
-import ../../src/engine/[gamestate, resolve, orders]
-import ../../src/common/types/core
+import ../../engine/[gamestate, resolve, orders]
+import ../../common/types/core
 import std/[tables, sequtils, sugar, random]
 
 type

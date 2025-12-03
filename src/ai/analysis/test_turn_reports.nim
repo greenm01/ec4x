@@ -6,11 +6,11 @@
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, options]
 import game_setup
 # TODO: ai_controller module doesn't exist yet - AI logic needs to be implemented
-import ../../src/engine/[gamestate, resolve, orders]
-import ../../src/engine/espionage/types as esp_types
-import ../../src/engine/research/types as res_types
-import ../../src/common/types/[core, tech]
-import ../../src/client/reports/turn_report
+import ../../engine/[gamestate, resolve, orders]
+import ../../engine/espionage/types as esp_types
+import ../../engine/research/types as res_types
+import ../../common/types/[core, tech]
+import ../../client/reports/turn_report
 
 # Minimal AI stubs for compilation (TODO: implement properly)
 type
