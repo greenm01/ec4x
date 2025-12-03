@@ -144,9 +144,21 @@ Where Fighter Doctrine (FD) Tech Level Multiplier is:
 
 Fighters are built and commissioned planet-side. Once commissioned, fighter squadrons operate independently from distributed planetary bases. No starbase infrastructure is required.
 
+**Fighter Capacity Formula:**
+
+Max FS = floor(IU / 100) × FD Multiplier
+
+Fighter capacity is based on industrial manufacturing capacity (IU), not population (PU). With populations in millions, pilot availability isn't the constraint - industrial capacity (factories, shipyards, supply chains) limits production.
+
+**Examples:**
+- Homeworld start (420 IU, FD I): floor(420/100) × 1.0 = 4 fighters
+- Fully industrialized (840 IU, FD I): floor(840/100) × 1.0 = 8 fighters
+- With FD II (840 IU): floor(840/100) × 1.5 = 12 fighters
+- With FD III (840 IU): floor(840/100) × 2.0 = 16 fighters
+
 **Capacity Violations:**
 
-A colony enters capacity violation when population loss reduces maximum capacity below current fighter squadron count.
+A colony enters capacity violation when industrial capacity loss (infrastructure stripping, maintenance shortfall) reduces maximum capacity below current fighter squadron count.
 
 **Violation Grace Period:**
 
@@ -170,7 +182,7 @@ Fighters can be commissioned through two pathways:
 
 To commission fighters that will remain colony-owned, a colony must:
 1. Have available capacity: `Current FS < Max FS`
-2. Have sufficient population capacity: `floor(PU / 100) × FD ≥ (Current FS + New FS)`
+2. Have sufficient industrial capacity: `floor(IU / 100) × FD ≥ (Current FS + New FS)`
 3. Have sufficient treasury: `Available PP ≥ 20 × New FS`
 
 **Path 2: Auto-Loading to Carriers (for immediate carrier deployment)**

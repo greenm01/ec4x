@@ -231,3 +231,42 @@ proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
     return ((float(colony.populationUnits) - currentPU) / currentPU) * 100.0
   else:
     return 0.0
+
+proc applyIndustrialGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float =
+  ## Apply passive industrial growth to colony
+  ## IU grows naturally as colonies develop infrastructure
+  ## Returns growth amount for reporting
+  ##
+  ## Design rationale:
+  ## - IU should scale with population (spec shows IU at 10-150% of PU)
+  ## - Passive growth represents natural industrialization
+  ## - Growth rate is lower than population (infrastructure takes longer)
+  ## - Target: Reach 50% of PU over ~30 turns with no investment
+  ##
+  ## Formula: IU growth = max(1, floor(PU / 200)) per turn
+  ## - Small colonies (< 200 PU): +1 IU/turn
+  ## - Medium colonies (400 PU): +2 IU/turn
+  ## - Large colonies (800 PU): +4 IU/turn
+  ##
+  ## This allows homeworlds (840 PU) starting at 420 IU to reach 840 IU
+  ## in ~100 turns of natural growth (players can accelerate with investment)
+
+  let currentIU = float(colony.industrial.units)
+  let currentPU = float(colony.populationUnits)
+
+  # Base growth scales with population size
+  # Larger populations naturally build more infrastructure
+  let baseIndustrialGrowth = max(1.0, floor(currentPU / 200.0))
+
+  # Apply same tax and starbase modifiers as population
+  # Low taxes → more economic freedom → faster industrialization
+  let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
+  let starbaseBonus = getStarbaseGrowthBonus(colony)
+  let effectiveGrowth = baseIndustrialGrowth * taxMultiplier * (1.0 + starbaseBonus)
+
+  # Apply growth
+  let newIU = int(currentIU + effectiveGrowth)
+  colony.industrial.units = max(0, newIU)
+
+  # Return growth amount
+  return effectiveGrowth

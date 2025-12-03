@@ -1,6 +1,6 @@
 ## Core game state representation for EC4X
 
-import std/[tables, options, strutils]
+import std/[tables, options, strutils, math]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, starmap
 import order_types  # Fleet order types (avoid circular dependency)
@@ -435,7 +435,10 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     populationUnits: homeworldCfg.population_units,  # PU for economic calculations
     populationTransferUnits: homeworldCfg.population_units,  # PTU for Space Guild transfers
     infrastructure: homeworldCfg.colony_level,  # Infrastructure level from config
-    industrial: econ_types.IndustrialUnits(units: 0, investmentCost: econ_types.BASE_IU_COST),  # No IU at start
+    industrial: econ_types.IndustrialUnits(
+      units: homeworldCfg.population_units div 2,  # Start at 50% of PU (420 IU for 840 PU homeworld)
+      investmentCost: econ_types.BASE_IU_COST
+    ),
     planetClass: planetClass,  # Planet class from config
     resources: resources,  # Resources from config
     buildings: @[BuildingType.Shipyard],  # Start with basic shipyard
@@ -643,10 +646,20 @@ proc getFighterInfrastructureCapacity*(colony: Colony): int =
   return operationalStarbases * config.starbase_per_fighter_squadrons
 
 proc getFighterCapacity*(colony: Colony, fdMultiplier: float): int =
-  ## Get effective fighter capacity based on population only
-  ## Fighters can be built and commissioned planet-side without starbase infrastructure
-  ## Starbases are only needed for loading fighters onto carriers for offensive operations
-  return getFighterPopulationCapacity(colony, fdMultiplier)
+  ## Get effective fighter capacity based on industrial units
+  ##
+  ## Design rationale (per user feedback):
+  ## - Fighter production limited by industrial manufacturing capacity, not population
+  ## - With populations in millions, pilot availability isn't the constraint
+  ## - Industrial capacity (factories, shipyards, supply chains) limits production
+  ##
+  ## Formula: Max FS = floor(IU / 100) × FD multiplier
+  ## - Homeworld (420 IU): floor(420/100) × 1.0 = 4 fighters at game start
+  ## - Fully industrialized homeworld (840 IU): floor(840/100) × 1.0 = 8 fighters
+  ## - With FD II (1.5x): 840 IU → 12 fighters
+  ## - With FD III (2.0x): 840 IU → 16 fighters
+  let industrialCap = floor(float(colony.industrial.units) / 100.0)
+  return int(industrialCap * fdMultiplier)
 
 proc getCurrentFighterCount*(colony: Colony): int =
   ## Get current number of fighter squadrons at colony

@@ -237,32 +237,34 @@ tier_5_pop_multiplier = 1.20
 
 [industrial_investment]
 # IU investment cost multipliers by percentage of PU
-# ACCELERATION: Reduced for faster colony development in 30-turn timeline
-# Base cost is 15 PP per IU (was 30)
-base_cost = 15
+# BALANCE: Reduced to encourage IU investment (better ROI for players)
+# With passive IU growth added, manual investment accelerates development
+# Base cost is 5 PP per IU (was 15, originally 30)
+# Payback: 5 turns at EL1 (1 IU produces ~1 PP/turn)
+base_cost = 5
 
 tier_1_max_percent = 50
 tier_1_multiplier = 1.0
-tier_1_pp = 15  # base_cost * 1.0 (was 30)
+tier_1_pp = 5  # base_cost * 1.0 (was 15, originally 30)
 
 tier_2_min_percent = 51
 tier_2_max_percent = 75
 tier_2_multiplier = 1.2
-tier_2_pp = 18  # base_cost * 1.2 (was 36)
+tier_2_pp = 6  # base_cost * 1.2 (was 18, originally 36)
 
 tier_3_min_percent = 76
 tier_3_max_percent = 100
 tier_3_multiplier = 1.5
-tier_3_pp = 23  # base_cost * 1.5 (was 45, rounded up)
+tier_3_pp = 8  # base_cost * 1.5 (was 23, originally 45, rounded up)
 
 tier_4_min_percent = 101
 tier_4_max_percent = 150
 tier_4_multiplier = 2.0
-tier_4_pp = 30  # base_cost * 2.0 (was 60)
+tier_4_pp = 10  # base_cost * 2.0 (was 30, originally 60)
 
 tier_5_min_percent = 151
 tier_5_multiplier = 2.5
-tier_5_pp = 38  # base_cost * 2.5 (was 75, rounded up)
+tier_5_pp = 13  # base_cost * 2.5 (was 38, originally 75, rounded up)
 
 # ============================================================================
 # Colonization Costs
