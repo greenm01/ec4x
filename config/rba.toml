@@ -273,3 +273,12 @@ escalation_low_to_medium_turns = 3  # Low → Medium after 3 turns undefended
 escalation_medium_to_high_turns = 5 # Medium → High after 5 turns
 escalation_high_to_critical_turns = 7  # High → Critical after 7 turns
 
+# ==============================================================================
+# EPARCH PARAMETERS (Economic Administration)
+# ==============================================================================
+# Colony management: auto-repair, tax rates, dock allocation
+
+[eparch]
+auto_repair_threshold = 100  # Min treasury (PP) to enable auto-repair at colonies
+                             # Below this: disable auto-repair to conserve PP
+                             # Above this: enable for convenience

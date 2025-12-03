@@ -79,6 +79,11 @@ type
     terraforming_costs_benign_to_lush*: int
     terraforming_costs_lush_to_eden*: int
 
+  EparchConfig* = object
+    ## Eparch (economic administration) parameters
+    ## Colony management, auto-repair thresholds, tax rates
+    auto_repair_threshold*: int  # Min treasury (PP) to enable auto-repair
+
 # ==============================================================================
 # Orders Parameters
 # ==============================================================================
@@ -199,6 +204,8 @@ type
     threat_assessment*: ThreatAssessmentConfig
     # Admiral module (fleet rebalancing)
     domestikos*: AdmiralConfig
+    # Eparch module (economic administration)
+    eparch*: EparchConfig
 
 # ==============================================================================
 # Config Validation

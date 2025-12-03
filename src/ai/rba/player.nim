@@ -10,7 +10,7 @@ export intelligence, tactical, strategic, budget, logistics, orders
 export basileus, domestikos, drungarius, eparch, logothete, protostrator, treasurer
 
 # Re-export key types and functions for easy access
-export AIController, AIStrategy, AIPersonality
+export AIController, AIStrategy, AIPersonality, AIOrderSubmission
 export newAIController, newAIControllerWithPersonality
 export getStrategyPersonality, getCurrentGameAct
 export generateAIOrders
