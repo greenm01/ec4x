@@ -69,12 +69,16 @@ proc generateEconomicRequirements*(
                        else:
                          RequirementPriority.High
 
+    # Convert int target class to PlanetClass enum
+    # targetClass is 1-7 corresponding to Extreme-Eden
+    let targetPlanetClass = PlanetClass(order.targetClass - 1)  # 0-indexed enum
+
     requirements.add(EconomicRequirement(
       requirementType: EconomicRequirementType.Terraforming,
       priority: priorityEnum,
       targetColony: order.colonySystem,
       facilityType: none(string),  # Not a facility
-      terraformTarget: some(order.targetPlanetClass),
+      terraformTarget: some(targetPlanetClass),
       estimatedCost: order.ppCost,
       reason: "Terraform colony to improve capacity and productivity"
     ))
