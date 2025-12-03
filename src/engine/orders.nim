@@ -1,6 +1,6 @@
 ## Fleet order types and validation for EC4X
 
-import std/[options, tables, strformat]
+import std/[options, tables, strformat, sequtils]
 import ../common/types/[core, units]
 import gamestate, fleet, spacelift, starmap, logger
 import order_types  # Import and re-export fleet order types
@@ -671,6 +671,54 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
                 &"{houseId} Build order REJECTED: {buildingType} requires operational shipyard at {order.colonySystem}")
         return ValidationResult(valid: false,
                                error: &"Build order: {buildingType} requires operational shipyard")
+
+  # Check capacity limits for fighters and squadrons (military.toml)
+  if order.buildType == BuildType.Ship and order.shipClass.isSome:
+    let shipClass = order.shipClass.get()
+
+    # Check fighter capacity (if building fighters)
+    if shipClass == ShipClass.Fighter:
+      if houseId in state.houses:
+        let house = state.houses[houseId]
+        let fdMultiplier = getFighterDoctrineMultiplier(house.techTree.levels)
+        let currentFighters = colony.getCurrentFighterCount()
+        let maxFighters = colony.getFighterCapacity(fdMultiplier)
+
+        # Account for fighters already under construction at this colony
+        let underConstruction = colony.constructionQueue.filterIt(
+          it.projectType == ConstructionType.Ship and it.itemId == "Fighter"
+        ).len
+
+        if currentFighters + underConstruction >= maxFighters:
+          ctx.rejectedOrders += 1
+          logWarn(LogCategory.lcEconomy,
+                  &"{houseId} Build order REJECTED: Fighter capacity exceeded at {order.colonySystem} " &
+                  &"(current={currentFighters}, queued={underConstruction}, max={maxFighters})")
+          return ValidationResult(valid: false,
+                                 error: &"Fighter capacity exceeded ({currentFighters}+{underConstruction}/{maxFighters})")
+
+    # Check squadron limit (if building capital ships)
+    # Scouts are exempt from squadron limits (reference.md:9.5)
+    if shipClass != ShipClass.Fighter and shipClass != ShipClass.Scout:
+      let currentSquadrons = state.getHouseSquadronCount(houseId)
+      let maxSquadrons = state.getSquadronLimit(houseId)
+
+      # Count squadrons under construction house-wide
+      var squadronsUnderConstruction = 0
+      for colId, col in state.colonies:
+        if col.owner == houseId:
+          squadronsUnderConstruction += col.constructionQueue.filterIt(
+            it.projectType == ConstructionType.Ship and
+            it.itemId != "Fighter" and it.itemId != "Scout"
+          ).len
+
+      if currentSquadrons + squadronsUnderConstruction >= maxSquadrons:
+        ctx.rejectedOrders += 1
+        logWarn(LogCategory.lcEconomy,
+                &"{houseId} Build order REJECTED: Squadron limit exceeded " &
+                &"(current={currentSquadrons}, queued={squadronsUnderConstruction}, max={maxSquadrons})")
+        return ValidationResult(valid: false,
+                               error: &"Squadron limit exceeded ({currentSquadrons}+{squadronsUnderConstruction}/{maxSquadrons})")
 
   # Calculate cost
   let cost = calculateBuildOrderCost(order, state)
