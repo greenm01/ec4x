@@ -13,37 +13,55 @@
 import std/[tables, options, random, sequtils, sets, strformat]
 import ../../common/types/[core, tech, units]
 import ../../engine/[gamestate, fog_of_war, orders, logger, fleet]
+import ../../engine/commands/zero_turn_commands
 import ../../engine/research/types as res_types
 import ../common/types as ai_types
 import ./[controller_types, budget, drungarius, eparch, tactical, strategic, protostrator, intelligence, logistics, standing_orders_manager, domestikos, logothete]
 import ./config
-import ./orders/[utils, phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, phase4_feedback]
+import ./orders/[utils, phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, phase4_feedback, colony_management]
 import ./basileus/[personality, execution]  # For AdvisorType and centralized execution
 
-export core, orders, standing_orders_manager
+export core, orders, standing_orders_manager, zero_turn_commands
 
-proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): OrderPacket =
-  ## Generate complete order packet using Byzantine Imperial Government structure
+type
+  AIOrderSubmission* = object
+    ## Complete AI order submission containing both zero-turn commands and order packet
+    ##
+    ## Zero-turn commands execute immediately during order submission (0 turns)
+    ## Order packet is queued for normal turn resolution
+    ##
+    ## Processing order:
+    ## 1. Execute zeroTurnCommands first (immediate, at friendly colonies)
+    ## 2. Submit orderPacket for turn resolution queue
+    zeroTurnCommands*: seq[ZeroTurnCommand]  # Execute first
+    orderPacket*: OrderPacket                # Execute after
+
+proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): AIOrderSubmission =
+  ## Generate complete AI order submission using Byzantine Imperial Government structure
   ##
+  ## Returns both zero-turn commands (immediate execution) and order packet (turn resolution)
   ## Multi-advisor coordination with Basileus mediation and feedback loops
 
-  result = OrderPacket(
-    houseId: controller.houseId,
-    turn: filtered.turn,
-    treasury: filtered.ownHouse.treasury,
-    fleetOrders: @[],
-    buildOrders: @[],
-    researchAllocation: res_types.ResearchAllocation(
-      economic: 0,
-      science: 0,
-      technology: initTable[TechField, int]()
-    ),
-    diplomaticActions: @[],
-    populationTransfers: @[],
-    terraformOrders: @[],
-    espionageAction: none(EspionageAttempt),
-    ebpInvestment: 0,
-    cipInvestment: 0
+  result = AIOrderSubmission(
+    zeroTurnCommands: @[],
+    orderPacket: OrderPacket(
+      houseId: controller.houseId,
+      turn: filtered.turn,
+      treasury: filtered.ownHouse.treasury,
+      fleetOrders: @[],
+      buildOrders: @[],
+      researchAllocation: res_types.ResearchAllocation(
+        economic: 0,
+        science: 0,
+        technology: initTable[TechField, int]()
+      ),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      terraformOrders: @[],
+      espionageAction: none(EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
   )
 
   let p = controller.personality
@@ -81,10 +99,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   # Execute research allocation (via Basileus)
   let researchBudget = allocation.budgets.getOrDefault(controller_types.AdvisorType.Logothete, 0)
-  result.researchAllocation = execution.executeResearchAllocation(controller, filtered, researchBudget)
+  result.orderPacket.researchAllocation = execution.executeResearchAllocation(controller, filtered, researchBudget)
 
   # Execute espionage action
-  result.espionageAction = executeEspionageAction(controller, filtered, allocation, rng)
+  result.orderPacket.espionageAction = executeEspionageAction(controller, filtered, allocation, rng)
 
   # Set EBP/CIP investment from allocation
   # Extract from Drungarius requirements
@@ -92,17 +110,17 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     for req in controller.drungariusRequirements.get().requirements:
       case req.requirementType
       of EspionageRequirementType.EBPInvestment:
-        result.ebpInvestment += req.estimatedCost
+        result.orderPacket.ebpInvestment += req.estimatedCost
       of EspionageRequirementType.CIPInvestment:
-        result.cipInvestment += req.estimatedCost
+        result.orderPacket.cipInvestment += req.estimatedCost
       else:
         discard
 
   # Execute terraform orders
-  result.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
+  result.orderPacket.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
 
   # Execute diplomatic actions (via Basileus)
-  result.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
+  result.orderPacket.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
 
   # Execute build orders (using existing budget module for now)
   # TODO: Refactor budget.nim to use Domestikos requirements directly
@@ -154,7 +172,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let canAffordMoreShips = allocation.budgets[AdvisorType.Domestikos] >= 50
   let atSquadronLimit = false
 
-  result.buildOrders = generateBuildOrdersWithBudget(
+  result.orderPacket.buildOrders = generateBuildOrdersWithBudget(
     controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
     isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
     needCarriers, needTransports, needRaiders, canAffordMoreShips,
@@ -185,13 +203,13 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
     # Re-execute requirements (via Basileus)
     let researchBudgetFeedback = allocation.budgets.getOrDefault(controller_types.AdvisorType.Logothete, 0)
-    result.researchAllocation = execution.executeResearchAllocation(controller, filtered, researchBudgetFeedback)
-    result.espionageAction = executeEspionageAction(controller, filtered, allocation, rng)
-    result.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
-    result.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
+    result.orderPacket.researchAllocation = execution.executeResearchAllocation(controller, filtered, researchBudgetFeedback)
+    result.orderPacket.espionageAction = executeEspionageAction(controller, filtered, allocation, rng)
+    result.orderPacket.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
+    result.orderPacket.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
 
     # Re-execute build orders
-    result.buildOrders = generateBuildOrdersWithBudget(
+    result.orderPacket.buildOrders = generateBuildOrdersWithBudget(
       controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
       isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
       needCarriers, needTransports, needRaiders, canAffordMoreShips,
@@ -256,7 +274,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
         let orderOpt = convertStandingOrderToFleetOrder(standingOrder, fleet, filtered)
 
         if orderOpt.isSome:
-          result.fleetOrders.add(orderOpt.get())
+          result.orderPacket.fleetOrders.add(orderOpt.get())
           strategicOrdersConverted += 1
 
   logInfo(LogCategory.lcAI,
@@ -268,7 +286,13 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let tacticalOrders = generateFleetOrders(controller, filtered, rng)
 
   for order in tacticalOrders:
-    result.fleetOrders.add(order)
+    result.orderPacket.fleetOrders.add(order)
+
+  # ==========================================================================
+  # PHASE 7.5: COLONY MANAGEMENT (Auto-repair, tax rates)
+  # ==========================================================================
+  let colonyOrders = colony_management.generateColonyManagementOrders(controller, filtered, currentAct)
+  result.orderPacket.colonyManagement = colonyOrders
 
   # ==========================================================================
   # PHASE 8: LOGISTICS OPTIMIZATION
@@ -278,10 +302,17 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   let logisticsOrders = logistics.generateLogisticsOrders(controller, filtered, currentAct)
 
-  # TODO: Update AI logistics to use zero-turn commands (submitZeroTurnCommand)
-  # result.cargoManagement = logisticsOrders.cargo  # DEPRECATED: Now uses ZeroTurnCommand
-  # result.squadronManagement = logisticsOrders.squadrons  # DEPRECATED: Now uses ZeroTurnCommand
-  result.populationTransfers = logisticsOrders.population
+  # Convert deprecated cargo/squadron orders to zero-turn commands
+  # These will be executed by game loop BEFORE OrderPacket processing
+  let cargoCommands = logistics.convertCargoToZeroTurnCommands(logisticsOrders.cargo)
+  let squadronCommands = logistics.convertSquadronToZeroTurnCommands(logisticsOrders.squadrons)
+
+  # Populate zero-turn commands for execution
+  result.zeroTurnCommands.add(cargoCommands)
+  result.zeroTurnCommands.add(squadronCommands)
+
+  # Population transfers still use OrderPacket (not deprecated)
+  result.orderPacket.populationTransfers = logisticsOrders.population
 
   # Remove tactical orders for fleets that logistics is managing
   var logisticsControlledFleets: HashSet[FleetId]
@@ -289,13 +320,13 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     logisticsControlledFleets.incl(order.fleetId)
 
   var filteredTacticalOrders: seq[FleetOrder] = @[]
-  for order in result.fleetOrders:
+  for order in result.orderPacket.fleetOrders:
     if order.fleetId notin logisticsControlledFleets:
       filteredTacticalOrders.add(order)
 
-  result.fleetOrders = filteredTacticalOrders
-  result.fleetOrders.add(logisticsOrders.fleetOrders)
-  result.fleetOrders.add(controller.offensiveFleetOrders)  # Add Domestikos offensive operations
+  result.orderPacket.fleetOrders = filteredTacticalOrders
+  result.orderPacket.fleetOrders.add(logisticsOrders.fleetOrders)
+  result.orderPacket.fleetOrders.add(controller.offensiveFleetOrders)  # Add Domestikos offensive operations
 
   # ==========================================================================
   # SUMMARY
@@ -305,16 +336,18 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Order generation complete:")
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId}   Fleet orders: {result.fleetOrders.len}")
+          &"{controller.houseId}   Zero-turn commands: {result.zeroTurnCommands.len}")
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId}   Build orders: {result.buildOrders.len}")
+          &"{controller.houseId}   Fleet orders: {result.orderPacket.fleetOrders.len}")
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId}   Research: EL={result.researchAllocation.economic}PP, " &
-          &"SL={result.researchAllocation.science}PP")
+          &"{controller.houseId}   Build orders: {result.orderPacket.buildOrders.len}")
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId}   Espionage: EBP={result.ebpInvestment}PP, CIP={result.cipInvestment}PP")
+          &"{controller.houseId}   Research: EL={result.orderPacket.researchAllocation.economic}PP, " &
+          &"SL={result.orderPacket.researchAllocation.science}PP")
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId}   Terraform orders: {result.terraformOrders.len}")
+          &"{controller.houseId}   Espionage: EBP={result.orderPacket.ebpInvestment}PP, CIP={result.orderPacket.cipInvestment}PP")
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId}   Terraform orders: {result.orderPacket.terraformOrders.len}")
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} ========================================")
 

@@ -7,7 +7,8 @@ import std/[json, times, strformat, random, sequtils, tables, algorithm, os, str
 import game_setup, diagnostics, balance_test_config  # Test-specific modules
 import ../../ai/rba/player as ai
 import ../../ai/common/types  # For AIStrategy type
-import ../../engine/[gamestate, resolve, orders, fog_of_war, setup]
+import ../../engine/[gamestate, resolve, orders, fog_of_war, setup, logger]
+import ../../engine/commands/zero_turn_commands
 import ../../common/types/core
 import ../../client/reports/turn_report
 import ../../engine/research/types as res_types
@@ -82,9 +83,19 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       # Apply fog-of-war filtering - AI only sees what it should
       let filteredView = createFogOfWarView(game, controller.houseId)
 
-      # Generate orders using RBA
-      let orders = ai.generateAIOrders(controller, filteredView, rng)
-      ordersTable[controller.houseId] = orders
+      # Generate orders using RBA (returns both zero-turn commands and order packet)
+      let aiSubmission = ai.generateAIOrders(controller, filteredView, rng)
+
+      # Execute zero-turn commands first (immediate, at friendly colonies)
+      for cmd in aiSubmission.zeroTurnCommands:
+        let result = submitZeroTurnCommand(game, cmd)
+        if not result.success:
+          logWarning(LogCategory.lcAI,
+                     &"House {controller.houseId} zero-turn command failed: {result.error}")
+          # Note: Partial success is OK (e.g., cargo capacity limits)
+
+      # Queue order packet for normal turn resolution
+      ordersTable[controller.houseId] = aiSubmission.orderPacket
       controllers[i] = controller
 
     # Sync AI controller fallback routes to engine (for automatic seek-home behavior)

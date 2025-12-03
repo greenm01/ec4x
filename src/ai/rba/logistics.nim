@@ -25,6 +25,7 @@ import std/[tables, options, sequtils, algorithm, math, sets, strformat]
 import std/logging
 import ../../common/types/[core, units, tech]
 import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, spacelift, logger]
+import ../../engine/commands/zero_turn_commands
 import ../../engine/economy/maintenance
 import ../common/types as ai_types
 import ./controller_types
@@ -1315,3 +1316,79 @@ CARGO STATUS:
 - Empty Transports: {inventory.emptyTransports.len}
 - Loaded Transports: {inventory.loadedTransports.len}
 """
+
+## =============================================================================
+## ZERO-TURN COMMAND CONVERSION (Migration from deprecated OrderPacket fields)
+## =============================================================================
+
+proc convertCargoToZeroTurnCommands*(
+  cargoOrders: seq[CargoManagementOrder]
+): seq[ZeroTurnCommand] =
+  ## Convert deprecated CargoManagementOrder to ZeroTurnCommand
+  ##
+  ## Migration path: CargoManagementOrder → ZeroTurnCommand(LoadCargo/UnloadCargo)
+  ##
+  ## Background:
+  ## - OrderPacket.cargoManagement field was removed (commit 945d9a0)
+  ## - New ZeroTurnCommand system executes immediately during order submission
+  ## - Commands require fleet to be at friendly colony
+  ## - Partial success is OK (e.g., limited cargo capacity)
+
+  for order in cargoOrders:
+    let cmdType = if order.action == LoadCargo:
+                    ZeroTurnCommandType.LoadCargo
+                  else:
+                    ZeroTurnCommandType.UnloadCargo
+
+    result.add(ZeroTurnCommand(
+      houseId: order.houseId,
+      commandType: cmdType,
+      sourceFleetId: some(order.fleetId),
+      colonySystem: some(order.colonySystem),
+      cargoType: order.cargoType,
+      cargoQuantity: order.quantity
+    ))
+
+proc convertSquadronToZeroTurnCommands*(
+  squadronOrders: seq[SquadronManagementOrder]
+): seq[ZeroTurnCommand] =
+  ## Convert deprecated SquadronManagementOrder to ZeroTurnCommand
+  ##
+  ## Migration path: SquadronManagementOrder → ZeroTurnCommand(AssignSquadronToFleet, etc.)
+  ##
+  ## Background:
+  ## - OrderPacket.squadronManagement field was removed (commit 945d9a0)
+  ## - New ZeroTurnCommand system handles squadron operations immediately
+  ## - Commands require squadron to be at friendly colony
+  ## - Covers: FormSquadron, AssignSquadronToFleet, TransferShipBetweenSquadrons
+
+  for order in squadronOrders:
+    case order.action
+    of FormSquadron:
+      result.add(ZeroTurnCommand(
+        houseId: order.houseId,
+        commandType: ZeroTurnCommandType.FormSquadron,
+        colonySystem: order.colonySystem,
+        shipIndices: order.shipIndices,
+        newSquadronId: order.squadronId
+      ))
+
+    of AssignSquadronToFleet:
+      result.add(ZeroTurnCommand(
+        houseId: order.houseId,
+        commandType: ZeroTurnCommandType.AssignSquadronToFleet,
+        colonySystem: order.colonySystem,
+        squadronId: order.squadronId,
+        targetFleetId: order.targetFleetId,
+        newFleetId: order.newFleetId
+      ))
+
+    of TransferShipBetweenSquadrons:
+      result.add(ZeroTurnCommand(
+        houseId: order.houseId,
+        commandType: ZeroTurnCommandType.TransferShipBetweenSquadrons,
+        colonySystem: order.colonySystem,
+        sourceSquadronId: order.sourceSquadronId,
+        targetSquadronId: order.targetSquadronId,
+        shipIndex: order.shipIndex
+      ))
