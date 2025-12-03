@@ -59,6 +59,10 @@ flake.lock
 *.backup
 .cache/
 
+# Test output files
+test_output.txt
+test_report.csv
+
 # Game state files (if any)
 *.save
 *.state
