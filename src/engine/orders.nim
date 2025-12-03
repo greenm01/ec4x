@@ -689,7 +689,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
           it.projectType == ConstructionType.Ship and it.itemId == "Fighter"
         ).len
 
-        if currentFighters + underConstruction >= maxFighters:
+        if currentFighters + underConstruction + 1 > maxFighters:
           ctx.rejectedOrders += 1
           logWarn(LogCategory.lcEconomy,
                   &"{houseId} Build order REJECTED: Fighter capacity exceeded at {order.colonySystem} " &
@@ -712,7 +712,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
             it.itemId != "Fighter" and it.itemId != "Scout"
           ).len
 
-      if currentSquadrons + squadronsUnderConstruction >= maxSquadrons:
+      if currentSquadrons + squadronsUnderConstruction + 1 > maxSquadrons:
         ctx.rejectedOrders += 1
         logWarn(LogCategory.lcEconomy,
                 &"{houseId} Build order REJECTED: Squadron limit exceeded " &
