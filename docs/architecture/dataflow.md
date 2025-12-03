@@ -84,6 +84,39 @@ client submit game-123 orders.toml
 # Client encrypts to moderator, publishes EventKindOrderPacket to relay
 ```
 
+**5. Zero-Turn Commands Execute Immediately**
+
+Before orders are written to pending queue, zero-turn administrative commands execute immediately:
+
+```
+Order Submission Flow:
+  ↓
+Parse orders.toml
+  ↓
+Identify zero-turn commands (DetachShips, LoadCargo, etc.)
+  ↓
+Execute zero-turn commands sequentially
+  - Validate each command
+  - Modify game state immediately
+  - Return success/failure
+  ↓
+Write operational orders to pending queue
+```
+
+**Zero-turn commands include:**
+- Fleet reorganization: DetachShips, TransferShips, MergeFleets
+- Cargo operations: LoadCargo, UnloadCargo
+- Squadron management: TransferShipBetweenSquadrons, AssignSquadronToFleet
+
+**Key characteristic:** Execute during order submission, not during turn resolution. State changes take effect immediately—operational orders submitted in same batch see the updated state.
+
+**Example:** Player submits:
+1. LoadCargo (marines onto fleet) — executes immediately
+2. MergeFleets (combine two fleets) — executes immediately
+3. Order 07: Invade Planet — queued for turn resolution
+
+When turn resolves, invasion fleet already has marines loaded and merged composition.
+
 ### Data Flow (Localhost)
 
 ```

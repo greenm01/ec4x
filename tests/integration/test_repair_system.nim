@@ -335,8 +335,6 @@ suite "Ship Repair System":
       researchAllocation: initResearchAllocation(),
       diplomaticActions: @[],
       populationTransfers: @[],
-      squadronManagement: @[],
-      cargoManagement: @[],
       terraformOrders: @[],
       espionageAction: none(esp_types.EspionageAttempt),
       ebpInvestment: 0,

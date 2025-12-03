@@ -10,12 +10,13 @@
 
 import std/[unittest, tables, options]
 import ../../src/engine/[gamestate, orders, resolve, fleet, squadron]
+import ../../src/engine/commands/zero_turn_commands
 import ../../src/engine/economy/types as econ_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/[core, units, planets]
 
-suite "Squadron Management":
+suite "Squadron Management (ZeroTurnCommand)":
 
   proc createTestState(): GameState =
     ## Create state with colony and some unassigned squadrons
@@ -68,44 +69,23 @@ suite "Squadron Management":
     # Keep only sq1 in unassigned - remove sq2 and sq3 to prevent auto-assign interference
     state.colonies[1].unassignedSquadrons = @[state.colonies[1].unassignedSquadrons[0]]  # Keep only sq1
 
-    # Create squadron management order to assign sq1 to a new fleet
-    let order = SquadronManagementOrder(
+    # Use ZeroTurnCommand to assign sq1 to a new fleet (immediate execution)
+    let cmd = ZeroTurnCommand(
       houseId: "house1",
-      colonySystem: 1,
-      action: SquadronManagementAction.AssignToFleet,
-      shipIndices: @[],
-      newSquadronId: none(string),
-      sourceSquadronId: none(string),
-      targetSquadronId: none(string),
-      shipIndex: none(int),
+      commandType: ZeroTurnCommandType.AssignSquadronToFleet,
+      colonySystem: some(SystemId(1)),
       squadronId: some("sq1"),
-      targetFleetId: none(FleetId)  # None = create new fleet
+      targetFleetId: none(FleetId),  # None = create new fleet
+      newFleetId: none(FleetId)
     )
 
-    var packet = OrderPacket(
-      houseId: "house1",
-      turn: 1,
-      buildOrders: @[],
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      squadronManagement: @[order],
-      cargoManagement: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
-
-    var orders = initTable[HouseId, OrderPacket]()
-    orders["house1"] = packet
-
-    let result = resolveTurn(state, orders)
+    let result = submitZeroTurnCommand(state, cmd)
+    check result.success == true
+    check result.newFleetId.isSome()
 
     # Should have created a new fleet with sq1
     var foundFleet = false
-    for fleetId, fleet in result.newState.fleets:
+    for fleetId, fleet in state.fleets:
       if fleet.owner == "house1" and fleet.location == 1:
         if fleet.squadrons.len == 1 and fleet.squadrons[0].id == "sq1":
           foundFleet = true
@@ -115,7 +95,7 @@ suite "Squadron Management":
 
     # sq1 should be removed from unassigned squadrons
     var sq1StillUnassigned = false
-    for sq in result.newState.colonies[1].unassignedSquadrons:
+    for sq in state.colonies[1].unassignedSquadrons:
       if sq.id == "sq1":
         sq1StillUnassigned = true
         break
@@ -142,43 +122,21 @@ suite "Squadron Management":
     # Also clear out sq3 so auto-assign doesn't add it to fleet1
     state.colonies[1].unassignedSquadrons = @[state.colonies[1].unassignedSquadrons[1]]  # Keep only sq2
 
-    # Now assign sq2 to the existing fleet
-    let order = SquadronManagementOrder(
+    # Now assign sq2 to the existing fleet using ZeroTurnCommand
+    let cmd = ZeroTurnCommand(
       houseId: "house1",
-      colonySystem: 1,
-      action: SquadronManagementAction.AssignToFleet,
-      shipIndices: @[],
-      newSquadronId: none(string),
-      sourceSquadronId: none(string),
-      targetSquadronId: none(string),
-      shipIndex: none(int),
+      commandType: ZeroTurnCommandType.AssignSquadronToFleet,
+      colonySystem: some(SystemId(1)),
       squadronId: some("sq2"),
-      targetFleetId: some("fleet1")
+      targetFleetId: some("fleet1"),
+      newFleetId: none(FleetId)
     )
 
-    var packet = OrderPacket(
-      houseId: "house1",
-      turn: 1,
-      buildOrders: @[],
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      squadronManagement: @[order],
-      cargoManagement: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
-
-    var orders = initTable[HouseId, OrderPacket]()
-    orders["house1"] = packet
-
-    let result = resolveTurn(state, orders)
+    let result = submitZeroTurnCommand(state, cmd)
+    check result.success == true
 
     # fleet1 should now have 2 squadrons
-    check result.newState.fleets["fleet1"].squadrons.len == 2
+    check state.fleets["fleet1"].squadrons.len == 2
 
   test "Transfer ship between squadrons":
     # Create clean state without unassigned squadrons to avoid auto-assign issues
@@ -243,46 +201,24 @@ suite "Squadron Management":
       status: FleetStatus.Active
     )
 
-    # Transfer ship from source to target
-    let order = SquadronManagementOrder(
+    # Transfer ship from source to target using ZeroTurnCommand
+    let cmd = ZeroTurnCommand(
       houseId: "house1",
-      colonySystem: 1,
-      action: SquadronManagementAction.TransferShip,
-      shipIndices: @[],
-      newSquadronId: none(string),
+      commandType: ZeroTurnCommandType.TransferShipBetweenSquadrons,
+      colonySystem: some(SystemId(1)),
       sourceSquadronId: some("source-sq"),
       targetSquadronId: some("target-sq"),
-      shipIndex: some(0),  # Transfer first ship
-      squadronId: none(string),
-      targetFleetId: none(FleetId)
+      shipIndex: some(0)  # Transfer first ship
     )
 
-    var packet = OrderPacket(
-      houseId: "house1",
-      turn: 1,
-      buildOrders: @[],
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      squadronManagement: @[order],
-      cargoManagement: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
-
-    var orders = initTable[HouseId, OrderPacket]()
-    orders["house1"] = packet
-
-    let result = resolveTurn(state, orders)
+    let result = submitZeroTurnCommand(state, cmd)
+    check result.success == true
 
     # Source squadron should have fewer ships
-    check result.newState.fleets["fleet1"].squadrons[0].ships.len == 0  # Only flagship remains
+    check state.fleets["fleet1"].squadrons[0].ships.len == 0  # Only flagship remains
 
     # Target squadron should have gained a ship
-    check result.newState.fleets["fleet2"].squadrons[0].ships.len == 1
+    check state.fleets["fleet2"].squadrons[0].ships.len == 1
 
 suite "Fleet Organization":
 
@@ -378,48 +314,26 @@ suite "Fleet Organization":
       shipyards: @[]
     )
 
-    # Move sq1 from fleet1 to fleet2
-    let order = SquadronManagementOrder(
+    # Move sq1 from fleet1 to fleet2 using ZeroTurnCommand
+    let cmd = ZeroTurnCommand(
       houseId: "house1",
-      colonySystem: 1,
-      action: SquadronManagementAction.AssignToFleet,
-      shipIndices: @[],
-      newSquadronId: none(string),
-      sourceSquadronId: none(string),
-      targetSquadronId: none(string),
-      shipIndex: none(int),
+      commandType: ZeroTurnCommandType.AssignSquadronToFleet,
+      colonySystem: some(SystemId(1)),
       squadronId: some("sq1"),
-      targetFleetId: some("fleet2")
+      targetFleetId: some("fleet2"),
+      newFleetId: none(FleetId)
     )
 
-    var packet = OrderPacket(
-      houseId: "house1",
-      turn: 1,
-      buildOrders: @[],
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      squadronManagement: @[order],
-      cargoManagement: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
-
-    var orders = initTable[HouseId, OrderPacket]()
-    orders["house1"] = packet
-
-    let result = resolveTurn(state, orders)
+    let result = submitZeroTurnCommand(state, cmd)
+    check result.success == true
 
     # fleet1 should have 1 squadron (sq2)
-    check result.newState.fleets["fleet1"].squadrons.len == 1
-    check result.newState.fleets["fleet1"].squadrons[0].id == "sq2"
+    check state.fleets["fleet1"].squadrons.len == 1
+    check state.fleets["fleet1"].squadrons[0].id == "sq2"
 
     # fleet2 should have 1 squadron (sq1)
-    check result.newState.fleets["fleet2"].squadrons.len == 1
-    check result.newState.fleets["fleet2"].squadrons[0].id == "sq1"
+    check state.fleets["fleet2"].squadrons.len == 1
+    check state.fleets["fleet2"].squadrons[0].id == "sq1"
 
 suite "Auto-Assignment System":
 
@@ -467,8 +381,6 @@ suite "Auto-Assignment System":
       researchAllocation: initResearchAllocation(),
       diplomaticActions: @[],
       populationTransfers: @[],
-      squadronManagement: @[],
-      cargoManagement: @[],
       terraformOrders: @[],
       espionageAction: none(esp_types.EspionageAttempt),
       ebpInvestment: 0,

@@ -40,8 +40,6 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     ),
     diplomaticActions: @[],
     populationTransfers: @[],
-    squadronManagement: @[],
-    cargoManagement: @[],
     terraformOrders: @[],
     espionageAction: none(EspionageAttempt),
     ebpInvestment: 0,
@@ -280,9 +278,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   let logisticsOrders = logistics.generateLogisticsOrders(controller, filtered, currentAct)
 
-  result.cargoManagement = logisticsOrders.cargo
+  # TODO: Update AI logistics to use zero-turn commands (submitZeroTurnCommand)
+  # result.cargoManagement = logisticsOrders.cargo  # DEPRECATED: Now uses ZeroTurnCommand
+  # result.squadronManagement = logisticsOrders.squadrons  # DEPRECATED: Now uses ZeroTurnCommand
   result.populationTransfers = logisticsOrders.population
-  result.squadronManagement = logisticsOrders.squadrons
 
   # Remove tactical orders for fleets that logistics is managing
   var logisticsControlledFleets: HashSet[FleetId]
