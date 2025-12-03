@@ -311,6 +311,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   result.zeroTurnCommands.add(cargoCommands)
   result.zeroTurnCommands.add(squadronCommands)
 
+  # Add Domestikos fleet management commands (merge/detach/transfer)
+  # Generated in Phase 1 by generateAllAdvisorRequirements()
+  result.zeroTurnCommands.add(controller.fleetManagementCommands)
+
   # Population transfers still use OrderPacket (not deprecated)
   result.orderPacket.populationTransfers = logisticsOrders.population
 

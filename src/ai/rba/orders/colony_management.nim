@@ -15,7 +15,7 @@
 ##   2. Dock capacity needed for urgent builds
 ##   3. Fleet redeployment planned (don't repair ships about to transfer)
 
-import std/[tables, sequtils, options]
+import std/[tables, sequtils, options, strformat]
 import std/logging
 import ../../../engine/[gamestate, fog_of_war, order_types, logger]
 import ../../../common/types/core
@@ -40,29 +40,29 @@ proc generateColonyManagementOrders*(
   let autoRepairThreshold = globalRBAConfig.eparch.auto_repair_threshold
 
   # Determine if we should enable auto-repair based on treasury
-  let treasuryHealthy = controller.house.treasury >= autoRepairThreshold
+  let treasuryHealthy = filtered.ownHouse.treasury >= autoRepairThreshold
   let enableAutoRepair = treasuryHealthy
 
   # Log decision
   if not treasuryHealthy:
     logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Disabling auto-repair (treasury {controller.house.treasury} < {autoRepairThreshold} PP)")
+            &"{controller.houseId} Disabling auto-repair (treasury {filtered.ownHouse.treasury} < {autoRepairThreshold} PP)")
   else:
     logDebug(LogCategory.lcAI,
-             &"{controller.houseId} Enabling auto-repair at all colonies (treasury healthy: {controller.house.treasury} PP)")
+             &"{controller.houseId} Enabling auto-repair at all colonies (treasury healthy: {filtered.ownHouse.treasury} PP)")
 
   # Generate orders for all owned colonies
   for colony in filtered.ownColonies:
     # Only generate order if setting needs to change
     if colony.autoRepairEnabled != enableAutoRepair:
       result.add(ColonyManagementOrder(
-        colonyId: colony.id,
+        colonyId: colony.systemId,
         action: ColonyManagementAction.SetAutoRepair,
-        enabled: some(enableAutoRepair)
+        enableAutoRepair: enableAutoRepair
       ))
 
       logDebug(LogCategory.lcAI,
-               &"{controller.houseId} Setting auto-repair at {colony.id}: {enableAutoRepair}")
+               &"{controller.houseId} Setting auto-repair at {colony.systemId}: {enableAutoRepair}")
 
   if result.len > 0:
     logInfo(LogCategory.lcAI,

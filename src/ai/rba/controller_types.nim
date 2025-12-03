@@ -6,6 +6,7 @@ import std/[tables, options]
 import ../common/types
 import ../../engine/gamestate  # For FallbackRoute
 import ../../engine/order_types  # For StandingOrder
+import ../../engine/commands/zero_turn_commands  # For ZeroTurnCommand
 import ../../common/types/[core, units, diplomacy, planets]  # For ShipClass, PlanetClass
 import ../../engine/espionage/types as esp_types  # For EspionageAction
 import ../../engine/diplomacy/proposals as dip_proposals  # For ProposalType
@@ -201,6 +202,7 @@ type
     homeworld*: SystemId  # Primary fallback and repair location
     standingOrders*: Table[FleetId, StandingOrder]  # QoL: Standing orders for routine tasks
     offensiveFleetOrders*: seq[FleetOrder]  # Domestikos offensive operations (Move, Attack, etc.)
+    fleetManagementCommands*: seq[ZeroTurnCommand]  # Domestikos fleet management (Merge/Detach/Transfer)
     pendingIntelUpdates*: seq[ReconUpdate]  # Reconnaissance missions scheduled for intel gathering
     # Multi-advisor requirements and feedback (Basileus integration)
     domestikosRequirements*: Option[BuildRequirements]  # Military build requirements

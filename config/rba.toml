@@ -255,6 +255,12 @@ split_threshold_act1 = 2            # Split fleets with 2+ ships in Act 1
 merge_threshold_act2 = 3            # Merge when 3+ idle single-ship fleets
 rendezvous_preference = "homeworld" # Where to merge fleets: homeworld, frontline, center
 
+# ZeroTurnCommand Fleet Management (Immediate-execution fleet operations)
+fleet_management_enabled = true     # Enable merge/detach/transfer using ZeroTurnCommand API
+                                    # Act 1: Detach ships for exploration coverage
+                                    # Act 2+: Merge fleets for combat power, detach scouts for recon
+                                    # All Acts: Transfer ships to optimize fleet compositions
+
 # Phase 3: Build Requirements System (Requirements-driven ship production)
 build_requirements_enabled = true   # Enable requirements-driven build system (IMMEDIATE ROLLOUT)
 defense_gap_detection_enabled = true

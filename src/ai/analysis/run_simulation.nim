@@ -90,8 +90,8 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       for cmd in aiSubmission.zeroTurnCommands:
         let result = submitZeroTurnCommand(game, cmd)
         if not result.success:
-          logWarning(LogCategory.lcAI,
-                     &"House {controller.houseId} zero-turn command failed: {result.error}")
+          logWarn(LogCategory.lcAI,
+                  &"House {controller.houseId} zero-turn command failed: {result.error}")
           # Note: Partial success is OK (e.g., cargo capacity limits)
 
       # Queue order packet for normal turn resolution

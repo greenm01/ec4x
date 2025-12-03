@@ -36,6 +36,44 @@ import ./protostrator/assessment  # For getOwnedFleets
 import ./strategic     # For threat assessment
 
 ## =============================================================================
+## LEGACY TYPE DEFINITIONS (Deprecated - for backward compatibility)
+## =============================================================================
+## These types were removed from the engine (commit 945d9a0) when cargo/squadron
+## operations migrated to ZeroTurnCommand system. They're defined here temporarily
+## for backward compatibility with existing RBA logistics code.
+
+type
+  CargoManagementAction* {.pure.} = enum
+    ## Legacy cargo action type (replaced by ZeroTurnCommandType)
+    LoadCargo, UnloadCargo
+
+  CargoManagementOrder* = object
+    ## Legacy cargo order (replaced by ZeroTurnCommand)
+    houseId*: HouseId
+    colonySystem*: SystemId
+    action*: CargoManagementAction
+    fleetId*: FleetId
+    cargoType*: Option[CargoType]
+    quantity*: Option[int]
+
+  SquadronManagementAction* {.pure.} = enum
+    ## Legacy squadron action type (replaced by ZeroTurnCommandType)
+    FormSquadron, AssignSquadronToFleet, TransferShipBetweenSquadrons
+
+  SquadronManagementOrder* = object
+    ## Legacy squadron order (replaced by ZeroTurnCommand)
+    houseId*: HouseId
+    colonySystem*: Option[SystemId]
+    action*: SquadronManagementAction
+    squadronId*: Option[string]
+    targetFleetId*: Option[FleetId]
+    newFleetId*: Option[FleetId]
+    sourceSquadronId*: Option[string]
+    targetSquadronId*: Option[string]
+    shipIndex*: Option[int]
+    shipIndices*: seq[int]
+
+## =============================================================================
 ## ASSET INVENTORY TRACKING
 ## =============================================================================
 
@@ -1335,7 +1373,7 @@ proc convertCargoToZeroTurnCommands*(
   ## - Partial success is OK (e.g., limited cargo capacity)
 
   for order in cargoOrders:
-    let cmdType = if order.action == LoadCargo:
+    let cmdType = if order.action == CargoManagementAction.LoadCargo:
                     ZeroTurnCommandType.LoadCargo
                   else:
                     ZeroTurnCommandType.UnloadCargo
@@ -1364,7 +1402,7 @@ proc convertSquadronToZeroTurnCommands*(
 
   for order in squadronOrders:
     case order.action
-    of FormSquadron:
+    of SquadronManagementAction.FormSquadron:
       result.add(ZeroTurnCommand(
         houseId: order.houseId,
         commandType: ZeroTurnCommandType.FormSquadron,
@@ -1373,7 +1411,7 @@ proc convertSquadronToZeroTurnCommands*(
         newSquadronId: order.squadronId
       ))
 
-    of AssignSquadronToFleet:
+    of SquadronManagementAction.AssignSquadronToFleet:
       result.add(ZeroTurnCommand(
         houseId: order.houseId,
         commandType: ZeroTurnCommandType.AssignSquadronToFleet,
@@ -1383,7 +1421,7 @@ proc convertSquadronToZeroTurnCommands*(
         newFleetId: order.newFleetId
       ))
 
-    of TransferShipBetweenSquadrons:
+    of SquadronManagementAction.TransferShipBetweenSquadrons:
       result.add(ZeroTurnCommand(
         houseId: order.houseId,
         commandType: ZeroTurnCommandType.TransferShipBetweenSquadrons,
