@@ -31,7 +31,7 @@ STRATEGIES = ["Aggressive", "Economic", "Balanced", "Turtle"]
 
 def run_single_game(seed, turns_per_game, map_rings=0, num_players=4):
     """Run a single game simulation with given seed"""
-    cmd = ["./tests/balance/run_simulation", str(turns_per_game), str(seed)]
+    cmd = ["./bin/run_simulation", str(turns_per_game), str(seed)]
     if map_rings > 0:
         cmd.append(str(map_rings))
     if num_players != 4:  # Only add if non-default
