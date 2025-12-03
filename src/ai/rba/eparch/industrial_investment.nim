@@ -166,8 +166,8 @@ proc generateIUInvestmentRecommendations*(
 
   result = @[]
 
-  # Access house data from filtered state
-  let house = filtered.houses[controller.houseId]
+  # Access own house data from filtered state (fog of war enforced)
+  let house = filtered.ownHouse
 
   for colony in filtered.ownColonies:
     let opportunity = evaluateIUInvestment(
