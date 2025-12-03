@@ -76,8 +76,6 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         researchAllocation: res_types_research.initResearchAllocation(),
         diplomaticActions: @[],
         populationTransfers: @[],
-        squadronManagement: @[],
-        cargoManagement: @[],
         terraformOrders: @[],
         espionageAction: none(esp_types.EspionageAttempt),
         ebpInvestment: 0,
@@ -104,8 +102,6 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         researchAllocation: res_types_research.initResearchAllocation(),
         diplomaticActions: @[],
         populationTransfers: @[],
-        squadronManagement: @[],
-        cargoManagement: @[],
         terraformOrders: @[],
         espionageAction: none(esp_types.EspionageAttempt),
         ebpInvestment: 0,
@@ -442,15 +438,9 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # Spy scouts can merge with each other or with normal fleets
   spy_scout_orders.resolveSpyScoutOrders(state)
 
-  # Process squadron management orders (form squadrons, transfer ships, assign to fleets)
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      resolveSquadronManagement(state, orders[houseId], events)
-
-  # Process cargo management (manual loading/unloading)
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      resolveCargoManagement(state, orders[houseId], events)
+  # NOTE: Squadron management and cargo management are now handled by
+  # zero-turn commands (src/engine/commands/zero_turn_commands.nim)
+  # These execute immediately during order submission, not during turn resolution
 
   # Auto-load cargo at colonies (if no manual cargo order exists)
   autoLoadCargo(state, orders, events)

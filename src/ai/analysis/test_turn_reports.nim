@@ -39,8 +39,6 @@ proc generateAIOrders*(controller: AIController, state: GameState, rng: var Rand
     ),
     diplomaticActions: @[],
     populationTransfers: @[],
-    squadronManagement: @[],
-    cargoManagement: @[],
     terraformOrders: @[],
     espionageAction: none(esp_types.EspionageAttempt),
     ebpInvestment: 0,

@@ -522,11 +522,239 @@ Send a fleet to perform long-range planetary reconnaissance from the edge of a s
 
 ---
 
-## 6.4 Standing Orders
+## 6.4 Zero-Turn Administrative Commands
+
+Reorganize your forces instantly during order submission. Zero-turn administrative commands execute immediately—before turn resolution begins—enabling you to prepare forces precisely for the upcoming turn without consuming time.
+
+### 6.4.1 Concept: Administrative vs Operational Orders
+
+**Administrative Commands (0 turns):**
+- Fleet reorganization (detach ships, transfer squadrons, merge fleets)
+- Cargo operations (load/unload troops and colonists)
+- Squadron management (transfer ships between squadrons, assign to fleets)
+- Execute **immediately** during order submission
+- No turn cost—prepare forces and execute strategy in the same turn
+
+**Operational Orders (1+ turns):**
+- Fleet movement, combat, espionage, colonization
+- Execute during turn resolution
+- Consume turns based on action complexity
+
+**Key Benefit:** Combine multiple administrative commands with operational orders in a single turn. Load troops, reorganize fleets, and launch invasions—all in one coordinated action.
+
+### 6.4.2 Fleet Reorganization Commands
+
+Reconfigure your fleet composition at friendly colonies without consuming turns.
+
+**Requirements:**
+- Fleet must be at **friendly colony** (own colony under your control)
+- Colony cannot be under siege or blockade
+- All ships involved must be owned by your house
+
+#### DetachShips
+
+Extract specific squadrons and spacelift ships from a fleet into a new fleet.
+
+**Use cases:**
+- Split battle fleet into multiple patrol groups
+- Detach damaged squadrons for repair while healthy squadrons continue operations
+- Create specialized task forces from general-purpose fleets
+- Separate spacelift ships (ETACs, Troop Transports) from combat squadrons
+
+**Mechanics:**
+- Select ships by index from fleet's total ship roster
+- New fleet created automatically with selected ships
+- Source fleet retains unselected ships
+- If all ships detached, source fleet deleted and orders cleared
+
+**Example:** Battle fleet at home system with 3 capital squadrons + 5 destroyers. Detach 1 capital squadron + 2 destroyers → creates new patrol fleet while main battle fleet continues with remaining forces.
+
+#### TransferShips
+
+Move squadrons and spacelift ships between two existing fleets.
+
+**Use cases:**
+- Reinforce weakened patrol fleet from reserve fleet
+- Consolidate scattered forces before major offensive
+- Balance fleet compositions for optimal combat effectiveness
+- Transfer specialized assets (scouts, ETACs) between task forces
+
+**Mechanics:**
+- Both fleets must be at same friendly colony
+- Select ships from source fleet to transfer to target fleet
+- Squadron cohesion preserved (entire squadron transfers together)
+- If source fleet emptied, automatically deleted
+
+**Example:** Patrol fleet returns damaged (2 squadrons). Transfer 3 fresh squadrons from reserve fleet → patrol fleet reinforced and ready for immediate redeployment.
+
+#### MergeFleets
+
+Combine two fleets into a single unified force.
+
+**Use cases:**
+- Consolidate multiple small fleets into battle group
+- Merge returning damaged fleet with fresh reinforcements
+- Combine specialized fleets for joint operations
+- Simplify fleet management by reducing total fleet count
+
+**Mechanics:**
+- Source fleet merges entirely into target fleet
+- All squadrons and spacelift ships transfer to target
+- Source fleet deleted after merge
+- Target fleet retains its orders and standing orders
+- Fleet composition limits still apply
+
+**Example:** 3 cruiser fleets return to home system. Merge all into single battle fleet → one unified command, simplified management, ready for coordinated offensive.
+
+### 6.4.3 Cargo Operations
+
+Load and unload ground forces and colonists instantly during order submission.
+
+**Requirements:**
+- Fleet at friendly colony
+- Compatible spacelift ships in fleet (Troop Transports for marines, ETACs for colonists)
+- Cargo available at colony (marines from garrison, colonists from population)
+
+#### LoadCargo
+
+Load marines or colonists from colony onto fleet spacelift ships.
+
+**Use cases:**
+- Load invasion forces immediately before launching offensive
+- Embark colonists for same-turn colonization mission
+- Prepare garrison reinforcements for allied colonies
+
+**Mechanics:**
+- **Marines**: Loaded onto Troop Transports from colony garrison
+- **Colonists**: Loaded onto ETACs from colony population (souls-based accounting)
+- Respects ship cargo capacity limits
+- Skips crippled ships (cannot carry cargo while damaged)
+- Colony retains minimum population threshold (cannot load last colonist)
+
+**Strategic Value:** Load invasion forces and execute Order 07 (Invade) in same turn—immediate operational readiness.
+
+**Example:** Prepare invasion of enemy colony. Load 10 marine divisions onto 5 Troop Transports, attach escorts, issue Order 07 (Invade target system) → invasion launches immediately. Total: 1 turn.
+
+#### UnloadCargo
+
+Unload marines or colonists from fleet spacelift ships to colony.
+
+**Use cases:**
+- Deliver garrison reinforcements to border colonies
+- Evacuate colonists from threatened systems
+- Consolidate forces at strategic staging bases
+
+**Mechanics:**
+- All cargo on fleet spacelift ships unloaded to colony
+- Marines added to colony garrison
+- Colonists added to colony population (souls + population units)
+- Instant transfer, no turn cost
+
+**Example:** Evacuate colony threatened by superior enemy fleet. Load colonists, move fleet to safe system, unload colonists → population preserved, enemy gains empty colony.
+
+### 6.4.4 Squadron Management Commands
+
+Fine-tune squadron composition and fleet assignments for optimal combat effectiveness.
+
+**Requirements:**
+- Colony must be friendly and under your control
+- Squadrons must be at same colony (either in fleets or unassigned)
+
+#### TransferShipBetweenSquadrons
+
+Move individual escort ships between squadrons to balance combat power.
+
+**Use cases:**
+- Balance destroyer distribution across capital squadrons
+- Optimize escort screens for different capital ship types
+- Reorganize after combat losses
+- Prepare specialized squadron configurations
+
+**Mechanics:**
+- Source and target squadrons must be in fleets at same colony
+- Only escort ships can transfer (destroyers, frigates, corvettes)
+- Cannot transfer flagships (capital ships)
+- If target squadron at capacity, transfer fails
+- Rollback on failure (ship returns to source if transfer impossible)
+
+**Example:** Battle fleet has 3 cruiser squadrons: CL with 4 destroyers, CL with 1 destroyer, CL with 2 destroyers. Transfer 1 destroyer from first to second → balanced squadrons (3, 2, 2) improve combat effectiveness.
+
+#### AssignSquadronToFleet
+
+Assign newly-commissioned squadrons from unassigned pool to specific fleets.
+
+**Use cases:**
+- Manual control before auto-assignment runs
+- Assign squadrons to specific mission fleets instead of default assignment
+- Create specialized task forces with precise composition
+- Override auto-assignment for strategic fleet builds
+
+**Mechanics:**
+- Squadron can be in unassigned pool OR in existing fleet
+- Target fleet must exist at colony OR new fleet created if none specified
+- Squadron removed from source location
+- If source fleet emptied, deleted automatically
+- Executes before auto-assignment during turn resolution
+
+**Strategic Control:** Issue commands during order submission to assign specific squadrons to specific fleets. Auto-assignment still handles remaining unassigned squadrons, but your manual assignments take priority.
+
+**Example:** Colony completes 2 dreadnought squadrons + 4 cruiser squadrons. Use AssignSquadronToFleet commands to put dreadnoughts in battle fleet, cruisers in patrol fleet → precise control instead of automatic distribution.
+
+### 6.4.5 Workflow: Prepare Forces → Execute Strategy
+
+Execute complex operations in a single turn by combining zero-turn commands with operational orders.
+
+**Example: Invasion Operation**
+
+Turn N submission:
+1. **LoadCargo** marines onto transports (0 turns)
+2. **Order 07: Invade Planet** (1 turn for transit + combat)
+
+Turn N resolution: Fleet moves and invades. Total: 1 turn.
+
+**Example: Major Offensive**
+
+Launching 3-fleet offensive. Turn submission:
+
+1. **MergeFleets** - Combine cruiser fleets into battle group
+2. **DetachShips** - Split off scout squadron for recon
+3. **LoadCargo** - Load 15 marine divisions
+4. **AssignSquadronToFleet** - Add fresh dreadnought squadrons
+5. **Issue Orders**:
+   - Battle fleet: Order 07 (Invade)
+   - Scout fleet: Order 11 (Spy on System)
+
+All preparation complete, offensive launches immediately. Total: 1 turn.
+
+### 6.4.6 Limitations and Restrictions
+
+**Location Requirements:**
+- Fleet operations require friendly colony presence
+- Cannot reorganize fleets in deep space or at enemy systems
+- Cannot load cargo at neutral systems
+
+**Combat Restrictions:**
+- No zero-turn commands during active combat
+- Cannot reorganize while under siege or blockade
+- Damaged ships (crippled) cannot load cargo
+
+**Order Precedence:**
+- Zero-turn commands execute before operational orders
+- Administrative commands processed in submission order
+- Auto-assignment runs after manual squadron assignments
+
+**Validation:**
+- All commands validated before execution
+- Failed commands return error immediately (no partial execution)
+- State changes atomic (all-or-nothing per command)
+
+---
+
+## 6.5 Standing Orders
 
 Establish persistent fleet behaviors that execute automatically when no explicit order is given. Standing orders reduce micromanagement by codifying routine behaviors—your fleets patrol routes, defend systems, and reinforce damaged units without constant supervision.
 
-### 6.4.1 Standing Order Types
+### 6.5.1 Standing Order Types
 
 Persistent behaviors that execute when fleet has no active mission:
 
@@ -542,7 +770,7 @@ Persistent behaviors that execute when fleet has no active mission:
 | AutoEvade        | Retreat if outnumbered per ROE               | Yes      |
 | BlockadeTarget   | Maintain blockade on enemy colony            | No       |
 
-### 6.4.2 Standing Order Execution
+### 6.5.2 Standing Order Execution
 
 **Standing orders are persistent**: Once assigned, your fleet executes the standing order every turn unless you issue an explicit order.
 
@@ -550,7 +778,7 @@ Persistent behaviors that execute when fleet has no active mission:
 
 **Standing orders support Rules of Engagement**: Most defensive standing orders respect your ROE settings, determining when to fight and when to retreat.
 
-### 6.4.3 Patrol Route Standing Order
+### 6.5.3 Patrol Route Standing Order
 
 Establish indefinite patrol routes through multiple systems. Your fleet automatically travels the route system-by-system, engaging hostiles per ROE, providing continuous defensive coverage.
 
@@ -570,7 +798,7 @@ Establish indefinite patrol routes through multiple systems. Your fleet automati
 - Maintain continuous presence in contested zones
 - Automate routine security operations
 
-### 6.4.4 Defend System Standing Order
+### 6.5.4 Defend System Standing Order
 
 Station your fleet for permanent system defense. Your fleet remains at the system, engages hostiles per ROE, and protects colonies without requiring repeated orders.
 
@@ -589,7 +817,7 @@ Station your fleet for permanent system defense. Your fleet remains at the syste
 - Protect strategic colonies
 - Maintain defensive presence without micromanagement
 
-### 6.4.5 Guard Colony Standing Order
+### 6.5.5 Guard Colony Standing Order
 
 Defend a specific colony within a system. Functionally identical to Defend System but explicitly designates which colony to prioritize during combat.
 
@@ -598,7 +826,7 @@ Defend a specific colony within a system. Functionally identical to Defend Syste
 - Designate which infrastructure to protect
 - Create colony-specific defensive postures
 
-### 6.4.6 Auto-Colonize Standing Order
+### 6.5.6 Auto-Colonize Standing Order
 
 Order ETAC fleets to autonomously identify and colonize nearest suitable systems. Your colonization fleets automatically expand your empire without explicit orders for each colony.
 
@@ -616,7 +844,7 @@ Order ETAC fleets to autonomously identify and colonize nearest suitable systems
 - Reduce colonization micromanagement
 - Ensure rapid territory acquisition during land grabs
 
-### 6.4.7 Auto-Reinforce Standing Order
+### 6.5.7 Auto-Reinforce Standing Order
 
 Order your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers squadrons to restore combat effectiveness.
 
@@ -632,7 +860,7 @@ Order your fleet to automatically reinforce the nearest damaged friendly fleet. 
 - Automate battle damage replacement
 - Create mobile reinforcement fleets
 
-### 6.4.8 Auto-Repair Standing Order
+### 6.5.8 Auto-Repair Standing Order
 
 Order damaged fleets to automatically return to shipyards when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
 
@@ -649,7 +877,7 @@ Order damaged fleets to automatically return to shipyards when crippled. Your fl
 - Reduce fleet management micromanagement
 - Ensure damaged forces return to operational status
 
-### 6.4.9 Auto-Evade Standing Order
+### 6.5.9 Auto-Evade Standing Order
 
 Order your fleet to automatically retreat when outnumbered per ROE settings. Your fleet continuously assesses threat levels and withdraws to safety when engagement becomes unfavorable.
 
@@ -667,7 +895,7 @@ Order your fleet to automatically retreat when outnumbered per ROE settings. You
 - Preserve outnumbered forces
 - Avoid unfavorable engagements
 
-### 6.4.10 Blockade Target Standing Order
+### 6.5.10 Blockade Target Standing Order
 
 Maintain continuous blockade of enemy colony. Your fleet establishes orbital blockade and maintains it indefinitely, strangling enemy economy.
 
@@ -686,7 +914,7 @@ Maintain continuous blockade of enemy colony. Your fleet establishes orbital blo
 - Weaken enemy colonies before invasion
 - Automate blockade operations
 
-### 6.4.11 Rules of Engagement (ROE)
+### 6.5.11 Rules of Engagement (ROE)
 
 Configure standing order combat behavior with Rules of Engagement—a 0-10 scale determining when to fight and when to retreat.
 

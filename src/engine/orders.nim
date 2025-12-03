@@ -13,77 +13,6 @@ import economy/config_accessors  # For CST requirement checking
 export order_types.FleetOrderType, order_types.FleetOrder
 
 type
-  SquadronManagementAction* {.pure.} = enum
-    ## Squadron and ship management actions at colonies
-    TransferShip      # Move ship directly between squadrons at colony
-    AssignToFleet     # Assign squadron to fleet (new or existing)
-
-  SquadronManagementOrder* = object
-    ## Order to form squadrons, transfer ships, or assign to fleets at colonies
-    houseId*: HouseId
-    colonySystem*: SystemId              # Colony where action takes place
-    action*: SquadronManagementAction
-
-    # For FormSquadron: select ships from commissioning pool
-    shipIndices*: seq[int]               # Indices into colony.commissionedShips
-    newSquadronId*: Option[string]       # Optional custom squadron ID
-
-    # For TransferShip: move ship between squadrons
-    sourceSquadronId*: Option[string]    # Squadron to transfer from
-    targetSquadronId*: Option[string]    # Squadron to transfer to (or create new)
-    shipIndex*: Option[int]              # Index of ship in source squadron
-
-    # For AssignToFleet: assign squadron to fleet
-    squadronId*: Option[string]          # Squadron to assign
-    targetFleetId*: Option[FleetId]      # Fleet to assign to (or create new)
-
-  CargoManagementAction* {.pure.} = enum
-    ## Cargo loading/unloading actions at colonies
-    LoadCargo      # Load marines or colonists onto spacelift ships
-    UnloadCargo    # Unload cargo from spacelift ships
-
-  CargoManagementOrder* = object
-    ## Order to load/unload cargo on spacelift ships at colonies
-    houseId*: HouseId
-    colonySystem*: SystemId              # Colony where action takes place
-    action*: CargoManagementAction
-    fleetId*: FleetId                    # Fleet containing spacelift ships
-    cargoType*: Option[CargoType]        # Type of cargo (Marines, Colonists)
-    quantity*: Option[int]               # Amount to load/unload (0 = all available)
-
-  FleetManagementAction* {.pure.} = enum
-    ## Administrative fleet reorganization actions
-    ## Execute immediately during order submission (0 turns, at friendly colonies)
-    DetachShips,   # Split ships from fleet to create new fleet
-    TransferShips, # Move ships from source fleet to target fleet
-    MergeFleets    # Merge entire source fleet into target fleet (0 turns, at colony)
-
-  FleetManagementCommand* = object
-    ## Immediate-execution fleet management command
-    ## Executes synchronously during order submission phase (NOT in OrderPacket)
-    ## Allows player to reorganize fleets at colonies, then issue orders for next turn
-    houseId*: HouseId
-    sourceFleetId*: FleetId
-    action*: FleetManagementAction
-
-    # Ship selection (by index in flat ship list from getAllShips())
-    # Includes both combat ships AND spacelift ships
-    # Note: Not used for MergeFleets (merges entire fleet)
-    shipIndices*: seq[int]
-
-    # For DetachShips: new fleet details
-    newFleetId*: Option[FleetId]  # Optional custom ID for new fleet
-
-    # For TransferShips and MergeFleets: target fleet
-    targetFleetId*: Option[FleetId]  # Existing fleet at same colony
-
-  FleetManagementResult* = object
-    ## Result of fleet management command execution
-    success*: bool
-    error*: string
-    newFleetId*: Option[FleetId]  # For DetachShips action
-    warnings*: seq[string]        # Non-fatal issues (e.g., squadron rebalancing)
-
   TerraformOrder* = object
     ## Order to terraform a planet to next class
     ## Per economy.md Section 4.7
@@ -102,8 +31,6 @@ type
     researchAllocation*: res_types.ResearchAllocation  # PP allocation to ERP/SRP/TRP
     diplomaticActions*: seq[DiplomaticAction]
     populationTransfers*: seq[PopulationTransferOrder]  # Space Guild transfers
-    squadronManagement*: seq[SquadronManagementOrder]    # Ship commissioning and squadron formation
-    cargoManagement*: seq[CargoManagementOrder]          # Cargo loading/unloading at colonies
     terraformOrders*: seq[TerraformOrder]                # Terraforming projects
     colonyManagement*: seq[ColonyManagementOrder]        # Colony-level management (tax rates, auto-repair, etc.)
 
@@ -616,9 +543,7 @@ proc newOrderPacket*(houseId: HouseId, turn: int, treasury: int = 0): OrderPacke
     fleetOrders: @[],
     buildOrders: @[],
     researchAllocation: res_types.initResearchAllocation(),
-    diplomaticActions: @[],
-    squadronManagement: @[],
-    cargoManagement: @[]
+    diplomaticActions: @[]
   )
 
 proc addFleetOrder*(packet: var OrderPacket, order: FleetOrder) =

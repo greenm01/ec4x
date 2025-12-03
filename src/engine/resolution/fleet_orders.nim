@@ -576,23 +576,14 @@ proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: Fleet
 
 proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
   ## Automatically load available marines/colonists onto empty transports at colonies
-  ## Only auto-load if no manual cargo order exists for that fleet
-
-  # Build set of fleets with manual cargo orders
-  var manualCargoFleets: seq[FleetId] = @[]
-  for houseId, packet in orders:
-    for order in packet.cargoManagement:
-      manualCargoFleets.add(order.fleetId)
+  ## NOTE: Manual cargo operations now use zero-turn commands (executed before turn resolution)
+  ## This auto-load only processes fleets that weren't manually managed
 
   # Process each colony
   for systemId, colony in state.colonies:
     # Find fleets at this colony
     for fleetId, fleet in state.fleets:
       if fleet.location != systemId or fleet.owner != colony.owner:
-        continue
-
-      # Skip if fleet has manual cargo orders
-      if fleetId in manualCargoFleets:
         continue
 
       # Auto-load empty transports if colony has inventory

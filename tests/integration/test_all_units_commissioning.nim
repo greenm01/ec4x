@@ -78,8 +78,6 @@ proc buildAndCommissionShip(state: var GameState, shipClass: ShipClass): GameSta
     researchAllocation: initResearchAllocation(),
     diplomaticActions: @[],
     populationTransfers: @[],
-    squadronManagement: @[],
-    cargoManagement: @[],
     terraformOrders: @[],
     espionageAction: none(esp_types.EspionageAttempt),
     ebpInvestment: 0,
