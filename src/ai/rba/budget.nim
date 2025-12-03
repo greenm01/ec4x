@@ -734,7 +734,8 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
                               needFighters: bool, needCarriers: bool,
                               needTransports: bool, needRaiders: bool,
                               canAffordMoreShips: bool, cstLevel: int,
-                              ownFleets: seq[Fleet]): seq[BuildOrder] =
+                              ownFleets: seq[Fleet],
+                              fdMultiplier: float): seq[BuildOrder] =
   ## Generate special unit orders (fighters, carriers, transports, raiders)
   ## Uses BudgetTracker to prevent overspending
   ##
@@ -850,11 +851,14 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
     let fighterCost = getShipConstructionCost(ShipClass.Fighter)
 
     # Path 1: Check colony capacity for defense fighters
-    # Requires operational starbases (1 per 5 FS)
-    let operationalStarbases = colony.starbases.countIt(not it.isCrippled)
-    let currentFighters = colony.fighterSquadrons.len
-    let colonyCapacity = operationalStarbases * 5  # Each starbase supports 5 fighters
-    let hasColonyCapacity = currentFighters < colonyCapacity
+    # Fighters can be built for defense at any colony up to fighter capacity limit
+    # Capacity = min(population capacity, infrastructure capacity)
+    # - Population capacity: PU/100 × FD multiplier (from tech tree)
+    # - Infrastructure capacity: operational starbases × 5
+    # Starbases only needed to reach full capacity, not to build fighters
+    let currentFighters = colony.getCurrentFighterCount()
+    let maxFighters = colony.getFighterCapacity(fdMultiplier)
+    let hasColonyCapacity = currentFighters < maxFighters
 
     # Path 2: Check carrier capacity for direct commissioning
     # Carriers can accept fighters without colony starbase infrastructure
@@ -1277,6 +1281,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
   # Get tech levels for gating ship unlocks
   let cstLevel = house.techTree.levels.constructionTech
+  let fdMultiplier = getFighterDoctrineMultiplier(house.techTree.levels)
   let colonyCount = myColonies.len
 
   # PROJECTED STATE TRACKING
@@ -1342,7 +1347,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     # Carriers/Transports/Raiders require shipyard/spaceport
     result.add(buildSpecialUnitsOrders(colony, tracker, needFighters, needCarriers,
                                       needTransports, needRaiders, canAffordMoreShips, cstLevel,
-                                      filtered.ownFleets))
+                                      filtered.ownFleets, fdMultiplier))
 
     # Facility orders: Build Spaceports at colonies without facilities
     # CRITICAL: This scales ship production from 3/turn (homeworld only) to 3N/turn (N colonies)
