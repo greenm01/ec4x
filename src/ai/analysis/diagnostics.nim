@@ -167,6 +167,7 @@ type
     etacShips*: int                   # ETAC-class ships
     troopTransportShips*: int         # Troop Transport
     planetBreakerShips*: int          # PB Planet-Breaker (CST 10)
+    totalShips*: int                  # Sum of all ship types (for analyzer)
 
     # Ground Unit Counts (all 4 ground unit types)
     planetaryShieldUnits*: int        # PS Planetary Shield (CST 5)
@@ -730,6 +731,13 @@ proc collectLogisticsMetrics(state: GameState, houseId: HouseId): DiagnosticMetr
   result.troopTransportShips = troopTransportShips
   result.planetBreakerShips = planetBreakerShips
 
+  # Calculate total ships (sum of all ship types)
+  result.totalShips = fighterShips + corvetteShips + frigateShips + scoutShips + raiderShips +
+                      destroyerShips + cruiserShips + lightCruiserShips + heavyCruiserShips +
+                      battlecruiserShips + battleshipShips + dreadnoughtShips + superDreadnoughtShips +
+                      carrierShips + superCarrierShips + starbaseShips + etacShips + troopTransportShips +
+                      planetBreakerShips
+
   # Count all 4 ground unit types (stored as int fields in Colony)
   var planetaryShieldUnits = 0
   var groundBatteryUnits = 0
@@ -1000,6 +1008,13 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.troopTransportShips = log.troopTransportShips
   result.planetBreakerShips = log.planetBreakerShips
 
+  # Calculate total ships (sum of all ship types)
+  result.totalShips = log.fighterShips + log.corvetteShips + log.frigateShips + log.scoutShips + log.raiderShips +
+                      log.destroyerShips + log.cruiserShips + log.lightCruiserShips + log.heavyCruiserShips +
+                      log.battlecruiserShips + log.battleshipShips + log.dreadnoughtShips + log.superDreadnoughtShips +
+                      log.carrierShips + log.superCarrierShips + log.starbaseShips + log.etacShips +
+                      log.troopTransportShips + log.planetBreakerShips
+
   # Ground unit counts (all 4 ground unit types)
   result.planetaryShieldUnits = log.planetaryShieldUnits
   result.groundBatteryUnits = log.groundBatteryUnits
@@ -1138,6 +1153,10 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.turnsUntilElimination = status.turnsUntilElimination
   result.missedOrderTurns = status.missedOrderTurns
 
+proc boolToInt(b: bool): int {.inline.} =
+  ## Convert boolean to int for CSV output (Datamancer compatibility)
+  if b: 1 else: 0
+
 proc writeCSVHeader*(file: File) =
   ## Write CSV header row with ALL game metrics
   file.writeLine("turn,house,strategy," &
@@ -1181,11 +1200,11 @@ proc writeCSVHeader*(file: File) =
                  "raider_success,raider_attempts," &
                  # Logistics
                  "capacity_violations,fighters_disbanded,total_fighters,idle_carriers,total_carriers,total_transports," &
-                 # Ship Counts (19 ship classes)
+                 # Ship Counts (19 ship classes + total)
                  "fighter_ships,corvette_ships,frigate_ships,scout_ships,raider_ships," &
                  "destroyer_ships,cruiser_ships,light_cruiser_ships,heavy_cruiser_ships," &
                  "battlecruiser_ships,battleship_ships,dreadnought_ships,super_dreadnought_ships," &
-                 "carrier_ships,super_carrier_ships,starbase_ships,etac_ships,troop_transport_ships,planet_breaker_ships," &
+                 "carrier_ships,super_carrier_ships,starbase_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
                  # Ground Units (4 types)
                  "planetary_shield_units,ground_battery_units,army_units,marine_division_units," &
                  # Intel
@@ -1218,7 +1237,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.criticalHitsDealt},{metrics.criticalHitsReceived},{metrics.cloakedAmbushSuccess},{metrics.shieldsActivatedCount}," &
                  # Diplomatic Status (4-level system)
                  &"{metrics.allyStatusCount},{metrics.hostileStatusCount},{metrics.enemyStatusCount},{metrics.neutralStatusCount}," &
-                 &"{metrics.pactViolationsTotal},{metrics.dishonoredStatusActive},{metrics.diplomaticIsolationTurns}," &
+                 &"{metrics.pactViolationsTotal},{boolToInt(metrics.dishonoredStatusActive)},{metrics.diplomaticIsolationTurns}," &
                  # Treaty Activity Metrics
                  &"{metrics.pactFormationsTotal},{metrics.pactBreaksTotal},{metrics.hostilityDeclarationsTotal},{metrics.warDeclarationsTotal}," &
                  # Espionage Activity
@@ -1229,14 +1248,14 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.populationTransfersActive},{metrics.populationTransfersCompleted},{metrics.populationTransfersLost},{metrics.ptuTransferredTotal}," &
                  &"{metrics.coloniesBlockadedCount},{metrics.blockadeTurnsCumulative}," &
                  # Economic Health
-                 &"{metrics.treasuryDeficit},{metrics.infrastructureDamageTotal},{metrics.salvageValueRecovered},{metrics.maintenanceCostDeficit}," &
-                 &"{metrics.taxPenaltyActive},{metrics.avgTaxRate6Turn}," &
+                 &"{boolToInt(metrics.treasuryDeficit)},{metrics.infrastructureDamageTotal},{metrics.salvageValueRecovered},{metrics.maintenanceCostDeficit}," &
+                 &"{boolToInt(metrics.taxPenaltyActive)},{metrics.avgTaxRate6Turn}," &
                  # Squadron Capacity & Violations
-                 &"{metrics.fighterCapacityMax},{metrics.fighterCapacityUsed},{metrics.fighterCapacityViolation}," &
-                 &"{metrics.squadronLimitMax},{metrics.squadronLimitUsed},{metrics.squadronLimitViolation}," &
+                 &"{metrics.fighterCapacityMax},{metrics.fighterCapacityUsed},{boolToInt(metrics.fighterCapacityViolation)}," &
+                 &"{metrics.squadronLimitMax},{metrics.squadronLimitUsed},{boolToInt(metrics.squadronLimitViolation)}," &
                  &"{metrics.starbasesRequired},{metrics.starbasesActual}," &
                  # House Status
-                 &"{metrics.autopilotActive},{metrics.defensiveCollapseActive},{metrics.turnsUntilElimination},{metrics.missedOrderTurns}," &
+                 &"{boolToInt(metrics.autopilotActive)},{boolToInt(metrics.defensiveCollapseActive)},{metrics.turnsUntilElimination},{metrics.missedOrderTurns}," &
                  # Military
                  &"{metrics.spaceCombatWins},{metrics.spaceCombatLosses},{metrics.spaceCombatTotal}," &
                  &"{metrics.orbitalFailures},{metrics.orbitalTotal}," &
@@ -1244,16 +1263,16 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Logistics
                  &"{metrics.capacityViolationsActive},{metrics.fightersDisbanded}," &
                  &"{metrics.totalFighters},{metrics.idleCarriers},{metrics.totalCarriers},{metrics.totalTransports}," &
-                 # Ship Counts (19 ship classes)
+                 # Ship Counts (19 ship classes + total)
                  &"{metrics.fighterShips},{metrics.corvetteShips},{metrics.frigateShips},{metrics.scoutShips},{metrics.raiderShips}," &
                  &"{metrics.destroyerShips},{metrics.cruiserShips},{metrics.lightCruiserShips},{metrics.heavyCruiserShips}," &
                  &"{metrics.battlecruiserShips},{metrics.battleshipShips},{metrics.dreadnoughtShips},{metrics.superDreadnoughtShips}," &
-                 &"{metrics.carrierShips},{metrics.superCarrierShips},{metrics.starbaseShips},{metrics.etacShips},{metrics.troopTransportShips},{metrics.planetBreakerShips}," &
+                 &"{metrics.carrierShips},{metrics.superCarrierShips},{metrics.starbaseShips},{metrics.etacShips},{metrics.troopTransportShips},{metrics.planetBreakerShips},{metrics.totalShips}," &
                  # Ground Units (4 types)
                  &"{metrics.planetaryShieldUnits},{metrics.groundBatteryUnits},{metrics.armyUnits},{metrics.marineDivisionUnits}," &
                  # Intel
                  &"{metrics.invasionFleetsWithoutELIMesh},{metrics.totalInvasions}," &
-                 &"{metrics.clkResearchedNoRaiders},{metrics.scoutCount}," &
+                 &"{boolToInt(metrics.clkResearchedNoRaiders)},{metrics.scoutCount}," &
                  &"{metrics.spyPlanetMissions},{metrics.hackStarbaseMissions},{metrics.totalEspionageMissions}," &
                  # Defense
                  &"{metrics.coloniesWithoutDefense},{metrics.totalColonies}," &
