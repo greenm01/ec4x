@@ -302,7 +302,11 @@ proc resolveBombardmentRound*(
           discard
 
   # Remaining excess hits damage infrastructure (IU then PU)
+  # Per user requirement: IU and PU both take damage during bombardment
+  # IU represents factories/infrastructure, PU represents civilian casualties
+  # Damage is split: each excess hit damages both IU and PU
   result.infrastructureDamage = excessAttackerHits
+  result.populationDamage = excessAttackerHits  # Same damage to both (bombardment is indiscriminate)
 
   # Apply defender hits to attacking fleet (critical hits bypass protection)
   var excessDefenderHits = defenderHits
