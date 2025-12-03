@@ -136,21 +136,45 @@ NCV = GCO × tax rate
 
 Net House Value (NHV): The sum total of all NCVs across the player's colonies. NHV is transferred to the House treasury at the beginning of each turn.
 
-### **3.4 Industrial Investments and Productivity Growth**
+### **3.4 Industrial Units and Productivity Growth**
 
-Investing in Industrial Units (IU) increases the manufacturing capacity of a colony, directly boosting GCO. The cost of IU investments scales based on the percentage of IU relative to the colony's PU.
+Industrial Units (IU) represent manufacturing capacity - factories, shipyards, supply chains, and industrial infrastructure. IU directly boosts GCO through the production formula.
+
+**Passive IU Growth:**
+
+Colonies naturally develop industrial infrastructure as populations grow and economies mature:
+
+```
+IU Growth per Turn = max(1, floor(PU / 200)) × tax multiplier × (1 + starbase bonus)
+```
+
+- Small colonies (< 200 PU): +1 IU/turn
+- Medium colonies (400 PU): +2 IU/turn
+- Large colonies (800 PU): +4 IU/turn
+- Modified by same tax/starbase bonuses as population growth
+
+This allows homeworlds (840 PU) starting at 420 IU to naturally reach 840 IU in ~100 turns. Players can accelerate growth through manual investment.
+
+**Manual IU Investment:**
+
+Players can invest PP to accelerate industrial development. Cost scales based on the percentage of IU relative to the colony's PU:
 
 <!-- IU_INVESTMENT_TABLE_START -->
-| IU Investment (% of PU) | Cost Multiplier | PP  |
-| ----------------------- |:---------------:|:---:|
-| Up to 50%               | 1.0             | 15  |
-| 51% - 75%               | 1.2             | 18  |
-| 76% - 100%              | 1.5             | 23  |
-| 101% - 150%             | 2.0             | 30  |
-| 151% and above          | 2.5             | 38  |
+| IU Investment (% of PU) | Cost Multiplier | PP per IU |
+| ----------------------- |:---------------:|:---------:|
+| Up to 50%               | 1.0             | 5         |
+| 51% - 75%               | 1.2             | 6         |
+| 76% - 100%              | 1.5             | 8         |
+| 101% - 150%             | 2.0             | 10        |
+| 151% and above          | 2.5             | 13        |
 
 *Source: config/economy.toml [industrial_investment] section*
 <!-- IU_INVESTMENT_TABLE_END -->
+
+**Investment ROI:**
+- At EL1: 1 IU produces ~1 PP/turn → 5-turn payback
+- Higher EL levels increase ROI proportionally
+- Manual investment allows reaching 150%+ of PU for maximum production
 
 ## 3.5 Economic Level Modifier
 
@@ -364,8 +388,11 @@ For every turn that a player misses payment for maintenance they lose prestige p
 - **Non-payment**: Squadrons disbanded (oldest first), no salvage value
 
 **Fighter Capacity Constraints:**
-- Max FS = floor(PU / 100) × FD Multiplier
-- No infrastructure requirements
+- Max FS = floor(IU / 100) × FD Multiplier
+- Based on industrial manufacturing capacity (IU), not population (PU)
+- Rationale: With populations in millions, pilot availability isn't the constraint; industrial capacity (factories, shipyards, supply chains) limits fighter production
+- No starbase infrastructure required for colony-based fighters
+- Starbases only needed for loading fighters onto carriers for offensive operations
 
 **Capacity Impact by Status:**
 - Planet-based fighters: Count against colony capacity
