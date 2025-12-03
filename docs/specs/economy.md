@@ -365,8 +365,7 @@ For every turn that a player misses payment for maintenance they lose prestige p
 
 **Fighter Capacity Constraints:**
 - Max FS = floor(PU / 100) × FD Multiplier
-- Infrastructure requirement: 1 operational Starbase per 5 FS (round up)
-- Effective capacity = min(Population capacity, Infrastructure capacity)
+- No infrastructure requirements
 
 **Capacity Impact by Status:**
 - Planet-based fighters: Count against colony capacity
@@ -376,15 +375,12 @@ For every turn that a player misses payment for maintenance they lose prestige p
 **Capacity Violations:**
 
 Grace period: 2 turns to resolve violations from:
-- Infrastructure loss (Starbase destroyed/crippled)
-- Population loss (bombardment, transfer)
+- Population loss (bombardment, transfer) reducing capacity below current fighter count
 
-Resolution costs:
-- Repair Starbase: 25% of Starbase PC (1 turn)
-- Build Starbase: Full Starbase PC (3 turns)
+Resolution options:
 - Transfer population: 4-15 PP per PTU (varies by planet class)
 - Disband excess fighters: 0 PP (no salvage, loses 20 PP asset value per squadron)
-- Carrier relocation: Carrier maintenance costs during transit
+- Transfer fighters to carriers (if available capacity)
 
 ## 3.11 Maintenance & Tax Shortfall Consequences
 

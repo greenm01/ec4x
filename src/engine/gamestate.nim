@@ -643,10 +643,10 @@ proc getFighterInfrastructureCapacity*(colony: Colony): int =
   return operationalStarbases * config.starbase_per_fighter_squadrons
 
 proc getFighterCapacity*(colony: Colony, fdMultiplier: float): int =
-  ## Get effective fighter capacity (minimum of population and infrastructure limits)
-  let popCap = getFighterPopulationCapacity(colony, fdMultiplier)
-  let infraCap = getFighterInfrastructureCapacity(colony)
-  return min(popCap, infraCap)
+  ## Get effective fighter capacity based on population only
+  ## Fighters can be built and commissioned planet-side without starbase infrastructure
+  ## Starbases are only needed for loading fighters onto carriers for offensive operations
+  return getFighterPopulationCapacity(colony, fdMultiplier)
 
 proc getCurrentFighterCount*(colony: Colony): int =
   ## Get current number of fighter squadrons at colony
