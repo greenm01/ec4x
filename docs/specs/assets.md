@@ -142,27 +142,16 @@ Where Fighter Doctrine (FD) Tech Level Multiplier is:
 
 **Infrastructure Requirement:**
 
-Colonies must have at least one operational Starbase per 5 fighter squadrons: `ceil(FS / 5)` to commission and maintain fighter squadron capacity. Crippled Starbases do not count toward this requirement.
-
-Starbases provide the logistical coordination, advanced maintenance facilities, and strategic communications necessary to field large fighter wings. However, once commissioned, fighter squadrons operate independently from distributed planetary bases and remain combat-effective even if Starbases are crippled or destroyed.
+Fighters are built and commissioned planet-side. Once commissioned, fighter squadrons operate independently from distributed planetary bases. No starbase infrastructure is required.
 
 **Capacity Violations:**
 
-A colony enters capacity violation when:
-- Operational Starbase count falls below `ceil(Current FS / 5)`, OR
-- Population loss reduces maximum capacity below current fighter squadron count
+A colony enters capacity violation when population loss reduces maximum capacity below current fighter squadron count.
 
 **Violation Grace Period:**
 
-When a capacity violation occurs, existing fighter squadrons remain fully operational and combat-effective. The player has 2 turns to resolve the violation by:
+When a capacity violation occurs (population loss reducing maximum capacity below current fighter count), existing fighter squadrons remain fully operational and combat-effective. The player has 2 turns to resolve the violation by:
 
-**For Infrastructure Violations:**
-- Repairing crippled Starbases
-- Constructing new Starbases
-- Disbanding excess fighter squadrons
-- Relocating excess squadrons via carrier to another colony with available capacity
-
-**For Population Capacity Violations:**
 - Transferring population to the colony to increase PU
 - Disbanding excess fighter squadrons
 - Relocating excess squadrons via carrier to another colony with available capacity
@@ -181,9 +170,8 @@ Fighters can be commissioned through two pathways:
 
 To commission fighters that will remain colony-owned, a colony must:
 1. Have available capacity: `Current FS < Max FS`
-2. Meet infrastructure requirement: `Operational Starbases ≥ ceil((Current FS + New FS) / 5)`
-3. Have sufficient population capacity: `floor(PU / 100) × FD ≥ (Current FS + New FS)`
-4. Have sufficient treasury: `Available PP ≥ 20 × New FS`
+2. Have sufficient population capacity: `floor(PU / 100) × FD ≥ (Current FS + New FS)`
+3. Have sufficient treasury: `Available PP ≥ 20 × New FS`
 
 **Path 2: Auto-Loading to Carriers (for immediate carrier deployment)**
 
