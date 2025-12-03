@@ -70,7 +70,8 @@ proc evaluateIUInvestment*(
   colony: Colony,
   houseELTech: int,
   houseTreasury: int,
-  turnNumber: int
+  turnNumber: int,
+  strategy: AIStrategy = AIStrategy.Balanced
 ): Option[IUInvestmentOpportunity] =
   ## Evaluate whether IU investment is worthwhile at this colony
   ##
@@ -92,9 +93,20 @@ proc evaluateIUInvestment*(
   if currentPU < 100:
     return none(IUInvestmentOpportunity)
 
-  # Calculate optimal IU target (100% of PU for balanced colonies)
-  # Aggressive strategy might go to 150%, conservative to 75%
-  let optimalIU = currentPU  # Target 100% of PU
+  # Calculate optimal IU target based on strategy
+  # Aggressive/MilitaryIndustrial/Raider: 150% of PU (maximize production for military)
+  # Balanced/Opportunistic: 100% of PU (balanced development)
+  # Turtle/Economic/Isolationist: 125% of PU (strong economy for defense)
+  # Espionage/Diplomatic/TechRush/Expansionist: 100% PU (balanced, focus elsewhere)
+  let optimalIU = case strategy
+    of AIStrategy.Aggressive, AIStrategy.MilitaryIndustrial, AIStrategy.Raider:
+      (currentPU * 3) div 2  # 150%
+    of AIStrategy.Balanced, AIStrategy.Opportunistic:
+      currentPU  # 100%
+    of AIStrategy.Turtle, AIStrategy.Economic, AIStrategy.Isolationist:
+      (currentPU * 5) div 4  # 125%
+    of AIStrategy.Espionage, AIStrategy.Diplomatic, AIStrategy.TechRush, AIStrategy.Expansionist:
+      currentPU  # 100%
 
   # Already at or above optimal
   if currentIU >= optimalIU:
@@ -154,12 +166,16 @@ proc generateIUInvestmentRecommendations*(
 
   result = @[]
 
+  # Access house data from filtered state
+  let house = filtered.houses[controller.houseId]
+
   for colony in filtered.ownColonies:
     let opportunity = evaluateIUInvestment(
       colony,
-      controller.house.techLevels.economicLevel,
-      controller.house.treasury,
-      filtered.turn
+      house.techLevels.economicLevel,
+      house.treasury,
+      filtered.turn,
+      controller.strategy
     )
 
     if opportunity.isSome:
