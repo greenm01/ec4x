@@ -165,8 +165,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     else: scoutCount < 9  # More scouts for full ELI mesh coverage
 
   let needDefenses = cst >= 1
-  let needFighters = cst >= 3
-  let needCarriers = cst >= 3 and needFighters
+  let needFighters = true  # Engine handles tech-gating via ships.toml tech_level
+  let needCarriers = cst >= 3
   let needTransports = cst >= 1 and p.aggression > 0.3
   let needRaiders = cst >= 2 and p.aggression > 0.5
   let canAffordMoreShips = allocation.budgets[AdvisorType.Domestikos] >= 50
