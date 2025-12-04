@@ -8,6 +8,7 @@
 
 import std/[tables, options]
 import types, income, construction, maintenance, maintenance_shortfall, facility_queue
+import capacity/carrier_hangar  # For carrier hangar capacity enforcement
 import ../../common/types/[core, units]
 import ../gamestate  # For unified Colony type
 import ../state_helpers  # For withHouse macro
@@ -236,5 +237,8 @@ proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport 
   # Infrastructure repairs handled by repair_queue.nim during Construction Phase
   # Damaged infrastructure tracked in colony.infrastructureDamage
   # Repairs applied via PP allocation in construction system
+
+  # Check carrier hangar capacity (should find no violations - blocked at load time)
+  discard carrier_hangar.processCapacityEnforcement(state)
 
   return result

@@ -24,7 +24,6 @@ import types
 import ../gamestate
 import ../economy/types as econ_types
 import ../../common/types/core
-import ../../common/types/units
 import ../../common/logger
 
 export types.CompletedProject
