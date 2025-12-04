@@ -21,9 +21,12 @@ capacity_violation_grace_period = 2  # 2 turns grace before auto-disband
 # ============================================================================
 
 [squadron_limits]
-# BALANCE: Squadron limit formula: Total House PU ÷ 100 (round down, minimum 8)
-squadron_limit_pu_divisor = 100    # Capital squadrons + carriers = House PU / 100
-squadron_limit_minimum = 8         # Minimum squadron slots regardless of PU
+# BALANCE: Squadron limit formula: Total House IU ÷ 100 × 2 (round down, minimum 8)
+squadron_limit_pu_divisor = 100    # Deprecated: Use IU-based formula instead
+squadron_limit_minimum = 8         # Minimum squadron slots regardless of IU
+
+# Capital ship definition
+capital_ship_cr_threshold = 7  # Ships with CR >= 7 are capital ships
 
 # ============================================================================
 # SALVAGE MECHANICS

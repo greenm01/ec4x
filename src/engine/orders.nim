@@ -8,6 +8,8 @@ import espionage/types as esp_types
 import research/types as res_types
 import economy/construction  # For cost calculation
 import economy/config_accessors  # For CST requirement checking
+import economy/capacity/capital_squadrons  # For capital squadron capacity enforcement
+import economy/types as econ_types  # For FacilityType in cost calculation
 
 # Re-export order types
 export order_types.FleetOrderType, order_types.FleetOrder
@@ -568,13 +570,18 @@ proc getRemainingBudget*(ctx: OrderValidationContext): int =
   ## Get remaining budget after committed spending
   result = ctx.availableTreasury - ctx.committedSpending
 
-proc calculateBuildOrderCost*(order: BuildOrder, state: GameState): int =
+proc calculateBuildOrderCost*(order: BuildOrder, state: GameState, assignedFacilityType: Option[econ_types.FacilityType] = none(econ_types.FacilityType)): int =
   ## Calculate the PP cost of a build order
   ## Returns 0 if cost cannot be determined
   ##
   ## IMPORTANT: Spaceport Commission Penalty (economy.md:5.1, 5.3)
   ## - Ships built at spaceports (planet-side) incur 100% PC increase (double cost)
   ## - Ships built at shipyards (orbital) have no penalty (standard cost)
+  ## - Fighters are EXEMPT (distributed planetary manufacturing)
+  ## - Shipyard/Starbase buildings are EXEMPT (orbital construction, no penalty)
+  ##
+  ## If assignedFacilityType is provided, use it to determine cost.
+  ## Otherwise, fall back to legacy logic (check if colony has shipyard).
   result = 0
 
   case order.buildType
@@ -589,7 +596,16 @@ proc calculateBuildOrderCost*(order: BuildOrder, state: GameState): int =
       if shipClass == ShipClass.Fighter:
         # Fighters never incur commission penalty (distributed planetary manufacturing)
         result = baseCost
+      elif assignedFacilityType.isSome:
+        # NEW: Per-facility cost calculation
+        if assignedFacilityType.get() == econ_types.FacilityType.Spaceport:
+          # Planet-side construction (spaceport) → 100% penalty (double cost)
+          result = baseCost * 2
+        else:
+          # Orbital construction (shipyard) → no penalty
+          result = baseCost
       elif order.colonySystem in state.colonies:
+        # LEGACY: Fall back to colony-wide check (for backwards compatibility)
         let colony = state.colonies[order.colonySystem]
         let hasShipyard = colony.shipyards.len > 0
         let hasSpaceport = colony.spaceports.len > 0
@@ -606,6 +622,8 @@ proc calculateBuildOrderCost*(order: BuildOrder, state: GameState): int =
 
   of BuildType.Building:
     if order.buildingType.isSome:
+      # Buildings never have spaceport penalty (planet-side industry)
+      # Shipyard/Starbase are built in orbit and don't get penalty
       result = construction.getBuildingCost(order.buildingType.get()) * order.quantity
 
   of BuildType.Infrastructure:
@@ -697,28 +715,42 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
           return ValidationResult(valid: false,
                                  error: &"Fighter capacity exceeded ({currentFighters}+{underConstruction}/{maxFighters})")
 
-    # Check squadron limit (if building capital ships)
-    # Scouts are exempt from squadron limits (reference.md:9.5)
+    # Check capital squadron limit (if building capital ships)
+    # Fighters and scouts are exempt from squadron limits
     if shipClass != ShipClass.Fighter and shipClass != ShipClass.Scout:
-      let currentSquadrons = state.getHouseSquadronCount(houseId)
-      let maxSquadrons = state.getSquadronLimit(houseId)
+      if capital_squadrons.isCapitalShip(shipClass):
+        if not capital_squadrons.canBuildCapitalShip(state, houseId):
+          let violation = capital_squadrons.analyzeCapacity(state, houseId)
+          let underConstruction = capital_squadrons.countCapitalSquadronsUnderConstruction(state, houseId)
 
-      # Count squadrons under construction house-wide
-      var squadronsUnderConstruction = 0
+          ctx.rejectedOrders += 1
+          logWarn(LogCategory.lcEconomy,
+                  &"{houseId} Build order REJECTED: Capital squadron limit exceeded " &
+                  &"(current={violation.current}, queued={underConstruction}, max={violation.maximum})")
+          return ValidationResult(valid: false,
+                                 error: &"Capital squadron limit exceeded ({violation.current}+{underConstruction}/{violation.maximum})")
+
+    # Check planet-breaker limit (1 per colony owned, assets.md:2.4.8)
+    if shipClass == ShipClass.PlanetBreaker:
+      let currentPBs = state.houses[houseId].planetBreakerCount
+      let maxPBs = state.getPlanetBreakerLimit(houseId)
+
+      # Count planet-breakers under construction house-wide
+      var pbsUnderConstruction = 0
       for colId, col in state.colonies:
         if col.owner == houseId:
-          squadronsUnderConstruction += col.constructionQueue.filterIt(
+          pbsUnderConstruction += col.constructionQueue.filterIt(
             it.projectType == ConstructionType.Ship and
-            it.itemId != "Fighter" and it.itemId != "Scout"
+            it.itemId == "PlanetBreaker"
           ).len
 
-      if currentSquadrons + squadronsUnderConstruction + 1 > maxSquadrons:
+      if currentPBs + pbsUnderConstruction + 1 > maxPBs:
         ctx.rejectedOrders += 1
         logWarn(LogCategory.lcEconomy,
-                &"{houseId} Build order REJECTED: Squadron limit exceeded " &
-                &"(current={currentSquadrons}, queued={squadronsUnderConstruction}, max={maxSquadrons})")
+                &"{houseId} Build order REJECTED: Planet-breaker limit exceeded " &
+                &"(current={currentPBs}, queued={pbsUnderConstruction}, max={maxPBs} [1 per colony])")
         return ValidationResult(valid: false,
-                               error: &"Squadron limit exceeded ({currentSquadrons}+{squadronsUnderConstruction}/{maxSquadrons})")
+                               error: &"Planet-breaker limit exceeded ({currentPBs}+{pbsUnderConstruction}/{maxPBs}, limited to 1 per colony)")
 
   # Calculate cost
   let cost = calculateBuildOrderCost(order, state)

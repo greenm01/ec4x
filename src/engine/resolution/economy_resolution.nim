@@ -41,7 +41,11 @@ import std/[tables, options, random, sequtils, hashes, math, strutils, strformat
 import ../../common/[hex, types/core, types/units, types/tech]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../starmap, ../logger
 import ../order_types  # For StandingOrder and StandingOrderType
-import ../economy/[types as econ_types, engine as econ_engine, construction, maintenance]
+import ../economy/[types as econ_types, engine as econ_engine, construction, maintenance, facility_queue]
+import ../economy/capacity/fighter as fighter_capacity
+import ../economy/capacity/planet_breakers as planet_breaker_capacity
+import ../economy/capacity/capital_squadrons as capital_squadron_capacity
+import ../economy/capacity/construction_docks as dock_capacity
 import ../research/[types as res_types, costs as res_costs, effects as res_effects, advancement]
 import ../espionage/[types as esp_types, engine as esp_engine]
 import ../diplomacy/[types as dip_types, proposals as dip_proposals]
@@ -89,25 +93,33 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
 
-    # Check if colony has dock capacity for more construction projects
-    # NEW: Build queue system - colonies can have multiple projects up to dock capacity
-    # EXCEPTIONS (built planet-side, don't consume dock capacity):
-    # - Fighters: Built planet-side via distributed manufacturing (economy.md:3.10)
-    # - Buildings: Infrastructure built with planet-side industry (Spaceports, Shipyards, Starbases, etc.)
-    let isFighter = (order.buildType == BuildType.Ship and
-                     order.shipClass.isSome and
-                     order.shipClass.get() == ShipClass.Fighter)
-    let isFacility = (order.buildType == BuildType.Building)
+    # Determine if this construction requires dock capacity
+    # DOCK CONSTRUCTION: Capital ships (non-fighters) built at spaceport/shipyard facilities
+    # COLONY CONSTRUCTION: Fighters, ground units, buildings, IU investment (planet-side)
+    let requiresDock = (order.buildType == BuildType.Ship and
+                        order.shipClass.isSome and
+                        dock_capacity.shipRequiresDock(order.shipClass.get()))
 
-    if not isFighter and not isFacility and not colony.canAcceptMoreProjects():
-      let capacity = colony.getConstructionDockCapacity()
-      let active = colony.getActiveConstructionProjects()
-      let errorMsg = &"System {order.colonySystem} at capacity ({active}/{capacity} docks used) - cannot accept more projects"
-      logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
-      # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
-      continue
+    # For dock construction, check facility capacity and assign facility
+    var assignedFacility: Option[tuple[facilityId: string, facilityType: econ_types.FacilityType]] = none(tuple[facilityId: string, facilityType: econ_types.FacilityType])
+
+    if requiresDock:
+      # Try to assign to available facility
+      assignedFacility = dock_capacity.assignFacility(state, order.colonySystem, econ_types.ConstructionType.Ship, "")
+      if assignedFacility.isNone:
+        # No facility capacity available
+        let (current, maximum) = dock_capacity.getColonyTotalCapacity(state, order.colonySystem)
+        let errorMsg = &"System {order.colonySystem} at capacity ({current}/{maximum} docks used) - cannot accept more projects"
+        logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
+        continue
 
     # Validate budget BEFORE creating construction project
+    # Pass assigned facility type for accurate cost calculation (spaceport 2x penalty)
+    let facilityTypeForCost = if assignedFacility.isSome:
+                                some(assignedFacility.get().facilityType)
+                              else:
+                                none(econ_types.FacilityType)
+
     let validationResult = orders.validateBuildOrderWithBudget(order, state, packet.houseId, budgetContext)
     if not validationResult.valid:
       let errorMsg = validationResult.error
@@ -154,19 +166,30 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       project = construction.createBuildingProject(buildingType)
       projectDesc = "Building construction: " & buildingType
 
-    # Start construction (NOTE: startConstruction modifies colony in-place)
-    var mutableColony = colony
-    # Check if construction slot is already occupied
-    let wasOccupied = mutableColony.underConstruction.isSome
+    # Route construction to facility queue (capital ships) or colony queue (everything else)
+    var success = false
+    var queueLocation = ""
 
-    if construction.startConstruction(mutableColony, project):
-      # Update game state with modified colony
-      # Only add to queue if construction slot was already occupied
-      # (if slot was empty, startConstruction already set it to underConstruction)
-      if wasOccupied:
-        mutableColony.constructionQueue.add(project)
-      state.colonies[order.colonySystem] = mutableColony
+    if requiresDock and assignedFacility.isSome:
+      # DOCK CONSTRUCTION: Add to facility queue
+      success = dock_capacity.assignAndQueueProject(state, order.colonySystem, project)
+      if success:
+        let (facilityId, facilityType) = assignedFacility.get()
+        queueLocation = &"facility {facilityId}"
+    else:
+      # COLONY CONSTRUCTION: Add to colony queue (legacy system)
+      var mutableColony = colony
+      let wasOccupied = mutableColony.underConstruction.isSome
 
+      if construction.startConstruction(mutableColony, project):
+        # Only add to queue if construction slot was already occupied
+        if wasOccupied:
+          mutableColony.constructionQueue.add(project)
+        state.colonies[order.colonySystem] = mutableColony
+        success = true
+        queueLocation = "colony queue"
+
+    if success:
       # CRITICAL FIX: Deduct construction cost from house treasury
       # IMPORTANT: Use get-modify-write pattern (Nim Table copy semantics!)
       var house = state.houses[packet.houseId]
@@ -174,12 +197,10 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       house.treasury -= project.costTotal
       state.houses[packet.houseId] = house
 
-      let queuePos = mutableColony.constructionQueue.len
-      let capacity = mutableColony.getConstructionDockCapacity()
       logInfo(LogCategory.lcEconomy,
         &"Started construction at system-{order.colonySystem}: {projectDesc} " &
         &"(Cost: {project.costTotal} PP, Est. {project.turnsRemaining} turns, " &
-        &"Queue: {queuePos}/{capacity} docks, Treasury: {oldTreasury} → {house.treasury} PP)")
+        &"Location: {queueLocation}, Treasury: {oldTreasury} → {house.treasury} PP)")
 
       # Generate event
       events.add(GameEvent(
@@ -1184,6 +1205,13 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
               state.fleets[targetFleetId].squadrons.add(newSq)
               logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new squadron {newSq.id}")
 
+          # Increment planet-breaker counter if applicable (assets.md:2.4.8)
+          if shipClass == ShipClass.PlanetBreaker:
+            state.houses[owner].planetBreakerCount += 1
+            logInfo(LogCategory.lcEconomy,
+                    &"Planet-Breaker commissioned for {owner} " &
+                    &"(total: {state.houses[owner].planetBreakerCount})")
+
           # Generate event
           events.add(GameEvent(
             eventType: GameEventType.ShipCommissioned,
@@ -1284,98 +1312,60 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
       logDebug(LogCategory.lcFleet, &"{house.name}: {current}/{limit} squadrons ({totalPU} PU)")
 
   # Check fighter squadron capacity violations (assets.md:2.4.1)
+  # Uses unified capacity management system (economy/capacity/fighter.nim)
   logDebug(LogCategory.lcGeneral, &"Checking fighter squadron capacity...")
-  let militaryConfig = globalMilitaryConfig.fighter_mechanics
 
-  for systemId, colony in state.colonies.mpairs:
-    let house = state.houses[colony.owner]
-    if house.eliminated:
-      continue
+  let fighterEnforcement = fighter_capacity.processCapacityEnforcement(state)
 
-    # Get FD multiplier from house tech level
-    let fdMultiplier = getFighterDoctrineMultiplier(house.techTree.levels)
+  # Generate events for UI feedback
+  for action in fighterEnforcement:
+    if action.affectedUnits.len > 0:
+      let colonyId = SystemId(parseInt(action.entityId))
+      if colonyId in state.colonies:
+        let houseId = state.colonies[colonyId].owner
 
-    # Check current capacity
-    let current = getCurrentFighterCount(colony)
-    let capacity = getFighterCapacity(colony, fdMultiplier)
-    let popCapacity = getFighterPopulationCapacity(colony, fdMultiplier)
-    let infraCapacity = getFighterInfrastructureCapacity(colony)
+        events.add(GameEvent(
+          eventType: GameEventType.UnitDisbanded,
+          houseId: houseId,
+          description: action.description,
+          systemId: some(colonyId)
+        ))
 
-    # Check if over capacity
-    let isOverCapacity = current > capacity
+  # Check planet-breaker capacity violations (assets.md:2.4.8)
+  # Uses unified capacity management system (economy/capacity/planet_breakers.nim)
+  logDebug(LogCategory.lcGeneral, &"Checking planet-breaker capacity...")
 
-    if isOverCapacity:
-      # Determine violation type
-      let violationType = if popCapacity < current:
-        "population"
-      elif infraCapacity < current:
-        "infrastructure"
-      else:
-        "unknown"
+  let pbEnforcement = planet_breaker_capacity.processCapacityEnforcement(state)
 
-      # Start or continue violation
-      if not colony.capacityViolation.active:
-        # New violation - start grace period
-        colony.capacityViolation = CapacityViolation(
-          active: true,
-          violationType: violationType,
-          turnsRemaining: militaryConfig.capacity_violation_grace_period,
-          violationTurn: state.turn
-        )
-        logWarn(LogCategory.lcFleet,
-          &"{house.name} - System-{systemId} over fighter capacity! " &
-          &"(Current: {current} FS, Capacity: {capacity}, Pop: {popCapacity}, Infra: {infraCapacity}) " &
-          &"Violation type: {violationType}, Grace period: {militaryConfig.capacity_violation_grace_period} turns")
-      else:
-        # Existing violation - decrement timer
-        colony.capacityViolation.turnsRemaining -= 1
-        logWarn(LogCategory.lcFleet,
-          &"{house.name} - System-{systemId} capacity violation continues " &
-          &"(Current: {current} FS, Capacity: {capacity}, Grace period: {colony.capacityViolation.turnsRemaining} turn(s))")
+  # Generate events for UI feedback
+  for action in pbEnforcement:
+    if action.affectedUnits.len > 0:
+      let houseId = HouseId(action.entityId)
 
-        # Check if grace period expired
-        if colony.capacityViolation.turnsRemaining <= 0:
-          # Auto-disband excess fighters (oldest first)
-          let excess = current - capacity
-          logWarn(LogCategory.lcFleet, &"Grace period expired! Auto-disbanding {excess} excess fighter squadron(s)")
+      events.add(GameEvent(
+        eventType: GameEventType.UnitDisbanded,
+        houseId: houseId,
+        description: action.description,
+        systemId: none(SystemId)  # House-wide enforcement, no specific system
+      ))
 
-          # Remove oldest squadrons first
-          for i in 0..<excess:
-            if colony.fighterSquadrons.len > 0:
-              let disbanded = colony.fighterSquadrons[0]
-              colony.fighterSquadrons.delete(0)
-              logDebug(LogCategory.lcFleet, &"Disbanded: {disbanded.id}")
+  # Check capital squadron capacity violations (reference.md Table 10.5)
+  # Uses unified capacity management system (economy/capacity/capital_squadrons.nim)
+  logDebug(LogCategory.lcGeneral, &"Checking capital squadron capacity...")
 
-          # Clear violation
-          colony.capacityViolation = CapacityViolation(
-            active: false,
-            violationType: "",
-            turnsRemaining: 0,
-            violationTurn: 0
-          )
+  let capitalEnforcement = capital_squadron_capacity.processCapacityEnforcement(state)
 
-          # Generate event
-          events.add(GameEvent(
-            eventType: GameEventType.UnitDisbanded,
-            houseId: colony.owner,
-            description: $excess & " fighter squadrons auto-disbanded at " & $systemId & " (capacity violation)",
-            systemId: some(systemId)
-          ))
+  # Generate events for UI feedback
+  for action in capitalEnforcement:
+    if action.affectedUnits.len > 0:
+      let houseId = HouseId(action.entityId)
 
-    elif colony.capacityViolation.active:
-      # Was in violation but now resolved
-      logInfo(LogCategory.lcFleet, &"{house.name} - System-{systemId} capacity violation resolved!")
-      colony.capacityViolation = CapacityViolation(
-        active: false,
-        violationType: "",
-        turnsRemaining: 0,
-        violationTurn: 0
-      )
-    elif current > 0:
-      # Normal status report
-      logDebug(LogCategory.lcFleet,
-        &"{house.name} - System-{systemId}: {current}/{capacity} FS " &
-        &"(Pop: {popCapacity}, Infra: {infraCapacity})")
+      events.add(GameEvent(
+        eventType: GameEventType.UnitDisbanded,
+        houseId: houseId,
+        description: action.description,
+        systemId: none(SystemId)  # House-wide enforcement
+      ))
 
   # Process tech advancements
   # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP is available

@@ -16,6 +16,7 @@ type
   SquadronLimitsConfig* = object
     squadron_limit_pu_divisor*: int
     squadron_limit_minimum*: int
+    capital_ship_cr_threshold*: int
 
   SalvageConfig* = object
     salvage_value_multiplier*: float

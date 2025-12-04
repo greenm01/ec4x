@@ -7,7 +7,7 @@
 ## Infrastructure damage from combat affects production
 
 import std/[tables, options]
-import types, income, construction, maintenance, maintenance_shortfall
+import types, income, construction, maintenance, maintenance_shortfall, facility_queue
 import ../../common/types/[core, units]
 import ../gamestate  # For unified Colony type
 import ../state_helpers  # For withHouse macro
@@ -217,7 +217,17 @@ proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport 
       house.treasury -= totalUpkeep
 
   # Advance construction projects
+  # TWO SYSTEMS:
+  # 1. Facility queues: Capital ships + repairs (per-facility dock capacity)
+  # 2. Colony queue: Fighters, buildings, ground units, IU investment (planet-side)
+
   for (systemId, colony) in state.colonies.mpairs:
+    # Advance facility queues (capital ships in spaceports/shipyards + repairs in shipyards)
+    let facilityResults = facility_queue.advanceColonyQueues(colony)
+    result.completedProjects.add(facilityResults.completedProjects)
+    # Note: completed repairs handled separately (not in completedProjects)
+
+    # Advance colony queue (legacy system for fighters, buildings, ground units, IU)
     if colony.underConstruction.isSome:
       let completed = advanceConstruction(colony)
       if completed.isSome:

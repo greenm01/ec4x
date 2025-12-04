@@ -238,8 +238,8 @@ name = "Raider"
 class = "RR"
 attack_strength = 12
 defense_strength = 10
-command_cost = 3
-command_rating = 4
+command_cost = 2
+command_rating = 8
 tech_level = 3
 build_cost = 150
 upkeep_cost = 6  # MC = 4% of 150 = 6

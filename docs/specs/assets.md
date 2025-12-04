@@ -677,6 +677,28 @@ Marines fight alongside the Army if garrisoned planet-side.
 
 A vast decentralized network of trade, commerce, transport, industry, tech, and mining activities occur between and within House colonies, facilitated by the Space Guilds. Most of this activity is abstracted away and occurs in the background of EC4X's strategic focus. Guild ships stealthily ply the jump lanes between colonies without interaction or communication with military assets.
 
-Numerous Space Guilds compete for business in unregulated, private capital markets. The Space Guilds are neutral non-player-characters (NPC) with zero loyalty to any House. 
+Numerous Space Guilds compete for business in unregulated, private capital markets. The Space Guilds are neutral non-player-characters (NPC) with zero loyalty to any House.
 
 The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price. They will not freely leak intelligence.
+
+### 2.5.1 Capital Ship Salvage Operations
+
+When a Great House loses industrial capacity and can no longer support its capital fleet, the Space Guilds step in to claim excess warships. The Guilds pay 50% of the original build cost in immediate currency, then refurbish and resell these vessels on the open market for profit.
+
+**Capacity Formula**: Each house can maintain `max(8, floor(Total_House_IU ÷ 100) × 2)` capital squadrons. Capital ships are defined as vessels with Command Rating (CR) ≥ 7.
+
+**Enforcement**: When a house exceeds its capital squadron capacity (typically due to IU loss from colony damage, blockades, or territory loss), excess squadrons are immediately claimed by the Space Guilds. Priority for removal:
+
+1. **Crippled flagships first** - Damaged vessels are easiest to claim
+2. **Lowest Attack Strength (AS) second** - Among non-crippled ships, weakest vessels removed first
+
+The house receives 50% of each ship's original build cost as salvage payment, credited to the house treasury.
+
+**Strategic Implications**:
+- Houses must maintain industrial capacity to support large fleets
+- Losing colonies means losing fleet capacity
+- Salvage payments soften the blow but don't fully compensate for ship loss
+- Crippled ships are vulnerable to involuntary salvage
+- Players should repair crippled flagships quickly to avoid losing them
+
+**Reference**: See [Table 10.5](reference.md#105-game-limits-summary) for complete squadron limit details.
