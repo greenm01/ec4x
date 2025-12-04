@@ -3,7 +3,7 @@
 ## Loads balance test scenarios from config/balance_tests.toml
 ## Enables test parameter changes without recompilation
 
-import std/[os, strformat]
+import std/os
 import toml_serialization
 import ../../ai/common/types  # For AIStrategy type
 

@@ -250,7 +250,7 @@ task testBalanceAct1, "Act 1: Land Grab (7 turns, 100 games)":
   echo "Running Act 1 validation (7 turns, 100 games)..."
   echo "Cleaning old diagnostics..."
   exec "bin/ec4x --clean-all --backup"
-  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "nim c -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 100 --turns 7"
   echo "Analyzing results..."
@@ -518,4 +518,3 @@ task buildAnalysis, "Build ec4x analysis CLI tool":
   echo "  bin/ec4x --all              # All formats"
   echo "  bin/ec4x --info             # Show data status"
   echo "  bin/ec4x --help             # Full help"
-

@@ -3,9 +3,7 @@
 ## Data-oriented design: Extract action-specific data from execution logic
 ## This eliminates 93% code duplication in engine.nim (448 lines → ~30 lines)
 
-import std/[options, tables]
 import types
-import ../../common/types/core
 import ../config/[prestige_config, espionage_config]
 
 export types

@@ -3,7 +3,6 @@
 ## Shared utility functions used across order generation phases
 
 import std/[strformat, options]
-import ../../../common/types/[core, units]
 import ../../../engine/[gamestate, fog_of_war, logger, orders]
 import ../../../engine/economy/construction
 

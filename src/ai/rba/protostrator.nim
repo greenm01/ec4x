@@ -20,10 +20,8 @@
 ## )
 ## ```
 
-import std/[tables, options, sequtils]
 import ../../common/types/[core, diplomacy]
-import ../../engine/[gamestate, fog_of_war]
-import ./controller_types
+import ../../engine/gamestate
 import ./protostrator/assessment
 
 # Re-export the main public API

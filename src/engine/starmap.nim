@@ -10,7 +10,7 @@
 import fleet
 import ../common/[hex, system, types/combat]
 import config/starmap_config
-import std/[tables, sequtils, random, math, algorithm, hashes, sets, strformat, strutils]
+import std/[tables, sequtils, random, math, algorithm, hashes, sets, strutils]
 import std/options
 
 type

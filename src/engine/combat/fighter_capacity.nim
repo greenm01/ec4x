@@ -2,12 +2,15 @@
 ##
 ## Implements assets.md:2.4.1 - fighter squadron capacity limits and violation enforcement.
 ##
-## Capacity Formula: Max FS = floor(PU / 100) × FD Tech Multiplier
-## Infrastructure Requirement: ceil(Current FS / 5) operational starbases
+## Capacity Formula: Max FS = floor(IU / 100) × FD Multiplier
+##
+## Where Fighter Doctrine (FD) Tech Level Multiplier is:
+## - FD I (base): 1.0x
+## - FD II: 1.5x
+## - FD III: 2.0x
 ##
 ## Violation Types:
-## - Infrastructure: Not enough operational starbases for current fighter count
-## - Population: Too many fighters for current population (PU)
+## - Industry: Too many fighters for current industry (IU)
 ##
 ## Grace Period: 2 turns to resolve violation
 ## Enforcement: Disband oldest squadrons first after grace period expires

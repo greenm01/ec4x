@@ -3,11 +3,11 @@
 ## Creates balanced starting conditions for balance test scenarios
 ## Uses existing engine initialization functions
 
-import std/[tables, options, random, strformat, sequtils, strutils, algorithm]
+import std/[tables, strformat, sequtils, strutils, algorithm]
 import ../../engine/[gamestate, starmap, fleet, squadron, spacelift]
 import ../../engine/config/[prestige_multiplier, house_themes, gameplay_config]
 import ../../common/types/[core, units, planets, tech]
-import ../../common/[hex, system]
+import ../../common/[system]
 
 export gamestate.initializeHouse, gamestate.createHomeColony
 export squadron.createSquadron
@@ -111,8 +111,6 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
   ## Create a balanced game setup for testing
   ## All houses start with equal conditions at different map positions
   ## mapSize parameter controls number of rings (systems = roughly 3 × rings²)
-
-  var rng = initRand(seed)
 
   # Generate star map with player starting positions
   var starMap = newStarMap(numHouses, seed)

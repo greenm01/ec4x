@@ -7,7 +7,7 @@ import ../common/types
 import ../../engine/gamestate  # For FallbackRoute
 import ../../engine/order_types  # For StandingOrder
 import ../../engine/commands/zero_turn_commands  # For ZeroTurnCommand
-import ../../common/types/[core, units, diplomacy, planets]  # For ShipClass, PlanetClass
+import ../../common/types/[core, units, planets]  # For ShipClass, PlanetClass
 import ../../engine/espionage/types as esp_types  # For EspionageAction
 import ../../engine/diplomacy/proposals as dip_proposals  # For ProposalType
 

@@ -6,14 +6,12 @@
 ## - Probing attacks: Scout enemy defenses with expendable scouts
 ## - Counter-attacks: Exploit enemy vulnerabilities (weak/absent defenses)
 
-import std/[options, sequtils, tables, strformat, sets]
-import ../../../common/system
-import ../../../common/types/[core, diplomacy]
+import std/[options, strformat]
+import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger]
 import ../../../engine/diplomacy/types as dip_types  # For isEnemy
 import ../controller_types
 import ../config
-import ./staging
 import ./fleet_analysis  # For FleetAnalysis, FleetUtilization types
 
 proc generateMergeOrders*(

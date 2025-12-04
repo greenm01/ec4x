@@ -2,8 +2,8 @@
 ##
 ## Drungarius generates unified intelligence snapshot for all advisors
 
-import std/[strformat, options]
-import ../../../engine/[gamestate, fog_of_war, logger]
+import std/strformat
+import ../../../engine/[fog_of_war, logger]
 import ../controller_types
 import ../drungarius/intelligence_distribution
 

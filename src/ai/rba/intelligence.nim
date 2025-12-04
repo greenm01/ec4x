@@ -61,8 +61,6 @@ proc needsReconnaissance*(filtered: FilteredGameState, targetSystem: SystemId): 
     return true  # No scout record, should recon
   of VisibilityLevel.Occupied, VisibilityLevel.Owned:
     return false  # Already have current intel
-  else:
-    return true
 
 import ./controller_types
 
@@ -253,7 +251,6 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
   ## Assess enemy economic strength for targeting
   result = @[]
 
-  let ourHouse = filtered.ownHouse
   var ourProduction = 0
   for colony in filtered.ownColonies:
     if colony.owner == controller.houseId:

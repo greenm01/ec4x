@@ -5,8 +5,8 @@
 ## Generates research requirements with priorities for Basileus mediation
 ## Intelligence-driven priorities (enemy tech, tech gaps, strategic needs)
 
-import std/[tables, options, strformat, sequtils]
-import ../../../common/types/[core, tech]
+import std/[tables, options, strformat]
+import ../../../common/types/tech
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/research/types as res_types
 import ../../../engine/research/advancement  # For max tech level constants

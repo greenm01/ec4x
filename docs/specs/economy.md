@@ -391,8 +391,7 @@ For every turn that a player misses payment for maintenance they lose prestige p
 - Max FS = floor(IU / 100) × FD Multiplier
 - Based on industrial manufacturing capacity (IU), not population (PU)
 - Rationale: With populations in millions, pilot availability isn't the constraint; industrial capacity (factories, shipyards, supply chains) limits fighter production
-- No starbase infrastructure required for colony-based fighters
-- Starbases only needed for loading fighters onto carriers for offensive operations
+- No starport, shipyard, or starbase infrastructure is required for colony-based fighters
 
 **Capacity Impact by Status:**
 - Planet-based fighters: Count against colony capacity
@@ -994,13 +993,3 @@ Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
 - Be salvaged for 50% PC recovery
 
 Starbase repairs also require shipyards and cost 25% of the starbase's construction PC.
-
-
-
-
-
-
-
-
-
-

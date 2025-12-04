@@ -8,9 +8,9 @@
 ## - Assign standing orders based on fleet role, personality, and strategic context
 ## - Let standing orders handle routine tasks while explicit orders handle critical operations
 
-import std/[tables, options, sequtils, strformat, sets]
+import std/[tables, options, strformat, sets]
 import ../common/types
-import ../../engine/[gamestate, fleet, logger, fog_of_war, starmap]
+import ../../engine/[gamestate, fleet, logger, fog_of_war]
 import ../../engine/order_types
 import ../../common/types/[core, planets]
 import ./controller_types
@@ -447,7 +447,6 @@ proc findNearestShipyard*(filtered: FilteredGameState, fromSystem: SystemId): Op
   ## Returns closest shipyard colony, or homeworld as fallback
 
   var nearestSystem: Option[SystemId] = none(SystemId)
-  var shortestDistance = int.high
 
   for colony in filtered.ownColonies:
     # Check if colony has operational shipyard

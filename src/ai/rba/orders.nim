@@ -16,10 +16,9 @@ import ../../engine/[gamestate, fog_of_war, orders, logger, fleet]
 import ../../engine/commands/zero_turn_commands
 import ../../engine/research/types as res_types
 import ../common/types as ai_types
-import ./[controller_types, budget, drungarius, eparch, tactical, strategic, protostrator, intelligence, logistics, standing_orders_manager, domestikos, logothete]
-import ./config
-import ./orders/[utils, phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, phase4_feedback, colony_management]
-import ./basileus/[personality, execution]  # For AdvisorType and centralized execution
+import ./[controller_types, budget, drungarius, tactical, intelligence, logistics, standing_orders_manager, logothete]
+import ./orders/[phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, phase4_feedback, colony_management]
+import ./basileus/execution  # For AdvisorType and centralized execution
 
 export core, orders, standing_orders_manager, zero_turn_commands
 

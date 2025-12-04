@@ -11,9 +11,8 @@
 ##
 ## Integration: Called after logistics in orders.nim
 
-import std/[options, tables, sets, sequtils, strformat, algorithm]
-import ../../common/system
-import ../../common/types/[units, diplomacy, core]
+import std/[options, tables, strformat]
+import ../../common/types/core
 import ../../engine/[gamestate, fog_of_war, fleet, order_types, standing_orders, logger]
 import ../common/types as ai_types  # For GameAct
 import ./controller_types
@@ -65,8 +64,6 @@ proc determineStrategy(currentAct: ai_types.GameAct, personality: AIPersonality)
     DomestikosStrategy.MergeForCombat  # Consolidate forces for combat
   of ai_types.GameAct.Act3_TotalWar, ai_types.GameAct.Act4_Endgame:
     DomestikosStrategy.MaintainFormations  # Preserve battle groups in late game
-  else:
-    DomestikosStrategy.MaintainFormations
 
 proc updateStandingOrdersWithDomestikosChanges*(
   controller: var AIController,

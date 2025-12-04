@@ -7,7 +7,7 @@ import std/[options, sequtils]
 import ../common/types
 import ../../engine/[gamestate, fog_of_war, fleet, squadron]
 import ../../engine/diplomacy/types as dip_types
-import ../../common/types/[core, planets, units]
+import ../../common/types/[core, units]
 
 import ./controller_types
 import ./config  # RBA configuration system
@@ -163,7 +163,6 @@ proc assessInvasionViability*(controller: AIController, filtered: FilteredGameSt
   if targetColonyOpt.isNone:
     result.invasionViable = false
     return
-  let targetColony = targetColonyOpt.get()
   let p = controller.personality
 
   # Space Combat Assessment
@@ -217,10 +216,6 @@ proc assessInvasionViability*(controller: AIController, filtered: FilteredGameSt
   )
 
   result.strategicValue = combat.strategicValue
-
-  # Decision: Invade, Blitz, Blockade, or Move
-  let invasionThreshold = if p.riskTolerance > 0.6: 0.5 else: 0.65
-  let blitzThreshold = if p.aggression > 0.6: 0.4 else: 0.5
 
   if result.invasionViable:
     result.recommendInvade = true

@@ -6,8 +6,7 @@
 ## - Prefer owned/friendly systems for safety
 ## - Fallback to homeworld if no suitable staging area found
 
-import std/[options, tables, sets, sequtils, algorithm]
-import ../../../common/system
+import std/[options, tables, algorithm]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, starmap]
 import ../controller_types

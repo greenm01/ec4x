@@ -6,9 +6,7 @@
 ## Conservative range (0.7-1.3) ensures all advisors are always heard.
 
 import std/tables
-import ../../../common/types/core
 import ../controller_types
-import ../../../engine/gamestate
 import ../../common/types as ai_types
 
 # AdvisorType is now defined in controller_types.nim and imported

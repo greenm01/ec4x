@@ -22,11 +22,9 @@
 ## )
 ## ```
 
-import std/[options, random]
 import ../../common/types/core
-import ../../engine/[gamestate, fog_of_war]
+import ../../engine/gamestate
 import ../../engine/espionage/types as esp_types
-import ./controller_types
 import ./drungarius/operations
 
 # Re-export the main public API

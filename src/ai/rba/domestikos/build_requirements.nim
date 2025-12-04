@@ -13,7 +13,6 @@
 ## Integration: Called by Domestikos module, consumed by build system
 
 import std/[options, tables, sequtils, algorithm, strformat]
-import ../../../common/system
 import ../../../common/types/[core, units]
 import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron, spacelift]
 import ../../../engine/economy/config_accessors  # For centralized cost accessors
@@ -365,21 +364,6 @@ proc assessReconnaissanceGaps*(
 
   # For MVP: Simple scout count check
   # TODO: Enhance with stale intel detection, unknown system tracking
-
-  var scoutCount = 0
-  # Would get from analyses parameter - for now, defer to existing logic
-  # for analysis in analyses:
-  #   if analysis.hasScouts:
-  #     scoutCount += 1
-
-  # Act-based scout targets (from config)
-  let targetScouts = case currentAct
-    of GameAct.Act1_LandGrab:
-      globalRBAConfig.orders.scout_count_act1
-    of GameAct.Act2_RisingTensions:
-      globalRBAConfig.orders.scout_count_act2
-    else:
-      globalRBAConfig.orders.scout_count_act3_plus
 
   # If we need more scouts, create a gap
   # (Simplified for MVP - full implementation would check intel coverage)
@@ -789,8 +773,6 @@ proc generateBuildRequirements*(
 
   # Assess gaps (personality-driven)
   let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct)
-  let reconGaps = assessReconnaissanceGaps(filtered, controller, currentAct)
-  let offensiveNeeds = assessOffensiveReadiness(filtered, analyses, controller, currentAct)
   let strategicAssets = assessStrategicAssets(filtered, controller, currentAct)
 
   # Convert gaps to build requirements

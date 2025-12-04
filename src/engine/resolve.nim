@@ -14,14 +14,11 @@ import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, lo
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types]
 import research/[types as res_types_research]
-import commands/executor
-import commands/spy_scout_orders
-import intelligence/espionage_intel
-import intelligence/spy_travel
+import commands/[executor, spy_scout_orders]
+import intelligence/[spy_travel, spy_resolution]
 import economy/repair_queue
-import intelligence/spy_resolution
 # Import resolution modules
-import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_blockade, simultaneous_espionage]
+import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage]
 
 # Re-export resolution types for backward compatibility
 export res_types.GameEvent, res_types.GameEventType, res_types.CombatReport
@@ -536,9 +533,8 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   when not defined(release):
     logDebug(LogCategory.lcOrders, "[SIMULTANEOUS BLOCKADE] Resolving blockade orders fairly...")
 
-  let blockadeResults = simultaneous_blockade.resolveBlockades(state, orders, rng)
-
   when not defined(release):
+    let blockadeResults = simultaneous_blockade.resolveBlockades(state, orders, rng)
     logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS BLOCKADE] Resolved {blockadeResults.len} blockade attempts")
 
   # ===================================================================
@@ -558,9 +554,8 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   when not defined(release):
     logDebug(LogCategory.lcOrders, "[SIMULTANEOUS ESPIONAGE] Resolving fleet espionage orders fairly...")
 
-  let espionageResults = simultaneous_espionage.resolveEspionage(state, orders, rng)
-
   when not defined(release):
+    let espionageResults = simultaneous_espionage.resolveEspionage(state, orders, rng)
     logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS ESPIONAGE] Resolved {espionageResults.len} fleet espionage attempts")
 
   # Process OrderPacket.espionageAction (EBP-based espionage)

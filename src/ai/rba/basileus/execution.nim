@@ -12,13 +12,11 @@
 ## - Zero-cost actions (diplomacy, fleet orders): Direct execution
 ## - PP-costing actions (research, builds): Execute after Treasurer approval
 
-import std/[options, tables, strformat]
-import ../../../common/types/[core, diplomacy]
-import ../../../engine/[gamestate, fog_of_war, logger, orders]
+import std/[options, strformat]
+import ../../../engine/[fog_of_war, logger, orders]
 import ../../../engine/research/types as res_types
 import ../../../engine/diplomacy/proposals as dip_proposals
 import ../controller_types
-import ../../common/types as ai_types
 import ../logothete/allocation
 
 proc executeDiplomaticActions*(

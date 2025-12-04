@@ -3,8 +3,7 @@
 ## Basileus mediates competing priorities, Treasurer allocates budgets
 
 import std/[strformat, options]
-import ../../../common/types/core
-import ../../../engine/[gamestate, fog_of_war, logger]
+import ../../../engine/[fog_of_war, logger]
 import ../controller_types
 import ../../common/types as ai_types
 import ../treasurer/multi_advisor

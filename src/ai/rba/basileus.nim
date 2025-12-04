@@ -3,10 +3,10 @@
 ## Byzantine Basileus (Βασιλεύς) - The Emperor coordinating all advisors
 ##
 ## **Phase 6 Implementation Status:**
-## - Personality-driven advisor weighting: ✅ Implemented
-## - Multi-advisor coordination framework: ✅ Implemented
-## - Full feedback loop: ✅ Implemented
-## - Intelligence distribution: ✅ Integrated (Drungarius hub)
+## - Personality-driven advisor weighting
+## - Multi-advisor coordination framework
+## - Full feedback loop
+## - Intelligence distribution
 ##
 ## **Current Architecture:**
 ## 1. Drungarius generates IntelligenceSnapshot for all advisors
@@ -15,10 +15,6 @@
 ## 4. Treasurer allocates budget based on mediated priorities
 ## 5. Multi-advisor feedback loop iterates until convergence (max 3 iterations)
 
-import std/tables
-import ../../common/types/core
-import ../common/types as ai_types
-import ./controller_types
 import ./basileus/personality
 import ./basileus/mediation
 

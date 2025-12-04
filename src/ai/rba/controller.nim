@@ -2,15 +2,14 @@
 ##
 ## Coordinates all AI subsystems and manages AI state
 
-import std/[tables, options]
+import std/tables
 import ../common/types
-import ./controller_types
-export controller_types
-import ../../engine/[gamestate, fog_of_war]
-import ../../engine/order_types
-export StandingOrder, StandingOrderType, StandingOrderParams
+import ./[controller_types, config]
+import ../../engine/[gamestate, order_types]
 import ../../common/types/core
-import ./config  # RBA configuration system
+
+export controller_types
+export StandingOrder, StandingOrderType, StandingOrderParams
 
 # =============================================================================
 # Strategy Profiles

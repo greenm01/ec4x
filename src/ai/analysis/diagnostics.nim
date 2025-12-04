@@ -3,7 +3,7 @@
 ## Tracks per-house, per-turn metrics to identify systematic AI failures
 ## Per Grok gap analysis: "Run diagnostics. Let the numbers tell you exactly what's missing."
 
-import std/[tables, strformat, streams, options, strutils]
+import std/[tables, strformat, options, strutils]
 import ../../engine/[gamestate, fleet, squadron, orders, logger]
 import ../../engine/diplomacy/types as dip_types
 import ../../common/types/[core, units, diplomacy]

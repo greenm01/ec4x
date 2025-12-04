@@ -20,10 +20,8 @@
 ## )
 ## ```
 
-import std/[tables, options, sequtils]
 import ../../common/types/[core, planets]
-import ../../engine/[gamestate, fog_of_war, orders]
-import ./controller_types
+import ../../engine/[gamestate, orders]
 import ./eparch/terraforming
 
 # Re-export the main public API

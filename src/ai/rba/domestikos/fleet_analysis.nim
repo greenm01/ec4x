@@ -4,7 +4,6 @@
 import std/[options, tables]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, standing_orders, starmap]
-import ../controller_types
 
 # Fleet analysis types (also defined in parent domestikos.nim)
 type

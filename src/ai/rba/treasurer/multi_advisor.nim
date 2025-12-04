@@ -7,14 +7,13 @@
 ## 2. Mediate remaining budget via Basileus priority queue
 ## 3. Generate per-advisor feedback (fulfilled/unfulfilled requirements)
 
-import std/[tables, strformat, sequtils, options]
+import std/[tables, strformat, options]
 import ../../../common/types/core
 import ../../../engine/[logger, gamestate, fog_of_war]
 import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
 import ../../common/types as ai_types
 import ../basileus/mediation
-import ../basileus/personality
 
 type
   MultiAdvisorAllocation* = object

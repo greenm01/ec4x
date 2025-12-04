@@ -8,11 +8,8 @@
 ## - Single generic executor in executor.nim
 ## - This module now only handles detection and re-exports
 
-import std/[random, options]
+import std/random
 import types, action_descriptors, executor
-import ../../common/types/core
-import ../prestige
-import ../config/[prestige_config, espionage_config]
 
 export types, action_descriptors, executor
 

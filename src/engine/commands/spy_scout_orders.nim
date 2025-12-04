@@ -5,7 +5,6 @@
 import std/[tables, options]
 import ../../common/[types/core, logger]
 import ../[gamestate, fleet, squadron, starmap]
-import ../intelligence/types as intel_types
 
 # =============================================================================
 # Order Execution

@@ -5,7 +5,7 @@
 ## Generates diplomatic requirements with priorities for Basileus mediation
 ## Intelligence-driven diplomacy (NAPs with strong enemies, wars against weak)
 
-import std/[tables, options, strformat, sequtils, strutils]
+import std/[tables, options, strformat, strutils]
 import ../../../common/types/[core, diplomacy]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/diplomacy/types as dip_types

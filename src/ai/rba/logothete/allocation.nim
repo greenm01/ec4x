@@ -13,13 +13,12 @@
 ## - Maxed field detection (prevents wasted RP)
 ## - Dynamic reallocation to available technologies
 
-import std/[tables, options, strformat, sequtils]
-import ../../../common/types/[core, tech]
+import std/[tables, strformat, sequtils]
+import ../../../common/types/tech
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/research/types as res_types
 import ../../../engine/research/advancement  # For max tech level constants
 import ../controller_types
-import ../config
 
 proc allocateResearch*(
   controller: AIController,

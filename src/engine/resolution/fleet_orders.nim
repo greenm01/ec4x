@@ -557,7 +557,6 @@ proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: Fleet
     # Uncolonized system - no intel report needed
     # Just log that we found an uncolonized system
     if targetId in state.starMap.systems:
-      let system = state.starMap.systems[targetId]
       logInfo(LogCategory.lcFleet,
               &"{house.name} viewed uncolonized system at {targetId}")
 

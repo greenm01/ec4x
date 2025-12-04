@@ -3,7 +3,7 @@
 ## Handles simultaneous resolution of SpyPlanet, SpySystem, and HackStarbase orders
 ## to prevent first-mover advantages in intelligence operations.
 
-import std/[tables, options, random, sequtils, strformat, algorithm]
+import std/[tables, options, random, strformat, algorithm]
 import simultaneous_types
 import simultaneous_resolver
 import ../gamestate
@@ -34,8 +34,6 @@ proc collectEspionageIntents*(
       # Validate: fleet exists
       if order.fleetId notin state.fleets:
         continue
-
-      let fleet = state.fleets[order.fleetId]
 
       # Calculate espionage strength using house prestige
       # Higher prestige = better intelligence operations

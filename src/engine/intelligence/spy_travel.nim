@@ -6,7 +6,7 @@
 ## - Minor/restricted lanes or rival territory: 1 jump/turn
 ## - Detection checks at each intermediate system
 
-import std/[tables, sequtils, options]
+import std/[tables, options]
 import ../../common/types/[core, combat]
 import ../gamestate, ../fleet, ../starmap, ../orders
 import ../diplomacy/engine as dip_engine

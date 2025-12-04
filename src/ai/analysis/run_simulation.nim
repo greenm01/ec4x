@@ -88,10 +88,10 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
 
       # Execute zero-turn commands first (immediate, at friendly colonies)
       for cmd in aiSubmission.zeroTurnCommands:
-        let result = submitZeroTurnCommand(game, cmd)
-        if not result.success:
+        let zt = submitZeroTurnCommand(game, cmd)
+        if not zt.success:
           logWarn(LogCategory.lcAI,
-                  &"House {controller.houseId} zero-turn command failed: {result.error}")
+                  &"House {controller.houseId} zero-turn command failed: {zt.error}")
           # Note: Partial success is OK (e.g., cargo capacity limits)
 
       # Queue order packet for normal turn resolution
@@ -308,7 +308,6 @@ when isMainModule:
   let report = runSimulation(numPlayers, numTurns, strategies, seed, mapRings)
 
   # Export report
-  import std/os
   createDir("balance_results")
   writeFile("balance_results/full_simulation.json", report.pretty())
 

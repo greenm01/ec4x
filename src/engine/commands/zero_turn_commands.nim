@@ -15,13 +15,9 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../gamestate
-import ../fleet
-import ../squadron
-import ../spacelift
-import ../../common/types/[core, combat]
+import ../[gamestate, fleet, squadron, spacelift, logger]
+import ../../common/types/core
 import ../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
-import ../logger
 import std/[options, algorithm, tables, strformat]
 
 # ============================================================================
@@ -182,7 +178,7 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
   ##   Layer 4: Command-specific validation
 
   # Layer 1: Basic validation
-  var result = validateOwnership(state, cmd.houseId)
+  result = validateOwnership(state, cmd.houseId)
   if not result.valid:
     return result
 

@@ -12,14 +12,13 @@
 ## Data-oriented design: Calculate what WOULD happen (pure function),
 ## then apply changes (explicit mutations).
 
-import std/[tables, sequtils, algorithm, options]
+import std/[tables, algorithm]
 import ../gamestate
 import ../state_helpers
 import ../iterators
 import ../config/ground_units_config
 import ../../common/types/core
 import ../../common/logger
-import ../config/prestige_config
 import config_accessors  # For getShipConstructionCost
 
 type
