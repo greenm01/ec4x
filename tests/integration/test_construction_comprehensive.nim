@@ -49,16 +49,16 @@ suite "Ship Construction Pipeline":
       Spaceport(id: "sp1", commissionedTurn: 1, docks: 5)
     )
 
-  test "Ship construction completes instantly (1 turn per spec)":
+  test "Ship construction completes in one turn":
     var state = createShipTestState()
     let testSystemId = state.starMap.playerSystemIds[0]
 
-    # Create build order for Scout
+    # Create build order for Destroyer
     let buildOrder = BuildOrder(
       colonySystem: testSystemId,
       buildType: BuildType.Ship,
       quantity: 1,
-      shipClass: some(ShipClass.Scout),
+      shipClass: some(ShipClass.Destroyer),
       buildingType: none(string),
       industrialUnits: 0
     )
@@ -83,7 +83,7 @@ suite "Ship Construction Pipeline":
 
     let result = resolveTurn(state, orders)
 
-    # Per economy.md:5.0 - all ships build instantly (1 turn)
+    # Per economy.md:5.0 - all ships build in one turn
     # Construction should complete and ship should be commissioned
     check result.newState.colonies[testSystemId].underConstruction.isNone
 
@@ -91,20 +91,20 @@ suite "Ship Construction Pipeline":
     # Output says: "Commissioned Scout in new fleet house1_fleet1"
     check result.newState.fleets.len > 0
 
-    var foundScout = false
+    var foundDestroyer = false
     for fleetId, fleet in result.newState.fleets:
       if fleet.owner == "house1" and fleet.squadrons.len > 0:
         for squadron in fleet.squadrons:
-          if squadron.flagship.shipClass == ShipClass.Scout:
-            foundScout = true
+          if squadron.flagship.shipClass == ShipClass.Destroyer:
+            foundDestroyer = true
             break
 
-    if not foundScout:
+    if not foundDestroyer:
       echo "DEBUG: Fleets in state: ", result.newState.fleets.len
       for fleetId, fleet in result.newState.fleets:
         echo "  Fleet ", fleetId, ": owner=", fleet.owner, " squadrons=", fleet.squadrons.len
 
-    check foundScout
+    check foundDestroyer
 
   test "Treasury deduction on construction start":
     var state = createShipTestState()
@@ -369,6 +369,6 @@ suite "Construction Integration":
     check result.newState.turn == 2  # Turn advanced
 
 when isMainModule:
-  echo "╔════════════════════════════════════════════════╗"
-  echo "║  Construction & Commissioning Tests           ║"
-  echo "╚════════════════════════════════════════════════╝"
+  echo "╔══════════════════════════════════════╗"
+  echo "║  Construction & Commissioning Tests  ║"
+  echo "╚══════════════════════════════════════╝"
