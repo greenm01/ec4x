@@ -211,9 +211,9 @@ proc selectCombatOrderType(
   # Estimate target defense strength (0-10 scale)
   # Higher values = stronger defenses
   var defenseStrength = 0
-  if targetColony.estimatedGroundDefenses.isSome:
-    let defenses = targetColony.estimatedGroundDefenses.get()
-    defenseStrength = defenses  # Rough estimate
+  if targetColony.estimatedDefenses.isSome:
+    let defenses = targetColony.estimatedDefenses.get()
+    defenseStrength = defenses  # Ground defenses (armies, marines, batteries)
 
   # Decision logic based on defenses and fleet composition
   if not hasTransports:
