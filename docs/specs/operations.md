@@ -1305,14 +1305,14 @@ CER determines strike effectiveness—how much damage your squadrons inflict. Ea
 
 At the start of each turn, roll 1d20 to determine morale effects for that turn:
 
-| Morale Level | Morale Threshold | Effect on Success |
-|:-------------|:----------------:|:------------------|
-| Collapsing   | Never succeeds   | -1 to all CER rolls this turn |
-| VeryLow      | > 18             | No effect |
-| Low          | > 15             | +1 to CER for one random squadron |
-| Normal       | > 12             | +1 to all CER rolls this turn |
-| High         | > 9              | +1 CER + one critical auto-succeeds |
-| VeryHigh/Exceptional | > 6      | +2 to all CER rolls this turn |
+| Morale Level         | Morale Threshold | Effect on Success                   |
+| -------------------- | ---------------- | ----------------------------------- |
+| Collapsing           | Never succeeds   | -1 to all CER rolls this turn       |
+| VeryLow              | > 18             | No effect                           |
+| Low                  | > 15             | +1 to CER for one random squadron   |
+| Normal               | > 12             | +1 to all CER rolls this turn       |
+| High                 | > 9              | +1 CER + one critical auto-succeeds |
+| VeryHigh/Exceptional | > 6              | +2 to all CER rolls this turn       |
 
 *Note: Morale levels and thresholds defined by house prestige—see reference.md for current configuration*
 
@@ -1358,13 +1358,13 @@ Squadrons target enemies using priority buckets—categories determining which e
 
 **Targeting Priority Buckets:**
 
-| Bucket | Unit Type | Base Weight | Priority |
-|--------|-----------|-------------|----------|
-| **1 – Raider** | Squadron with Raider flagship | 1.0 | Highest |
-| **2 – Capital** | Squadron with Cruiser or Carrier flagship | 2.0 | High |
-| **3 – Destroyer** | Squadron with Destroyer flagship | 3.0 | Medium |
-| **4 – Fighter** | Fighter squadron (no capital flagship) | 4.0 | Low |
-| **5 – Starbase** | Orbital installation | 5.0 | Lowest |
+| Bucket            | Unit Type                                 | Base Weight | Priority |
+|-------------------|-------------------------------------------|-------------|----------|
+| **1 – Raider**    | Squadron with Raider flagship             | 1.0         | Highest  |
+| **2 – Capital**   | Squadron with Cruiser or Carrier flagship | 2.0         | High     |
+| **3 – Destroyer** | Squadron with Destroyer flagship          | 3.0         | Medium   |
+| **4 – Fighter**   | Fighter squadron (no capital flagship)    | 4.0         | Low      |
+| **5 – Starbase**  | Orbital installation                      | 5.0         | Lowest   |
 
 **Notes:**
 - Lower bucket numbers = higher targeting priority
@@ -1562,12 +1562,12 @@ Each turn of bombardment (up to 3 rounds), your fleet attacks planetary defenses
 
 **Bombardment CER Table:**
 
-| **1D10 Die Roll** | **Bombardment CER** |
-| ----------------- | ------------------- |
+| **1D10 Die Roll** | **Bombardment CER**           |
+| ----------------- | ----------------------------- |
 | 0, 1, 2           | One Quarter (0.25) (round up) |
-| 3, 4, 5           | One Half (0.50) (round up) |
-| 6, 7, 8           | One (1) |
-| 9*                | One* (1) |
+| 3, 4, 5           | One Half (0.50) (round up)    |
+| 6, 7, 8           | One (1)                       |
+| 9*                | One* (1)                      |
 
 *Critical hits apply only against attacking squadrons (ground batteries firing back), not against ground targets
 
@@ -1719,10 +1719,10 @@ Land ground forces to conquer enemy colonies. Invasion requires orbital supremac
 
 | 1d10 Roll | Ground CER Multiplier |
 |-----------|-----------------------|
-| 0-2 | 0.5× (round up) |
-| 3-6 | 1.0× |
-| 7-8 | 1.5× (round up) |
-| 9 | 2.0× |
+| 0-2       | 0.5× (round up)       |
+| 3-6       | 1.0×                  |
+| 7-8       | 1.5× (round up)       |
+| 9         | 2.0×                  |
 
 **Ground Forces:**
 
