@@ -4,8 +4,8 @@
 ╚══════════════════════════════════════════════════════════════╝
 
 Dataset Overview:
-  Total Games:    16
-  Total Houses:   64
+  Total Games:    17
+  Total Houses:   68
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MILITARY BEHAVIOR ANALYSIS
@@ -35,8 +35,8 @@ Other Combat:
 BUDGET ALLOCATION (ACT 3)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Production (avg):         0.0 PP/turn
-Treasury (avg):           0.0 PP
+Production (avg):         3218.0 PP/turn
+Treasury (avg):           1967.6 PP
 Ship Growth (avg):        0.0 ships
 
 Note: Detailed budget breakdown requires additional instrumentation
@@ -45,14 +45,14 @@ Note: Detailed budget breakdown requires additional instrumentation
 GAME QUALITY METRICS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Games Reaching Turn 40:   0/16
+Games Reaching Turn 40:   4/17
 Houses Collapsed:         0
 Houses Eliminated:        0
 
 Final State (avg):
   Colonies:    2.0
   Ships:       6.0
-  Prestige:    2507
+  Prestige:    2607
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GOAP EVALUATION CRITERIA
