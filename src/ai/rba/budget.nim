@@ -15,100 +15,49 @@ import ../../engine/economy/construction  # For budget execution
 import ../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../common/types/[core, units]
 import ./treasurer     # Treasurer module for budget allocation
+import ./shared/resource_tracking/tracker  # Generic resource tracking
 
 # =============================================================================
-# Budget Tracker - Running Budget Management
+# Budget Tracker - RBA-specific wrapper
 # =============================================================================
 
 type
-  BudgetTracker* = object
-    ## Tracks budget allocation and spending across objectives
-    ## Prevents overspending by maintaining running totals
-    ##
-    ## CRITICAL: Prevents budget collapse from runaway spending loops
-    ## Example: Without tracking, 3 colonies × 550 PP = 1650 PP spent (house only had 1000!)
-    houseId*: HouseId
-    totalBudget*: int                         # Total treasury available after maintenance
-    allocated*: Table[BuildObjective, int]    # Planned allocation per objective
-    spent*: Table[BuildObjective, int]        # Actual spending per objective
-    ordersGenerated*: int                     # Count of build orders created
+  BudgetTracker* = ResourceTracker[BuildObjective]
 
 proc initBudgetTracker*(houseId: HouseId, treasury: int,
                        allocation: BudgetAllocation): BudgetTracker =
-  ## Create new budget tracker with allocation percentages
-  result = BudgetTracker(
-    houseId: houseId,
-    totalBudget: treasury,
-    allocated: initTable[BuildObjective, int](),
-    spent: initTable[BuildObjective, int](),
-    ordersGenerated: 0
-  )
-
-  # Convert percentages to PP budgets
+  ## Create budget tracker from RBA allocation
+  var allocationTable = initTable[BuildObjective, float]()
   for objective, percentage in allocation:
-    result.allocated[objective] = int(float(treasury) * percentage)
-    result.spent[objective] = 0
+    allocationTable[objective] = percentage
+
+  result = initResourceTracker(houseId, treasury, allocationTable)
 
   logInfo(LogCategory.lcAI,
-          &"{houseId} Budget Tracker initialized: {treasury} PP total, " &
-          &"Expansion={result.allocated[Expansion]}PP, " &
-          &"Military={result.allocated[Military]}PP, " &
-          &"Defense={result.allocated[Defense]}PP")
+          &"{houseId} BudgetTracker initialized: {treasury} PP total")
 
+# Convenience wrappers with familiar names
 proc canAfford*(tracker: BudgetTracker, objective: BuildObjective, cost: int): bool =
-  ## Check if objective has budget remaining for this purchase
-  let remaining = tracker.allocated[objective] - tracker.spent[objective]
-  result = remaining >= cost
-
-  if not result:
-    logDebug(LogCategory.lcAI,
-             &"{tracker.houseId} Cannot afford {cost}PP for {objective}: " &
-             &"allocated={tracker.allocated[objective]}PP, " &
-             &"spent={tracker.spent[objective]}PP, " &
-             &"remaining={remaining}PP")
+  tracker.canAfford(objective, cost)
 
 proc recordSpending*(tracker: var BudgetTracker, objective: BuildObjective, cost: int) =
-  ## Record spending against objective budget
-  ## CRITICAL: Must be var parameter to modify tracker
-  tracker.spent[objective] += cost
-  tracker.ordersGenerated += 1
-
-  let remaining = tracker.allocated[objective] - tracker.spent[objective]
-  logDebug(LogCategory.lcAI,
-           &"{tracker.houseId} Recorded {cost}PP spending for {objective}: " &
-           &"spent={tracker.spent[objective]}PP, remaining={remaining}PP")
+  tracker.recordTransaction(objective, cost)
 
 proc getRemainingBudget*(tracker: BudgetTracker, objective: BuildObjective): int =
-  ## Get remaining budget for objective
-  result = tracker.allocated[objective] - tracker.spent[objective]
+  tracker.getRemainingBudget(objective)
 
 proc getTotalSpent*(tracker: BudgetTracker): int =
-  ## Get total spending across all objectives
-  result = 0
-  for spent in tracker.spent.values:
-    result += spent
+  tracker.getTotalSpent()
 
 proc getTotalRemaining*(tracker: BudgetTracker): int =
-  ## Get total unspent budget across all objectives
-  result = tracker.totalBudget - tracker.getTotalSpent()
+  tracker.getTotalRemaining()
 
 proc logBudgetSummary*(tracker: BudgetTracker) =
-  ## Log budget allocation and spending summary
-  logInfo(LogCategory.lcAI,
-          &"{tracker.houseId} Budget Summary: " &
-          &"Total={tracker.totalBudget}PP, " &
-          &"Spent={tracker.getTotalSpent()}PP, " &
-          &"Remaining={tracker.getTotalRemaining()}PP, " &
-          &"Orders={tracker.ordersGenerated}")
+  tracker.logSummary()
 
-  for objective in BuildObjective:
-    let allocated = tracker.allocated[objective]
-    let spent = tracker.spent[objective]
-    let remaining = allocated - spent
-    let pct = if allocated > 0: (spent * 100 div allocated) else: 0
-
-    logInfo(LogCategory.lcAI,
-            &"  {objective}: {spent}/{allocated}PP ({pct}%), {remaining}PP remaining")
+proc houseId*(tracker: BudgetTracker): HouseId =
+  ## Backward compatibility: access ownerId as houseId
+  tracker.ownerId
 
 # =============================================================================
 # Budget Allocation by Game Act
