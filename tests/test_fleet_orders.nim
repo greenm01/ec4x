@@ -498,7 +498,7 @@ suite "Order 09-11: Spy Orders":
     # Note: Will fail because test fleet still has destroyer as flagship
     # TODO: Fix test setup to have scout-only fleet
 
-  test "Hack starbase requires exactly one scout":
+  test "Hack starbase requires at least one scout":
     var state = createTestGameState()
     let scout = newEnhancedShip(ShipClass.Scout)
     var sq = newSquadron(scout)
@@ -525,9 +525,9 @@ suite "Order 09-11: Spy Orders":
     let result = executeFleetOrder(state, "house1", order)
 
     check result.success == true
-    check result.message.contains("infiltrating starbase")
+    check result.message.contains("Scout deployed")
 
-  test "Spy system requires exactly one scout":
+  test "Spy system requires at least one scout":
     var state = createTestGameState()
     let scout = newEnhancedShip(ShipClass.Scout)
     var sq = newSquadron(scout)
@@ -551,7 +551,7 @@ suite "Order 09-11: Spy Orders":
     let result = executeFleetOrder(state, "house1", order)
 
     check result.success == true
-    check result.message.contains("spy on system")
+    check result.message.contains("Scout deployed")
 
 # =============================================================================
 # Order 12: Colonize Tests
