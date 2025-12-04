@@ -24,6 +24,7 @@
 
 import std/[sequtils, algorithm, math, tables, strutils]
 import ./types
+import ../types as econ_types  # For ConstructionType
 import ../../gamestate
 import ../../state_helpers
 import ../../iterators
@@ -34,6 +35,7 @@ export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 
 proc getFighterDoctrineMultiplier(fdLevel: int): float =
   ## Get Fighter Doctrine tech multiplier per assets.md:2.4.1
+  # TODO Load these multiplier from toml config files
   case fdLevel
   of 1: return 1.0   # FD I (base)
   of 2: return 1.5   # FD II
@@ -44,6 +46,7 @@ proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int =
   ## Pure calculation of maximum fighter squadron capacity
   ## Formula: Max FS = floor(IU / 100) × FD Tech Multiplier
   ## Per assets.md:2.4.1 and economy.md:3.10
+  # TODO load fighter_capacity_iu_divisor from toml config. no hard coded variables
   let fdMult = getFighterDoctrineMultiplier(fdLevel)
   return int(floor(float(industrialUnits) / 100.0) * fdMult)
 
@@ -57,7 +60,15 @@ proc analyzeCapacity*(state: GameState, colony: Colony, houseId: core.HouseId): 
                 else:
                   1  # Default to base level
 
-  let current = colony.fighterSquadrons.len
+  var current = colony.fighterSquadrons.len
+
+  # Account for fighters already under construction at this colony
+  let underConstruction = colony.constructionQueue.filterIt(
+    it.projectType == ConstructionType.Ship and it.itemId == "Fighter"
+  ).len
+
+  current += underConstruction
+
   let maximum = calculateMaxFighterCapacity(colony.industrial.units, fdLevel)
   let excess = max(0, current - maximum)
 

@@ -11,9 +11,8 @@
 # ============================================================================
 
 [fighter_mechanics]
-# BALANCE: Fighter capacity formula: floor(PU / 100) * FD multiplier
-fighter_capacity_pu_divisor = 100  # Base: 1 FS per 100 PU
-starbase_per_fighter_squadrons = 5  # Requires 1 Starbase per 5 FS
+# BALANCE: Fighter capacity formula: floor(IU / 100) * FD multiplier
+fighter_capacity_iu_divisor = 100  # Base: 1 FS per 100 IU
 capacity_violation_grace_period = 2  # 2 turns grace before auto-disband
 
 # ============================================================================

@@ -8,6 +8,7 @@ import espionage/types as esp_types
 import research/types as res_types
 import economy/construction  # For cost calculation
 import economy/config_accessors  # For CST requirement checking
+import economy/capacity/fighter # For colony fighter squadron limits
 import economy/capacity/capital_squadrons  # For capital squadron capacity enforcement
 import economy/types as econ_types  # For FacilityType in cost calculation
 
@@ -698,22 +699,10 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
     if shipClass == ShipClass.Fighter:
       if houseId in state.houses:
         let house = state.houses[houseId]
-        let fdMultiplier = getFighterDoctrineMultiplier(house.techTree.levels)
-        let currentFighters = colony.getCurrentFighterCount()
-        let maxFighters = colony.getFighterCapacity(fdMultiplier)
-
-        # Account for fighters already under construction at this colony
-        let underConstruction = colony.constructionQueue.filterIt(
-          it.projectType == ConstructionType.Ship and it.itemId == "Fighter"
-        ).len
-
-        if currentFighters + underConstruction + 1 > maxFighters:
+        if canCommissionFighter(state, colony) == false:
           ctx.rejectedOrders += 1
-          logWarn(LogCategory.lcEconomy,
-                  &"{houseId} Build order REJECTED: Fighter capacity exceeded at {order.colonySystem} " &
-                  &"(current={currentFighters}, queued={underConstruction}, max={maxFighters})")
           return ValidationResult(valid: false,
-                                 error: &"Fighter capacity exceeded ({currentFighters}+{underConstruction}/{maxFighters})")
+            error: &"Fighter capacity exceeded for house {house}")
 
     # Check capital squadron limit (if building capital ships)
     # Fighters and scouts are exempt from squadron limits
@@ -731,6 +720,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
                                  error: &"Capital squadron limit exceeded ({violation.current}+{underConstruction}/{violation.maximum})")
 
     # Check planet-breaker limit (1 per colony owned, assets.md:2.4.8)
+    # TODO use new economy/capacity planet_breakers module
     if shipClass == ShipClass.PlanetBreaker:
       let currentPBs = state.houses[houseId].planetBreakerCount
       let maxPBs = state.getPlanetBreakerLimit(houseId)

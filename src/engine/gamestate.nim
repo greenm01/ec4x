@@ -602,6 +602,7 @@ proc getSquadronLimit*(state: GameState, houseId: HouseId): int =
   ## Changed from PU-based to IU-based formula
   let config = globalMilitaryConfig.squadron_limits
   let totalIU = state.getTotalHouseIndustrialUnits(houseId)
+  # TODO load these hardocded values from config
   let calculatedLimit = int(floor(float(totalIU) / 100.0) * 2.0)
   return max(config.squadron_limit_minimum, calculatedLimit)
 
@@ -621,69 +622,9 @@ proc isOverSquadronLimit*(state: GameState, houseId: HouseId): bool =
   let limit = state.getSquadronLimit(houseId)
   return current > limit
 
-# Fighter squadron capacity (assets.md:2.4.1)
-
-proc getFighterDoctrineMultiplier*(techLevels: TechLevel): float =
-  ## Get fighter doctrine multiplier from tech level
-  ## Per economy.md tech tables: FD I = 1.0x, FD II = 1.5x, FD III = 2.0x
-  ## CRITICAL: FD starts at level 1 (FD I), not 0! (gameplay.md:1.2)
-  let fdLevel = techLevels.fighterDoctrine
-  case fdLevel
-  of 1:
-    return 1.0  # FD I (base level, houses start here)
-  of 2:
-    return 1.5  # FD II
-  else:
-    return 2.0  # FD III+
-
-proc getFighterPopulationCapacity*(colony: Colony, fdMultiplier: float): int =
-  ## Calculate fighter capacity based on population
-  ## Max FS = floor(PU / 100) × FD Multiplier
-  ## Per military.toml: fighter_capacity_pu_divisor = 100
-  let config = globalMilitaryConfig.fighter_mechanics
-  let baseCap = colony.population div config.fighter_capacity_pu_divisor
-  return int(float(baseCap) * fdMultiplier)
-
-proc getFighterInfrastructureCapacity*(colony: Colony): int =
-  ## Calculate fighter capacity based on starbases
-  ## Requires 1 operational Starbase per 5 FS
-  ## Per military.toml: starbase_per_fighter_squadrons = 5
-  let config = globalMilitaryConfig.fighter_mechanics
-
-  # Count operational (non-crippled) starbases
-  var operationalStarbases = 0
-  for starbase in colony.starbases:
-    if not starbase.isCrippled:
-      operationalStarbases += 1
-
-  # Each operational starbase supports 5 fighter squadrons
-  return operationalStarbases * config.starbase_per_fighter_squadrons
-
-proc getFighterCapacity*(colony: Colony, fdMultiplier: float): int =
-  ## Get effective fighter capacity based on industrial units
-  ##
-  ## Design rationale (per user feedback):
-  ## - Fighter production limited by industrial manufacturing capacity, not population
-  ## - With populations in millions, pilot availability isn't the constraint
-  ## - Industrial capacity (factories, shipyards, supply chains) limits production
-  ##
-  ## Formula: Max FS = floor(IU / 100) × FD multiplier
-  ## - Homeworld (420 IU): floor(420/100) × 1.0 = 4 fighters at game start
-  ## - Fully industrialized homeworld (840 IU): floor(840/100) × 1.0 = 8 fighters
-  ## - With FD II (1.5x): 840 IU → 12 fighters
-  ## - With FD III (2.0x): 840 IU → 16 fighters
-  let industrialCap = floor(float(colony.industrial.units) / 100.0)
-  return int(industrialCap * fdMultiplier)
-
 proc getCurrentFighterCount*(colony: Colony): int =
   ## Get current number of fighter squadrons at colony
   return colony.fighterSquadrons.len
-
-proc isOverFighterCapacity*(colony: Colony, fdMultiplier: float): bool =
-  ## Check if colony has exceeded fighter capacity
-  let current = getCurrentFighterCount(colony)
-  let capacity = getFighterCapacity(colony, fdMultiplier)
-  return current > capacity
 
 # Starbase management (assets.md:2.4.4)
 
@@ -698,6 +639,7 @@ proc getStarbaseGrowthBonus*(colony: Colony): float =
   ## Calculate population/IU growth bonus from starbases
   ## Per assets.md:2.4.4: 5% per operational starbase, max 15% (3 starbases)
   let operational = getOperationalStarbaseCount(colony)
+  # TODO load these hardocded values from config
   let bonus = float(min(operational, 3)) * 0.05  # 5% per SB, max 3
   return bonus
 

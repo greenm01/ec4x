@@ -9,7 +9,7 @@ import ../../common/logger
 
 type
   FighterMechanicsConfig* = object
-    fighter_capacity_pu_divisor*: int
+    fighter_capacity_iu_divisor*: int
     starbase_per_fighter_squadrons*: int
     capacity_violation_grace_period*: int
 
