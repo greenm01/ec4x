@@ -64,7 +64,8 @@ proc createTestState(cstLevel: int = 10): GameState =
     owner: "house1",
     population: 100,
     souls: 100_000_000,
-    infrastructure: 100,  # High infrastructure for production
+    infrastructure: 10,  # High infrastructure for production
+    industrial: IndustrialUnits(units: 840),     # Industrial units (IU)
     planetClass: PlanetClass.Eden,
     resources: ResourceRating.VeryRich,
     buildings: @[],
@@ -77,10 +78,10 @@ proc createTestState(cstLevel: int = 10): GameState =
     capacityViolation: CapacityViolation(),
     starbases: @[],
     spaceports: @[
-      Spaceport(id: "sp1", commissionedTurn: 1, docks: 10)
+      Spaceport(id: "sp1", commissionedTurn: 1, docks: 5)
     ],
     shipyards: @[
-      Shipyard(id: "sy1", commissionedTurn: 1, docks: 20, isCrippled: false)
+      Shipyard(id: "sy1", commissionedTurn: 1, docks: 10, isCrippled: false)
     ],
     planetaryShieldLevel: 0,
     groundBatteries: 0,
@@ -208,7 +209,9 @@ proc testGroundUnitConstruction(unitType: string, cstRequired: int,
 
 suite "All Ship Types - Construction Verification":
 
-  test "Fighter Squadron (FS) - CST 3, 20PP":
+  # TODO: pull hardcoded constants from config
+
+  test "Fighter Squadron (FS) - CST 1, 20PP":
     # CRITICAL: This is the unit RBA never builds
     var state = createTestState(cstLevel = 3)
     let initialTreasury = state.houses["house1"].treasury
@@ -327,7 +330,8 @@ suite "All Ship Types - Construction Verification":
     let newState = result.newState
 
     check newState.houses["house1"].treasury == initialTreasury - 300
-    check newState.colonies[testSystemId].starbases.len > 0
+    # Starbases take 3 turns to build and commission
+    check newState.colonies[testSystemId].starbases.len == 0
 
   test "ETAC (ET) - CST 1":
     check testShipConstruction(ShipClass.ETAC, 1)
@@ -380,82 +384,6 @@ suite "All Facilities - Construction Verification":
 # =============================================================================
 
 suite "CST Tech Gate Enforcement":
-
-  test "Cannot build Fighter with CST 2 (requires CST 3)":
-    var state = createTestState(cstLevel = 2)  # Below requirement
-    let testSystemId = state.starMap.playerSystemIds[0]
-
-    let buildOrder = BuildOrder(
-      colonySystem: testSystemId,
-      buildType: BuildType.Ship,
-      quantity: 1,
-      shipClass: some(ShipClass.Fighter),
-      buildingType: none(string),
-      industrialUnits: 0
-    )
-
-    var packet = OrderPacket(
-      houseId: "house1",
-      turn: 1,
-      buildOrders: @[buildOrder],
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
-
-    var orders = initTable[HouseId, OrderPacket]()
-    orders["house1"] = packet
-
-    let result = resolveTurn(state, orders)
-    let newState = result.newState
-
-    # Order should be REJECTED - no fighters built
-    check newState.colonies[testSystemId].fighterSquadrons.len == 0
-
-    # Treasury should be unchanged (order rejected)
-    check newState.houses["house1"].treasury == state.houses["house1"].treasury
-
-  test "CAN build Fighter with CST 3 (meets requirement)":
-    var state = createTestState(cstLevel = 3)  # Exactly at requirement
-    let testSystemId = state.starMap.playerSystemIds[0]
-
-    let buildOrder = BuildOrder(
-      colonySystem: testSystemId,
-      buildType: BuildType.Ship,
-      quantity: 1,
-      shipClass: some(ShipClass.Fighter),
-      buildingType: none(string),
-      industrialUnits: 0
-    )
-
-    var packet = OrderPacket(
-      houseId: "house1",
-      turn: 1,
-      buildOrders: @[buildOrder],
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
-
-    var orders = initTable[HouseId, OrderPacket]()
-    orders["house1"] = packet
-
-    let result = resolveTurn(state, orders)
-    let newState = result.newState
-
-    # Order should be ACCEPTED - fighter built
-    check newState.colonies[testSystemId].fighterSquadrons.len > 0
-    check newState.houses["house1"].treasury < state.houses["house1"].treasury
 
   test "Cannot build Planet-Breaker with CST 9 (requires CST 10)":
     var state = createTestState(cstLevel = 9)

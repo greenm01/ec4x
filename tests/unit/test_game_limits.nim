@@ -300,43 +300,13 @@ suite "Game Limits: Anti-Spam/Anti-Cheese Caps":
   # Fighter Squadron Limit Tests (assets.md:2.4.1)
   # ==========================================================================
 
-  test "Fighter capacity: population limit (PU ÷ 100)":
-    let colony = Colony(
-      systemId: 1,
-      owner: "house1",
-      population: 1000,  # 1000 ÷ 100 = 10 FS base
-      souls: 0,
-      infrastructure: 5,
-      planetClass: PlanetClass.Benign,
-      resources: ResourceRating.Abundant,
-      buildings: @[],
-      production: 0,
-      underConstruction: none(ConstructionProject),
-      activeTerraforming: none(TerraformProject),
-      unassignedSquadrons: @[],
-      unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
-      fighterSquadrons: @[],
-      capacityViolation: CapacityViolation(),
-      starbases: @[
-        Starbase(id: "sb1", commissionedTurn: 1, isCrippled: false),
-        Starbase(id: "sb2", commissionedTurn: 1, isCrippled: false)
-      ],
-      spaceports: @[],
-      shipyards: @[]
-    )
-
-    let fdMultiplier = 1.0  # FD I
-    let popCap = getFighterPopulationCapacity(colony, fdMultiplier)
-    check popCap == 10
-
   test "Fighter capacity: FD multiplier effects":
     let colony = Colony(
       systemId: 1,
       owner: "house1",
       population: 1000,
       souls: 0,
-      infrastructure: 5,
+      infrastructure: 840,
       planetClass: PlanetClass.Benign,
       resources: ResourceRating.Abundant,
       buildings: @[],
@@ -359,95 +329,13 @@ suite "Game Limits: Anti-Spam/Anti-Cheese Caps":
     )
 
     # FD I = 1.0x: 10 FS
-    check getFighterPopulationCapacity(colony, 1.0) == 10
+    check getFighterCapacity(colony, 1.0) == 8
 
     # FD II = 1.5x: 15 FS
-    check getFighterPopulationCapacity(colony, 1.5) == 15
+    check getFighterCapacity(colony, 1.5) == 12
 
     # FD III = 2.0x: 20 FS
-    check getFighterPopulationCapacity(colony, 2.0) == 20
-
-  test "Fighter capacity: infrastructure limit (1 SB per 5 FS)":
-    let colony = Colony(
-      systemId: 1,
-      owner: "house1",
-      population: 2000,  # Would support 20 FS
-      souls: 0,
-      infrastructure: 5,
-      planetClass: PlanetClass.Benign,
-      resources: ResourceRating.Abundant,
-      buildings: @[],
-      production: 0,
-      underConstruction: none(ConstructionProject),
-      activeTerraforming: none(TerraformProject),
-      unassignedSquadrons: @[],
-      unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
-      fighterSquadrons: @[],
-      capacityViolation: CapacityViolation(),
-      starbases: @[
-        Starbase(id: "sb1", commissionedTurn: 1, isCrippled: false)  # Only 1 SB
-      ],
-      spaceports: @[],
-      shipyards: @[]
-    )
-
-    let infraCap = getFighterInfrastructureCapacity(colony)
-    check infraCap == 5  # 1 starbase × 5 FS
-
-  test "Fighter capacity: takes minimum of pop and infra":
-    let colony = Colony(
-      systemId: 1,
-      owner: "house1",
-      population: 2000,  # 20 FS from population
-      souls: 0,
-      infrastructure: 5,
-      planetClass: PlanetClass.Benign,
-      resources: ResourceRating.Abundant,
-      buildings: @[],
-      production: 0,
-      underConstruction: none(ConstructionProject),
-      activeTerraforming: none(TerraformProject),
-      unassignedSquadrons: @[],
-      unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
-      fighterSquadrons: @[],
-      capacityViolation: CapacityViolation(),
-      starbases: @[
-        Starbase(id: "sb1", commissionedTurn: 1, isCrippled: false)  # Only 5 FS from infra
-      ],
-      spaceports: @[],
-      shipyards: @[]
-    )
-
-    let capacity = getFighterCapacity(colony, 1.0)
-    check capacity == 5  # Limited by infrastructure
-
-  test "Fighter capacity: no starbases = no fighters":
-    let colony = Colony(
-      systemId: 1,
-      owner: "house1",
-      population: 1000,
-      souls: 0,
-      infrastructure: 5,
-      planetClass: PlanetClass.Benign,
-      resources: ResourceRating.Abundant,
-      buildings: @[],
-      production: 0,
-      underConstruction: none(ConstructionProject),
-      activeTerraforming: none(TerraformProject),
-      unassignedSquadrons: @[],
-      unassignedSpaceLiftShips: @[],
-      autoAssignFleets: false,
-      fighterSquadrons: @[],
-      capacityViolation: CapacityViolation(),
-      starbases: @[],  # No starbases
-      spaceports: @[],
-      shipyards: @[]
-    )
-
-    let capacity = getFighterCapacity(colony, 1.0)
-    check capacity == 0
+    check getFighterCapacity(colony, 2.0) == 16
 
   test "Fighter doctrine multipliers from tech":
     # FD I = 1.0x
