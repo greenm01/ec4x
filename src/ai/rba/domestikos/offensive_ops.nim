@@ -6,7 +6,7 @@
 ## - Probing attacks: Scout enemy defenses with expendable scouts
 ## - Counter-attacks: Exploit enemy vulnerabilities (weak/absent defenses)
 
-import std/[options, strformat]
+import std/[options, strformat, sets]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger]
 import ../../../engine/diplomacy/types as dip_types  # For isEnemy
@@ -94,7 +94,7 @@ proc generateProbingOrders*(
     description: string
 
   var intelTargets: seq[IntelTarget] = @[]
-  var targetedSystems: seq[SystemId] = @[]  # Track systems to avoid duplicates
+  var targetedSystems = initHashSet[SystemId]()  # Track systems to avoid duplicates (O(1) lookup)
 
   # Priority 1: Hack enemy starbases (high-value intelligence)
   for visibleFleet in filtered.visibleFleets:
@@ -122,7 +122,7 @@ proc generateProbingOrders*(
         priority: 100,  # Highest priority
         description: "hack starbase"
       ))
-      targetedSystems.add(visibleFleet.location)
+      targetedSystems.incl(visibleFleet.location)
 
   # Priority 2: Spy on enemy colonies (gather defense/production intel)
   for visibleColony in filtered.visibleColonies:
@@ -143,7 +143,7 @@ proc generateProbingOrders*(
       priority: priority,
       description: "spy planet"
     ))
-    targetedSystems.add(visibleColony.systemId)
+    targetedSystems.incl(visibleColony.systemId)
 
   # Priority 3: Reconnaissance of enemy systems (general intel)
   # Spy on systems with enemy fleets but no visible colony
@@ -151,7 +151,7 @@ proc generateProbingOrders*(
     if visibleFleet.owner == controller.houseId:
       continue  # Skip own fleets
 
-    # Skip if already targeted (O(n) instead of O(n²))
+    # Skip if already targeted (O(1) HashSet lookup)
     if visibleFleet.location in targetedSystems:
       continue
 
@@ -161,7 +161,7 @@ proc generateProbingOrders*(
       priority: 60,
       description: "spy system"
     ))
-    targetedSystems.add(visibleFleet.location)
+    targetedSystems.incl(visibleFleet.location)
 
   if intelTargets.len == 0:
     return result
