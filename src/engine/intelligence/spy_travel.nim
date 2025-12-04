@@ -7,8 +7,8 @@
 ## - Detection checks at each intermediate system
 
 import std/[tables, options]
-import ../../common/types/[core, combat]
-import ../gamestate, ../fleet, ../starmap, ../orders
+import ../../common/types/core
+import ../gamestate, ../fleet, ../orders
 import ../diplomacy/engine as dip_engine
 import detection, types as intel_types
 import ../resolution/[fleet_orders, types as resolution_types]
@@ -30,47 +30,6 @@ proc recordScoutLoss*(state: var GameState, scoutId: string,
   )
 
   state.scoutLossEvents.add(event)
-
-proc checkPathControl(state: GameState, spy: SpyScout): bool =
-  ## Check if spy owner controls all systems from current location to target
-  ## Required for 2-jump major lane movement
-  for i in spy.currentPathIndex..<spy.travelPath.len:
-    let systemId = spy.travelPath[i]
-    if systemId in state.colonies:
-      let colony = state.colonies[systemId]
-      if colony.owner != spy.owner:
-        return false  # Rival territory, no control bonus
-    else:
-      return false  # Unexplored system, no control bonus
-  return true
-
-proc calculateScoutMovement(state: GameState, spy: SpyScout): int =
-  ## Calculate movement allowance for spy scout this turn
-  ## Per operations.md:6.1.2 Jump Lane Movement Rules
-
-  if spy.currentPathIndex >= spy.travelPath.len:
-    return 0
-
-  let currentSystem = spy.location
-  let nextSystem = spy.travelPath[spy.currentPathIndex]
-
-  # Find lane between current and next system
-  var laneType = LaneType.Minor  # Default
-  for lane in state.starMap.lanes:
-    if (lane.source == currentSystem and lane.destination == nextSystem) or
-       (lane.destination == currentSystem and lane.source == nextSystem):
-      laneType = lane.laneType
-      break
-
-  # Check if this is a major lane with full control
-  if laneType == LaneType.Major:
-    # Check if spy owner controls all systems on the path ahead
-    let controlsPath = checkPathControl(state, spy)
-    if controlsPath:
-      return 2  # Can move 2 jumps on controlled major lanes
-
-  # Minor lanes, restricted lanes, or non-controlled systems
-  return 1  # Standard 1 jump per turn
 
 proc checkTravelDetection(state: GameState, spyId: string,
                          systemId: SystemId): intel_types.DetectionResult =

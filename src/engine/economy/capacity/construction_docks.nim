@@ -150,7 +150,6 @@ proc getAvailableFacilities*(state: GameState, colonyId: core.SystemId,
   if not state.colonies.hasKey(colonyId):
     return
 
-  let colony = state.colonies[colonyId]
   let facilities = analyzeColonyCapacity(state, colonyId)
 
   # Collect available facilities

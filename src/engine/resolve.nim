@@ -20,6 +20,10 @@ import economy/repair_queue
 # Import resolution modules
 import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage]
 
+# Import debug-only modules
+when not defined(release):
+  import resolution/simultaneous_blockade
+
 # Re-export resolution types for backward compatibility
 export res_types.GameEvent, res_types.GameEventType, res_types.CombatReport
 

@@ -41,7 +41,7 @@ import std/[tables, options, random, sequtils, hashes, math, strutils, strformat
 import ../../common/[hex, types/core, types/units, types/tech]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../starmap, ../logger
 import ../order_types  # For StandingOrder and StandingOrderType
-import ../economy/[types as econ_types, engine as econ_engine, construction, maintenance, facility_queue]
+import ../economy/[types as econ_types, engine as econ_engine, construction, maintenance]
 import ../economy/capacity/fighter as fighter_capacity
 import ../economy/capacity/planet_breakers as planet_breaker_capacity
 import ../economy/capacity/capital_squadrons as capital_squadron_capacity
@@ -52,7 +52,7 @@ import ../diplomacy/[types as dip_types, proposals as dip_proposals]
 import ../blockade/engine as blockade_engine
 import ../intelligence/[detection, types as intel_types, generator as intel_gen, starbase_surveillance, scout_intel]
 import ../population/[types as pop_types]
-import ../config/[espionage_config, population_config, ground_units_config, gameplay_config, military_config]
+import ../config/[espionage_config, population_config, ground_units_config, gameplay_config]
 import ../colonization/engine as col_engine
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony
@@ -114,12 +114,6 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
         continue
 
     # Validate budget BEFORE creating construction project
-    # Pass assigned facility type for accurate cost calculation (spaceport 2x penalty)
-    let facilityTypeForCost = if assignedFacility.isSome:
-                                some(assignedFacility.get().facilityType)
-                              else:
-                                none(econ_types.FacilityType)
-
     let validationResult = orders.validateBuildOrderWithBudget(order, state, packet.houseId, budgetContext)
     if not validationResult.valid:
       let errorMsg = validationResult.error
@@ -174,7 +168,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       # DOCK CONSTRUCTION: Add to facility queue
       success = dock_capacity.assignAndQueueProject(state, order.colonySystem, project)
       if success:
-        let (facilityId, facilityType) = assignedFacility.get()
+        let (facilityId, _) = assignedFacility.get()
         queueLocation = &"facility {facilityId}"
     else:
       # COLONY CONSTRUCTION: Add to colony queue (legacy system)

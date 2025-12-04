@@ -3,7 +3,7 @@
 ## Handles simultaneous resolution of BlockadePlanet orders
 ## to prevent first-mover advantages.
 
-import std/[tables, options, random, sequtils, strformat]
+import std/[tables, options, random, strformat]
 import simultaneous_types
 import simultaneous_resolver
 import ../gamestate

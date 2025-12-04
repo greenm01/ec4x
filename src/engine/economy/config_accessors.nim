@@ -60,12 +60,7 @@ macro getShipField*(shipClass: ShipClass, fieldName: untyped, config: untyped): 
     )
     result.add(ofBranch)
 
-  # Add else branch (should never hit, but makes Nim happy)
-  result.add(nnkElse.newTree(
-    nnkStmtList.newTree(
-      nnkReturnStmt.newTree(newLit(0))
-    )
-  ))
+  # No else branch needed - all enum cases are covered
 
 ## Construction Time Accessor Macro
 
@@ -113,12 +108,7 @@ macro getConstructionTimeField*(shipClass: ShipClass, config: untyped): untyped 
     )
     result.add(ofBranch)
 
-  # Add else branch (should never hit, but makes Nim happy)
-  result.add(nnkElse.newTree(
-    nnkStmtList.newTree(
-      nnkReturnStmt.newTree(newLit(0))
-    )
-  ))
+  # No else branch needed - all enum cases are covered
 
 ## Clean Wrapper Procs (These replace the duplicated case statements)
 
