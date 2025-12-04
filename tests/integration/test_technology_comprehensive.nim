@@ -9,14 +9,15 @@
 
 import std/[unittest, tables, random, options]
 import ../../src/engine/research/[types, costs, advancement, effects]
-import ../../src/engine/config/tech_config
+import ../../src/engine/config/[tech_config, prestige_config, prestige_multiplier]
 import ../../src/common/types/tech
 
 suite "Technology System: Comprehensive Tests":
 
   # Load config once at suite start
   setup:
-    discard loadTechConfig("config/tech.toml")
+    discard loadTechConfig()
+    setPrestigeMultiplierForTesting(1.0)
 
   # ==========================================================================
   # Research Point Conversion Tests
@@ -435,28 +436,28 @@ suite "Technology System: Comprehensive Tests":
   # ==========================================================================
   # Upgrade Cycle Tests
   # ==========================================================================
-  # DISABLED: 
+  # DISABLED:
   # DISABLED:   test "Upgrade turns: turns 1 and 7 (bi-annual)":
   # DISABLED:     # Turns 1 and 7 of each year (months 1 and 7)
   # DISABLED:     check isUpgradeTurn(1) == true   # Turn 1 (month 1)
   # DISABLED:     check isUpgradeTurn(7) == true   # Turn 7 (month 7)
   # DISABLED:     check isUpgradeTurn(14) == true  # Turn 14 (month 1 of year 2)
   # DISABLED:     check isUpgradeTurn(20) == true  # Turn 20 (month 7 of year 2)
-  # DISABLED: 
+  # DISABLED:
   # DISABLED:     # Non-upgrade turns
   # DISABLED:     check isUpgradeTurn(2) == false
   # DISABLED:     check isUpgradeTurn(6) == false
   # DISABLED:     check isUpgradeTurn(8) == false
   # DISABLED:     check isUpgradeTurn(13) == false
-  # DISABLED: 
+  # DISABLED:
   # DISABLED:   test "Upgrade cycle: only specific turns allow advancement":
   # DISABLED:     # This ensures upgrades are restricted to bi-annual cycles
   # DISABLED:     var upgradeTurns: seq[int] = @[]
-  # DISABLED: 
+  # DISABLED:
   # DISABLED:     for turn in 1..26:  # 2 full years
   # DISABLED:       if isUpgradeTurn(turn):
   # DISABLED:         upgradeTurns.add(turn)
-  # DISABLED: 
+  # DISABLED:
   # DISABLED:     # Should have exactly 4 upgrade turns in 2 years
   # DISABLED:     check upgradeTurns.len == 4
   # DISABLED:     check 1 in upgradeTurns
