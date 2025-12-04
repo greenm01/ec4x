@@ -13,7 +13,7 @@
 ## - CLK: Cloaking system (intelligence/detection.nim)
 ## - SLD: Planetary shields (combat/ground.nim)
 ## - CIC: Counter-intelligence (espionage/types.nim)
-## - FD: Fighter capacity multiplier (combat/fighter_capacity.nim)
+## - FD: Fighter capacity multiplier (economy/fighter_capacity.nim)
 ## - ACO: Carrier capacity (to be implemented)
 
 import ../../common/types/tech
@@ -116,7 +116,8 @@ proc canTerraform*(currentClass: int, terLevel: int): bool =
 ## Use espionage detection thresholds for CIC mechanics
 
 ## Fighter Doctrine Effects (economy.md:4.12)
-## NOTE: Fighter capacity multiplier system implemented in combat/fighter_capacity.nim
+## NOTE: Fighter capacity multiplier system implemented in economy/capacity/fighter.nim
+## Formula: Max FS = floor(IU / 100) × FD Multiplier (IU-based, not PU-based)
 ## Use getFighterDoctrineMultiplier() for capacity calculations
 
 ## Advanced Carrier Operations Effects (economy.md:4.13)

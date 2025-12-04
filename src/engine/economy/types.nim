@@ -49,6 +49,8 @@ type
     costTotal*: int             # Total PP cost
     costPaid*: int              # PP already invested
     turnsRemaining*: int        # Estimated completion (can vary)
+    facilityId*: Option[string] # Which facility is handling this project (NEW: per-facility tracking)
+    facilityType*: Option[FacilityType]  # Spaceport or Shipyard (NEW: for capacity tracking)
 
   FacilityType* {.pure.} = enum
     ## Facility type for construction/repair
@@ -65,6 +67,7 @@ type
     ## Ships extracted from fleets, repaired for 1 turn, then recommissioned
     targetType*: RepairTargetType
     facilityType*: FacilityType     # Which facility type handles this repair
+    facilityId*: Option[string]     # Which specific facility is handling this repair (NEW: per-facility tracking)
     fleetId*: Option[FleetId]       # For ship repairs (where ship came from)
     squadronIdx*: Option[int]       # Which squadron in fleet
     shipIdx*: Option[int]           # Index in squadron (flagship=-1, escort=0+)

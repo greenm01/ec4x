@@ -40,6 +40,8 @@ type
     id*: string                   # Unique identifier
     commissionedTurn*: int        # Turn when built
     docks*: int                   # Construction docks (5 per spaceport)
+    constructionQueue*: seq[econ_types.ConstructionProject]  # Per-facility construction queue
+    activeConstruction*: Option[econ_types.ConstructionProject]  # Currently building project
 
   Shipyard* = object
     ## Orbital construction facility (assets.md:2.3.2.2)
@@ -47,6 +49,10 @@ type
     commissionedTurn*: int        # Turn when built
     docks*: int                   # Construction docks (10 per shipyard)
     isCrippled*: bool             # Combat state (crippled shipyards can't build)
+    constructionQueue*: seq[econ_types.ConstructionProject]  # Per-facility construction queue
+    activeConstruction*: Option[econ_types.ConstructionProject]  # Currently building project
+    repairQueue*: seq[econ_types.RepairProject]  # Per-facility repair queue
+    activeRepairs*: seq[econ_types.RepairProject]  # Currently repairing (multiple can be active)
 
   CapacityViolation* = object
     ## Tracks fighter capacity violations and grace period
@@ -583,12 +589,20 @@ proc getHousePopulationUnits*(state: GameState, houseId: HouseId): int =
   for colony in state.getHouseColonies(houseId):
     result += colony.population
 
+proc getTotalHouseIndustrialUnits*(state: GameState, houseId: HouseId): int =
+  ## Get total industrial units for a house across all colonies
+  ## Used for capital squadron capacity calculation per reference.md Table 10.5
+  result = 0
+  for colony in state.getHouseColonies(houseId):
+    result += colony.industrial.units
+
 proc getSquadronLimit*(state: GameState, houseId: HouseId): int =
-  ## Calculate squadron limit for a house based on population
-  ## Per military.toml: Squadron limit = Total PU ÷ 100 (minimum 8)
+  ## Calculate capital squadron limit for a house based on industrial capacity
+  ## Per reference.md Table 10.5: max(8, floor(Total_House_IU ÷ 100) × 2)
+  ## Changed from PU-based to IU-based formula
   let config = globalMilitaryConfig.squadron_limits
-  let totalPU = state.getHousePopulationUnits(houseId)
-  let calculatedLimit = totalPU div config.squadron_limit_pu_divisor
+  let totalIU = state.getTotalHouseIndustrialUnits(houseId)
+  let calculatedLimit = int(floor(float(totalIU) / 100.0) * 2.0)
   return max(config.squadron_limit_minimum, calculatedLimit)
 
 proc getHouseSquadronCount*(state: GameState, houseId: HouseId): int =
