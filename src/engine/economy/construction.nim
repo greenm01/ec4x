@@ -16,7 +16,7 @@ import std/options
 import math
 import types
 import ../../common/types/units
-import ../gamestate  # For unified Colony type
+import ../[gamestate, logger]  # For unified Colony type and logger
 import config_accessors  # DoD refactoring: macro-generated config accessors
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
@@ -93,6 +93,11 @@ proc advanceConstruction*(colony: var Colony): Option[CompletedProject] =
   ## Advance construction by one turn (upfront payment model)
   ## Returns completed project if finished
   ## Per economy.md:5.0 - full cost paid upfront, construction tracks turns
+
+  # This function currently processes Colony-side Construction projects but fails
+  # to comission ships from shipyard and starport docs in capacity/construction_docks.nim
+  # 2) TODO shipyard and starport dock commissioning
+
   if colony.underConstruction.isNone:
     return none(CompletedProject)
 

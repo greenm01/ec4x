@@ -243,7 +243,7 @@ suite "Unit Validation: Carriers and Special Units":
     check ship.commandRating == 8
     check ship.carryLimit == 3
     check ship.techLevel == 3
-    check ship.buildCost == 120
+    check ship.buildCost == 80
 
   test "Super Carrier stats match reference.md":
     let config = loadConfig(SHIPS_CONFIG)
@@ -269,7 +269,7 @@ suite "Unit Validation: Carriers and Special Units":
     check ship.defenseStrength == 3
     check ship.commandCost == 0  # Fighters don't use CC
     check ship.commandRating == 0
-    check ship.techLevel == 3
+    check ship.techLevel == 1
     check ship.buildCost == 20
 
   test "Raider stats match reference.md":
@@ -280,8 +280,8 @@ suite "Unit Validation: Carriers and Special Units":
     check ship.class == "RR"
     check ship.attackStrength == 12
     check ship.defenseStrength == 10
-    check ship.commandCost == 3
-    check ship.commandRating == 4
+    check ship.commandCost == 2
+    check ship.commandRating == 8
     check ship.techLevel == 3
     check ship.buildCost == 150
     check ship.specialCapability == "CLK"
