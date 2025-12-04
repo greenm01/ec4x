@@ -8,7 +8,7 @@
 ## - Global config instance for easy access
 ## - Follows engine config pattern (economy_config.nim)
 
-import std/[os, tables, strformat]
+import std/[os, strformat]
 import toml_serialization
 import ../../engine/config/validators
 import ../../engine/logger

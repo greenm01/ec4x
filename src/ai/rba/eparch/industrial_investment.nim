@@ -4,7 +4,7 @@
 ## Understands passive IU growth rates and when manual investment is beneficial
 
 import std/[options, math, algorithm]
-import ../../../common/types/[core, units]
+import ../../../common/types/core
 import ../../../engine/gamestate
 import ../../../engine/fog_of_war
 import ../../../engine/economy/types as econ_types

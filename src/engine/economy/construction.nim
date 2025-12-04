@@ -16,7 +16,6 @@ import std/options
 import math
 import types
 import ../../common/types/units
-import ../config/[construction_config, facilities_config, ships_config]
 import ../gamestate  # For unified Colony type
 import config_accessors  # DoD refactoring: macro-generated config accessors
 

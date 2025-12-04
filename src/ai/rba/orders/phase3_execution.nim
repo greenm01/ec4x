@@ -3,17 +3,14 @@
 ## Execute advisor requirements using allocated budgets
 
 import std/[strformat, options, random, tables]
-import ../../../common/types/[core, tech]
-import ../../../engine/[gamestate, fog_of_war, logger, orders]
+import ../../../engine/[fog_of_war, logger, orders]
 import ../../../engine/research/types as res_types
 import ../../../engine/espionage/types as esp_types
 import ../controller_types
-import ../../common/types as ai_types
 import ../treasurer/multi_advisor
 import ../logothete/allocation
 import ../drungarius
 import ../eparch
-import ../protostrator
 import ../basileus/execution as basileus_exec
 
 proc executeResearchAllocation*(

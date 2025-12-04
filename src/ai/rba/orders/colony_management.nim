@@ -15,13 +15,10 @@
 ##   2. Dock capacity needed for urgent builds
 ##   3. Fleet redeployment planned (don't repair ships about to transfer)
 
-import std/[tables, sequtils, options, strformat]
-import std/logging
+import std/strformat
 import ../../../engine/[gamestate, fog_of_war, order_types, logger]
-import ../../../common/types/core
 import ../../common/types as ai_types
 import ../controller_types
-import ../intelligence  # For colony analysis
 import ../config  # For RBA configuration
 
 proc generateColonyManagementOrders*(

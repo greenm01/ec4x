@@ -9,11 +9,9 @@
 ## - Apply threat response (emergency military boost)
 ## - Normalize to ensure sum = 1.0
 
-import std/[tables, options, strformat]
+import std/[tables, options]
 import ../../common/types
-import ../../../engine/logger
-import ../config
-import ../controller_types  # For BuildRequirements type
+import ../[config, controller_types]
 import ./consultation
 
 proc getBaselineAllocation*(act: GameAct): BudgetAllocation =

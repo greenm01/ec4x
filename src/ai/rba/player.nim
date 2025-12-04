@@ -21,3 +21,44 @@ export generateAIOrders
 ##   import ai/rba/player
 ##   let ai = newAIController(houseId, AIStrategy.Aggressive)
 ##   let orders = generateAIOrders(ai, filteredState, rng)
+
+# Basileus = Emperor
+# Protostrator = Diplomacy
+# Logothete = Science & Technology
+# Eparch = Economics
+# Domestikos = War
+# Drungarius = Intelligence & Clandestine Operations
+
+# Basileus (Βασιλεύς) - The Emperor coordinating all advisors
+# - Personality-driven advisor weighting
+# - Multi-advisor coordination frameworks
+# - Full feedback loop
+# - Intelligence distribution
+
+# Protostrator (πρωτοστράτωρ) - Master of ceremonies managing foreign relations
+# - Diplomatic relationship assessment
+# - Alliance/pact recommendations
+# - War/peace evaluations
+# - Foreign policy strategy
+
+# Logothete (λογοθέτης) - Controller of technological secrets
+# - Research budget allocation (ERP/SRP/TRP)
+# - Tech cap detection and reallocation
+# - Personality-driven research priorities
+
+# Eparch (ἔπαρχος) - Prefect controlling markets and infrastructure
+# - Terraforming strategy (planetary development)
+# - Facility construction (shipyards, spaceports)
+# - Economic policy (taxation, trade)
+
+# Domestikos (δομέστικος) - Commander of Imperial Forces
+# - Fleet utilization analysis
+# - Act-specific fleet reorganization (split in Act 1, merge in Act 2+)
+# - Smart defensive consolidation (no suicide attacks)
+# - Opportunistic counter-attacks against vulnerable enemies
+# - Probing attacks for intelligence gathering
+
+# Drungarius (δρουγγάριος) - Commander of intelligence networks
+# - Strategic espionage target selection
+# - Operation type selection (based on EBP budget)
+# - Counter-intelligence decisions (CIP usage)

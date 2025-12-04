@@ -7,8 +7,7 @@
 ## - Ensure homeworld always has at least 1 defender
 ## - Use existing standing orders when possible (don't churn assignments)
 
-import std/[sequtils, options, tables, sets, algorithm, strformat]
-import ../../../common/system
+import std/[options, tables, sets, algorithm, strformat]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, standing_orders, starmap, logger]
 import ../controller_types

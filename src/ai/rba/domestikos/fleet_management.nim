@@ -15,13 +15,11 @@
 ## - Returns ZeroTurnCommands for fleets at friendly colonies
 ## - Executes immediately when fleets are co-located
 
-import std/[tables, options, sequtils, sets, algorithm, strformat]
-import std/logging
-import ../../../common/types/[core, combat]
-import ../../../engine/[gamestate, fog_of_war, fleet, logger, order_types]
+import std/[tables, options, strformat]
+import ../../../common/types/core
+import ../../../engine/[gamestate, fog_of_war, fleet, logger]
 import ../../../engine/commands/zero_turn_commands
 import ../../common/types as ai_types
-import ../controller_types
 import ../config
 import ./fleet_analysis  # For FleetAnalysis type
 

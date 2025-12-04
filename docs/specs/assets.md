@@ -125,30 +125,26 @@ A Task Force is temporary grouping of squadrons organized for combat. After the 
 
 ### 2.4.1 Fighter Squadrons & Carriers
 
-Fighters are small ships commissioned in Fighter Squadrons (FS) that freely patrol a system. They are based planet-side and never retreat from combat.
+Fighters are small ships commissioned in Fighter Squadrons (FS) that freely patrol a sector. They are based planet-side and never retreat from combat. Fighters are glass cannons: cheap to build but pack a bunch.
+
+**Infrastructure Requirement:**
+
+Fighters are constructed and commissioned planet-side. Once commissioned, fighter squadrons operate independently from distributed planetary bases. No starport, shipyard, or starbase infrastructure is required.
 
 **Fighter Squadron Capacity:**
+
+Fighter capacity is based on industrial manufacturing capacity (IU); colony industrial capacity (factories, supply chains) limits production.
 
 The maximum number of fighter squadrons a colony can support is determined by:
 
 ```
-Max FS = floor(PU / 100) × FD Tech Level Multiplier
+Max FS = floor(IU / 100) × FD Multiplier
 ```
 
 Where Fighter Doctrine (FD) Tech Level Multiplier is:
 - FD I (base): 1.0x
 - FD II: 1.5x  
 - FD III: 2.0x
-
-**Infrastructure Requirement:**
-
-Fighters are built and commissioned planet-side. Once commissioned, fighter squadrons operate independently from distributed planetary bases. No starbase infrastructure is required.
-
-**Fighter Capacity Formula:**
-
-Max FS = floor(IU / 100) × FD Multiplier
-
-Fighter capacity is based on industrial manufacturing capacity (IU), not population (PU). With populations in millions, pilot availability isn't the constraint - industrial capacity (factories, shipyards, supply chains) limits production.
 
 **Examples:**
 - Homeworld start (420 IU, FD I): floor(420/100) × 1.0 = 4 fighters
@@ -303,8 +299,7 @@ Fighters aboard carriers exist in three operational states:
 - Fighters disembark and transfer ownership to colony
 - Completed in same turn in non-hostile system (outside combat)
 - Colony must have available capacity:
-  - `Population capacity: floor(Colony_PU / 100) × FD ≥ (Current_FS + Transferred_FS)`
-  - `Infrastructure: Operational_Starbases ≥ ceil((Current_FS + Transferred_FS) / 5)`
+  - `Population capacity: floor(Colony_IU / 100) × FD ≥ (Current_FS + Transferred_FS)`
 - Deployed fighters become colony-owned planet-based assets
 - Fighters remain at colony when carrier departs
 
@@ -335,7 +330,7 @@ Fighters destroyed in combat cannot be replaced except through normal constructi
 - Carrier must remain for fighters to defend
 
 **Colony Reinforcement:**
-- Permanent transfer: Load (1 turn, colony→carrier) → transit → deploy (1 turn, carrier→colony, requires destination capacity)
+- Permanent transfer: Load (0 turn, colony→carrier) → transit → deploy (0 turn, carrier→colony, requires destination capacity)
 - Temporary: Station with fighters embarked, deploy for combat, re-embark after (no ownership transfer)
 
 **Fleet Operations:**

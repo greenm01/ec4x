@@ -5,7 +5,7 @@
 ## Coordinates competing requirements from all advisors using personality weights
 ## and urgency scoring to create a unified priority queue for budget allocation
 
-import std/[tables, algorithm, strformat, sequtils, options, strutils]
+import std/[tables, algorithm, strformat, options, strutils]
 import ../../../common/types/core
 import ../controller_types
 import ../../common/types as ai_types

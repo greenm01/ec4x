@@ -21,19 +21,14 @@
 ##
 ## Good logistics = fewer builds needed = more PP for other objectives
 
-import std/[tables, options, sequtils, algorithm, math, sets, strformat]
-import std/logging
-import ../../common/types/[core, units, tech]
+import std/[tables, options, algorithm, math, sets, strformat]
+import ../../common/types/[core, units]
 import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, spacelift, logger]
 import ../../engine/commands/zero_turn_commands
 import ../../engine/economy/maintenance
 import ../common/types as ai_types
-import ./controller_types
-import ./config  # RBA configuration system
-import ./intelligence  # For system analysis, getOwnedColonies
+import ./[controller_types, config]
 import ./shared/colony_assessment  # Shared defense assessment
-import ./protostrator/assessment  # For getOwnedFleets
-import ./strategic     # For threat assessment
 
 ## =============================================================================
 ## LEGACY TYPE DEFINITIONS (Deprecated - for backward compatibility)
@@ -1148,7 +1143,7 @@ proc analyzeFleetComposition*(fleet: Fleet, role: FleetRole): tuple[compliant: b
   result.compliant = true
   result.gaps = @[]
 
-  let optimal = getOptimalComposition(role)
+  #let optimal = getOptimalComposition(role)
 
   # TODO: Count ships by category in fleet
   # TODO: Compare against optimal composition

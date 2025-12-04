@@ -14,7 +14,6 @@ import ../../engine/[gamestate, orders, fleet, logger, fog_of_war, squadron]
 import ../../engine/economy/construction  # For budget execution
 import ../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../common/types/[core, units]
-import ./config  # RBA configuration system (globalRBAConfig)
 import ./treasurer     # Treasurer module for budget allocation
 
 # =============================================================================
@@ -627,7 +626,6 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
     # Calculate current composition ratios (avoid division by zero)
     let currentCapitalRatio = if composition.total > 0: float(composition.capitals) / float(composition.total) else: 0.0
     let currentEscortRatio = if composition.total > 0: float(composition.escorts) / float(composition.total) else: 0.0
-    let currentSpecialistRatio = if composition.total > 0: float(composition.specialists) / float(composition.total) else: 0.0
 
     # PHASE 4: COUNTER-STRATEGY ADAPTATION
     # Assess aggregate threat and apply strategic modifiers

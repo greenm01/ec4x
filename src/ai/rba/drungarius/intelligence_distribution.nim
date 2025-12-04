@@ -5,12 +5,11 @@
 ## Consolidates fog-of-war visibility, reconnaissance reports, and espionage data
 ## into a unified IntelligenceSnapshot for all imperial advisors
 
-import std/[tables, sequtils, strformat, options]
+import std/[tables, strformat, options]
 import ../../../common/types/[core, diplomacy]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
-import ../../common/types as ai_types
 
 proc assessThreat*(
   filtered: FilteredGameState,

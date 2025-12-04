@@ -4,11 +4,11 @@ Test 4-act structure across different map sizes and player counts
 Tests small (4 players, 4 rings), medium (8 players, 8 rings), large (12 players, 12 rings)
 """
 
-import subprocess
 import json
+import subprocess
 import sys
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
 # Test configurations: (numPlayers, mapRings, turnLimit, description)
 TEST_CONFIGS = [
@@ -19,11 +19,22 @@ TEST_CONFIGS = [
 
 NUM_GAMES_PER_CONFIG = 3  # Run 3 games per configuration for quick test
 
+# Filepaths
+SCRIPT_DIR = Path(__file__).parent.resolve()
+PROJECT_ROOT = SCRIPT_DIR.parent  # since script is in scripts/
+
+
 def run_simulation(num_players, turns, seed, map_rings):
     """Run a single simulation"""
     # Parameters: turns seed mapRings numPlayers
-    cmd = ["./tests/balance/run_simulation", str(turns), str(seed), str(map_rings), str(num_players)]
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd="/home/niltempus/dev/ec4x")
+    cmd = [
+        "./tests/balance/run_simulation",
+        str(turns),
+        str(seed),
+        str(map_rings),
+        str(num_players),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
 
     if result.returncode != 0:
         print(f"  Game failed!")
@@ -38,11 +49,12 @@ def run_simulation(num_players, turns, seed, map_rings):
         print(f"  Failed to parse results: {e}")
         return None
 
+
 def analyze_results(results, config_name):
     """Analyze a set of results for act structure"""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Analysis: {config_name}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     if not results:
         print("No valid results to analyze")
@@ -105,19 +117,20 @@ def analyze_results(results, config_name):
     for i, (house, avg_p) in enumerate(avg_rankings, 1):
         print(f"  {i}. {house}: {avg_p:.1f} prestige")
 
+
 def main():
-    print("="*70)
+    print("=" * 70)
     print("EC4X Map Size Balance Test")
     print("Testing 4-act structure across different map sizes")
-    print("="*70)
+    print("=" * 70)
 
     all_results = {}
 
     for num_players, map_rings, turn_limit, description in TEST_CONFIGS:
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Testing: {description}")
         print(f"  Players: {num_players}, Rings: {map_rings}, Turns: {turn_limit}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
         config_results = []
 
@@ -136,13 +149,16 @@ def main():
         analyze_results(config_results, description)
 
     # Summary
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     for config_name, results in all_results.items():
         success_rate = (len(results) / NUM_GAMES_PER_CONFIG) * 100
-        print(f"{config_name}: {len(results)}/{NUM_GAMES_PER_CONFIG} games ({success_rate:.0f}% success)")
+        print(
+            f"{config_name}: {len(results)}/{NUM_GAMES_PER_CONFIG} games ({success_rate:.0f}% success)"
+        )
+
 
 if __name__ == "__main__":
     main()

@@ -21,11 +21,7 @@
 ## # Returns: ResearchAllocation (economic, science, technology fields)
 ## ```
 
-import std/[tables, options]
-import ../../common/types/[core, tech]
-import ../../engine/[gamestate, fog_of_war]
 import ../../engine/research/types as res_types
-import ./controller_types
 import ./logothete/allocation
 
 # Re-export the main public API

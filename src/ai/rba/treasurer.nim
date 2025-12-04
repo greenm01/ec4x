@@ -28,8 +28,6 @@
 ## # Returns: Table[BuildObjective, float] where sum(values) == 1.0
 ## ```
 
-import std/[tables, options]
-import ../common/types
 import ./treasurer/allocation
 
 # Re-export the main public API

@@ -3,7 +3,7 @@
 ## Consolidated defense and strategic assessment logic used across all RBA modules.
 ## Eliminates inconsistencies between strategic, tactical, and logistics calculations.
 
-import std/[options, sequtils]
+import std/options
 import ../../../common/types/[core, planets]
 import ../../../engine/[gamestate, fog_of_war]
 import ../intelligence  # For getColony helper

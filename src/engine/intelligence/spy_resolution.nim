@@ -1,7 +1,7 @@
 ## Spy Scout Turn Resolution
 ## Implements spy detection and intelligence gathering from assets.md:2.4.2
 
-import std/[tables, options, sequtils]
+import std/[tables, options]
 import ../../common/types/core
 import ../gamestate, ../fleet
 import detection

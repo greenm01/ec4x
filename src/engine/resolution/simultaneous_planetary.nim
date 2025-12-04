@@ -3,7 +3,7 @@
 ## Handles simultaneous resolution of Bombard, Invade, and Blitz orders
 ## to prevent first-mover advantages in planetary assaults.
 
-import std/[tables, options, random, sequtils, strformat]
+import std/[tables, options, random, strformat]
 import simultaneous_types
 import simultaneous_resolver
 import ../gamestate
@@ -11,7 +11,6 @@ import ../orders
 import ../order_types
 import ../logger
 import ../squadron
-import ../resolution/fleet_orders
 import ../../common/types/core
 
 proc collectPlanetaryCombatIntents*(

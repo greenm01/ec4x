@@ -4,7 +4,6 @@
 ## Supports colonization, assault, fleet mergers, and other competitive orders.
 
 import std/options
-import ../order_types
 import ../../common/types/core
 
 type

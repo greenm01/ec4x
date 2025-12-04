@@ -4,7 +4,7 @@
 ##
 ## Strategic terraforming and planetary development decision-making
 
-import std/[tables, options, random, sequtils, algorithm]
+import std/[random, algorithm]
 import ../../../common/types/[core, planets]
 import ../../../engine/[gamestate, fog_of_war, orders]
 import ../controller_types

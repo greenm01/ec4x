@@ -7,7 +7,7 @@ import std/[tables, options]
 import ../../engine/gamestate
 import ../../engine/orders  # For BuildOrder type
 import ../../engine/diplomacy/types as dip_types
-import ../../common/types/[core, units, planets, tech]
+import ../../common/types/[core, planets]
 
 # =============================================================================
 # Game Phase Types

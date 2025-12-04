@@ -3,8 +3,8 @@
 ## Filters game state to create player-specific views with limited visibility.
 ## Per Grok AI feedback: "Fog of war is mandatory for both RBA and NNA"
 
-import std/[tables, options, sets, sequtils, strutils, strformat]
-import ../common/types/[core, planets, tech]
+import std/[tables, options, sets, strformat]
+import ../common/types/[core, planets]
 import gamestate, fleet, squadron, starmap, order_types, logger
 import intelligence/types as intel_types
 

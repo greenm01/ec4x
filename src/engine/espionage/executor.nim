@@ -124,14 +124,6 @@ proc executeEspionage*(
   # Get action descriptor (pure lookup)
   let descriptor = getActionDescriptor(attempt.action)
 
-  # Attempt detection (pure calculation with RNG)
-  let detectionAttempt = DetectionAttempt(
-    defender: attempt.target,
-    cicLevel: defenderCICLevel,
-    cipPoints: defenderCIPPoints,
-    action: attempt.action
-  )
-
   # Import detection from engine.nim (we'll need to expose it)
   # For now, inline the detection logic
   var detected = false

@@ -8,14 +8,12 @@ import std/[strformat, options, sequtils]
 import ../gamestate
 import types as econ_types
 import ../../common/logger
-import ../../common/types/core
 
 proc clearFacilityQueues*(colony: var Colony, facilityType: econ_types.FacilityType) =
   ## Clear construction and repair queues for a specific facility type
   ## Called when a facility is destroyed or crippled
   ## Per economy.md:5.0, ships under construction/repair are lost with no salvage
 
-  var destroyedProjects = 0
   var destroyedRepairs = 0
 
   # Clear facility-specific repairs

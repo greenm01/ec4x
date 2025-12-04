@@ -2044,7 +2044,6 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           logInfo(LogCategory.lcEconomy, &"Repair completed at system-{systemId}: {shipClass}")
 
           # Commission repaired ship as new ship (same as construction)
-          let techLevel = state.houses[colony.owner].techTree.levels.constructionTech
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
           if isSpaceLift:

@@ -8,7 +8,7 @@
 ## - Treasurer determines HOW MUCH budget to allocate (percentages)
 ## - Consultation bridges strategic needs with fiscal reality
 
-import std/[tables, strformat, sequtils]
+import std/[tables, strformat]
 import ../../common/types
 import ../../../engine/logger
 import ../config

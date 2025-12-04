@@ -7,8 +7,7 @@
 ## - Builds intelligence reports by visiting colonies
 ## - Populates FilteredGameState.visibleColonies for offensive ops in Act 2+
 
-import std/[options, sequtils, strformat, tables]
-import ../../../common/system
+import std/[options, strformat, tables]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, order_types, logger]
 import ../controller_types

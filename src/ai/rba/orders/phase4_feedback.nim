@@ -3,15 +3,12 @@
 ## Iteratively reprioritize unfulfilled requirements until convergence
 
 import std/[strformat, options, strutils]
-import ../../../common/types/core
-import ../../../engine/[gamestate, fog_of_war, logger]
+import ../../../engine/logger
 import ../controller_types
-import ../../common/types as ai_types
 import ../domestikos/build_requirements
 import ../logothete/requirements as logothete_req
 import ../drungarius/requirements as drungarius_req
 import ../eparch/requirements as eparch_req
-import ../protostrator/requirements as protostrator_req
 
 proc hasUnfulfilledCriticalOrHigh*(controller: AIController): bool =
   ## Check if any advisor has unfulfilled Critical or High priority requirements

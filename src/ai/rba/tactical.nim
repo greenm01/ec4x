@@ -32,8 +32,6 @@ proc isSingleScoutSquadron*(squadron: Squadron): bool =
   ## Check if squadron is a single scout (ideal for espionage)
   result = squadron.flagship.shipClass == ShipClass.Scout and squadron.ships.len == 0
 
-import ./controller_types
-
 # =============================================================================
 # Fleet Coordination
 # =============================================================================
