@@ -6,13 +6,14 @@
 
 ## Executive Summary
 
-The RBA AI has **three critical implementation bugs** preventing it from executing military operations, diplomacy, and espionage:
+The RBA AI had **four critical implementation bugs** preventing it from executing military operations, intelligence gathering, and espionage:
 
-1. **Espionage AI**: Budget always 0 (hardcoded bug) - **0 espionage missions**
-2. **War AI**: Never generates Bombard/Invade/Blitz orders - **0 invasions, 0 bombardments**
-3. **Diplomacy AI**: Appears correctly implemented (requires verification)
+1. **Espionage AI**: Budget always 0 (hardcoded bug) - **0 espionage missions** ✅ FIXED
+2. **War AI**: Never generates Bombard/Invade/Blitz orders - **0 invasions, 0 bombardments** ✅ FIXED
+3. **Scout Intelligence**: Never uses SpyPlanet/SpySystem/HackStarbase - **0 intel missions** ✅ FIXED
+4. **Diplomacy AI**: Properly implemented ✅ VERIFIED
 
-These are **not architectural problems** - they are simple implementation bugs.
+These are **not architectural problems** - they are simple implementation bugs where developers forgot to use existing order types.
 
 ## Bug #1: Espionage Budget Hardcoded to Zero ❌
 
@@ -54,10 +55,10 @@ Developer left TODO comment but hardcoded 0 values - never implemented proper bu
 
 ---
 
-## Bug #2: War AI Never Issues Bombardment/Invasion Orders ❌
+## Bug #2: War AI Never Issues Bombardment/Invasion Orders ❌ → ✅ FIXED
 
 ### Location
-`src/ai/rba/domestikos/offensive_ops.nim:122-207`
+`src/ai/rba/domestikos/offensive_ops.nim:122-273`
 
 ### Bug
 The entire `offensive_ops.nim` module only generates `Move` orders:
@@ -113,7 +114,62 @@ Developer implemented target selection but forgot to implement actual combat ord
 
 ---
 
-## Bug #3: Diplomacy AI Status ⚠️
+## Bug #4: Scout Intelligence Missions Never Used ❌ → ✅ FIXED
+
+### Location
+`src/ai/rba/domestikos/offensive_ops.nim:71-185` (generateProbingOrders)
+
+### Bug
+"Probing attack" function sent scouts to enemy systems but only issued `Move` orders:
+
+```nim
+proc generateProbingOrders*(...): seq[FleetOrder] =
+  # ... finds enemy colonies to probe ...
+
+  result.add(FleetOrder(
+    fleetId: scout.fleetId,
+    orderType: FleetOrderType.Move,  # ❌ Should use SpyPlanet/SpySystem/HackStarbase
+    targetSystem: some(target),
+    priority: 85
+  ))
+```
+
+### Available Order Types (NOT USED)
+From `src/engine/order_types.nim:20-22,29`:
+- `SpyPlanet` - Intelligence gathering on planet (defense/production intel)
+- `SpySystem` - Reconnaissance of system (fleet movements)
+- `HackStarbase` - Electronic warfare against starbases
+- `ViewWorld` - Long-range planetary reconnaissance (used in tactical.nim only for Act 1)
+
+### Impact
+- AI identified enemy targets correctly ✅
+- AI sent scouts to those locations ✅
+- Scouts just **moved to systems** instead of executing intelligence missions ❌
+- **Result: No spy missions (09, 10, 11), no starbase hacks**
+
+### Fix Strategy
+Implemented prioritized intelligence mission selection:
+
+```nim
+# Priority 1: HackStarbase (priority: 100)
+# - Target enemy starbases for high-value intel
+# - Disrupts enemy defenses
+
+# Priority 2: SpyPlanet (priority: 90 for enemies, 70 for neutrals)
+# - Gather defense strength, production capacity
+# - Critical for invasion planning
+
+# Priority 3: SpySystem (priority: 60)
+# - Reconnaissance of enemy fleet movements
+# - Systems with fleets but no visible colony
+```
+
+### Root Cause
+Developer implemented scout targeting but forgot to use intelligence-gathering order types.
+
+---
+
+## Bug #3: Diplomacy AI Status ⚠️ → ✅ VERIFIED WORKING
 
 ### Status
 **Requires verification** - implementation appears correct but needs testing.
