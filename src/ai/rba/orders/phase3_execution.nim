@@ -44,14 +44,19 @@ proc executeEspionageAction*(
   ## Execute Drungarius espionage requirements with allocated budget
 
   let espionageBudget = allocation.budgets.getOrDefault(controller_types.AdvisorType.Drungarius, 0)
+  let house = filtered.ownHouse
+
+  # Calculate projected EBP/CIP from budget
+  # Conversion: 1 PP = 1 EBP, 1 PP = 0.5 CIP (counter-intel is cheaper than ops)
+  let projectedEBP = house.espionageBudget.ebpPoints + espionageBudget
+  let projectedCIP = house.espionageBudget.cipPoints + (espionageBudget div 2)
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Executing espionage action " &
-          &"(budget={espionageBudget}PP)")
+          &"(budget={espionageBudget}PP, projectedEBP={projectedEBP}, projectedCIP={projectedCIP})")
 
-  # Use Drungarius module to generate espionage action
-  # For now pass 0 for EBP/CIP (TODO: Calculate from budget)
-  result = generateEspionageAction(controller, filtered, 0, 0, rng)
+  # Use Drungarius module to generate espionage action with proper budget
+  result = generateEspionageAction(controller, filtered, projectedEBP, projectedCIP, rng)
 
   return result
 

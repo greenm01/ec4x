@@ -119,6 +119,61 @@ proc generateProbingOrders*(
 
   return result
 
+proc selectCombatOrderType(
+  filtered: FilteredGameState,
+  fleetId: FleetId,
+  shipCount: int,
+  targetColony: VisibleColony
+): FleetOrderType =
+  ## Choose appropriate combat order based on fleet composition and target defenses
+  ##
+  ## Strategy:
+  ## - Weak/no defense + transports → Blitz (simultaneous bombardment + invasion)
+  ## - Moderate defense + transports → Bombard first to soften
+  ## - Strong defense → Bombard only (invasion too risky)
+  ## - No transports → Bombard only
+
+  # Find fleet and check for troop transports (marines)
+  var hasTransports = false
+  for fleet in filtered.ownFleets:
+    if fleet.id == fleetId:
+      for squadron in fleet.squadrons:
+        if squadron.flagship.shipClass == ShipClass.TroopTransport:
+          hasTransports = true
+          break
+      break
+
+  # Estimate target defense strength (0-10 scale)
+  # Higher values = stronger defenses
+  var defenseStrength = 0
+  if targetColony.estimatedGroundDefenses.isSome:
+    let defenses = targetColony.estimatedGroundDefenses.get()
+    defenseStrength = defenses  # Rough estimate
+
+  # Decision logic based on defenses and fleet composition
+  if not hasTransports:
+    # No transports - can only bombard
+    return FleetOrderType.Bombard
+
+  elif defenseStrength <= 2 and shipCount >= 3:
+    # Weak/no defenses, strong fleet with transports → Blitz
+    # Simultaneous bombardment + invasion for quick victory
+    return FleetOrderType.Blitz
+
+  elif defenseStrength <= 5 and shipCount >= 2:
+    # Moderate defenses → Bombard first to soften
+    # AI will need to follow up with invasion on next turn
+    return FleetOrderType.Bombard
+
+  elif shipCount >= 4:
+    # Strong fleet can attempt invasion even with moderate defenses
+    return FleetOrderType.Invade
+
+  else:
+    # Strong defenses or weak fleet → Just bombard
+    # Soften target for future invasion
+    return FleetOrderType.Bombard
+
 proc generateCounterAttackOrders*(
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
@@ -144,6 +199,7 @@ proc generateCounterAttackOrders*(
     systemId: SystemId
     enemyHouse: HouseId
     priority: float
+    colony: VisibleColony  # Store colony for defense assessment
 
   var vulnerableTargets: seq[VulnerableTarget] = @[]
 
@@ -174,7 +230,8 @@ proc generateCounterAttackOrders*(
       vulnerableTargets.add(VulnerableTarget(
         systemId: visibleColony.systemId,
         enemyHouse: visibleColony.owner,
-        priority: priority
+        priority: priority,
+        colony: visibleColony  # Store for combat order selection
       ))
 
   if vulnerableTargets.len == 0:
@@ -193,13 +250,21 @@ proc generateCounterAttackOrders*(
     let attacker = availableAttackers[i]
     let target = vulnerableTargets[i]
 
+    # NEW: Select appropriate combat order based on fleet composition and target defenses
+    let combatOrder = selectCombatOrderType(
+      filtered,
+      attacker.fleetId,
+      attacker.shipCount,
+      target.colony  # Pass target colony for defense assessment
+    )
+
     logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Domestikos: Counter-attack - fleet {attacker.fleetId} → " &
+            &"{controller.houseId} Domestikos: {combatOrder} attack - fleet {attacker.fleetId} → " &
             &"enemy colony at system {target.systemId} (priority: {target.priority:.1f})")
 
     result.add(FleetOrder(
       fleetId: attacker.fleetId,
-      orderType: FleetOrderType.Move,
+      orderType: combatOrder,  # FIXED: Was FleetOrderType.Move
       targetSystem: some(target.systemId),
       priority: 90  # High priority - opportunistic strikes
     ))
