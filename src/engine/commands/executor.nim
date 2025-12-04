@@ -756,7 +756,7 @@ proc executeHackStarbaseOrder(
   order: FleetOrder
 ): OrderExecutionResult =
   ## Order 10: Electronic warfare against starbase
-  ## Reserved for solo Scout operations per operations.md:6.2.11
+  ## Reserved for Scout operations per operations.md:6.2.11
 
   if order.targetSystem.isNone:
     return OrderExecutionResult(
