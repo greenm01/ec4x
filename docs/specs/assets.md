@@ -369,13 +369,13 @@ Scouts are able to counter Raiders ([Section 2.4.3](#243-raiders)) and rival spy
 
 Scouts operate in two distinct modes depending on their mission:
 
-1. **Intelligence Operations (Single-Squadron):** Scouts in single-ship squadrons conduct espionage, reconnaissance, and surveillance missions in enemy or neutral systems. Single-scout squadrons minimize detection risk but are vulnerable if discovered.
+1. **Intelligence Operations (Single-Squadron):** Spy Scouts squadrons conduct espionage, reconnaissance, and surveillance missions (Orders 09, 10, 11 from [Section 6.3.1](operations.md#631-active-fleet-orders)) in enemy or neutral systems. Scout squadrons minimize detection risk but are vulnerable if discovered.
 
 2. **Fleet Operations (Multi-Ship Squadron):** Scouts automatically join mixed squadrons with capital ships or other escorts (per auto-commissioning rules in [Section 6.2](operations.md#62-squadron-commissioning)) where they provide electronic warfare support, raider detection, and counter-intelligence capabilities. Embedded scouts benefit from the squadron's combined defensive strength during combat while maintaining their ELI detection capabilities.
 
 Per the Space Force table ([Section 10.1](reference.md#101-space-force-wep1)), Scouts have CC=1 (Command Cost) and CR=NA (Command Rating), meaning they can be commanded by other ships but cannot command ships themselves.
 
-**⚠️ Espionage Tactical Note:** For covert operations, players should manually reorganize scouts into single-ship squadrons before deploying on spy missions. Multi-ship squadrons significantly increase detection risk during intelligence operations.
+**⚠️ Espionage Tactical Note:** For covert operations, players may order scouts from existing fleets to conduct spy operations. The spy scouts will auto-detach from the existing combat fleet and proceed autonomously to execute mission orders. Note that spy scout squadrons may not contain other ship classes. Stack spy scout squadrons to increase their effective ELI mesh network defence, as described below. 
 
 **Spy Scout Detection:**
 
@@ -410,7 +410,7 @@ For a fleet with Scouts of different ELI tech levels:
 
 **Step 2: Randomized Detection Roll Process**
 
-1. Compare the final effective ELI level of the detecting fleet or Starbase with the ELI level of the spy Scout.
+1. Compare the final effective ELI level of the detecting fleet or Starbase with the ELI level of the spy Scouts.
 2. Determine the base detection range from the table below.
 
 **Spy Detection Table**
@@ -432,54 +432,6 @@ For a fleet with Scouts of different ELI tech levels:
     - This introduces slight variability to the detection roll, adding an element of unpredictability.
 4. Roll 1D20 for the detection attempt:
     - If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
-
-**Example 1: Fleet with Mixed ELI Tech**
-
-```
-Detecting Fleet:
-    2 Scouts with ELI2
-    3 Scouts with ELI4
-
-Total Tech Levels: 2 + 2 + 4 + 4 + 4 = 16
-Number of units: 5
-Weighted Average: 16 / 5 = 3.2 (Round up) → ELI4
-
-Dominant Tech Level Penalty:
-More than 50% of Scouts are ELI2 (lower tech, rounded up), so  reduce by 1 → ELI3
-
-Mesh Network Modifier: +2 (for 4-5 Scouts)
-Final Effective ELI Level: ELI3 + 2 = ELI5 (capped at ELI5)
-
-Spy Scout:
-    ELI3
-
-Comparison: ELI5 vs. ELI3
-Detection Range: From the table, use >11-13.
-Random Threshold Roll (1D3): Result is 2, so the threshold is 12.
-Detection Roll (1D20): If the roll is 12 or higher, the spy is detected.
-```
-
-**Example 2: Balanced Fleet**
-
-```
-Detecting Fleet:
-    1 Scout with ELI1
-    1 Scout with ELI3
-
-Total Tech Levels: 1 + 3 = 4
-Number of Scouts: 2
-Weighted Average: 4 / 2 = 2 (Round up) → ELI2
-Mesh Network Modifier: +1 (for 2-3 Scouts)
-Final Effective ELI Level: ELI2 + 1 = ELI3
-
-Spy Scout:
-    ELI4
-
-Comparison: ELI3 vs. ELI4
-Detection Range: From the table, use >15-17.
-Random Threshold Roll (1D3): Result is 1, so the threshold is 15.
-Detection Roll (1D20): If the roll is 15 or higher, the spy is detected.
-```
 
 ### 2.4.3 Raiders
 
@@ -525,9 +477,9 @@ Compare the final effective ELI level with the CLK level of the Raider unit:
 | ------ |:------:|:------:|:------:|:------:|:------:|
 | ELI1   | >14-16 | >17-19 | NA     | NA     | NA     |
 | ELI2   | >10-12 | >14-16 | >17-19 | NA     | NA     |
-| ELI3   | >6-8 | >10-12 | >14-16 | >17-19 | NA     |
-| ELI4   | >3-5 | >6-8 | >10-12 | >14-16 | >17-19 |
-| ELI5   | >1-3 | >3-5 | >6-8 | >10-12 | >14-16 |
+| ELI3   | >6-8   | >10-12 | >14-16 | >17-19 | NA     |
+| ELI4   | >3-5   | >6-8   | >10-12 | >14-16 | >17-19 |
+| ELI5   | >1-3   | >3-5   | >6-8   | >10-12 | >14-16 |
 
 *Source: config/espionage.toml [raider_detection_table] section*
 <!-- RAIDER_DETECTION_TABLE_END -->
