@@ -702,7 +702,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
         if canCommissionFighter(state, colony) == false:
           ctx.rejectedOrders += 1
           return ValidationResult(valid: false,
-            error: &"Fighter capacity exceeded for house {house}")
+            error: &"Fighter capacity limit exceeded by {house.name}")
 
     # Check capital squadron limit (if building capital ships)
     # Fighters and scouts are exempt from squadron limits
