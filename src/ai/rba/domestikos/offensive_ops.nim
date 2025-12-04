@@ -94,6 +94,7 @@ proc generateProbingOrders*(
     description: string
 
   var intelTargets: seq[IntelTarget] = @[]
+  var targetedSystems: seq[SystemId] = @[]  # Track systems to avoid duplicates
 
   # Priority 1: Hack enemy starbases (high-value intelligence)
   for visibleFleet in filtered.visibleFleets:
@@ -111,17 +112,26 @@ proc generateProbingOrders*(
         break
 
     if isStarbase:
+      # Skip if already targeted
+      if visibleFleet.location in targetedSystems:
+        continue
+
       intelTargets.add(IntelTarget(
         systemId: visibleFleet.location,
         orderType: FleetOrderType.HackStarbase,
         priority: 100,  # Highest priority
         description: "hack starbase"
       ))
+      targetedSystems.add(visibleFleet.location)
 
   # Priority 2: Spy on enemy colonies (gather defense/production intel)
   for visibleColony in filtered.visibleColonies:
     if visibleColony.owner == controller.houseId:
       continue  # Skip own colonies
+
+    # Skip if already targeted
+    if visibleColony.systemId in targetedSystems:
+      continue
 
     # Check diplomatic stance - prioritize enemies
     let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
@@ -133,6 +143,7 @@ proc generateProbingOrders*(
       priority: priority,
       description: "spy planet"
     ))
+    targetedSystems.add(visibleColony.systemId)
 
   # Priority 3: Reconnaissance of enemy systems (general intel)
   # Spy on systems with enemy fleets but no visible colony
@@ -140,20 +151,17 @@ proc generateProbingOrders*(
     if visibleFleet.owner == controller.houseId:
       continue  # Skip own fleets
 
-    # Check if we already have this system as a SpyPlanet target
-    var alreadyTargeted = false
-    for target in intelTargets:
-      if target.systemId == visibleFleet.location and target.orderType == FleetOrderType.SpyPlanet:
-        alreadyTargeted = true
-        break
+    # Skip if already targeted (O(n) instead of O(n²))
+    if visibleFleet.location in targetedSystems:
+      continue
 
-    if not alreadyTargeted:
-      intelTargets.add(IntelTarget(
-        systemId: visibleFleet.location,
-        orderType: FleetOrderType.SpySystem,
-        priority: 60,
-        description: "spy system"
-      ))
+    intelTargets.add(IntelTarget(
+      systemId: visibleFleet.location,
+      orderType: FleetOrderType.SpySystem,
+      priority: 60,
+      description: "spy system"
+    ))
+    targetedSystems.add(visibleFleet.location)
 
   if intelTargets.len == 0:
     return result
