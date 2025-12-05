@@ -12,7 +12,7 @@
 
 import std/[unittest, tables, math, options]
 import ../../src/engine/[gamestate, starmap]
-import ../../src/engine/economy/[types, production, income, construction, config_accessors]
+import ../../src/engine/economy/[types, production, income, projects, config_accessors]
 import ../../src/engine/config/[economy_config, population_config, facilities_config]
 import ../../src/engine/research/types as res_types
 import ../../src/common/types/[core, planets, units, tech]
