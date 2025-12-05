@@ -233,7 +233,7 @@ proc detectPatrolRoutes*(
   ## Detect enemy patrol routes from FleetMovementHistory
   ## Phase E: Enables predictive threat modeling
 
-  let config = globalRBAConfig.intelligence.patrol_detection
+  let config = globalRBAConfig.intelligence_patrol_detection
   var routes: seq[PatrolRoute] = @[]
 
   # Process fleet movement history

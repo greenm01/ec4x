@@ -21,7 +21,7 @@ proc analyzeConstructionTrends*(
   ## Analyze ConstructionActivityReport data for enemy buildup detection
   ## Phase E: Critical for detecting military expansion threats
 
-  let config = globalRBAConfig.intelligence.construction_analysis
+  let config = globalRBAConfig.intelligence_construction_analysis
   var trends = initTable[SystemId, ConstructionTrend]()
 
   # Process all construction activity reports

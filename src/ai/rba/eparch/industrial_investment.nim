@@ -160,13 +160,13 @@ proc evaluateIUInvestment*(
     if snapshot.military.threatsByColony.hasKey(colony.systemId):
       let threat = snapshot.military.threatsByColony[colony.systemId]
       case threat.level
-      of ThreatLevel.Critical:
+      of tlCritical:
         priority = min(1.0, priority + 0.5)  # Critical threat = massive boost
         reasonSuffix = " (CRITICAL THREAT - defensive infrastructure priority)"
-      of ThreatLevel.High:
+      of tlHigh:
         priority = min(1.0, priority + 0.3)  # High threat = significant boost
         reasonSuffix = " (high threat - defensive priority)"
-      of ThreatLevel.Moderate:
+      of tlModerate:
         priority = min(1.0, priority + 0.15)  # Moderate threat = minor boost
         reasonSuffix = " (moderate threat)"
       else:

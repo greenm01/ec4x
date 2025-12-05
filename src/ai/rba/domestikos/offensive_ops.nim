@@ -10,6 +10,7 @@ import std/[options, strformat, sets, tables]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger, starmap]
 import ../../../engine/diplomacy/types as dip_types  # For isEnemy
+import ../../../engine/intelligence/types as intel_types  # For IntelQuality enum
 import ../controller_types
 import ../config
 import ../shared/intelligence_types  # Phase F: Intelligence integration
@@ -274,7 +275,7 @@ proc selectCombatOrderType(
 
 proc calculateInvasionPriority(
   opportunity: InvasionOpportunity,
-  intelQuality: IntelQualityScore
+  intelQuality: intel_types.IntelQuality
 ): float =
   ## Calculate invasion priority using intelligence data (Phase F)
   ## Factors: vulnerability, value, intel quality, distance penalty
@@ -292,11 +293,10 @@ proc calculateInvasionPriority(
 
   # Intel quality confidence multiplier (0.5x - 1.5x)
   let confidenceMultiplier = case intelQuality
-    of IntelQualityScore.Perfect: 1.5
-    of IntelQualityScore.High: 1.2
-    of IntelQualityScore.Medium: 1.0
-    of IntelQualityScore.Low: 0.7
-    else: 0.5
+    of intel_types.IntelQuality.Perfect: 1.5
+    of intel_types.IntelQuality.Spy: 1.2
+    of intel_types.IntelQuality.Scan: 1.0
+    of intel_types.IntelQuality.Visual: 0.7
 
   priority *= confidenceMultiplier
   return priority
@@ -323,8 +323,8 @@ proc findSuitableInvasionFleet(
     if not analysis.hasCombatShips or analysis.shipCount < 2:
       continue
 
-    # Estimate fleet strength
-    let fleetStrength = estimateFleetStrength(analysis.composition)
+    # Estimate fleet strength (simple approximation: ~10 strength per ship)
+    let fleetStrength = float(analysis.shipCount) * 10.0
 
     # Strength requirement (1.2x safety margin)
     if fleetStrength < float(requiredForceScore) * 1.2:
@@ -423,7 +423,7 @@ proc generateCounterAttackOrders*(
         for attacker in availableAttackers:
           let pathResult = filtered.starMap.findPath(attacker.location, hvTarget.systemId, Fleet())
           if pathResult.found and pathResult.path.len <= 8:
-            let priority = hvTarget.estimatedValue * 1.5  # High-value multiplier
+            let priority = float(hvTarget.estimatedValue) * 1.5  # High-value multiplier
 
             logInfo(LogCategory.lcAI,
                     &"{controller.houseId} Domestikos: Economic target - system {hvTarget.systemId} " &

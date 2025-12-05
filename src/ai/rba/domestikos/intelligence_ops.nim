@@ -54,11 +54,11 @@ proc estimateLocalThreatFromIntel*(
 
     # Convert ThreatLevel to float (0.0-1.0)
     result = case threat.level:
-      of intelligence_types.ThreatLevel.Critical: 1.0
-      of intelligence_types.ThreatLevel.High: 0.75
-      of intelligence_types.ThreatLevel.Moderate: 0.5
-      of intelligence_types.ThreatLevel.Low: 0.25
-      of intelligence_types.ThreatLevel.None: 0.0
+      of tlCritical: 1.0
+      of tlHigh: 0.75
+      of tlModerate: 0.5
+      of tlLow: 0.25
+      of tlNone: 0.0
 
     # Adjust by confidence (reduce threat if intel is stale)
     result = result * threat.confidence

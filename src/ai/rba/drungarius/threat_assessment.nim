@@ -29,7 +29,7 @@ proc assessColonyThreat*(
 
   result = ThreatAssessment(
     systemId: colonyId,
-    level: intelligence_types.ThreatLevel.None,
+    level: intelligence_types.ThreatLevel.tlNone,
     nearbyEnemyFleets: 0,
     estimatedEnemyStrength: 0,
     turnsUntilArrival: none(int),
@@ -93,15 +93,15 @@ proc assessColonyThreat*(
 
   # Determine threat level based on total threat score
   if totalThreat >= 1.5:
-    result.level = intelligence_types.ThreatLevel.Critical
+    result.level = intelligence_types.ThreatLevel.tlCritical
   elif totalThreat >= 1.0:
-    result.level = intelligence_types.ThreatLevel.High
+    result.level = intelligence_types.ThreatLevel.tlHigh
   elif totalThreat >= 0.5:
-    result.level = intelligence_types.ThreatLevel.Moderate
+    result.level = intelligence_types.ThreatLevel.tlModerate
   elif totalThreat >= 0.2:
-    result.level = intelligence_types.ThreatLevel.Low
+    result.level = intelligence_types.ThreatLevel.tlLow
   else:
-    result.level = intelligence_types.ThreatLevel.None
+    result.level = intelligence_types.ThreatLevel.tlNone
 
   # Estimate turns until arrival (for nearest fleet)
   if nearestFleetDistance < 999:
@@ -144,7 +144,7 @@ proc assessAllThreats*(
     )
 
     # Only store non-None threats
-    if threat.level != intelligence_types.ThreatLevel.None:
+    if threat.level != intelligence_types.ThreatLevel.tlNone:
       result[colony.systemId] = threat
 
 proc calculateMaxThreatLevel*(threats: Table[SystemId, ThreatAssessment]): float =
@@ -154,11 +154,11 @@ proc calculateMaxThreatLevel*(threats: Table[SystemId, ThreatAssessment]): float
 
   for systemId, threat in threats:
     let threatValue = case threat.level:
-      of intelligence_types.ThreatLevel.Critical: 1.0
-      of intelligence_types.ThreatLevel.High: 0.75
-      of intelligence_types.ThreatLevel.Moderate: 0.5
-      of intelligence_types.ThreatLevel.Low: 0.25
-      of intelligence_types.ThreatLevel.None: 0.0
+      of tlCritical: 1.0
+      of tlHigh: 0.75
+      of tlModerate: 0.5
+      of tlLow: 0.25
+      of tlNone: 0.0
 
     if threatValue > result:
       result = threatValue

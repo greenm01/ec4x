@@ -39,7 +39,7 @@ proc assessColonyThreat*(state: WorldStateSnapshot, systemId: SystemId): ColonyT
 
   result = ColonyThreat(
     systemId: systemId,
-    threatLevel: ThreatLevel.None,
+    threatLevel: ThreatLevel.tlNone,
     undefended: systemId in state.undefendedColonies,
     vulnerable: systemId in state.vulnerableColonies,
     nearEnemyTerritory: false,  # TODO: Check proximity to enemy colonies
@@ -48,11 +48,11 @@ proc assessColonyThreat*(state: WorldStateSnapshot, systemId: SystemId): ColonyT
 
   # Undefended colonies are critical threat
   if result.undefended:
-    result.threatLevel = ThreatLevel.Critical
+    result.threatLevel = ThreatLevel.tlCritical
   elif result.vulnerable:
-    result.threatLevel = ThreatLevel.High
+    result.threatLevel = ThreatLevel.tlHigh
   else:
-    result.threatLevel = ThreatLevel.Low
+    result.threatLevel = ThreatLevel.tlLow
 
 proc identifyThreatenedColonies*(state: WorldStateSnapshot): seq[ColonyThreat] =
   ## Identify all colonies under threat
@@ -63,7 +63,7 @@ proc identifyThreatenedColonies*(state: WorldStateSnapshot): seq[ColonyThreat] =
 
   for systemId in state.ownedColonies:
     let threat = assessColonyThreat(state, systemId)
-    if threat.threatLevel != ThreatLevel.None:
+    if threat.threatLevel != ThreatLevel.tlNone:
       result.add(threat)
 
   # Sort by threat level (descending)

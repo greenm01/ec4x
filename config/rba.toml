@@ -329,51 +329,46 @@ economic_strength_income_weight = 0.4
 tech_gap_critical_threshold = 3         # 3+ tech levels behind = critical gap
 tech_gap_high_threshold = 2             # 2 tech levels behind = high priority
 
-[intelligence.threat_response]
+[intelligence_threat_response]
 # Threat-aware budget allocation (Phase D)
-# Budget boost percentages by threat level
-low_threat_boost = 0.10          # 10% increase to military+defense
-moderate_threat_boost = 0.30     # 30% increase
-high_threat_boost = 0.50         # 50% increase
-critical_threat_boost = 1.00     # 100% increase (double military spending)
+low_threat_boost = 0.10
+moderate_threat_boost = 0.30
+high_threat_boost = 0.50
+critical_threat_boost = 1.00
+multi_threat_multiplier = 1.5
+defense_boost_ratio = 0.6
+military_boost_ratio = 0.4
 
-# Multi-threat scenario multiplier
-multi_threat_multiplier = 1.5    # Boost * 1.5 if 3+ colonies threatened
-
-# Budget distribution (threat boost split between objectives)
-defense_boost_ratio = 0.6        # 60% of boost to Defense (local)
-military_boost_ratio = 0.4       # 40% of boost to Military (response fleets)
-
-[intelligence.surveillance]
+[intelligence_surveillance]
 # Surveillance gap priority weights (Phase D)
-border_system_priority = 0.9     # Systems adjacent to enemy territory
-high_value_priority = 0.8        # High-production colonies
-transit_route_priority = 0.6     # Key routes between colonies
-recent_activity_priority = 0.7   # Systems with recent threat detection
+border_system_priority = 0.9
+high_value_priority = 0.8
+transit_route_priority = 0.6
+recent_activity_priority = 0.7
 
-[intelligence.diplomatic_events]
+[intelligence_diplomatic_events]
 # Diplomatic event analysis (Phase E)
-war_significance_threshold = 8       # Wars rate high significance
-alliance_significance_threshold = 7  # Alliances important
-blockade_critical_threshold = 0.4    # Blockades reducing GCO >40% are critical
+war_significance_threshold = 8
+alliance_significance_threshold = 7
+blockade_critical_threshold = 0.4
 
-[intelligence.counterintel]
+[intelligence_counterintel]
 # Counter-intelligence priorities (Phase E)
-high_frequency_threshold = 3         # 3+ attempts = high frequency threat
-detection_success_threshold = 0.6    # 60% detection rate = high risk to operate
-priority_boost_espionage = 0.15      # 15% budget boost if under espionage pressure
+high_frequency_threshold = 3
+detection_success_threshold = 0.6
+priority_boost_espionage = 0.15
 
-[intelligence.construction_analysis]
+[intelligence_construction_analysis]
 # Construction trend detection (Phase E)
-buildup_threshold_shipyards = 2      # 2+ shipyard construction = military buildup
-velocity_threat_threshold = 1.5      # 1.5+ projects/turn = rapid expansion
-observation_window_turns = 10        # Analyze last 10 turns of data
+buildup_threshold_shipyards = 2
+velocity_threat_threshold = 1.5
+observation_window_turns = 10
 
-[intelligence.patrol_detection]
+[intelligence_patrol_detection]
 # Patrol pattern recognition (Phase E)
-min_sightings_for_pattern = 3        # 3+ sightings needed to detect pattern
-pattern_confidence_threshold = 0.7   # 70% confidence required
-staleness_threshold_turns = 5        # Patterns >5 turns old are stale
+min_sightings_for_pattern = 3
+pattern_confidence_threshold = 0.7
+staleness_threshold_turns = 5
 
 [drungarius]
 # Intelligence coordinator settings
