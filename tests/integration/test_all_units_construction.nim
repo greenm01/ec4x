@@ -16,7 +16,7 @@
 
 import std/[unittest, tables, options, strformat]
 import ../../src/engine/[gamestate, orders, resolve, starmap]
-import ../../src/engine/economy/[construction, types, config_accessors]
+import ../../src/engine/economy/[projects, types, config_accessors]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/[core, units, planets]
