@@ -113,7 +113,9 @@ proc runSimulation*(numHouses: int, numTurns: int, strategies: seq[AIStrategy], 
       let ordersOpt = if houseId in ordersTable: some(ordersTable[houseId]) else: none(OrderPacket)
       # Get strategy from corresponding controller
       let strategy = controllers[i].strategy
-      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt)
+      # Use seed as game identifier
+      let gameId = $seed
+      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt, gameId)
       allDiagnostics.add(metrics)
       prevMetrics[houseId] = metrics
 

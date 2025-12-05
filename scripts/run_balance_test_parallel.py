@@ -36,42 +36,52 @@ PROJECT_ROOT = SCRIPT_DIR.parent  # since script is in scripts/
 
 def run_single_game(seed, turns_per_game, map_rings=3, num_players=4):
     """Run a single game simulation with given seed"""
+    output_file = f"balance_results/game_{seed}.json"
     cmd = [
         "./bin/run_simulation",
         "--turns", str(turns_per_game),
         "--seed", str(seed),
         "--map-rings", str(map_rings),
         "--players", str(num_players),
-        "--output", f"balance_results/game_{seed}.json"
+        "--output", output_file
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
 
     if result.returncode != 0:
+        print(f"[ERROR] Game {seed} failed with return code {result.returncode}")
+        if result.stderr:
+            print(f"[ERROR] stderr: {result.stderr[:500]}")
+        if result.stdout:
+            print(f"[ERROR] stdout: {result.stdout[-500:]}")
         return None
 
-    # Parse final rankings from output
-    lines = result.stdout.split("\n")
-    rankings = {}
-    parsing_rankings = False
+    # Parse final rankings from JSON file (robust, not stdout parsing)
+    try:
+        json_path = PROJECT_ROOT / output_file
+        with open(json_path, "r") as f:
+            game_data = json.load(f)
 
-    for line in lines:
-        if "Final Rankings:" in line:
-            parsing_rankings = True
-            continue
-        if parsing_rankings and line.strip() and line.strip()[0].isdigit():
-            parts = line.split(":")
-            if len(parts) >= 2:
-                house = parts[0].split(".")[1].strip()
-                prestige_str = parts[1].strip().split()[0]
-                try:
-                    prestige = int(prestige_str)
+        # Extract rankings from JSON outcome section
+        rankings = {}
+        if "outcome" in game_data and "final_rankings" in game_data["outcome"]:
+            for ranking in game_data["outcome"]["final_rankings"]:
+                house = ranking.get("house_id", "")
+                prestige = ranking.get("final_prestige", 0)
+                if house:
                     rankings[house] = prestige
-                except ValueError:
-                    continue
-            if len(rankings) == 4:
-                break
+        # Fallback: check top-level final_rankings (older format)
+        elif "final_rankings" in game_data:
+            for ranking in game_data["final_rankings"]:
+                house = ranking.get("house_id", "")
+                prestige = ranking.get("final_prestige", 0)
+                if house:
+                    rankings[house] = prestige
 
-    return rankings if len(rankings) == 4 else None
+        return rankings if len(rankings) > 0 else None
+    except Exception as e:
+        # If JSON parsing fails, return None
+        print(f"[ERROR] Game {seed} JSON parsing failed: {e}")
+        return None
 
 
 def run_game_batch(args):
@@ -87,12 +97,15 @@ def run_game_batch(args):
         rankings = run_single_game(seed, turns_per_game, map_rings, num_players)
         if rankings:
             results.append(rankings)
+            print(f"Batch {batch_id}: Game {seed} succeeded - {len(rankings)} houses")
+        else:
+            print(f"Batch {batch_id}: Game {seed} FAILED - no rankings")
 
         # Progress update every 10 games
         if (i + 1) % 10 == 0:
             print(f"Batch {batch_id}: Completed {i + 1}/{games_per_batch} games")
 
-    print(f"Batch {batch_id}: Completed all {games_per_batch} games")
+    print(f"Batch {batch_id}: Completed all {games_per_batch} games - {len(results)} successful")
     return results
 
 
@@ -208,8 +221,8 @@ def main():
     parser.add_argument(
         "--rings",
         type=int,
-        default=0,
-        help="Number of hex rings for map size (0=default to player count, 3=small, 4=medium, 5=large)",
+        default=3,
+        help="Number of hex rings for map size (default: 3, small=3, medium=4, large=5)",
     )
     parser.add_argument(
         "--players", type=int, default=4, help="Number of players (default: 4)"
