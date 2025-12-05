@@ -17,7 +17,8 @@ type
     name*: string
     description*: string
     strategies*: seq[string]  # Strategy names (converted to AIStrategy)
-    turns*: int
+    max_turns*: int  # Changed from 'turns' to 'max_turns' (safety limit)
+    run_until_victory*: bool  # NEW: run until victory achieved
     map_rings*: int
     num_games*: int
 
