@@ -60,7 +60,11 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     standingOrders: initTable[FleetId, StandingOrder](),
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
-    pendingIntelUpdates: @[]
+    pendingIntelUpdates: @[],
+    # GOAP Phase 4 initialization
+    goapEnabled: false,  # Disabled by default, enabled via config
+    goapLastPlanningTurn: -1,
+    goapActiveGoals: @[]
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
@@ -78,7 +82,11 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     standingOrders: initTable[FleetId, StandingOrder](),
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
-    pendingIntelUpdates: @[]
+    pendingIntelUpdates: @[],
+    # GOAP Phase 4 initialization
+    goapEnabled: false,  # Disabled by default, enabled via config
+    goapLastPlanningTurn: -1,
+    goapActiveGoals: @[]
   )
 
 # =============================================================================

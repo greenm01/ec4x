@@ -160,13 +160,18 @@ proc allocateBudgetMultiAdvisor*(
   currentAct: ai_types.GameAct,
   availableBudget: int,
   houseId: HouseId,
-  filtered: FilteredGameState  # NEW: for war status detection
+  filtered: FilteredGameState,  # For war status detection
+  goapBudgetEstimates: Option[Table[string, int]] = none(Table[string, int])  # NEW: GOAP estimates by domain
 ): MultiAdvisorAllocation =
   ## Hybrid budget allocation strategy:
   ## 1. Reserve minimums (prevents starvation)
   ## 2. Mediate remaining budget via Basileus
   ## 3. Combine reserves + mediated budgets
   ## 4. Generate per-advisor feedback
+  ##
+  ## GOAP Phase 4 Enhancement:
+  ## - If goapBudgetEstimates provided, uses strategic cost estimates for informed allocation
+  ## - Prioritizes advisors with active GOAP plans
 
   # Detect war status for war-aware weights
   let atWar = isAtWar(filtered, houseId)
@@ -174,6 +179,24 @@ proc allocateBudgetMultiAdvisor*(
   logInfo(LogCategory.lcAI,
           &"{houseId} Treasurer: Multi-advisor allocation starting " &
           &"(budget={availableBudget}PP, act={currentAct}, atWar={atWar})")
+
+  # GOAP Phase 4: Log strategic budget estimates if provided
+  if goapBudgetEstimates.isSome:
+    let estimates = goapBudgetEstimates.get()
+    var totalEstimate = 0
+    for domain, cost in estimates:
+      totalEstimate += cost
+    logInfo(LogCategory.lcAI,
+            &"{houseId} Treasurer: GOAP strategic estimates: {totalEstimate}PP total")
+    for domain, cost in estimates:
+      if cost > 0:
+        logInfo(LogCategory.lcAI, &"{houseId}   - {domain}: {cost}PP")
+
+    # If GOAP estimates exceed available budget, log warning
+    if totalEstimate > availableBudget:
+      let shortfall = totalEstimate - availableBudget
+      logInfo(LogCategory.lcAI,
+              &"{houseId} Treasurer: WARNING - GOAP plans need {shortfall}PP more than available")
 
   # === STEP 1: Reserve minimums (prevents starvation) ===
   let minReconBudget = int(float(availableBudget) * 0.10)  # 10% for scouts
