@@ -217,7 +217,7 @@ Ground units received 33% cost reductions to make defensive investments more acc
 - **Armies**: 10 PP (was 15)
 - **Marines**: 17 PP (was 25)
 - **Ground Batteries**: 13 PP (was 20)
-- **Planetary Shields**: 67 PP (was 100)
+- **Planetary Shields**: 50 PP (was 100, then 67)
 
 *Configuration: config/prestige.toml [military].undefended_colony_penalty_multiplier*
 *Configuration: config/ground_units.toml [*].build_cost*
