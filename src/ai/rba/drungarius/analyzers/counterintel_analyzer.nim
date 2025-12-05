@@ -6,7 +6,7 @@
 ## - Counter-intelligence investment priorities
 ## - Detection risk assessment
 
-import std/[tables, options, sequtils, strformat]
+import std/[tables, options, sequtils, strformat, strutils]
 import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/core
@@ -168,6 +168,6 @@ proc prioritizeCounterIntelTargets*(
     housePriorities.add((house, priority))
 
   # Sort by priority (highest first)
-  housePriorities.sort(proc (a, b: auto): int = cmp(b.priority, a.priority))
+  housePriorities.sort(proc (a, b: tuple[house: HouseId, priority: float]): int = cmp(b.priority, a.priority))
 
   result = housePriorities.mapIt(it.house)

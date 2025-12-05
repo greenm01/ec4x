@@ -6,13 +6,35 @@
 ## - House hostility tracking
 ## - Diplomatic landscape changes
 
-import std/[tables, options, sequtils, strformat]
+import std/[tables, options, sequtils, strformat, strutils]
 import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/core
 import ../../controller_types
 import ../../config
 import ../../shared/intelligence_types
+
+proc parseDiplomaticEventType(description: string): DiplomaticEventType =
+  ## Parse diplomatic event type from description string
+  ## Simple keyword matching (engine generates descriptive strings)
+
+  let desc = description.toLowerAscii()
+
+  if "war" in desc or "declared war" in desc:
+    return DiplomaticEventType.WarDeclared
+  elif "peace" in desc or "treaty" in desc:
+    return DiplomaticEventType.PeaceTreaty
+  elif "alliance" in desc or "allied" in desc:
+    return DiplomaticEventType.AllianceFormed
+  elif "pact" in desc and "signed" in desc:
+    return DiplomaticEventType.PactSigned
+  elif "violated" in desc or "broke" in desc:
+    return DiplomaticEventType.PactViolated
+  elif "diplomatic break" in desc or "relations severed" in desc:
+    return DiplomaticEventType.DiplomaticBreak
+  else:
+    # Default - could be any diplomatic activity
+    return DiplomaticEventType.DiplomaticBreak
 
 proc analyzeDiplomaticEvents*(
   filtered: FilteredGameState,
@@ -145,28 +167,6 @@ proc analyzeDiplomaticEvents*(
             &"{controller.houseId} Drungarius: {events.len} diplomatic events processed")
 
   result = (blockades, events, hostility, potentialAllies, potentialThreats)
-
-proc parseDiplomaticEventType(description: string): DiplomaticEventType =
-  ## Parse diplomatic event type from description string
-  ## Simple keyword matching (engine generates descriptive strings)
-
-  let desc = description.toLowerAscii()
-
-  if "war" in desc or "declared war" in desc:
-    return DiplomaticEventType.WarDeclared
-  elif "peace" in desc or "treaty" in desc:
-    return DiplomaticEventType.PeaceTreaty
-  elif "alliance" in desc or "allied" in desc:
-    return DiplomaticEventType.AllianceFormed
-  elif "pact" in desc and "signed" in desc:
-    return DiplomaticEventType.PactSigned
-  elif "violated" in desc or "broke" in desc:
-    return DiplomaticEventType.PactViolated
-  elif "diplomatic break" in desc or "relations severed" in desc:
-    return DiplomaticEventType.DiplomaticBreak
-  else:
-    # Default - could be any diplomatic activity
-    return DiplomaticEventType.DiplomaticBreak
 
 proc calculateHouseRelativeStrength*(
   filtered: FilteredGameState,
