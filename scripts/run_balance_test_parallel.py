@@ -34,17 +34,19 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent  # since script is in scripts/
 
 
-def run_single_game(seed, turns_per_game, map_rings=3, num_players=4):
+def run_single_game(seed, max_turns, map_rings=3, num_players=4, run_until_victory=True):
     """Run a single game simulation with given seed"""
     output_file = f"balance_results/game_{seed}.json"
     cmd = [
         "./bin/run_simulation",
-        "--turns", str(turns_per_game),
+        "--max-turns", str(max_turns),
         "--seed", str(seed),
         "--map-rings", str(map_rings),
         "--players", str(num_players),
         "--output", output_file
     ]
+    if not run_until_victory:
+        cmd.append("--fixed-turns")
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
 
     if result.returncode != 0:
@@ -86,7 +88,7 @@ def run_single_game(seed, turns_per_game, map_rings=3, num_players=4):
 
 def run_game_batch(args):
     """Run a batch of games in this worker process"""
-    batch_id, games_per_batch, start_seed, turns_per_game, map_rings, num_players = args
+    batch_id, games_per_batch, start_seed, max_turns, map_rings, num_players, run_until_victory = args
     print(
         f"Batch {batch_id}: Starting {games_per_batch} games (seeds {start_seed}-{start_seed + games_per_batch - 1})"
     )
@@ -94,7 +96,7 @@ def run_game_batch(args):
     results = []
     for i in range(games_per_batch):
         seed = start_seed + i
-        rankings = run_single_game(seed, turns_per_game, map_rings, num_players)
+        rankings = run_single_game(seed, max_turns, map_rings, num_players, run_until_victory)
         if rankings:
             results.append(rankings)
             print(f"Batch {batch_id}: Game {seed} succeeded - {len(rankings)} houses")
@@ -214,9 +216,16 @@ def main():
     )
     parser.add_argument(
         "--turns",
+        "--max-turns",
         type=int,
+        dest="max_turns",
         default=DEFAULT_TURNS,
-        help=f"Number of turns per game (default: {DEFAULT_TURNS})",
+        help=f"Maximum turns per game (default: {DEFAULT_TURNS}, safety limit)",
+    )
+    parser.add_argument(
+        "--fixed-turns",
+        action="store_true",
+        help="Run exactly --turns turns (disable victory check, old behavior)",
     )
     parser.add_argument(
         "--rings",
@@ -231,7 +240,8 @@ def main():
 
     num_parallel = args.workers
     total_games = args.games
-    turns_per_game = args.turns
+    max_turns = args.max_turns
+    run_until_victory = not args.fixed_turns  # Invert the flag
     map_rings = args.rings
     num_players = args.players
     games_per_worker = total_games // num_parallel
@@ -242,7 +252,8 @@ def main():
     print(f"Parallel workers: {num_parallel}")
     print(f"Games per worker: {games_per_worker}")
     print(f"Total games: {total_games}")
-    print(f"Turns per game: {turns_per_game}")
+    print(f"Max turns per game: {max_turns}")
+    print(f"Victory mode: {'Run until victory' if run_until_victory else 'Fixed turns'}")
     print(f"Strategies: {', '.join(STRATEGIES)}")
     print("=" * 70)
     print()
@@ -260,9 +271,10 @@ def main():
                 batch_id,
                 games_per_worker,
                 start_seed,
-                turns_per_game,
+                max_turns,
                 map_rings,
                 num_players,
+                run_until_victory,
             )
         )
 
@@ -301,7 +313,8 @@ def main():
             "num_parallel": num_parallel,
             "games_per_worker": games_per_worker,
             "total_games": total_games,
-            "turns_per_game": turns_per_game,
+            "max_turns": max_turns,
+            "run_until_victory": run_until_victory,
             "elapsed_seconds": elapsed_time,
             "strategies": STRATEGIES,
         },

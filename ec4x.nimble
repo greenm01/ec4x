@@ -347,14 +347,14 @@ task testBalanceDiagnostics, "Run diagnostic tests with CSV output (50 games, 30
   exec "bin/ec4x --all"
   echo "Diagnostic tests completed! Results in balance_results/"
 
-task testUnknownUnknowns, "Unknown-unknowns detection (200 games, full diagnostics)":
-  echo "Running unknown-unknowns detection suite (200 games, 30 turns)..."
+task testUnknownUnknowns, "Unknown-unknowns detection (200 games, victory-based)":
+  echo "Running unknown-unknowns detection suite (200 games, run until victory)..."
   echo "This generates comprehensive CSV data for pattern analysis"
   exec "bin/ec4x --clean-all --backup"
   exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   echo "Git hash: $(cat bin/.build_git_hash)"
-  exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 200 --turns 30"
+  exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 200 --max-turns 200"
   echo "\nGenerating all analysis reports..."
   exec "bin/ec4x --all"
   echo "\nUnknown-unknowns detection completed!"
