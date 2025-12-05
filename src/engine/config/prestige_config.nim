@@ -9,7 +9,7 @@ import ../../common/logger
 
 type
   VictoryConfig* = object
-    prestige_victory*: int
+    ## Victory config (prestige_victory removed - now in game_setup/*.toml)
     starting_prestige*: int
     defeat_threshold*: int
     defeat_consecutive_turns*: int
