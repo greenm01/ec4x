@@ -37,24 +37,12 @@ proc initBudgetTracker*(houseId: HouseId, treasury: int,
   logInfo(LogCategory.lcAI,
           &"{houseId} BudgetTracker initialized: {treasury} PP total")
 
-# Convenience wrappers with familiar names
-proc canAfford*(tracker: BudgetTracker, objective: BuildObjective, cost: int): bool =
-  tracker.canAfford(objective, cost)
-
-proc recordSpending*(tracker: var BudgetTracker, objective: BuildObjective, cost: int) =
-  tracker.recordTransaction(objective, cost)
-
-proc getRemainingBudget*(tracker: BudgetTracker, objective: BuildObjective): int =
-  tracker.getRemainingBudget(objective)
-
-proc getTotalSpent*(tracker: BudgetTracker): int =
-  tracker.getTotalSpent()
-
-proc getTotalRemaining*(tracker: BudgetTracker): int =
-  tracker.getTotalRemaining()
-
-proc logBudgetSummary*(tracker: BudgetTracker) =
-  tracker.logSummary()
+# Note: BudgetTracker inherits all methods from ResourceTracker[BuildObjective]
+# including: canAfford, recordTransaction, getRemainingBudget, getTotalSpent,
+# getTotalRemaining, logSummary
+#
+# WARNING: Do NOT create wrapper procs - they shadow generic methods and cause
+# infinite recursion! Previous wrappers removed to fix stack overflow bug.
 
 proc houseId*(tracker: BudgetTracker): HouseId =
   ## Backward compatibility: access ownerId as houseId
@@ -99,7 +87,7 @@ proc buildExpansionOrders*(colony: Colony, tracker: var BudgetTracker,
         buildingType: none(string),
         industrialUnits: 0
       ))
-      tracker.recordSpending(Expansion, etacCost)
+      tracker.recordTransaction(Expansion, etacCost)
       etacsBuilt += 1
 
 proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[BuildOrder] =
@@ -143,7 +131,7 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
         buildingType: some("Spaceport"),
         industrialUnits: 0
       ))
-      tracker.recordSpending(Expansion, spaceportCost)
+      tracker.recordTransaction(Expansion, spaceportCost)
       return  # One facility per colony per turn
 
   # Priority 2: UPGRADE SPACEPORT TO SHIPYARD (first Shipyard)
@@ -162,7 +150,7 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
         buildingType: some("Shipyard"),
         industrialUnits: 0
       ))
-      tracker.recordSpending(Expansion, shipyardCost)
+      tracker.recordTransaction(Expansion, shipyardCost)
       return  # One facility per colony per turn
 
   # Priority 3: Build ADDITIONAL Shipyards (2nd, 3rd, 4th+) to scale production
@@ -186,7 +174,7 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
           buildingType: some("Shipyard"),
           industrialUnits: 0
         ))
-        tracker.recordSpending(Expansion, shipyardCost)
+        tracker.recordTransaction(Expansion, shipyardCost)
         return  # One facility per colony per turn
 
 proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
@@ -206,7 +194,7 @@ proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
         buildingType: none(string),
         industrialUnits: 0
       ))
-      tracker.recordSpending(Defense, starbaseCost)
+      tracker.recordTransaction(Defense, starbaseCost)
 
   # Ground batteries (cheap defense)
   let groundBatteryCost = getBuildingCost("GroundBattery")
@@ -219,7 +207,7 @@ proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
       buildingType: some("GroundBattery"),
       industrialUnits: 0
     ))
-    tracker.recordSpending(Defense, groundBatteryCost)
+    tracker.recordTransaction(Defense, groundBatteryCost)
 
 type
   FleetComposition* = object
@@ -619,7 +607,7 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
         buildingType: none(string),
         industrialUnits: 0
       ))
-      tracker.recordSpending(Military, cost)
+      tracker.recordTransaction(Military, cost)
       shipsBuilt += 1
     else:
       break
@@ -670,7 +658,7 @@ proc buildReconnaissanceOrders*(colony: Colony, tracker: var BudgetTracker,
       buildingType: none(string),
       industrialUnits: 0
     ))
-    tracker.recordSpending(Reconnaissance, scoutCost)
+    tracker.recordTransaction(Reconnaissance, scoutCost)
     scoutsBuilt += 1
 
   if scoutsBuilt == 0 and needScouts:
@@ -713,7 +701,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         buildingType: none(string),
         industrialUnits: 0
       ))
-      tracker.recordSpending(SpecialUnits, superCarrierCost)
+      tracker.recordTransaction(SpecialUnits, superCarrierCost)
 
       # Auto-build fighters to fill the Super Carrier (Phase 2: Fighter/Carrier Integration)
       # Super Carriers have 5-8 capacity, aim for 5 fighters (100 PP total)
@@ -728,7 +716,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
           buildingType: none(string),
           industrialUnits: 0
         ))
-        tracker.recordSpending(SpecialUnits, fighterCost)
+        tracker.recordTransaction(SpecialUnits, fighterCost)
         fightersBuilt += 1
 
   elif needCarriers and cstLevel >= 3:  # Matches ships.toml tech_level - carriers are strategic assets
@@ -742,7 +730,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         buildingType: none(string),
         industrialUnits: 0
       ))
-      tracker.recordSpending(SpecialUnits, carrierCost)
+      tracker.recordTransaction(SpecialUnits, carrierCost)
 
       # Auto-build fighters to fill the Carrier (Phase 2: Fighter/Carrier Integration)
       # Carriers have 3-5 capacity, aim for 3 fighters (60 PP total)
@@ -757,7 +745,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
           buildingType: none(string),
           industrialUnits: 0
         ))
-        tracker.recordSpending(SpecialUnits, fighterCost)
+        tracker.recordTransaction(SpecialUnits, fighterCost)
         fightersBuilt += 1
 
   # Transports bypass canAffordMoreShips gate like scouts/fighters
@@ -776,7 +764,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         buildingType: none(string),
         industrialUnits: 0
       ))
-      tracker.recordSpending(SpecialUnits, transportCost)
+      tracker.recordTransaction(SpecialUnits, transportCost)
 
   if canAffordMoreShips and needRaiders:
     let raiderCost = getShipConstructionCost(ShipClass.Raider)
@@ -789,7 +777,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
         buildingType: none(string),
         industrialUnits: 0
       ))
-      tracker.recordSpending(SpecialUnits, raiderCost)
+      tracker.recordTransaction(SpecialUnits, raiderCost)
 
   # Fighters (cheap filler - for colony defense or carrier deployment)
   # Two commissioning paths (per assets.md:2.4.1):
@@ -836,7 +824,7 @@ proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,
           buildingType: none(string),
           industrialUnits: 0
         ))
-        tracker.recordSpending(SpecialUnits, fighterCost)
+        tracker.recordTransaction(SpecialUnits, fighterCost)
 
 proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,
                       planetBreakerCount: int, colonyCount: int,
@@ -878,7 +866,7 @@ proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,
       buildingType: none(string),
       industrialUnits: 0
     ))
-    tracker.recordSpending(SpecialUnits, planetBreakerCost)
+    tracker.recordTransaction(SpecialUnits, planetBreakerCost)
 
 # =============================================================================
 # Budget Reporting for Transparency
@@ -1112,7 +1100,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
             buildingType: none(string),
             industrialUnits: 0
           ))
-          tracker.recordSpending(req.buildObjective, totalCost)
+          tracker.recordTransaction(req.buildObjective, totalCost)
           treasurerFeedback.fulfilledRequirements.add(req)
           treasurerFeedback.totalBudgetSpent += totalCost
 
@@ -1189,7 +1177,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
               industrialUnits: 0
             ))
 
-          tracker.recordSpending(req.buildObjective, totalCost)
+          tracker.recordTransaction(req.buildObjective, totalCost)
           treasurerFeedback.fulfilledRequirements.add(req)
           treasurerFeedback.totalBudgetSpent += totalCost
 
@@ -1337,7 +1325,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
           &"{projectedPlanetBreakerCount - planetBreakerCount} PBs")
 
   # Log final budget summary
-  tracker.logBudgetSummary()
+  tracker.logSummary()
 
   # Diagnostic: Track unspent budget (potential missed build opportunities)
   for objective in BuildObjective:
