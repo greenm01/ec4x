@@ -179,8 +179,7 @@ type
     marineDivisionUnits*: int         # MD Space Marines
 
     # Intel / Tech
-    invasionFleetsWithoutELIMesh*: int  # Invasions without 3+ scout ELI mesh
-    totalInvasions*: int
+    totalInvasions*: int                # Phase F: Track total invasions (useful for strategy analysis)
     clkResearchedNoRaiders*: bool       # Has CLK but no Raiders built
     scoutCount*: int                    # Phase 2c: Current scout count for ELI mesh tracking
     spyPlanetMissions*: int             # Cumulative SpyOnPlanet missions
@@ -336,7 +335,6 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId, strategy: AIStrategy = 
     totalCarriers: 0,
 
     # Intel
-    invasionFleetsWithoutELIMesh: 0,
     totalInvasions: 0,
     clkResearchedNoRaiders: false,
     scoutCount: 0,
@@ -842,34 +840,27 @@ proc collectIntelMetrics(state: GameState, houseId: HouseId): DiagnosticMetrics 
 
   result.clkResearchedNoRaiders = hasCLK and not hasRaiders
 
-  # Count ELI mesh coverage on fleets
-  var invasionsWithoutMesh = 0
-  var totalInvasions = 0
+  # PHASE F FIX: Remove misleading "invasions without ELI mesh" metric
+  # ELI mesh benefits are for:
+  # 1. Space combat (scouts provide intelligence bonus)
+  # 2. Scout espionage missions (spy-on-planet, hack-starbase)
+  #
+  # Tracking "invasions without ELI mesh" is meaningless because:
+  # - Scouts can be destroyed in space combat before invasion
+  # - ELI mesh doesn't directly affect ground invasions
+  #
+  # Instead, track scout espionage mission utilization (set by caller from orders)
+  # This metric is populated externally when processing scout orders
 
+  # Scout count for ELI mesh assessment
+  var scoutCount = 0
   for fleetId, fleet in state.fleets:
     if fleet.owner == houseId:
-      # Check if fleet has invasion capability (marines)
-      var hasInvasionForce = false
-      for ship in fleet.spaceLiftShips:
-        if ship.cargo.cargoType == CargoType.Marines:
-          hasInvasionForce = true
-          break
+      for squadron in fleet.squadrons:
+        if squadron.flagship.shipClass == ShipClass.Scout:
+          scoutCount += 1
 
-      if hasInvasionForce:
-        totalInvasions += 1
-
-        # Count scouts in fleet
-        var scoutCount = 0
-        for squadron in fleet.squadrons:
-          if squadron.flagship.shipClass == ShipClass.Scout:
-            scoutCount += 1
-
-        # ELI mesh requires 3+ scouts
-        if scoutCount < 3:
-          invasionsWithoutMesh += 1
-
-  result.invasionFleetsWithoutELIMesh = invasionsWithoutMesh
-  result.totalInvasions = totalInvasions
+  result.scoutCount = scoutCount
 
   # Espionage missions tracked separately (passed from orders)
   # These are set by the caller when passing order data
@@ -882,6 +873,8 @@ proc collectDefenseMetrics(state: GameState, houseId: HouseId): DiagnosticMetric
   result = initDiagnosticMetrics(state.turn, houseId)
 
   # Count colonies without defense
+  # Phase F: Undefended = NO ground units (armies, marines, or batteries)
+  # This matches the prestige penalty definition for undefended colonies
   var undefendedColonies = 0
   var totalColonies = 0
 
@@ -889,17 +882,15 @@ proc collectDefenseMetrics(state: GameState, houseId: HouseId): DiagnosticMetric
     if colony.owner == houseId:
       totalColonies += 1
 
-      # Check if colony has defense (starbases or fleets in system)
-      var hasDefense = colony.starbases.len > 0
+      # PHASE F FIX: Check if colony has ground defense
+      # Undefended colony = 0 armies AND 0 marines AND 0 ground batteries
+      # NOTE: Planetary shields don't count as defense (passive only)
+      # NOTE: Starbases and fleets are orbital defense, not ground defense
+      let hasGroundDefense = (colony.armies > 0 or
+                               colony.marines > 0 or
+                               colony.groundBatteries > 0)
 
-      if not hasDefense:
-        # Check for fleets in system
-        for fleetId, fleet in state.fleets:
-          if fleet.owner == houseId and fleet.location == systemId:
-            hasDefense = true
-            break
-
-      if not hasDefense:
+      if not hasGroundDefense:
         undefendedColonies += 1
 
   result.coloniesWithoutDefense = undefendedColonies
@@ -1044,7 +1035,6 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.armyUnits = log.armyUnits
   result.marineDivisionUnits = log.marineDivisionUnits
 
-  result.invasionFleetsWithoutELIMesh = intel.invasionFleetsWithoutELIMesh
   result.totalInvasions = intel.totalInvasions
   result.clkResearchedNoRaiders = intel.clkResearchedNoRaiders
   result.scoutCount = log.scoutCount  # Phase 2c
@@ -1291,8 +1281,8 @@ proc writeCSVHeader*(file: File) =
                  "carrier_ships,super_carrier_ships,starbase_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
                  # Ground Units (4 types)
                  "planetary_shield_units,ground_battery_units,army_units,marine_division_units," &
-                 # Intel
-                 "invasions_no_eli,total_invasions,clk_no_raiders,scout_count," &
+                 # Intel (Phase F: Removed meaningless "invasions_no_eli" metric)
+                 "total_invasions,clk_no_raiders,scout_count," &
                  "spy_planet,hack_starbase,total_espionage," &
                  # Defense
                  "undefended_colonies,total_colonies,mothball_used,mothball_total," &
@@ -1356,8 +1346,8 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.carrierShips},{metrics.superCarrierShips},{metrics.starbaseShips},{metrics.etacShips},{metrics.troopTransportShips},{metrics.planetBreakerShips},{metrics.totalShips}," &
                  # Ground Units (4 types)
                  &"{metrics.planetaryShieldUnits},{metrics.groundBatteryUnits},{metrics.armyUnits},{metrics.marineDivisionUnits}," &
-                 # Intel
-                 &"{metrics.invasionFleetsWithoutELIMesh},{metrics.totalInvasions}," &
+                 # Intel (Phase F: removed meaningless invasionFleetsWithoutELIMesh metric)
+                 &"{metrics.totalInvasions}," &
                  &"{boolToInt(metrics.clkResearchedNoRaiders)},{metrics.scoutCount}," &
                  &"{metrics.spyPlanetMissions},{metrics.hackStarbaseMissions},{metrics.totalEspionageMissions}," &
                  # Defense

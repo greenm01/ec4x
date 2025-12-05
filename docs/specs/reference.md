@@ -158,10 +158,15 @@ The zero-sum system ensures **losers actively decline** rather than merely slowi
 | Starbase Destroyed                 | `StarbaseDestroyed`     | +5    | Zero-Sum      |
 | Fleet Victory (per battle)         | `FleetVictory`          | +3    | Zero-Sum      |
 | Planet Conquered (Invasion)        | `PlanetConquered`       | +10   | Zero-Sum      |
+| Planet Lost (Invasion)             | `PlanetLost`            | -10   | Zero-Sum      |
+| Planet Lost (Undefended)           | `PlanetLost`            | -15   | Zero-Sum*     |
 | House Eliminated                   | `HouseEliminated`       | +3    | Zero-Sum      |
 | Victory Achieved                   | `VictoryAchieved`       | +5    | Absolute      |
 
 *Source: config/prestige.toml [economic], [military], and [espionage] sections*
+
+**Notes:**
+- *Zero-Sum*: The asterisk indicates the undefended colony penalty intentionally breaks zero-sum. The attacker gains the base amount (+10), but the defender loses 1.5× the base amount (-15). This is punishment for poor defensive strategy.
 
 <!-- PRESTIGE_TABLE_END -->
 
@@ -190,6 +195,32 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 - Maintenance shortfall escalates: Turn 1 (-5), Turn 2 (-7), Turn 3 (-9), continues +2/turn
 - See [Section 3.1.3](economy.md#313-tax-rate) for full tax mechanics
 - See [Section 3.2](economy.md#32-maintenance-costs) for maintenance mechanics
+
+### Undefended Colony Penalty
+
+Colonies without ground defense incur additional prestige penalties when lost to invasion or blitz operations:
+
+- **Check**: Colony has 0 armies AND 0 marines AND 0 ground batteries
+- **Penalty**: Base prestige loss × 1.5 (configured in prestige.toml as `undefended_colony_penalty_multiplier`)
+- **Example**: Losing undefended colony = -10 (base) × 1.5 = -15 prestige (before dynamic multiplier)
+- **Rationale**: Represents the dishonor of leaving citizens defenseless
+
+**Important:**
+- Planetary shields do NOT count as defense for this check. Shields are passive and only slow invasions.
+- At least one army, marine, or ground battery is required to avoid the penalty.
+- The additional penalty breaks zero-sum: attacker gains base amount, defender loses 1.5× base amount.
+- This is intentional punishment for poor defensive strategy.
+
+**Ground Unit Costs (Phase F Balance):**
+Ground units received 33% cost reductions to make defensive investments more accessible:
+
+- **Armies**: 10 PP (was 15)
+- **Marines**: 17 PP (was 25)
+- **Ground Batteries**: 13 PP (was 20)
+- **Planetary Shields**: 67 PP (was 100)
+
+*Configuration: config/prestige.toml [military].undefended_colony_penalty_multiplier*
+*Configuration: config/ground_units.toml [*].build_cost*
 
 ## 10.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
 

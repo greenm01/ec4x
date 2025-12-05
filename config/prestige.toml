@@ -94,6 +94,9 @@ ambushed_by_cloak = -1              # Ambushed by cloaked fleet
 force_retreat = 2                   # Force enemy to retreat
 scout_destroyed = -3                # Scout detected and destroyed
 
+# BALANCE: Undefended colony penalty (Phase F balance)
+undefended_colony_penalty_multiplier = 1.5  # +50% penalty for losing undefended colonies
+
 [espionage]
 # BALANCE: Espionage success rewards - TRUE BASE VALUES
 # These are base values BEFORE dynamic multiplier application

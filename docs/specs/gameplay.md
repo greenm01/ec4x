@@ -20,6 +20,18 @@ Poor colony management tarnishes your legacy. Exposure to rival covert operation
 
 Non-competitive achievements (colony establishment, technological research, good governance) still provide absolute prestige gains. But military dominance is the path to victory: **when one house rises, another must fall**.
 
+**Ground Defense Economics:** Defending your colonies is now more accessible and critical to your prestige. Ground units received cost reductions to incentivize defensive investments:
+
+- **Armies**: 10 PP each (was 15) - Basic garrison forces
+- **Marines**: 17 PP each (was 25) - Elite invasion forces
+- **Ground Batteries**: 13 PP each (was 20) - Anti-invasion defenses
+- **Planetary Shields**: 67 PP each (was 100) - High-tier passive defense
+
+**Undefended Colony Penalty:** Losing a colony with NO ground defense (no armies, marines, or ground batteries) incurs a **+50% prestige penalty**. This represents the dishonor of leaving your citizens defenseless. Planetary shields alone do NOT count as "defended" - shields buy time but don't stop invasions. At least one army, marine, or ground battery is required to avoid the penalty.
+
+- **Defended colony lost**: -50 prestige (base, scaled by map size)
+- **Undefended colony lost**: -75 prestige (base × 1.5, scaled by map size)
+
 Flexibility and strategic foresight are your greatest tools. Use every resource and opportunity to crush your rivals and ensure your House's dominance.
 
 <!-- STARTING_PRESTIGE_START -->

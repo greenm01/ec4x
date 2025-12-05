@@ -13,7 +13,7 @@ import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../logger
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
-import ../config/prestige_multiplier
+import ../config/[prestige_multiplier, prestige_config]
 import ../diplomacy/[types as dip_types, engine as dip_engine]
 import ../intelligence/diplomatic_intel
 import ./types  # Common resolution types
@@ -1010,6 +1010,25 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     description: eventDesc,
     systemId: some(targetId)
   ))
+
+# ============================================================================
+# HELPER FUNCTIONS - Ground Defense Detection
+# ============================================================================
+
+proc isColonyUndefended(colony: Colony): bool =
+  ## Check if colony lacks any ground defense
+  ## Returns true if colony has NO armies, marines, or ground batteries
+  ##
+  ## NOTE: Planetary shields alone don't count as "defended"
+  ## Shields slow invasions but don't stop them - troops are required
+  result = colony.armies == 0 and
+           colony.marines == 0 and
+           colony.groundBatteries == 0
+
+# ============================================================================
+# INVASION RESOLUTION
+# ============================================================================
+
 proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
                     events: var seq[GameEvent]) =
   ## Process planetary invasion order (operations.md:7.6)
@@ -1162,14 +1181,27 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
         discard ship.unloadCargo()
     state.fleets[order.fleetId] = updatedFleet
 
+    # Check if colony was undefended (BEFORE taking ownership)
+    let wasUndefended = isColonyUndefended(colony)
+
     # Prestige changes
     let attackerPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.ColonySeized))
     state.houses[houseId].prestige += attackerPrestige
     logCombat("Invasion prestige awarded",
               "house=", $houseId, " prestige=", $attackerPrestige)
 
-    # Defender loses prestige for colony loss
-    let defenderPenalty = -attackerPrestige  # Equal but opposite
+    # Defender loses prestige for colony loss (with undefended penalty if applicable)
+    var defenderPenalty = -attackerPrestige  # Base: equal but opposite
+
+    # Apply +50% penalty for losing undefended colony
+    if wasUndefended:
+      let undefendedMultiplier = globalPrestigeConfig.military.undefended_colony_penalty_multiplier
+      defenderPenalty = int(float(defenderPenalty) * undefendedMultiplier)
+      logCombat("Undefended colony penalty applied",
+                "house=", $colony.owner, " multiplier=", $undefendedMultiplier,
+                " total_penalty=", $defenderPenalty,
+                " additional_penalty=", $int(abs(defenderPenalty) - abs(-attackerPrestige)))
+
     state.houses[colony.owner].prestige += defenderPenalty
     logCombat("Colony loss prestige penalty",
               "house=", $colony.owner, " prestige=", $defenderPenalty)
@@ -1374,14 +1406,27 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
         discard ship.unloadCargo()
     state.fleets[order.fleetId] = updatedFleet
 
+    # Check if colony was undefended (BEFORE taking ownership)
+    let wasUndefended = isColonyUndefended(colony)
+
     # Prestige changes (blitz gets same prestige as invasion)
     let attackerPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.ColonySeized))
     state.houses[houseId].prestige += attackerPrestige
     logCombat("Blitz prestige awarded",
               "house=", $houseId, " prestige=", $attackerPrestige)
 
-    # Defender loses prestige for colony loss
-    let defenderPenalty = -attackerPrestige
+    # Defender loses prestige for colony loss (with undefended penalty if applicable)
+    var defenderPenalty = -attackerPrestige  # Base: equal but opposite
+
+    # Apply +50% penalty for losing undefended colony
+    if wasUndefended:
+      let undefendedMultiplier = globalPrestigeConfig.military.undefended_colony_penalty_multiplier
+      defenderPenalty = int(float(defenderPenalty) * undefendedMultiplier)
+      logCombat("Undefended colony penalty applied (blitz)",
+                "house=", $colony.owner, " multiplier=", $undefendedMultiplier,
+                " total_penalty=", $defenderPenalty,
+                " additional_penalty=", $int(abs(defenderPenalty) - abs(-attackerPrestige)))
+
     state.houses[colony.owner].prestige += defenderPenalty
     logCombat("Colony loss prestige penalty",
               "house=", $colony.owner, " prestige=", $defenderPenalty)

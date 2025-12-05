@@ -116,43 +116,28 @@ proc detectIdleCarriers*(df: DataFrame): seq[RedFlag] =
     result.add(flag)
 
 proc detectELIMeshIssues*(df: DataFrame): seq[RedFlag] =
-  ## Detect invasions without ELI mesh support (HIGH)
+  ## PHASE F: DISABLED - This metric was misleading
   ##
-  ## Target: < 50% of invasions without ELI mesh
+  ## Original metric tracked "invasions without ELI mesh" which doesn't make sense
+  ## because scouts can be destroyed in space combat before ground invasions occur.
+  ##
+  ## ELI mesh (3+ scouts) is critical for:
+  ## 1. **Space combat** - Intelligence bonus (scout_count metric)
+  ## 2. **Raider detection** - Prevents ambush/surprise attacks (detectRaiderIssues handles this)
+  ## 3. **Scout espionage** - Spy missions (spy_planet, hack_starbase metrics)
+  ##
+  ## Proper ELI mesh tracking is handled by:
+  ## - detectRaiderIssues() - Tracks raider ambush success (low rate = poor ELI mesh)
+  ## - detectCLKWithoutRaiders() - Tracks CLK tech without raider utilization
+  ## - Future: Can add scout espionage utilization tracking
   result = @[]
 
-  if df.len == 0:
-    return
-
-  let hasTotal = "total_invasions" in df.getKeys()
-  let hasNoELI = "invasions_no_eli" in df.getKeys()
-
-  if not (hasTotal and hasNoELI):
-    return
-
-  let totalVals = df["total_invasions", int].toSeq()
-  let noELIVals = df["invasions_no_eli", int].toSeq()
-
-  var rates = newSeq[float]()
-  for i in 0 ..< totalVals.len:
-    if totalVals[i] > 0:
-      rates.add(float(noELIVals[i]) / float(totalVals[i]))
-
-  if rates.len == 0:
-    return
-
-  let avgRate = rates.mean() * 100.0
-
-  if avgRate > 50.0:
-    var flag = newRedFlag(SeverityLevel.High, "Invasions Without ELI Mesh",
-                          &"{avgRate:.1f}% of invasions lack ELI mesh support")
-    flag.impact = "Reduced invasion success rates and intel gathering"
-    flag.rootCause = "Insufficient scout deployment or coordination issues"
-    flag.addEvidence(&"Target: < 50% without ELI")
-    result.add(flag)
-
 proc detectRaiderIssues*(df: DataFrame): seq[RedFlag] =
-  ## Detect raider ambush success rate issues (HIGH)
+  ## Detect raider ambush success rate issues (CRITICAL)
+  ##
+  ## Phase F: Upgraded to CRITICAL severity
+  ## Raiders use ELI checks for ambush/surprise attacks
+  ## Low success rate indicates poor ELI mesh (insufficient scouts) or CLK disadvantage
   ##
   ## Target: > 35% success rate when CLK > ELI
   result = @[]
@@ -180,11 +165,13 @@ proc detectRaiderIssues*(df: DataFrame): seq[RedFlag] =
   let avgRate = rates.mean() * 100.0
 
   if avgRate < 35.0:
-    var flag = newRedFlag(SeverityLevel.High, "Low Raider Success Rate",
-                          &"Raider ambush success rate: {avgRate:.1f}%")
-    flag.impact = "Raiders ineffective at intercepting fleets"
-    flag.rootCause = "Insufficient CLK advantage or positioning issues"
-    flag.addEvidence(&"Target: > 35% success rate")
+    var flag = newRedFlag(SeverityLevel.Critical, "Low Raider Success Rate",
+                          &"Raider ambush/surprise success rate: {avgRate:.1f}%")
+    flag.impact = "Raiders ineffective at ambush (lying in wait) and surprise (space combat) - indicates poor defensive ELI mesh"
+    flag.rootCause = "Enemy has ELI mesh (3+ scouts) detecting raiders, or insufficient CLK advantage"
+    flag.addEvidence(&"Target: > 35% success rate when CLK > ELI")
+    flag.addEvidence(&"Raider modes: Ambush (stealth positioning) and Surprise (space combat advantage)")
+    flag.addEvidence(&"Enemy ELI mesh (3+ scouts) can detect raiders and prevent both modes")
     result.add(flag)
 
 proc detectCLKWithoutRaiders*(df: DataFrame): seq[RedFlag] =
@@ -287,6 +274,98 @@ proc detectMothballingIssues*(df: DataFrame): seq[RedFlag] =
     flag.addEvidence(&"Target: > 70% usage")
     result.add(flag)
 
+proc detectPlanetaryShieldUsage*(df: DataFrame): seq[RedFlag] =
+  ## Detect underutilization of planetary shields (HIGH)
+  ##
+  ## Phase F: Track planetary shield deployment
+  ## Planetary shields provide passive defense (DS=100) and slow invasions
+  ## Cost: 67 PP (after Phase F reduction from 100)
+  ##
+  ## Target: > 40% of high-value colonies should have shields
+  result = @[]
+
+  if df.len == 0:
+    return
+
+  let hasShields = "planetary_shield_units" in df.getKeys()
+  let hasColonies = "total_colonies" in df.getKeys()
+
+  if not (hasShields and hasColonies):
+    return
+
+  let shieldVals = df["planetary_shield_units", int].toSeq()
+  let colonyVals = df["total_colonies", int].toSeq()
+
+  var shieldRates = newSeq[float]()
+  for i in 0 ..< shieldVals.len:
+    if colonyVals[i] > 0:
+      # Shield rate per colony
+      shieldRates.add(float(shieldVals[i]) / float(colonyVals[i]))
+
+  if shieldRates.len == 0:
+    return
+
+  let avgShieldRate = shieldRates.mean() * 100.0
+
+  if avgShieldRate < 40.0:
+    var flag = newRedFlag(SeverityLevel.High, "Low Planetary Shield Deployment",
+                          &"Only {avgShieldRate:.1f}% shield deployment rate")
+    flag.impact = "Colonies vulnerable to rapid invasions - shields slow invasion progress"
+    flag.rootCause = "Insufficient investment in passive defense (67 PP per shield)"
+    flag.addEvidence(&"Target: > 40% of colonies with shields")
+    flag.addEvidence(&"Planetary shields: DS=100, slows invasions, costs 67 PP")
+    result.add(flag)
+
+proc detectPlanetBreakerUsage*(df: DataFrame): seq[RedFlag] =
+  ## Detect underutilization of planet breakers (MEDIUM)
+  ##
+  ## Phase F: Track planet breaker deployment
+  ## Planet breakers: Max 1 per colony, AS=50, orbital bombardment specialists
+  ## Cost: 400 PP, CST 10 required
+  ##
+  ## Target: > 50% of games with CST 10 should use planet breakers
+  result = @[]
+
+  if df.len == 0:
+    return
+
+  let hasPBs = "planet_breaker_ships" in df.getKeys()
+  let hasCST = "tech_cst" in df.getKeys()
+  let hasGameSeed = "game_seed" in df.getKeys()
+
+  if not (hasPBs and hasCST and hasGameSeed):
+    return
+
+  # Filter to games that reached CST 10
+  let cstVals = df["tech_cst", int].toSeq()
+  let pbVals = df["planet_breaker_ships", int].toSeq()
+  let seedVals = df["game_seed", int].toSeq()
+
+  var gamesWithCST10 = newSeq[int]()
+  var gamesWithPBs = newSeq[int]()
+
+  for i in 0 ..< cstVals.len:
+    if cstVals[i] >= 10:
+      let seed = seedVals[i]
+      if seed notin gamesWithCST10:
+        gamesWithCST10.add(seed)
+      if pbVals[i] > 0 and seed notin gamesWithPBs:
+        gamesWithPBs.add(seed)
+
+  if gamesWithCST10.len == 0:
+    return  # No games reached CST 10
+
+  let pbUsageRate = (float(gamesWithPBs.len) / float(gamesWithCST10.len)) * 100.0
+
+  if pbUsageRate < 50.0:
+    var flag = newRedFlag(SeverityLevel.Medium, "Low Planet Breaker Usage",
+                          &"Only {pbUsageRate:.1f}% of CST10 games used planet breakers")
+    flag.impact = "Missing high-power orbital bombardment capability"
+    flag.rootCause = "AI not building planet breakers despite reaching CST 10"
+    flag.addEvidence(&"Target: > 50% usage in CST10 games")
+    flag.addEvidence(&"Planet breakers: AS=50, 400 PP, max 1 per colony")
+    result.add(flag)
+
 proc detectAll*(df: DataFrame): RedFlagReport =
   ## Run all red flag detectors and organize by severity
   ##
@@ -303,11 +382,13 @@ proc detectAll*(df: DataFrame): RedFlagReport =
   allFlags.add(detectCapacityViolations(df))
   allFlags.add(detectEspionageIssues(df))
   allFlags.add(detectIdleCarriers(df))
-  allFlags.add(detectELIMeshIssues(df))
-  allFlags.add(detectRaiderIssues(df))
+  allFlags.add(detectELIMeshIssues(df))  # Phase F: Disabled (was misleading)
+  allFlags.add(detectRaiderIssues(df))  # Phase F: Upgraded to CRITICAL
   allFlags.add(detectCLKWithoutRaiders(df))
   allFlags.add(detectUndefendedColonies(df))
   allFlags.add(detectMothballingIssues(df))
+  allFlags.add(detectPlanetaryShieldUsage(df))  # Phase F: New
+  allFlags.add(detectPlanetBreakerUsage(df))  # Phase F: New
 
   # Organize by severity
   result.critical = @[]
