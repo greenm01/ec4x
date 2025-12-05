@@ -12,7 +12,7 @@ import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
 import ../config
 import ../shared/intelligence_types
-import ./analyzers/[colony_analyzer, system_analyzer, starbase_analyzer, combat_analyzer]
+import ./analyzers/[colony_analyzer, system_analyzer, starbase_analyzer, combat_analyzer, surveillance_analyzer]
 from ./threat_assessment import assessAllThreats
 
 proc assessThreat*(
@@ -161,12 +161,24 @@ proc generateIntelligenceReport*(
     lastUpdated: filtered.turn
   )
 
+  # Phase D: Surveillance analysis
+  let (surveillanceGaps, surveillanceCoverage) = analyzeSurveillanceReports(filtered, controller)
+
+  # Log surveillance gaps (Phase D)
+  if surveillanceGaps.len > 0:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Drungarius: {surveillanceGaps.len} surveillance gaps identified")
+    for gap in surveillanceGaps:
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} Drungarius:   Gap at {gap.systemId} ({gap.reason}, priority {gap.priority:.2f})")
+
   result.espionage = EspionageIntelligence(
     intelCoverage: initTable[HouseId, IntelCoverageScore](),
     staleIntelSystems: @[],
     highPriorityTargets: @[],
     detectionRisks: initTable[HouseId, DetectionRiskLevel](),
-    surveillanceGaps: @[],
+    surveillanceGaps: surveillanceGaps,
+    surveillanceCoverage: surveillanceCoverage,
     lastUpdated: filtered.turn
   )
 

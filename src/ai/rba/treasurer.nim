@@ -21,7 +21,7 @@
 ## let allocation = treasurer.allocateBudget(
 ##   act = GameAct.Act2_RisingTensions,
 ##   personality = aiPersonality,
-##   isUnderThreat = false,
+##   intelSnapshot = controller.intelligenceSnapshot,
 ##   admiralRequirements = some(requirements),
 ##   availableBudget = 300
 ## )

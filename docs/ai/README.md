@@ -1,7 +1,7 @@
 # AI System Documentation
 
 **Last Updated:** 2025-12-05
-**Current Status:** Intelligence Integration Phase C Complete, GOAP + RBA Hybrid Operational
+**Current Status:** Intelligence Integration Phase D Complete, GOAP + RBA Hybrid Operational
 
 ## Overview
 
@@ -16,37 +16,38 @@ This hybrid system provides Byzantine Imperial AI with strategic foresight, adap
 
 ## 🆕 Recent Changes (December 2025)
 
-### Intelligence Integration Phase C Complete ✅
+### Intelligence Integration Phase D Complete ✅
 **Date:** 2025-12-05
-**Status:** Production-ready, ~70% intelligence utilization
+**Status:** Production-ready, >80% intelligence utilization
 
 **Implementation:**
-- Starbase intelligence analyzer (~155 LOC) - Tech gap detection and economic assessment
-- Combat intelligence analyzer (~205 LOC) - Tactical lessons from combat encounters
-- Tech gap priority system - Critical/High priority research needs
-- Logothete integration - Intelligence-driven research allocation
-- Domestikos combat learning - Ship type selection based on proven effectiveness
+- Surveillance analyzer (~106 LOC) - Border coverage gaps and high-value target surveillance
+- Threat-aware budget allocation (~60 LOC) - Graduated response (0-100% boost)
+- Multi-threat handling - 1.5x multiplier for 3+ simultaneous threats
+- Treasurer IntelligenceSnapshot integration - Replaced binary threat flag with nuanced allocation
+- Surveillance gap prioritization - Border systems, high-value colonies, recent activity
 
 **Key Features:**
-- **Tech Gap Analysis:** Identifies critical tech disadvantages (3+ levels behind enemies)
-- **Combat Learning:** AI learns which ship types work against specific enemies
-- **Adaptive Research:** Logothete boosts tech gaps (10% budget for Critical, 5% for High)
-- **Combat-Informed Build:** Domestikos selects proven ship types vs known threats
+- **Surveillance Gap Analysis:** Identifies 3 gap types (border coverage, high-value targets, recent threats)
+- **Graduated Threat Response:** 5-level boost system (None 0%, Low 10%, Moderate 30%, High 50%, Critical 100%)
+- **Multi-Threat Multiplier:** 1.5x boost when 3+ colonies threatened
+- **Distributed Defense:** Splits boost 60% Defense (local), 40% Military (response fleets)
+- **Intelligence-Driven Allocation:** Treasurer consumes full IntelligenceSnapshot (not just boolean flag)
 
 **Intelligence Utilization Progress:**
 - Phase A (Baseline): ~5% utilization
 - Phase B (Colony + System): ~40% utilization
-- Phase C (Starbase + Combat): ~70% utilization ✅
-- Phase D (Surveillance + Full Integration): Target >80%
+- Phase C (Starbase + Combat): ~70% utilization
+- Phase D (Surveillance + Full Integration): >80% utilization ✅
 
 **Processed Report Types:**
 1. ✅ ColonyIntelReport → Vulnerability & high-value targets (Phase B)
 2. ✅ SystemIntelReport → Enemy fleet tracking (Phase B)
 3. ✅ StarbaseIntelReport → Tech gaps & economy (Phase C)
 4. ✅ CombatEncounterReport → Tactical lessons (Phase C)
-5. ⏳ StarbaseSurveillanceReport → Surveillance gaps (Phase D)
+5. ✅ StarbaseSurveillanceReport → Surveillance gaps & coverage (Phase D)
 
-**See:** `analysis/intelligence-phase-c-complete.md` for implementation details
+**See:** `~/.claude/plans/delightful-dreaming-adleman.md` for Phase D implementation details
 
 ---
 

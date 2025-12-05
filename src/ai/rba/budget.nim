@@ -1002,7 +1002,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   var allocation = treasurer.allocateBudget(
     act,
     personality,
-    isUnderThreat,
+    controller.intelligenceSnapshot,  # Phase D: Threat-aware allocation
     domestikosRequirements,  # Treasurer consults Domestikos requirements
     availableBudget       # Treasurer needs total budget to calculate percentages
   )

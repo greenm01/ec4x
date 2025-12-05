@@ -12,6 +12,8 @@
 import std/[tables, options]
 import ../../common/types
 import ../[config, controller_types]
+import ../shared/intelligence_types
+import ../drungarius/threat_assessment
 import ./consultation
 
 proc getBaselineAllocation*(act: GameAct): BudgetAllocation =
@@ -69,8 +71,75 @@ proc applyPersonalityModifiers*(
     allocation[Expansion] = min(0.75, allocation[Expansion] + economicMod)
     allocation[Military] = max(0.10, allocation[Military] - economicMod * 0.5)
 
+proc applyThreatAwareAllocation*(
+  allocation: var BudgetAllocation,
+  intelSnapshot: IntelligenceSnapshot
+) =
+  ## Graduated threat-aware budget adjustment based on intelligence (Phase D)
+  ## Replaces binary isUnderThreat flag with nuanced threat response
+
+  let config = globalRBAConfig.intelligence.threat_response
+  let threats = intelSnapshot.military.threatsByColony
+
+  if threats.len == 0:
+    return  # No threats, no adjustment
+
+  # Calculate maximum threat level and threat count
+  let maxThreat = calculateMaxThreatLevel(threats)  # Returns 0.0-1.0
+  let threatCount = threats.len
+
+  # Determine base boost percentage from threat level
+  var boostPct: float
+  var threatLevelName: string
+  if maxThreat >= 0.85:
+    boostPct = config.critical_threat_boost  # 1.00 (100%)
+    threatLevelName = "Critical"
+  elif maxThreat >= 0.6:
+    boostPct = config.high_threat_boost  # 0.50 (50%)
+    threatLevelName = "High"
+  elif maxThreat >= 0.4:
+    boostPct = config.moderate_threat_boost  # 0.30 (30%)
+    threatLevelName = "Moderate"
+  elif maxThreat >= 0.2:
+    boostPct = config.low_threat_boost  # 0.10 (10%)
+    threatLevelName = "Low"
+  else:
+    boostPct = 0.0  # None threat
+    threatLevelName = "None"
+
+  # Apply multi-threat multiplier if facing 3+ simultaneous threats
+  var multiplierApplied = false
+  if threatCount >= 3:
+    boostPct *= config.multi_threat_multiplier  # 1.5x
+    multiplierApplied = true
+
+  # Log threat-aware allocation (Phase D)
+  if boostPct > 0.0:
+    import ../../../engine/logger
+    import std/strformat
+    logInfo(LogCategory.lcAI,
+            &"Treasurer: Threat level {maxThreat:.2f} ({threatLevelName}) detected, " &
+            &"applying {boostPct * 100:.0f}% budget boost" &
+            (if multiplierApplied: &" (multi-threat {threatCount} colonies)" else: ""))
+
+  # Calculate boost amounts
+  let defenseBoost = boostPct * config.defense_boost_ratio  # 60%
+  let militaryBoost = boostPct * config.military_boost_ratio  # 40%
+
+  # Apply boosts (with caps to prevent exceeding 100%)
+  allocation[Defense] = min(0.50, allocation[Defense] + defenseBoost)
+  allocation[Military] = min(0.60, allocation[Military] + militaryBoost)
+
+  # Reduce other categories proportionally to make room
+  let totalBoost = defenseBoost + militaryBoost
+  allocation[Expansion] = max(0.05, allocation[Expansion] - totalBoost * 0.5)
+  allocation[SpecialUnits] = max(0.02, allocation[SpecialUnits] - totalBoost * 0.3)
+  allocation[Reconnaissance] = max(0.03, allocation[Reconnaissance] - totalBoost * 0.2)
+
 proc applyThreatBoost*(allocation: var BudgetAllocation) =
   ## Emergency military boost when house is under threat
+  ## DEPRECATED: Replaced by applyThreatAwareAllocation() in Phase D
+  ## Kept for backward compatibility
   ##
   ## Shifts 20% of budget to Military from Expansion and SpecialUnits
 
@@ -96,7 +165,7 @@ proc normalizeAllocation*(allocation: var BudgetAllocation) =
 proc allocateBudget*(
   act: GameAct,
   personality: AIPersonality,
-  isUnderThreat: bool = false,
+  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot),
   admiralRequirements: Option[BuildRequirements] = none(BuildRequirements),
   availableBudget: int = 0
 ): BudgetAllocation =
@@ -107,11 +176,12 @@ proc allocateBudget*(
   ## Process:
   ## 1. Start with baseline from config (strategic intent)
   ## 2. Apply personality modifiers (AI behavior diversity)
-  ## 3. **NEW**: Consult Domestikos requirements (dynamic adjustment)
-  ## 4. Apply threat response if needed (emergency military boost)
+  ## 3. Consult Domestikos requirements (dynamic adjustment)
+  ## 4. Apply threat-aware allocation (Phase D - graduated response)
   ## 5. Normalize to ensure sum = 1.0
   ##
   ## Backward Compatible:
+  ## - If intelSnapshot is none, no threat-aware adjustment
   ## - If admiralRequirements is none, behaves exactly like old system
   ## - Falls back to static config percentages
 
@@ -121,13 +191,13 @@ proc allocateBudget*(
   # 2. Personality modifiers
   applyPersonalityModifiers(result, personality, act)
 
-  # 3. Domestikos consultation (NEW - Treasurer-Domestikos consultation system)
+  # 3. Domestikos consultation (Treasurer-Domestikos consultation system)
   if admiralRequirements.isSome and availableBudget > 0:
     consultDomestikosRequirements(result, admiralRequirements.get(), availableBudget)
 
-  # 4. Threat response
-  if isUnderThreat:
-    applyThreatBoost(result)
+  # 4. Threat-aware allocation (Phase D - NEW)
+  if intelSnapshot.isSome:
+    applyThreatAwareAllocation(result, intelSnapshot.get())
 
   # 5. Normalize
   normalizeAllocation(result)

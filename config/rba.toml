@@ -329,6 +329,28 @@ economic_strength_income_weight = 0.4
 tech_gap_critical_threshold = 3         # 3+ tech levels behind = critical gap
 tech_gap_high_threshold = 2             # 2 tech levels behind = high priority
 
+[intelligence.threat_response]
+# Threat-aware budget allocation (Phase D)
+# Budget boost percentages by threat level
+low_threat_boost = 0.10          # 10% increase to military+defense
+moderate_threat_boost = 0.30     # 30% increase
+high_threat_boost = 0.50         # 50% increase
+critical_threat_boost = 1.00     # 100% increase (double military spending)
+
+# Multi-threat scenario multiplier
+multi_threat_multiplier = 1.5    # Boost * 1.5 if 3+ colonies threatened
+
+# Budget distribution (threat boost split between objectives)
+defense_boost_ratio = 0.6        # 60% of boost to Defense (local)
+military_boost_ratio = 0.4       # 40% of boost to Military (response fleets)
+
+[intelligence.surveillance]
+# Surveillance gap priority weights (Phase D)
+border_system_priority = 0.9     # Systems adjacent to enemy territory
+high_value_priority = 0.8        # High-production colonies
+transit_route_priority = 0.6     # Key routes between colonies
+recent_activity_priority = 0.7   # Systems with recent threat detection
+
 [drungarius]
 # Intelligence coordinator settings
 intel_processing_enabled = true         # Enable enhanced intelligence processing
