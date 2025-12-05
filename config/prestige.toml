@@ -12,7 +12,9 @@
 
 [victory]
 # BALANCE: Victory and defeat thresholds
-prestige_victory = 2500            # Reach 2500 prestige to win (adjusted for 10x base prestige)
+# Victory mode is now configured per-game in game_setup/*.toml
+# See victory_conditions.primary_mode and victory_conditions.turn_limit
+# prestige_victory removed - using turn limits or elimination only
 starting_prestige = 100            # Increased from 50 to enable Act 1 espionage (threshold: 50)
 defeat_threshold = 0               # Below 0 for consecutive turns = surrender
 defeat_consecutive_turns = 3       # NOTE: Elimination mechanics in config/gameplay.toml
@@ -22,28 +24,27 @@ defeat_consecutive_turns = 3       # NOTE: Elimination mechanics in config/gamep
 # ============================================================================
 
 [dynamic_scaling]
-# BALANCE: Map-size based prestige scaling for optimal game pacing
+# BALANCE: Map-size based prestige scaling for accelerated game pacing
 #
 # DESIGN PHILOSOPHY:
-# Small maps (8-10 systems/player) are the baseline - they use the full base_multiplier
-# Larger maps scale DOWN from this baseline to extend game length naturally
+# Accelerated pacing: 3x increase from original to reach 30-45 turn games
+# Small maps (6-8 systems/player): Highest multiplier for fastest games
+# Medium maps (9-11 systems/player): Target 30-40 turns
+# Large maps (12-14 systems/player): Target 40-50 turns
 #
 # Formula: multiplier = base_multiplier * (baseline_turns / target_turns)
 # Target turns = baseline_turns + (systems_per_player - baseline_ratio) * turn_scaling_factor
 #
-# This ensures:
-# - Small maps: 5.0x multiplier (baseline) → ~30 turn games
-# - Medium maps: 3.0-4.0x multiplier (scaled down) → ~40-50 turn games
-# - Large maps: 2.0-2.5x multiplier (scaled down) → ~60-80 turn games
-# - Victory threshold (5000 prestige) remains constant regardless of map size
+# Combined with 5x base value increases: 5x × 15x = 75x total acceleration
+# This ensures games complete in 30-45 turns for 4-player medium maps
 
 enabled = true                     # Enable dynamic scaling (false = use base_multiplier for all maps)
-base_multiplier = 5.0              # Prestige multiplier for small maps (baseline)
-baseline_turns = 30                # Target game length for baseline small maps
-baseline_systems_per_player = 8    # Systems per player that defines "small map" baseline (adjusted from 10)
-turn_scaling_factor = 2.0          # Additional turns per extra system (scales game length linearly)
-min_multiplier = 1.5               # Minimum multiplier floor (for massive maps)
-max_multiplier = 8.0               # Maximum multiplier ceiling (for tiny maps)
+base_multiplier = 15.0             # Was 5.0 → 3x increase for accelerated pacing (CRITICAL)
+baseline_turns = 35                # Was 30 → target for medium maps
+baseline_systems_per_player = 10   # Was 8 → recalibrated for medium maps
+turn_scaling_factor = 3.0          # Was 2.0 → steeper scaling for larger maps
+min_multiplier = 5.0               # Was 1.5 → prevent too-slow games on large maps
+max_multiplier = 25.0              # Was 8.0 → allow tiny map acceleration
 
 # ============================================================================
 # MORALE SYSTEM (GAME CONSTANTS)
@@ -65,82 +66,84 @@ high_max = 80         # 61-80: High (+1 CER + critical auto-success if >9)
 # ============================================================================
 
 [economic]
-# BALANCE: Economic achievement rewards - TRUE BASE VALUES
+# BALANCE: Economic achievement rewards - TRUE BASE VALUES (5x INCREASED)
 # These are base values BEFORE dynamic multiplier application
-# Dynamic multiplier (5.0x for small maps) scales these values automatically
-tech_advancement = 2                # Advance to new tech level (base value per spec)
-establish_colony = 5                # New colony established (base value per spec)
-max_population = 3                  # Colony reaches max PU
-iu_milestone_50 = 1                 # Reach 50% IU of PU
-iu_milestone_75 = 2                 # Reach 75% IU of PU
-iu_milestone_100 = 3                # Reach 100% IU of PU
-iu_milestone_150 = 5                # Reach 150% IU of PU
-terraform_planet = 5                # Upgrade planet class via terraforming
+# Dynamic multiplier (15.0x for medium maps) scales these values automatically
+# Combined effect: 5x base × 15x multiplier = 75x total acceleration
+tech_advancement = 10               # Was 2 → 5x increase (major research milestone)
+establish_colony = 25               # Was 5 → 5x increase (major expansion)
+max_population = 15                 # Was 3 → 5x increase
+iu_milestone_50 = 5                 # Was 1 → 5x increase
+iu_milestone_75 = 10                # Was 2 → 5x increase
+iu_milestone_100 = 15               # Was 3 → 5x increase
+iu_milestone_150 = 25               # Was 5 → 5x increase
+terraform_planet = 25               # Was 5 → 5x increase (major project)
 
 [military]
-# BALANCE: Military victory rewards - TRUE BASE VALUES
+# BALANCE: Military victory rewards - TRUE BASE VALUES (5x INCREASED)
 # These are base values BEFORE dynamic multiplier application
-destroy_squadron = 1                # Per major ship destroyed (spec base: +10)
-destroy_starbase = 5                # Destroy enemy starbase (spec base: +50)
-fleet_victory = 3                   # Win fleet battle (spec base: +30)
-invade_planet = 10                  # Successfully invade/blitz planet (spec base: +100)
-eliminate_house = 3                 # Eliminate rival house (spec base: +30)
-system_capture = 10                 # Capture star system (spec base: +100)
+destroy_squadron = 5                # Was 1 → 5x increase (per major ship destroyed)
+destroy_starbase = 25               # Was 5 → 5x increase (major structure)
+fleet_victory = 15                  # Was 3 → 5x increase (tactical victory)
+invade_planet = 50                  # Was 10 → 5x increase (major conquest)
+eliminate_house = 15                # Was 3 → 5x increase (strategic victory)
+system_capture = 50                 # Was 10 → 5x increase (major conquest)
 
-# BALANCE: Military defeat penalties - TRUE BASE VALUES
-lose_planet = -10                   # Lose colony to enemy (matches invade_planet base)
-lose_starbase = -5                  # Starbase destroyed (matches destroy_starbase base)
-ambushed_by_cloak = -1              # Ambushed by cloaked fleet
-force_retreat = 2                   # Force enemy to retreat
-scout_destroyed = -3                # Scout detected and destroyed
+# BALANCE: Military defeat penalties - TRUE BASE VALUES (5x INCREASED)
+lose_planet = -50                   # Was -10 → 5x increase (matches invade_planet)
+lose_starbase = -25                 # Was -5 → 5x increase (matches destroy_starbase)
+ambushed_by_cloak = -5              # Was -1 → 5x increase
+force_retreat = 10                  # Was 2 → 5x increase (prestige for forcing enemy to retreat)
+forced_to_retreat = -5              # NEW: penalty for being forced to retreat (1/2 of force_retreat)
+scout_destroyed = -15               # Was -3 → 5x increase
 
 # BALANCE: Undefended colony penalty (Phase F balance)
 undefended_colony_penalty_multiplier = 1.5  # +50% penalty for losing undefended colonies
 
 [espionage]
-# BALANCE: Espionage success rewards - TRUE BASE VALUES
+# BALANCE: Espionage success rewards - TRUE BASE VALUES (5x INCREASED)
 # These are base values BEFORE dynamic multiplier application
-tech_theft = 2                      # Successful tech theft (spec base: +20)
-low_impact_sabotage = 1             # Low-impact sabotage success
-high_impact_sabotage = 3            # High-impact sabotage success
-assassination = 5                   # Successful assassination (spec base: +50)
-cyber_attack = 2                    # Successful cyber attack
-economic_manipulation = 3           # Successful economic manipulation
-psyops_campaign = 1                 # Successful psyops
-counter_intel_sweep = 1             # Successful counter-intelligence sweep (defensive)
-intelligence_theft = 4              # Steal target's entire intelligence database (high-value)
-plant_disinformation = 2            # Corrupt target's intelligence with false data
+tech_theft = 10                     # Was 2 → 5x increase (successful tech theft)
+low_impact_sabotage = 5             # Was 1 → 5x increase
+high_impact_sabotage = 15           # Was 3 → 5x increase
+assassination = 25                  # Was 5 → 5x increase (major operation)
+cyber_attack = 10                   # Was 2 → 5x increase
+economic_manipulation = 15          # Was 3 → 5x increase
+psyops_campaign = 5                 # Was 1 → 5x increase
+counter_intel_sweep = 5             # Was 1 → 5x increase (defensive success)
+intelligence_theft = 20             # Was 4 → 5x increase (high-value operation)
+plant_disinformation = 10           # Was 2 → 5x increase
 
-# BALANCE: Espionage failure/detection penalties - TRUE BASE VALUES
-failed_espionage = -2               # Espionage detected and prevented
+# BALANCE: Espionage failure/detection penalties - TRUE BASE VALUES (5x INCREASED)
+failed_espionage = -10              # Was -2 → 5x increase
 
 [espionage_victim]
-# BALANCE: Prestige penalties for being targeted by espionage - TRUE BASE VALUES
+# BALANCE: Prestige penalties for being targeted by espionage - TRUE BASE VALUES (5x INCREASED)
 # These are base values BEFORE dynamic multiplier application
-tech_theft_victim = -3              # Victim of tech theft
-low_impact_sabotage_victim = -1     # Victim of low sabotage
-high_impact_sabotage_victim = -5    # Victim of high sabotage
-assassination_victim = -7           # Leader assassinated
-cyber_attack_victim = -3            # Victim of cyber attack
-economic_manipulation_victim = -1   # Victim of economic manipulation
-psyops_campaign_victim = -1         # Victim of psyops
-counter_intel_sweep_victim = 0      # No victim penalty (defensive action)
-intelligence_theft_victim = -2      # Intelligence database stolen (embarrassing)
-plant_disinformation_victim = -2    # Intelligence corrupted (causes bad decisions)
+tech_theft_victim = -15             # Was -3 → 5x increase
+low_impact_sabotage_victim = -5     # Was -1 → 5x increase
+high_impact_sabotage_victim = -25   # Was -5 → 5x increase
+assassination_victim = -35          # Was -7 → 5x increase (major embarrassment)
+cyber_attack_victim = -15           # Was -3 → 5x increase
+economic_manipulation_victim = -5   # Was -1 → 5x increase
+psyops_campaign_victim = -5         # Was -1 → 5x increase
+counter_intel_sweep_victim = 0      # No change (defensive action has no victim penalty)
+intelligence_theft_victim = -10     # Was -2 → 5x increase
+plant_disinformation_victim = -10   # Was -2 → 5x increase
 
 [scout]
-# BALANCE: Scout mission rewards
-spy_on_planet = 2                  # Successful planet espionage
-hack_starbase = 3                  # Successful starbase hack
-spy_on_system = 2                  # Successful system reconnaissance
+# BALANCE: Scout mission rewards - TRUE BASE VALUES (5x INCREASED)
+spy_on_planet = 10                 # Was 2 → 5x increase (successful planet espionage)
+hack_starbase = 15                 # Was 3 → 5x increase (successful starbase hack)
+spy_on_system = 10                 # Was 2 → 5x increase (successful system reconnaissance)
 
 [diplomacy]
-# BALANCE: Diplomatic action prestige impacts - TRUE BASE VALUES
+# BALANCE: Diplomatic action prestige impacts - TRUE BASE VALUES (5x INCREASED)
 # These are base values BEFORE dynamic multiplier application
-diplomatic_pact_formation = 5       # Form diplomatic pact (spec base: +50)
-pact_violation = -10                # Break non-aggression pact (spec base: -100)
-repeat_violation = -10              # Repeat violation (dishonored status)
-dishonored_bonus = 1                # Bonus for attacking dishonored house
+diplomatic_pact_formation = 25      # Was 5 → 5x increase (form diplomatic pact)
+pact_violation = -50                # Was -10 → 5x increase (break non-aggression pact)
+repeat_violation = -50              # Was -10 → 5x increase (repeat violation, dishonored status)
+dishonored_bonus = 5                # Was 1 → 5x increase (bonus for attacking dishonored house)
 declare_war = 0                     # No inherent penalty
 make_peace = 0                      # No inherent bonus
 

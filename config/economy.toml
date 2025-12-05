@@ -31,8 +31,8 @@ pu_to_ptu_conversion = 0.00657     # PU to PTU conversion constant (exponential 
 
 [production]
 # BALANCE VARIABLES - Production distribution
-# ACCELERATION: Doubled production for 30-turn multi-generational timeline
-production_per_10_population = 2   # 2 production per 10 million population (was 1)
+# ACCELERATION: 2.5x increase for 30-45 turn game pacing
+production_per_10_population = 5   # Was 2 → 2.5x increase (5 production per 10 million population)
 production_split_credits = 0.33    # 1/3 of production → credits
 production_split_production = 0.33 # 1/3 of production → industrial units
 production_split_research = 0.33   # 1/3 of production → research points
@@ -237,34 +237,34 @@ tier_5_pop_multiplier = 1.20
 
 [industrial_investment]
 # IU investment cost multipliers by percentage of PU
-# BALANCE: Reduced to encourage IU investment (better ROI for players)
+# BALANCE: 40% reduction to encourage faster IU development (5 → 3)
 # With passive IU growth added, manual investment accelerates development
-# Base cost is 5 PP per IU (was 15, originally 30)
-# Payback: 5 turns at EL1 (1 IU produces ~1 PP/turn)
-base_cost = 5
+# Base cost is 3 PP per IU (was 5, originally 15, base 30)
+# Payback: 3 turns at EL3 (1 IU produces ~1 PP/turn)
+base_cost = 3
 
 tier_1_max_percent = 50
 tier_1_multiplier = 1.0
-tier_1_pp = 5  # base_cost * 1.0 (was 15, originally 30)
+tier_1_pp = 3  # Was 5 → 40% reduction (base_cost * 1.0)
 
 tier_2_min_percent = 51
 tier_2_max_percent = 75
 tier_2_multiplier = 1.2
-tier_2_pp = 6  # base_cost * 1.2 (was 18, originally 36)
+tier_2_pp = 4  # Was 6 → 40% reduction (base_cost * 1.2, rounded)
 
 tier_3_min_percent = 76
 tier_3_max_percent = 100
 tier_3_multiplier = 1.5
-tier_3_pp = 8  # base_cost * 1.5 (was 23, originally 45, rounded up)
+tier_3_pp = 5  # Was 8 → 40% reduction (base_cost * 1.5, rounded)
 
 tier_4_min_percent = 101
 tier_4_max_percent = 150
 tier_4_multiplier = 2.0
-tier_4_pp = 10  # base_cost * 2.0 (was 30, originally 60)
+tier_4_pp = 6  # Was 10 → 40% reduction (base_cost * 2.0)
 
 tier_5_min_percent = 151
 tier_5_multiplier = 2.5
-tier_5_pp = 13  # base_cost * 2.5 (was 38, originally 75, rounded up)
+tier_5_pp = 8  # Was 13 → 40% reduction (base_cost * 2.5, rounded)
 
 # ============================================================================
 # Colonization Costs

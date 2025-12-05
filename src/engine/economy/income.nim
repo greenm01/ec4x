@@ -254,9 +254,10 @@ proc applyIndustrialGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
   let currentIU = float(colony.industrial.units)
   let currentPU = float(colony.populationUnits)
 
-  # Base growth scales with population size
+  # Base growth scales with population size (2x accelerated for 30-45 turn games)
   # Larger populations naturally build more infrastructure
-  let baseIndustrialGrowth = max(1.0, floor(currentPU / 200.0))
+  # Was: currentPU / 200.0 → now currentPU / 100.0 (2x growth rate)
+  let baseIndustrialGrowth = max(2.0, floor(currentPU / 100.0))
 
   # Apply same tax and starbase modifiers as population
   # Low taxes → more economic freedom → faster industrialization

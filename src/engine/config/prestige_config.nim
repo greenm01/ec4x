@@ -51,6 +51,7 @@ type
     lose_starbase*: int
     ambushed_by_cloak*: int
     force_retreat*: int
+    forced_to_retreat*: int  # NEW: Penalty for being forced to retreat (counterpart to force_retreat)
     scout_destroyed*: int
     undefended_colony_penalty_multiplier*: float  # Phase F: Penalty multiplier for losing undefended colonies
 

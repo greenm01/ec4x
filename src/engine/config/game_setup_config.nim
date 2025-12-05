@@ -21,6 +21,7 @@ type
     primary_condition*: string
     secondary_condition*: string
     prestige_threshold*: int
+    turn_limit*: int  # NEW: Turn limit for turn_limit victory mode
 
   MapConfig* = object
     ## Map generation settings
