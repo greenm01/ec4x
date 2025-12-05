@@ -72,7 +72,7 @@ proc filterAffordableGoals*(goals: seq[Goal], availableBudget: int): seq[Goal] =
 # =============================================================================
 
 type
-  DomainType* = enum
+  DomainType* {.pure.} = enum
     FleetDomain
     BuildDomain
     ResearchDomain

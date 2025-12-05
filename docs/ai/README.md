@@ -1,399 +1,438 @@
-# Analysis Documentation
+# AI System Documentation
 
-Guides for optimizing EC4X's Rule-Based AI (RBA) using diagnostic data and Claude Code.
-
-**Last Updated:** 2025-11-27 (Terminal-Based Analysis System)
+**Last Updated:** 2025-12-04
+**Current Status:** GOAP + RBA Hybrid System Complete, Performance Investigation Needed
 
 ## Overview
 
-This directory contains everything you need to efficiently balance your game by leveraging your **AMD Ryzen 7950X3D** for data crunching and **Claude Code** for expert analysis.
+EC4X features a hybrid AI architecture combining:
+- **GOAP (Goal-Oriented Action Planning)** - Strategic multi-turn planning (3-10 turns ahead)
+- **RBA (Rule-Based Advisors)** - Tactical single-turn execution
 
-**Key Insight:** Use local compute to crunch data, share tiny summaries with Claude → 99.99% token reduction!
+This hybrid system provides Byzantine Imperial AI with strategic foresight, adaptive replanning, and budget-aware decision making across 6 domains (Fleet, Build, Research, Diplomatic, Espionage, Economic).
 
-## 🆕 Recent Changes (2025-11-26)
+---
 
-### QoL Integration Complete
+## 🆕 Recent Changes (December 2025)
 
-The RBA system now integrates with Quality-of-Life features for intelligent, personality-driven automation:
+### GOAP + RBA Hybrid System Complete ✅
+**Date:** 2025-12-04
+**Status:** Production-ready, awaiting performance testing
 
-**✅ Integrated Systems:**
-- **Budget Tracking** - Engine + AI level validation (0% overspending achieved!)
-- **Standing Orders** - Intelligent fleet automation based on role + personality
-- **Fleet Validation** - Security + target validation (100% compliance)
-- **Ownership Checks** - Prevents unauthorized fleet control
+**Implementation:**
+- ~5,700 LOC across 32 files
+- 6 domains with 25 goal types and 25 action types
+- A* planner with admissible heuristics
+- RBA integration with budget estimation
+- Replanning triggers for adaptive behavior
+- Parameter sweep framework (243 parameter sets)
+- 35 unit tests (100% passing)
 
-**🔴 Known Issues:** Several AI subsystems have integration bugs discovered in testing:
-- Espionage system not executing (0% usage)
-- Scout production not triggering (0 scouts built)
-- Mothballing logic not activating (0% usage)
-- Resource hoarding (55% games affected)
+**Key Features:**
+- Strategic planning horizon (3-10 turns)
+- Budget-aware multi-domain coordination
+- Adaptive replanning on state changes
+- Configuration-driven behavior per strategy
+- Backward compatible (GOAP can be disabled)
 
-**See:** `docs/testing/BALANCE_TESTING_2025-11-26.md` for full test report
+**See:** `GOAP_COMPLETE.md` for comprehensive documentation
 
-## 🆕 Terminal-Based Analysis System (2025-11-27)
+---
 
-**NEW WORKFLOW:** Self-service RBA tuning + Claude-assisted analysis
+### RBA Bug Fixes Complete ✅
+**Date:** 2025-12-04
+**Status:** All bugs fixed, performance regression identified
+
+**Fixed Issues:**
+1. ✅ Espionage budget calculation (EBP/CIP now working)
+2. ✅ War AI combat orders (Bombard/Invade/Blitz selection)
+3. ✅ Scout intelligence missions (HackStarbase/SpyPlanet/SpySystem)
+4. ✅ Infinite loop in scout targeting (HashSet optimization)
+
+**Known Issue:** Performance regression (40+ seconds per 8-turn game)
+- NOT caused by RBA fixes
+- Likely from capacity systems (carrier hangar, construction docks)
+- Needs profiling to identify bottleneck
+
+**See:** `RBA_WORK_COMPLETE_NEXT_STEPS.md` for details
+
+---
+
+### Commissioning & Automation Refactor ✅
+**Date:** 2025-12-04
+**Status:** Implementation complete
+
+**Changes:**
+- Moved commissioning from Maintenance Phase to Command Phase
+- Consolidated all automation in `automation.nim` module
+- Implemented auto-loading fighters to carriers (per-colony toggle)
+- Removed 468+ lines of dead code
+- Maintained strict DRY and DoD principles
+
+**See:** `COMMISSIONING_AUTOMATION_REFACTOR_COMPLETE.md` for details
+
+---
+
+## Quick Start
+
+### Testing the AI
 
 ```bash
-# Full analysis workflow (fast!)
-nimble analyzeBalance           # CSV → Parquet → Analysis → Report
+# Build the project
+nimble build
 
-# Or use individual commands:
-nimble balanceSummary           # Quick overview
-nimble balancePhase2            # Phase 2 gap analysis
-nimble balanceOutliers          # Detect anomalies
-nimble balanceExport            # Export to Excel/LibreOffice
-nimble balanceReport            # Generate markdown report
+# Quick validation (20 games, ~10s)
+nimble testBalanceQuick
+
+# Full balance testing (400 games across 4 acts)
+nimble testBalanceAll4Acts
+
+# Quick game simulation (8 turns, 4 houses)
+time ./bin/run_simulation 8 12345 4 4
 ```
 
-**Key Benefits:**
-- ✅ **100x faster** analysis (Parquet vs CSV)
-- ✅ **1000x token reduction** for Claude (markdown summaries)
-- ✅ **Terminal + Excel** workflow (no web dashboard)
-- ✅ **Self-service** tuning (edit `config/rba.toml`, test, repeat)
+**Expected Performance:**
+- 8-turn game: Should complete in <1 second (currently experiencing regression)
+- 40-turn game: ~5-10 seconds
 
-**See:** `/docs/guides/BALANCE_ANALYSIS_SYSTEM.md` for comprehensive guide
+---
 
-## Quick Start (Legacy)
+## Analysis System
+
+EC4X uses a **Pure Nim analysis system** (no Python required) via the `ec4x` CLI tool.
+
+### Quick Analysis Commands
 
 ```bash
-# 1. Run diagnostics (2 minutes)
-nimble testBalanceDiagnostics
+# Build analysis CLI
+nimble buildAnalysis
 
-# 2. New: Full analysis workflow
-nimble analyzeBalance           # Recommended!
+# Quick terminal summary (human-readable)
+nimble analyzeSummary
 
-# 3. Legacy: Generate JSON summary
-nimble summarizeDiagnostics
+# Full analysis with Unicode tables
+nimble analyzeFull
 
-# 4. Share with Claude Code
-cat balance_results/analysis_report.md  # New: markdown report
-cat balance_results/summary.json        # Legacy: JSON summary
+# Compact markdown (~1500 tokens for Claude)
+nimble analyzeCompact
+
+# Detailed markdown report (git-committable)
+nimble analyzeDetailed
+
+# Generate all report formats
+nimble analyzeAll
 ```
 
-**Result:** Actionable feedback from ~500 tokens instead of 5 million!
+### Data Management
 
-## Documentation
+```bash
+# Show current data status
+nimble dataInfo
 
-### 0. /docs/guides/BALANCE_ANALYSIS_SYSTEM.md ⭐ **NEW**
-**Purpose:** Complete guide to the terminal-based analysis system
+# Clean old data (keep last 5 reports, 10 summaries)
+nimble dataClean
 
-**Topics:**
-- Self-service RBA tuning workflow
-- Best practices for solo tuning
-- Tips for Claude-assisted tuning
-- Command reference (nimble tasks, CLI, Python API)
-- Excel/LibreOffice pivot table analysis
-- Troubleshooting & performance tips
+# Clean ALL data with backup
+nimble dataCleanAll
 
-**When to read:** START HERE for the new analysis system
-
-### 1. TOKEN_EFFICIENT_WORKFLOW.md
-**Purpose:** Learn the optimal workflow for sharing data with Claude Code
-
-**Topics:**
-- Token economics (CSV vs Parquet vs JSON)
-- The 3-phase workflow (generate → summarize → share)
-- Targeted analysis patterns
-- Iteration loops
-- A/B testing
-
-**When to read:** Before your first optimization session
-
-### 2. RBA_OPTIMIZATION_GUIDE.md
-**Purpose:** Systematic approach to improving rule-based AI behavior
-
-**Topics:**
-- Understanding RBA architecture (`src/ai/`)
-- Diagnostic metrics explained
-- Common patterns & fixes (thresholds, personality coverage, etc.)
-- Anomaly interpretation
-- Validation checklists
-- Getting help from Claude effectively
-
-**When to read:** When diving into AI code changes
-
-### 3. AI_ANALYSIS_WORKFLOW.md
-**Purpose:** Complete technical reference for analysis tools
-
-**Topics:**
-- Tool usage (generate_summary.py, convert_to_parquet.py, etc.)
-- File locations and formats
-- Performance tuning for 7950X3D
-- Custom Polars queries
-- Integration with CI/CD
-
-**When to read:** When you need technical details about the tools
-
-### 4. DATA_MANAGEMENT.md
-**Purpose:** How diagnostic data is stored, archived, and cleaned
-
-**Topics:**
-- Auto-archiving with restic
-- Clean commands (cleanBalance, cleanBalanceAll, cleanDiagnostics)
-- Archive management (list, prune, restore)
-- Space usage and best practices
-
-**When to read:** When managing disk space or restoring old data
-
-## Tools Reference
-
-| Tool | Purpose | Usage |
-|------|---------|-------|
-| `run_parallel_diagnostics.py` | Generate CSV diagnostics | `nimble testBalanceDiagnostics` |
-| `generate_summary.py` | Create AI-friendly JSON | `nimble summarizeDiagnostics` |
-| `convert_to_parquet.py` | Compress CSV → Parquet | `nimble convertToParquet` |
-| `analyze_phase2_gaps.py` | Detailed Phase 2 analysis | `nimble analyzeDiagnostics` |
-| `analyze_4act_progression.py` | 4-act validation | `nimble analyzeProgression` |
-| `example_custom_analysis.py` | Template for custom queries | See guide |
-
-All tools located in `tools/ai_tuning/`
-
-## Typical Workflow
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│ Problem: "Fighters aren't being built"                      │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────────────┐
-│ 1. Run Diagnostics                                           │
-│    nimble testBalanceDiagnostics  # 50 games, 2 min         │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────────────┐
-│ 2. Generate Summary                                          │
-│    nimble summarizeDiagnostics                               │
-│    → Shows: avg_fighters: 0.4 (target: 5-10)                │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────────────┐
-│ 3. Share with Claude                                         │
-│    cat balance_results/summary.json                          │
-│    → Claude: "Build threshold too high (line 312)"          │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────────────┐
-│ 4. Make Change                                               │
-│    # ai_controller.nim:312                                   │
-│    - if techPriority >= 0.4 and aggression >= 0.4:          │
-│    + if techPriority >= 0.3 or aggression >= 0.5:           │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────────────┐
-│ 5. Validate                                                  │
-│    nimble testBalanceDiagnostics                             │
-│    → Shows: avg_fighters: 15.2 ✓                            │
-└──────────────────────────────────────────────────────────────┘
+# List archived diagnostics
+nimble dataArchives
 ```
 
-**Cycle time:** 3-5 minutes per iteration
-
-## File Locations
+### Output Organization
 
 ```
 balance_results/
-├── diagnostics/
-│   ├── game_*.csv                    # Raw diagnostics (9.2 MB)
-│   └── ...
-├── diagnostics_combined.parquet      # Compressed format (270 KB)
-└── summary.json                      # AI-friendly summary (1.4 KB)
-
-docs/analysis/
-├── README.md                         # This file
-├── TOKEN_EFFICIENT_WORKFLOW.md       # Workflow guide
-├── RBA_OPTIMIZATION_GUIDE.md         # RBA-specific guide
-└── AI_ANALYSIS_WORKFLOW.md           # Technical reference
-
-tools/ai_tuning/
-├── generate_summary.py               # Summary generator
-├── convert_to_parquet.py             # Parquet converter
-├── example_custom_analysis.py        # Query examples
-└── ...                               # Other analysis tools
+├── diagnostics/           # Raw CSV data from simulations
+│   └── game_*.csv
+├── reports/               # Terminal and markdown reports
+│   ├── terminal_*.txt    # Rich terminal output
+│   ├── detailed_*.md     # Full analysis reports
+│   └── latest.md         # Symlink to most recent report
+├── summaries/             # Compact AI-friendly summaries
+│   └── compact_*.md      # ~1500 token summaries
+└── archives/              # Backup of old diagnostics
+    └── diagnostics_backup_*/
 ```
 
-## Quick Command Reference
+**Key Features:**
+- ✅ Pure Nim (Datamancer DataFrame library)
+- ✅ Auto-cleanup with backup before new runs
+- ✅ Token-efficient summaries for Claude Code
+- ✅ Unicode table formatting for terminal
+- ✅ Red flag detection (8 analyzer types)
+- ✅ Strategy performance analysis
+
+---
+
+## Architecture
+
+### File Structure
+
+```
+src/ai/
+├── rba/                     # Rule-Based Advisor (production AI)
+│   ├── player.nim           # Public API
+│   ├── controller.nim       # Strategy profiles
+│   ├── intelligence.nim     # Intel gathering
+│   ├── diplomacy.nim        # Diplomatic assessment
+│   ├── tactical.nim         # Fleet operations
+│   ├── strategic.nim        # Combat assessment
+│   ├── budget.nim           # Budget allocation
+│   └── goap/                # GOAP integration (~5,700 LOC)
+│       ├── core/            # Foundation (types, conditions, heuristics)
+│       ├── state/           # State management (snapshot, assessment, effects)
+│       ├── planner/         # A* algorithm (node, search)
+│       ├── domains/         # 6 domains (fleet, build, research, etc.)
+│       └── integration/     # RBA integration (conversion, tracking, replanning)
+├── analysis/                # Pure Nim analysis system
+│   ├── run_simulation.nim   # Simulation harness
+│   ├── diagnostics.nim      # Metric logging (200+ metrics)
+│   ├── data/                # CSV loading, statistics, management
+│   ├── analyzers/           # Performance and red flag analysis
+│   └── formatters/          # Terminal, compact, markdown output
+├── tuning/                  # AI optimization
+│   └── genetic/             # Genetic algorithms
+├── sweep/                   # Parameter sweep framework
+│   └── params/              # GOAP parameter definitions
+├── training/                # Neural network training exports
+│   └── export.nim           # 600-dim state encoding
+└── common/                  # Shared AI types
+
+cli/
+├── ec4x.nim                 # Unified CLI tool (analysis, etc.)
+└── commands/
+    ├── analyze.nim          # Analysis commands
+    └── data.nim             # Data management
+```
+
+### GOAP + RBA Hybrid Architecture
+
+**Phase 1-3: Strategic Planning (GOAP)**
+- Goal extraction from game state
+- Multi-turn action planning with A*
+- Budget estimation for strategic needs
+
+**Phase 4: RBA Integration**
+- GOAP plans inform RBA budget allocation
+- Treasurer has visibility into strategic needs
+- Backward compatible (GOAP can be disabled)
+
+**Phase 5: Feedback & Replanning**
+- RBA feedback triggers GOAP replanning
+- Budget shortfalls detected automatically
+- Opportunistic goal pursuit
+
+**Configuration:**
+All GOAP behavior controlled via `GOAPConfig` in `config/rba.toml`:
+- Planning depth (3-10 turns)
+- Confidence threshold (0.4-0.9)
+- Max concurrent plans (3-10)
+- Defense/offense priorities (0.0-1.0)
+
+---
+
+## Testing Workflow
+
+### Token-Efficient Development
+
+**USER runs commands, reports only errors/results to Claude:**
+- Build output: 1,000-3,000 tokens per compile
+- Test output: 5,000-20,000 tokens per test run
+- Saves 10,000+ tokens per session
+
+**Claude focuses on:**
+- Code changes and logic
+- Documentation updates
+- Design decisions
+- File reading and analysis
+- Interpreting test results
+
+### Quick Commands
 
 ```bash
-# Diagnostic Generation
-nimble testBalanceDiagnostics       # 50 games, quick iteration
-nimble testUnknownUnknowns          # 200 games, comprehensive
+# Standard tests
+nimble test                    # All integration tests
+nimble testBalanceQuick        # Quick validation (20 games, ~10s)
 
-# Analysis
-nimble summarizeDiagnostics         # AI-friendly JSON summary
-nimble analyzeDiagnostics           # Detailed Phase 2 analysis
-nimble analyzeProgression           # 4-act validation
+# 4-Act testing (auto-cleans old diagnostics)
+nimble testBalanceAct1         # Act 1 (7 turns, 100 games)
+nimble testBalanceAct2         # Act 2 (15 turns, 100 games)
+nimble testBalanceAct3         # Act 3 (25 turns, 100 games)
+nimble testBalanceAct4         # Act 4 (30 turns, 100 games)
+nimble testBalanceAll4Acts     # All 4 acts (400 games)
 
-# Data Management
-nimble convertToParquet             # CSV → Parquet (34x smaller)
-nimble cleanBalance                 # Clean working files (keeps archives)
-nimble cleanBalanceAll              # Clean EVERYTHING including archives
-nimble cleanDiagnostics             # Clean CSVs only (keep Parquet/summary)
-
-# Archive Management
-nimble listArchives                 # List all archived runs
-nimble archiveStats                 # Show storage statistics
-nimble pruneArchives                # Keep last 10 archives
-
-# Custom Analysis
-python3 tools/ai_tuning/example_custom_analysis.py fighters
-python3 tools/ai_tuning/example_custom_analysis.py treasury
-python3 tools/ai_tuning/example_custom_analysis.py combat
+# AI Optimization
+nimble buildAITuning           # Build genetic algorithm tools
+nimble evolveAIQuick           # Quick 10-gen test (~5 min)
+nimble evolveAI                # Full 50-gen evolution (~2-4 hours)
+nimble coevolveAI              # Competitive co-evolution
 ```
 
-## Token Budget Examples
+---
 
-### Scenario 1: Quick Check (Recommended)
-```
-Share: summary.json (500 tokens)
-Time:  Instant
-Result: "Fighter threshold too high, try 0.3 instead of 0.4"
+## Configuration System
+
+All balance values from TOML (14 files):
+- Engine: `config/prestige.toml`, `config/espionage.toml`, `config/economy.toml`, etc.
+- RBA AI: `config/rba.toml` (AI strategies, budgets, thresholds)
+- GOAP: Embedded in RBA config (planning depth, confidence, priorities)
+
+**Example (from config/rba.toml):**
+```toml
+[goap.default]
+enabled = true
+planning_depth = 5
+confidence_threshold = 0.6
+max_concurrent_plans = 5
+defense_priority = 0.7
+offense_priority = 0.5
+
+[goap.aggressive]
+enabled = true
+planning_depth = 3
+confidence_threshold = 0.5
+max_concurrent_plans = 7
+defense_priority = 0.4
+offense_priority = 0.9
 ```
 
-### Scenario 2: Targeted Analysis
-```
-Share: filtered_fighters.json (1,500 tokens)
-Time:  Instant
-Result: "Only House Atreides builds fighters - personality coverage issue"
-```
+---
 
-### Scenario 3: Deep Dive (Rare)
-```
-Share: diagnostics_combined.parquet (50,000 tokens)
-Time:  ~30 seconds to upload
-Result: Full cross-system analysis with multiple interconnected fixes
-```
+## Known Issues
 
-### Scenario 4: Naive Approach (DON'T DO THIS)
-```
-Share: Raw CSV files (5,000,000 tokens)
-Result: Context overflow, conversation fails, can't get help
-```
+### Performance Regression ⚠️
+**Symptom:** 8-turn game takes 40+ seconds instead of <1 second
+**Root Cause:** Unknown, predates RBA/GOAP work
+**Suspected Culprits:**
+- Carrier hangar capacity system
+- Construction dock capacity system
+- Potential O(n²) patterns in capacity checks
 
-## Performance Expectations
+**Next Steps:**
+1. Profile simulation to identify bottleneck
+2. Review capacity algorithms for nested loops
+3. Add caching if capacity checks are repeated
+4. Optimize hot paths
 
-**7950X3D @ 16 workers:**
+**See:** `RBA_WORK_COMPLETE_NEXT_STEPS.md` for investigation steps
+
+---
+
+## Documentation
+
+### Current Documentation
+1. **GOAP_COMPLETE.md** - Complete GOAP + RBA hybrid system documentation
+2. **RBA_WORK_COMPLETE_NEXT_STEPS.md** - RBA fixes and performance investigation
+3. **COMMISSIONING_AUTOMATION_REFACTOR_COMPLETE.md** - Construction system refactor
+4. **ARCHITECTURE.md** - Overall AI system architecture
+5. **QUICK_START.md** - Getting started guide
+
+### Outdated Documentation (To Be Archived)
+Several older documentation files are now superseded by recent work:
+- TOKEN_EFFICIENT_WORKFLOW.md (workflow mostly unchanged)
+- RBA_OPTIMIZATION_GUIDE.md (RBA bugs now fixed)
+- AI_ANALYSIS_WORKFLOW.md (workflow documented in CONTEXT.md)
+- DATA_MANAGEMENT.md (data commands documented in CONTEXT.md)
+- Multiple GOAP phase documents (consolidated in GOAP_COMPLETE.md)
+
+**Note:** Per CONTEXT.md rules, /docs/ai should maintain only essential current documentation. Historical docs should be archived to `/docs/archive/[date]/`.
+
+---
+
+## Next Steps
+
+### Immediate Priority
+1. **Performance Investigation**
+   - Profile simulation to identify bottleneck
+   - Fix capacity system slowdown
+   - Verify AI behavior with proper performance
+
+### After Performance Fix
+1. **Run Balance Test Suite**
+   ```bash
+   nimble testBalanceAll4Acts
+   ```
+2. **Generate RBA Baseline Metrics**
+   - Compare vs GOAP targets
+   - Analyze strategy performance
+   - Evaluate GOAP effectiveness
+
+### GOAP Testing & Optimization
+1. Write GOAP integration tests
+2. Run 10-turn test game with GOAP logging
+3. Perform stratified parameter sweep (50 sets)
+4. Analyze results and document optimal configurations
+5. A/B test: GOAP vs pure RBA
+
+---
+
+## Performance Expectations (7950X3D)
+
+**Simulation (when fixed):**
+- 8 turns: <1 second
+- 40 turns: ~5-10 seconds
 - 50 games: ~2 minutes
 - 100 games: ~4 minutes
-- 200 games: ~10 minutes
+- 400 games (4-act): ~15-20 minutes
 
-**Analysis:**
+**Analysis (Pure Nim):**
 - Summary generation: ~2 seconds
 - Parquet conversion: ~3 seconds
-- Custom query: <1 second (from Parquet)
+- Custom query: <1 second
+- Full report with Unicode tables: ~5 seconds
 
-**Claude feedback:**
-- From summary: ~10 seconds
-- From filtered data: ~30 seconds
-- From Parquet: ~60 seconds
+**GOAP Overhead (per house, per turn):**
+- Goal extraction: <10ms
+- Plan generation: <100ms
+- Budget estimation: <1ms
+- Replanning (when triggered): <200ms
+- **Total Phase 1.5:** ~120ms
+
+---
 
 ## Best Practices
 
 ### ✅ DO
-- Start with summary.json (99% of cases)
-- Use 50 games for quick iterations
-- Share filtered subsets for targeted issues
-- Ask specific questions with code context
-- Iterate rapidly (3-5 minute cycles)
+- Use `ec4x` CLI for all diagnostic analysis
+- Start with compact summaries for Claude (~1500 tokens)
+- Run balance tests with nimble tasks (not direct commands)
+- Use proper logging (`std/logging`, not echo)
+- Follow DRY and DoD principles
+- Update TODO.md after major milestones
 
 ### ❌ DON'T
-- Upload raw CSV files
-- Test with <20 games (too much variance)
-- Share all 130 columns unnecessarily
-- Ask vague questions without metrics
-- Wait for 200-game runs before getting feedback
-
-## Example Session
-
-**You:**
-```
-Working on Phase 2b (fighter/carrier). Ran 50 games.
-
-[paste summary.json]
-
-Why aren't fighters being built?
-```
-
-**Claude:**
-```
-Issue: avg_fighters: 0.4 (target: 5-10)
-
-This is very low. Let me check ai_controller.nim...
-
-Found it at line 312:
-  if personality.techPriority >= 0.4 and personality.aggression >= 0.4:
-
-This requires BOTH traits high. Only 1/4 of personalities match.
-
-Try:
-  if personality.techPriority >= 0.3 or personality.aggression >= 0.5:
-
-This allows tech-focused OR aggressive houses to build fighters.
-```
-
-**You (2 minutes later):**
-```
-Made the change. New results:
-
-[paste new summary.json showing 15.2 avg_fighters]
-```
-
-**Claude:**
-```
-Excellent! avg_fighters: 15.2 ✓
-
-But now idle_carrier_rate: 23.4% - fighters exist but aren't being
-loaded onto carriers. Want me to check the assignment logic?
-```
-
-**Result:** Two iterations, ~5 minutes, ~1000 tokens total
-
-## Dependencies
-
-```bash
-# Required for analysis tools
-pip install polars
-
-# Verify
-python3 -c "import polars as pl; print(f'Polars {pl.__version__} ready')"
-```
-
-## Getting Started
-
-1. **Read TOKEN_EFFICIENT_WORKFLOW.md** (15 min)
-2. **Run test diagnostics**: `nimble testBalanceDiagnostics` (2 min)
-3. **Generate summary**: `nimble summarizeDiagnostics` (instant)
-4. **Try sharing summary.json with Claude** in a conversation
-5. **Read RBA_OPTIMIZATION_GUIDE.md** when ready to make changes
-
-## Support
-
-- **Tool documentation**: See individual `.py` file headers
-- **Nimble tasks**: `nimble --help`
-- **Claude Code help**: Ask about specific metrics or anomalies
-- **RBA code**: See `src/ai/` modules
-
-## Contributing
-
-When adding new diagnostic metrics:
-
-1. Add column to CSV in `tests/balance/run_simulation.nim`
-2. Update `generate_summary.py` to analyze it
-3. Document in `RBA_OPTIMIZATION_GUIDE.md`
-4. Add example query to `example_custom_analysis.py`
-
-## Related Documentation
-
-- `/docs/BALANCE_TESTING_METHODOLOGY.md` - Target metrics and 4-act structure
-- `/docs/UNKNOWN_UNKNOWNS_FINDINGS_2025-11-25.md` - Lessons learned
-- `/tools/ai_tuning/README.md` - Tool-specific documentation
-- `/CLAUDE_CONTEXT.md` - Development context and gotchas
+- Upload raw CSV files to Claude (5M tokens)
+- Run direct Python/bash commands (use nimble tasks)
+- Use echo statements in production code
+- Hardcode game values (use TOML configs)
+- Create files without checking 7-file limit in /docs root
 
 ---
 
-**Remember:** Crunch data locally with your 7950X3D, share tiny summaries with Claude Code. This workflow gives you fast, expert feedback while staying well within token budgets!
+## References
+
+- **Main Context:** `docs/CONTEXT.md` - Critical rules and workflow
+- **TODO:** `docs/TODO.md` - Project-wide roadmap
+- **Style Guide:** `docs/STYLE_GUIDE.md` - Coding standards
+- **Balance Testing:** `docs/BALANCE_TESTING_METHODOLOGY.md` - Testing approach
+- **AI Status:** `docs/ai/STATUS.md` - Neural network training roadmap (outdated, pre-GOAP)
+
+---
+
+## Support
+
+**Getting Started:**
+1. Read `CONTEXT.md` for critical rules and workflow
+2. Read `GOAP_COMPLETE.md` for AI system architecture
+3. Run `nimble testBalanceQuick` to verify setup
+4. Use `nimble analyzeCompact` to generate AI-friendly reports
+
+**For Help:**
+- Tool documentation: See `ec4x --help` and nimble task definitions
+- Claude Code: Share compact summaries for analysis
+- Architecture questions: See GOAP_COMPLETE.md and ARCHITECTURE.md
+
+---
+
+**Remember:** The hybrid GOAP + RBA system is production-ready and awaiting performance fixes. Focus on profiling and optimizing the capacity systems, then proceed with comprehensive testing and parameter optimization!
