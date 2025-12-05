@@ -193,12 +193,18 @@ suite "Resolution: Ship Commissioning":
     let result2 = resolveTurn(result.newState, turn2Orders)
 
     # Multiple ships should be commissioned after turn 2
-    # NOTE: Actual number depends on dock capacity and queue system implementation
-    # With current implementation, at least 2 ships should be commissioned
-    let totalSquadrons = result2.newState.colonies[1].unassignedSquadrons.len +
-                          result2.newState.fleets.values.toSeq.mapIt(it.squadrons.len).foldl(a + b, 0)
+    # NOTE: Non-flagship ships (Corvettes) are pooled into same squadron (1 flagship + 2 escorts)
+    # Only flagship-class ships create separate squadrons
+    # With current implementation, all 3 Corvettes should form 1 squadron
 
-    check totalSquadrons >= 2  # At least 2 of 3 ships commissioned
+    # Count total ships commissioned (not squadrons)
+    var totalShips = 0
+    for fleet in result2.newState.fleets.values:
+      for squadron in fleet.squadrons:
+        totalShips += 1  # flagship
+        totalShips += squadron.ships.len  # escort ships
+
+    check totalShips >= 3  # All 3 Corvettes should be commissioned
 
 suite "Resolution: Auto-Assignment to Fleets":
 
