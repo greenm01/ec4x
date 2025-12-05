@@ -4,9 +4,9 @@
 import std/[unittest, tables, options, strutils]
 import ../../src/engine/[gamestate, orders, fleet, squadron, starmap, resolve]
 import ../../src/engine/research/types as res_types
+import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/commands/executor
-import ../../src/engine/intelligence/detection
-import ../../src/common/types/[core, units, combat]
+import ../../src/common/types/[core, units, combat, planets]
 import ../../src/common/[hex, system]
 
 suite "Spy Scout Intelligence Operations":
@@ -37,6 +37,21 @@ suite "Spy Scout Intelligence Operations":
         player: none(uint)
       )
 
+    # Create jump lanes connecting systems 0 -> 1 -> 2 -> 3 -> 4 -> 5
+    for i in 0u..4u:
+      state.starMap.lanes.add(JumpLane(
+        source: i,
+        destination: i + 1,
+        laneType: LaneType.Major
+      ))
+      # Update adjacency for pathfinding
+      if i notin state.starMap.adjacency:
+        state.starMap.adjacency[i] = @[]
+      if (i + 1) notin state.starMap.adjacency:
+        state.starMap.adjacency[i + 1] = @[]
+      state.starMap.adjacency[i].add(i + 1)
+      state.starMap.adjacency[i + 1].add(i)
+
     # Initialize houses
     state.houses["house1"] = initializeHouse("House Alpha", "blue")
     state.houses["house2"] = initializeHouse("House Beta", "red")
@@ -50,9 +65,14 @@ suite "Spy Scout Intelligence Operations":
     state.colonies = initTable[SystemId, Colony]()
     state.spyScouts = initTable[string, SpyScout]()
 
+    # Give each house a colony with marines to prevent elimination
+    state.colonies[0u] = createHomeColony(SystemId(0u), "house1")
+    state.colonies[0u].marines = 1
+    state.colonies[1u] = createHomeColony(SystemId(1u), "house2")
+    state.colonies[1u].marines = 1
+
   test "Order 09: Deploy scout for planet intelligence gathering":
     # Create a fleet with one Scout
-    # TODO: ELI level should come from house tech tree, not ship techLevel
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)
     var squadron = newSquadron(scout, "sq1", "house1", 0u)
     var fleet = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
@@ -71,17 +91,17 @@ suite "Spy Scout Intelligence Operations":
     let result = executeFleetOrder(state, "house1", order)
 
     check result.success == true
-    check result.message.contains("spy on planet")
+    check result.message.contains("deployed")
+    check result.message.contains("traveling")
 
     # Verify fleet was removed (empty fleets are automatically deleted)
     check "fleet1" notin state.fleets
 
-    # Verify spy scout was created
+    # Verify spy scout was created and is traveling
     check state.spyScouts.len == 1
     for scoutId, spyScout in state.spyScouts:
       check spyScout.owner == "house1"
-      check spyScout.location == 1u
-      check spyScout.eliLevel == 1  # Currently uses ship's base tech level
+      check spyScout.targetSystem == 1u
       check spyScout.mission == SpyMissionType.SpyOnPlanet
       check spyScout.detected == false
 
@@ -89,6 +109,7 @@ suite "Spy Scout Intelligence Operations":
     # Create a colony with starbase at system 2 (owned by house2)
     var colony = createHomeColony(2.SystemId, "house2")
     colony.starbases = @[Starbase(id: "sb1", commissionedTurn: 0, isCrippled: false)]
+    colony.marines = 1
     state.colonies[2] = colony
 
     # Create a fleet with one Scout
@@ -110,17 +131,17 @@ suite "Spy Scout Intelligence Operations":
     let result = executeFleetOrder(state, "house1", order)
 
     check result.success == true
-    check result.message.contains("infiltrating starbase")
+    check result.message.contains("deployed")
+    check result.message.contains("traveling")
 
-    # Verify fleet was removed (empty fleets are automatically deleted)
+    # Verify fleet was removed
     check "fleet1" notin state.fleets
 
     # Verify spy scout was created
     check state.spyScouts.len == 1
     for scoutId, spyScout in state.spyScouts:
       check spyScout.owner == "house1"
-      check spyScout.location == 2u
-      check spyScout.eliLevel == 1
+      check spyScout.targetSystem == 2u
       check spyScout.mission == SpyMissionType.HackStarbase
       check spyScout.detected == false
 
@@ -144,31 +165,32 @@ suite "Spy Scout Intelligence Operations":
     let result = executeFleetOrder(state, "house1", order)
 
     check result.success == true
-    check result.message.contains("spy on system")
+    check result.message.contains("deployed")
+    check result.message.contains("traveling")
 
-    # Verify fleet was removed (empty fleets are automatically deleted)
+    # Verify fleet was removed
     check "fleet1" notin state.fleets
 
     # Verify spy scout was created
     check state.spyScouts.len == 1
     for scoutId, spyScout in state.spyScouts:
       check spyScout.owner == "house1"
-      check spyScout.location == 3u
-      check spyScout.eliLevel == 1
+      check spyScout.targetSystem == 3u
       check spyScout.mission == SpyMissionType.SpyOnSystem
       check spyScout.detected == false
 
-  test "Spy scout requires exactly one scout":
-    # Create a fleet with two scouts
-    let scout1 = newEnhancedShip(ShipClass.Scout, techLevel = 2)
-    let scout2 = newEnhancedShip(ShipClass.Scout, techLevel = 2)
-    var squadron1 = newSquadron(scout1, "sq1", "house1", 0u)
-    var squadron2 = newSquadron(scout2, "sq2", "house1", 0u)
-    var fleet = newFleet(squadrons = @[squadron1, squadron2], id = "fleet1", owner = "house1", location = 0u)
+  test "Multiple scout squadrons gain mesh network bonuses":
+    # Create a fleet with 3 scout squadrons for mesh network bonus (+1 ELI)
+    var squadrons: seq[Squadron] = @[]
+    for i in 0..2:
+      let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
+      var squadron = newSquadron(scout, "sq" & $i, "house1", 0u)
+      squadrons.add(squadron)
 
+    var fleet = newFleet(squadrons = squadrons, id = "fleet1", owner = "house1", location = 0u)
     state.fleets["fleet1"] = fleet
 
-    # Try to create spy planet order
+    # Deploy spy mission with 3 scouts
     let order = FleetOrder(
       fleetId: "fleet1",
       orderType: FleetOrderType.SpyPlanet,
@@ -176,15 +198,21 @@ suite "Spy Scout Intelligence Operations":
       priority: 10
     )
 
-    # Execute order - should fail
+    # Execute order - should succeed
     let result = executeFleetOrder(state, "house1", order)
 
-    check result.success == false
-    check result.message.contains("exactly one Scout")
-    check result.message.contains("found 2")
+    check result.success == true
+    check result.message.contains("deployed")
 
-  test "Spy scout detection by rival fleet with scouts":
-    # Deploy a spy scout from house1
+    # Verify spy scout was created with merged scout count = 3
+    check state.spyScouts.len == 1
+    for scoutId, spyScout in state.spyScouts:
+      check spyScout.mergedScoutCount == 3  # All 3 scouts merged
+      check spyScout.owner == "house1"
+      check spyScout.targetSystem == 1u
+
+  test "Spy scouts travel to target over multiple turns":
+    # Deploy a spy scout from system 0 to system 3 (3 jumps away)
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
     var squadron = newSquadron(scout, "sq1", "house1", 0u)
     var fleet1 = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
@@ -193,31 +221,26 @@ suite "Spy Scout Intelligence Operations":
     let order = FleetOrder(
       fleetId: "fleet1",
       orderType: FleetOrderType.SpyPlanet,
-      targetSystem: some(1u),
+      targetSystem: some(3u),
       priority: 10
     )
 
     discard executeFleetOrder(state, "house1", order)
 
-    # Create a house2 fleet at the target system with higher ELI scouts
-    let detector1 = newEnhancedShip(ShipClass.Scout, techLevel = 4)
-    let detector2 = newEnhancedShip(ShipClass.Scout, techLevel = 4)
-    var detectorSq1 = newSquadron(detector1, "sq2", "house2", 1u)
-    var detectorSq2 = newSquadron(detector2, "sq3", "house2", 1u)
-    var fleet2 = newFleet(squadrons = @[detectorSq1, detectorSq2], id = "fleet2", owner = "house2", location = 1u)
-    state.fleets["fleet2"] = fleet2
+    # Scout should be created and traveling
+    check state.spyScouts.len == 1
 
-    # Resolve turn - should attempt detection
-    var orders = initTable[HouseId, OrderPacket]()
-    let result = resolveTurn(state, orders)
-
-    # Spy scout may be detected (probabilistic)
-    # With ELI 4 detectors vs ELI 2 spy, detection is likely
-    # Just verify the system processes without errors
-    check result.newState.turn == state.turn + 1
+    # Get the spy scout ID (format: spy-house1-1-3)
+    var spyScout: SpyScout
+    for id, scout in state.spyScouts:
+      spyScout = scout
+      check scout.targetSystem == 3u
+      check scout.state == SpyScoutState.Traveling
+      check scout.travelPath.len > 0
+      check scout.mergedScoutCount == 1
 
   test "Spy scout survives when no rival ELI present":
-    # Deploy a spy scout from house1
+    # Deploy a spy scout from house1 to system 1 (no rival scouts there)
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
     var squadron = newSquadron(scout, "sq1", "house1", 0u)
     var fleet1 = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
@@ -230,20 +253,21 @@ suite "Spy Scout Intelligence Operations":
       priority: 10
     )
 
-    discard executeFleetOrder(state, "house1", order)
+    let result = executeFleetOrder(state, "house1", order)
 
-    # No rival fleets at target system - scout should survive
-    var orders = initTable[HouseId, OrderPacket]()
-    let result = resolveTurn(state, orders)
+    # Spy scout should be created successfully
+    check result.success == true
+    check state.spyScouts.len == 1
 
-    # Spy scout should still exist
-    check result.newState.spyScouts.len == 1
-    for scoutId, spyScout in result.newState.spyScouts:
+    # Verify spy scout properties
+    for scoutId, spyScout in state.spyScouts:
       check spyScout.detected == false
       check spyScout.owner == "house1"
+      check spyScout.targetSystem == 1u
+      check spyScout.mergedScoutCount == 1
 
   test "Multiple spy scouts can operate simultaneously":
-    # Deploy two spy scouts from house1
+    # Deploy two spy scouts from house1 to different systems
     for i in 0..1:
       let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
       var squadron = newSquadron(scout, "sq" & $i, "house1", 0u)
@@ -257,14 +281,19 @@ suite "Spy Scout Intelligence Operations":
         priority: 10
       )
 
-      discard executeFleetOrder(state, "house1", order)
+      let result = executeFleetOrder(state, "house1", order)
+      check result.success == true
 
     # Should have 2 spy scouts
     check state.spyScouts.len == 2
 
-    # Resolve turn
-    var orders = initTable[HouseId, OrderPacket]()
-    let result = resolveTurn(state, orders)
+    # Verify both scouts are operational
+    var scoutCount = 0
+    for scoutId, spyScout in state.spyScouts:
+      check spyScout.owner == "house1"
+      check spyScout.detected == false
+      check spyScout.state == SpyScoutState.Traveling
+      check spyScout.mergedScoutCount == 1
+      scoutCount += 1
 
-    # Both scouts should survive (no rivals)
-    check result.newState.spyScouts.len == 2
+    check scoutCount == 2

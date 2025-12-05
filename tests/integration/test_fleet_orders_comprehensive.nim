@@ -470,7 +470,9 @@ suite "Fleet Orders: Complete Integration Tests":
 
     let result = executeFleetOrder(state, "house1", order)
     check result.success == true
-    check result.message.contains("spy")
+    # New spy scout system: fleet is removed, scouts deployed as SpyScout object
+    check "fleet-1" notin state.fleets  # Fleet deleted after scout deployment
+    check state.spyScouts.len > 0  # SpyScout object created
 
   # ==========================================================================
   # Order 10: Hack Starbase
@@ -501,7 +503,9 @@ suite "Fleet Orders: Complete Integration Tests":
 
     let result = executeFleetOrder(state, "house1", order)
     check result.success == true
-    check result.message.contains("infiltrating")
+    # New spy scout system: fleet is removed, scouts deployed as SpyScout object
+    check "fleet-1" notin state.fleets  # Fleet deleted after scout deployment
+    check state.spyScouts.len > 0  # SpyScout object created
 
   # ==========================================================================
   # Order 11: Spy System
@@ -532,7 +536,9 @@ suite "Fleet Orders: Complete Integration Tests":
 
     let result = executeFleetOrder(state, "house1", order)
     check result.success == true
-    check result.message.contains("spy on system")
+    # New spy scout system: fleet is removed, scouts deployed as SpyScout object
+    check "fleet-1" notin state.fleets  # Fleet deleted after scout deployment
+    check state.spyScouts.len > 0  # SpyScout object created
 
   # ==========================================================================
   # Order 12: Colonize
@@ -712,7 +718,7 @@ suite "Fleet Orders: Complete Integration Tests":
     check result.message.contains("reserve")
     check result.message.contains("50% maint")
 
-  test "Order 16: Reserve - must be at friendly colony":
+  test "Order 16: Reserve - auto-seeks friendly colony when not at one":
     var state = createTestGameState()
 
     let destroyer = newEnhancedShip(ShipClass.Destroyer)
@@ -736,8 +742,10 @@ suite "Fleet Orders: Complete Integration Tests":
     )
 
     let result = executeFleetOrder(state, "house1", order)
-    check result.success == false
-    check result.message.contains("must be at a colony")
+    check result.success == true
+    check result.message.contains("moving to colony")
+    # Fleet should have moved toward nearest friendly colony (not at Reserve status yet)
+    check state.fleets["fleet-1"].location != 5  # Should have moved
 
   # ==========================================================================
   # Order 17: Mothball

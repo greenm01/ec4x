@@ -71,6 +71,12 @@ suite "Spy Scout Travel Mechanics":
     state.spyScouts = initTable[string, SpyScout]()
     state.scoutLossEvents = @[]
 
+    # Give each house a colony with marines to prevent elimination
+    state.colonies[0u] = createHomeColony(SystemId(0u), "house1")
+    state.colonies[0u].marines = 1
+    state.colonies[4u] = createHomeColony(SystemId(4u), "house2")
+    state.colonies[4u].marines = 1
+
   test "Scout travels through jump lanes (not instant teleport)":
     # Create a fleet with one Scout at system 0
     let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)

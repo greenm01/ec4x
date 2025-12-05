@@ -1553,7 +1553,19 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
       # Research is planned at AI time but processed after Income Phase
       # This prevents negative treasury from over-aggressive research budgets
       var scaledAllocation = allocation
-      if totalResearchCost > state.houses[houseId].treasury:
+
+      # CRITICAL: If treasury is negative or zero, no research happens
+      if state.houses[houseId].treasury <= 0:
+        # Zero out all research - house is bankrupt
+        scaledAllocation.economic = 0
+        scaledAllocation.science = 0
+        scaledAllocation.technology = initTable[TechField, int]()
+        totalResearchCost = 0
+
+        logWarn(LogCategory.lcResearch,
+          &"{houseId} research cancelled - negative treasury ({state.houses[houseId].treasury} PP)")
+
+      elif totalResearchCost > state.houses[houseId].treasury:
         # Calculate scaling factor (how much we can actually afford)
         let affordablePercent = float(state.houses[houseId].treasury) / float(totalResearchCost)
 
