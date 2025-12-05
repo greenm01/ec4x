@@ -351,6 +351,30 @@ high_value_priority = 0.8        # High-production colonies
 transit_route_priority = 0.6     # Key routes between colonies
 recent_activity_priority = 0.7   # Systems with recent threat detection
 
+[intelligence.diplomatic_events]
+# Diplomatic event analysis (Phase E)
+war_significance_threshold = 8       # Wars rate high significance
+alliance_significance_threshold = 7  # Alliances important
+blockade_critical_threshold = 0.4    # Blockades reducing GCO >40% are critical
+
+[intelligence.counterintel]
+# Counter-intelligence priorities (Phase E)
+high_frequency_threshold = 3         # 3+ attempts = high frequency threat
+detection_success_threshold = 0.6    # 60% detection rate = high risk to operate
+priority_boost_espionage = 0.15      # 15% budget boost if under espionage pressure
+
+[intelligence.construction_analysis]
+# Construction trend detection (Phase E)
+buildup_threshold_shipyards = 2      # 2+ shipyard construction = military buildup
+velocity_threat_threshold = 1.5      # 1.5+ projects/turn = rapid expansion
+observation_window_turns = 10        # Analyze last 10 turns of data
+
+[intelligence.patrol_detection]
+# Patrol pattern recognition (Phase E)
+min_sightings_for_pattern = 3        # 3+ sightings needed to detect pattern
+pattern_confidence_threshold = 0.7   # 70% confidence required
+staleness_threshold_turns = 5        # Patterns >5 turns old are stale
+
 [drungarius]
 # Intelligence coordinator settings
 intel_processing_enabled = true         # Enable enhanced intelligence processing

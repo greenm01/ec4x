@@ -3,13 +3,14 @@
 ## Evaluates IU investment opportunities and calculates ROI
 ## Understands passive IU growth rates and when manual investment is beneficial
 
-import std/[options, math, algorithm]
+import std/[options, math, algorithm, tables]
 import ../../../common/types/core
 import ../../../engine/gamestate
 import ../../../engine/fog_of_war
 import ../../../engine/economy/types as econ_types
 import ../../common/types as ai_types
 import ../controller_types
+import ../shared/intelligence_types
 
 type
   IUInvestmentOpportunity* = object
@@ -71,7 +72,8 @@ proc evaluateIUInvestment*(
   houseELTech: int,
   houseTreasury: int,
   turnNumber: int,
-  strategy: AIStrategy = AIStrategy.Balanced
+  strategy: AIStrategy = AIStrategy.Balanced,
+  intel: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
 ): Option[IUInvestmentOpportunity] =
   ## Evaluate whether IU investment is worthwhile at this colony
   ##
@@ -80,6 +82,10 @@ proc evaluateIUInvestment*(
   ## 2. Current IU is significantly below optimal level
   ## 3. Payback period is reasonable (< 10 turns)
   ## 4. House has sufficient treasury reserves
+  ##
+  ## Phase E: Intelligence-aware priority boosting:
+  ## - Threatened colonies (military.threatsByColony) get +0.3 priority
+  ## - High-value border colonies (economic.highValueTargets near threats) get +0.2 priority
 
   let currentIU = colony.industrial.units
   let currentPU = colony.populationUnits
@@ -143,7 +149,36 @@ proc evaluateIUInvestment*(
   # Calculate priority (higher for larger colonies, shorter payback)
   let populationFactor = min(1.0, float(currentPU) / 1000.0)  # 0.0-1.0
   let paybackFactor = max(0.0, 1.0 - (float(paybackTurns) / 10.0))  # 1.0 at 0 turns, 0.0 at 10
-  let priority = (populationFactor + paybackFactor) / 2.0
+  var priority = (populationFactor + paybackFactor) / 2.0
+
+  # Phase E: Intelligence-aware priority boost
+  var reasonSuffix = ""
+  if intel.isSome:
+    let snapshot = intel.get()
+
+    # Boost priority for threatened colonies (defensive infrastructure)
+    if snapshot.military.threatsByColony.hasKey(colony.systemId):
+      let threat = snapshot.military.threatsByColony[colony.systemId]
+      case threat.level
+      of ThreatLevel.Critical:
+        priority = min(1.0, priority + 0.5)  # Critical threat = massive boost
+        reasonSuffix = " (CRITICAL THREAT - defensive infrastructure priority)"
+      of ThreatLevel.High:
+        priority = min(1.0, priority + 0.3)  # High threat = significant boost
+        reasonSuffix = " (high threat - defensive priority)"
+      of ThreatLevel.Moderate:
+        priority = min(1.0, priority + 0.15)  # Moderate threat = minor boost
+        reasonSuffix = " (moderate threat)"
+      else:
+        discard
+
+    # Boost priority for high-value border colonies
+    for hvTarget in snapshot.economic.highValueTargets:
+      if hvTarget.systemId == colony.systemId:
+        priority = min(1.0, priority + 0.2)
+        if reasonSuffix == "":
+          reasonSuffix = " (high-value strategic colony)"
+        break
 
   return some(IUInvestmentOpportunity(
     colonyId: colony.systemId,
@@ -154,15 +189,18 @@ proc evaluateIUInvestment*(
     paybackTurns: paybackTurns,
     priority: priority,
     reason: "Accelerate industrial development: " & $iuGain &
-            " IU for " & $investmentCost & " PP (" & $paybackTurns & "-turn payback)"
+            " IU for " & $investmentCost & " PP (" & $paybackTurns & "-turn payback)" & reasonSuffix
   ))
 
 proc generateIUInvestmentRecommendations*(
   controller: AIController,
-  filtered: FilteredGameState
+  filtered: FilteredGameState,
+  intel: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
 ): seq[IUInvestmentOpportunity] =
   ## Generate IU investment recommendations for all colonies
   ## Returns sorted by priority (highest first)
+  ##
+  ## Phase E: Now intelligence-aware - threatened/high-value colonies get priority boost
 
   result = @[]
 
@@ -175,7 +213,8 @@ proc generateIUInvestmentRecommendations*(
       house.techTree.levels.economicLevel,
       house.treasury,
       filtered.turn,
-      controller.strategy
+      controller.strategy,
+      intel  # Phase E: Pass intelligence for priority boosting
     )
 
     if opportunity.isSome:

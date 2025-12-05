@@ -26,8 +26,8 @@ proc generateEconomicRequirements*(
   var requirements: seq[EconomicRequirement] = @[]
   var totalCost = 0
 
-  # Generate IU investment opportunities
-  let iuOpportunities = generateIUInvestmentRecommendations(controller, filtered)
+  # Generate IU investment opportunities (Phase E: intelligence-aware)
+  let iuOpportunities = generateIUInvestmentRecommendations(controller, filtered, some(intelSnapshot))
 
   for opportunity in iuOpportunities:
     # Convert float priority (0.0-1.0) to RequirementPriority enum

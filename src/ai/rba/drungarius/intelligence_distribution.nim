@@ -12,7 +12,7 @@ import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
 import ../config
 import ../shared/intelligence_types
-import ./analyzers/[colony_analyzer, system_analyzer, starbase_analyzer, combat_analyzer, surveillance_analyzer]
+import ./analyzers/[colony_analyzer, system_analyzer, starbase_analyzer, combat_analyzer, surveillance_analyzer, diplomatic_events_analyzer, counterintel_analyzer, construction_trends_analyzer]
 from ./threat_assessment import assessAllThreats
 
 proc assessThreat*(
@@ -122,31 +122,23 @@ proc generateIntelligenceReport*(
   # Analyze combat reports (tactical lessons)
   let combatLessons = analyzeCombatReports(filtered, controller)
 
-  # Populate military intelligence domain
+  # Populate military intelligence domain (will be enhanced with patrol routes in Phase E below)
   result.military = MilitaryIntelligence(
     knownEnemyFleets: enemyFleets,
     enemyMilitaryCapability: initTable[HouseId, MilitaryCapabilityAssessment](),  # Phase D
     threatsByColony: threats,
     vulnerableTargets: vulnerableTargets,
     combatLessonsLearned: combatLessons,
+    detectedPatrolRoutes: @[],  # Populated in Phase E below
     lastUpdated: filtered.turn
   )
 
-  # Populate economic intelligence domain
+  # Populate economic intelligence domain (will be enhanced with construction trends in Phase E below)
   result.economic = EconomicIntelligence(
     enemyEconomicStrength: enemyEcon,
     highValueTargets: highValueTargets,
     enemyTechGaps: initTable[HouseId, TechGapAnalysis](),  # Phase D
-    constructionActivity: initTable[SystemId, ConstructionTrend](),  # Phase D
-    lastUpdated: filtered.turn
-  )
-
-  # Populate other domains (Phase C+)
-  result.diplomatic = DiplomaticIntelligence(
-    houseRelativeStrength: initTable[HouseId, HouseRelativeStrength](),
-    potentialAllies: @[],
-    potentialThreats: @[],
-    observedHostility: initTable[HouseId, HostilityLevel](),
+    constructionActivity: initTable[SystemId, ConstructionTrend](),  # Populated in Phase E below
     lastUpdated: filtered.turn
   )
 
@@ -172,15 +164,57 @@ proc generateIntelligenceReport*(
       logDebug(LogCategory.lcAI,
                &"{controller.houseId} Drungarius:   Gap at {gap.systemId} ({gap.reason}, priority {gap.priority:.2f})")
 
+  # === PHASE E: DIPLOMATIC, COUNTER-INTEL, CONSTRUCTION, PATROL ANALYSIS ===
+
+  # Analyze diplomatic events and blockades (Phase E - CRITICAL)
+  let (blockades, diplomaticEvents, hostility, potentialAllies, potentialThreats) =
+    analyzeDiplomaticEvents(filtered, controller)
+
+  # Analyze counter-intelligence (Phase E - HIGH)
+  let (espionagePatterns, detectionRisks) = analyzeCounterIntelligence(filtered, controller)
+
+  # Analyze construction trends (Phase E - MEDIUM)
+  let constructionTrends = analyzeConstructionTrends(filtered, controller)
+
+  # Detect patrol routes (Phase E - MEDIUM)
+  let patrolRoutes = detectPatrolRoutes(filtered, controller)
+
+  # Update military intelligence with patrol routes
+  result.military.detectedPatrolRoutes = patrolRoutes
+
+  # Update economic intelligence with construction trends
+  result.economic.constructionActivity = constructionTrends
+
+  # Populate diplomatic intelligence domain with Phase E data
+  result.diplomatic = DiplomaticIntelligence(
+    houseRelativeStrength: initTable[HouseId, HouseRelativeStrength](),  # Populated by calculateHouseRelativeStrength
+    potentialAllies: potentialAllies,
+    potentialThreats: potentialThreats,
+    observedHostility: hostility,
+    activeBlockades: blockades,
+    recentDiplomaticEvents: diplomaticEvents,
+    lastUpdated: filtered.turn
+  )
+
   result.espionage = EspionageIntelligence(
     intelCoverage: initTable[HouseId, IntelCoverageScore](),
     staleIntelSystems: @[],
     highPriorityTargets: @[],
-    detectionRisks: initTable[HouseId, DetectionRiskLevel](),
+    detectionRisks: detectionRisks,
+    espionagePatterns: espionagePatterns,
     surveillanceGaps: surveillanceGaps,
     surveillanceCoverage: surveillanceCoverage,
     lastUpdated: filtered.turn
   )
+
+  # Log Phase E intelligence summary
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Drungarius: Phase E intelligence - " &
+          &"{blockades.len} blockades, " &
+          &"{diplomaticEvents.len} diplomatic events, " &
+          &"{espionagePatterns.len} espionage patterns, " &
+          &"{constructionTrends.len} construction trends, " &
+          &"{patrolRoutes.len} patrol routes detected")
 
   # === BACKWARD COMPATIBILITY: Populate legacy fields ===
 

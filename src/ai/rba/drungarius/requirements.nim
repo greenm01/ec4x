@@ -122,18 +122,32 @@ proc generateEspionageRequirements*(
       result.totalEstimatedCost += 50
 
   # === HIGH: Operations against enemies ===
-  # Prioritize intelligence-driven operations against diplomatic enemies
+  # Phase E: Prioritize based on espionage intelligence (detection risk, coverage gaps)
   if currentEBP >= 8 and intelSnapshot.espionageOpportunities.len > 0:
-    # Target first espionage opportunity
+    # Target first espionage opportunity, but check detection risk
     let targetHouse = intelSnapshot.espionageOpportunities[0]
+
+    # Phase E: Check detection risk from counter-intelligence analysis
+    var detectionRiskNote = ""
+    var adjustedPriority = RequirementPriority.High
+    if intelSnapshot.espionage.detectionRisks.hasKey(targetHouse):
+      let risk = intelSnapshot.espionage.detectionRisks[targetHouse]
+      case risk
+      of DetectionRiskLevel.High:
+        adjustedPriority = RequirementPriority.Medium  # Downgrade priority due to risk
+        detectionRiskNote = " [HIGH DETECTION RISK - proceed cautiously]"
+      of DetectionRiskLevel.Moderate:
+        detectionRiskNote = " [Moderate detection risk]"
+      else:
+        discard
 
     result.requirements.add(EspionageRequirement(
       requirementType: EspionageRequirementType.Operation,
-      priority: RequirementPriority.High,
+      priority: adjustedPriority,
       targetHouse: some(targetHouse),
       operation: some(esp_types.EspionageAction.IntelligenceTheft),
       estimatedCost: 40,  # Intelligence theft cost estimate
-      reason: &"Intelligence theft from enemy {targetHouse} (espionage opportunity identified)"
+      reason: &"Intelligence theft from enemy {targetHouse} (espionage opportunity identified){detectionRiskNote}"
     ))
     result.totalEstimatedCost += 40
 

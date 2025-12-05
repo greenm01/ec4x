@@ -208,6 +208,12 @@ type
     threat_response*: ThreatResponseConfig
     surveillance*: SurveillanceConfig
 
+    # Phase E intelligence enhancements
+    diplomatic_events*: DiplomaticEventsConfig
+    counterintel*: CounterintelConfig
+    construction_analysis*: ConstructionAnalysisConfig
+    patrol_detection*: PatrolDetectionConfig
+
   ThreatResponseConfig* = object
     ## Threat-aware budget allocation parameters (Phase D)
     low_threat_boost*: float
@@ -224,6 +230,30 @@ type
     high_value_priority*: float
     transit_route_priority*: float
     recent_activity_priority*: float
+
+  DiplomaticEventsConfig* = object
+    ## Diplomatic event analysis parameters (Phase E)
+    war_significance_threshold*: int
+    alliance_significance_threshold*: int
+    blockade_critical_threshold*: float
+
+  CounterintelConfig* = object
+    ## Counter-intelligence priorities (Phase E)
+    high_frequency_threshold*: int
+    detection_success_threshold*: float
+    priority_boost_espionage*: float
+
+  ConstructionAnalysisConfig* = object
+    ## Construction trend detection parameters (Phase E)
+    buildup_threshold_shipyards*: int
+    velocity_threat_threshold*: float
+    observation_window_turns*: int
+
+  PatrolDetectionConfig* = object
+    ## Patrol pattern recognition parameters (Phase E)
+    min_sightings_for_pattern*: int
+    pattern_confidence_threshold*: float
+    staleness_threshold_turns*: int
 
   DrungariusConfig* = object
     ## Intelligence coordinator settings

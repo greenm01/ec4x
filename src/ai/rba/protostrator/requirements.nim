@@ -234,17 +234,38 @@ proc generateDiplomaticRequirements*(
     case relation
     of dip_types.DiplomaticState.Neutral:
       # No current pact - evaluate strategic position
-      if prestigeGap > thresholds.overwhelming:
+      # Phase E: Check diplomatic intelligence for potential allies/threats
+      var isPotentialAlly = false
+      var isPotentialThreat = false
+      var observedHostilityLevel = HostilityLevel.Unknown
+
+      if intelSnapshot.diplomatic.potentialAllies.contains(houseId):
+        isPotentialAlly = true
+      if intelSnapshot.diplomatic.potentialThreats.contains(houseId):
+        isPotentialThreat = true
+      if intelSnapshot.diplomatic.observedHostility.hasKey(houseId):
+        observedHostilityLevel = intelSnapshot.diplomatic.observedHostility[houseId]
+
+      # Intelligence-driven threat prioritization
+      if isPotentialThreat or observedHostilityLevel == HostilityLevel.Aggressive:
+        # Hostile activity detected - prioritize NAP if they're stronger
+        if prestigeGap > 0:
+          target.recommendedAction = DiplomaticRequirementType.ProposePact
+          target.priority = RequirementPriority.Critical
+          target.reason = &"NAP with aggressive power {houseId} (hostile activity detected, prestige gap: {prestigeGap})"
+        # Otherwise consider for war below
+      elif prestigeGap > thresholds.overwhelming:
         # Much stronger enemy - seek NAP to avoid conflict
         target.recommendedAction = DiplomaticRequirementType.ProposePact
         target.priority = RequirementPriority.Critical
         target.reason = &"NAP with overwhelming power {houseId} (prestige gap: {prestigeGap})"
       elif prestigeGap > thresholds.moderate:
-        # Moderately stronger - NAP if diplomatic-focused
-        if p.diplomacyValue > 0.6:
+        # Moderately stronger - NAP if diplomatic-focused OR intelligence suggests alliance potential
+        if p.diplomacyValue > 0.6 or isPotentialAlly:
           target.recommendedAction = DiplomaticRequirementType.ProposePact
           target.priority = RequirementPriority.High
-          target.reason = &"NAP with stronger power {houseId} (prestige gap: {prestigeGap})"
+          let allyNote = if isPotentialAlly: " (potential ally)" else: ""
+          target.reason = &"NAP with stronger power {houseId} (prestige gap: {prestigeGap}){allyNote}"
       else:
         # Multi-factor war evaluation
         # Check if they have vulnerable colonies
