@@ -62,20 +62,20 @@ proc executeEspionageAction*(
   else:
     # Success - apply action-specific effects
 
-    # Prestige for attacker
+    # Prestige for attacker (ZERO-SUM: attacker gains, target loses equal amount)
     result.attackerPrestigeEvents.add(createPrestigeEvent(
       PrestigeSource.CombatVictory,  # Generic success source
       descriptor.attackerSuccessPrestige,
       descriptor.successPrestigeReason
     ))
 
-    # Prestige for target (if applicable)
-    if descriptor.targetSuccessPrestige != 0:
-      result.targetPrestigeEvents.add(createPrestigeEvent(
-        PrestigeSource.Eliminated,
-        descriptor.targetSuccessPrestige,
-        descriptor.targetSuccessReason
-      ))
+    # Prestige penalty for target (ZERO-SUM: equal and opposite to attacker gain)
+    result.targetPrestigeEvents.add(createPrestigeEvent(
+      PrestigeSource.Eliminated,
+      -descriptor.attackerSuccessPrestige,  # Negative of attacker gain
+      if descriptor.targetSuccessReason != "": descriptor.targetSuccessReason
+      else: "Victim of espionage"
+    ))
 
     # SRP theft
     if descriptor.stealsSRP:

@@ -13,6 +13,7 @@ import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../logger
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
+import ../config/prestige_multiplier
 import ../diplomacy/[types as dip_types, engine as dip_engine]
 import ../intelligence/diplomatic_intel
 import ./types  # Common resolution types
@@ -789,24 +790,42 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   )
   combatReports.add(report)
 
-  # Award prestige for combat
+  # Award prestige for combat (ZERO-SUM: victor gains, losers lose)
   if victor.isSome:
     let victorHouse = victor.get()
-    let victorPrestige = getPrestigeValue(PrestigeSource.CombatVictory)
+
+    # Combat victory prestige (zero-sum)
+    let victorPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.CombatVictory))
     state.houses[victorHouse].prestige += victorPrestige
     logCombat("Combat victory prestige awarded",
               "house=", state.houses[victorHouse].name,
               " prestige=", $victorPrestige)
 
-    # Award prestige for squadrons destroyed
+    # Apply penalty to losing houses (zero-sum)
+    let loserHouses = if victorHouse in attackerHouses: defenderHouses else: attackerHouses
+    for loserHouse in loserHouses:
+      state.houses[loserHouse].prestige -= victorPrestige
+      logCombat("Combat defeat prestige penalty",
+                "house=", state.houses[loserHouse].name,
+                " prestige=", $(-victorPrestige))
+
+    # Squadron destruction prestige (zero-sum)
     let enemyLosses = if victorHouse in attackerHouses: defenderLosses else: attackerLosses
     if enemyLosses > 0:
-      let squadronPrestige = getPrestigeValue(PrestigeSource.SquadronDestroyed) * enemyLosses
+      let squadronPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.SquadronDestroyed)) * enemyLosses
       state.houses[victorHouse].prestige += squadronPrestige
       logCombat("Squadron destruction prestige awarded",
                 "house=", state.houses[victorHouse].name,
                 " squadrons=", $enemyLosses,
                 " prestige=", $squadronPrestige)
+
+      # Apply penalty to houses that lost squadrons (zero-sum)
+      for loserHouse in loserHouses:
+        state.houses[loserHouse].prestige -= squadronPrestige
+        logCombat("Squadron loss prestige penalty",
+                  "house=", state.houses[loserHouse].name,
+                  " squadrons=", $enemyLosses,
+                  " prestige=", $(-squadronPrestige))
 
   # Generate event
   let victorName = if victor.isSome: state.houses[victor.get()].name else: "No one"
@@ -1144,7 +1163,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     state.fleets[order.fleetId] = updatedFleet
 
     # Prestige changes
-    let attackerPrestige = getPrestigeValue(PrestigeSource.ColonySeized)
+    let attackerPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.ColonySeized))
     state.houses[houseId].prestige += attackerPrestige
     logCombat("Invasion prestige awarded",
               "house=", $houseId, " prestige=", $attackerPrestige)
@@ -1356,7 +1375,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     state.fleets[order.fleetId] = updatedFleet
 
     # Prestige changes (blitz gets same prestige as invasion)
-    let attackerPrestige = getPrestigeValue(PrestigeSource.ColonySeized)
+    let attackerPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.ColonySeized))
     state.houses[houseId].prestige += attackerPrestige
     logCombat("Blitz prestige awarded",
               "house=", $houseId, " prestige=", $attackerPrestige)

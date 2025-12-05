@@ -9,6 +9,7 @@ import ../../src/engine/[gamestate, state_helpers]
 import ../../src/engine/resolution/fleet_orders
 import ../../src/engine/colonization/engine as col_engine
 import ../../src/common/types/[core, planets, units]
+import ../../src/common/system
 import ../../src/engine/[fleet, squadron, orders, starmap, spacelift]
 
 proc createTestGameState(): GameState =

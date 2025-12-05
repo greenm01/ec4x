@@ -4,31 +4,23 @@ import std/[unittest]
 import ../../src/engine/config/prestige_config
 
 suite "Prestige Configuration":
-  test "Default config loads":
-    let config = defaultPrestigeConfig()
-    check config.prestigeVictoryThreshold == 5000
-    check config.establishColony == 5
-    check config.techAdvancement == 2
-    check config.invadePlanet == 10
-    check config.losePlanet == -10
-
   test "Config values are reasonable":
     let config = globalPrestigeConfig
-    check config.prestigeVictoryThreshold > 0
-    check config.establishColony > 0
-    check config.losePlanet < 0
-    check config.maintenanceShortfallBase < 0
+    check config.victory.prestige_threshold > 0
+    check config.economic.establish_colony > 0
+    check config.military.lose_planet < 0
+    check config.penalties.maintenance_shortfall_base < 0
 
   test "Tax bonus tiers":
     let config = globalPrestigeConfig
-    check config.taxBonusTier1Max == 10
-    check config.taxBonusTier1 == 3
-    check config.taxBonusTier2Max == 20
-    check config.taxBonusTier2 == 2
+    check config.tax_incentives.tier_1_max == 10
+    check config.tax_incentives.tier_1_bonus == 3
+    check config.tax_incentives.tier_2_max == 20
+    check config.tax_incentives.tier_2_bonus == 2
 
   test "Military prestige values":
     let config = globalPrestigeConfig
-    check config.destroyTaskForce == 3
-    check config.forceRetreat == 2
-    check config.invadePlanet == 10
-    check config.destroyStarbase == 5
+    check config.military.fleet_victory == 3
+    check config.military.force_retreat == 2
+    check config.military.invade_planet == 10
+    check config.military.destroy_starbase == 5

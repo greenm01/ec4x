@@ -13,9 +13,14 @@
 import std/[unittest, tables, options, strutils]
 import ../../src/engine/prestige
 import ../../src/engine/config/prestige_config
+import ../../src/engine/config/prestige_multiplier
 import ../../src/common/types/core
 
 suite "Prestige System: Comprehensive Tests":
+
+  # Set multiplier to 1.0 for all tests so we can use raw config values
+  setup:
+    setPrestigeMultiplierForTesting(1.0)
 
   # ==========================================================================
   # Prestige Source Values Tests
@@ -116,8 +121,8 @@ suite "Prestige System: Comprehensive Tests":
   # Combat Prestige Tests
   # ==========================================================================
 
-  test "Combat prestige: basic victory":
-    let events = awardCombatPrestige(
+  test "Combat prestige: basic victory (zero-sum)":
+    let result = awardCombatPrestige(
       victor = "house1",
       defeated = "house2",
       taskForceDestroyed = false,
@@ -125,13 +130,21 @@ suite "Prestige System: Comprehensive Tests":
       forcedRetreat = false
     )
 
-    # Should have exactly 1 event for combat victory
-    check events.len == 1
-    check events[0].source == PrestigeSource.CombatVictory
-    check events[0].amount == getPrestigeValue(PrestigeSource.CombatVictory)
+    # Victor should have exactly 1 event for combat victory
+    check result.victorEvents.len == 1
+    check result.victorEvents[0].source == PrestigeSource.CombatVictory
+    check result.victorEvents[0].amount == getPrestigeValue(PrestigeSource.CombatVictory)
 
-  test "Combat prestige: victory with task force destroyed":
-    let events = awardCombatPrestige(
+    # Defeated should have exactly 1 event (negative prestige)
+    check result.defeatedEvents.len == 1
+    check result.defeatedEvents[0].source == PrestigeSource.CombatVictory
+    check result.defeatedEvents[0].amount == -getPrestigeValue(PrestigeSource.CombatVictory)
+
+    # Zero-sum: victor gain equals defeated loss
+    check result.victorEvents[0].amount == -result.defeatedEvents[0].amount
+
+  test "Combat prestige: victory with task force destroyed (zero-sum)":
+    let result = awardCombatPrestige(
       victor = "house1",
       defeated = "house2",
       taskForceDestroyed = true,
@@ -139,13 +152,22 @@ suite "Prestige System: Comprehensive Tests":
       forcedRetreat = false
     )
 
-    # Should have 2 events: victory + task force destroyed
-    check events.len == 2
-    check events[0].source == PrestigeSource.CombatVictory
-    check events[1].source == PrestigeSource.TaskForceDestroyed
+    # Victor should have 2 events: victory + task force destroyed
+    check result.victorEvents.len == 2
+    check result.victorEvents[0].source == PrestigeSource.CombatVictory
+    check result.victorEvents[1].source == PrestigeSource.TaskForceDestroyed
 
-  test "Combat prestige: victory with squadrons destroyed":
-    let events = awardCombatPrestige(
+    # Defeated should have 2 events (negative prestige)
+    check result.defeatedEvents.len == 2
+    check result.defeatedEvents[0].source == PrestigeSource.CombatVictory
+    check result.defeatedEvents[1].source == PrestigeSource.TaskForceDestroyed
+
+    # Zero-sum: each victor gain equals corresponding defeated loss
+    check result.victorEvents[0].amount == -result.defeatedEvents[0].amount
+    check result.victorEvents[1].amount == -result.defeatedEvents[1].amount
+
+  test "Combat prestige: victory with squadrons destroyed (zero-sum)":
+    let result = awardCombatPrestige(
       victor = "house1",
       defeated = "house2",
       taskForceDestroyed = false,
@@ -153,17 +175,25 @@ suite "Prestige System: Comprehensive Tests":
       forcedRetreat = false
     )
 
-    # Should have 2 events: victory + squadrons
-    check events.len == 2
-    check events[0].source == PrestigeSource.CombatVictory
-    check events[1].source == PrestigeSource.SquadronDestroyed
+    # Victor should have 2 events: victory + squadrons
+    check result.victorEvents.len == 2
+    check result.victorEvents[0].source == PrestigeSource.CombatVictory
+    check result.victorEvents[1].source == PrestigeSource.SquadronDestroyed
 
     # Squadron prestige = base value * count
     let expectedAmount = getPrestigeValue(PrestigeSource.SquadronDestroyed) * 3
-    check events[1].amount == expectedAmount
+    check result.victorEvents[1].amount == expectedAmount
 
-  test "Combat prestige: victory with forced retreat":
-    let events = awardCombatPrestige(
+    # Defeated should have 2 events (negative prestige)
+    check result.defeatedEvents.len == 2
+    check result.defeatedEvents[1].source == PrestigeSource.SquadronDestroyed
+    check result.defeatedEvents[1].amount == -expectedAmount
+
+    # Zero-sum: victor gain equals defeated loss
+    check result.victorEvents[1].amount == -result.defeatedEvents[1].amount
+
+  test "Combat prestige: victory with forced retreat (zero-sum)":
+    let result = awardCombatPrestige(
       victor = "house1",
       defeated = "house2",
       taskForceDestroyed = false,
@@ -171,13 +201,21 @@ suite "Prestige System: Comprehensive Tests":
       forcedRetreat = true
     )
 
-    # Should have 2 events: victory + retreat
-    check events.len == 2
-    check events[0].source == PrestigeSource.CombatVictory
-    check events[1].source == PrestigeSource.FleetRetreated
+    # Victor should have 2 events: victory + retreat
+    check result.victorEvents.len == 2
+    check result.victorEvents[0].source == PrestigeSource.CombatVictory
+    check result.victorEvents[1].source == PrestigeSource.FleetRetreated
 
-  test "Combat prestige: total victory (all bonuses)":
-    let events = awardCombatPrestige(
+    # Defeated should have 2 events (negative prestige)
+    check result.defeatedEvents.len == 2
+    check result.defeatedEvents[0].source == PrestigeSource.CombatVictory
+    check result.defeatedEvents[1].source == PrestigeSource.FleetRetreated
+
+    # Zero-sum: victor gain equals defeated loss
+    check result.victorEvents[1].amount == -result.defeatedEvents[1].amount
+
+  test "Combat prestige: total victory (all bonuses, zero-sum)":
+    let result = awardCombatPrestige(
       victor = "house1",
       defeated = "house2",
       taskForceDestroyed = true,
@@ -185,12 +223,23 @@ suite "Prestige System: Comprehensive Tests":
       forcedRetreat = true
     )
 
-    # Should have 4 events: victory + task force + squadrons + retreat
-    check events.len == 4
-    check events[0].source == PrestigeSource.CombatVictory
-    check events[1].source == PrestigeSource.TaskForceDestroyed
-    check events[2].source == PrestigeSource.SquadronDestroyed
-    check events[3].source == PrestigeSource.FleetRetreated
+    # Victor should have 4 events: victory + task force + squadrons + retreat
+    check result.victorEvents.len == 4
+    check result.victorEvents[0].source == PrestigeSource.CombatVictory
+    check result.victorEvents[1].source == PrestigeSource.TaskForceDestroyed
+    check result.victorEvents[2].source == PrestigeSource.SquadronDestroyed
+    check result.victorEvents[3].source == PrestigeSource.FleetRetreated
+
+    # Defeated should have 4 events (all negative)
+    check result.defeatedEvents.len == 4
+    check result.defeatedEvents[0].source == PrestigeSource.CombatVictory
+    check result.defeatedEvents[1].source == PrestigeSource.TaskForceDestroyed
+    check result.defeatedEvents[2].source == PrestigeSource.SquadronDestroyed
+    check result.defeatedEvents[3].source == PrestigeSource.FleetRetreated
+
+    # Zero-sum: all victor gains equal defeated losses
+    for i in 0..3:
+      check result.victorEvents[i].amount == -result.defeatedEvents[i].amount
 
   # ==========================================================================
   # Tax Prestige Tests
@@ -319,19 +368,33 @@ suite "Prestige System: Comprehensive Tests":
   # Colony Prestige Tests
   # ==========================================================================
 
-  test "Colony prestige: established":
-    let event = awardColonyPrestige("house1", colonyType = "established")
+  test "Colony prestige: established (absolute gain)":
+    let result = awardColonyPrestige("house1", colonyType = "established")
 
-    check event.source == PrestigeSource.ColonyEstablished
-    check event.amount == getPrestigeValue(PrestigeSource.ColonyEstablished)
-    check event.amount > 0
+    check result.attackerEvent.source == PrestigeSource.ColonyEstablished
+    check result.attackerEvent.amount == getPrestigeValue(PrestigeSource.ColonyEstablished)
+    check result.attackerEvent.amount > 0
 
-  test "Colony prestige: seized":
-    let event = awardColonyPrestige("house1", colonyType = "seized")
+    # Non-competitive event: no defender penalty
+    check result.defenderEvent.isNone
 
-    check event.source == PrestigeSource.ColonySeized
-    check event.amount == getPrestigeValue(PrestigeSource.ColonySeized)
-    check event.amount > 0
+  test "Colony prestige: seized (zero-sum)":
+    let result = awardColonyPrestige("house1", colonyType = "seized", defenderId = some("house2".HouseId))
+
+    # Attacker gains prestige
+    check result.attackerEvent.source == PrestigeSource.ColonySeized
+    check result.attackerEvent.amount == getPrestigeValue(PrestigeSource.ColonySeized)
+    check result.attackerEvent.amount > 0
+
+    # Defender loses equal prestige (zero-sum)
+    check result.defenderEvent.isSome
+    let defenderEvent = result.defenderEvent.get()
+    check defenderEvent.source == PrestigeSource.ColonySeized
+    check defenderEvent.amount == -getPrestigeValue(PrestigeSource.ColonySeized)
+    check defenderEvent.amount < 0
+
+    # Zero-sum: attacker gain equals defender loss
+    check result.attackerEvent.amount == -defenderEvent.amount
 
   # ==========================================================================
   # Tech Prestige Tests
@@ -463,11 +526,12 @@ suite "Prestige System: Comprehensive Tests":
   # Integration Tests
   # ==========================================================================
 
-  test "Full prestige cycle: combat to victory":
-    var currentPrestige = 4950
+  test "Full prestige cycle: combat to victory (zero-sum)":
+    var victorPrestige = 4990
+    var defeatedPrestige = 1000
 
     # Win a major battle
-    let combatEvents = awardCombatPrestige(
+    let combatResult = awardCombatPrestige(
       victor = "house1",
       defeated = "house2",
       taskForceDestroyed = true,
@@ -475,12 +539,21 @@ suite "Prestige System: Comprehensive Tests":
       forcedRetreat = true
     )
 
-    let combatChange = calculatePrestigeChange(combatEvents)
-    currentPrestige += combatChange
+    # Apply victor gains
+    let victorChange = calculatePrestigeChange(combatResult.victorEvents)
+    victorPrestige += victorChange
 
-    # Should push over 5000 threshold
-    check currentPrestige >= 5000
-    check checkPrestigeVictory(currentPrestige) == true
+    # Apply defeated losses (zero-sum)
+    let defeatedChange = calculatePrestigeChange(combatResult.defeatedEvents)
+    defeatedPrestige += defeatedChange
+
+    # Victor should reach victory threshold
+    check victorPrestige >= 5000
+    check checkPrestigeVictory(victorPrestige) == true
+
+    # Defeated should lose prestige (zero-sum)
+    check defeatedChange < 0
+    check defeatedPrestige < 1000
 
   test "Tax effects: low tax bonus offsets penalties":
     # Low tax bonus

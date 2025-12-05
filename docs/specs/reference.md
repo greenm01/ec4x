@@ -116,30 +116,50 @@ Small maps (8-10 systems/player) use the baseline multiplier. Larger maps scale 
 
 *Configuration: config/prestige.toml [dynamic_scaling] section*
 
+### Zero-Sum Competition Mechanics
+
+**Competitive Events (Zero-Sum):** When one house gains prestige, the opponent loses an equal amount. These represent direct competition where one side's victory is the other's defeat:
+
+- **Combat**: Victor gains prestige, defeated loses equal amount
+- **Squadron Destruction**: Victor gains per ship destroyed, defeated loses equal amount
+- **Invasions/Blitz**: Attacker gains for planet seized, defender loses equal amount
+- **Espionage**: Attacker gains for successful operation, victim loses equal amount
+
+**Non-Competitive Events (Absolute Gains):** These represent achievements that don't directly harm opponents:
+
+- **Colony Establishment**: Building a new colony (+5 base)
+- **Tech Advancement**: Research breakthroughs (+2 base)
+- **Low Tax Bonuses**: Good governance (+3/colony)
+
+**Pure Penalties (No Transfer):** These represent dishonor or failure:
+
+- **Pact Violations**: Breaking diplomatic agreements (-10 base)
+- **Maintenance Shortfalls**: Failed upkeep payments
+
+The zero-sum system ensures **losers actively decline** rather than merely slowing down. Military dominance creates a competitive spiral: winners gain resources and prestige, losers lose both.
+
 ### Base Prestige Values
 
 <!-- PRESTIGE_TABLE_START -->
 
-| Prestige Source                    | Enum Name               | Value |
-| ---------------------------------- | ----------------------- | ----- |
-| Tech Advancement                   | `TechAdvancement`       | +20   |
-| Colony Establishment               | `ColonyEstablishment`   | +50   |
-| System Capture                     | `SystemCapture`         | +100  |
-| Diplomatic Pact Formation          | `DiplomaticPact`        | +50   |
-| Pact Violation (penalty)           | `PactViolation`         | -100  |
-| Repeat Violation (penalty)         | `RepeatViolation`       | -100  |
-| Attack Dishonored House            | `DishonoredBonus`       | +10   |
-| Tech Theft Success                 | `TechTheftSuccess`      | +20   |
-| Tech Theft Detected (penalty)      | `TechTheftDetected`     | +20   |
-| Assassination Success              | `AssassinationSuccess`  | +50   |
-| Assassination Detected (penalty)   | `AssassinationDetected` | +50   |
-| Espionage Attempt Failed (penalty) | `EspionageFailure`      | +10   |
-| Major Ship Destroyed (per ship)    | `ShipDestroyed`         | +10   |
-| Starbase Destroyed                 | `StarbaseDestroyed`     | +50   |
-| Fleet Victory (per battle)         | `FleetVictory`          | +30   |
-| Planet Conquered                   | `PlanetConquered`       | +100  |
-| House Eliminated                   | `HouseEliminated`       | +30   |
-| Victory Achieved                   | `VictoryAchieved`       | +50   |
+| Prestige Source                    | Enum Name               | Value | Type          |
+| ---------------------------------- | ----------------------- | ----- | ------------- |
+| Tech Advancement                   | `TechAdvancement`       | +2    | Absolute      |
+| Colony Establishment               | `ColonyEstablishment`   | +5    | Absolute      |
+| System Capture                     | `SystemCapture`         | +10   | Zero-Sum      |
+| Diplomatic Pact Formation          | `DiplomaticPact`        | +5    | Absolute      |
+| Pact Violation (penalty)           | `PactViolation`         | -10   | Pure Penalty  |
+| Repeat Violation (penalty)         | `RepeatViolation`       | -10   | Pure Penalty  |
+| Attack Dishonored House            | `DishonoredBonus`       | +1    | Absolute      |
+| Tech Theft Success                 | `TechTheftSuccess`      | +2    | Zero-Sum      |
+| Assassination Success              | `AssassinationSuccess`  | +5    | Zero-Sum      |
+| Espionage Attempt Failed (penalty) | `EspionageFailure`      | -2    | Pure Penalty  |
+| Major Ship Destroyed (per ship)    | `ShipDestroyed`         | +1    | Zero-Sum      |
+| Starbase Destroyed                 | `StarbaseDestroyed`     | +5    | Zero-Sum      |
+| Fleet Victory (per battle)         | `FleetVictory`          | +3    | Zero-Sum      |
+| Planet Conquered (Invasion)        | `PlanetConquered`       | +10   | Zero-Sum      |
+| House Eliminated                   | `HouseEliminated`       | +3    | Zero-Sum      |
+| Victory Achieved                   | `VictoryAchieved`       | +5    | Absolute      |
 
 *Source: config/prestige.toml [economic], [military], and [espionage] sections*
 

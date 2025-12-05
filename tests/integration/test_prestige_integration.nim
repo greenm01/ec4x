@@ -10,9 +10,14 @@ import ../../src/engine/[gamestate, starmap]
 import ../../src/engine/economy/[types as econ_types, income]
 import ../../src/engine/prestige
 import ../../src/engine/config/prestige_config
+import ../../src/engine/config/prestige_multiplier
 import ../../src/common/types/[core, planets, tech]
 
 suite "Prestige Integration":
+
+  # Set multiplier to 1.0 for all tests so we can use raw config values
+  setup:
+    setPrestigeMultiplierForTesting(1.0)
 
   test "Low tax rate generates prestige bonus":
     # Create low-tax colony
