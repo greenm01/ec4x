@@ -261,6 +261,100 @@ balance_results/
 - Extend analyzer types or create new ones
 - All code in Nim using Datamancer DataFrames
 
+### Python/Polars Analysis (Alternative - Token-Efficient)
+
+**⚠️ IMPORTANT FOR CLAUDE: Use Python scripts for CSV analysis, NOT raw CSV files!**
+
+When the user requests CSV diagnostics analysis:
+
+1. **NEVER load raw CSV files directly** - They are 5-20MB and waste 10,000+ tokens
+2. **ALWAYS use `scripts/analysis/analyze_diagnostics.py`** - Generates small text summaries
+3. **Token efficiency: 10-100x reduction** vs uploading raw CSVs
+
+**Quick analysis workflow:**
+```bash
+# Setup (one-time)
+pip install -r scripts/analysis/requirements.txt  # Or: uv pip install
+
+# Run analyses (Claude instructs user to run these)
+python scripts/analysis/analyze_diagnostics.py summary           # Quick overview
+python scripts/analysis/analyze_diagnostics.py strategy          # Strategy comparison
+python scripts/analysis/analyze_diagnostics.py red-flags         # Detect issues
+python scripts/analysis/analyze_diagnostics.py compare A B       # Head-to-head
+python scripts/analysis/analyze_diagnostics.py economy           # Economic metrics
+python scripts/analysis/analyze_diagnostics.py military          # Military metrics
+python scripts/analysis/analyze_diagnostics.py research          # Tech progression
+python scripts/analysis/analyze_diagnostics.py diplomacy         # Diplomatic status
+
+# Custom queries (advanced)
+python scripts/analysis/analyze_diagnostics.py custom "filter(pl.col('prestige') > 500)"
+```
+
+**Analysis commands available:**
+- `summary` - Quick overview (game count, strategies, final metrics)
+- `strategy` - Performance comparison (growth rates, trends)
+- `economy` - Treasury, production, efficiency, red flags
+- `military` - Fleet composition, combat, capacity violations
+- `research` - Tech levels, investment, waste
+- `diplomacy` - Relationships, pacts, wars
+- `red-flags` - Automated issue detection (dominance, stagnation, waste, failures)
+- `compare <S1> <S2>` - Head-to-head strategy comparison
+- `custom "<query>"` - Execute custom Polars DataFrame operations
+
+**Command options:**
+- `--min-turn N` - Filter to turns >= N
+- `--max-turn N` - Filter to turns <= N
+
+**Claude's workflow when user asks for analysis:**
+
+1. **Instruct user to run script**:
+   ```
+   Please run: python scripts/analysis/analyze_diagnostics.py summary
+   Then share the output with me (it will be small, ~1-2KB).
+   ```
+
+2. **Analyze the output** (not raw CSV):
+   - User shares script output (~1-2KB vs 5-20MB raw CSV)
+   - Claude interprets results, suggests next steps
+   - Claude may suggest additional analyses
+
+3. **Iterate with targeted analyses**:
+   ```
+   Based on those results, let's look at economy:
+   python scripts/analysis/analyze_diagnostics.py economy
+   ```
+
+4. **Suggest custom scripts if needed**:
+   - For specialized analysis, Claude can write new scripts in `scripts/analysis/`
+   - Follow the template in `analyze_diagnostics.py`
+   - Use Polars for performance (10-50x faster than Pandas)
+
+**Creating new analysis scripts:**
+```python
+import polars as pl
+
+# Load all diagnostics
+df = pl.scan_csv("balance_results/diagnostics/*.csv").collect()
+
+# Your custom analysis using Polars DataFrame API
+result = df.filter(pl.col("turn") > 10).group_by("strategy").agg(...)
+
+print(result)  # Small text output for Claude
+```
+
+**Performance benefits:**
+- Loading: ~10x faster than Pandas
+- Filtering: ~5-20x faster
+- Aggregations: ~10-50x faster
+- Memory: ~50% less usage
+
+**For 400 games (4000+ CSV files):**
+- Load time: <5 seconds
+- Analysis time: <1 second per command
+- Output size: ~1-5KB (vs 5-20MB raw CSV)
+
+**Documentation:** See `scripts/analysis/README.md` for full command reference
+
 ---
 
 ## Configuration System
