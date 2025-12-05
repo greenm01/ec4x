@@ -17,7 +17,7 @@ suite "Diplomacy System":
     let state = getDiplomaticState(relations, otherHouse)
     check state == DiplomaticState.Neutral
 
-  test "Establish non-aggression pact":
+  test "Establish alliance pact":
     var relations = initDiplomaticRelations()
     let history = initViolationHistory()
     let otherHouse = "house2".HouseId
@@ -26,7 +26,7 @@ suite "Diplomacy System":
 
     check eventOpt.isSome
     let event = eventOpt.get()
-    check event.newState == DiplomaticState.NonAggression
+    check event.newState == DiplomaticState.Ally
     check event.oldState == DiplomaticState.Neutral
     check isInPact(relations, otherHouse)
 
@@ -51,13 +51,13 @@ suite "Diplomacy System":
     let otherHouse = "house2".HouseId
 
     # First establish pact
-    setDiplomaticState(relations, otherHouse, DiplomaticState.NonAggression, turn = 1)
+    setDiplomaticState(relations, otherHouse, DiplomaticState.Ally, turn = 1)
 
     # Then declare war
     let event = declareWar(relations, otherHouse, turn = 2)
 
     check event.newState == DiplomaticState.Enemy
-    check event.oldState == DiplomaticState.NonAggression
+    check event.oldState == DiplomaticState.Ally
     check isEnemy(relations, otherHouse)
 
   test "Pact violation records violation and activates penalties":
@@ -116,14 +116,14 @@ suite "Diplomacy System":
     let victim = "house2".HouseId
 
     # Establish pact first
-    setDiplomaticState(relations, victim, DiplomaticState.NonAggression, turn = 1)
+    setDiplomaticState(relations, victim, DiplomaticState.Ally, turn = 1)
 
     # Violate during combat
     let event = handleCombatViolation(relations, history, violator, victim, turn = 5)
 
     # Should automatically become Enemy
     check event.newState == DiplomaticState.Enemy
-    check event.oldState == DiplomaticState.NonAggression
+    check event.oldState == DiplomaticState.Ally
     check isEnemy(relations, victim)
 
     # Should record violation
