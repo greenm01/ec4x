@@ -204,6 +204,27 @@ type
     tech_gap_critical_threshold*: int
     tech_gap_high_threshold*: int
 
+    # Threat response (Phase D)
+    threat_response*: ThreatResponseConfig
+    surveillance*: SurveillanceConfig
+
+  ThreatResponseConfig* = object
+    ## Threat-aware budget allocation parameters (Phase D)
+    low_threat_boost*: float
+    moderate_threat_boost*: float
+    high_threat_boost*: float
+    critical_threat_boost*: float
+    multi_threat_multiplier*: float
+    defense_boost_ratio*: float
+    military_boost_ratio*: float
+
+  SurveillanceConfig* = object
+    ## Surveillance gap priority weights (Phase D)
+    border_system_priority*: float
+    high_value_priority*: float
+    transit_route_priority*: float
+    recent_activity_priority*: float
+
   DrungariusConfig* = object
     ## Intelligence coordinator settings
     intel_processing_enabled*: bool

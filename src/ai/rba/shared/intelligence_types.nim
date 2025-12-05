@@ -236,13 +236,40 @@ type
   DetectionRiskLevel* {.pure.} = enum
     Unknown, Low, Moderate, High, Critical
 
+  SurveillanceGapReason* {.pure.} = enum
+    ## Reason why a system lacks starbase surveillance coverage
+    NoBorderCoverage      # Border system adjacent to enemy territory without starbase
+    HighValueTarget       # High-value colony without automated surveillance
+    TransitRoute          # Key transit route between core colonies
+    RecentThreatActivity  # System with recent threat detection but no permanent coverage
+
+  SurveillanceGap* = object
+    ## System identified as needing starbase coverage (Phase D)
+    systemId*: SystemId
+    priority*: float  # 0.0-1.0 (higher = more urgent)
+    reason*: SurveillanceGapReason
+    estimatedThreats*: int  # Number of threats detected in area
+    lastActivity*: Option[int]  # Turn when last enemy activity detected
+
+  StarbaseCoverageInfo* = object
+    ## Starbase surveillance coverage details for a system (Phase D)
+    hasStarbase*: bool
+    starbaseId*: Option[string]
+    detectedThreats*: seq[FleetId]  # Threats detected by this starbase
+    lastActivity*: int  # Turn of most recent detection
+    coverageRadius*: int  # Systems covered (current implementation: 0 = own system only)
+
   EspionageIntelligence* = object
     ## Espionage domain intelligence summary for Drungarius
     intelCoverage*: Table[HouseId, IntelCoverageScore]
     staleIntelSystems*: seq[SystemId]  # Systems needing reconnaissance
     highPriorityTargets*: seq[EspionageTarget]
     detectionRisks*: Table[HouseId, DetectionRiskLevel]
-    surveillanceGaps*: seq[SystemId]  # Systems without starbase coverage
+
+    # Phase D surveillance gap tracking
+    surveillanceGaps*: seq[SurveillanceGap]  # Systems without starbase coverage
+    surveillanceCoverage*: Table[SystemId, StarbaseCoverageInfo]  # Coverage map
+
     lastUpdated*: int
 
   # ==============================================================================
