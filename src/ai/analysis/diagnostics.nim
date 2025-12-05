@@ -3,7 +3,7 @@
 ## Tracks per-house, per-turn metrics to identify systematic AI failures
 ## Per Grok gap analysis: "Run diagnostics. Let the numbers tell you exactly what's missing."
 
-import std/[tables, strformat, options, strutils]
+import std/[tables, strformat, options, strutils, algorithm]
 import ../../engine/[gamestate, fleet, squadron, orders, logger]
 import ../../engine/diplomacy/types as dip_types
 import ../../common/types/[core, units, diplomacy]
@@ -14,6 +14,8 @@ type
     ## Metrics collected per house, per turn
     gameId*: string        # Unique game identifier (from seed)
     turn*: int
+    act*: int              # Game act/phase (1-4) for phase-based analysis
+    rank*: int             # Current rank by prestige (1=winning, 4=losing)
     houseId*: HouseId
     strategy*: AIStrategy  # AI strategy/personality archetype
 
@@ -221,6 +223,14 @@ type
     etacsWithoutOrders*: int      # ETACs sitting idle (not colonizing)
     etacsInTransit*: int          # ETACs moving to targets
 
+    # Change Deltas (NEW - track turn-over-turn losses/gains)
+    coloniesLost*: int            # Colonies lost this turn (conquest/rebellion)
+    coloniesGained*: int          # Colonies gained this turn (colonization/conquest)
+    shipsLost*: int               # Ships destroyed this turn (all types)
+    shipsGained*: int             # Ships commissioned this turn (all types)
+    fightersLost*: int            # Fighter squadrons lost this turn
+    fightersGained*: int          # Fighter squadrons gained this turn
+
     # Bilateral Diplomatic Relations (semicolon-separated: houseId:state)
     bilateralRelations*: string   # e.g., "house-harkonnen:Hostile;house-ordos:Neutral"
 
@@ -238,6 +248,8 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId, strategy: AIStrategy = 
   result = DiagnosticMetrics(
     gameId: gameId,
     turn: turn,
+    act: 1,  # Default to Act 1, will be calculated in collectDiagnostics
+    rank: 0,  # Default to 0, will be calculated in collectDiagnostics
     houseId: houseId,
     strategy: strategy,
 
@@ -341,6 +353,14 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId, strategy: AIStrategy = 
     # Orders
     invalidOrders: 0,
     totalOrders: 0,
+
+    # Change Deltas (will be calculated from prevMetrics)
+    coloniesLost: 0,
+    coloniesGained: 0,
+    shipsLost: 0,
+    shipsGained: 0,
+    fightersLost: 0,
+    fightersGained: 0,
 
     # Bilateral Diplomatic Relations
     bilateralRelations: ""
@@ -1156,13 +1176,74 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.turnsUntilElimination = status.turnsUntilElimination
   result.missedOrderTurns = status.missedOrderTurns
 
+  # Calculate Act number (1-4) based on turn thresholds
+  # Assuming 100-turn game: Act1=1-25, Act2=26-50, Act3=51-75, Act4=76-100
+  # For dynamic calculation, use 25% per act
+  let turnLimit = 100  # TODO: Get from game config if available
+  let actThreshold = turnLimit div 4
+  result.act = min(4, (state.turn - 1) div actThreshold + 1)
+
+  # Calculate current rank by prestige (1=best, N=worst)
+  var housePrestige: seq[tuple[house: HouseId, prestige: int]] = @[]
+  for otherHouseId, house in state.houses:
+    housePrestige.add((otherHouseId, house.prestige))
+  housePrestige.sort(proc(a, b: auto): int = cmp(b.prestige, a.prestige))
+
+  for i, hp in housePrestige:
+    if hp.house == houseId:
+      result.rank = i + 1
+      break
+
+  # Calculate change deltas from previous turn
+  if prevMetrics.isSome:
+    let prev = prevMetrics.get()
+
+    # Colony changes
+    let prevColonies = prev.totalColonies
+    let currColonies = result.totalColonies
+    if currColonies > prevColonies:
+      result.coloniesGained = currColonies - prevColonies
+      result.coloniesLost = 0
+    elif currColonies < prevColonies:
+      result.coloniesLost = prevColonies - currColonies
+      result.coloniesGained = 0
+    else:
+      result.coloniesGained = 0
+      result.coloniesLost = 0
+
+    # Ship changes
+    let prevShips = prev.totalShips
+    let currShips = result.totalShips
+    if currShips > prevShips:
+      result.shipsGained = currShips - prevShips
+      result.shipsLost = 0
+    elif currShips < prevShips:
+      result.shipsLost = prevShips - currShips
+      result.shipsGained = 0
+    else:
+      result.shipsGained = 0
+      result.shipsLost = 0
+
+    # Fighter changes
+    let prevFighters = prev.totalFighters
+    let currFighters = result.totalFighters
+    if currFighters > prevFighters:
+      result.fightersGained = currFighters - prevFighters
+      result.fightersLost = 0
+    elif currFighters < prevFighters:
+      result.fightersLost = prevFighters - currFighters
+      result.fightersGained = 0
+    else:
+      result.fightersGained = 0
+      result.fightersLost = 0
+
 proc boolToInt(b: bool): int {.inline.} =
   ## Convert boolean to int for CSV output (Datamancer compatibility)
   if b: 1 else: 0
 
 proc writeCSVHeader*(file: File) =
   ## Write CSV header row with ALL game metrics
-  file.writeLine("game_id,turn,house,strategy," &
+  file.writeLine("game_id,turn,act,rank,house,strategy," &
                  # Economy (Core)
                  "treasury,production,pu_growth,zero_spend_turns," &
                  "gco,nhv,tax_rate,total_iu,total_pu,total_ptu,pop_growth_rate," &
@@ -1217,12 +1298,14 @@ proc writeCSVHeader*(file: File) =
                  "undefended_colonies,total_colonies,mothball_used,mothball_total," &
                  # Orders
                  "invalid_orders,total_orders," &
+                 # Change Deltas (turn-over-turn)
+                 "colonies_lost,colonies_gained,ships_lost,ships_gained,fighters_lost,fighters_gained," &
                  # Bilateral Diplomatic Relations (dynamic, semicolon-separated)
                  "bilateral_relations")
 
 proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
   ## Write metrics as CSV row with ALL fields
-  file.writeLine(&"{metrics.gameId},{metrics.turn},{metrics.houseId},{metrics.strategy}," &
+  file.writeLine(&"{metrics.gameId},{metrics.turn},{metrics.act},{metrics.rank},{metrics.houseId},{metrics.strategy}," &
                  # Economy (Core)
                  &"{metrics.treasuryBalance},{metrics.productionPerTurn},{metrics.puGrowth},{metrics.zeroSpendTurns}," &
                  &"{metrics.grossColonyOutput},{metrics.netHouseValue},{metrics.taxRate}," &
@@ -1282,6 +1365,8 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.mothballedFleetsUsed},{metrics.mothballedFleetsTotal}," &
                  # Orders
                  &"{metrics.invalidOrders},{metrics.totalOrders}," &
+                 # Change Deltas
+                 &"{metrics.coloniesLost},{metrics.coloniesGained},{metrics.shipsLost},{metrics.shipsGained},{metrics.fightersLost},{metrics.fightersGained}," &
                  # Bilateral Diplomatic Relations
                  &"{metrics.bilateralRelations}")
 
