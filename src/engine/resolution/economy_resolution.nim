@@ -600,45 +600,9 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
         house.diplomaticIsolation.active = false
         logInfo(LogCategory.lcGeneral, &"{house.name} is no longer diplomatically isolated")
 
-  # Convert colonies table to sequence for maintenance phase
-  # NOTE: No type conversion needed - gamestate.Colony has all economic fields
-  var coloniesSeq: seq[Colony] = @[]
-  for systemId, colony in state.colonies:
-    coloniesSeq.add(colony)
-
-  # Build house fleet data
-  var houseFleetData = initTable[HouseId, seq[(ShipClass, bool)]]()
-  for houseId in state.houses.keys:
-    houseFleetData[houseId] = @[]
-    for fleet in state.getHouseFleets(houseId):
-      for squadron in fleet.squadrons:
-        # Get actual ship class and crippled status from squadron
-        houseFleetData[houseId].add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
-
-  # Build house treasuries
-  var houseTreasuries = initTable[HouseId, int]()
-  for houseId, house in state.houses:
-    houseTreasuries[houseId] = house.treasury
-
-  # Call maintenance engine
-  let maintenanceReport = econ_engine.resolveMaintenancePhase(
-    coloniesSeq,
-    houseFleetData,
-    houseTreasuries
-  )
-
-  # CRITICAL: Write modified colonies back to state
-  # Construction advances in coloniesSeq, must persist to state.colonies
-  for colony in coloniesSeq:
-    state.colonies[colony.systemId] = colony
-
-  # Apply results back to game state
-  for houseId, upkeep in maintenanceReport.houseUpkeep:
-    # CRITICAL: Get, modify, write back to persist
-    var house = state.houses[houseId]
-    house.treasury = houseTreasuries[houseId]
-    logInfo(LogCategory.lcEconomy, &"{house.name}: -{upkeep} PP maintenance")
-    state.houses[houseId] = house
+  # Call maintenance engine with full state support
+  # This properly advances both facility queues (capital ships) AND colony queues (fighters/buildings)
+  let maintenanceReport = econ_engine.resolveMaintenancePhaseWithState(state)
 
   # Collect completed projects for commissioning (happens in next turn's Command Phase)
   result.add(maintenanceReport.completedProjects)
