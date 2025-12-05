@@ -16,6 +16,30 @@ This hybrid system provides Byzantine Imperial AI with strategic foresight, adap
 
 ## 🆕 Recent Changes (December 2025)
 
+### Diplomatic System Analysis Complete ✅
+**Date:** 2025-12-05
+**Status:** Analysis complete, diplomatic mechanics enhancement identified as TODO
+
+**Findings:**
+- ✅ Diplomatic relations ARE changing throughout games (Turn 16 avg first conflict)
+- ✅ Relations progress: Neutral (100% T1-15) → Hostile (~30% T20-25) → Enemy (~20% T30)
+- ✅ Strategy patterns distinct: Turtle most hostile (1.03 avg), Economic most enemy (0.40 avg)
+- ❌ **NO pacts being formed** (0 pacts across all games)
+- ❌ **NO dishonor occurring** (0 dishonor instances despite pact violation mechanics)
+- ❌ **NO formal diplomatic declarations** (0 hostility/war declarations)
+
+**Critical Gap Identified:**
+Relations changing **automatically/mechanically** rather than through **diplomatic actions**. Protostrator generates "diplomatic requirements" but they don't create pacts or trigger formal declarations.
+
+**Analysis Tool:**
+- Created `scripts/analysis/diplomacy_analysis.py` - Comprehensive diplomatic metrics analysis
+- Analyzes: relation progression, events, dishonor, isolation, conflict timing, strategy behavior
+- Integrated with enhanced diagnostics (bilateral_relations column)
+
+**Next Steps:** See TODO below for diplomatic system enhancement roadmap
+
+---
+
 ### Intelligence Integration Phase F Complete ✅
 **Date:** 2025-12-05
 **Status:** Production-ready, Domestikos intelligence integration complete
@@ -532,6 +556,74 @@ Several older documentation files are now superseded by recent work:
 ---
 
 ## Next Steps
+
+### TODO: Diplomatic System Enhancement 📋
+**Priority:** Medium (game functional, but diplomatic depth missing)
+**Status:** Analysis complete, implementation planning needed
+
+**Current State:**
+- Relations change automatically/mechanically (Neutral → Hostile → Enemy)
+- Protostrator generates "diplomatic requirements" but they don't execute
+- 0 pacts formed, 0 dishonor incidents, 0 formal declarations across all test games
+
+**Root Cause Analysis Needed:**
+1. **Protostrator → Engine Integration Gap**
+   - Protostrator generates diplomatic requirements (NAPs, alliances)
+   - Requirements never translate to actual pact formations in engine
+   - Need to trace: `generateDiplomaticRequirements()` → `executeDiplomaticActions()` → engine diplomacy system
+
+2. **Pact Formation Mechanics**
+   - Are pacts being submitted to engine but rejected?
+   - Are pacts formed but not tracked in diagnostics?
+   - Is bilateral agreement logic working? (both houses must agree)
+
+3. **Dishonor Trigger Logic**
+   - Pact violation detection exists in diagnostics (pact_violations column)
+   - But dishonored status never triggered (0 across all games)
+   - Need to verify: violation → dishonor state transition
+
+**Implementation Tasks:**
+1. **Investigation Phase** (~2 hours)
+   - [ ] Trace Protostrator diplomatic action flow
+   - [ ] Identify where pact formation fails (RBA → engine boundary)
+   - [ ] Check engine diplomacy system for pact storage/retrieval
+   - [ ] Verify bilateral agreement logic
+   - [ ] Test dishonor trigger with manual pact violation
+
+2. **Fix Pact Formation** (~4 hours)
+   - [ ] Ensure Protostrator requirements actually create engine pacts
+   - [ ] Implement bilateral agreement acceptance/rejection
+   - [ ] Add pact formation logging (who, what, when)
+   - [ ] Update diagnostics to confirm pacts formed
+
+3. **Fix Dishonor System** (~2 hours)
+   - [ ] Verify pact violation → dishonor state transition
+   - [ ] Test penalty application (prestige, diplomatic isolation)
+   - [ ] Add dishonor logging for debugging
+   - [ ] Confirm dishonored status appears in diagnostics
+
+4. **Testing & Validation** (~2 hours)
+   - [ ] Run 50-game test with fixed diplomatic system
+   - [ ] Verify pacts form in Act 1-2 (peaceful period)
+   - [ ] Verify pact violations occur in Act 2-3 (rising tensions)
+   - [ ] Verify dishonor penalties applied correctly
+   - [ ] Run diplomacy_analysis.py to confirm metrics
+
+**Expected Outcome:**
+- Pacts formed: ~20-40% of games (Act 1-2 NAPs/alliances)
+- Pact breaks: ~10-20% of games (Act 2-3 betrayals)
+- Dishonor incidents: ~5-15% of games (pact violators)
+- Formal declarations: ~50-80% of games (hostility/war declarations)
+
+**Analysis Tool Ready:**
+- `scripts/analysis/diplomacy_analysis.py` provides complete diplomatic metrics
+- No changes needed to analysis - just need engine to generate events
+
+**See Also:**
+- Diplomacy analysis findings in Recent Changes section above
+- `scripts/analysis/diplomacy_analysis.py` for metrics tracking
+
+---
 
 ### Immediate Priority
 1. **Performance Investigation**
