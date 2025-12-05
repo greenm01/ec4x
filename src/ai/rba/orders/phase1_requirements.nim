@@ -38,7 +38,8 @@ proc generateAllAdvisorRequirements*(
     controller,
     filtered,
     currentAct,
-    emptyTacticalOrders
+    emptyTacticalOrders,
+    some(intelSnapshot)  # Phase F: Pass intelligence for offensive/defensive operations
   )
 
   # Update standing orders with Domestikos changes

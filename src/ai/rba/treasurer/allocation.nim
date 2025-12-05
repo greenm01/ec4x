@@ -9,12 +9,13 @@
 ## - Apply threat response (emergency military boost)
 ## - Normalize to ensure sum = 1.0
 
-import std/[tables, options]
+import std/[tables, options, strformat]
 import ../../common/types
 import ../[config, controller_types]
 import ../shared/intelligence_types
 import ../drungarius/threat_assessment
 import ./consultation
+import ../../../engine/logger
 
 proc getBaselineAllocation*(act: GameAct): BudgetAllocation =
   ## Extract baseline allocation percentages from config based on game act
@@ -115,8 +116,6 @@ proc applyThreatAwareAllocation*(
 
   # Log threat-aware allocation (Phase D)
   if boostPct > 0.0:
-    import ../../../engine/logger
-    import std/strformat
     logInfo(LogCategory.lcAI,
             &"Treasurer: Threat level {maxThreat:.2f} ({threatLevelName}) detected, " &
             &"applying {boostPct * 100:.0f}% budget boost" &
