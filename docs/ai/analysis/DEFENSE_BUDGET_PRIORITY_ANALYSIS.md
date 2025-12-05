@@ -464,23 +464,103 @@ But test priority fix FIRST - it's the simplest hypothesis.
 
 ---
 
+## Strategic Vision: Foundation → Growth → Power Projection
+
+### **Revised Approach Based on Economic Reality**
+
+Current system tries to build 3 batteries + 2 armies per colony immediately.
+**Problem:** Early colonies produce 20-30 PP/turn - can't afford full defenses AND expansion.
+
+**Better Strategy: Phased Buildup Matching Economic Growth**
+
+#### **Act 1: Land Grab (Turns 1-10)**
+**Strategy:** Expand fast, minimal defenses, scout network
+- **Defenses:** 1 battery per colony (50PP) - basic deterrent
+- **Military:** Scouts (20PP) for exploration/intelligence
+- **Economy:** IU investment (15PP), let colonies grow
+- **Rationale:** Territory > Defense, cheap scouts > expensive capital ships
+
+#### **Act 2: Consolidation (Turns 11-20)**
+**Strategy:** Intelligence network, strengthen borders
+- **Defenses:** 2 batteries for border colonies, 1 for interior
+- **Military:** Scout network (ELI mesh), few defensive ships
+- **Economy:** Colonies mature (50-70 PP/turn production)
+- **Rationale:** Information advantage, fortify likely conflict zones
+
+#### **Act 3: Military Buildup (Turns 21-28)**
+**Strategy:** Convert economic advantage to military power
+- **Defenses:** 3 batteries + 2 armies (full fortification)
+- **Military:** Battleships, carriers, invasion fleets
+- **Economy:** High production (80-120 PP/turn)
+- **Rationale:** Economic surplus supports capital ship construction
+
+#### **Act 4: Conquest (Turns 29-31)**
+**Strategy:** Offensive operations, maintain superiority
+- **Defenses:** Repair/rebuild, focus on conquered colonies
+- **Military:** Replace losses, maintain fleet strength
+- **Economy:** War economy, full military focus
+- **Rationale:** Leverage superior fleet position
+
+### **Implementation: Act-Aware + Intelligence-Driven**
+
+Combine **Act-based baseline** with **threat-based escalation:**
+
+```nim
+# Baseline target by Act (economic capacity)
+let baselineTarget = case currentAct
+  of Act1: 1  # Minimal (50PP affordable)
+  of Act2: 2  # Moderate (100PP affordable)
+  of Act3, Act4: 3  # Full (150PP affordable with mature economy)
+
+# Escalate based on threat
+let targetBatteries = if threat > 0.5:
+  3  # Emergency: full defenses regardless of Act
+elif threat > 0.2:
+  max(baselineTarget, 2)  # Elevated: at least 2
+else:
+  baselineTarget  # Normal: match economic capacity
+```
+
+**Priority:**
+- Critical (threat > 0.5): Emergency fortification
+- High (threat > 0.2 OR Act ≥ 3): Proactive defense
+- Medium (Act 1-2, peaceful): Gradual buildup
+- Low (has baseline for Act): Maintenance
+
+### **Economic Justification**
+
+```
+Act 1 Colony (30 PP/turn):
+- Old system: 3 batteries (150PP) = 5 turns of production
+- New system: 1 battery (50PP) = 1.7 turns of production
+- Savings: 100PP → spend on expansion/scouts
+
+Act 3 Colony (100 PP/turn):
+- Old system: Still trying to build remaining 2 batteries
+- New system: Already has 1-2, upgrading to 3 (50-100PP)
+- Better: Economic surplus supports full fortification
+```
+
 ## Conclusion
 
-This is a **systematic architectural issue**, not a simple tuning problem. The fixes applied (facility requirement, tactical budgets, cost reduction) were necessary but insufficient. The core issue is **intra-defense priority competition** - all Medium-priority items compete for the same budget, and sequential processing creates a first-mover advantage.
+This is a **systematic architectural issue**, not a simple tuning problem. The fixes applied (facility requirement, tactical budgets, cost reduction) were necessary but insufficient. The current system has two problems:
+
+1. **Fixed targets:** 3 batteries regardless of economic capacity
+2. **Threat-only priorities:** Doesn't account for Act/economy
 
 **Recommended Path Forward:**
-1. **Immediate:** Change battery/army priority to High (test hypothesis)
-2. **If successful:** Run cost-effectiveness tests
-3. **If not:** Consider architectural changes (budget subdivision, etc.)
-4. **Throughout:** Monitor for emergent gameplay patterns
+1. **Implement Act-aware baseline targets** (1 → 2 → 3 batteries)
+2. **Keep threat-based escalation** (threatened colonies get full defenses)
+3. **Test with phased buildup** (foundation early, power late)
+4. **Monitor economic efficiency** (% of budget wasted on unaffordable defenses)
 
 The goal is to create **strategic depth** where:
-- Defenses matter (bombardment becomes necessary)
-- But don't dominate (aggressive strategies remain viable)
-- AI makes intelligent trade-offs (infrastructure vs fleet)
-- Budget allocation remains intelligence-driven (not hard-coded)
+- Early game focuses on expansion + intelligence (scouts > battleships)
+- Mid game builds economic foundation (defenses at borders)
+- Late game leverages economic advantage (capital ships + full fortification)
+- AI makes intelligent trade-offs based on Act + threat + economy
 
-Unknown-unknown testing will reveal which approach achieves this balance.
+This matches real 4X strategic progression: Foundation → Growth → Power Projection.
 
 ---
 

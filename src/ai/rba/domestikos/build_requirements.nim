@@ -647,28 +647,44 @@ proc assessStrategicAssets*(
     logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
-  # Ground batteries for colony defense - INTELLIGENCE-DRIVEN PER-COLONY REQUIREMENTS
-  # Priority based on threat assessment: threatened colonies get batteries FIRST
+  # Ground batteries for colony defense - ACT-AWARE + INTELLIGENCE-DRIVEN
+  # Phased buildup matching economic capacity: 1 (Act1) → 2 (Act2) → 3 (Act3+)
   let groundBatteryCost = getBuildingCost("GroundBattery")
   for colony in filtered.ownColonies:
     let currentBatteries = colony.groundBatteries  # int, not seq
-    let targetBatteries = 3  # Baseline: 3 batteries per colony
+
+    # ACT-AWARE: Baseline target matches economic capacity
+    # Act 1: 1 battery (50PP, affordable for expanding colonies)
+    # Act 2: 2 batteries (100PP, mature economy)
+    # Act 3+: 3 batteries (150PP, full fortification with economic surplus)
+    let baselineTarget = case currentAct
+      of GameAct.Act1_LandGrab: 1  # Minimal baseline: expansion priority
+      of GameAct.Act2_RisingTensions: 2  # Moderate: consolidation
+      of GameAct.Act3_TotalWar, GameAct.Act4_Endgame: 3  # Full: war economy
+
+    # INTELLIGENCE-DRIVEN: Calculate threat at this colony
+    let threat = estimateLocalThreat(colony.systemId, filtered, controller)
+
+    # Threat-based escalation: threatened colonies get full defenses regardless of Act
+    let targetBatteries = if threat > 0.5:
+      3  # Emergency: full fortification
+    elif threat > 0.2:
+      max(baselineTarget, 2)  # Elevated threat: at least 2 batteries
+    else:
+      baselineTarget  # Normal: match Act baseline
 
     if currentBatteries < targetBatteries:
       let needed = targetBatteries - currentBatteries
 
-      # INTELLIGENCE-DRIVEN: Calculate threat at this colony
-      let threat = estimateLocalThreat(colony.systemId, filtered, controller)
-
-      # Determine priority based on threat level
+      # Priority combines threat + Act awareness
       let priority = if threat > 0.5:
-        RequirementPriority.Critical  # High threat → CRITICAL priority
-      elif threat > 0.2:
-        RequirementPriority.High      # Medium threat → HIGH priority
+        RequirementPriority.Critical  # Emergency fortification
+      elif threat > 0.2 or currentAct >= GameAct.Act3_TotalWar:
+        RequirementPriority.High      # Elevated threat OR war economy
       elif currentBatteries == 0:
-        RequirementPriority.Medium    # No defense → MEDIUM priority
+        RequirementPriority.Medium    # No defense, gradual buildup
       else:
-        RequirementPriority.Low       # Has some defense → LOW priority
+        RequirementPriority.Low       # Has baseline, maintenance
 
       let req = BuildRequirement(
         requirementType: RequirementType.Infrastructure,
@@ -683,29 +699,44 @@ proc assessStrategicAssets*(
       logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x GroundBattery at {colony.systemId} (priority={priority}, threat={threat:.2f})")
       result.add(req)
 
-  # Armies for colony defense - INTELLIGENCE-DRIVEN PER-COLONY REQUIREMENTS
-  # Priority based on threat assessment: threatened colonies get armies FIRST
+  # Armies for colony defense - ACT-AWARE + INTELLIGENCE-DRIVEN
+  # Phased buildup: armies are last-line defense, build after batteries
   let armyCost = getArmyBuildCost()
   for colony in filtered.ownColonies:
     let currentArmies = colony.armies  # int, not seq
-    let targetArmies = 2  # Baseline: 2 armies per colony
+
+    # ACT-AWARE: Baseline target matches economic capacity
+    # Act 1: 0-1 army (15-30PP, expansion priority over ground forces)
+    # Act 2: 1 army (30PP, basic garrison)
+    # Act 3+: 2 armies (30PP, full ground defense)
+    let baselineTarget = case currentAct
+      of GameAct.Act1_LandGrab: 0  # Minimal: batteries first, armies later
+      of GameAct.Act2_RisingTensions: 1  # Basic garrison
+      of GameAct.Act3_TotalWar, GameAct.Act4_Endgame: 2  # Full ground defense
+
+    # INTELLIGENCE-DRIVEN: Calculate threat at this colony
+    let threat = estimateLocalThreat(colony.systemId, filtered, controller)
+
+    # Threat-based escalation: armies are last-line defense
+    let targetArmies = if threat > 0.6:
+      2  # Emergency: full ground defense
+    elif threat > 0.3:
+      max(baselineTarget, 1)  # Elevated: at least basic garrison
+    else:
+      baselineTarget  # Normal: match Act baseline
 
     if currentArmies < targetArmies:
       let needed = targetArmies - currentArmies
 
-      # INTELLIGENCE-DRIVEN: Calculate threat at this colony
-      let threat = estimateLocalThreat(colony.systemId, filtered, controller)
-
-      # Determine priority based on threat level
-      # Armies are last-line defense, slightly lower priority than batteries
+      # Priority: armies slightly lower than batteries (last-line defense)
       let priority = if threat > 0.6:
-        RequirementPriority.Critical  # High threat → CRITICAL
-      elif threat > 0.3:
-        RequirementPriority.High      # Medium threat → HIGH
-      elif currentArmies == 0:
-        RequirementPriority.Medium    # No armies → MEDIUM
+        RequirementPriority.Critical  # Emergency
+      elif threat > 0.3 or currentAct >= GameAct.Act3_TotalWar:
+        RequirementPriority.High      # Elevated threat OR war economy
+      elif currentArmies == 0 and currentAct >= GameAct.Act2_RisingTensions:
+        RequirementPriority.Medium    # Act 2+: establish garrison
       else:
-        RequirementPriority.Low       # Has some → LOW
+        RequirementPriority.Low       # Gradual buildup
 
       let req = BuildRequirement(
         requirementType: RequirementType.DefenseGap,
