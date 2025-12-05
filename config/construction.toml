@@ -56,7 +56,7 @@ construction_capacity_increase_per_level = 0.10  # CST increases capacity by 10%
 spaceport_cost = 500
 shipyard_cost = 1000
 starbase_cost = 1200
-ground_battery_cost = 100
+ground_battery_cost = 50  # Same as Battleship - defensive hardpoint with heavy weapons
 fighter_squadron_cost = 20         # Cost per fighter squadron
 
 # Planetary shield costs by tech level

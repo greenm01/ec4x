@@ -1059,26 +1059,29 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                &"(priority={req.priority}, cost={req.estimatedCost}PP)")
 
       # Find best colony to build (prefer target system if specified)
+      # IMPORTANT: Ships require facilities (shipyard/spaceport), but defense buildings don't
+      let requiresFacility = req.shipClass.isSome
       var buildColony: Option[Colony] = none(Colony)
+
       if req.targetSystem.isSome:
         # Try to build at/near target system
         for colony in myColonies:
           if colony.systemId == req.targetSystem.get():
-            if colony.shipyards.len > 0 or colony.spaceports.len > 0:
+            if not requiresFacility or colony.shipyards.len > 0 or colony.spaceports.len > 0:
               buildColony = some(colony)
               break
 
-      # Fallback: Use first colony with facilities
+      # Fallback: Use first suitable colony
       if buildColony.isNone:
         for colony in myColonies:
-          if colony.shipyards.len > 0 or colony.spaceports.len > 0:
+          if not requiresFacility or colony.shipyards.len > 0 or colony.spaceports.len > 0:
             buildColony = some(colony)
             break
 
       if buildColony.isNone:
         logWarn(LogCategory.lcAI,
                 &"{controller.houseId} Treasurer: Domestikos requirement cannot be fulfilled: " &
-                &"no colonies with shipyard/spaceport (need {req.quantity}× {req.shipClass.get()})")
+                &"no suitable colonies (need {req.quantity}× {itemName})")
         treasurerFeedback.unfulfilledRequirements.add(req)
         treasurerFeedback.totalUnfulfilledCost += req.estimatedCost
         continue

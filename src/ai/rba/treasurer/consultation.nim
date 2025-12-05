@@ -113,20 +113,27 @@ proc blendRequirementsWithBaseline*(
   requiredPP: Table[BuildObjective, int],
   availableBudget: int
 ) =
-  ## Normal case: Blend Domestikos requirements with baseline config allocation
+  ## Normal case: Allocate based on Domestikos tactical requirements
   ##
-  ## Strategy: 70% driven by requirements, 30% by baseline config
-  ## This maintains strategic diversity while fulfilling tactical needs.
+  ## Strategy: 100% tactical for Defense/Military (urgent needs), blend others
+  ## Defense and Military are immediate tactical needs - allocate exactly what's requested.
+  ## Reconnaissance and SpecialUnits blend 70/30 to maintain strategic balance.
   ##
   ## Example:
   ## - Domestikos needs 160PP Defense (53% of 300PP budget)
-  ## - Baseline config says 15% Defense
-  ## - Blended result: (53% * 0.7) + (15% * 0.3) = 37% + 4.5% = 41.5% Defense
+  ## - Allocate exactly 53% to Defense (100% of requirement)
+  ## - SpecialUnits: blend 70% requirement + 30% baseline
 
   let cfg = globalRBAConfig.domestikos
 
-  # Adjust Defense, Military, Reconnaissance, SpecialUnits based on requirements
-  for objective in [BuildObjective.Defense, BuildObjective.Military, BuildObjective.Reconnaissance, BuildObjective.SpecialUnits]:
+  # Defense and Military: 100% requirements-driven (pure tactical allocation)
+  for objective in [BuildObjective.Defense, BuildObjective.Military]:
+    if requiredPP[objective] > 0:
+      let targetPercent = float(requiredPP[objective]) / float(availableBudget)
+      allocation[objective] = min(targetPercent, 0.85)  # Cap at 85% to leave room for other objectives
+
+  # Reconnaissance and SpecialUnits: Blend 70/30 (strategic flexibility)
+  for objective in [BuildObjective.Reconnaissance, BuildObjective.SpecialUnits]:
     if requiredPP[objective] > 0:
       let targetPercent = float(requiredPP[objective]) / float(availableBudget)
       let oldPercent = allocation[objective]
@@ -142,9 +149,10 @@ proc blendRequirementsWithBaseline*(
   # Ensure minimum reserves for expansion (never below 5%)
   allocation[BuildObjective.Expansion] = max(allocation[BuildObjective.Expansion], cfg.min_expansion_budget_percent)
 
-  logDebug(LogCategory.lcAI,
-           &"Requirements Blend: Defense={int(allocation[BuildObjective.Defense]*100)}%, " &
-           &"Military={int(allocation[BuildObjective.Military]*100)}%, Recon={int(allocation[BuildObjective.Reconnaissance]*100)}%, " &
+  logInfo(LogCategory.lcAI,
+           &"Tactical Budget Allocation: Defense={int(allocation[BuildObjective.Defense]*100)}% ({requiredPP[BuildObjective.Defense]}PP requested), " &
+           &"Military={int(allocation[BuildObjective.Military]*100)}% ({requiredPP[BuildObjective.Military]}PP requested), " &
+           &"Recon={int(allocation[BuildObjective.Reconnaissance]*100)}%, " &
            &"SpecialUnits={int(allocation[BuildObjective.SpecialUnits]*100)}%")
 
 proc consultDomestikosRequirements*(
