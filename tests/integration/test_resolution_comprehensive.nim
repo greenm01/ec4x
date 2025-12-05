@@ -92,15 +92,30 @@ suite "Resolution: Ship Commissioning":
     var orders = initTable[HouseId, OrderPacket]()
     orders["house1"] = packet
 
+    # Turn 1: Submit build order, construction starts and completes in Maintenance Phase
     let result = resolveTurn(state, orders)
 
-    # Ship should complete construction and be commissioned
-    # Per economy.md:5.0 - all ships build instantly (1 turn)
-    check result.newState.colonies[1].underConstruction.isNone
+    # Turn 2: Commission completed projects from Turn 1
+    var turn2Orders = initTable[HouseId, OrderPacket]()
+    turn2Orders["house1"] = OrderPacket(
+      houseId: "house1",
+      turn: 2,
+      buildOrders: @[],
+      fleetOrders: @[],
+      researchAllocation: initResearchAllocation(),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      terraformOrders: @[],
+      espionageAction: none(esp_types.EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
+    let result2 = resolveTurn(result.newState, turn2Orders)
 
-    # Ship should either be in unassignedSquadrons or auto-assigned to a fleet
-    let totalSquadrons = result.newState.colonies[1].unassignedSquadrons.len +
-                          result.newState.fleets.len  # Each new fleet has 1 squadron
+    # Ship should be commissioned and auto-assigned to a fleet or in unassignedSquadrons
+    # Per economy.md:5.0 - ships build in 1 turn, commissioned at start of next turn
+    let totalSquadrons = result2.newState.colonies[1].unassignedSquadrons.len +
+                          result2.newState.fleets.values.toSeq.mapIt(it.squadrons.len).foldl(a + b, 0)
 
     check totalSquadrons > 0
 
@@ -606,18 +621,36 @@ suite "Resolution: Integration Tests":
     var orders = initTable[HouseId, OrderPacket]()
     orders["house1"] = packet
 
+    # Turn 1: Submit build order, construction completes
     let result = resolveTurn(state, orders)
 
-    # Ship should be built, commissioned, and auto-assigned to a fleet
-    check result.newState.fleets.len > 0
-
-    # Turn 2: Give the fleet a Hold order
+    # Turn 2: Commission and auto-assign
     var turn2Orders = initTable[HouseId, OrderPacket]()
-    let fleetId = result.newState.fleets.keys.toSeq[0]
-
     turn2Orders["house1"] = OrderPacket(
       houseId: "house1",
       turn: 2,
+      buildOrders: @[],
+      fleetOrders: @[],
+      researchAllocation: initResearchAllocation(),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      terraformOrders: @[],
+      espionageAction: none(esp_types.EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
+    let result2 = resolveTurn(result.newState, turn2Orders)
+
+    # Ship should be commissioned and auto-assigned to a fleet
+    check result2.newState.fleets.len > 0
+
+    # Turn 3: Give the fleet a Hold order
+    var turn3Orders = initTable[HouseId, OrderPacket]()
+    let fleetId = result2.newState.fleets.keys.toSeq[0]
+
+    turn3Orders["house1"] = OrderPacket(
+      houseId: "house1",
+      turn: 3,
       buildOrders: @[],
       fleetOrders: @[
         FleetOrder(
@@ -637,11 +670,11 @@ suite "Resolution: Integration Tests":
       cipInvestment: 0
     )
 
-    let result2 = resolveTurn(result.newState, turn2Orders)
+    let result3 = resolveTurn(result2.newState, turn3Orders)
 
     # Fleet should still exist and be holding position
-    check fleetId in result2.newState.fleets
-    check result2.newState.fleets[fleetId].location == 1
+    check fleetId in result3.newState.fleets
+    check result3.newState.fleets[fleetId].location == 1
 
 suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
   ## Tests for things we explicitly DON'T want to allow

@@ -65,12 +65,30 @@ proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,
 
   # Step 2: Pull next project from queue if slot available
   if spaceport.activeConstruction.isNone and spaceport.constructionQueue.len > 0:
-    let nextProject = spaceport.constructionQueue[0]
+    var nextProject = spaceport.constructionQueue[0]
     spaceport.constructionQueue.delete(0)
-    spaceport.activeConstruction = some(nextProject)
-    logEconomy("Spaceport started new construction",
-              "facility=", spaceport.id,
-              " project=", nextProject.itemId)
+
+    # CRITICAL: Decrement turnsRemaining immediately when starting
+    # This ensures "1 turn" projects complete in the same turn cycle
+    nextProject.turnsRemaining -= 1
+
+    if nextProject.turnsRemaining <= 0:
+      # Project completes immediately (0-turn projects)
+      result.completedProjects.add(econ_types.CompletedProject(
+        colonyId: colonyId,
+        projectType: nextProject.projectType,
+        itemId: nextProject.itemId
+      ))
+      logEconomy("Spaceport construction complete (instant)",
+                "facility=", spaceport.id,
+                " project=", nextProject.itemId)
+      # Don't set activeConstruction - slot remains free
+    else:
+      # Project still needs more turns
+      spaceport.activeConstruction = some(nextProject)
+      logEconomy("Spaceport started new construction",
+                "facility=", spaceport.id,
+                " project=", nextProject.itemId)
 
 proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
                            colonyId: core.SystemId): QueueAdvancementResult =
@@ -144,9 +162,29 @@ proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
     # (True FIFO would require timestamped queuing - future enhancement)
 
     if shipyard.activeConstruction.isNone and shipyard.constructionQueue.len > 0:
-      # Pull construction project
-      let nextProject = shipyard.constructionQueue[0]
+      # Pull construction project and immediately start it
+      var nextProject = shipyard.constructionQueue[0]
       shipyard.constructionQueue.delete(0)
+
+      # CRITICAL: Decrement turnsRemaining immediately when starting
+      # This ensures "1 turn" projects complete in the same turn cycle
+      nextProject.turnsRemaining -= 1
+
+      if nextProject.turnsRemaining <= 0:
+        # Project completes immediately (0-turn projects)
+        result.completedProjects.add(econ_types.CompletedProject(
+          colonyId: colonyId,
+          projectType: nextProject.projectType,
+          itemId: nextProject.itemId
+        ))
+        logEconomy("Shipyard construction complete (instant)",
+                  "facility=", shipyard.id,
+                  " project=", nextProject.itemId)
+        # Don't set activeConstruction - slot is free for next project
+        pulled += 1
+        continue
+
+      # Project still needs more turns
       shipyard.activeConstruction = some(nextProject)
       logEconomy("Shipyard started new construction",
                 "facility=", shipyard.id,
