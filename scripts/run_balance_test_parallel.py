@@ -34,16 +34,16 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent  # since script is in scripts/
 
 
-def run_single_game(seed, turns_per_game, map_rings=0, num_players=4):
+def run_single_game(seed, turns_per_game, map_rings=3, num_players=4):
     """Run a single game simulation with given seed"""
-    cmd = ["./bin/run_simulation", str(turns_per_game), str(seed)]
-    if map_rings > 0:
-        cmd.append(str(map_rings))
-    if num_players != 4:  # Only add if non-default
-        # Need to add both map_rings and num_players if num_players is specified
-        if map_rings == 0:
-            cmd.append("0")  # Default map_rings
-        cmd.append(str(num_players))
+    cmd = [
+        "./bin/run_simulation",
+        "--turns", str(turns_per_game),
+        "--seed", str(seed),
+        "--map-rings", str(map_rings),
+        "--players", str(num_players),
+        "--output", f"balance_results/game_{seed}.json"
+    ]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
 
     if result.returncode != 0:
