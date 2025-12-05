@@ -67,7 +67,7 @@ proc analyzeSurveillanceReports*(
     if coverage.hasKey(colony.systemId):
       continue  # Already has starbase
 
-    let production = colony.colony.grossOutput
+    let production = colony.grossOutput
     if production >= 500:  # High-value threshold
       gaps.add(SurveillanceGap(
         systemId: colony.systemId,
@@ -79,7 +79,9 @@ proc analyzeSurveillanceReports*(
 
   # Identify systems with recent threat activity but no permanent coverage
   # Check if threats table exists in intelligence database
-  for systemId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
+  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
+    let systemId = history.lastKnownLocation
+
     if coverage.hasKey(systemId):
       continue  # Already has starbase
 

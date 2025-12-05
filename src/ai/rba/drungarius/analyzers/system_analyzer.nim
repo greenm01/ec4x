@@ -5,8 +5,8 @@
 ##
 ## Phase B implementation - second priority analyzer
 
-import std/[tables, options, sets, algorithm]
-import ../../../../engine/[gamestate, fog_of_war, starmap, fleet]
+import std/[tables, options, sets, algorithm, strformat]
+import ../../../../engine/[gamestate, fog_of_war, starmap, fleet, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/[core, units]
 import ../../controller_types
@@ -176,52 +176,6 @@ proc analyzeSystemIntelligence*(
 # PHASE E: PATROL PATTERN DETECTION
 # ==============================================================================
 
-proc detectPatrolRoutes*(
-  filtered: FilteredGameState,
-  controller: AIController
-): seq[PatrolRoute] =
-  ## Detect enemy patrol routes from FleetMovementHistory
-  ## Phase E: Enables predictive threat modeling
-
-  let config = globalRBAConfig.intelligence.patrol_detection
-  var routes: seq[PatrolRoute] = @[]
-
-  # Process fleet movement history
-  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
-    # Skip own fleets
-    if history.owner == controller.houseId:
-      continue
-
-    # Need minimum sightings to detect pattern
-    if history.sightings.len < config.min_sightings_for_pattern:
-      continue
-
-    # Check if pattern is stale
-    if history.lastSeen < filtered.turn - config.staleness_threshold_turns:
-      continue
-
-    # Analyze sighting pattern for repeating routes
-    let pattern = analyzeMovementPattern(history.sightings)
-
-    if pattern.isPattern and pattern.confidence >= config.pattern_confidence_threshold:
-      routes.add(PatrolRoute(
-        fleetId: fleetId,
-        owner: history.owner,
-        systems: pattern.route,
-        confidence: pattern.confidence,
-        lastUpdated: history.lastSeen
-      ))
-
-      # Log detected patrol
-      import ../../../../engine/logger
-      import std/strformat
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Drungarius: Patrol route detected - " &
-              &"Fleet {fleetId} ({history.owner}) - {pattern.route.len} systems, " &
-              &"confidence {pattern.confidence:.0%}")
-
-  result = routes
-
 proc analyzeMovementPattern(
   sightings: seq[tuple[turn: int, systemId: SystemId]]
 ): tuple[isPattern: bool, confidence: float, route: seq[SystemId]] =
@@ -271,3 +225,47 @@ proc analyzeMovementPattern(
 
   # No strong pattern found
   result.isPattern = false
+
+proc detectPatrolRoutes*(
+  filtered: FilteredGameState,
+  controller: AIController
+): seq[PatrolRoute] =
+  ## Detect enemy patrol routes from FleetMovementHistory
+  ## Phase E: Enables predictive threat modeling
+
+  let config = globalRBAConfig.intelligence.patrol_detection
+  var routes: seq[PatrolRoute] = @[]
+
+  # Process fleet movement history
+  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
+    # Skip own fleets
+    if history.owner == controller.houseId:
+      continue
+
+    # Need minimum sightings to detect pattern
+    if history.sightings.len < config.min_sightings_for_pattern:
+      continue
+
+    # Check if pattern is stale
+    if history.lastSeen < filtered.turn - config.staleness_threshold_turns:
+      continue
+
+    # Analyze sighting pattern for repeating routes
+    let pattern = analyzeMovementPattern(history.sightings)
+
+    if pattern.isPattern and pattern.confidence >= config.pattern_confidence_threshold:
+      routes.add(PatrolRoute(
+        fleetId: fleetId,
+        owner: history.owner,
+        systems: pattern.route,
+        confidence: pattern.confidence,
+        lastUpdated: history.lastSeen
+      ))
+
+      # Log detected patrol
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Drungarius: Patrol route detected - " &
+              &"Fleet {fleetId} ({history.owner}) - {pattern.route.len} systems, " &
+              &"confidence {pattern.confidence * 100:.0f}%")
+
+  result = routes
