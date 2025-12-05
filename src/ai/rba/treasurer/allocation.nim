@@ -79,7 +79,7 @@ proc applyThreatAwareAllocation*(
   ## Graduated threat-aware budget adjustment based on intelligence (Phase D)
   ## Replaces binary isUnderThreat flag with nuanced threat response
 
-  let config = globalRBAConfig.intelligence.threat_response
+  let config = globalRBAConfig.intelligence_threat_response
   let threats = intelSnapshot.military.threatsByColony
 
   if threats.len == 0:

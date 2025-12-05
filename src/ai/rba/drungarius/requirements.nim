@@ -5,7 +5,7 @@
 ## Generates espionage requirements with priorities for Basileus mediation
 ## Includes EBP/CIP investment and operation requirements
 
-import std/[options, strformat]
+import std/[options, strformat, tables]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/espionage/types as esp_types

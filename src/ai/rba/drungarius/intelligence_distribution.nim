@@ -40,11 +40,11 @@ proc assessThreat*(
   if enemyFleetCount > 0:
     # Assess based on fleet strength
     if totalEnemyStrength >= 10:
-      return intelligence_types.ThreatLevel.Critical  # Large enemy force
+      return intelligence_types.ThreatLevel.tlCritical  # Large enemy force
     elif totalEnemyStrength >= 5:
-      return intelligence_types.ThreatLevel.High  # Moderate enemy force
+      return intelligence_types.ThreatLevel.tlHigh  # Moderate enemy force
     else:
-      return intelligence_types.ThreatLevel.Moderate  # Small enemy presence
+      return intelligence_types.ThreatLevel.tlModerate  # Small enemy presence
 
   # Check intelligence for recent enemy activity
   for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
@@ -52,11 +52,11 @@ proc assessThreat*(
       # Enemy was here recently - elevated threat
       let turnsSince = filtered.turn - history.lastSeen
       if turnsSince <= 2:
-        return intelligence_types.ThreatLevel.Moderate  # Recent enemy activity
+        return intelligence_types.ThreatLevel.tlModerate  # Recent enemy activity
       elif turnsSince <= 5:
-        return intelligence_types.ThreatLevel.Low  # Enemy was here recently
+        return intelligence_types.ThreatLevel.tlLow  # Enemy was here recently
 
-  return intelligence_types.ThreatLevel.None  # No known threats
+  return intelligence_types.ThreatLevel.tlNone  # No known threats
 
 proc needsReconnaissance*(
   filtered: FilteredGameState,
@@ -301,7 +301,7 @@ proc generateIntelligenceReport*(
   # Assess threats to our own colonies
   for colony in filtered.ownColonies:
     let threat = assessThreat(filtered, colony.systemId, controller)
-    if threat != intelligence_types.ThreatLevel.None:
+    if threat != intelligence_types.ThreatLevel.tlNone:
       result.threatAssessment[colony.systemId] = threat
       logInfo(LogCategory.lcAI,
               &"{controller.houseId} Drungarius: Threat {threat} detected at colony {colony.systemId}")

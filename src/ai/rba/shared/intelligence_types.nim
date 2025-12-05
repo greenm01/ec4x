@@ -25,7 +25,7 @@ type
 
   ThreatLevel* {.pure.} = enum
     ## Threat assessment levels for intelligence reports
-    None, Low, Moderate, High, Critical
+    tlNone, tlLow, tlModerate, tlHigh, tlCritical
 
   # ==============================================================================
   # MILITARY INTELLIGENCE

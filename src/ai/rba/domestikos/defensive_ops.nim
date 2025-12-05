@@ -49,18 +49,18 @@ proc calculateColonyDefensePriority(
 
     # Priority boost for colonies under active threat
     if snapshot.military.threatsByColony.hasKey(colony.systemId):
-      let threat = snapshot.military.threatsByColony[colony.systemId]
+      let threat: ThreatAssessment = snapshot.military.threatsByColony[colony.systemId]
       case threat.level
-      of ThreatLevel.Critical:
+      of tlCritical:
         priority += 500.0  # Critical threat = massive defensive priority
         logInfo(LogCategory.lcAI,
                 &"{controller.houseId} Domestikos: CRITICAL THREAT at colony {colony.systemId} - defensive priority boosted")
-      of ThreatLevel.High:
+      of tlHigh:
         priority += 200.0  # High threat = significant boost
-      of ThreatLevel.Moderate:
+      of tlModerate:
         priority += 50.0   # Moderate threat = minor boost
-      else:
-        discard
+      of tlNone, tlLow:
+        discard  # No priority boost for low/no threats
 
     # Priority boost for blockaded colonies (60% GCO reduction = critical)
     for blockade in snapshot.diplomatic.activeBlockades:

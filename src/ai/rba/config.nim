@@ -169,51 +169,6 @@ type
 # ==============================================================================
 
 type
-  IntelligenceConfig* = object
-    ## Enhanced intelligence processing parameters
-    # Report freshness thresholds (turns)
-    colony_intel_stale_threshold*: int
-    system_intel_stale_threshold*: int
-    starbase_intel_stale_threshold*: int
-
-    # Threat assessment weights (must sum to 1.0)
-    threat_fleet_strength_weight*: float
-    threat_proximity_weight*: float
-    threat_recent_activity_weight*: float
-
-    # Threat distance thresholds (jumps)
-    threat_critical_distance*: int
-    threat_high_distance*: int
-    threat_moderate_distance*: int
-
-    # Vulnerability assessment
-    vulnerability_defense_ratio_threshold*: float
-    vulnerability_value_threshold*: int
-
-    # Combat learning (Phase C)
-    combat_report_learning_enabled*: bool
-    combat_lesson_retention_turns*: int
-    combat_doctrine_detection_threshold*: int
-
-    # Economic intelligence (Phase C)
-    economic_assessment_min_colonies*: int
-    economic_strength_production_weight*: float
-    economic_strength_income_weight*: float
-
-    # Research intelligence (Phase C)
-    tech_gap_critical_threshold*: int
-    tech_gap_high_threshold*: int
-
-    # Threat response (Phase D)
-    threat_response*: ThreatResponseConfig
-    surveillance*: SurveillanceConfig
-
-    # Phase E intelligence enhancements
-    diplomatic_events*: DiplomaticEventsConfig
-    counterintel*: CounterintelConfig
-    construction_analysis*: ConstructionAnalysisConfig
-    patrol_detection*: PatrolDetectionConfig
-
   ThreatResponseConfig* = object
     ## Threat-aware budget allocation parameters (Phase D)
     low_threat_boost*: float
@@ -254,6 +209,41 @@ type
     min_sightings_for_pattern*: int
     pattern_confidence_threshold*: float
     staleness_threshold_turns*: int
+
+  IntelligenceConfig* = object
+    ## Enhanced intelligence processing parameters
+    # Report freshness thresholds (turns)
+    colony_intel_stale_threshold*: int
+    system_intel_stale_threshold*: int
+    starbase_intel_stale_threshold*: int
+
+    # Threat assessment weights (must sum to 1.0)
+    threat_fleet_strength_weight*: float
+    threat_proximity_weight*: float
+    threat_recent_activity_weight*: float
+
+    # Threat distance thresholds (jumps)
+    threat_critical_distance*: int
+    threat_high_distance*: int
+    threat_moderate_distance*: int
+
+    # Vulnerability assessment
+    vulnerability_defense_ratio_threshold*: float
+    vulnerability_value_threshold*: int
+
+    # Combat learning (Phase C)
+    combat_report_learning_enabled*: bool
+    combat_lesson_retention_turns*: int
+    combat_doctrine_detection_threshold*: int
+
+    # Economic intelligence (Phase C)
+    economic_assessment_min_colonies*: int
+    economic_strength_production_weight*: float
+    economic_strength_income_weight*: float
+
+    # Research intelligence (Phase C)
+    tech_gap_critical_threshold*: int
+    tech_gap_high_threshold*: int
 
   DrungariusConfig* = object
     ## Intelligence coordinator settings
@@ -309,6 +299,13 @@ type
     eparch*: EparchConfig
     # Intelligence integration (Phase B+)
     intelligence*: IntelligenceConfig
+    # Intelligence sub-configurations (Phase D+)
+    intelligence_threat_response*: ThreatResponseConfig
+    intelligence_surveillance*: SurveillanceConfig
+    intelligence_diplomatic_events*: DiplomaticEventsConfig
+    intelligence_counterintel*: CounterintelConfig
+    intelligence_construction_analysis*: ConstructionAnalysisConfig
+    intelligence_patrol_detection*: PatrolDetectionConfig
     # Drungarius module (intelligence coordinator)
     drungarius*: DrungariusConfig
 

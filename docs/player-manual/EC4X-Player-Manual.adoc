@@ -1,6 +1,6 @@
 = EC4X Player Manual
 Mason A. Green
-v0.1, 2025-12-05
+v0.77, 2025-12-05
 :doctype: book
 :toc: left
 :toclevels: 3
@@ -8,7 +8,7 @@ v0.1, 2025-12-05
 :sectnumlevels: 3
 :icons: font
 :source-highlighter: rouge
-:imagesdir: ./assets
+:imagesdir: ./images
 
 [dedication]
 == Dedication
@@ -35,7 +35,9 @@ Turns cycle as soon as all players complete their orders, generally within 24 ho
 '''
 
 [[chapter-1]]
-= 1.0 How to Play
+<<<
+
+== 1.0 How to Play
 
 == 1.1 Prestige
 
@@ -55,11 +57,7 @@ Poor colony management tarnishes your legacy. Exposure to rival covert operation
 
 Flexibility and strategic foresight are your greatest tools. Use every resource and opportunity to crush your rivals and ensure your House's dominance.
 
-<!-- STARTING_PRESTIGE_START -->
-
 You start the game with 50 prestige points.
-
-<!-- STARTING_PRESTIGE_END -->
 
 If your House's prestige drops below zero and stays there for three consecutive turns, your empire enters Defensive Collapse and you are permanently eliminated. See <<14-player-elimination--autopilot,Section 1.4>> for complete elimination and autopilot mechanics.
 
@@ -86,7 +84,7 @@ See <<104-prestige,Section 10.4>> for mathematical details.
 
 == 1.2 Game Setup
 
-At game start, one player spins up the game server. The server becomes your impartial arbiter—tireless, incorruptible, and instant. It processes turn orders, resolves conflicts, calculates economics, and maintains fog of war without human error or bias.
+At game start, an admin spins up the game server. The server becomes your impartial arbiter—tireless, incorruptible, and instant. It processes turn orders, resolves conflicts, calculates economics, and maintains fog of war without human error or bias.
 
 *Localhost Mode (Tabletop Sessions):*
 
@@ -350,7 +348,9 @@ The game server maintains separate intelligence databases for each house to pres
 '''
 
 [[chapter-2]]
-= 2.0 Game Assets
+<<<
+
+== 2.0 Game Assets
 
 == 2.1 Star Map
 
@@ -362,15 +362,11 @@ Solar systems have special traits and are procedurally generated. They are fille
 
 There are three classes of jump lanes that determine which ship types can traverse them:
 
-<!-- LANE_DISTRIBUTION_START -->
-
 - *Major lanes* (50% of all lanes): Allow all ship types including crippled ships, ETACs, and troop transports
 
 - *Minor lanes* (35% of all lanes): Block crippled ships only; all other ships may pass
 
 - *Restricted lanes* (15% of all lanes): Block crippled ships, ETACs, and troop transports
-  
-  <!-- LANE_DISTRIBUTION_END -->
 
 This distribution ensures 85% of lanes allow colonization ships through, reducing strategic bottlenecks while maintaining tactical complexity. Movement across the lanes is explained in <<61-jump-lanes,Section 6.1>>.
 
@@ -380,13 +376,9 @@ The hub is guaranteed to have six jump lanes connecting it to the first ring, ma
 
 *Homeworld Placement*
 
-<!-- HOMEWORLD_PLACEMENT_START -->
-
 Player homeworlds are placed throughout the map using distance maximization algorithms. The generator ensures each homeworld is as far as strategically possible from rival home systems, creating balanced starting positions while introducing natural asymmetry in the tactical landscape. Unlike traditional hex-ring maps where homeworlds are predictably on the outer edge, this system allows homeworlds on any ring for unpredictable, varied starting scenarios.
 
 Each homeworld is guaranteed to have exactly 3 *Major lanes* connecting it to adjacent systems, ensuring reliable colonization paths and fleet movement from the start.
-
-<!-- HOMEWORLD_PLACEMENT_END -->
 
 == 2.2 Solar Systems
 
@@ -400,15 +392,18 @@ Advances in terraforming tech allow your planets to upgrade class and living con
 
 *Planet Class Table*
 
-| Roll 1D10 | Class    | Colony Potential | PU        | PTU             |
-|:---------:| -------- | ---------------- |:---------:|:---------------:|
-| 0         | Extreme  | Level I          | 1 - 20    | 1 - 20          |
-| 1         | Desolate | Level II         | 21 - 60   | 21 - 60         |
-| 2, 3      | Hostile  | Level III        | 61 - 180  | 61 - 182        |
-| 4, 5      | Harsh    | Level IV         | 181 - 500 | 183 - 526       |
-| 6, 7      | Benign   | Level V          | 501- 1k   | 527 - 1,712     |
-| 8\*       | Lush     | Level VI         | 1k - 2k   | 1,713 - 510,896 |
-| 9\*\*     | Eden     | Level VII        | 2k+       | 510,896+        |
+[cols="^,<,<,^,^", options="header"]
+|===
+| Roll 1D10 | Class | Colony Potential | PU | PTU
+
+| 0 | Extreme | Level I | 1 - 20 | 1 - 20
+| 1 | Desolate | Level II | 21 - 60 | 21 - 60
+| 2, 3 | Hostile | Level III | 61 - 180 | 61 - 182
+| 4, 5 | Harsh | Level IV | 181 - 500 | 183 - 526
+| 6, 7 | Benign | Level V | 501- 1k | 527 - 1,712
+| 8\* | Lush | Level VI | 1k - 2k | 1,713 - 510,896
+| 9\*\* | Eden | Level VII | 2k+ | 510,896+
+|===
 
 \*If the roll above is a natural eight (8), add a +1 modifier to your roll on the System Resources Table.
 \*\*If the roll is a natural nine (9) add a +2 modifier.
@@ -417,13 +412,16 @@ For the relationship between PU and PTU, including economic implications and for
 
 *System Resources Table*
 
-| Modified Roll 1D10 | Raw Materials |
-|:------------------:| ------------- |
-| 0                  | Very Poor     |
-| 2, 3               | Poor          |
-| 4 - 7              | Abundant      |
-| 8, 9               | Rich          |
-| 10+                | Very Rich     |
+[cols="^,<", options="header"]
+|===
+| Modified Roll 1D10 | Raw Materials
+
+| 0 | Very Poor
+| 2, 3 | Poor
+| 4 - 7 | Abundant
+| 8, 9 | Rich
+| 10+ | Very Rich
+|===
 
 For how Raw Materials affect colony economic output, see the RAW INDEX table in <<31-principles,Section 3.1>>.
 
@@ -576,21 +574,20 @@ Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect
 
 *Scout Detection Table*
 
-<!-- SCOUT_DETECTION_TABLE_START -->
-
 Detection compares total effective ELI (including modifiers) against number of Scouts present:
 
-| Defender ELI | 1 Scout | 2 Scouts | 3+ Scouts |
-|:------------:|:-------:|:--------:|:---------:|
-| ELI 1        | 1-2     | 1-3      | 1-4       |
-| ELI 2        | 1-3     | 1-4      | 1-5       |
-| ELI 3        | 1-4     | 1-6      | 1-8       |
-| ELI 4        | 1-6     | 1-8      | 1-10      |
-| ELI 5        | 1-8     | 1-10     | 1-12      |
+[cols="^,^,^,^", options="header"]
+|===
+| Defender ELI | 1 Scout | 2 Scouts | 3+ Scouts
+
+| ELI 1 | 1-2 | 1-3 | 1-4
+| ELI 2 | 1-3 | 1-4 | 1-5
+| ELI 3 | 1-4 | 1-6 | 1-8
+| ELI 4 | 1-6 | 1-8 | 1-10
+| ELI 5 | 1-8 | 1-10 | 1-12
+|===
 
 *Table shows detection threshold on 1D20. Roll equal or higher to detect.*
-
-<!-- SCOUT_DETECTION_TABLE_END -->
 
 *Mesh Network Effect*: Multiple Scouts in the same system improve detection resistance. The defender's effective ELI decreases as Scout count increases—Scout swarms are harder to detect than individual Scouts.
 
@@ -623,17 +620,16 @@ Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect
 
 *Raider Detection Table*
 
-<!-- RAIDER_DETECTION_TABLE_START -->
-
 Detection compares Raider CLK vs. Defender ELI:
 
-| ELI \ CLK Advantage | >10-12 | 7-9 | 4-6 | 1-3 | Equal | -1 to -3 | -4 to -6 | -7 to -9 | <-10 to -12 |
-|:-------------------:|:------:|:---:|:---:|:---:|:-----:|:--------:|:--------:|:--------:|:-----------:|
-| *Detection Roll*  | 1D3    | 1D4 | 1D6 | 1D8 | 1D10  | 1D12     | 1D16     | 1D20     | Auto-Fail   |
+[cols="^,^,^,^,^,^,^,^,^,^", options="header"]
+|===
+| ELI \ CLK Advantage | >10-12 | 7-9 | 4-6 | 1-3 | Equal | -1 to -3 | -4 to -6 | -7 to -9 | <-10 to -12
+
+| *Detection Roll* | 1D3 | 1D4 | 1D6 | 1D8 | 1D10 | 1D12 | 1D16 | 1D20 | Auto-Fail
+|===
 
 *Roll type determines detection threshold on 1D20. Example: 1D3 result is random number 1-3; if detection roll ≥ threshold, Raider is detected.*
-
-<!-- RAIDER_DETECTION_TABLE_END -->
 
 *Starbase Modifier*: Starbases add +2 to effective ELI level for detection rolls against Raiders.
 
@@ -849,7 +845,9 @@ The house receives 50% of each ship's original build cost as salvage payment, cr
 '''
 
 [[chapter-3]]
-= 3.0 Economics
+<<<
+
+== 3.0 Economics
 
 Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke, your obligation is to rebuild from the ashes and lead your House to prosperity.
 
@@ -873,7 +871,7 @@ For planet classification and maximum PU capacity by planet class, see <<22-sola
 
 The relationship between PU and PTU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
-image::images/logistic_population_growth.png[Logistic Population Growth]
+image::logistic_population_growth.png[Logistic Population Growth,scaledwidth=75%,pdfwidth=75%]
 
 This model is dis-inflationary; inflation asymptotically approaches zero over time.
 
@@ -906,8 +904,8 @@ pu = -100000/657*lambertw((657*np.exp(x - logsumexp(x)))/100000) + PTU + 1
 
 An Excel spreadsheet is included in the GitHub 'assets' folder to visualize the relationship. You need to have "Python in Excel" enabled for Excel. TODO: standalone Python scripts will be provided in the repo.
 
-image::images/pu_to_ptu.png)[PU to PTU Relationship] 
-image::mages/ptu_to_pu.png)[PTU to PU Relationship] 
+image::pu_to_ptu.png[PU to PTU Relationship,scaledwidth=75%,pdfwidth=75%] 
+image::ptu_to_pu.png[PTU to PU Relationship,scaledwidth=75%,pdfwidth=75%] 
 
 *Gross Colony Output (GCO)*: The total economic output of a colony, expressed in production points. GCO is determined by the productivity of the colony, industrial investments, resource availability, and technological enhancements.
 
@@ -926,19 +924,18 @@ Where:
 
 *RAW INDEX Table*
 
-<!-- RAW_MATERIAL_TABLE_START -->
+[cols="<,^,^,^,^,^,^,^", options="header"]
+|===
+| RAW | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme
 
-| RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |
-| --------- |:----:|:----:|:------:|:-----:|:-------:|:--------:|:-------:|
-| Very Poor | 60%  | 60%  | 60%    | 60%   | 60%     | 60%      | 60%     |
-| Poor      | 80%  | 75%  | 70%    | 65%   | 64%     | 63%      | 62%     |
-| Abundant  | 100% | 90%  | 80%    | 70%   | 68%     | 66%      | 64%     |
-| Rich      | 120% | 105% | 90%    | 75%   | 72%     | 69%      | 66%     |
-| Very Rich | 140% | 120% | 100%   | 80%   | 76%     | 72%      | 68%     |
+| Very Poor | 60% | 60% | 60% | 60% | 60% | 60% | 60%
+| Poor | 80% | 75% | 70% | 65% | 64% | 63% | 62%
+| Abundant | 100% | 90% | 80% | 70% | 68% | 66% | 64%
+| Rich | 120% | 105% | 90% | 75% | 72% | 69% | 66%
+| Very Rich | 140% | 120% | 100% | 80% | 76% | 72% | 68%
+|===
 
 *Source: config/economy.toml [raw_material_efficiency] section*
-
-<!-- RAW_MATERIAL_TABLE_END -->
 
 Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habitable conditions.
 
@@ -957,20 +954,19 @@ Higher tax rates generate more immediate revenue but anger your population. Lowe
 
 Every Income Phase the game calculates the *average tax rate over the current turn + the previous five turns* (rolling 6-turn window) and applies the following prestige penalty if the average is above 50 %:
 
-<!-- TAX_PENALTY_TABLE_START -->
+[cols="<,<", options="header"]
+|===
+| Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn
 
-| Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |
-| ------------------------------- | ------------------------- |
-| ≤ 50 %                          | 0                         |
-| 51 – 60 %                       | -1                        |
-| 61 – 70 %                       | -2                        |
-| 71 – 80 %                       | -4                        |
-| 81 – 90 %                       | -7                        |
-| 91 – 100 %                      | -11                       |
+| ≤ 50 % | 0
+| 51 – 60 % | -1
+| 61 – 70 % | -2
+| 71 – 80 % | -4
+| 81 – 90 % | -7
+| 91 – 100 % | -11
+|===
 
 *Source: config/prestige.toml [tax_penalties] section*
-
-<!-- TAX_PENALTY_TABLE_END -->
 
 This penalty is applied every turn the qualifying average is met and cannot be avoided by short-term cycling.
 
@@ -978,19 +974,18 @@ This penalty is applied every turn the qualifying average is met and cannot be a
 
 To reward benevolent or populist rule, colonies grant bonuses in the same Income Phase based on the *tax rate set this turn*:
 
-<!-- TAX_INCENTIVE_TABLE_START -->
+[cols="<,<,<", options="header"]
+|===
+| Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn
 
-| Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn |
-| ------------------ | ------------------------------------------------------- | ----------------------------------- |
-| 41 – 50 %          | No bonus                                                | –                                   |
-| 31 – 40 %          | ×1.05 (+5 %)                                            | –                                   |
-| 21 – 30 %          | ×1.10 (+10 %)                                           | +1                                  |
-| 11 – 20 %          | ×1.15 (+14 %)                                           | +2                                  |
-| 0 – 10 %           | ×1.20 (+19 %)                                           | +3                                  |
+| 41 – 50 % | No bonus | –
+| 31 – 40 % | ×1.05 (+5 %) | –
+| 21 – 30 % | ×1.10 (+10 %) | +1
+| 11 – 20 % | ×1.15 (+14 %) | +2
+| 0 – 10 % | ×1.20 (+19 %) | +3
+|===
 
 *Source: config/prestige.toml [tax_incentives] and config/economy.toml [tax_population_growth] sections*
-
-<!-- TAX_INCENTIVE_TABLE_END -->
 
 With multiple big colonies, low taxes become a legitimate prestige-farming strategy that can outpace military victories in the late game.
 
@@ -1137,7 +1132,9 @@ Research pools accumulate over multiple turns. Technologies require specific poi
 
 '''
 
-= 4.0 Research & Development
+<<<
+
+== 4.0 Research & Development
 
 R&D investment drives your technological advancement across economic, social, and military domains. You allocate Production Points to three distinct research pools each turn, accumulating progress toward specific technology thresholds.
 
@@ -1147,24 +1144,22 @@ Science Level represents your House's overall technological sophistication and r
 
 *SL Progression:*
 
-<!-- SL_TABLE_START -->
+[cols="^,^,^,^,^", options="header"]
+|===
+| SL | ERP Required | SRP Required | Total RP Required | Cumulative RP
 
-| SL  | ERP Required | SRP Required | Total RP Required | Cumulative RP |
-|:---:|:------------:|:------------:|:-----------------:|:-------------:|
-| 1   | 0            | 0            | 0                 | 0             |
-| 2   | 10           | 10           | 20                | 20            |
-| 3   | 12           | 13           | 25                | 45            |
-| 4   | 15           | 16           | 31                | 76            |
-| 5   | 19           | 21           | 40                | 116           |
-| 6   | 24           | 27           | 51                | 167           |
-| 7   | 31           | 35           | 66                | 233           |
-| 8   | 40           | 46           | 86                | 319           |
-| 9   | 52           | 60           | 112               | 431           |
-| 10  | 68           | 78           | 146               | 577           |
+| 1 | 0 | 0 | 0 | 0
+| 2 | 10 | 10 | 20 | 20
+| 3 | 12 | 13 | 25 | 45
+| 4 | 15 | 16 | 31 | 76
+| 5 | 19 | 21 | 40 | 116
+| 6 | 24 | 27 | 51 | 167
+| 7 | 31 | 35 | 66 | 233
+| 8 | 40 | 46 | 86 | 319
+| 9 | 52 | 60 | 112 | 431
+| 10 | 68 | 78 | 146 | 577
+|===
 
-*Source: config/tech.toml [science_levels] section*
-
-<!-- SL_TABLE_END -->
 
 SL advances automatically when your House accumulates the required ERP and SRP thresholds. Both pools must meet their respective requirements simultaneously.
 
@@ -1178,24 +1173,21 @@ Economic Level multiplies Industrial Unit output in the GCO formula, representin
 
 *Research Progression:*
 
-<!-- EL_TABLE_START -->
+[cols="^,<,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | ERP Cost | SL Required | Economic Multiplier
 
-| Tech Level | Prerequisites | ERP Cost | SL Required | Economic Multiplier |
-|:----------:| ------------- |:--------:|:-----------:|:-------------------:|
-| EL I       | None          | N/A      | 1           | 1.0x                |
-| EL II      | EL I          | 10       | 2           | 1.5x                |
-| EL III     | EL II         | 12       | 3           | 2.0x                |
-| EL IV      | EL III        | 15       | 4           | 2.5x                |
-| EL V       | EL IV         | 19       | 5           | 3.0x                |
-| EL VI      | EL V          | 24       | 6           | 3.5x                |
-| EL VII     | EL VI         | 31       | 7           | 4.0x                |
-| EL VIII    | EL VII        | 40       | 8           | 4.5x                |
-| EL IX      | EL VIII       | 52       | 9           | 5.0x                |
-| EL X       | EL IX         | 68       | 10          | 5.5x                |
-
-*Source: config/tech.toml [economic_level] section*
-
-<!-- EL_TABLE_END -->
+| EL I | None | N/A | 1 | 1.0x
+| EL II | EL I | 10 | 2 | 1.5x
+| EL III | EL II | 12 | 3 | 2.0x
+| EL IV | EL III | 15 | 4 | 2.5x
+| EL V | EL IV | 19 | 5 | 3.0x
+| EL VI | EL V | 24 | 6 | 3.5x
+| EL VII | EL VI | 31 | 7 | 4.0x
+| EL VIII | EL VII | 40 | 8 | 4.5x
+| EL IX | EL VIII | 52 | 9 | 5.0x
+| EL X | EL IX | 68 | 10 | 5.5x
+|===
 
 *Application:*
 
@@ -1217,24 +1209,21 @@ Weapons technology improves ship combat statistics across all hull classes. Each
 
 *Research Progression:*
 
-<!-- WEP_TABLE_START -->
+[cols="^,<,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | TRP Cost | SL Required
 
-| Tech Level | Prerequisites | TRP Cost | SL Required |
-|:----------:| ------------- |:--------:|:-----------:|
-| WEP I      | None          | N/A      | 1           |
-| WEP II     | WEP I         | 10       | 2           |
-| WEP III    | WEP II        | 12       | 3           |
-| WEP IV     | WEP III       | 15       | 4           |
-| WEP V      | WEP IV        | 19       | 5           |
-| WEP VI     | WEP V         | 24       | 6           |
-| WEP VII    | WEP VI        | 31       | 7           |
-| WEP VIII   | WEP VII       | 40       | 8           |
-| WEP IX     | WEP VIII      | 52       | 9           |
-| WEP X      | WEP IX        | 68       | 10          |
-
-*Source: config/tech.toml [weapons_technology] section*
-
-<!-- WEP_TABLE_END -->
+| WEP I | None | N/A | 1
+| WEP II | WEP I | 10 | 2
+| WEP III | WEP II | 12 | 3
+| WEP IV | WEP III | 15 | 4
+| WEP V | WEP IV | 19 | 5
+| WEP VI | WEP V | 24 | 6
+| WEP VII | WEP VI | 31 | 7
+| WEP VIII | WEP VII | 40 | 8
+| WEP IX | WEP VIII | 52 | 9
+| WEP X | WEP IX | 68 | 10
+|===
 
 *Application:*
 
@@ -1265,20 +1254,19 @@ Shield technology protects colonies from orbital bombardment, absorbing incoming
 
 *Research Progression:*
 
-<!-- SLD_TABLE_START -->
+[cols="^,<,^,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | SRP Cost | SL Required | Absorption % | Shield DS
 
-| Tech Level | Prerequisites | SRP Cost | SL Required | Absorption % | Shield DS |
-|:----------:| ------------- |:--------:|:-----------:|:------------:|:---------:|
-| SLD I      | None          | 10       | 2           | 15%          | 10        |
-| SLD II     | SLD I         | 13       | 3           | 25%          | 20        |
-| SLD III    | SLD II        | 16       | 4           | 35%          | 30        |
-| SLD IV     | SLD III       | 21       | 5           | 45%          | 40        |
-| SLD V      | SLD IV        | 27       | 6           | 55%          | 50        |
-| SLD VI     | SLD V         | 35       | 7           | 65%          | 60        |
+| SLD I | None | 10 | 2 | 15% | 10
+| SLD II | SLD I | 13 | 3 | 25% | 20
+| SLD III | SLD II | 16 | 4 | 35% | 30
+| SLD IV | SLD III | 21 | 5 | 45% | 40
+| SLD V | SLD IV | 27 | 6 | 55% | 50
+| SLD VI | SLD V | 35 | 7 | 65% | 60
+|===
 
 *Source: config/tech.toml [shields] section*
-
-<!-- SLD_TABLE_END -->
 
 *Planetary Shield Construction:*
 
@@ -1307,24 +1295,23 @@ Construction technology increases shipyard and spaceport capacity, enables advan
 
 *Research Progression:*
 
-<!-- CST_TABLE_START -->
+[cols="^,<,^,^,^,<", options="header"]
+|===
+| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier | Unlocked Hulls
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier | Unlocked Hulls |
-|:----------:| ------------- |:--------:|:-----------:|:-------------------:| -------------- |
-| CST I      | None          | N/A      | 1           | 1.0x                | DD, CL, CA, CV |
-| CST II     | CST I         | 10       | 2           | 1.1x                | BC             |
-| CST III    | CST II        | 12       | 3           | 1.2x                | -              |
-| CST IV     | CST III       | 15       | 4           | 1.3x                | BB, CX         |
-| CST V      | CST IV        | 19       | 5           | 1.4x                | -              |
-| CST VI     | CST V         | 24       | 6           | 1.5x                | DN             |
-| CST VII    | CST VI        | 31       | 7           | 1.6x                | -              |
-| CST VIII   | CST VII       | 40       | 8           | 1.7x                | SD             |
-| CST IX     | CST VIII      | 52       | 9           | 1.8x                | -              |
-| CST X      | CST IX        | 68       | 10          | 1.9x                | PB             |
+| CST I | None | N/A | 1 | 1.0x | DD, CL, CA, CV
+| CST II | CST I | 10 | 2 | 1.1x | BC
+| CST III | CST II | 12 | 3 | 1.2x | -
+| CST IV | CST III | 15 | 4 | 1.3x | BB, CX
+| CST V | CST IV | 19 | 5 | 1.4x | -
+| CST VI | CST V | 24 | 6 | 1.5x | DN
+| CST VII | CST VI | 31 | 7 | 1.6x | -
+| CST VIII | CST VII | 40 | 8 | 1.7x | SD
+| CST IX | CST VIII | 52 | 9 | 1.8x | -
+| CST X | CST IX | 68 | 10 | 1.9x | PB
+|===
 
 *Source: config/tech.toml [construction] section*
-
-<!-- CST_TABLE_END -->
 
 *Facility Capacity:*
 
@@ -1380,20 +1367,17 @@ Terraforming technology allows colonies to upgrade their planet class, increasin
 
 *Research Progression:*
 
-<!-- TER_TABLE_START -->
+[cols="^,<,^,^,^,<", options="header"]
+|===
+| Tech Level | Prerequisites | SRP Cost | SL Required | Terraform Cost | Upgrade Path
 
-| Tech Level | Prerequisites | SRP Cost | SL Required | Terraform Cost | Upgrade Path       |
-|:----------:| ------------- |:--------:|:-----------:|:--------------:| ------------------ |
-| TER I      | None          | 16       | 4           | 100 PP         | Extreme → Desolate |
-| TER II     | TER I         | 21       | 5           | 150 PP         | Desolate → Hostile |
-| TER III    | TER II        | 27       | 6           | 200 PP         | Hostile → Harsh    |
-| TER IV     | TER III       | 35       | 7           | 250 PP         | Harsh → Benign     |
-| TER V      | TER IV        | 46       | 8           | 300 PP         | Benign → Lush      |
-| TER VI     | TER V         | 60       | 9           | 350 PP         | Lush → Eden        |
-
-*Source: config/tech.toml [terraforming] section*
-
-<!-- TER_TABLE_END -->
+| TER I | None | 16 | 4 | 100 PP | Extreme → Desolate
+| TER II | TER I | 21 | 5 | 150 PP | Desolate → Hostile
+| TER III | TER II | 27 | 6 | 200 PP | Hostile → Harsh
+| TER IV | TER III | 35 | 7 | 250 PP | Harsh → Benign
+| TER V | TER IV | 46 | 8 | 300 PP | Benign → Lush
+| TER VI | TER V | 60 | 9 | 350 PP | Lush → Eden
+|===
 
 *Terraforming Process:*
 
@@ -1417,19 +1401,16 @@ Cloaking technology enables covert operations through Raiders - specialized ship
 
 *Research Progression:*
 
-<!-- CLK_TABLE_START -->
+[cols="^,<,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | SRP Cost | SL Required | Detection Resistance
 
-| Tech Level | Prerequisites | SRP Cost | SL Required | Detection Resistance |
-|:----------:| ------------- |:--------:|:-----------:|:--------------------:|
-| CLK I      | None          | 10       | 2           | Moderate             |
-| CLK II     | CLK I         | 13       | 3           | Good                 |
-| CLK III    | CLK II        | 16       | 4           | Excellent            |
-| CLK IV     | CLK III       | 21       | 5           | Superior             |
-| CLK V      | CLK IV        | 27       | 6           | Elite                |
-
-*Source: config/tech.toml [cloaking] section*
-
-<!-- CLK_TABLE_END -->
+| CLK I | None | 10 | 2 | Moderate
+| CLK II | CLK I | 13 | 3 | Good
+| CLK III | CLK II | 16 | 4 | Excellent
+| CLK IV | CLK III | 21 | 5 | Superior
+| CLK V | CLK IV | 27 | 6 | Elite
+|===
 
 *Raider Capabilities:*
 
@@ -1460,19 +1441,16 @@ Electronic Intelligence represents sensor technology, signals analysis, and dete
 
 *Research Progression:*
 
-<!-- ELI_TABLE_START -->
+[cols="^,<,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | SRP Cost | SL Required | Detection Capability
 
-| Tech Level | Prerequisites | SRP Cost | SL Required | Detection Capability |
-|:----------:| ------------- |:--------:|:-----------:|:--------------------:|
-| ELI I      | None          | 10       | 2           | Basic                |
-| ELI II     | ELI I         | 13       | 3           | Improved             |
-| ELI III    | ELI II        | 16       | 4           | Advanced             |
-| ELI IV     | ELI III       | 21       | 5           | Superior             |
-| ELI V      | ELI IV        | 27       | 6           | Elite                |
-
-*Source: config/tech.toml [electronic_intelligence] section*
-
-<!-- ELI_TABLE_END -->
+| ELI I | None | 10 | 2 | Basic
+| ELI II | ELI I | 13 | 3 | Improved
+| ELI III | ELI II | 16 | 4 | Advanced
+| ELI IV | ELI III | 21 | 5 | Superior
+| ELI V | ELI IV | 27 | 6 | Elite
+|===
 
 *Detection Mechanics:*
 
@@ -1498,19 +1476,16 @@ Strategic Lift improves Environmental Transformation and Colonization (ETAC) shi
 
 *Research Progression:*
 
-<!-- STL_TABLE_START -->
+[cols="^,<,^,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | SRP Cost | SL Required | ETAC Capacity | Transport Capacity
 
-| Tech Level | Prerequisites | SRP Cost | SL Required | ETAC Capacity | Transport Capacity |
-|:----------:| ------------- |:--------:|:-----------:|:-------------:|:------------------:|
-| STL I      | None          | N/A      | 1           | 1 PTU         | 1 MD               |
-| STL II     | STL I         | 10       | 2           | 2 PTU         | 2 MD               |
-| STL III    | STL II        | 13       | 3           | 3 PTU         | 3 MD               |
-| STL IV     | STL III       | 16       | 4           | 4 PTU         | 4 MD               |
-| STL V      | STL IV        | 21       | 5           | 5 PTU         | 5 MD               |
-
-*Source: config/tech.toml [strategic_lift] section*
-
-<!-- STL_TABLE_END -->
+| STL I | None | N/A | 1 | 1 PTU | 1 MD
+| STL II | STL I | 10 | 2 | 2 PTU | 2 MD
+| STL III | STL II | 13 | 3 | 3 PTU | 3 MD
+| STL IV | STL III | 16 | 4 | 4 PTU | 4 MD
+| STL V | STL IV | 21 | 5 | 5 PTU | 5 MD
+|===
 
 *Application:*
 
@@ -1534,19 +1509,16 @@ Command technology increases the Command Rating (CR) of capital ship flagships, 
 
 *Research Progression:*
 
-<!-- CMD_TABLE_START -->
+[cols="^,<,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | TRP Cost | SL Required | CR Increase
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | CR Increase |
-|:----------:| ------------- |:--------:|:-----------:|:-----------:|
-| CMD I      | None          | N/A      | 1           | Base CR     |
-| CMD II     | CMD I         | 10       | 2           | +1 CR       |
-| CMD III    | CMD II        | 12       | 3           | +2 CR       |
-| CMD IV     | CMD III       | 15       | 4           | +3 CR       |
-| CMD V      | CMD IV        | 19       | 5           | +4 CR       |
-
-*Source: config/tech.toml [command] section*
-
-<!-- CMD_TABLE_END -->
+| CMD I | None | N/A | 1 | Base CR
+| CMD II | CMD I | 10 | 2 | +1 CR
+| CMD III | CMD II | 12 | 3 | +2 CR
+| CMD IV | CMD III | 15 | 4 | +3 CR
+| CMD V | CMD IV | 19 | 5 | +4 CR
+|===
 
 *Application:*
 
@@ -1606,17 +1578,14 @@ Fighter Doctrine improves organizational efficiency and training throughput, inc
 
 *Research Progression:*
 
-<!-- FD_TABLE_START -->
+[cols="^,<,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier |
-|:----------:| ------------- |:--------:|:-----------:|:-------------------:|
-| FD I       | None          | N/A      | 1           | 1.0x                |
-| FD II      | FD I          | 15       | 2           | 1.5x                |
-| FD III     | FD II         | 17       | 3           | 2.0x                |
-
-*Source: config/tech.toml [fighter_doctrine] section*
-
-<!-- FD_TABLE_END -->
+| FD I | None | N/A | 1 | 1.0x
+| FD II | FD I | 15 | 2 | 1.5x
+| FD III | FD II | 17 | 3 | 2.0x
+|===
 
 *FD I - Basic Fighter Operations*
 
@@ -1652,17 +1621,14 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater fighte
 
 *Research Progression:*
 
-<!-- ACO_TABLE_START -->
+[cols="^,<,^,^,^,^", options="header"]
+|===
+| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity |
-|:----------:| ------------- |:--------:|:-----------:|:-----------:|:-----------:|
-| ACO I      | None          | N/A      | 1           | 3 FS        | 5 FS        |
-| ACO II     | ACO I         | 20       | 4           | 4 FS        | 6 FS        |
-| ACO III    | ACO II        | 22       | 5           | 5 FS        | 8 FS        |
-
-*Source: config/tech.toml [advanced_carrier_operations] section*
-
-<!-- ACO_TABLE_END -->
+| ACO I | None | N/A | 1 | 3 FS | 5 FS
+| ACO II | ACO I | 20 | 4 | 4 FS | 6 FS
+| ACO III | ACO II | 22 | 5 | 5 FS | 8 FS
+|===
 
 *ACO I - Standard Carrier Operations*
 
@@ -1694,7 +1660,9 @@ For carrier combat mechanics, see <<241-fighter-squadrons--carriers,Section 2.4.
 
 '''
 
-= 5.0 Construction
+<<<
+
+== 5.0 Construction
 
 You accomplish construction and repair of House assets planet-side or in orbit, with restrictions.
 
@@ -1790,7 +1758,9 @@ Starbase repairs also require shipyards and cost 25% of the starbase's construct
 '''
 
 [[chapter-4]]
-= 6.0 Fleet Operations and Movement
+<<<
+
+== 6.0 Fleet Operations and Movement
 
 Command your fleets across the stars. Direct them with explicit orders for immediate missions or standing orders for persistent behaviors. Your strategic decisions at the fleet level drive military success—squadrons handle the tactical execution.
 
@@ -1930,28 +1900,31 @@ Command your fleets with 20 distinct mission types—from peaceful exploration t
 
 Explicit orders that execute until completed or overridden:
 
-| No. | Mission                 | Requirements                             |
-| --- | ----------------------- | ---------------------------------------- |
-| 00  | None (hold position)    | None                                     |
-| 01  | Move Fleet (only)       | None                                     |
-| 02  | Seek home               | None                                     |
-| 03  | Patrol a System         | None                                     |
-| 04  | Guard a Starbase        | Combat ship(s)                           |
-| 05  | Guard/Blockade a Planet | Combat ship(s)                           |
-| 06  | Bombard a Planet        | Combat ship(s)                           |
-| 07  | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
-| 08  | Blitz a Planet          | Loaded Troop Transports                  |
-| 09  | Spy on a Planet         | Scout-only fleet (1+ scout squadrons)    |
-| 10  | Hack a Starbase         | Scout-only fleet (1+ scout squadrons)    |
-| 11  | Spy on a System         | Scout-only fleet (1+ scout squadrons)    |
-| 12  | Colonize a Planet       | One ETAC                                 |
-| 13  | Join another Fleet      | None                                     |
-| 14  | Rendezvous at System    | None                                     |
-| 15  | Salvage                 | Friendly Colony System                   |
-| 16  | Place on Reserve        | At friendly colony                       |
-| 17  | Mothball Fleet          | At friendly colony with Spaceport        |
-| 18  | Reactivate Fleet        | Reserve or Mothballed fleet              |
-| 19  | View a World            | Any ship type                            |
+[cols="<,<,<", options="header"]
+|===
+| No. | Mission | Requirements
+
+| 00 | None (hold position) | None
+| 01 | Move Fleet (only) | None
+| 02 | Seek home | None
+| 03 | Patrol a System | None
+| 04 | Guard a Starbase | Combat ship(s)
+| 05 | Guard/Blockade a Planet | Combat ship(s)
+| 06 | Bombard a Planet | Combat ship(s)
+| 07 | Invade a Planet | Combat ship(s) & loaded Troop Transports
+| 08 | Blitz a Planet | Loaded Troop Transports
+| 09 | Spy on a Planet | Scout-only fleet (1+ scout squadrons)
+| 10 | Hack a Starbase | Scout-only fleet (1+ scout squadrons)
+| 11 | Spy on a System | Scout-only fleet (1+ scout squadrons)
+| 12 | Colonize a Planet | One ETAC
+| 13 | Join another Fleet | None
+| 14 | Rendezvous at System | None
+| 15 | Salvage | Friendly Colony System
+| 16 | Place on Reserve | At friendly colony
+| 17 | Mothball Fleet | At friendly colony with Spaceport
+| 18 | Reactivate Fleet | Reserve or Mothballed fleet
+| 19 | View a World | Any ship type
+|===
 
 === 6.3.2 Hold Position (00)
 
@@ -2550,17 +2523,20 @@ Establish persistent fleet behaviors that execute automatically when no explicit
 
 Persistent behaviors that execute when fleet has no active mission:
 
-| Type             | Purpose                                      | Movement |
-| ---------------- | -------------------------------------------- | -------- |
-| None             | No standing order (default)                  | No       |
-| PatrolRoute      | Follow patrol path indefinitely              | Yes      |
-| DefendSystem     | Guard system, engage hostiles per ROE        | No       |
-| GuardColony      | Defend specific colony                       | No       |
-| AutoColonize     | ETACs auto-colonize nearest suitable system  | Yes      |
-| AutoReinforce    | Join nearest damaged friendly fleet          | Yes      |
-| AutoRepair       | Return to shipyard when crippled             | Yes      |
-| AutoEvade        | Retreat if outnumbered per ROE               | Yes      |
-| BlockadeTarget   | Maintain blockade on enemy colony            | No       |
+[cols="<,<,<", options="header"]
+|===
+| Type | Purpose | Movement
+
+| None | No standing order (default) | No
+| PatrolRoute | Follow patrol path indefinitely | Yes
+| DefendSystem | Guard system, engage hostiles per ROE | No
+| GuardColony | Defend specific colony | No
+| AutoColonize | ETACs auto-colonize nearest suitable system | Yes
+| AutoReinforce | Join nearest damaged friendly fleet | Yes
+| AutoRepair | Return to shipyard when crippled | Yes
+| AutoEvade | Retreat if outnumbered per ROE | Yes
+| BlockadeTarget | Maintain blockade on enemy colony | No
+|===
 
 === 6.5.2 Standing Order Execution
 
@@ -2710,12 +2686,15 @@ Maintain continuous blockade of enemy colony. Your fleet establishes orbital blo
 
 Configure standing order combat behavior with Rules of Engagement—a 0-10 scale determining when to fight and when to retreat.
 
-| ROE  | Behavior                                        |
-| ---- | ----------------------------------------------- |
-| 0-2  | Extremely cautious - Retreat from any threat    |
-| 3-5  | Defensive - Fight only if superior              |
-| 6-8  | Aggressive - Fight unless clearly outnumbered   |
-| 9-10 | Suicidal - Fight to the death                   |
+[cols="<,<", options="header"]
+|===
+| ROE | Behavior
+
+| 0-2 | Extremely cautious - Retreat from any threat
+| 3-5 | Defensive - Fight only if superior
+| 6-8 | Aggressive - Fight unless clearly outnumbered
+| 9-10 | Suicidal - Fight to the death
+|===
 
 *Examples:*
 - *Patrol Route with ROE=2*: Fleet patrols border but retreats from any hostile contact
@@ -2758,7 +2737,9 @@ Damaged ships require shipyard facilities for repairs. Manage your repair priori
 
 *End of Section 6*
 
-= 7.0 Combat
+<<<
+
+== 7.0 Combat
 
 Destroy your enemies across three distinct combat theaters. Your fleets fight through space battles, orbital sieges, and planetary invasions to seize enemy colonies. Each theater demands different tactics, unit compositions, and strategic decisions.
 
@@ -2839,31 +2820,37 @@ Set your fleet's aggression level with Rules of Engagement—a 0-10 scale determ
 
 *ROE Retreat Thresholds:*
 
-| ROE | Threshold | Meaning | Use Case |
-|-----|-----------|---------|----------|
-| 0 | 0.0 | Avoid all hostile forces | Pure scouts, intel gathering |
-| 1 | 999.0 | Engage only defenseless | Extreme caution |
-| 2 | 4.0 | Need 4:1 advantage | Scout fleets, recon forces |
-| 3 | 3.0 | Need 3:1 advantage | Cautious patrols |
-| 4 | 2.0 | Need 2:1 advantage | Conservative operations |
-| 5 | 1.5 | Need 3:2 advantage | Defensive posture |
-| 6 | 1.0 | Fight if equal or superior | Standard combat fleets |
-| 7 | 0.67 | Fight even at 2:3 disadvantage | Aggressive fleets |
-| 8 | 0.5 | Fight even at 1:2 disadvantage | Battle fleets |
-| 9 | 0.33 | Fight even at 1:3 disadvantage | Desperate defense |
-| 10 | 0.0 | Fight regardless of odds | Suicidal last stands, homeworld defense |
+[cols="<,<,<,<", options="header"]
+|===
+| ROE | Threshold | Meaning | Use Case
+
+| 0 | 0.0 | Avoid all hostile forces | Pure scouts, intel gathering
+| 1 | 999.0 | Engage only defenseless | Extreme caution
+| 2 | 4.0 | Need 4:1 advantage | Scout fleets, recon forces
+| 3 | 3.0 | Need 3:1 advantage | Cautious patrols
+| 4 | 2.0 | Need 2:1 advantage | Conservative operations
+| 5 | 1.5 | Need 3:2 advantage | Defensive posture
+| 6 | 1.0 | Fight if equal or superior | Standard combat fleets
+| 7 | 0.67 | Fight even at 2:3 disadvantage | Aggressive fleets
+| 8 | 0.5 | Fight even at 1:2 disadvantage | Battle fleets
+| 9 | 0.33 | Fight even at 1:3 disadvantage | Desperate defense
+| 10 | 0.0 | Fight regardless of odds | Suicidal last stands, homeworld defense
+|===
 
 *Morale Modifies Effective ROE:*
 
 Your house's prestige affects fleet morale, modifying effective ROE during combat:
 
-| Prestige | Morale Modifier | Effect on ROE |
-|----------|-----------------|---------------|
-| 0 or less | -2 | Fleets retreat much earlier (ROE 8 becomes ROE 6) |
-| 1-20 | -1 | Fleets retreat earlier (ROE 8 becomes ROE 7) |
-| 21-60 | 0 | No change |
-| 61-80 | +1 | Fleets fight longer (ROE 6 becomes ROE 7) |
-| 81+ | +2 | Fleets fight much longer (ROE 6 becomes ROE 8) |
+[cols="<,<,<", options="header"]
+|===
+| Prestige | Morale Modifier | Effect on ROE
+
+| 0 or less | -2 | Fleets retreat much earlier (ROE 8 becomes ROE 6)
+| 1-20 | -1 | Fleets retreat earlier (ROE 8 becomes ROE 7)
+| 21-60 | 0 | No change
+| 61-80 | +1 | Fleets fight longer (ROE 6 becomes ROE 7)
+| 81+ | +2 | Fleets fight much longer (ROE 6 becomes ROE 8)
+|===
 
 *Homeworld Defense Exception*: Fleets defending their homeworld NEVER retreat regardless of ROE or losses.
 
@@ -3097,27 +3084,33 @@ CER determines strike effectiveness—how much damage your squadrons inflict. Ea
 
 At the start of each turn, roll 1d20 to determine morale effects for that turn:
 
-| Morale Level         | Morale Threshold | Effect on Success                   |
-| -------------------- | ---------------- | ----------------------------------- |
-| Collapsing           | Never succeeds   | -1 to all CER rolls this turn       |
-| VeryLow              | > 18             | No effect                           |
-| Low                  | > 15             | +1 to CER for one random squadron   |
-| Normal               | > 12             | +1 to all CER rolls this turn       |
-| High                 | > 9              | +1 CER + one critical auto-succeeds |
-| VeryHigh/Exceptional | > 6              | +2 to all CER rolls this turn       |
+[cols="<,<,<", options="header"]
+|===
+| Morale Level | Morale Threshold | Effect on Success
+
+| Collapsing | Never succeeds | -1 to all CER rolls this turn
+| VeryLow | > 18 | No effect
+| Low | > 15 | +1 to CER for one random squadron
+| Normal | > 12 | +1 to all CER rolls this turn
+| High | > 9 | +1 CER + one critical auto-succeeds
+| VeryHigh/Exceptional | > 6 | +2 to all CER rolls this turn
+|===
 
 *Note: Morale levels and thresholds defined by house prestige—see reference.md for current configuration*
 
 *CER Table:*
 
-| *Modified 1D10 Die Roll* | *Space Combat CER*             |
-| -------------------------- | -------------------------------- |
-| Less than zero, 0, 1, 2    | One Quarter (0.25) (round up)    |
-| 3, 4                       | One Half (0.50) (round up)       |
-| 5, 6                       | Three Quarters (0.75) (round up) |
-| 7, 8                       | One (1)                          |
-| 9*                         | One* (1)                         |
-| 9+                         | One (1)                          |
+[cols="<,<", options="header"]
+|===
+| *Modified 1D10 Die Roll* | *Space Combat CER*
+
+| Less than zero, 0, 1, 2 | One Quarter (0.25) (round up)
+| 3, 4 | One Half (0.50) (round up)
+| 5, 6 | Three Quarters (0.75) (round up)
+| 7, 8 | One (1)
+| 9* | One* (1)
+| 9+ | One (1)
+|===
 
 *If the die roll is a natural nine before any required modification, then a critical hit is achieved
 
@@ -3150,13 +3143,16 @@ Squadrons target enemies using priority buckets—categories determining which e
 
 *Targeting Priority Buckets:*
 
-| Bucket            | Unit Type                                 | Base Weight | Priority |
-|-------------------|-------------------------------------------|-------------|----------|
-| *1 – Raider*    | Squadron with Raider flagship             | 1.0         | Highest  |
-| *2 – Capital*   | Squadron with Cruiser or Carrier flagship | 2.0         | High     |
-| *3 – Destroyer* | Squadron with Destroyer flagship          | 3.0         | Medium   |
-| *4 – Fighter*   | Fighter squadron (no capital flagship)    | 4.0         | Low      |
-| *5 – Starbase*  | Orbital installation                      | 5.0         | Lowest   |
+[cols="<,<,<,<", options="header"]
+|===
+| Bucket | Unit Type | Base Weight | Priority
+
+| *1 – Raider* | Squadron with Raider flagship | 1.0 | Highest
+| *2 – Capital* | Squadron with Cruiser or Carrier flagship | 2.0 | High
+| *3 – Destroyer* | Squadron with Destroyer flagship | 3.0 | Medium
+| *4 – Fighter* | Fighter squadron (no capital flagship) | 4.0 | Low
+| *5 – Starbase* | Orbital installation | 5.0 | Lowest
+|===
 
 *Notes:*
 - Lower bucket numbers = higher targeting priority
@@ -3354,12 +3350,15 @@ Each turn of bombardment (up to 3 rounds), your fleet attacks planetary defenses
 
 *Bombardment CER Table:*
 
-| *1D10 Die Roll* | *Bombardment CER*           |
-| ----------------- | ----------------------------- |
-| 0, 1, 2           | One Quarter (0.25) (round up) |
-| 3, 4, 5           | One Half (0.50) (round up)    |
-| 6, 7, 8           | One (1)                       |
-| 9*                | One* (1)                      |
+[cols="<,<", options="header"]
+|===
+| *1D10 Die Roll* | *Bombardment CER*
+
+| 0, 1, 2 | One Quarter (0.25) (round up)
+| 3, 4, 5 | One Half (0.50) (round up)
+| 6, 7, 8 | One (1)
+| 9* | One* (1)
+|===
 
 *Critical hits apply only against attacking squadrons (ground batteries firing back), not against ground targets
 
@@ -3385,14 +3384,17 @@ Shields reduce bombardment damage from conventional ships. Higher shield levels 
 
 *Shield Levels and Damage Reduction:*
 
-| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
-|:---------:|:--------:|:---------:|:-----------------:|
-| SLD1      | 15%      | > 17      | 25%               |
-| SLD2      | 30%      | > 14      | 30%               |
-| SLD3      | 45%      | > 11      | 35%               |
-| SLD4      | 60%      | > 8       | 40%               |
-| SLD5      | 75%      | > 5       | 45%               |
-| SLD6      | 90%      | > 2       | 50%               |
+[cols="^,^,^,^", options="header"]
+|===
+| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked
+
+| SLD1 | 15% | > 17 | 25%
+| SLD2 | 30% | > 14 | 30%
+| SLD3 | 45% | > 11 | 35%
+| SLD4 | 60% | > 8 | 40%
+| SLD5 | 75% | > 5 | 45%
+| SLD6 | 90% | > 2 | 50%
+|===
 
 *Shield Mechanics:*
 - Each bombardment round, roll 1d20 to see if shields activate
@@ -3509,12 +3511,15 @@ Land ground forces to conquer enemy colonies. Invasion requires orbital supremac
 
 *Ground Combat Table:*
 
-| 1d10 Roll | Ground CER Multiplier |
-|-----------|-----------------------|
-| 0-2       | 0.5× (round up)       |
-| 3-6       | 1.0×                  |
-| 7-8       | 1.5× (round up)       |
-| 9         | 2.0×                  |
+[cols="<,<", options="header"]
+|===
+| 1d10 Roll | Ground CER Multiplier
+
+| 0-2 | 0.5× (round up)
+| 3-6 | 1.0×
+| 7-8 | 1.5× (round up)
+| 9 | 2.0×
+|===
 
 *Ground Forces:*
 
@@ -3699,7 +3704,9 @@ Practical scenarios demonstrating combat theater progression and strategic decis
 '''
 
 [[chapter-6]]
-= 8.0 Diplomacy & Espionage
+<<<
+
+== 8.0 Diplomacy & Espionage
 
 == 8.1 Diplomacy
 
@@ -3780,39 +3787,41 @@ If you invest more than 5% of your turn budget into EBP, you lose Prestige point
 
 - Maximum of One Espionage Action Per Turn.
 
-<!-- ESPIONAGE_PRESTIGE_TABLE_START -->
-| Espionage Action | Cost in EBPs | Description | Prestige Change for Player | Prestige Change for Target |
-|------------------|:------------:|-------------|----------------------------|----------------------------|
-| Tech Theft | 5 | Attempt to steal critical R&D tech. | +20 | -30 |
-| Sabotage (Low Impact) | 2 | Small-scale sabotage to a colony's industry. | +10 | -10 |
-| Sabotage (High Impact) | 7 | Major sabotage to a colony's industry. | +30 | -50 |
-| Assassination | 10 | Attempt to eliminate a key figures within the target House. | +50 | -70 |
-| Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +20 | -30 |
-| Economic Manipulation | 6 | Influence markets to harm the target's economy | +30 | -7 |
-| Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +10 | -3 |
-| Counter-Intelligence Sweep | 4 | Defensive operation to block enemy intelligence gathering. | +5 | +0 |
-| Intelligence Theft | 8 | Steal target's entire intelligence database. | +40 | -20 |
-| Plant Disinformation | 6 | Corrupt target's intelligence with false data. | +15 | -15 |
+[cols="<,^,<,<,<", options="header"]
+|===
+| Espionage Action | Cost in EBPs | Description | Prestige Change for Player | Prestige Change for Target
 
-*Source: config/prestige.toml [espionage] and [espionage_victim] sections; config/espionage.toml [costs]*
-<!-- ESPIONAGE_PRESTIGE_TABLE_END -->
+| Tech Theft | 5 | Attempt to steal critical R&D tech. | +20 | -30
+| Sabotage (Low Impact) | 2 | Small-scale sabotage to a colony's industry. | +10 | -10
+| Sabotage (High Impact) | 7 | Major sabotage to a colony's industry. | +30 | -50
+| Assassination | 10 | Attempt to eliminate a key figures within the target House. | +50 | -70
+| Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +20 | -30
+| Economic Manipulation | 6 | Influence markets to harm the target's economy | +30 | -7
+| Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +10 | -3
+| Counter-Intelligence Sweep | 4 | Defensive operation to block enemy intelligence gathering. | +5 | +0
+| Intelligence Theft | 8 | Steal target's entire intelligence database. | +40 | -20
+| Plant Disinformation | 6 | Corrupt target's intelligence with false data. | +15 | -15
+|===
 
 === *8.2.1 Espionage Mechanics*
 
 Espionage actions allow you to disrupt your rivals' operations and gain tactical advantages through covert maneuvers. Below is a detailed overview of each available action, including its effects and thematic narrative.
 
-| Espionage Action              | Effect                                                     |
-| ----------------------------- | ---------------------------------------------------------- |
-| *Tech Theft*                | Steals *10 SRP* from the target's research pool          |
-| *Low Impact Sabotage*       | Reduces target's *1d6 Industrial Units (IU)*             |
-| *High Impact Sabotage*      | Reduces target's *1d20 Industrial Units (IU)*            |
-| *Assassination*             | Reduces target's *SRP gain by 50%* for one turn          |
-| *Economic Disruption*       | Halves target's *Net Colony Value (NCV)* for one turn    |
-| *Propaganda Campaign*       | Reduces target's *tax revenue by 25%* for one turn       |
-| *Cyber Attack*              | Cripples the target's *Starbase*                         |
-| *Counter-Intelligence Sweep* | Blocks enemy intelligence gathering for *1 turn*        |
-| *Intelligence Theft*        | Steals target's *entire intelligence database*           |
-| *Plant Disinformation*      | Corrupts target's intel with *20-40% variance for 2 turns* |
+[cols="<,<", options="header"]
+|===
+| Espionage Action | Effect
+
+| *Tech Theft* | Steals *10 SRP* from the target's research pool
+| *Low Impact Sabotage* | Reduces target's *1d6 Industrial Units (IU)*
+| *High Impact Sabotage* | Reduces target's *1d20 Industrial Units (IU)*
+| *Assassination* | Reduces target's *SRP gain by 50%* for one turn
+| *Economic Disruption* | Halves target's *Net Colony Value (NCV)* for one turn
+| *Propaganda Campaign* | Reduces target's *tax revenue by 25%* for one turn
+| *Cyber Attack* | Cripples the target's *Starbase*
+| *Counter-Intelligence Sweep* | Blocks enemy intelligence gathering for *1 turn*
+| *Intelligence Theft* | Steals target's *entire intelligence database*
+| *Plant Disinformation* | Corrupts target's intel with *20-40% variance for 2 turns*
+|===
 
 *Tech Theft*:
 In the dead of night, a covert team of elite hackers infiltrates the rival House's research network, siphoning critical data and blueprints. By the time their intrusion is detected, valuable research progress has already been uploaded and integrated into your own laboratories, giving your scientists a sudden leap forward.
@@ -3881,32 +3890,30 @@ If you invest more than 5% of your turn budget into CIP, you lose Prestige point
 
 The modifier is determined based on the total *CIP points* held by the player when an espionage event occurs:
 
-<!-- CIC_MODIFIER_TABLE_START -->
-| Total CIP Points | Automatic Detection Modifier |
-|:----------------:|:----------------------------:|
-| 0 | 0 (espionage automatically succeeds) |
-| 1-5 | +1 |
-| 6-10 | +2 |
-| 11-15 | +3 |
-| 16-20 | +4 |
-| 21+ | +5 (maximum) |
+[cols="^,^", options="header"]
+|===
+| Total CIP Points | Automatic Detection Modifier
 
-*Source: config/espionage.toml [detection] section*
-<!-- CIC_MODIFIER_TABLE_END -->
+| 0 | 0 (espionage automatically succeeds)
+| 1-5 | +1
+| 6-10 | +2
+| 11-15 | +3
+| 16-20 | +4
+| 21+ | +5 (maximum)
+|===
 
 === Espionage Detection Table:
 
-<!-- CIC_THRESHOLD_TABLE_START -->
-| CIC Level | Base 1D20 Roll | Detection Probability (with Automatic Modifier) |
-|:---------:|:--------------:|:-----------------------------------------------:|
-| CIC1 | > 15 | 25% → 30-50% |
-| CIC2 | > 12 | 40% → 45-65% |
-| CIC3 | > 10 | 55% → 60-80% |
-| CIC4 | > 7 | 65% → 70-90% |
-| CIC5 | > 4 | 80% → 85-95% |
+[cols="^,^,^", options="header"]
+|===
+| CIC Level | Base 1D20 Roll | Detection Probability (with Automatic Modifier)
 
-*Source: config/espionage.toml [detection] section*
-<!-- CIC_THRESHOLD_TABLE_END -->
+| CIC1 | > 15 | 25% → 30-50%
+| CIC2 | > 12 | 40% → 45-65%
+| CIC3 | > 10 | 55% → 60-80%
+| CIC4 | > 7 | 65% → 70-90%
+| CIC5 | > 4 | 80% → 85-95%
+|===
 
 *Example*:
 
@@ -3963,11 +3970,11 @@ In EC4X, effective use of espionage is about balance. Strategic investments in c
 [[reference-tables]]
 == Reference Tables
 
-= 10.0 Data Tables
+<<<
+
+== 10.0 Data Tables
 
 == 10.1 Space Force (WEP1)
-
-<!-- SPACE_FORCE_TABLE_START -->
 
 CST = Minimum CST Level
 PC = Production Cost
@@ -3978,30 +3985,29 @@ CC= Command Cost
 CR = Command Rating
 CL = Carry Limit
 
-| Class | Name              | CST | PC  | MC  | AS  | DS  | CC  | CR  | CL  |
-|:-----:| ----------------- |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| CT    | Corvette          | 1   | 20  | 3%  | 2   | 3   | 1   | 2   | NA  |
-| FG    | Frigate           | 1   | 30  | 3%  | 3   | 4   | 2   | 3   | NA  |
-| DD    | Destroyer         | 1   | 40  | 5%  | 5   | 6   | 2   | 4   | NA  |
-| CL    | Light Cruiser     | 1   | 60  | 3%  | 8   | 9   | 3   | 6   | NA  |
-| CA    | Heavy Cruiser     | 2   | 80  | 5%  | 12  | 13  | 3   | 7   | NA  |
-| BC    | Battle Cruiser    | 3   | 100 | 4%  | 16  | 18  | 3   | 8   | NA  |
-| BB    | Battleship        | 4   | 150 | 4%  | 20  | 25  | 3   | 10  | NA  |
-| DN    | Dreadnought       | 5   | 200 | 5%  | 28  | 30  | 4   | 12  | NA  |
-| SD    | Super Dreadnought | 6   | 250 | 5%  | 35  | 40  | 5   | 14  | NA  |
-| PB    | Planet-Breaker    | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
-| CV    | Carrier           | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
-| CX    | Super Carrier     | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
-| FS    | Fighter Squadron  | 3   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
-| RR    | Raider            | 3   | 150 | 4%  | 12  | 10  | 2   | 8   | NA  |
-| SC    | Scout             | 1   | 50  | 2%  | 1   | 2   | 1   | NA  | NA  |
-| SB    | Starbase          | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
+[cols="^,<,^,^,^,^,^,^,^,^", options="header"]
+|===
+| Class | Name | CST | PC | MC | AS | DS | CC | CR | CL
 
-*Source: config/ships.toml*
+| CT | Corvette | 1 | 20 | 3% | 2 | 3 | 1 | 2 | NA
+| FG | Frigate | 1 | 30 | 3% | 3 | 4 | 2 | 3 | NA
+| DD | Destroyer | 1 | 40 | 5% | 5 | 6 | 2 | 4 | NA
+| CL | Light Cruiser | 1 | 60 | 3% | 8 | 9 | 3 | 6 | NA
+| CA | Heavy Cruiser | 2 | 80 | 5% | 12 | 13 | 3 | 7 | NA
+| BC | Battle Cruiser | 3 | 100 | 4% | 16 | 18 | 3 | 8 | NA
+| BB | Battleship | 4 | 150 | 4% | 20 | 25 | 3 | 10 | NA
+| DN | Dreadnought | 5 | 200 | 5% | 28 | 30 | 4 | 12 | NA
+| SD | Super Dreadnought | 6 | 250 | 5% | 35 | 40 | 5 | 14 | NA
+| PB | Planet-Breaker | 10 | 400 | 5% | 50 | 20 | 6 | 6 | NA
+| CV | Carrier | 3 | 120 | 3% | 5 | 18 | 3 | 8 | 3
+| CX | Super Carrier | 5 | 200 | 5% | 8 | 25 | 4 | 10 | 5
+| FS | Fighter Squadron | 3 | 20 | 5% | 4 | 3 | NA | NA | NA
+| RR | Raider | 3 | 150 | 4% | 12 | 10 | 2 | 8 | NA
+| SC | Scout | 1 | 50 | 2% | 1 | 2 | 1 | NA | NA
+| SB | Starbase | 3 | 300 | 5% | 45 | 50 | NA | NA | NA
+|===
 
 NOTE: Ships with a Command Rating (CR) >= 7 are considered Capital Ships.
-
-<!-- SPACE_FORCE_TABLE_END -->
 
 == 10.1.1 Ship Construction Times
 
@@ -4015,45 +4021,36 @@ This reflects the game's time narrative where turns represent variable time peri
 - CST increases industrial production capacity by 10% per level (affects GCO)
 - CST does NOT affect construction time (all ships build in 1 turn)
 
-<!-- CONSTRUCTION_TIMES_TABLE_START -->
+[cols="<,<,<", options="header"]
+|===
+| Hull Class | Ships | Construction Time
 
-| Hull Class  | Ships     | Construction Time |
-| ----------- | --------- | ----------------- |
-| All Classes | All Ships | 1 turn (instant)  |
-
-*Source: config/ships.toml [construction] section*
-
-<!-- CONSTRUCTION_TIMES_TABLE_END -->
+| All Classes | All Ships | 1 turn (instant)
+|===
 
 == 10.2 Ground Units (WEP1)
 
-<!-- GROUND_UNITS_TABLE_START -->
+[cols="<,<,^,<,<,^,^", options="header"]
+|===
+| *Class* | *Name* | CST | PC | MC | AS | DS
 
-| *Class* | *Name*         | CST | PC  | MC  | AS  | DS  |
-| --------- | ---------------- |:---:| --- | --- |:---:|:---:|
-| PS        | Planetary Shield | 5   | 100 | 5%  | 0   | 100 |
-| GB        | Ground Batteries | 1   | 20  | 3%  | 10  | 8   |
-| AA        | Armies           | 1   | 15  | 2%  | 3   | 5   |
-| MD        | Space Marines    | 1   | 25  | 2%  | 6   | 6   |
-
-*Source: config/ground_units.toml*
-
-<!-- GROUND_UNITS_TABLE_END -->
+| PS | Planetary Shield | 5 | 100 | 5% | 0 | 100
+| GB | Ground Batteries | 1 | 20 | 3% | 10 | 8
+| AA | Armies | 1 | 15 | 2% | 3 | 5
+| MD | Space Marines | 1 | 25 | 2% | 6 | 6
+|===
 
 == 10.3 Spacelift Command (WEP1)
 
-<!-- SPACELIFT_TABLE_START -->
+[cols="^,<,^,^,^,^,^", options="header"]
+|===
+| *Class* | *Name* | CST | PC | MC | CL | DS
 
-| *Class* | *Name*         | CST | PC  | MC  | CL  | DS  |
-|:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
-| SP        | Spaceport        | 1   | 100 | 5%  | 5   | 50  |
-| SY        | Shipyard         | 1   | 150 | 3%  | 10  | 70  |
-| ET        | ETAC             | 1   | 25  | 3%  | 1   | 10  |
-| TT        | Troop Transports | 1   | 30  | 3%  | 1   | 15  |
-
-*Source: config/facilities.toml and config/ships.toml*
-
-<!-- SPACELIFT_TABLE_END -->
+| SP | Spaceport | 1 | 100 | 5% | 5 | 50
+| SY | Shipyard | 1 | 150 | 3% | 10 | 70
+| ET | ETAC | 1 | 25 | 3% | 1 | 10
+| TT | Troop Transports | 1 | 30 | 3% | 1 | 15
+|===
 
 == 10.4 Prestige
 
@@ -4083,51 +4080,45 @@ Small maps (8-10 systems/player) use the baseline multiplier. Larger maps scale 
 
 === Base Prestige Values
 
-<!-- PRESTIGE_TABLE_START -->
+[cols="<,<,<", options="header"]
+|===
+| Prestige Source | Enum Name | Value
 
-| Prestige Source                    | Enum Name               | Value |
-| ---------------------------------- | ----------------------- | ----- |
-| Tech Advancement                   | `TechAdvancement`       | +20   |
-| Colony Establishment               | `ColonyEstablishment`   | +50   |
-| System Capture                     | `SystemCapture`         | +100  |
-| Diplomatic Pact Formation          | `DiplomaticPact`        | +50   |
-| Pact Violation (penalty)           | `PactViolation`         | -100  |
-| Repeat Violation (penalty)         | `RepeatViolation`       | -100  |
-| Attack Dishonored House            | `DishonoredBonus`       | +10   |
-| Tech Theft Success                 | `TechTheftSuccess`      | +20   |
-| Tech Theft Detected (penalty)      | `TechTheftDetected`     | +20   |
-| Assassination Success              | `AssassinationSuccess`  | +50   |
-| Assassination Detected (penalty)   | `AssassinationDetected` | +50   |
-| Espionage Attempt Failed (penalty) | `EspionageFailure`      | +10   |
-| Major Ship Destroyed (per ship)    | `ShipDestroyed`         | +10   |
-| Starbase Destroyed                 | `StarbaseDestroyed`     | +50   |
-| Fleet Victory (per battle)         | `FleetVictory`          | +30   |
-| Planet Conquered                   | `PlanetConquered`       | +100  |
-| House Eliminated                   | `HouseEliminated`       | +30   |
-| Victory Achieved                   | `VictoryAchieved`       | +50   |
-
-*Source: config/prestige.toml [economic], [military], and [espionage] sections*
-
-<!-- PRESTIGE_TABLE_END -->
+| Tech Advancement | `TechAdvancement` | +20
+| Colony Establishment | `ColonyEstablishment` | +50
+| System Capture | `SystemCapture` | +100
+| Diplomatic Pact Formation | `DiplomaticPact` | +50
+| Pact Violation (penalty) | `PactViolation` | -100
+| Repeat Violation (penalty) | `RepeatViolation` | -100
+| Attack Dishonored House | `DishonoredBonus` | +10
+| Tech Theft Success | `TechTheftSuccess` | +20
+| Tech Theft Detected (penalty) | `TechTheftDetected` | +20
+| Assassination Success | `AssassinationSuccess` | +50
+| Assassination Detected (penalty) | `AssassinationDetected` | +50
+| Espionage Attempt Failed (penalty) | `EspionageFailure` | +10
+| Major Ship Destroyed (per ship) | `ShipDestroyed` | +10
+| Starbase Destroyed | `StarbaseDestroyed` | +50
+| Fleet Victory (per battle) | `FleetVictory` | +30
+| Planet Conquered | `PlanetConquered` | +100
+| House Eliminated | `HouseEliminated` | +30
+| Victory Achieved | `VictoryAchieved` | +50
+|===
 
 === Prestige Penalty Mechanics
 
 Penalty mechanics describe how prestige is deducted based on player actions and game state. Unlike prestige sources (discrete events in Table 9.4), these are recurring penalties triggered by conditions.
 
-<!-- PENALTY_MECHANICS_START -->
+[cols="<,<,<,<,<", options="header"]
+|===
+| Penalty Type | Condition | Prestige Impact | Frequency | Config Keys
 
-| Penalty Type                  | Condition                             | Prestige Impact                   | Frequency                 | Config Keys                 |
-| ----------------------------- | ------------------------------------- | --------------------------------- | ------------------------- | --------------------------- |
-| High Tax Rate                 | Rolling 6-turn avg 51-65%             | -2 prestige                       | Every 3 consecutive turns | `high_tax_*`                |
-| Very High Tax Rate            | Rolling 6-turn avg >66%               | -2 prestige                       | Every 5 consecutive turns | `very_high_tax_*`           |
-| Maintenance Shortfall         | Missed maintenance payment            | -8 turn 1, escalates by -3/turn   | Per turn missed           | `maintenance_shortfall_*`   |
-| Blockade                      | Colony under blockade at Income Phase | -3 prestige                       | Per turn per colony       | `blockade_penalty`          |
-| Espionage Over-Investment     | EBP spending >5% of budget            | -2 prestige per 1% over threshold | Per turn                  | `over_invest_espionage`     |
-| Counter-Intel Over-Investment | CIP spending >5% of budget            | -2 prestige per 1% over threshold | Per turn                  | `over_invest_counter_intel` |
-
-*Source: config/prestige.toml [penalties] section*
-
-<!-- PENALTY_MECHANICS_END -->
+| High Tax Rate | Rolling 6-turn avg 51-65% | -2 prestige | Every 3 consecutive turns | `high_tax_*`
+| Very High Tax Rate | Rolling 6-turn avg >66% | -2 prestige | Every 5 consecutive turns | `very_high_tax_*`
+| Maintenance Shortfall | Missed maintenance payment | -8 turn 1, escalates by -3/turn | Per turn missed | `maintenance_shortfall_*`
+| Blockade | Colony under blockade at Income Phase | -3 prestige | Per turn per colony | `blockade_penalty`
+| Espionage Over-Investment | EBP spending >5% of budget | -2 prestige per 1% over threshold | Per turn | `over_invest_espionage`
+| Counter-Intel Over-Investment | CIP spending >5% of budget | -2 prestige per 1% over threshold | Per turn | `over_invest_counter_intel`
+|===
 
 *Additional Notes:*
 
@@ -4138,166 +4129,207 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 
 == 10.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
 
-| Limit Description                             | Rule Details                                                                                                                                                                                                      | Source Section                                             |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Capital Squadrons (per house)                 | Maximum = Total House (IU ÷ 100)*2 (round down, minimum 8). Squadrons commanded by flagships with CR > 7. Every squadron costs 1 slot.                                                                            | <<312-house-combat-squadron-limit,3.12>>         |
-| Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                     | <<248-planet-breaker,2.4.8>>                      |
-| Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess. | <<241-fighter-squadrons-carriers,2.4.1>>          |
-| Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                             | <<241-fighter-squadrons-carriers,2.4.1>>          |
-| Scout CER Bonus                               | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.                                                                                                                        | <<733-combat-effectiveness-rating-cer,7.3.3>> |
-| Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass).                                              | <<733-combat-effectiveness-rating-cer,7.3.3>> |
-| Blockade Prestige Penalty                     | See <<prestige-penalty-mechanics,Prestige Penalty Mechanics>> for blockade penalty details.                                                                                                                       | <<626-guardblockade-a-planet-05,6.2.6>>       |
-| Tax Rate Prestige Penalty                     | See <<prestige-penalty-mechanics,Prestige Penalty Mechanics>> for tax rate penalty details.                                                                                                                       | <<32-tax-rate,3.2>>                              |
+[cols="<,<,<", options="header"]
+|===
+| Limit Description | Rule Details | Source Section
+
+| Capital Squadrons (per house) | Maximum = Total House (IU ÷ 100)*2 (round down, minimum 8). Squadrons commanded by flagships with CR > 7. Every squadron costs 1 slot. | <<312-house-combat-squadron-limit,3.12>>
+| Planet-Breakers (per colony) | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage). | <<248-planet-breaker,2.4.8>>
+| Fighter Squadrons (per colony) | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess. | <<241-fighter-squadrons-carriers,2.4.1>>
+| Carrier Hangar Capacity | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit. | <<241-fighter-squadrons-carriers,2.4.1>>
+| Scout CER Bonus | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present. | <<733-combat-effectiveness-rating-cer,7.3.3>>
+| Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass). | <<733-combat-effectiveness-rating-cer,7.3.3>>
+| Blockade Prestige Penalty | See <<prestige-penalty-mechanics,Prestige Penalty Mechanics>> for blockade penalty details. | <<626-guardblockade-a-planet-05,6.2.6>>
+| Tax Rate Prestige Penalty | See <<prestige-penalty-mechanics,Prestige Penalty Mechanics>> for tax rate penalty details. | <<32-tax-rate,3.2>>
+|===
 
 
 '''
 
 [[glossary]]
-= 11.0 Glossary & Definitions
+<<<
+
+== 11.0 Glossary & Definitions
 
 == Ship Classes
 
 === Capital Ships
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| BB | Battleship – heavy capital ship | <<101-space-force-wep1,9.1>> |
-| BC | Battle Cruiser – medium-heavy capital ship | <<101-space-force-wep1,9.1>> |
-| CA | Heavy Cruiser – medium capital ship | <<101-space-force-wep1,9.1>> |
-| CL | Light Cruiser – light capital ship | <<101-space-force-wep1,9.1>> |
-| CT | Corvette – smallest capital ship | <<101-space-force-wep1,9.1>> |
-| DD | Destroyer – small capital ship | <<101-space-force-wep1,9.1>> |
-| DN | Dreadnought – very heavy capital ship | <<101-space-force-wep1,9.1>> |
-| FG | Frigate – small escort ship | <<101-space-force-wep1,9.1>> |
-| SD | Super Dreadnought – largest standard capital ship | <<101-space-force-wep1,9.1>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| BB | Battleship – heavy capital ship | <<101-space-force-wep1,9.1>>
+| BC | Battle Cruiser – medium-heavy capital ship | <<101-space-force-wep1,9.1>>
+| CA | Heavy Cruiser – medium capital ship | <<101-space-force-wep1,9.1>>
+| CL | Light Cruiser – light capital ship | <<101-space-force-wep1,9.1>>
+| CT | Corvette – smallest capital ship | <<101-space-force-wep1,9.1>>
+| DD | Destroyer – small capital ship | <<101-space-force-wep1,9.1>>
+| DN | Dreadnought – very heavy capital ship | <<101-space-force-wep1,9.1>>
+| FG | Frigate – small escort ship | <<101-space-force-wep1,9.1>>
+| SD | Super Dreadnought – largest standard capital ship | <<101-space-force-wep1,9.1>>
+|===
 
 === Carriers & Fighters
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| CV | Carrier – medium carrier that holds 3-5 FS | <<101-space-force-wep1,9.1>> |
-| CX | Super Carrier – heavy carrier that holds 5-8 FS | <<101-space-force-wep1,9.1>> |
-| FS | Fighter Squadron | <<241-fighter-squadrons-carriers,2.4.1>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| CV | Carrier – medium carrier that holds 3-5 FS | <<101-space-force-wep1,9.1>>
+| CX | Super Carrier – heavy carrier that holds 5-8 FS | <<101-space-force-wep1,9.1>>
+| FS | Fighter Squadron | <<241-fighter-squadrons-carriers,2.4.1>>
+|===
 
 === Special Ships
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| PB | Planet-Breaker – massive siege weapon for orbital bombardment | <<248-planet-breaker,2.4.8>> |
-| RR | Raider – cloaked stealth attack ship | <<243-raiders,2.4.3>> |
-| SB | Starbase – immobile orbital fortress | <<244-starbases,2.4.4>> |
-| SC | Scout – stealth reconnaissance ship | <<242-scouts,2.4.2>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| PB | Planet-Breaker – massive siege weapon for orbital bombardment | <<248-planet-breaker,2.4.8>>
+| RR | Raider – cloaked stealth attack ship | <<243-raiders,2.4.3>>
+| SB | Starbase – immobile orbital fortress | <<244-starbases,2.4.4>>
+| SC | Scout – stealth reconnaissance ship | <<242-scouts,2.4.2>>
+|===
 
 == Ground Forces
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| AA | Armies – basic ground defense unit | <<102-ground-units-wep1,9.2>> |
-| GB | Ground Batteries – orbital defense unit | <<102-ground-units-wep1,9.2>> |
-| MD | Marine Division (Space Marines) – elite ground invasion unit | <<102-ground-units-wep1,9.2>> |
-| PS | Planetary Shield – ultimate ground defense structure | <<102-ground-units-wep1,9.2>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| AA | Armies – basic ground defense unit | <<102-ground-units-wep1,9.2>>
+| GB | Ground Batteries – orbital defense unit | <<102-ground-units-wep1,9.2>>
+| MD | Marine Division (Space Marines) – elite ground invasion unit | <<102-ground-units-wep1,9.2>>
+| PS | Planetary Shield – ultimate ground defense structure | <<102-ground-units-wep1,9.2>>
+|===
 
 == Spacelift & Infrastructure
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| ET | ETAC – Environmental Transformation And Colonization ship | <<103-spacelift-command-wep1,9.3>> |
-| SP | Spaceport – facility for population/cargo transport | <<103-spacelift-command-wep1,9.3>> |
-| SY | Shipyard – facility for ship construction | <<103-spacelift-command-wep1,9.3>> |
-| TT | Troop Transports – ship for moving ground forces | <<103-spacelift-command-wep1,9.3>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| ET | ETAC – Environmental Transformation And Colonization ship | <<103-spacelift-command-wep1,9.3>>
+| SP | Spaceport – facility for population/cargo transport | <<103-spacelift-command-wep1,9.3>>
+| SY | Shipyard – facility for ship construction | <<103-spacelift-command-wep1,9.3>>
+| TT | Troop Transports – ship for moving ground forces | <<103-spacelift-command-wep1,9.3>>
+|===
 
 == Ship & Unit Statistics
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| AS | Attack Strength – offensive firepower of a ship or squadron | <<73-space-combat,7.3>> |
-| CC | Command Cost – the "size" a ship takes in a squadron | <<101-space-force-wep1,9.1>> |
-| CER | Combat Effectiveness Rating – multiplier applied to AS in Phases 1 & 3 | <<733-combat-effectiveness-rating-cer,7.3.3>> |
-| CL | Carry Limit – number of FS (fighters) or MD/PTU a carrier/transport holds | <<101-space-force-wep1,9.1>> |
-| CR | Command Rating – maximum total CC a flagship can command | <<101-space-force-wep1,9.1>> |
-| DS | Defense Strength – hits required to cripple or destroy a unit | <<73-space-combat,7.3>> |
-| MC | Maintenance Cost – upkeep cost as percentage of PC | <<101-space-force-wep1,9.1>> |
-| PC | Production Cost – build cost in PP | <<101-space-force-wep1,9.1>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| AS | Attack Strength – offensive firepower of a ship or squadron | <<73-space-combat,7.3>>
+| CC | Command Cost – the "size" a ship takes in a squadron | <<101-space-force-wep1,9.1>>
+| CER | Combat Effectiveness Rating – multiplier applied to AS in Phases 1 & 3 | <<733-combat-effectiveness-rating-cer,7.3.3>>
+| CL | Carry Limit – number of FS (fighters) or MD/PTU a carrier/transport holds | <<101-space-force-wep1,9.1>>
+| CR | Command Rating – maximum total CC a flagship can command | <<101-space-force-wep1,9.1>>
+| DS | Defense Strength – hits required to cripple or destroy a unit | <<73-space-combat,7.3>>
+| MC | Maintenance Cost – upkeep cost as percentage of PC | <<101-space-force-wep1,9.1>>
+| PC | Production Cost – build cost in PP | <<101-space-force-wep1,9.1>>
+|===
 
 == Economy & Production
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| Colony | Player-controlled planetary settlement with population, production, and defenses | <<22-solar-systems,2.2>> |
-| Deficit | Financial shortfall triggering forced fleet disbanding and infrastructure stripping | <<311-maintenance-tax-shortfall-consequences,3.11>> |
-| GCO | Gross Colony Output – raw production before tax | <<31-principles,3.1>> |
-| GHO | Gross House Output – total PP produced by all colonies before tax | <<31-principles,3.1>> |
-| Homeworld | Player's original starting colony; capital system; never voluntarily abandoned | <<22-solar-systems,2.2>> |
-| IU | Industrial Units – production facilities on a colony | <<35-economic-level-modifier,3.5>> |
-| Maintenance | Recurring costs paid each turn for ships, units, and facilities | <<39-maintenance-costs,3.9>> |
-| NCV | Net Colony Value – net tax revenue collected: GCO × tax rate | <<33-net-colony-value-ncv-and-treasury-management,3.3>> |
-| PP | Production Points – currency of the game | <<30-economics,3.0>> |
-| Prestige | Ultimate measure of House dominance; reaching zero triggers elimination | <<11-prestige,1.1>> |
-| PTU | Population Transfer Unit – colonists moved by ETAC | <<23-military,2.3>> |
-| PU | Population Units – inhabitants of a colony; basis for most limits | <<22-solar-systems,2.2>> |
-| Terraforming | Long-term investment to upgrade planet class and improve conditions | <<47-terraforming-ter,4.7>> |
-| Treasury | House financial reserves used for construction, research, and expenditures | <<33-net-colony-value-ncv-and-treasury-management,3.3>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| Colony | Player-controlled planetary settlement with population, production, and defenses | <<22-solar-systems,2.2>>
+| Deficit | Financial shortfall triggering forced fleet disbanding and infrastructure stripping | <<311-maintenance-tax-shortfall-consequences,3.11>>
+| GCO | Gross Colony Output – raw production before tax | <<31-principles,3.1>>
+| GHO | Gross House Output – total PP produced by all colonies before tax | <<31-principles,3.1>>
+| Homeworld | Player's original starting colony; capital system; never voluntarily abandoned | <<22-solar-systems,2.2>>
+| IU | Industrial Units – production facilities on a colony | <<35-economic-level-modifier,3.5>>
+| Maintenance | Recurring costs paid each turn for ships, units, and facilities | <<39-maintenance-costs,3.9>>
+| NCV | Net Colony Value – net tax revenue collected: GCO × tax rate | <<33-net-colony-value-ncv-and-treasury-management,3.3>>
+| PP | Production Points – currency of the game | <<30-economics,3.0>>
+| Prestige | Ultimate measure of House dominance; reaching zero triggers elimination | <<11-prestige,1.1>>
+| PTU | Population Transfer Unit – colonists moved by ETAC | <<23-military,2.3>>
+| PU | Population Units – inhabitants of a colony; basis for most limits | <<22-solar-systems,2.2>>
+| Terraforming | Long-term investment to upgrade planet class and improve conditions | <<47-terraforming-ter,4.7>>
+| Treasury | House financial reserves used for construction, research, and expenditures | <<33-net-colony-value-ncv-and-treasury-management,3.3>>
+|===
 
 == Research & Technology
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| ACO | Advanced Carrier Operations – tech that increases carrier hangar capacity | <<241-fighter-squadrons-carriers,2.4.1>> |
-| CLK | Cloaking tech level | <<243-raiders,2.4.3>> |
-| CST | Construction tech level – required shipyard level to build a ship class | <<101-space-force-wep1,9.1>> |
-| EL | Economic Level – entrepreneurial & education advancement (max 10+) | <<42-economic-level-el,4.2>> |
-| ELI | Electronic Intelligence – detection tech level | <<242-scouts,2.4.2>> |
-| ERP | Economic Research Points – used to advance Economic Level | <<41-research-points-rp,4.1>> |
-| FD | Fighter Doctrine tech level – multiplier to per-colony fighter capacity | <<241-fighter-squadrons-carriers,2.4.1>> |
-| SL | Science Level – scientific advancement (max 10+) | <<43-science-level-sl,4.3>> |
-| SRP | Science Research Points – used to advance Science Level | <<41-research-points-rp,4.1>> |
-| TL | Tech Level – generic technology level (context dependent) | <<40-research-development,4.0>> |
-| TRP | Technology Research Points – used to purchase specific technologies | <<41-research-points-rp,4.1>> |
-| WEP | Weapons Level – determines available ship classes and upgrades | <<101-space-force-wep1,9.1>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| ACO | Advanced Carrier Operations – tech that increases carrier hangar capacity | <<241-fighter-squadrons-carriers,2.4.1>>
+| CLK | Cloaking tech level | <<243-raiders,2.4.3>>
+| CST | Construction tech level – required shipyard level to build a ship class | <<101-space-force-wep1,9.1>>
+| EL | Economic Level – entrepreneurial & education advancement (max 10+) | <<42-economic-level-el,4.2>>
+| ELI | Electronic Intelligence – detection tech level | <<242-scouts,2.4.2>>
+| ERP | Economic Research Points – used to advance Economic Level | <<41-research-points-rp,4.1>>
+| FD | Fighter Doctrine tech level – multiplier to per-colony fighter capacity | <<241-fighter-squadrons-carriers,2.4.1>>
+| SL | Science Level – scientific advancement (max 10+) | <<43-science-level-sl,4.3>>
+| SRP | Science Research Points – used to advance Science Level | <<41-research-points-rp,4.1>>
+| TL | Tech Level – generic technology level (context dependent) | <<40-research-development,4.0>>
+| TRP | Technology Research Points – used to purchase specific technologies | <<41-research-points-rp,4.1>>
+| WEP | Weapons Level – determines available ship classes and upgrades | <<101-space-force-wep1,9.1>>
+|===
 
 == Combat & Military Operations
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| Ambush | Surprise attack where undetected Raiders strike first (+4 CER modifier) | <<7311-phase-1-undetected-raiders-ambush-phase,7.3.1.1>> |
-| Blitz | Fast Marine infiltration of planet; requires 2:1 superiority; less damage than invasion | <<629-blitz-a-planet-08,6.2.9>> |
-| Blockade | Fleet operation that reduces colony GCO by 60% and imposes -2 prestige penalty | <<626-guardblockade-a-planet-05,6.2.6>> |
-| Bombardment | Orbital attack on planet's defensive assets and infrastructure | <<627-bombard-a-planet-06,6.2.7>> |
-| Cloaking | Stealth technology allowing Raiders to avoid detection; countered by ELI | <<713-cloaking,7.1.3>> |
-| Colonization | Landing an ETAC to establish a new colony on unoccupied planet | <<6213-colonize-a-planet-12,6.2.13>> |
-| Critical Hit | Natural 9 on CER roll; bypasses destruction protection and awards prestige | <<733-combat-effectiveness-rating-cer,7.3.3>> |
-| Crippled | Combat state where unit's AS is halved; requires DS hits to achieve | <<712-combat-state,7.1.2>> |
-| Destroyed | Final combat state where unit is dead and unrecoverable | <<712-combat-state,7.1.2>> |
-| Fleet | Grouping of squadrons for strategic movement through jump lanes | <<234-fleets,2.3.4>> |
-| Flagship | Capital ship commanding a squadron; determines max capacity via CR | <<233-squadrons,2.3.3>> |
-| Invasion | Three-round battle to conquer planet: batteries, population, then Marines | <<628-invade-a-planet-07,6.2.8>> |
-| Morale | Crew effectiveness based on prestige; affects CER rolls and combat behavior | <<714-morale,7.1.4>> |
-| Patrol | Fleet operation to actively engage hostiles entering a system | <<624-patrol-a-system-03,6.2.4>> |
-| Retreat | Combat disengagement after first round; falls back to friendly system | <<735-retreat,7.3.5>> |
-| Salvage | Disband fleet at colony for 50% of ships' PC value | <<6216-salvage-15,6.2.16>> |
-| Squadron | Organized group of ships under flagship command; fights as single unit | <<233-squadrons,2.3.3>> |
-| Task Force | Temporary merger of all fleets + starbase during combat | <<72-task-force-assignment,7.2>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| Ambush | Surprise attack where undetected Raiders strike first (+4 CER modifier) | <<7311-phase-1-undetected-raiders-ambush-phase,7.3.1.1>>
+| Blitz | Fast Marine infiltration of planet; requires 2:1 superiority; less damage than invasion | <<629-blitz-a-planet-08,6.2.9>>
+| Blockade | Fleet operation that reduces colony GCO by 60% and imposes -2 prestige penalty | <<626-guardblockade-a-planet-05,6.2.6>>
+| Bombardment | Orbital attack on planet's defensive assets and infrastructure | <<627-bombard-a-planet-06,6.2.7>>
+| Cloaking | Stealth technology allowing Raiders to avoid detection; countered by ELI | <<713-cloaking,7.1.3>>
+| Colonization | Landing an ETAC to establish a new colony on unoccupied planet | <<6213-colonize-a-planet-12,6.2.13>>
+| Critical Hit | Natural 9 on CER roll; bypasses destruction protection and awards prestige | <<733-combat-effectiveness-rating-cer,7.3.3>>
+| Crippled | Combat state where unit's AS is halved; requires DS hits to achieve | <<712-combat-state,7.1.2>>
+| Destroyed | Final combat state where unit is dead and unrecoverable | <<712-combat-state,7.1.2>>
+| Fleet | Grouping of squadrons for strategic movement through jump lanes | <<234-fleets,2.3.4>>
+| Flagship | Capital ship commanding a squadron; determines max capacity via CR | <<233-squadrons,2.3.3>>
+| Invasion | Three-round battle to conquer planet: batteries, population, then Marines | <<628-invade-a-planet-07,6.2.8>>
+| Morale | Crew effectiveness based on prestige; affects CER rolls and combat behavior | <<714-morale,7.1.4>>
+| Patrol | Fleet operation to actively engage hostiles entering a system | <<624-patrol-a-system-03,6.2.4>>
+| Retreat | Combat disengagement after first round; falls back to friendly system | <<735-retreat,7.3.5>>
+| Salvage | Disband fleet at colony for 50% of ships' PC value | <<6216-salvage-15,6.2.16>>
+| Squadron | Organized group of ships under flagship command; fights as single unit | <<233-squadrons,2.3.3>>
+| Task Force | Temporary merger of all fleets + starbase during combat | <<72-task-force-assignment,7.2>>
+|===
 
 == Diplomacy & Intelligence
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| CIP | Counter-Intelligence Point – defense against espionage; costs 40 PP each | <<83-counter-intelligence-command-cic,8.3>> |
-| Detection | Process of discovering espionage attempts or cloaked Raiders via dice rolls | <<83-counter-intelligence-command-cic,8.3>> |
-| Diplomatic Isolation | Cannot establish new NAPs for 5 turns after pact violation | <<812-non-aggression-pacts,8.1.2>> |
-| Dishonored | Reputation penalty lasting 3 turns after NAP violation | <<812-non-aggression-pacts,8.1.2>> |
-| EBP | Espionage Budget Point – cost 40 PP each; used for covert actions | <<82-subversion-subterfuge,8.2>> |
-| Enemy | Diplomatic status commanding fleets to engage at every opportunity | <<813-enemy,8.1.3>> |
-| Espionage | Covert operations including tech theft, sabotage, assassination, and psyops | <<82-subversion-subterfuge,8.2>> |
-| Fog of War | Restricted visibility requiring active intelligence gathering to see rivals | <<152-fog-of-war,1.5.2>> |
-| NAP | Non-Aggression Pact – agreement to not attack each other | <<812-non-aggression-pacts,8.1.2>> |
-| Neutral | Diplomatic status where fleets avoid hostilities outside controlled territory | <<811-neutral,8.1.1>> |
-| ROE | Rules of Engagement – aggression level 00–10 | <<711-rules-of-engagement-roe,7.1.1>> |
-| Territorial Control | System ownership determined by presence of colony | <<815-territorial-control,8.1.5>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| CIP | Counter-Intelligence Point – defense against espionage; costs 40 PP each | <<83-counter-intelligence-command-cic,8.3>>
+| Detection | Process of discovering espionage attempts or cloaked Raiders via dice rolls | <<83-counter-intelligence-command-cic,8.3>>
+| Diplomatic Isolation | Cannot establish new NAPs for 5 turns after pact violation | <<812-non-aggression-pacts,8.1.2>>
+| Dishonored | Reputation penalty lasting 3 turns after NAP violation | <<812-non-aggression-pacts,8.1.2>>
+| EBP | Espionage Budget Point – cost 40 PP each; used for covert actions | <<82-subversion-subterfuge,8.2>>
+| Enemy | Diplomatic status commanding fleets to engage at every opportunity | <<813-enemy,8.1.3>>
+| Espionage | Covert operations including tech theft, sabotage, assassination, and psyops | <<82-subversion-subterfuge,8.2>>
+| Fog of War | Restricted visibility requiring active intelligence gathering to see rivals | <<152-fog-of-war,1.5.2>>
+| NAP | Non-Aggression Pact – agreement to not attack each other | <<812-non-aggression-pacts,8.1.2>>
+| Neutral | Diplomatic status where fleets avoid hostilities outside controlled territory | <<811-neutral,8.1.1>>
+| ROE | Rules of Engagement – aggression level 00–10 | <<711-rules-of-engagement-roe,7.1.1>>
+| Territorial Control | System ownership determined by presence of colony | <<815-territorial-control,8.1.5>>
+|===
 
 == Game Phases & Turn Structure
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| Command Phase | Third phase: issue fleet orders, diplomatic changes, construction orders | <<133-command-phase,1.3.3>> |
-| Conflict Phase | First phase: resolve all military actions, combat, bombardment, invasion | <<131-conflict-phase,1.3.1>> |
-| Income Phase | Second phase: recalculate economics, update prestige, grow population | <<132-income-phase,1.3.2>> |
-| Maintenance Phase | Fourth phase: pay upkeep, complete repairs, process construction | <<134-maintenance-phase,1.3.4>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| Command Phase | Third phase: issue fleet orders, diplomatic changes, construction orders | <<133-command-phase,1.3.3>>
+| Conflict Phase | First phase: resolve all military actions, combat, bombardment, invasion | <<131-conflict-phase,1.3.1>>
+| Income Phase | Second phase: recalculate economics, update prestige, grow population | <<132-income-phase,1.3.2>>
+| Maintenance Phase | Fourth phase: pay upkeep, complete repairs, process construction | <<134-maintenance-phase,1.3.4>>
+|===
 
 == Special Mechanics & Status
-| Term | Definition | Section Link |
-|------|------------|--------------|
-| Autopilot | Temporary MIA mode when player misses 3 turns; defensive operations only | <<142-mia-autopilot,1.4.2>> |
-| Capacity Violation | When fighter squadrons exceed limits; 2-turn grace or disbanded | <<241-fighter-squadrons-carriers,2.4.1>> |
-| Defensive Collapse | Elimination when prestige ≤ 0 for 3 consecutive turns | <<141-prestige-failure-defensive-collapse,1.4.1>> |
-| Jump Lanes | Hex interconnections with three classes: restricted, minor, major | <<61-jump-lanes,6.1>> |
-| Research Breakthrough | Bi-annual technological leap (10% base chance + RP investment bonus) | <<411-research-breakthroughs,4.1.1>> |
+[cols="<,<,<", options="header"]
+|===
+| Term | Definition | Section Link
+
+| Autopilot | Temporary MIA mode when player misses 3 turns; defensive operations only | <<142-mia-autopilot,1.4.2>>
+| Capacity Violation | When fighter squadrons exceed limits; 2-turn grace or disbanded | <<241-fighter-squadrons-carriers,2.4.1>>
+| Defensive Collapse | Elimination when prestige ≤ 0 for 3 consecutive turns | <<141-prestige-failure-defensive-collapse,1.4.1>>
+| Jump Lanes | Hex interconnections with three classes: restricted, minor, major | <<61-jump-lanes,6.1>>
+| Research Breakthrough | Bi-annual technological leap (10% base chance + RP investment bonus) | <<411-research-breakthroughs,4.1.1>>
+|===

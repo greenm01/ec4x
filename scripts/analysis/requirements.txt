@@ -1,0 +1,2 @@
+# Python dependencies for EC4X analysis scripts
+polars>=0.20.0

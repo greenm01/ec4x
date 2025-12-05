@@ -6,7 +6,7 @@
 ## - Counter-intelligence investment priorities
 ## - Detection risk assessment
 
-import std/[tables, options, sequtils, strformat, strutils]
+import std/[tables, options, sequtils, strformat, strutils, algorithm]
 import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/core
@@ -24,7 +24,7 @@ proc analyzeCounterIntelligence*(
   ## Analyze EspionageActivityReport data for counter-intelligence
   ## Phase E: Critical for detecting espionage threats and adjusting operations
 
-  let config = globalRBAConfig.intelligence.counterintel
+  let config = globalRBAConfig.intelligence_counterintel
   var espionagePatterns = initTable[HouseId, EspionagePattern]()
   var detectionRisks = initTable[HouseId, DetectionRiskLevel]()
 
