@@ -728,20 +728,17 @@ proc isFinalConfrontation*(state: GameState): bool =
 
 proc checkVictoryCondition*(state: GameState): Option[HouseId] =
   ## Check if any house has won the game
-  ## Victory: prestige threshold (configurable) or last house standing
+  ## Victory: last house standing (elimination)
+  ## NOTE: Prestige victory removed - now handled by victory engine
+  ## (src/engine/victory/) with configurable modes per game_setup/*.toml
 
-  let config = globalPrestigeConfig
   let activeHouses = state.getActiveHouses()
 
-  # Last house standing
+  # Last house standing (elimination victory)
   if activeHouses.len == 1:
     return some(activeHouses[0].id)
 
-  # Prestige victory
-  for house in activeHouses:
-    if house.prestige >= config.victory.prestige_victory:
-      return some(house.id)
-
+  # No victory yet
   return none(HouseId)
 
 # Construction queue helpers
