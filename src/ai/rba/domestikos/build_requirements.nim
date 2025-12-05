@@ -755,6 +755,65 @@ proc assessStrategicAssets*(
       logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x Army at {colony.systemId}{undefendedTag} (priority={priority}, threat={threat:.2f})")
       result.add(req)
 
+  # =============================================================================
+  # PLANETARY SHIELDS (high-value colony protection)
+  # =============================================================================
+  # Phase F: Prioritize shields for high-value colonies (homeworld + high IU colonies)
+  # Cost: 50 PP (Phase F reduction), DS=100, slows invasions
+  # Requires CST 5
+  if cstLevel >= 5:
+    let shieldCost = getPlanetaryShieldCost(1)  # SLD1 shields
+
+    for colony in filtered.ownColonies:
+      # Check if colony already has max shield (planetaryShieldLevel > 0)
+      let hasShield = colony.planetaryShieldLevel > 0
+
+      if not hasShield:
+        # Prioritize shields for:
+        # 1. Homeworld (always high priority)
+        # 2. High IU colonies (IU >= 100)
+        # 3. Act 3+ colonies under threat
+
+        let isHomeworld = (colony.systemId == controller.homeworld)
+        let isHighValue = colony.industrial.units >= 100
+        let threat = estimateLocalThreat(colony.systemId, filtered, controller)
+        let underThreat = threat > 0.3
+
+        var shouldBuildShield = false
+        var priority = RequirementPriority.Low
+        var reason = ""
+
+        if isHomeworld:
+          shouldBuildShield = true
+          priority = RequirementPriority.High
+          reason = &"Planetary shield for HOMEWORLD {colony.systemId} (DS=100, slows invasions)"
+        elif isHighValue and underThreat:
+          shouldBuildShield = true
+          priority = RequirementPriority.Medium
+          reason = &"Planetary shield for high-value {colony.systemId} (IU={colony.industrial.units}, threat={threat:.2f})"
+        elif isHighValue and currentAct >= GameAct.Act3_TotalWar:
+          shouldBuildShield = true
+          priority = RequirementPriority.Medium
+          reason = &"Planetary shield for high-value {colony.systemId} (IU={colony.industrial.units}, Act 3+)"
+        elif underThreat and currentAct >= GameAct.Act3_TotalWar:
+          shouldBuildShield = true
+          priority = RequirementPriority.Low
+          reason = &"Planetary shield for {colony.systemId} (threat={threat:.2f}, Act 3+)"
+
+        if shouldBuildShield:
+          let req = BuildRequirement(
+            requirementType: RequirementType.DefenseGap,
+            priority: priority,
+            shipClass: none(ShipClass),
+            quantity: 1,
+            buildObjective: BuildObjective.Defense,
+            targetSystem: some(colony.systemId),
+            estimatedCost: shieldCost,
+            reason: reason
+          )
+          logInfo(LogCategory.lcAI, &"Domestikos requests: Planetary Shield at {colony.systemId} (priority={priority}, cost={shieldCost}PP)")
+          result.add(req)
+
   # Marines for offensive operations (if aggressive and have transports)
   if personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions:
     # Count transports

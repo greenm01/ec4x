@@ -25,7 +25,7 @@ Non-competitive achievements (colony establishment, technological research, good
 - **Armies**: 10 PP each (was 15) - Basic garrison forces
 - **Marines**: 17 PP each (was 25) - Elite invasion forces
 - **Ground Batteries**: 13 PP each (was 20) - Anti-invasion defenses
-- **Planetary Shields**: 67 PP each (was 100) - High-tier passive defense
+- **Planetary Shields**: 50 PP each (was 100, then 67) - High-tier passive defense
 
 **Undefended Colony Penalty:** Losing a colony with NO ground defense (no armies, marines, or ground batteries) incurs a **+50% prestige penalty**. This represents the dishonor of leaving your citizens defenseless. Planetary shields alone do NOT count as "defended" - shields buy time but don't stop invasions. At least one army, marine, or ground battery is required to avoid the penalty.
 

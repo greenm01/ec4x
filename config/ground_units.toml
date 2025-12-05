@@ -5,7 +5,7 @@
 name = "Planetary Shield"
 class = "PS"
 cst_min = 5
-build_cost = 67  # Reduced 33% from 100 (Phase F balance)
+build_cost = 50  # Phase F: Further reduced from 67 to improve deployment rate (was 100 baseline)
 upkeep_cost = 5
 attack_strength = 0
 defense_strength = 100

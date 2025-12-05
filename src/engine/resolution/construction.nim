@@ -124,6 +124,16 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
         continue
 
       let buildingType = order.buildingType.get()
+
+      # Phase F: Check planetary shield limit (max 1 per colony)
+      # Shields can be rebuilt if destroyed (planetaryShieldLevel == 0)
+      if buildingType.startsWith("PlanetaryShield"):
+        if colony.planetaryShieldLevel > 0:
+          logWarn(LogCategory.lcEconomy,
+                  &"[BUILD ORDER REJECTED] {packet.houseId}: System {order.colonySystem} already has " &
+                  &"planetary shield (level {colony.planetaryShieldLevel}), max 1 per colony")
+          continue
+
       project = projects.createBuildingProject(buildingType)
       projectDesc = "Building construction: " & buildingType
 
