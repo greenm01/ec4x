@@ -12,7 +12,7 @@
 
 import std/[unittest, tables, options, sequtils]
 import ../../src/engine/[gamestate, orders, resolve, squadron, fleet, state_helpers, order_types]
-import ../../src/engine/economy/[construction, types as econ_types]
+import ../../src/engine/economy/[projects, types as econ_types]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/[core, units, planets]
