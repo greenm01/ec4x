@@ -129,10 +129,12 @@ proc testShipConstruction(shipClass: ShipClass, cstRequired: int): bool =
   let newState = turnResult.newState
 
   # Verify construction succeeded
-  # Check 1: Treasury decreased by expected cost
+  # Check 1: Treasury decreased by expected cost + facility maintenance
+  # Facility maintenance: Spaceport (5PP) + Shipyard (5PP) = 10PP per turn
+  let facilityMaintenance = 10
   let treasuryCost = initialTreasury - newState.houses["house1"].treasury
-  if treasuryCost != expectedCost:
-    echo &"  ❌ Cost mismatch: expected {expectedCost}PP, got {treasuryCost}PP"
+  if treasuryCost != expectedCost + facilityMaintenance:
+    echo &"  ❌ Cost mismatch: expected {expectedCost + facilityMaintenance}PP (build: {expectedCost}PP + maintenance: {facilityMaintenance}PP), got {treasuryCost}PP"
     return false
 
   # Check 2: Ship was created (either in construction or commissioned)
@@ -243,11 +245,31 @@ suite "All Ship Types - Construction Verification":
     var orders = initTable[HouseId, OrderPacket]()
     orders["house1"] = packet
 
-    let result = resolveTurn(state, orders)
+    # Turn 1: Build fighter (queued and completed)
+    var result = resolveTurn(state, orders)
+    state = result.newState
+
+    # Turn 2: Commission fighter (no-op orders)
+    var noOpOrders = initTable[HouseId, OrderPacket]()
+    noOpOrders["house1"] = OrderPacket(
+      houseId: "house1",
+      turn: 2,
+      buildOrders: @[],
+      fleetOrders: @[],
+      researchAllocation: initResearchAllocation(),
+      diplomaticActions: @[],
+      populationTransfers: @[],
+      terraformOrders: @[],
+      espionageAction: none(esp_types.EspionageAttempt),
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
+    result = resolveTurn(state, noOpOrders)
     let newState = result.newState
 
-    # Verify fighter was built
-    check newState.houses["house1"].treasury == initialTreasury - 20
+    # Verify fighter was built and commissioned
+    # Cost: 20PP (fighter) + 10PP*2 turns (facility maintenance: spaceport 5PP + shipyard 5PP)
+    check newState.houses["house1"].treasury == initialTreasury - 20 - 20
 
     # Fighter should appear in colony's fighterSquadrons
     check newState.colonies[testSystemId].fighterSquadrons.len > 0
@@ -329,7 +351,8 @@ suite "All Ship Types - Construction Verification":
     let result = resolveTurn(state, orders)
     let newState = result.newState
 
-    check newState.houses["house1"].treasury == initialTreasury - 300
+    # Cost: 300PP (starbase) + 10PP (facility maintenance: spaceport 5PP + shipyard 5PP)
+    check newState.houses["house1"].treasury == initialTreasury - 300 - 10
     # Starbases take 3 turns to build and commission
     check newState.colonies[testSystemId].starbases.len == 0
 
@@ -418,5 +441,6 @@ suite "CST Tech Gate Enforcement":
     let result = resolveTurn(state, orders)
     let newState = result.newState
 
-    # Order should be REJECTED
-    check newState.houses["house1"].treasury == state.houses["house1"].treasury
+    # Order should be REJECTED, but facility maintenance still applies
+    # Facility maintenance: Spaceport (5PP) + Shipyard (5PP) = 10PP per turn
+    check newState.houses["house1"].treasury == state.houses["house1"].treasury - 10
