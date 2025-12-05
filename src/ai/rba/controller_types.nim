@@ -214,3 +214,8 @@ type
     scienceFeedback*: Option[ScienceFeedback]  # Treasurer feedback on research allocation
     drungariusFeedback*: Option[DrungariusFeedback]  # Treasurer feedback on espionage budget
     eparchFeedback*: Option[EparchFeedback]  # Treasurer feedback on economic budget
+
+    # GOAP Phase 4: Strategic planning integration
+    goapEnabled*: bool  # Quick check if GOAP is enabled
+    goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
+    goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
