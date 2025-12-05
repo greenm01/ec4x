@@ -1,34 +1,40 @@
 # 3.0 Economics
 
-Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke your obligation is to rebuild from the ashes and lead your House to prosperity. 
+Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke, your obligation is to rebuild from the ashes and lead your House to prosperity.
 
 The standard unit of account in EC4X is the Production Point (PP).
 
-The economic power of a House is fueled by productivity, industrial capacity, and technological growth. Strategic decisions around taxation, industrial investment, and research & development (R&D) will directly impact a player's economic output and military strength.
+The economic power of your House is fueled by productivity, industrial capacity, and technological growth. Your strategic decisions around taxation, industrial investment, and research & development (R&D) directly impact your economic output and military strength.
 
 Production points settle instantaneously through the Cipher Ledger - a cryptographic network operating on quantum-entangled nodes embedded in jump lane stabilizers. Houses mint blind-signature PP tokens that route through secure lane channels, enabling instant private settlement while maintaining complete opacity to rival intelligence agencies.
 
 ## 3.1 Principles
 
-**Population Unit (PU)**: Represents a measure of economic production rather than raw population size.
+**Population Unit (PU)**: The productive capacity of a colony's population, measured in abstract economic units rather than raw headcount.
 
-**Population Transfer Unit (PTU)**: A quantity of people and their associated cost of cargo and equipment required to colonize a planet. One PTU is approximately 50k souls. 
+**Population Transfer Unit (PTU)**: The number of people required to generate one PU of productive capacity. As colonies grow larger, diminishing returns mean more people are needed per unit of production - efficiency gains, quality of life improvements, and specialization mean individuals produce less marginal output even as total wealth grows. One PTU represents approximately 50,000 souls.
 
-The relationship between PTU and PU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
+The PTU-to-PU ratio increases exponentially with colony size. Small colonies are highly efficient - each PTU you send generates substantial PU. Large colonies suffer diminishing returns - adding more people yields proportionally less production.
+
+**Strategic consequence**: Transferring colonists from mature worlds to new colonies is advantageous. The mother world loses relatively few PUs while the daughter colony gains significant productive capacity. This incentivizes colonial expansion rather than concentrating population on homeworlds.
+
+For planet classification and maximum PU capacity by planet class, see [Section 2.2](assets.md#22-solar-systems).
+
+The relationship between PU and PTU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
 This model is dis-inflationary; inflation asymptotically approaches zero over time.
 
-A high PTU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself. This incentives expanding population across newly acquired planets.
+A high PTU to PU ratio is an advantage when transferring colonists from larger planets to smaller planets. The mother-colony is able to contribute a relatively large number of people to the new colony without a significant loss of production to itself.
 
 The equations (in Python) for converting PU to PTU:
 
-```
-  PTU = pu - 1 + np.exp(0.00657 * pu)
+```python
+PTU = pu - 1 + np.exp(0.00657 * pu)
 ```
 
 Code for converting PTU back to PU:
 
-```
+```python
 import numpy as np
 from scipy.special import lambertw
 
@@ -55,6 +61,7 @@ GCO = (PU × RAW_INDEX) + (IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH))
 ```
 
 Where:
+
 - PU: Population Units of the colony
 - RAW_INDEX: Resource quality index based on the solar system's mineral abundance.
 - CST_MOD: Construction tech capacity modifier = 1.0 + (CST_level - 1) × 0.10 
@@ -65,15 +72,17 @@ Where:
 **RAW INDEX Table**
 
 <!-- RAW_MATERIAL_TABLE_START -->
+
 | RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |
 | --------- |:----:|:----:|:------:|:-----:|:-------:|:--------:|:-------:|
-| Very Poor | 60%  | 60%  |  60%   |  60%  |   60%   |   60%    |   60%   |
-| Poor      | 80%  | 75%  |  70%   |  65%  |   64%   |   63%    |   62%   |
-| Abundant  | 100% | 90%  |  80%   |  70%  |   68%   |   66%    |   64%   |
-| Rich      | 120% | 105% |  90%   |  75%  |   72%   |   69%    |   66%   |
-| Very Rich | 140% | 120% |  100%  |  80%  |   76%   |   72%    |   68%   |
+| Very Poor | 60%  | 60%  | 60%    | 60%   | 60%     | 60%      | 60%     |
+| Poor      | 80%  | 75%  | 70%    | 65%   | 64%     | 63%      | 62%     |
+| Abundant  | 100% | 90%  | 80%    | 70%   | 68%     | 66%      | 64%     |
+| Rich      | 120% | 105% | 90%    | 75%   | 72%     | 69%      | 66%     |
+| Very Rich | 140% | 120% | 100%   | 80%   | 76%     | 72%      | 68%     |
 
 *Source: config/economy.toml [raw_material_efficiency] section*
+
 <!-- RAW_MATERIAL_TABLE_END -->
 
 Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habitable conditions.
@@ -82,46 +91,50 @@ Look up the Raw Material classification of your colony's system in the RAW colum
 
 ## 3.2 Tax Rate
 
-Each turn in the Income Phase the player sets a House-wide tax rate from 0 % to 100 %. The tax rate determines how much of a colony’s Gross Colony Output (GCO) is collected as Production Points (PP) for the treasury.
+Each turn in the Income Phase you set a House-wide tax rate from 0% to 100%. Your tax rate determines how much of a colony's Gross Colony Output (GCO) is collected as Production Points (PP) for your treasury.
 
 **Tax Collection**  
 PP Income = Total GCO across all colonies × Tax Rate (rounded up)
 
-Higher tax rates generate more immediate revenue but anger the population. Lower rates slow short-term spending power but accelerate long-term growth and prestige.
+Higher tax rates generate more immediate revenue but anger your population. Lower rates slow short-term spending power but accelerate long-term growth and prestige.
 
 ### 3.2.1 High-Tax Prestige Penalty (Anti-Cycling Rule)
 
 Every Income Phase the game calculates the **average tax rate over the current turn + the previous five turns** (rolling 6-turn window) and applies the following prestige penalty if the average is above 50 %:
 
 <!-- TAX_PENALTY_TABLE_START -->
+
 | Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |
-|---------------------------------|---------------------------|
-| ≤ 50 %                          |             0             |
-| 51 – 60 %                       |            -1             |
-| 61 – 70 %                       |            -2             |
-| 71 – 80 %                       |            -4             |
-| 81 – 90 %                       |            -7             |
-| 91 – 100 %                      |            -11            |
+| ------------------------------- | ------------------------- |
+| ≤ 50 %                          | 0                         |
+| 51 – 60 %                       | -1                        |
+| 61 – 70 %                       | -2                        |
+| 71 – 80 %                       | -4                        |
+| 81 – 90 %                       | -7                        |
+| 91 – 100 %                      | -11                       |
 
 *Source: config/prestige.toml [tax_penalties] section*
+
 <!-- TAX_PENALTY_TABLE_END -->
 
 This penalty is applied every turn the qualifying average is met and cannot be avoided by short-term cycling.
 
-### 3.2.2 Low-Tax Incentives (The Carrot)
+### 3.2.2 Low-Tax Incentives
 
 To reward benevolent or populist rule, colonies grant bonuses in the same Income Phase based on the **tax rate set this turn**:
 
 <!-- TAX_INCENTIVE_TABLE_START -->
+
 | Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn |
-|--------------------|----------------------------------------------------------|-------------------------------------|
-| 41 – 50 %          | No bonus                                                 |                  –                  |
-| 31 – 40 %          | ×1.05 (+5 %)                                             |                  –                  |
-| 21 – 30 %          | ×1.10 (+10 %)                                            |                 +1                  |
-| 11 – 20 %          | ×1.15 (+14 %)                                            |                 +2                  |
-| 0 – 10 %           | ×1.20 (+19 %)                                            |                 +3                  |
+| ------------------ | ------------------------------------------------------- | ----------------------------------- |
+| 41 – 50 %          | No bonus                                                | –                                   |
+| 31 – 40 %          | ×1.05 (+5 %)                                            | –                                   |
+| 21 – 30 %          | ×1.10 (+10 %)                                           | +1                                  |
+| 11 – 20 %          | ×1.15 (+14 %)                                           | +2                                  |
+| 0 – 10 %           | ×1.20 (+19 %)                                           | +3                                  |
 
 *Source: config/prestige.toml [tax_incentives] and config/economy.toml [tax_population_growth] sections*
+
 <!-- TAX_INCENTIVE_TABLE_END -->
 
 With multiple big colonies, low taxes become a legitimate prestige-farming strategy that can outpace military victories in the late game.
@@ -136,7 +149,7 @@ NCV = GCO × tax rate
 
 Net House Value (NHV): The sum total of all NCVs across the player's colonies. NHV is transferred to the House treasury at the beginning of each turn.
 
-### **3.4 Industrial Units and Productivity Growth**
+## 3.4 Industrial Units and Productivity Growth
 
 Industrial Units (IU) represent manufacturing capacity - factories, shipyards, supply chains, and industrial infrastructure. IU directly boosts GCO through the production formula.
 
@@ -148,715 +161,606 @@ Colonies naturally develop industrial infrastructure as populations grow and eco
 IU Growth per Turn = max(1, floor(PU / 200)) × tax multiplier × (1 + starbase bonus)
 ```
 
-- Small colonies (< 200 PU): +1 IU/turn
-- Medium colonies (400 PU): +2 IU/turn
-- Large colonies (800 PU): +4 IU/turn
-- Modified by same tax/starbase bonuses as population growth
+Where:
 
-This allows homeworlds (840 PU) starting at 420 IU to naturally reach 840 IU in ~100 turns. Players can accelerate growth through manual investment.
+- Tax multiplier = `(1 - tax_rate)` (e.g., 50% tax → 0.5 multiplier)
+- Starbase bonus = 0.05 per operational starbase, max 0.15 (3 starbases)
 
-**Manual IU Investment:**
+High taxes throttle industrial development. Low taxes accelerate it. For starbase economic benefits, see [Section 2.4.4](assets.md#244-starbases).
 
-Players can invest PP to accelerate industrial development. Cost scales based on the percentage of IU relative to the colony's PU:
+**Active IU Investment:**
 
-<!-- IU_INVESTMENT_TABLE_START -->
-| IU Investment (% of PU) | Cost Multiplier | PP per IU |
-| ----------------------- |:---------------:|:---------:|
-| Up to 50%               | 1.0             | 5         |
-| 51% - 75%               | 1.2             | 6         |
-| 76% - 100%              | 1.5             | 8         |
-| 101% - 150%             | 2.0             | 10        |
-| 151% and above          | 2.5             | 13        |
+You can accelerate industrial development by spending PP directly:
 
-*Source: config/economy.toml [industrial_investment] section*
-<!-- IU_INVESTMENT_TABLE_END -->
+```
+IU purchased = PP spent
+```
 
-**Investment ROI:**
-- At EL1: 1 IU produces ~1 PP/turn → 5-turn payback
-- Higher EL levels increase ROI proportionally
-- Manual investment allows reaching 150%+ of PU for maximum production
+Each PP you spend converts directly to one IU at your target colony. Investment is immediate and takes effect in the same turn's GCO calculation.
 
-## 3.5 Economic Level Modifier
+**Strategic Considerations:**
 
-R&D investments allow players to increase their Economic Level Modifier (EL_MOD), boosting overall productivity. Advancing tech levels requires significant PP investment but provides exponential benefits to GCO.
+Young colonies benefit most from IU investment—the multiplier effect on GCO is strongest when baseline production is low. Mature colonies with high PU already generate substantial GCO from population alone; IU investment has diminishing returns but remains useful for maintaining economic growth.
 
-Refer to [Section 4.2](#42-economic-level-el) for cost and modifiers.
+## 3.5 Population Growth
 
-## 3.6 Population Growth
+Population naturally increases each turn via birthrate, modified by tax policy and infrastructure:
 
-Colonists are hard at work making babies for the House, and the PTU growth rate under normal conditions is 1.5% per turn.
+```
+PU Growth per Turn = max(1, floor(PU × 0.02 × tax_multiplier × (1 + starbase_bonus)))
+```
 
-A logistical growth function is used for the calculation. Each planet class has an upper bound on the population it can support. This gives a nice 's' curve distribution, and lends incentive to terraform less hospitable planets.
+Where:
 
-[The Logistic Equation](https://michaelneuper.com/posts/modelling-population-growth-in-python/)
+- Base birthrate = 2% per turn
+- Tax multiplier from [Section 3.2.2](#322-low-tax-incentives-the-carrot)
+- Starbase bonus = 0.05 per operational starbase, max 0.15 (3 starbases)
 
-![Logistic Population Growth](../../assets/logistic_population_growth.png)
+**Active Population Transfer:**
 
-## 3.7 Colonization
+You can move PTU between colonies to accelerate development. Due to the exponential PTU-to-PU relationship, your mature colonies can export large numbers of people while losing minimal PU, and young colonies gain substantial productive capacity from each PTU received.
 
-ETACs plant a flag in unoccupied Solar Systems and set the initial conditions for terraforming. Their capacity to move PTU is limited to one unit.
+**Transportation:**
 
-The Space Guilds are contracted to transfer larger populations between existing Colonies in civilian Starliners. Passengers are kept in status to minimize living space, and all of their supplies and equipment for their new destination are tightly packed into the cargo hold.
+You transport PTU via two methods:
 
-The cost is expensive and dependent upon the livable conditions of the destination planet. The logistics are abstracted for game purposes; delivery time (turns) across jump lanes is in accordance with [Section 6.1](operations.md#61-jump-lanes).
+1. **Environmental Transformation and Colonization ships (ETACs)**: Plant new colonies. See [Section 2.3.2.3](assets.md#23223-environmental-transformation-and-colonization-etac) for unit specifications.
 
-<!-- COLONIZATION_COST_TABLE_START -->
-| Conditions | PP/PTU |
-| ---------- |:------:|
-| Eden       | 4      |
-| Lush       | 5      |
-| Benign     | 6      |
-| Harsh      | 8      |
-| Hostile    | 10     |
-| Desolate   | 12     |
-| Extreme    | 15     |
+2. **Space Guild contracts**: Move PTU between established colonies. Guild fees and mechanics are handled through the Income Phase interface.
 
-*Source: config/economy.toml [colonization] section*
-<!-- COLONIZATION_COST_TABLE_END -->
+## 3.6 Fighter Squadron Economics
 
-### Space Guild Population Transfer
+Fighter Squadron (FS) capacity is determined by colony infrastructure and House technology:
 
-The Space Guilds provide civilian Starliner services to transfer established populations between existing colonies. This service is separate from initial ETAC colonization and reflects the logistics of moving large populations with their equipment and supplies across interstellar distances.
+```
+Max FS per Colony = max(1, floor(PU / 100)) × FD_MULTIPLIER
+```
 
-**Transfer Costs:**
+Where:
 
-<!-- POPULATION_TRANSFER_COST_TABLE_START -->
-| Planet Class | Base Cost (PP/PTU) | Cost per Jump* |
-|:-------------|:------------------:|:---------------|
-| Eden         | 4                  | Base × (1 + 0.2 × jumps) |
-| Lush         | 5                  | Base × (1 + 0.2 × jumps) |
-| Benign       | 6                  | Base × (1 + 0.2 × jumps) |
-| Harsh        | 8                  | Base × (1 + 0.2 × jumps) |
-| Hostile      | 10                 | Base × (1 + 0.2 × jumps) |
-| Desolate     | 12                 | Base × (1 + 0.2 × jumps) |
-| Extreme      | 15                 | Base × (1 + 0.2 × jumps) |
+- PU / 100: Natural capacity scaling with population
+- FD_MULTIPLIER: From Fighter Doctrine (FD) research [Section 4.12](#412-fighter-doctrine-fd)
+- Operational Starbase requirement: 1 Starbase per 5 FS (rounded up)
 
-*Distance modifier: +20% per jump beyond first
+**Construction Cost:**
 
-*Source: config/population.toml [transfer_costs] and [transfer_modifiers] sections*
-<!-- POPULATION_TRANSFER_COST_TABLE_END -->
-
-**Transfer Mechanics:**
-
-<!-- POPULATION_TRANSFER_MECHANICS_TABLE_START -->
-| Mechanic | Value | Description |
-|:---------|:------|:------------|
-| **Transit Time** | 1 turn/jump | Minimum 1 turn even within same system |
-| **Minimum PTU** | 1 PTU | Smallest transferable unit |
-| **Source Reserve** | 1 PU | Source colony must retain at least this |
-| **Concurrent Limit** | 5 transfers | Maximum active transfers per house |
-| **Source Conquered** | Continue | Transfer proceeds (Guild is neutral) |
-| **Dest Conquered** | Lost | PTUs lost (refugees disperse) |
-| **Dest Blockaded** | Closest_Owned | PTUs return to source |
-
-*Source: config/population.toml [transfer_time], [transfer_limits], and [transfer_risks] sections*
-<!-- POPULATION_TRANSFER_MECHANICS_TABLE_END -->
-
-**Space Guild Smart Delivery:**
-
-The Space Guild is a neutral third-party service that operates across all house territories. When colonists arrive at a destination that cannot accept them (blockaded or collapsed below minimum viable population), the Guild attempts intelligent delivery:
-
-1. **Find Alternative**: Guild seeks the closest owned colony via jump lane pathfinding
-2. **Redirect Transfer**: If found, colonists delivered to alternative destination
-3. **No Options**: If no owned colonies exist, colonists are lost (Guild cannot deliver to nowhere)
-
-This makes the Guild more player-friendly while maintaining realistic constraints. Houses that lose all their colonies during transit will lose in-transit populations (nowhere to deliver them).
-
-**Example Smart Delivery Scenario:**
-
-House Corrino initiates a 10 PTU transfer from System A to System B (3 jumps away). During the 3-turn transit, House Harkonnen blockades System B with a fleet.
-
-**Without Smart Delivery** (old behavior): Colonists return to System A, wasting 3 turns and full cost.
-
-**With Smart Delivery** (current behavior): Guild pathfinds and discovers System C (2 jumps from B) is owned by Corrino and unblockaded. Guild redirects the transport there instead. Colonists arrive safely at System C, though not the original destination.
-
-Colonists do not start contributing to the colony's economic production for at least one full turn after arrival.
-
-## 3.8 Expenditures
-
-Each turn, the Duke can allocate Treasury funds as follows:
-
-1. Military: Construction and recruiting.
-2. Spacelift Command: Bases and ships
-3. Research and Development: Investment in new technologies.
-4. Industrial Units (IU): Investment in colony manufacturing.
-5. Terraforming: Costs for planetary upgrade projects.
-6. Space Guild Services:
-    - Population Transfer: Moving citizens to new colonies.
-    - Espionage: Covert operations and intelligence gathering.
-7. Counter Intelligence: Defense against espionage.
-8. Savings & Investment: Financial reserves and investments for future growth.
-
-## 3.9 Maintenance Costs
-
-At the beginning of each turn, players pay maintenance costs for everything they own: ships, ground units, yards, bases and anything else that can be constructed. All costs are listed in the data tables in [Section 9](reference.md#100-data-tables).
-
-### Fleet Operational Status
-
-Every fleet operates in one of three states, each with different maintenance costs and capabilities. Fleets remain in the game's fleet roster regardless of status - they are not stored in the colony object, but tracked by their location and status:
-
-**Colony Fleet Organization:**
-- Each colony can have multiple active fleets (unrestricted)
-- Each colony has **one reserve fleet** (all reserve squadrons auto-merge into this fleet)
-- Each colony can have multiple mothballed fleets (stored in orbit at Spaceport)
-- Reserve and mothballed fleets coexist - a colony can have both simultaneously
-
-#### Active Fleets (Full Operations)
-- **Maintenance Cost:** 100% of base upkeep
-- **Combat Capability:** Full AS/DS, can engage in all combat operations
-- **Movement:** Unrestricted - can move anywhere, execute any orders
-- **Best For:** Frontline forces, offensive operations, rapid response
-
-#### Reserve Fleets (Defensive Garrisons)
-- **Maintenance Cost:** 50% of base upkeep (**significant savings**)
-- **Combat Capability:** Reduced to 50% AS/DS, but still combat-ready
-- **Movement:** **Cannot move** - permanently stationed at colony
-- **Colony Limit:** Each colony is allotted **one reserve fleet**
-- **Auto-Assignment:** When a fleet is placed on reserve, it automatically merges into the colony's reserve fleet. All squadrons combine into a single defensive garrison.
-- **Orders:** Automatically guards the colony - can only defend against attacks
-- **Requirements:** Fleet must be at a friendly colony to go on reserve
-- **Best For:** Defensive garrisons, cost reduction during peacetime, protecting key colonies with reduced budget
-
-**Advantages:**
-- Cut maintenance costs in half
-- Still combat-ready (can defend if colony attacked)
-- Ideal for establishing cheap planetary defense
-
-**Disadvantages:**
-- Cannot leave colony (immobile)
-- Fight at half strength (50% AS/DS)
-- All reserve ships at colony merge into single fleet
-
-#### Mothballed Fleets (Long-Term Storage)
-- **Maintenance Cost:** 0% (**zero maintenance** - maximum savings)
-- **Combat Capability:** **None** - completely offline, cannot fight
-- **Movement:** **Cannot move** - stored in orbit at Spaceport
-- **Storage:** Requires a **Spaceport** at the colony to store mothballed ships in orbit
-- **Vulnerability:** Screened during combat but **can be destroyed** if no active Task Force defends them
-- **Requirements:** Fleet must be at a friendly colony with an operational Spaceport
-- **Best For:** Long-term storage of excess fleets, preserving ships during economic hardship, strategic reserves
-- **Note:** Ships remain in their fleet but are taken offline and stored in orbit around the Spaceport
-
-**Advantages:**
-- Zero maintenance cost (complete elimination of upkeep)
-- Preserve ships for future reactivation
-- Free up budget for other priorities
-
-**Disadvantages:**
-- Cannot fight at all (completely offline)
-- Vulnerable to destruction if colony attacked without defenders
-- Requires Spaceport infrastructure
-- Must be reactivated before use (takes an order)
-
-### Reactivating Fleets
-
-Fleets on reserve or mothballed status can be returned to active duty using the **Reactivate** order. Reactivation takes effect immediately and the fleet can receive new orders next turn.
-
-### Crippled Ships
-
-Ships in a crippled combat state (per [Section 7.1.2](operations.md#712-combat-state)) have reduced maintenance costs of 50% of their base upkeep regardless of fleet status. Damaged systems consume fewer resources but ships still require life support and basic operations. Crippled ships in reserve fleets pay 50% maintenance (not 25%).
-
-### Strategic Considerations
-
-**Reserve Fleets** are powerful economic tools often overlooked by new players:
-- A reserve fleet provides 50% defensive capability for 50% cost - excellent value
-- Ideal for protecting core worlds, backline colonies, or strategic chokepoints
-- Can quickly respond to local threats without expensive active fleets
-- Multiple colonies with reserve fleets create a layered defense network
-
-**Mothballed Fleets** offer maximum flexibility:
-- Store captured enemy ships until you can afford to crew them
-- Preserve obsolete units for emergency reinforcement
-- Build large fleets during peacetime, mothball during budget constraints
-- Maintain strategic reserves without bankrupting your economy
-
-**Warning:** The payment of maintenance costs is not optional. If a player is unable to pay maintenance, random fleets will start going offline and ordered to hold position (00). Ships in these fleets do not accept new orders and will suffer a reduction of combat state every turn they are offline.
-
-For every turn that a player misses payment for maintenance they lose prestige points; refer to [Section 10.4](reference.md#104-prestige).
-
-## 3.10 Fighter Squadron Economics
-
-**Construction:**
-- **Production Cost**: 20 PP per squadron
-- **Construction Time**: 1 turn
-- **Location**: Planet-side only (distributed manufacturing, no Spaceport required)
+Each Fighter Squadron costs **5 PP** to commission.
 
 **Maintenance:**
-- **Cost**: 1 PP per turn per squadron
-- **Applies to**: All fighters (planet-based and embarked)
-- **Payment**: Beginning of each turn with other military assets
-- **Non-payment**: Squadrons disbanded (oldest first), no salvage value
 
-**Fighter Capacity Constraints:**
-- Max FS = floor(IU / 100) × FD Multiplier
-- Based on industrial manufacturing capacity (IU), not population (PU)
-- Rationale: With populations in millions, pilot availability isn't the constraint; industrial capacity (factories, shipyards, supply chains) limits fighter production
-- No starport, shipyard, or starbase infrastructure is required for colony-based fighters
+Fighter Squadrons have zero ongoing maintenance cost. Once built, they're free to operate.
 
-**Capacity Impact by Status:**
-- Planet-based fighters: Count against colony capacity
-- Embarked fighters: Do NOT count against any colony capacity
-- Combat-deployed (hostile systems): Do NOT count against enemy capacity
+**Carriers:**
 
-**Capacity Violations:**
+Fighter Squadrons can be loaded onto carriers for mobility. Carrier capacity depends on carrier type and Advanced Carrier Operations (ACO) technology. See [Section 2.4.1](assets.md#241-fighter-squadrons--carriers) for carrier loading mechanics and [Section 4.13](#413-advanced-carrier-operations-aco) for ACO research.
 
-Grace period: 2 turns to resolve violations from:
-- Population loss (bombardment, transfer) reducing capacity below current fighter count
+**Infrastructure Requirement:**
 
-Resolution options:
-- Transfer population: 4-15 PP per PTU (varies by planet class)
-- Disband excess fighters: 0 PP (no salvage, loses 20 PP asset value per squadron)
-- Transfer fighters to carriers (if available capacity)
+Colonies must maintain 1 operational Starbase per 5 FS (rounded up). When Fighter Doctrine research increases capacity, colonies have 2 turns grace period to construct additional Starbases before commissioning new squadrons.
 
-## 3.11 Maintenance & Tax Shortfall Consequences
+**Strategic Considerations:**
 
-Each Maintenance Phase the game first calculates total upkeep costs for all assets (fleet maintenance, Starbase upkeep, ground forces, planetary infrastructure, etc.) as defined in Sections 9.1–9.3.
+Fighter Squadrons are cost-effective early-game defenders and remain relevant throughout the campaign. Large mature colonies can field dozens of squadrons, creating formidable defensive positions. However, the Starbase infrastructure requirement constrains total capacity and creates meaningful tradeoffs between defense depth and construction investment.
 
-Upkeep is deducted automatically from the House treasury. If the treasury contains insufficient Production Points to pay full upkeep, the following resolution order is applied immediately (player has no choice in prioritisation):
+## 3.7 Facility Construction Economics
 
-1. **Treasury is reduced to 0 PP.**
-2. **All current-turn construction and research projects are cancelled** (no partial progress is retained; PP spent this turn are lost).
-3. **Random fleet disbanding begins** until upkeep can be met:
-   - The game randomly selects fleets (lowest ID first in case of ties).
-   - Entire fleets are disbanded squadron-by-squadron.
-   - Ships are salvaged for **25 % of their original Production Cost** (instead of the normal 50 % from Order 15 Salvage). Credits are added to the treasury immediately.
-   - Disbanded fleets lose all orders and are removed from the map.
-4. If disbanding all fleets is still insufficient (extremely rare), planetary infrastructure is stripped in this order until upkeep is met:
-   - Industrial Units are removed (1 IU = 1 PP value)
-   - Spaceports / Shipyards (salvaged for 25 % PC)
-   - Starbases (salvaged for 25 % PC)
-   - Ground defences and shields last
+**Spaceports:**
 
-**Prestige Penalties for Missing Maintenance**
-Missing full upkeep (i.e., any forced disbanding or asset stripping occurs) triggers escalating prestige losses applied at the end of the Maintenance Phase:
+- **Cost**: 20 PP
+- **Construction Time**: 1 turn
+- **Construction Capacity**: 5 simultaneous docks
+- **Planet-side ship construction penalty**: +100% PP cost to launch ships into orbit
+- **Cannot repair ships** - construction only
 
-<!-- MAINTENANCE_SHORTFALL_TABLE_START -->
-| Consecutive Turns of Missed Full Upkeep | Prestige Loss This Turn | Cumulative Example |
-|-----------------------------------------|-------------------------|--------------------|
-| 1st turn                                |                      -8 |                 -8 |
-| 2nd consecutive turn                    |                     -11 |                -19 |
-| 3rd consecutive turn                    |                     -14 |                -33 |
-| 4th+ consecutive turn                   |                     -17 per turn | –50, –67, etc.       |
+**Shipyards:**
 
-*Source: config/prestige.toml [penalties] section*
-<!-- MAINTENANCE_SHORTFALL_TABLE_END -->
+- **Cost**: 60 PP
+- **Construction Time**: 2 turns
+- **Prerequisite**: Requires operational Spaceport at colony
+- **Construction Capacity**: 10 simultaneous docks
+- **Orbital construction**: Standard PP costs, no penalties
+- **Ship repairs**: 25% of ship's original PP cost, 1 turn duration
+- **Starbase repairs**: 25% of starbase's original PP cost, 1 turn duration
 
-The counter resets only after a turn of **full upkeep payment with no forced disbanding**.
+**Construction Capacity Scaling:**
 
-**Strategic Notes**
-- A single turn of tax shortfall is survivable but painful.
-- Two or more consecutive turns of shortfall spirals quickly into prestige collapse and potential elimination (prestige ≤ 0 for three turns → Defensive Collapse).
-- Low-tax strategies (Section 3.2.2) that leave a large treasury buffer are the best defence against sudden blockade or bombardment income crashes.
-- Players are encouraged to maintain at least 1–2 turns of upkeep in reserve at all times, especially during wartime.
+Both facilities' dock counts scale with Construction (CST) technology level. See [Section 4.5](#45-construction-cst) for CST research progression and capacity multipliers.
 
-This ensures that running sustained deficits is catastrophic (as intended), while giving benevolent low-tax empires a natural safety cushion through larger cash reserves and faster recovery.
+For detailed facility capabilities and construction rules, see [Sections 5.0-5.4](#50-construction).
 
-## 3.12 House Combat Squadron Limit
+## 3.8 Research & Development Investment
 
-Maximum Capital-Ship Squadrons + Carriers = Total House PU ÷ 100 (round down, minimum 8)
+You allocate PP to three research pools during the Income Phase:
 
-What counts:
-- Every squadron that has a capital-ship flagship (CT and larger, including Raiders) = 1 slot
-- Every carrier (CV / CX) that is NOT the flagship of a squadron = 1 slot
+**Economic Research Points (ERP)**: Improves your colony economic output through Economic Level (EL) technology. Each EL tier increases the economic multiplier applied to Industrial Units in the GCO formula.
 
-Players never pay double for the same carrier.
+**Social Research Points (SRP)**: Unlocks critical infrastructure and doctrinal technologies including Fighter Doctrine (FD), Advanced Carrier Operations (ACO), Cloaking (CLK), Electronic Intelligence (ELI), Shields (SLD), Terraforming (TER), and Strategic Lift (STL).
 
-What does NOT count (completely unlimited except money / existing rules):
-- Pure fighter squadrons (FS) – still only governed by Section 2.4.1 (per-colony PU + Starbases)
-- Scouts (SC) – free to spam for espionage
-- Starbases, ETACs, Troop Transports – unchanged
+**Tactical Research Points (TRP)**: Advances weapons (WEP) and construction (CST) technologies. WEP improvements increase ship combat effectiveness. CST improvements increase facility construction capacity and unlock advanced hull classes.
 
+Research pools accumulate over multiple turns. Technologies require specific point thresholds and Science Level (SL) prerequisites to unlock. For complete research progression tables and technology effects, see [Section 4.0](#40-research--development).
 
-  
+---
+
 # 4.0 Research & Development
 
-**CRITICAL: All technology levels start at level 1, never 0.** Starting tech values are configured in `config/tech.toml` under the `[starting_tech]` section. This applies to ALL nine technology types:
+R&D investment drives your technological advancement across economic, social, and military domains. You allocate Production Points to three distinct research pools each turn, accumulating progress toward specific technology thresholds.
 
-<!-- STARTING_TECH_TABLE_START -->
-| Tech | Starting Level | Effect |
-|------|----------------|--------|
-| **EL** | 1 | Economic Level - 5% production bonus (GCO modifier) |
-| **SL** | 1 | Science Level - Base research capability |
-| **CST** | 1 | Construction Tech - Base shipyard capacity |
-| **WEP** | 1 | Weapons Tech - Base combat strength (AS/DS) |
-| **TER** | 1 | Terraforming Tech - Base terraforming capability |
-| **ELI** | 1 | Electronic Intelligence - Base spy scout capability |
-| **CLK** | 1 | Cloaking Tech - Stealth and detection avoidance |
-| **SLD** | 1 | Shield Tech - Planetary shield technology (bombardment defense) |
-| **CIC** | 1 | Counter-Intelligence - Base espionage detection |
-| **FD** | 1 | Fighter Doctrine I - 1.0x fighter capacity multiplier |
-| **ACO** | 1 | Advanced Carrier Operations I - CV=3FS, CX=5FS |
+## 4.1 Science Level (SL)
 
-*Source: config/tech.toml [starting_tech] section*
-<!-- STARTING_TECH_TABLE_END -->
+Science Level represents your House's overall technological sophistication and research infrastructure. SL gates access to advanced technologies—you cannot research a technology whose SL requirement exceeds your current Science Level.
 
-The starting tech configuration ensures consistent behavior across the engine. Game scenario files (e.g., `game_setup/standard.toml`) inherit these values. See [Section 10.11](#911-technology-research) for complete tech advancement tables.
+**SL Progression:**
 
-## 4.1 Research Points (RP)
+<!-- SL_TABLE_START -->
 
-Each turn, players can invest production points in RP to further their R&D efforts.
+| SL  | ERP Required | SRP Required | Total RP Required | Cumulative RP |
+|:---:|:------------:|:------------:|:-----------------:|:-------------:|
+| 1   | 0            | 0            | 0                 | 0             |
+| 2   | 10           | 10           | 20                | 20            |
+| 3   | 12           | 13           | 25                | 45            |
+| 4   | 15           | 16           | 31                | 76            |
+| 5   | 19           | 21           | 40                | 116           |
+| 6   | 24           | 27           | 51                | 167           |
+| 7   | 31           | 35           | 66                | 233           |
+| 8   | 40           | 46           | 86                | 319           |
+| 9   | 52           | 60           | 112               | 431           |
+| 10  | 68           | 78           | 146               | 577           |
 
-**Tech Upgrades:** Players can purchase tech level advancements **every turn** if they have accumulated enough RP. Levels must be purchased in sequential order (cannot skip levels), but there is no turn restriction on when upgrades can occur. If you have the RP, you can advance.
+*Source: config/tech.toml [science_levels] section*
 
-**Research Breakthroughs:** Separate from normal tech purchases, breakthrough checks occur automatically **every 5 turns** (turns 5, 10, 15, 20, etc.). These are low-probability bonus events that provide free RP, cost reductions, or automatic level gains.
+<!-- SL_TABLE_END -->
 
-There are three areas of investment:
-- Economic RP (ERP) - Accumulates to purchase Economic Levels (EL)
-- Science RP (SRP) - Accumulates to purchase Science Levels (SL)
-- Technology RP (TRP) - Accumulates to purchase individual technology upgrades (CST, WEP, etc.)
+SL advances automatically when your House accumulates the required ERP and SRP thresholds. Both pools must meet their respective requirements simultaneously.
 
-Economic Levels (EL) are purchased with accumulated ERP, and Science Levels (SL) are purchased with accumulated SRP. Science drives engineering, and new technologies are developed and purchased directly with accumulated TRP. EL and SL are correlated.
+**Strategic Implications:**
 
-### 4.1.1 Research Breakthroughs
-
-Technological progress can experience sudden leaps due to unexpected Research Breakthroughs. These moments of serendipity inject variability into the game, rewarding players for consistent investment in R&D and offering the chance for significant, game-altering advances.
-
-**Research breakthroughs are triggered automatically every 5 turns**:
-
-Breakthrough Roll (Turns 5, 10, 15, 20, 25, etc.):
-- During the Income Phase of every 5th turn, the game system makes a **1d20 roll** for each player per [Section 1.3.2](gameplay.md#132-income-phase).
-- The base chance for a breakthrough is **5%** (roll of 1 on d20).
-- Players receive a +1% bonus for every 100 RP invested during the previous five turns (including ERP, SRP, and TRP combined).
-- Maximum breakthrough chance: 15% (caps at 10 bonus percentage points from RP investment).
-- Breakthrough RP bonuses are immediately available for R&D purchases during the Command Phase of the same turn per [Section 1.3.3](gameplay.md#133-command-phase).
-
-**Breakthrough Types and Dice Roll**:
-
-If the breakthrough is successful (roll within breakthrough chance), a second **1d20 roll** determines the type of breakthrough achieved. Each result on the die corresponds to a specific breakthrough type:
-
-| Dice Roll (d20) | Breakthrough Type           | Effect Description                                         |
-|:---------------:| --------------------------- | ---------------------------------------------------------- |
-| 1-10            | **Minor Breakthrough**      | +10 ERP, SRP, or TRP based on the current investment focus |
-| 11-15           | **Moderate Breakthrough**   | 20% reduction in TRP cost for the next technology upgrade  |
-| 16-18           | **Major Breakthrough**      | Automatically advance the next SL or EL by 1 level         |
-| 19-20           | **Revolutionary Discovery** | Unlocks a unique technology or double-level advancement    |
-
-**Minor Breakthrough (0-4)**:
-
-The player gains an additional +10 points in ERP, SRP, or TRP, depending on their current investment focus (whichever has the highest allocation). This boosts research progress without direct cost.
-
-**Moderate Breakthrough (5-6)**:
-
-The player receives a 20% reduction in TRP cost for the next technology upgrade, reflecting streamlined research processes. This provides a cost advantage in the upcoming tech level advancement.
-
-**Major Breakthrough (7-8)**:
-   
-The player automatically advances the next SL or EL by 1 level, skipping the usual SRP or ERP cost. This represents a significant leap in understanding, allowing rapid progression in core economic or scientific capabilities.
-
-**Revolutionary Discovery (9)**: ⚠️ *NOT YET IMPLEMENTED - Documented for future development*
-- **Quantum Computing**: Permanently increases EL_MOD by 10%.
-- **Advanced Stealth Systems**: Grants Raiders an additional +2 detection difficulty.
-- **Terraforming Nexus**: Increases colony growth rate by an additional 2% per turn.
-- **Experimental Propulsion**: Allows crippled military ships to jump across **restricted lanes**, enhancing fleet mobility.
-
-Example:
-
-During Turn 7, the game system performs a Research Breakthrough Roll for each player. Player A has invested a total of 150 RP over the previous six turns, providing a +3% bonus to their roll (10% base + 3% investment bonus).  The player is successful, and the second roll on the table is a 9, resulting in a "Revolutionary Discovery." Player A unlocks Experimental Propulsion, allowing their crippled military ships to traverse restricted jump lanes, providing a significant strategic advantage in maneuverability.
+SL advancement is non-linear and becomes progressively more expensive. Early SL tiers unlock rapidly with modest investment, but reaching SL 10 requires sustained R&D commitment over many turns. Houses that neglect research find themselves technologically outpaced and unable to field advanced unit types or economic multipliers.
 
 ## 4.2 Economic Level (EL)
 
-EL represents the entrepreneurial skills and general education level of House citizens.
+Economic Level multiplies Industrial Unit output in the GCO formula, representing advances in manufacturing efficiency, automation, and industrial organization.
 
-EL is not a specific reflection of scientific or technological advancement, although they are correlated.
+**Research Progression:**
 
-A House's GHO benefits from EL upgrades by 5% per level, for a maximum of 50% at EL10+. The economy is tied to entrepreneurial ambition and citizen education.
+<!-- EL_TABLE_START -->
 
-The formula for ERP in production points is:
-
-```
-1 ERP = (5 + log(GHO)) PP
-```
-
-Example: to purchase 10 ERPs with a GHO of 500, the cost in production points is:
-
-```
-10 ERP = 10(5 + log(500)) = 77 PP
-```
-
-For EL1 to EL5 The cost in ERP to advance one EL level is:
-
-```
-ERP = 40 + EL(10)
-```
-
-After EL5 the cost increases linearly by 15 points per EL level.
-
-<!-- ECONOMIC_LEVEL_TABLE_START -->
-| EL  | ERP Cost | EL MOD |
-|:---:|:--------:|:------:|
-| 01 | 25       | 0.05   |
-| 02 | 30       | 0.10   |
-| 03 | 35       | 0.15   |
-| 04 | 40       | 0.20   |
-| 05 | 45       | 0.25   |
-| 06 | 52       | 0.30   |
-| 07 | 60       | 0.35   |
-| 08 | 67       | 0.40   |
-| 09 | 75       | 0.45   |
-| 10 | 82       | 0.50   |
-| 11+ | 90+      | 0.50   |
+| Tech Level | Prerequisites | ERP Cost | SL Required | Economic Multiplier |
+|:----------:| ------------- |:--------:|:-----------:|:-------------------:|
+| EL I       | None          | N/A      | 1           | 1.0x                |
+| EL II      | EL I          | 10       | 2           | 1.5x                |
+| EL III     | EL II         | 12       | 3           | 2.0x                |
+| EL IV      | EL III        | 15       | 4           | 2.5x                |
+| EL V       | EL IV         | 19       | 5           | 3.0x                |
+| EL VI      | EL V          | 24       | 6           | 3.5x                |
+| EL VII     | EL VI         | 31       | 7           | 4.0x                |
+| EL VIII    | EL VII        | 40       | 8           | 4.5x                |
+| EL IX      | EL VIII       | 52       | 9           | 5.0x                |
+| EL X       | EL IX         | 68       | 10          | 5.5x                |
 
 *Source: config/tech.toml [economic_level] section*
-<!-- ECONOMIC_LEVEL_TABLE_END -->
 
-## 4.3 Science Level (SL)
+<!-- EL_TABLE_END -->
 
-Science explores new knowledge methodically through observation and experimentation, in alignment with nature. SL is dependent on the education and skill levels of citizens, and thus EL. 
+**Application:**
 
-Advancing to the next SL requires the House have previously developed an equivalent level of EL. For example, advancing from SL1 to SL2 requires the house to be at EL2 or greater.
-
-The cost of SRP is dependent upon the current SL.
+EL multiplier applies to the IU component of GCO:
 
 ```
-1 SRP = 2 + SL(0.5) PP
+IU Output = IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH + STARBASE_BONUS)
 ```
 
-Example: To purchase 10 SRPs at SL2, the price in production points is:
+EL upgrades affect all colonies simultaneously. A House at EL V with 100 IU at each of three colonies generates triple the industrial output compared to EL I.
 
-```
-10 SRP = 10(2 + 2(0.5)) = 30 PP
-```
+**Strategic Considerations:**
 
-For SL1 to SL5, the cost in SRP to advance one SL level is:
+EL research provides exponential returns when combined with high IU counts. If you pursue industrial strategies, prioritize EL advancement alongside IU investment. However, EL is useless without IU to multiply—young colonies benefit more from direct IU spending than EL research.
 
-```
-SRP = 20 + SL(5)
-```
+## 4.3 Weapons Technology (WEP)
 
-After SL5, the cost increases linearly by 10 per level.
+Weapons technology improves ship combat statistics across all hull classes. Each WEP tier increases Attack Strength (AS), Defense Strength (DS), and modifies ship costs.
 
-<!-- SCIENCE_LEVEL_TABLE_START -->
-| SL  | SRP Cost |
-|:---:|:--------:|
-| 01 | 12       |
-| 02 | 15       |
-| 03 | 17       |
-| 04 | 20       |
-| 05 | 22       |
-| 06 | 27       |
-| 07 | 32       |
-| 08+ | 37+      |
+**Research Progression:**
 
-*Source: config/tech.toml [science_level] section*
-<!-- SCIENCE_LEVEL_TABLE_END -->
+<!-- WEP_TABLE_START -->
 
-## 4.4 Technology Research Points (TRP)
+| Tech Level | Prerequisites | TRP Cost | SL Required |
+|:----------:| ------------- |:--------:|:-----------:|
+| WEP I      | None          | N/A      | 1           |
+| WEP II     | WEP I         | 10       | 2           |
+| WEP III    | WEP II        | 12       | 3           |
+| WEP IV     | WEP III       | 15       | 4           |
+| WEP V      | WEP IV        | 19       | 5           |
+| WEP VI     | WEP V         | 24       | 6           |
+| WEP VII    | WEP VI        | 31       | 7           |
+| WEP VIII   | WEP VII       | 40       | 8           |
+| WEP IX     | WEP VIII      | 52       | 9           |
+| WEP X      | WEP IX        | 68       | 10          |
 
-Engineering is the practical application of science, and thus dependent upon advances in SL. Engineering advancements are made with direct investment in TRP.
+*Source: config/tech.toml [weapons_technology] section*
 
-In EC4X, advances in engineering are tied to the Military and Industrial complex, although development also carries over to commerce, mining, agriculture, industry, propulsion systems, computing, AI, robotics, services, medicine, and almost every other realm of material human flourishing.
+<!-- WEP_TABLE_END -->
 
-The cost of TRP is dependent upon the required SL for the technology being developed [^2].
+**Application:**
 
-```
-1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.5 PP
-```
+WEP affects all newly constructed ships and retrofitting existing ships:
 
-For example, to purchase 5 TRPs towards the development TER3 with a GHO of 500, the price in production points is:
+**New Construction:**
 
-```
-5 TRP = 5((5 + 4(3))/10 + log(500)(0.5)) = 15.25 PP
-```
+- Ships are built with current House WEP level
+- AS/DS values use WEP-modified statistics
+- Construction costs reflect current WEP tier
 
-New engineering technologies are purchased directly with TRP.
+**Retrofitting Existing Ships:**
 
-\* Starting at Science Level 1 (SL1), each subsequent level of technology requires an additional 5 Technology Research Points (TRP) more than the previous level, with the initial cost being 25 TRP for the first level.
+- Costs 50% of the ship's current WEP-tier construction cost
+- Requires 1 turn at a Shipyard
+- Ship is unavailable during retrofit (cannot move or fight)
+- After retrofit, ship uses new WEP tier statistics
 
-[^2]: **Game Designer Notes**:
-As players expand their colonies, their NHV will grow. The logarithmic scaling with GHO allows for economic growth without making technology upgrades too cheap or too expensive, encouraging strategic planning around colonization and tech advancement.
-If this formula results in too rapid or too slow of a tech progression, adjust the constant multiplier on the log term or change the base cost formula. The goal is to allow players to upgrade technologies in line with their economic growth while maintaining strategic depth.
-For example, increasing the multiplier could make tech more expensive, encouraging slower but more impactful upgrades, whereas decreasing it could speed up tech progression, potentially making the game feel more dynamic but less strategic if not balanced correctly.
-The TRP formula assumes a tax rate of 50% and a balanced budget of 40% Military, 30% R&D, 30% Other (Terraforming, Guild Services, CIC, 10% IU investment, etc..)
-At 30% R&D EL,SL and every tech can be advanced every 1st and 7th month of the game as it becomes available. Excel file "ec4x_budget.xlsx" included in GitHub repo under "assets"
-The formula will need testing and tweaking based on player feedback, especially concerning how it feels in terms of progression and economic strategy within the game.
-Previously the formula used exp(GHO) * 0.0025 PP which grows the cost way too quickly in relation to GHO. Conversely, log(GHO) increases very slowly as GHO grows, and encourages a balanced economy where players can still feel the impact of economic growth on technology costs, but without the costs becoming too overwhelming. It allows for a more predictable and manageable progression.
+For complete ship statistics by WEP level, see [Section 10.0](reference.md#100-unit-reference-tables).
+
+**Strategic Considerations:**
+
+WEP research is essential for maintaining military competitiveness. Houses that fall behind in WEP face catastrophic combat disadvantages—a WEP III fleet cannot trade effectively against WEP V opponents. However, retrofitting large fleets is expensive and time-consuming, creating windows of vulnerability during technological transitions.
+
+## 4.4 Shields (SLD)
+
+Shield technology protects colonies from orbital bombardment, absorbing incoming fire before ground installations take damage.
+
+**Research Progression:**
+
+<!-- SLD_TABLE_START -->
+
+| Tech Level | Prerequisites | SRP Cost | SL Required | Absorption % | Shield DS |
+|:----------:| ------------- |:--------:|:-----------:|:------------:|:---------:|
+| SLD I      | None          | 10       | 2           | 15%          | 10        |
+| SLD II     | SLD I         | 13       | 3           | 25%          | 20        |
+| SLD III    | SLD II        | 16       | 4           | 35%          | 30        |
+| SLD IV     | SLD III       | 21       | 5           | 45%          | 40        |
+| SLD V      | SLD IV        | 27       | 6           | 55%          | 50        |
+| SLD VI     | SLD V         | 35       | 7           | 65%          | 60        |
+
+*Source: config/tech.toml [shields] section*
+
+<!-- SLD_TABLE_END -->
+
+**Planetary Shield Construction:**
+
+After researching an SLD tier, Houses can construct Planetary Shields at any colony:
+
+- **Construction Cost**: Varies by SLD level (see [Section 10.0](reference.md#100-unit-reference-tables))
+- **Construction Time**: 1 turn
+- **Limit**: One shield per colony
+- **Upgrading**: Requires salvaging old shield (50% refund) and building new shield
+
+**Bombardment Mechanics:**
+
+During orbital bombardment, each incoming hit from the attacking fleet has a probability equal to the Absorption % of being completely absorbed by the shield. Absorbed hits deal zero damage to ground installations. Hits that penetrate the shield damage ground batteries normally.
+
+The shield itself has DS that must be overcome before it can be destroyed. Once destroyed, subsequent bombardment rounds bypass shields entirely until a new shield is constructed.
+
+For complete bombardment rules, see [Section 7.5](operations.md#75-planetary-bombardment).
+
+**Strategic Considerations:**
+
+High-tier shields make your colonies nearly impervious to bombardment, forcing attackers to commit overwhelming fleets or conduct protracted sieges. However, shields are expensive to upgrade and provide no benefit against ground invasion—Marines bypass shields entirely. Late-game Planet-Breaker weapons completely ignore shields, making SLD VI potentially obsolete against advanced adversaries.
 
 ## 4.5 Construction (CST)
 
-Upgrades improve the construction capability and capacity of planet based factories, Spaceports, Shipyards. Existing units are upgraded at zero cost.
+Construction technology increases shipyard and spaceport capacity, enables advanced hull classes, and improves industrial efficiency.
 
-Construction capacity increases by 10% each level (round up).
-
-CST will open up new, larger hulled classes of combat ships.
+**Research Progression:**
 
 <!-- CST_TABLE_START -->
-| CONSTRUCTION_TECH Level | SL  | TRP Cost |
-|:---------:|:---:| -------- |
-| CST1      | 1   | 12       |
-| CST2      | 2   | 15       |
-| CST3      | 3   | 17       |
-| CST4      | 4   | 20       |
-| CST5+     | 5   | \*22     |
 
-*Source: config/tech.toml [construction_tech] section*
+| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier | Unlocked Hulls |
+|:----------:| ------------- |:--------:|:-----------:|:-------------------:| -------------- |
+| CST I      | None          | N/A      | 1           | 1.0x                | DD, CL, CA, CV |
+| CST II     | CST I         | 10       | 2           | 1.1x                | BC             |
+| CST III    | CST II        | 12       | 3           | 1.2x                | -              |
+| CST IV     | CST III       | 15       | 4           | 1.3x                | BB, CX         |
+| CST V      | CST IV        | 19       | 5           | 1.4x                | -              |
+| CST VI     | CST V         | 24       | 6           | 1.5x                | DN             |
+| CST VII    | CST VI        | 31       | 7           | 1.6x                | -              |
+| CST VIII   | CST VII       | 40       | 8           | 1.7x                | SD             |
+| CST IX     | CST VIII      | 52       | 9           | 1.8x                | -              |
+| CST X      | CST IX        | 68       | 10          | 1.9x                | PB             |
+
+*Source: config/tech.toml [construction] section*
+
 <!-- CST_TABLE_END -->
 
-The maximum construction level is CST10.
+**Facility Capacity:**
 
-### Construction Capacity Bonus
+CST technology increases construction throughput at shipyards and spaceports:
 
-CST tech increases industrial production capacity by 10% per level:
-- **Formula:** `CST_MOD = 1.0 + (CST_level - 1) × 0.10`
-- **Applied to:** Industrial component of GCO: `IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH)`
-- **Example:** At CST5, industrial output is multiplied by 1.40 (40% bonus)
+**Spaceport Docks:**
 
-**Construction Time:**
-All construction completes instantly (1 turn) regardless of CST level. This reflects the new time narrative where turns represent variable time periods (1-15 years depending on map size). Multi-turn construction would cause severe balance issues across different map sizes.
+```
+Dock Count = 5 × CST_MULTIPLIER (rounded down)
+```
 
-CST tech provides economic benefits through capacity increases, not construction speed.
+**Shipyard Docks:**
 
-## 4.6 Weapons (WEP)
+```
+Dock Count = 10 × CST_MULTIPLIER (rounded down)
+```
 
-Upgrades improve the Attack Strength (AS) and Defense Strength (DS) of combat ships by 10% for each Weapons level (rounded down).
+Example: At CST VI (1.5x multiplier):
 
-For every WEP increase, Production Cost (PC) per unit increases by 10%.
+- Spaceports: 5 × 1.5 = 7 docks
+- Shipyards: 10 × 1.5 = 15 docks
 
-Upgrades do not apply to preexisting ships; only new ships.
+**Hull Class Unlocks:**
 
-<!-- WEP_TABLE_START -->
-| WEAPONS_TECH Level | SL  | TRP Cost |
-|:---------:|:---:| -------- |
-| WEP1      | 1   | 12       |
-| WEP2      | 2   | 15       |
-| WEP3      | 3   | 17       |
-| WEP4      | 4   | 20       |
-| WEP5+     | 5   | \*22     |
+Certain ship classes require minimum CST levels to construct:
 
-*Source: config/tech.toml [weapons_tech] section*
-<!-- WEP_TABLE_END -->
+- **CST I**: Destroyers (DD), Light Cruisers (CL), Heavy Cruisers (CA), Standard Carriers (CV)
+- **CST II**: Battlecruisers (BC)
+- **CST IV**: Battleships (BB), Super Carriers (CX)
+- **CST VI**: Dreadnoughts (DN)
+- **CST VIII**: Super-Dreadnoughts (SD)
+- **CST X**: Planet-Breakers (PB)
 
-The maximum WEP level is WEP10.
+For complete hull specifications, see [Section 10.1](reference.md#101-space-force-wep1).
 
-## 4.7 Terraforming (TER)
+**GCO Modifier:**
 
-Terraforming improve a planet's livable conditions, and thus the population limit. There are seven Terraforming levels that correspond directly with the planet classes.
+CST technology also applies a modifier to Industrial Unit output in the GCO formula:
+
+```
+CST_MOD = 1.0 + (CST_level - 1) × 0.10
+```
+
+Example: CST VI → CST_MOD = 1.0 + (6-1) × 0.10 = 1.5
+
+**Strategic Considerations:**
+
+CST is essential for both military and economic expansion. If you pursue capital ship strategies, invest heavily in CST to unlock dreadnoughts and super-dreadnoughts. The capacity multiplier allows your mature colonies to maintain larger construction queues, enabling rapid fleet replacement during prolonged conflicts. The GCO modifier makes CST economically valuable even for defensive-focused Houses.
+
+## 4.6 Terraforming (TER)
+
+Terraforming technology allows colonies to upgrade their planet class, increasing maximum Population Unit (PU) capacity and improving economic output.
+
+**Research Progression:**
 
 <!-- TER_TABLE_START -->
-| TERRAFORMING_TECH Level | SL  | TRP Cost |
-|:---------:|:---:| -------- |
-| TER1      | 1   | 12       |
-| TER2      | 2   | 15       |
-| TER3      | 3   | 17       |
-| TER4      | 4   | 20       |
-| TER5      | 5   | 22       |
-| TER6      | 6   | 25       |
-| TER7      | 7   | 27       |
 
-*Source: config/tech.toml [terraforming_tech] section*
+| Tech Level | Prerequisites | SRP Cost | SL Required | Terraform Cost | Upgrade Path       |
+|:----------:| ------------- |:--------:|:-----------:|:--------------:| ------------------ |
+| TER I      | None          | 16       | 4           | 100 PP         | Extreme → Desolate |
+| TER II     | TER I         | 21       | 5           | 150 PP         | Desolate → Hostile |
+| TER III    | TER II        | 27       | 6           | 200 PP         | Hostile → Harsh    |
+| TER IV     | TER III       | 35       | 7           | 250 PP         | Harsh → Benign     |
+| TER V      | TER IV        | 46       | 8           | 300 PP         | Benign → Lush      |
+| TER VI     | TER V         | 60       | 9           | 350 PP         | Lush → Eden        |
+
+*Source: config/tech.toml [terraforming] section*
+
 <!-- TER_TABLE_END -->
 
-After the tech is achieved, the cost to upgrade a planet is as follows:
+**Terraforming Process:**
 
-<!-- TER_UPGRADE_COST_TABLE_START -->
-| Planet Class | Required TER | PU        | PP   |
-|:------------ |:------------:|:---------:|:----:|
-| Extreme      | TER1         | 1 - 20    | NA   |
-| Desolate     | TER2         | 21 - 60   | 60   |
-| Hostile      | TER3         | 61 - 180  | 180  |
-| Harsh        | TER4         | 181 - 500 | 500  |
-| Benign       | TER5         | 501- 1k   | 1000 |
-| Lush         | TER6         | 1k - 2k   | 1500 |
-| Eden         | TER7         | 2001+     | 2000 |
+1. Research the TER tier corresponding to desired upgrade
+2. Spend required PP at target colony during Income Phase
+3. Planet class upgrades immediately
+4. Maximum PU capacity increases per new planet class (see [Section 2.2](assets.md#22-solar-systems))
+5. RAW_INDEX efficiency improves if applicable
 
-*Source: config/tech.toml [terraforming_upgrade_costs] section*
-<!-- TER_UPGRADE_COST_TABLE_END -->
+**Limits:**
 
-Example: Upgrading from TER3 to TER4 requires 91 PP.
+Planets cannot skip classes. A Hostile world must upgrade to Harsh before reaching Benign. Each upgrade requires separate research and payment.
 
-Planets do not skip a class in their terraforming development.
+**Strategic Considerations:**
+
+Terraforming converts marginal colonies into economic powerhouses. A fully terraformed Eden world can support 2,000+ PU, generating enormous GCO even with modest IU investment. However, terraforming is expensive and slow—the SRP cost progression means reaching TER VI requires sustained research investment throughout the mid-to-late game. If you pursue terraforming strategies, balance opportunity cost against immediate military needs.
+
+## 4.7 Cloaking (CLK)
+
+Cloaking technology enables covert operations through Raiders - specialized ships that conduct espionage and disruptive attacks behind enemy lines.
+
+**Research Progression:**
+
+<!-- CLK_TABLE_START -->
+
+| Tech Level | Prerequisites | SRP Cost | SL Required | Detection Resistance |
+|:----------:| ------------- |:--------:|:-----------:|:--------------------:|
+| CLK I      | None          | 10       | 2           | Moderate             |
+| CLK II     | CLK I         | 13       | 3           | Good                 |
+| CLK III    | CLK II        | 16       | 4           | Excellent            |
+| CLK IV     | CLK III       | 21       | 5           | Superior             |
+| CLK V      | CLK IV        | 27       | 6           | Elite                |
+
+*Source: config/tech.toml [cloaking] section*
+
+<!-- CLK_TABLE_END -->
+
+**Raider Capabilities:**
+
+Raiders are specialized covert vessels that conduct intelligence gathering, sabotage, and assassination missions. Each CLK tier improves Raider stealth, making them harder to detect.
+
+**Detection Mechanics:**
+
+Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Raiders. Detection rolls compare the Raider's CLK level against the defender's ELI level using the Raider Detection Table in [Section 2.4.3](assets.md#243-raiders).
+
+Higher CLK tiers significantly reduce detection probability, enabling Raiders to operate deep in enemy territory with relative impunity.
+
+**Strategic Applications:**
+
+- **Intelligence**: Reveal enemy fleet compositions and colony defenses
+- **Sabotage**: Destroy Industrial Units, damage infrastructure
+- **Assassination**: Eliminate enemy commanders (advanced missions)
+- **Blockade Running**: Covert supply runs to besieged colonies
+
+For complete Raider specifications and mission types, see [Sections 2.4.3](assets.md#243-raiders) and [Section 9.0](operations.md#90-covert-operations).
+
+**Strategic Considerations:**
+
+CLK investment creates information asymmetry—Houses with advanced Raiders can scout enemy positions while remaining undetected. However, Raiders are fragile and expensive, and aggressive ELI investment by adversaries can neutralize CLK advantages. The CLK vs. ELI arms race becomes critical in late-game peer conflicts.
 
 ## 4.8 Electronic Intelligence (ELI)
 
-ELI technology enables the detection of cloaked Raiders and enemy Scouts, and the gathering of intelligence from rival assets.
+Electronic Intelligence represents sensor technology, signals analysis, and detection networks. ELI enables colonies to detect enemy Scouts and Raiders conducting covert operations.
 
-Upgrades do not apply to preexisting Starbases and Scouts.
+**Research Progression:**
 
 <!-- ELI_TABLE_START -->
-| ELECTRONIC_INTELLIGENCE Level | SL  | TRP Cost |
-|:---------:|:---:| -------- |
-| ELI1      | 1   | 12       |
-| ELI2      | 2   | 15       |
-| ELI3      | 3   | 17       |
-| ELI4      | 4   | 20       |
-| ELI5      | 5   | 22       |
+
+| Tech Level | Prerequisites | SRP Cost | SL Required | Detection Capability |
+|:----------:| ------------- |:--------:|:-----------:|:--------------------:|
+| ELI I      | None          | 10       | 2           | Basic                |
+| ELI II     | ELI I         | 13       | 3           | Improved             |
+| ELI III    | ELI II        | 16       | 4           | Advanced             |
+| ELI IV     | ELI III       | 21       | 5           | Superior             |
+| ELI V      | ELI IV        | 27       | 6           | Elite                |
 
 *Source: config/tech.toml [electronic_intelligence] section*
+
 <!-- ELI_TABLE_END -->
 
-The maximum ELI level is ELI5.
+**Detection Mechanics:**
 
-## 4.9 Cloaking (CLK)
+ELI determines a colony's ability to detect enemy Scouts and Raiders:
 
-Cloaking enables Raiders to cloak their assigned fleets with increasing levels of probability.
+**Scout Detection**: Uses the Scout Detection Table in [Section 2.4.2](assets.md#242-scouts). Detection probability increases with ELI tier and multiple Scout presence (mesh network effect).
 
-Upgrades do not apply to preexisting Raiders.
+**Raider Detection**: Uses the Raider Detection Table in [Section 2.4.3](assets.md#243-raiders). Higher ELI levels significantly increase detection probability against cloaked Raiders.
 
-<!-- CLK_TABLE_START -->
-| CLOAKING_TECH Level | SL  | TRP Cost |
-|:---------:|:---:| -------- |
-| CLK1      | 3   | 17       |
-| CLK2      | 4   | 20       |
-| CLK3      | 5   | 22       |
-| CLK4      | 6   | 25       |
-| CLK5      | 7   | 27       |
+**Starbase Synergy**: Starbases provide a +2 ELI modifier for detection rolls, making them critical for defending high-value colonies against covert operations. See [Section 2.4.4](assets.md#244-starbases).
 
-*Source: config/tech.toml [cloaking_tech] section*
-<!-- CLK_TABLE_END -->
+**Strategic Considerations:**
 
-The maximum CLK level is CLK5.
+ELI provides critical combat benefits by detecting cloaked Raiders and preventing their devastating +4 CER ambush bonus. Your ELI-equipped scouts share detection across your entire task force, negating enemy stealth advantages in both space and orbital combat. However, ELI provides no direct firepower or economic benefit—you must balance ELI investment against other research priorities.
 
-## 4.10 Planetary Shields (SLD)
+Failing to invest in ELI allows adversaries to operate Raiders with impunity against your forces. Undetected Raiders strike first, potentially crippling your fleet before your capital ships can respond. ELI is defensive technology with offensive implications—Houses without adequate ELI face catastrophic combat disadvantages against cloaked adversaries.
 
-Planetary Shields protect a colony from bombardment and invasion.
+ELI is also essential for planetary defense. Your colonies with high ELI and Starbases (+2 ELI modifier) can detect covert Scout and Raider operations, protecting your industrial capacity from sabotage missions. ELI is a meta-game technology—its value depends entirely on opponent strategies and the prevalence of stealth warfare in your campaign.
 
-Upgrades do not apply to preexisting shields. Salvage and build a new one.
+## 4.9 Strategic Lift (STL)
 
-<!-- SLD_TABLE_START -->
-| SHIELD_TECH Level | SL  | TRP Cost |
-|:---------:|:---:| -------- |
-| SLD1      | 3   | 17       |
-| SLD2      | 4   | 20       |
-| SLD3      | 5   | 22       |
-| SLD4      | 6   | 25       |
-| SLD5      | 7   | 27       |
+Strategic Lift improves Environmental Transformation and Colonization (ETAC) ships and Troop Transports, increasing their carry capacity for colonists and Marines.
 
-*Source: config/tech.toml [shield_tech] section*
-<!-- SLD_TABLE_END -->
+**Research Progression:**
 
-The maximum SLD level is SLD5.
+<!-- STL_TABLE_START -->
 
-## 4.11 Counter Intelligence Command (CIC)
+| Tech Level | Prerequisites | SRP Cost | SL Required | ETAC Capacity | Transport Capacity |
+|:----------:| ------------- |:--------:|:-----------:|:-------------:|:------------------:|
+| STL I      | None          | N/A      | 1           | 1 PTU         | 1 MD               |
+| STL II     | STL I         | 10       | 2           | 2 PTU         | 2 MD               |
+| STL III    | STL II        | 13       | 3           | 3 PTU         | 3 MD               |
+| STL IV     | STL III       | 16       | 4           | 4 PTU         | 4 MD               |
+| STL V      | STL IV        | 21       | 5           | 5 PTU         | 5 MD               |
 
-The CIC enhances security measures to shield the House from espionage threats posed by rivals.
+*Source: config/tech.toml [strategic_lift] section*
 
-<!-- CIC_TABLE_START -->
-| COUNTER_INTELLIGENCE_TECH Level | SL  | TRP Cost |
-|:---------:|:---:| -------- |
-| CIC1      | 1   | 12       |
-| CIC2      | 2   | 15       |
-| CIC3      | 3   | 17       |
-| CIC4      | 4   | 20       |
-| CIC5      | 5   | 22       |
+<!-- STL_TABLE_END -->
 
-*Source: config/tech.toml [counter_intelligence_tech] section*
-<!-- CIC_TABLE_END -->
+**Application:**
 
-The maximum CIC level is CIC5.
+STL upgrades apply immediately to all existing ETACs and Troop Transports upon research completion. Ships in transit or loading can immediately increase their cargo capacity up to the new limit.
+
+**ETAC Implications:**
+
+Higher STL tiers allow new colonies to start with larger populations, accelerating early development. A single ETAC at STL V establishes colonies with 5 PTU instead of 1 PTU, providing immediate productive capacity and reducing the need for follow-up colonist transfers.
+
+**Troop Transport Implications:**
+
+STL improvements enable larger invasion forces. A Transport at STL V carries 5 Marine Divisions instead of 1, allowing Houses to conduct overwhelming ground assaults with fewer ships and reducing the number of jumps required to position invasion forces.
+
+**Strategic Considerations:**
+
+STL is an economic multiplier for expansion-focused strategies. If you pursue aggressive colonization, early STL investment benefits you enormously, while defensive Houses can delay STL research indefinitely. However, STL becomes critical during peer conflicts—Houses that neglect STL face logistical disadvantages when reinforcing distant colonies or conducting invasions across extended jump lane networks.
+
+## 4.10 Command (CMD)
+
+Command technology increases the Command Rating (CR) of capital ship flagships, allowing them to lead larger squadrons.
+
+**Research Progression:**
+
+<!-- CMD_TABLE_START -->
+
+| Tech Level | Prerequisites | TRP Cost | SL Required | CR Increase |
+|:----------:| ------------- |:--------:|:-----------:|:-----------:|
+| CMD I      | None          | N/A      | 1           | Base CR     |
+| CMD II     | CMD I         | 10       | 2           | +1 CR       |
+| CMD III    | CMD II        | 12       | 3           | +2 CR       |
+| CMD IV     | CMD III       | 15       | 4           | +3 CR       |
+| CMD V      | CMD IV        | 19       | 5           | +4 CR       |
+
+*Source: config/tech.toml [command] section*
+
+<!-- CMD_TABLE_END -->
+
+**Application:**
+
+CMD bonuses apply to the base Command Rating of capital ship flagships:
+
+```
+Effective CR = Base CR + CMD Bonus
+```
+
+Example: A Battleship (BB) has Base CR 9. At CMD III, Effective CR = 9 + 2 = 11.
+
+Higher CR allows flagships to command more ships within their squadron, as each ship consumes Command Cost (CC) based on its class. For squadron composition rules and CC values, see [Section 2.3.3](assets.md#233-squadrons).
+
+**Retrofitting:**
+
+Unlike WEP technology, CMD bonuses apply automatically to existing flagships without requiring retrofits. The moment CMD research completes, all capital ships in the House fleet can immediately reorganize squadrons to take advantage of increased CR.
+
+**Strategic Considerations:**
+
+CMD research enables squadron consolidation, reducing administrative overhead and improving tactical flexibility. At CMD V, you can field fewer, larger squadrons instead of many small squadrons, simplifying fleet management during complex operations. However, larger squadrons become more vulnerable to focused fire—losing a high-CR flagship potentially scatters many ships, creating organizational chaos.
+
+## 4.11 Capital Ship Capacity
+
+Capital squadron capacity represents a House's ability to maintain large warships through industrial infrastructure:
+
+```
+Max Capital Squadrons = max(8, floor(Total_House_IU ÷ 100) × 2)
+```
+
+Capital ships are defined as vessels with Command Rating (CR) ≥ 7:
+
+- Battlecruisers (BC)
+- Battleships (BB)
+- Dreadnoughts (DN)
+- Super-Dreadnoughts (SD)
+- Standard Carriers (CV)
+- Super Carriers (CX)
+
+**Capacity Enforcement:**
+
+When a House exceeds capital squadron capacity (typically from IU loss due to bombardment, blockades, or territory loss), excess squadrons are immediately claimed by Space Guilds for salvage. Priority for removal:
+
+1. Crippled flagships first
+2. Lowest Attack Strength (AS) among non-crippled flagships
+
+The House receives 50% of each ship's original build cost as salvage payment.
+
+**Strategic Implications:**
+
+Your industrial capacity directly determines fleet size. If you pursue capital ship strategies, invest heavily in IU development and protect your industrial colonies from bombardment. Losing a major industrial world can force immediate fleet reductions, potentially at the worst possible moment.
+
+For complete salvage mechanics, see [Section 2.5.1](assets.md#251-capital-ship-salvage-operations).
 
 ## 4.12 Fighter Doctrine (FD)
 
-Fighter Doctrine represents advancements in tactical coordination, pilot training infrastructure, and logistics systems that enable colonies to support larger fighter wings.
+Fighter Doctrine improves organizational efficiency and training throughput, increasing the number of Fighter Squadrons (FS) each colony can support.
 
 **Research Progression:**
 
 <!-- FD_TABLE_START -->
+
 | Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier |
-|:----------:|--------------|:--------:|:-----------:|:-------------------:|
-| FD I       | None         | N/A      | 1           | 1.0x                |
-| FD II      | FD I         | 15       | 2           | 1.5x                |
-| FD III     | FD II        | 17       | 3           | 2.0x                |
+|:----------:| ------------- |:--------:|:-----------:|:-------------------:|
+| FD I       | None          | N/A      | 1           | 1.0x                |
+| FD II      | FD I          | 15       | 2           | 1.5x                |
+| FD III     | FD II         | 17       | 3           | 2.0x                |
 
 *Source: config/tech.toml [fighter_doctrine] section*
+
 <!-- FD_TABLE_END -->
 
 **FD I - Basic Fighter Operations**
@@ -873,13 +777,19 @@ Elite pilot training programs, AI-assisted tactical coordination, and distribute
 
 **Application:**
 
-Fighter Doctrine upgrades apply house-wide immediately upon research completion. All colonies recalculate their maximum fighter squadron capacity using the new multiplier.
+Fighter Doctrine upgrades apply house-wide immediately upon research completion. All colonies recalculate their maximum fighter squadron capacity using the new multiplier:
+
+```
+Max FS per Colony = max(1, floor(PU / 100)) × FD_MULTIPLIER
+```
 
 Colonies must maintain the required Starbase infrastructure (1 operational Starbase per 5 FS) regardless of doctrine level. The Starbase requirement does not scale with FD tech.
 
 When FD tech increases capacity, existing fighter squadrons remain operational and colonies can immediately commission additional squadrons up to their new capacity limit (subject to infrastructure requirements and available production points).
 
 If capacity increases would require additional Starbases, colonies have 2 turns to construct the required infrastructure before commissioning new squadrons. Existing squadrons are grandfathered and remain operational during the grace period.
+
+For fighter squadron economics, see [Section 3.6](#36-fighter-squadron-economics). For combat mechanics, see [Section 2.4.1](assets.md#241-fighter-squadrons--carriers).
 
 ## 4.13 Advanced Carrier Operations (ACO)
 
@@ -888,13 +798,15 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater fighte
 **Research Progression:**
 
 <!-- ACO_TABLE_START -->
+
 | Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity |
-|:----------:|--------------|:--------:|:-----------:|:-----------:|:-----------:|
-| ACO I      | None         | N/A      | 1           | 3 FS        | 5 FS        |
-| ACO II     | ACO I        | 20       | 4           | 4 FS        | 6 FS        |
-| ACO III    | ACO II       | 22       | 5           | 5 FS        | 8 FS        |
+|:----------:| ------------- |:--------:|:-----------:|:-----------:|:-----------:|
+| ACO I      | None          | N/A      | 1           | 3 FS        | 5 FS        |
+| ACO II     | ACO I         | 20       | 4           | 4 FS        | 6 FS        |
+| ACO III    | ACO II        | 22       | 5           | 5 FS        | 8 FS        |
 
 *Source: config/tech.toml [advanced_carrier_operations] section*
+
 <!-- ACO_TABLE_END -->
 
 **ACO I - Standard Carrier Operations**
@@ -917,79 +829,104 @@ Carriers in transit or in combat zones must return to a friendly colony to take 
 
 ACO technology affects carrier capacity only and does not modify fighter squadron statistics, maintenance costs, or combat effectiveness.
 
+For carrier combat mechanics, see [Section 2.4.1](assets.md#241-fighter-squadrons--carriers).
+
 ## 4.14 Strategic Considerations
 
-- Balancing R&D Investments: Players must balance investments across ERP, SRP, and TRP to maximize their economic output, technological advancements, and military strength.
-- Economic Synergies: Increasing EL and SL together can provide synergistic benefits, enhancing overall productivity and unlocking powerful technologies.
-- Adapting to Opponents: Flexibility in R&D strategy is key. Prioritizing weapons technology (WEP) during a military conflict or focusing on terraforming (TER) for long-term economic growth can be critical decisions based on the game state.
+- **Balancing R&D Investments**: You must balance investments across ERP, SRP, and TRP to maximize your economic output, technological advancements, and military strength.
+- **Economic Synergies**: Increasing EL and SL together provides synergistic benefits, enhancing your overall productivity and unlocking powerful technologies.
+- **Adapting to Opponents**: Flexibility in R&D strategy is key. Prioritize weapons technology (WEP) during military conflicts or focus on terraforming (TER) for long-term economic growth—critical decisions based on the game state.
+
+---
 
 # 5.0 Construction
 
-Construction and repair of House assets is accomplished planet-side or in orbit, with restrictions. 
+You accomplish construction and repair of House assets planet-side or in orbit, with restrictions.
 
-## 5.0 Ship Construction
+## 5.1 Ship Construction
 
 All ship construction completes instantly (1 turn) regardless of hull class or CST tech level. This reflects the game's time narrative where turns represent variable time periods (1-15 years depending on map size).
 
 **Payment Model:**
-- Full PC cost must be paid **upfront** from house treasury when construction begins
-- Construction cannot start if house lacks sufficient PP in treasury
-- If construction is cancelled, 50% of PC is refunded to treasury
+
+- You must pay full PC cost **upfront** from your house treasury when construction begins
+- You cannot start construction if your house lacks sufficient PP in treasury
+- If you cancel construction, you receive a 50% PC refund to treasury
 
 **Construction Vulnerability:**
 
 Ships under construction in docks can be destroyed during the Conflict Phase if:
+
 - The shipyard/spaceport is destroyed by orbital bombardment
 - The facility is crippled by combat damage
 
-Destroyed ships-in-construction provide no salvage value. The house loses the full PC investment.
+Destroyed ships-in-construction provide no salvage value. Your house loses the full PC investment.
 
 **Completion and Commissioning:**
 
-Ships complete during the Maintenance Phase and are immediately commissioned:
+Ship building completes at the start of the Command Phase and are immediately commissioned:
+
 - Ship is created with current house tech levels
 - Automatically assigned to existing squadron at facility location (if capacity available)
 - Otherwise, new squadron is created with ship as flagship
 - If no fleet exists at location, new fleet is created
 
-**Ship Repairs:**
+**Construction Locations:**
 
-The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
+Ships can be constructed at two facility types with different costs and requirements. See [Sections 5.2-5.5](#52-planet-side-construction) for detailed construction rules by facility type.
 
-**Dock Management:**
-
-Spaceport and Shipyard construction capacity is limited by their CST tech level per [Section 4.5](economy.md#45-construction-cst).
-
-## 5.1 Planet-side Construction
+## 5.2 Planet-side Construction
 
 Ground units and fighter squadrons are produced via colony industry, distributed across the surface or in underground factories.
 
-Ships (excluding fighter squadrons) constructed planet-side incur a 100% PC increase due to the added cost of orbital launch, and require a spaceport to commission.
+**Spaceports:**
 
-## 5.2 Planet-side Repair
+Ships (excluding fighter squadrons) constructed planet-side incur a **100% PC increase** due to the added cost of orbital launch, and require a spaceport to commission.
+
+**Example Cost Calculation:**
+
+Base ship cost: 50 PP  
+Planet-side construction: 50 PP × 2 = 100 PP total
+
+For spaceport specifications and capacity, see [Section 2.3.2.1](assets.md#23221-spaceports).
+
+## 5.3 Planet-side Repair
 
 Ground units and fighter squadrons are repaired and refitted planet-side using colony industrial capacity.
 
 **Spaceports cannot repair ships.** Spaceports are construction facilities only - they launch ships into orbit but cannot repair orbital damage.
 
-## 5.3 Orbital Construction
+## 5.4 Orbital Construction
 
-Shipyard construction of a ship in orbit is the standard method of commissioning a vessel, and incurs no penalty. Shipyards are the only facilities that can repair ships.
+Shipyard construction of a ship in orbit is the standard method of commissioning a vessel, and incurs no penalty.
 
-## 5.4 Orbital Repair
+**Standard Costs:**
+
+Ships built at shipyards use their base PP cost with no modifiers. This is the economically efficient construction method.
+
+For shipyard specifications and capacity, see [Section 2.3.2.2](assets.md#23222-shipyards).
+
+## 5.5 Orbital Repair
 
 **Ship repairs require a Shipyard.** Spaceports cannot repair ships - only shipyards have the orbital infrastructure for ship repairs.
 
-The cost of repair equals one quarter (25%) of the ship's construction PC. All ship repairs complete in 1 turn regardless of ship class.
+**Ship Repairs:**
 
-Example: A player wishes to repair a crippled WEP3 Light Cruiser. The cost is:
+The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
+
+The cost of repair equals one quarter (25%) of the ship's construction PP. All ship repairs complete in 1 turn regardless of ship class.
+
+Example: You wish to repair a crippled WEP3 Light Cruiser. The cost is:
 
 ```
-72.6 PC (build cost) * 0.25 = 18.15 PP (repair cost)
+72.6 PP (build cost) * 0.25 = 18.15 PP (repair cost)
 ```
+
+**Starbase Repairs:**
+
+Starbase repairs also require shipyards and cost 25% of the starbase's construction PP. Repair time is 1 turn.
 
 **Colonies without shipyards cannot repair crippled ships.** Ships must either:
+
 - Transfer to a colony with shipyard capacity, or
 - Be salvaged for 50% PC recovery
-
-Starbase repairs also require shipyards and cost 25% of the starbase's construction PC.

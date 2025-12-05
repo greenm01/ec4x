@@ -10,12 +10,16 @@ import ../../../common/types/[core, diplomacy]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
+import ../config
+import ../shared/intelligence_types
+import ./analyzers/[colony_analyzer, system_analyzer, starbase_analyzer, combat_analyzer]
+from ./threat_assessment import assessAllThreats
 
 proc assessThreat*(
   filtered: FilteredGameState,
   ownSystemId: SystemId,
   controller: AIController
-): ThreatLevel =
+): intelligence_types.ThreatLevel =
   ## Assess threat level to one of our systems based on enemy presence
 
   # Check for enemy fleets in system (from fog-of-war)
@@ -36,11 +40,11 @@ proc assessThreat*(
   if enemyFleetCount > 0:
     # Assess based on fleet strength
     if totalEnemyStrength >= 10:
-      return ThreatLevel.Critical  # Large enemy force
+      return intelligence_types.ThreatLevel.Critical  # Large enemy force
     elif totalEnemyStrength >= 5:
-      return ThreatLevel.High  # Moderate enemy force
+      return intelligence_types.ThreatLevel.High  # Moderate enemy force
     else:
-      return ThreatLevel.Moderate  # Small enemy presence
+      return intelligence_types.ThreatLevel.Moderate  # Small enemy presence
 
   # Check intelligence for recent enemy activity
   for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
@@ -48,11 +52,11 @@ proc assessThreat*(
       # Enemy was here recently - elevated threat
       let turnsSince = filtered.turn - history.lastSeen
       if turnsSince <= 2:
-        return ThreatLevel.Moderate  # Recent enemy activity
+        return intelligence_types.ThreatLevel.Moderate  # Recent enemy activity
       elif turnsSince <= 5:
-        return ThreatLevel.Low  # Enemy was here recently
+        return intelligence_types.ThreatLevel.Low  # Enemy was here recently
 
-  return ThreatLevel.None  # No known threats
+  return intelligence_types.ThreatLevel.None  # No known threats
 
 proc needsReconnaissance*(
   filtered: FilteredGameState,
@@ -89,21 +93,125 @@ proc generateIntelligenceReport*(
   filtered: FilteredGameState,
   controller: AIController
 ): IntelligenceSnapshot =
-  ## Consolidate fog-of-war + reconnaissance + espionage intel
-  ## Drungarius provides this to all advisors
+  ## Enhanced intelligence report generation (Phase B+)
+  ## Analyzes ColonyIntelReport, SystemIntelReport, and generates domain-specific summaries
 
   result.turn = filtered.turn
-  result.knownEnemyColonies = @[]
-  result.enemyFleetMovements = initTable[HouseId, seq[FleetMovement]]()
-  result.highValueTargets = @[]
-  result.threatAssessment = initTable[SystemId, ThreatLevel]()
-  result.staleIntelSystems = @[]
-  result.espionageOpportunities = @[]
 
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Drungarius: Generating intelligence report for turn {result.turn}")
+          &"{controller.houseId} Drungarius: Generating enhanced intelligence report for turn {result.turn}")
 
-  # === ENEMY COLONIES ===
+  let config = globalRBAConfig.intelligence
+
+  # === PHASE B: COLONY & SYSTEM INTELLIGENCE ===
+
+  # Analyze colony intelligence (vulnerabilities, high-value targets)
+  let (vulnerableTargets, highValueTargets) = analyzeColonyIntelligence(filtered, controller)
+
+  # Analyze system intelligence (enemy fleet tracking)
+  let enemyFleets = analyzeSystemIntelligence(filtered, controller)
+
+  # Unified threat assessment for all colonies
+  let threats: Table[SystemId, ThreatAssessment] = assessAllThreats(filtered, enemyFleets, config, filtered.turn)
+
+  # === PHASE C: STARBASE & COMBAT INTELLIGENCE ===
+
+  # Analyze starbase intelligence (tech gaps, economy)
+  let (enemyEcon, enemyTech) = analyzeStarbaseIntelligence(filtered, controller)
+
+  # Analyze combat reports (tactical lessons)
+  let combatLessons = analyzeCombatReports(filtered, controller)
+
+  # Populate military intelligence domain
+  result.military = MilitaryIntelligence(
+    knownEnemyFleets: enemyFleets,
+    enemyMilitaryCapability: initTable[HouseId, MilitaryCapabilityAssessment](),  # Phase D
+    threatsByColony: threats,
+    vulnerableTargets: vulnerableTargets,
+    combatLessonsLearned: combatLessons,
+    lastUpdated: filtered.turn
+  )
+
+  # Populate economic intelligence domain
+  result.economic = EconomicIntelligence(
+    enemyEconomicStrength: enemyEcon,
+    highValueTargets: highValueTargets,
+    enemyTechGaps: initTable[HouseId, TechGapAnalysis](),  # Phase D
+    constructionActivity: initTable[SystemId, ConstructionTrend](),  # Phase D
+    lastUpdated: filtered.turn
+  )
+
+  # Populate other domains (Phase C+)
+  result.diplomatic = DiplomaticIntelligence(
+    houseRelativeStrength: initTable[HouseId, HouseRelativeStrength](),
+    potentialAllies: @[],
+    potentialThreats: @[],
+    observedHostility: initTable[HouseId, HostilityLevel](),
+    lastUpdated: filtered.turn
+  )
+
+  # Generate tech gap priorities from enemy tech intelligence
+  let techGapPriorities = generateTechGapPriorities(filtered, enemyTech, controller)
+
+  result.research = ResearchIntelligence(
+    enemyTechLevels: enemyTech,
+    techAdvantages: @[],  # TODO: Compute which fields we lead in
+    techGaps: @[],  # TODO: Compute which fields we're behind in
+    urgentResearchNeeds: techGapPriorities,
+    lastUpdated: filtered.turn
+  )
+
+  result.espionage = EspionageIntelligence(
+    intelCoverage: initTable[HouseId, IntelCoverageScore](),
+    staleIntelSystems: @[],
+    highPriorityTargets: @[],
+    detectionRisks: initTable[HouseId, DetectionRiskLevel](),
+    surveillanceGaps: @[],
+    lastUpdated: filtered.turn
+  )
+
+  # === BACKWARD COMPATIBILITY: Populate legacy fields ===
+
+  # Extract known enemy colonies from military intel
+  for target in vulnerableTargets:
+    result.knownEnemyColonies.add((target.systemId, target.owner))
+  for target in highValueTargets:
+    var alreadyAdded = false
+    for known in result.knownEnemyColonies:
+      if known.systemId == target.systemId:
+        alreadyAdded = true
+        break
+    if not alreadyAdded:
+      result.knownEnemyColonies.add((target.systemId, target.owner))
+
+  # Extract high-value targets
+  for target in highValueTargets:
+    result.highValueTargets.add(target.systemId)
+
+  # Convert ThreatAssessment to legacy ThreatLevel format
+  for systemId, threat in threats:
+    result.threatAssessment[systemId] = threat.level
+
+  # Fleet movements (from existing implementation below)
+  result.enemyFleetMovements = initTable[HouseId, seq[FleetMovement]]()
+
+  # Report counts for debugging
+  result.reportCounts = (
+    colonies: filtered.ownHouse.intelligence.colonyReports.len,
+    systems: filtered.ownHouse.intelligence.systemReports.len,
+    starbases: filtered.ownHouse.intelligence.starbaseReports.len,
+    combat: filtered.ownHouse.intelligence.combatReports.len,
+    surveillance: filtered.ownHouse.intelligence.starbaseSurveillance.len
+  )
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Drungarius: Enhanced intelligence - " &
+          &"{enemyFleets.len} enemy fleets, " &
+          &"{threats.len} threats, " &
+          &"{vulnerableTargets.len} vulnerable targets, " &
+          &"{highValueTargets.len} high-value targets")
+
+  # === LEGACY PROCESSING (keep for now) ===
   # Aggregate all known enemy colonies from intelligence database
   for systemId, colonyReport in filtered.ownHouse.intelligence.colonyReports:
     if colonyReport.targetOwner != controller.houseId:
@@ -147,7 +255,7 @@ proc generateIntelligenceReport*(
   # Assess threats to our own colonies
   for colony in filtered.ownColonies:
     let threat = assessThreat(filtered, colony.systemId, controller)
-    if threat != ThreatLevel.None:
+    if threat != intelligence_types.ThreatLevel.None:
       result.threatAssessment[colony.systemId] = threat
       logInfo(LogCategory.lcAI,
               &"{controller.houseId} Drungarius: Threat {threat} detected at colony {colony.systemId}")

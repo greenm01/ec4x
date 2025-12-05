@@ -288,3 +288,50 @@ escalation_high_to_critical_turns = 7  # High → Critical after 7 turns
 auto_repair_threshold = 100  # Min treasury (PP) to enable auto-repair at colonies
                              # Below this: disable auto-repair to conserve PP
                              # Above this: enable for convenience
+
+# ==============================================================================
+# INTELLIGENCE INTEGRATION (Phase B+)
+# ==============================================================================
+# Enhanced intelligence processing from engine intelligence reports
+# Enables RBA to utilize ColonyIntelReport, SystemIntelReport, etc.
+
+[intelligence]
+# Report freshness thresholds (turns)
+colony_intel_stale_threshold = 10      # Colony reports stale after 10 turns
+system_intel_stale_threshold = 5       # Fleet movement stale after 5 turns
+starbase_intel_stale_threshold = 15    # Economic/tech intel stale after 15 turns
+
+# Threat assessment weights (must sum to 1.0)
+threat_fleet_strength_weight = 0.4     # Fleet strength contribution to threat
+threat_proximity_weight = 0.3          # Distance contribution to threat
+threat_recent_activity_weight = 0.3    # Recent hostile actions contribution
+
+# Threat distance thresholds (jumps)
+threat_critical_distance = 1           # Enemy 1 jump away = Critical
+threat_high_distance = 2               # Enemy 2 jumps away = High
+threat_moderate_distance = 4           # Enemy 4 jumps away = Moderate
+
+# Vulnerability assessment
+vulnerability_defense_ratio_threshold = 0.3  # Defender/Attacker < 0.3 = vulnerable
+vulnerability_value_threshold = 50           # Min production to be high-value target
+
+# Combat learning (Phase C)
+combat_report_learning_enabled = true   # Learn from combat encounters
+combat_lesson_retention_turns = 50      # Remember lessons for 50 turns
+combat_doctrine_detection_threshold = 3 # Detect doctrine after 3 battles
+
+# Economic intelligence (Phase C)
+economic_assessment_min_colonies = 2    # Need 2+ known colonies for assessment
+economic_strength_production_weight = 0.6
+economic_strength_income_weight = 0.4
+
+# Research intelligence (Phase C)
+tech_gap_critical_threshold = 3         # 3+ tech levels behind = critical gap
+tech_gap_high_threshold = 2             # 2 tech levels behind = high priority
+
+[drungarius]
+# Intelligence coordinator settings
+intel_processing_enabled = true         # Enable enhanced intelligence processing
+use_combat_lessons = true              # Use CombatEncounterReport for learning (Phase C)
+use_starbase_surveillance = true       # Use StarbaseSurveillanceReport (Phase D)
+prioritize_high_value_targets = true   # Focus espionage on valuable targets

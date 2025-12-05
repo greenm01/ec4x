@@ -5,6 +5,7 @@
 import std/strformat
 import ../../../engine/[fog_of_war, logger]
 import ../controller_types
+import ../shared/intelligence_types
 import ../drungarius/intelligence_distribution
 
 proc generateIntelligenceSnapshot*(

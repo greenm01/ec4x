@@ -10,6 +10,10 @@ import ../../engine/commands/zero_turn_commands  # For ZeroTurnCommand
 import ../../common/types/[core, units, planets]  # For ShipClass, PlanetClass
 import ../../engine/espionage/types as esp_types  # For EspionageAction
 import ../../engine/diplomacy/proposals as dip_proposals  # For ProposalType
+import ./shared/intelligence_types  # Enhanced intelligence types (Phase B+)
+
+# Re-export RequirementPriority from intelligence_types for convenience
+export intelligence_types.RequirementPriority
 
 # Forward declarations for Admiral integration
 # Full types defined in domestikos/build_requirements.nim
@@ -23,8 +27,7 @@ type
     Protostrator     # Diplomacy & foreign affairs
     Treasurer        # Budget & finance
 
-  RequirementPriority* {.pure.} = enum
-    Critical, High, Medium, Low, Deferred
+  # RequirementPriority imported from intelligence_types (avoids duplication)
 
   RequirementType* {.pure.} = enum
     DefenseGap, OffensivePrep, ReconnaissanceGap, ExpansionSupport, ThreatResponse,
@@ -161,28 +164,14 @@ type
   # Note: Diplomacy doesn't cost PP, so no ProtostratorFeedback from Treasurer
   # Basileus provides feedback on priority conflicts only
 
+  # ThreatLevel, FleetMovement, IntelligenceSnapshot now imported from shared/intelligence_types.nim (Phase B+)
+  # Kept here for backward compatibility exports
   ThreatLevel* {.pure.} = enum
     ## Threat assessment levels for intelligence reports
     None, Low, Moderate, High, Critical
 
-  FleetMovement* = object
-    ## Tracked enemy fleet movement for intelligence
-    fleetId*: FleetId
-    owner*: HouseId
-    lastKnownLocation*: SystemId
-    lastSeenTurn*: int
-    estimatedStrength*: int
-
-  IntelligenceSnapshot* = object
-    ## Consolidated intelligence from Drungarius for all advisors
-    ## Combines fog-of-war visibility, reconnaissance reports, and espionage data
-    turn*: int
-    knownEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]]
-    enemyFleetMovements*: Table[HouseId, seq[FleetMovement]]
-    highValueTargets*: seq[SystemId]  # Weak enemy colonies
-    threatAssessment*: Table[SystemId, ThreatLevel]
-    staleIntelSystems*: seq[SystemId]  # Systems needing reconnaissance
-    espionageOpportunities*: seq[HouseId]  # Houses to target for espionage
+  # FleetMovement and IntelligenceSnapshot are now imported from intelligence_types.nim
+  # Old definitions commented out to prevent duplicates
 
 type
   ReconUpdate* = object
@@ -219,3 +208,6 @@ type
     goapEnabled*: bool  # Quick check if GOAP is enabled
     goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
     goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
+
+    # Phase C: Enhanced intelligence distribution
+    intelligenceSnapshot*: Option[IntelligenceSnapshot]  # Current turn's intelligence from Drungarius

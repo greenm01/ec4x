@@ -2,7 +2,7 @@
 
 ## 2.1 Star Map
 
-The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system at ring 0. For example, a 4-player game has 4 rings (rings 1-4) plus the center hub at ring 0. The center hub is gauranteed to have six lanes of travel.
+The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system at ring 0. For example, a 4-player game has 4 rings (rings 1-4) plus the center hub at ring 0. The center hub is guaranteed to have six lanes of travel.
 
 Solar systems have special traits and are procedurally generated. They are filled with planets, moons, and gas giants that are variable in their suitability for colonization and production.
 
@@ -11,10 +11,14 @@ Solar systems have special traits and are procedurally generated. They are fille
 There are three classes of jump lanes that determine which ship types can traverse them:
 
 <!-- LANE_DISTRIBUTION_START -->
+
 - **Major lanes** (50% of all lanes): Allow all ship types including crippled ships, ETACs, and troop transports
+
 - **Minor lanes** (35% of all lanes): Block crippled ships only; all other ships may pass
+
 - **Restricted lanes** (15% of all lanes): Block crippled ships, ETACs, and troop transports
-<!-- LANE_DISTRIBUTION_END -->
+  
+  <!-- LANE_DISTRIBUTION_END -->
 
 This distribution ensures 85% of lanes allow colonization ships through, reducing strategic bottlenecks while maintaining tactical complexity. Movement across the lanes is explained in [Section 6.1](operations.md#61-jump-lanes).
 
@@ -25,20 +29,22 @@ The hub is guaranteed to have six jump lanes connecting it to the first ring, ma
 **Homeworld Placement**
 
 <!-- HOMEWORLD_PLACEMENT_START -->
+
 Player homeworlds are placed throughout the map using distance maximization algorithms. The generator ensures each homeworld is as far as strategically possible from rival home systems, creating balanced starting positions while introducing natural asymmetry in the tactical landscape. Unlike traditional hex-ring maps where homeworlds are predictably on the outer edge, this system allows homeworlds on any ring for unpredictable, varied starting scenarios.
 
 Each homeworld is guaranteed to have exactly 3 **Major lanes** connecting it to adjacent systems, ensuring reliable colonization paths and fleet movement from the start.
+
 <!-- HOMEWORLD_PLACEMENT_END -->
 
 ## 2.2 Solar Systems
 
-Solar systems contain various F, G, K, and M class stars that are orbited by at least one terrestrial planet, suitable for colonization and terraforming. Otherwise systems are not charted and of no consequence to the task at hand.
+Solar systems contain various F, G, K, and M class stars orbited by at least one terrestrial planet, suitable for colonization and terraforming. Systems without terrestrial planets are not charted and of no consequence to your task.
 
 Roll on the planet class and system resources tables below to determine the attributes for each hex on the star-map, excluding homeworlds.
 
-Note that each newly established colony begins as Level I and has potential to develop into the max Population Unit (PU) for that planet. Move colonists from larger colonies to smaller colonies to increase population growth over the natural birth rate.
+Each newly established colony begins as Level I and has potential to develop into the max Population Unit (PU) for that planet. Move colonists from larger colonies to smaller colonies to increase population growth over the natural birth rate.
 
-Advances in terraforming tech will allow planets to upgrade class and living conditions.
+Advances in terraforming tech allow your planets to upgrade class and living conditions. For terraforming research and costs, see [Section 4.6](economy.md#46-terraforming-ter).
 
 **Planet Class Table**
 
@@ -55,6 +61,8 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 \*If the roll above is a natural eight (8), add a +1 modifier to your roll on the System Resources Table.
 \*\*If the roll is a natural nine (9) add a +2 modifier.
 
+For the relationship between PU and PTU, including economic implications and formulas, see [Section 3.1](economy.md#31-principles).
+
 **System Resources Table**
 
 | Modified Roll 1D10 | Raw Materials |
@@ -65,579 +73,408 @@ Advances in terraforming tech will allow planets to upgrade class and living con
 | 8, 9               | Rich          |
 | 10+                | Very Rich     |
 
+For how Raw Materials affect colony economic output, see the RAW INDEX table in [Section 3.1](economy.md#31-principles).
+
 ## 2.3 Military
 
 ### 2.3.1 Space Force Ships
 
 The base game includes a number of imperial classed space combatants listed in [Section 10.1](reference.md#101-space-force-wep1).
 
-Feel free to create your own ships and races for asymmetrical warfare or narrative purposes.
-
 ### 2.3.2 Spacelift Command
 
-The Spacelift Command provides commerce and transportation services in support of the House's expansion efforts. Assets are owned by the House and commanded by senior Space Force officers. Units are crewed and operated by loyal House citizens.
+Spacelift Command provides commerce and transportation services supporting your House's expansion efforts. You own these assets, and senior Space Force officers command them. Loyal House citizens crew and operate the units.
 
-Spacelift assets have no offensive weapons capability, and un-escorted units are easily destroyed by rival forces. 
+Spacelift assets have no offensive weapons capability—unescorted units are easily destroyed by rival forces.
 
 Spacelift Command attributes are listed in [Section 10.3](reference.md#103-spacelift-command-wep1).
 
 #### 2.3.2.1 Spaceports
 
-Spaceports are large ground based facilities that launch heavy-lift ships and equipment into orbit. They require one month (one turn) to build and have five construction docks, allowing up to five simultaneous ship construction projects planet-side.
+Spaceports are large ground based facilities that launch heavy-lift ships and equipment into orbit. They require one month (one turn) to build and have five construction docks at base capacity, allowing up to five simultaneous ship construction projects planet-side.
+
+**Construction Cost**: 20 PP  
+**Construction Time**: 1 turn  
+**Base Capacity**: 5 docks  
+**Capacity Scaling**: Dock capacity increases with CST tech (see [Section 4.5](economy.md#45-construction-cst))
+
+**Planet-side Ship Construction**: Ships built at spaceports incur a **100% PP cost penalty** due to orbital launch requirements. See [Section 5.2](economy.md#52-planet-side-construction) for construction rules.
+
+**Spaceports cannot repair ships** - they are construction facilities only.
 
 #### 2.3.2.2 Shipyards
 
-Shipyards are gateways to the stars. They are large bases constructed in orbit and require a spaceport to build over a period of two months (two turns).
+Shipyards are gateways to the stars—large bases constructed in orbit that require a spaceport to build over a period of two turns.
 
-The majority of ship construction and repair will occur at these important facilities.
+The majority of your ship construction and repair occurs at these important facilities.
 
-Shipyards are equipped with 10 docks for construction and repair, and are fixed in orbit. Build multiple yards to increase construction capacity at the colony.
+**Construction Cost**: 60 PP  
+**Construction Time**: 2 turns  
+**Prerequisite**: Requires operational Spaceport  
+**Base Capacity**: 10 docks  
+**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](economy.md#45-construction-cst))
+
+Shipyards are equipped with docks for both construction and repair, and are fixed in orbit. Build multiple yards to increase your construction capacity at the colony.
+
+**Orbital Ship Construction**: Ships built at shipyards use standard PP costs with no penalties. See [Section 5.4](economy.md#54-orbital-construction).
+
+**Ship Repairs**: Only shipyards can repair ships. Repair costs 25% of ship's original PP cost and completes in 1 turn. See [Section 5.5](economy.md#55-orbital-repair).
 
 #### 2.3.2.3 Environmental Transformation And Colonization (ETAC)
 
-ETACs plant a seed by establishing colonies on uninhabited planets. After use they are scrapped and used by the colony to begin the long terraforming process. 
+ETACs plant a seed by establishing colonies on uninhabited planets. They may be reused but require PTU reload.
 
-ETACS have a Carry Limit (CL) of one Population Transfer Unit (PTU) and must be loaded with colonists.
+**Carry Limit (CL)**: 1 PTU at STL I, scales with Strategic Lift (STL) technology  
+**Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
+**Combat**: Zero offensive/defensive capability
+
+You must load ETACs with colonists before departure. For STL capacity progression, see [Section 4.9](economy.md#49-strategic-lift-stl).
 
 #### 2.3.2.4 Troop Transports
 
-Troop Transports are specialized ships that taxi Space Marine divisions between solar systems, along with their required combat gear, armored vehicles, and ammunition. They have a CL of one Marine Division (MD).
+Troop Transports are specialized ships that taxi Space Marine divisions between solar systems, along with their required combat gear, armored vehicles, and ammunition.
+
+**Carry Limit (CL)**: 1 Marine Division (MD) at STL I, scales with Strategic Lift (STL) technology  
+**Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
+**Combat**: Zero offensive/defensive capability
+
+For STL capacity progression, see [Section 4.9](economy.md#49-strategic-lift-stl).
 
 ### 2.3.3 Squadrons
 
-The Space Force is organized by squadrons. Each squadron is commanded by a flagship with a Command Rating (CR) that will accommodate ships with a Command Cost (CC) that sum to less than or equal to the CR. This enables players to tactically group various classes of ships to balance combat effectiveness.
+Your Space Force is organized by squadrons. Each squadron is commanded by a flagship with a Command Rating (CR) that accommodates ships with a Command Cost (CC) summing to less than or equal to the CR. This enables you to tactically group various classes of ships to balance combat effectiveness.
 
 Squadrons fight as a unit and die as a unit. A squadron's total AS and DS values constitute a sum of all the ships under a flagship's command (including itself).
 
-In non-hostile systems, ships in a squadron can be reassigned to an already existing squadron if the new flagship's CR allows. Squadrons can constitute a solo flagship.
+In non-hostile systems, you can reassign ships in a squadron to an already existing squadron if the new flagship's CR allows. Squadrons can constitute a solo flagship.
 
-Squadrons are only commissioned in systems with a functioning shipyard.
+You can only commission squadrons in systems with a functioning shipyard.
+
+**Command Rating Enhancement**: CR can be increased through Command (CMD) research. See [Section 4.10](economy.md#410-command-cmd) for CMD progression.
 
 ### 2.3.4 Fleets
 
-Squadrons are grouped together into fleets for the purpose of traversing jump lanes. Fleets are be joined or split off (creating new fleets) for strategic purposes in any non-hostile system. There is no limit to the number of squadrons assigned to a fleet.
+You group squadrons together into fleets for traversing jump lanes. You can join or split fleets (creating new fleets) for strategic purposes in any non-hostile system. There is no limit to the number of squadrons you assign to a fleet.
 
 ### 2.3.5 Task Force
 
-A Task Force is temporary grouping of squadrons organized for combat. After the cessation of hostilities the task force is disbanded and surviving squadrons return to their originally assigned fleets.
+A Task Force is temporary grouping of squadrons organized for combat. After hostilities cease, the task force is disbanded and surviving squadrons return to their originally assigned fleets.
 
 ## 2.4 Special Units
 
 ### 2.4.1 Fighter Squadrons & Carriers
 
-Fighters are small ships commissioned in Fighter Squadrons (FS) that freely patrol a sector. They are based planet-side and never retreat from combat. Fighters are glass cannons: cheap to build but pack a bunch.
+Fighters are small ships you commission in Fighter Squadrons (FS) that freely patrol a system. They're based planet-side and never retreat from combat. Fighters are glass cannons—cheap to build but pack a punch.
 
-**Infrastructure Requirement:**
+**Construction Cost**: 5 PP per squadron  
+**Maintenance Cost**: Zero
 
-Fighters are constructed and commissioned planet-side. Once commissioned, fighter squadrons operate independently from distributed planetary bases. No starport, shipyard, or starbase infrastructure is required.
+**Capacity Limits**:
 
-**Fighter Squadron Capacity:**
-
-Fighter capacity is based on industrial manufacturing capacity (IU); colony industrial capacity (factories, supply chains) limits production.
-
-The maximum number of fighter squadrons a colony can support is determined by:
+Fighter Squadron capacity per colony is determined by population size, Fighter Doctrine (FD) research, and Starbase infrastructure:
 
 ```
-Max FS = floor(IU / 100) × FD Multiplier
+Max FS per Colony = max(1, floor(PU / 100)) × FD_MULTIPLIER
 ```
 
-Where Fighter Doctrine (FD) Tech Level Multiplier is:
-- FD I (base): 1.0x
-- FD II: 1.5x  
-- FD III: 2.0x
+**Infrastructure Requirement**: 1 operational Starbase per 5 FS (rounded up)
 
-**Examples:**
-- Homeworld start (420 IU, FD I): floor(420/100) × 1.0 = 4 fighters
-- Fully industrialized (840 IU, FD I): floor(840/100) × 1.0 = 8 fighters
-- With FD II (840 IU): floor(840/100) × 1.5 = 12 fighters
-- With FD III (840 IU): floor(840/100) × 2.0 = 16 fighters
+For FD research progression and capacity multipliers, see [Section 4.12](economy.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](economy.md#36-fighter-squadron-economics).
 
-**Capacity Violations:**
+**Carrier Operations**:
 
-A colony enters capacity violation when industrial capacity loss (infrastructure stripping, maintenance shortfall) reduces maximum capacity below current fighter squadron count.
+Fighter Squadrons can be loaded onto carriers for mobility:
 
-**Violation Grace Period:**
+**Standard Carrier (CV)**:
 
-When a capacity violation occurs (population loss reducing maximum capacity below current fighter count), existing fighter squadrons remain fully operational and combat-effective. The player has 2 turns to resolve the violation by:
+- ACO I: 3 FS capacity
+- ACO II: 4 FS capacity
+- ACO III: 5 FS capacity
 
-- Transferring population to the colony to increase PU
-- Disbanding excess fighter squadrons
-- Relocating excess squadrons via carrier to another colony with available capacity
+**Super Carrier (CX)**:
 
-If the violation is not resolved within 2 turns, the player must disband excess squadrons (oldest squadrons first) until capacity requirements are met. Disbanded squadrons provide no salvage value.
+- ACO I: 5 FS capacity
+- ACO II: 6 FS capacity
+- ACO III: 8 FS capacity
 
-**Fighter Squadron Construction:**
+For Advanced Carrier Operations (ACO) research, see [Section 4.13](economy.md#413-advanced-carrier-operations-aco).
 
-For construction and maintenance costs, see [Section 3.10](economy.md#310-fighter-squadron-economics).
+**Combat Mechanics**:
 
-**Commissioning Requirements:**
+Fighter squadrons based at your colony automatically participate in orbital defense (see [Section 7.4](operations.md#74-orbital-combat)). Carrier-based fighters participate in space combat with their carrier's task force.
 
-Fighters can be commissioned through two pathways:
+Each FS contributes:
 
-**Path 1: Colony-Based Commissioning (for defense or future carrier transfer)**
+- **Attack Strength (AS)**: 3
+- **Defense Strength (DS)**: 1
 
-To commission fighters that will remain colony-owned, a colony must:
-1. Have available capacity: `Current FS < Max FS`
-2. Have sufficient industrial capacity: `floor(IU / 100) × FD ≥ (Current FS + New FS)`
-3. Have sufficient treasury: `Available PP ≥ 20 × New FS`
+Fighters are fragile but cost-effective. A mature colony can field dozens of squadrons, making direct assault prohibitively expensive.
 
-**Path 2: Auto-Loading to Carriers (for immediate carrier deployment)**
-
-When fighters are commissioned at a colony with carriers present:
-1. Fighters are initially commissioned as colony-owned (count against colony capacity)
-2. Engine automatically attempts to load fighters onto carriers at the same colony
-3. Auto-loading prioritizes carriers with available hangar space
-4. Successfully loaded fighters transfer ownership (no longer count against colony)
-5. If auto-loading fails (no carriers or no space), fighters remain colony-owned
-
-**Auto-Loading Rules:**
-- Carriers must be at the same colony (docked or stationary)
-- Carriers must have available hangar capacity
-- Auto-loading happens immediately after commissioning (same turn)
-- Grace period (2 turns) applies to fighters that remain colony-owned
-
-**Benefits of Path 2:**
-- Fighters can be built without starbase infrastructure if carriers present
-- Automatic transfer saves manual loading orders
-- Bypasses colony capacity limits if successfully loaded
-- Still allows colony defense if auto-loading fails (with grace period)
-
-**Notes:**
-- Path 1 fighters remain colony-owned and require starbases
-- Path 2 fighters become carrier-owned if auto-loaded successfully
-- If auto-loading fails, fighters trigger grace period if colony lacks capacity
-- Colonies in capacity violation can still commission if carriers will auto-load
-
-**Fighter Ownership and Tracking:**
-
-Fighter squadrons are owned by either colonies or carriers. Each fighter squadron has exactly one owner at all times.
-
-**Colony-Owned Fighters:**
-- Commissioned at a colony using colony production capacity
-- Stationed at colony (planet-based assets)
-- Count against that colony's capacity limits
-- Always participate in system defense
-- Recorded in colony asset roster
-
-**Carrier-Owned Fighters:**
-- Loaded from colony onto carrier (transfers ownership from colony to carrier)
-- Embarked in carrier hangar bays (mobile assets)
-- Do NOT count against any colony capacity while embarked
-- Automatically deploy when carrier enters combat
-- Recorded in carrier asset roster
-
-**Ownership Mechanics:**
-
-When fighters transfer ownership, they become assets of the new owner and are subject to that owner's capacity constraints:
-- Fighters loaded onto carriers become carrier-owned and no longer count toward colony capacity
-- Fighters deployed from carriers to colonies become owned by the receiving colony and count toward that colony's capacity
-- A colony receiving fighters must have available capacity to accept them
-- Fighters cannot be "homeless" - they must always be owned by either a colony or carrier
-
-**Ownership Transfer:**
-
-Colony → Carrier (Loading):
-- Carrier loads fighters from colony (same turn, non-hostile system)
-- Fighters transfer from colony asset pool to carrier asset pool
-- Colony capacity usage decreases
-
-Carrier → Colony (Permanent Deployment):
-- Carrier permanently deploys fighters to colony (same turn, non-hostile system)
-- Colony must have available capacity
-- Fighters transfer from carrier asset pool to colony asset pool
-- Colony capacity usage increases
-
-**Combat Characteristics:**
-
-Fighter squadrons attack first in combat resolution, before capital ships engage.
-
-**Fighter Combat States:**
-
-Fighters are lightweight strike craft that skip the crippled combat state. Fighters transition directly from undamaged to destroyed when they take damage equal to or exceeding their DS. This reflects their fragile construction - a fighter is either combat-effective or destroyed.
-
-**Combat State Transitions:**
-- Capital Ships: Undamaged → Crippled → Destroyed
-- Fighters: Undamaged → Destroyed (no crippled state)
-
-Fighters maintain full Attack Strength (AS) until destroyed. Fighter squadrons have reduced Defense Strength (DS) as reflected in their combat statistics.
-
-Fighter squadrons based in a system never retreat from combat and fight to the last pilot.
-
-**Carriers:**
-
-Carriers transport fighter squadrons between systems and enable offensive fighter deployment beyond home colonies.
-
-**Carrier Types and Capacity:**
-
-| Carrier Type | Base Capacity | ACO II Capacity | ACO III Capacity |
-|:------------:|:-------------:|:---------------:|:----------------:|
-| CV           | 3 FS          | 4 FS            | 5 FS             |
-| CX           | 5 FS          | 6 FS            | 8 FS             |
-
-Carrier capacity is determined by the House's Advanced Carrier Operations (ACO) tech level. All carriers in the House fleet are upgraded immediately when ACO tech is researched.
-
-**Carrier Deployment:**
-
-Fighters aboard carriers exist in three operational states:
-
-**Embarked (Aboard Carrier):**
-- Fighters housed in carrier hangar bays (carrier-owned)
-- Do not participate in combat while embarked
-- No colony capacity requirements (carrier provides all logistics)
-- Carrier can transit through any system without capacity impact
-- Fighters remain carrier-owned assets
-
-**Temporary Combat Deployment:**
-- Fighters automatically deploy when carrier enters combat
-- Fighters launch for combat but remain carrier-owned
-- Available in both hostile and friendly systems
-- Fighters fight alongside colony-owned fighters if in friendly system
-- After combat, fighters re-embark immediately and remain carrier-owned
-- No ownership transfer occurs
-
-**Permanent Transfer to Colony:**
-- Fighters disembark and transfer ownership to colony
-- Completed in same turn in non-hostile system (outside combat)
-- Colony must have available capacity:
-  - `Population capacity: floor(Colony_IU / 100) × FD ≥ (Current_FS + Transferred_FS)`
-- Deployed fighters become colony-owned planet-based assets
-- Fighters remain at colony when carrier departs
-
-**Fighter Loading and Retrieval:**
-
-**Loading from Colony (Colony → Carrier Ownership Transfer):**
-- Carrier must be at colony (non-hostile system)
-- Loading completes same turn
-- Fighters transfer from colony asset pool to carrier asset pool
-- Colony capacity usage decreases
-- System must be non-hostile when loading
-- Crippled carriers can load fighters normally
-
-**Retrieval After Temporary Combat Deployment:**
-- Applies only to carrier-owned fighters temporarily deployed for combat
-- After combat in friendly system, carrier-owned fighters re-embark immediately
-- No ownership transfer, fighters return to carrier asset pool
-- After combat in hostile system, carrier-owned fighters must re-embark or be destroyed
-
-Fighters destroyed in combat cannot be replaced except through normal construction at a colony with available capacity.
-
-### 2.4.1.1 Carrier Strategic Employment
-
-**Mobile Reserve:**
-- Patrol with carrier-owned fighters embarked
-- No capacity impact on colonies
-- Deploy for combat without infrastructure delays
-- Carrier must remain for fighters to defend
-
-**Colony Reinforcement:**
-- Permanent transfer: Load (0 turn, colony→carrier) → transit → deploy (0 turn, carrier→colony, requires destination capacity)
-- Temporary: Station with fighters embarked, deploy for combat, re-embark after (no ownership transfer)
-
-**Fleet Operations:**
-- Carriers accompany battle fleets with embarked fighters
-- Fighters deploy in Phase 2 before capital ships
-- Re-embark after combat (1 turn), remain carrier-owned
-
-**Assault Operations:**
-- Force projection into hostile territory with carrier-owned fighters
-- No infrastructure required
-- High risk: carrier loss = fighter loss
-- Fighters remain carrier-owned throughout operation
-
-**Capacity Management:**
-
-Carriers resolve capacity violations by:
-- Loading excess fighters from colony (transfers ownership to carrier, frees colony capacity)
-- Temporarily housing fighters during infrastructure construction
-- Permanent redeployment to colonies with available capacity
-
-**Force Multiplication:**
-
-Carriers concentrate fighters at decisive points:
-- Carrier with 5 embarked fighters arrives at colony with 8 planet-based fighters
-- Player can deploy carrier fighters for combat (13 FS total in battle)
-- After combat, carrier fighters re-embark (colony returns to 8 FS)
-- Achieves local superiority without violating colony capacity
-  
 ### 2.4.2 Scouts
 
-Scouts (SC) are small drones outfitted with advanced sensors that assist with electronic warfare and information gathering. They are masters of Electronic Intelligence (ELI).
+Scouts are fast, stealthy reconnaissance ships that gather intelligence on enemy fleet compositions, colony defenses, and strategic positions.
 
-Scouts are able to counter Raiders ([Section 2.4.3](#243-raiders)) and rival spy Scouts.  Multiple ELI assigned to the same unit operate as a mesh network, and their ELI capability is merged and magnified.
+**Detection Mechanics**:
 
-**Scout Operational Modes:**
+Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Scouts. Detection probability depends on:
 
-Scouts operate in two distinct modes depending on their mission:
+- Defender's ELI level
+- Number of Scouts in system (mesh network effect)
+- Presence of Starbases (+2 ELI modifier)
 
-1. **Intelligence Operations (Single-Squadron):** Spy Scouts squadrons conduct espionage, reconnaissance, and surveillance missions (Orders 09, 10, 11 from [Section 6.3.1](operations.md#631-active-fleet-orders)) in enemy or neutral systems. Scout squadrons minimize detection risk but are vulnerable if discovered.
+**Scout Detection Table**
 
-2. **Fleet Operations (Multi-Ship Squadron):** Scouts automatically join mixed squadrons with capital ships or other escorts (per auto-commissioning rules in [Section 6.2](operations.md#62-squadron-commissioning)) where they provide electronic warfare support, raider detection, and counter-intelligence capabilities. Embedded scouts benefit from the squadron's combined defensive strength during combat while maintaining their ELI detection capabilities.
+<!-- SCOUT_DETECTION_TABLE_START -->
 
-Per the Space Force table ([Section 10.1](reference.md#101-space-force-wep1)), Scouts have CC=1 (Command Cost) and CR=NA (Command Rating), meaning they can be commanded by other ships but cannot command ships themselves.
+Detection compares total effective ELI (including modifiers) against number of Scouts present:
 
-**⚠️ Espionage Tactical Note:** For covert operations, players may order scouts from existing fleets to conduct spy operations. The spy scouts will auto-detach from the existing combat fleet and proceed autonomously to execute mission orders. Note that spy scout squadrons may not contain other ship classes. Stack spy scout squadrons to increase their effective ELI mesh network defence, as described below. 
+| Defender ELI | 1 Scout | 2 Scouts | 3+ Scouts |
+|:------------:|:-------:|:--------:|:---------:|
+| ELI 1        | 1-2     | 1-3      | 1-4       |
+| ELI 2        | 1-3     | 1-4      | 1-5       |
+| ELI 3        | 1-4     | 1-6      | 1-8       |
+| ELI 4        | 1-6     | 1-8      | 1-10      |
+| ELI 5        | 1-8     | 1-10     | 1-12      |
 
-**Spy Scout Detection:**
+*Table shows detection threshold on 1D20. Roll equal or higher to detect.*
 
-Scouts and Starbases are responsible for detecting rival Scouts performing espionage activities. The effectiveness of detection is influenced by the composition of the detecting units(s), which may include mixed ELI levels.
+<!-- SCOUT_DETECTION_TABLE_END -->
 
-For every turn that a spy Scout operates in unfriendly system occupied by rival ELI, the rival will roll on the Spy Detection Table below to determine if the spy Scout is detected *by each* fleet or Starbase(s). If the Scout is detected, it is destroyed. Rival units must contain at least one Scout or Starbase to detect.
+**Mesh Network Effect**: Multiple Scouts in the same system improve detection resistance. The defender's effective ELI decreases as Scout count increases—Scout swarms are harder to detect than individual Scouts.
 
-**Step 1: Determine Effective ELI Level**
+**Starbase Modifier**: Starbases add +2 to effective ELI level for detection rolls, representing superior sensor arrays and dedicated detection systems.
 
-For a fleet with Scouts of different ELI tech levels:
+For ELI research progression, see [Section 4.8](economy.md#48-electronic-intelligence-eli).
 
-1. Calculate the Weighted Average:
-    - Sum the ELI tech levels of all Scouts in the fleet.
-    - Divide by the total number of Scouts.
-    - Round up to determine the initial effective ELI level.
-2. Apply Dominant Tech Level Penalty:
-    - If more than 50% of the Scouts are of a lower ELI tech level than the average (round up), reduce the effective ELI level by 1.
-3. Mesh Network Modifier:
-    - Multiple ELI Scouts form a mesh network, enhancing detection capabilities. Apply a modifier based on the number of Scouts from the table below:
+**Intelligence Gathering**:
 
-| Number of Scouts | Mesh Network Modifier |
-|:----------------:| --------------------- |
-| 1                | NA                    |
-| 2-3              | +1                    |
-| 4-5              | +2                    |
-| 6+               | +3 (maximum)          |
+Successfully undetected Scouts reveal:
 
-4. Final Effective ELI Level:
-    - Combine the effective ELI level with the tech penalty and mesh network modifier to determine the final effective ELI level for the detection roll. The max is ELI5.
+- Fleet composition and squadron organization
+- Colony defense strength (fighters, batteries, shields)
+- Industrial capacity (IU count)
+- Construction projects in progress
 
-**Starbases operate as independent ELI units and receive a +2 ELI modifier against spy scouts.**
-
-**Step 2: Randomized Detection Roll Process**
-
-1. Compare the final effective ELI level of the detecting fleet or Starbase with the ELI level of the spy Scouts.
-2. Determine the base detection range from the table below.
-
-**Spy Detection Table**
-
-<!-- SPY_DETECTION_TABLE_START -->
-| \*Detect -> | ELI1   | ELI2   | ELI3   | ELI4   | ELI5  |
-| -----------:|:------:|:------:|:------:|:------:|:-----:|
-| Spy ELI1    | >11-13 | >6-8 | >2-4 | >0-2 | >0-1 |
-| Spy ELI2    | >15-17 | >11-13 | >6-8 | >2-4 | >0-2 |
-| Spy ELI3    | >17-19 | >15-17 | >11-13 | >6-8 | >2-4 |
-| Spy ELI4    | >18-20 | >17-19 | >15-17 | >11-13 | >6-8 |
-| Spy ELI5    | NA     | >18-20 | >17-19 | >15-17 | >11-13 |
-
-*Source: config/espionage.toml [spy_detection_table] section*
-<!-- SPY_DETECTION_TABLE_END -->
-
-3. Random Threshold Determination:
-    - Roll 1D3 to randomly select a value within the range (e.g., for a range of >11-13, the roll could be 11, 12, or 13).
-    - This introduces slight variability to the detection roll, adding an element of unpredictability.
-4. Roll 1D20 for the detection attempt:
-    - If the roll meets or exceeds the chosen threshold, the spy Scout is detected.
+Detected Scouts are immediately destroyed.
 
 ### 2.4.3 Raiders
 
-The Raider (RR) is the most advanced ship in the arsenal, outfitted with cloaking technology. They are expensive to R&D and commission, but are a significant factor on the first round of space combat against enemy fleets where they gain a surprise or ambush advantage.
+Raiders are specialized covert warfare vessels equipped with advanced cloaking systems. They conduct sabotage, intelligence gathering, and disruptive operations deep behind enemy lines.
 
-Fleets that include Raiders are fully cloaked.
+**Cloaking Technology**:
 
-Crippled Raiders lose their cloaking ability until repaired.
+Raider stealth capability is determined by Cloaking (CLK) research level. Higher CLK tiers significantly reduce detection probability.
 
-**Raider Detection:**
+**Detection Mechanics**:
 
-Starbases and Scouts have a chance to counter against cloaked fleets. Within this context "units" refer to either fleets containing Scouts or Starbases.
+Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Raiders. Detection rolls compare the Raider's CLK level against the defender's ELI level.
 
-Before combat, every ELI enabled unit joining the battle space will detect for Raiders. The simplified pseudo-code looks like this:
-
-```
-for each eli_unit in player1_units:
-    for each clk_fleet in player2_fleets:
-            rogue = highest rated CLK in clk_fleet
-            eli_unit rolls for detection on rogue
-            if success then break
-    end
-end
-```
-
-**Step 1: Determine Effective ELI Level**
-
-Determine the effective ELI level following the same method from Step 1 in [Section 2.4.2](#242-scouts).
-
-**Starbase Detection Bonus**: If the detecting unit is a Starbase or includes a Starbase, add +2 to the final effective ELI level before consulting the detection table. This reflects the superior sensor arrays and dedicated detection systems installed on orbital fortresses.
-
-**Step 2: Determine Detection Threshold**
-
-Compare the final effective ELI level with the CLK level of the Raider unit:
-- If the ELI level is 2+ levels higher than the CLK level, use the lower bound detection threshold from the table below.
-- If the ELI level is equal to or only 1 level higher than the CLK level, introduce the Random Threshold Roll (1D3) to add unpredictability.
-- If the ELI level is lower than the CLK level, use the higher bound threshold, reflecting the difficulty of detection.
-
-**Detection Table (With Random Threshold Roll)**
+**Raider Detection Table**
 
 <!-- RAIDER_DETECTION_TABLE_START -->
-| Detect | CLK1   | CLK2   | CLK3   | CLK4   | CLK5   |
-| ------ |:------:|:------:|:------:|:------:|:------:|
-| ELI1   | >14-16 | >17-19 | NA     | NA     | NA     |
-| ELI2   | >10-12 | >14-16 | >17-19 | NA     | NA     |
-| ELI3   | >6-8   | >10-12 | >14-16 | >17-19 | NA     |
-| ELI4   | >3-5   | >6-8   | >10-12 | >14-16 | >17-19 |
-| ELI5   | >1-3   | >3-5   | >6-8   | >10-12 | >14-16 |
 
-*Source: config/espionage.toml [raider_detection_table] section*
+Detection compares Raider CLK vs. Defender ELI:
+
+| ELI \ CLK Advantage | >10-12 | 7-9 | 4-6 | 1-3 | Equal | -1 to -3 | -4 to -6 | -7 to -9 | <-10 to -12 |
+|:-------------------:|:------:|:---:|:---:|:---:|:-----:|:--------:|:--------:|:--------:|:-----------:|
+| **Detection Roll**  | 1D3    | 1D4 | 1D6 | 1D8 | 1D10  | 1D12     | 1D16     | 1D20     | Auto-Fail   |
+
+*Roll type determines detection threshold on 1D20. Example: 1D3 result is random number 1-3; if detection roll ≥ threshold, Raider is detected.*
+
 <!-- RAIDER_DETECTION_TABLE_END -->
 
-**Random Threshold Roll (1D3) Application**:
+**Starbase Modifier**: Starbases add +2 to effective ELI level for detection rolls against Raiders.
 
-1. If the detection scenario uses a range (e.g., >10-12), roll 1D3 to determine the exact threshold value within the range.
-    - For example, if the range is >10-12, roll 1D3:
-    - Result 1: Threshold is 10
-    - Result 2: Threshold is 11
-    - Result 3: Threshold is 12
-2. This random element only applies when the ELI level is equal to or one level higher than the CLK level, introducing variability in uncertain detection scenarios.
-
-**Step 3: Make the Detection Roll**
-
-1. Roll 1D20 for the detection attempt.
-2. If the roll meets or exceeds the chosen threshold (from the fixed value or random roll), the Raider is detected.
-3. If the roll is below the threshold, the Raider remains undetected and retains its stealth.
-
-**Example 1: High-Tech ELI Fleet Detecting a Low-Tech Raider**
+**Example Detection Scenario**:
 
 ```
-Detecting Fleet:
-  3 Scouts with ELI5
-
-Final Effective ELI Level: ELI5 (after applying mesh network and no penalties)
+Defender Colony:
+  ELI 3
+  2 operational Starbases
+  Starbase Modifier: +2
+  Total Effective ELI: ELI 3 + 2 = ELI 5
 
 Raider:
-CLK2
+  CLK 4
 
-Comparison: ELI5 vs. CLK2
-Detection Threshold: From the table, the fixed threshold is >3-5.
-Random Roll Not Applied (since ELI5 is significantly higher).
-Detection Roll (1D20): If the roll is 3 or higher, the Raider is detected.
+ELI Advantage: ELI 5 - CLK 4 = +1
+Detection Threshold: From table, use 1-3 range, so roll 1D8
+Random Threshold Roll (1D8): Result is 5
+Detection Roll (1D20): If the roll is 5 or higher, the Raider is detected
 ```
 
-**Example 2: Uncertain Detection Scenario with Random Threshold Roll**
+For CLK research progression, see [Section 4.7](economy.md#47-cloaking-clk). For ELI research, see [Section 4.8](economy.md#48-electronic-intelligence-eli).
 
-```
-Detecting Fleet:
-  1 Scout with ELI3
-  1 Scout with ELI4
+**Mission Capabilities**:
 
-Total Tech Levels: 3 + 4 = 7
-Number of Scouts: 2
-Weighted Average: 7 / 2 = 3.5 (Round up) → ELI4
-Mesh Network Modifier: +1 (2 Scouts)
-Final Effective ELI Level: ELI4 + 1 = ELI5
+Successfully undetected Raiders can:
 
-Raider:
-  CLK4
+- **Sabotage**: Destroy Industrial Units, reducing GCO
+- **Infrastructure Damage**: Target spaceports, shipyards, or starbases
+- **Intelligence**: Reveal detailed colony information beyond Scout capability
+- **Assassination**: Eliminate colony governors or military commanders (advanced missions)
 
-Comparison: ELI5 vs. CLK4
-Detection Threshold: From the table, use >10-12.
-Random Threshold Roll (1D3): Result is 2, so the threshold is 11.
-Detection Roll (1D20): If the roll is 11 or higher, the Raider is detected.
-```
+Detected Raiders are immediately destroyed.
+
+**Strategic Considerations**:
+
+Raiders are expensive, fragile, and require sustained CLK investment to remain effective. However, they create asymmetric advantages—a single successful Raider mission can cripple an enemy industrial world, potentially shifting strategic balance. The CLK vs. ELI arms race becomes critical in peer conflicts.
 
 ### 2.4.4 Starbases
 
 Starbases (SB) are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
-Starbases require three months (three turns) to construct and require a shipyard. They remain in orbit and do not move out of their home solar systems.
+**Construction**:
 
-**Detection Capabilities:**
+**Cost**: Varies by WEP level (see [Section 10.0](reference.md#100-unit-reference-tables))  
+**Construction Time**: 3 turns  
+**Prerequisite**: Requires operational Shipyard  
+**Mobility**: Fixed in orbit, cannot move out of home system
 
-Units are equipped with ELI to counter spy Scouts and Raiders. Refer to the Spy Detection Table in [Section 2.4.2](#242-scouts) and Raider Detection Table in [Section 2.4.3](#243-raiders) respectively.
+**Detection Capabilities**:
+
+Starbases are equipped with ELI to counter spy Scouts and Raiders. Refer to the Scout Detection Table in [Section 2.4.2](#242-scouts) and Raider Detection Table in [Section 2.4.3](#243-raiders) respectively.
 
 Starbases receive a **+2 ELI modifier** for all detection rolls, reflecting their superior sensor arrays and dedicated detection systems.
 
-**Combat Participation:**
+**Combat Participation**:
 
 Starbases participate in detection for ALL combat phases occurring in their system:
-- **Space Combat** (operations.md:7.3): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
-- **Orbital Combat** (operations.md:7.4): Starbases detect AND fight as primary orbital defenders
-- **Rationale**: Advanced sensors provide system-wide detection support; physical weapons only engage threats to the colony itself
 
-**Economic Benefits:**
+- **Space Combat** ([Section 7.3](operations.md#73-space-combat)): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
+- **Orbital Combat** ([Section 7.4](operations.md#74-orbital-combat)): Starbases detect AND fight as primary orbital defenders
+
+**Rationale**: Advanced sensors provide system-wide detection support; physical weapons only engage threats to your colony itself.
+
+**Economic Benefits**:
 
 Starbases boost both **population growth rate** and **industrial production output** by 5% per operational starbase, with each benefit capped at 15% maximum (three starbases).
 
-**Population Growth Bonus:**
+**Population Growth Bonus**:
+
 - +5% per operational starbase, max +15% (3 starbases)
 - Example: Natural birthrate 2% → With 3 starbases: 2% × (1 + 0.15) = 2.3%
+- Applied in population growth formula in [Section 3.5](economy.md#35-population-growth)
 
-**Industrial Production Bonus:**
+**Industrial Production Bonus**:
+
 - +5% per operational starbase, max +15% (3 starbases)
 - Applied to IU component of GCO formula: `IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH + STARBASE_BONUS)`
 - Example: 100 IU base output → With 3 starbases: 100 × (1 + 0.15) = 115 output
+- See [Section 3.1](economy.md#31-principles) for complete GCO formula
 
-Crippled starbases do not yield benefits until they are repaired.
+**Fighter Squadron Infrastructure**:
+
+- Required for fighter squadron operations: 1 Starbase per 5 FS
+- See [Section 3.6](economy.md#36-fighter-squadron-economics) for fighter capacity rules
+
+**Repair**:
+
+Crippled starbases yield no benefits until you repair them. Repair costs 25% of original PP cost, requires 1 turn at a Shipyard. See [Section 5.5](economy.md#55-orbital-repair).
+
+Crippled starbases don't count toward fighter squadron infrastructure requirements—you must repair or build additional starbases to maintain full FS capacity.
 
 ### 2.4.7 Planetary Shields & Ground Batteries
 
 Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that provide an extra layer of defense to a player's colonies.
 
-Planetary Shields protect your colonies from orbital bombardment. With increasing SLD levels they have a higher probability of absorbing direct hits, and also become more powerful.
+**Planetary Shields**:
 
-Upgrading a Planetary Shield to a new SLD level requires salvaging the old shield and replacing it with a new one. A Planet shall not have more than one shield, and shields can be rebuilt within one turn.
+Planetary Shields protect your colonies from orbital bombardment. With increasing Shield (SLD) levels, they have a higher probability of absorbing direct hits and become more powerful.
 
-Ground Batteries are static defense units positioned on the planet’s surface. They serve as a deterrent against enemy fleets and support planetary defense during bombardment and invasion. They lob kinetic shells into orbit and are not upgraded by technology and research.
+**Construction**: Requires SLD research (see [Section 4.4](economy.md#44-shields-sld))  
+**Cost**: Varies by SLD level  
+**Limit**: One shield per colony  
+**Upgrading**: Requires salvaging old shield (50% refund) and building new shield at higher SLD tier
 
-Ground Batteries are the only units that are constructed in the span of a single turn, and colonies can build them to no limit.
+For SLD research progression, absorption percentages, and shield DS values, see [Section 4.4](economy.md#44-shields-sld).
+
+You can rebuild shields within one turn if destroyed.
+
+**Ground Batteries**:
+
+Ground Batteries are static defense units positioned on your planet's surface. They serve as a deterrent against enemy fleets and support planetary defense during bombardment and invasion. They lob kinetic shells into orbit—technology and research don't upgrade them.
+
+**Construction Time**: 1 turn  
+**Quantity Limit**: No limit—you can build as many as you can afford  
+**Technology**: Static stats, no WEP scaling
+
+Ground Batteries are the only units that construct in a single turn.
+
+For bombardment mechanics and how shields/batteries interact, see [Section 7.5](operations.md#75-planetary-bombardment).
 
 ### 2.4.8 Planet-Breaker
 
-Planet-Breakers (PB) are high-technology, late-game siege superweapons designed to shatter even the most heavily fortified colonies. These colossal warships mount weapons that completely bypass conventional planetary shield matrices, making them the ultimate answer to defensive stalemates.
+Planet-Breakers (PB) are high-technology, late-game siege superweapons designed to shatter even the most heavily fortified colonies. These colossal warships mount weapons that completely bypass conventional planetary shield matrices—the ultimate answer to defensive stalemates.
 
-**Technology & Construction Requirement**  
-Planet-Breakers require a CST 10 shipyard and 400 PP to construct. No additional research is required beyond the shipyard tech itself.
+**Technology & Construction Requirement**:
 
-**Ownership Limit**  
-A House may construct and operate **no more than one Planet-Breaker per currently owned colony** (the homeworld counts as one colony).  
-If a colony is lost (conquered, abandoned, or destroyed), any Planet-Breaker assigned to it is immediately and permanently scrapped with no salvage value.
+**Prerequisite**: CST 10 (see [Section 4.5](economy.md#45-construction-cst))  
+**Construction Cost**: 400 PP  
+**Construction Time**: 1 turn  
+**Construction Location**: Requires Shipyard
 
-**Shield Penetration Mechanics**  
+No additional research is required beyond the shipyard tech itself.
+
+**Ownership Limit**:
+
+You may construct and operate **no more than one Planet-Breaker per currently owned colony** (your homeworld counts as one colony).
+
+If you lose a colony (conquered, abandoned, or destroyed), any Planet-Breaker assigned to it is immediately and permanently scrapped with no salvage value.
+
+**Shield Penetration Mechanics**:
+
 Planet-Breakers completely ignore planetary shields during bombardment (SLD 1–6 offer no protection). Their firepower is applied directly to ground batteries and other surface targets.
 
-**Bombardment Operations**  
-During planetary bombardment (Section 7.5):
-- Resolve Planet-Breaker AS separately from conventional ships.
-- Planet-Breaker hits bypass shields entirely and strike ground batteries directly.
-- Conventional ships in the same Task Force are still subject to normal shield rolls.
+**Bombardment Operations**:
 
-**Space Combat**  
+During planetary bombardment ([Section 7.5](operations.md#75-planetary-bombardment)):
+
+- Resolve Planet-Breaker AS separately from conventional ships
+- Planet-Breaker hits bypass shields entirely and strike ground batteries directly
+- Conventional ships in the same Task Force are still subject to normal shield rolls
+
+**Space Combat**:
+
 Planet-Breakers use their normal combat statistics (AS 50, DS 20) in fleet battles. They are fragile for their cost and require strong escorts.
 
-**Strategic Considerations**  
-Planet-Breakers force defenders into a classic dilemma: invest in shields (useless vs. PBs) or mass ground batteries (effective vs. everything). They are the ultimate prize of late-game conquest and terraforming — the larger your empire, the more of these terrifying weapons you can field.
+**Strategic Considerations**:
 
-**Defensive Counters**
-- Destroy them in space before they reach orbit.
-- Focus fire — crippled Planet-Breakers lose their bombardment advantage and become priority targets (×2 weight when crippled).
-- Conquer the enemy’s core worlds to permanently strip their PB count.
+Planet-Breakers force defenders into a classic dilemma: invest in shields (useless vs. PBs) or mass ground batteries (effective vs. everything). They are the ultimate prize of late-game conquest and terraforming—the larger your empire, the more of these terrifying weapons you can field.
+
+**Defensive Counters**:
+
+- Destroy them in space before they reach orbit
+- Focus fire—crippled Planet-Breakers lose their bombardment advantage and become priority targets (×2 weight when crippled)
+- Conquer the enemy's core worlds to permanently strip their PB count
 
 ### 2.4.9 Space Marines & Armies
 
-Space Marines are ferocious devil dogs that capture rival planets. They deploy in division sized units (MD) and will never surrender or abandon one of their own.
+Space Marines are ferocious devil dogs that capture rival planets. They deploy in division sized units (MD) and never surrender or abandon one of their own.
 
-Marines are dropped on rival planets by troop transports during an invasion or blitz.
+You drop Marines on rival planets by troop transports during an invasion or blitz.
 
-Armies (AA) garrison your colonies and eradicate invaders. Their orders are to take no prisoners and protect the colony at all cost.
+Armies (AA) garrison your colonies and eradicate invaders. Their orders are to take no prisoners and protect your colony at all cost.
 
-Marines fight alongside the Army if garrisoned planet-side.
+Marines fight alongside your Army if garrisoned planet-side.
+
+For ground combat mechanics, see [Section 7.6](operations.md#76-ground-combat).
 
 ## 2.5 Space Guilds
 
-A vast decentralized network of trade, commerce, transport, industry, tech, and mining activities occur between and within House colonies, facilitated by the Space Guilds. Most of this activity is abstracted away and occurs in the background of EC4X's strategic focus. Guild ships stealthily ply the jump lanes between colonies without interaction or communication with military assets.
+A vast decentralized network of trade, commerce, transport, industry, tech, and mining activities occur between and within your House colonies, facilitated by the Space Guilds. Most of this activity is abstracted away and occurs in the background of EC4X's strategic focus. Guild ships stealthily ply the jump lanes between colonies without interaction or communication with your military assets.
 
 Numerous Space Guilds compete for business in unregulated, private capital markets. The Space Guilds are neutral non-player-characters (NPC) with zero loyalty to any House.
 
-The Guilds are contracted to provide various critical services to the House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price. They will not freely leak intelligence.
+You contract the Guilds to provide various critical services to your House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price. They will not freely leak intelligence.
 
 ### 2.5.1 Capital Ship Salvage Operations
 
 When a Great House loses industrial capacity and can no longer support its capital fleet, the Space Guilds step in to claim excess warships. The Guilds pay 50% of the original build cost in immediate currency, then refurbish and resell these vessels on the open market for profit.
 
 **Capacity Formula**: Each house can maintain `max(8, floor(Total_House_IU ÷ 100) × 2)` capital squadrons. Capital ships are defined as vessels with Command Rating (CR) ≥ 7.
+
+For detailed capacity rules and economic implications, see [Section 4.11](economy.md#411-capital-ship-capacity).
 
 **Enforcement**: When a house exceeds its capital squadron capacity (typically due to IU loss from colony damage, blockades, or territory loss), excess squadrons are immediately claimed by the Space Guilds. Priority for removal:
 
@@ -647,10 +484,11 @@ When a Great House loses industrial capacity and can no longer support its capit
 The house receives 50% of each ship's original build cost as salvage payment, credited to the house treasury.
 
 **Strategic Implications**:
-- Houses must maintain industrial capacity to support large fleets
+
+- You must maintain industrial capacity to support large fleets
 - Losing colonies means losing fleet capacity
 - Salvage payments soften the blow but don't fully compensate for ship loss
 - Crippled ships are vulnerable to involuntary salvage
-- Players should repair crippled flagships quickly to avoid losing them
+- Repair your crippled flagships quickly to avoid losing them
 
 **Reference**: See [Table 10.5](reference.md#105-game-limits-summary) for complete squadron limit details.

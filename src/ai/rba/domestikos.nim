@@ -16,6 +16,7 @@ import ../../common/types/core
 import ../../engine/[gamestate, fog_of_war, fleet, order_types, standing_orders, logger]
 import ../common/types as ai_types  # For GameAct
 import ./controller_types
+import ./shared/intelligence_types  # For IntelligenceSnapshot
 import ./config
 
 # Core types for Domestikos module

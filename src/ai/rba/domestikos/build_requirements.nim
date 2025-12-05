@@ -16,10 +16,13 @@ import std/[options, tables, sequtils, algorithm, strformat]
 import ../../../common/types/[core, units]
 import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron, spacelift]
 import ../../../engine/economy/config_accessors  # For centralized cost accessors
+import ../../../engine/intelligence/types as intel_types  # For CombatOutcome
 import ../../common/types as ai_common_types  # For BuildObjective
 import ../controller_types  # For BuildRequirements types
+import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../config
 import ./fleet_analysis
+import ./intelligence_ops  # Extracted: estimateLocalThreat
 
 # FleetAnalysis and FleetUtilization types now imported from ./fleet_analysis directly
 
@@ -138,34 +141,7 @@ proc calculateColonyDefensePriority(
 
   return priority
 
-proc estimateLocalThreat(
-  systemId: SystemId,
-  filtered: FilteredGameState,
-  controller: AIController
-): float =
-  ## Estimate threat level at a system (0.0-1.0)
-  ## Checks for enemy fleets within threat_assessment_radius
-  result = 0.0
-
-  let config = globalRBAConfig.domestikos
-  let radius = config.threat_assessment_radius
-
-  # Check intelligence database for enemy fleets nearby
-  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
-    if history.owner == controller.houseId:
-      continue  # Skip own fleets
-
-    # Calculate distance to threat
-    let pathResult = filtered.starMap.findPath(systemId, history.lastKnownLocation, Fleet())
-    if pathResult.found:
-      let distance = pathResult.path.len
-      if distance <= radius:
-        # Threat decreases with distance
-        let threatContribution = 1.0 - (distance.float / radius.float)
-        result += threatContribution * 0.3  # Each nearby enemy fleet adds threat
-
-  # Cap at 1.0
-  result = min(result, 1.0)
+# estimateLocalThreat extracted to intelligence_ops.nim for file size management
 
 proc findNearestAvailableDefender(
   targetSystem: SystemId,
@@ -304,9 +280,11 @@ proc assessDefenseGaps*(
   analyses: seq[FleetAnalysis],
   defensiveAssignments: Table[FleetId, StandingOrder],
   controller: AIController,
-  currentAct: GameAct
+  currentAct: GameAct,
+  intelSnapshot: IntelligenceSnapshot
 ): seq[DefenseGap] =
   ## Identify defense gaps with severity scoring
+  ## Phase B+: Uses IntelligenceSnapshot for enhanced threat assessment
   result = @[]
 
   for colony in filtered.ownColonies:
@@ -318,9 +296,9 @@ proc assessDefenseGaps*(
       colony, controller, filtered.starMap
     )
 
-    # Estimate local threat
-    let threat = estimateLocalThreat(
-      colony.systemId, filtered, controller
+    # Estimate local threat using enhanced intelligence (Phase B+)
+    let threat = estimateLocalThreatFromIntel(
+      colony.systemId, intelSnapshot
     )
 
     # Find nearest available defender
@@ -804,17 +782,94 @@ proc assessStrategicAssets*(
         result.add(req)
 
 # =============================================================================
+# Combat Lessons Integration (Phase C)
+# =============================================================================
+
+proc selectShipClassFromCombatLessons(
+  combatLessons: seq[intelligence_types.TacticalLesson],
+  threatHouse: Option[HouseId],
+  fallbackClass: ShipClass
+): ShipClass =
+  ## Select ship class based on combat lessons learned against specific enemy
+  ## Returns ship types that have proven effective in actual combat
+
+  if combatLessons.len == 0 or threatHouse.isNone:
+    return fallbackClass
+
+  # Find lessons against this specific enemy house
+  var relevantLessons: seq[intelligence_types.TacticalLesson] = @[]
+  for lesson in combatLessons:
+    if lesson.enemyHouse == threatHouse.get():
+      relevantLessons.add(lesson)
+
+  if relevantLessons.len == 0:
+    return fallbackClass
+
+  # Count effectiveness of each ship class against this enemy
+  var effectivenessScores = initTable[ShipClass, int]()
+
+  for lesson in relevantLessons:
+    # Weight recent lessons more heavily (lessons from last 20 turns)
+    let recencyWeight = if lesson.turn > 0: 1 else: 1  # Placeholder for turn weighting
+
+    # Successful outcomes: boost effective ship types
+    case lesson.outcome:
+    of intel_types.CombatOutcome.Victory, intel_types.CombatOutcome.MutualRetreat:
+      for shipClass in lesson.effectiveShipTypes:
+        effectivenessScores[shipClass] = effectivenessScores.getOrDefault(shipClass, 0) + (2 * recencyWeight)
+    of intel_types.CombatOutcome.Defeat, intel_types.CombatOutcome.Retreat:
+      # Failed outcomes: penalize ineffective ship types
+      for shipClass in lesson.ineffectiveShipTypes:
+        effectivenessScores[shipClass] = effectivenessScores.getOrDefault(shipClass, 0) - (1 * recencyWeight)
+    of intel_types.CombatOutcome.Ongoing:
+      # Ongoing combat - no clear lesson yet, skip
+      discard
+
+  # Find ship class with highest effectiveness score
+  var bestClass = fallbackClass
+  var bestScore = -999
+
+  for shipClass, score in effectivenessScores:
+    if score > bestScore and shipClass in {ShipClass.Destroyer, ShipClass.Cruiser, ShipClass.Battlecruiser, ShipClass.Battleship}:
+      bestScore = score
+      bestClass = shipClass
+
+  # Only use learned ship class if score is positive (proven effective)
+  if bestScore > 0:
+    return bestClass
+  else:
+    return fallbackClass
+
+# =============================================================================
 # Requirement Generation
 # =============================================================================
 
 proc createDefenseRequirement(
   gap: DefenseGap,
-  filtered: FilteredGameState
+  filtered: FilteredGameState,
+  combatLessons: seq[intelligence_types.TacticalLesson] = @[]
 ): BuildRequirement =
   ## Convert a defense gap into a build requirement
-  let shipClass = ShipClass.Destroyer  # Default defender
+  ## Now uses combat lessons to select effective ship types
+
+  # Identify threatening enemy house from fleet movement history
+  var threatHouse: Option[HouseId] = none(HouseId)
+  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
+    if history.lastKnownLocation == gap.colonySystemId and history.owner != filtered.ownHouse.id:
+      threatHouse = some(history.owner)
+      break
+
+  # Select ship class based on combat lessons (if available)
+  let defaultClass = ShipClass.Destroyer
+  let shipClass = selectShipClassFromCombatLessons(combatLessons, threatHouse, defaultClass)
+
   let shipStats = getShipStats(shipClass)  # Get stats from config/ships.toml
   let shipCost = shipStats.buildCost
+
+  let reasonSuffix = if shipClass != defaultClass and threatHouse.isSome:
+    &" [Combat lesson: {shipClass} effective vs {threatHouse.get()}]"
+  else:
+    ""
 
   result = BuildRequirement(
     requirementType: RequirementType.DefenseGap,
@@ -824,7 +879,7 @@ proc createDefenseRequirement(
     buildObjective: BuildObjective.Defense,
     targetSystem: some(gap.colonySystemId),
     estimatedCost: shipCost * (gap.recommendedDefenders - gap.currentDefenders),
-    reason: &"Defense gap at system {gap.colonySystemId} (priority={gap.colonyPriority:.1f}, threat={gap.estimatedThreat:.2f})"
+    reason: &"Defense gap at system {gap.colonySystemId} (priority={gap.colonyPriority:.1f}, threat={gap.estimatedThreat:.2f})" & reasonSuffix
   )
 
 proc generateBuildRequirements*(
@@ -841,16 +896,23 @@ proc generateBuildRequirements*(
   logDebug(LogCategory.lcAI,
            &"{controller.houseId} Domestikos: Generating build requirements (Act={currentAct})")
 
-  # Assess gaps (personality-driven)
-  let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct)
+  # Assess gaps (personality-driven, intelligence-informed)
+  let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct, intelSnapshot)
   let strategicAssets = assessStrategicAssets(filtered, controller, currentAct)
+
+  # Extract combat lessons from intelligence snapshot
+  let combatLessons = intelSnapshot.military.combatLessonsLearned
+
+  if combatLessons.len > 0:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Domestikos: Using {combatLessons.len} combat lessons for ship selection")
 
   # Convert gaps to build requirements
   var requirements: seq[BuildRequirement] = @[]
 
-  # Defense requirements
+  # Defense requirements (now combat-lesson-aware)
   for gap in defenseGaps:
-    let req = createDefenseRequirement(gap, filtered)
+    let req = createDefenseRequirement(gap, filtered, combatLessons)
     if req.quantity > 0:  # Only add if we actually need ships
       requirements.add(req)
 

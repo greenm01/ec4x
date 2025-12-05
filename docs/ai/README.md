@@ -1,19 +1,54 @@
 # AI System Documentation
 
-**Last Updated:** 2025-12-04
-**Current Status:** GOAP + RBA Hybrid System Complete, Performance Investigation Needed
+**Last Updated:** 2025-12-05
+**Current Status:** Intelligence Integration Phase C Complete, GOAP + RBA Hybrid Operational
 
 ## Overview
 
 EC4X features a hybrid AI architecture combining:
 - **GOAP (Goal-Oriented Action Planning)** - Strategic multi-turn planning (3-10 turns ahead)
-- **RBA (Rule-Based Advisors)** - Tactical single-turn execution
+- **RBA (Rule-Based Advisors)** - Tactical single-turn execution with intelligence-driven adaptation
+- **Intelligence System** - Centralized intelligence processing from 5 engine report types
 
-This hybrid system provides Byzantine Imperial AI with strategic foresight, adaptive replanning, and budget-aware decision making across 6 domains (Fleet, Build, Research, Diplomatic, Espionage, Economic).
+This hybrid system provides Byzantine Imperial AI with strategic foresight, adaptive replanning, combat learning, and intelligence-driven decision making across 6 domains (Fleet, Build, Research, Diplomatic, Espionage, Economic).
 
 ---
 
 ## 🆕 Recent Changes (December 2025)
+
+### Intelligence Integration Phase C Complete ✅
+**Date:** 2025-12-05
+**Status:** Production-ready, ~70% intelligence utilization
+
+**Implementation:**
+- Starbase intelligence analyzer (~155 LOC) - Tech gap detection and economic assessment
+- Combat intelligence analyzer (~205 LOC) - Tactical lessons from combat encounters
+- Tech gap priority system - Critical/High priority research needs
+- Logothete integration - Intelligence-driven research allocation
+- Domestikos combat learning - Ship type selection based on proven effectiveness
+
+**Key Features:**
+- **Tech Gap Analysis:** Identifies critical tech disadvantages (3+ levels behind enemies)
+- **Combat Learning:** AI learns which ship types work against specific enemies
+- **Adaptive Research:** Logothete boosts tech gaps (10% budget for Critical, 5% for High)
+- **Combat-Informed Build:** Domestikos selects proven ship types vs known threats
+
+**Intelligence Utilization Progress:**
+- Phase A (Baseline): ~5% utilization
+- Phase B (Colony + System): ~40% utilization
+- Phase C (Starbase + Combat): ~70% utilization ✅
+- Phase D (Surveillance + Full Integration): Target >80%
+
+**Processed Report Types:**
+1. ✅ ColonyIntelReport → Vulnerability & high-value targets (Phase B)
+2. ✅ SystemIntelReport → Enemy fleet tracking (Phase B)
+3. ✅ StarbaseIntelReport → Tech gaps & economy (Phase C)
+4. ✅ CombatEncounterReport → Tactical lessons (Phase C)
+5. ⏳ StarbaseSurveillanceReport → Surveillance gaps (Phase D)
+
+**See:** `analysis/intelligence-phase-c-complete.md` for implementation details
+
+---
 
 ### GOAP + RBA Hybrid System Complete ✅
 **Date:** 2025-12-04

@@ -2,18 +2,18 @@
 
 ## 8.1 Diplomacy
 
-In EC4X, diplomacy includes enemy, hostile, neutral, and ally classifications. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy can play a pivotal role alongside the sword. Your primary directive remains to decisively manage your adversaries, leveraging both military might and diplomatic cunning.
+In EC4X, diplomacy includes enemy, hostile, neutral, and ally classifications. As House Duke, your mandate is to lead your House to victory by strategic means, where diplomacy plays a pivotal role alongside the sword. Your primary directive remains decisively managing your adversaries, leveraging both military might and diplomatic cunning.
 
 TODO: provide a table of the four diplomatic states. Show automatic triggers and distinguish between intentional diplomatic actions. Provide an explanation of the treaty system.
 
 ### 8.1.1 Allies
 
-Houses can enter into formal or informal agreements to not attack each other, allowing for cooperation or at least a mutual stance of non-hostility.
+You can enter into formal or informal agreements with other Houses to not attack each other, allowing for cooperation or at least a mutual stance of non-hostility.
 
 This can include:
 - Joint Military Operations: Against common threats or for mutual defense without direct conflict between the signing parties.
-- Territorial Recognition: Agreements to respect each others territories.
-- Strategic Flexibility: While not allies, Houses in a non-aggression pact can share intelligence, coordinate against mutual enemies.
+- Territorial Recognition: Agreements to respect each other's territories.
+- Strategic Flexibility: While not allies, Houses in a non-aggression pact can share intelligence and coordinate against mutual enemies.
 
 **Violation Consequences:**
 
@@ -30,7 +30,7 @@ Alliance Pacts cannot be reinstated between the same houses for 5 turns after vi
 
 ### 8.1.2 Neutral
 
-Fleets are instructed to avoid initiating hostilities with the designated neutral House outside of the player's controlled territory. This status allows for coexistence in neutral or contested spaces without immediate aggression.
+Your fleets are instructed to avoid initiating hostilities with the designated neutral House outside of your controlled territory. This status allows for coexistence in neutral or contested spaces without immediate aggression.
 
 ### 8.1.3 Hostile
 
@@ -38,42 +38,42 @@ Combat engangements in deep space trigger hostile status between houses.
 
 ### 8.1.4 Enemy
 
-Fleets are commanded to engage with the forces of the declared enemy House at every opportunity, both within and outside controlled territories.
+Your fleets are commanded to engage with the forces of the declared enemy House at every opportunity, both within and outside controlled territories.
 
 This state leads to full-scale warfare where all encounters are treated as hostile, pushing for direct and aggressive confrontations.
 
 ### 8.1.5 Defense Protocol
 
-Regardless of diplomatic status, all units will defend house colonies against any foreign incursions with maximum aggression.
+Regardless of diplomatic status, all your units will defend your House colonies against any foreign incursions with maximum aggression.
 
-Fleets will retaliate against direct colony attacks regardless of diplomatic state, in accordance with ROE.
+Your fleets will retaliate against direct colony attacks regardless of diplomatic state, in accordance with ROE.
 
 ### 8.1.6 Territorial Control
 
-A house controls territory in systems containing its colony. Each system can contain only one colony per the colonization rules in [Section 6.2.13](operations.md#6213-colonize-a-planet-12).
+Your house controls territory in systems containing your colony. Each system can contain only one colony per the colonization rules in [Section 6.2.13](operations.md#6213-colonize-a-planet-12).
 
 **Territory Classifications:**
 
-- **Controlled Territory**: Systems containing the house's colony
+- **Controlled Territory**: Systems containing your house's colony
 - **Foreign Territory**: Systems containing another house's colony
 - **Neutral Space**: Systems without any colonies
 
 **Diplomatic Application:**
 
-Neutral diplomatic status (Section 8.1.1) governs behavior outside controlled territory. Within controlled territory, houses may engage neutral forces per Defense Protocol (Section 8.1.4). Enemy status (Section 8.1.3) applies in all territories regardless of location.
+Neutral diplomatic status (Section 8.1.2) governs behavior outside your controlled territory. Within your controlled territory, you may engage neutral forces per Defense Protocol (Section 8.1.5). Enemy status (Section 8.1.4) applies in all territories regardless of location.
 
 ## 8.2 Subversion & Subterfuge
 
-The Space Guilds are key players in the clandestine world of diplomacy and espionage. They dominate trade, technology sharing, and offer covert operations, wielding influence through subterfuge and strategic manipulation. While their partnerships can significantly enhance a House's capabilities, the Space Guilds remain neutral, their loyalties bought by the highest bidder or the most strategic offer.
+The Space Guilds are key players in the clandestine world of diplomacy and espionage. They dominate trade, technology sharing, and offer covert operations, wielding influence through subterfuge and strategic manipulation. While their partnerships can significantly enhance your House's capabilities, the Space Guilds remain neutral—their loyalties bought by the highest bidder or the most strategic offer.
 
-Players can allocate Espionage Budget points (EBPs) towards various espionage actions every turn.
+You can allocate Espionage Budget points (EBPs) toward various espionage actions every turn.
 
 EBP points **cost 40 PP each**.
 
-If a player invests more than 5% of their turn budget into EBP they lose Prestige points.
+If you invest more than 5% of your turn budget into EBP, you lose Prestige points.
 
 - Investments > 5% lose 1 Prestige point for each additional 1% invested over 5%.
-- Example: If a player's turn budget is 100 points, and they invest 7 points in EBP, they lose 2 Prestige points.
+- Example: If your turn budget is 100 points and you invest 7 points in EBP, you lose 2 Prestige points.
 
 **Restrictions**:
 
@@ -98,7 +98,7 @@ If a player invests more than 5% of their turn budget into EBP they lose Prestig
 
 ### **8.2.1 Espionage Mechanics**
 
-Espionage actions allow players to disrupt their rivals' operations and gain tactical advantages through covert maneuvers. Below is a detailed overview of each available action, including its effects and thematic narrative.
+Espionage actions allow you to disrupt your rivals' operations and gain tactical advantages through covert maneuvers. Below is a detailed overview of each available action, including its effects and thematic narrative.
 
 | Espionage Action              | Effect                                                     |
 | ----------------------------- | ---------------------------------------------------------- |
@@ -165,16 +165,16 @@ The mission of the Counter Intelligence Command (CIC) is to safeguard the House'
 
 **CIC Investment**:
 
-Players can allocate a portion of their turn budget into Counter Intelligence Points (CIP).
+You can allocate a portion of your turn budget into Counter Intelligence Points (CIP).
 
 - CIP points cost **40 PP each**.
-- Each detection attempt (roll) costs **1 CIP point**. If a House has no CIP points, espionage attempts automatically succeed.
-- When an espionage event occurs, a **detection modifier** is applied based on the player's total CIP points.
+- Each detection attempt (roll) costs **1 CIP point**. If your House has no CIP points, espionage attempts automatically succeed.
+- When an espionage event occurs, a **detection modifier** is applied based on your total CIP points.
 
-If a player invests more than 5% of their turn budget into CIP they lose Prestige points.
+If you invest more than 5% of your turn budget into CIP, you lose Prestige points.
 
 - Investments > 5% lose 1 Prestige point for each additional 1% invested over 5%.
-- Example: If a player's turn budget is 100 points, and they invest 7 points in CIP, they lose 2 Prestige points.
+- Example: If your turn budget is 100 points and you invest 7 points in CIP, you lose 2 Prestige points.
 
 ### Detection Modifier:
 
@@ -209,7 +209,7 @@ The modifier is determined based on the total **CIP points** held by the player 
 
 **Example**:
 
-1. A player with **CIC3** and **8 CIP points** faces an espionage event.
+1. You have **CIC3** and **8 CIP points** when facing an espionage event.
 2. The game deducts **1 CIP point** for the detection roll and applies a +2 modifier (based on having 6-10 CIP points).
 3. The detection roll threshold for CIC3 is **10+**. With the +2 modifier, the roll only needs to meet or exceed **8**.
 4. The roll result is **8**, so the espionage attempt is successfully detected.

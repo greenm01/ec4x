@@ -22,7 +22,7 @@ Visual intelligence has natural limitations. Your captains cannot assess technol
 
 ### 9.1.3 Spy Operations (Spy Quality)
 
-Scout squadrons conducting espionage missions (SpyOnPlanet, SpyOnSystem, HackStarbase) penetrate deeper than visual observation. These covert operations provide economic intelligence, construction queue details, and technological assessments that visual sightings cannot reveal.
+Your scout squadrons conducting espionage missions (SpyOnPlanet, SpyOnSystem, HackStarbase) penetrate deeper than visual observation. These covert operations provide economic intelligence, construction queue details, and technological assessments that visual sightings cannot reveal.
 
 Planet surveillance exposes colony population, industrial capacity, defensive installations, and most critically, economic output and tax revenue. You learn what the colony produces and how much flows to the enemy treasury. System reconnaissance reveals full fleet dispositions including tech levels, hull integrity, and cargo manifests. Starbase hacking accesses financial records, research allocations, and technology advancement across all fields.
 
@@ -40,7 +40,7 @@ Your intelligence network generates detailed reports from all sources. These rep
 
 ### 9.2.1 Scout Encounter Reports
 
-Scout encounters produce the most detailed intelligence reports. When scouts observe enemy fleets, the report includes complete squadron compositions, tech levels for all ships, hull integrity assessments, and cargo manifests for transport vessels. Fleet behavior patterns are noted, including standing orders and patrol routes.
+Scout encounters produce your most detailed intelligence reports. When scouts observe enemy fleets, the report includes complete squadron compositions, tech levels for all ships, hull integrity assessments, and cargo manifests for transport vessels. Fleet behavior patterns are noted, including standing orders and patrol routes.
 
 Colony discoveries provide comprehensive settlement data. Your analysts learn population levels, industrial capacity, defensive installations, construction queues, and orbital defenses. Economic intelligence reveals gross output and net tax revenue. The construction queue shows what the enemy is building and how many turns remain to completion.
 
@@ -50,9 +50,9 @@ Each report is assigned a significance rating from 1-10 based on strategic value
 
 ### 9.2.2 Fleet Movement Tracking
 
-The intelligence system maintains chronological records of enemy fleet sightings. Each observation notes the turn, system, and fleet composition. Over time, these sightings reveal movement patterns and patrol routes.
+Your intelligence system maintains chronological records of enemy fleet sightings. Each observation notes the turn, system, and fleet composition. Over time, these sightings reveal movement patterns and patrol routes.
 
-Your intelligence staff tracks last known positions for all enemy fleets. Repeated sightings in a predictable pattern indicate patrol routes or blockade stations. Time since last sighting (staleness) helps assess whether intelligence remains current or has aged beyond reliability.
+Your intelligence staff tracks last known positions for all enemy fleets. Repeated sightings in a predictable pattern indicate patrol routes or blockade stations. Time since last sighting (staleness) helps you assess whether intelligence remains current or has aged beyond reliability.
 
 This historical tracking enables strategic prediction. If an enemy fleet has patrolled the same three-system route for five turns, you can anticipate its position and plan accordingly.
 
@@ -148,13 +148,13 @@ Database contents remain confidential unless stolen through espionage. No house 
 
 ## 9.7 Strategic Use of Intelligence
 
-Superior intelligence enables strategic advantage. Houses with comprehensive enemy intelligence can plan invasions with confidence, anticipate enemy movements, and identify vulnerabilities for exploitation.
+Superior intelligence enables your strategic advantage. With comprehensive enemy intelligence, you can plan invasions with confidence, anticipate enemy movements, and identify vulnerabilities for exploitation.
 
 Intelligence investment creates a positive feedback loop. Better intelligence enables better strategic decisions. Better decisions lead to stronger position. Stronger position enables more aggressive reconnaissance. More reconnaissance provides better intelligence.
 
 However, intelligence gathering is expensive. Scout missions risk detection and destruction. Espionage operations cost EBP points and face counter-intelligence. Maintaining comprehensive intelligence on multiple rivals requires significant resource allocation.
 
-Strategic intelligence priorities must align with campaign objectives. If planning to invade House Atreides, invest heavily in Atreides intelligence to identify weak colonies and fleet deployments. If concerned about House Harkonnen expansion, focus intelligence gathering on their core systems and fleet movements.
+Your strategic intelligence priorities must align with campaign objectives. If planning to invade House Atreides, invest heavily in Atreides intelligence to identify weak colonies and fleet deployments. If concerned about House Harkonnen expansion, focus intelligence gathering on their core systems and fleet movements.
 
 Intelligence also reveals opportunities. Scout reports showing an enemy colony with minimal defenses suggest invasion targets. Fleet movement tracking reveals undefended systems. Economic intelligence identifies houses with financial weakness.
 
