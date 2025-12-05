@@ -7,6 +7,7 @@ import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, logger, order_types]
 import ../../../engine/fleet
 import ../controller_types
+import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_types
 import ../domestikos
 import ../domestikos/build_requirements

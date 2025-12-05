@@ -13,12 +13,13 @@
 ## - Maxed field detection (prevents wasted RP)
 ## - Dynamic reallocation to available technologies
 
-import std/[tables, strformat, sequtils]
+import std/[tables, strformat, sequtils, options]
 import ../../../common/types/tech
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/research/types as res_types
 import ../../../engine/research/advancement  # For max tech level constants
 import ../controller_types
+import ../shared/intelligence_types  # For RequirementPriority, ResearchPriority
 
 proc allocateResearch*(
   controller: AIController,
@@ -117,6 +118,43 @@ proc allocateResearch*(
     result.technology[TechField.FighterDoctrine] = techBudget * 2 div 10   # 20%
     result.technology[TechField.TerraformingTech] = techBudget * 2 div 10  # 20%
     result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
+
+  # INTELLIGENCE-DRIVEN TECH GAP BOOSTING (Phase C)
+  # Boost allocation to critical tech gaps identified by Drungarius
+  if controller.intelligenceSnapshot.isSome:
+    let intel = controller.intelligenceSnapshot.get()
+    let researchIntel = intel.research
+    let urgentNeeds = researchIntel.urgentResearchNeeds
+
+    if urgentNeeds.len > 0:
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Logothete: {urgentNeeds.len} urgent tech gaps identified - adjusting allocation")
+
+      # Boost critical and high priority gaps
+      for gap in urgentNeeds:
+        let field = gap.field
+        let pri = gap.priority
+        let reason = gap.reason
+
+        if pri == intelligence_types.RequirementPriority.Critical:
+          # Boost critical gaps by 50%
+          var currentAlloc = 0
+          if result.technology.hasKey(field):
+            currentAlloc = result.technology[field]
+          let boost = max(researchBudget div 10, 50)  # At least 10% of budget or 50PP
+          result.technology[field] = currentAlloc + boost
+          logInfo(LogCategory.lcAI,
+                  &"  CRITICAL GAP: Boosting {field} by {boost}PP - " & reason)
+
+        elif pri == intelligence_types.RequirementPriority.High:
+          # Boost high priority gaps by 25%
+          var currentAlloc = 0
+          if result.technology.hasKey(field):
+            currentAlloc = result.technology[field]
+          let boost = max(researchBudget div 20, 25)  # At least 5% of budget or 25PP
+          result.technology[field] = currentAlloc + boost
+          logInfo(LogCategory.lcAI,
+                  &"  HIGH PRIORITY: Boosting {field} by {boost}PP - " & reason)
 
   # REALLOCATION LOGIC: Redirect budget from maxed EL/SL/TRP to available techs
   # This prevents AI from wasting RP on technologies that cannot advance

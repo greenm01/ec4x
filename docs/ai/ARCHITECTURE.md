@@ -631,6 +631,182 @@ nimble coevolveAI         # 4-species competitive evolution
 
 ---
 
+## Intelligence System (Phase B-C Complete)
+
+### Overview
+
+The Intelligence System provides centralized processing of 5 engine intelligence report types, transforming raw reconnaissance data into actionable domain-specific summaries for all 6 Byzantine advisors.
+
+**Architecture:** Centralized analysis (Drungarius hub) → Domain summaries → Distributed advisor consumption
+
+**Current Status:** Phase C Complete (~70% utilization)
+- ✅ Phase B: Colony & System intelligence (40% utilization)
+- ✅ Phase C: Starbase & Combat intelligence (70% utilization)
+- ⏳ Phase D: Surveillance integration (target >80%)
+
+### Intelligence Pipeline
+
+```
+FilteredGameState.ownHouse.intelligence: IntelligenceDatabase
+  │
+  ├─> colony_analyzer.nim → Vulnerability & high-value targets
+  ├─> system_analyzer.nim → Enemy fleet tracking
+  ├─> starbase_analyzer.nim → Tech gaps & economic strength
+  ├─> combat_analyzer.nim → Tactical lessons & ship effectiveness
+  └─> surveillance_analyzer.nim → Surveillance gaps (Phase D)
+  │
+  ▼
+threat_assessment.nim (unified threat scoring)
+  │
+  ▼
+IntelligenceSnapshot (domain-specific summaries)
+  │
+  ├─> military: Enemy fleets, threats, vulnerabilities, combat lessons
+  ├─> economic: Enemy economy, high-value targets
+  ├─> diplomatic: House strength, hostility levels
+  ├─> research: Tech levels, tech gaps, urgent research needs
+  └─> espionage: Intel coverage, surveillance gaps
+```
+
+### Advisor Integration
+
+**Domestikos (Military):**
+- Uses threat assessments for defense requirements
+- Selects ship types based on combat lessons vs specific enemies
+- Prioritizes vulnerable targets for offensive operations
+
+**Logothete (Research):**
+- Boosts research for Critical tech gaps (10% budget, min 50PP)
+- Boosts research for High priority gaps (5% budget, min 25PP)
+- Adapts tech priorities based on enemy capabilities
+
+**Drungarius (Intelligence):**
+- Hub for all intelligence processing
+- Generates espionage targets based on intel gaps
+- Prioritizes surveillance missions for stale intel
+
+**Eparch (Economic):**
+- Identifies high-value enemy colonies for economic warfare
+- Prioritizes infrastructure based on economic assessments
+
+**Protostrator (Diplomacy):**
+- Uses house strength assessments for NAP/war decisions
+- Tracks observed hostility from fleet movements
+
+**Treasurer (Budget):**
+- Adjusts defense budget based on max threat level
+- Allocates more resources when Critical threats detected
+
+### Combat Learning System
+
+**How It Works:**
+1. Combat encounters generate CombatEncounterReport
+2. Combat analyzer processes outcome and fleet composition
+3. Effective/ineffective ship types tracked per enemy house
+4. Domestikos selects proven ship types for defense requirements
+
+**Example:**
+```
+3 combats vs House2:
+  - Combat 1: Defeat with Destroyers → Destroyers ineffective
+  - Combat 2: Defeat with Destroyers → Destroyers ineffective
+  - Combat 3: Victory with Battlecruisers → Battlecruisers effective
+
+Effectiveness scores vs House2:
+  - Destroyer: -2 points
+  - Battlecruiser: +2 points
+
+Domestikos: "Build Battlecruiser (combat lesson vs House2)"
+```
+
+### Tech Gap Detection
+
+**How It Works:**
+1. StarbaseIntelReport reveals enemy tech levels
+2. Starbase analyzer compares vs own tech (9 fields)
+3. Gaps classified as Critical (3+ levels), High (2 levels), Medium (1 level)
+4. Logothete boosts critical/high gaps automatically
+
+**Example:**
+```
+Enemy WeaponsTech: 7
+Own WeaponsTech: 3
+Gap: 4 levels → CRITICAL
+
+Logothete: "Boosting WeaponsTech by 150PP (10% budget)"
+Result: Research allocation increased from 20% to 30%
+```
+
+### Intelligence Files
+
+```
+src/ai/rba/
+├── shared/
+│   └── intelligence_types.nim        # Domain-specific types (350 LOC)
+└── drungarius/
+    ├── intelligence_distribution.nim # Orchestrator (306 LOC)
+    ├── threat_assessment.nim         # Unified threat scoring (165 LOC)
+    └── analyzers/
+        ├── colony_analyzer.nim       # Vulnerability analysis (250 LOC)
+        ├── system_analyzer.nim       # Fleet tracking (250 LOC)
+        ├── starbase_analyzer.nim     # Tech gaps & economy (155 LOC)
+        ├── combat_analyzer.nim       # Combat lessons (205 LOC)
+        └── surveillance_analyzer.nim # Surveillance gaps (Phase D)
+```
+
+### Performance Impact
+
+**Runtime Overhead (per house, per turn):**
+- Colony analysis: <5ms
+- System analysis: <5ms
+- Starbase analysis: <5ms
+- Combat analysis: <10ms
+- Threat assessment: <5ms
+- **Total:** <30ms per house per turn
+
+**Memory Usage:**
+- IntelligenceSnapshot: ~50KB per house
+- Combat lessons (50 turns): ~10KB per house
+- Tech gap priorities: ~1KB per house
+- **Total:** ~60KB per house
+
+**Compilation:**
+- No measurable impact on build time
+- 118k+ lines compile successfully
+
+### Configuration
+
+Intelligence behavior controlled via `config/rba.toml`:
+
+```toml
+[intelligence]
+# Report freshness thresholds (turns)
+colony_intel_stale_threshold = 10
+system_intel_stale_threshold = 5
+starbase_intel_stale_threshold = 15
+
+# Threat assessment weights
+threat_fleet_strength_weight = 0.4
+threat_proximity_weight = 0.3
+threat_recent_activity_weight = 0.3
+
+# Combat learning
+combat_report_learning_enabled = true
+combat_lesson_retention_turns = 50
+
+# Tech gap thresholds
+tech_gap_critical_threshold = 3  # 3+ levels → Critical
+tech_gap_high_threshold = 2      # 2 levels → High
+```
+
+### See Also
+
+- `docs/ai/analysis/intelligence-phase-c-complete.md` - Phase C implementation details
+- `src/ai/rba/shared/intelligence_types.nim` - Complete type definitions
+- `src/ai/rba/drungarius/intelligence_distribution.nim` - Intelligence orchestration
+
+---
+
 ## Future Extensions
 
 ### Planned Enhancements

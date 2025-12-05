@@ -80,6 +80,9 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   let intelSnapshot = generateIntelligenceSnapshot(filtered, controller)
 
+  # Store intelligence snapshot in controller for advisor access
+  controller.intelligenceSnapshot = some(intelSnapshot)
+
   # ==========================================================================
   # PHASE 1: MULTI-ADVISOR REQUIREMENT GENERATION
   # ==========================================================================

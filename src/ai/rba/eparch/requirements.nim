@@ -8,6 +8,7 @@
 import std/[options, strformat, random]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../controller_types
+import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ./industrial_investment
 import ./terraforming
 

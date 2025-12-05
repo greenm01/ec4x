@@ -11,6 +11,7 @@ import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/diplomacy/types as dip_types
 import ../../../engine/diplomacy/proposals as dip_proposals
 import ../controller_types
+import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_types
 
 # =============================================================================

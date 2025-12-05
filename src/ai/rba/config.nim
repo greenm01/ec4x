@@ -165,6 +165,53 @@ type
     escalation_high_to_critical_turns*: int
 
 # ==============================================================================
+# Intelligence Integration Configuration (Phase B+)
+# ==============================================================================
+
+type
+  IntelligenceConfig* = object
+    ## Enhanced intelligence processing parameters
+    # Report freshness thresholds (turns)
+    colony_intel_stale_threshold*: int
+    system_intel_stale_threshold*: int
+    starbase_intel_stale_threshold*: int
+
+    # Threat assessment weights (must sum to 1.0)
+    threat_fleet_strength_weight*: float
+    threat_proximity_weight*: float
+    threat_recent_activity_weight*: float
+
+    # Threat distance thresholds (jumps)
+    threat_critical_distance*: int
+    threat_high_distance*: int
+    threat_moderate_distance*: int
+
+    # Vulnerability assessment
+    vulnerability_defense_ratio_threshold*: float
+    vulnerability_value_threshold*: int
+
+    # Combat learning (Phase C)
+    combat_report_learning_enabled*: bool
+    combat_lesson_retention_turns*: int
+    combat_doctrine_detection_threshold*: int
+
+    # Economic intelligence (Phase C)
+    economic_assessment_min_colonies*: int
+    economic_strength_production_weight*: float
+    economic_strength_income_weight*: float
+
+    # Research intelligence (Phase C)
+    tech_gap_critical_threshold*: int
+    tech_gap_high_threshold*: int
+
+  DrungariusConfig* = object
+    ## Intelligence coordinator settings
+    intel_processing_enabled*: bool
+    use_combat_lessons*: bool
+    use_starbase_surveillance*: bool
+    prioritize_high_value_targets*: bool
+
+# ==============================================================================
 # Root Configuration
 # ==============================================================================
 
@@ -209,6 +256,10 @@ type
     domestikos*: AdmiralConfig
     # Eparch module (economic administration)
     eparch*: EparchConfig
+    # Intelligence integration (Phase B+)
+    intelligence*: IntelligenceConfig
+    # Drungarius module (intelligence coordinator)
+    drungarius*: DrungariusConfig
 
 # ==============================================================================
 # Config Validation
