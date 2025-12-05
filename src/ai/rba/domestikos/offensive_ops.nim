@@ -172,23 +172,47 @@ proc generateProbingOrders*(
       if intelTargets[j].priority > intelTargets[i].priority:
         swap(intelTargets[i], intelTargets[j])
 
-  # Assign scouts to intel targets (max 1 scout per target)
-  let maxMissions = min(availableScouts.len, intelTargets.len)
+  # Sort scouts by size (prefer larger groups for mesh network bonuses)
+  # Mesh network: 2-3 scouts = +1 ELI, 4-5 scouts = +2 ELI, 6+ scouts = +3 ELI
+  # Optimal: 3-6 scouts per mission (caps at +3 ELI, no benefit beyond 6)
+  for i in 0..<availableScouts.len:
+    for j in (i+1)..<availableScouts.len:
+      if availableScouts[j].shipCount > availableScouts[i].shipCount:
+        swap(availableScouts[i], availableScouts[j])
 
-  for i in 0..<maxMissions:
-    let scout = availableScouts[i]
-    let target = intelTargets[i]
+  # Assign scouts to intel targets, prioritizing larger scout groups
+  # Prefer 3-6 scout groups for optimal mesh network bonus
+  var scoutIndex = 0
+  var targetIndex = 0
+
+  while scoutIndex < availableScouts.len and targetIndex < intelTargets.len:
+    let scout = availableScouts[scoutIndex]
+    let target = intelTargets[targetIndex]
+
+    # Check if scout group size is reasonable for spy missions
+    # Ideal: 3-6 scouts (optimal mesh network)
+    # Acceptable: 1-2 scouts (suboptimal but usable)
+    # Too many: 7+ scouts (no additional benefit, wasteful)
+    if scout.shipCount > 6:
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} Domestikos: Skipping oversized scout fleet {scout.fleetId} " &
+               &"({scout.shipCount} scouts, optimal is 3-6 for mesh network bonus)")
+      scoutIndex += 1
+      continue
 
     logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Domestikos: Intelligence mission - fleet {scout.fleetId} → " &
-            &"{target.description} at system {target.systemId}")
+            &"{controller.houseId} Domestikos: Intelligence mission - fleet {scout.fleetId} " &
+            &"({scout.shipCount} scouts) → {target.description} at system {target.systemId}")
 
     result.add(FleetOrder(
       fleetId: scout.fleetId,
-      orderType: target.orderType,  # FIXED: Was FleetOrderType.Move
+      orderType: target.orderType,
       targetSystem: some(target.systemId),
       priority: 85  # Higher than merge, lower than tactical
     ))
+
+    scoutIndex += 1
+    targetIndex += 1
 
   return result
 

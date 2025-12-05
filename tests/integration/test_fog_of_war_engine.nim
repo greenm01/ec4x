@@ -976,17 +976,17 @@ suite "Fog of War - Advanced Edge Cases":
     let house2 = "house-2".HouseId
     let house3 = "house-3".HouseId
 
-    # House 1 <-> House 2: Non-Aggression Pact
-    state.diplomacy[(house1, house2)] = DiplomaticState.NonAggression
+    # House 1 <-> House 2: Alliance
+    state.diplomacy[(house1, house2)] = DiplomaticState.Ally
 
-    # House 2 <-> House 3: Non-Aggression Pact (doesn't involve house 1)
-    state.diplomacy[(house2, house3)] = DiplomaticState.NonAggression
+    # House 2 <-> House 3: Alliance (doesn't involve house 1)
+    state.diplomacy[(house2, house3)] = DiplomaticState.Ally
 
     let filtered = createFogOfWarView(state, house1)
 
     # Should see own diplomatic relations
     check (house1, house2) in filtered.houseDiplomacy
-    check filtered.houseDiplomacy[(house1, house2)] == DiplomaticState.NonAggression
+    check filtered.houseDiplomacy[(house1, house2)] == DiplomaticState.Ally
 
     # Should NOT see other houses' relations
     check (house2, house3) notin filtered.houseDiplomacy

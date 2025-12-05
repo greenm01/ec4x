@@ -98,6 +98,8 @@ proc identifyMergerGroups*(
         combatFleets.add(fleet)
 
     # Create merger groups for scouts (if 2+ scout fleets)
+    # Optimal spy mission size: 3-6 scouts for mesh network bonus
+    # Mesh network: 2-3 scouts = +1 ELI, 4-5 scouts = +2 ELI, 6+ scouts = +3 ELI (max)
     if scoutFleets.len >= 2:
       # Find largest scout fleet as target
       var target = scoutFleets[0]
@@ -112,13 +114,15 @@ proc identifyMergerGroups*(
         if fleet.fleetId != target.fleetId:
           sources.add(fleet.fleetId)
 
-      if sources.len > 0 and totalShips <= 15:
+      # Cap at 6 scouts for optimal mesh network bonus (+3 ELI maximum)
+      # No benefit to having more than 6 scouts on spy missions
+      if sources.len > 0 and totalShips <= 6:
         result.add(MergerGroup(
           targetFleetId: target.fleetId,
           sourceFleetIds: sources,
           location: systemId,
           totalShips: totalShips,
-          reason: &"Consolidate {scoutFleets.len} idle scout fleets"
+          reason: &"Consolidate {scoutFleets.len} scout fleets (mesh network optimal at 3-6)"
         ))
 
     # Create merger groups for combat fleets (if 3+ small combat fleets)

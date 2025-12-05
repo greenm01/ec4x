@@ -353,31 +353,33 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
   # Check for fleet encounters at destination with STEALTH DETECTION
   # Per assets.md:2.4.3 - Cloaked fleets can only be detected by scouts or starbases
-  var enemyFleetsAtLocation: seq[tuple[fleetId: FleetId, fleet: Fleet]] = @[]
-  let detectingFleet = state.fleets[order.fleetId]
-  let hasScouts = detectingFleet.squadrons.anyIt(it.hasScouts())
+  # NOTE: Spy scouts don't participate in fleet encounters (they use separate detection system)
+  if not isSpyScout:
+    var enemyFleetsAtLocation: seq[tuple[fleetId: FleetId, fleet: Fleet]] = @[]
+    let detectingFleet = state.fleets[order.fleetId]
+    let hasScouts = detectingFleet.squadrons.anyIt(it.hasScouts())
 
-  for otherFleetId, otherFleet in state.fleets:
-    if otherFleetId != order.fleetId and otherFleet.location == newLocation:
-      if otherFleet.owner != houseId:
-        # STEALTH CHECK: Cloaked fleets only detected by scouts
-        if otherFleet.isCloaked() and not hasScouts:
-          logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} failed to detect cloaked fleet {otherFleetId} at {newLocation} (no scouts)")
-          continue  # Cloaked fleet remains undetected
+    for otherFleetId, otherFleet in state.fleets:
+      if otherFleetId != order.fleetId and otherFleet.location == newLocation:
+        if otherFleet.owner != houseId:
+          # STEALTH CHECK: Cloaked fleets only detected by scouts
+          if otherFleet.isCloaked() and not hasScouts:
+            logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} failed to detect cloaked fleet {otherFleetId} at {newLocation} (no scouts)")
+            continue  # Cloaked fleet remains undetected
 
-        logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
-        enemyFleetsAtLocation.add((otherFleetId, otherFleet))
+          logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
+          enemyFleetsAtLocation.add((otherFleetId, otherFleet))
 
-  # Automatic fleet intelligence gathering - detected enemy fleets
-  if enemyFleetsAtLocation.len > 0:
-    let systemIntelReport = generateSystemIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
-    if systemIntelReport.isSome:
-      state.withHouse(houseId):
-        house.intelligence.addSystemReport(systemIntelReport.get())
-      logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered intelligence on {enemyFleetsAtLocation.len} enemy fleet(s) at {newLocation}")
+    # Automatic fleet intelligence gathering - detected enemy fleets
+    if enemyFleetsAtLocation.len > 0:
+      let systemIntelReport = generateSystemIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
+      if systemIntelReport.isSome:
+        state.withHouse(houseId):
+          house.intelligence.addSystemReport(systemIntelReport.get())
+        logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered intelligence on {enemyFleetsAtLocation.len} enemy fleet(s) at {newLocation}")
 
-  # Combat will be resolved in conflict phase next turn
-        # This just logs the encounter
+    # Combat will be resolved in conflict phase next turn
+    # This just logs the encounter
 
 proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                               events: var seq[GameEvent]) =

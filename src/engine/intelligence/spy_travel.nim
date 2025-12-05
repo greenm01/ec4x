@@ -119,7 +119,19 @@ proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
   ## - Performs detection checks at intermediate systems
   result = @[]
 
+  # Collect traveling spy scout IDs first (don't modify table during iteration)
+  var travelingSpies: seq[string] = @[]
   for spyId, spy in state.spyScouts:
+    if spy.state == SpyScoutState.Traveling:
+      travelingSpies.add(spyId)
+
+  # Process each traveling spy scout
+  for spyId in travelingSpies:
+    # Skip if spy scout was removed during processing (e.g., detected and destroyed)
+    if spyId notin state.spyScouts:
+      continue
+
+    let spy = state.spyScouts[spyId]
     if spy.state != SpyScoutState.Traveling:
       continue
 
@@ -147,6 +159,10 @@ proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
       events,
       spyScoutId = some(spyId)  # Signals spy scout mode
     )
+
+    # Check if scout still exists after movement (could be removed by house elimination)
+    if spyId notin state.spyScouts:
+      continue
 
     # Check if scout moved
     var updatedSpy = state.spyScouts[spyId]
