@@ -12,7 +12,8 @@ description = "Balance test scenarios for EC4X engine validation"
 name = "standard_rotation"
 description = "Tests all strategies in rotating assignments"
 strategies = ["Aggressive", "Economic", "Balanced", "Turtle"]
-turns = 30
+max_turns = 200  # Safety limit (games usually end 60-120 turns via victory)
+run_until_victory = true
 map_rings = 3
 num_games = 20
 
@@ -21,16 +22,18 @@ num_games = 20
 name = "quick_validation"
 description = "Fast 7-turn test for CI/CD pipelines"
 strategies = ["Aggressive", "Economic", "Balanced", "Turtle"]
-turns = 7
+max_turns = 7
+run_until_victory = false  # Fixed-turn test for quick CI/CD feedback
 map_rings = 3
 num_games = 20
 
 # Extended test - longer games for thorough balance analysis
 [[scenarios]]
 name = "extended"
-description = "100-turn games for comprehensive balance testing"
+description = "Run until victory for comprehensive balance testing"
 strategies = ["Aggressive", "Economic", "Balanced", "Turtle"]
-turns = 100
+max_turns = 250  # Safety limit for larger maps
+run_until_victory = true
 map_rings = 4
 num_games = 10
 
@@ -39,7 +42,8 @@ num_games = 10
 name = "aggressive_only"
 description = "All houses using Aggressive strategy"
 strategies = ["Aggressive", "Aggressive", "Aggressive", "Aggressive"]
-turns = 30
+max_turns = 200
+run_until_victory = true
 map_rings = 3
 num_games = 10
 
@@ -47,7 +51,8 @@ num_games = 10
 name = "economic_only"
 description = "All houses using Economic strategy"
 strategies = ["Economic", "Economic", "Economic", "Economic"]
-turns = 30
+max_turns = 200
+run_until_victory = true
 map_rings = 3
 num_games = 10
 
@@ -55,7 +60,8 @@ num_games = 10
 name = "balanced_only"
 description = "All houses using Balanced strategy"
 strategies = ["Balanced", "Balanced", "Balanced", "Balanced"]
-turns = 30
+max_turns = 200
+run_until_victory = true
 map_rings = 3
 num_games = 10
 
@@ -63,7 +69,8 @@ num_games = 10
 name = "turtle_only"
 description = "All houses using Turtle strategy"
 strategies = ["Turtle", "Turtle", "Turtle", "Turtle"]
-turns = 30
+max_turns = 200
+run_until_victory = true
 map_rings = 3
 num_games = 10
 
@@ -72,7 +79,8 @@ num_games = 10
 name = "full_12_strategies"
 description = "Comprehensive test with all 12 AI strategy personalities"
 strategies = ["Aggressive", "Economic", "Espionage", "Diplomatic", "Balanced", "Turtle", "Expansionist", "TechRush", "Raider", "MilitaryIndustrial", "Opportunistic", "Isolationist"]
-turns = 30
+max_turns = 250  # Large maps may take longer
+run_until_victory = true
 map_rings = 6
 num_games = 10
 
@@ -81,7 +89,8 @@ num_games = 10
 name = "quick_12_strategies"
 description = "Fast 7-turn test with all 12 strategies"
 strategies = ["Aggressive", "Economic", "Espionage", "Diplomatic", "Balanced", "Turtle", "Expansionist", "TechRush", "Raider", "MilitaryIndustrial", "Opportunistic", "Isolationist"]
-turns = 7
+max_turns = 7
+run_until_victory = false  # Fixed-turn test for quick validation
 map_rings = 5
 num_games = 10
 
@@ -90,6 +99,7 @@ num_games = 10
 name = "balance_1k_12_strategies"
 description = "1,000 games with all 12 strategies for unit cost and tech tree scaling analysis"
 strategies = ["Aggressive", "Economic", "Espionage", "Diplomatic", "Balanced", "Turtle", "Expansionist", "TechRush", "Raider", "MilitaryIndustrial", "Opportunistic", "Isolationist"]
-turns = 15
+max_turns = 15
+run_until_victory = false  # Fixed 15-turn snapshots for rapid iteration
 map_rings = 0
 num_games = 1000
