@@ -625,16 +625,20 @@ proc assessStrategicAssets*(
     logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
-  # Ground batteries for colony defense - ACT-AWARE + INTELLIGENCE-DRIVEN
+  # Ground batteries for colony defense - ACT-AWARE + INTELLIGENCE-DRIVEN + UNDEFENDED PENALTY AWARE
   # Phased buildup matching economic capacity: 1 (Act1) → 2 (Act2) → 3 (Act3+)
   let groundBatteryCost = getBuildingCost("GroundBattery")
   for colony in filtered.ownColonies:
     let currentBatteries = colony.groundBatteries  # int, not seq
 
+    # PHASE F: Check if colony is completely undefended (no armies, marines, or batteries)
+    # Undefended colonies incur +50% prestige penalty when lost (-15 vs -10)
+    let isUndefended = (colony.armies == 0 and colony.marines == 0 and currentBatteries == 0)
+
     # ACT-AWARE: Baseline target matches economic capacity
-    # Act 1: 1 battery (50PP, affordable for expanding colonies)
-    # Act 2: 2 batteries (100PP, mature economy)
-    # Act 3+: 3 batteries (150PP, full fortification with economic surplus)
+    # Act 1: 1 battery (13PP after cost reduction, affordable for expanding colonies)
+    # Act 2: 2 batteries (26PP, mature economy)
+    # Act 3+: 3 batteries (39PP, full fortification with economic surplus)
     let baselineTarget = case currentAct
       of GameAct.Act1_LandGrab: 1  # Minimal baseline: expansion priority
       of GameAct.Act2_RisingTensions: 2  # Moderate: consolidation
@@ -648,45 +652,59 @@ proc assessStrategicAssets*(
       3  # Emergency: full fortification
     elif threat > 0.2:
       max(baselineTarget, 2)  # Elevated threat: at least 2 batteries
+    elif isUndefended:
+      1  # PHASE F: Undefended colonies need at least 1 battery to avoid prestige penalty
     else:
       baselineTarget  # Normal: match Act baseline
 
     if currentBatteries < targetBatteries:
       let needed = targetBatteries - currentBatteries
 
-      # Priority combines threat + Act awareness
-      let priority = if threat > 0.5:
+      # Priority combines threat + Act awareness + undefended penalty awareness
+      let priority = if isUndefended:
+        RequirementPriority.High      # PHASE F: Avoid -15 prestige penalty (HIGH priority)
+      elif threat > 0.5:
         RequirementPriority.Critical  # Emergency fortification
       elif threat > 0.2 or currentAct >= GameAct.Act3_TotalWar:
         RequirementPriority.High      # Elevated threat OR war economy
       elif currentBatteries == 0:
-        RequirementPriority.Medium    # No defense, gradual buildup
+        RequirementPriority.Medium    # No batteries but has armies/marines
       else:
         RequirementPriority.Low       # Has baseline, maintenance
 
       let req = BuildRequirement(
         requirementType: RequirementType.Infrastructure,
-        priority: priority,  # DYNAMIC: Based on threat intelligence
+        priority: priority,  # DYNAMIC: Based on threat intelligence + undefended penalty awareness
         shipClass: none(ShipClass),
         quantity: needed,
         buildObjective: BuildObjective.Defense,
         targetSystem: some(colony.systemId),  # Target specific colony
         estimatedCost: groundBatteryCost * needed,
-        reason: &"Ground batteries for {colony.systemId} (threat={threat:.2f}, have {currentBatteries}/{targetBatteries})"
+        reason: if isUndefended:
+          &"Ground batteries for {colony.systemId} (UNDEFENDED - avoid -15 prestige penalty, threat={threat:.2f})"
+        else:
+          &"Ground batteries for {colony.systemId} (threat={threat:.2f}, have {currentBatteries}/{targetBatteries})"
       )
-      logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x GroundBattery at {colony.systemId} (priority={priority}, threat={threat:.2f})")
+      let undefendedTag = if isUndefended: " [UNDEFENDED]" else: ""
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x GroundBattery at {colony.systemId}{undefendedTag} (priority={priority}, threat={threat:.2f})")
       result.add(req)
 
-  # Armies for colony defense - ACT-AWARE + INTELLIGENCE-DRIVEN
+  # Armies for colony defense - ACT-AWARE + INTELLIGENCE-DRIVEN + UNDEFENDED PENALTY AWARE
   # Phased buildup: armies are last-line defense, build after batteries
   let armyCost = getArmyBuildCost()
   for colony in filtered.ownColonies:
     let currentArmies = colony.armies  # int, not seq
+    let currentBatteries = colony.groundBatteries
+    let currentMarines = colony.marines
+
+    # PHASE F: Check if colony is completely undefended (no armies, marines, or batteries)
+    # Undefended colonies incur +50% prestige penalty when lost (-15 vs -10)
+    let isUndefended = (currentArmies == 0 and currentMarines == 0 and currentBatteries == 0)
 
     # ACT-AWARE: Baseline target matches economic capacity
-    # Act 1: 0-1 army (15-30PP, expansion priority over ground forces)
-    # Act 2: 1 army (30PP, basic garrison)
-    # Act 3+: 2 armies (30PP, full ground defense)
+    # Act 1: 0 armies (10PP after cost reduction, batteries prioritized first)
+    # Act 2: 1 army (10PP, basic garrison)
+    # Act 3+: 2 armies (20PP, full ground defense)
     let baselineTarget = case currentAct
       of GameAct.Act1_LandGrab: 0  # Minimal: batteries first, armies later
       of GameAct.Act2_RisingTensions: 1  # Basic garrison
@@ -700,14 +718,18 @@ proc assessStrategicAssets*(
       2  # Emergency: full ground defense
     elif threat > 0.3:
       max(baselineTarget, 1)  # Elevated: at least basic garrison
+    elif isUndefended and currentBatteries == 0:
+      1  # PHASE F: If no batteries, need at least 1 army to avoid prestige penalty
     else:
       baselineTarget  # Normal: match Act baseline
 
     if currentArmies < targetArmies:
       let needed = targetArmies - currentArmies
 
-      # Priority: armies slightly lower than batteries (last-line defense)
-      let priority = if threat > 0.6:
+      # Priority: armies slightly lower than batteries, BUT boosted if colony is undefended
+      let priority = if isUndefended and currentBatteries == 0:
+        RequirementPriority.High      # PHASE F: Avoid -15 prestige penalty (HIGH priority)
+      elif threat > 0.6:
         RequirementPriority.Critical  # Emergency
       elif threat > 0.3 or currentAct >= GameAct.Act3_TotalWar:
         RequirementPriority.High      # Elevated threat OR war economy
@@ -718,15 +740,19 @@ proc assessStrategicAssets*(
 
       let req = BuildRequirement(
         requirementType: RequirementType.DefenseGap,
-        priority: priority,  # DYNAMIC: Based on threat intelligence
+        priority: priority,  # DYNAMIC: Based on threat intelligence + undefended penalty awareness
         shipClass: none(ShipClass),
         quantity: needed,
         buildObjective: BuildObjective.Defense,
         targetSystem: some(colony.systemId),  # Target specific colony
         estimatedCost: armyCost * needed,
-        reason: &"Ground armies for {colony.systemId} (threat={threat:.2f}, have {currentArmies}/{targetArmies})"
+        reason: if isUndefended and currentBatteries == 0:
+          &"Ground armies for {colony.systemId} (UNDEFENDED - avoid -15 prestige penalty, threat={threat:.2f})"
+        else:
+          &"Ground armies for {colony.systemId} (threat={threat:.2f}, have {currentArmies}/{targetArmies})"
       )
-      logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x Army at {colony.systemId} (priority={priority}, threat={threat:.2f})")
+      let undefendedTag = if isUndefended and currentBatteries == 0: " [UNDEFENDED]" else: ""
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x Army at {colony.systemId}{undefendedTag} (priority={priority}, threat={threat:.2f})")
       result.add(req)
 
   # Marines for offensive operations (if aggressive and have transports)

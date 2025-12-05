@@ -52,6 +52,7 @@ type
     ambushed_by_cloak*: int
     force_retreat*: int
     scout_destroyed*: int
+    undefended_colony_penalty_multiplier*: float  # Phase F: Penalty multiplier for losing undefended colonies
 
   EspionagePrestigeConfig* = object
     tech_theft*: int
