@@ -3,64 +3,141 @@
 ## This tests the core gameplay systems independently of network transport
 ## Validates the offline-first architecture
 
+import unittest
 import std/[tables, options]
 import ../../src/engine/[gamestate, orders, resolve, starmap]
-import ../../src/engine/economy/[types as econ_types, income]
+import ../../src/engine/economy/types as econ_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
-import ../../src/common/types/[core, planets, units]
-# Note: Combat tests use engine/combat/ modules directly
+import ../../src/common/types/[core, units]
 
-# Test that we can create a game and run turns without any network
-proc testOfflineGameFlow() =
-  echo "Testing offline game flow..."
+proc createTestState(): GameState =
+  ## Create a minimal 2-player game state for offline testing
+  result = GameState()
+  result.turn = 1
+  result.phase = GamePhase.Active
 
-  # Create a basic 2-player game
+  # Generate starmap
   var map = newStarMap(2)
   map.populate()
+  result.starMap = map
 
-  # Create initial game state
-  var state = newGameState("test-game", 2, map)
+  # Create houses with homeworlds
+  for i in 0..<2:
+    let houseId = HouseId($i)
+    let homeworldId = map.playerSystemIds[i]
 
-  # Create empty order packets
-  var orders: Table[HouseId, OrderPacket]
-  for houseId in state.houses.keys:
-    orders[houseId] = OrderPacket(
-      houseId: houseId,
-      turn: state.turn,
-      fleetOrders: @[],
-      buildOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
+    result.houses[houseId] = House(
+      id: houseId,
+      name: "House " & $i,
+      treasury: 10000,
+      eliminated: false,
+      techTree: res_types.initTechTree(),
     )
 
-  # Resolve a turn - should work entirely offline
-  let result = resolveTurn(state, orders)
+    result.colonies[homeworldId] = createHomeColony(homeworldId.SystemId, houseId)
 
-  assert result.newState.turn == state.turn + 1
-  echo "  ✓ Turn resolution works offline"
+suite "Offline Engine - No Network Dependencies":
 
-  # Verify game state is pure data (no network connections)
-  assert result.newState.starMap.systems.len > 0
-  echo "  ✓ Game state is pure data structure"
+  test "Can create 2-player game without network":
+    let state = createTestState()
 
-  echo "Offline engine test passed!\n"
+    check state.houses.len == 2
+    check state.starMap.systems.len > 0
+    check state.turn == 1
+    check state.phase == GamePhase.Active
 
-when isMainModule:
-  echo "EC4X Offline Engine Test Suite"
-  echo "==============================\n"
+  test "Turn resolution works offline":
+    var state = createTestState()
+    let initialTurn = state.turn
 
-  testOfflineGameFlow()
+    # Create empty order packets
+    var orders: Table[HouseId, OrderPacket]
+    for houseId in state.houses.keys:
+      orders[houseId] = OrderPacket(
+        houseId: houseId,
+        turn: state.turn,
+        fleetOrders: @[],
+        buildOrders: @[],
+        researchAllocation: initResearchAllocation(),
+        diplomaticActions: @[],
+        populationTransfers: @[],
+        terraformOrders: @[],
+        espionageAction: none(esp_types.EspionageAttempt),
+        ebpInvestment: 0,
+        cipInvestment: 0
+      )
 
-  echo "All tests passed!"
-  echo "\nNext steps for implementation:"
-  echo "1. Implement combat.resolveBattle()"
-  echo "2. Implement economy.calculateProduction()"
-  echo "3. Implement movement integration with pathfinding"
-  echo "4. Build simple TUI for hotseat multiplayer"
-  echo "\nNetwork integration (Nostr) comes after offline game is complete."
+    # Resolve turn - should work entirely offline
+    let result = resolveTurn(state, orders)
+
+    check result.newState.turn == initialTurn + 1
+
+  test "Game state is pure data structure":
+    let state = createTestState()
+
+    # Verify game state contains no network connections
+    # (All fields are pure data: integers, strings, tables, sequences)
+    check state.starMap.systems.len > 0
+    check state.colonies.len == 2  # 2 homeworlds
+    check state.houses.len == 2
+
+  test "Multiple turns can be resolved offline":
+    var state = createTestState()
+    let initialTurn = state.turn
+
+    # Resolve 3 turns
+    for i in 1..3:
+      var orders: Table[HouseId, OrderPacket]
+      for houseId in state.houses.keys:
+        orders[houseId] = OrderPacket(
+          houseId: houseId,
+          turn: state.turn,
+          fleetOrders: @[],
+          buildOrders: @[],
+          researchAllocation: initResearchAllocation(),
+          diplomaticActions: @[],
+          populationTransfers: @[],
+          terraformOrders: @[],
+          espionageAction: none(esp_types.EspionageAttempt),
+          ebpInvestment: 0,
+          cipInvestment: 0
+        )
+
+      let result = resolveTurn(state, orders)
+      state = result.newState
+
+    check state.turn == initialTurn + 3  # Started at turn 1, resolved 3 turns
+
+  test "Economy systems work offline":
+    let state = createTestState()
+
+    # Verify colonies have population and infrastructure
+    var foundColonyWithEconomy = false
+    for colony in state.colonies.values:
+      if colony.populationUnits > 0 and colony.infrastructure > 0:
+        foundColonyWithEconomy = true
+        break
+
+    check foundColonyWithEconomy
+
+  test "Houses have starting treasury":
+    let state = createTestState()
+
+    # All houses should have starting treasury
+    for house in state.houses.values:
+      check house.treasury > 0
+      check not house.eliminated
+
+  test "Starmap connectivity works offline":
+    let state = createTestState()
+
+    # Verify systems have jump lanes
+    var foundSystemWithNeighbors = false
+    for systemId in state.starMap.systems.keys:
+      let neighbors = state.starMap.getAdjacentSystems(systemId)
+      if neighbors.len > 0:
+        foundSystemWithNeighbors = true
+        break
+
+    check foundSystemWithNeighbors
