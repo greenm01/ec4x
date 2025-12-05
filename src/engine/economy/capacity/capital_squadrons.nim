@@ -34,12 +34,41 @@ proc getCapitalShipCRThreshold*(): int =
   ## Default: 7 (ships with CR >= 7 are capital ships)
   return military_config.globalMilitaryConfig.squadron_limits.capital_ship_cr_threshold
 
-proc calculateMaxCapitalSquadrons*(industrialUnits: int): int =
+proc getSystemsForRings(mapRings: int): int =
+  ## Estimate total systems for a given map ring count
+  ## Formula: Approximate hex grid growth (1 + 3*rings*(rings+1))
+  ## Ring 0 (center): 1 system
+  ## Ring 1: +6 systems = 7 total
+  ## Ring 2: +12 systems = 19 total
+  ## Ring 3: +18 systems = 37 total
+  ## Ring 4: +24 systems = 61 total
+  ## Ring 5: +30 systems = 91 total
+  return 1 + (3 * mapRings * (mapRings + 1))
+
+proc getMapSizeMultiplier(mapRings: int, numPlayers: int): float =
+  ## Calculate capacity multiplier based on map size
+  ## Larger maps need larger fleets to control more territory
+  let totalSystems = getSystemsForRings(mapRings)
+  let systemsPerPlayer = totalSystems div max(1, numPlayers)
+
+  if systemsPerPlayer < 8:
+    return 0.8  # Small maps: encourage concentration
+  elif systemsPerPlayer <= 12:
+    return 1.0  # Medium maps: baseline
+  elif systemsPerPlayer <= 16:
+    return 1.3  # Large maps: +30% capacity
+  else:
+    return 1.6  # Huge maps: +60% capacity
+
+proc calculateMaxCapitalSquadrons*(industrialUnits: int, mapRings: int = 3, numPlayers: int = 4): int =
   ## Pure calculation of maximum capital squadron capacity
-  ## Formula: max(8, floor(Total_House_IU ÷ 100) × 2)
+  ## Formula: max(8, floor(Total_House_IU ÷ 100) × 2) × mapMultiplier
   ## Minimum: 8 squadrons regardless of IU
-  let calculatedLimit = int(floor(float(industrialUnits) / 100.0) * 2.0)
-  return max(8, calculatedLimit)
+  ## Map multiplier scales capacity based on map size (more territory = more ships needed)
+  let baseLimit = int(floor(float(industrialUnits) / 100.0) * 2.0)
+  let mapMultiplier = getMapSizeMultiplier(mapRings, numPlayers)
+  let scaledLimit = int(float(baseLimit) * mapMultiplier)
+  return max(8, scaledLimit)
 
 proc isCapitalShip*(shipClass: ShipClass): bool =
   ## Check if a ship class is a capital ship (CR >= threshold)
@@ -98,7 +127,9 @@ proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityVi
 
   let totalIU = state.getTotalHouseIndustrialUnits(houseId)
   let current = countCapitalSquadronsInFleets(state, houseId)
-  let maximum = calculateMaxCapitalSquadrons(totalIU)
+  let mapRings = int(state.starMap.numRings)
+  let numPlayers = state.starMap.playerCount
+  let maximum = calculateMaxCapitalSquadrons(totalIU, mapRings, numPlayers)
   let excess = max(0, current - maximum)
 
   # Capital squadrons have no grace period - immediate enforcement

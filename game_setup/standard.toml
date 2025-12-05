@@ -12,9 +12,12 @@ estimated_duration = "Variable - depends on player strategy"
 
 [victory_conditions]
 # Victory condition types per gameplay.md:1.4.3
-primary_condition = "prestige"      # Victory by prestige threshold
+# UPDATED: With accelerated game pacing (30-45 turn games), prestige victory removed
+# Games end at turn limit or elimination, highest prestige wins
+primary_condition = "turn_limit"    # Victory by turn limit (highest prestige wins)
 secondary_condition = "elimination" # Victory by being last active player
-prestige_threshold = 2500           # First to 2500 prestige wins (prestige.toml)
+turn_limit = 35                     # Standard 3-ring game: 35 turns (was prestige 2500)
+prestige_threshold = 0              # Disabled (was 2500, removed for accelerated pacing)
 # NOTE: Defensive Collapse and Autopilot rules defined in config/gameplay.toml
 
 [map]
@@ -26,8 +29,8 @@ starting_distance = "balanced"      # close, balanced, far
 
 [starting_resources]
 # What each player starts with (gameplay.md:37)
-# ACCELERATION: Boosted for 30-turn multi-generational timeline
-treasury = 1000                     # Starting Production Points (PP) - was 420
+# ACCELERATION: Boosted for 30-45 turn accelerated timeline
+treasury = 1200                     # Starting Production Points (PP) - was 1000, originally 420
 starting_prestige = 50              # Starting prestige points (gameplay.md:21)
 default_tax_rate = 0.50             # Default tax rate (50%)
 
