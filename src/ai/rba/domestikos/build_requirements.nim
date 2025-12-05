@@ -647,39 +647,78 @@ proc assessStrategicAssets*(
     logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
     result.add(req)
 
-  # Ground batteries for colony defense
-  let targetBatteries = filtered.ownColonies.len * 3  # 3 batteries per colony baseline
-  if totalGroundBatteries < targetBatteries:
-    let groundBatteryCost = getBuildingCost("GroundBattery")
-    let req = BuildRequirement(
-      requirementType: RequirementType.Infrastructure,
-      priority: RequirementPriority.Medium,  # Medium priority: baseline colony defense
-      shipClass: none(ShipClass),
-      quantity: targetBatteries - totalGroundBatteries,
-      buildObjective: BuildObjective.Defense,
-      targetSystem: none(SystemId),
-      estimatedCost: groundBatteryCost * (targetBatteries - totalGroundBatteries),
-      reason: &"Ground batteries for colony defense (have {totalGroundBatteries}/{targetBatteries})"
-    )
-    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x GroundBattery ({req.estimatedCost}PP) - {req.reason}")
-    result.add(req)
+  # Ground batteries for colony defense - INTELLIGENCE-DRIVEN PER-COLONY REQUIREMENTS
+  # Priority based on threat assessment: threatened colonies get batteries FIRST
+  let groundBatteryCost = getBuildingCost("GroundBattery")
+  for colony in filtered.ownColonies:
+    let currentBatteries = colony.groundBatteries  # int, not seq
+    let targetBatteries = 3  # Baseline: 3 batteries per colony
 
-  # Armies for colony defense
-  let targetArmies = filtered.ownColonies.len * 2  # 2 armies per colony baseline
-  if totalArmies < targetArmies:
-    let armyCost = getArmyBuildCost()
-    let req = BuildRequirement(
-      requirementType: RequirementType.DefenseGap,
-      priority: RequirementPriority.Medium,  # Medium priority: baseline colony defense
-      shipClass: none(ShipClass),
-      quantity: targetArmies - totalArmies,
-      buildObjective: BuildObjective.Defense,
-      targetSystem: none(SystemId),
-      estimatedCost: armyCost * (targetArmies - totalArmies),
-      reason: &"Ground armies for colony defense (have {totalArmies}/{targetArmies})"
-    )
-    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x Army ({req.estimatedCost}PP) - {req.reason}")
-    result.add(req)
+    if currentBatteries < targetBatteries:
+      let needed = targetBatteries - currentBatteries
+
+      # INTELLIGENCE-DRIVEN: Calculate threat at this colony
+      let threat = estimateLocalThreat(colony.systemId, filtered, controller)
+
+      # Determine priority based on threat level
+      let priority = if threat > 0.5:
+        RequirementPriority.Critical  # High threat → CRITICAL priority
+      elif threat > 0.2:
+        RequirementPriority.High      # Medium threat → HIGH priority
+      elif currentBatteries == 0:
+        RequirementPriority.Medium    # No defense → MEDIUM priority
+      else:
+        RequirementPriority.Low       # Has some defense → LOW priority
+
+      let req = BuildRequirement(
+        requirementType: RequirementType.Infrastructure,
+        priority: priority,  # DYNAMIC: Based on threat intelligence
+        shipClass: none(ShipClass),
+        quantity: needed,
+        buildObjective: BuildObjective.Defense,
+        targetSystem: some(colony.systemId),  # Target specific colony
+        estimatedCost: groundBatteryCost * needed,
+        reason: &"Ground batteries for {colony.systemId} (threat={threat:.2f}, have {currentBatteries}/{targetBatteries})"
+      )
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x GroundBattery at {colony.systemId} (priority={priority}, threat={threat:.2f})")
+      result.add(req)
+
+  # Armies for colony defense - INTELLIGENCE-DRIVEN PER-COLONY REQUIREMENTS
+  # Priority based on threat assessment: threatened colonies get armies FIRST
+  let armyCost = getArmyBuildCost()
+  for colony in filtered.ownColonies:
+    let currentArmies = colony.armies  # int, not seq
+    let targetArmies = 2  # Baseline: 2 armies per colony
+
+    if currentArmies < targetArmies:
+      let needed = targetArmies - currentArmies
+
+      # INTELLIGENCE-DRIVEN: Calculate threat at this colony
+      let threat = estimateLocalThreat(colony.systemId, filtered, controller)
+
+      # Determine priority based on threat level
+      # Armies are last-line defense, slightly lower priority than batteries
+      let priority = if threat > 0.6:
+        RequirementPriority.Critical  # High threat → CRITICAL
+      elif threat > 0.3:
+        RequirementPriority.High      # Medium threat → HIGH
+      elif currentArmies == 0:
+        RequirementPriority.Medium    # No armies → MEDIUM
+      else:
+        RequirementPriority.Low       # Has some → LOW
+
+      let req = BuildRequirement(
+        requirementType: RequirementType.DefenseGap,
+        priority: priority,  # DYNAMIC: Based on threat intelligence
+        shipClass: none(ShipClass),
+        quantity: needed,
+        buildObjective: BuildObjective.Defense,
+        targetSystem: some(colony.systemId),  # Target specific colony
+        estimatedCost: armyCost * needed,
+        reason: &"Ground armies for {colony.systemId} (threat={threat:.2f}, have {currentArmies}/{targetArmies})"
+      )
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {needed}x Army at {colony.systemId} (priority={priority}, threat={threat:.2f})")
+      result.add(req)
 
   # Marines for offensive operations (if aggressive and have transports)
   if personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions:
