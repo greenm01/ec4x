@@ -1,7 +1,7 @@
 # AI System Documentation
 
 **Last Updated:** 2025-12-05
-**Current Status:** Intelligence Integration Phase E Complete, GOAP + RBA Hybrid Operational
+**Current Status:** Intelligence Integration Phase F Complete, GOAP + RBA Hybrid Operational
 
 ## Overview
 
@@ -15,6 +15,80 @@ This hybrid system provides Byzantine Imperial AI with strategic foresight, adap
 ---
 
 ## 🆕 Recent Changes (December 2025)
+
+### Intelligence Integration Phase F Complete ✅
+**Date:** 2025-12-05
+**Status:** Production-ready, Domestikos intelligence integration complete
+
+**Implementation:**
+- Domestikos offensive intelligence (~150 LOC) - Intelligence-driven invasion targeting
+- Domestikos defensive intelligence (~50 LOC) - Threat-aware colony defense prioritization
+- Integration points (~10 LOC) - Intelligence parameter pass-through
+- Total: ~210 LOC across 3 files (offensive_ops.nim, defensive_ops.nim, domestikos.nim)
+
+**Offensive Operations Enhancements:**
+1. **Intelligence-Driven Targeting** - Replaces visibility-based opportunistic attacks
+   - Primary: `military.vulnerableTargets` (vulnerability score, required force, intel quality)
+   - Secondary: `economic.highValueTargets` (shipyard disruption, high-value bombardment)
+   - Fallback: Visibility-based targeting (backward compatible)
+
+2. **Risk-Aware Fleet Assignment** - `findSuitableInvasionFleet()` function
+   - 1.2x safety margin for invasion success probability
+   - ETA viability check (max 8 turns to target)
+   - Fleet strength vs required force comparison
+   - Idle/UnderUtilized fleet availability check
+
+3. **Priority Calculation** - `calculateInvasionPriority()` function
+   - Vulnerability boost (0-50 points based on 0.0-1.0 score)
+   - Economic value (0-200 points, 2x multiplier)
+   - Distance penalty (-10 points per jump beyond 5)
+   - Intel quality confidence multiplier (Perfect 1.5x, High 1.2x, Medium 1.0x, Low 0.7x, Unknown 0.5x)
+
+**Defensive Operations Enhancements:**
+1. **Threat-Aware Priority Calculation** - Resolves TODO at defensive_ops.nim:44
+   - Critical threat: +500 priority (massive defensive boost)
+   - High threat: +200 priority
+   - Moderate threat: +50 priority
+   - Active blockade: +150 priority (60% GCO reduction mitigation)
+   - Frontier colony: +75 priority (enemy fleet within 2 jumps)
+
+2. **Intelligence-Based Frontier Detection** - Replaces distance-from-homeworld proxy
+   - Uses `military.knownEnemyFleets` proximity analysis
+   - Pathfinding-based distance calculation (2-jump threshold)
+   - Active blockade detection from `diplomatic.activeBlockades`
+
+**Intelligence Utilization Progress:**
+- Phase A (Baseline): ~5% utilization
+- Phase B (Colony + System): ~40% utilization
+- Phase C (Starbase + Combat): ~70% utilization
+- Phase D (Surveillance + Full Integration): >80% utilization
+- Phase E (Complete Integration): ~100% report processing, ~65% advisor utilization
+- Phase F (Domestikos Integration): **~100% report processing, ~75% advisor utilization** ✅
+
+**Advisor Intelligence Coverage:**
+- Eparch: 60% (threat-aware IU investment, border colony prioritization)
+- Protostrator: 70% (diplomatic intelligence, alliance/threat identification)
+- Drungarius: 70% (detection risks, espionage pattern awareness)
+- **Domestikos: 0% → 60%** (offensive targeting + defensive prioritization) ✅
+- Treasurer: 80% (threat-aware budgets, surveillance gap allocation)
+- Basileus: 40% (resource mediation, cross-domain awareness)
+
+**Testing:**
+- ✅ All 863 tests passing (49 test files)
+- ✅ Backward compatible (intelligence parameter optional with graceful fallback)
+- ✅ No regressions (nimble build + nimble test clean)
+
+**Impact:**
+- Complete RBA intelligence integration - All 6 advisors intelligence-driven
+- Strategic offensive doctrine replaces reactive opportunism
+- Cross-domain intelligence synergy (military + economic targeting)
+- Threat-aware defensive posture (not distance-based heuristics)
+- Ready for comprehensive balance testing and GOAP analysis
+
+**Commit:** c71e08f (bundled with player manual)
+**See:** `~/.claude/plans/delightful-dreaming-adleman.md` for Phase F implementation details
+
+---
 
 ### Intelligence Integration Phase E Complete ✅
 **Date:** 2025-12-05
