@@ -5,10 +5,14 @@
 import std/[unittest, tables, options]
 import ../../src/engine/diplomacy/[types, engine]
 import ../../src/engine/prestige
-import ../../src/engine/config/prestige_config
+import ../../src/engine/config/[prestige_config, prestige_multiplier]
 import ../../src/common/types/[core, diplomacy]
 
 suite "Diplomacy System":
+
+  setup:
+    # Initialize prestige multiplier for testing (prevents uninitialized warnings)
+    setPrestigeMultiplierForTesting(1.0)
 
   test "Initialize diplomatic relations (default neutral)":
     let relations = initDiplomaticRelations()
