@@ -932,8 +932,10 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
                         strategy: AIStrategy,
                         prevMetrics: Option[DiagnosticMetrics] = none(DiagnosticMetrics),
                         orders: Option[OrderPacket] = none(OrderPacket),
-                        gameId: string = ""): DiagnosticMetrics =
+                        gameId: string = "",
+                        maxTurns: int = 100): DiagnosticMetrics =
   ## Collect all diagnostic metrics for a house at current turn
+  ## maxTurns: expected game length for Act calculation (default 100 for legacy compatibility)
   result = initDiagnosticMetrics(state.turn, houseId, strategy, gameId)
 
   # Collect from different subsystems
@@ -1167,10 +1169,10 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.missedOrderTurns = status.missedOrderTurns
 
   # Calculate Act number (1-4) based on turn thresholds
-  # Assuming 100-turn game: Act1=1-25, Act2=26-50, Act3=51-75, Act4=76-100
-  # For dynamic calculation, use 25% per act
-  let turnLimit = 100  # TODO: Get from game config if available
-  let actThreshold = turnLimit div 4
+  # Dynamic calculation based on expected game length: 25% per act
+  # Example: 100-turn game → Act1=1-25, Act2=26-50, Act3=51-75, Act4=76-100
+  # Example: 60-turn game → Act1=1-15, Act2=16-30, Act3=31-45, Act4=46-60
+  let actThreshold = max(1, maxTurns div 4)  # Avoid division by zero
   result.act = min(4, (state.turn - 1) div actThreshold + 1)
 
   # Calculate current rank by prestige (1=best, N=worst)
