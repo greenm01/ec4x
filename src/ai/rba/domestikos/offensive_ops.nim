@@ -6,12 +6,13 @@
 ## - Probing attacks: Scout enemy defenses with expendable scouts
 ## - Counter-attacks: Exploit enemy vulnerabilities (weak/absent defenses)
 
-import std/[options, strformat, sets]
+import std/[options, strformat, sets, tables]
 import ../../../common/types/core
-import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger]
+import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger, starmap]
 import ../../../engine/diplomacy/types as dip_types  # For isEnemy
 import ../controller_types
 import ../config
+import ../shared/intelligence_types  # Phase F: Intelligence integration
 import ./fleet_analysis  # For FleetAnalysis, FleetUtilization types
 
 proc generateMergeOrders*(
@@ -271,13 +272,86 @@ proc selectCombatOrderType(
     # Soften target for future invasion
     return FleetOrderType.Bombard
 
+proc calculateInvasionPriority(
+  opportunity: InvasionOpportunity,
+  intelQuality: IntelQualityScore
+): float =
+  ## Calculate invasion priority using intelligence data (Phase F)
+  ## Factors: vulnerability, value, intel quality, distance penalty
+  var priority = 100.0
+
+  # Vulnerability boost (0-50 points)
+  priority += opportunity.vulnerability * 50.0
+
+  # Economic value (0-200 points)
+  priority += float(opportunity.estimatedValue) * 2.0
+
+  # Distance penalty (-10 points per jump beyond 5)
+  if opportunity.distance > 5:
+    priority -= float(opportunity.distance - 5) * 10.0
+
+  # Intel quality confidence multiplier (0.5x - 1.5x)
+  let confidenceMultiplier = case intelQuality
+    of IntelQualityScore.Perfect: 1.5
+    of IntelQualityScore.High: 1.2
+    of IntelQualityScore.Medium: 1.0
+    of IntelQualityScore.Low: 0.7
+    else: 0.5
+
+  priority *= confidenceMultiplier
+  return priority
+
+proc estimateFleetStrength(composition: FleetComposition): float =
+  ## Estimate fleet combat strength based on composition
+  ## Simple heuristic: ship count weighted by capability
+  return float(composition.capitalShips * 3 + composition.escorts * 2 + composition.scouts)
+
+proc findSuitableInvasionFleet(
+  analyses: seq[FleetAnalysis],
+  requiredForceScore: int,
+  filtered: FilteredGameState,
+  targetSystem: SystemId
+): Option[FleetId] =
+  ## Find available fleet with sufficient strength for invasion (Phase F)
+  ## 1.2x safety margin for success probability
+  for analysis in analyses:
+    # Check availability
+    if analysis.utilization notin {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
+      continue
+
+    # Check combat capability
+    if not analysis.hasCombatShips or analysis.shipCount < 2:
+      continue
+
+    # Estimate fleet strength
+    let fleetStrength = estimateFleetStrength(analysis.composition)
+
+    # Strength requirement (1.2x safety margin)
+    if fleetStrength < float(requiredForceScore) * 1.2:
+      continue
+
+    # Distance/ETA check (reject if > 8 turns)
+    let pathResult = filtered.starMap.findPath(analysis.location, targetSystem, Fleet())
+    if pathResult.found:
+      let eta = pathResult.path.len
+      if eta > 8:
+        continue  # Too distant
+    else:
+      continue  # No path
+
+    return some(analysis.fleetId)
+
+  return none(FleetId)
+
 proc generateCounterAttackOrders*(
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
-  controller: AIController
+  controller: AIController,
+  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)  # Phase F: Intelligence integration
 ): seq[FleetOrder] =
   ## Generate counter-attack orders against vulnerable enemy targets
-  ## Targets: enemy colonies with weak/no visible defenses
+  ## Phase F: Intelligence-driven targeting using military.vulnerableTargets and economic.highValueTargets
+  ## Fallback: Visibility-based targeting when intelligence unavailable
   result = @[]
 
   # Find available combat fleets (idle or under-utilized)
@@ -291,16 +365,87 @@ proc generateCounterAttackOrders*(
   if availableAttackers.len == 0:
     return result
 
-  # Find vulnerable enemy colonies from CURRENT visibility (not historical intel)
+  # === PHASE F: INTELLIGENCE-DRIVEN TARGETING ===
   type VulnerableTarget = object
     systemId: SystemId
     enemyHouse: HouseId
     priority: float
-    colony: VisibleColony  # Store colony for defense assessment
+    colony: VisibleColony  # Store colony for defense assessment (optional for intel targets)
 
   var vulnerableTargets: seq[VulnerableTarget] = @[]
 
-  # Check currently visible enemy colonies
+  # Priority 1: Use military.vulnerableTargets (invasion opportunities)
+  if intelSnapshot.isSome:
+    let snapshot = intelSnapshot.get()
+    var intelTargetsFound = false
+
+    # Primary: Intelligence-identified vulnerable targets
+    for opportunity in snapshot.military.vulnerableTargets:
+      # Filter: only diplomatic enemies
+      let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(opportunity.owner)
+      if not isEnemy:
+        continue
+
+      # Calculate intelligence-driven priority
+      let priority = calculateInvasionPriority(opportunity, opportunity.intelQuality)
+
+      # Find suitable fleet with strength safety margin
+      let assignedFleet = findSuitableInvasionFleet(analyses, opportunity.requiredForce, filtered, opportunity.systemId)
+
+      if assignedFleet.isSome:
+        intelTargetsFound = true
+        logInfo(LogCategory.lcAI,
+                &"{controller.houseId} Domestikos: Intelligence-driven invasion - system {opportunity.systemId} " &
+                &"({opportunity.owner}), vulnerability {opportunity.vulnerability:.2f}, " &
+                &"value {opportunity.estimatedValue}, confidence {opportunity.intelQuality}")
+
+        # Create order directly (no need to defer to visibility targeting)
+        result.add(FleetOrder(
+          fleetId: assignedFleet.get(),
+          orderType: FleetOrderType.Invade,  # Intelligence targets warrant invasion
+          targetSystem: some(opportunity.systemId),
+          priority: int(priority)
+        ))
+
+    # Secondary: High-value economic targets (undefended)
+    if not intelTargetsFound:
+      for hvTarget in snapshot.economic.highValueTargets:
+        # Filter: only undefended high-value targets
+        if hvTarget.estimatedDefenses > 0:
+          continue
+
+        # Filter: only diplomatic enemies
+        let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(hvTarget.owner)
+        if not isEnemy:
+          continue
+
+        # Find available fleet
+        for attacker in availableAttackers:
+          let pathResult = filtered.starMap.findPath(attacker.location, hvTarget.systemId, Fleet())
+          if pathResult.found and pathResult.path.len <= 8:
+            let priority = hvTarget.estimatedValue * 1.5  # High-value multiplier
+
+            logInfo(LogCategory.lcAI,
+                    &"{controller.houseId} Domestikos: Economic target - system {hvTarget.systemId} " &
+                    &"({hvTarget.owner}), value {hvTarget.estimatedValue}, " &
+                    &"shipyards {hvTarget.shipyardCount}")
+
+            result.add(FleetOrder(
+              fleetId: attacker.fleetId,
+              orderType: FleetOrderType.Bombard,  # Economic disruption via bombardment
+              targetSystem: some(hvTarget.systemId),
+              priority: int(priority)
+            ))
+            break  # One fleet per target
+
+    # If intelligence targeting succeeded, return early
+    if result.len > 0:
+      return result
+
+  # === FALLBACK: VISIBILITY-BASED OPPORTUNISTIC TARGETING ===
+  # Only used when intelligence unavailable or found no suitable targets
+
+  # Find vulnerable enemy colonies from CURRENT visibility (not historical intel)
   for visibleColony in filtered.visibleColonies:
     if visibleColony.owner == controller.houseId:
       continue  # Skip own colonies

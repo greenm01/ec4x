@@ -30,7 +30,7 @@ This level of detail transforms strategic decision-making. Knowing an enemy's ec
 
 ### 9.1.4 Starbase Surveillance
 
-Advanced sensor arrays installed on starbases monitor their sector continuously. A starbase watches its home system and all adjacent systems, detecting non-stealthed fleet movements, combat activity, and bombardment operations. This passive surveillance provides early warning of enemy fleet approaches and documents hostile activity near your territory.
+Advanced sensor arrays installed on starbases monitor their system continuously. A starbase watches its home system, detecting non-stealthed fleet movements, combat activity, and bombardment operations. This active surveillance provides early warning of enemy fleet approaches and documents hostile activity in your territory.
 
 Scouts and cloaked Raiders can evade starbase detection through stealth. Detection mechanics are described in [Section 7.1.3](operations.md#713-cloaking-and-detection).
 

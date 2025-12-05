@@ -111,10 +111,12 @@ proc generateDomestikosOrders*(
 
   # Step 2: Generate defensive orders (colony protection)
   # MVP focus - fixes Unknown-Unknown #3
+  # Phase F: Pass intelligence for threat-aware defensive prioritization
   let defensiveOrders = generateDefensiveOrders(
     filtered,
     analyses,
-    controller
+    controller,
+    intelSnapshot
   )
 
   # Merge defensive orders into result
@@ -180,10 +182,10 @@ proc generateDomestikosOrders*(
     )
     offensiveFleetOrders.add(probingOrders)
 
-    # Counter-attacks against vulnerable targets
+    # Counter-attacks against vulnerable targets (Phase F: Intelligence-driven)
     if controller.personality.aggression > 0.5:
       let counterAttackOrders = generateCounterAttackOrders(
-        filtered, analyses, controller
+        filtered, analyses, controller, intelSnapshot  # Phase F: Pass intelligence
       )
       offensiveFleetOrders.add(counterAttackOrders)
 
@@ -192,7 +194,7 @@ proc generateDomestikosOrders*(
     # Counter-attack vulnerable targets (any aggression level during war)
     if controller.personality.aggression > 0.3:
       let counterAttackOrders = generateCounterAttackOrders(
-        filtered, analyses, controller
+        filtered, analyses, controller, intelSnapshot  # Phase F: Pass intelligence
       )
       offensiveFleetOrders.add(counterAttackOrders)
 
