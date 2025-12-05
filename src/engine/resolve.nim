@@ -6,6 +6,48 @@
 ##
 ## REFACTORED: Main orchestrator that coordinates resolution phases
 ## Individual phase logic has been extracted to resolution/* modules
+##
+## **TURN RESOLUTION PHASES:**
+##
+## 1. **Conflict Phase** (simultaneous)
+##    - Fleet combat resolution
+##    - Planetary bombardment
+##    - Espionage attempts
+##    - Blockade enforcement
+##
+## 2. **Income Phase** (sequential)
+##    - Resource generation (PP, RP, EP, CP, IP)
+##    - Maintenance costs deducted
+##    - Colony growth/decline
+##
+## 3. **Command Phase** (sequential)
+##    a. Commission completed projects (frees dock capacity)
+##    b. Colony automation (processColonyAutomation):
+##       - Auto-load fighters to carriers (if colony.autoLoadingEnabled)
+##       - Auto-repair submission (if colony.autoRepairEnabled)
+##       - Auto-squadron balancing (always on)
+##    c. Process new build orders (uses freed capacity)
+##    d. Fleet orders (Move, Colonize, Patrol, etc.)
+##    e. Diplomatic actions
+##    f. Research allocation
+##    g. Terraforming orders
+##
+## 4. **Maintenance Phase** (sequential)
+##    - Advance construction queues (facility + colony)
+##    - Advance repair queues
+##    - Store completed projects in state.pendingCommissions
+##    - Spy travel (movement between systems)
+##    - Fleet upkeep
+##
+## **COMMISSIONING & AUTOMATION FLOW:**
+## - Turn N: Build orders submitted → queued
+## - Turn N: Maintenance advances queues → stores completions in pendingCommissions
+## - Turn N+1: Command Phase commissions → automation → new builds
+##
+## This ordering ensures:
+## - Commissioning frees dock capacity before automation
+## - Auto-repair can use newly freed capacity
+## - New builds see accurate available capacity
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../common/types/core
@@ -18,7 +60,7 @@ import commands/[executor, spy_scout_orders]
 import intelligence/[spy_travel, spy_resolution]
 import economy/repair_queue
 # Import resolution modules
-import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage]
+import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage, commissioning, automation, construction]
 
 # Import debug-only modules
 when not defined(release):
@@ -147,27 +189,20 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       for houseId in report.defenders:
         result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
 
-  # === AUTOMATIC REPAIR SUBMISSION (CONDITIONAL) ===
-  # Extract crippled ships from fleets at colonies with auto-repair enabled
-  # Must happen AFTER combat (creates crippled ships) and BEFORE economy (processes repairs)
-  logInfo(LogCategory.lcEconomy, "=== Repair Submission Phase ===")
-  for systemId, colony in result.newState.colonies:
-    if colony.autoRepairEnabled:
-      submitAutomaticRepairs(result.newState, systemId)
-      logDebug(LogCategory.lcEconomy,
-               &"Auto-repair enabled: Submitted repairs at {systemId}")
-    else:
-      logDebug(LogCategory.lcEconomy,
-               &"Auto-repair disabled: Skipping {systemId}")
-
   # Phase 2: Income (resource collection)
+  # Note: Auto-repair submission now happens in Command Phase after commissioning
   resolveIncomePhase(result.newState, effectiveOrders)
 
-  # Phase 3: Command (build orders, fleet orders, diplomatic actions)
+  # Phase 3: Command (commissioning → build orders → fleet orders → diplomatic actions)
   resolveCommandPhase(result.newState, effectiveOrders, result.events, rng)
 
-  # Phase 4: Maintenance (upkeep, effect decrements, status updates)
-  resolveMaintenancePhase(result.newState, result.events, effectiveOrders)
+  # Phase 4: Maintenance (upkeep, effect decrements, status updates, queue advancement)
+  let completedProjects = resolveMaintenancePhase(result.newState, result.events, effectiveOrders)
+
+  # Store completed projects for next turn's commissioning
+  # These will be commissioned at the start of next turn's Command Phase
+  result.newState.pendingCommissions = completedProjects
+  logDebug(LogCategory.lcEconomy, &"Stored {completedProjects.len} completed projects for next turn commissioning")
 
   # Validate all commissioning pools are empty before advancing turn
   # All commissioned units should be auto-assigned to fleets/colonies
@@ -357,66 +392,31 @@ proc resolveConflictPhase(state: var GameState, orders: Table[HouseId, OrderPack
           else:
             discard
 
-## Helper: Auto-balance unassigned squadrons to fleets at colony
-
-# NOTE: This functionality is handled by economy_resolution.nim:autoBalanceSquadronsToFleets
-# which runs after ship commissioning during the Economy Phase.
-# The implementation below is preserved for reference but not currently used.
-when false:
-  proc autoBalanceSquadronsToFleets(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
-    ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
-    ## Only assigns to stationary fleets (those with Hold orders or no orders)
-    if colony.unassignedSquadrons.len == 0:
-      return
-
-    # Get all fleets at this colony owned by same house
-    var candidateFleets: seq[FleetId] = @[]
-    for fleetId, fleet in state.fleets:
-      if fleet.owner == colony.owner and fleet.location == systemId:
-        # Check if fleet has stationary orders (Hold or no orders)
-        var isStationary = true
-
-        # Check if fleet has orders
-        if colony.owner in orders:
-          for order in orders[colony.owner].fleetOrders:
-            if order.fleetId == fleetId:
-              # Fleet has orders - only stationary if Hold
-              if order.orderType != FleetOrderType.Hold:
-                isStationary = false
-              break
-
-        if isStationary:
-          candidateFleets.add(fleetId)
-
-    if candidateFleets.len == 0:
-      return
-
-    # Calculate target squadron count per fleet (balanced distribution)
-    let totalSquadrons = colony.unassignedSquadrons.len +
-                          candidateFleets.mapIt(state.fleets[it].squadrons.len).foldl(a + b, 0)
-    let targetPerFleet = totalSquadrons div candidateFleets.len
-
-    # Assign squadrons to fleets to reach target count
-    for fleetId in candidateFleets:
-      var fleet = state.fleets[fleetId]
-      while fleet.squadrons.len < targetPerFleet and colony.unassignedSquadrons.len > 0:
-        let squadron = colony.unassignedSquadrons[0]
-        fleet.squadrons.add(squadron)
-        colony.unassignedSquadrons.delete(0)
-      state.fleets[fleetId] = fleet
-
 ## Phase 3: Command
 
 proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacket],
                         events: var seq[res_types.GameEvent], rng: var Rand) =
   ## Phase 3: Execute orders
-  ## Build orders may fail if shipyards were destroyed in conflict phase
+  ## Commissioning happens FIRST to free up dock capacity before new build orders
   logInfo("Resolve", "=== Command Phase ===", "turn=", $state.turn)
 
-  # Process build orders first
+  # STEP 1: Commission completed projects from previous turn's Maintenance Phase
+  # This clears shipyard/spaceport dock capacity and makes ships immediately available
+  if state.pendingCommissions.len > 0:
+    logInfo(LogCategory.lcEconomy, &"=== Commissioning Phase === ({state.pendingCommissions.len} projects)")
+    commissioning.commissionCompletedProjects(state, state.pendingCommissions, events)
+    state.pendingCommissions = @[]  # Clear after commissioning
+  else:
+    logDebug(LogCategory.lcEconomy, "No projects to commission this turn")
+
+  # STEP 2: Colony automation (auto-loading, auto-repair, auto-squadron balancing)
+  # Uses newly-freed dock capacity and commissioned units
+  automation.processColonyAutomation(state, orders)
+
+  # STEP 3: Process build orders (new construction using freed capacity)
   for houseId in state.houses.keys:
     if houseId in orders:
-      resolveBuildOrders(state, orders[houseId], events)
+      construction.resolveBuildOrders(state, orders[houseId], events)
 
   # Process colony management orders (tax rates, auto-repair toggles)
   for houseId in state.houses.keys:
@@ -991,15 +991,5 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   # - Manually transferred squadrons
   # - Squadrons from disbanded/destroyed fleets
   # This eliminates micromanagement for both players and AI
-  # =========================================================================
-  when not defined(release):
-    logInfo(LogCategory.lcFleet, "[AUTO-ASSIGN] Organizing unassigned squadrons into fleets...")
-  var assignedCount = 0
-  for systemId, colony in state.colonies.mpairs:
-    if colony.unassignedSquadrons.len > 0:
-      when not defined(release):
-        logInfo(LogCategory.lcFleet, &"[AUTO-ASSIGN] Colony {systemId}: {colony.unassignedSquadrons.len} unassigned squadrons")
-      economy_resolution.autoBalanceSquadronsToFleets(state, colony, systemId, orders)
-      assignedCount += colony.unassignedSquadrons.len
-  when not defined(release):
-    logInfo(LogCategory.lcFleet, &"[AUTO-ASSIGN] Processed {assignedCount} unassigned squadrons")
+  # Note: Squadron auto-assignment now happens in automation.processColonyAutomation()
+  # which is called earlier in Command Phase (after commissioning)

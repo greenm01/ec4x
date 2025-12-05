@@ -243,6 +243,7 @@ Colony:
 ## Data Flow Diagram
 
 ```
+=== TURN N: Command Phase ===
 Build Order Submission
          ↓
     ┌────────────┐
@@ -269,6 +270,7 @@ Capital Ship?          Everything Else?
        │                        │
        └────────┬───────────────┘
                 ↓
+=== TURN N: Maintenance Phase ===
         ┌──────────────┐
         │ Maintenance  │
         │ Phase        │
@@ -284,16 +286,62 @@ Capital Ship?          Everything Else?
        │                 │
        └────────┬────────┘
                 ↓
-        ┌──────────────┐
-        │ Commission   │
-        │ Completed    │
-        │ Units        │
-        └──────────────┘
+        ┌──────────────────────┐
+        │ Store Completed      │
+        │ Projects in          │
+        │ pendingCommissions   │
+        └──────────┬───────────┘
+                   │
+       (Turn boundary - state persisted)
+                   │
+=== TURN N+1: Command Phase ===
+                   ↓
+        ┌──────────────────────┐
+        │ 1. Commission        │
+        │    Completed Units   │
+        │    (Frees capacity)  │
+        └──────────┬───────────┘
+                   ↓
+        ┌──────────────────────┐
+        │ 2. Auto-Load         │
+        │    Fighters to       │
+        │    Carriers          │
+        │    (if enabled)      │
+        └──────────┬───────────┘
+                   ↓
+        ┌──────────────────────┐
+        │ 3. New Build Orders  │
+        │    (uses freed       │
+        │     capacity)        │
+        └──────────────────────┘
 ```
 
 ---
 
 ## Code Modules
+
+### Project Definitions ("What to Build")
+
+**Module:** `src/engine/economy/projects.nim`
+- `createShipProject(shipClass, cstLevel)` - Create ship construction project
+- `createBuildingProject(buildingType)` - Create building construction project
+- `createIndustrialProject(colony, units)` - Create IU investment project
+- `getShipBuildTime(shipClass, cstLevel)` - Get ship build time (always 1 turn)
+- `getIndustrialUnitCost(colony)` - Calculate IU investment cost with scaling
+
+**Purpose:** Pure factory functions that define construction projects. No state mutation, no queue management.
+
+### Build Order Processing ("How Orders Work")
+
+**Module:** `src/engine/resolution/construction.nim`
+- `resolveBuildOrders(state, packet, events)` - Main build order processor
+  - Validates colony ownership and budget
+  - Routes to facility queues (capital ships) OR colony queues (fighters/buildings)
+  - Handles dual construction system routing
+  - Deducts treasury and generates events
+  - Called in Command Phase after commissioning
+
+**Purpose:** Order submission, validation, capacity routing, and treasury management.
 
 ### Facility Dock Construction
 
@@ -304,25 +352,47 @@ Capital Ship?          Everything Else?
 - `getAvailableFacilities(state, colonyId)` - Get facilities with capacity
 - `processCapacityReporting(state)` - Check for violations (should never happen)
 
+**Purpose:** Capacity checking and facility assignment algorithms.
+
+### Queue Management
+
 **Module:** `src/engine/economy/facility_queue.nim`
 - `advanceSpaceportQueue(spaceport, colonyId)` - Advance spaceport construction
 - `advanceShipyardQueue(shipyard, colonyId)` - Advance shipyard construction + repairs
 - `advanceColonyQueues(colony)` - Advance all facilities at colony
 - `advanceAllQueues(state)` - Advance all facilities across all colonies
+- `startConstruction(colony, project)` - Add to colony queue (legacy)
+- `advanceConstruction(colony)` - Advance colony queue (legacy)
 
-### Colony Construction
+**Purpose:** Queue advancement for both facility queues (capital ships) and colony queues (fighters/buildings).
 
-**Module:** `src/engine/economy/construction.nim`
-- `createShipProject(shipClass)` - Create ship construction project
-- `createBuildingProject(buildingType)` - Create building project
-- `createIndustrialProject(colony, units)` - Create IU investment
-- `advanceConstruction(colony)` - Advance colony queue
-- `startConstruction(colony, project)` - Add to colony queue
+### Commissioning & Automation
+
+**Module:** `src/engine/resolution/commissioning.nim`
+- `commissionCompletedProjects(state, completedProjects, events)` - Commission all completed projects
+  - Converts completed construction into operational units
+  - Called at START of Command Phase (before new build orders)
+  - Frees dock capacity immediately for new construction
+
+**Module:** `src/engine/resolution/automation.nim`
+- `processColonyAutomation(state, orders)` - Batch automation processor
+  - Auto-load fighters to carriers (per-colony toggle, default: true)
+  - Auto-repair submission (per-colony toggle, default: false)
+  - Auto-squadron balancing (always enabled)
+- `autoLoadFightersToCarriers(state, colony, systemId, orders)` - Auto-load fighters
+  - Only loads to Active stationary carriers (Hold/Guard orders or no orders)
+  - Respects carrier hangar capacity (ACO tech-based limits)
+  - Skips moving carriers and Reserve/Mothballed fleets
+
+**Purpose:** Convert completed projects to operational units and handle automatic fleet/colony management.
 
 ### Integration
 
-**Module:** `src/engine/resolution/economy_resolution.nim`
-- `resolveBuildOrders()` - Routes orders to facility or colony queues
+**Module:** `src/engine/resolve.nim`
+- Command Phase orchestration:
+  1. Commission completed projects (frees capacity)
+  2. Process colony automation (auto-loading, auto-repair, auto-squadron)
+  3. Process build orders (uses freed capacity)
 
 **Module:** `src/engine/economy/engine.nim`
 - `resolveMaintenancePhaseWithState()` - Advances both facility and colony queues

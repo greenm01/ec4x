@@ -7,7 +7,7 @@
 ## Infrastructure damage from combat affects production
 
 import std/[tables, options]
-import types, income, construction, maintenance, maintenance_shortfall, facility_queue
+import types, income, projects, maintenance, maintenance_shortfall, facility_queue
 import capacity/carrier_hangar  # For carrier hangar capacity enforcement
 import ../../common/types/[core, units]
 import ../gamestate  # For unified Colony type

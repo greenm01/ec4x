@@ -11,7 +11,7 @@
 import std/[tables, options, algorithm, strformat, sequtils, strutils]
 import ../common/types
 import ../../engine/[gamestate, orders, fleet, logger, fog_of_war, squadron]
-import ../../engine/economy/construction  # For budget execution
+import ../../engine/economy/projects  # For budget execution
 import ../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../common/types/[core, units]
 import ./treasurer     # Treasurer module for budget allocation

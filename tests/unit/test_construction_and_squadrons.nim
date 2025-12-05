@@ -8,7 +8,7 @@
 
 import std/[unittest, options]
 import ../../src/engine/[squadron, fleet]
-import ../../src/engine/economy/construction
+import ../../src/engine/economy/projects
 import ../../src/common/types/[units, planets]
 
 suite "Ship Construction Mechanics":

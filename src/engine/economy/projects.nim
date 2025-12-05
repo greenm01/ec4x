@@ -1,29 +1,30 @@
-## Construction System
+## Construction Projects - Factory functions for creating construction projects
 ##
-## Ship and building construction per economy.md
+## This module provides factory functions that define construction projects:
+## - Ships (capital ships and fighters)
+## - Buildings (infrastructure facilities)
+## - Industrial Units (IU investment)
 ##
-## Construction mechanics:
-## - Projects have total cost and progress
-## - Production applied each maintenance phase
-## - Projects complete when cost paid >= cost total
+## These are pure "definition" functions that return ConstructionProject objects.
+## The actual order processing and queue assignment happens in resolution/construction.nim.
 ##
-## REFACTORED (Phase 9): Data-Oriented Design
-## - Eliminated 120+ lines of case duplication
-## - All config lookups moved to config_accessors.nim (macro-generated)
-## - Reduced from 320 lines → 200 lines (37% reduction)
+## **Separation of Concerns:**
+## - This module: "What to build" (project definitions, cost calculations)
+## - resolution/construction.nim: "How orders work" (validation, routing, treasury)
+## - economy/facility_queue.nim: "Queue management" (advancement, completion)
 
 import std/options
 import math
 import types
 import ../../common/types/units
-import ../[gamestate, logger]  # For unified Colony type and logger
+import ../gamestate  # For Colony type (IU cost calculations)
+import ../logger
 import config_accessors  # DoD refactoring: macro-generated config accessors
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
 export config_accessors.getShipConstructionCost, config_accessors.getShipBaseBuildTime
 export config_accessors.getBuildingCost, config_accessors.getBuildingTime
 export config_accessors.requiresSpaceport
-# NOTE: Don't export gamestate.Colony to avoid ambiguity with gamestate's own export
 
 ## Ship Construction Times (reference.md:9.1 and 9.1.1)
 ## (Cost and base time accessors provided by config_accessors.nim)
@@ -69,81 +70,7 @@ proc getIndustrialUnitCost*(colony: Colony): int =
 
   return int(float(BASE_IU_COST) * multiplier)
 
-## Construction Management
-
-proc startConstruction*(colony: var Colony, project: ConstructionProject): bool =
-  ## Start new construction project at colony
-  ## Returns true if started successfully
-  ##
-  ## NOTE: This function is DEPRECATED for build queue system.
-  ## The economy resolution code directly manages constructionQueue now.
-  ## We keep this for backwards compatibility but it no longer blocks on underConstruction.
-  ##
-  ## The build queue system allows multiple simultaneous projects up to dock capacity.
-  ## Construction validation happens in economy_resolution.nim via canAcceptMoreProjects().
-
-  # LEGACY: Set underConstruction for first project (backwards compatibility)
-  if colony.underConstruction.isNone:
-    colony.underConstruction = some(project)
-
-  # Always return true - actual capacity checking happens in resolution layer
-  return true
-
-proc advanceConstruction*(colony: var Colony): Option[CompletedProject] =
-  ## Advance construction by one turn (upfront payment model)
-  ## Returns completed project if finished
-  ## Per economy.md:5.0 - full cost paid upfront, construction tracks turns
-
-  # This function currently processes Colony-side Construction projects but fails
-  # to comission ships from shipyard and starport docs in capacity/construction_docks.nim
-  # 2) TODO shipyard and starport dock commissioning
-
-  if colony.underConstruction.isNone:
-    return none(CompletedProject)
-
-  var project = colony.underConstruction.get()
-
-  # Decrement turns remaining
-  project.turnsRemaining -= 1
-
-  # Check if complete
-  if project.turnsRemaining <= 0:
-    let completed = CompletedProject(
-      colonyId: colony.systemId,
-      projectType: project.projectType,
-      itemId: project.itemId
-    )
-
-    # Clear construction slot
-    colony.underConstruction = none(ConstructionProject)
-
-    # Pull next project from queue if available
-    if colony.constructionQueue.len > 0:
-      colony.underConstruction = some(colony.constructionQueue[0])
-      colony.constructionQueue.delete(0)
-
-    return some(completed)
-
-  # Update progress
-  colony.underConstruction = some(project)
-
-  return none(CompletedProject)
-
-proc cancelConstruction*(colony: var Colony): int =
-  ## Cancel construction and return refund (50% of total cost)
-  ## Returns refunded PP amount
-  ## Per economy.md:5.0 - 50% refund on cancellation
-  if colony.underConstruction.isNone:
-    return 0
-
-  let project = colony.underConstruction.get()
-  let refund = project.costTotal div 2
-
-  colony.underConstruction = none(ConstructionProject)
-
-  return refund
-
-## Construction Queue Helpers
+## Construction Project Factory Functions
 
 proc createShipProject*(shipClass: ShipClass, cstLevel: int = 1): ConstructionProject =
   ## Create ship construction project with upfront payment model
