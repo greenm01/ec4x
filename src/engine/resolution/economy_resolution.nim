@@ -1176,8 +1176,10 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
           if isFighter:
             # Path 1: Commission fighter at colony (assets.md:2.4.1)
+            # Use turn + timestamp to ensure unique IDs (avoid collisions when fighters loaded onto carriers)
+            let fighterSeqNum = state.turn * 100 + colony.fighterSquadrons.len
             let fighterSq = FighterSquadron(
-              id: $systemId & "-FS-" & $(colony.fighterSquadrons.len + 1),
+              id: $systemId & "-FS-" & $fighterSeqNum,
               commissionedTurn: state.turn
             )
 
@@ -1203,10 +1205,20 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                       squadron.embarkedFighters.add(carrierFighter)
 
                       # Remove from colony (transfer ownership)
-                      colony.fighterSquadrons.delete(colony.fighterSquadrons.len - 1)
-
-                      logDebug(LogCategory.lcFleet,
-                        &"Auto-loaded {fighterSq.id} onto carrier {fleetId} (Path 2, {currentLoad + 1}/{maxCapacity} capacity)")
+                      # SAFETY CHECK: Ensure we have fighters to remove
+                      let lenBefore = colony.fighterSquadrons.len
+                      if lenBefore > 0:
+                        let indexToDelete = lenBefore - 1
+                        logDebug(LogCategory.lcFleet,
+                          &"About to delete fighter at index {indexToDelete} (len={lenBefore})")
+                        colony.fighterSquadrons.delete(indexToDelete)
+                        logDebug(LogCategory.lcFleet,
+                          &"Auto-loaded {fighterSq.id} onto carrier {fleetId} (Path 2, {currentLoad + 1}/{maxCapacity} capacity)")
+                        logDebug(LogCategory.lcFleet,
+                          &"Deleted fighter from colony (len before: {lenBefore}, after: {colony.fighterSquadrons.len})")
+                      else:
+                        logError(LogCategory.lcFleet,
+                          &"ERROR: Tried to auto-load {fighterSq.id} but colony.fighterSquadrons is empty!")
                       # Exit both loops after successful auto-load
                       break
                   if squadron.embarkedFighters.len > 0:  # Fighter was loaded
@@ -1270,7 +1282,12 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                 logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in fleet {targetFleetId}")
 
               # Remove from unassigned pool (it's now in fleet)
-              colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
+              # SAFETY CHECK: Ensure we have ships to remove
+              if colony.unassignedSpaceLiftShips.len > 0:
+                colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
+              else:
+                logError(LogCategory.lcFleet,
+                  &"ERROR: Tried to remove spacelift ship but colony.unassignedSpaceLiftShips is empty!")
 
               # WARN if ETAC assigned without PTU (potential colonization failure)
               if shipClass == ShipClass.ETAC and
