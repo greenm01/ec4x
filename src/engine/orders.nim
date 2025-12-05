@@ -6,7 +6,7 @@ import gamestate, fleet, spacelift, starmap, logger
 import order_types  # Import and re-export fleet order types
 import espionage/types as esp_types
 import research/types as res_types
-import economy/construction  # For cost calculation
+import economy/projects  # For cost calculation
 import economy/config_accessors  # For CST requirement checking
 import economy/capacity/fighter # For colony fighter squadron limits
 import economy/capacity/capital_squadrons  # For capital squadron capacity enforcement
@@ -588,7 +588,7 @@ proc calculateBuildOrderCost*(order: BuildOrder, state: GameState, assignedFacil
   case order.buildType
   of BuildType.Ship:
     if order.shipClass.isSome:
-      let baseCost = construction.getShipConstructionCost(order.shipClass.get()) * order.quantity
+      let baseCost = projects.getShipConstructionCost(order.shipClass.get()) * order.quantity
       let shipClass = order.shipClass.get()
 
       # Apply spaceport commission penalty if building planet-side
@@ -625,13 +625,13 @@ proc calculateBuildOrderCost*(order: BuildOrder, state: GameState, assignedFacil
     if order.buildingType.isSome:
       # Buildings never have spaceport penalty (planet-side industry)
       # Shipyard/Starbase are built in orbit and don't get penalty
-      result = construction.getBuildingCost(order.buildingType.get()) * order.quantity
+      result = projects.getBuildingCost(order.buildingType.get()) * order.quantity
 
   of BuildType.Infrastructure:
     # Infrastructure cost depends on colony state
     if order.colonySystem in state.colonies:
       let colony = state.colonies[order.colonySystem]
-      result = construction.getIndustrialUnitCost(colony) * order.industrialUnits
+      result = projects.getIndustrialUnitCost(colony) * order.industrialUnits
 
 proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
                                    houseId: HouseId,

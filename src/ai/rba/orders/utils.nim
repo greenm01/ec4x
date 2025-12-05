@@ -4,7 +4,7 @@
 
 import std/[strformat, options]
 import ../../../engine/[gamestate, fog_of_war, logger, orders]
-import ../../../engine/economy/construction
+import ../../../engine/economy/projects
 
 proc calculateProjectedTreasury*(filtered: FilteredGameState): int =
   ## Calculate projected treasury for AI planning

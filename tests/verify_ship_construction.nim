@@ -6,7 +6,7 @@
 import std/[options, strformat]
 import ../src/common/types/[units, planets]
 import ../src/engine/economy/types
-import ../src/engine/economy/construction
+import ../src/engine/economy/projects
 import ../src/engine/economy/config_accessors
 
 echo "=== Ship Construction Engine Test ==="

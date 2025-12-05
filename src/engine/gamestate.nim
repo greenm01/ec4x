@@ -99,6 +99,7 @@ type
     constructionQueue*: seq[ConstructionProject]     # Queued projects: Waiting for dock capacity, processed in parallel
     repairQueue*: seq[econ_types.RepairProject]      # Ships/starbases awaiting repair
     autoRepairEnabled*: bool                         # Enable automatic repair submission (defaults false, player-controlled)
+    autoLoadingEnabled*: bool                        # Enable automatic fighter loading to carriers (defaults true, player-controlled)
     activeTerraforming*: Option[TerraformProject]    # Active terraforming project
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
@@ -279,6 +280,7 @@ type
     scoutLossEvents*: seq[intel_types.ScoutLossEvent]  # Scout losses for diplomatic processing (NEW)
     populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
     pendingProposals*: seq[dip_proposals.PendingProposal]  # Pending diplomatic proposals
+    pendingCommissions*: seq[econ_types.CompletedProject]  # Completed projects awaiting commissioning in next Command Phase
 
 # Initialization
 
@@ -320,7 +322,8 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     spyScouts: initTable[string, SpyScout](),
     spyScoutOrders: initTable[string, SpyScoutOrder](),
     populationInTransit: @[],
-    pendingProposals: @[]
+    pendingProposals: @[],
+    pendingCommissions: @[]
   )
 
   # Create houses and homeworld colonies
@@ -456,6 +459,7 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     constructionQueue: @[],  # NEW: Empty build queue
     repairQueue: @[],  # Empty repair queue
     autoRepairEnabled: false,  # Default OFF - player must enable
+    autoLoadingEnabled: true,  # Default ON - auto-load fighters to carriers
     unassignedSquadrons: @[],  # No unassigned squadrons
     unassignedSpaceLiftShips: @[],  # No unassigned spacelift ships
     fighterSquadrons: @[],  # No fighters at start
@@ -519,6 +523,7 @@ proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetCl
     constructionQueue: @[],  # NEW: Empty build queue
     repairQueue: @[],  # Empty repair queue
     autoRepairEnabled: false,  # Default OFF - player must enable
+    autoLoadingEnabled: true,  # Default ON - auto-load fighters to carriers
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
     fighterSquadrons: @[],

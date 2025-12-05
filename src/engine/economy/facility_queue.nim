@@ -201,7 +201,72 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[econ_types.Com
           " completed_projects=", $result.projects.len,
           " completed_repairs=", $result.repairs.len)
 
-## Design Notes:
+## ==============================================================================
+## Colony Queue Management (Legacy System)
+## ==============================================================================
+##
+## These functions manage the legacy colony-side construction queue used for:
+## - Fighters (planet-side production)
+## - Ground units
+## - Buildings
+## - Industrial Unit (IU) investment
+##
+## Capital ships (non-fighters) use the facility queue system above.
+
+proc startConstruction*(colony: var gamestate.Colony, project: econ_types.ConstructionProject): bool =
+  ## Start new construction project at colony
+  ## Returns true if started successfully
+  ##
+  ## NOTE: This function manages the legacy colony construction queue.
+  ## Used for fighters, buildings, and IU investment (planet-side construction).
+  ## Capital ships use the facility queue system (construction_docks.nim).
+
+  # Set underConstruction for first project
+  if colony.underConstruction.isNone:
+    colony.underConstruction = some(project)
+
+  # Always return true - actual capacity checking happens in resolution layer
+  return true
+
+proc advanceConstruction*(colony: var gamestate.Colony): Option[econ_types.CompletedProject] =
+  ## Advance colony construction by one turn (upfront payment model)
+  ## Returns completed project if finished
+  ## Per economy.md:5.0 - full cost paid upfront, construction tracks turns
+
+  if colony.underConstruction.isNone:
+    return none(econ_types.CompletedProject)
+
+  var project = colony.underConstruction.get()
+
+  # Decrement turns remaining
+  project.turnsRemaining -= 1
+
+  # Check if complete
+  if project.turnsRemaining <= 0:
+    let completed = econ_types.CompletedProject(
+      colonyId: colony.systemId,
+      projectType: project.projectType,
+      itemId: project.itemId
+    )
+
+    # Clear construction slot
+    colony.underConstruction = none(econ_types.ConstructionProject)
+
+    # Pull next project from queue if available
+    if colony.constructionQueue.len > 0:
+      colony.underConstruction = some(colony.constructionQueue[0])
+      colony.constructionQueue.delete(0)
+
+    return some(completed)
+
+  # Update progress
+  colony.underConstruction = some(project)
+
+  return none(econ_types.CompletedProject)
+
+## ==============================================================================
+## Design Notes
+## ==============================================================================
 ##
 ## **FIFO Priority Implementation:**
 ## Current implementation uses simplified FIFO: construction projects first, then repairs.
@@ -217,7 +282,6 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[econ_types.Com
 ## not during queue advancement. This ensures the cost is deducted upfront.
 ##
 ## **Integration with Legacy System:**
-## The old colony.underConstruction field is DEPRECATED.
-## This system replaces it with per-facility queues.
-## Backwards compatibility can be maintained by syncing first facility's activeConstruction
-## to colony.underConstruction if needed for UI/reports.
+## The old colony.underConstruction field is still used for colony-side construction.
+## This is maintained for backwards compatibility with fighters, buildings, and IU investment.
+## Capital ships use the per-facility queue system above.
