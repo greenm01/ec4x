@@ -229,55 +229,104 @@ when isMainModule:
   echo repeat("=", 70)
   echo ""
 
-  # Check for --help flag
-  if paramCount() >= 1 and paramStr(1) in ["--help", "-h", "help"]:
-    echo "Usage: run_simulation TURNS [SEED] [MAP_RINGS] [NUM_PLAYERS]"
-    echo ""
-    echo "Arguments:"
-    echo "  TURNS       Number of game turns to simulate (required)"
-    echo "  SEED        Random seed for map generation (default: 42)"
-    echo "  MAP_RINGS   Number of hex rings for map (default: NUM_PLAYERS)"
-    echo "  NUM_PLAYERS Number of AI players (default: 4)"
-    echo ""
-    echo "Examples:"
-    echo "  run_simulation 30 88888 4 4    # 30 turns, seed 88888, 4 rings, 4 players"
-    echo "  run_simulation 7 12345         # 7 turns, seed 12345, defaults for rest"
-    quit(0)
-
-  # Parse command line arguments: turns [seed] [mapRings] [numPlayers]
+  # Parse command line arguments with proper flags
   var numTurns = 100
   var seed: int64 = 42
-  var mapRings = 3  # Default: 3 rings (was 0, but zero rings not allowed)
+  var mapRings = 3  # Default: 3 rings
   var numPlayers = 4  # Default to 4 players
+  var outputFile = "balance_results/full_simulation.json"
+  var logLevel = "INFO"
 
-  # Parse with error handling
-  if paramCount() >= 1:
-    try:
-      numTurns = parseInt(paramStr(1))
-    except ValueError:
-      echo "Error: Invalid turns parameter '", paramStr(1), "' (must be integer)"
+  # Parse flags
+  var i = 1
+  while i <= paramCount():
+    let arg = paramStr(i)
+
+    if arg in ["--help", "-h", "help"]:
+      echo "Usage: run_simulation [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --turns, -t NUMBER        Number of game turns to simulate (default: 100)"
+      echo "  --seed, -s NUMBER         Random seed for map generation (default: 42)"
+      echo "  --map-rings, -m NUMBER    Number of hex rings for map (default: 3)"
+      echo "  --players, -p NUMBER      Number of AI players (default: 4)"
+      echo "  --output, -o FILE         Output JSON file path (default: balance_results/full_simulation.json)"
+      echo "  --log-level, -l LEVEL     Logging level: DEBUG, INFO, WARN, ERROR (default: INFO)"
+      echo "  --help, -h                Show this help message"
+      echo ""
+      echo "Examples:"
+      echo "  run_simulation --turns 30 --seed 88888"
+      echo "  run_simulation -t 7 -s 12345 -p 4"
+      echo "  run_simulation --output test.json --log-level DEBUG"
+      quit(0)
+
+    elif arg in ["--turns", "-t"]:
+      if i >= paramCount():
+        echo "Error: --turns requires a value"
+        quit(1)
+      inc i
+      try:
+        numTurns = parseInt(paramStr(i))
+      except ValueError:
+        echo "Error: Invalid turns value '", paramStr(i), "' (must be integer)"
+        quit(1)
+
+    elif arg in ["--seed", "-s"]:
+      if i >= paramCount():
+        echo "Error: --seed requires a value"
+        quit(1)
+      inc i
+      try:
+        seed = parseBiggestInt(paramStr(i))
+      except ValueError:
+        echo "Error: Invalid seed value '", paramStr(i), "' (must be integer)"
+        quit(1)
+
+    elif arg in ["--map-rings", "-m"]:
+      if i >= paramCount():
+        echo "Error: --map-rings requires a value"
+        quit(1)
+      inc i
+      try:
+        mapRings = parseInt(paramStr(i))
+      except ValueError:
+        echo "Error: Invalid map-rings value '", paramStr(i), "' (must be integer)"
+        quit(1)
+
+    elif arg in ["--players", "-p"]:
+      if i >= paramCount():
+        echo "Error: --players requires a value"
+        quit(1)
+      inc i
+      try:
+        numPlayers = parseInt(paramStr(i))
+      except ValueError:
+        echo "Error: Invalid players value '", paramStr(i), "' (must be integer)"
+        quit(1)
+
+    elif arg in ["--output", "-o"]:
+      if i >= paramCount():
+        echo "Error: --output requires a value"
+        quit(1)
+      inc i
+      outputFile = paramStr(i)
+
+    elif arg in ["--log-level", "-l"]:
+      if i >= paramCount():
+        echo "Error: --log-level requires a value"
+        quit(1)
+      inc i
+      logLevel = paramStr(i).toUpperAscii()
+      if logLevel notin ["DEBUG", "INFO", "WARN", "ERROR"]:
+        echo "Error: Invalid log level '", paramStr(i), "' (must be DEBUG, INFO, WARN, or ERROR)"
+        quit(1)
+
+    else:
+      echo "Error: Unknown option '", arg, "'"
+      echo "Use --help to see available options"
       quit(1)
 
-  if paramCount() >= 2:
-    try:
-      seed = parseBiggestInt(paramStr(2))
-    except ValueError:
-      echo "Error: Invalid seed parameter '", paramStr(2), "' (must be integer)"
-      quit(1)
-
-  if paramCount() >= 3:
-    try:
-      mapRings = parseInt(paramStr(3))
-    except ValueError:
-      echo "Error: Invalid map_rings parameter '", paramStr(3), "' (must be integer)"
-      quit(1)
-
-  if paramCount() >= 4:
-    try:
-      numPlayers = parseInt(paramStr(4))
-    except ValueError:
-      echo "Error: Invalid num_players parameter '", paramStr(4), "' (must be integer)"
-      quit(1)
+    inc i
 
   # Validate all parameters using engine's setup validation
   let params = GameSetupParams(
@@ -308,9 +357,11 @@ when isMainModule:
   let report = runSimulation(numPlayers, numTurns, strategies, seed, mapRings)
 
   # Export report
-  createDir("balance_results")
-  writeFile("balance_results/full_simulation.json", report.pretty())
+  let outputDir = outputFile.parentDir()
+  if outputDir != "":
+    createDir(outputDir)
+  writeFile(outputFile, report.pretty())
 
   echo "\n" & repeat("=", 70)
-  echo "Report exported to: balance_results/full_simulation.json"
+  echo "Report exported to: ", outputFile
   echo repeat("=", 70)

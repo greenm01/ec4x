@@ -26,13 +26,14 @@ PROJECT_ROOT = SCRIPT_DIR.parent  # since script is in scripts/
 
 def run_simulation(num_players, turns, seed, map_rings):
     """Run a single simulation"""
-    # Parameters: turns seed mapRings numPlayers
+    output_file = f"balance_results/map_test_{seed}.json"
     cmd = [
-        "./tests/balance/run_simulation",
-        str(turns),
-        str(seed),
-        str(map_rings),
-        str(num_players),
+        "./bin/run_simulation",
+        "--turns", str(turns),
+        "--seed", str(seed),
+        "--map-rings", str(map_rings),
+        "--players", str(num_players),
+        "--output", output_file
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
 
@@ -43,7 +44,7 @@ def run_simulation(num_players, turns, seed, map_rings):
 
     # Parse results from JSON
     try:
-        with open("balance_results/full_simulation.json", "r") as f:
+        with open(PROJECT_ROOT / output_file, "r") as f:
             return json.load(f)
     except Exception as e:
         print(f"  Failed to parse results: {e}")
