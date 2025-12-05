@@ -87,9 +87,26 @@ proc buildAndCommissionShip(state: var GameState, shipClass: ShipClass): GameSta
   var orders = initTable[HouseId, OrderPacket]()
   orders["house1"] = packet
 
-  # Resolve turn (construction completes instantly per reference.md:10.1.1)
-  let result = resolveTurn(state, orders)
-  return result.newState
+  # Turn 1: Submit build order, construction completes in Maintenance Phase
+  let result1 = resolveTurn(state, orders)
+
+  # Turn 2: Commission completed projects from Turn 1
+  var turn2Orders = initTable[HouseId, OrderPacket]()
+  turn2Orders["house1"] = OrderPacket(
+    houseId: "house1",
+    turn: result1.newState.turn,
+    buildOrders: @[],
+    fleetOrders: @[],
+    researchAllocation: initResearchAllocation(),
+    diplomaticActions: @[],
+    populationTransfers: @[],
+    terraformOrders: @[],
+    espionageAction: none(esp_types.EspionageAttempt),
+    ebpInvestment: 0,
+    cipInvestment: 0
+  )
+  let result2 = resolveTurn(result1.newState, turn2Orders)
+  return result2.newState
 
 proc getCommissionedSquadron(state: GameState): Squadron =
   ## Helper: Get the commissioned squadron from fleets (engine auto-assigns)
