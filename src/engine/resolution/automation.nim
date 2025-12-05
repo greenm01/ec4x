@@ -36,7 +36,7 @@
 
 import std/[tables, options, strformat, sequtils]
 import ../../common/types/[core, units]
-import ../gamestate, ../fleet, ../squadron, ../logger, ../orders
+import ../gamestate, ../fleet, ../squadron, ../logger, ../orders, ../order_types
 import ../economy/repair_queue
 import ../economy/capacity/carrier_hangar
 import ./types as res_types
@@ -189,7 +189,8 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
   ## **Fleet Selection:**
   ## - Must be Active status (excludes Reserve, Mothballed)
   ## - Must be stationary: Hold orders, GuardPlanet orders, GuardStarbase orders, or no orders
-  ## - Excludes fleets with Move/Colonize/Patrol/SeekHome orders
+  ## - Excludes fleets with movement orders (Move/Colonize/Patrol/SeekHome)
+  ## - Excludes fleets with movement-based standing orders (PatrolRoute/AutoColonize/AutoReinforce/AutoRepair/BlockadeTarget)
   ##
   ## **Distribution Algorithm:**
   ## - Calculates target squadron count per fleet: (total squadrons) / (fleet count)
@@ -216,6 +217,8 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
 
       # Check if fleet is stationary (Hold/Guard or no orders)
       var isStationary = true
+
+      # Check fleet orders (immediate movement orders)
       if colony.owner in orders:
         for order in orders[colony.owner].fleetOrders:
           if order.fleetId == fleetId:
@@ -224,6 +227,17 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
                                    FleetOrderType.Patrol, FleetOrderType.SeekHome]:
               isStationary = false
             break
+
+      # Check standing orders (persistent movement behaviors)
+      if fleetId in state.standingOrders:
+        let standingOrder = state.standingOrders[fleetId]
+        # Movement-based standing orders: skip this fleet
+        if standingOrder.orderType in [StandingOrderType.PatrolRoute,
+                                       StandingOrderType.AutoColonize,
+                                       StandingOrderType.AutoReinforce,
+                                       StandingOrderType.AutoRepair,
+                                       StandingOrderType.BlockadeTarget]:
+          isStationary = false
 
       if isStationary:
         candidateFleets.add(fleetId)
