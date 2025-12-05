@@ -17,8 +17,10 @@
 ## - Maintenance shortfalls
 ## - Military defeats
 
+import std/options
 import ../common/types/core
 import config/prestige_config
+import config/prestige_multiplier
 
 export core.HouseId
 
@@ -119,62 +121,112 @@ proc createPrestigeReport*(houseId: HouseId, startingPrestige: int,
   )
 
 ## Prestige from Combat (operations.md:7.3.3)
+## Zero-Sum System: Combat is competitive - winner gains prestige, loser loses equal amount
+
+type
+  CombatPrestigeResult* = object
+    ## Result of combat prestige calculation
+    victorEvents*: seq[PrestigeEvent]   # Prestige events for victor (positive)
+    defeatedEvents*: seq[PrestigeEvent] # Prestige events for defeated (negative)
 
 proc awardCombatPrestige*(victor: HouseId, defeated: HouseId,
                          taskForceDestroyed: bool,
                          squadronsDestroyed: int,
-                         forcedRetreat: bool): seq[PrestigeEvent] =
-  ## Award prestige for combat outcome
-  result = @[]
+                         forcedRetreat: bool): CombatPrestigeResult =
+  ## Award prestige for combat outcome (zero-sum: winner gains, loser loses)
+  result.victorEvents = @[]
+  result.defeatedEvents = @[]
 
-  # Combat victory
-  result.add(createPrestigeEvent(
+  # Combat victory (zero-sum)
+  let victoryPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.CombatVictory))
+  result.victorEvents.add(createPrestigeEvent(
     PrestigeSource.CombatVictory,
-    getPrestigeValue(PrestigeSource.CombatVictory),
+    victoryPrestige,
     $victor & " defeated " & $defeated
   ))
+  result.defeatedEvents.add(createPrestigeEvent(
+    PrestigeSource.CombatVictory,
+    -victoryPrestige,
+    $defeated & " defeated by " & $victor
+  ))
 
-  # Task force destroyed
+  # Task force destroyed (zero-sum)
   if taskForceDestroyed:
-    result.add(createPrestigeEvent(
+    let tfPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.TaskForceDestroyed))
+    result.victorEvents.add(createPrestigeEvent(
       PrestigeSource.TaskForceDestroyed,
-      getPrestigeValue(PrestigeSource.TaskForceDestroyed),
+      tfPrestige,
       $victor & " destroyed " & $defeated & " task force"
     ))
-
-  # Squadrons destroyed
-  if squadronsDestroyed > 0:
-    let prestigeAmount = getPrestigeValue(PrestigeSource.SquadronDestroyed) * squadronsDestroyed
-    result.add(createPrestigeEvent(
-      PrestigeSource.SquadronDestroyed,
-      prestigeAmount,
-      $victor & " destroyed " & $squadronsDestroyed & " squadrons"
+    result.defeatedEvents.add(createPrestigeEvent(
+      PrestigeSource.TaskForceDestroyed,
+      -tfPrestige,
+      $defeated & " lost task force to " & $victor
     ))
 
-  # Forced retreat
+  # Squadrons destroyed (zero-sum)
+  if squadronsDestroyed > 0:
+    let squadronPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.SquadronDestroyed)) * squadronsDestroyed
+    result.victorEvents.add(createPrestigeEvent(
+      PrestigeSource.SquadronDestroyed,
+      squadronPrestige,
+      $victor & " destroyed " & $squadronsDestroyed & " squadrons"
+    ))
+    result.defeatedEvents.add(createPrestigeEvent(
+      PrestigeSource.SquadronDestroyed,
+      -squadronPrestige,
+      $defeated & " lost " & $squadronsDestroyed & " squadrons"
+    ))
+
+  # Forced retreat (zero-sum)
   if forcedRetreat:
-    result.add(createPrestigeEvent(
+    let retreatPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.FleetRetreated))
+    result.victorEvents.add(createPrestigeEvent(
       PrestigeSource.FleetRetreated,
-      getPrestigeValue(PrestigeSource.FleetRetreated),
+      retreatPrestige,
       $victor & " forced " & $defeated & " to retreat"
+    ))
+    result.defeatedEvents.add(createPrestigeEvent(
+      PrestigeSource.FleetRetreated,
+      -retreatPrestige,
+      $defeated & " forced to retreat by " & $victor
     ))
 
 ## Prestige from Economy
 
-proc awardColonyPrestige*(houseId: HouseId, colonyType: string): PrestigeEvent =
-  ## Award prestige for establishing colony
+type
+  ColonyPrestigeResult* = object
+    ## Result of colony prestige calculation
+    attackerEvent*: PrestigeEvent        # Attacker gains (if seized)
+    defenderEvent*: Option[PrestigeEvent] # Defender loses (if seized, zero-sum)
+
+proc awardColonyPrestige*(attackerId: HouseId, colonyType: string, defenderId: Option[HouseId] = none(HouseId)): ColonyPrestigeResult =
+  ## Award prestige for colony actions
+  ## - "established": New colony (absolute gain, no defender)
+  ## - "seized": Invasion/blitz (zero-sum: attacker gains, defender loses)
+
   let source = if colonyType == "seized":
     PrestigeSource.ColonySeized
   else:
     PrestigeSource.ColonyEstablished
 
-  let amount = getPrestigeValue(source)
+  let amount = applyMultiplier(getPrestigeValue(source))
 
-  return createPrestigeEvent(
+  result.attackerEvent = createPrestigeEvent(
     source,
     amount,
-    $houseId & " " & colonyType & " colony"
+    $attackerId & " " & colonyType & " colony"
   )
+
+  # Zero-sum for seized colonies
+  if colonyType == "seized" and defenderId.isSome:
+    result.defenderEvent = some(createPrestigeEvent(
+      PrestigeSource.ColonySeized,
+      -amount,
+      $defenderId.get() & " lost colony to " & $attackerId
+    ))
+  else:
+    result.defenderEvent = none(PrestigeEvent)
 
 proc applyTaxPrestige*(houseId: HouseId, colonyCount: int, taxRate: int): PrestigeEvent =
   ## Apply prestige bonus from low tax rate
@@ -227,7 +279,7 @@ proc applyHighTaxPenalty*(houseId: HouseId, avgTaxRate: int): PrestigeEvent =
 proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEvent =
   ## Apply prestige penalty for blockaded colonies
   ## Per operations.md:6.2.6: -2 prestige per blockaded colony per turn
-  let penalty = getPrestigeValue(PrestigeSource.BlockadePenalty) * blockadedColonies
+  let penalty = applyMultiplier(getPrestigeValue(PrestigeSource.BlockadePenalty)) * blockadedColonies
 
   return createPrestigeEvent(
     PrestigeSource.BlockadePenalty,
@@ -239,7 +291,7 @@ proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEv
 
 proc awardTechPrestige*(houseId: HouseId, techField: string, level: int): PrestigeEvent =
   ## Award prestige for tech advancement
-  let amount = getPrestigeValue(PrestigeSource.TechAdvancement)
+  let amount = applyMultiplier(getPrestigeValue(PrestigeSource.TechAdvancement))
 
   return createPrestigeEvent(
     PrestigeSource.TechAdvancement,

@@ -16,6 +16,10 @@ Every action influences your House's prestige. Military victories enhance it dir
 
 Poor colony management tarnishes your legacy. Exposure to rival covert operations leads to public disgrace. Diplomatic betrayal brings dishonor.
 
+**Zero-Sum Competition:** EC4X models the brutal reality of Imperial politics. When you defeat an enemy in battle, **your prestige rises while theirs falls by an equal amount**. Combat, espionage, and invasions are winner-takes-all: your gains come directly from your opponent's losses. This ensures losers don't just slow down—they actively decline. Only one house can rule the Imperium.
+
+Non-competitive achievements (colony establishment, technological research, good governance) still provide absolute prestige gains. But military dominance is the path to victory: **when one house rises, another must fall**.
+
 Flexibility and strategic foresight are your greatest tools. Use every resource and opportunity to crush your rivals and ensure your House's dominance.
 
 <!-- STARTING_PRESTIGE_START -->
