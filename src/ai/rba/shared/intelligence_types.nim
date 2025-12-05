@@ -115,6 +115,10 @@ type
     threatsByColony*: Table[SystemId, ThreatAssessment]
     vulnerableTargets*: seq[InvasionOpportunity]
     combatLessonsLearned*: seq[TacticalLesson]
+
+    # Phase E patrol pattern detection
+    detectedPatrolRoutes*: seq[PatrolRoute]  # Detected enemy patrol patterns
+
     lastUpdated*: int
 
   # ==============================================================================
@@ -259,6 +263,47 @@ type
     lastActivity*: int  # Turn of most recent detection
     coverageRadius*: int  # Systems covered (current implementation: 0 = own system only)
 
+  # ==============================================================================
+  # PHASE E: ENHANCED INTELLIGENCE TYPES
+  # ==============================================================================
+
+  BlockadeInfo* = object
+    ## Active blockade intelligence (Phase E)
+    systemId*: SystemId
+    blockader*: HouseId
+    targetOwner*: HouseId
+    established*: int  # Turn established
+    economicImpact*: float  # Estimated GCO reduction (0.6 = 60% reduction)
+
+  DiplomaticEventType* {.pure.} = enum
+    ## Types of diplomatic events (Phase E)
+    WarDeclared, PeaceTreaty, AllianceFormed, PactSigned,
+    DiplomaticBreak, PactViolated
+
+  DiplomaticEvent* = object
+    ## Diplomatic event intelligence (Phase E)
+    turn*: int
+    eventType*: DiplomaticEventType
+    houses*: seq[HouseId]  # Parties involved
+    significance*: int  # 1-10 rating
+    description*: string
+
+  EspionagePattern* = object
+    ## Detected espionage pattern against our house (Phase E)
+    perpetrator*: HouseId
+    attempts*: int  # Total attempts detected
+    successes*: int  # Successful operations
+    lastAttempt*: int  # Most recent turn
+    targetTypes*: seq[string]  # What they're trying to steal/sabotage
+
+  PatrolRoute* = object
+    ## Detected enemy patrol route (Phase E)
+    fleetId*: FleetId
+    owner*: HouseId
+    systems*: seq[SystemId]  # Ordered patrol route
+    confidence*: float  # 0.0-1.0 (pattern strength)
+    lastUpdated*: int
+
   EspionageIntelligence* = object
     ## Espionage domain intelligence summary for Drungarius
     intelCoverage*: Table[HouseId, IntelCoverageScore]
@@ -269,6 +314,9 @@ type
     # Phase D surveillance gap tracking
     surveillanceGaps*: seq[SurveillanceGap]  # Systems without starbase coverage
     surveillanceCoverage*: Table[SystemId, StarbaseCoverageInfo]  # Coverage map
+
+    # Phase E counter-intelligence tracking
+    espionagePatterns*: Table[HouseId, EspionagePattern]  # Detected espionage against us
 
     lastUpdated*: int
 
@@ -298,6 +346,11 @@ type
     potentialAllies*: seq[HouseId]  # Weaker houses that might ally
     potentialThreats*: seq[HouseId]  # Stronger/hostile houses
     observedHostility*: Table[HouseId, HostilityLevel]
+
+    # Phase E diplomatic event tracking
+    activeBlockades*: seq[BlockadeInfo]  # Current blockades (against us or observed)
+    recentDiplomaticEvents*: seq[DiplomaticEvent]  # Recent wars, alliances, pacts
+
     lastUpdated*: int
 
   # ==============================================================================

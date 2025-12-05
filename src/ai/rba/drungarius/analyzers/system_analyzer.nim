@@ -171,3 +171,103 @@ proc analyzeSystemIntelligence*(
     let bThreat = b.estimatedStrength * max(b.threatenedColonies.len, 1)
     return cmp(bThreat, aThreat)  # Descending (highest threat first)
   )
+
+# ==============================================================================
+# PHASE E: PATROL PATTERN DETECTION
+# ==============================================================================
+
+proc detectPatrolRoutes*(
+  filtered: FilteredGameState,
+  controller: AIController
+): seq[PatrolRoute] =
+  ## Detect enemy patrol routes from FleetMovementHistory
+  ## Phase E: Enables predictive threat modeling
+
+  let config = globalRBAConfig.intelligence.patrol_detection
+  var routes: seq[PatrolRoute] = @[]
+
+  # Process fleet movement history
+  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
+    # Skip own fleets
+    if history.owner == controller.houseId:
+      continue
+
+    # Need minimum sightings to detect pattern
+    if history.sightings.len < config.min_sightings_for_pattern:
+      continue
+
+    # Check if pattern is stale
+    if history.lastSeen < filtered.turn - config.staleness_threshold_turns:
+      continue
+
+    # Analyze sighting pattern for repeating routes
+    let pattern = analyzeMovementPattern(history.sightings)
+
+    if pattern.isPattern and pattern.confidence >= config.pattern_confidence_threshold:
+      routes.add(PatrolRoute(
+        fleetId: fleetId,
+        owner: history.owner,
+        systems: pattern.route,
+        confidence: pattern.confidence,
+        lastUpdated: history.lastSeen
+      ))
+
+      # Log detected patrol
+      import ../../../../engine/logger
+      import std/strformat
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Drungarius: Patrol route detected - " &
+              &"Fleet {fleetId} ({history.owner}) - {pattern.route.len} systems, " &
+              &"confidence {pattern.confidence:.0%}")
+
+  result = routes
+
+proc analyzeMovementPattern(
+  sightings: seq[tuple[turn: int, systemId: SystemId]]
+): tuple[isPattern: bool, confidence: float, route: seq[SystemId]] =
+  ## Analyze sighting sequence to detect repeating patterns
+  ## Returns true if pattern detected with confidence level
+
+  result.isPattern = false
+  result.confidence = 0.0
+  result.route = @[]
+
+  if sightings.len < 3:
+    return
+
+  # Extract system sequence
+  var systemSequence: seq[SystemId] = @[]
+  for sighting in sightings:
+    # Avoid duplicate consecutive sightings
+    if systemSequence.len == 0 or systemSequence[^1] != sighting.systemId:
+      systemSequence.add(sighting.systemId)
+
+  if systemSequence.len < 3:
+    return
+
+  # Look for repeating subsequences
+  # Try different pattern lengths (3-6 systems)
+  for patternLen in 3..min(6, systemSequence.len div 2):
+    let pattern = systemSequence[0..<patternLen]
+    var matches = 0
+    var totalChecks = 0
+
+    # Count how many times this pattern repeats
+    var i = patternLen
+    while i + patternLen <= systemSequence.len:
+      totalChecks += 1
+      let subsequence = systemSequence[i..<(i + patternLen)]
+      if subsequence == pattern:
+        matches += 1
+      i += patternLen
+
+    if totalChecks > 0:
+      let matchRate = matches.float / totalChecks.float
+      if matchRate >= 0.7:  # 70% match rate = strong pattern
+        result.isPattern = true
+        result.confidence = matchRate
+        result.route = pattern
+        return
+
+  # No strong pattern found
+  result.isPattern = false
