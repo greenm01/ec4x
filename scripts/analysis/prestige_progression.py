@@ -25,8 +25,10 @@ prestige_by_turn = (
     .sort(['strategy', 'turn'])
 )
 
-# Show key turns for each strategy
-key_turns = [1, 5, 10, 15, 20, 25, 30, 31]
+# Show key turns for each strategy (dynamic based on actual game length)
+max_turn = df['turn'].max()
+key_turns = [1, max_turn//6, max_turn//3, max_turn//2,
+             2*max_turn//3, 5*max_turn//6, max_turn]
 prestige_key = prestige_by_turn.filter(pl.col('turn').is_in(key_turns))
 
 print("\n=== Prestige at Key Turns ===\n")
@@ -53,16 +55,28 @@ for strategy in ['Turtle', 'Economic', 'Balanced', 'Aggressive']:
         delta = prestiges[i] - prestiges[i-1]
         deltas.append((turns[i], delta))
 
-    # Phase averages
-    early = [d for t, d in deltas if 2 <= t <= 10]
-    mid = [d for t, d in deltas if 11 <= t <= 20]
-    late = [d for t, d in deltas if 21 <= t <= 31]
+    # Phase averages (dynamic based on actual game length)
+    if not turns:
+        continue
+    game_max_turn = max(turns)
+    early_end = game_max_turn // 3
+    mid_end = 2 * game_max_turn // 3
+
+    early = [d for t, d in deltas if 2 <= t <= early_end]
+    mid = [d for t, d in deltas if early_end < t <= mid_end]
+    late = [d for t, d in deltas if t > mid_end]
 
     print(f"\n{strategy}:")
-    print(f"  Early game (T2-10):  {sum(early) / len(early):>6.1f} prestige/turn")
-    print(f"  Mid game (T11-20):   {sum(mid) / len(mid):>6.1f} prestige/turn")
-    print(f"  Late game (T21-31):  {sum(late) / len(late):>6.1f} prestige/turn")
-    print(f"  Overall (T1-31):     {(prestiges[-1] - prestiges[0]) / 30:>6.1f} prestige/turn")
+    if early:
+        print(f"  Early game (T2-{early_end}):  {sum(early) / len(early):>6.1f} prestige/turn")
+    if mid:
+        print(f"  Mid game (T{early_end+1}-{mid_end}):   {sum(mid) / len(mid):>6.1f} prestige/turn")
+    if late:
+        print(f"  Late game (T{mid_end+1}-{game_max_turn}):  {sum(late) / len(late):>6.1f} prestige/turn")
+
+    actual_turns = turns[-1] - turns[0]
+    if actual_turns > 0:
+        print(f"  Overall (T1-{game_max_turn}):     {(prestiges[-1] - prestiges[0]) / actual_turns:>6.1f} prestige/turn")
 
     # Check for decline
     negative_turns = [(t, d) for t, d in deltas if d < 0]
@@ -95,18 +109,20 @@ for strategy in ['Turtle', 'Economic', 'Balanced', 'Aggressive']:
             if prestiges[i] < prestiges[i-1] - 100:
                 games_with_decline.append((game_id, i, prestiges[i] - prestiges[i-1]))
 
-        # Check final trajectory (last 10 turns)
-        if len(prestiges) >= 10:
-            last_10_delta = prestiges[-1] - prestiges[-10]
-            if last_10_delta < 0:
-                games_with_decline.append((game_id, 'last_10', last_10_delta))
+        # Check final trajectory (last 1/6 of game)
+        if len(prestiges) >= 6:
+            last_sixth = max(1, len(prestiges) // 6)
+            last_delta = prestiges[-1] - prestiges[-last_sixth]
+            if last_delta < 0:
+                games_with_decline.append((game_id, f'last_{last_sixth}', last_delta))
 
     print(f"\n{strategy}:")
     if games_with_decline:
         print(f"  {len(set(g[0] for g in games_with_decline))} games with significant decline:")
         for game_id, turn, delta in games_with_decline[:5]:
-            if turn == 'last_10':
-                print(f"    Game {game_id}: Final 10 turns decline: {delta:+.0f}")
+            if isinstance(turn, str) and turn.startswith('last_'):
+                turns_checked = turn.split('_')[1]
+                print(f"    Game {game_id}: Final {turns_checked} turns decline: {delta:+.0f}")
             else:
                 print(f"    Game {game_id}, Turn {turn}: {delta:+.0f}")
     else:
