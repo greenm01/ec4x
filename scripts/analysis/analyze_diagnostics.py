@@ -15,6 +15,7 @@ Commands:
     military        - Military metrics analysis
     research        - Research progression analysis
     diplomacy       - Diplomatic relationship analysis
+    game-length     - Analyze game length and pacing
     red-flags       - Detect balance issues and anomalies
     compare         - Compare two strategy types
     custom          - Custom query (provide SQL-like expression)
@@ -284,6 +285,28 @@ def command_red_flags(df: pl.DataFrame):
 
     flags_found = False
 
+    # 0. Game length variance (check for pacing issues)
+    game_lengths = df.group_by("game_id").agg([
+        pl.col("turn").max().alias("final_turn")
+    ])
+
+    if len(game_lengths) > 0:
+        avg_length = game_lengths["final_turn"].mean()
+        std_length = game_lengths["final_turn"].std()
+        min_length = game_lengths["final_turn"].min()
+        max_length = game_lengths["final_turn"].max()
+
+        # Calculate coefficient of variation (CV)
+        cv = std_length / avg_length if avg_length > 0 else 0
+
+        # Flag if CV > 30% (high variability in game length)
+        if cv > 0.3:
+            print(f"⚠️  GAME LENGTH VARIANCE: Games vary widely in length")
+            print(f"    Average: {avg_length:.1f} turns (σ={std_length:.1f}, CV={cv:.1%})")
+            print(f"    Range: {min_length}-{max_length} turns")
+            print(f"    Recommendation: Review prestige scaling or victory thresholds")
+            flags_found = True
+
     # 1. Strategy dominance (>60% win rate)
     final = df.filter(pl.col("turn") == df["turn"].max())
     strategy_prestige = final.group_by("strategy").agg([
@@ -379,6 +402,67 @@ def command_compare(df: pl.DataFrame, strategy1: str, strategy2: str):
             diff = ((v1 - v2) / v2 * 100) if v2 > 0 else 0
             print(f"{col:12s}: {diff:+6.1f}%")
 
+def command_game_length(df: pl.DataFrame):
+    """Analyze game length statistics and pacing."""
+    print("\n=== Game Length Analysis ===\n")
+
+    # Calculate game lengths
+    game_lengths = df.group_by("game_id").agg([
+        pl.col("turn").max().alias("final_turn")
+    ])
+
+    if len(game_lengths) == 0:
+        print("No games found in diagnostics data.")
+        return
+
+    avg_length = game_lengths["final_turn"].mean()
+    std_length = game_lengths["final_turn"].std()
+    min_length = game_lengths["final_turn"].min()
+    max_length = game_lengths["final_turn"].max()
+    cv = std_length / avg_length if avg_length > 0 else 0
+
+    print(f"Total games analyzed: {len(game_lengths)}")
+    print(f"\n--- Game Length Distribution ---")
+    print(f"Average: {avg_length:.1f} turns")
+    print(f"Std Dev: {std_length:.1f} turns (CV: {cv:.1%})")
+    print(f"Range: {min_length} - {max_length} turns")
+    print(f"Median: {game_lengths['final_turn'].median():.1f} turns")
+
+    # Histogram
+    print(f"\n--- Length Histogram ---")
+    buckets = [0, 25, 50, 75, 100, 125, 150, 175, 200, 999]
+    for i in range(len(buckets) - 1):
+        count = game_lengths.filter(
+            (pl.col("final_turn") >= buckets[i]) & (pl.col("final_turn") < buckets[i+1])
+        ).shape[0]
+        if count > 0:
+            bar = "█" * int(count / len(game_lengths) * 50)
+            print(f"{buckets[i]:3d}-{buckets[i+1]:3d} turns: {bar} ({count} games)")
+
+    # Pacing assessment
+    print(f"\n--- Pacing Assessment ---")
+    if cv < 0.15:
+        print("✅ EXCELLENT: Very consistent game length (CV < 15%)")
+    elif cv < 0.3:
+        print("✅ GOOD: Acceptable game length variance (CV < 30%)")
+    else:
+        print("⚠️  WARNING: High game length variance (CV > 30%)")
+        print("    This may indicate pacing issues or strategy imbalance")
+        print("    Consider reviewing prestige scaling or victory thresholds")
+
+    # Victory type analysis if available
+    if "victory_type" in df.columns:
+        victories = df.group_by(["game_id", "victory_type"]).agg([
+            pl.col("turn").max().alias("final_turn")
+        ]).group_by("victory_type").agg([
+            pl.col("final_turn").mean().alias("avg_turns"),
+            pl.col("game_id").count().alias("count")
+        ])
+
+        if len(victories) > 0:
+            print(f"\n--- Victory Types ---")
+            print(victories.sort("count", descending=True))
+
 def command_custom(df: pl.DataFrame, query: str):
     """Execute custom Polars query."""
     print("\n=== Custom Query ===\n")
@@ -402,7 +486,7 @@ def main():
     parser = argparse.ArgumentParser(description="Analyze EC4X diagnostics with Polars")
     parser.add_argument("command", nargs="?", default="summary",
                        choices=["summary", "strategy", "economy", "military",
-                               "research", "diplomacy", "red-flags", "compare", "custom"],
+                               "research", "diplomacy", "game-length", "red-flags", "compare", "custom"],
                        help="Analysis command to run")
     parser.add_argument("--min-turn", type=int, default=0,
                        help="Minimum turn to analyze (default: 0)")
@@ -428,6 +512,8 @@ def main():
         command_research(df)
     elif args.command == "diplomacy":
         command_diplomacy(df)
+    elif args.command == "game-length":
+        command_game_length(df)
     elif args.command == "red-flags":
         command_red_flags(df)
     elif args.command == "compare":
