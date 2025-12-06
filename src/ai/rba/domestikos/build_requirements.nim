@@ -509,16 +509,33 @@ proc assessExpansionNeeds*(
   if uncolonizedVisible == 0:
     return  # No targets
 
-  # Count ETACs
+  # Count ETACs (in fleets + under construction + queued)
   var etacCount = 0
   for fleet in filtered.ownFleets:
-    etacCount += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.ETAC)
+    etacCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.ETAC)
+
+  # Also count ETACs under construction (prevents duplicate orders)
+  for colony in filtered.ownColonies:
+    if colony.underConstruction.isSome:
+      let project = colony.underConstruction.get()
+      if project.projectType == econ_types.ConstructionType.Ship and
+         project.itemId == "ETAC":
+        etacCount += 1
+    # Also check construction queue
+    for queuedProject in colony.constructionQueue:
+      if queuedProject.projectType == econ_types.ConstructionType.Ship and
+         queuedProject.itemId == "ETAC":
+        etacCount += 1
 
   # Target: Based on map rings (one ETAC per ring for parallel colonization)
   # Standard game: 4 players = 4 rings → 4 ETACs max
   # Large game: 8 players = 8 rings → 8 ETACs max
   let mapRings = int(filtered.starMap.numRings)
   let targetETACs = min(mapRings, (uncolonizedVisible + 1) div 2)
+
+  logDebug(LogCategory.lcAI,
+           &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
+           &"mapRings {mapRings}, uncolonizedVisible {uncolonizedVisible}")
 
   if etacCount < targetETACs:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
@@ -1531,6 +1548,13 @@ proc generateBuildRequirements*(
            &"estimated docks={estimatedTotalDocks}, affordable={affordableFillerCount} ({currentAct})")
 
   # STEP 2: Generate capacity fillers using 20-slot budget-matched rotation
+  # Track ETAC requirements generated in THIS turn (prevents generating 9 ETACs in one loop)
+  # CRITICAL: Count ETACs already requested by assessExpansionNeeds() (prevents double-building)
+  var etacsGeneratedThisTurn = 0
+  for req in expansionNeeds:
+    if req.shipClass.isSome and req.shipClass.get() == ShipClass.ETAC:
+      etacsGeneratedThisTurn += req.quantity
+
   for i in 0..<affordableFillerCount:
     var shipClass: Option[ShipClass] = none(ShipClass)
     var objective: BuildObjective
@@ -1541,14 +1565,13 @@ proc generateBuildRequirements*(
     # 20-slot rotation matching budget allocation percentages
     let slot = i mod 20
     case slot
-    of 0..8:  # 45% Expansion/Military (9 slots) - ACT-AWARE
-      # ETACs: Act 1 = build up to cap, Acts 2+ = replace losses only
-      # Check current ETAC count (in fleets + under construction) and cap
+    of 0..8:  # 45% Expansion/Military (9 slots)
+      # Count ETACs in fleets + under construction + queued
       var currentETACs = 0
       for fleet in filtered.ownFleets:
-        currentETACs += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.ETAC)
+        currentETACs += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.ETAC)
 
-      # CRITICAL: Also count ETACs under construction (prevents "ETAC treadmill")
+      # CRITICAL: Also count ETACs under construction (prevents treadmill)
       for colony in filtered.ownColonies:
         if colony.underConstruction.isSome:
           let project = colony.underConstruction.get()
@@ -1561,56 +1584,38 @@ proc generateBuildRequirements*(
              queuedProject.itemId == "ETAC":
             currentETACs += 1
 
-      let etacCap = int(filtered.starMap.numRings)
-      let needsMoreETACs = currentETACs < etacCap  # Cap applies to ALL Acts
+      # CRITICAL: Add ETACs already generated THIS turn (prevents slot 0-8 each making an ETAC)
+      currentETACs += etacsGeneratedThisTurn
 
-      case currentAct
-      of GameAct.Act1_LandGrab:
-        # Act 1: Build ETACs up to cap (not unlimited!)
-        if needsMoreETACs:
-          shipClass = some(ShipClass.ETAC)
-          objective = BuildObjective.Expansion
-          reason = &"Expansion capacity (filler, {currentETACs}/{etacCap})"
-          estimatedCost = 25
-          requirementType = RequirementType.ExpansionSupport
-        else:
-          # At cap: Build military ships instead
-          shipClass = some(ShipClass.Destroyer)
-          objective = BuildObjective.Military
-          reason = "Fleet capacity (filler, ETACs at cap)"
-          estimatedCost = 40
-          requirementType = RequirementType.OffensivePrep
-      of GameAct.Act2_RisingTensions:
-        if needsMoreETACs:
-          # Replace lost ETACs (maintain cap through Act 2)
-          shipClass = some(ShipClass.ETAC)
-          objective = BuildObjective.Expansion
-          reason = &"ETAC replacement (have {currentETACs}/{etacCap})"
-          estimatedCost = 25
-          requirementType = RequirementType.ExpansionSupport
-        else:
-          # Act 2: Medium military ships (ETACs at cap)
-          shipClass = some(if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer)
-          objective = BuildObjective.Military
-          reason = "Fleet capacity (filler, post-expansion)"
-          estimatedCost = getShipConstructionCost(shipClass.get())
-          requirementType = RequirementType.OffensivePrep
-      of GameAct.Act3_TotalWar:
-        # Act 3: Never build ETACs (per user: "you won't need etacs past act 2")
-        # Heavy military ships for war economy
-        shipClass = some(if cstLevel >= 4: ShipClass.HeavyCruiser else: ShipClass.Cruiser)
+      let etacCap = int(filtered.starMap.numRings)
+
+      logDebug(LogCategory.lcAI, &"ETAC cap: {currentETACs}/{etacCap} (slot {slot}, turn reqs: {etacsGeneratedThisTurn})")
+
+      # If under cap: build ETAC, else build military ship
+      if currentETACs < etacCap:
+        logDebug(LogCategory.lcAI, &"Building ETAC {currentETACs + 1}/{etacCap}")
+        shipClass = some(ShipClass.ETAC)
+        objective = BuildObjective.Expansion
+        reason = &"Expansion (ETAC {currentETACs + 1}/{etacCap})"
+        estimatedCost = 25
+        requirementType = RequirementType.ExpansionSupport
+        etacsGeneratedThisTurn += 1
+      else:
+        # At cap: build military ships based on tech level
+        shipClass = some(
+          case currentAct
+          of GameAct.Act1_LandGrab, GameAct.Act2_RisingTensions:
+            if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer
+          of GameAct.Act3_TotalWar:
+            if cstLevel >= 4: ShipClass.HeavyCruiser else: ShipClass.Cruiser
+          of GameAct.Act4_Endgame:
+            if cstLevel >= 5: ShipClass.Battlecruiser else: ShipClass.HeavyCruiser
+        )
         objective = BuildObjective.Military
-        reason = "Fleet capacity (filler, war economy)"
+        reason = &"Military (ETACs at cap {etacCap})"
         estimatedCost = getShipConstructionCost(shipClass.get())
         requirementType = RequirementType.OffensivePrep
-      of GameAct.Act4_Endgame:
-        # Act 4: Never build ETACs (per user: "you won't need etacs past act 2")
-        # Capital ships for total war
-        shipClass = some(if cstLevel >= 5: ShipClass.Battleship else: ShipClass.Battlecruiser)
-        objective = BuildObjective.Military
-        reason = "Fleet capacity (filler, total war)"
-        estimatedCost = getShipConstructionCost(shipClass.get())
-        requirementType = RequirementType.OffensivePrep
+
 
     of 9, 10:  # 10% Military (2 slots) - Affordable combat, Act-aware progression
       case currentAct
