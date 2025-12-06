@@ -1471,11 +1471,18 @@ proc generateBuildRequirements*(
   # Solution: Add "filler" requirements (Deferred priority) to use idle capacity
   # These only get built AFTER all strategic needs are met (Critical/High/Medium/Low)
 
-  # Estimate total dock capacity (conservative: ~50 docks across all colonies)
-  # Homeworld typically has 15 docks, other colonies add 20-35 more
-  let estimatedTotalDocks = filtered.ownColonies.len * 10  # ~10 docks per colony on average
+  # Calculate aggressive dock capacity estimate to ensure full utilization
+  # Homeworld: 15 docks minimum (can have 20-30 with multiple shipyards)
+  # New colonies: Start with 0, ramp up to 10-20 as facilities built
+  # Better to OVER-estimate and have unused requirements than under-estimate
+  let estimatedTotalDocks =
+    if filtered.ownColonies.len == 1:
+      50  # Turn 1: Just homeworld, but generate 50 requirements to fill all potential docks
+    else:
+      # Multiple colonies: homeworld (20) + new colonies (10 each) + buffer
+      20 + (filtered.ownColonies.len - 1) * 10 + 20  # +20 buffer for growth
 
-  # Generate filler requirements to fill capacity (30-50 ships)
+  # Generate filler requirements to fill capacity (50-100 ships)
   # Prioritized by cost-effectiveness and strategic value
   let cstLevel = filtered.ownHouse.techTree.levels.constructionTech
 
