@@ -1031,13 +1031,8 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
              &"{controller.houseId} Treasurer: Processing {reqs.requirements.len} Domestikos requirements")
     for req in reqs.requirements:
       # Process requirements in priority order (already sorted by Domestikos)
-      # Skip Deferred requirements (low urgency)
-      if req.priority == RequirementPriority.Deferred:
-        let itemName = if req.shipClass.isSome: $req.shipClass.get() else: req.reason
-        logDebug(LogCategory.lcAI,
-                 &"{controller.houseId} Treasurer: Deferring {req.quantity}× {itemName} (priority={req.priority})")
-        treasurerFeedback.deferredRequirements.add(req)
-        continue
+      # Process ALL priorities including Deferred (capacity fillers)
+      # Deferred requirements ensure full dock utilization when budget permits
 
       let itemName = if req.shipClass.isSome: $req.shipClass.get() else: req.reason
       logDebug(LogCategory.lcAI,
@@ -1077,33 +1072,57 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
       if req.shipClass.isSome:
         let shipClass = req.shipClass.get()
         let shipStats = getShipStats(shipClass)
-        let totalCost = shipStats.buildCost * req.quantity
+        let unitCost = shipStats.buildCost
+        let totalCost = unitCost * req.quantity
 
-        if tracker.canAfford(req.buildObjective, totalCost):
-          # Budget available - create build order
+        # PARTIAL FULFILLMENT: Build as many as budget allows
+        # If AI requests 2× Battlecruiser (200PP) but only has 100PP, build 1 instead of 0
+        let availableBudget = tracker.getRemainingBudget(req.buildObjective)
+        let affordableQuantity = min(req.quantity, availableBudget div unitCost)
+
+        if affordableQuantity > 0:
+          # Build what we can afford (may be less than requested)
+          let actualCost = unitCost * affordableQuantity
           result.add(BuildOrder(
             colonySystem: col.systemId,
             buildType: BuildType.Ship,
-            quantity: req.quantity,
+            quantity: affordableQuantity,
             shipClass: some(shipClass),
             buildingType: none(string),
             industrialUnits: 0
           ))
-          tracker.recordTransaction(req.buildObjective, totalCost)
-          treasurerFeedback.fulfilledRequirements.add(req)
-          treasurerFeedback.totalBudgetSpent += totalCost
+          tracker.recordTransaction(req.buildObjective, actualCost)
+          treasurerFeedback.totalBudgetSpent += actualCost
 
-          logInfo(LogCategory.lcAI,
-                  &"{controller.houseId} Fulfilled Domestikos requirement: " &
-                  &"{req.quantity}× {shipClass} at {col.systemId} " &
-                  &"(priority={req.priority}, cost={totalCost}PP, reason={req.reason})")
+          if affordableQuantity == req.quantity:
+            # Full fulfillment
+            treasurerFeedback.fulfilledRequirements.add(req)
+            logInfo(LogCategory.lcAI,
+                    &"{controller.houseId} Fulfilled Domestikos requirement: " &
+                    &"{affordableQuantity}× {shipClass} at {col.systemId} " &
+                    &"(priority={req.priority}, cost={actualCost}PP, reason={req.reason})")
+          else:
+            # Partial fulfillment
+            let unfulfilledQuantity = req.quantity - affordableQuantity
+            let unfulfilledCost = unitCost * unfulfilledQuantity
+
+            # Track partial fulfillment in feedback
+            var partialReq = req
+            partialReq.quantity = unfulfilledQuantity
+            partialReq.estimatedCost = unfulfilledCost
+            treasurerFeedback.unfulfilledRequirements.add(partialReq)
+            treasurerFeedback.totalUnfulfilledCost += unfulfilledCost
+
+            logInfo(LogCategory.lcAI,
+                    &"{controller.houseId} PARTIAL fulfillment: {affordableQuantity}× {shipClass} at {col.systemId} " &
+                    &"(requested {req.quantity}, cost={actualCost}PP, still need {unfulfilledQuantity}× = {unfulfilledCost}PP)")
         else:
-          # Insufficient budget
+          # Cannot afford even 1 unit
           treasurerFeedback.unfulfilledRequirements.add(req)
           treasurerFeedback.totalUnfulfilledCost += totalCost
           logWarn(LogCategory.lcAI,
                   &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
-                  &"{req.quantity}× {shipClass} (need {totalCost}PP)")
+                  &"{req.quantity}× {shipClass} (need {totalCost}PP, have {availableBudget}PP)")
       else:
         # Handle non-ship requirements (ground units, buildings, tech, espionage, etc.)
         # Per user requirement: "the Treasurer should handle ALL game assets and services that cost PP"

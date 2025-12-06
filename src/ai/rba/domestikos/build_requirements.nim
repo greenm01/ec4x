@@ -1464,6 +1464,81 @@ proc generateBuildRequirements*(
     else: 0
   )
 
+  # =============================================================================
+  # CAPACITY FILLER: Generate enough requirements to fill all idle docks
+  # =============================================================================
+  # Problem: AI generates 5-10 strategic requirements, leaving 40+ docks idle
+  # Solution: Add "filler" requirements (Deferred priority) to use idle capacity
+  # These only get built AFTER all strategic needs are met (Critical/High/Medium/Low)
+
+  # Estimate total dock capacity (conservative: ~50 docks across all colonies)
+  # Homeworld typically has 15 docks, other colonies add 20-35 more
+  let estimatedTotalDocks = filtered.ownColonies.len * 10  # ~10 docks per colony on average
+
+  # Generate filler requirements to fill capacity (30-50 ships)
+  # Prioritized by cost-effectiveness and strategic value
+  let cstLevel = filtered.ownHouse.techTree.levels.constructionTech
+
+  # Add capacity fillers (Deferred priority - only built if budget remains)
+  # These ensure ALL docks are busy building something useful
+  for i in 0..<estimatedTotalDocks:
+    var shipClass: ShipClass
+    var objective: BuildObjective
+    var reason: string
+
+    # Diversify ship types based on position in queue
+    let slot = i mod 10
+    case slot
+    of 0, 1, 2:  # 30% Destroyers (cheap, always useful)
+      shipClass = ShipClass.Destroyer
+      objective = BuildObjective.Military
+      reason = "Fleet expansion (capacity filler)"
+    of 3, 4:  # 20% Cruisers (mid-tier combat)
+      shipClass = if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer
+      objective = BuildObjective.Military
+      reason = "Cruiser force (capacity filler)"
+    of 5:  # 10% Scouts (always need more intel)
+      shipClass = ShipClass.Scout
+      objective = BuildObjective.Reconnaissance
+      reason = "Intel expansion (capacity filler)"
+    of 6:  # 10% Battlecruisers (fast capitals)
+      shipClass = if cstLevel >= 3: ShipClass.Battlecruiser else: ShipClass.Destroyer
+      objective = BuildObjective.Military
+      reason = "Capital ship reserve (capacity filler)"
+    of 7:  # 10% Heavy Cruisers (powerful mid-tier)
+      shipClass = if cstLevel >= 4: ShipClass.HeavyCruiser else: ShipClass.Cruiser
+      objective = BuildObjective.Military
+      reason = "Heavy squadron (capacity filler)"
+    of 8:  # 10% Battleships (heavy capitals)
+      shipClass = if cstLevel >= 4: ShipClass.Battleship else: ShipClass.Battlecruiser
+      objective = BuildObjective.Military
+      reason = "Battle line reserve (capacity filler)"
+    of 9:  # 10% ETACs (expansion opportunities)
+      shipClass = ShipClass.ETAC
+      objective = BuildObjective.Expansion
+      reason = "Expansion reserve (capacity filler)"
+    else:
+      shipClass = ShipClass.Destroyer
+      objective = BuildObjective.Military
+      reason = "Fleet filler"
+
+    let shipCost = getShipConstructionCost(shipClass)
+
+    requirements.add(BuildRequirement(
+      requirementType: RequirementType.OffensivePrep,
+      priority: RequirementPriority.Deferred,  # LOWEST priority - only build if capacity available
+      shipClass: some(shipClass),
+      quantity: 1,  # Request one at a time for fine-grained fulfillment
+      buildObjective: objective,
+      targetSystem: none(SystemId),
+      estimatedCost: shipCost,
+      reason: reason
+    ))
+
+  logInfo(LogCategory.lcAI,
+          &"Domestikos added {estimatedTotalDocks} capacity filler requirements (Deferred priority) " &
+          &"to ensure full dock utilization")
+
   result = BuildRequirements(
     requirements: requirements,
     totalEstimatedCost: requirements.mapIt(it.estimatedCost).foldl(a + b, 0),
@@ -1475,8 +1550,9 @@ proc generateBuildRequirements*(
   )
 
   logInfo(LogCategory.lcAI,
-          &"Domestikos generated {requirements.len} build requirements " &
-          &"(Critical={result.criticalCount}, High={result.highCount}, Total={result.totalEstimatedCost}PP)")
+          &"Domestikos generated {requirements.len} TOTAL build requirements " &
+          &"(Critical={result.criticalCount}, High={result.highCount}, Deferred={requirements.countIt(it.priority == RequirementPriority.Deferred)}, " &
+          &"Total={result.totalEstimatedCost}PP)")
 
 proc reprioritizeRequirements*(
   originalRequirements: BuildRequirements,
