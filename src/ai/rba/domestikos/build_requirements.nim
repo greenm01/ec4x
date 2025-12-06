@@ -1537,12 +1537,37 @@ proc generateBuildRequirements*(
     # 20-slot rotation matching budget allocation percentages
     let slot = i mod 20
     case slot
-    of 0..8:  # 45% Expansion (9 slots)
-      shipClass = some(ShipClass.ETAC)
-      objective = BuildObjective.Expansion
-      reason = "Expansion capacity (filler)"
-      estimatedCost = 25
-      requirementType = RequirementType.ExpansionSupport
+    of 0..8:  # 45% Expansion/Military (9 slots) - ACT-AWARE
+      # ETACs only needed in Act 1 for colonization
+      # Acts 2-4: Shift to military ships (expansion is complete)
+      case currentAct
+      of GameAct.Act1_LandGrab:
+        shipClass = some(ShipClass.ETAC)
+        objective = BuildObjective.Expansion
+        reason = "Expansion capacity (filler)"
+        estimatedCost = 25
+        requirementType = RequirementType.ExpansionSupport
+      of GameAct.Act2_RisingTensions:
+        # Act 2: Medium military ships
+        shipClass = some(if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer)
+        objective = BuildObjective.Military
+        reason = "Fleet capacity (filler, post-expansion)"
+        estimatedCost = getShipConstructionCost(shipClass.get())
+        requirementType = RequirementType.OffensivePrep
+      of GameAct.Act3_TotalWar:
+        # Act 3: Heavy military ships
+        shipClass = some(if cstLevel >= 4: ShipClass.HeavyCruiser else: ShipClass.Cruiser)
+        objective = BuildObjective.Military
+        reason = "Fleet capacity (filler, war economy)"
+        estimatedCost = getShipConstructionCost(shipClass.get())
+        requirementType = RequirementType.OffensivePrep
+      of GameAct.Act4_Endgame:
+        # Act 4: Capital ships
+        shipClass = some(if cstLevel >= 5: ShipClass.Battleship else: ShipClass.Battlecruiser)
+        objective = BuildObjective.Military
+        reason = "Fleet capacity (filler, total war)"
+        estimatedCost = getShipConstructionCost(shipClass.get())
+        requirementType = RequirementType.OffensivePrep
 
     of 9, 10:  # 10% Military (2 slots) - Affordable combat, Act-aware progression
       case currentAct
