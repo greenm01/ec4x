@@ -1,6 +1,6 @@
 # RBA Decision Hierarchy & Information Flow Architecture
 
-**Last Updated:** 2025-12-06
+**Last Updated:** 2025-12-06 (Gap Analysis added)
 **System:** Rule-Based Advisor (RBA) - Byzantine Imperial Government
 **Location:** `src/ai/rba/`
 
@@ -740,6 +740,323 @@ Intel → GOAP Goals → Multi-turn Plan → Cost Estimates
 - 🔄 **Multi-Turn Planning** - Requirements can span multiple turns
 - 🔄 **Risk Assessment** - Confidence scores for decisions
 - 🔄 **Diagnostic Tracking** - Better visibility into advisor decision making
+
+---
+
+## Gap Analysis
+
+**Analysis Date:** 2025-12-06
+**Identified During:** Architecture documentation review
+
+### Critical Gaps (Block Progress)
+
+#### 1. No Multi-Turn Planning ⚠️
+
+**Gap:** All requirements are single-turn only. Cannot express "I need X in 3 turns, start now."
+
+**Example:**
+```
+Current: "Build Dreadnought NOW" (requires 200 PP this turn)
+Needed:  "Start Dreadnought, pay 50 PP/turn over 4 turns"
+```
+
+**Impact:**
+- Expensive ships (Battleships, Dreadnoughts, SuperDreadnoughts) rarely built
+- Treasury hoarding to accumulate full cost
+- Inefficient budget utilization (all-or-nothing spending)
+- Production capacity underutilized
+
+**Resolution:** GOAP Phase 1.5 will provide multi-turn plans with incremental costs
+
+---
+
+#### 2. No Emergency Response System ⚠️
+
+**Gap:** Cannot CANCEL all requirements and divert to crisis response.
+
+**Example:**
+```
+Turn 10: Homeworld under attack by 20 Battleships
+Current: Domestikos still has expansion requirements (ETACs, Scouts)
+Needed:  "DROP EVERYTHING, BUILD DEFENSE NOW"
+```
+
+**Impact:**
+- Cannot respond to existential threats mid-turn
+- Requirements from Phase 1 are fixed for entire turn
+- AI continues peaceful expansion while homeworld burns
+
+**Current Workaround:** Next turn will generate defensive requirements (too late?)
+
+**Resolution:** Emergency mode that regenerates requirements:
+```nim
+if homeworld.isCriticallyThreatened:
+  cancelAllRequirements()
+  generateEmergencyDefenseRequirements()
+  allocation = allocateFullTreasuryToDefense()
+```
+
+---
+
+#### 3. No Explicit Cross-Advisor Coordination ⚠️
+
+**Gap:** Advisors cannot REQUEST things from each other, only compete for budget.
+
+**Example:**
+```
+Domestikos: Wants to build Dreadnoughts → requires CST V
+Logothete: No idea Domestikos urgently needs CST V
+Result:     Independent requirements, no coordination
+```
+
+**Current State:**
+- Implicit coordination through personality weights
+- Aggressive AI → higher Domestikos budget → more ships → Logothete eventually researches CST
+- No explicit dependency declarations
+
+**Better Solution:**
+```nim
+BuildRequirement(
+  shipClass: Dreadnought,
+  dependencies: @[TechRequirement(field: CST, level: 5)],
+  reason: "Cannot build without CST V (currently CST III)"
+)
+```
+
+**Impact:**
+- Inefficient resource allocation
+- Tech research doesn't align with military needs
+- Domestikos builds ships it can't use yet
+
+---
+
+### Important Gaps (Reduce Effectiveness)
+
+#### 4. Weak Reprioritization Logic
+
+**Gap:** Phase 4 reprioritization is simplistic (just downgrade priorities).
+
+**Current Logic:**
+```nim
+if unfulfilled and expensive:
+  priority = High → Medium
+  or Medium → Low
+```
+
+**Missing Capabilities:**
+- Cost-benefit analysis (which requirement gives best ROI?)
+- Substitution logic (can't afford Battleship → build 2 Cruisers instead)
+- Quantity adjustment (need 10 Marines, afford 5 → build 5)
+- Value assessment (is this requirement still relevant?)
+
+**Note:** Partial fulfillment EXISTS in `budget.nim` but Phase 4 doesn't leverage it:
+```nim
+// src/ai/rba/budget.nim line 1135
+let affordableQuantity = min(req.quantity, availableBudget div unitCost)
+```
+
+**Improvement Needed:** Smarter reprioritization using cost-effectiveness metrics
+
+---
+
+#### 5. Standing Orders Disconnected from Requirements
+
+**Gap:** Standing orders (patrol, defend) don't inform requirement generation.
+
+**Example:**
+```
+Fleet 42: Standing order "Defend System 15"
+Domestikos: Generates defensive units for System 7 (homeworld)
+Result:     Wrong system defended
+```
+
+**Current State:** Standing orders and requirements are parallel systems
+- Standing orders managed in `standing_orders_manager.nim`
+- Requirements generated in `domestikos/build_requirements.nim`
+- No information flow between them
+
+**Better Solution:**
+```nim
+proc generateBuildRequirements(...):
+  for fleet, order in standingOrders:
+    if order.orderType == Defend:
+      generateDefenseRequirements(order.targetSystem)
+```
+
+---
+
+#### 6. Limited Feedback Information
+
+**Gap:** Treasurer only reports "unfulfilled" but not WHY.
+
+**Current Feedback:**
+```nim
+TreasurerFeedback(
+  unfulfilledRequirements: [req1, req2, req3]
+)
+```
+
+**Missing Information:**
+- Why unfulfilled? (insufficient budget, invalid requirement, capacity exhausted, strategically rejected)
+- How much short? (need 500 PP, have 200 PP)
+- What would make it affordable? (need 300 PP more, or downgrade from Battleship to Cruiser)
+
+**Better Feedback:**
+```nim
+UnfulfilledRequirement(
+  requirement: req,
+  reason: UnfulfillmentReason.InsufficientBudget,
+  costNeeded: 500,
+  budgetAvailable: 200,
+  suggestion: "Reduce quantity from 5 to 2"
+)
+```
+
+**Impact:**
+- Phase 4 reprioritization is blind (doesn't know why unfulfilled)
+- Cannot make informed adjustments
+- Repeated failures for same requirements
+
+---
+
+#### 7. No Resource Reservations
+
+**Gap:** Cannot reserve budget for future turns.
+
+**Example:**
+```
+Turn 5: "I'll need 500 PP on Turn 6 for critical invasion"
+Turn 6: Eparch spent 400 PP on terraforming
+Result:  Only 100 PP left, invasion cancelled
+```
+
+**Current State:** Each turn is independent, no memory of future needs
+
+**Impact:**
+- Multi-turn operations unreliable
+- Cannot commit to plans spanning turns
+- Budget competition is myopic (single-turn horizon)
+
+**Workaround Until GOAP:** High priority requirements tend to get funded first
+
+---
+
+### Nice-to-Have Gaps (Quality of Life)
+
+#### 8. No Risk Assessment
+
+**Gap:** Requirements have no confidence or risk scores.
+
+**Example:**
+```
+"Build 10 Battleships" (high risk: expensive, long build time, may not complete)
+"Build 10 Destroyers" (low risk: cheap, fast, reliable)
+Both treated equally by Treasurer
+```
+
+**Better Solution:**
+```nim
+BuildRequirement(
+  priority: High,
+  confidence: 0.8,  # 80% confident this is optimal move
+  risk: 0.3         # 30% risk of failure/waste
+)
+```
+
+**Use Cases:**
+- Budget allocation weighs risk vs reward
+- High-risk requirements get funded only if high confidence
+- Risk-averse personalities prefer low-risk requirements
+
+---
+
+#### 9. No Diagnostic Visibility into Advisor Reasoning
+
+**Gap:** Cannot see WHY advisors made specific decisions.
+
+**Example:**
+```
+Log: "Domestikos: Building 5 Destroyers"
+Questions: Why not Cruisers? Why not 10? Why Destroyers at all?
+Answer: Unknown (reasoning not logged)
+```
+
+**Better Logging:**
+```nim
+logInfo("Domestikos: Building 5 Destroyers because:")
+logInfo("  - Threat level: 0.7 (high, need immediate response)")
+logInfo("  - Budget: 200 PP available (affordable)")
+logInfo("  - Dock capacity: 10 docks available")
+logInfo("  - Act 2: Light capitals preferred over heavy")
+logInfo("  - Fleet composition: Need escorts (80% capitals, 20% escorts)")
+```
+
+**Impact:**
+- Hard to debug AI decisions
+- Cannot understand strategic reasoning
+- Balance testing is opaque
+
+---
+
+#### 10. Facility Tracking Gap (Diagnostics Bug)
+
+**Gap:** Diagnostics report 0 Shipyards/Spaceports despite homeworlds starting with them.
+
+**Root Cause:** `src/ai/analysis/diagnostics.nim` doesn't track facilities
+
+**Evidence:**
+```python
+# From analyze_single_game.py output
+Shipyards: 0  (but homeworlds start with 1 Shipyard!)
+Spaceports: 0 (but homeworlds start with 1 Spaceport!)
+```
+
+**Impact:**
+- Cannot analyze facility production
+- Cannot debug Eparch advisor
+- CSV analysis incomplete
+
+**Fix Needed:** Add facility tracking to diagnostics module
+
+---
+
+### Priority-Ordered Gaps
+
+**Critical (Block Progress):**
+1. ⚠️ Multi-turn planning → Limits expensive ship production
+2. ⚠️ Emergency response → Cannot react to crises
+3. ⚠️ Cross-advisor coordination → Inefficient resource use
+
+**Important (Reduce Effectiveness):**
+4. Weak reprioritization logic → Suboptimal budget adjustments
+5. Standing orders disconnected → Wrong defensive positioning
+6. Limited feedback information → Blind reprioritization
+7. No resource reservations → Unreliable multi-turn operations
+
+**Nice-to-Have (Quality of Life):**
+8. No risk assessment → Cannot weigh risk vs reward
+9. No diagnostic visibility → Opaque decision making
+10. Facility tracking gap → Incomplete diagnostics
+
+---
+
+### Resolution Plan
+
+**GOAP Will Address:**
+- ✅ Gap 1: Multi-turn planning (GOAP's core capability)
+- ✅ Gap 2: Emergency override (GOAP goal reprioritization)
+- ✅ Gap 3: Cross-advisor coordination (GOAP strategic plans coordinate requirements)
+- ✅ Gap 7: Resource reservations (GOAP multi-turn budgets)
+- ✅ Gap 8: Risk assessment (GOAP confidence scores)
+
+**Should Fix Before GOAP (Strengthen RBA Foundation):**
+- 🔧 Gap 4: Enhance Phase 4 reprioritization with cost-benefit analysis
+- 🔧 Gap 5: Connect standing orders to requirement generation
+- 🔧 Gap 6: Add detailed unfulfillment reasons to feedback
+
+**Low Priority (Post-GOAP):**
+- 📊 Gap 9: Add structured reasoning logs (diagnostic improvement)
+- 📊 Gap 10: Fix facility tracking in diagnostics
 
 ---
 
