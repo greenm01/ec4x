@@ -26,9 +26,9 @@ Unit Name           | Type      | CST | Cost | Act1 | Act2 | Act3 | Act4 | Pipel
 SHIPS - AUXILIARY/SUPPORT
 --------------------------------------------------------------------------------------------------
 ETAC                | Auxiliary |  1  |  25  |  X   |      |      |      | Dock     | Until cap
-Scout               | Escort    |  1  |  50  |  X   |  X   |  X   |  X   | Dock     | Recon
+Scout               | Escort    |  1  |  50  |  X   |  X   |  X   |  X   | Dock     | Recon / Espionage
 TroopTransport      | Auxiliary |  1  |  30  |      |  X   |  X   |  X   | Dock     | Invasion
-Fighter             | Fighter   |  3  |  20  |  X   |  X   |  X   |  X   | Dock     | Colony def / space combat
+Fighter             | Fighter   |  1  |  20  |  X   |  X   |  X   |  X   | Dock     | Colony def / space combat
 
 SHIPS - LIGHT ESCORTS
 --------------------------------------------------------------------------------------------------

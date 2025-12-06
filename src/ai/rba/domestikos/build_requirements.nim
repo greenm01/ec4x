@@ -1570,6 +1570,15 @@ proc generateBuildRequirements*(
     if req.shipClass.isSome and req.shipClass.get() == ShipClass.ETAC:
       etacsGeneratedThisTurn += req.quantity
 
+  # Count existing Starbases to prevent spam (max 3 per colony)
+  var existingStarbases = 0
+  for fleet in filtered.ownFleets:
+    for squadron in fleet.squadrons:
+      if squadron.flagship.shipClass == ShipClass.Starbase:
+        existingStarbases += 1  # Starbases are single-ship squadrons (flagship only)
+  let maxStarbases = filtered.ownColonies.len * 3
+  let starbaseSpaceAvailable = existingStarbases < maxStarbases
+
   for i in 0..<affordableFillerCount:
     var shipClass: Option[ShipClass] = none(ShipClass)
     var itemId: Option[string] = none(string)
@@ -1621,17 +1630,20 @@ proc generateBuildRequirements*(
         # Check from most powerful to least, use first available
         let candidates = case currentAct
           of GameAct.Act1_LandGrab:
-            @[ShipClass.Battlecruiser, ShipClass.LightCruiser, ShipClass.Destroyer,
+            # Act 1: Light escorts only (no Cruiser/Battlecruiser until Act 2)
+            @[ShipClass.LightCruiser, ShipClass.Destroyer,
               ShipClass.Frigate, ShipClass.Corvette]
           of GameAct.Act2_RisingTensions:
             @[ShipClass.Battlecruiser, ShipClass.Cruiser, ShipClass.LightCruiser,
               ShipClass.Carrier, ShipClass.Destroyer, ShipClass.Frigate]
           of GameAct.Act3_TotalWar:
-            @[ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.Battlecruiser,
-              ShipClass.Carrier, ShipClass.Raider, ShipClass.Cruiser]
+            # Act 3: Heavy capitals, SuperCarrier (CST V), carriers, raiders
+            @[ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperCarrier,
+              ShipClass.Battlecruiser, ShipClass.Carrier, ShipClass.Raider, ShipClass.Cruiser]
           of GameAct.Act4_Endgame:
+            # Act 4: Ultimate capitals, SuperCarrier, Raider for economy disruption
             @[ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship,
-              ShipClass.SuperCarrier, ShipClass.Battlecruiser, ShipClass.Carrier]
+              ShipClass.SuperCarrier, ShipClass.Raider, ShipClass.Battlecruiser, ShipClass.Carrier]
 
         # Select first ship we can build (CST requirement met)
         var selectedClass = ShipClass.Corvette  # Cheapest fallback
@@ -1650,17 +1662,21 @@ proc generateBuildRequirements*(
       # Select best available ship based on CST tech (from config, not hardcoded)
       let candidates = case currentAct
         of GameAct.Act1_LandGrab:
+          # Act 1: Light escorts only (no Cruiser/Battlecruiser until Act 2)
           @[ShipClass.LightCruiser, ShipClass.Destroyer, ShipClass.Frigate,
             ShipClass.Corvette]
         of GameAct.Act2_RisingTensions:
+          # Act 2: Capitals and cruisers unlock
           @[ShipClass.Battlecruiser, ShipClass.Cruiser, ShipClass.LightCruiser,
             ShipClass.Destroyer]
         of GameAct.Act3_TotalWar:
-          @[ShipClass.Battleship, ShipClass.Battlecruiser, ShipClass.Raider,
-            ShipClass.Cruiser]
+          # Act 3: Heavy capitals, SuperCarrier, raiders
+          @[ShipClass.Battleship, ShipClass.SuperCarrier, ShipClass.Battlecruiser,
+            ShipClass.Raider, ShipClass.Cruiser]
         of GameAct.Act4_Endgame:
+          # Act 4: Ultimate capitals, raiders for economic warfare
           @[ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship,
-            ShipClass.Battlecruiser]
+            ShipClass.Raider, ShipClass.Battlecruiser]
 
       var selectedClass = ShipClass.Corvette  # Cheapest fallback
       for candidate in candidates:
@@ -1680,24 +1696,34 @@ proc generateBuildRequirements*(
       estimatedCost = 15  # Reduced cost via config change (15PP)
       requirementType = RequirementType.ReconnaissanceGap
 
-    of 13, 14:  # 10% SpecialUnits (2 slots) - ACT-AWARE: Fighters (Act 1), Transports (Act 2+), PlanetBreakers (Act 4)
+    of 13, 14:  # 10% SpecialUnits (2 slots) - ACT-AWARE: Fighters (all acts), Transports (Act 2+), PlanetBreakers (Act 4)
+      # Rotate between Fighter and TroopTransport based on act and slot
       case currentAct
       of GameAct.Act1_LandGrab:
-        # Act 1: Fighters for colony defense
+        # Act 1: Fighters for colony defense and space combat
         shipClass = some(ShipClass.Fighter)
         reason = "Fighter capacity (filler, colony defense)"
         estimatedCost = 20
       of GameAct.Act2_RisingTensions, GameAct.Act3_TotalWar:
-        # Act 2-3: TroopTransports for early invasion/blitz capability
-        shipClass = some(ShipClass.TroopTransport)
-        reason = "Transport capacity (filler, invasion/blitz prep)"
-        estimatedCost = 30
+        # Act 2-3: Mix of Fighters and TroopTransports (rotate by slot)
+        if i mod 2 == 0:
+          shipClass = some(ShipClass.Fighter)
+          reason = "Fighter capacity (filler, space combat)"
+          estimatedCost = 20
+        else:
+          shipClass = some(ShipClass.TroopTransport)
+          reason = "Transport capacity (filler, invasion/blitz prep)"
+          estimatedCost = 30
       of GameAct.Act4_Endgame:
-        # Act 4: PlanetBreaker (CST 10) if available, else TroopTransport
-        if cstLevel >= getShipCSTRequirement(ShipClass.PlanetBreaker):
+        # Act 4: PlanetBreaker (CST 10) if available, else rotate Fighter/Transport
+        if cstLevel >= getShipCSTRequirement(ShipClass.PlanetBreaker) and i mod 3 == 0:
           shipClass = some(ShipClass.PlanetBreaker)
           reason = "Planet-Breaker (filler, strategic weapon)"
           estimatedCost = getShipConstructionCost(ShipClass.PlanetBreaker)
+        elif i mod 2 == 0:
+          shipClass = some(ShipClass.Fighter)
+          reason = "Fighter capacity (filler, space superiority)"
+          estimatedCost = 20
         else:
           shipClass = some(ShipClass.TroopTransport)
           reason = "Transport capacity (filler, invasion prep)"
@@ -1705,57 +1731,65 @@ proc generateBuildRequirements*(
       objective = BuildObjective.SpecialUnits
       requirementType = RequirementType.StrategicAsset
 
-    of 15:  # 5% Defense (1 slot) - Ground Batteries or Starbase
-      case currentAct
-      of GameAct.Act1_LandGrab, GameAct.Act2_RisingTensions:
-        # Early game: Ground Batteries (cheap colony defense)
+    of 15:  # 5% Defense (1 slot) - Starbase (all acts, max 3/colony) or Ground Batteries
+      # Starbase available if: CST requirement met AND under strategic cap (3 per colony)
+      if cstLevel >= getShipCSTRequirement(ShipClass.Starbase) and starbaseSpaceAvailable:
+        shipClass = some(ShipClass.Starbase)
+        itemId = none(string)
+        reason = &"Orbital defense (filler, {existingStarbases}/{maxStarbases})"
+        estimatedCost = getShipConstructionCost(ShipClass.Starbase)
+      else:
+        # Fallback to ground batteries if CST too low or at Starbase cap
         shipClass = none(ShipClass)
         itemId = some("GroundBattery")
         reason = "Colony defense battery (filler)"
         estimatedCost = getBuildingCost("GroundBattery")
-      of GameAct.Act3_TotalWar, GameAct.Act4_Endgame:
-        # Late game: Starbase (orbital defense platform)
-        if cstLevel >= getShipCSTRequirement(ShipClass.Starbase):
-          shipClass = some(ShipClass.Starbase)
-          itemId = none(string)
-          reason = "Orbital defense (filler)"
-          estimatedCost = getShipConstructionCost(ShipClass.Starbase)
-        else:
-          # Fallback to ground batteries if CST too low
-          shipClass = none(ShipClass)
-          itemId = some("GroundBattery")
-          reason = "Colony defense battery (filler)"
-          estimatedCost = getBuildingCost("GroundBattery")
       objective = BuildObjective.Defense
       requirementType = RequirementType.Infrastructure
 
-    of 16:  # 5% Defense (1 slot) - Armies or Planetary Shields
+    of 16:  # 5% Defense (1 slot) - Army (all acts), Marine/Shield (Act 2+)
       case currentAct
-      of GameAct.Act1_LandGrab, GameAct.Act2_RisingTensions:
-        # Early game: Armies (cheap ground defense)
+      of GameAct.Act1_LandGrab:
+        # Act 1: Armies only (ground defense)
         shipClass = none(ShipClass)
         itemId = some("Army")
         reason = "Ground defense army (filler)"
         estimatedCost = getBuildingCost("Army")
-      of GameAct.Act3_TotalWar:
-        # Mid-late: Mix of Marines (for invasion) and Armies
-        shipClass = none(ShipClass)
-        itemId = some("Marine")
-        reason = "Marine division (filler, invasion prep)"
-        estimatedCost = getBuildingCost("Marine")
-      of GameAct.Act4_Endgame:
-        # Endgame: Planetary Shields (ultimate defense)
-        if cstLevel >= 5:  # CST V required for Planetary Shields
+      of GameAct.Act2_RisingTensions, GameAct.Act3_TotalWar:
+        # Act 2-3: Rotate between Army, Marine, and PlanetaryShield (if CST allows)
+        if cstLevel >= 5 and i mod 3 == 0:
+          # Planetary Shield available at CST V
           shipClass = none(ShipClass)
           itemId = some("PlanetaryShield")
-          reason = "Planetary shield (filler)"
+          reason = "Planetary shield (filler, ultimate defense)"
           estimatedCost = getBuildingCost("PlanetaryShield")
+        elif i mod 2 == 0:
+          shipClass = none(ShipClass)
+          itemId = some("Marine")
+          reason = "Marine division (filler, invasion prep)"
+          estimatedCost = getBuildingCost("Marine")
         else:
-          # Fallback to Marines
+          shipClass = none(ShipClass)
+          itemId = some("Army")
+          reason = "Ground defense army (filler)"
+          estimatedCost = getBuildingCost("Army")
+      of GameAct.Act4_Endgame:
+        # Act 4: Prioritize Planetary Shields, fallback to Marines/Armies
+        if cstLevel >= 5 and i mod 2 == 0:
+          shipClass = none(ShipClass)
+          itemId = some("PlanetaryShield")
+          reason = "Planetary shield (filler, ultimate defense)"
+          estimatedCost = getBuildingCost("PlanetaryShield")
+        elif i mod 3 == 0:
           shipClass = none(ShipClass)
           itemId = some("Marine")
           reason = "Marine division (filler)"
           estimatedCost = getBuildingCost("Marine")
+        else:
+          shipClass = none(ShipClass)
+          itemId = some("Army")
+          reason = "Ground defense army (filler)"
+          estimatedCost = getBuildingCost("Army")
       objective = BuildObjective.Defense
       requirementType = RequirementType.Infrastructure
 
