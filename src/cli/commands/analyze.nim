@@ -2,7 +2,7 @@
 ##
 ## Implements all analysis subcommands for the ec4x CLI.
 
-import std/[os, strformat, strutils]
+import std/[os, strformat, strutils, osproc]
 import ../../ai/analysis/[types]
 import ../../ai/analysis/data/[loader, manager]
 import ../../ai/analysis/analyzers/analyzer
@@ -246,4 +246,57 @@ proc all*(diagnosticsDir = "balance_results/diagnostics"): int =
       return 1
   except Exception as e:
     echo fmt"Error generating reports: {e.msg}"
+    return 1
+
+proc singleGame*(gameSeed: string, diagnosticsDir = "balance_results/diagnostics"): int =
+  ## Detailed analysis of a single game by seed
+  ##
+  ## Generates comprehensive tables showing:
+  ## - Fleet composition by ship type and house
+  ## - Combat losses and production rates
+  ## - Territorial control and colony changes
+  ## - Economy and prestige rankings
+  ## - Red flags and anomalies
+  ##
+  ## Args:
+  ##   gameSeed: Game seed to analyze (e.g., "2000" for game_2000.csv)
+  ##   diagnosticsDir: Path to directory with diagnostic CSVs
+  ##
+  ## Returns:
+  ##   Exit code (0 = success)
+
+  let csvPath = diagnosticsDir / fmt"game_{gameSeed}.csv"
+
+  if not fileExists(csvPath):
+    echo fmt"❌ Error: Game file not found: {csvPath}"
+    echo ""
+    echo "Available games:"
+    let (output, exitCode) = execCmdEx(fmt"ls {diagnosticsDir}/game_*.csv 2>/dev/null | head -5")
+    if exitCode == 0 and output.len > 0:
+      echo output
+    else:
+      echo "  (no games found)"
+    return 1
+
+  try:
+    # Execute Python analysis script
+    let scriptPath = "scripts/analysis/analyze_single_game.py"
+    let cmd = fmt"python3 {scriptPath} {gameSeed}"
+
+    echo fmt"Analyzing game {gameSeed}..."
+    echo ""
+
+    let (output, exitCode) = execCmdEx(cmd)
+
+    if exitCode != 0:
+      echo fmt"❌ Error running analysis script (exit code: {exitCode})"
+      if output.len > 0:
+        echo output
+      return 1
+
+    echo output
+    return 0
+
+  except Exception as e:
+    echo fmt"Error analyzing game: {e.msg}"
     return 1

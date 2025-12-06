@@ -13,6 +13,7 @@ proc ec4x(
   compact: bool = false,
   detailed: bool = false,
   all: bool = false,
+  game: string = "",  # Single game analysis by seed
 
   # Data management flags (mutually exclusive)
   clean: bool = false,
@@ -36,6 +37,7 @@ proc ec4x(
   ##   --compact        Token-efficient markdown (~1500 tokens)
   ##   --detailed       Detailed markdown report (git-committable)
   ##   --all            Generate all report formats
+  ##   --game SEED      Detailed single-game analysis (e.g., --game 2000)
   ##
   ## Data management commands (run one):
   ##   --info           Show current analysis data status
@@ -56,11 +58,14 @@ proc ec4x(
   ##   ec4x --full -d mydata/          # Full analysis from custom dir
   ##   ec4x --compact -o report.md     # Compact to specific file
   ##   ec4x --all                      # All formats
+  ##   ec4x --game 2000                # Analyze game_2000.csv in detail
   ##   ec4x --info                     # Show data status
   ##   ec4x --clean --keepReports 10   # Clean, keep 10 reports
 
   # Analysis commands
-  if summary:
+  if game != "":
+    return analyze.singleGame(game, diagnosticsDir)
+  elif summary:
     return analyze.summary(diagnosticsDir)
   elif full:
     return analyze.full(diagnosticsDir, save)
