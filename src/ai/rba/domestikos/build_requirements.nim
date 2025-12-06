@@ -513,8 +513,11 @@ proc assessExpansionNeeds*(
   for fleet in filtered.ownFleets:
     etacCount += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.ETAC)
 
-  # Target: 1 ETAC per 2 systems (parallel colonization), cap at 5
-  let targetETACs = min(5, (uncolonizedVisible + 1) div 2)
+  # Target: Based on map rings (one ETAC per ring for parallel colonization)
+  # Standard game: 4 players = 4 rings → 4 ETACs max
+  # Large game: 8 players = 8 rings → 8 ETACs max
+  let mapRings = int(filtered.starMap.numRings)
+  let targetETACs = min(mapRings, (uncolonizedVisible + 1) div 2)
 
   if etacCount < targetETACs:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
