@@ -687,8 +687,28 @@ proc assessStrategicAssets*(
       if threat > 0.5:
         highThreatColonies += 1
 
-    # Target: 1 fighter per threatened colony + 2 per high-threat colony (cap at 20)
-    let targetFighters = min(20, threatenedColonies + (highThreatColonies * 2))
+    # Calculate defensive fighter needs: 1 per threatened colony + 2 per high-threat colony
+    let defensiveFighters = threatenedColonies + (highThreatColonies * 2)
+
+    # Calculate offensive fighter needs: Based on aggression + vulnerable targets + Act
+    # Aggressive houses want fighters for carrier strike operations
+    var offensiveFighters = 0
+    if personality.aggression > 0.5 and currentAct >= GameAct.Act2_RisingTensions:
+      # Base offensive fighter complement: 4 fighters (1 carrier load)
+      offensiveFighters = 4
+
+      # Scale up with vulnerable targets (intelligence-driven offensive planning)
+      let opportunities = intelSnapshot.military.vulnerableTargets
+      if opportunities.len > 0:
+        # +2 fighters per vulnerable target (cap at +8)
+        offensiveFighters += min(8, opportunities.len * 2)
+
+      # Act scaling: More fighters in later Acts (total war requires strike capability)
+      if currentAct >= GameAct.Act3_TotalWar:
+        offensiveFighters += 4  # +4 fighters in Act 3 (8-12 total)
+
+    # Target fighters: Higher of defensive OR offensive needs (not additive, avoid double-request)
+    let targetFighters = min(20, max(defensiveFighters, offensiveFighters))
 
     if fighterCount < targetFighters:
       let fighterCost = getShipConstructionCost(ShipClass.Fighter)
@@ -705,12 +725,17 @@ proc assessStrategicAssets*(
           buildObjective: BuildObjective.Military,  # Use Military budget, not SpecialUnits
           targetSystem: none(SystemId),
           estimatedCost: fighterCost,
-          reason: &"Fighter defense #{i+1} (have {fighterCount+i}/{targetFighters}, " &
-                  &"{threatenedColonies} threatened, {highThreatColonies} high-threat)"
+          reason: &"Fighter #{i+1} (have {fighterCount+i}/{targetFighters}, " &
+                  &"defense={defensiveFighters}, offense={offensiveFighters})"
         )
         result.add(req)
 
-      logInfo(LogCategory.lcAI, &"Domestikos requests: {neededFighters}x Fighter (threat-based defense, {fighterCost}PP each)")
+      let fighterPurpose = if offensiveFighters > defensiveFighters:
+        &"offensive strike ops ({offensiveFighters} needed)"
+      else:
+        &"colony defense ({defensiveFighters} needed, {threatenedColonies} threatened)"
+
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {neededFighters}x Fighter ({fighterPurpose}, {fighterCost}PP each)")
 
     # PHASE 2: Request carriers for offensive projection (SpecialUnits budget)
     # Carriers are strategic mobility platforms - only build if we have fighters
