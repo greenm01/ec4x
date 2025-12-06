@@ -1,0 +1,750 @@
+# RBA Decision Hierarchy & Information Flow Architecture
+
+**Last Updated:** 2025-12-06
+**System:** Rule-Based Advisor (RBA) - Byzantine Imperial Government
+**Location:** `src/ai/rba/`
+
+---
+
+## Table of Contents
+
+1. [System Overview](#system-overview)
+2. [Byzantine Imperial Government Structure](#byzantine-imperial-government-structure)
+3. [Advisor Hierarchy & Roles](#advisor-hierarchy--roles)
+4. [Information Flow Architecture](#information-flow-architecture)
+5. [Decision Making Process](#decision-making-process)
+6. [Feedback Loops](#feedback-loops)
+7. [Cross-Advisor Interactions](#cross-advisor-interactions)
+8. [GOAP Integration (Future)](#goap-integration-future)
+
+---
+
+## System Overview
+
+The RBA system implements a **Byzantine Imperial Government** structure with 6 specialized advisors coordinated by a Basileus (Emperor). The system uses a **5-phase process** with **iterative feedback loops** for budget-constrained decision making.
+
+### Core Design Principles
+
+1. **Separation of Concerns** - Each advisor specializes in one domain
+2. **Centralized Mediation** - Basileus resolves competing priorities
+3. **Budget Constraints** - Treasurer enforces fiscal discipline
+4. **Negative Feedback Control** - Iterative reprioritization until convergence
+5. **Intelligence-Driven** - All decisions informed by unified intelligence
+
+### Key Files
+
+```
+src/ai/rba/
+├── controller.nim              # Strategy profiles & initialization
+├── controller_types.nim        # Type definitions (advisors, requirements)
+├── orders.nim                  # Main orchestrator (5-phase process)
+├── budget.nim                  # Treasurer (CFO) - budget allocation & fulfillment
+├── orders/
+│   ├── phase0_intelligence.nim # Intelligence gathering & distribution
+│   ├── phase1_requirements.nim # Multi-advisor requirement generation
+│   ├── phase1_5_goap.nim       # GOAP strategic planning (future)
+│   ├── phase2_mediation.nim    # Basileus mediation & budget allocation
+│   ├── phase3_execution.nim    # Order execution
+│   └── phase4_feedback.nim     # Feedback loop & reprioritization
+├── domestikos/                 # Military advisor
+├── logothete/                  # Research advisor
+├── drungarius/                 # Intelligence advisor
+├── eparch/                     # Economic advisor
+├── protostrator/               # Diplomacy advisor
+└── treasurer/                  # Budget advisor (CFO)
+```
+
+---
+
+## Byzantine Imperial Government Structure
+
+### Organizational Hierarchy
+
+```
+                           ┌─────────────────┐
+                           │    BASILEUS     │
+                           │   (Emperor)     │
+                           │  [Orchestrator] │
+                           └────────┬────────┘
+                                    │
+                  ┌─────────────────┼─────────────────┐
+                  │                 │                 │
+            [Intelligence]    [Mediation]      [Execution]
+                  │                 │                 │
+                  ▼                 ▼                 ▼
+         ┌────────────────┐ ┌──────────────┐ ┌──────────────┐
+         │  DRUNGARIUS    │ │  TREASURER   │ │  DOMESTIKOS  │
+         │ (Intelligence) │ │    (CFO)     │ │  (Military)  │
+         └────────────────┘ └──────────────┘ └──────────────┘
+                                    │                 │
+                  ┌─────────────────┼─────────────────┤
+                  │                 │                 │
+         ┌────────▼────────┐ ┌──────▼──────┐ ┌───────▼──────┐
+         │   LOGOTHETE     │ │   EPARCH    │ │ PROTOSTRATOR │
+         │   (Research)    │ │  (Economy)  │ │  (Diplomacy) │
+         └─────────────────┘ └─────────────┘ └──────────────┘
+```
+
+### Power Structure
+
+- **Basileus** - Strategic coordinator, does not make decisions directly
+- **Drungarius** - Intelligence hub, informs all advisors
+- **Treasurer** - Budget gatekeeper, approves/denies spending
+- **Domain Advisors** - Generate requirements, execute orders
+
+---
+
+## Advisor Hierarchy & Roles
+
+### Advisor Roles Table
+
+| Advisor | Type | Primary Role | Inputs | Outputs | Budget Authority |
+|---------|------|--------------|--------|---------|------------------|
+| **Basileus** | Coordinator | Orchestrates 5-phase process | Game state, all advisor requirements | Order packet, feedback signals | Delegates to Treasurer |
+| **Drungarius** | Intelligence | Gathers & distributes intelligence | Fog-of-war view, house history | IntelligenceSnapshot | Requests EBP/CIP funding |
+| **Treasurer** | Budget | Allocates budgets, fulfills requirements | Requirements from all advisors, treasury | Per-advisor budgets, feedback | **Full authority** |
+| **Domestikos** | Military | Fleet operations, military production | Intelligence, threats, fleet status | BuildRequirements, FleetOrders | Requests PP from Treasurer |
+| **Logothete** | Research | Technology advancement | Tech tree, intelligence, Act | ResearchRequirements | Requests RP from Treasurer |
+| **Eparch** | Economy | Infrastructure, terraforming | Colonies, production capacity | EconomicRequirements | Requests PP from Treasurer |
+| **Protostrator** | Diplomacy | Treaties, proposals, relations | House standings, war status | DiplomaticActions | No budget (free actions) |
+
+### Requirement Priority Levels
+
+```nim
+RequirementPriority = enum
+  Critical,  # Essential for survival (undefended homeworld)
+  High,      # Important for strategy (expansion, key defense)
+  Medium,    # Useful but not urgent (infrastructure, balanced builds)
+  Low,       # Nice-to-have (capacity fillers, opportunistic)
+  Deferred   # Previously unfulfilled, downgraded
+```
+
+**Priority Semantics:**
+- **Critical** - Always funded if treasury > 0 (emergency defense)
+- **High** - Funded after Critical, before Medium (strategic needs)
+- **Medium** - Balanced allocation (standard operations)
+- **Low** - Funded if budget remains (capacity utilization)
+- **Deferred** - Reprioritized from unfulfilled requirements (feedback loop)
+
+---
+
+## Information Flow Architecture
+
+### Vertical Information Flow (Hierarchy)
+
+```
+UPWARD FLOW (Requirements & Feedback)
+=======================================
+
+Turn N:
+  Drungarius → Intelligence Snapshot
+       ↓
+  All Advisors → Requirements (prioritized)
+       ↓
+  Basileus → Aggregate requirements
+       ↓
+  Treasurer → Budget allocation (per-advisor)
+       ↓
+  Treasurer → Fulfillment feedback (fulfilled/unfulfilled)
+       ↓
+  Basileus → Reprioritization signal (if unfulfilled Critical/High)
+       ↓
+  All Advisors → Adjust priorities
+       ↓
+  [Loop 2-3 iterations until convergence]
+
+
+DOWNWARD FLOW (Budgets & Orders)
+=======================================
+
+Turn N:
+  Treasurer → Per-advisor budget allocations
+       ↓
+  Domestikos → BuildOrders (ships, ground units, facilities)
+       ↓
+  Logothete → ResearchAllocation (ERP/SRP/TRP)
+       ↓
+  Drungarius → EspionageAction (operations, EBP/CIP)
+       ↓
+  Eparch → TerraformOrders, population transfers
+       ↓
+  Protostrator → DiplomaticActions (treaties, proposals)
+       ↓
+  Engine → Execute orders (turn resolution)
+```
+
+### Horizontal Information Flow (Cross-Advisor)
+
+```
+INTELLIGENCE DISTRIBUTION (Phase 0)
+======================================
+
+        ┌──────────────────────────────────────┐
+        │         DRUNGARIUS HUB               │
+        │  Collects: Threats, Opportunities,   │
+        │  Systems, Fleets, Construction       │
+        └──────────────┬───────────────────────┘
+                       │
+         ┌─────────────┼─────────────┐
+         │             │             │
+         ▼             ▼             ▼
+   [Domestikos]  [Logothete]   [Eparch]
+   - Threats     - Tech gaps   - Production
+   - Fleets      - Research    - Colonies
+                   priorities
+
+
+BUDGET MEDIATION (Phase 2)
+======================================
+
+   Domestikos ──┐
+                │
+   Logothete ──→│  TREASURER (Basileus delegate)
+                │  - Weighs priorities
+   Drungarius ──│  - Allocates by personality
+                │  - Enforces constraints
+   Eparch ──────┘
+                │
+                └──→ Per-advisor budgets
+
+
+FEEDBACK COORDINATION (Phase 4)
+======================================
+
+   Treasurer → Unfulfilled list
+                │
+                ├──→ Domestikos (reprioritize builds)
+                ├──→ Logothete (reprioritize research)
+                ├──→ Drungarius (reprioritize espionage)
+                └──→ Eparch (reprioritize infrastructure)
+```
+
+---
+
+## Decision Making Process
+
+### 5-Phase Cycle (Per Turn)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  TURN N - BYZANTINE IMPERIAL GOVERNMENT CYCLE                │
+└──────────────────────────────────────────────────────────────┘
+
+PHASE 0: INTELLIGENCE DISTRIBUTION
+┌────────────────────────────────────────────────────────────┐
+│ Drungarius collects intelligence from fog-of-war view     │
+│                                                            │
+│ Inputs:  FilteredGameState, house history                 │
+│ Process: - Threat assessment (enemy fleets, colonies)     │
+│          - Opportunity detection (undefended systems)     │
+│          - Construction tracking (enemy builds)           │
+│          - Diplomatic events                              │
+│ Output:  IntelligenceSnapshot                             │
+│                                                            │
+│ Distribution: Shared with all advisors                    │
+└────────────────────────────────────────────────────────────┘
+                            ↓
+
+PHASE 1: MULTI-ADVISOR REQUIREMENT GENERATION
+┌────────────────────────────────────────────────────────────┐
+│ All 6 advisors generate prioritized requirements          │
+│                                                            │
+│ DOMESTIKOS:                                                │
+│   - BuildRequirements (ships, ground units, facilities)   │
+│   - Priority based on: threats, fleet capacity, Act       │
+│                                                            │
+│ LOGOTHETE:                                                 │
+│   - ResearchRequirements (tech fields, ERP/SRP)           │
+│   - Priority based on: tech gaps, military needs          │
+│                                                            │
+│ DRUNGARIUS:                                                │
+│   - EspionageRequirements (operations, EBP/CIP)           │
+│   - Priority based on: intel gaps, threat level           │
+│                                                            │
+│ EPARCH:                                                    │
+│   - EconomicRequirements (facilities, terraforming)       │
+│   - Priority based on: production capacity, colonies      │
+│                                                            │
+│ PROTOSTRATOR:                                              │
+│   - DiplomaticActions (treaties, proposals)               │
+│   - Priority based on: relations, strategic position      │
+│                                                            │
+│ Output: Requirements stored in controller.{advisor}Reqs   │
+└────────────────────────────────────────────────────────────┘
+                            ↓
+
+[PHASE 1.5: GOAP STRATEGIC PLANNING] - Future
+┌────────────────────────────────────────────────────────────┐
+│ GOAP extracts strategic goals and generates multi-turn    │
+│ plans to inform budget allocation (see GOAP section)       │
+└────────────────────────────────────────────────────────────┘
+                            ↓
+
+PHASE 2: BASILEUS MEDIATION & BUDGET ALLOCATION
+┌────────────────────────────────────────────────────────────┐
+│ Treasurer allocates PP budget across advisors              │
+│                                                            │
+│ Process:                                                   │
+│ 1. Calculate projected treasury (current + next turn PP)  │
+│ 2. Count Critical/High/Medium requirements per advisor    │
+│ 3. Weight by personality (aggression, economicFocus, etc) │
+│ 4. Weight by Act (Act 1 = expansion, Act 4 = military)    │
+│ 5. Allocate PP proportionally                             │
+│                                                            │
+│ Formula:                                                   │
+│   advisorBudget = treasury × personalityWeight × actWeight│
+│                   × (advisorCritical + advisorHigh×0.7    │
+│                      + advisorMedium×0.4) / totalWeighted │
+│                                                            │
+│ Output: MultiAdvisorAllocation                             │
+│   - budgets: Table[AdvisorType, int]                      │
+│   - treasurerFeedback, scienceFeedback, etc.              │
+└────────────────────────────────────────────────────────────┘
+                            ↓
+
+PHASE 3/4: EXECUTION & FEEDBACK LOOP (Unified)
+┌────────────────────────────────────────────────────────────┐
+│ Iterative fulfillment with reprioritization               │
+│                                                            │
+│ ITERATION 1 (Initial):                                    │
+│ ┌────────────────────────────────────────────────────────┐│
+│ │ 1. Treasurer processes requirements with budgets       ││
+│ │    - Domestikos → BuildOrders (ships, ground units)    ││
+│ │    - Logothete → ResearchAllocation                    ││
+│ │    - Drungarius → EspionageAction                      ││
+│ │    - Eparch → TerraformOrders                          ││
+│ │    - Protostrator → DiplomaticActions                  ││
+│ │                                                         ││
+│ │ 2. Track fulfilled/unfulfilled for each advisor        ││
+│ │                                                         ││
+│ │ 3. Check convergence:                                  ││
+│ │    - IF no unfulfilled Critical/High → DONE            ││
+│ │    - ELSE → Continue to Iteration 2                    ││
+│ └────────────────────────────────────────────────────────┘│
+│                            ↓                               │
+│ ITERATION 2-3 (Reprioritization):                         │
+│ ┌────────────────────────────────────────────────────────┐│
+│ │ 1. Reprioritize unfulfilled requirements:              ││
+│ │    - Domestikos: Downgrade expensive/unaffordable      ││
+│ │    - Logothete: Defer low-priority research            ││
+│ │    - Drungarius: Defer espionage operations            ││
+│ │    - Eparch: Defer infrastructure expansion            ││
+│ │                                                         ││
+│ │ 2. Re-run budget allocation with adjusted priorities   ││
+│ │                                                         ││
+│ │ 3. Re-execute requirements                             ││
+│ │                                                         ││
+│ │ 4. Check convergence (max 3 iterations)                ││
+│ └────────────────────────────────────────────────────────┘│
+│                                                            │
+│ Output: OrderPacket with all advisor orders               │
+└────────────────────────────────────────────────────────────┘
+                            ↓
+
+PHASE 5+: TACTICAL OPERATIONS
+┌────────────────────────────────────────────────────────────┐
+│ Fleet operations, standing orders, logistics              │
+│                                                            │
+│ - Strategic operations planning (invasions)               │
+│ - Tactical fleet orders (movement, combat)                │
+│ - Standing orders execution (patrol, defend)              │
+│ - Logistics (fleet composition, repairs)                  │
+│                                                            │
+│ Output: FleetOrders appended to OrderPacket               │
+└────────────────────────────────────────────────────────────┘
+                            ↓
+                    ┌───────────────┐
+                    │ Submit Orders │
+                    └───────────────┘
+```
+
+### Decision Flowchart: Requirement Fulfillment
+
+```
+START: Treasurer processes requirement
+         │
+         ▼
+    ┌─────────────────┐
+    │ Check priority  │
+    └────────┬────────┘
+             │
+    ┌────────▼─────────┐
+    │ Critical/High?   │
+    └────┬─────────┬───┘
+         │ Yes     │ No
+         │         └──→ [Skip if budget exhausted]
+         │                         │
+         ▼                         ▼
+    ┌──────────────────┐    ┌──────────────┐
+    │ Check budget     │    │ Mark deferred│
+    └────┬────────┬────┘    └──────────────┘
+         │        │
+    Yes  │        │ No
+         │        └──→ Mark unfulfilled
+         │                  │
+         ▼                  ▼
+    ┌──────────────────┐  [Add to feedback]
+    │ Create order     │
+    │ Deduct from      │
+    │ budget           │
+    └────┬─────────────┘
+         │
+         ▼
+    ┌──────────────────┐
+    │ Mark fulfilled   │
+    └────┬─────────────┘
+         │
+         ▼
+    [Next requirement]
+
+
+FEEDBACK LOOP DECISION:
+========================
+
+    ┌─────────────────────────────┐
+    │ After Iteration N           │
+    └──────────────┬──────────────┘
+                   │
+                   ▼
+    ┌──────────────────────────────┐
+    │ Any Critical/High unfulfilled?│
+    └────────┬──────────────┬──────┘
+             │ Yes          │ No
+             │              └──→ CONVERGED (done)
+             │
+             ▼
+    ┌──────────────────────────┐
+    │ Iteration < 3?           │
+    └────────┬──────────┬──────┘
+             │ Yes      │ No
+             │          └──→ MAX ITERATIONS (done)
+             │
+             ▼
+    ┌──────────────────────────┐
+    │ Reprioritize:            │
+    │ - Downgrade expensive    │
+    │ - Mark Low → Deferred    │
+    │ - Adjust quantities      │
+    └──────────┬───────────────┘
+               │
+               ▼
+    ┌──────────────────────────┐
+    │ Re-run budget allocation │
+    └──────────┬───────────────┘
+               │
+               ▼
+    [Execute Iteration N+1]
+```
+
+---
+
+## Feedback Loops
+
+### Negative Feedback Control System
+
+The RBA implements a **negative feedback control system** to converge on affordable requirements:
+
+```
+NEGATIVE FEEDBACK LOOP ARCHITECTURE
+====================================
+
+┌────────────────────────────────────────────────────────────┐
+│                    CONTROL LOOP                            │
+│                                                            │
+│  Setpoint: Fulfill all Critical & High requirements       │
+│  Measured: Unfulfilled Critical & High requirements        │
+│  Error: Number of unfulfilled Critical/High                │
+│  Control Action: Reprioritize & reallocate budget          │
+└────────────────────────────────────────────────────────────┘
+
+         ┌──────────────────────────────────────┐
+         │  ADVISORS (Generate Requirements)    │
+         │  - Domestikos, Logothete, etc.       │
+         └──────────────┬───────────────────────┘
+                        │ Requirements
+                        ▼
+         ┌──────────────────────────────────────┐
+         │  TREASURER (Allocate & Fulfill)      │
+         │  Input: Requirements + Budget        │
+         │  Output: Fulfilled/Unfulfilled       │
+         └──────────────┬───────────────────────┘
+                        │ Feedback
+                        ▼
+         ┌──────────────────────────────────────┐
+         │  FEEDBACK COMPARATOR                 │
+         │  Check: Any Critical/High unfulfilled?│
+         └──────────┬───────────────────────────┘
+                    │
+         ┌──────────┴──────────┐
+         │ Yes                 │ No
+         ▼                     ▼
+┌───────────────────┐   ┌────────────┐
+│ REPRIORITIZATION  │   │ CONVERGED  │
+│ (Control Action)  │   │ (Success)  │
+│ - Downgrade       │   └────────────┘
+│ - Defer           │
+│ - Adjust qty      │
+└────────┬──────────┘
+         │
+         └──→ [Loop back to Treasurer]
+                (Max 3 iterations)
+```
+
+### Feedback Types
+
+| Feedback Type | Source | Target | Information | Action Taken |
+|---------------|--------|--------|-------------|--------------|
+| **Treasurer Feedback** | Treasurer | Domestikos | Unfulfilled BuildRequirements | Reprioritize builds, reduce quantities |
+| **Science Feedback** | Treasurer | Logothete | Unfulfilled ResearchRequirements | Defer low-priority research |
+| **Drungarius Feedback** | Treasurer | Drungarius | Unfulfilled EspionageRequirements | Defer operations, reduce EBP/CIP |
+| **Eparch Feedback** | Treasurer | Eparch | Unfulfilled EconomicRequirements | Defer infrastructure, terraforming |
+| **Intelligence Feedback** | Drungarius | All Advisors | Threat changes, opportunities | Adjust priorities next turn |
+| **Fleet Status** | Domestikos | Domestikos | Ship losses, construction completion | Update build requirements |
+
+### Convergence Criteria
+
+```nim
+proc hasUnfulfilledCriticalOrHigh(controller: AIController): bool =
+  ## Returns true if ANY advisor has unfulfilled Critical or High requirements
+  ##
+  ## Checked after each feedback iteration to determine if loop continues
+
+  if treasurerFeedback has Critical/High unfulfilled → return true
+  if scienceFeedback has Critical/High unfulfilled → return true
+  if drungariusFeedback has Critical/High unfulfilled → return true
+  if eparchFeedback has Critical/High unfulfilled → return true
+
+  return false  # CONVERGED
+```
+
+**Loop Termination:**
+- ✅ No Critical/High unfulfilled (success)
+- ✅ Max 3 iterations reached (partial success)
+
+---
+
+## Cross-Advisor Interactions
+
+### Lateral Communication Patterns
+
+```
+INFORMATION SHARING (Phase 0 → Phase 1)
+========================================
+
+Drungarius → All Advisors:
+  - IntelligenceSnapshot
+    ├─→ Threats (fleet positions, strength)
+    ├─→ Opportunities (undefended systems, weak fleets)
+    ├─→ Construction (enemy builds in progress)
+    ├─→ Diplomatic events
+    └─→ System visibility
+
+
+BUDGET COMPETITION (Phase 2)
+========================================
+
+All Advisors → Treasurer:
+  - Competing requirements
+  - Prioritized by personality & Act
+  - Mediated by Basileus logic
+
+         Domestikos: "Need 500 PP for Battleships"
+                ↓
+         Logothete: "Need 300 PP for Tech VI"
+                ↓
+         Drungarius: "Need 200 PP for spy ops"
+                ↓
+         Eparch: "Need 400 PP for Shipyards"
+                ↓
+         Treasurer mediates → Allocates by priority
+
+
+COORDINATION (Implicit)
+========================================
+
+Domestikos ←→ Eparch:
+  - Domestikos requests ships
+  - Eparch builds Shipyards/Spaceports
+  - Coordination: Domestikos checks dock capacity
+
+Domestikos ←→ Logothete:
+  - Domestikos wants advanced ships (Dreadnoughts)
+  - Logothete researches CST (Construction Tech)
+  - Coordination: Domestikos checks tech requirements
+
+Drungarius ←→ Domestikos:
+  - Drungarius identifies invasion opportunities
+  - Domestikos plans invasion fleets
+  - Coordination: Shared IntelligenceSnapshot
+```
+
+### Dependency Matrix
+
+| Advisor | Depends On | Provides To | Conflict With |
+|---------|------------|-------------|---------------|
+| **Drungarius** | (none) | Intelligence → All | Treasurer (budget) |
+| **Domestikos** | Intel, Tech, Facilities | Fleet status → Drungarius | Logothete, Eparch (budget) |
+| **Logothete** | Intel | Tech level → Domestikos | Domestikos, Eparch (budget) |
+| **Eparch** | Intel, Production | Facilities → Domestikos | Domestikos, Logothete (budget) |
+| **Protostrator** | Intel, Relations | Diplomatic state → All | (no budget conflict) |
+| **Treasurer** | All requirements | Budgets → All | (mediates conflicts) |
+
+---
+
+## GOAP Integration (Future)
+
+### Hybrid GOAP/RBA Architecture
+
+**Vision:** GOAP handles **strategic planning** (long-term goals), RBA handles **tactical execution** (turn-by-turn operations).
+
+```
+GOAP STRATEGIC LAYER (Phase 1.5)
+=================================
+
+         ┌──────────────────────────────────────┐
+         │  GOAP PLANNER                        │
+         │  Input: World state, Requirements    │
+         │  Output: Multi-turn plans            │
+         └──────────────┬───────────────────────┘
+                        │
+         ┌──────────────▼───────────────────────┐
+         │  Strategic Goals:                    │
+         │  - "Conquer System 42" (5 turns)     │
+         │  - "Tech to CST VI" (3 turns)        │
+         │  - "Build 10 Battleships" (4 turns)  │
+         └──────────────┬───────────────────────┘
+                        │ Cost estimates
+                        ▼
+         ┌──────────────────────────────────────┐
+         │  PHASE 2: MEDIATION (Enhanced)       │
+         │  - Treasurer weighs GOAP estimates   │
+         │  - Prioritizes aligned requirements  │
+         └──────────────┬───────────────────────┘
+                        │
+                        ▼
+         ┌──────────────────────────────────────┐
+         │  RBA EXECUTION (Phases 3-5)          │
+         │  - Fulfills requirements per plan    │
+         │  - Provides feedback to GOAP         │
+         └──────────────────────────────────────┘
+```
+
+### GOAP Integration Points
+
+| Phase | Current Behavior | With GOAP Enhancement |
+|-------|------------------|----------------------|
+| **Phase 0** | Drungarius gathers intel | **+GOAP**: Track goal progress, update world state |
+| **Phase 1** | Advisors generate requirements | **+GOAP**: Requirements aligned with active goals |
+| **Phase 1.5** | (not implemented) | **GOAP**: Extract goals, generate multi-turn plans, estimate costs |
+| **Phase 2** | Treasurer allocates by personality/Act | **+GOAP**: Weight by goal priority, use cost estimates |
+| **Phase 3/4** | Execute & feedback loop | **+GOAP**: Track plan execution, update goal states |
+| **Phase 5** | Tactical operations | **+GOAP**: Fleet movements aligned with strategic goals |
+
+### Decision Authority Split
+
+```
+GOAP (STRATEGIC)               RBA (TACTICAL)
+==================             ==================
+✓ Long-term goals              ✓ Turn-by-turn orders
+✓ Multi-turn plans             ✓ Budget allocation
+✓ Goal prioritization          ✓ Requirement fulfillment
+✓ Resource allocation          ✓ Fleet operations
+  (strategic)                    (immediate)
+✓ Plan tracking                ✓ Standing orders
+✓ Goal success/failure         ✓ Emergency response
+
+
+DECISION FLOW WITH GOAP:
+=========================
+
+GOAP: "To conquer System 42, need:"
+  - Turn 1: Build 5 Destroyers (200 PP)
+  - Turn 2: Build 2 Carriers (240 PP)
+  - Turn 3: Build 10 Marines (500 PP)
+  - Turn 4: Move fleet to System 42
+  - Turn 5: Invade with Marines
+
+         ↓
+
+RBA Phase 1.5: GOAP provides cost estimates
+         ↓
+RBA Phase 2: Treasurer allocates 200 PP to Domestikos (Turn 1)
+         ↓
+RBA Phase 3: Domestikos builds 5 Destroyers
+         ↓
+[Next turn]
+         ↓
+RBA Phase 2: Treasurer allocates 240 PP (Turn 2)
+         ↓
+...continues until goal complete
+```
+
+### Information Flow Changes
+
+**Current (RBA Only):**
+```
+Intel → Requirements → Allocation → Execution → Feedback → Reprioritize
+```
+
+**Future (GOAP + RBA):**
+```
+Intel → GOAP Goals → Multi-turn Plan → Cost Estimates
+                          ↓
+                    Requirements (goal-aligned)
+                          ↓
+                    Allocation (goal-weighted)
+                          ↓
+                    Execution → Feedback
+                          ↓
+                    GOAP: Update goal progress
+                          ↓
+                    GOAP: Replan if needed
+```
+
+### Cross-System Feedback
+
+| Feedback Type | Direction | Purpose |
+|---------------|-----------|---------|
+| **Goal Progress** | RBA → GOAP | "Built 5/10 Battleships for Goal X" |
+| **Plan Failure** | RBA → GOAP | "Couldn't afford Marines, replan" |
+| **Opportunity** | RBA → GOAP | "Enemy fleet destroyed, update goal priority" |
+| **Cost Estimate** | GOAP → RBA | "Invasion needs 500 PP over 3 turns" |
+| **Goal Alignment** | GOAP → RBA | "Requirement R aligns with Goal G (priority boost)" |
+| **Emergency Override** | RBA → GOAP | "Homeworld attacked, suspend offensive goals" |
+
+---
+
+## Summary
+
+### Key Takeaways
+
+1. **Hierarchical Structure** - Basileus coordinates 6 specialized advisors
+2. **Intelligence-Driven** - Drungarius provides unified intelligence to all
+3. **Budget-Constrained** - Treasurer enforces fiscal discipline
+4. **Iterative Feedback** - 3-iteration loop converges on affordable requirements
+5. **Priority-Based** - Critical > High > Medium > Low > Deferred
+6. **GOAP Ready** - Architecture supports future strategic planning layer
+
+### Strengths
+
+- ✅ Clear separation of concerns
+- ✅ Robust feedback loops for budget constraints
+- ✅ Extensible (easy to add new advisor capabilities)
+- ✅ Intelligence-driven decision making
+- ✅ Configurable via personality weights
+
+### Future Enhancements
+
+- 🔄 **GOAP Integration** - Strategic goal planning (Phase 1.5)
+- 🔄 **Cross-Advisor Coordination** - Explicit dependencies (e.g., Domestikos waits for Eparch Shipyards)
+- 🔄 **Multi-Turn Planning** - Requirements can span multiple turns
+- 🔄 **Risk Assessment** - Confidence scores for decisions
+- 🔄 **Diagnostic Tracking** - Better visibility into advisor decision making
+
+---
+
+**Maintained by:** AI Development Team
+**Related Documentation:**
+- [Unit Progression](../mechanics/unit-progression.md)
+- [Budget Allocation](../balance/RBA_BUDGET_ALLOCATION_FIX.md)
+- [GOAP System](../GOAP_COMPLETE.md)
