@@ -1568,7 +1568,7 @@ proc generateBuildRequirements*(
     ))
 
   logInfo(LogCategory.lcAI,
-          &"Domestikos added {estimatedTotalDocks} capacity filler requirements (Deferred priority) " &
+          &"Domestikos added {estimatedTotalDocks} capacity filler requirements (Low priority) " &
           &"to ensure full dock utilization")
 
   result = BuildRequirements(

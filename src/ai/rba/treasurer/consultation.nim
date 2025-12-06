@@ -30,11 +30,11 @@ proc calculateRequiredPP*(
   for objective in BuildObjective:
     result[objective] = 0
 
-  # Sum costs for Critical+High+Medium priorities
-  # Exclude Low and Deferred to avoid over-allocating to non-urgent needs
-  # This ensures budget consultation focuses on actionable requirements
+  # Sum costs for Critical+High+Medium+Low priorities
+  # Exclude only Deferred (unused/future) to avoid over-allocating to non-actionable needs
+  # Low priorities (capacity fillers) MUST be counted or Military/Recon budgets will be underallocated
   for req in requirements.requirements:
-    if req.priority in {RequirementPriority.Critical, RequirementPriority.High, RequirementPriority.Medium}:
+    if req.priority in {RequirementPriority.Critical, RequirementPriority.High, RequirementPriority.Medium, RequirementPriority.Low}:
       result[req.buildObjective] += req.estimatedCost
 
   # Debug: Log what we calculated
@@ -68,11 +68,13 @@ proc applyStrategicTriage*(
   var criticalReqs = initTable[BuildObjective, int]()
   var highReqs = initTable[BuildObjective, int]()
   var mediumReqs = initTable[BuildObjective, int]()
+  var lowReqs = initTable[BuildObjective, int]()
 
   for objective in BuildObjective:
     criticalReqs[objective] = 0
     highReqs[objective] = 0
     mediumReqs[objective] = 0
+    lowReqs[objective] = 0
 
   for req in requirements.requirements:
     case req.priority
@@ -82,17 +84,21 @@ proc applyStrategicTriage*(
       highReqs[req.buildObjective] += req.estimatedCost
     of RequirementPriority.Medium:
       mediumReqs[req.buildObjective] += req.estimatedCost
+    of RequirementPriority.Low:
+      lowReqs[req.buildObjective] += req.estimatedCost
     else:
-      discard  # Skip Low and Deferred
+      discard  # Skip only Deferred
 
   # Calculate total cost per priority level
   var totalCritical = 0
   var totalHigh = 0
   var totalMedium = 0
+  var totalLow = 0
   for objective in BuildObjective:
     totalCritical += criticalReqs[objective]
     totalHigh += highReqs[objective]
     totalMedium += mediumReqs[objective]
+    totalLow += lowReqs[objective]
 
   # Budget available after minimum reserves
   var budgetRemaining = availableBudget - minReserves
@@ -137,6 +143,21 @@ proc applyStrategicTriage*(
     logDebug(LogCategory.lcAI,
              &"Strategic Triage Medium: {mediumBudget}/{totalMedium}PP allocated")
 
+  # 4. Low requirements (fourth priority - capacity fillers to fill all docks)
+  if totalLow > 0 and budgetRemaining > 0:
+    let lowBudget = min(budgetRemaining, totalLow)
+    for objective in BuildObjective:
+      if lowReqs[objective] > 0:
+        let ratio = float(lowReqs[objective]) / float(totalLow)
+        let allocated = ratio * float(lowBudget)
+        allocation[objective] += allocated / float(availableBudget)
+    budgetRemaining -= lowBudget
+    logDebug(LogCategory.lcAI,
+             &"Strategic Triage Low: {lowBudget}/{totalLow}PP allocated " &
+             &"(Defense={int(lowReqs[BuildObjective.Defense])}PP, " &
+             &"Military={int(lowReqs[BuildObjective.Military])}PP, " &
+             &"Recon={int(lowReqs[BuildObjective.Reconnaissance])}PP)")
+
   # Guarantee minimum reserves
   allocation[BuildObjective.Expansion] = max(allocation[BuildObjective.Expansion], float(minExpansion) / float(availableBudget))
   allocation[BuildObjective.Reconnaissance] = max(allocation[BuildObjective.Reconnaissance], float(minRecon) / float(availableBudget))
@@ -147,9 +168,9 @@ proc applyStrategicTriage*(
                                 allocation[BuildObjective.SpecialUnits])
   allocation[BuildObjective.Technology] = remainingPercent
 
-  let totalUrgent = totalCritical + totalHigh + totalMedium
+  let totalUrgent = totalCritical + totalHigh + totalMedium + totalLow
   logInfo(LogCategory.lcAI,
-          &"Strategic Triage (Priority-Aware): Total={totalUrgent}PP (Critical={totalCritical}, High={totalHigh}, Medium={totalMedium}), " &
+          &"Strategic Triage (Priority-Aware): Total={totalUrgent}PP (Critical={totalCritical}, High={totalHigh}, Medium={totalMedium}, Low={totalLow}), " &
           &"budget={availableBudget}PP. Allocated: Defense={int(allocation[BuildObjective.Defense]*100)}%, " &
           &"Military={int(allocation[BuildObjective.Military]*100)}%, Recon={int(allocation[BuildObjective.Reconnaissance]*100)}%, " &
           &"Special={int(allocation[BuildObjective.SpecialUnits]*100)}%")
