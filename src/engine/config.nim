@@ -5,7 +5,7 @@
 import std/[tables, parsecfg, strutils, os]
 import ../common/types/units
 
-export ShipClass, ShipStats, GroundUnitType, GroundUnitStats, FacilityType, FacilityStats
+export ShipClass, ShipRole, ShipStats, GroundUnitType, GroundUnitStats, FacilityType, FacilityStats
 
 type
   ConfigError* = object of CatchableError
@@ -73,6 +73,8 @@ proc shipClassToConfigKey(shipClass: ShipClass): string =
   ## Convert ShipClass enum to config file section key
   case shipClass
   of Fighter: "fighter"
+  of Corvette: "corvette"
+  of Frigate: "frigate"
   of Scout: "scout"
   of Raider: "raider"
   of Destroyer: "destroyer"
@@ -90,12 +92,23 @@ proc shipClassToConfigKey(shipClass: ShipClass): string =
   of TroopTransport: "troop_transport"
   of PlanetBreaker: "planet_breaker"
 
+proc parseShipRole*(roleStr: string): ShipRole =
+  ## Parse ship role string from config
+  case roleStr.toLowerAscii()
+  of "escort": ShipRole.Escort
+  of "capital": ShipRole.Capital
+  of "auxiliary": ShipRole.Auxiliary
+  of "specialweapon": ShipRole.SpecialWeapon
+  of "fighter": ShipRole.Fighter
+  else: raise newException(ConfigError, "Invalid ship role: " & roleStr)
+
 proc loadShipStats(config: Config, shipClass: ShipClass): ShipStats =
   ## Load stats for a single ship class from config
   let key = shipClassToConfigKey(shipClass)
 
   result.name = config.getSectionValue(key, "name", $shipClass)
   result.class = config.getSectionValue(key, "class", key)
+  result.role = parseShipRole(config.getSectionValue(key, "ship_role"))
   result.attackStrength = config.getSectionValueInt(key, "attack_strength")
   result.defenseStrength = config.getSectionValueInt(key, "defense_strength")
   result.commandCost = config.getSectionValueInt(key, "command_cost")

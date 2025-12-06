@@ -12,29 +12,36 @@ DS = Defensive Strength
 CC= Command Cost
 CR = Command Rating
 CL = Carry Limit
+Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/Fighter)
 
-| Class | Name              | CST | PC  | MC  | AS  | DS  | CC  | CR  | CL  |
-|:-----:| ----------------- |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| CT    | Corvette          | 1   | 20  | 3%  | 2   | 3   | 1   | 2   | NA  |
-| FG    | Frigate           | 1   | 30  | 3%  | 3   | 4   | 2   | 3   | NA  |
-| DD    | Destroyer         | 1   | 40  | 5%  | 5   | 6   | 2   | 4   | NA  |
-| CL    | Light Cruiser     | 1   | 60  | 3%  | 8   | 9   | 3   | 6   | NA  |
-| CA    | Heavy Cruiser     | 2   | 80  | 5%  | 12  | 13  | 3   | 7   | NA  |
-| BC    | Battle Cruiser    | 3   | 100 | 4%  | 16  | 18  | 3   | 8   | NA  |
-| BB    | Battleship        | 4   | 150 | 4%  | 20  | 25  | 3   | 10  | NA  |
-| DN    | Dreadnought       | 5   | 200 | 5%  | 28  | 30  | 4   | 12  | NA  |
-| SD    | Super Dreadnought | 6   | 250 | 5%  | 35  | 40  | 5   | 14  | NA  |
-| PB    | Planet-Breaker    | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
-| CV    | Carrier           | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
-| CX    | Super Carrier     | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
-| FS    | Fighter Squadron  | 3   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
-| RR    | Raider            | 3   | 150 | 4%  | 12  | 10  | 2   | 8   | NA  |
-| SC    | Scout             | 1   | 50  | 2%  | 1   | 2   | 1   | NA  | NA  |
-| SB    | Starbase          | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
+| Class | Name              | Role          | CST | PC  | MC  | AS  | DS  | CC  | CR  | CL  |
+|:-----:| ----------------- | ------------- |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| CT    | Corvette          | Escort        | 1   | 20  | 3%  | 2   | 3   | 1   | 2   | NA  |
+| FG    | Frigate           | Escort        | 1   | 30  | 3%  | 3   | 4   | 2   | 3   | NA  |
+| DD    | Destroyer         | Escort        | 1   | 40  | 5%  | 5   | 6   | 2   | 4   | NA  |
+| CL    | Light Cruiser     | Escort        | 1   | 60  | 3%  | 8   | 9   | 3   | 6   | NA  |
+| CA    | Heavy Cruiser     | Capital       | 2   | 80  | 5%  | 12  | 13  | 3   | 7   | NA  |
+| BC    | Battle Cruiser    | Capital       | 3   | 100 | 4%  | 16  | 18  | 3   | 8   | NA  |
+| BB    | Battleship        | Capital       | 4   | 150 | 4%  | 20  | 25  | 3   | 10  | NA  |
+| DN    | Dreadnought       | Capital       | 5   | 200 | 5%  | 28  | 30  | 4   | 12  | NA  |
+| SD    | Super Dreadnought | Capital       | 6   | 250 | 5%  | 35  | 40  | 5   | 14  | NA  |
+| PB    | Planet-Breaker    | SpecialWeapon | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
+| CV    | Carrier           | Capital       | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
+| CX    | Super Carrier     | Capital       | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
+| FS    | Fighter Squadron  | Fighter       | 3   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
+| RR    | Raider            | Capital       | 3   | 150 | 4%  | 12  | 10  | 2   | 8   | NA  |
+| SC    | Scout             | Escort        | 1   | 50  | 2%  | 1   | 2   | 1   | NA  | NA  |
+| SB    | Starbase          | SpecialWeapon | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
 
 *Source: config/ships.toml*
 
-NOTE: Ships with a Command Rating (CR) >= 7 are considered Capital Ships.
+**Ship Role Classifications:**
+
+- **Escort**: Combat-capable ships with CR < 7. Not individually capacity-limited, but count toward total squadron limit.
+- **Capital**: Flagship-capable ships with CR >= 7. Subject to both capital squadron limits AND total squadron limits.
+- **Auxiliary**: Non-combat support ships (ETAC, Troop Transports). Do not count toward squadron limits.
+- **SpecialWeapon**: Unique strategic units (Planet-Breakers, Starbases) with special capacity rules.
+- **Fighter**: Embarked strike craft with per-colony capacity limits.
 
 <!-- SPACE_FORCE_TABLE_END -->
 
@@ -142,30 +149,31 @@ The zero-sum system ensures **losers actively decline** rather than merely slowi
 
 <!-- PRESTIGE_TABLE_START -->
 
-| Prestige Source                    | Enum Name               | Value | Type          |
-| ---------------------------------- | ----------------------- | ----- | ------------- |
-| Tech Advancement                   | `TechAdvancement`       | +2    | Absolute      |
-| Colony Establishment               | `ColonyEstablishment`   | +5    | Absolute      |
-| System Capture                     | `SystemCapture`         | +10   | Zero-Sum      |
-| Diplomatic Pact Formation          | `DiplomaticPact`        | +5    | Absolute      |
-| Pact Violation (penalty)           | `PactViolation`         | -10   | Pure Penalty  |
-| Repeat Violation (penalty)         | `RepeatViolation`       | -10   | Pure Penalty  |
-| Attack Dishonored House            | `DishonoredBonus`       | +1    | Absolute      |
-| Tech Theft Success                 | `TechTheftSuccess`      | +2    | Zero-Sum      |
-| Assassination Success              | `AssassinationSuccess`  | +5    | Zero-Sum      |
-| Espionage Attempt Failed (penalty) | `EspionageFailure`      | -2    | Pure Penalty  |
-| Major Ship Destroyed (per ship)    | `ShipDestroyed`         | +1    | Zero-Sum      |
-| Starbase Destroyed                 | `StarbaseDestroyed`     | +5    | Zero-Sum      |
-| Fleet Victory (per battle)         | `FleetVictory`          | +3    | Zero-Sum      |
-| Planet Conquered (Invasion)        | `PlanetConquered`       | +10   | Zero-Sum      |
-| Planet Lost (Invasion)             | `PlanetLost`            | -10   | Zero-Sum      |
-| Planet Lost (Undefended)           | `PlanetLost`            | -15   | Zero-Sum*     |
-| House Eliminated                   | `HouseEliminated`       | +3    | Zero-Sum      |
-| Victory Achieved                   | `VictoryAchieved`       | +5    | Absolute      |
+| Prestige Source                    | Enum Name              | Value | Type         |
+| ---------------------------------- | ---------------------- | ----- | ------------ |
+| Tech Advancement                   | `TechAdvancement`      | +2    | Absolute     |
+| Colony Establishment               | `ColonyEstablishment`  | +5    | Absolute     |
+| System Capture                     | `SystemCapture`        | +10   | Zero-Sum     |
+| Diplomatic Pact Formation          | `DiplomaticPact`       | +5    | Absolute     |
+| Pact Violation (penalty)           | `PactViolation`        | -10   | Pure Penalty |
+| Repeat Violation (penalty)         | `RepeatViolation`      | -10   | Pure Penalty |
+| Attack Dishonored House            | `DishonoredBonus`      | +1    | Absolute     |
+| Tech Theft Success                 | `TechTheftSuccess`     | +2    | Zero-Sum     |
+| Assassination Success              | `AssassinationSuccess` | +5    | Zero-Sum     |
+| Espionage Attempt Failed (penalty) | `EspionageFailure`     | -2    | Pure Penalty |
+| Major Ship Destroyed (per ship)    | `ShipDestroyed`        | +1    | Zero-Sum     |
+| Starbase Destroyed                 | `StarbaseDestroyed`    | +5    | Zero-Sum     |
+| Fleet Victory (per battle)         | `FleetVictory`         | +3    | Zero-Sum     |
+| Planet Conquered (Invasion)        | `PlanetConquered`      | +10   | Zero-Sum     |
+| Planet Lost (Invasion)             | `PlanetLost`           | -10   | Zero-Sum     |
+| Planet Lost (Undefended)           | `PlanetLost`           | -15   | Zero-Sum*    |
+| House Eliminated                   | `HouseEliminated`      | +3    | Zero-Sum     |
+| Victory Achieved                   | `VictoryAchieved`      | +5    | Absolute     |
 
 *Source: config/prestige.toml [economic], [military], and [espionage] sections*
 
 **Notes:**
+
 - *Zero-Sum*: The asterisk indicates the undefended colony penalty intentionally breaks zero-sum. The attacker gains the base amount (+10), but the defender loses 1.5× the base amount (-15). This is punishment for poor defensive strategy.
 
 <!-- PRESTIGE_TABLE_END -->
@@ -206,6 +214,7 @@ Colonies without ground defense incur additional prestige penalties when lost to
 - **Rationale**: Represents the dishonor of leaving citizens defenseless
 
 **Important:**
+
 - Planetary shields do NOT count as defense for this check. Shields are passive and only slow invasions.
 - At least one army, marine, or ground battery is required to avoid the penalty.
 - The additional penalty breaks zero-sum: attacker gains base amount, defender loses 1.5× base amount.
@@ -224,13 +233,31 @@ Ground units received 33% cost reductions to make defensive investments more acc
 
 ## 10.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
 
-| Limit Description                             | Rule Details                                                                                                                                                                                                      | Source Section                                             |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Capital Squadrons (per house)                 | Maximum = Total House (IU ÷ 100)*2 (round down, minimum 8). Squadrons commanded by flagships with CR > 7. Every squadron costs 1 slot.                                                                            | [3.12](economy.md#312-house-combat-squadron-limit)         |
-| Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                     | [2.4.8](assets.md#248-planet-breaker)                      |
-| Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess. | [2.4.1](assets.md#241-fighter-squadrons-carriers)          |
-| Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                             | [2.4.1](assets.md#241-fighter-squadrons-carriers)          |
-| Scout CER Bonus                               | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.                                                                                                                        | [7.3.3](operations.md#733-combat-effectiveness-rating-cer) |
-| Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass).                                              | [7.3.3](operations.md#733-combat-effectiveness-rating-cer) |
-| Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                       | [6.2.6](operations.md#626-guardblockade-a-planet-05)       |
-| Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                       | [3.2](economy.md#32-tax-rate)                              |
+| Limit Description                             | Rule Details                                                                                                                                                                                                                   | Source Section                                             |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Total Squadrons (per house)                   | Maximum = Total House (IU ÷ 50) × mapMultiplier (round down, minimum 20). Includes ALL military squadrons (escorts + capitals). Excludes fighters and auxiliary ships. 2-turn grace period, then auto-disband weakest escorts. | [3.12](economy.md#312-house-combat-squadron-limit)         |
+| Capital Squadrons (per house)                 | Maximum = Total House (IU ÷ 100) × 2 × mapMultiplier (round down, minimum 8). Squadrons with capital ships. Subset of total squadron limit. No grace period, immediate enforcement with 50% salvage.                           | [3.12](economy.md#312-house-combat-squadron-limit)         |
+| Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                                  | [2.4.8](assets.md#248-planet-breaker)                      |
+| Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess.              | [2.4.1](assets.md#241-fighter-squadrons-carriers)          |
+| Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                                          | [2.4.1](assets.md#241-fighter-squadrons-carriers)          |
+| Scout CER Bonus                               | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.                                                                                                                                     | [7.3.3](operations.md#733-combat-effectiveness-rating-cer) |
+| Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass).                                                           | [7.3.3](operations.md#733-combat-effectiveness-rating-cer) |
+| Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                                    | [6.2.6](operations.md#626-guardblockade-a-planet-05)       |
+| Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                                    | [3.2](economy.md#32-tax-rate)                              |
+
+**Map Size Multipliers** (affects both total and capital squadron limits):
+
+- **Small maps** (< 8 systems/player): 0.8× (encourages concentration)
+- **Medium maps** (8-12 systems/player): 1.0× (baseline)
+- **Large maps** (13-16 systems/player): 1.3× (more territory = more ships needed)
+- **Huge maps** (> 16 systems/player): 1.6× (vast empires need larger fleets)
+
+**Squadron Limit Relationship:**
+Capital squadron limit is a SUBSET of total squadron limit (not additive). Example with 1000 IU on medium map:
+
+- Total limit: floor(1000 ÷ 50) × 1.0 = 20 squadrons (ALL military ships)
+- Capital limit: floor(1000 ÷ 100) × 2 × 1.0 = 20 capital squadrons
+- Valid fleet: 20 capitals + 0 escorts = 20 total ✓
+- Valid fleet: 15 capitals + 5 escorts = 20 total ✓
+- Invalid: 25 capitals (violates capital limit) ✗
+- Invalid: 10 capitals + 15 escorts = 25 total (violates total limit) ✗

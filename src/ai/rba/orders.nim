@@ -142,43 +142,10 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
       else:
         militaryCount += 1
 
-  let isUnderThreat = filtered.visibleFleets.anyIt(it.owner != controller.houseId)
-
-  # Dynamic ETAC production based on fog-of-war visibility
-  # Continue building ETACs as long as there are visible uncolonized systems
-  # This scales with map size and adapts to intelligence gathered
-  let uncolonizedSystemsVisible = intelligence.countUncolonizedSystems(filtered)
-  let needETACs = case currentAct
-    of ai_types.GameAct.Act1_LandGrab:
-      # Act 1: Always build ETACs (land grab phase)
-      uncolonizedSystemsVisible > 0
-    of ai_types.GameAct.Act2_RisingTensions:
-      # Act 2: Build ETACs if we see uncolonized systems (opportunistic expansion)
-      uncolonizedSystemsVisible > 0
-    else:
-      # Act 3+: Stop ETAC production (focus on military/consolidation)
-      false
-
-  # NOTE: Scouts only useful in Act 2+ for espionage (spying on enemy colonies)
-  # In Act 1, any ship can explore and reveal map, so scouts provide no advantage
-  let needScouts = case currentAct
-    of ai_types.GameAct.Act1_LandGrab: false  # Don't build scouts in Act 1 (any ship can explore)
-    of ai_types.GameAct.Act2_RisingTensions: scoutCount < 7  # Build scouts for espionage
-    else: scoutCount < 9  # More scouts for full ELI mesh coverage
-
-  let needDefenses = cst >= 1
-  let needFighters = true  # Engine handles tech-gating via ships.toml tech_level
-  let needCarriers = cst >= 3
-  let needTransports = cst >= 1 and p.aggression > 0.3
-  let needRaiders = cst >= 2 and p.aggression > 0.5
-  let canAffordMoreShips = allocation.budgets[AdvisorType.Domestikos] >= 50
-  let atSquadronLimit = false
-
+  # Phase 3: Build orders now purely requirements-driven from Domestikos
+  # All ship building decisions come from intelligence-driven requirements
   result.orderPacket.buildOrders = generateBuildOrdersWithBudget(
     controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
-    isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
-    needCarriers, needTransports, needRaiders, canAffordMoreShips,
-    atSquadronLimit, militaryCount, scoutCount, planetBreakerCount,
     allocation.budgets[AdvisorType.Domestikos],
     controller.domestikosRequirements
   )
@@ -197,8 +164,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
             &"{controller.houseId} Feedback iteration {feedbackIteration + 1}/{MAX_FEEDBACK_ITERATIONS} - " &
             &"unfulfilled: {getUnfulfilledSummary(controller)}")
 
-    # Reprioritize all advisors
-    reprioritizeAllAdvisors(controller)
+    # Reprioritize all advisors (budget-aware)
+    reprioritizeAllAdvisors(controller, filtered.ownHouse.treasury)
 
     # Re-run mediation with adjusted priorities
     allocation = mediateAndAllocateBudget(controller, filtered, currentAct)
@@ -210,12 +177,9 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     result.orderPacket.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
     result.orderPacket.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
 
-    # Re-execute build orders
+    # Re-execute build orders with updated priorities
     result.orderPacket.buildOrders = generateBuildOrdersWithBudget(
       controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
-      isUnderThreat, needETACs, needDefenses, needScouts, needFighters,
-      needCarriers, needTransports, needRaiders, canAffordMoreShips,
-      atSquadronLimit, militaryCount, scoutCount, planetBreakerCount,
       allocation.budgets[AdvisorType.Domestikos],
       controller.domestikosRequirements
     )

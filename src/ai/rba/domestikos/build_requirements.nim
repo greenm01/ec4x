@@ -24,6 +24,94 @@ import ../config
 import ./fleet_analysis
 import ./intelligence_ops  # Extracted: estimateLocalThreat
 
+# ============================================================================
+# UNIVERSAL AFFORDABILITY HELPERS
+# ============================================================================
+# Budget-aware unit construction helpers for all expensive units (>100PP)
+# Prevents requesting unaffordable units and scales quantity based on treasury
+# ============================================================================
+
+proc calculateAffordabilityFactor*(
+  unitCost: int,
+  quantity: int,
+  treasury: int,
+  currentAct: ai_common_types.GameAct
+): float =
+  ## Universal affordability scaling for expensive units
+  ## Returns 0.0-1.0 multiplier based on cost-to-treasury ratio
+  ##
+  ## Prevents requesting expensive units when economy can't support them.
+  ## Act-specific thresholds ensure early-game focus on expansion.
+  ##
+  ## Example:
+  ##   Turn 1 (Act1, 208PP treasury):
+  ##     2x Battlecruiser (200PP total) → 15% max = 31PP → 0% affordable
+  ##   Turn 15 (Act2, 1500PP treasury):
+  ##     2x Battleship (300PP total) → 25% max = 375PP → 100% affordable
+
+  let totalCost = unitCost * quantity
+
+  # Avoid division by zero
+  if treasury <= 0 or quantity <= 0:
+    return 0.0
+
+  let costRatio = float(totalCost) / float(treasury)
+
+  # Act-specific thresholds (how much of treasury we're willing to spend)
+  let maxCostRatio = case currentAct
+    of ai_common_types.GameAct.Act1_LandGrab: 0.15        # Act 1: Only 15% (expansion focus)
+    of ai_common_types.GameAct.Act2_RisingTensions: 0.25  # Act 2: 25% (buildup)
+    of ai_common_types.GameAct.Act3_TotalWar: 0.40        # Act 3: 40% (war economy)
+    of ai_common_types.GameAct.Act4_Endgame: 0.50         # Act 4: 50% (all-in)
+
+  if costRatio > maxCostRatio:
+    # Too expensive - scale down quantity
+    return max(0.0, maxCostRatio / costRatio)
+  else:
+    # Affordable - request full quantity
+    return 1.0
+
+proc adjustPriorityForAffordability*(
+  basePriority: RequirementPriority,
+  unitCost: int,
+  quantity: int,
+  treasury: int,
+  currentAct: ai_common_types.GameAct,
+  unitType: string  # For logging
+): RequirementPriority =
+  ## Adjust priority downward if unit is unaffordable
+  ## Applied to expensive units (>100PP total cost)
+  ##
+  ## Economic health check: Can we afford 2x the cost?
+  ## - If yes: Keep original priority
+  ## - If no: Downgrade by one level (preserves Critical priority)
+  ##
+  ## Rationale: 2x cost threshold ensures we can afford unit + still do other things
+
+  let totalCost = unitCost * quantity
+
+  # Cheap units (<100PP) - no adjustment
+  if totalCost < 100:
+    return basePriority
+
+  # Economic health check: can we afford 2x the cost?
+  let economicHealthy = treasury >= (totalCost * 2)
+
+  if not economicHealthy and basePriority != RequirementPriority.Critical:
+    # Poor economy - downgrade by one level
+    let adjusted = case basePriority
+      of RequirementPriority.High: RequirementPriority.Medium
+      of RequirementPriority.Medium: RequirementPriority.Low
+      of RequirementPriority.Low: RequirementPriority.Deferred
+      else: basePriority
+
+    logDebug(LogCategory.lcAI,
+             &"Priority adjustment: {unitType} ({totalCost}PP) unaffordable " &
+             &"(treasury={treasury}PP, need 2x={totalCost * 2}PP), {basePriority} → {adjusted}")
+    return adjusted
+  else:
+    return basePriority
+
 # FleetAnalysis and FleetUtilization types now imported from ./fleet_analysis directly
 
 # Re-export types from controller_types for convenience
@@ -334,35 +422,206 @@ proc assessDefenseGaps*(
 proc assessReconnaissanceGaps*(
   filtered: FilteredGameState,
   controller: AIController,
+  currentAct: GameAct,
+  intelSnapshot: IntelligenceSnapshot
+): seq[BuildRequirement] =
+  ## Intelligence-driven scout requirements based on intel coverage
+  ## Calculates need from stale intel systems and enemy house coverage
+  result = @[]
+
+  # Count current scouts
+  var scoutCount = 0
+  for fleet in filtered.ownFleets:
+    scoutCount += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.Scout)
+
+  # Intelligence-driven targeting
+  let staleIntelSystems = intelSnapshot.espionage.staleIntelSystems
+  let enemyHouses = intelSnapshot.military.enemyMilitaryCapability.len
+
+  # Calculate need: 1 scout per 2 stale systems + 1 per enemy house (min 3)
+  var targetScouts = max(3, staleIntelSystems.len div 2) + min(3, enemyHouses)
+
+  # Act 1: Minimal scouts (any ship can explore)
+  if currentAct == ai_common_types.GameAct.Act1_LandGrab:
+    targetScouts = min(targetScouts, 3)
+
+  if scoutCount < targetScouts:
+    let scoutCost = getShipConstructionCost(ShipClass.Scout)
+    let needed = targetScouts - scoutCount
+    let priority = if staleIntelSystems.len > 5:
+      RequirementPriority.High
+    elif staleIntelSystems.len > 2:
+      RequirementPriority.Medium
+    else:
+      RequirementPriority.Low
+
+    result.add(BuildRequirement(
+      requirementType: RequirementType.ReconnaissanceGap,
+      priority: priority,
+      shipClass: some(ShipClass.Scout),
+      quantity: needed,
+      buildObjective: ai_common_types.BuildObjective.Reconnaissance,
+      estimatedCost: scoutCost * needed,
+      reason: &"Intel coverage (have {scoutCount}/{targetScouts}, " &
+              &"{staleIntelSystems.len} stale systems)"
+    ))
+
+proc assessExpansionNeeds*(
+  filtered: FilteredGameState,
+  controller: AIController,
   currentAct: GameAct
-): seq[DefenseGap] =
-  ## Identify reconnaissance gaps (stale intel, unknown systems)
-  ## Returns DefenseGap type for simplicity (reuses structure)
+): seq[BuildRequirement] =
+  ## Intelligence-driven ETAC requirements for colonization
+  ## Only active in Acts 1-2 (expansion phases)
   result = @[]
 
-  # For MVP: Simple scout count check
-  # TODO: Enhance with stale intel detection, unknown system tracking
+  # Only Acts 1-2 (expansion phase)
+  if currentAct notin {ai_common_types.GameAct.Act1_LandGrab, ai_common_types.GameAct.Act2_RisingTensions}:
+    return
 
-  # If we need more scouts, create a gap
-  # (Simplified for MVP - full implementation would check intel coverage)
-  # For now, defer to existing hardcoded logic
-  result = @[]
+  # Count uncolonized visible systems
+  var uncolonizedVisible = 0
+  for systemId, visSystem in filtered.visibleSystems:
+    # Check if this system has any colony (ours or enemy)
+    var hasColony = false
+
+    # Check our colonies
+    for colony in filtered.ownColonies:
+      if colony.systemId == systemId:
+        hasColony = true
+        break
+
+    # Check visible enemy colonies
+    if not hasColony:
+      for visColony in filtered.visibleColonies:
+        if visColony.systemId == systemId:
+          hasColony = true
+          break
+
+    if not hasColony:
+      uncolonizedVisible += 1
+
+  if uncolonizedVisible == 0:
+    return  # No targets
+
+  # Count ETACs
+  var etacCount = 0
+  for fleet in filtered.ownFleets:
+    etacCount += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.ETAC)
+
+  # Target: 1 ETAC per 2 systems (parallel colonization), cap at 5
+  let targetETACs = min(5, (uncolonizedVisible + 1) div 2)
+
+  if etacCount < targetETACs:
+    let etacCost = getShipConstructionCost(ShipClass.ETAC)
+    let needed = targetETACs - etacCount
+    let priority = if currentAct == ai_common_types.GameAct.Act1_LandGrab:
+      RequirementPriority.High  # Land grab urgency
+    else:
+      RequirementPriority.Medium
+
+    result.add(BuildRequirement(
+      requirementType: RequirementType.ExpansionSupport,
+      priority: priority,
+      shipClass: some(ShipClass.ETAC),
+      quantity: needed,
+      buildObjective: ai_common_types.BuildObjective.Expansion,
+      estimatedCost: etacCost * needed,
+      reason: &"Expansion (have {etacCount}/{targetETACs} ETACs, " &
+              &"{uncolonizedVisible} systems visible)"
+    ))
 
 proc assessOffensiveReadiness*(
   filtered: FilteredGameState,
-  analyses: seq[FleetAnalysis],
   controller: AIController,
-  currentAct: GameAct
-): seq[DefenseGap] =
-  ## Assess offensive capability and opportunities
-  ## For MVP: Defer to existing offensive_ops logic
-  ## TODO: Full implementation for Act 2+ offensive requirements
+  currentAct: GameAct,
+  intelSnapshot: IntelligenceSnapshot
+): seq[BuildRequirement] =
+  ## Personality-modulated offensive building
+  ## Aggressive: Build proactively; Defensive/Economic: Only build for opportunities
   result = @[]
+
+  let personality = controller.personality
+  let isAggressive = personality.aggression > 0.7
+  let opportunities = intelSnapshot.military.vulnerableTargets
+  let cstLevel = filtered.ownHouse.techTree.levels.constructionTech
+
+  # Check if transports available (CST 3+)
+  if cstLevel < 3:
+    return
+
+  # Count current offensive assets
+  var transportCount = 0
+  var loadedMarines = 0
+
+  for fleet in filtered.ownFleets:
+    transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
+    for spaceLiftShip in fleet.spaceLiftShips:
+      if spaceLiftShip.cargo.cargoType == CargoType.Marines:
+        loadedMarines += spaceLiftShip.cargo.quantity
+
+  # Aggressive: Build proactively
+  if isAggressive:
+    let targetTransports = max(2, filtered.ownColonies.len div 3)
+    let targetMarines = targetTransports * 1  # 1 marine per transport capacity
+
+    if transportCount < targetTransports:
+      let needed = targetTransports - transportCount
+      result.add(BuildRequirement(
+        requirementType: RequirementType.OffensivePrep,
+        priority: RequirementPriority.Medium,
+        shipClass: some(ShipClass.TroopTransport),
+        quantity: needed,
+        buildObjective: ai_common_types.BuildObjective.SpecialUnits,
+        estimatedCost: getShipConstructionCost(ShipClass.TroopTransport) * needed,
+        reason: &"Offensive capability (aggressive, have {transportCount}/{targetTransports})"
+      ))
+
+    if loadedMarines < targetMarines and transportCount > 0:
+      let needed = targetMarines - loadedMarines
+      result.add(BuildRequirement(
+        requirementType: RequirementType.OffensivePrep,
+        priority: RequirementPriority.Low,
+        quantity: needed,
+        buildObjective: ai_common_types.BuildObjective.Military,
+        estimatedCost: getMarineBuildCost() * needed,
+        reason: &"Marines (aggressive, have {loadedMarines}/{targetMarines})"
+      ))
+
+  # Defensive/Economic: Only build for opportunities
+  elif opportunities.len > 0:
+    let opp = opportunities[0]  # Highest priority target
+    let requiredMarines = max(2, int(float(opp.estimatedDefenses) * 1.5))
+    let requiredTransports = (requiredMarines + 0) div 1  # 1 marine per transport
+
+    if transportCount < requiredTransports:
+      result.add(BuildRequirement(
+        requirementType: RequirementType.OffensivePrep,
+        priority: RequirementPriority.High,
+        shipClass: some(ShipClass.TroopTransport),
+        quantity: requiredTransports - transportCount,
+        targetSystem: some(opp.systemId),
+        buildObjective: ai_common_types.BuildObjective.SpecialUnits,
+        estimatedCost: getShipConstructionCost(ShipClass.TroopTransport) * (requiredTransports - transportCount),
+        reason: &"Invasion of {opp.systemId} (need {requiredTransports})"
+      ))
+
+    if loadedMarines < requiredMarines:
+      result.add(BuildRequirement(
+        requirementType: RequirementType.OffensivePrep,
+        priority: RequirementPriority.High,
+        quantity: requiredMarines - loadedMarines,
+        targetSystem: some(opp.systemId),
+        buildObjective: ai_common_types.BuildObjective.Military,
+        estimatedCost: getMarineBuildCost() * (requiredMarines - loadedMarines),
+        reason: &"Marines for {opp.systemId} (need {requiredMarines})"
+      ))
 
 proc assessStrategicAssets*(
   filtered: FilteredGameState,
   controller: AIController,
-  currentAct: GameAct
+  currentAct: GameAct,
+  intelSnapshot: IntelligenceSnapshot
 ): seq[BuildRequirement] =
   ## Comprehensive strategic asset assessment - Domestikos requests ALL needed assets
   ## Covers:
@@ -417,12 +676,19 @@ proc assessStrategicAssets*(
 
     # PHASE 1: Request fighters for colony defense (Military budget)
     # These are defensive assets, like escorts (DD/CA)
-    # Target: 2-8 fighters per game act for flexible defense/offense
-    let targetFighters = case currentAct
-      of GameAct.Act1_LandGrab: 2        # Basic defensive coverage
-      of GameAct.Act2_RisingTensions: 4  # Increased threat level
-      of GameAct.Act3_TotalWar: 6        # Full defensive commitment
-      of GameAct.Act4_Endgame: 8         # Maximum fighter production
+    # Intelligence-driven fighter requirements based on threat assessment
+    var threatenedColonies = 0
+    var highThreatColonies = 0
+
+    for colony in filtered.ownColonies:
+      let threat = estimateLocalThreat(colony.systemId, filtered, controller)
+      if threat > 0.2:
+        threatenedColonies += 1
+      if threat > 0.5:
+        highThreatColonies += 1
+
+    # Target: 1 fighter per threatened colony + 2 per high-threat colony (cap at 20)
+    let targetFighters = min(20, threatenedColonies + (highThreatColonies * 2))
 
     if fighterCount < targetFighters:
       let fighterCost = getShipConstructionCost(ShipClass.Fighter)
@@ -439,36 +705,68 @@ proc assessStrategicAssets*(
           buildObjective: BuildObjective.Military,  # Use Military budget, not SpecialUnits
           targetSystem: none(SystemId),
           estimatedCost: fighterCost,
-          reason: &"Fighter defense squadron #{i+1} (have {fighterCount+i}/{targetFighters})"
+          reason: &"Fighter defense #{i+1} (have {fighterCount+i}/{targetFighters}, " &
+                  &"{threatenedColonies} threatened, {highThreatColonies} high-threat)"
         )
         result.add(req)
 
-      logInfo(LogCategory.lcAI, &"Domestikos requests: {neededFighters}x Fighter (colony defense, 1 at a time, {fighterCost}PP each)")
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {neededFighters}x Fighter (threat-based defense, {fighterCost}PP each)")
 
     # PHASE 2: Request carriers for offensive projection (SpecialUnits budget)
     # Carriers are strategic mobility platforms - only build if we have fighters
-    let targetCarriers = case currentAct
-      of GameAct.Act1_LandGrab: 1  # One carrier for expansion
-      of GameAct.Act2_RisingTensions: 2  # Two carriers for rising tensions
-      of GameAct.Act3_TotalWar: 3  # Three carriers for total war
-      of GameAct.Act4_Endgame: 4  # Four carriers for endgame
+    # Intelligence-driven: Fighter-based + opportunity-based for aggressive AI
+    let fightersPerCarrier = 4  # Typical carrier capacity
+    let baseCarriers = if fighterCount >= 2: (fighterCount + 3) div 4 else: 0  # 1 carrier per 4 fighters
+
+    # Add carriers for offensive opportunities (aggressive personalities)
+    let opportunities = intelSnapshot.military.vulnerableTargets
+    let offensiveCarriers = if personality.aggression > 0.7 and opportunities.len > 0:
+      min(2, opportunities.len div 2)  # 1 carrier per 2 opportunities
+    else:
+      0
+
+    let targetCarriers = min(6, baseCarriers + offensiveCarriers)
 
     if carrierCount < targetCarriers and fighterCount >= 2:  # Only request carriers if we have fighters
       let carrierClass = if cstLevel >= 5: ShipClass.SuperCarrier else: ShipClass.Carrier
       let carrierCost = getShipConstructionCost(carrierClass)
 
-      let req = BuildRequirement(
-        requirementType: RequirementType.StrategicAsset,
-        priority: RequirementPriority.Low,  # Lower priority: expensive, strategic (not urgent)
-        shipClass: some(carrierClass),
-        quantity: targetCarriers - carrierCount,
-        buildObjective: BuildObjective.SpecialUnits,  # Carriers use SpecialUnits budget
-        targetSystem: none(SystemId),
-        estimatedCost: carrierCost * (targetCarriers - carrierCount),
-        reason: &"Carrier mobility platform (have {carrierCount}/{targetCarriers}, {fighterCount} fighters available)"
+      # BUDGET-AWARE: Scale quantity based on treasury affordability
+      let idealCarriers = targetCarriers - carrierCount
+      let carrierAffordability = calculateAffordabilityFactor(
+        carrierCost, idealCarriers, filtered.ownHouse.treasury, currentAct
       )
-      logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x {carrierClass} ({req.estimatedCost}PP) - {req.reason}")
-      result.add(req)
+      let requestedCarriers = max(0, int(float(idealCarriers) * carrierAffordability))
+
+      # Only request if we can afford at least one carrier
+      if requestedCarriers > 0:
+        # BUDGET-AWARE: Adjust priority downward if unaffordable
+        let carrierPriority = adjustPriorityForAffordability(
+          RequirementPriority.Low,  # Base priority: expensive, strategic (not urgent)
+          carrierCost, requestedCarriers,
+          filtered.ownHouse.treasury, currentAct,
+          &"{requestedCarriers}x {carrierClass}"
+        )
+
+        let req = BuildRequirement(
+          requirementType: RequirementType.StrategicAsset,
+          priority: carrierPriority,
+          shipClass: some(carrierClass),
+          quantity: requestedCarriers,
+          buildObjective: BuildObjective.SpecialUnits,  # Carriers use SpecialUnits budget
+          targetSystem: none(SystemId),
+          estimatedCost: carrierCost * requestedCarriers,
+          reason: &"Carrier mobility (have {carrierCount}/{targetCarriers}, requesting {requestedCarriers}/{idealCarriers}, " &
+                  &"{fighterCount} fighters, {opportunities.len} opportunities)"
+        )
+        logInfo(LogCategory.lcAI,
+                &"Domestikos requests: {req.quantity}x {carrierClass} ({req.estimatedCost}PP, priority={carrierPriority}, " &
+                &"affordability={int(carrierAffordability*100)}%, treasury={filtered.ownHouse.treasury}PP) - intelligence-driven")
+        result.add(req)
+      else:
+        logInfo(LogCategory.lcAI,
+                &"Domestikos: {idealCarriers}x {carrierClass} unaffordable (cost={carrierCost * idealCarriers}PP, " &
+                &"treasury={filtered.ownHouse.treasury}PP, have {fighterCount} fighters without carrier support)")
 
   # =============================================================================
   # STARBASES (for fighter support & colony defense)
@@ -488,18 +786,42 @@ proc assessStrategicAssets*(
 
   if requiredStarbases > totalStarbases:
     let starbaseCost = getShipConstructionCost(ShipClass.Starbase)
-    let req = BuildRequirement(
-      requirementType: RequirementType.Infrastructure,
-      priority: RequirementPriority.High,  # Urgent - prevents fighter disbanding
-      shipClass: some(ShipClass.Starbase),
-      quantity: requiredStarbases - totalStarbases,
-      buildObjective: BuildObjective.Defense,
-      targetSystem: none(SystemId),
-      estimatedCost: starbaseCost * (requiredStarbases - totalStarbases),
-      reason: &"Starbase infrastructure for fighters (have {totalStarbases}, need {requiredStarbases})"
+
+    # BUDGET-AWARE: Scale quantity based on treasury affordability (starbases are VERY expensive)
+    let idealStarbases = requiredStarbases - totalStarbases
+    let starbaseAffordability = calculateAffordabilityFactor(
+      starbaseCost, idealStarbases, filtered.ownHouse.treasury, currentAct
     )
-    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x Starbase ({req.estimatedCost}PP) - {req.reason}")
-    result.add(req)
+    let requestedStarbases = max(0, int(float(idealStarbases) * starbaseAffordability))
+
+    # Only request if we can afford at least one starbase
+    if requestedStarbases > 0:
+      # BUDGET-AWARE: Adjust priority downward if unaffordable
+      let starbasePriority = adjustPriorityForAffordability(
+        RequirementPriority.High,  # Base priority: Urgent - prevents fighter disbanding
+        starbaseCost, requestedStarbases,
+        filtered.ownHouse.treasury, currentAct,
+        &"{requestedStarbases}x Starbase"
+      )
+
+      let req = BuildRequirement(
+        requirementType: RequirementType.Infrastructure,
+        priority: starbasePriority,
+        shipClass: some(ShipClass.Starbase),
+        quantity: requestedStarbases,
+        buildObjective: BuildObjective.Defense,
+        targetSystem: none(SystemId),
+        estimatedCost: starbaseCost * requestedStarbases,
+        reason: &"Starbase infrastructure for fighters (have {totalStarbases}, need {requiredStarbases}, requesting {requestedStarbases}/{idealStarbases})"
+      )
+      logInfo(LogCategory.lcAI,
+              &"Domestikos requests: {req.quantity}x Starbase ({req.estimatedCost}PP, priority={starbasePriority}, " &
+              &"affordability={int(starbaseAffordability*100)}%, treasury={filtered.ownHouse.treasury}PP) - {req.reason}")
+      result.add(req)
+    else:
+      logInfo(LogCategory.lcAI,
+              &"Domestikos: {idealStarbases}x Starbase unaffordable (cost={starbaseCost * idealStarbases}PP, " &
+              &"treasury={filtered.ownHouse.treasury}PP, fighters may be disbanded without starbase support)")
 
   # =============================================================================
   # TRANSPORTS (for invasion & logistics)
@@ -566,18 +888,54 @@ proc assessStrategicAssets*(
         ShipClass.Battlecruiser  # Early: BCs for mobility
     let capitalCost = getShipConstructionCost(capitalClass)
 
-    let req = BuildRequirement(
-      requirementType: RequirementType.OffensivePrep,
-      priority: RequirementPriority.High,
-      shipClass: some(capitalClass),
-      quantity: targetCapitalShips - totalCapitalShips,
-      buildObjective: BuildObjective.Military,
-      targetSystem: none(SystemId),
-      estimatedCost: capitalCost * (targetCapitalShips - totalCapitalShips),
-      reason: &"Capital ship battle line (have {totalCapitalShips}/{targetCapitalShips})"
+    # BUDGET-AWARE: Scale quantity based on treasury affordability
+    let idealQuantity = targetCapitalShips - totalCapitalShips
+    let affordabilityFactor = calculateAffordabilityFactor(
+      capitalCost, idealQuantity, filtered.ownHouse.treasury, currentAct
     )
-    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x {capitalClass} ({req.estimatedCost}PP) - {req.reason}")
-    result.add(req)
+    let requestedQuantity = max(0, int(float(idealQuantity) * affordabilityFactor))
+
+    # Only request if we can afford at least one capital ship
+    if requestedQuantity > 0:
+      # Priority scales with Act: capitals are strategic investments, not urgent in land grab
+      # Act 1: Low (focus on expansion/defense)
+      # Act 2: Medium (building military strength)
+      # Act 3+: High/Critical (war footing)
+      let basePriority = case currentAct
+        of GameAct.Act1_LandGrab:
+          RequirementPriority.Low  # Land grab: capitals are long-term goals
+        of GameAct.Act2_RisingTensions:
+          RequirementPriority.Medium  # Rising tensions: build up fleet
+        of GameAct.Act3_TotalWar:
+          RequirementPriority.High  # Total war: capitals critical for combat
+        of GameAct.Act4_Endgame:
+          RequirementPriority.Critical  # Endgame: max military power
+
+      # BUDGET-AWARE: Adjust priority downward if unaffordable
+      let capitalPriority = adjustPriorityForAffordability(
+        basePriority, capitalCost, requestedQuantity,
+        filtered.ownHouse.treasury, currentAct,
+        &"{requestedQuantity}x {capitalClass}"
+      )
+
+      let req = BuildRequirement(
+        requirementType: RequirementType.OffensivePrep,
+        priority: capitalPriority,
+        shipClass: some(capitalClass),
+        quantity: requestedQuantity,
+        buildObjective: BuildObjective.Military,
+        targetSystem: none(SystemId),
+        estimatedCost: capitalCost * requestedQuantity,
+        reason: &"Capital ship battle line (have {totalCapitalShips}/{targetCapitalShips}, requesting {requestedQuantity}/{idealQuantity})"
+      )
+      logInfo(LogCategory.lcAI,
+              &"Domestikos requests: {req.quantity}x {capitalClass} ({req.estimatedCost}PP, priority={capitalPriority}, " &
+              &"affordability={int(affordabilityFactor*100)}%, treasury={filtered.ownHouse.treasury}PP) - {req.reason}")
+      result.add(req)
+    else:
+      logInfo(LogCategory.lcAI,
+              &"Domestikos: {idealQuantity}x {capitalClass} unaffordable (cost={capitalCost * idealQuantity}PP, " &
+              &"treasury={filtered.ownHouse.treasury}PP, max_spend={int(0.15 * float(filtered.ownHouse.treasury))}PP in {currentAct})")
 
   # =============================================================================
   # GROUND UNITS (armies, marines, shields, batteries)
@@ -612,18 +970,38 @@ proc assessStrategicAssets*(
   let targetShields = highValueColonies.len
   if shieldedColonies < targetShields:
     let planetaryShieldCost = getPlanetaryShieldCost(1)  # SLD1 shields
-    let req = BuildRequirement(
-      requirementType: RequirementType.Infrastructure,
-      priority: RequirementPriority.Medium,
-      shipClass: none(ShipClass),
-      quantity: targetShields - shieldedColonies,
-      buildObjective: BuildObjective.Defense,
-      targetSystem: none(SystemId),
-      estimatedCost: planetaryShieldCost * (targetShields - shieldedColonies),
-      reason: &"Planetary shields for high-value colonies (have {shieldedColonies}/{targetShields})"
-    )
-    logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP) - {req.reason}")
-    result.add(req)
+
+    # BUDGET-AWARE: Only request shields if treasury can support them (3x cost minimum)
+    let idealShields = targetShields - shieldedColonies
+    let totalShieldCost = planetaryShieldCost * idealShields
+
+    # 3x cost check: need 3x total cost in treasury to consider affordable
+    if filtered.ownHouse.treasury >= (totalShieldCost * 3):
+      # BUDGET-AWARE: Adjust priority downward if unaffordable (2x cost check)
+      let adjustedPriority = adjustPriorityForAffordability(
+        RequirementPriority.Medium, planetaryShieldCost, idealShields,
+        filtered.ownHouse.treasury, currentAct,
+        &"{idealShields}x PlanetaryShield (high-value colonies)"
+      )
+
+      let req = BuildRequirement(
+        requirementType: RequirementType.Infrastructure,
+        priority: adjustedPriority,
+        shipClass: none(ShipClass),
+        quantity: idealShields,
+        buildObjective: BuildObjective.Defense,
+        targetSystem: none(SystemId),
+        estimatedCost: totalShieldCost,
+        reason: &"Planetary shields for high-value colonies (have {shieldedColonies}/{targetShields})"
+      )
+      logInfo(LogCategory.lcAI,
+              &"Domestikos requests: {req.quantity}x PlanetaryShield ({req.estimatedCost}PP, priority={adjustedPriority}, " &
+              &"treasury={filtered.ownHouse.treasury}PP) - {req.reason}")
+      result.add(req)
+    else:
+      logDebug(LogCategory.lcAI,
+               &"Domestikos: {idealShields}x PlanetaryShield for high-value colonies deferred " &
+               &"(cost={totalShieldCost}PP, treasury={filtered.ownHouse.treasury}PP < 3x threshold={totalShieldCost * 3}PP)")
 
   # Ground batteries for colony defense - ACT-AWARE + INTELLIGENCE-DRIVEN + UNDEFENDED PENALTY AWARE
   # Phased buildup matching economic capacity: 1 (Act1) → 2 (Act2) → 3 (Act3+)
@@ -801,18 +1179,34 @@ proc assessStrategicAssets*(
           reason = &"Planetary shield for {colony.systemId} (threat={threat:.2f}, Act 3+)"
 
         if shouldBuildShield:
-          let req = BuildRequirement(
-            requirementType: RequirementType.DefenseGap,
-            priority: priority,
-            shipClass: none(ShipClass),
-            quantity: 1,
-            buildObjective: BuildObjective.Defense,
-            targetSystem: some(colony.systemId),
-            estimatedCost: shieldCost,
-            reason: reason
-          )
-          logInfo(LogCategory.lcAI, &"Domestikos requests: Planetary Shield at {colony.systemId} (priority={priority}, cost={shieldCost}PP)")
-          result.add(req)
+          # BUDGET-AWARE: Only request shield if treasury can support it (3x cost minimum)
+          # Rationale: 50PP shield with 60PP treasury leaves only 10PP for everything else
+          if filtered.ownHouse.treasury >= (shieldCost * 3):
+            # BUDGET-AWARE: Adjust priority downward if unaffordable (2x cost check)
+            let adjustedPriority = adjustPriorityForAffordability(
+              priority, shieldCost, 1,
+              filtered.ownHouse.treasury, currentAct,
+              &"PlanetaryShield at {colony.systemId}"
+            )
+
+            let req = BuildRequirement(
+              requirementType: RequirementType.DefenseGap,
+              priority: adjustedPriority,
+              shipClass: none(ShipClass),
+              quantity: 1,
+              buildObjective: BuildObjective.Defense,
+              targetSystem: some(colony.systemId),
+              estimatedCost: shieldCost,
+              reason: reason
+            )
+            logInfo(LogCategory.lcAI,
+                    &"Domestikos requests: Planetary Shield at {colony.systemId} " &
+                    &"(priority={adjustedPriority}, cost={shieldCost}PP, treasury={filtered.ownHouse.treasury}PP)")
+            result.add(req)
+          else:
+            logDebug(LogCategory.lcAI,
+                     &"Domestikos: Planetary Shield at {colony.systemId} deferred " &
+                     &"(cost={shieldCost}PP, treasury={filtered.ownHouse.treasury}PP < 3x threshold={shieldCost * 3}PP)")
 
   # Marines for offensive operations (if aggressive and have transports)
   if personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions:
@@ -973,17 +1367,20 @@ proc generateBuildRequirements*(
   defensiveAssignments: Table[FleetId, StandingOrder],
   controller: var AIController,
   currentAct: GameAct,
-  intelSnapshot: IntelligenceSnapshot
+  intelSnapshot: IntelligenceSnapshot,
+  capacityInfo: SquadronCapacityInfo
 ): BuildRequirements =
   ## Main entry point: Generate all build requirements from Domestikos analysis
   ## Now accepts IntelligenceSnapshot from Drungarius for threat-aware prioritization
+  ## Capacity-aware: Uses squadronCapacity to generate realistic requirements
 
   logDebug(LogCategory.lcAI,
-           &"{controller.houseId} Domestikos: Generating build requirements (Act={currentAct})")
+           &"{controller.houseId} Domestikos: Generating build requirements (Act={currentAct}, " &
+           &"capacity={capacityInfo.totalSquadrons}/{capacityInfo.maxTotalSquadrons})")
 
   # Assess gaps (personality-driven, intelligence-informed)
   let defenseGaps = assessDefenseGaps(filtered, analyses, defensiveAssignments, controller, currentAct, intelSnapshot)
-  let strategicAssets = assessStrategicAssets(filtered, controller, currentAct)
+  let strategicAssets = assessStrategicAssets(filtered, controller, currentAct, intelSnapshot)
 
   # Extract combat lessons from intelligence snapshot
   let combatLessons = intelSnapshot.military.combatLessonsLearned
@@ -991,6 +1388,17 @@ proc generateBuildRequirements*(
   if combatLessons.len > 0:
     logInfo(LogCategory.lcAI,
             &"{controller.houseId} Domestikos: Using {combatLessons.len} combat lessons for ship selection")
+
+  # Check capacity headroom for realistic requirements
+  let hasCapacityHeadroom = capacityInfo.utilizationPercent < 0.9
+  let canBuildCapitals = not capacityInfo.atCapitalLimit
+  let canBuildEscorts = not capacityInfo.atTotalLimit
+
+  if capacityInfo.atTotalLimit:
+    logWarn(LogCategory.lcAI,
+            &"{controller.houseId} Domestikos: At squadron capacity " &
+            &"({capacityInfo.totalSquadrons}/{capacityInfo.maxTotalSquadrons}), " &
+            &"deferring non-critical requirements")
 
   # Convert gaps to build requirements
   var requirements: seq[BuildRequirement] = @[]
@@ -1004,8 +1412,17 @@ proc generateBuildRequirements*(
   # Strategic asset requirements (fighters, carriers, starbases, transports, etc.)
   requirements.add(strategicAssets)
 
-  # Reconnaissance requirements (deferred to existing logic for MVP)
-  # Offensive requirements (deferred to existing logic for MVP)
+  # Intelligence-driven reconnaissance requirements (scouts)
+  let reconGaps = assessReconnaissanceGaps(filtered, controller, currentAct, intelSnapshot)
+  requirements.add(reconGaps)
+
+  # Intelligence-driven expansion requirements (ETACs)
+  let expansionNeeds = assessExpansionNeeds(filtered, controller, currentAct)
+  requirements.add(expansionNeeds)
+
+  # Personality-modulated offensive requirements (transports, marines)
+  let offensiveNeeds = assessOffensiveReadiness(filtered, controller, currentAct, intelSnapshot)
+  requirements.add(offensiveNeeds)
 
   # Sort by priority (Critical > High > Medium > Low)
   requirements.sort(proc(a, b: BuildRequirement): int =
@@ -1030,14 +1447,17 @@ proc generateBuildRequirements*(
 
 proc reprioritizeRequirements*(
   originalRequirements: BuildRequirements,
-  treasurerFeedback: TreasurerFeedback
+  treasurerFeedback: TreasurerFeedback,
+  treasury: int  # NEW: Treasury for budget-aware reprioritization
 ): BuildRequirements =
   ## Domestikos reprioritizes requirements based on Treasurer feedback
   ##
   ## Strategy:
   ## 1. Start with unfulfilled requirements
-  ## 2. Downgrade priorities of less critical items to fit within budget
-  ## 3. Focus on absolute essentials (Critical → High)
+  ## 2. Downgrade priorities based on cost-effectiveness
+  ## 3. Aggressive downgrade for very expensive requests (>50% treasury)
+  ## 4. Moderate downgrade for expensive requests (25-50% treasury)
+  ## 5. Normal downgrade for affordable requests (<25% treasury)
   ##
   ## This creates a tighter, more affordable requirements list
 
@@ -1055,40 +1475,79 @@ proc reprioritizeRequirements*(
 
   logInfo(LogCategory.lcAI,
           &"Domestikos reprioritizing {treasurerFeedback.unfulfilledRequirements.len} unfulfilled requirements " &
-          &"(iteration {originalRequirements.iteration + 1}, shortfall: {treasurerFeedback.totalUnfulfilledCost}PP)")
+          &"(iteration {originalRequirements.iteration + 1}, shortfall: {treasurerFeedback.totalUnfulfilledCost}PP, treasury={treasury}PP)")
 
-  # Strategy: Keep only Critical requirements, downgrade High→Medium, Medium→Low
+  # Strategy: Downgrade priorities based on cost-effectiveness
   var reprioritized: seq[BuildRequirement] = @[]
 
   # Add all fulfilled requirements (these were already affordable)
   reprioritized.add(treasurerFeedback.fulfilledRequirements)
 
-  # Reprioritize unfulfilled requirements
+  # Reprioritize unfulfilled requirements with cost-awareness
   for req in treasurerFeedback.unfulfilledRequirements:
     var adjustedReq = req
 
-    case req.priority
-    of RequirementPriority.Critical:
-      # Keep Critical as-is (absolute essentials)
-      adjustedReq.priority = RequirementPriority.Critical
-    of RequirementPriority.High:
-      # Downgrade High → Medium (important but not critical)
-      adjustedReq.priority = RequirementPriority.Medium
+    # Calculate cost-effectiveness ratio
+    let costRatio = if treasury > 0: float(req.estimatedCost) / float(treasury) else: 1.0
+
+    # BUDGET-AWARE: Aggressive downgrade for VERY expensive unfulfilled requests (>50% treasury)
+    if costRatio > 0.5:
+      case req.priority
+      of RequirementPriority.Critical:
+        adjustedReq.priority = RequirementPriority.High  # Critical → High
+      of RequirementPriority.High:
+        adjustedReq.priority = RequirementPriority.Low  # High → Low (skip Medium)
+      of RequirementPriority.Medium:
+        adjustedReq.priority = RequirementPriority.Deferred  # Medium → Deferred
+      else:
+        adjustedReq.priority = RequirementPriority.Deferred
+
       logDebug(LogCategory.lcAI,
-               &"Domestikos: Downgrading '{req.reason}' (High → Medium)")
-    of RequirementPriority.Medium:
-      # Downgrade Medium → Low (nice-to-have)
-      adjustedReq.priority = RequirementPriority.Low
+               &"Domestikos: '{req.reason}' too expensive ({req.estimatedCost}PP = " &
+               &"{int(costRatio*100)}% of treasury), aggressive downgrade {req.priority} → {adjustedReq.priority}")
+
+    # BUDGET-AWARE: Moderate downgrade for expensive requests (25-50% treasury)
+    elif costRatio > 0.25:
+      case req.priority
+      of RequirementPriority.Critical:
+        adjustedReq.priority = RequirementPriority.High  # Critical → High
+      of RequirementPriority.High:
+        adjustedReq.priority = RequirementPriority.Medium  # High → Medium
+      of RequirementPriority.Medium:
+        adjustedReq.priority = RequirementPriority.Low  # Medium → Low
+      of RequirementPriority.Low:
+        adjustedReq.priority = RequirementPriority.Deferred  # Low → Deferred
+      else:
+        adjustedReq.priority = RequirementPriority.Deferred
+
       logDebug(LogCategory.lcAI,
-               &"Domestikos: Downgrading '{req.reason}' (Medium → Low)")
-    of RequirementPriority.Low:
-      # Downgrade Low → Deferred (skip this round)
-      adjustedReq.priority = RequirementPriority.Deferred
-      logDebug(LogCategory.lcAI,
-               &"Domestikos: Deferring '{req.reason}' (Low → Deferred)")
-    of RequirementPriority.Deferred:
-      # Already deferred, keep as deferred
-      adjustedReq.priority = RequirementPriority.Deferred
+               &"Domestikos: '{req.reason}' expensive ({req.estimatedCost}PP = " &
+               &"{int(costRatio*100)}% of treasury), moderate downgrade {req.priority} → {adjustedReq.priority}")
+
+    # Normal downgrade for affordable units (<25% treasury)
+    else:
+      case req.priority
+      of RequirementPriority.Critical:
+        # Keep Critical as-is (absolute essentials)
+        adjustedReq.priority = RequirementPriority.Critical
+      of RequirementPriority.High:
+        # Downgrade High → Medium (important but not critical)
+        adjustedReq.priority = RequirementPriority.Medium
+        logDebug(LogCategory.lcAI,
+                 &"Domestikos: Downgrading '{req.reason}' (High → Medium)")
+      of RequirementPriority.Medium:
+        # Downgrade Medium → Low (nice-to-have)
+        adjustedReq.priority = RequirementPriority.Low
+        logDebug(LogCategory.lcAI,
+                 &"Domestikos: Downgrading '{req.reason}' (Medium → Low)")
+      of RequirementPriority.Low:
+        # Downgrade Low → Deferred (skip this round)
+        adjustedReq.priority = RequirementPriority.Deferred
+        logDebug(LogCategory.lcAI,
+                 &"Domestikos: Deferring '{req.reason}' (Low → Deferred)")
+      of RequirementPriority.Deferred:
+        # Already deferred, keep as deferred
+        adjustedReq.priority = RequirementPriority.Deferred
 
     reprioritized.add(adjustedReq)
 

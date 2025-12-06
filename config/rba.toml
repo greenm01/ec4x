@@ -279,6 +279,27 @@ escalation_low_to_medium_turns = 3  # Low → Medium after 3 turns undefended
 escalation_medium_to_high_turns = 5 # Medium → High after 5 turns
 escalation_high_to_critical_turns = 7  # High → Critical after 7 turns
 
+# Intelligence-Driven Ship Building (Phase F)
+# Squadron capacity awareness and intelligence-driven requirements
+capacity_high_utilization_threshold = 0.9  # Defer non-critical requirements at 90%+ capacity
+scouts_per_stale_intel_system = 0.5        # 1 scout per 2 stale intel systems
+scouts_per_enemy_house = 1.0               # 1 scout per enemy house for espionage
+max_scouts_act1 = 3                        # Minimal scouts in Act 1 (any ship explores)
+etacs_per_uncolonized_system = 0.5         # 1 ETAC per 2 uncolonized systems
+max_etacs_queued = 5                       # Cap ETAC production at 5
+
+# Offensive building (personality-modulated)
+aggressive_transport_ratio = 0.33          # Aggressive AI: 1 transport per 3 colonies
+aggressive_marine_per_transport = 1        # 1 marine division per transport
+reactive_invasion_multiplier = 1.5         # Defensive AI: 1.5x enemy defenses for invasion
+
+# Fighter/Carrier requirements (threat-based)
+fighter_threat_threshold_low = 0.2         # Threat > 0.2 = threatened colony
+fighter_threat_threshold_high = 0.5        # Threat > 0.5 = high-threat colony
+max_fighters = 20                          # Cap total fighters at 20
+fighters_per_carrier = 4                   # 1 carrier per 4 fighters
+max_carriers = 6                           # Cap total carriers at 6
+
 # ==============================================================================
 # EPARCH PARAMETERS (Economic Administration)
 # ==============================================================================

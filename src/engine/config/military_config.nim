@@ -14,7 +14,7 @@ type
     capacity_violation_grace_period*: int
 
   SquadronLimitsConfig* = object
-    squadron_limit_pu_divisor*: int
+    squadron_limit_iu_divisor*: int  # IU divisor for capital squadron limit calculation
     squadron_limit_minimum*: int
     capital_ship_cr_threshold*: int
 

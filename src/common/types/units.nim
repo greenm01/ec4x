@@ -29,10 +29,20 @@ type
     TroopTransport
     PlanetBreaker
 
+  ShipRole* {.pure.} = enum
+    ## Ship operational role classification
+    ## Determines capacity limits and strategic usage
+    Escort         # Combat-capable, CR < 7, not capacity-limited
+    Capital        # Flagship-capable, CR >= 7, subject to capital squadron limits
+    Auxiliary      # Non-combat support (ETAC, TroopTransport)
+    SpecialWeapon  # Unique strategic units (PlanetBreaker, Starbase)
+    Fighter        # Embarked strike craft, special capacity rules
+
   ShipStats* = object
     ## Combat and operational statistics for a ship
     name*: string
     class*: string
+    role*: ShipRole          # Operational role classification
     attackStrength*: int     # AS - offensive firepower
     defenseStrength*: int    # DS - defensive shielding
     commandCost*: int        # CC - cost to assign to squadron

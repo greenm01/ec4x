@@ -32,6 +32,9 @@ python scripts/analysis/analyze_diagnostics.py economy
 
 # Military analysis
 python scripts/analysis/analyze_diagnostics.py military
+
+# Fleet composition analysis (detailed ship breakdown)
+python scripts/analysis/analyze_fleet_composition.py
 ```
 
 ## Commands
@@ -123,6 +126,38 @@ Head-to-head strategy comparison:
 ```bash
 python scripts/analysis/analyze_diagnostics.py compare Aggressive Economic
 ```
+
+## Standalone Analysis Scripts
+
+### `analyze_fleet_composition.py`
+Detailed fleet composition analysis showing ship-by-ship breakdown:
+- Complete ship type breakdown by strategy
+- Side-by-side comparison table
+- Capital ship analysis
+- Strategic insights and patterns
+
+**Example:**
+```bash
+# Analyze fleet composition from default directory
+python scripts/analysis/analyze_fleet_composition.py
+
+# Analyze from custom directory
+python scripts/analysis/analyze_fleet_composition.py --games-dir custom_results/diagnostics
+```
+
+**Output includes:**
+- Strategy-by-strategy breakdown (all ship types)
+- Fleet comparison table (compact format)
+- Capital ship analysis (Heavy Cruiser through Super Dreadnought)
+- Strategic insights (fleet size ratios, capital ship focus, patterns)
+
+**Ship types tracked:**
+- Fighters, Scouts, Destroyers
+- Light Cruisers, Heavy Cruisers, Battle Cruisers
+- Battleships, Dreadnoughts, Super Dreadnoughts
+- Carriers, Super Carriers, Raiders
+- ETACs (Enhanced Tactical Assault Craft)
+- Troop Transports
 
 ### `custom`
 Execute custom Polars queries:

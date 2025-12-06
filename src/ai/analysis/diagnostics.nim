@@ -3,8 +3,9 @@
 ## Tracks per-house, per-turn metrics to identify systematic AI failures
 ## Per Grok gap analysis: "Run diagnostics. Let the numbers tell you exactly what's missing."
 
-import std/[tables, strformat, options, strutils, algorithm]
+import std/[tables, strformat, options, strutils, algorithm, math]
 import ../../engine/[gamestate, fleet, squadron, orders, logger]
+import ../../engine/config/military_config
 import ../../engine/diplomacy/types as dip_types
 import ../../common/types/[core, units, diplomacy]
 import ../common/types
@@ -118,10 +119,10 @@ type
     avgTaxRate6Turn*: int            # Rolling 6-turn average tax rate
 
     # Squadron Capacity & Violations (from military.toml)
-    fighterCapacityMax*: int         # Max FS allowed (PU/100 × FD multiplier)
+    fighterCapacityMax*: int         # Max FS allowed (sum per colony: floor(Colony_IU/fighter_capacity_iu_divisor) × FD multiplier)
     fighterCapacityUsed*: int        # Actual FS count (current)
     fighterCapacityViolation*: bool  # Over capacity?
-    squadronLimitMax*: int           # Max capital squadrons allowed (PU/100)
+    squadronLimitMax*: int           # Max capital squadrons allowed (floor(Total_IU/squadron_limit_iu_divisor) × 2)
     squadronLimitUsed*: int          # Actual capital squadron count
     squadronLimitViolation*: bool    # Over squadron limit?
     starbasesRequired*: int          # Starbases needed for current FS count (ceil(FS/5))
@@ -384,7 +385,7 @@ proc collectEconomyMetrics(state: GameState, houseId: HouseId,
       totalProduction += colony.production
       totalPU += colony.population  # Population in millions (display field)
       totalPTU += colony.souls div 50000  # souls / 50k = PTU (approximation)
-      totalIU += colony.infrastructure  # Using infrastructure as proxy for IU
+      totalIU += colony.industrial.units  # Actual IU count
       # GCO = colony output before tax (use production as proxy)
       grossColonyOutput += colony.production
 
@@ -502,20 +503,27 @@ proc collectEconomyMetrics(state: GameState, houseId: HouseId,
     of 3: 2.0
     else: 1.0
 
-  result.fighterCapacityMax = int(float(totalPU) / 100.0 * fdMultiplier)
-
-  # Count fighters from colonies
+  # Fighter capacity is PER-COLONY based on colony IU, not house-wide
+  # Formula: Max FS = floor(Colony_IU / fighter_capacity_iu_divisor) × FD multiplier
+  let fighterIUDivisor = globalMilitaryConfig.fighter_mechanics.fighter_capacity_iu_divisor
+  var totalFighterCapacity = 0
   var totalFighters = 0
   var totalStarbases = 0
   for systemId, colony in state.colonies:
     if colony.owner == houseId:
+      let colonyCapacity = int(floor(float(colony.industrial.units) / float(fighterIUDivisor)) * fdMultiplier)
+      totalFighterCapacity += colonyCapacity
       totalFighters += colony.fighterSquadrons.len
       totalStarbases += colony.starbases.len
 
+  result.fighterCapacityMax = totalFighterCapacity
   result.fighterCapacityUsed = totalFighters
   result.fighterCapacityViolation = result.fighterCapacityUsed > result.fighterCapacityMax
 
-  result.squadronLimitMax = max(8, totalPU div 100)  # Minimum 8, otherwise PU/100
+  # Squadron limit should use capital squadron formula: max(8, floor(Total_IU / squadron_limit_iu_divisor) * 2)
+  # TODO: This should actually call capital_squadrons module for correct calculation
+  let squadronIUDivisor = globalMilitaryConfig.squadron_limits.squadron_limit_iu_divisor
+  result.squadronLimitMax = max(8, (totalIU div squadronIUDivisor) * 2)
   # TODO: Count actual capital squadrons (not all squadrons, just capitals+carriers)
   result.squadronLimitUsed = 0
   result.squadronLimitViolation = false
@@ -678,7 +686,7 @@ proc collectLogisticsMetrics(state: GameState, houseId: HouseId): DiagnosticMetr
   result.idleCarriers = idleCarrierCount
   result.totalCarriers = totalCarrierCount
 
-  # Count all 19 ship classes
+  # Count all 19 ship classes (both fleet-based and colony-based)
   var fighterShips = 0
   var corvetteShips = 0
   var frigateShips = 0
@@ -699,6 +707,17 @@ proc collectLogisticsMetrics(state: GameState, houseId: HouseId): DiagnosticMetr
   var troopTransportShips = 0
   var planetBreakerShips = 0
 
+  # First, count colony-based units (fighters, starbases)
+  for systemId, colony in state.colonies:
+    if colony.owner == houseId:
+      fighterShips += colony.fighterSquadrons.len
+      starbaseShips += colony.starbases.len
+
+  # Planet-breakers are tracked at house level, not per-colony
+  let house = state.houses[houseId]
+  planetBreakerShips = house.planetBreakerCount
+
+  # Then count fleet-based ships
   for fleetId, fleet in state.fleets:
     if fleet.owner == houseId:
       # Count squadron ships (military)

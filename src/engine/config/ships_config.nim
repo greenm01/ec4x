@@ -11,6 +11,7 @@ type
   ShipStatsConfig* = object
     name*: string
     class*: string
+    ship_role*: string
     attack_strength*: int
     defense_strength*: int
     command_cost*: int

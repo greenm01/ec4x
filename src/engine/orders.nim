@@ -10,6 +10,7 @@ import economy/projects  # For cost calculation
 import economy/config_accessors  # For CST requirement checking
 import economy/capacity/fighter # For colony fighter squadron limits
 import economy/capacity/capital_squadrons  # For capital squadron capacity enforcement
+import economy/capacity/total_squadrons  # For total squadron capacity (prevents escort spam)
 import economy/types as econ_types  # For FacilityType in cost calculation
 
 # Re-export order types
@@ -705,8 +706,9 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
             error: &"Fighter capacity limit exceeded by {house.name}")
 
     # Check capital squadron limit (if building capital ships)
-    # Fighters and scouts are exempt from squadron limits
-    if shipClass != ShipClass.Fighter and shipClass != ShipClass.Scout:
+    # Fighters are exempt from squadron limits (separate per-colony limits)
+    if shipClass != ShipClass.Fighter:
+      # First check capital squadron limit (subset of total limit)
       if capital_squadrons.isCapitalShip(shipClass):
         if not capital_squadrons.canBuildCapitalShip(state, houseId):
           let violation = capital_squadrons.analyzeCapacity(state, houseId)
@@ -718,6 +720,18 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
                   &"(current={violation.current}, queued={underConstruction}, max={violation.maximum})")
           return ValidationResult(valid: false,
                                  error: &"Capital squadron limit exceeded ({violation.current}+{underConstruction}/{violation.maximum})")
+
+      # Then check total squadron limit (all combat ships)
+      # This prevents escort spam while allowing flexible fleet composition
+      if not total_squadrons.canBuildSquadron(state, houseId, shipClass):
+        let violation = total_squadrons.analyzeCapacity(state, houseId)
+
+        ctx.rejectedOrders += 1
+        logWarn(LogCategory.lcEconomy,
+                &"{houseId} Build order REJECTED: Total squadron limit exceeded " &
+                &"(current={violation.current}, max={violation.maximum})")
+        return ValidationResult(valid: false,
+                               error: &"Total squadron limit exceeded ({violation.current}/{violation.maximum})")
 
     # Check planet-breaker limit (1 per colony owned, assets.md:2.4.8)
     # TODO use new economy/capacity planet_breakers module

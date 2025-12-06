@@ -46,54 +46,100 @@ proc calculateRequiredPP*(
 
 proc applyStrategicTriage*(
   allocation: var BudgetAllocation,
-  requiredPP: Table[BuildObjective, int],
+  requirements: BuildRequirements,
   availableBudget: int
 ) =
-  ## Emergency allocation when urgent requirements exceed available budget
+  ## Priority-aware emergency allocation when requirements exceed budget
   ##
-  ## Strategy: Allocate to urgent needs (Defense/Military/Recon/SpecialUnits)
-  ## while maintaining minimum reserves for strategic awareness (expansion).
+  ## Strategy: Allocate budget by priority level (Critical > High > Medium)
+  ## Within each priority level, allocate proportionally to needs.
+  ## Maintains minimum reserves for strategic awareness (expansion/recon).
   ##
-  ## SpecialUnits (carriers, starbases) are included as urgent because they're
-  ## strategic force multipliers that Domestikos prioritized at Medium priority.
-  ## Without this, feedback loop downgrades them indefinitely.
+  ## This ensures high-priority capital ships (Military) get budget before
+  ## competing with high-priority defense needs (Defense) proportionally,
+  ## rather than being starved by larger Defense cost totals.
 
   let cfg = globalRBAConfig.domestikos
   let minRecon = int(float(availableBudget) * cfg.min_recon_budget_percent)
   let minExpansion = int(float(availableBudget) * cfg.min_expansion_budget_percent)
   let minReserves = minRecon + minExpansion
 
-  # Calculate budget available for urgent requirements after reserves
-  let budgetForUrgent = availableBudget - minReserves
+  # Separate requirements by priority level
+  var criticalReqs = initTable[BuildObjective, int]()
+  var highReqs = initTable[BuildObjective, int]()
+  var mediumReqs = initTable[BuildObjective, int]()
 
-  # Total urgent PP requested: Defense + Military + Recon + SpecialUnits
-  # SpecialUnits included because Medium-priority carriers are strategic investments
-  let totalUrgent = requiredPP[BuildObjective.Defense] + requiredPP[BuildObjective.Military] +
-                    requiredPP[BuildObjective.Reconnaissance] + requiredPP[BuildObjective.SpecialUnits]
+  for objective in BuildObjective:
+    criticalReqs[objective] = 0
+    highReqs[objective] = 0
+    mediumReqs[objective] = 0
 
-  if totalUrgent > 0:
-    # Allocate proportionally to urgent needs
-    let defenseRatio = float(requiredPP[BuildObjective.Defense]) / float(totalUrgent)
-    let militaryRatio = float(requiredPP[BuildObjective.Military]) / float(totalUrgent)
-    let reconRatio = float(requiredPP[BuildObjective.Reconnaissance]) / float(totalUrgent)
-    let specialRatio = float(requiredPP[BuildObjective.SpecialUnits]) / float(totalUrgent)
+  for req in requirements.requirements:
+    case req.priority
+    of RequirementPriority.Critical:
+      criticalReqs[req.buildObjective] += req.estimatedCost
+    of RequirementPriority.High:
+      highReqs[req.buildObjective] += req.estimatedCost
+    of RequirementPriority.Medium:
+      mediumReqs[req.buildObjective] += req.estimatedCost
+    else:
+      discard  # Skip Low and Deferred
 
-    allocation[BuildObjective.Defense] = (defenseRatio * float(budgetForUrgent)) / float(availableBudget)
-    allocation[BuildObjective.Military] = (militaryRatio * float(budgetForUrgent)) / float(availableBudget)
-    allocation[BuildObjective.SpecialUnits] = (specialRatio * float(budgetForUrgent)) / float(availableBudget)
+  # Calculate total cost per priority level
+  var totalCritical = 0
+  var totalHigh = 0
+  var totalMedium = 0
+  for objective in BuildObjective:
+    totalCritical += criticalReqs[objective]
+    totalHigh += highReqs[objective]
+    totalMedium += mediumReqs[objective]
 
-    # Recon gets larger of: proportional urgent OR minimum reserve
-    let reconFromUrgent = reconRatio * float(budgetForUrgent)
-    allocation[BuildObjective.Reconnaissance] = max(reconFromUrgent, float(minRecon)) / float(availableBudget)
-  else:
-    # No urgent requirements - use minimum for Defense/Military
-    allocation[BuildObjective.Defense] = 0.10  # Maintain small reserve
-    allocation[BuildObjective.Military] = 0.10
-    allocation[BuildObjective.Reconnaissance] = float(minRecon) / float(availableBudget)
-    allocation[BuildObjective.SpecialUnits] = 0.05  # Small reserve for strategic assets
+  # Budget available after minimum reserves
+  var budgetRemaining = availableBudget - minReserves
+
+  # Allocate in priority order: Critical > High > Medium
+
+  # 1. Critical requirements (highest priority - fund first)
+  if totalCritical > 0 and budgetRemaining > 0:
+    let criticalBudget = min(budgetRemaining, totalCritical)
+    for objective in BuildObjective:
+      if criticalReqs[objective] > 0:
+        let ratio = float(criticalReqs[objective]) / float(totalCritical)
+        let allocated = ratio * float(criticalBudget)
+        allocation[objective] += allocated / float(availableBudget)
+    budgetRemaining -= criticalBudget
+    logDebug(LogCategory.lcAI,
+             &"Strategic Triage Critical: {criticalBudget}/{totalCritical}PP allocated")
+
+  # 2. High requirements (second priority - fund with remaining)
+  if totalHigh > 0 and budgetRemaining > 0:
+    let highBudget = min(budgetRemaining, totalHigh)
+    for objective in BuildObjective:
+      if highReqs[objective] > 0:
+        let ratio = float(highReqs[objective]) / float(totalHigh)
+        let allocated = ratio * float(highBudget)
+        allocation[objective] += allocated / float(availableBudget)
+    budgetRemaining -= highBudget
+    logDebug(LogCategory.lcAI,
+             &"Strategic Triage High: {highBudget}/{totalHigh}PP allocated " &
+             &"(Defense={int(highReqs[BuildObjective.Defense])}PP, " &
+             &"Military={int(highReqs[BuildObjective.Military])}PP)")
+
+  # 3. Medium requirements (third priority - fund with leftovers)
+  if totalMedium > 0 and budgetRemaining > 0:
+    let mediumBudget = min(budgetRemaining, totalMedium)
+    for objective in BuildObjective:
+      if mediumReqs[objective] > 0:
+        let ratio = float(mediumReqs[objective]) / float(totalMedium)
+        let allocated = ratio * float(mediumBudget)
+        allocation[objective] += allocated / float(availableBudget)
+    budgetRemaining -= mediumBudget
+    logDebug(LogCategory.lcAI,
+             &"Strategic Triage Medium: {mediumBudget}/{totalMedium}PP allocated")
 
   # Guarantee minimum reserves
   allocation[BuildObjective.Expansion] = max(allocation[BuildObjective.Expansion], float(minExpansion) / float(availableBudget))
+  allocation[BuildObjective.Reconnaissance] = max(allocation[BuildObjective.Reconnaissance], float(minRecon) / float(availableBudget))
 
   # Remaining budget to Technology
   let remainingPercent = 1.0 - (allocation[BuildObjective.Defense] + allocation[BuildObjective.Military] +
@@ -101,12 +147,12 @@ proc applyStrategicTriage*(
                                 allocation[BuildObjective.SpecialUnits])
   allocation[BuildObjective.Technology] = remainingPercent
 
+  let totalUrgent = totalCritical + totalHigh + totalMedium
   logInfo(LogCategory.lcAI,
-          &"Strategic Triage: Total urgent={totalUrgent}PP (Defense={requiredPP[BuildObjective.Defense]}, " &
-          &"Military={requiredPP[BuildObjective.Military]}, Recon={requiredPP[BuildObjective.Reconnaissance]}, " &
-          &"Special={requiredPP[BuildObjective.SpecialUnits]}), budget={availableBudget}PP. " &
-          &"Allocated: Defense={int(allocation[BuildObjective.Defense]*100)}%, Military={int(allocation[BuildObjective.Military]*100)}%, " &
-          &"Recon={int(allocation[BuildObjective.Reconnaissance]*100)}%, Special={int(allocation[BuildObjective.SpecialUnits]*100)}%")
+          &"Strategic Triage (Priority-Aware): Total={totalUrgent}PP (Critical={totalCritical}, High={totalHigh}, Medium={totalMedium}), " &
+          &"budget={availableBudget}PP. Allocated: Defense={int(allocation[BuildObjective.Defense]*100)}%, " &
+          &"Military={int(allocation[BuildObjective.Military]*100)}%, Recon={int(allocation[BuildObjective.Reconnaissance]*100)}%, " &
+          &"Special={int(allocation[BuildObjective.SpecialUnits]*100)}%")
 
 proc blendRequirementsWithBaseline*(
   allocation: var BudgetAllocation,
@@ -176,8 +222,8 @@ proc consultDomestikosRequirements*(
 
   # Decide strategy based on budget availability
   if totalUrgent > availableBudget:
-    # Strategic Triage: Oversubscribed
-    applyStrategicTriage(allocation, requiredPP, availableBudget)
+    # Strategic Triage: Oversubscribed - use priority-aware allocation
+    applyStrategicTriage(allocation, requirements, availableBudget)
   else:
     # Normal case: Blend requirements with baseline
     blendRequirementsWithBaseline(allocation, requiredPP, availableBudget)
