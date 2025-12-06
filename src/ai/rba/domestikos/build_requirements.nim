@@ -57,12 +57,14 @@ proc calculateAffordabilityFactor*(
 
   let costRatio = float(totalCost) / float(treasury)
 
-  # Act-specific thresholds (how much of treasury we're willing to spend)
+  # Act-specific thresholds (how much of treasury we're willing to spend per request)
+  # DOUBLED from original values - original thresholds too conservative
+  # These are per-request, not total spending caps (multiple requests can compound)
   let maxCostRatio = case currentAct
-    of ai_common_types.GameAct.Act1_LandGrab: 0.15        # Act 1: Only 15% (expansion focus)
-    of ai_common_types.GameAct.Act2_RisingTensions: 0.25  # Act 2: 25% (buildup)
-    of ai_common_types.GameAct.Act3_TotalWar: 0.40        # Act 3: 40% (war economy)
-    of ai_common_types.GameAct.Act4_Endgame: 0.50         # Act 4: 50% (all-in)
+    of ai_common_types.GameAct.Act1_LandGrab: 0.30        # Act 1: 30% per request (was 15%)
+    of ai_common_types.GameAct.Act2_RisingTensions: 0.50  # Act 2: 50% per request (was 25%)
+    of ai_common_types.GameAct.Act3_TotalWar: 0.70        # Act 3: 70% per request (was 40%)
+    of ai_common_types.GameAct.Act4_Endgame: 0.90         # Act 4: 90% per request (was 50%)
 
   if costRatio > maxCostRatio:
     # Too expensive - scale down quantity
@@ -94,8 +96,10 @@ proc adjustPriorityForAffordability*(
   if totalCost < 100:
     return basePriority
 
-  # Economic health check: can we afford 2x the cost?
-  let economicHealthy = treasury >= (totalCost * 2)
+  # Economic health check: can we afford 1.5x the cost?
+  # RELAXED from 2x to 1.5x - original threshold too strict
+  # Ensures we can afford unit + have 50% buffer for other needs
+  let economicHealthy = treasury >= (totalCost * 3 div 2)  # 1.5x using integer math
 
   if not economicHealthy and basePriority != RequirementPriority.Critical:
     # Poor economy - downgrade by one level
@@ -107,7 +111,7 @@ proc adjustPriorityForAffordability*(
 
     logDebug(LogCategory.lcAI,
              &"Priority adjustment: {unitType} ({totalCost}PP) unaffordable " &
-             &"(treasury={treasury}PP, need 2x={totalCost * 2}PP), {basePriority} → {adjusted}")
+             &"(treasury={treasury}PP, need 1.5x={totalCost * 3 div 2}PP), {basePriority} → {adjusted}")
     return adjusted
   else:
     return basePriority
@@ -996,12 +1000,13 @@ proc assessStrategicAssets*(
   if shieldedColonies < targetShields:
     let planetaryShieldCost = getPlanetaryShieldCost(1)  # SLD1 shields
 
-    # BUDGET-AWARE: Only request shields if treasury can support them (3x cost minimum)
+    # BUDGET-AWARE: Only request shields if treasury can support them (2x cost minimum)
+    # RELAXED from 3x to 2x - more forgiving for shield requests
     let idealShields = targetShields - shieldedColonies
     let totalShieldCost = planetaryShieldCost * idealShields
 
-    # 3x cost check: need 3x total cost in treasury to consider affordable
-    if filtered.ownHouse.treasury >= (totalShieldCost * 3):
+    # 2x cost check: need 2x total cost in treasury to consider affordable
+    if filtered.ownHouse.treasury >= (totalShieldCost * 2):
       # BUDGET-AWARE: Adjust priority downward if unaffordable (2x cost check)
       let adjustedPriority = adjustPriorityForAffordability(
         RequirementPriority.Medium, planetaryShieldCost, idealShields,
@@ -1204,9 +1209,10 @@ proc assessStrategicAssets*(
           reason = &"Planetary shield for {colony.systemId} (threat={threat:.2f}, Act 3+)"
 
         if shouldBuildShield:
-          # BUDGET-AWARE: Only request shield if treasury can support it (3x cost minimum)
-          # Rationale: 50PP shield with 60PP treasury leaves only 10PP for everything else
-          if filtered.ownHouse.treasury >= (shieldCost * 3):
+          # BUDGET-AWARE: Only request shield if treasury can support it (2x cost minimum)
+          # RELAXED from 3x to 2x - more forgiving for shield requests
+          # Rationale: 50PP shield with 100PP treasury still leaves 50PP for other needs
+          if filtered.ownHouse.treasury >= (shieldCost * 2):
             # BUDGET-AWARE: Adjust priority downward if unaffordable (2x cost check)
             let adjustedPriority = adjustPriorityForAffordability(
               priority, shieldCost, 1,
