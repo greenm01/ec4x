@@ -103,9 +103,14 @@ proc applyStrategicTriage*(
   # Budget available after minimum reserves
   var budgetRemaining = availableBudget - minReserves
 
-  # Allocate in priority order: Critical > High > Medium
+  # Allocate proportionally with priority weighting to avoid starving lower priorities
+  # OLD APPROACH: Waterfall (give ALL to High, leaving 0 for Medium/Low)
+  # NEW APPROACH: Weighted shares (High gets 60%, Medium gets 30%, Low gets 10%)
 
-  # 1. Critical requirements (highest priority - fund first)
+  # Calculate weighted shares based on what exists
+  let hasMediumOrLow = (totalMedium > 0) or (totalLow > 0)
+
+  # 1. Critical requirements (highest priority - gets 100% up to needs)
   if totalCritical > 0 and budgetRemaining > 0:
     let criticalBudget = min(budgetRemaining, totalCritical)
     for objective in BuildObjective:
@@ -117,9 +122,11 @@ proc applyStrategicTriage*(
     logDebug(LogCategory.lcAI,
              &"Strategic Triage Critical: {criticalBudget}/{totalCritical}PP allocated")
 
-  # 2. High requirements (second priority - fund with remaining)
+  # 2. High requirements (second priority - gets 60% of remaining if Medium/Low exist, else 100%)
   if totalHigh > 0 and budgetRemaining > 0:
-    let highBudget = min(budgetRemaining, totalHigh)
+    # Reserve 40% for Medium/Low if they exist (prevents starvation)
+    let highShare = if hasMediumOrLow: 0.60 else: 1.0
+    let highBudget = min(int(float(budgetRemaining) * highShare), totalHigh)
     for objective in BuildObjective:
       if highReqs[objective] > 0:
         let ratio = float(highReqs[objective]) / float(totalHigh)
@@ -127,7 +134,7 @@ proc applyStrategicTriage*(
         allocation[objective] += allocated / float(availableBudget)
     budgetRemaining -= highBudget
     logDebug(LogCategory.lcAI,
-             &"Strategic Triage High: {highBudget}/{totalHigh}PP allocated " &
+             &"Strategic Triage High: {highBudget}/{totalHigh}PP allocated ({int(highShare*100)}% share) " &
              &"(Defense={int(highReqs[BuildObjective.Defense])}PP, " &
              &"Military={int(highReqs[BuildObjective.Military])}PP)")
 
