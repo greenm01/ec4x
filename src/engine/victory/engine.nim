@@ -15,7 +15,12 @@ proc checkPrestigeVictory*(houses: Table[HouseId, House],
                            condition: VictoryCondition,
                            currentTurn: int): VictoryCheck =
   ## Check if any house has reached prestige threshold
+  ## If threshold is 0, prestige victory is disabled
   result = VictoryCheck(victoryOccurred: false)
+
+  # Prestige victory disabled if threshold is 0
+  if condition.prestigeThreshold <= 0:
+    return
 
   for houseId, house in houses:
     if not house.eliminated and house.prestige >= condition.prestigeThreshold:

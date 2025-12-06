@@ -351,9 +351,10 @@ task testUnknownUnknowns, "Unknown-unknowns detection (200 games, victory-based)
   echo "Running unknown-unknowns detection suite (200 games, run until victory)..."
   echo "This generates comprehensive CSV data for pattern analysis"
   exec "bin/ec4x --clean-all --backup"
-  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
-  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  # Build the simulation binary (compile-time, no runtime args!)
+  exec "nimble buildSimulation"
   echo "Git hash: $(cat bin/.build_git_hash)"
+  # Run balance tests with runtime arguments
   exec "python3 scripts/run_balance_test_parallel.py --workers 16 --games 200 --max-turns 45"
   echo "\nGenerating all analysis reports..."
   exec "bin/ec4x --all"
