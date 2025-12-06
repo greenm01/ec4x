@@ -13,7 +13,7 @@ import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../logger
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
-import ../config/[prestige_multiplier, prestige_config]
+import ../config/[prestige_multiplier, prestige_config, facilities_config]
 import ../diplomacy/[types as dip_types, engine as dip_engine]
 import ../intelligence/diplomatic_intel
 import ./types  # Common resolution types
@@ -22,12 +22,41 @@ import ../intelligence/[types as intel_types, combat_intel]
 
 proc getTargetBucket(shipClass: ShipClass): TargetBucket =
   ## Determine target bucket from ship class
+  ## Note: Starbases use TargetBucket.Starbase but aren't in ShipClass (they're facilities)
   case shipClass
   of ShipClass.Raider: TargetBucket.Raider
   of ShipClass.Fighter: TargetBucket.Fighter
   of ShipClass.Destroyer: TargetBucket.Destroyer
-  of ShipClass.Starbase: TargetBucket.Starbase
   else: TargetBucket.Capital
+
+proc getStarbaseStats(wepLevel: int): ShipStats =
+  ## Load starbase combat stats from facilities.toml
+  ## Applies WEP tech modifications like ships
+  let facilityConfig = globalFacilitiesConfig.starbase
+
+  # Base stats from facilities.toml
+  var stats = ShipStats(
+    name: "Starbase",
+    class: "SB",
+    role: ShipRole.SpecialWeapon,
+    attackStrength: facilityConfig.attack_strength,
+    defenseStrength: facilityConfig.defense_strength,
+    commandCost: 0,  # Starbases don't consume command
+    commandRating: 0,  # Starbases can't lead squadrons
+    techLevel: facilityConfig.cst_min,
+    buildCost: facilityConfig.build_cost,
+    upkeepCost: facilityConfig.upkeep_cost,
+    specialCapability: "",  # No special capabilities
+    carryLimit: 0
+  )
+
+  # Apply WEP tech modifications (AS and DS scale with weapons tech)
+  if wepLevel > 1:
+    let weaponsMultiplier = pow(1.10, float(wepLevel - 1))
+    stats.attackStrength = int(float(stats.attackStrength) * weaponsMultiplier)
+    stats.defenseStrength = int(float(stats.defenseStrength) * weaponsMultiplier)
+
+  return stats
 
 proc autoEscalateDiplomacy(
   state: var GameState,
@@ -190,41 +219,29 @@ proc executeCombat(
     # Starbases are ALWAYS included in task forces for detection purposes
     # In space combat: Starbases detect but don't fight (controlled by allowStarbaseCombat flag)
     # In orbital combat: Starbases detect AND fight
+    var combatFacilities: seq[CombatFacility] = @[]
     if systemOwner.isSome and systemOwner.get() == houseId:
       if systemId in state.colonies:
         let colony = state.colonies[systemId]
         for starbase in colony.starbases:
-          # Convert Starbase to Squadron-like structure for combat
-          # Starbases are treated as special squadrons with fixed installations
-          # Create EnhancedShip from Starbase using stats from config/ships.toml
+          # Load starbase combat stats from facilities.toml
           # Apply owner's WEP tech level to starbase AS/DS
           let ownerWepLevel = state.houses[houseId].techTree.levels.weaponsTech
-          let starbaseShip = EnhancedShip(
-            shipClass: ShipClass.Starbase,
-            shipType: ShipType.Military,
-            stats: getShipStats(ShipClass.Starbase, ownerWepLevel),
-            isCrippled: starbase.isCrippled,
-            name: "Starbase-" & starbase.id
-          )
+          let starbaseStats = getStarbaseStats(ownerWepLevel)
 
-          let starbaseSquadron = Squadron(
-            id: starbase.id,
-            flagship: starbaseShip,
-            ships: @[],  # Starbases have no escort ships
+          let combatFacility = CombatFacility(
+            facilityId: starbase.id,
+            systemId: systemId,
             owner: houseId,
-            location: systemId,
-            embarkedFighters: @[]
-          )
-          let combatSq = CombatSquadron(
-            squadron: starbaseSquadron,
+            attackStrength: starbaseStats.attackStrength,
+            defenseStrength: starbaseStats.defenseStrength,
             state: if starbase.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
-            fleetStatus: FleetStatus.Active,  # Always active for detection
             damageThisTurn: 0,
             crippleRound: 0,
             bucket: TargetBucket.Starbase,
-            targetWeight: 1.0
+            targetWeight: 5.0  # Base weight for Starbase bucket
           )
-          combatSquadrons.add(combatSq)
+          combatFacilities.add(combatFacility)
         if colony.starbases.len > 0:
           let combatRole = if includeStarbases: "defense and detection" else: "detection only"
           logDebug("Combat", "Added starbases", "count=", $colony.starbases.len, " role=", combatRole)
@@ -233,6 +250,7 @@ proc executeCombat(
     taskForces[houseId] = TaskForce(
       house: houseId,
       squadrons: combatSquadrons,
+      facilities: combatFacilities,  # Starbases and other defensive facilities
       roe: 5,  # Default ROE
       isCloaked: false,
       moraleModifier: 0,
@@ -531,6 +549,12 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     for combatSq in tf.squadrons:
       survivingSquadronIds[combatSq.squadron.id] = combatSq
 
+  # Collect surviving facilities by ID
+  var survivingFacilityIds: Table[string, CombatFacility] = initTable[string, CombatFacility]()
+  for tf in outcome.survivors:
+    for combatFac in tf.facilities:
+      survivingFacilityIds[combatFac.facilityId] = combatFac
+
   # INTELLIGENCE: Capture fleet state before applying losses
   var fleetsBeforeCombatUpdate: Table[FleetId, Fleet] = initTable[FleetId, Fleet]()
   for (fleetId, fleet) in fleetsAtSystem:
@@ -640,12 +664,15 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     var colony = state.colonies[systemId]
     var survivingStarbases: seq[Starbase] = @[]
     for starbase in colony.starbases:
-      if starbase.id in survivingSquadronIds:
+      if starbase.id in survivingFacilityIds:
         # Starbase survived - update crippled status
-        let survivorState = survivingSquadronIds[starbase.id]
+        let survivorState = survivingFacilityIds[starbase.id]
         var updatedStarbase = starbase
         updatedStarbase.isCrippled = (survivorState.state == CombatState.Crippled)
         survivingStarbases.add(updatedStarbase)
+      else:
+        # Starbase destroyed - log before removal
+        logCombat("Starbase destroyed", "id=", starbase.id, " systemId=", $systemId)
     colony.starbases = survivingStarbases
     state.colonies[systemId] = colony
 

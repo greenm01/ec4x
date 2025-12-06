@@ -53,17 +53,21 @@ Allocate treasury (production points) to construction projects at your colonies.
 **Shipyards** (Orbital Construction):
 - Built in 2 turns, requires existing spaceport, provides 10 construction docks
 - Can build any ship type at standard cost (no penalty)
-- **ONLY facility that can repair ships** - spaceports cannot repair
+- **ONLY facility that can repair ships** - spaceports cannot repair ships
 - Repairs any ship class at 25% of build cost (1 turn)
-- Also repairs starbases
 - Economically superior for all non-fighter construction
 
 **Ship Repair Requirements:**
 - **All ship repairs require shipyards** - spaceports cannot repair ships
 - Repair cost: 25% of build cost
 - Repair time: 1 turn for all ship classes
-- Starbase repairs also require shipyards
 - Colonies without shipyards cannot repair crippled ships (must salvage or transfer to shipyard colony)
+
+**Facility Repair Requirements:**
+- **Starbase repairs require spaceports** (not shipyards)
+- Repair cost: 75 PP (25% of 300 PP base cost)
+- Repair time: 1 turn
+- **Important:** Starbase repairs do NOT consume dock capacity (separate repair queue from ships)
 
 **Build Order Mechanics:**
 - **Upfront payment**: Full construction cost (including spaceport penalties) deducted immediately from treasury

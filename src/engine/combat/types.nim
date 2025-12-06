@@ -14,6 +14,7 @@ export Squadron, EnhancedShip, ShipClass
 export commonCombat.CombatState  # Use existing CombatState from common
 export diplomacy.DiplomaticState
 export fleet.FleetStatus
+# CombatFacility, CombatTargetId, CombatTargetKind exported after type section
 
 type
   ## Tactical Combat Phases (Section 7.3.1)
@@ -48,6 +49,19 @@ type
     Fighter = 4,    # Fighter squadron (no capital flagship)
     Starbase = 5    # Orbital installation
 
+  ## Combat Target Identifier (squadron or facility)
+  CombatTargetKind* {.pure.} = enum
+    Squadron,       # Target is a squadron
+    Facility        # Target is a facility (starbase, etc)
+
+  CombatTargetId* = object
+    ## Unified identifier for combat targets (squadrons and facilities)
+    case kind*: CombatTargetKind
+    of CombatTargetKind.Squadron:
+      squadronId*: SquadronId
+    of CombatTargetKind.Facility:
+      facilityId*: string
+
   ## Squadron in combat context
   ## Note: CombatState is imported from common/types/combat.nim
   CombatSquadron* = object
@@ -59,10 +73,25 @@ type
     bucket*: TargetBucket
     targetWeight*: float     # Base weight × crippled modifier
 
+  ## Facility in combat context (starbases, future defensive structures)
+  ## Facilities participate in combat but are not squadrons
+  CombatFacility* = object
+    facilityId*: string      # ID from colony.starbases
+    systemId*: SystemId      # Location
+    owner*: HouseId          # Owning house
+    attackStrength*: int     # AS from facilities.toml + WEP
+    defenseStrength*: int    # DS from facilities.toml + WEP
+    state*: CombatState      # Undamaged/Crippled/Destroyed
+    damageThisTurn*: int     # Track damage for destruction protection
+    crippleRound*: int       # Round when crippled
+    bucket*: TargetBucket    # Always TargetBucket.Starbase
+    targetWeight*: float     # Base weight × crippled modifier
+
   ## Task Force (Section 7.2)
   TaskForce* = object
     house*: HouseId
     squadrons*: seq[CombatSquadron]
+    facilities*: seq[CombatFacility]  # Defensive facilities (starbases, etc)
     roe*: int                # Rules of Engagement (0-10)
     isCloaked*: bool         # All Raiders, none detected
     moraleModifier*: int     # -1 to +2 from prestige
@@ -123,6 +152,9 @@ type
     allowStarbaseCombat*: bool  # If true, starbases can fight; if false, they only detect
     preDetectedHouses*: seq[HouseId]  # Houses already detected in previous combat phase
 
+# Export types that were declared after initial exports
+export CombatFacility, CombatTargetId, CombatTargetKind
+
 ## Helper procs for combat squadrons
 
 proc getCurrentAS*(cs: CombatSquadron): int =
@@ -161,13 +193,41 @@ proc canBeTargeted*(cs: CombatSquadron): bool =
   ## Check if squadron is valid target
   cs.state != CombatState.Destroyed
 
+## CombatFacility helpers
+
+proc getCurrentAS*(cf: CombatFacility): int =
+  ## Get current attack strength (reduced if crippled)
+  if cf.state == CombatState.Crippled:
+    return cf.attackStrength div 2
+  elif cf.state == CombatState.Destroyed:
+    return 0
+  else:
+    return cf.attackStrength
+
+proc getCurrentDS*(cf: CombatFacility): int =
+  ## Get defense strength (doesn't change when crippled)
+  if cf.state == CombatState.Destroyed:
+    return 0
+  else:
+    return cf.defenseStrength
+
+proc isAlive*(cf: CombatFacility): bool =
+  ## Check if facility can still fight
+  cf.state != CombatState.Destroyed
+
+proc canBeTargeted*(cf: CombatFacility): bool =
+  ## Check if facility is valid target
+  cf.state != CombatState.Destroyed
+
 ## Task Force helpers
 
 proc totalAS*(tf: TaskForce): int =
-  ## Calculate total attack strength of Task Force
+  ## Calculate total attack strength of Task Force (squadrons + facilities)
   result = 0
   for sq in tf.squadrons:
     result += sq.getCurrentAS()
+  for fac in tf.facilities:
+    result += fac.getCurrentAS()
 
 proc aliveSquadrons*(tf: TaskForce): seq[CombatSquadron] =
   ## Get all non-destroyed squadrons
@@ -176,10 +236,22 @@ proc aliveSquadrons*(tf: TaskForce): seq[CombatSquadron] =
     if sq.isAlive():
       result.add(sq)
 
+proc aliveFacilities*(tf: TaskForce): seq[CombatFacility] =
+  ## Get all non-destroyed facilities
+  result = @[]
+  for fac in tf.facilities:
+    if fac.isAlive():
+      result.add(fac)
+
 proc isEliminated*(tf: TaskForce): bool =
-  ## Check if Task Force has no surviving squadrons
+  ## Check if Task Force has no surviving squadrons or facilities
+  # Check squadrons
   for sq in tf.squadrons:
     if sq.isAlive():
+      return false
+  # Check facilities
+  for fac in tf.facilities:
+    if fac.isAlive():
       return false
   return true
 
@@ -218,10 +290,9 @@ proc classifyBucket*(sq: Squadron): TargetBucket =
     return TargetBucket.Destroyer
   of ShipClass.Fighter:
     return TargetBucket.Fighter
-  of ShipClass.Starbase:
-    return TargetBucket.Starbase
   else:
     # Default to capital for unknown types
+    # Note: Starbases (TargetBucket.Starbase) assigned separately via colony facilities
     return TargetBucket.Capital
 
 proc baseWeight*(bucket: TargetBucket): float =

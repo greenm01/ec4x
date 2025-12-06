@@ -31,23 +31,24 @@ Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/F
 | FS    | Fighter Squadron  | Fighter       | 1   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
 | RR    | Raider            | Capital       | 3   | 150 | 4%  | 12  | 10  | 2   | 8   | NA  |
 | SC    | Scout             | Escort        | 1   | 50  | 2%  | 1   | 2   | 1   | NA  | NA  |
-| SB    | Starbase          | SpecialWeapon | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
 
 *Source: config/ships.toml*
+
+**Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](assets.md#244-starbases). They are built via the Colony pipeline (Eparch advisor) and stored at colonies, never assigned to fleets or squadrons.
 
 **Ship Role Classifications:**
 
 - **Escort**: Combat-capable ships with CR < 7. Not individually capacity-limited, but count toward total squadron limit.
 - **Capital**: Flagship-capable ships with CR >= 7. Subject to both capital squadron limits AND total squadron limits.
 - **Auxiliary**: Non-combat support ships (ETAC, Troop Transports). Do not count toward squadron limits.
-- **SpecialWeapon**: Unique strategic units (Planet-Breakers, Starbases) with special capacity rules.
+- **SpecialWeapon**: Unique strategic units (Planet-Breakers) with special capacity rules.
 - **Fighter**: Embarked strike craft with per-colony capacity limits.
 
 <!-- SPACE_FORCE_TABLE_END -->
 
 ## 10.1.1 Ship Construction Times
 
-**All ship construction completes instantly (1 turn)** regardless of hull class or CST tech level.
+**All ship construction completes in 1 turn** regardless of hull class or CST tech level.
 
 This reflects the game's time narrative where turns represent variable time periods (1-15 years depending on map size). Multi-turn construction would cause severe balance issues across different map sizes.
 
@@ -61,7 +62,7 @@ This reflects the game's time narrative where turns represent variable time peri
 
 | Hull Class  | Ships     | Construction Time |
 | ----------- | --------- | ----------------- |
-| All Classes | All Ships | 1 turn (instant)  |
+| All Classes | All Ships | 1 turn            |
 
 *Source: config/ships.toml [construction] section*
 
@@ -82,7 +83,28 @@ This reflects the game's time narrative where turns represent variable time peri
 
 <!-- GROUND_UNITS_TABLE_END -->
 
-## 10.3 Spacelift Command (WEP1)
+## 10.3 Orbital Facilities (WEP1)
+
+Orbital facilities are infrastructure built at colonies that provide combat, economic, and detection capabilities. Unlike ships, they cannot move and are fixed to their construction location.
+
+<!-- ORBITAL_FACILITIES_TABLE_START -->
+
+| **Class** | **Name**  | CST | PC  | MC  | AS  | DS  | Build Time |
+| --------- | --------- |:---:|:---:|:---:|:---:|:---:|:----------:|
+| SB        | Starbase  | 3   | 300 | 5%  | 45  | 50  | 3 turns    |
+
+*Source: config/facilities.toml*
+
+**Notes:**
+- Built via Colony pipeline (Eparch advisor), requires operational Spaceport
+- Repairs use Spaceport (not Shipyard), cost 75 PP (25%), take 1 turn, no dock consumption
+- AS/DS scale with WEP technology (+10% per level above WEP I)
+- Economic bonuses: +5% growth/production per Starbase (max 3 per colony)
+- Detection: +2 ELI bonus for Scout/Raider detection
+
+<!-- ORBITAL_FACILITIES_TABLE_END -->
+
+## 10.4 Spacelift Command (WEP1)
 
 <!-- SPACELIFT_TABLE_START -->
 

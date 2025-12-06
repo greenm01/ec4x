@@ -59,6 +59,7 @@ proc getShipStatsFromConfig(shipClass: ShipClass): ShipStats =
   let cfg = globalShipsConfig
 
   # Map ShipClass enum to config struct field
+  # Note: Starbases are facilities (not in ShipClass, use facilities.toml)
   let configStats = case shipClass
     of ShipClass.Fighter: cfg.fighter
     of ShipClass.Corvette: cfg.corvette
@@ -75,7 +76,6 @@ proc getShipStatsFromConfig(shipClass: ShipClass): ShipStats =
     of ShipClass.SuperDreadnought: cfg.super_dreadnought
     of ShipClass.Carrier: cfg.carrier
     of ShipClass.SuperCarrier: cfg.supercarrier
-    of ShipClass.Starbase: cfg.starbase
     of ShipClass.ETAC: cfg.etac
     of ShipClass.TroopTransport: cfg.troop_transport
     of ShipClass.PlanetBreaker: cfg.planetbreaker
@@ -315,8 +315,15 @@ proc createSquadron*(
 ): Squadron =
   ## Create a squadron with one ship (flagship only)
   ## This is the standard way to create squadrons for fleets
+  let shipType = case shipClass
+    of ShipClass.ETAC, ShipClass.TroopTransport:
+      ShipType.Spacelift
+    else:
+      ShipType.Military
+
   let flagship = EnhancedShip(
     shipClass: shipClass,
+    shipType: shipType,
     stats: getShipStats(shipClass, techLevel),
     isCrippled: isCrippled,
     name: ""

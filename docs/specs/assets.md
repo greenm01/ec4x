@@ -100,7 +100,9 @@ Spaceports are large ground based facilities that launch heavy-lift ships and eq
 
 **Planet-side Ship Construction**: Ships built at spaceports incur a **100% PP cost penalty** due to orbital launch requirements. See [Section 5.2](economy.md#52-planet-side-construction) for construction rules.
 
-**Spaceports cannot repair ships** - they are construction facilities only.
+**Facility Repair**: Spaceports handle repairs for facility-class units (Starbases). These repairs do NOT consume dock capacity, allowing simultaneous facility repair and ship construction.
+
+**Ship Repair**: Spaceports cannot repair ships - only Shipyards can repair ship-class units.
 
 #### 2.3.2.2 Shipyards
 
@@ -171,13 +173,19 @@ Fighters are small ships you commission in Fighter Squadrons (FS) that freely pa
 
 **Capacity Limits**:
 
-Fighter Squadron capacity per colony is determined by population size, Fighter Doctrine (FD) research, and Starbase infrastructure:
+Fighter Squadron capacity per colony is determined by industrial capacity and Fighter Doctrine (FD) research:
 
 ```
-Max FS per Colony = max(1, floor(PU / 100)) × FD_MULTIPLIER
+Max FS per Colony = floor(IU / 100) × FD_MULTIPLIER
 ```
 
-**Infrastructure Requirement**: 1 operational Starbase per 5 FS (rounded up)
+Where:
+- **IU** = Industrial Units at the colony
+- **FD_MULTIPLIER** = Fighter Doctrine tech multiplier (FD I: 1.0×, FD II: 1.5×, FD III: 2.0×)
+
+**No Infrastructure Required**: Fighters are built planet-side via distributed manufacturing. No spaceports, shipyards, or starbases required.
+
+**Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest squadrons auto-disband.
 
 For FD research progression and capacity multipliers, see [Section 4.12](economy.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](economy.md#36-fighter-squadron-economics).
 
@@ -324,11 +332,14 @@ Raiders are expensive, fragile, and require sustained CLK investment to remain e
 
 Starbases (SB) are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
+**Architecture**: Starbases are **facilities** (not ships). They are built and stored at colonies, never assigned to fleets or squadrons. In combat, they participate as facility units with their own combat statistics.
+
 **Construction**:
 
-**Cost**: Varies by WEP level (see [Section 10.0](reference.md#100-unit-reference-tables))  
-**Construction Time**: 3 turns  
-**Prerequisite**: Requires operational Shipyard  
+**Cost**: 300 PP (fixed, does not scale with WEP)
+**Construction Time**: 3 turns
+**Prerequisite**: Requires operational Spaceport
+**Construction Location**: Built at colonies using Spaceport infrastructure
 **Mobility**: Fixed in orbit, cannot move out of home system
 
 **Detection Capabilities**:
@@ -337,14 +348,25 @@ Starbases are equipped with ELI to counter spy Scouts and Raiders. Refer to the 
 
 Starbases receive a **+2 ELI modifier** for all detection rolls, reflecting their superior sensor arrays and dedicated detection systems.
 
+**Combat Statistics**:
+
+Starbases have fixed combat statistics that scale with Weapons (WEP) technology:
+
+- **Attack Strength (AS)**: 45 (base) + WEP scaling (10% per level)
+- **Defense Strength (DS)**: 50 (base) + WEP scaling (10% per level)
+- **Command Cost (CC)**: 0 (facilities don't consume command)
+- **Command Rating (CR)**: 0 (facilities can't lead squadrons)
+
 **Combat Participation**:
 
 Starbases participate in detection for ALL combat phases occurring in their system:
 
 - **Space Combat** ([Section 7.3](operations.md#73-space-combat)): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
-- **Orbital Combat** ([Section 7.4](operations.md#74-orbital-combat)): Starbases detect AND fight as primary orbital defenders
+- **Orbital Combat** ([Section 7.4](operations.md#74-orbital-combat)): Starbases detect AND fight as primary orbital defenders using their full AS/DS values
 
 **Rationale**: Advanced sensors provide system-wide detection support; physical weapons only engage threats to your colony itself.
+
+**Combat Architecture**: Starbases participate in combat as `CombatFacility` units (parallel to squadron-based ships), enabling future expansion of defensive facilities (ground batteries as combat units, orbital defense platforms, etc.).
 
 **Economic Benefits**:
 
@@ -363,16 +385,17 @@ Starbases boost both **population growth rate** and **industrial production outp
 - Example: 100 IU base output → With 3 starbases: 100 × (1 + 0.15) = 115 output
 - See [Section 3.1](economy.md#31-principles) for complete GCO formula
 
-**Fighter Squadron Infrastructure**:
-
-- Required for fighter squadron operations: 1 Starbase per 5 FS
-- See [Section 3.6](economy.md#36-fighter-squadron-economics) for fighter capacity rules
-
 **Repair**:
 
-Crippled starbases yield no benefits until you repair them. Repair costs 25% of original PP cost, requires 1 turn at a Shipyard. See [Section 5.5](economy.md#55-orbital-repair).
+Crippled starbases yield no benefits until you repair them. Repair costs 25% of original PP cost (75 PP) and requires 1 turn at a **Spaceport**.
 
-Crippled starbases don't count toward fighter squadron infrastructure requirements—you must repair or build additional starbases to maintain full FS capacity.
+**Important**: Starbase repairs use Spaceport infrastructure (not Shipyards) and **do NOT consume dock capacity**. This allows simultaneous starbase repair alongside ship construction without competition for dock space.
+
+**Repair Mechanics**:
+- **Facility**: Spaceport (facilities repair facilities)
+- **Cost**: 75 PP (25% of 300 PP base cost)
+- **Time**: 1 turn
+- **Dock Usage**: None (does not compete with ship construction/repair)
 
 ### 2.4.7 Planetary Shields & Ground Batteries
 

@@ -57,7 +57,6 @@ Raider              | Capital   |  3  | 150  |      |  X   |  X   |  X   | Dock 
 
 SHIPS - SPECIAL WEAPONS
 --------------------------------------------------------------------------------------------------
-Starbase            | Special   |  3  | 300  |  X   |  X   |  X   |  X   | Dock     | Orbital def
 PlanetBreaker       | Special   | 10  | 400  |      |      |      |  X   | Dock     | Strategic
 
 GROUND UNITS - DEFENSIVE
@@ -74,6 +73,7 @@ FACILITIES (EPARCH - INFRASTRUCTURE)
 --------------------------------------------------------------------------------------------------
 Spaceport           | Facility  |  1  | 100  |  X   |  X   |  X   |  X   | Colony   | Required for Shipyard/Starbase
 Shipyard            | Facility  |  1  | 150  |  X   |  X   |  X   |  X   | Colony   | Ship construction/repair
+Starbase            | Facility  |  3  | 300  |  X   |  X   |  X   |  X   | Colony   | Orbital defense/detection
 ```
 
 **Legend:**
@@ -90,7 +90,7 @@ EC4X has **two separate construction pipelines** that operate independently:
 
 ### 1. Dock Construction Pipeline
 
-**Units Built:** All ships (18 total)
+**Units Built:** All ships (18 total, excluding starbases which are facilities)
 
 **Requirements:**
 - Colony must have at least one **Spaceport** or **Shipyard**
@@ -102,10 +102,11 @@ EC4X has **two separate construction pipelines** that operate independently:
   - CST I: 5 docks, CST II: 5.5 docks, CST III: 6 docks, etc.
   - Cost: 2× Shipyard cost for ship construction
   - Cannot repair ships
+  - Can repair facilities (Starbases) without consuming dock capacity
 - **Shipyard**: 10 base docks × CST multiplier
   - CST I: 10 docks, CST II: 11 docks, CST III: 12 docks, etc.
   - Cost: Standard ship construction cost
-  - Can repair ships (only facility that can)
+  - Can repair ships (only facility that repairs ships)
 
 **CST Scaling Formula:**
 ```
@@ -118,7 +119,7 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 
 ### 2. Colony Construction Pipeline
 
-**Units Built:** Ground units (4) + Facilities (2)
+**Units Built:** Ground units (4) + Facilities (3: Spaceport, Shipyard, Starbase)
 
 **Requirements:**
 - Colony exists
@@ -129,6 +130,7 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - Ground units consume population (souls) when commissioned
 - Facilities are infrastructure (don't consume population)
 - PlanetaryShield requires CST V minimum
+- Starbases are facilities built via Colony pipeline (not ships in Dock pipeline)
 
 ---
 
@@ -151,8 +153,9 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - **Army** (garrison forces)
 
 **Facilities:**
-- **Spaceport** (minimum one per colony)
+- **Spaceport** (minimum one per colony, required for Shipyard/Starbase)
 - **Shipyard** (preferred for production)
+- **Starbase** (orbital defense for key colonies)
 
 **Strategy:**
 - Rush ETAC to capture systems
@@ -258,12 +261,14 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - Base docks: 5 (CST-scaled)
 - Ship construction: 2× Shipyard cost
 - Cannot repair ships
+- Can repair facilities (Starbases) without consuming dock capacity
 - Required for: Shipyard, Starbase
 
 **Strategic Use:**
 - Minimum one per colony (unlocks Shipyard/Starbase)
 - Emergency ship construction (if Shipyards destroyed)
 - Not cost-effective for regular production
+- Handles Starbase repairs (no dock consumption, allows parallel construction)
 
 ### Shipyard
 
@@ -273,7 +278,8 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - Base cost: 150 PP
 - Base docks: 10 (CST-scaled, 2× Spaceport)
 - Ship construction: Standard cost
-- Can repair ships (only facility with repair capability)
+- Can repair ships (only facility that repairs ships)
+- Cannot repair facilities (Spaceports handle facility repairs)
 - Requires: Spaceport
 
 **Strategic Use:**
@@ -282,23 +288,46 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - Build multiple per high-production colony
 - Significant advantage over Spaceports (capacity + cost)
 
+### Starbase
+
+**Purpose:** Orbital defense, detection, economic bonuses
+
+**Characteristics:**
+- Base cost: 300 PP (fixed, no WEP scaling)
+- Construction time: 3 turns
+- Construction pipeline: Colony (not Dock)
+- Combat stats: AS 45, DS 50 (both scale with WEP +10% per level)
+- Requires: Spaceport
+- Repair: Uses Spaceport, no dock consumption
+
+**Strategic Use:**
+- Orbital defense for key colonies
+- Detection bonus (+2 ELI) for Scout/Raider detection
+- Economic bonuses (5% growth/production per Starbase, max 3)
+- Required for fighter squadron infrastructure (1 per 5 FS)
+- Built via Colony pipeline (Eparch advisor, not Domestikos)
+
 ### Facility Strategy by Act
 
 **Act 1:**
-- One Spaceport per colony (minimum)
+- One Spaceport per colony (minimum, unlocks Shipyard/Starbase)
 - One Shipyard at homeworld (production core)
+- One Starbase at homeworld (defense + economic bonus)
 
 **Act 2:**
 - Shipyards at high-production colonies
+- Starbases at strategic/high-value colonies (2-3 per colony for max bonuses)
 - Second Spaceport only in emergencies
 
 **Act 3:**
 - Multiple Shipyards at major production centers
+- Starbases at all contested systems (defense critical)
 - Spaceports remain minimal (one per colony)
 
 **Act 4:**
 - Shipyard networks across empire
-- Repair capacity critical (fleet sustainability)
+- Starbase networks for fortress colonies
+- Repair capacity critical (fleet + facility sustainability)
 
 ---
 
@@ -354,14 +383,22 @@ Each slot checks current Act and selects appropriate units from candidate lists 
 
 **Spaceport:**
 - Minimum one per colony (requirement for Shipyard/Starbase)
-- Emergency construction only (2× cost inefficient)
+- Emergency ship construction only (2× cost inefficient)
+- Handles facility repairs (Starbases, no dock consumption)
 - Not prioritized for multiple builds
 
 **Shipyard:**
-- Primary production facility (2× Spaceport capacity, 1× cost)
-- Only repair capability (critical for fleet sustainability)
+- Primary ship production facility (2× Spaceport capacity, 1× cost)
+- Only facility that repairs ships (critical for fleet sustainability)
 - Build multiple at high-production colonies
 - Scales with CST (capacity increases 10% per level)
+
+**Starbase:**
+- Built via Colony pipeline (Eparch advisor)
+- Requires Spaceport (uses it for construction/repair)
+- Orbital defense + detection + economic bonuses
+- Build 2-3 per colony for maximum benefits (5% each, 15% max)
+- Repairs at Spaceport without consuming dock capacity
 
 ---
 

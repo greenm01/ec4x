@@ -82,12 +82,89 @@ proc applyDamageToSquadron*(
     destructionProtectionApplied: false
   )
 
+## Damage Application - Facilities
+
+proc applyDamageToFacility*(
+  facility: var CombatFacility,
+  damage: int,
+  roundNumber: int,
+  isCriticalHit: bool
+): StateChange =
+  ## Apply damage to a facility and handle state transitions
+  ## Returns StateChange describing what happened
+  ##
+  ## Facilities use same destruction protection rules as squadrons
+
+  let initialState = facility.state
+  var newState = initialState
+
+  # Already destroyed - no further damage
+  if facility.state == CombatState.Destroyed:
+    return StateChange(
+      squadronId: facility.facilityId,  # Reuse squadronId field
+      fromState: initialState,
+      toState: initialState,
+      destructionProtectionApplied: false
+    )
+
+  # Track damage this turn for destruction protection
+  facility.damageThisTurn += damage
+  let totalDamage = facility.damageThisTurn
+  let ds = facility.getCurrentDS()
+
+  case facility.state
+  of CombatState.Undamaged:
+    # Check if damage meets crippling threshold
+    if totalDamage >= ds:
+      newState = CombatState.Crippled
+      facility.state = CombatState.Crippled
+      facility.crippleRound = roundNumber
+
+      # Check for immediate destruction
+      let excessDamage = totalDamage - ds
+      if excessDamage >= ds:
+        # Has enough damage to destroy, but check protection
+        if isCriticalHit or facility.crippleRound < roundNumber:
+          # Critical hit bypasses protection, or was crippled in previous round
+          newState = CombatState.Destroyed
+          facility.state = CombatState.Destroyed
+        else:
+          # Destruction protection applies - stays crippled
+          return StateChange(
+            squadronId: facility.facilityId,  # Reuse squadronId field
+            fromState: initialState,
+            toState: CombatState.Crippled,
+            destructionProtectionApplied: true
+          )
+
+  of CombatState.Crippled:
+    # Already crippled, check for destruction
+    if totalDamage >= ds:
+      newState = CombatState.Destroyed
+      facility.state = CombatState.Destroyed
+
+  of CombatState.Destroyed:
+    # Already handled above
+    discard
+
+  return StateChange(
+    squadronId: facility.facilityId,  # Reuse squadronId field
+    fromState: initialState,
+    toState: newState,
+    destructionProtectionApplied: false
+  )
+
 ## Damage Reset (between rounds)
 
 proc resetRoundDamage*(squadron: var CombatSquadron) =
   ## Reset damage tracking at start of new round
   ## Destruction protection only applies within a single round
   squadron.damageThisTurn = 0
+
+proc resetRoundDamage*(facility: var CombatFacility) =
+  ## Reset damage tracking at start of new round
+  ## Destruction protection only applies within a single round
+  facility.damageThisTurn = 0
 
 ## Critical Hit Special Rules (Section 7.3.3)
 

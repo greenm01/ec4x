@@ -210,17 +210,20 @@ You transport PTU via two methods:
 
 ## 3.6 Fighter Squadron Economics
 
-Fighter Squadron (FS) capacity is determined by colony infrastructure and House technology:
+Fighter Squadron (FS) capacity is determined by colony industrial capacity and House technology:
 
 ```
-Max FS per Colony = max(1, floor(PU / 100)) × FD_MULTIPLIER
+Max FS per Colony = floor(IU / 100) × FD_MULTIPLIER
 ```
 
 Where:
 
-- PU / 100: Natural capacity scaling with population
-- FD_MULTIPLIER: From Fighter Doctrine (FD) research [Section 4.12](#412-fighter-doctrine-fd)
-- Operational Starbase requirement: 1 Starbase per 5 FS (rounded up)
+- **IU**: Industrial Units at the colony
+- **FD_MULTIPLIER**: From Fighter Doctrine (FD) research [Section 4.12](#412-fighter-doctrine-fd)
+
+**No Infrastructure Required**: Fighters are built planet-side via distributed manufacturing. No spaceports, shipyards, or starbases required.
+
+**Capacity Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest squadrons auto-disband with no salvage value.
 
 **Construction Cost:**
 
@@ -234,13 +237,9 @@ Fighter Squadrons have zero ongoing maintenance cost. Once built, they're free t
 
 Fighter Squadrons can be loaded onto carriers for mobility. Carrier capacity depends on carrier type and Advanced Carrier Operations (ACO) technology. See [Section 2.4.1](assets.md#241-fighter-squadrons--carriers) for carrier loading mechanics and [Section 4.13](#413-advanced-carrier-operations-aco) for ACO research.
 
-**Infrastructure Requirement:**
-
-Colonies must maintain 1 operational Starbase per 5 FS (rounded up). When Fighter Doctrine research increases capacity, colonies have 2 turns grace period to construct additional Starbases before commissioning new squadrons.
-
 **Strategic Considerations:**
 
-Fighter Squadrons are cost-effective early-game defenders and remain relevant throughout the campaign. Large mature colonies can field dozens of squadrons, creating formidable defensive positions. However, the Starbase infrastructure requirement constrains total capacity and creates meaningful tradeoffs between defense depth and construction investment.
+Fighter Squadrons are cost-effective early-game defenders and remain relevant throughout the campaign. Large mature colonies can field dozens of squadrons, creating formidable defensive positions. Industrial capacity (IU) determines your maximum fighter complement—colonies with high IU investment can support massive fighter wings, while underdeveloped colonies are limited to token forces.
 
 ## 3.7 Facility Construction Economics
 
@@ -259,8 +258,7 @@ Fighter Squadrons are cost-effective early-game defenders and remain relevant th
 - **Prerequisite**: Requires operational Spaceport at colony
 - **Construction Capacity**: 10 simultaneous docks
 - **Orbital construction**: Standard PP costs, no penalties
-- **Ship repairs**: 25% of ship's original PP cost, 1 turn duration
-- **Starbase repairs**: 25% of starbase's original PP cost, 1 turn duration
+- **Ship repairs**: 25% of ship's original PP cost, 1 turn duration (only Shipyards can repair ships)
 
 **Construction Capacity Scaling:**
 
@@ -765,7 +763,7 @@ Fighter Doctrine improves organizational efficiency and training throughput, inc
 
 **FD I - Basic Fighter Operations**
 
-Standard fighter squadron operations with conventional command structures. Base capacity determined by population and infrastructure.
+Standard fighter squadron operations with conventional command structures. Base capacity determined by industrial capacity.
 
 **FD II - Advanced Fighter Operations**
 
@@ -780,14 +778,12 @@ Elite pilot training programs, AI-assisted tactical coordination, and distribute
 Fighter Doctrine upgrades apply house-wide immediately upon research completion. All colonies recalculate their maximum fighter squadron capacity using the new multiplier:
 
 ```
-Max FS per Colony = max(1, floor(PU / 100)) × FD_MULTIPLIER
+Max FS per Colony = floor(IU / 100) × FD_MULTIPLIER
 ```
 
-Colonies must maintain the required Starbase infrastructure (1 operational Starbase per 5 FS) regardless of doctrine level. The Starbase requirement does not scale with FD tech.
+When FD tech increases capacity, existing fighter squadrons remain operational and colonies can immediately commission additional squadrons up to their new capacity limit (subject to available production points).
 
-When FD tech increases capacity, existing fighter squadrons remain operational and colonies can immediately commission additional squadrons up to their new capacity limit (subject to infrastructure requirements and available production points).
-
-If capacity increases would require additional Starbases, colonies have 2 turns to construct the required infrastructure before commissioning new squadrons. Existing squadrons are grandfathered and remain operational during the grace period.
+**Capacity Violations**: If a colony's IU drops (due to bombardment, blockade, etc.) causing it to exceed fighter capacity, the colony receives a 2-turn grace period before oldest squadrons auto-disband.
 
 For fighter squadron economics, see [Section 3.6](#36-fighter-squadron-economics). For combat mechanics, see [Section 2.4.1](assets.md#241-fighter-squadrons--carriers).
 
@@ -845,7 +841,7 @@ You accomplish construction and repair of House assets planet-side or in orbit, 
 
 ## 5.1 Ship Construction
 
-All ship construction completes instantly (1 turn) regardless of hull class or CST tech level. This reflects the game's time narrative where turns represent variable time periods (1-15 years depending on map size).
+All ship construction completes in one turn regardless of hull class or CST tech level. This reflects the game's time narrative where turns represent variable time periods (1-15 years depending on map size).
 
 **Payment Model:**
 
@@ -924,7 +920,9 @@ Example: You wish to repair a crippled WEP3 Light Cruiser. The cost is:
 
 **Starbase Repairs:**
 
-Starbase repairs also require shipyards and cost 25% of the starbase's construction PP. Repair time is 1 turn.
+Starbase repairs require **spaceports** (not shipyards) and cost 25% of the starbase's construction PP (75 PP). Repair time is 1 turn.
+
+**Important:** Starbase repairs do NOT consume dock capacity. Spaceports can simultaneously repair starbases while constructing ships, as facilities and ships use separate repair queues.
 
 **Colonies without shipyards cannot repair crippled ships.** Ships must either:
 

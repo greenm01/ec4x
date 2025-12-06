@@ -8,7 +8,13 @@
 type
   ShipClass* {.pure.} = enum
     ## All hardcoded ship classes in EC4X
-    ## 19 ship types total - no custom ships allowed
+    ## 18 ship types total - no custom ships allowed
+    ##
+    ## NOTE: Starbases are FACILITIES, not ships (completely removed from ShipClass)
+    ## - Built via Eparch as facility (Spaceport → Shipyard → Starbase)
+    ## - Stored in colony.starbases (not fleets/squadrons)
+    ## - Combat uses facility stats from facilities.toml, not ShipClass
+    ## - Special TargetBucket.Starbase enum value handles combat targeting
     Fighter
     Corvette
     Frigate
@@ -24,7 +30,6 @@ type
     SuperDreadnought
     Carrier
     SuperCarrier
-    Starbase
     ETAC
     TroopTransport
     PlanetBreaker
