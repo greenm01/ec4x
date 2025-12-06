@@ -323,6 +323,50 @@ proc mediateRequirements*(
       result.logotheteBudget += int(float(totalReduction) * techShare)
       result.eparchBudget += int(float(totalReduction) * economicShare)
 
+  # ACT-AWARE MINIMUM BUDGET FLOORS (Classic 4X budget allocation)
+  # Ensures baseline budget allocation regardless of personality weights
+  # Layer 3 of the three-layer budget allocation system
+  let (minConstructionPercent, minResearchPercent) = case currentAct
+    of ai_types.GameAct.Act1_LandGrab:
+      (0.45, 0.15)  # 45% construction, 15% research (expansion focus)
+    of ai_types.GameAct.Act2_RisingTensions:
+      (0.35, 0.20)  # 35% construction, 20% research (balanced growth)
+    of ai_types.GameAct.Act3_TotalWar:
+      (0.50, 0.15)  # 50% construction, 15% research (war economy)
+    of ai_types.GameAct.Act4_Endgame:
+      (0.60, 0.10)  # 60% construction, 10% research (total war)
+
+  # Enforce construction minimum (reallocate from Logothete, Eparch)
+  let minConstructionBudget = int(float(availableBudget) * minConstructionPercent)
+  if result.domestikosBudget < minConstructionBudget:
+    let deficit = minConstructionBudget - result.domestikosBudget
+    # Reallocate 60% from Logothete, 40% from Eparch
+    let fromLogothete = min(result.logotheteBudget, int(float(deficit) * 0.6))
+    let fromEparch = min(result.eparchBudget, deficit - fromLogothete)
+    let totalReallocated = fromLogothete + fromEparch
+
+    result.domestikosBudget += totalReallocated
+    result.logotheteBudget -= fromLogothete
+    result.eparchBudget -= fromEparch
+
+    logInfo(LogCategory.lcAI,
+            &"{houseId} Basileus: Act {currentAct} construction floor ({int(minConstructionPercent*100)}%) " &
+            &"enforced - reallocated {totalReallocated}PP to Domestikos (needed {deficit}PP)")
+
+  # Enforce research minimum (reallocate from Eparch)
+  let minResearchBudget = int(float(availableBudget) * minResearchPercent)
+  if result.logotheteBudget < minResearchBudget:
+    let deficit = minResearchBudget - result.logotheteBudget
+    let fromEparch = min(result.eparchBudget, deficit)
+
+    result.logotheteBudget += fromEparch
+    result.eparchBudget -= fromEparch
+
+    if fromEparch > 0:
+      logInfo(LogCategory.lcAI,
+              &"{houseId} Basileus: Act {currentAct} research floor ({int(minResearchPercent*100)}%) " &
+              &"enforced - reallocated {fromEparch}PP to Logothete (needed {deficit}PP)")
+
   # Summary logging
   logInfo(LogCategory.lcAI,
           &"{houseId} Basileus: Mediation complete - " &
