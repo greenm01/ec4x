@@ -34,9 +34,48 @@ type
     StrategicAsset, Infrastructure
 
   BuildRequirement* = object
+    ## AI build requirement for Domestikos advisor
+    ##
+    ## DESIGN: Two-type system matches engine BuildOrder architecture
+    ## ================================================================
+    ## The engine's BuildOrder uses BuildType enum: {Ship, Building, Infrastructure}
+    ## - Ship: All ship classes (use shipClass field)
+    ## - Building: Ground units + facilities (use itemId field)
+    ## - Infrastructure: IU investment (not used by AI requirements)
+    ##
+    ## Why NOT three types (Offensive/Defensive/Infrastructure)?
+    ## --------------------------------------------------------
+    ## 1. Offensive/Defensive/Infrastructure are CONCEPTUAL CATEGORIES, not build types
+    ## 2. Ships can be offensive (Destroyer) OR defensive (Starbase) - can't separate by type
+    ## 3. Ground units can be offensive (Marine) OR defensive (Army) - same issue
+    ## 4. This design mirrors engine's build system, not unit roles
+    ##
+    ## Unit Role Categories (for reference, NOT type fields):
+    ## ======================================================
+    ## OFFENSIVE (attack/invasion):
+    ##   - Ships: Destroyer, Cruiser, Battleship, Dreadnought, SuperDreadnought,
+    ##            Battlecruiser, Raider, Carrier, Fighter, PlanetBreaker
+    ##   - Ground: Marine (itemId="Marine")
+    ##   - Support: TroopTransport
+    ##
+    ## DEFENSIVE (colony protection):
+    ##   - Ships: Starbase (shipClass), Corvette/Frigate (patrol)
+    ##   - Ground: Army (itemId="Army"), GroundBattery (itemId="GroundBattery"),
+    ##            PlanetaryShield (itemId="PlanetaryShield")
+    ##
+    ## INFRASTRUCTURE (production capacity):
+    ##   - Facilities: Spaceport (itemId="Spaceport"), Shipyard (itemId="Shipyard")
+    ##   - Note: Typically handled by Eparch advisor, not Domestikos
+    ##
+    ## Field Usage:
+    ## ===========
+    ## - shipClass: Some(ShipClass.X) + itemId: none → Ship build order
+    ## - shipClass: none + itemId: Some("X") → Ground unit/facility build order
+    ## - shipClass: none + itemId: none → Invalid (should not occur)
     requirementType*: RequirementType
     priority*: RequirementPriority
-    shipClass*: Option[ShipClass]
+    shipClass*: Option[ShipClass]       # For ALL ships (offensive, defensive, support)
+    itemId*: Option[string]             # For non-ships: ground units ("Army", "Marine", "GroundBattery", "PlanetaryShield") and facilities ("Spaceport", "Shipyard")
     quantity*: int
     buildObjective*: BuildObjective  # From ai_common_types
     targetSystem*: Option[SystemId]

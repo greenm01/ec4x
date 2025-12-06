@@ -95,7 +95,7 @@ method move(self: var Fleet) =
 
 ```bash
 # 1. Build simulation (includes git hash)
-nimble buildSimulation
+nimble buildSimulation 2>&1 | tail -10
 
 # 2. Test single game with specific seed
 ./bin/run_simulation --seed 12345
@@ -103,10 +103,10 @@ nimble buildSimulation
 # Output: balance_results/diagnostics/game_12345.csv
 
 # 3. Test with custom parameters
-./bin/run_simulation -s 99999 --turns 50 --players 6 --map-rings 4
+./bin/run_simulation -s 12345 --fixed-turns --turns 35 --players 4
 
 # 3. Batch test (20 games, 7 turns, ~10 seconds)
-python3 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 7
+python3 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 35
 # Seeds are auto-generated based on game number
 
 # 4. Analyze with Python + polars

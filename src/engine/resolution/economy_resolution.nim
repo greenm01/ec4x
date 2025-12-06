@@ -52,7 +52,7 @@ import ../diplomacy/[types as dip_types, proposals as dip_proposals]
 import ../blockade/engine as blockade_engine
 import ../intelligence/[detection, types as intel_types, generator as intel_gen, starbase_surveillance, scout_intel]
 import ../population/[types as pop_types]
-import ../config/[espionage_config, population_config, ground_units_config, gameplay_config]
+import ../config/[espionage_config, population_config, ground_units_config, gameplay_config, construction_config]
 import ../colonization/engine as col_engine
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony
@@ -1358,24 +1358,36 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
         of econ_types.ConstructionType.Building:
           # Add building to colony
           if project.itemId == "Spaceport":
+            # Calculate CST-scaled dock capacity
+            let cstLevel = state.houses[colony.owner].techTree.levels.constructionTech
+            let baseDocks = globalConstructionConfig.construction.spaceport_docks
+            let cstMultiplier = 1.0 + float(cstLevel - 1) * globalConstructionConfig.modifiers.construction_capacity_increase_per_level
+            let scaledDocks = int(float(baseDocks) * cstMultiplier)
+
             let spaceportId = colony.owner & "_spaceport_" & $systemId & "_" & $state.turn
             let spaceport = Spaceport(
               id: spaceportId,
               commissionedTurn: state.turn,
-              docks: 5  # 5 construction docks per spaceport
+              docks: scaledDocks
             )
             colony.spaceports.add(spaceport)
-            logDebug(LogCategory.lcEconomy, &"Added Spaceport to system-{systemId}")
+            logDebug(LogCategory.lcEconomy, &"Added Spaceport to system-{systemId} ({scaledDocks} docks, CST {cstLevel})")
 
           elif project.itemId == "Shipyard":
+            # Calculate CST-scaled dock capacity
+            let cstLevel = state.houses[colony.owner].techTree.levels.constructionTech
+            let baseDocks = globalConstructionConfig.construction.shipyard_docks
+            let cstMultiplier = 1.0 + float(cstLevel - 1) * globalConstructionConfig.modifiers.construction_capacity_increase_per_level
+            let scaledDocks = int(float(baseDocks) * cstMultiplier)
+
             let shipyardId = colony.owner & "_shipyard_" & $systemId & "_" & $state.turn
             let shipyard = Shipyard(
               id: shipyardId,
               commissionedTurn: state.turn,
-              docks: 10  # 10 construction docks per shipyard
+              docks: scaledDocks
             )
             colony.shipyards.add(shipyard)
-            logDebug(LogCategory.lcEconomy, &"Added Shipyard to system-{systemId}")
+            logDebug(LogCategory.lcEconomy, &"Added Shipyard to system-{systemId} ({scaledDocks} docks, CST {cstLevel})")
 
           elif project.itemId == "GroundBattery":
             colony.groundBatteries += 1

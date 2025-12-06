@@ -1068,6 +1068,15 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
         continue
 
       # Try to allocate budget for this requirement
+      # Process requirements based on two-type system (matches engine BuildOrder)
+      # ==========================================================================
+      # SHIPS: req.shipClass.isSome → BuildOrder(buildType: Ship, shipClass: Some(X))
+      # NON-SHIPS: req.itemId.isSome → BuildOrder(buildType: Building, buildingType: Some("X"))
+      #   - Ground units: "Army", "Marine", "GroundBattery", "PlanetaryShield"
+      #   - Facilities: "Spaceport", "Shipyard"
+      #
+      # Unit roles (Offensive/Defensive/Infrastructure) are conceptual categories,
+      # not type distinctions - see controller_types.nim BuildRequirement docs
       let col = buildColony.get()
       if req.shipClass.isSome:
         let shipClass = req.shipClass.get()
@@ -1123,85 +1132,66 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
           logWarn(LogCategory.lcAI,
                   &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
                   &"{req.quantity}× {shipClass} (need {totalCost}PP, have {availableBudget}PP)")
-      else:
-        # Handle non-ship requirements (ground units, buildings, tech, espionage, etc.)
-        # Per user requirement: "the Treasurer should handle ALL game assets and services that cost PP"
+      elif req.itemId.isSome:
+        # Handle ground units, facilities, and other non-ship items
+        let itemId = req.itemId.get()
 
-        # Determine what type of non-ship asset this is based on the reason field
-        let reason = req.reason.toLowerAscii()
-        var buildingType: Option[string] = none(string)
-        var isGroundUnit = false
-        var unitType = ""  # "Army", "Marine", or ""
+        # Calculate cost based on item type
+        let unitCost = getBuildingCost(itemId)
+        let totalCost = unitCost * req.quantity
 
-        # Parse the requirement to determine what to build
-        if "ground batteries" in reason or "ground battery" in reason:
-          buildingType = some("GroundBattery")
-        elif "planetary shield" in reason:
-          buildingType = some("PlanetaryShield")
-        elif "ground armies" in reason or "army" in reason:
-          isGroundUnit = true
-          unitType = "Army"
-        elif "marines" in reason or "marine" in reason:
-          isGroundUnit = true
-          unitType = "Marine"
-        # TODO: Add handlers for tech research, espionage, and other PP expenditures
+        # PARTIAL FULFILLMENT: Build as many as budget allows
+        let availableBudget = tracker.getRemainingBudget(req.buildObjective)
+        let affordableQuantity = min(req.quantity, availableBudget div unitCost)
+
+        if affordableQuantity > 0:
+          # Build what we can afford (may be less than requested)
+          let actualCost = unitCost * affordableQuantity
+          result.add(BuildOrder(
+            colonySystem: col.systemId,
+            buildType: BuildType.Building,
+            quantity: affordableQuantity,
+            shipClass: none(ShipClass),
+            buildingType: some(itemId),  # Maps to BuildOrder.buildingType
+            industrialUnits: 0
+          ))
+          tracker.recordTransaction(req.buildObjective, actualCost)
+          treasurerFeedback.totalBudgetSpent += actualCost
+
+          if affordableQuantity == req.quantity:
+            # Full fulfillment
+            treasurerFeedback.fulfilledRequirements.add(req)
+            logInfo(LogCategory.lcAI,
+                    &"{controller.houseId} Fulfilled Domestikos requirement: " &
+                    &"{affordableQuantity}× {itemId} at {col.systemId} " &
+                    &"(priority={req.priority}, cost={actualCost}PP, reason={req.reason})")
+          else:
+            # Partial fulfillment
+            let unfulfilledQuantity = req.quantity - affordableQuantity
+            let unfulfilledCost = unitCost * unfulfilledQuantity
+
+            var partialReq = req
+            partialReq.quantity = unfulfilledQuantity
+            partialReq.estimatedCost = unfulfilledCost
+            treasurerFeedback.unfulfilledRequirements.add(partialReq)
+            treasurerFeedback.totalUnfulfilledCost += unfulfilledCost
+
+            logInfo(LogCategory.lcAI,
+                    &"{controller.houseId} PARTIAL fulfillment: {affordableQuantity}× {itemId} at {col.systemId} " &
+                    &"(requested {req.quantity}, cost={actualCost}PP, still need {unfulfilledQuantity}× = {unfulfilledCost}PP)")
         else:
-          # Unknown non-ship requirement - log and skip for now
-          logWarn(LogCategory.lcAI,
-                  &"{controller.houseId} Treasurer: Unknown non-ship requirement: {req.reason}")
-          treasurerFeedback.unfulfilledRequirements.add(req)
-          continue
-
-        # Calculate cost based on type
-        var totalCost = 0
-        if buildingType.isSome:
-          totalCost = getBuildingCost(buildingType.get()) * req.quantity
-        elif isGroundUnit:
-          if unitType == "Army":
-            totalCost = getArmyBuildCost() * req.quantity
-          elif unitType == "Marine":
-            totalCost = getMarineBuildCost() * req.quantity
-
-        if tracker.canAfford(req.buildObjective, totalCost):
-          # Budget available - create build order for non-ship asset
-          if buildingType.isSome:
-            # Building (ground battery, planetary shield, etc.)
-            result.add(BuildOrder(
-              colonySystem: col.systemId,
-              buildType: BuildType.Building,
-              quantity: req.quantity,
-              shipClass: none(ShipClass),
-              buildingType: buildingType,
-              industrialUnits: 0
-            ))
-          elif isGroundUnit:
-            # Ground units (armies, marines) - use Building type with special naming
-            result.add(BuildOrder(
-              colonySystem: col.systemId,
-              buildType: BuildType.Building,
-              quantity: req.quantity,
-              shipClass: none(ShipClass),
-              buildingType: some(unitType),  # "Army" or "Marine"
-              industrialUnits: 0
-            ))
-
-          tracker.recordTransaction(req.buildObjective, totalCost)
-          treasurerFeedback.fulfilledRequirements.add(req)
-          treasurerFeedback.totalBudgetSpent += totalCost
-
-          let assetName = if buildingType.isSome: buildingType.get() else: unitType
-          logInfo(LogCategory.lcAI,
-                  &"{controller.houseId} Fulfilled Domestikos requirement: " &
-                  &"{req.quantity}× {assetName} at {col.systemId} " &
-                  &"(priority={req.priority}, cost={totalCost}PP, reason={req.reason})")
-        else:
-          # Insufficient budget
+          # Cannot afford even 1 unit
           treasurerFeedback.unfulfilledRequirements.add(req)
           treasurerFeedback.totalUnfulfilledCost += totalCost
-          let assetName = if buildingType.isSome: buildingType.get() else: unitType
           logWarn(LogCategory.lcAI,
                   &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
-                  &"{req.quantity}× {assetName} (need {totalCost}PP)")
+                  &"{req.quantity}× {itemId} (need {totalCost}PP, have {availableBudget}PP)")
+      else:
+        # Invalid requirement - neither ship nor itemId specified
+        logWarn(LogCategory.lcAI,
+                &"{controller.houseId} Invalid BuildRequirement: no shipClass or itemId specified (reason: {req.reason})")
+        treasurerFeedback.unfulfilledRequirements.add(req)
+        continue
 
     # Requirements-driven path complete - skip legacy per-colony building
     # Store feedback and return
