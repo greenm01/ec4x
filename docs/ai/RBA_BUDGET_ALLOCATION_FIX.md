@@ -175,16 +175,29 @@ if domestikosBudget < minConstructionBudget:
 
 ### Test 2: Standard Game (35 turns, seed 239810)
 
-**Turn 36 Final Results:**
+**Turn 36 Results BEFORE Engine Bug Fixes:**
 
-| House | Personality | Ships | Build Rate | Status |
-|-------|------------|-------|-----------|---------|
-| house-atreides | Aggressive | 45 | 1.11 ships/turn | ✅ Good |
-| house-ordos | Balanced | 44 | 1.09 ships/turn | ✅ Good |
-| house-harkonnen | Economic | 36 | 0.86 ships/turn | ⚠️ OK |
-| house-corrino | Turtle | 7 | 0.03 ships/turn | ❌ Collapsed |
+| House | Personality | Ships | Treasury | Mothballed | Status |
+|-------|------------|-------|----------|------------|---------|
+| house-atreides | Aggressive | 45 | positive | 3 | ✅ Good |
+| house-ordos | Balanced | 44 | positive | 2 | ✅ Good |
+| house-harkonnen | Economic | 36 | positive | 25 | ⚠️ Weakened |
+| house-corrino | Turtle | 7 | **-219PP** | **61 (88%)** | ❌ Collapsed |
 
-**Note:** house-corrino collapse caused by **separate engine bugs** (aggressive mothballing + negative treasury allowed), NOT the budget allocation fix. The fix was working (55 ships by Turn 11) before the collapse.
+**Turn 36 Results AFTER Engine Bug Fixes (commits b7b7d1f, 5be7872):**
+
+| House | Personality | Ships | Treasury | Mothballed | Status |
+|-------|------------|-------|----------|------------|---------|
+| house-atreides | Aggressive | 53 | 1541PP | 0 | ✅ Excellent |
+| house-ordos | Balanced | 11 | 1562PP | 0 | ✅ Healthy |
+| house-harkonnen | Economic | 34 | 1046PP | 0 | ✅ Good |
+| house-corrino | Turtle | 13 | 559PP | 0 | ✅ **SURVIVED!** |
+
+**Bugs Fixed:**
+1. **Negative treasury** (b7b7d1f): Added treasury floor check in construction.nim:174
+2. **Catastrophic mothballing** (5be7872): Added 30% per-turn cap + 50% minimum retention in logistics.nim:689-793
+
+**Impact:** house-corrino survives with stable economy. No negative treasuries, no excessive mothballing.
 
 ### Performance Metrics
 
@@ -200,40 +213,55 @@ if domestikosBudget < minConstructionBudget:
 
 ---
 
-## Known Issues Discovered
+## Engine Bugs Fixed (2025-12-06)
 
-### 1. Aggressive Mothballing System ❌
+### 1. Catastrophic Fleet Mothballing ✅ FIXED (commit 5be7872)
 
 **Symptom:** Houses mothballing 25-61 ships (up to 88% of fleet)
-**Impact:** Destroys late-game fleet strength
-**Root Cause:** Config thresholds too aggressive
-```toml
-mothballing_treasury_threshold_pp = 900      # Too high?
-mothballing_maintenance_ratio_threshold = 0.10  # Too sensitive?
+**Impact:** Destroyed late-game fleet strength
+**Root Cause:** Financial stress path had no caps on mothballing
+
+**Original Bug (logistics.nim:772):**
+```nim
+if financialMothball and isSafeSystem:
+  # Mothballed ALL fleets in safe systems with no caps!
+  shouldMothball = true
 ```
 
-**Recommendation:** Tune or disable mothballing system
+**Fix Applied:**
+- Maximum 30% of active fleets can be mothballed per turn
+- Minimum 50% of total fleets must remain active
+- Added `hasRedundancy` requirement to financial path
+- Safety limits enforced before every mothball decision
 
-### 2. Negative Treasury Allowed ❌
+**Test Results:** All houses show 0 mothballed squadrons after fix
+
+### 2. Negative Treasury Allowed ✅ FIXED (commit b7b7d1f)
 
 **Symptom:** house-corrino reached -219PP treasury
-**Root Cause:** Missing treasury floor check in construction deduction
+**Root Cause:** Race condition - validation checked treasury before research/espionage spending
 **Location:** `src/engine/resolution/construction.nim` line 168
 
-**Current Code:**
+**Original Bug:**
 ```nim
 house.treasury -= project.costTotal  # NO CHECK!
 ```
 
-**Should Be:**
+**Fix Applied:**
 ```nim
 if house.treasury >= project.costTotal:
   house.treasury -= project.costTotal
+  state.houses[packet.houseId] = house
+  # ... success logic ...
 else:
-  logError(...)  # Cancel construction
+  # Cancel construction, log error, remove from queue
+  logError(...)
+  budgetContext.rejectedOrders += 1
 ```
 
-**Note:** These bugs were NOT triggered before because AI wasn't spending aggressively. The budget allocation fix exposed pre-existing engine bugs.
+**Test Results:** All houses maintain positive treasury (559-1562PP) after fix
+
+**Note:** These bugs were NOT triggered before because AI wasn't spending aggressively. The budget allocation fix exposed pre-existing engine bugs by enabling proper spending behavior.
 
 ---
 
