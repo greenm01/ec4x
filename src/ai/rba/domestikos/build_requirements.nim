@@ -1456,9 +1456,11 @@ proc generateBuildRequirements*(
   requirements.add(offensiveNeeds)
 
   # Sort by priority (Critical > High > Medium > Low)
+  # CRITICAL FIX: Enum ord values: Critical=0, High=1, Medium=2, Low=3, Deferred=4
+  # Lower ord() = higher priority, so sort ASCENDING by ord() to get descending priority
   requirements.sort(proc(a, b: BuildRequirement): int =
-    if a.priority < b.priority: 1  # Reverse: Higher priority first
-    elif a.priority > b.priority: -1
+    if a.priority > b.priority: 1  # Higher ord (Low=3) comes AFTER
+    elif a.priority < b.priority: -1  # Lower ord (Critical=0) comes FIRST
     else: 0
   )
 
@@ -1583,9 +1585,10 @@ proc reprioritizeRequirements*(
     reprioritized.add(adjustedReq)
 
   # Re-sort by new priorities
+  # CRITICAL FIX: Same logic as generateBuildRequirements - lower ord() = higher priority
   reprioritized.sort(proc(a, b: BuildRequirement): int =
-    if a.priority < b.priority: 1  # Reverse: Higher priority first
-    elif a.priority > b.priority: -1
+    if a.priority > b.priority: 1  # Higher ord (Low=3) comes AFTER
+    elif a.priority < b.priority: -1  # Lower ord (Critical=0) comes FIRST
     else: 0
   )
 
