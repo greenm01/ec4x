@@ -129,8 +129,8 @@ def print_ground_forces(final_data: Dict[str, Dict]):
 
     ground_types = [
         ('army_units', 'Armies'),
-        ('marine_units', 'Marines'),
-        ('ground_batteries', 'Ground Batteries')
+        ('marine_division_units', 'Marines'),
+        ('ground_battery_units', 'Ground Batteries')
     ]
 
     houses = sorted(final_data.keys())
@@ -160,14 +160,14 @@ def print_ground_forces(final_data: Dict[str, Dict]):
     print(f"{'TOTAL GROUND UNITS':<30}", end='')
     for house in houses:
         total = (int(final_data[house].get('army_units', 0)) +
-                 int(final_data[house].get('marine_units', 0)) +
-                 int(final_data[house].get('ground_batteries', 0)))
+                 int(final_data[house].get('marine_division_units', 0)) +
+                 int(final_data[house].get('ground_battery_units', 0)))
         print(f"{total:>12}", end='')
 
     grand_total = sum(
         int(final_data[house].get('army_units', 0)) +
-        int(final_data[house].get('marine_units', 0)) +
-        int(final_data[house].get('ground_batteries', 0))
+        int(final_data[house].get('marine_division_units', 0)) +
+        int(final_data[house].get('ground_battery_units', 0))
         for house in houses
     )
     print(f"{grand_total:>12}")
