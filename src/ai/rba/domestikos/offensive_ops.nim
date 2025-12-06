@@ -73,97 +73,127 @@ proc generateMergeOrders*(
 proc generateProbingOrders*(
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
-  controller: AIController
+  controller: AIController,
+  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
 ): seq[FleetOrder] =
   ## Generate intelligence gathering orders for scouts
-  ## Uses SpyPlanet/SpySystem/HackStarbase for proper intel missions
+  ## Uses reconnaissance recommendations from Drungarius intelligence
   result = @[]
 
-  # Find idle scouts
+  # Find idle fleets for reconnaissance missions
   var availableScouts: seq[FleetAnalysis] = @[]
-  for analysis in analyses:
-    if analysis.utilization == FleetUtilization.Idle and analysis.hasScouts:
-      availableScouts.add(analysis)
+  var availableAnyFleet: seq[FleetAnalysis] = @[]
 
-  if availableScouts.len == 0:
+  for analysis in analyses:
+    if analysis.utilization == FleetUtilization.Idle:
+      if analysis.hasScouts:
+        availableScouts.add(analysis)
+      else:
+        # Non-scout fleets can do ViewWorld missions
+        availableAnyFleet.add(analysis)
+
+  if availableScouts.len == 0 and availableAnyFleet.len == 0:
     return result
 
-  # Find intelligence targets (enemy colonies and starbases)
-  type IntelTarget = object
-    systemId: SystemId
-    orderType: FleetOrderType  # SpyPlanet, SpySystem, or HackStarbase
-    priority: int
-    description: string
+  # Priority 1: Use Drungarius reconnaissance recommendations
+  var intelTargets: seq[tuple[systemId: SystemId, orderType: FleetOrderType, priority: int, description: string]] = @[]
 
-  var intelTargets: seq[IntelTarget] = @[]
-  var targetedSystems = initHashSet[SystemId]()  # Track systems to avoid duplicates (O(1) lookup)
+  if intelSnapshot.isSome:
+    let snapshot = intelSnapshot.get()
+    for target in snapshot.espionage.highPriorityTargets:
+      if target.systemId.isNone:
+        continue
 
-  # Priority 1: Hack enemy starbases (high-value intelligence)
-  for visibleFleet in filtered.visibleFleets:
-    if visibleFleet.owner == controller.houseId:
-      continue  # Skip own fleets
+      # Convert EspionageTarget to internal format
+      let orderType = case target.targetType
+        of EspionageTargetType.ColonySpy: FleetOrderType.SpyPlanet
+        of EspionageTargetType.SystemSpy: FleetOrderType.SpySystem
+        of EspionageTargetType.StarbaseHack: FleetOrderType.HackStarbase
+        of EspionageTargetType.ScoutRecon: FleetOrderType.ViewWorld
 
-    # Check if fleet is a starbase (stationary defensive installation)
-    # TODO: Add proper starbase detection when fleet.isStarbase field available
-    # For now, check for stationary fleets at colony locations
-    var isStarbase = false
+      # Map priority to numeric value
+      let priorityValue = case target.priority
+        of RequirementPriority.Critical: 100
+        of RequirementPriority.High: 90
+        of RequirementPriority.Medium: 70
+        of RequirementPriority.Low: 50
+        of RequirementPriority.Deferred: 30
+
+      intelTargets.add((
+        systemId: target.systemId.get(),
+        orderType: orderType,
+        priority: priorityValue,
+        description: target.reason
+      ))
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Domestikos: Received {intelTargets.len} reconnaissance targets from Drungarius")
+
+  # Fallback: Find intelligence targets from visible enemies if Drungarius provided none
+  if intelTargets.len == 0:
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} Domestikos: No Drungarius recommendations, using visibility-based targeting")
+
+    var targetedSystems = initHashSet[SystemId]()
+
+    # Priority 1: Hack enemy starbases (high-value intelligence)
+    for visibleFleet in filtered.visibleFleets:
+      if visibleFleet.owner == controller.houseId:
+        continue  # Skip own fleets
+
+      # Check if fleet is a starbase (stationary defensive installation)
+      var isStarbase = false
+      for visibleColony in filtered.visibleColonies:
+        if visibleFleet.location == visibleColony.systemId and visibleColony.owner == visibleFleet.owner:
+          isStarbase = true
+          break
+
+      if isStarbase:
+        if visibleFleet.location in targetedSystems:
+          continue
+
+        intelTargets.add((
+          systemId: visibleFleet.location,
+          orderType: FleetOrderType.HackStarbase,
+          priority: 100,
+          description: "hack starbase"
+        ))
+        targetedSystems.incl(visibleFleet.location)
+
+    # Priority 2: Spy on enemy colonies (gather defense/production intel)
     for visibleColony in filtered.visibleColonies:
-      if visibleFleet.location == visibleColony.systemId and visibleColony.owner == visibleFleet.owner:
-        # Stationary fleet at enemy colony - likely a starbase
-        isStarbase = true
-        break
+      if visibleColony.owner == controller.houseId:
+        continue  # Skip own colonies
 
-    if isStarbase:
-      # Skip if already targeted
+      if visibleColony.systemId in targetedSystems:
+        continue
+
+      let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
+      let priority = if isEnemy: 90 else: 70
+
+      intelTargets.add((
+        systemId: visibleColony.systemId,
+        orderType: FleetOrderType.SpyPlanet,
+        priority: priority,
+        description: "spy planet"
+      ))
+      targetedSystems.incl(visibleColony.systemId)
+
+    # Priority 3: Reconnaissance of enemy systems (general intel)
+    for visibleFleet in filtered.visibleFleets:
+      if visibleFleet.owner == controller.houseId:
+        continue  # Skip own fleets
+
       if visibleFleet.location in targetedSystems:
         continue
 
-      intelTargets.add(IntelTarget(
+      intelTargets.add((
         systemId: visibleFleet.location,
-        orderType: FleetOrderType.HackStarbase,
-        priority: 100,  # Highest priority
-        description: "hack starbase"
+        orderType: FleetOrderType.SpySystem,
+        priority: 60,
+        description: "spy system"
       ))
       targetedSystems.incl(visibleFleet.location)
-
-  # Priority 2: Spy on enemy colonies (gather defense/production intel)
-  for visibleColony in filtered.visibleColonies:
-    if visibleColony.owner == controller.houseId:
-      continue  # Skip own colonies
-
-    # Skip if already targeted
-    if visibleColony.systemId in targetedSystems:
-      continue
-
-    # Check diplomatic stance - prioritize enemies
-    let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
-    let priority = if isEnemy: 90 else: 70
-
-    intelTargets.add(IntelTarget(
-      systemId: visibleColony.systemId,
-      orderType: FleetOrderType.SpyPlanet,
-      priority: priority,
-      description: "spy planet"
-    ))
-    targetedSystems.incl(visibleColony.systemId)
-
-  # Priority 3: Reconnaissance of enemy systems (general intel)
-  # Spy on systems with enemy fleets but no visible colony
-  for visibleFleet in filtered.visibleFleets:
-    if visibleFleet.owner == controller.houseId:
-      continue  # Skip own fleets
-
-    # Skip if already targeted (O(1) HashSet lookup)
-    if visibleFleet.location in targetedSystems:
-      continue
-
-    intelTargets.add(IntelTarget(
-      systemId: visibleFleet.location,
-      orderType: FleetOrderType.SpySystem,
-      priority: 60,
-      description: "spy system"
-    ))
-    targetedSystems.incl(visibleFleet.location)
 
   if intelTargets.len == 0:
     return result
@@ -182,39 +212,52 @@ proc generateProbingOrders*(
       if availableScouts[j].shipCount > availableScouts[i].shipCount:
         swap(availableScouts[i], availableScouts[j])
 
-  # Assign scouts to intel targets, prioritizing larger scout groups
-  # Prefer 3-6 scout groups for optimal mesh network bonus
+  # Assign fleets to intel targets based on mission requirements
   var scoutIndex = 0
-  var targetIndex = 0
+  var anyFleetIndex = 0
 
-  while scoutIndex < availableScouts.len and targetIndex < intelTargets.len:
-    let scout = availableScouts[scoutIndex]
-    let target = intelTargets[targetIndex]
+  for target in intelTargets:
+    # Scout-only missions: SpyPlanet, SpySystem, HackStarbase
+    let requiresScout = target.orderType in [FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase]
 
-    # Check if scout group size is reasonable for spy missions
-    # Ideal: 3-6 scouts (optimal mesh network)
-    # Acceptable: 1-2 scouts (suboptimal but usable)
-    # Too many: 7+ scouts (no additional benefit, wasteful)
-    if scout.shipCount > 6:
-      logDebug(LogCategory.lcAI,
-               &"{controller.houseId} Domestikos: Skipping oversized scout fleet {scout.fleetId} " &
-               &"({scout.shipCount} scouts, optimal is 3-6 for mesh network bonus)")
-      scoutIndex += 1
-      continue
+    var assignedFleet: Option[FleetAnalysis] = none(FleetAnalysis)
 
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Domestikos: Intelligence mission - fleet {scout.fleetId} " &
-            &"({scout.shipCount} scouts) → {target.description} at system {target.systemId}")
+    if requiresScout:
+      # Must use scouts for spy missions
+      if scoutIndex < availableScouts.len:
+        let scout = availableScouts[scoutIndex]
+        # Skip oversized scout fleets (optimal: 3-6 scouts for mesh network bonus)
+        if scout.shipCount <= 6:
+          assignedFleet = some(scout)
+          scoutIndex += 1
+        else:
+          logDebug(LogCategory.lcAI,
+                   &"{controller.houseId} Domestikos: Skipping oversized scout fleet {scout.fleetId} " &
+                   &"({scout.shipCount} scouts, optimal is 3-6)")
+          scoutIndex += 1
+          continue
+    else:
+      # ViewWorld: Any fleet can do this - prefer scouts, then any idle fleet
+      if scoutIndex < availableScouts.len:
+        assignedFleet = some(availableScouts[scoutIndex])
+        scoutIndex += 1
+      elif anyFleetIndex < availableAnyFleet.len:
+        assignedFleet = some(availableAnyFleet[anyFleetIndex])
+        anyFleetIndex += 1
 
-    result.add(FleetOrder(
-      fleetId: scout.fleetId,
-      orderType: target.orderType,
-      targetSystem: some(target.systemId),
-      priority: 85  # Higher than merge, lower than tactical
-    ))
+    # Create order if we found a suitable fleet
+    if assignedFleet.isSome:
+      let fleet = assignedFleet.get()
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Domestikos: Intelligence mission - fleet {fleet.fleetId} " &
+              &"→ {target.description} at system {target.systemId}")
 
-    scoutIndex += 1
-    targetIndex += 1
+      result.add(FleetOrder(
+        fleetId: fleet.fleetId,
+        orderType: target.orderType,
+        targetSystem: some(target.systemId),
+        priority: 85  # Higher than merge, lower than tactical
+      ))
 
   return result
 

@@ -183,7 +183,7 @@ proc generateDomestikosOrders*(
 
     # Probing attacks to gather intel on enemy defenses
     let probingOrders = generateProbingOrders(
-      filtered, analyses, controller
+      filtered, analyses, controller, intelSnapshot
     )
     offensiveFleetOrders.add(probingOrders)
 
@@ -205,7 +205,7 @@ proc generateDomestikosOrders*(
 
     # Probe enemy defenses with scouts
     let probingOrders = generateProbingOrders(
-      filtered, analyses, controller
+      filtered, analyses, controller, intelSnapshot
     )
     offensiveFleetOrders.add(probingOrders)
 
