@@ -711,8 +711,33 @@ proc assessStrategicAssets*(
       if currentAct >= GameAct.Act3_TotalWar:
         offensiveFighters += 4  # +4 fighters in Act 3 (8-12 total)
 
-    # Target fighters: Higher of defensive OR offensive needs (not additive, avoid double-request)
-    let targetFighters = min(20, max(defensiveFighters, offensiveFighters))
+    # CRITICAL FIX: Calculate carrier/starbase-based fighter needs
+    # Problem: Carriers/Starbases built with 0 fighters (can't operate empty!)
+    # Solution: Ensure existing carriers/starbases have fighters to load
+
+    # Count carriers and starbases to calculate capacity
+    var currentCarriers = 0
+    var currentSuperCarriers = 0
+    var currentStarbases = 0
+    for fleet in filtered.ownFleets:
+      for squadron in fleet.squadrons:
+        case squadron.flagship.shipClass
+        of ShipClass.Carrier: currentCarriers += 1
+        of ShipClass.SuperCarrier: currentSuperCarriers += 1
+        of ShipClass.Starbase: currentStarbases += 1
+        else: discard
+
+    let carrierCapacity = currentCarriers * 4 + currentSuperCarriers * 8  # 4 fighters per carrier, 8 per super
+    let starbaseCapacity = currentStarbases * 5  # 5 fighters per starbase
+    let totalCapacity = carrierCapacity + starbaseCapacity
+    let capacityFighters = if totalCapacity > 0:
+      min(20, totalCapacity)  # Build up to capacity (cap at 20 total)
+    else:
+      0
+
+    # Target fighters: MAXIMUM of defensive, offensive, OR capacity needs
+    # Must fill existing carriers/starbases even if no threats detected
+    let targetFighters = min(20, max(defensiveFighters, max(offensiveFighters, capacityFighters)))
 
     if fighterCount < targetFighters:
       let fighterCost = getShipConstructionCost(ShipClass.Fighter)
