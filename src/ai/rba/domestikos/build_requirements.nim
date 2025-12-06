@@ -24,6 +24,7 @@ import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../config
 import ./fleet_analysis
 import ./intelligence_ops  # Extracted: estimateLocalThreat
+import ./unit_priority  # Priority scoring for unit selection
 
 # ============================================================================
 # UNIVERSAL AFFORDABILITY HELPERS
@@ -743,17 +744,22 @@ proc assessStrategicAssets*(
     # Count carriers and starbases to calculate capacity
     var currentCarriers = 0
     var currentSuperCarriers = 0
-    var currentStarbases = 0
     for fleet in filtered.ownFleets:
       for squadron in fleet.squadrons:
         case squadron.flagship.shipClass
         of ShipClass.Carrier: currentCarriers += 1
         of ShipClass.SuperCarrier: currentSuperCarriers += 1
-        of ShipClass.Starbase: currentStarbases += 1
         else: discard
 
+    # Count operational starbases from colonies (now facilities, not ships)
+    var currentStarbases = 0
+    for colony in filtered.ownColonies:
+      for starbase in colony.starbases:
+        if not starbase.isCrippled:
+          currentStarbases += 1
+
     let carrierCapacity = currentCarriers * 4 + currentSuperCarriers * 8  # 4 fighters per carrier, 8 per super
-    let starbaseCapacity = currentStarbases * 5  # 5 fighters per starbase
+    let starbaseCapacity = currentStarbases * 5  # 5 fighters per starbase (colony-based facilities)
     let totalCapacity = carrierCapacity + starbaseCapacity
     let capacityFighters = if totalCapacity > 0:
       min(20, totalCapacity)  # Build up to capacity (cap at 20 total)
@@ -848,59 +854,11 @@ proc assessStrategicAssets*(
                 &"treasury={filtered.ownHouse.treasury}PP, have {fighterCount} fighters without carrier support)")
 
   # =============================================================================
-  # STARBASES (for fighter support & colony defense)
+  # STARBASES (Moved to Eparch - facilities, not ships)
   # =============================================================================
-  # Count existing starbases and fighter requirements
-  var totalStarbases = 0
-  var requiredStarbases = 0
-
-  for colony in filtered.ownColonies:
-    let operationalStarbases = colony.starbases.countIt(not it.isCrippled)
-    totalStarbases += operationalStarbases
-
-    let currentFighters = colony.fighterSquadrons.len
-    # Rule: 1 starbase per 5 fighters (ceil(FS / 5))
-    if currentFighters > 0:
-      requiredStarbases += (currentFighters + 4) div 5  # Ceiling division
-
-  if requiredStarbases > totalStarbases:
-    let starbaseCost = getShipConstructionCost(ShipClass.Starbase)
-
-    # BUDGET-AWARE: Scale quantity based on treasury affordability (starbases are VERY expensive)
-    let idealStarbases = requiredStarbases - totalStarbases
-    let starbaseAffordability = calculateAffordabilityFactor(
-      starbaseCost, idealStarbases, filtered.ownHouse.treasury, currentAct
-    )
-    let requestedStarbases = max(0, int(float(idealStarbases) * starbaseAffordability))
-
-    # Only request if we can afford at least one starbase
-    if requestedStarbases > 0:
-      # BUDGET-AWARE: Adjust priority downward if unaffordable
-      let starbasePriority = adjustPriorityForAffordability(
-        RequirementPriority.High,  # Base priority: Urgent - prevents fighter disbanding
-        starbaseCost, requestedStarbases,
-        filtered.ownHouse.treasury, currentAct,
-        &"{requestedStarbases}x Starbase"
-      )
-
-      let req = BuildRequirement(
-        requirementType: RequirementType.Infrastructure,
-        priority: starbasePriority,
-        shipClass: some(ShipClass.Starbase),
-        quantity: requestedStarbases,
-        buildObjective: BuildObjective.Defense,
-        targetSystem: none(SystemId),
-        estimatedCost: starbaseCost * requestedStarbases,
-        reason: &"Starbase infrastructure for fighters (have {totalStarbases}, need {requiredStarbases}, requesting {requestedStarbases}/{idealStarbases})"
-      )
-      logInfo(LogCategory.lcAI,
-              &"Domestikos requests: {req.quantity}x Starbase ({req.estimatedCost}PP, priority={starbasePriority}, " &
-              &"affordability={int(starbaseAffordability*100)}%, treasury={filtered.ownHouse.treasury}PP) - {req.reason}")
-      result.add(req)
-    else:
-      logInfo(LogCategory.lcAI,
-              &"Domestikos: {idealStarbases}x Starbase unaffordable (cost={starbaseCost * idealStarbases}PP, " &
-              &"treasury={filtered.ownHouse.treasury}PP, fighters may be disbanded without starbase support)")
+  # Starbases are now immobile facilities managed by Eparch (economic advisor)
+  # Eparch handles facility construction: Spaceport → Shipyard → Starbase
+  # Domestikos no longer builds Starbases (they're not ships anymore)
 
   # =============================================================================
   # TRANSPORTS (for invasion & logistics)
@@ -1551,14 +1509,24 @@ proc generateBuildRequirements*(
 
   # Calculate remaining resources for fillers
   let availableDocks = max(0, totalDocks - docksCommitted)
-  # Be aggressive with filler budget - trust feedback loop to prioritize
-  # High-priority competes with other advisors; fillers fill remaining capacity
-  # Use available docks as limiting factor, assume ~30PP per filler
-  let maxAffordableFillers = min(availableDocks, filtered.ownHouse.treasury div 40)
-  let fillerBudgetEstimate = maxAffordableFillers * 30  # Conservative filler cost estimate
+
+  # Act-aware average ship cost (matches actual unit costs per Act)
+  # Affects filler budget allocation to match ship progression
+  let avgFillerCost = case currentAct
+    of GameAct.Act1_LandGrab:
+      30  # ETACs (25), Destroyers (40), Frigates (30)
+    of GameAct.Act2_RisingTensions:
+      120  # Cruisers (120), Battlecruisers (180), Carriers (80), Destroyers (40)
+    of GameAct.Act3_TotalWar:
+      200  # Battleships (250), Dreadnoughts (400), SuperCarriers (200), Cruisers (120)
+    of GameAct.Act4_Endgame:
+      300  # SuperDreadnoughts (500), Dreadnoughts (400), Battleships (250)
+
+  # Calculate max affordable fillers using Act-aware cost
+  let maxAffordableFillers = min(availableDocks, filtered.ownHouse.treasury div avgFillerCost)
+  let fillerBudgetEstimate = maxAffordableFillers * avgFillerCost
 
   # Calculate affordable filler count (limited by budget OR docks, whichever is less)
-  let avgFillerCost = 30  # Weighted average: ETACs (25) + Destroyers (40) + Transports (30)
   let affordableBudgetWise = if fillerBudgetEstimate > 0: fillerBudgetEstimate div avgFillerCost else: 0
   let affordableFillerCount = min(affordableBudgetWise, availableDocks)
 
@@ -1577,14 +1545,27 @@ proc generateBuildRequirements*(
     if req.shipClass.isSome and req.shipClass.get() == ShipClass.ETAC:
       etacsGeneratedThisTurn += req.quantity
 
-  # Count existing Starbases to prevent spam (max 3 per colony)
-  var existingStarbases = 0
-  for fleet in filtered.ownFleets:
-    for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass == ShipClass.Starbase:
-        existingStarbases += 1  # Starbases are single-ship squadrons (flagship only)
-  let maxStarbases = filtered.ownColonies.len * 3
-  let starbaseSpaceAvailable = existingStarbases < maxStarbases
+  # Starbases moved to Eparch (facilities, not ships)
+  # No longer tracked in capacity filler - Eparch handles facility construction
+
+  # Calculate per-slot budget for unit selection (Act-aware, not just fair share)
+  # Acts 1-2 build light units (30-40PP), Acts 2-3 build capitals (120-180PP),
+  # Acts 3-4 build heavy capitals (200-400PP)
+  let basePerSlotBudget = case currentAct
+    of GameAct.Act1_LandGrab:
+      40  # ETAC (25PP), Destroyer (40PP), Frigate (30PP)
+    of GameAct.Act2_RisingTensions:
+      180  # Cruiser (120PP), Battlecruiser (180PP), Carrier (150PP)
+    of GameAct.Act3_TotalWar:
+      300  # Battleship (250PP), Dreadnought (400PP), SuperCarrier (200PP)
+    of GameAct.Act4_Endgame:
+      400  # SuperDreadnought (500PP), Dreadnought (400PP), PlanetBreaker (800PP)
+
+  let perSlotBudget = if affordableFillerCount > 0:
+                        # Use Act-aware budget OR fair share, whichever is higher
+                        max(basePerSlotBudget, fillerBudgetEstimate div affordableFillerCount)
+                      else:
+                        basePerSlotBudget
 
   for i in 0..<affordableFillerCount:
     var shipClass: Option[ShipClass] = none(ShipClass)
@@ -1652,13 +1633,13 @@ proc generateBuildRequirements*(
             @[ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship,
               ShipClass.SuperCarrier, ShipClass.Raider, ShipClass.Battlecruiser, ShipClass.Carrier]
 
-        # Select first ship we can build (CST requirement met)
-        var selectedClass = ShipClass.Corvette  # Cheapest fallback
-        for candidate in candidates:
-          if cstLevel >= getShipCSTRequirement(candidate):
-            selectedClass = candidate
-            break
-        shipClass = some(selectedClass)
+        # Select best ship using priority scoring (Act-aware, budget-aware)
+        let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+                                          perSlotBudget)
+        shipClass = if selectedUnit.isSome:
+                      selectedUnit
+                    else:
+                      some(ShipClass.Corvette)  # Fallback if no affordable option
         objective = BuildObjective.Military
         reason = &"Military (ETACs at cap {etacCap})"
         estimatedCost = getShipConstructionCost(shipClass.get())
@@ -1685,12 +1666,13 @@ proc generateBuildRequirements*(
           @[ShipClass.SuperDreadnought, ShipClass.Dreadnought, ShipClass.Battleship,
             ShipClass.Raider, ShipClass.Battlecruiser]
 
-      var selectedClass = ShipClass.Corvette  # Cheapest fallback
-      for candidate in candidates:
-        if cstLevel >= getShipCSTRequirement(candidate):
-          selectedClass = candidate
-          break
-      shipClass = some(selectedClass)
+      # Select best ship using priority scoring (Act-aware, budget-aware)
+      let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+                                        perSlotBudget)
+      shipClass = if selectedUnit.isSome:
+                    selectedUnit
+                  else:
+                    some(ShipClass.Corvette)  # Fallback if no affordable option
       objective = BuildObjective.Military
       reason = "Fleet capacity (filler)"
       estimatedCost = getShipConstructionCost(shipClass.get())
@@ -1700,7 +1682,7 @@ proc generateBuildRequirements*(
       shipClass = some(ShipClass.Scout)
       objective = BuildObjective.Reconnaissance
       reason = "Intel capacity (filler)"
-      estimatedCost = 15  # Reduced cost via config change (15PP)
+      estimatedCost = getShipConstructionCost(ShipClass.Scout)
       requirementType = RequirementType.ReconnaissanceGap
 
     of 13, 14:  # 10% SpecialUnits (2 slots) - ACT-AWARE: Fighters (all acts), Transports (Act 2+), PlanetBreakers (Act 4)
@@ -1710,17 +1692,17 @@ proc generateBuildRequirements*(
         # Act 1: Fighters for colony defense and space combat
         shipClass = some(ShipClass.Fighter)
         reason = "Fighter capacity (filler, colony defense)"
-        estimatedCost = 20
+        estimatedCost = getShipConstructionCost(ShipClass.Fighter)
       of GameAct.Act2_RisingTensions, GameAct.Act3_TotalWar:
         # Act 2-3: Mix of Fighters and TroopTransports (rotate by slot)
         if i mod 2 == 0:
           shipClass = some(ShipClass.Fighter)
           reason = "Fighter capacity (filler, space combat)"
-          estimatedCost = 20
+          estimatedCost = getShipConstructionCost(ShipClass.Fighter)
         else:
           shipClass = some(ShipClass.TroopTransport)
           reason = "Transport capacity (filler, invasion/blitz prep)"
-          estimatedCost = 30
+          estimatedCost = getShipConstructionCost(ShipClass.TroopTransport)
       of GameAct.Act4_Endgame:
         # Act 4: PlanetBreaker (CST 10) if available, else rotate Fighter/Transport
         if cstLevel >= getShipCSTRequirement(ShipClass.PlanetBreaker) and i mod 3 == 0:
@@ -1730,27 +1712,21 @@ proc generateBuildRequirements*(
         elif i mod 2 == 0:
           shipClass = some(ShipClass.Fighter)
           reason = "Fighter capacity (filler, space superiority)"
-          estimatedCost = 20
+          estimatedCost = getShipConstructionCost(ShipClass.Fighter)
         else:
           shipClass = some(ShipClass.TroopTransport)
           reason = "Transport capacity (filler, invasion prep)"
-          estimatedCost = 30
+          estimatedCost = getShipConstructionCost(ShipClass.TroopTransport)
       objective = BuildObjective.SpecialUnits
       requirementType = RequirementType.StrategicAsset
 
-    of 15:  # 5% Defense (1 slot) - Starbase (all acts, max 3/colony) or Ground Batteries
-      # Starbase available if: CST requirement met AND under strategic cap (3 per colony)
-      if cstLevel >= getShipCSTRequirement(ShipClass.Starbase) and starbaseSpaceAvailable:
-        shipClass = some(ShipClass.Starbase)
-        itemId = none(string)
-        reason = &"Orbital defense (filler, {existingStarbases}/{maxStarbases})"
-        estimatedCost = getShipConstructionCost(ShipClass.Starbase)
-      else:
-        # Fallback to ground batteries if CST too low or at Starbase cap
-        shipClass = none(ShipClass)
-        itemId = some("GroundBattery")
-        reason = "Colony defense battery (filler)"
-        estimatedCost = getBuildingCost("GroundBattery")
+    of 15:  # 5% Defense (1 slot) - Ground Batteries
+      # NOTE: Starbases moved to Eparch (facilities, not ships)
+      # This slot now only builds Ground Batteries for colony defense
+      shipClass = none(ShipClass)
+      itemId = some("GroundBattery")
+      reason = "Colony defense battery (filler)"
+      estimatedCost = getBuildingCost("GroundBattery")
       objective = BuildObjective.Defense
       requirementType = RequirementType.Infrastructure
 
@@ -1811,12 +1787,13 @@ proc generateBuildRequirements*(
         of GameAct.Act4_Endgame:
           @[ShipClass.Battleship, ShipClass.Battlecruiser, ShipClass.HeavyCruiser]
 
-      var selectedClass = ShipClass.Corvette  # Cheapest fallback
-      for candidate in candidates:
-        if cstLevel >= getShipCSTRequirement(candidate):
-          selectedClass = candidate
-          break
-      shipClass = some(selectedClass)
+      # Select best ship using priority scoring (Act-aware, budget-aware)
+      let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+                                        perSlotBudget)
+      shipClass = if selectedUnit.isSome:
+                    selectedUnit
+                  else:
+                    some(ShipClass.Corvette)  # Fallback if no affordable option
       objective = BuildObjective.Military
       reason = "Mid-tier capacity (filler)"
       estimatedCost = getShipConstructionCost(shipClass.get())
@@ -1833,12 +1810,13 @@ proc generateBuildRequirements*(
         of GameAct.Act4_Endgame:
           @[ShipClass.HeavyCruiser, ShipClass.Cruiser, ShipClass.LightCruiser]
 
-      var selectedClass = ShipClass.Corvette  # Cheapest fallback
-      for candidate in candidates:
-        if cstLevel >= getShipCSTRequirement(candidate):
-          selectedClass = candidate
-          break
-      shipClass = some(selectedClass)
+      # Select best ship using priority scoring (Act-aware, budget-aware)
+      let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+                                        perSlotBudget)
+      shipClass = if selectedUnit.isSome:
+                    selectedUnit
+                  else:
+                    some(ShipClass.Corvette)  # Fallback if no affordable option
       objective = BuildObjective.Military
       reason = "Combat capacity (filler)"
       estimatedCost = getShipConstructionCost(shipClass.get())
@@ -1852,22 +1830,43 @@ proc generateBuildRequirements*(
       estimatedCost = 40
       requirementType = RequirementType.OffensivePrep
 
-    # STEP 3: Affordability-based priority assignment
-    let priority =
-      if estimatedCost <= 25:
-        # Cheap units (ETAC, Fighter, Ground Battery, Army, Scout): Medium priority
-        # These MUST get built to ensure budget utilization
-        RequirementPriority.Medium
-      elif estimatedCost <= 40:
-        # Moderate units (Destroyer, Transport): Medium in Act 1, Low in Act 2+
-        if currentAct == GameAct.Act1_LandGrab:
-          RequirementPriority.Medium
+    # STEP 3: Act-aware priority assignment (not just cost-based)
+    # Capital ships should have higher priority in later Acts to match strategic value
+    # This ensures they win the weighted priority queue in Basileus mediation
+    let priority = case currentAct
+      of GameAct.Act1_LandGrab:
+        # Act 1: Expansion focus - cheap units get Medium priority
+        if estimatedCost <= 40:
+          RequirementPriority.Medium  # ETAC, Fighter, Scout, Destroyer
         else:
-          RequirementPriority.Low
-      else:
-        # Expensive units (Cruiser+): Always Low priority
-        # Strategic Triage allocates what it can afford
-        RequirementPriority.Low
+          RequirementPriority.Low  # Capitals not priority in Act 1
+
+      of GameAct.Act2_RisingTensions:
+        # Act 2: Medium capitals (Cruiser, Battlecruiser) get High priority
+        if estimatedCost <= 25:
+          RequirementPriority.Medium  # Cheap units still useful
+        elif estimatedCost <= 200:
+          RequirementPriority.High  # Cruiser=120, Battlecruiser=180
+        else:
+          RequirementPriority.Medium  # Heavy capitals deferred
+
+      of GameAct.Act3_TotalWar:
+        # Act 3: Heavy capitals (Battleship, Dreadnought) get High priority
+        if estimatedCost <= 25:
+          RequirementPriority.Low  # Cheap units less relevant
+        elif estimatedCost <= 400:
+          RequirementPriority.High  # Battleship=250, Dreadnought=350
+        else:
+          RequirementPriority.Medium  # SuperDreadnoughts
+
+      of GameAct.Act4_Endgame:
+        # Act 4: Ultimate capitals get Critical priority
+        if estimatedCost <= 40:
+          RequirementPriority.Low  # Light units irrelevant
+        elif estimatedCost >= 300:
+          RequirementPriority.Critical  # Dreadnought=350, SuperDreadnought=500+
+        else:
+          RequirementPriority.High  # Medium capitals still strong
 
     # Add capacity filler requirement (ships have shipClass, ground units/facilities have itemId)
     requirements.add(BuildRequirement(
