@@ -522,19 +522,22 @@ proc generateCounterAttackOrders*(
         hasDefenders = true
         break
 
-    # Only target undefended or lightly defended enemy colonies
-    if not hasDefenders:
-      # Undefended colony - high priority target
-      var priority = 100.0
-      if visibleColony.estimatedIndustry.isSome:
-        priority += visibleColony.estimatedIndustry.get().float * 2.0
+    # TARGET ALL ENEMY COLONIES (defended and undefended)
+    # AI will bombard defended colonies to soften defenses, then invade when weak
+    var priority = 100.0
+    if visibleColony.estimatedIndustry.isSome:
+      priority += visibleColony.estimatedIndustry.get().float * 2.0
 
-      vulnerableTargets.add(VulnerableTarget(
-        systemId: visibleColony.systemId,
-        enemyHouse: visibleColony.owner,
-        priority: priority,
-        colony: visibleColony  # Store for combat order selection
-      ))
+    # Prioritize undefended colonies (easier targets)
+    if not hasDefenders:
+      priority += 50.0  # +50 priority bonus for undefended colonies
+
+    vulnerableTargets.add(VulnerableTarget(
+      systemId: visibleColony.systemId,
+      enemyHouse: visibleColony.owner,
+      priority: priority,
+      colony: visibleColony  # Store for combat order selection
+    ))
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Invasion: Found {enemyColoniesFound} enemy colonies, " &
