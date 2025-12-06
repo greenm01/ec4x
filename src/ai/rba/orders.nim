@@ -142,42 +142,48 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
       else:
         militaryCount += 1
 
-  # Phase 3: Build orders now purely requirements-driven from Domestikos
-  # All ship building decisions come from intelligence-driven requirements
-  result.orderPacket.buildOrders = generateBuildOrdersWithBudget(
-    controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
-    allocation.budgets[AdvisorType.Domestikos],
-    controller.domestikosRequirements
-  )
-
   # ==========================================================================
-  # PHASE 4: MULTI-ADVISOR FEEDBACK LOOP
+  # PHASE 3/4: UNIFIED FEEDBACK LOOP
+  # ==========================================================================
+  # FIX: Requirements now processed once per iteration (not duplicated)
+  # Feedback loop always runs at least once to generate orders
+  # Subsequent iterations reprioritize and regenerate if needed
   # ==========================================================================
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId} === Phase 4: Multi-Advisor Feedback Loop ===")
+          &"{controller.houseId} === Phase 3/4: Feedback Loop (Unified) ===")
 
   const MAX_FEEDBACK_ITERATIONS = 3
   var feedbackIteration = 0
 
-  while hasUnfulfilledCriticalOrHigh(controller) and feedbackIteration < MAX_FEEDBACK_ITERATIONS:
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Feedback iteration {feedbackIteration + 1}/{MAX_FEEDBACK_ITERATIONS} - " &
-            &"unfulfilled: {getUnfulfilledSummary(controller)}")
+  # Loop condition: Always run once (feedbackIteration == 0), then continue if unfulfilled Critical/High
+  while feedbackIteration == 0 or
+        (hasUnfulfilledCriticalOrHigh(controller) and feedbackIteration < MAX_FEEDBACK_ITERATIONS):
 
-    # Reprioritize all advisors (budget-aware)
-    reprioritizeAllAdvisors(controller, filtered.ownHouse.treasury)
+    if feedbackIteration > 0:
+      # Iterations 2-3: Reprioritize and reallocate budget
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Feedback iteration {feedbackIteration + 1}/{MAX_FEEDBACK_ITERATIONS} - " &
+              &"unfulfilled: {getUnfulfilledSummary(controller)}")
 
-    # Re-run mediation with adjusted priorities
-    allocation = mediateAndAllocateBudget(controller, filtered, currentAct)
+      # Reprioritize all advisors (budget-aware)
+      reprioritizeAllAdvisors(controller, filtered.ownHouse.treasury)
 
-    # Re-execute requirements (via Basileus)
+      # Re-run mediation with adjusted priorities
+      allocation = mediateAndAllocateBudget(controller, filtered, currentAct)
+    else:
+      # First iteration: Use initial priorities and budget allocation
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Feedback iteration 1/{MAX_FEEDBACK_ITERATIONS} (initial pass)")
+
+    # Execute ALL advisor orders (research, espionage, terraform, diplomacy, build)
+    # Each iteration processes with current priorities and budget allocation
     let researchBudgetFeedback = allocation.budgets.getOrDefault(controller_types.AdvisorType.Logothete, 0)
     result.orderPacket.researchAllocation = execution.executeResearchAllocation(controller, filtered, researchBudgetFeedback)
     result.orderPacket.espionageAction = executeEspionageAction(controller, filtered, allocation, rng)
     result.orderPacket.terraformOrders = executeTerraformOrders(controller, filtered, allocation, rng)
     result.orderPacket.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
 
-    # Re-execute build orders with updated priorities
+    # Execute build orders (ships, buildings, ground units)
     result.orderPacket.buildOrders = generateBuildOrdersWithBudget(
       controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
       allocation.budgets[AdvisorType.Domestikos],
@@ -186,12 +192,12 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
     feedbackIteration += 1
 
-  if feedbackIteration > 0:
+  if feedbackIteration > 1:
     logInfo(LogCategory.lcAI,
             &"{controller.houseId} Feedback loop converged after {feedbackIteration} iterations")
   else:
     logInfo(LogCategory.lcAI,
-            &"{controller.houseId} No feedback loop needed (all Critical/High requirements fulfilled)")
+            &"{controller.houseId} Feedback loop complete (no reprioritization needed)")
 
   # ==========================================================================
   # PHASE 5: STRATEGIC OPERATIONS PLANNING

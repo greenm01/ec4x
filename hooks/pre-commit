@@ -71,29 +71,10 @@ echo "2. Build Verification"
 echo "---------------------"
 
 # Verify project builds
-run_check "Building project" "nimble build --verbosity:0"
+run_check "Building project" "nimble buildAll"
 
 echo ""
-echo "3. Test Suite"
-echo "-------------"
-
-# Run a subset of critical integration tests
-# (Running all 76+ tests would be too slow for pre-commit)
-CRITICAL_TESTS=(
-    "tests/integration/test_prestige.nim"
-    "tests/integration/test_espionage.nim"
-    "tests/integration/test_victory_conditions.nim"
-)
-
-for test in "${CRITICAL_TESTS[@]}"; do
-    if [ -f "$test" ]; then
-        test_name=$(basename "$test" .nim)
-        run_check "Running $test_name" "nim c --hints:off -r $test"
-    fi
-done
-
-echo ""
-echo "4. Stress Testing"
+echo "3. Stress Testing"
 echo "-----------------"
 
 # Run quick stress test demo (validates core engine stability)

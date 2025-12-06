@@ -35,9 +35,11 @@
 ### Organized Subdirectories
 - `/docs/architecture/` - System design, vision (**PRESERVE**)
 - `/docs/specs/` - Game rules (**PRESERVE**)
+- `/docs/ai/` - Game AI development and architecture
 - `/docs/guides/` - Implementation guides
 - `/docs/milestones/` - Historical milestones
 - `/docs/archive/` - Obsolete docs (organized by date)
+- 
 
 ### When Creating Documentation
 1. ✅ Can it go in TODO.md? → Add there
