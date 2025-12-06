@@ -269,8 +269,8 @@ defense_strength = 2
 command_cost = 1
 command_rating = 0  # Scouts have CR = NA in spec
 tech_level = 1
-build_cost = 50
-upkeep_cost = 1  # MC = 1% of 50 = 0.5 → round to 1
+build_cost = 15  # BUDGET: Reduced from 50→15 for Act 1 affordability (Recon budget ~26PP, allows 1-2 scouts)
+upkeep_cost = 1  # MC = 1% of 15 = 0.15 → round to 1
 special_capability = "ELI"
 
 [starbase]
