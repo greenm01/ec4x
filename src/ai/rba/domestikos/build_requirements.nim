@@ -546,7 +546,7 @@ proc assessOffensiveReadiness*(
   result = @[]
 
   let personality = controller.personality
-  let isAggressive = personality.aggression > 0.7
+  let isAggressive = personality.aggression > 0.2  # Lowered from 0.7 to enable more personalities (Aggressive, Balanced, Economic)
   let opportunities = intelSnapshot.military.vulnerableTargets
   let cstLevel = filtered.ownHouse.techTree.levels.constructionTech
 
