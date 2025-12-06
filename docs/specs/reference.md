@@ -28,7 +28,7 @@ Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/F
 | PB    | Planet-Breaker    | SpecialWeapon | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
 | CV    | Carrier           | Capital       | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
 | CX    | Super Carrier     | Capital       | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
-| FS    | Fighter Squadron  | Fighter       | 3   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
+| FS    | Fighter Squadron  | Fighter       | 1   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
 | RR    | Raider            | Capital       | 3   | 150 | 4%  | 12  | 10  | 2   | 8   | NA  |
 | SC    | Scout             | Escort        | 1   | 50  | 2%  | 1   | 2   | 1   | NA  | NA  |
 | SB    | Starbase          | SpecialWeapon | 3   | 300 | 5%  | 45  | 50  | NA  | NA  | NA  |
