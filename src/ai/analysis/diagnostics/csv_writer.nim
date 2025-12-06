@@ -68,7 +68,7 @@ const
                     "tax_penalty_active,avg_tax_6turn," &
                     "fighter_cap_max,fighter_cap_used,fighter_violation," &
                     "squadron_limit_max,squadron_limit_used,squadron_violation," &
-                    "starbases_required,starbases_actual," &
+                    "starbases_actual," &
                     "autopilot,defensive_collapse,turns_to_elimination,missed_orders," &
                     "space_wins,space_losses,space_total,orbital_failures,orbital_total," &
                     "raider_success,raider_attempts," &
@@ -76,7 +76,7 @@ const
                     "fighter_ships,corvette_ships,frigate_ships,scout_ships,raider_ships," &
                     "destroyer_ships,cruiser_ships,light_cruiser_ships,heavy_cruiser_ships," &
                     "battlecruiser_ships,battleship_ships,dreadnought_ships,super_dreadnought_ships," &
-                    "carrier_ships,super_carrier_ships,starbase_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
+                    "carrier_ships,super_carrier_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
                     "planetary_shield_units,ground_battery_units,army_units,marine_division_units," &
                     "total_spaceports,total_shipyards," &
                     "total_invasions,clk_no_raiders,scout_count," &
@@ -174,7 +174,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Squadron Capacity & Violations
                  &"{metrics.fighterCapacityMax},{metrics.fighterCapacityUsed},{boolToInt(metrics.fighterCapacityViolation)}," &
                  &"{metrics.squadronLimitMax},{metrics.squadronLimitUsed},{boolToInt(metrics.squadronLimitViolation)}," &
-                 &"{metrics.starbasesRequired},{metrics.starbasesActual}," &
+                 &"{metrics.starbasesActual}," &
                  # House Status
                  &"{boolToInt(metrics.autopilotActive)},{boolToInt(metrics.defensiveCollapseActive)},{metrics.turnsUntilElimination},{metrics.missedOrderTurns}," &
                  # Military
@@ -184,11 +184,11 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Logistics
                  &"{metrics.capacityViolationsActive},{metrics.fightersDisbanded}," &
                  &"{metrics.totalFighters},{metrics.idleCarriers},{metrics.totalCarriers},{metrics.totalTransports}," &
-                 # Ship Counts (19 ship classes + total)
+                 # Ship Counts (18 ship classes + total, starbases are facilities)
                  &"{metrics.fighterShips},{metrics.corvetteShips},{metrics.frigateShips},{metrics.scoutShips},{metrics.raiderShips}," &
                  &"{metrics.destroyerShips},{metrics.cruiserShips},{metrics.lightCruiserShips},{metrics.heavyCruiserShips}," &
                  &"{metrics.battlecruiserShips},{metrics.battleshipShips},{metrics.dreadnoughtShips},{metrics.superDreadnoughtShips}," &
-                 &"{metrics.carrierShips},{metrics.superCarrierShips},{metrics.starbaseShips},{metrics.etacShips},{metrics.troopTransportShips},{metrics.planetBreakerShips},{metrics.totalShips}," &
+                 &"{metrics.carrierShips},{metrics.superCarrierShips},{metrics.etacShips},{metrics.troopTransportShips},{metrics.planetBreakerShips},{metrics.totalShips}," &
                  # Ground Units (4 types)
                  &"{metrics.planetaryShieldUnits},{metrics.groundBatteryUnits},{metrics.armyUnits},{metrics.marineDivisionUnits}," &
                  # Facilities (NEW - Gap #10 fix)

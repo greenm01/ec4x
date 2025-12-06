@@ -95,13 +95,13 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   result.squadronLimitUsed = 0
   result.squadronLimitViolation = false
 
-  # Starbase requirements
-  result.starbasesRequired = (totalFighters + 4) div 5  # Ceiling division
+  # Starbase tracking (facilities, not ships)
   result.starbasesActual = totalStarbases
 
   # ================================================================
-  # MILITARY ASSETS - SHIPS (All 19 ship classes)
+  # MILITARY ASSETS - SHIPS (All 18 ship classes)
   # ================================================================
+  # NOTE: Starbases are facilities (not ships), tracked separately in starbasesActual
 
   var fighterShips = 0
   var corvetteShips = 0
@@ -118,16 +118,14 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   var superDreadnoughtShips = 0
   var carrierShips = 0
   var superCarrierShips = 0
-  var starbaseShips = 0
   var etacShips = 0
   var troopTransportShips = 0
   var planetBreakerShips = 0
 
-  # Count colony-based units (fighters, starbases)
+  # Count colony-based fighters
   for systemId, colony in state.colonies:
     if colony.owner == houseId:
       fighterShips += colony.fighterSquadrons.len
-      starbaseShips += colony.starbases.len
 
   # Planet-breakers tracked at house level
   planetBreakerShips = house.planetBreakerCount
@@ -164,7 +162,6 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
           totalCarrierCount += 1
           if squadron.embarkedFighters.len == 0:
             idleCarrierCount += 1
-        of ShipClass.Starbase: starbaseShips += 1
         of ShipClass.PlanetBreaker: planetBreakerShips += 1
         of ShipClass.ETAC: etacShips += 1  # Should not happen in squadrons
         of ShipClass.TroopTransport:
@@ -193,18 +190,17 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   result.superDreadnoughtShips = superDreadnoughtShips
   result.carrierShips = carrierShips
   result.superCarrierShips = superCarrierShips
-  result.starbaseShips = starbaseShips
   result.etacShips = etacShips
   result.troopTransportShips = troopTransportShips
   result.planetBreakerShips = planetBreakerShips
 
-  # Calculate total ships
+  # Calculate total ships (18 ship classes, starbases are facilities)
   result.totalShips = fighterShips + corvetteShips + frigateShips +
                       scoutShips + raiderShips + destroyerShips +
                       cruiserShips + lightCruiserShips + heavyCruiserShips +
                       battlecruiserShips + battleshipShips +
                       dreadnoughtShips + superDreadnoughtShips +
-                      carrierShips + superCarrierShips + starbaseShips +
+                      carrierShips + superCarrierShips +
                       etacShips + troopTransportShips + planetBreakerShips
 
   # Logistics

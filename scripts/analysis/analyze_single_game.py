@@ -90,8 +90,7 @@ def print_final_fleet_composition(final_data: Dict[str, Dict]):
         ('corvette_ships', 'Corvettes'),
         ('frigate_ships', 'Frigates'),
         ('raider_ships', 'Raiders'),
-        # Support Ships
-        ('starbase_ships', 'Starbases'),
+        # Special Weapons
         ('planet_breaker_ships', 'Planet Breakers'),
         # Total
         ('total_ships', 'TOTAL SHIPS')
@@ -181,6 +180,7 @@ def print_facilities_and_defenses(final_data: Dict[str, Dict]):
     facility_types = [
         ('total_shipyards', 'Shipyards'),
         ('total_spaceports', 'Spaceports'),
+        ('starbases_actual', 'Starbases'),
         ('planetary_shield_units', 'Planetary Shields')
     ]
 

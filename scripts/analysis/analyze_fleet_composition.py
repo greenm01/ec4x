@@ -200,7 +200,8 @@ def print_role_based_analysis(df: pl.DataFrame):
                    'super_carrier_ships', 'raider_ships']
     auxiliary_cols = ['etac_ships', 'troop_transport_ships']
     fighter_cols = ['fighter_ships']
-    # Special weapons (planet-breakers, starbases) not tracked in current diagnostics
+    # Special weapons (planet-breakers) tracked separately
+    # Starbases are facilities (not ships), tracked in facility metrics (starbases_actual)
 
     print(f"{'Strategy':<12} {'Escorts':>9} {'Capitals':>10} {'Aux':>6} {'Fighters':>9} {'Total':>7}")
     print('-' * 65)
@@ -224,7 +225,8 @@ def print_role_based_analysis(df: pl.DataFrame):
     print("  - Capital:       Flagship ships with CR >= 7 (Heavy Cruiser+, Carriers, Raiders)")
     print("  - Auxiliary:     Non-combat support (ETACs, Troop Transports)")
     print("  - Fighter:       Embarked strike craft (per-colony capacity)")
-    print("  - SpecialWeapon: Not tracked in diagnostics (Planet-Breakers, Starbases)")
+    print("  - SpecialWeapon: Planet-Breakers (strategic bombardment ships)")
+    print("\nNote: Starbases are facilities (not ships), tracked in facility metrics")
 
 
 def print_capacity_analysis(df: pl.DataFrame):

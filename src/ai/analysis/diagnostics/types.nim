@@ -27,7 +27,7 @@ type
     puGrowth*: int              # Change in PU from last turn
     zeroSpendTurns*: int        # Cumulative turns with 0 treasury spending
     grossColonyOutput*: int     # GCO = sum of all colony production (before tax)
-    netHouseValue*: int         # NHV = GCO × tax rate
+    netHouseValue*: int         # NHV = GCO ï¿½ tax rate
     taxRate*: int               # Current tax rate (0-100%)
     totalIndustrialUnits*: int  # Total IU across all colonies
     totalPopulationUnits*: int  # Total PU across all colonies (economic measure)
@@ -67,7 +67,7 @@ type
     prestigeVictoryProgress*: int  # Turns at prestige >= 1500 (victory at 3 turns)
 
     # Combat Performance (from combat.toml)
-    combatCERAverage*: int           # Average CER in space combat (×100 for precision)
+    combatCERAverage*: int           # Average CER in space combat (ï¿½100 for precision)
     bombardmentRoundsTotal*: int     # Total bombardment rounds executed
     groundCombatVictories*: int      # Successful invasions/blitz
     retreatsExecuted*: int           # Times fleets retreated from combat
@@ -120,14 +120,13 @@ type
     avgTaxRate6Turn*: int            # Rolling 6-turn average tax rate
 
     # Squadron Capacity & Violations (from military.toml)
-    fighterCapacityMax*: int         # Max FS allowed (sum per colony: floor(Colony_IU/fighter_capacity_iu_divisor) × FD multiplier)
+    fighterCapacityMax*: int         # Max FS allowed (sum per colony: floor(Colony_IU/fighter_capacity_iu_divisor) ï¿½ FD multiplier)
     fighterCapacityUsed*: int        # Actual FS count (current)
     fighterCapacityViolation*: bool  # Over capacity?
-    squadronLimitMax*: int           # Max capital squadrons allowed (floor(Total_IU/squadron_limit_iu_divisor) × 2)
+    squadronLimitMax*: int           # Max capital squadrons allowed (floor(Total_IU/squadron_limit_iu_divisor) ï¿½ 2)
     squadronLimitUsed*: int          # Actual capital squadron count
     squadronLimitViolation*: bool    # Over squadron limit?
-    starbasesRequired*: int          # Starbases needed for current FS count (ceil(FS/5))
-    starbasesActual*: int            # Actual starbase count
+    starbasesActual*: int            # Actual starbase facility count
 
     # House Status (from gameplay.toml)
     autopilotActive*: bool           # Currently in MIA Autopilot mode
@@ -168,11 +167,10 @@ type
     superDreadnoughtShips*: int       # SD Super Dreadnought
     carrierShips*: int                # CV Carrier
     superCarrierShips*: int           # CX Super Carrier
-    starbaseShips*: int               # SB Starbase
     etacShips*: int                   # ETAC-class ships
     troopTransportShips*: int         # Troop Transport
     planetBreakerShips*: int          # PB Planet-Breaker (CST 10)
-    totalShips*: int                  # Sum of all ship types (for analyzer)
+    totalShips*: int                  # Sum of all 18 ship types (starbases are facilities)
 
     # Ground Unit Counts (all 4 ground unit types)
     planetaryShieldUnits*: int        # PS Planetary Shield (CST 5)
@@ -326,7 +324,7 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     # Squadron Capacity & Violations
     fighterCapacityMax: 0, fighterCapacityUsed: 0, fighterCapacityViolation: false,
     squadronLimitMax: 0, squadronLimitUsed: 0, squadronLimitViolation: false,
-    starbasesRequired: 0, starbasesActual: 0,
+    starbasesActual: 0,
 
     # House Status
     autopilotActive: false, defensiveCollapseActive: false,
@@ -365,7 +363,6 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     superDreadnoughtShips: 0,
     carrierShips: 0,
     superCarrierShips: 0,
-    starbaseShips: 0,
     etacShips: 0,
     troopTransportShips: 0,
     planetBreakerShips: 0,

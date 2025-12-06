@@ -139,7 +139,6 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.squadronLimitMax = domestikos.squadronLimitMax
   result.squadronLimitUsed = domestikos.squadronLimitUsed
   result.squadronLimitViolation = domestikos.squadronLimitViolation
-  result.starbasesRequired = domestikos.starbasesRequired
   result.starbasesActual = domestikos.starbasesActual
   result.fightersDisbanded = domestikos.fightersDisbanded
   result.totalFighters = domestikos.totalFighters
@@ -163,7 +162,6 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.superDreadnoughtShips = domestikos.superDreadnoughtShips
   result.carrierShips = domestikos.carrierShips
   result.superCarrierShips = domestikos.superCarrierShips
-  result.starbaseShips = domestikos.starbaseShips
   result.etacShips = domestikos.etacShips
   result.troopTransportShips = domestikos.troopTransportShips
   result.planetBreakerShips = domestikos.planetBreakerShips
