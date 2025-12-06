@@ -1,0 +1,92 @@
+## Protostrator Collector - Diplomacy & Foreign Affairs Domain
+##
+## Tracks diplomatic relationships (4-level system: Neutral, Ally, Hostile, Enemy),
+## pact violations, dishonored status, diplomatic isolation, and bilateral relations.
+##
+## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 552-612)
+
+import std/[strformat, tables, strutils]
+import ./types
+import ../../../engine/gamestate
+import ../../../engine/diplomacy/types as dip_types
+import ../../../common/types/diplomacy
+
+proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): DiagnosticMetrics =
+  ## Collect diplomacy & foreign affairs metrics
+  result = initDiagnosticMetrics(state.turn, houseId)
+
+  let house = state.houses.getOrDefault(houseId)
+
+  # ================================================================
+  # DIPLOMATIC STATUS (4-level system)
+  # ================================================================
+
+  # Count diplomatic relationships
+  var allyCount = 0
+  var hostileCount = 0
+  var enemyCount = 0
+  var neutralCount = 0
+
+  for otherHouseId, otherHouse in state.houses:
+    if otherHouseId == houseId or otherHouse.eliminated:
+      continue
+
+    # Check diplomatic state from house's diplomaticRelations
+    # This is the authoritative source used by combat and fleet orders
+    let dipState = house.diplomaticRelations.getDiplomaticState(otherHouseId)
+    case dipState
+    of DiplomaticState.Neutral:
+      neutralCount += 1
+    of DiplomaticState.Ally:
+      allyCount += 1
+    of DiplomaticState.Hostile:
+      hostileCount += 1
+    of DiplomaticState.Enemy:
+      enemyCount += 1
+
+  result.allyStatusCount = allyCount
+  result.hostileStatusCount = hostileCount
+  result.enemyStatusCount = enemyCount
+  result.neutralStatusCount = neutralCount
+
+  # ================================================================
+  # DIPLOMATIC PENALTIES & STATUS
+  # ================================================================
+
+  # Violation tracking
+  result.pactViolationsTotal = house.violationHistory.violations.len
+  result.dishonoredStatusActive = house.dishonoredStatus.active
+  result.diplomaticIsolationTurns = house.diplomaticIsolation.turnsRemaining
+
+  # ================================================================
+  # TREATY ACTIVITY METRICS (cumulative counts)
+  # ================================================================
+
+  # TODO: Implement historical tracking of diplomatic events
+  # For now, these remain at 0 as we don't track historical formations/breaks
+  result.pactFormationsTotal = 0
+  result.pactBreaksTotal = 0
+  result.hostilityDeclarationsTotal = 0
+  result.warDeclarationsTotal = 0
+
+  # ================================================================
+  # BILATERAL RELATIONS (dynamic for any number of houses)
+  # ================================================================
+
+  # Format: "houseId:state;houseId:state;..." (up to 12 houses)
+  # State codes: N=Neutral, A=Ally, H=Hostile, E=Enemy
+  var relations: seq[string] = @[]
+  for otherHouseId, otherHouse in state.houses:
+    if otherHouseId == houseId or otherHouse.eliminated:
+      continue
+
+    let dipState = house.diplomaticRelations.getDiplomaticState(otherHouseId)
+    let stateStr = case dipState
+      of DiplomaticState.Neutral: "N"
+      of DiplomaticState.Ally: "A"
+      of DiplomaticState.Hostile: "H"
+      of DiplomaticState.Enemy: "E"
+
+    relations.add(&"{otherHouseId}:{stateStr}")
+
+  result.bilateralRelations = relations.join(";")

@@ -179,9 +179,9 @@ def print_facilities_and_defenses(final_data: Dict[str, Dict]):
     print("="*100)
 
     facility_types = [
-        ('shipyard_count', 'Shipyards'),
-        ('spaceport_count', 'Spaceports'),
-        ('planetary_shield_count', 'Planetary Shields')
+        ('total_shipyards', 'Shipyards'),
+        ('total_spaceports', 'Spaceports'),
+        ('planetary_shield_units', 'Planetary Shields')
     ]
 
     houses = sorted(final_data.keys())
