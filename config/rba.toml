@@ -135,28 +135,28 @@ special_units = 0.10   # Increased from 0.05 - more ETACs for expansion
 technology = 0.05      # Add minimal tech investment
 
 [budget_act2_rising_tensions]
-expansion = 0.10       # Reduced from 0.15 - most colonies claimed in Act 1
+expansion = 0.20       # INCREASED from 0.10 - need facilities at new colonies (spaceports/shipyards)
 defense = 0.15         # Unchanged - maintain colony defense
-military = 0.25        # Reduced from 0.30 - shift budget to special units
-reconnaissance = 0.15  # Reduced from 0.20 - scouts already built
-special_units = 0.30   # CRITICAL FIX: Need 180PP for carrier+fighters (was 0.15)
+military = 0.15        # REDUCED from 0.25 - shift budget to expansion infrastructure
+reconnaissance = 0.15  # Unchanged - scouts for espionage
+special_units = 0.30   # Unchanged - carriers+fighters critical
 technology = 0.05      # Unchanged - minimal investment
 
 [budget_act3_total_war]
-expansion = 0.10
-defense = 0.15
-military = 0.45
-reconnaissance = 0.05
-special_units = 0.15
-technology = 0.10
+expansion = 0.15       # INCREASED from 0.10 - continue facility scaling at mid-game colonies
+defense = 0.10         # REDUCED from 0.15 - shift to expansion
+military = 0.45        # Unchanged - war economy
+reconnaissance = 0.05  # Unchanged - scouts already deployed
+special_units = 0.15   # Unchanged - maintain carriers/fighters
+technology = 0.10      # Unchanged - tech investment
 
 [budget_act4_endgame]
-expansion = 0.05
-defense = 0.10
-military = 0.55
-reconnaissance = 0.05
-special_units = 0.15
-technology = 0.10
+expansion = 0.10       # INCREASED from 0.05 - finish facility scaling at late colonies
+defense = 0.05         # REDUCED from 0.10 - shift to expansion
+military = 0.55        # Unchanged - all-in on military
+reconnaissance = 0.05  # Unchanged - recon complete
+special_units = 0.15   # Unchanged - maintain specialized assets
+technology = 0.10      # Unchanged - tech investment
 
 # ==============================================================================
 # TACTICAL PARAMETERS
