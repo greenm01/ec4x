@@ -973,26 +973,12 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                                    myColonies: seq[Colony],
                                    act: GameAct,
                                    personality: AIPersonality,
-                                   # Context flags
-                                   isUnderThreat: bool,
-                                   needETACs: bool,
-                                   needDefenses: bool,
-                                   needScouts: bool,
-                                   needFighters: bool,
-                                   needCarriers: bool,
-                                   needTransports: bool,
-                                   needRaiders: bool,
-                                   canAffordMoreShips: bool,
-                                   atSquadronLimit: bool,
-                                   militaryCount: int,
-                                   scoutCount: int,
-                                   planetBreakerCount: int,
                                    availableBudget: int,
-                                   # Phase 3: Domestikos requirements (optional)
-                                   domestikosRequirements: Option[BuildRequirements] = none(BuildRequirements)): seq[BuildOrder] =
+                                   domestikosRequirements: Option[BuildRequirements]): seq[BuildOrder] =
   ## Generate build orders using budget allocation system
   ##
-  ## This replaces the sequential priority system with multi-objective allocation
+  ## Intelligence-driven ship building: All decisions come from Domestikos requirements
+  ## This replaces hardcoded Act-based flags with adaptive, intelligence-informed decisions
   ##
   ## IMPORTANT: availableBudget should be treasury AFTER maintenance costs
   ## Otherwise AI will overspend and enter maintenance death spiral
@@ -1198,6 +1184,28 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                   &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
                   &"{req.quantity}× {assetName} (need {totalCost}PP)")
 
+    # Requirements-driven path complete - skip legacy per-colony building
+    # Store feedback and return
+    controller.treasurerFeedback = some(treasurerFeedback)
+    if treasurerFeedback.unfulfilledRequirements.len > 0:
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Treasurer Feedback: {treasurerFeedback.fulfilledRequirements.len} fulfilled, " &
+              &"{treasurerFeedback.unfulfilledRequirements.len} unfulfilled (shortfall: {treasurerFeedback.totalUnfulfilledCost}PP)")
+
+    # Generate and log budget report
+    let report = generateBudgetReport(tracker, filtered.turn)
+    logBudgetReport(report)
+
+    return result
+
+  # ============================================================================
+  # LEGACY PER-COLONY BUILDING (FALLBACK - DEPRECATED)
+  # ============================================================================
+  # This code path is only used when domestikosRequirements is none()
+  # With intelligence-driven building, this should never execute
+  logWarn(LogCategory.lcAI,
+          &"{controller.houseId} Using legacy per-colony building (domestikosRequirements is none)")
+
   # Sort colonies prioritizing shipyards over spaceports (economy.md:5.1, 5.3)
   # Shipyard construction has no penalty, spaceport construction has 100% PC increase
   # Even though penalty isn't implemented in engine yet, prefer shipyards as best practice
@@ -1221,16 +1229,29 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
   let fdLevel = house.techTree.levels.fighterDoctrine
   let colonyCount = myColonies.len
 
-  # PROJECTED STATE TRACKING
-  # Track units built THIS TURN to avoid double-counting
-  # Example: Colony A builds 2 scouts, Colony B sees projected count = 2 (not 0!)
-  var projectedScoutCount = scoutCount
-  var projectedMilitaryCount = militaryCount
-  var projectedPlanetBreakerCount = planetBreakerCount
+  # LEGACY CODE PATH STUBS
+  # Note: These are placeholders for legacy per-colony building compatibility
+  # With intelligence-driven building (domestikosRequirements always provided),
+  # this code path should never execute
+  var scoutCount = 0
+  var militaryCount = 0
+  var planetBreakerCount = 0
+  var projectedScoutCount = 0
+  var projectedMilitaryCount = 0
+  var projectedPlanetBreakerCount = 0
+  let needETACs = false
+  let needDefenses = false
+  let needScouts = false
+  let needFighters = false
+  let needCarriers = false
+  let needTransports = false
+  let needRaiders = false
+  let canAffordMoreShips = false
+  let atSquadronLimit = true
 
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Starting build generation: " &
-          &"scouts={scoutCount}, military={militaryCount}, PBs={planetBreakerCount}")
+  logWarn(LogCategory.lcAI,
+          &"{controller.houseId} LEGACY FALLBACK BUILDING ACTIVATED - " &
+          &"Intelligence-driven system should prevent this!")
 
   # Determine if we need siege capability (Planet-Breakers)
   # Build PBs when: CST 10 unlocked, fighting heavily fortified enemies, Act 3+
@@ -1337,14 +1358,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
       logDebug(LogCategory.lcAI,
         &"AI {controller.houseId}: Unspent budget: {objective}={remaining}PP (check build opportunities)")
 
-  # Generate and log budget report for transparency
+  # Legacy fallback path - store feedback and log budget report
+  controller.treasurerFeedback = some(treasurerFeedback)
   let report = generateBudgetReport(tracker, filtered.turn)
   logBudgetReport(report)
-
-  # Store Treasurer feedback for Domestikos-Treasurer feedback loop
-  if domestikosRequirements.isSome:
-    controller.treasurerFeedback = some(treasurerFeedback)
-    if treasurerFeedback.unfulfilledRequirements.len > 0:
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Treasurer Feedback: {treasurerFeedback.fulfilledRequirements.len} fulfilled, " &
-              &"{treasurerFeedback.unfulfilledRequirements.len} unfulfilled (shortfall: {treasurerFeedback.totalUnfulfilledCost}PP)")

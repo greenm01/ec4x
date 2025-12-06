@@ -51,13 +51,17 @@ proc generateAllAdvisorRequirements*(
   let emptyAnalyses: seq[fleet_analysis.FleetAnalysis] = @[]
   let emptyDefensiveAssignments = initTable[FleetId, StandingOrder]()
 
+  # Extract squadron capacity from intelligence snapshot
+  let capacityInfo = intelSnapshot.military.squadronCapacity
+
   controller.domestikosRequirements = some(generateBuildRequirements(
     filtered,
     emptyAnalyses,  # TODO: Extract from generateDomestikosOrders
     emptyDefensiveAssignments,  # TODO: Extract from generateDomestikosOrders
     controller,
     currentAct,
-    intelSnapshot
+    intelSnapshot,
+    capacityInfo  # NEW: Squadron capacity awareness
   ))
 
   logInfo(LogCategory.lcAI,

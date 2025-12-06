@@ -108,6 +108,19 @@ type
     ourLosses*: int
     enemyLosses*: int
 
+  SquadronCapacityInfo* = object
+    ## Squadron capacity limits and current utilization
+    totalSquadrons*: int              # Current military squadron count
+    maxTotalSquadrons*: int           # floor(IU ÷ 50) × mapMultiplier (min 20)
+    capitalSquadrons*: int            # Current capital squadron count
+    maxCapitalSquadrons*: int         # max(8, floor(IU ÷ 100) × 2 × mapMultiplier)
+    fightersPerColony*: Table[SystemId, tuple[current: int, maximum: int]]
+    planetBreakers*: int              # Current PB count
+    maxPlanetBreakers*: int           # 1 per owned colony
+    utilizationPercent*: float        # totalSquadrons / maxTotalSquadrons
+    atCapitalLimit*: bool             # Cannot build more capitals
+    atTotalLimit*: bool               # Cannot build more squadrons
+
   MilitaryIntelligence* = object
     ## Military domain intelligence summary for Domestikos
     knownEnemyFleets*: seq[EnemyFleetSummary]
@@ -118,6 +131,9 @@ type
 
     # Phase E patrol pattern detection
     detectedPatrolRoutes*: seq[PatrolRoute]  # Detected enemy patrol patterns
+
+    # Squadron capacity awareness for Domestikos
+    squadronCapacity*: SquadronCapacityInfo
 
     lastUpdated*: int
 

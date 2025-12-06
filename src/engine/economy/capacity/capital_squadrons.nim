@@ -45,9 +45,10 @@ proc getSystemsForRings(mapRings: int): int =
   ## Ring 5: +30 systems = 91 total
   return 1 + (3 * mapRings * (mapRings + 1))
 
-proc getMapSizeMultiplier(mapRings: int, numPlayers: int): float =
+proc getMapSizeMultiplier*(mapRings: int, numPlayers: int): float =
   ## Calculate capacity multiplier based on map size
   ## Larger maps need larger fleets to control more territory
+  ## Exported for use by total_squadrons module
   let totalSystems = getSystemsForRings(mapRings)
   let systemsPerPlayer = totalSystems div max(1, numPlayers)
 
@@ -71,19 +72,15 @@ proc calculateMaxCapitalSquadrons*(industrialUnits: int, mapRings: int = 3, numP
   return max(8, scaledLimit)
 
 proc isCapitalShip*(shipClass: ShipClass): bool =
-  ## Check if a ship class is a capital ship (CR >= threshold)
+  ## Check if a ship class is a capital ship (role-based)
   ## Capital ships include: Heavy Cruiser, Battle Cruiser, Battleship,
   ## Dreadnought, Super Dreadnought, Carrier, Super Carrier, Raider
-  ## Fighters and Scouts are explicitly exempt
-
-  if shipClass == ShipClass.Fighter or shipClass == ShipClass.Scout:
-    return false
+  ## Determined by ship_role field in config/ships.toml
 
   # Get ship stats from global ship data
   let ship = squadron.newEnhancedShip(shipClass, techLevel = 1)
-  let threshold = getCapitalShipCRThreshold()
 
-  return ship.stats.commandRating >= threshold
+  return ship.stats.role == ShipRole.Capital
 
 proc countCapitalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int =
   ## Count capital squadrons currently in fleets for a house
@@ -96,15 +93,8 @@ proc countCapitalSquadronsInFleets*(state: GameState, houseId: core.HouseId): in
 
 proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: core.HouseId): int =
   ## Count capital ships currently under construction house-wide
-  ## Note: This is an approximation - we check known capital ship class strings
+  ## Note: Uses role-based classification via isCapitalShip()
   result = 0
-
-  # List of capital ship class strings (ships with CR >= 7)
-  const capitalShipClasses = [
-    "HeavyCruiser", "BattleCruiser", "Battleship",
-    "Dreadnought", "SuperDreadnought", "Carrier",
-    "SuperCarrier", "Raider"
-  ]
 
   for systemId, colony in state.colonies:
     if colony.owner == houseId:
@@ -112,14 +102,22 @@ proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: core.Hou
       if colony.underConstruction.isSome:
         let project = colony.underConstruction.get()
         if project.projectType == econ_types.ConstructionType.Ship:
-          if project.itemId in capitalShipClasses:
-            result += 1
+          try:
+            let shipClass = parseEnum[ShipClass](project.itemId)
+            if isCapitalShip(shipClass):
+              result += 1
+          except ValueError:
+            discard  # Invalid ship class, skip
 
       # Check construction queue
       for project in colony.constructionQueue:
         if project.projectType == econ_types.ConstructionType.Ship:
-          if project.itemId in capitalShipClasses:
-            result += 1
+          try:
+            let shipClass = parseEnum[ShipClass](project.itemId)
+            if isCapitalShip(shipClass):
+              result += 1
+          except ValueError:
+            discard  # Invalid ship class, skip
 
 proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityViolation =
   ## Pure function - analyze house's capital squadron capacity status

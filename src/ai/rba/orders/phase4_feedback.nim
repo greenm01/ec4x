@@ -41,20 +41,22 @@ proc hasUnfulfilledCriticalOrHigh*(controller: AIController): bool =
   # No Critical/High unfulfilled requirements
   return false
 
-proc reprioritizeAllAdvisors*(controller: var AIController) =
+proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int) =
   ## Reprioritize unfulfilled requirements for all advisors
-  ## Downgrades priorities: High→Medium, Medium→Low, drops Low/Deferred
+  ## Downgrades priorities based on cost-effectiveness
+  ## Budget-aware: expensive unfulfilled requests downgraded more aggressively
 
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Reprioritizing unfulfilled requirements for all advisors")
+          &"{controller.houseId} Reprioritizing unfulfilled requirements for all advisors (treasury={treasury}PP)")
 
-  # Reprioritize Domestikos
+  # Reprioritize Domestikos (budget-aware)
   if controller.treasurerFeedback.isSome and controller.domestikosRequirements.isSome:
     let feedback = controller.treasurerFeedback.get()
     if feedback.unfulfilledRequirements.len > 0:
       let reprioritized = reprioritizeRequirements(
         controller.domestikosRequirements.get(),
-        feedback
+        feedback,
+        treasury  # NEW: Pass treasury for budget-aware reprioritization
       )
       controller.domestikosRequirements = some(reprioritized)
       logInfo(LogCategory.lcAI,

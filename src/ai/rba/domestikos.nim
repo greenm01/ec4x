@@ -128,13 +128,18 @@ proc generateDomestikosOrders*(
     logDebug(LogCategory.lcAI,
              &"{controller.houseId} Domestikos: Generating build requirements")
 
+    # Extract squadron capacity from intelligence snapshot
+    let intel = intelSnapshot.get()
+    let capacityInfo = intel.military.squadronCapacity
+
     let buildReqs = generateBuildRequirements(
       filtered,
       analyses,
       defensiveOrders,
       controller,
       currentAct,
-      intelSnapshot.get()
+      intel,
+      capacityInfo
     )
 
     # Store in controller for orders.nim to use

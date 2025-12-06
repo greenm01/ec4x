@@ -45,6 +45,7 @@ import ../economy/[types as econ_types, engine as econ_engine, projects, mainten
 import ../economy/capacity/fighter as fighter_capacity
 import ../economy/capacity/planet_breakers as planet_breaker_capacity
 import ../economy/capacity/capital_squadrons as capital_squadron_capacity
+import ../economy/capacity/total_squadrons as total_squadron_capacity
 import ../research/[types as res_types, costs as res_costs, effects as res_effects, advancement]
 import ../espionage/[types as esp_types, engine as esp_engine]
 import ../diplomacy/[types as dip_types, proposals as dip_proposals]
@@ -676,27 +677,6 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
     # Write back modified house
     state.houses[houseId] = houseToUpdate
 
-  # Check squadron limits (military.toml)
-  logDebug(LogCategory.lcGeneral, &"Checking squadron limits...")
-  for houseId, house in state.houses:
-    if house.eliminated:
-      continue
-
-    let current = state.getHouseSquadronCount(houseId)
-    let limit = state.getSquadronLimit(houseId)
-    let totalPU = state.getHousePopulationUnits(houseId)
-
-    if current > limit:
-      logWarn(LogCategory.lcFleet,
-        &"{house.name} over squadron limit! " &
-        &"(Current: {current} squadrons, Limit: {limit}, {totalPU} PU)")
-      # Note: In full implementation, this would trigger grace period timer
-      # and eventual auto-disband per military.toml:capacity_violation_grace_period
-    elif current == limit:
-      logDebug(LogCategory.lcFleet, &"{house.name}: At squadron limit ({current}/{limit})")
-    else:
-      logDebug(LogCategory.lcFleet, &"{house.name}: {current}/{limit} squadrons ({totalPU} PU)")
-
   # Check fighter squadron capacity violations (assets.md:2.4.1)
   # Uses unified capacity management system (economy/capacity/fighter.nim)
   logDebug(LogCategory.lcGeneral, &"Checking fighter squadron capacity...")
@@ -743,6 +723,24 @@ proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], 
 
   # Generate events for UI feedback
   for action in capitalEnforcement:
+    if action.affectedUnits.len > 0:
+      let houseId = HouseId(action.entityId)
+
+      events.add(GameEvent(
+        eventType: GameEventType.UnitDisbanded,
+        houseId: houseId,
+        description: action.description,
+        systemId: none(SystemId)  # House-wide enforcement
+      ))
+
+  # Check total squadron capacity (prevents escort spam)
+  # Runs AFTER capital squadron enforcement to ensure capital limits are already applied
+  logDebug(LogCategory.lcGeneral, &"Checking total squadron capacity...")
+
+  let totalEnforcement = total_squadron_capacity.processCapacityEnforcement(state)
+
+  # Generate events for UI feedback
+  for action in totalEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
 

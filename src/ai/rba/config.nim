@@ -164,6 +164,22 @@ type
     escalation_medium_to_high_turns*: int
     escalation_high_to_critical_turns*: int
 
+    # Intelligence-Driven Ship Building (Phase F)
+    capacity_high_utilization_threshold*: float
+    scouts_per_stale_intel_system*: float
+    scouts_per_enemy_house*: float
+    max_scouts_act1*: int
+    etacs_per_uncolonized_system*: float
+    max_etacs_queued*: int
+    aggressive_transport_ratio*: float
+    aggressive_marine_per_transport*: int
+    reactive_invasion_multiplier*: float
+    fighter_threat_threshold_low*: float
+    fighter_threat_threshold_high*: float
+    max_fighters*: int
+    fighters_per_carrier*: int
+    max_carriers*: int
+
 # ==============================================================================
 # Intelligence Integration Configuration (Phase B+)
 # ==============================================================================

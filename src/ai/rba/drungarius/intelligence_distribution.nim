@@ -9,6 +9,7 @@ import std/[tables, strformat, options]
 import ../../../common/types/[core, diplomacy]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/diplomacy/types as dip_types
+import ../../../engine/economy/capacity/[total_squadrons, capital_squadrons, fighter]
 import ../controller_types
 import ../config
 import ../shared/intelligence_types
@@ -89,6 +90,62 @@ proc needsReconnaissance*(
 
   return false
 
+proc calculateSquadronCapacity(
+  filtered: FilteredGameState
+): SquadronCapacityInfo =
+  ## Calculate current squadron capacity status from game state
+  ## Uses existing capacity module functions for DRY compliance
+
+  # Calculate total IU for capacity limits
+  var totalIU = 0
+  for colony in filtered.ownColonies:
+    totalIU += colony.industrial.units
+
+  # Get map parameters for capacity multipliers
+  let mapRings = int(filtered.starMap.numRings)
+  let numPlayers = filtered.starMap.playerCount
+
+  # Calculate maximum capacities using existing capacity modules
+  let maxTotal = total_squadrons.calculateMaxTotalSquadrons(totalIU, mapRings, numPlayers)
+  let maxCapital = capital_squadrons.calculateMaxCapitalSquadrons(totalIU, mapRings, numPlayers)
+
+  # Count current squadrons from fleets
+  var currentTotal = 0
+  var currentCapital = 0
+  var currentPBs = 0
+
+  for fleet in filtered.ownFleets:
+    for squadron in fleet.squadrons:
+      let shipClass = squadron.flagship.shipClass
+      if total_squadrons.isMilitarySquadron(shipClass):
+        currentTotal += 1
+      if capital_squadrons.isCapitalShip(shipClass):
+        currentCapital += 1
+      if shipClass == ShipClass.PlanetBreaker:
+        currentPBs += 1
+
+  # Calculate fighter capacity per colony
+  var fighterCapacity = initTable[SystemId, tuple[current: int, maximum: int]]()
+  let fdLevel = filtered.ownHouse.techTree.levels.fighterDoctrine
+
+  for colony in filtered.ownColonies:
+    let maxFighters = fighter.calculateMaxFighterCapacity(colony.industrial.units, fdLevel)
+    let currentFighters = colony.fighterSquadrons.len
+    fighterCapacity[colony.systemId] = (current: currentFighters, maximum: maxFighters)
+
+  result = SquadronCapacityInfo(
+    totalSquadrons: currentTotal,
+    maxTotalSquadrons: maxTotal,
+    capitalSquadrons: currentCapital,
+    maxCapitalSquadrons: maxCapital,
+    fightersPerColony: fighterCapacity,
+    planetBreakers: currentPBs,
+    maxPlanetBreakers: filtered.ownColonies.len,
+    utilizationPercent: if maxTotal > 0: float(currentTotal) / float(maxTotal) else: 0.0,
+    atCapitalLimit: currentCapital >= maxCapital,
+    atTotalLimit: currentTotal >= maxTotal
+  )
+
 proc generateIntelligenceReport*(
   filtered: FilteredGameState,
   controller: AIController
@@ -122,6 +179,9 @@ proc generateIntelligenceReport*(
   # Analyze combat reports (tactical lessons)
   let combatLessons = analyzeCombatReports(filtered, controller)
 
+  # Calculate squadron capacity for Domestikos awareness
+  let squadronCapacity = calculateSquadronCapacity(filtered)
+
   # Populate military intelligence domain (will be enhanced with patrol routes in Phase E below)
   result.military = MilitaryIntelligence(
     knownEnemyFleets: enemyFleets,
@@ -130,6 +190,7 @@ proc generateIntelligenceReport*(
     vulnerableTargets: vulnerableTargets,
     combatLessonsLearned: combatLessons,
     detectedPatrolRoutes: @[],  # Populated in Phase E below
+    squadronCapacity: squadronCapacity,
     lastUpdated: filtered.turn
   )
 

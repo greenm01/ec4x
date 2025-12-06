@@ -10,6 +10,7 @@ type
     ## Type of capacity being limited
     FighterSquadron    # Per-colony fighter squadron limits (IU-based)
     CapitalSquadron    # Per-house capital ship + carrier limits (PU-based)
+    TotalSquadron      # Per-house total squadron limit (IU-based, prevents escort spam)
     PlanetBreaker      # Per-house planet-breaker limits (colony-count-based)
     ConstructionDock   # Per-colony construction dock capacity
     CarrierHangar      # Per-ship carrier hangar capacity (CV & CX)

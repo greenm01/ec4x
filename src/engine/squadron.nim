@@ -10,6 +10,7 @@ import std/[sequtils, strutils, options, math, strformat]
 import ship
 import ../common/types/[core, units]
 import config/ships_config
+import config  # For parseShipRole
 
 export HouseId, FleetId, SystemId, SquadronId, ShipClass, ShipStats
 export units.ShipType  # Use ShipType from types/units, not ship
@@ -83,6 +84,7 @@ proc getShipStatsFromConfig(shipClass: ShipClass): ShipStats =
   result = ShipStats(
     name: configStats.name,
     class: configStats.class,
+    role: parseShipRole(configStats.ship_role),
     attackStrength: configStats.attack_strength,
     defenseStrength: configStats.defense_strength,
     commandCost: configStats.command_cost,
