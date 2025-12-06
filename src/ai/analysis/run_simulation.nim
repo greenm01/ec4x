@@ -10,6 +10,7 @@ import ../../ai/common/types  # For AIStrategy type
 import ../../engine/[gamestate, resolve, orders, fog_of_war, setup, logger]
 import ../../engine/commands/zero_turn_commands
 import ../../engine/victory/[engine as victory_engine, types as victory_types]
+import ../../engine/config/game_setup_config  # For victory threshold from config
 import ../../common/types/core
 import ../../client/reports/turn_report
 import ../../engine/research/types as res_types
@@ -73,9 +74,12 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
   createDir("balance_results/simulation_reports")
   createDir("balance_results/diagnostics")
 
-  # Victory condition setup
+  # Victory condition setup - load from game setup config
+  # Prestige threshold from config (0 = disabled)
+  let setupConfig = game_setup_config.globalGameSetupConfig
+
   let victoryCondition = victory_types.VictoryCondition(
-    prestigeThreshold: 2500,  # Will be scaled by prestige multiplier
+    prestigeThreshold: setupConfig.victory_conditions.prestige_threshold,  # 0 = disabled
     turnLimit: maxTurns,      # Safety limit to prevent infinite games
     enableDefensiveCollapse: true
   )
