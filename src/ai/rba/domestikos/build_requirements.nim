@@ -12,7 +12,7 @@
 ##
 ## Integration: Called by Domestikos module, consumed by build system
 
-import std/[options, tables, sequtils, algorithm, strformat]
+import std/[options, tables, sequtils, algorithm, strformat, strutils]
 import ../../../common/types/[core, units]
 import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron, spacelift]
 import ../../../engine/economy/config_accessors  # For centralized cost accessors
@@ -1490,97 +1490,170 @@ proc generateBuildRequirements*(
   )
 
   # =============================================================================
-  # CAPACITY FILLER: Generate enough requirements to fill all idle docks
+  # CAPACITY FILLER: Budget-Matched Adaptive Requirements
   # =============================================================================
-  # Problem: AI generates 5-10 strategic requirements, leaving 40+ docks idle
-  # Solution: Add "filler" requirements (Deferred priority) to use idle capacity
-  # These only get built AFTER all strategic needs are met (Critical/High/Medium/Low)
+  # Problem: OLD system generated 50 fillers (1,775PP) with 208PP budget → 8.5x oversubscription
+  #   - 0% SpecialUnits requirements → 31PP budget wasted
+  #   - 83% Military fillers → mismatched with 30% Military budget
+  # Solution: Budget-matched 20-slot rotation + treasury-aware quantity scaling
+  #   - Matches budget percentages (45% Expansion, 25% Military, 10% Recon, 10% SpecialUnits, 10% Defense)
+  #   - Act-aware ship mix (Fighters in Act 1-2, Transports in Act 3-4)
+  #   - Treasury scaling (20 fillers Turn 1, scales up with economy)
 
-  # Calculate aggressive dock capacity estimate to ensure full utilization
-  # Homeworld: 15 docks minimum (can have 20-30 with multiple shipyards)
-  # New colonies: Start with 0, ramp up to 10-20 as facilities built
-  # Better to OVER-estimate and have unused requirements than under-estimate
+  # STEP 1: Calculate affordable filler count (treasury-aware)
+  let cstLevel = filtered.ownHouse.techTree.levels.constructionTech
   let estimatedTotalDocks =
     if filtered.ownColonies.len == 1:
-      50  # Turn 1: Just homeworld, but generate 50 requirements to fill all potential docks
+      50  # Turn 1: Just homeworld, but estimate 50 docks potential
     else:
       # Multiple colonies: homeworld (20) + new colonies (10 each) + buffer
-      20 + (filtered.ownColonies.len - 1) * 10 + 20  # +20 buffer for growth
+      20 + (filtered.ownColonies.len - 1) * 10 + 20
 
-  # Generate filler requirements to fill capacity (50-100 ships)
-  # Prioritized by cost-effectiveness and strategic value
-  let cstLevel = filtered.ownHouse.techTree.levels.constructionTech
+  # Treasury-aware quantity scaling (user-approved: 20 minimum for Turn 1)
+  let avgFillerCost = 30  # Weighted average: ETACs (25) + Destroyers (40) + Transports (30)
+  let affordableFillerCount = case currentAct
+    of GameAct.Act1_LandGrab:
+      # Act 1: Moderate (20 minimum for dock utilization, scales with treasury)
+      min(estimatedTotalDocks, max(20, filtered.ownHouse.treasury div (avgFillerCost * 2)))
+    of GameAct.Act2_RisingTensions:
+      # Act 2: Balanced growth (30 minimum)
+      min(estimatedTotalDocks, max(30, filtered.ownHouse.treasury div avgFillerCost))
+    of GameAct.Act3_TotalWar, GameAct.Act4_Endgame:
+      # Act 3+: Full dock utilization (no treasury constraint)
+      estimatedTotalDocks
 
-  # Add capacity fillers (Deferred priority - only built if budget remains)
-  # These ensure ALL docks are busy building something useful
-  for i in 0..<estimatedTotalDocks:
-    var shipClass: ShipClass
+  logDebug(LogCategory.lcAI,
+           &"Capacity fillers: treasury={filtered.ownHouse.treasury}PP, " &
+           &"estimated docks={estimatedTotalDocks}, affordable={affordableFillerCount} ({currentAct})")
+
+  # STEP 2: Generate capacity fillers using 20-slot budget-matched rotation
+  for i in 0..<affordableFillerCount:
+    var shipClass: Option[ShipClass] = none(ShipClass)
     var objective: BuildObjective
     var reason: string
+    var estimatedCost: int
+    var requirementType: RequirementType
 
-    # Diversify ship types based on position in queue
-    let slot = i mod 10
+    # 20-slot rotation matching budget allocation percentages
+    let slot = i mod 20
     case slot
-    of 0, 1, 2:  # 30% Destroyers (cheap, always useful)
-      shipClass = ShipClass.Destroyer
-      objective = BuildObjective.Military
-      reason = "Fleet expansion (capacity filler)"
-    of 3, 4:  # 20% Cruisers (mid-tier combat)
-      shipClass = if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer
-      objective = BuildObjective.Military
-      reason = "Cruiser force (capacity filler)"
-    of 5:  # 10% Scouts (always need more intel)
-      shipClass = ShipClass.Scout
-      objective = BuildObjective.Reconnaissance
-      reason = "Intel expansion (capacity filler)"
-    of 6:  # 10% Battlecruisers (fast capitals)
-      shipClass = if cstLevel >= 3: ShipClass.Battlecruiser else: ShipClass.Destroyer
-      objective = BuildObjective.Military
-      reason = "Capital ship reserve (capacity filler)"
-    of 7:  # 10% Heavy Cruisers (powerful mid-tier)
-      shipClass = if cstLevel >= 4: ShipClass.HeavyCruiser else: ShipClass.Cruiser
-      objective = BuildObjective.Military
-      reason = "Heavy squadron (capacity filler)"
-    of 8:  # 10% Battleships (heavy capitals)
-      shipClass = if cstLevel >= 4: ShipClass.Battleship else: ShipClass.Battlecruiser
-      objective = BuildObjective.Military
-      reason = "Battle line reserve (capacity filler)"
-    of 9:  # 10% ETACs (expansion opportunities)
-      shipClass = ShipClass.ETAC
+    of 0..8:  # 45% Expansion (9 slots)
+      shipClass = some(ShipClass.ETAC)
       objective = BuildObjective.Expansion
-      reason = "Expansion reserve (capacity filler)"
-    else:
-      shipClass = ShipClass.Destroyer
+      reason = "Expansion capacity (filler)"
+      estimatedCost = 25
+      requirementType = RequirementType.ExpansionSupport
+
+    of 9, 10:  # 10% Military (2 slots) - Affordable combat, Act-aware progression
+      case currentAct
+      of GameAct.Act1_LandGrab:
+        shipClass = some(ShipClass.Destroyer)  # Cheap (40PP)
+      of GameAct.Act2_RisingTensions:
+        shipClass = some(if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer)
+      of GameAct.Act3_TotalWar:
+        shipClass = some(if cstLevel >= 4: ShipClass.HeavyCruiser else: ShipClass.Cruiser)
+      of GameAct.Act4_Endgame:
+        shipClass = some(if cstLevel >= 5: ShipClass.Battleship else: ShipClass.Battlecruiser)
       objective = BuildObjective.Military
-      reason = "Fleet filler"
+      reason = "Fleet capacity (filler)"
+      estimatedCost = getShipConstructionCost(shipClass.get())
+      requirementType = RequirementType.OffensivePrep
 
-    let shipCost = getShipConstructionCost(shipClass)
+    of 11, 12:  # 10% Reconnaissance (2 slots)
+      shipClass = some(ShipClass.Scout)
+      objective = BuildObjective.Reconnaissance
+      reason = "Intel capacity (filler)"
+      estimatedCost = 15  # Reduced cost via config change (15PP)
+      requirementType = RequirementType.ReconnaissanceGap
 
-    # First 30% of capacity fillers are Medium priority to ensure Strategic Triage allocates budget
-    # Remaining 70% are Low priority (built after Medium if budget permits)
-    # This fixes waterfall allocation issue where Low gets 0PP if budget exhausted by High
+    of 13, 14:  # 10% SpecialUnits (2 slots) - ACT-AWARE: Fighters (Act 1-2), Transports (Act 3-4)
+      case currentAct
+      of GameAct.Act1_LandGrab, GameAct.Act2_RisingTensions:
+        shipClass = some(ShipClass.Fighter)  # Colony defense, space combat counter
+        reason = "Fighter capacity (filler, colony defense)"
+      of GameAct.Act3_TotalWar, GameAct.Act4_Endgame:
+        shipClass = some(ShipClass.TroopTransport)  # Invasion capability
+        reason = "Transport capacity (filler, invasion prep)"
+      objective = BuildObjective.SpecialUnits
+      estimatedCost = if shipClass.get() == ShipClass.Fighter: 20 else: 30
+      requirementType = RequirementType.StrategicAsset
+
+    of 15:  # 5% Defense (1 slot) - Ground Battery (infrastructure requirement)
+      shipClass = none(ShipClass)  # No ship = ground unit
+      objective = BuildObjective.Defense
+      reason = "Colony defense battery (filler)"
+      estimatedCost = 13  # Ground battery cost
+      requirementType = RequirementType.Infrastructure
+
+    of 16:  # 5% Defense (1 slot) - Army (infrastructure requirement)
+      shipClass = none(ShipClass)  # No ship = ground unit
+      objective = BuildObjective.Defense
+      reason = "Colony defense army (filler)"
+      estimatedCost = 10  # Army cost
+      requirementType = RequirementType.Infrastructure
+
+    of 17:  # 5% Military (1 slot) - Mid-tier, Act-aware
+      case currentAct
+      of GameAct.Act1_LandGrab, GameAct.Act2_RisingTensions:
+        shipClass = some(if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer)
+      of GameAct.Act3_TotalWar, GameAct.Act4_Endgame:
+        shipClass = some(if cstLevel >= 4: ShipClass.Battlecruiser else: ShipClass.HeavyCruiser)
+      objective = BuildObjective.Military
+      reason = "Mid-tier capacity (filler)"
+      estimatedCost = getShipConstructionCost(shipClass.get())
+      requirementType = RequirementType.OffensivePrep
+
+    of 18, 19:  # 10% Military (2 slots) - Additional affordable combat
+      shipClass = some(ShipClass.Destroyer)
+      objective = BuildObjective.Military
+      reason = "Combat capacity (filler)"
+      estimatedCost = 40
+      requirementType = RequirementType.OffensivePrep
+
+    else:
+      # Fallback (should never hit with mod 20)
+      shipClass = some(ShipClass.Destroyer)
+      objective = BuildObjective.Military
+      reason = "Fallback filler"
+      estimatedCost = 40
+      requirementType = RequirementType.OffensivePrep
+
+    # STEP 3: Affordability-based priority assignment
     let priority =
-      if i < (estimatedTotalDocks div 3):
-        RequirementPriority.Medium  # First 33% - gets budget from Strategic Triage Medium tier
+      if estimatedCost <= 25:
+        # Cheap units (ETAC, Fighter, Ground Battery, Army, Scout): Medium priority
+        # These MUST get built to ensure budget utilization
+        RequirementPriority.Medium
+      elif estimatedCost <= 40:
+        # Moderate units (Destroyer, Transport): Medium in Act 1, Low in Act 2+
+        if currentAct == GameAct.Act1_LandGrab:
+          RequirementPriority.Medium
+        else:
+          RequirementPriority.Low
       else:
-        RequirementPriority.Low     # Remaining 67% - fills excess capacity if budget permits
+        # Expensive units (Cruiser+): Always Low priority
+        # Strategic Triage allocates what it can afford
+        RequirementPriority.Low
 
+    # Add capacity filler requirement (ships have shipClass, ground units have none)
     requirements.add(BuildRequirement(
-      requirementType: RequirementType.OffensivePrep,
+      requirementType: requirementType,  # Use the type set by slot rotation
       priority: priority,
-      shipClass: some(shipClass),
-      quantity: 1,  # Request one at a time for fine-grained fulfillment
+      shipClass: shipClass,  # Some for ships, none for ground units
+      quantity: 1,
       buildObjective: objective,
       targetSystem: none(SystemId),
-      estimatedCost: shipCost,
+      estimatedCost: estimatedCost,
       reason: reason
     ))
 
-  let mediumCount = estimatedTotalDocks div 3
-  let lowCount = estimatedTotalDocks - mediumCount
+  # STEP 4: Enhanced logging with budget breakdown
+  let mediumCount = requirements.countIt(it.priority == RequirementPriority.Medium and it.reason.contains("filler"))
+  let lowCount = requirements.countIt(it.priority == RequirementPriority.Low and it.reason.contains("filler"))
+  let totalFillerCost = requirements.filterIt(it.reason.contains("filler")).mapIt(it.estimatedCost).foldl(a + b, 0)
   logInfo(LogCategory.lcAI,
-          &"Domestikos added {estimatedTotalDocks} capacity filler requirements " &
-          &"(Medium={mediumCount}, Low={lowCount}) to ensure full dock utilization")
+          &"Domestikos: Generated {affordableFillerCount} capacity fillers (Medium={mediumCount}, Low={lowCount}, " &
+          &"total={totalFillerCost}PP, 20-slot budget-matched rotation)")
 
   result = BuildRequirements(
     requirements: requirements,
