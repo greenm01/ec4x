@@ -1556,9 +1556,18 @@ proc generateBuildRequirements*(
 
     let shipCost = getShipConstructionCost(shipClass)
 
+    # First 30% of capacity fillers are Medium priority to ensure Strategic Triage allocates budget
+    # Remaining 70% are Low priority (built after Medium if budget permits)
+    # This fixes waterfall allocation issue where Low gets 0PP if budget exhausted by High
+    let priority =
+      if i < (estimatedTotalDocks div 3):
+        RequirementPriority.Medium  # First 33% - gets budget from Strategic Triage Medium tier
+      else:
+        RequirementPriority.Low     # Remaining 67% - fills excess capacity if budget permits
+
     requirements.add(BuildRequirement(
       requirementType: RequirementType.OffensivePrep,
-      priority: RequirementPriority.Low,  # Low priority ensures budget allocated (Deferred=ignored by Treasurer!)
+      priority: priority,
       shipClass: some(shipClass),
       quantity: 1,  # Request one at a time for fine-grained fulfillment
       buildObjective: objective,
@@ -1567,9 +1576,11 @@ proc generateBuildRequirements*(
       reason: reason
     ))
 
+  let mediumCount = estimatedTotalDocks div 3
+  let lowCount = estimatedTotalDocks - mediumCount
   logInfo(LogCategory.lcAI,
-          &"Domestikos added {estimatedTotalDocks} capacity filler requirements (Low priority) " &
-          &"to ensure full dock utilization")
+          &"Domestikos added {estimatedTotalDocks} capacity filler requirements " &
+          &"(Medium={mediumCount}, Low={lowCount}) to ensure full dock utilization")
 
   result = BuildRequirements(
     requirements: requirements,
