@@ -607,6 +607,8 @@ proc assessOffensiveReadiness*(
       result.add(BuildRequirement(
         requirementType: RequirementType.OffensivePrep,
         priority: RequirementPriority.Low,
+        shipClass: none(ShipClass),
+        itemId: some("Marine"),
         quantity: needed,
         buildObjective: ai_common_types.BuildObjective.Military,
         estimatedCost: getMarineBuildCost() * needed,
@@ -635,6 +637,8 @@ proc assessOffensiveReadiness*(
       result.add(BuildRequirement(
         requirementType: RequirementType.OffensivePrep,
         priority: RequirementPriority.High,
+        shipClass: none(ShipClass),
+        itemId: some("Marine"),
         quantity: requiredMarines - loadedMarines,
         targetSystem: some(opp.systemId),
         buildObjective: ai_common_types.BuildObjective.Military,
@@ -1064,6 +1068,7 @@ proc assessStrategicAssets*(
         requirementType: RequirementType.Infrastructure,
         priority: adjustedPriority,
         shipClass: none(ShipClass),
+        itemId: some("PlanetaryShield"),
         quantity: idealShields,
         buildObjective: BuildObjective.Defense,
         targetSystem: none(SystemId),
@@ -1130,6 +1135,7 @@ proc assessStrategicAssets*(
         requirementType: RequirementType.Infrastructure,
         priority: priority,  # DYNAMIC: Based on threat intelligence + undefended penalty awareness
         shipClass: none(ShipClass),
+        itemId: some("GroundBattery"),
         quantity: needed,
         buildObjective: BuildObjective.Defense,
         targetSystem: some(colony.systemId),  # Target specific colony
@@ -1196,6 +1202,7 @@ proc assessStrategicAssets*(
         requirementType: RequirementType.DefenseGap,
         priority: priority,  # DYNAMIC: Based on threat intelligence + undefended penalty awareness
         shipClass: none(ShipClass),
+        itemId: some("Army"),
         quantity: needed,
         buildObjective: BuildObjective.Defense,
         targetSystem: some(colony.systemId),  # Target specific colony
