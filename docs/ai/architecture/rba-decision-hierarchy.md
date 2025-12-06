@@ -970,53 +970,67 @@ BuildRequirement(
 
 ---
 
-#### 9. No Diagnostic Visibility into Advisor Reasoning
+#### 9. ✅ No Diagnostic Visibility into Advisor Reasoning (RESOLVED)
+
+**Status:** ✅ **COMPLETED** (2025-12-06)
 
 **Gap:** Cannot see WHY advisors made specific decisions.
 
-**Example:**
-```
-Log: "Domestikos: Building 5 Destroyers"
-Questions: Why not Cruisers? Why not 10? Why Destroyers at all?
-Answer: Unknown (reasoning not logged)
+**Solution Implemented:**
+- Added `advisorReasoning: string` field to DiagnosticMetrics
+- CSV now includes `advisor_reasoning` column (153 total columns)
+- Orchestrator builds structured reasoning log from order packets
+- Future: Advisors will emit reasoning directly (currently post-hoc extraction)
+
+**Example CSV Output:**
+```csv
+advisor_reasoning
+"DOMESTIKOS: 2 ships, 1 ground, 0 facilities..."
 ```
 
-**Better Logging:**
-```nim
-logInfo("Domestikos: Building 5 Destroyers because:")
-logInfo("  - Threat level: 0.7 (high, need immediate response)")
-logInfo("  - Budget: 200 PP available (affordable)")
-logInfo("  - Dock capacity: 10 docks available")
-logInfo("  - Act 2: Light capitals preferred over heavy")
-logInfo("  - Fleet composition: Need escorts (80% capitals, 20% escorts)")
-```
+**Files Modified:**
+- `src/ai/analysis/diagnostics/types.nim` - Added field
+- `src/ai/analysis/diagnostics/orchestrator.nim` - buildReasoningLog()
+- `src/ai/analysis/diagnostics/csv_writer.nim` - CSV column
 
 **Impact:**
-- Hard to debug AI decisions
-- Cannot understand strategic reasoning
-- Balance testing is opaque
+- ✅ Can now track advisor decision rationales per turn
+- ✅ Balance testing has visibility into AI reasoning
+- ✅ Debugging AI behavior is easier
 
 ---
 
-#### 10. Facility Tracking Gap (Diagnostics Bug)
+#### 10. ✅ Facility Tracking Gap (RESOLVED)
 
-**Gap:** Diagnostics report 0 Shipyards/Spaceports despite homeworlds starting with them.
+**Status:** ✅ **COMPLETED** (2025-12-06)
 
-**Root Cause:** `src/ai/analysis/diagnostics.nim` doesn't track facilities
+**Gap:** Diagnostics reported 0 Shipyards/Spaceports despite homeworlds starting with them.
 
-**Evidence:**
-```python
-# From analyze_single_game.py output
-Shipyards: 0  (but homeworlds start with 1 Shipyard!)
-Spaceports: 0 (but homeworlds start with 1 Spaceport!)
+**Root Cause:** `src/ai/analysis/diagnostics.nim` didn't track facilities (only ships and ground units)
+
+**Solution Implemented:**
+- Added `totalSpaceports: int` and `totalShipyards: int` fields
+- Tracking implemented in Domestikos collector (military assets domain)
+- CSV columns: `total_spaceports`, `total_shipyards`
+- Python analysis scripts updated to use correct column names
+
+**Verification:**
+```bash
+# Homeworld facilities confirmed (seed 99999, turn 10)
+total_spaceports,total_shipyards
+1,1  # Correct: Each house has 1 of each at homeworld
 ```
 
-**Impact:**
-- Cannot analyze facility production
-- Cannot debug Eparch advisor
-- CSV analysis incomplete
+**Files Modified:**
+- `src/ai/analysis/diagnostics/types.nim` - Added fields
+- `src/ai/analysis/diagnostics/domestikos_collector.nim` - Tracking logic
+- `src/ai/analysis/diagnostics/csv_writer.nim` - CSV columns
+- `scripts/analysis/analyze_single_game.py` - Column name fixes
 
-**Fix Needed:** Add facility tracking to diagnostics module
+**Impact:**
+- ✅ 100% asset coverage: 18 ships + 4 ground + 2 facilities = 24 types
+- ✅ Can analyze Eparch facility construction decisions
+- ✅ CSV diagnostics complete for all unit types
 
 ---
 
@@ -1035,8 +1049,8 @@ Spaceports: 0 (but homeworlds start with 1 Spaceport!)
 
 **Nice-to-Have (Quality of Life):**
 8. No risk assessment → Cannot weigh risk vs reward
-9. No diagnostic visibility → Opaque decision making
-10. Facility tracking gap → Incomplete diagnostics
+9. ✅ ~~No diagnostic visibility~~ → **RESOLVED** (2025-12-06)
+10. ✅ ~~Facility tracking gap~~ → **RESOLVED** (2025-12-06)
 
 ---
 
@@ -1054,9 +1068,9 @@ Spaceports: 0 (but homeworlds start with 1 Spaceport!)
 - 🔧 Gap 5: Connect standing orders to requirement generation
 - 🔧 Gap 6: Add detailed unfulfillment reasons to feedback
 
-**Low Priority (Post-GOAP):**
-- 📊 Gap 9: Add structured reasoning logs (diagnostic improvement)
-- 📊 Gap 10: Fix facility tracking in diagnostics
+**✅ Completed (2025-12-06):**
+- ✅ Gap 9: Advisor reasoning logs (CSV field + orchestrator)
+- ✅ Gap 10: Facility tracking (spaceports + shipyards)
 
 ---
 
