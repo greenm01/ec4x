@@ -686,6 +686,22 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
   if not financialMothball and not idleFleetMothball:
     return @[]
 
+  # MOTHBALL SAFETY LIMITS: Prevent catastrophic fleet reduction
+  # Maximum 30% of active fleets can be mothballed per turn
+  # Minimum 50% of total fleets must remain active
+  var activeFleetCount = 0
+  for fleet in filtered.ownFleets:
+    if fleet.status == FleetStatus.Active:
+      activeFleetCount += 1
+
+  let maxMothballPerTurn = max(1, int(float(activeFleetCount) * 0.30))  # Max 30% per turn
+  let minRetainedFleets = max(3, int(float(inventory.totalFleets) * 0.50))  # Min 50% retained
+  var mothballedThisTurn = 0
+
+  logDebug(LogCategory.lcAI,
+    &"{controller.houseId} Mothball limits: active={activeFleetCount}, " &
+    &"max_mothball={maxMothballPerTurn}, min_retain={minRetainedFleets}")
+
   # Track colonies that already have mothballed fleets (one per colony limit)
   var coloniesWithMothball: HashSet[SystemId]
   for fleet in filtered.ownFleets:
@@ -746,8 +762,16 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
     var shouldMothball = false
     var reason = ""
 
-    if financialMothball and isSafeSystem:
-      # Financial path: mothball ANY fleet in safe system to reduce maintenance
+    # CHECK SAFETY LIMITS BEFORE MOTHBALLING
+    let wouldExceedLimit = mothballedThisTurn >= maxMothballPerTurn
+    let wouldViolateMinimum = (activeFleetCount - mothballedThisTurn - 1) < minRetainedFleets
+
+    if wouldExceedLimit or wouldViolateMinimum:
+      continue  # Skip this fleet, hit safety limit
+
+    if financialMothball and isSafeSystem and hasRedundancy:
+      # Financial path: mothball REDUNDANT fleets in safe systems (NOT all fleets!)
+      # Changed from original bug: now requires hasRedundancy check
       shouldMothball = true
       reason = "financial"
     elif idleFleetMothball and isSafeSystem and hasRedundancy and not neededForOperation:
@@ -758,8 +782,15 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
 
     if shouldMothball:
       result.add(fleet.id)
+      mothballedThisTurn += 1
       coloniesWithMothball.incl(fleet.location)  # Track for one-per-colony
-      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing {fleet.id} ({reason}, fleets_here={fleetsAtThisSystem}, location={fleet.location})")
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Mothballing {fleet.id} ({reason}, fleets_here={fleetsAtThisSystem}, location={fleet.location}, count={mothballedThisTurn}/{maxMothballPerTurn})")
+
+  # Log mothball summary
+  if result.len > 0:
+    logInfo(LogCategory.lcAI,
+      &"{controller.houseId} Mothball complete: {result.len} fleets mothballed " &
+      &"(active_remaining={activeFleetCount - result.len}, limit={maxMothballPerTurn})")
 
 proc identifySalvageCandidates*(controller: AIController, inventory: AssetInventory,
                                 filtered: FilteredGameState): seq[FleetId] =
