@@ -69,6 +69,7 @@ def print_final_fleet_composition(final_data: Dict[str, Dict]):
     print("="*100)
 
     ship_types = [
+        # Combat Ships
         ('destroyer_ships', 'Destroyers'),
         ('cruiser_ships', 'Cruisers'),
         ('light_cruiser_ships', 'Lt Cruisers'),
@@ -77,10 +78,22 @@ def print_final_fleet_composition(final_data: Dict[str, Dict]):
         ('battleship_ships', 'Battleships'),
         ('dreadnought_ships', 'Dreadnoughts'),
         ('super_dreadnought_ships', 'Super Dreads'),
+        # Carriers & Fighters
         ('carrier_ships', 'Carriers'),
         ('super_carrier_ships', 'Super Carriers'),
-        ('starbase_ships', 'Starbases'),
         ('total_fighters', 'Fighters'),
+        # Spacelift Ships (ETAC, Troop Transports)
+        ('etac_ships', 'ETACs'),
+        ('troop_transport_ships', 'Transports'),
+        # Scouts & Raiders
+        ('scout_ships', 'Scouts'),
+        ('corvette_ships', 'Corvettes'),
+        ('frigate_ships', 'Frigates'),
+        ('raider_ships', 'Raiders'),
+        # Support Ships
+        ('starbase_ships', 'Starbases'),
+        ('planet_breaker_ships', 'Planet Breakers'),
+        # Total
         ('total_ships', 'TOTAL SHIPS')
     ]
 
