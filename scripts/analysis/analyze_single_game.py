@@ -108,6 +108,57 @@ def print_final_fleet_composition(final_data: Dict[str, Dict]):
                 print(f"{'—':>12}", end='')
         print(f"{row_total:>12}")
 
+def print_ground_forces(final_data: Dict[str, Dict]):
+    """Print ground forces composition table."""
+    print("\n" + "="*100)
+    print("GROUND FORCES (Turn 45)")
+    print("="*100)
+
+    ground_types = [
+        ('army_units', 'Armies'),
+        ('marine_units', 'Marines'),
+        ('ground_batteries', 'Ground Batteries')
+    ]
+
+    houses = sorted(final_data.keys())
+
+    # Header
+    print(f"{'Unit Type':<30}", end='')
+    for house in houses:
+        print(f"{house.replace('house-', ''):>12}", end='')
+    print(f"{'TOTAL':>12}")
+    print("-" * 100)
+
+    # Print each ground unit type
+    for col_name, display_name in ground_types:
+        print(f"{display_name:<30}", end='')
+        row_total = 0
+        for house in houses:
+            count = int(final_data[house].get(col_name, 0))
+            row_total += count
+            if count > 0:
+                print(f"{count:>12}", end='')
+            else:
+                print(f"{'—':>12}", end='')
+        print(f"{row_total:>12}")
+
+    # Print totals row
+    print("-" * 100)
+    print(f"{'TOTAL GROUND UNITS':<30}", end='')
+    for house in houses:
+        total = (int(final_data[house].get('army_units', 0)) +
+                 int(final_data[house].get('marine_units', 0)) +
+                 int(final_data[house].get('ground_batteries', 0)))
+        print(f"{total:>12}", end='')
+
+    grand_total = sum(
+        int(final_data[house].get('army_units', 0)) +
+        int(final_data[house].get('marine_units', 0)) +
+        int(final_data[house].get('ground_batteries', 0))
+        for house in houses
+    )
+    print(f"{grand_total:>12}")
+
 def print_combat_losses(cumulative: Dict[str, Dict], final_data: Dict[str, Dict]):
     """Print combat losses table."""
     print("\n" + "="*100)
@@ -279,6 +330,7 @@ def main():
 
     # Print all tables
     print_final_fleet_composition(final_data)
+    print_ground_forces(final_data)
     print_combat_losses(cumulative, final_data)
     print_production_summary(cumulative, final_data)
     print_territorial_control(cumulative, final_data)
