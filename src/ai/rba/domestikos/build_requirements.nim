@@ -16,6 +16,7 @@ import std/[options, tables, sequtils, algorithm, strformat, strutils]
 import ../../../common/types/[core, units]
 import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron, spacelift]
 import ../../../engine/economy/config_accessors  # For centralized cost accessors
+import ../../../engine/economy/types as econ_types  # For ConstructionType
 import ../../../engine/intelligence/types as intel_types  # For CombatOutcome
 import ../../common/types as ai_common_types  # For BuildObjective
 import ../controller_types  # For BuildRequirements types
@@ -1541,31 +1542,54 @@ proc generateBuildRequirements*(
     let slot = i mod 20
     case slot
     of 0..8:  # 45% Expansion/Military (9 slots) - ACT-AWARE
-      # ETACs: Act 1 = build proactively, Acts 2+ = replace losses only
-      # Check if ETAC replacement needed (lost to combat/disasters)
+      # ETACs: Act 1 = build up to cap, Acts 2+ = replace losses only
+      # Check current ETAC count (in fleets + under construction) and cap
       var currentETACs = 0
       for fleet in filtered.ownFleets:
         currentETACs += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.ETAC)
+
+      # CRITICAL: Also count ETACs under construction (prevents "ETAC treadmill")
+      for colony in filtered.ownColonies:
+        if colony.underConstruction.isSome:
+          let project = colony.underConstruction.get()
+          if project.projectType == econ_types.ConstructionType.Ship and
+             project.itemId == "ETAC":
+            currentETACs += 1
+        # Also check construction queue
+        for queuedProject in colony.constructionQueue:
+          if queuedProject.projectType == econ_types.ConstructionType.Ship and
+             queuedProject.itemId == "ETAC":
+            currentETACs += 1
+
       let etacCap = int(filtered.starMap.numRings)
-      let needsETACReplacement = (currentETACs < etacCap) and (currentAct != GameAct.Act1_LandGrab)
+      let needsMoreETACs = currentETACs < etacCap  # Cap applies to ALL Acts
 
       case currentAct
       of GameAct.Act1_LandGrab:
-        shipClass = some(ShipClass.ETAC)
-        objective = BuildObjective.Expansion
-        reason = "Expansion capacity (filler)"
-        estimatedCost = 25
-        requirementType = RequirementType.ExpansionSupport
+        # Act 1: Build ETACs up to cap (not unlimited!)
+        if needsMoreETACs:
+          shipClass = some(ShipClass.ETAC)
+          objective = BuildObjective.Expansion
+          reason = &"Expansion capacity (filler, {currentETACs}/{etacCap})"
+          estimatedCost = 25
+          requirementType = RequirementType.ExpansionSupport
+        else:
+          # At cap: Build military ships instead
+          shipClass = some(ShipClass.Destroyer)
+          objective = BuildObjective.Military
+          reason = "Fleet capacity (filler, ETACs at cap)"
+          estimatedCost = 40
+          requirementType = RequirementType.OffensivePrep
       of GameAct.Act2_RisingTensions:
-        if needsETACReplacement:
-          # Replace lost ETACs
+        if needsMoreETACs:
+          # Replace lost ETACs (maintain cap through Act 2)
           shipClass = some(ShipClass.ETAC)
           objective = BuildObjective.Expansion
           reason = &"ETAC replacement (have {currentETACs}/{etacCap})"
           estimatedCost = 25
           requirementType = RequirementType.ExpansionSupport
         else:
-          # Act 2: Medium military ships
+          # Act 2: Medium military ships (ETACs at cap)
           shipClass = some(if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer)
           objective = BuildObjective.Military
           reason = "Fleet capacity (filler, post-expansion)"
