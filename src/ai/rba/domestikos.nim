@@ -188,7 +188,8 @@ proc generateDomestikosOrders*(
     offensiveFleetOrders.add(probingOrders)
 
     # Counter-attacks against vulnerable targets (Phase F: Intelligence-driven)
-    if controller.personality.aggression > 0.5:
+    # Lowered threshold from 0.5 → 0.3 to enable more personalities (Balanced, Economic, Espionage, Diplomatic)
+    if controller.personality.aggression > 0.3:
       let counterAttackOrders = generateCounterAttackOrders(
         filtered, analyses, controller, intelSnapshot  # Phase F: Pass intelligence
       )
@@ -196,8 +197,8 @@ proc generateDomestikosOrders*(
 
   of DomestikosStrategy.MaintainFormations:
     # Act 3+: Total war - active combat operations
-    # Counter-attack vulnerable targets (any aggression level during war)
-    if controller.personality.aggression > 0.3:
+    # Counter-attack vulnerable targets (lowered from 0.3 → 0.2 for total war aggression)
+    if controller.personality.aggression > 0.2:
       let counterAttackOrders = generateCounterAttackOrders(
         filtered, analyses, controller, intelSnapshot  # Phase F: Pass intelligence
       )

@@ -397,6 +397,10 @@ proc generateCounterAttackOrders*(
   ## Fallback: Visibility-based targeting when intelligence unavailable
   result = @[]
 
+  logDebug(LogCategory.lcAI,
+           &"{controller.houseId} Invasion: Evaluating invasion opportunities " &
+           &"(total fleets: {analyses.len})")
+
   # Find available combat fleets (idle or under-utilized)
   var availableAttackers: seq[FleetAnalysis] = @[]
   for analysis in analyses:
@@ -405,7 +409,13 @@ proc generateCounterAttackOrders*(
         # Need at least 2 ships for counter-attack
         availableAttackers.add(analysis)
 
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Invasion: Found {availableAttackers.len} available combat fleets " &
+          &"(idle/underutilized with 2+ ships)")
+
   if availableAttackers.len == 0:
+    logWarn(LogCategory.lcAI,
+            &"{controller.houseId} Invasion: NO AVAILABLE ATTACKERS - all fleets busy or too small")
     return result
 
   # === PHASE F: INTELLIGENCE-DRIVEN TARGETING ===
@@ -488,7 +498,12 @@ proc generateCounterAttackOrders*(
   # === FALLBACK: VISIBILITY-BASED OPPORTUNISTIC TARGETING ===
   # Only used when intelligence unavailable or found no suitable targets
 
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Invasion: Using visibility-based targeting " &
+          &"(visible colonies: {filtered.visibleColonies.len})")
+
   # Find vulnerable enemy colonies from CURRENT visibility (not historical intel)
+  var enemyColoniesFound = 0
   for visibleColony in filtered.visibleColonies:
     if visibleColony.owner == controller.houseId:
       continue  # Skip own colonies
@@ -497,6 +512,8 @@ proc generateCounterAttackOrders*(
     let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
     if not isEnemy:
       continue  # Skip allies/neutrals
+
+    enemyColoniesFound += 1
 
     # Check for visible defending fleets at this location
     var hasDefenders = false
@@ -519,7 +536,13 @@ proc generateCounterAttackOrders*(
         colony: visibleColony  # Store for combat order selection
       ))
 
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Invasion: Found {enemyColoniesFound} enemy colonies, " &
+          &"{vulnerableTargets.len} vulnerable targets")
+
   if vulnerableTargets.len == 0:
+    logWarn(LogCategory.lcAI,
+            &"{controller.houseId} Invasion: NO VULNERABLE TARGETS - all enemy colonies defended")
     return result
 
   # Sort targets by priority (highest first) - simple bubble approach
@@ -553,5 +576,8 @@ proc generateCounterAttackOrders*(
       targetSystem: some(target.systemId),
       priority: 90  # High priority - opportunistic strikes
     ))
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Invasion: Generated {result.len} invasion orders")
 
   return result
