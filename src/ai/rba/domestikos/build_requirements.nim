@@ -1616,8 +1616,8 @@ proc generateBuildRequirements*(
 
       logDebug(LogCategory.lcAI, &"ETAC cap: {currentETACs}/{etacCap} (slot {slot}, turn reqs: {etacsGeneratedThisTurn})")
 
-      # If under cap: build ETAC, else build military ship
-      if currentETACs < etacCap:
+      # If under cap AND in Act 1: build ETAC (per user table: Act 1 only)
+      if currentAct == GameAct.Act1_LandGrab and currentETACs < etacCap:
         logDebug(LogCategory.lcAI, &"Building ETAC {currentETACs + 1}/{etacCap}")
         shipClass = some(ShipClass.ETAC)
         objective = BuildObjective.Expansion
