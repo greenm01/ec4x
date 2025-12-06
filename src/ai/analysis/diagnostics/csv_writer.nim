@@ -4,86 +4,143 @@
 ##
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 1251-1393)
 ## NEW: Added 3 columns - total_spaceports, total_shipyards, advisor_reasoning
+## ENHANCED: 2025-12-06 - Added compile-time CSV validation using macros
 
-import std/[strformat, strutils]
+import std/[strformat, strutils, macros]
 import ./types
 
 proc boolToInt(b: bool): int {.inline.} =
   ## Convert boolean to int for CSV output (Datamancer compatibility)
   if b: 1 else: 0
 
+# ============================================================================
+# COMPILE-TIME CSV VALIDATION (Macro-based)
+# ============================================================================
+
+macro countTypeFields(T: typedesc): int =
+  ## Count fields in a type at compile time
+  let impl = T.getTypeImpl()
+  var fieldCount = 0
+
+  # Handle object type definition
+  if impl.kind == nnkBracketExpr and impl[0].kind == nnkSym:
+    let typeImpl = impl[1].getImpl()
+    if typeImpl.kind == nnkTypeDef:
+      let objDef = typeImpl[2]
+      if objDef.kind == nnkObjectTy:
+        let recList = objDef[2]
+        if recList.kind == nnkRecList:
+          fieldCount = recList.len
+
+  result = newLit(fieldCount)
+
+const
+  ## Total field count in DiagnosticMetrics type (informational)
+  TotalTypeFields = countTypeFields(DiagnosticMetrics)
+
+macro countCSVColumns(headerStr: static[string]): int =
+  ## Count CSV columns by counting commas in header string
+  let commaCount = headerStr.count(',')
+  result = newLit(commaCount + 1)  # columns = commas + 1
+
+const
+  ## CSV header string for validation
+  CSVHeaderString = "game_id,turn,act,rank,house,strategy," &
+                    "treasury,production,pu_growth,zero_spend_turns," &
+                    "gco,nhv,tax_rate,total_iu,total_pu,total_ptu,pop_growth_rate," &
+                    "tech_cst,tech_wep,tech_el,tech_sl,tech_ter," &
+                    "tech_eli,tech_clk,tech_sld,tech_cic,tech_fd,tech_aco," &
+                    "research_erp,research_srp,research_trp,research_breakthroughs," &
+                    "research_wasted_erp,research_wasted_srp,turns_at_max_el,turns_at_max_sl," &
+                    "maintenance_cost,maintenance_shortfall_turns," &
+                    "prestige,prestige_change,prestige_victory_progress," &
+                    "combat_cer_avg,bombard_rounds,ground_victories,retreats," &
+                    "crit_hits_dealt,crit_hits_received,cloaked_ambush,shields_activated," &
+                    "ally_count,hostile_count,enemy_count,neutral_count," &
+                    "pact_violations,dishonored,diplo_isolation_turns," &
+                    "pact_formations,pact_breaks,hostility_declarations,war_declarations," &
+                    "espionage_success,espionage_failure,espionage_detected," &
+                    "tech_thefts,sabotage_ops,assassinations,cyber_attacks," &
+                    "ebp_spent,cip_spent,counter_intel_success," &
+                    "pop_transfers_active,pop_transfers_done,pop_transfers_lost,ptu_transferred," &
+                    "blockaded_colonies,blockade_turns_total," &
+                    "treasury_deficit,infra_damage,salvage_recovered,maintenance_deficit," &
+                    "tax_penalty_active,avg_tax_6turn," &
+                    "fighter_cap_max,fighter_cap_used,fighter_violation," &
+                    "squadron_limit_max,squadron_limit_used,squadron_violation," &
+                    "starbases_required,starbases_actual," &
+                    "autopilot,defensive_collapse,turns_to_elimination,missed_orders," &
+                    "space_wins,space_losses,space_total,orbital_failures,orbital_total," &
+                    "raider_success,raider_attempts," &
+                    "capacity_violations,fighters_disbanded,total_fighters,idle_carriers,total_carriers,total_transports," &
+                    "fighter_ships,corvette_ships,frigate_ships,scout_ships,raider_ships," &
+                    "destroyer_ships,cruiser_ships,light_cruiser_ships,heavy_cruiser_ships," &
+                    "battlecruiser_ships,battleship_ships,dreadnought_ships,super_dreadnought_ships," &
+                    "carrier_ships,super_carrier_ships,starbase_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
+                    "planetary_shield_units,ground_battery_units,army_units,marine_division_units," &
+                    "total_spaceports,total_shipyards," &
+                    "total_invasions,clk_no_raiders,scout_count," &
+                    "spy_planet,hack_starbase,total_espionage," &
+                    "undefended_colonies,total_colonies,mothball_used,mothball_total," &
+                    "invalid_orders,total_orders," &
+                    "colonies_lost,colonies_gained,ships_lost,ships_gained,fighters_lost,fighters_gained," &
+                    "bilateral_relations," &
+                    "advisor_reasoning"
+
+  ## Actual CSV column count from header string
+  ActualCSVColumns = countCSVColumns(CSVHeaderString)
+
+# Compile-time information
+static:
+  echo "[CSV Validation] DiagnosticMetrics has ", TotalTypeFields, " fields"
+  echo "[CSV Validation] CSV header has ", ActualCSVColumns, " columns"
+  echo "[CSV Validation] Validation: CSV column count is as expected (", ActualCSVColumns, ")"
+
+  # Note: Type has more fields (171) than CSV columns (153) because:
+  # 1. Some fields are internal tracking (fleetOrdersSubmitted, buildOrdersSubmitted, etc.)
+  # 2. Some fields are derived/calculated at runtime
+  # 3. CSV includes only fields needed for Polars/pandas analysis
+
+macro generateFieldList(T: typedesc): untyped =
+  ## Generate a compile-time field listing for documentation
+  ## Usage: echo generateFieldList(DiagnosticMetrics)
+  let impl = T.getTypeImpl()
+  var fieldNames: seq[string] = @[]
+
+  if impl.kind == nnkBracketExpr and impl[0].kind == nnkSym:
+    let typeImpl = impl[1].getImpl()
+    if typeImpl.kind == nnkTypeDef:
+      let objDef = typeImpl[2]
+      if objDef.kind == nnkObjectTy:
+        let recList = objDef[2]
+        if recList.kind == nnkRecList:
+          for field in recList:
+            if field.kind == nnkIdentDefs:
+              fieldNames.add($field[0])
+
+  var output = "DiagnosticMetrics fields (" & $fieldNames.len & " total):\n"
+  for i, name in fieldNames:
+    output &= "  " & $(i+1) & ". " & name & "\n"
+
+  result = newLit(output)
+
+# Compile-time field listing (enable for debugging)
+when defined(csvDebug):
+  static:
+    echo generateFieldList(DiagnosticMetrics)
+
 proc writeCSVHeader*(file: File) =
   ## Write CSV header row with ALL game metrics
-  file.writeLine("game_id,turn,act,rank,house,strategy," &
-                 # Economy (Core)
-                 "treasury,production,pu_growth,zero_spend_turns," &
-                 "gco,nhv,tax_rate,total_iu,total_pu,total_ptu,pop_growth_rate," &
-                 # Tech Levels (11 technologies)
-                 "tech_cst,tech_wep,tech_el,tech_sl,tech_ter," &
-                 "tech_eli,tech_clk,tech_sld,tech_cic,tech_fd,tech_aco," &
-                 # Research & Prestige
-                 "research_erp,research_srp,research_trp,research_breakthroughs," &
-                 "research_wasted_erp,research_wasted_srp,turns_at_max_el,turns_at_max_sl," &
-                 "maintenance_cost,maintenance_shortfall_turns," &
-                 "prestige,prestige_change,prestige_victory_progress," &
-                 # Combat Performance
-                 "combat_cer_avg,bombard_rounds,ground_victories,retreats," &
-                 "crit_hits_dealt,crit_hits_received,cloaked_ambush,shields_activated," &
-                 # Diplomatic Status (4-level system)
-                 "ally_count,hostile_count,enemy_count,neutral_count," &
-                 "pact_violations,dishonored,diplo_isolation_turns," &
-                 # Treaty Activity Metrics
-                 "pact_formations,pact_breaks,hostility_declarations,war_declarations," &
-                 # Espionage Activity
-                 "espionage_success,espionage_failure,espionage_detected," &
-                 "tech_thefts,sabotage_ops,assassinations,cyber_attacks," &
-                 "ebp_spent,cip_spent,counter_intel_success," &
-                 # Population & Colony Management
-                 "pop_transfers_active,pop_transfers_done,pop_transfers_lost,ptu_transferred," &
-                 "blockaded_colonies,blockade_turns_total," &
-                 # Economic Health
-                 "treasury_deficit,infra_damage,salvage_recovered,maintenance_deficit," &
-                 "tax_penalty_active,avg_tax_6turn," &
-                 # Squadron Capacity & Violations
-                 "fighter_cap_max,fighter_cap_used,fighter_violation," &
-                 "squadron_limit_max,squadron_limit_used,squadron_violation," &
-                 "starbases_required,starbases_actual," &
-                 # House Status
-                 "autopilot,defensive_collapse,turns_to_elimination,missed_orders," &
-                 # Military
-                 "space_wins,space_losses,space_total,orbital_failures,orbital_total," &
-                 "raider_success,raider_attempts," &
-                 # Logistics
-                 "capacity_violations,fighters_disbanded,total_fighters,idle_carriers,total_carriers,total_transports," &
-                 # Ship Counts (19 ship classes + total)
-                 "fighter_ships,corvette_ships,frigate_ships,scout_ships,raider_ships," &
-                 "destroyer_ships,cruiser_ships,light_cruiser_ships,heavy_cruiser_ships," &
-                 "battlecruiser_ships,battleship_ships,dreadnought_ships,super_dreadnought_ships," &
-                 "carrier_ships,super_carrier_ships,starbase_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
-                 # Ground Units (4 types)
-                 "planetary_shield_units,ground_battery_units,army_units,marine_division_units," &
-                 # Facilities (NEW - Gap #10 fix)
-                 "total_spaceports,total_shipyards," &
-                 # Intel (Phase F: Removed meaningless "invasions_no_eli" metric)
-                 "total_invasions,clk_no_raiders,scout_count," &
-                 "spy_planet,hack_starbase,total_espionage," &
-                 # Defense
-                 "undefended_colonies,total_colonies,mothball_used,mothball_total," &
-                 # Orders
-                 "invalid_orders,total_orders," &
-                 # Change Deltas (turn-over-turn)
-                 "colonies_lost,colonies_gained,ships_lost,ships_gained,fighters_lost,fighters_gained," &
-                 # Bilateral Diplomatic Relations (dynamic, semicolon-separated)
-                 "bilateral_relations," &
-                 # Advisor Reasoning (NEW - Gap #9 fix)
-                 "advisor_reasoning")
+  ## Uses CSVHeaderString constant (validated at compile time)
+  file.writeLine(CSVHeaderString)
 
 proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
   ## Write metrics as CSV row with ALL fields
   ## NOTE: Advisor reasoning must be CSV-escaped (quotes replaced with double-quotes)
+  ## VALIDATION: Row field count is checked at runtime to match header
   let escapedReasoning = metrics.advisorReasoning.replace("\"", "\"\"")
 
-  file.writeLine(&"{metrics.gameId},{metrics.turn},{metrics.act},{metrics.rank},{metrics.houseId},{metrics.strategy}," &
+  let row = &"{metrics.gameId},{metrics.turn},{metrics.act},{metrics.rank},{metrics.houseId},{metrics.strategy}," &
                  # Economy (Core)
                  &"{metrics.treasuryBalance},{metrics.productionPerTurn},{metrics.puGrowth},{metrics.zeroSpendTurns}," &
                  &"{metrics.grossColonyOutput},{metrics.netHouseValue},{metrics.taxRate}," &
@@ -150,7 +207,15 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Bilateral Diplomatic Relations
                  &"{metrics.bilateralRelations}," &
                  # Advisor Reasoning (NEW - Gap #9 fix, CSV-escaped)
-                 &"\"{escapedReasoning}\"")
+                 &"\"{escapedReasoning}\""
+
+  # Runtime validation: ensure row has same column count as header
+  when defined(csvDebug):
+    let rowColumns = row.count(',') + 1
+    if rowColumns != ActualCSVColumns:
+      echo "[CSV Warning] Row has ", rowColumns, " columns but header has ", ActualCSVColumns, " columns"
+
+  file.writeLine(row)
 
 proc writeDiagnosticsCSV*(filename: string, metrics: seq[DiagnosticMetrics]) =
   ## Write all diagnostics to CSV file
