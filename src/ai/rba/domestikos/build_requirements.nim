@@ -1558,7 +1558,7 @@ proc generateBuildRequirements*(
 
     requirements.add(BuildRequirement(
       requirementType: RequirementType.OffensivePrep,
-      priority: RequirementPriority.Deferred,  # LOWEST priority - only build if capacity available
+      priority: RequirementPriority.Low,  # Low priority ensures budget allocated (Deferred=ignored by Treasurer!)
       shipClass: some(shipClass),
       quantity: 1,  # Request one at a time for fine-grained fulfillment
       buildObjective: objective,
