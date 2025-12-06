@@ -1541,8 +1541,14 @@ proc generateBuildRequirements*(
     let slot = i mod 20
     case slot
     of 0..8:  # 45% Expansion/Military (9 slots) - ACT-AWARE
-      # ETACs only needed in Act 1 for colonization
-      # Acts 2-4: Shift to military ships (expansion is complete)
+      # ETACs: Act 1 = build proactively, Acts 2+ = replace losses only
+      # Check if ETAC replacement needed (lost to combat/disasters)
+      var currentETACs = 0
+      for fleet in filtered.ownFleets:
+        currentETACs += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.ETAC)
+      let etacCap = int(filtered.starMap.numRings)
+      let needsETACReplacement = (currentETACs < etacCap) and (currentAct != GameAct.Act1_LandGrab)
+
       case currentAct
       of GameAct.Act1_LandGrab:
         shipClass = some(ShipClass.ETAC)
@@ -1551,21 +1557,31 @@ proc generateBuildRequirements*(
         estimatedCost = 25
         requirementType = RequirementType.ExpansionSupport
       of GameAct.Act2_RisingTensions:
-        # Act 2: Medium military ships
-        shipClass = some(if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer)
-        objective = BuildObjective.Military
-        reason = "Fleet capacity (filler, post-expansion)"
-        estimatedCost = getShipConstructionCost(shipClass.get())
-        requirementType = RequirementType.OffensivePrep
+        if needsETACReplacement:
+          # Replace lost ETACs
+          shipClass = some(ShipClass.ETAC)
+          objective = BuildObjective.Expansion
+          reason = &"ETAC replacement (have {currentETACs}/{etacCap})"
+          estimatedCost = 25
+          requirementType = RequirementType.ExpansionSupport
+        else:
+          # Act 2: Medium military ships
+          shipClass = some(if cstLevel >= 3: ShipClass.Cruiser else: ShipClass.Destroyer)
+          objective = BuildObjective.Military
+          reason = "Fleet capacity (filler, post-expansion)"
+          estimatedCost = getShipConstructionCost(shipClass.get())
+          requirementType = RequirementType.OffensivePrep
       of GameAct.Act3_TotalWar:
-        # Act 3: Heavy military ships
+        # Act 3: Never build ETACs (per user: "you won't need etacs past act 2")
+        # Heavy military ships for war economy
         shipClass = some(if cstLevel >= 4: ShipClass.HeavyCruiser else: ShipClass.Cruiser)
         objective = BuildObjective.Military
         reason = "Fleet capacity (filler, war economy)"
         estimatedCost = getShipConstructionCost(shipClass.get())
         requirementType = RequirementType.OffensivePrep
       of GameAct.Act4_Endgame:
-        # Act 4: Capital ships
+        # Act 4: Never build ETACs (per user: "you won't need etacs past act 2")
+        # Capital ships for total war
         shipClass = some(if cstLevel >= 5: ShipClass.Battleship else: ShipClass.Battlecruiser)
         objective = BuildObjective.Military
         reason = "Fleet capacity (filler, total war)"

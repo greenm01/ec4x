@@ -7,7 +7,7 @@ license       = "MIT"
 srcDir        = "src"
 binDir        = "bin"
 # Note: nimble will look for src/main/moderator.nim and src/main/client.nim
-bin           = @["main/moderator", "main/client", "cli/ec4x"]  # daemon not ready yet (needs Nostr dependencies)
+bin           = @["cli/ec4x", "ai/analysis/run_simulation"]  # daemon not ready yet (needs Nostr dependencies)
 
 # Dependencies
 
@@ -168,9 +168,11 @@ task testWarnings, "Run tests with warnings enabled":
 task build, "Build all binaries":
   echo "Building EC4X binaries..."
   mkDir "bin"
-  exec "nim c --warnings:on -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
-  exec "nim c --warnings:on -d:release --opt:speed -o:bin/client src/main/client.nim"
-  # exec "nim c --warnings:on -d:release --opt:speed -o:bin/daemon src/main/daemon.nim"  # TODO: Enable when dependencies ready
+  #exec "nim c --warnings:on -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
+  #exec "nim c --warnings:on -d:release --opt:speed -o:bin/client src/main/client.nim"
+  #exec "nim c --warnings:on -d:release --opt:speed -o:bin/daemon src/main/daemon.nim"
+  exec "nim c --warnings:on -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "nim c --warnings:on -d:release --opt:speed -o:bin/ec4x src/cli/ec4x.nim"
   echo "Build completed successfully!"
 
 task buildDebug, "Build with debug information":
