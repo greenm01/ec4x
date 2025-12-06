@@ -257,10 +257,72 @@ proc generateIntelligenceReport*(
     lastUpdated: filtered.turn
   )
 
+  # Generate reconnaissance recommendations for Domestikos
+  var reconTargets: seq[EspionageTarget] = @[]
+
+  # Priority 1: SpyPlanet missions for visible enemy colonies (scout-only, detailed intel)
+  for visibleColony in filtered.visibleColonies:
+    if visibleColony.owner == controller.houseId:
+      continue  # Skip own colonies
+
+    # Check if we have fresh intelligence on this colony
+    var needsIntel = true
+    if filtered.ownHouse.intelligence.colonyReports.hasKey(visibleColony.systemId):
+      let report = filtered.ownHouse.intelligence.colonyReports[visibleColony.systemId]
+      let turnsSince = filtered.turn - report.gatheredTurn
+      if turnsSince <= 10:
+        needsIntel = false  # Fresh intel, no need to spy again yet
+
+    if needsIntel:
+      # Determine priority based on diplomatic stance
+      let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
+      let scoutPriority = if isEnemy: RequirementPriority.High else: RequirementPriority.Medium
+
+      # Recommend detailed spy mission (scout-only)
+      reconTargets.add(EspionageTarget(
+        targetType: EspionageTargetType.ColonySpy,
+        systemId: some(visibleColony.systemId),
+        houseId: visibleColony.owner,
+        priority: scoutPriority,
+        reason: if isEnemy: "Enemy colony reconnaissance" else: "Foreign colony surveillance",
+        lastAttemptTurn: none(int)
+      ))
+
+  # Priority 2: ViewWorld missions for unexplored systems (any ship type, basic intel)
+  # Recommend basic reconnaissance of visible but unintelligenced systems
+  for systemId in filtered.visibleSystems.keys:
+    # Skip if we already have colony intel for this system
+    if filtered.ownHouse.intelligence.colonyReports.hasKey(systemId):
+      continue
+
+    # Skip if it's one of our own colonies
+    var isOwnColony = false
+    for colony in filtered.ownColonies:
+      if colony.systemId == systemId:
+        isOwnColony = true
+        break
+    if isOwnColony:
+      continue
+
+    # Recommend basic ViewWorld reconnaissance (any fleet can do this)
+    reconTargets.add(EspionageTarget(
+      targetType: EspionageTargetType.ScoutRecon,
+      systemId: some(systemId),
+      houseId: controller.houseId,  # Not specific to any house
+      priority: RequirementPriority.Low,
+      reason: "Basic system reconnaissance",
+      lastAttemptTurn: none(int)
+    ))
+
+  # Log reconnaissance recommendations
+  if reconTargets.len > 0:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Drungarius: Recommending {reconTargets.len} reconnaissance missions")
+
   result.espionage = EspionageIntelligence(
     intelCoverage: initTable[HouseId, IntelCoverageScore](),
     staleIntelSystems: @[],
-    highPriorityTargets: @[],
+    highPriorityTargets: reconTargets,
     detectionRisks: detectionRisks,
     espionagePatterns: espionagePatterns,
     surveillanceGaps: surveillanceGaps,
