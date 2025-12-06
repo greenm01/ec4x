@@ -165,21 +165,46 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       # IMPORTANT: Use get-modify-write pattern (Nim Table copy semantics!)
       var house = state.houses[packet.houseId]
       let oldTreasury = house.treasury
-      house.treasury -= project.costTotal
-      state.houses[packet.houseId] = house
 
-      logInfo(LogCategory.lcEconomy,
-        &"Started construction at system-{order.colonySystem}: {projectDesc} " &
-        &"(Cost: {project.costTotal} PP, Est. {project.turnsRemaining} turns, " &
-        &"Location: {queueLocation}, Treasury: {oldTreasury} → {house.treasury} PP)")
+      # TREASURY FLOOR CHECK: Prevent negative treasury (race condition protection)
+      # Validation happened earlier, but treasury may have changed due to:
+      # - Research spending in Income Phase
+      # - Espionage spending in Income Phase
+      # - Other houses' construction orders processed before this one
+      if house.treasury >= project.costTotal:
+        house.treasury -= project.costTotal
+        state.houses[packet.houseId] = house
 
-      # Generate event
-      events.add(res_types.GameEvent(
-        eventType: res_types.GameEventType.ConstructionStarted,
-        houseId: packet.houseId,
-        description: "Started " & projectDesc & " at system " & $order.colonySystem,
-        systemId: some(order.colonySystem)
-      ))
+        logInfo(LogCategory.lcEconomy,
+          &"Started construction at system-{order.colonySystem}: {projectDesc} " &
+          &"(Cost: {project.costTotal} PP, Est. {project.turnsRemaining} turns, " &
+          &"Location: {queueLocation}, Treasury: {oldTreasury} → {house.treasury} PP)")
+
+        # Generate event
+        events.add(res_types.GameEvent(
+          eventType: res_types.GameEventType.ConstructionStarted,
+          houseId: packet.houseId,
+          description: "Started " & projectDesc & " at system " & $order.colonySystem,
+          systemId: some(order.colonySystem)
+        ))
+      else:
+        # Treasury insufficient (race condition: spent between validation and deduction)
+        # Cancel construction and log error
+        logError(LogCategory.lcEconomy,
+          &"{packet.houseId} Construction CANCELLED at system-{order.colonySystem}: {projectDesc} " &
+          &"- Insufficient treasury (need {project.costTotal} PP, have {house.treasury} PP, " &
+          &"was {oldTreasury} PP at validation)")
+
+        # Remove from construction queue if it was added
+        if queueLocation == "colony queue":
+          var mutableColony = state.colonies[order.colonySystem]
+          # Remove last added project (the one we just added)
+          if mutableColony.constructionQueue.len > 0:
+            discard mutableColony.constructionQueue.pop()
+          state.colonies[order.colonySystem] = mutableColony
+
+        # Increment rejected orders counter for logging
+        budgetContext.rejectedOrders += 1
     else:
       logError(LogCategory.lcEconomy, &"Construction start failed at system-{order.colonySystem}")
 
