@@ -466,18 +466,4 @@ proc resolveMaintenancePhase*(state: var GameState,
           systemId: none(SystemId)
         ))
 
-  # Check victory condition
-  let victorOpt = state.checkVictoryCondition()
-  if victorOpt.isSome:
-    let victorId = victorOpt.get()
-    state.phase = GamePhase.Completed
-
-    # Find victor by house id (handle case where table key != house.id)
-    var victorName = "Unknown"
-    for houseId, house in state.houses:
-      if house.id == victorId:
-        victorName = house.name
-        break
-
-    logInfo(LogCategory.lcGeneral,
-      &"*** {victorName} has won the game! ***")
+  # Victory condition check moved to Income Phase (per FINAL_TURN_SEQUENCE.md)

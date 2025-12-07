@@ -607,7 +607,7 @@ proc assessOffensiveReadiness*(
       let needed = targetMarines - loadedMarines
       result.add(BuildRequirement(
         requirementType: RequirementType.OffensivePrep,
-        priority: RequirementPriority.Low,
+        priority: RequirementPriority.Medium,  # Match transports in importance
         shipClass: none(ShipClass),
         itemId: some("Marine"),
         quantity: needed,

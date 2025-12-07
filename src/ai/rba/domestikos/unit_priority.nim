@@ -29,7 +29,7 @@ const ActAppropriatenessScores = {
     ShipClass.Corvette: 3.0,
     ShipClass.Scout: 2.5,
     ShipClass.LightCruiser: 2.0,
-    ShipClass.TroopTransport: 1.5,
+    ShipClass.TroopTransport: 0.0,  # HARD GATE - Act 2+ only
     ShipClass.Cruiser: 1.0,
     ShipClass.Raider: 1.0,
     ShipClass.Battlecruiser: 0.5,

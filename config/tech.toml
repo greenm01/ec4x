@@ -93,49 +93,49 @@ level_8_srp = 37
 # Opens up new ship classes
 
 level_1_sl = 1
-level_1_trp = 12
+level_1_trp = 24
 
 level_2_sl = 2
-level_2_trp = 15
+level_2_trp = 30
 
 level_3_sl = 3
-level_3_trp = 17
+level_3_trp = 34
 
 level_4_sl = 4
-level_4_trp = 20
+level_4_trp = 40
 
 level_5_sl = 5
-level_5_trp = 22
+level_5_trp = 44
 
 level_6_sl = 6
-level_6_trp = 25
+level_6_trp = 50
 
 level_7_sl = 7
-level_7_trp = 27
+level_7_trp = 54
 
 level_8_sl = 8
-level_8_trp = 30
+level_8_trp = 60
 
 level_9_sl = 9
-level_9_trp = 32
+level_9_trp = 64
 
 level_10_sl = 10
-level_10_trp = 35
+level_10_trp = 70
 
 level_11_sl = 11
-level_11_trp = 40
+level_11_trp = 80
 
 level_12_sl = 12
-level_12_trp = 45
+level_12_trp = 90
 
 level_13_sl = 13
-level_13_trp = 50
+level_13_trp = 100
 
 level_14_sl = 14
-level_14_trp = 55
+level_14_trp = 110
 
 level_15_sl = 15
-level_15_trp = 60
+level_15_trp = 120
 
 # Maximum construction level is CST15 (extended for very long games)
 
