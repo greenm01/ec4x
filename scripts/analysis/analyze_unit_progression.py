@@ -204,28 +204,57 @@ def analyze_invasion_capability_by_turn(df: pl.DataFrame) -> None:
         print("WARNING: marine_division_units column not found")
         return
 
-    invasion_by_turn = (
-        df.group_by("turn")
-        .agg([
-            pl.col("troop_transport_ships").mean().alias("avg_transports"),
-            pl.col("marine_division_units").mean().alias("avg_marines"),
-            pl.col("troop_transport_ships").sum().alias("total_transports"),
-            pl.col("marine_division_units").sum().alias("total_marines")
-        ])
-        .sort("turn")
-    )
+    # Check if we have the detailed breakdown columns
+    has_breakdown = "marines_at_colonies" in df.columns and "marines_on_transports" in df.columns
 
-    print("\nTurn | Act    | Avg Transports | Avg Marines | Total Transports | Total Marines")
-    print("-" * 85)
-    for row in invasion_by_turn.iter_rows(named=True):
-        turn = row["turn"]
-        act = classify_act(turn)
-        marker = "❌" if act == "Act1" and (row["total_transports"] > 0 or row["total_marines"] > 0) else ""
-        print(f"{marker}{turn:4} | {act:6} | {row['avg_transports']:14.2f} | {row['avg_marines']:11.2f} | {row['total_transports']:16} | {row['total_marines']:13}")
+    if has_breakdown:
+        invasion_by_turn = (
+            df.group_by("turn")
+            .agg([
+                pl.col("troop_transport_ships").mean().alias("avg_transports"),
+                pl.col("marine_division_units").mean().alias("avg_marines"),
+                pl.col("marines_at_colonies").mean().alias("avg_colony_marines"),
+                pl.col("marines_on_transports").mean().alias("avg_loaded_marines"),
+                pl.col("troop_transport_ships").sum().alias("total_transports"),
+                pl.col("marine_division_units").sum().alias("total_marines"),
+                pl.col("marines_at_colonies").sum().alias("total_colony_marines"),
+                pl.col("marines_on_transports").sum().alias("total_loaded_marines")
+            ])
+            .sort("turn")
+        )
+
+        print("\nTurn | Act    | Transports | Marines (Colony/Loaded/Total)")
+        print("-" * 70)
+        for row in invasion_by_turn.iter_rows(named=True):
+            turn = row["turn"]
+            act = classify_act(turn)
+            marker = "❌" if act == "Act1" and (row["total_transports"] > 0 or row["total_marines"] > 0) else ""
+            print(f"{marker}{turn:4} | {act:6} | {row['total_transports']:10} | {row['total_colony_marines']:6}/{row['total_loaded_marines']:6}/{row['total_marines']:6}")
+    else:
+        invasion_by_turn = (
+            df.group_by("turn")
+            .agg([
+                pl.col("troop_transport_ships").mean().alias("avg_transports"),
+                pl.col("marine_division_units").mean().alias("avg_marines"),
+                pl.col("troop_transport_ships").sum().alias("total_transports"),
+                pl.col("marine_division_units").sum().alias("total_marines")
+            ])
+            .sort("turn")
+        )
+
+        print("\nTurn | Act    | Avg Transports | Avg Marines | Total Transports | Total Marines")
+        print("-" * 85)
+        for row in invasion_by_turn.iter_rows(named=True):
+            turn = row["turn"]
+            act = classify_act(turn)
+            marker = "❌" if act == "Act1" and (row["total_transports"] > 0 or row["total_marines"] > 0) else ""
+            print(f"{marker}{turn:4} | {act:6} | {row['avg_transports']:14.2f} | {row['avg_marines']:11.2f} | {row['total_transports']:16} | {row['total_marines']:13}")
 
     print("\n⚠️  EXPECTED BEHAVIOR:")
     print("  Act 1: ZERO transports/marines")
     print("  Act 2+: Active transport/marine production")
+    if has_breakdown:
+        print("  Marines auto-load onto transports after recruitment (Colony marines will be ~0)")
 
 
 def analyze_strategy_progression(df: pl.DataFrame) -> None:

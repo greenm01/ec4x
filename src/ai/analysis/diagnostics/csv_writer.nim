@@ -77,7 +77,7 @@ const
                     "destroyer_ships,cruiser_ships,light_cruiser_ships,heavy_cruiser_ships," &
                     "battlecruiser_ships,battleship_ships,dreadnought_ships,super_dreadnought_ships," &
                     "carrier_ships,super_carrier_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
-                    "planetary_shield_units,ground_battery_units,army_units,marine_division_units," &
+                    "planetary_shield_units,ground_battery_units,army_units,marines_at_colonies,marines_on_transports,marine_division_units," &
                     "total_spaceports,total_shipyards," &
                     "total_invasions,clk_no_raiders,scout_count," &
                     "spy_planet,hack_starbase,total_espionage," &
@@ -189,8 +189,8 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.destroyerShips},{metrics.cruiserShips},{metrics.lightCruiserShips},{metrics.heavyCruiserShips}," &
                  &"{metrics.battlecruiserShips},{metrics.battleshipShips},{metrics.dreadnoughtShips},{metrics.superDreadnoughtShips}," &
                  &"{metrics.carrierShips},{metrics.superCarrierShips},{metrics.etacShips},{metrics.troopTransportShips},{metrics.planetBreakerShips},{metrics.totalShips}," &
-                 # Ground Units (4 types)
-                 &"{metrics.planetaryShieldUnits},{metrics.groundBatteryUnits},{metrics.armyUnits},{metrics.marineDivisionUnits}," &
+                 # Ground Units (4 types + marine breakdown)
+                 &"{metrics.planetaryShieldUnits},{metrics.groundBatteryUnits},{metrics.armyUnits},{metrics.marinesAtColonies},{metrics.marinesOnTransports},{metrics.marineDivisionUnits}," &
                  # Facilities (NEW - Gap #10 fix)
                  &"{metrics.totalSpaceports},{metrics.totalShipyards}," &
                  # Intel (Phase F: removed meaningless invasionFleetsWithoutELIMesh metric)

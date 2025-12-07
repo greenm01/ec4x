@@ -586,8 +586,8 @@ proc assessOffensiveReadiness*(
       if spaceLiftShip.cargo.cargoType == CargoType.Marines:
         loadedMarines += spaceLiftShip.cargo.quantity
 
-  # Aggressive: Build proactively
-  if isAggressive:
+  # Aggressive: Build proactively (Act 2+ only - no transports in Act 1)
+  if isAggressive and currentAct >= GameAct.Act2_RisingTensions:
     let targetTransports = max(2, filtered.ownColonies.len div 3)
     let targetMarines = targetTransports * 1  # 1 marine per transport capacity
 

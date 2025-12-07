@@ -216,20 +216,32 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   var planetaryShieldUnits = 0
   var groundBatteryUnits = 0
   var armyUnits = 0
-  var marineDivisionUnits = 0
+  var marinesAtColonies = 0
+  var marinesOnTransports = 0
 
+  # Count ground units at colonies
   for colonyId, colony in state.colonies:
     if colony.owner == houseId:
       if colony.planetaryShieldLevel > 0:
         planetaryShieldUnits += 1  # Colony has shield (level 1-6)
       groundBatteryUnits += colony.groundBatteries
       armyUnits += colony.armies
-      marineDivisionUnits += colony.marines
+      marinesAtColonies += colony.marines
+
+  # Count marines loaded on transports (auto-loaded after commissioning)
+  for fleetId, fleet in state.fleets:
+    if fleet.owner == houseId:
+      for ship in fleet.spaceLiftShips:
+        if ship.shipClass == ShipClass.TroopTransport and
+           ship.cargo.cargoType == CargoType.Marines:
+          marinesOnTransports += ship.cargo.quantity
 
   result.planetaryShieldUnits = planetaryShieldUnits
   result.groundBatteryUnits = groundBatteryUnits
   result.armyUnits = armyUnits
-  result.marineDivisionUnits = marineDivisionUnits
+  result.marinesAtColonies = marinesAtColonies
+  result.marinesOnTransports = marinesOnTransports
+  result.marineDivisionUnits = marinesAtColonies + marinesOnTransports
 
   # ================================================================
   # MILITARY ASSETS - FACILITIES (NEW - Gap #10 fix)

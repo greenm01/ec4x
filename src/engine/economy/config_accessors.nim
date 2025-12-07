@@ -181,6 +181,22 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       requiresShipyard: false,
       cstRequirement: 0
     )
+  of "Army":
+    BuildingConfig(
+      cost: globalGroundUnitsConfig.army.build_cost,
+      time: 1,
+      requiresSpaceport: false,
+      requiresShipyard: false,
+      cstRequirement: 0
+    )
+  of "Marine":
+    BuildingConfig(
+      cost: globalGroundUnitsConfig.marine_division.build_cost,
+      time: 1,
+      requiresSpaceport: false,
+      requiresShipyard: false,
+      cstRequirement: 0
+    )
   else:
     BuildingConfig(cost: 50, time: 1, requiresSpaceport: false, requiresShipyard: false, cstRequirement: 0)
 

@@ -166,11 +166,23 @@ def print_ground_forces(final_data: Dict[str, Dict], max_turn: int):
     print(f"GROUND FORCES (Turn {max_turn})")
     print("="*100)
 
-    ground_types = [
-        ('army_units', 'Armies'),
-        ('marine_division_units', 'Marines'),
-        ('ground_battery_units', 'Ground Batteries')
-    ]
+    # Check if we have the detailed marine breakdown
+    has_breakdown = 'marines_at_colonies' in next(iter(final_data.values()))
+
+    if has_breakdown:
+        ground_types = [
+            ('army_units', 'Armies'),
+            ('marines_at_colonies', 'Marines (at colonies)'),
+            ('marines_on_transports', 'Marines (on transports)'),
+            ('marine_division_units', 'Marines (TOTAL)'),
+            ('ground_battery_units', 'Ground Batteries')
+        ]
+    else:
+        ground_types = [
+            ('army_units', 'Armies'),
+            ('marine_division_units', 'Marines'),
+            ('ground_battery_units', 'Ground Batteries')
+        ]
 
     houses = sorted(final_data.keys())
 

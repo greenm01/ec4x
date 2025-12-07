@@ -107,6 +107,22 @@ proc commissionCompletedProjects*(
   ## **Called After:** Maintenance Phase (queue advancement)
   ## **Called Before:** resolveBuildOrders() (new construction)
 
+  # Track modified colonies to prevent read-modify-write race conditions
+  # When multiple units complete at same colony in one turn, each must see
+  # the accumulated changes from previous units in the same batch
+  var modifiedColonies = initTable[SystemId, Colony]()
+
+  # Helper to get colony (from modified table first, then state)
+  template getColony(colId: SystemId): Colony =
+    if colId in modifiedColonies:
+      modifiedColonies[colId]
+    else:
+      state.colonies[colId]
+
+  # Helper to save modified colony
+  template saveColony(colId: SystemId, col: Colony) =
+    modifiedColonies[colId] = col
+
   for completed in completedProjects:
     logDebug(LogCategory.lcEconomy, &"Commissioning: {completed.projectType} at system-{completed.colonyId}")
 
@@ -120,7 +136,7 @@ proc commissionCompletedProjects*(
         completed.itemId == "Fighter"):
       # Commission fighter squadron at colony
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Create new fighter squadron
         let fighterSq = FighterSquadron(
@@ -135,7 +151,7 @@ proc commissionCompletedProjects*(
         # Fighters remain at colony by default - auto-loading happens in separate step
         # Per assets.md:2.4.1 - fighters are colony-owned until explicitly transferred
 
-        state.colonies[completed.colonyId] = colony
+        saveColony(completed.colonyId, colony)
 
         # Generate event
         events.add(res_types.GameEvent(
@@ -150,7 +166,7 @@ proc commissionCompletedProjects*(
          completed.itemId == "Starbase":
       # Commission starbase at colony
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Create new starbase
         let starbase = Starbase(
@@ -160,7 +176,7 @@ proc commissionCompletedProjects*(
         )
 
         colony.starbases.add(starbase)
-        state.colonies[completed.colonyId] = colony
+        saveColony(completed.colonyId, colony)
 
         logInfo(LogCategory.lcEconomy,
           &"Commissioned starbase {starbase.id} at {completed.colonyId} " &
@@ -179,7 +195,7 @@ proc commissionCompletedProjects*(
     elif completed.projectType == econ_types.ConstructionType.Building and
          completed.itemId == "Spaceport":
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Create new spaceport (5 docks per facilities_config.toml)
         let spaceport = Spaceport(
@@ -189,7 +205,7 @@ proc commissionCompletedProjects*(
         )
 
         colony.spaceports.add(spaceport)
-        state.colonies[completed.colonyId] = colony
+        saveColony(completed.colonyId, colony)
 
         logInfo(LogCategory.lcEconomy,
           &"Commissioned spaceport {spaceport.id} at {completed.colonyId} " &
@@ -206,7 +222,7 @@ proc commissionCompletedProjects*(
     elif completed.projectType == econ_types.ConstructionType.Building and
          completed.itemId == "Shipyard":
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Validate spaceport prerequisite
         if not hasSpaceport(colony):
@@ -223,7 +239,7 @@ proc commissionCompletedProjects*(
         )
 
         colony.shipyards.add(shipyard)
-        state.colonies[completed.colonyId] = colony
+        saveColony(completed.colonyId, colony)
 
         logInfo(LogCategory.lcEconomy,
           &"Commissioned shipyard {shipyard.id} at {completed.colonyId} " &
@@ -240,11 +256,11 @@ proc commissionCompletedProjects*(
     elif completed.projectType == econ_types.ConstructionType.Building and
          completed.itemId == "GroundBattery":
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Add ground battery (instant construction, 1 turn)
         colony.groundBatteries += 1
-        state.colonies[completed.colonyId] = colony
+        saveColony(completed.colonyId, colony)
 
         logInfo(LogCategory.lcEconomy,
           &"Deployed ground battery at {completed.colonyId} " &
@@ -261,13 +277,13 @@ proc commissionCompletedProjects*(
     elif completed.projectType == econ_types.ConstructionType.Building and
          completed.itemId.startsWith("PlanetaryShield"):
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Extract shield level from itemId (e.g., "PlanetaryShield-3" -> 3)
         # For now, assume sequential upgrades
         let newLevel = colony.planetaryShieldLevel + 1
         colony.planetaryShieldLevel = min(newLevel, 6)  # Max SLD6
-        state.colonies[completed.colonyId] = colony
+        saveColony(completed.colonyId, colony)
 
         logInfo(LogCategory.lcEconomy,
           &"Deployed planetary shield SLD{colony.planetaryShieldLevel} at {completed.colonyId} " &
@@ -284,7 +300,7 @@ proc commissionCompletedProjects*(
     elif completed.projectType == econ_types.ConstructionType.Building and
          completed.itemId == "Marine":
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Get population cost from config
         let marinePopCost = globalGroundUnitsConfig.marine_division.population_cost
@@ -302,7 +318,7 @@ proc commissionCompletedProjects*(
           colony.marines += 1  # Add 1 Marine Division
           colony.souls -= marinePopCost  # Deduct recruited souls
           colony.population = colony.souls div 1_000_000  # Update display population
-          state.colonies[completed.colonyId] = colony
+          saveColony(completed.colonyId, colony)
 
           logInfo(LogCategory.lcEconomy,
             &"Recruited Marine Division at {completed.colonyId} " &
@@ -319,7 +335,7 @@ proc commissionCompletedProjects*(
     elif completed.projectType == econ_types.ConstructionType.Building and
          completed.itemId == "Army":
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
 
         # Get population cost from config
         let armyPopCost = globalGroundUnitsConfig.army.population_cost
@@ -337,7 +353,7 @@ proc commissionCompletedProjects*(
           colony.armies += 1  # Add 1 Army Division
           colony.souls -= armyPopCost  # Deduct recruited souls
           colony.population = colony.souls div 1_000_000  # Update display population
-          state.colonies[completed.colonyId] = colony
+          saveColony(completed.colonyId, colony)
 
           logInfo(LogCategory.lcEconomy,
             &"Mustered Army Division at {completed.colonyId} " &
@@ -353,7 +369,7 @@ proc commissionCompletedProjects*(
     # Handle ship construction
     elif completed.projectType == econ_types.ConstructionType.Ship:
       if completed.colonyId in state.colonies:
-        var colony = state.colonies[completed.colonyId]
+        var colony = getColony(completed.colonyId)
         let owner = colony.owner
 
         # Parse ship class from itemId
@@ -368,7 +384,7 @@ proc commissionCompletedProjects*(
               commissionedTurn: state.turn
             )
             colony.fighterSquadrons.add(fighterSq)
-            state.colonies[completed.colonyId] = colony
+            saveColony(completed.colonyId, colony)
             logInfo(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {completed.colonyId}")
 
             events.add(res_types.GameEvent(
@@ -398,7 +414,7 @@ proc commissionCompletedProjects*(
               logInfo(LogCategory.lcEconomy, &"Loaded 1 PTU onto {shipId} (extraction: {extractionCost:.2f} PU from {completed.colonyId})")
 
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
-            state.colonies[completed.colonyId] = colony
+            saveColony(completed.colonyId, colony)
             logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} spacelift ship at {completed.colonyId}")
 
             # Auto-assign to fleets (create new fleet if needed)
@@ -431,7 +447,7 @@ proc commissionCompletedProjects*(
 
               # Remove from unassigned pool (it's now in fleet)
               colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
-              state.colonies[completed.colonyId] = colony
+              saveColony(completed.colonyId, colony)
 
               logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {targetFleetId}")
 
@@ -514,3 +530,10 @@ proc commissionCompletedProjects*(
 
         except ValueError:
           logError(LogCategory.lcEconomy, &"Invalid ship class: {completed.itemId}")
+
+  # Write all modified colonies back to state
+  # This ensures multiple units completing at same colony see accumulated changes
+  logDebug(LogCategory.lcEconomy, &"Writing {modifiedColonies.len} modified colonies back to state")
+  for systemId, colony in modifiedColonies:
+    state.colonies[systemId] = colony
+    logDebug(LogCategory.lcEconomy, &"  Colony {systemId}: marines={colony.marines}, armies={colony.armies}")

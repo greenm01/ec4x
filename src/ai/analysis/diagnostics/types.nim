@@ -177,7 +177,9 @@ type
     planetaryShieldUnits*: int        # PS Planetary Shield (CST 5)
     groundBatteryUnits*: int          # GB Ground Batteries
     armyUnits*: int                   # AA Armies
-    marineDivisionUnits*: int         # MD Space Marines
+    marinesAtColonies*: int           # MD Space Marines at colonies (unloaded)
+    marinesOnTransports*: int         # MD Space Marines loaded on transports
+    marineDivisionUnits*: int         # MD Space Marines (total = colonies + transports)
 
     # Facilities (NEW - Gap #10 fix)
     totalSpaceports*: int             # Spaceport count across all colonies
@@ -376,6 +378,8 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     planetaryShieldUnits: 0,
     groundBatteryUnits: 0,
     armyUnits: 0,
+    marinesAtColonies: 0,
+    marinesOnTransports: 0,
     marineDivisionUnits: 0,
 
     # Facilities (NEW)

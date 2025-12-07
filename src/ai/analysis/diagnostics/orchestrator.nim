@@ -173,10 +173,12 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.planetBreakerShips = domestikos.planetBreakerShips
   result.totalShips = domestikos.totalShips
 
-  # Ground units (all 4 types)
+  # Ground units (all 4 types + marine breakdown)
   result.planetaryShieldUnits = domestikos.planetaryShieldUnits
   result.groundBatteryUnits = domestikos.groundBatteryUnits
   result.armyUnits = domestikos.armyUnits
+  result.marinesAtColonies = domestikos.marinesAtColonies
+  result.marinesOnTransports = domestikos.marinesOnTransports
   result.marineDivisionUnits = domestikos.marineDivisionUnits
 
   # Facilities (NEW - Gap #10 fix)

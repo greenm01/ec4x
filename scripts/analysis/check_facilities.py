@@ -9,19 +9,36 @@ Expected after Eparch facility fix:
 - Act 4: 5-7 Shipyards, 4-5 Spaceports
 
 Before fix: All houses stuck at 1 Shipyard, 1 Spaceport entire game.
+
+Usage:
+    python3 scripts/analysis/check_facilities.py <game_seed>
+
+Example:
+    python3 scripts/analysis/check_facilities.py 99999
 """
 
 import polars as pl
 import sys
+from pathlib import Path
 
 def main():
-    csv_file = "balance_results/diagnostics/game_99999.csv"
+    if len(sys.argv) < 2:
+        print("Error: Game seed required", file=sys.stderr)
+        print("Usage: python3 scripts/analysis/check_facilities.py <game_seed>", file=sys.stderr)
+        sys.exit(1)
+
+    game_seed = sys.argv[1]
+    csv_file = Path(f"balance_results/diagnostics/game_{game_seed}.csv")
+
+    if not csv_file.exists():
+        print(f"Error: {csv_file} not found", file=sys.stderr)
+        print(f"Run: ./bin/run_simulation -s {game_seed} -t 30", file=sys.stderr)
+        sys.exit(1)
 
     try:
-        df = pl.read_csv(csv_file)
-    except FileNotFoundError:
-        print(f"ERROR: {csv_file} not found!")
-        print("Run: ./bin/run_simulation -s 99999 -t 30")
+        df = pl.read_csv(str(csv_file))
+    except Exception as e:
+        print(f"Error loading CSV: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Get facility counts at end of each Act
