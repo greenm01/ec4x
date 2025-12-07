@@ -126,7 +126,6 @@ src/engine/config/house_themes
 src/engine/diplomacy/engine
 src/engine/colonization/engine
 src/engine/espionage/engine
-src/engine/prestige
 src/engine/squadron
 src/engine/salvage
 src/engine/intelligence/generator
