@@ -45,7 +45,7 @@ macro countCSVColumns(headerStr: static[string]): int =
 
 const
   ## CSV header string for validation
-  CSVHeaderString = "game_id,turn,act,rank,house,strategy," &
+  CSVHeaderString = "game_id,turn,act,rank,house,strategy,total_systems_on_map," &
                     "treasury,production,pu_growth,zero_spend_turns," &
                     "gco,nhv,tax_rate,total_iu,total_pu,total_ptu,pop_growth_rate," &
                     "tech_cst,tech_wep,tech_el,tech_sl,tech_ter," &
@@ -83,7 +83,7 @@ const
                     "spy_planet,hack_starbase,total_espionage," &
                     "undefended_colonies,total_colonies,mothball_used,mothball_total," &
                     "invalid_orders,total_orders," &
-                    "colonies_lost,colonies_gained,ships_lost,ships_gained,fighters_lost,fighters_gained," &
+                    "colonies_lost,colonies_gained,colonies_gained_via_colonization,colonies_gained_via_conquest,ships_lost,ships_gained,fighters_lost,fighters_gained," &
                     "bilateral_relations," &
                     "advisor_reasoning"
 
@@ -140,7 +140,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
   ## VALIDATION: Row field count is checked at runtime to match header
   let escapedReasoning = metrics.advisorReasoning.replace("\"", "\"\"")
 
-  let row = &"{metrics.gameId},{metrics.turn},{metrics.act},{metrics.rank},{metrics.houseId},{metrics.strategy}," &
+  let row = &"{metrics.gameId},{metrics.turn},{metrics.act},{metrics.rank},{metrics.houseId},{metrics.strategy},{metrics.totalSystemsOnMap}," &
                  # Economy (Core)
                  &"{metrics.treasuryBalance},{metrics.productionPerTurn},{metrics.puGrowth},{metrics.zeroSpendTurns}," &
                  &"{metrics.grossColonyOutput},{metrics.netHouseValue},{metrics.taxRate}," &
@@ -203,7 +203,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Orders
                  &"{metrics.invalidOrders},{metrics.totalOrders}," &
                  # Change Deltas
-                 &"{metrics.coloniesLost},{metrics.coloniesGained},{metrics.shipsLost},{metrics.shipsGained},{metrics.fightersLost},{metrics.fightersGained}," &
+                 &"{metrics.coloniesLost},{metrics.coloniesGained},{metrics.coloniesGainedViaColonization},{metrics.coloniesGainedViaConquest},{metrics.shipsLost},{metrics.shipsGained},{metrics.fightersLost},{metrics.fightersGained}," &
                  # Bilateral Diplomatic Relations
                  &"{metrics.bilateralRelations}," &
                  # Advisor Reasoning (NEW - Gap #9 fix, CSV-escaped)

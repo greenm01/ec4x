@@ -16,6 +16,7 @@ import ../logger
 import ../state_helpers
 import ../starmap
 import ../colonization/engine as col_engine
+import types as res_types
 import ../../common/types/core
 import ../../common/types/planets
 
@@ -99,7 +100,8 @@ proc establishColony(
   state: var GameState,
   houseId: HouseId,
   fleetId: FleetId,
-  systemId: SystemId
+  systemId: SystemId,
+  events: var seq[res_types.GameEvent]
 ): tuple[success: bool, prestigeAwarded: int] =
   ## Establish a colony at the target system for the given fleet
   ##
@@ -175,6 +177,14 @@ proc establishColony(
     result.prestigeAwarded = prestigeEvent.amount
     logInfo(LogCategory.lcColonization,
             &"{state.houses[houseId].name} colonized {systemId} (+{prestigeEvent.amount} prestige)")
+
+  # Generate ColonyEstablished event for diagnostics
+  events.add(res_types.GameEvent(
+    eventType: res_types.GameEventType.ColonyEstablished,
+    houseId: houseId,
+    description: "Established colony at system " & $systemId,
+    systemId: some(systemId)
+  ))
 
   result.success = true
 
@@ -282,7 +292,8 @@ proc collectFallbackIntents(
 proc resolveColonizationConflict*(
   state: var GameState,
   conflict: ColonizationConflict,
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
 ): tuple[results: seq[simultaneous_types.ColonizationResult], losers: seq[ColonizationIntent]] =
   ## Resolve a single colonization conflict using fleet strength + random tiebreaker
   ##
@@ -300,7 +311,8 @@ proc resolveColonizationConflict*(
       state,
       intent.houseId,
       intent.fleetId,
-      intent.targetSystem
+      intent.targetSystem,
+      events
     )
 
     if success:
@@ -335,7 +347,8 @@ proc resolveColonizationConflict*(
     state,
     winner.houseId,
     winner.fleetId,
-    winner.targetSystem
+    winner.targetSystem,
+    events
   )
 
   if success:
@@ -367,7 +380,8 @@ proc resolveColonizationConflict*(
 proc resolveColonization*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
 ): seq[simultaneous_types.ColonizationResult] =
   ## Main entry point: Resolve all colonization orders simultaneously
   ##
@@ -388,7 +402,7 @@ proc resolveColonization*(
   var originalTargets = initTable[FleetId, SystemId]()
 
   for conflict in conflicts:
-    let (conflictResults, losers) = resolveColonizationConflict(state, conflict, rng)
+    let (conflictResults, losers) = resolveColonizationConflict(state, conflict, rng, events)
     result.add(conflictResults)
 
     # Track losers and their original targets
@@ -428,7 +442,7 @@ proc resolveColonization*(
     var nextRoundLosers: seq[ColonizationIntent] = @[]
 
     for conflict in fallbackConflicts:
-      let (conflictResults, losers) = resolveColonizationConflict(state, conflict, rng)
+      let (conflictResults, losers) = resolveColonizationConflict(state, conflict, rng, events)
 
       # Update results: mark successful fallbacks appropriately
       for res in conflictResults:

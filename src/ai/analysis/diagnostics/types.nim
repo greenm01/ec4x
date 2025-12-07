@@ -20,6 +20,7 @@ type
     rank*: int             # Current rank by prestige (1=winning, 4=losing)
     houseId*: HouseId
     strategy*: AIStrategy  # AI strategy/personality archetype
+    totalSystemsOnMap*: int  # Total systems on the starmap (constant, same for all houses)
 
     # Economy (Core)
     treasuryBalance*: int
@@ -229,6 +230,8 @@ type
     # Change Deltas (NEW - track turn-over-turn losses/gains)
     coloniesLost*: int            # Colonies lost this turn (conquest/rebellion)
     coloniesGained*: int          # Colonies gained this turn (colonization/conquest)
+    coloniesGainedViaColonization*: int  # Colonies gained via ETAC colonization
+    coloniesGainedViaConquest*: int      # Colonies gained via invasion/blitz
     shipsLost*: int               # Ships destroyed this turn (all types)
     shipsGained*: int             # Ships commissioned this turn (all types)
     fightersLost*: int            # Fighter squadrons lost this turn
@@ -260,6 +263,7 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     rank: 0,  # Default to 0, will be calculated in collectDiagnostics
     houseId: houseId,
     strategy: strategy,
+    totalSystemsOnMap: 0,  # Will be set in collectDiagnostics
 
     # Economy
     treasuryBalance: 0,
@@ -425,6 +429,8 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     # Change Deltas (will be calculated from prevMetrics)
     coloniesLost: 0,
     coloniesGained: 0,
+    coloniesGainedViaColonization: 0,
+    coloniesGainedViaConquest: 0,
     shipsLost: 0,
     shipsGained: 0,
     fightersLost: 0,

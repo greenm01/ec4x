@@ -7,7 +7,7 @@
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 950-1250)
 ## NEW: Advisor reasoning log support (Gap #9 fix)
 
-import std/[options, algorithm, strformat, tables]
+import std/[options, algorithm, strformat, tables, logging]
 import ./types
 import ./domestikos_collector  # Military commander
 import ./logothete_collector   # Research & technology
@@ -17,6 +17,7 @@ import ./protostrator_collector  # Diplomacy
 import ./basileus_collector    # House status & victory
 import ../../../engine/gamestate
 import ../../../engine/orders
+import ../../../engine/resolution/types as res_types
 import ../../common/types
 
 # Forward declaration for espionage mission counting
@@ -92,11 +93,16 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
                         prevMetrics: Option[DiagnosticMetrics] = none(DiagnosticMetrics),
                         orders: Option[OrderPacket] = none(OrderPacket),
                         gameId: string = "",
-                        maxTurns: int = 100): DiagnosticMetrics =
+                        maxTurns: int = 100,
+                        events: seq[res_types.GameEvent] = @[]): DiagnosticMetrics =
   ## Collect all diagnostic metrics for a house at current turn
   ##
   ## maxTurns: expected game length for Act calculation (default 100)
+  ## events: Game events from turn resolution (for colonization vs conquest tracking)
   result = initDiagnosticMetrics(state.turn, houseId, strategy, gameId)
+
+  # Set total systems on map (constant for all houses/turns)
+  result.totalSystemsOnMap = state.starMap.systems.len
 
   # Use prevMetrics or empty metrics for first turn
   let prev = if prevMetrics.isSome: prevMetrics.get() else: result
@@ -375,6 +381,20 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
     else:
       result.coloniesGained = 0
       result.coloniesLost = 0
+
+  # Count colonization vs conquest events (regardless of prevMetrics)
+  for event in events:
+    if event.houseId == houseId:
+      case event.eventType
+      of res_types.GameEventType.ColonyEstablished:
+        result.coloniesGainedViaColonization += 1
+      of res_types.GameEventType.SystemCaptured,
+         res_types.GameEventType.ColonyCaptured:
+        result.coloniesGainedViaConquest += 1
+      else:
+        discard
+
+  if prevMetrics.isSome:
 
     # Ship changes
     let prevShips = prev.totalShips

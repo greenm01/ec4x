@@ -47,25 +47,55 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
         'fighters_lost': 0,
         'colonies_lost': 0,
         'colonies_gained': 0,
+        'colonies_gained_via_colonization': 0,
+        'colonies_gained_via_conquest': 0,
         'ships_built': 0,
-        'fighters_built': 0
+        'fighters_built': 0,
+        'ship_type_losses': defaultdict(int)  # Track per-ship-type losses
     })
+
+    # Track previous turn values to calculate losses
+    prev_counts = defaultdict(lambda: defaultdict(int))
+
+    ship_types = [
+        'destroyer_ships', 'cruiser_ships', 'light_cruiser_ships', 'heavy_cruiser_ships',
+        'battlecruiser_ships', 'battleship_ships', 'dreadnought_ships', 'super_dreadnought_ships',
+        'carrier_ships', 'super_carrier_ships', 'etac_ships', 'troop_transport_ships',
+        'scout_ships', 'corvette_ships', 'frigate_ships', 'raider_ships', 'planet_breaker_ships'
+    ]
 
     for row in data:
         house = row['house']
+        turn = int(row['turn'])
+
         stats[house]['ships_lost'] += int(row.get('ships_lost', 0))
         stats[house]['fighters_lost'] += int(row.get('fighters_lost', 0))
         stats[house]['colonies_lost'] += int(row.get('colonies_lost', 0))
         stats[house]['colonies_gained'] += int(row.get('colonies_gained', 0))
-        # Fighters built = fighters gained (since fighters_gained tracks production)
+        stats[house]['colonies_gained_via_colonization'] += int(row.get('colonies_gained_via_colonization', 0))
+        stats[house]['colonies_gained_via_conquest'] += int(row.get('colonies_gained_via_conquest', 0))
         stats[house]['fighters_built'] += int(row.get('fighters_gained', 0))
+
+        # Track per-ship-type losses (decrease from prev turn, accounting for builds)
+        # Note: This is approximate - we detect decreases but can't distinguish
+        # combat losses from ships being disbanded/decommissioned
+        for ship_type in ship_types:
+            current = int(row.get(ship_type, 0))
+            previous = prev_counts[house][ship_type]
+
+            # If count decreased and we saw ships_lost this turn, attribute proportionally
+            if current < previous and int(row.get('ships_lost', 0)) > 0:
+                decrease = previous - current
+                stats[house]['ship_type_losses'][ship_type] += decrease
+
+            prev_counts[house][ship_type] = current
 
     return dict(stats)
 
-def print_final_fleet_composition(final_data: Dict[str, Dict]):
+def print_final_fleet_composition(final_data: Dict[str, Dict], cumulative: Dict[str, Dict], max_turn: int):
     """Print detailed fleet composition table by ship type."""
     print("\n" + "="*100)
-    print("FINAL FLEET COMPOSITION (Turn 45)")
+    print(f"FINAL FLEET COMPOSITION (Turn {max_turn})")
     print("="*100)
 
     ship_types = [
@@ -96,34 +126,44 @@ def print_final_fleet_composition(final_data: Dict[str, Dict]):
         ('total_ships', 'TOTAL SHIPS')
     ]
 
-    # Header
+    # Header - show current and (losses)
     houses = sorted(final_data.keys())
     print(f"{'Ship Type':<20}", end='')
     for house in houses:
         short_name = house.replace('house-', '')
-        print(f"{short_name:>12}", end='')
-    print(f"{'  TOTAL':>12}")
-    print("-" * 100)
+        print(f"{short_name:>18}", end='')  # Wider for "current (lost)"
+    print(f"{'    TOTAL':>18}")
+    print("-" * 140)
 
-    # Rows
+    # Rows - show "current (lost)" format
     for col, label in ship_types:
         if label == 'TOTAL SHIPS':
-            print("-" * 100)
+            print("-" * 140)
         print(f"{label:<20}", end='')
         row_total = 0
+        row_losses = 0
         for house in houses:
             count = int(final_data[house].get(col, 0))
+            losses = cumulative[house]['ship_type_losses'].get(col, 0)
             row_total += count
-            if count > 0:
-                print(f"{count:>12}", end='')
-            else:
-                print(f"{'—':>12}", end='')
-        print(f"{row_total:>12}")
+            row_losses += losses
 
-def print_ground_forces(final_data: Dict[str, Dict]):
+            if count > 0 or losses > 0:
+                display = f"{count} ({losses})" if losses > 0 else str(count)
+                print(f"{display:>18}", end='')
+            else:
+                print(f"{'—':>18}", end='')
+
+        total_display = f"{row_total} ({row_losses})" if row_losses > 0 else str(row_total)
+        print(f"{total_display:>18}")
+
+    # Add legend
+    print("\nFormat: Current (Combat Losses)")
+
+def print_ground_forces(final_data: Dict[str, Dict], max_turn: int):
     """Print ground forces composition table."""
     print("\n" + "="*100)
-    print("GROUND FORCES (Turn 45)")
+    print(f"GROUND FORCES (Turn {max_turn})")
     print("="*100)
 
     ground_types = [
@@ -171,10 +211,10 @@ def print_ground_forces(final_data: Dict[str, Dict]):
     )
     print(f"{grand_total:>12}")
 
-def print_facilities_and_defenses(final_data: Dict[str, Dict]):
+def print_facilities_and_defenses(final_data: Dict[str, Dict], max_turn: int):
     """Print facilities and planetary defenses table."""
     print("\n" + "="*100)
-    print("FACILITIES & PLANETARY DEFENSES (Turn 45)")
+    print(f"FACILITIES & PLANETARY DEFENSES (Turn {max_turn})")
     print("="*100)
 
     facility_types = [
@@ -256,25 +296,39 @@ def print_production_summary(cumulative: Dict[str, Dict], final_data: Dict[str, 
 
     print("\n* Ships Built = Final Ships + Ships Lost (includes combat replacements)")
 
-def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str, Dict]):
+def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str, Dict], data: List[Dict]):
     """Print territorial control and colony changes."""
     print("\n" + "="*100)
     print("TERRITORIAL CONTROL")
     print("="*100)
 
+    # Total systems on map (from diagnostics, constant for all houses)
+    total_systems_on_map = int(data[0].get('total_systems_on_map', 0))
+
+    # Total currently colonized across all houses
+    total_colonized = sum(int(final_data[house].get('total_colonies', 0)) for house in final_data.keys())
+
+    print(f"Total Systems on Map: {total_systems_on_map}")
+    print(f"Total Currently Colonized: {total_colonized}")
+    print(f"Uncolonized Systems: {total_systems_on_map - total_colonized}")
+    print()
+
     houses = sorted(cumulative.keys())
-    print(f"{'House':<20}{'Final Colonies':>15}{'Captured':>12}{'Lost':>12}{'Net Change':>12}")
+    print(f"{'House':<20}{'Final':>8}{'Colonized':>12}{'Conquered':>12}{'Lost':>8}{'Net':>8}")
     print("-" * 100)
 
     for house in houses:
         final_colonies = int(final_data[house].get('total_colonies', 0))
-        captured = cumulative[house]['colonies_gained']
+        colonized = cumulative[house]['colonies_gained_via_colonization']
+        conquered = cumulative[house]['colonies_gained_via_conquest']
         lost = cumulative[house]['colonies_lost']
-        net = captured - lost
+        net = (colonized + conquered) - lost
 
         short_name = house.replace('house-', '')
         net_str = f"+{net}" if net > 0 else str(net)
-        print(f"{short_name:<20}{final_colonies:>15}{captured:>12}{lost:>12}{net_str:>12}")
+        print(f"{short_name:<20}{final_colonies:>8}{colonized:>12}{conquered:>12}{lost:>8}{net_str:>8}")
+
+    print("\nNote: Colonized = via ETAC, Conquered = via invasion/blitz")
 
 def print_economy_and_prestige(final_data: Dict[str, Dict]):
     """Print economy and prestige summary."""
@@ -374,14 +428,15 @@ def main():
     data = load_game_data(game_seed)
     final_data = get_final_turn_data(data)
     cumulative = get_cumulative_stats(data)
+    max_turn = max(int(row['turn']) for row in data)
 
     # Print all tables
-    print_final_fleet_composition(final_data)
-    print_ground_forces(final_data)
-    print_facilities_and_defenses(final_data)
+    print_final_fleet_composition(final_data, cumulative, max_turn)
+    print_ground_forces(final_data, max_turn)
+    print_facilities_and_defenses(final_data, max_turn)
     print_combat_losses(cumulative, final_data)
     print_production_summary(cumulative, final_data)
-    print_territorial_control(cumulative, final_data)
+    print_territorial_control(cumulative, final_data, data)
     print_economy_and_prestige(final_data)
     detect_red_flags(data, cumulative, final_data)
 

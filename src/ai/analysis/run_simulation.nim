@@ -137,7 +137,7 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
       let strategy = controllers[i].strategy
       # Use seed as game identifier
       let gameId = $seed
-      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt, gameId, maxTurns)
+      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt, gameId, maxTurns, turnResult.events)
       allDiagnostics.add(metrics)
       prevMetrics[houseId] = metrics
 

@@ -524,7 +524,7 @@ proc resolveCommandPhase(state: var GameState, orders: Table[HouseId, OrderPacke
   when not defined(release):
     logDebug(LogCategory.lcOrders, "[SIMULTANEOUS COLONIZATION] Resolving colonization orders fairly...")
 
-  let colonizationResults = simultaneous.resolveColonization(state, orders, rng)
+  let colonizationResults = simultaneous.resolveColonization(state, orders, rng, events)
 
   when not defined(release):
     logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS COLONIZATION] Resolved {colonizationResults.len} colonization attempts")
