@@ -482,13 +482,47 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
       turnsRemaining: 0,
       violationTurn: 0
     ),
-    starbases: @[],  # No starbases at start
-    spaceports: @[],  # Configured by game setup
-    shipyards: @[],  # Configured by game setup
-    planetaryShieldLevel: 0,  # No shield at start
-    groundBatteries: 0,  # No batteries at start
-    armies: 0,  # No armies at start
-    marines: 0,  # No marines at start
+    starbases: block:
+      # Create starbases from config
+      var bases: seq[Starbase] = @[]
+      for i in 1..setupConfig.starting_facilities.starbases:
+        bases.add(Starbase(
+          id: $systemId & "-starbase-" & $i,
+          commissionedTurn: 0,
+          isCrippled: false
+        ))
+      bases,
+    spaceports: block:
+      # Create spaceports from config
+      var ports: seq[Spaceport] = @[]
+      for i in 1..setupConfig.starting_facilities.spaceports:
+        ports.add(Spaceport(
+          id: $systemId & "-spaceport-" & $i,
+          commissionedTurn: 0,
+          docks: 5,
+          constructionQueue: @[],
+          activeConstruction: none(econ_types.ConstructionProject)
+        ))
+      ports,
+    shipyards: block:
+      # Create shipyards from config
+      var yards: seq[Shipyard] = @[]
+      for i in 1..setupConfig.starting_facilities.shipyards:
+        yards.add(Shipyard(
+          id: $systemId & "-shipyard-" & $i,
+          commissionedTurn: 0,
+          docks: 10,
+          isCrippled: false,
+          constructionQueue: @[],
+          activeConstruction: none(econ_types.ConstructionProject),
+          repairQueue: @[],
+          activeRepairs: @[]
+        ))
+      yards,
+    planetaryShieldLevel: 0,  # No shield at start (setupConfig.starting_facilities.planetary_shields)
+    groundBatteries: setupConfig.starting_facilities.ground_batteries,
+    armies: setupConfig.starting_ground_forces.armies,
+    marines: setupConfig.starting_ground_forces.marines,
     blockaded: false,
     blockadedBy: @[],
     blockadeTurns: 0

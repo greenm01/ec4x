@@ -50,21 +50,27 @@ fighter_doctrine = 1                # FD I (1.0x multiplier)
 advanced_carrier_ops = 1            # ACO I (CV=3FS, CX=5FS)
 
 [starting_fleet]
-# Initial fleet composition matching original Esterian Conquest
-# Original EC: 2 fleets (ETAC+Cruiser), 2 fleets (Destroyer)
+# Initial fleet composition - 4 fleets total:
+# - 2 colonization fleets (ETAC + Light Cruiser each)
+# - 2 scout fleets (Destroyer each)
 etac = 2                            # 2 ETACs (fully loaded with PTUs)
 light_cruiser = 2                   # 2 Light Cruisers (one with each ETAC)
 destroyer = 2                       # 2 Destroyers (scout/exploration fleets)
-scout = 0                           # 0 Scouts (not in original EC starting fleet)
-# All other ship types: 0 (not listed in spec)
+scout = 0                           # 0 Scouts
+# All other ship types: 0
 
 [starting_facilities]
-# Homeworld starting facilities per gameplay.md:37
+# Homeworld starting facilities and defenses
 spaceports = 1                      # 1 Spaceport
 shipyards = 1                       # 1 Shipyard
-starbases = 0                       # 0 Starbases (not in spec)
-ground_batteries = 0                # 0 Ground Batteries (not in spec)
-planetary_shields = 0               # 0 Planetary Shields (not in spec)
+starbases = 1                       # 1 Starbase
+ground_batteries = 5                # 5 Ground Batteries
+planetary_shields = 0               # 0 Planetary Shields
+
+[starting_ground_forces]
+# Starting ground units for homeworld defense
+armies = 10                         # 10 Armies
+marines = 5                         # 5 Marines
 
 [homeworld]
 # Homeworld characteristics per gameplay.md:37
