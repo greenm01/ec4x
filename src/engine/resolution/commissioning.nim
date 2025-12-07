@@ -379,26 +379,8 @@ proc commissionCompletedProjects*(
             ))
             continue
 
-          # 2. Starbases → colony.starbases
-          elif shipClass == ShipClass.Starbase:
-            let starbase = Starbase(
-              id: $completed.colonyId & "-SB-" & $(colony.starbases.len + 1),
-              commissionedTurn: state.turn,
-              isCrippled: false
-            )
-            colony.starbases.add(starbase)
-            state.colonies[completed.colonyId] = colony
-            logInfo(LogCategory.lcEconomy, &"Commissioned starbase {starbase.id} at {completed.colonyId} (operational: {getOperationalStarbaseCount(colony)})")
-
-            events.add(res_types.GameEvent(
-              eventType: res_types.GameEventType.ShipCommissioned,
-              houseId: owner,
-              description: "Starbase commissioned at " & $completed.colonyId,
-              systemId: some(completed.colonyId)
-            ))
-            continue
-
-          # 3. Check if this is a spacelift ship (ETAC or TroopTransport)
+          # 2. Check if this is a spacelift ship (ETAC or TroopTransport)
+          # Note: Starbases are now handled as facilities (Building path above)
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
           if isSpaceLift:

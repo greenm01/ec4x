@@ -157,21 +157,33 @@ proc validateRepairRequest*(request: RepairRequest, state: GameState): RepairVal
     result.message = "Cannot repair at another house's colony"
     return
 
-  # Check for shipyard
-  if colony.shipyards.len == 0:
-    result.message = "Colony has no shipyard for repairs"
-    return
+  # Different facility requirements for Ship vs Starbase repairs
+  case request.targetType
+  of RepairTargetType.Ship:
+    # Ship repairs require Shipyards
+    if colony.shipyards.len == 0:
+      result.message = "Colony has no shipyard for ship repairs"
+      return
 
-  # Check for operational shipyard
-  var hasOperationalShipyard = false
-  for shipyard in colony.shipyards:
-    if not shipyard.isCrippled:
-      hasOperationalShipyard = true
-      break
+    # Check for operational shipyard
+    var hasOperationalShipyard = false
+    for shipyard in colony.shipyards:
+      if not shipyard.isCrippled:
+        hasOperationalShipyard = true
+        break
 
-  if not hasOperationalShipyard:
-    result.message = "No operational shipyard available (all crippled)"
-    return
+    if not hasOperationalShipyard:
+      result.message = "No operational shipyard available (all crippled)"
+      return
+
+  of RepairTargetType.Starbase:
+    # Starbase repairs require Spaceports (not Shipyards)
+    if colony.spaceports.len == 0:
+      result.message = "Colony has no spaceport for starbase repairs"
+      return
+
+    # Note: Spaceport operational status checked implicitly (exists = operational)
+    # Starbases do NOT check dock capacity (facilities don't consume docks)
 
   # Calculate repair cost
   let cost = case request.targetType
@@ -193,13 +205,14 @@ proc validateRepairRequest*(request: RepairRequest, state: GameState): RepairVal
     result.message = "Insufficient funds (need " & $cost & " PP, have " & $house.treasury & " PP)"
     return
 
-  # Check shipyard dock capacity (repairs require available docks)
-  let activeProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
-  let capacity = colony.getShipyardDockCapacity()
+  # Check dock capacity for Ship repairs only (Starbases don't consume docks)
+  if request.targetType == RepairTargetType.Ship:
+    let activeProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
+    let capacity = colony.getShipyardDockCapacity()
 
-  if activeProjects >= capacity:
-    result.message = "All shipyard docks occupied (" & $activeProjects & "/" & $capacity & " in use)"
-    return
+    if activeProjects >= capacity:
+      result.message = "All shipyard docks occupied (" & $activeProjects & "/" & $capacity & " in use)"
+      return
 
   result.valid = true
   result.cost = cost

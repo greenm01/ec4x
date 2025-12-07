@@ -783,11 +783,13 @@ proc getSpaceportDockCapacity*(colony: Colony): int =
 proc getActiveProjectsByFacility*(colony: Colony, facilityType: econ_types.FacilityType): int =
   ## Count active projects using a specific facility type
   ## Construction projects can use any facility, repairs are facility-specific
+  ## Note: Starbase repairs do NOT consume dock capacity (facilities, not ships)
   result = colony.getActiveConstructionProjects()  # Construction uses any docks
 
-  # Add repairs specific to this facility type
+  # Add repairs specific to this facility type (excluding starbases)
   for repair in colony.repairQueue:
-    if repair.facilityType == facilityType:
+    if repair.facilityType == facilityType and
+       repair.targetType != econ_types.RepairTargetType.Starbase:
       result += 1
 
 proc canAcceptMoreProjects*(colony: Colony): bool =

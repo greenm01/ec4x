@@ -33,6 +33,13 @@ type
     DefenseGap, OffensivePrep, ReconnaissanceGap, ExpansionSupport, ThreatResponse,
     StrategicAsset, Infrastructure
 
+  ColonyDefenseHistory* = object
+    ## Tracks defense history for escalation logic (Gap 5)
+    systemId*: SystemId
+    turnsUndefended*: int
+    lastDefenderAssigned*: int           # Turn number
+    lastCheckedTurn*: int
+
   BuildRequirement* = object
     ## AI build requirement for Domestikos advisor
     ##
@@ -97,6 +104,24 @@ type
     Unfulfilled,  # Treasurer couldn't afford this requirement
     Deferred      # Low priority, intentionally skipped
 
+  UnfulfillmentReason* {.pure.} = enum
+    ## Detailed reason why a requirement could not be fulfilled (Gap 6)
+    InsufficientBudget     # Not enough PP for even 1 unit
+    PartialBudget          # Built some but not full quantity
+    ColonyCapacityFull     # No available dock space
+    TechNotAvailable       # CST requirement not met
+    NoValidColony          # No colony meets build criteria
+    BudgetReserved         # Budget allocated to higher priority
+    SubstitutionFailed     # Tried substitution, still couldn't afford
+
+  RequirementFeedback* = object
+    ## Detailed feedback for a single unfulfilled requirement (Gap 6)
+    requirement*: BuildRequirement
+    reason*: UnfulfillmentReason
+    budgetShortfall*: int           # PP gap (0 if partial fulfillment)
+    quantityBuilt*: int             # How many were affordable (0 if none)
+    suggestion*: Option[string]     # AI-generated suggestion
+
   TreasurerFeedback* = object
     ## Treasurer's feedback to Admiral on which requirements were fulfilled
     fulfilledRequirements*: seq[BuildRequirement]
@@ -105,6 +130,8 @@ type
     totalBudgetAvailable*: int
     totalBudgetSpent*: int
     totalUnfulfilledCost*: int
+    # Gap 6: Rich feedback for intelligent reprioritization
+    detailedFeedback*: seq[RequirementFeedback]
 
   ResearchRequirement* = object
     ## Science Advisor requirement for research investment
@@ -229,6 +256,7 @@ type
     fallbackRoutes*: seq[FallbackRoute]
     homeworld*: SystemId  # Primary fallback and repair location
     standingOrders*: Table[FleetId, StandingOrder]  # QoL: Standing orders for routine tasks
+    defenseHistory*: Table[SystemId, ColonyDefenseHistory]  # Gap 5: Defense persistence tracking
     offensiveFleetOrders*: seq[FleetOrder]  # Domestikos offensive operations (Move, Attack, etc.)
     fleetManagementCommands*: seq[ZeroTurnCommand]  # Domestikos fleet management (Merge/Detach/Transfer)
     pendingIntelUpdates*: seq[ReconUpdate]  # Reconnaissance missions scheduled for intel gathering

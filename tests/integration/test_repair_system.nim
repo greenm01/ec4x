@@ -406,7 +406,9 @@ suite "Starbase Repair System":
       starbases: @[
         Starbase(id: "sb1", commissionedTurn: 1, isCrippled: true)
       ],
-      spaceports: @[],
+      spaceports: @[
+        Spaceport(id: "sp1", commissionedTurn: 1, docks: 5, isCrippled: false)
+      ],
       shipyards: @[
         Shipyard(id: "sy1", commissionedTurn: 1, docks: 10, isCrippled: false)
       ]
@@ -424,16 +426,16 @@ suite "Starbase Repair System":
     check state.colonies[1].repairQueue.len == 1
     let repair = state.colonies[1].repairQueue[0]
     check repair.targetType == econ_types.RepairTargetType.Starbase
-    check repair.facilityType == econ_types.FacilityType.Shipyard
+    check repair.facilityType == econ_types.FacilityType.Spaceport  # Starbases use Spaceport
     check repair.turnsRemaining == 1
 
-  test "Starbase repairs require shipyard":
+  test "Starbase repairs require spaceport":
     var state = createTestStateWithStarbase()
 
-    # Remove shipyard
-    state.colonies[1].shipyards = @[]
+    # Remove spaceport (starbases need spaceport, not shipyard)
+    state.colonies[1].spaceports = @[]
 
-    # Submit repairs (should do nothing)
+    # Submit repairs (should do nothing without spaceport)
     state.submitAutomaticStarbaseRepairs(1)
 
     # Repair queue should be empty

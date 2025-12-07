@@ -133,6 +133,7 @@ military = 0.15        # Reduced from 0.20 - shift to transports for Act 2 prep
 reconnaissance = 0.10  # Reduced from 0.30 - any ship can explore in Act 1
 special_units = 0.15   # Increased from 0.10 - need transports for invasion capability
 technology = 0.05      # Add minimal tech investment
+filler_budget_reserved = 0.20  # 20% reserved for capacity utilization (Gap Fix)
 
 [budget_act2_rising_tensions]
 expansion = 0.20       # INCREASED from 0.10 - need facilities at new colonies (spaceports/shipyards)
@@ -141,6 +142,7 @@ military = 0.15        # REDUCED from 0.25 - shift budget to expansion infrastru
 reconnaissance = 0.15  # Unchanged - scouts for espionage
 special_units = 0.30   # Unchanged - carriers+fighters critical
 technology = 0.05      # Unchanged - minimal investment
+filler_budget_reserved = 0.15  # 15% reserved for capacity utilization (Gap Fix)
 
 [budget_act3_total_war]
 expansion = 0.15       # INCREASED from 0.10 - continue facility scaling at mid-game colonies
@@ -149,6 +151,7 @@ military = 0.45        # Unchanged - war economy
 reconnaissance = 0.05  # Unchanged - scouts already deployed
 special_units = 0.15   # Unchanged - maintain carriers/fighters
 technology = 0.10      # Unchanged - tech investment
+filler_budget_reserved = 0.15  # 15% reserved for capacity utilization (Gap Fix)
 
 [budget_act4_endgame]
 expansion = 0.10       # INCREASED from 0.05 - finish facility scaling at late colonies
@@ -157,6 +160,7 @@ military = 0.55        # Unchanged - all-in on military
 reconnaissance = 0.05  # Unchanged - recon complete
 special_units = 0.15   # Unchanged - maintain specialized assets
 technology = 0.10      # Unchanged - tech investment
+filler_budget_reserved = 0.15  # 15% reserved for capacity utilization (Gap Fix)
 
 # ==============================================================================
 # TACTICAL PARAMETERS
@@ -397,3 +401,32 @@ intel_processing_enabled = true         # Enable enhanced intelligence processin
 use_combat_lessons = true              # Use CombatEncounterReport for learning (Phase C)
 use_starbase_surveillance = true       # Use StarbaseSurveillanceReport (Phase D)
 prioritize_high_value_targets = true   # Focus espionage on valuable targets
+
+# ==============================================================================
+# GAP FIXES (Phase 1-2)
+# ==============================================================================
+# Configuration for architectural improvements to RBA system
+
+[feedback_system]
+# Rich feedback generation (Gap 6)
+enabled = true
+suggest_cheaper_alternatives = true
+min_partial_fulfillment_ratio = 0.25
+
+[reprioritization]
+# Enhanced reprioritization logic (Gap 4)
+enable_quantity_adjustment = true
+min_quantity_reduction = 1
+enable_substitution = true
+max_cost_reduction_factor = 0.6
+facility_critical_to_high_turns = 10
+facility_high_to_medium_turns = 20
+
+[standing_orders_integration]
+# Standing order integration (Gap 5)
+generate_support_requirements = true
+defense_gap_priority_boost = 1
+filler_standing_order_bias = 0.3
+track_colony_defense_history = true
+max_history_entries = 50
+

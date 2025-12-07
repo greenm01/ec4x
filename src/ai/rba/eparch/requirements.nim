@@ -5,11 +5,12 @@
 ## Generates economic requirements with priorities for Basileus mediation
 ## Focuses on terraforming, infrastructure, and colony development
 
-import std/[options, strformat, random, math, sequtils]
+import std/[options, strformat, random, math, sequtils, algorithm]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_common_types  # For GameAct
+import ../config
 import ./industrial_investment
 import ./terraforming
 
@@ -313,9 +314,118 @@ proc generateEconomicRequirements*(
   )
 
 proc reprioritizeEconomicRequirements*(
-  original: EconomicRequirements
+  original: EconomicRequirements,
+  eparchFeedback: EparchFeedback,
+  treasury: int
 ): EconomicRequirements =
-  ## Reprioritize economic requirements based on feedback
-  ## MVP: Pass-through (no reprioritization)
-  result = original
-  result.iteration += 1
+  ## Reprioritize economic requirements based on Treasurer feedback
+  ##
+  ## Strategy (Gap 4):
+  ## 1. Escalate unfulfilled requirements based on starvation time
+  ##    - Medium (10+ iterations) → High
+  ##    - High (20+ iterations) → Critical
+  ## 2. Downgrade expensive unfulfilled High requirements to Medium
+  ##    - Expensive = >30% of treasury
+  ## 3. Preserve Critical facility requirements (Spaceports are essential)
+  ##
+  ## This ensures critical infrastructure eventually gets built while
+  ## remaining flexible about expensive long-term investments
+
+  const MAX_ITERATIONS = 3
+
+  if original.iteration >= MAX_ITERATIONS:
+    logWarn(LogCategory.lcAI,
+            &"Eparch reprioritization limit reached ({MAX_ITERATIONS} iterations). " &
+            &"Accepting unfulfilled requirements.")
+    return original
+
+  # If everything was fulfilled, no need to reprioritize
+  if eparchFeedback.unfulfilledRequirements.len == 0:
+    return original
+
+  logInfo(LogCategory.lcAI,
+          &"Eparch reprioritizing {eparchFeedback.unfulfilledRequirements.len} " &
+          &"unfulfilled requirements (iteration {original.iteration + 1}, " &
+          &"shortfall: {eparchFeedback.totalBudgetAvailable - eparchFeedback.totalBudgetSpent}PP, " &
+          &"treasury={treasury}PP)")
+
+  var reprioritized: seq[EconomicRequirement] = @[]
+
+  # Add all fulfilled requirements (these were already affordable)
+  reprioritized.add(eparchFeedback.fulfilledRequirements)
+
+  # Reprioritize unfulfilled requirements based on starvation time
+  let facilityHighToMediumTurns = globalRBAConfig.reprioritization
+                                   .facility_high_to_medium_turns
+  let facilityCriticalToHighTurns = globalRBAConfig.reprioritization
+                                     .facility_critical_to_high_turns
+
+  for req in eparchFeedback.unfulfilledRequirements:
+    var adjustedReq = req
+
+    # Calculate cost-effectiveness ratio
+    let costRatio = if treasury > 0:
+                      float(req.estimatedCost) / float(treasury)
+                    else:
+                      1.0
+
+    # Escalate based on starvation time (iteration as proxy)
+    if original.iteration >= facilityHighToMediumTurns:
+      # 20+ iterations → Escalate to Critical
+      if req.priority == RequirementPriority.High:
+        adjustedReq.priority = RequirementPriority.Critical
+        logInfo(LogCategory.lcAI,
+                &"Eparch: Escalating '{req.reason}' (High → Critical) " &
+                &"after {original.iteration} iterations")
+      elif req.priority == RequirementPriority.Medium:
+        adjustedReq.priority = RequirementPriority.High
+        logInfo(LogCategory.lcAI,
+                &"Eparch: Escalating '{req.reason}' (Medium → High) " &
+                &"after {original.iteration} iterations")
+
+    elif original.iteration >= facilityCriticalToHighTurns:
+      # 10+ iterations → Escalate Medium to High
+      if req.priority == RequirementPriority.Medium:
+        adjustedReq.priority = RequirementPriority.High
+        logInfo(LogCategory.lcAI,
+                &"Eparch: Escalating '{req.reason}' (Medium → High) " &
+                &"after {original.iteration} iterations")
+
+    # Downgrade expensive High requirements to Medium
+    # (allows more affordable requirements to get funded first)
+    if costRatio > 0.3 and req.priority == RequirementPriority.High:
+      adjustedReq.priority = RequirementPriority.Medium
+      logDebug(LogCategory.lcAI,
+               &"Eparch: Downgrading expensive '{req.reason}' " &
+               &"(High → Medium, {req.estimatedCost}PP = " &
+               &"{int(costRatio*100)}% of treasury)")
+
+    # EXCEPTION: Never downgrade Spaceport requirements below High
+    # (Spaceports are essential prerequisites for all other facilities)
+    if req.facilityType.isSome and
+       req.facilityType.get() == "Spaceport" and
+       adjustedReq.priority < RequirementPriority.High:
+      adjustedReq.priority = RequirementPriority.High
+      logDebug(LogCategory.lcAI,
+               &"Eparch: Preserving Spaceport requirement at High priority " &
+               &"(essential prerequisite)")
+
+    reprioritized.add(adjustedReq)
+
+  # Re-sort by new priorities (same logic as other requirements)
+  reprioritized.sort(proc(a, b: EconomicRequirement): int =
+    if a.priority > b.priority: 1  # Higher ord (Low=3) comes AFTER
+    elif a.priority < b.priority: -1  # Lower ord (Critical=0) comes FIRST
+    else: 0
+  )
+
+  result = EconomicRequirements(
+    requirements: reprioritized,
+    totalEstimatedCost: reprioritized.mapIt(it.estimatedCost).foldl(a + b, 0),
+    generatedTurn: original.generatedTurn,
+    iteration: original.iteration + 1
+  )
+
+  logInfo(LogCategory.lcAI,
+          &"Eparch reprioritized requirements: {result.requirements.len} total " &
+          &"(iteration={result.iteration})")

@@ -71,6 +71,7 @@ proc getSectionValueBool(config: Config, section, key: string, default: bool = f
 
 proc shipClassToConfigKey(shipClass: ShipClass): string =
   ## Convert ShipClass enum to config file section key
+  ## Note: Starbases are facilities (not in ShipClass, use facilities.toml)
   case shipClass
   of Fighter: "fighter"
   of Corvette: "corvette"
@@ -87,7 +88,6 @@ proc shipClassToConfigKey(shipClass: ShipClass): string =
   of SuperDreadnought: "super_dreadnought"
   of Carrier: "carrier"
   of SuperCarrier: "super_carrier"
-  of Starbase: "starbase"
   of ETAC: "etac"
   of TroopTransport: "troop_transport"
   of PlanetBreaker: "planet_breaker"

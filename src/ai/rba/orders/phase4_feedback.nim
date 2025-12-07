@@ -5,7 +5,7 @@
 import std/[strformat, options, strutils]
 import ../../../engine/logger
 import ../controller_types
-import ../domestikos/build_requirements
+import ../domestikos/requirements/reprioritization  # Gap 4 enhanced reprioritization
 import ../logothete/requirements as logothete_req
 import ../drungarius/requirements as drungarius_req
 import ../eparch/requirements as eparch_req
@@ -41,22 +41,24 @@ proc hasUnfulfilledCriticalOrHigh*(controller: AIController): bool =
   # No Critical/High unfulfilled requirements
   return false
 
-proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int) =
+proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int, cstLevel: int) =
   ## Reprioritize unfulfilled requirements for all advisors
   ## Downgrades priorities based on cost-effectiveness
   ## Budget-aware: expensive unfulfilled requests downgraded more aggressively
+  ## Gap 4 Enhanced: Includes quantity adjustment and substitution logic
 
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Reprioritizing unfulfilled requirements for all advisors (treasury={treasury}PP)")
+          &"{controller.houseId} Reprioritizing unfulfilled requirements for all advisors (treasury={treasury}PP, CST={cstLevel})")
 
-  # Reprioritize Domestikos (budget-aware)
+  # Reprioritize Domestikos (budget-aware with substitution)
   if controller.treasurerFeedback.isSome and controller.domestikosRequirements.isSome:
     let feedback = controller.treasurerFeedback.get()
     if feedback.unfulfilledRequirements.len > 0:
       let reprioritized = reprioritizeRequirements(
         controller.domestikosRequirements.get(),
         feedback,
-        treasury  # NEW: Pass treasury for budget-aware reprioritization
+        treasury,  # Budget-aware reprioritization
+        cstLevel   # For substitution logic (Gap 4)
       )
       controller.domestikosRequirements = some(reprioritized)
       logInfo(LogCategory.lcAI,
@@ -86,12 +88,14 @@ proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int) =
       logInfo(LogCategory.lcAI,
               &"{controller.houseId} Drungarius: Reprioritized to {reprioritized.requirements.len} requirements")
 
-  # Reprioritize Eparch
+  # Reprioritize Eparch (escalate starved requirements)
   if controller.eparchFeedback.isSome and controller.eparchRequirements.isSome:
     let feedback = controller.eparchFeedback.get()
     if feedback.unfulfilledRequirements.len > 0:
       let reprioritized = eparch_req.reprioritizeEconomicRequirements(
-        controller.eparchRequirements.get()
+        controller.eparchRequirements.get(),
+        feedback,
+        treasury  # Budget-aware reprioritization (Gap 4)
       )
       controller.eparchRequirements = some(reprioritized)
       logInfo(LogCategory.lcAI,

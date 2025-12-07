@@ -253,6 +253,57 @@ proc identifyUndefendedColonies(filtered: FilteredGameState): seq[UndefendedColo
       ))
 
 # =============================================================================
+# Standing Order Query API (Gap 5 Integration)
+# =============================================================================
+
+type
+  DefenseAssignment* = object
+    ## Active defense standing order assignment
+    fleetId*: FleetId
+    targetSystem*: SystemId
+    createdTurn*: int
+
+proc getActiveDefenseOrders*(
+  controller: AIController
+): seq[DefenseAssignment] =
+  ## Get all active DefendSystem standing orders with target systems
+  ## Used by build requirements to track defense assignments
+  result = @[]
+
+  for fleetId, order in controller.standingOrders:
+    if order.orderType == StandingOrderType.DefendSystem and
+       not order.suspended:
+      result.add(DefenseAssignment(
+        fleetId: fleetId,
+        targetSystem: order.params.defendTargetSystem,
+        createdTurn: order.createdTurn
+      ))
+
+proc getUndefendedSystemsWithOrders*(
+  controller: AIController,
+  filtered: FilteredGameState
+): seq[SystemId] =
+  ## Get systems with DefendSystem orders but no actual defenders present
+  ## Returns list of colony systems that have defense orders assigned
+  ## but the fleet hasn't arrived yet (used for defense gap detection)
+  result = @[]
+
+  # Get all systems with active defense orders
+  var systemsWithOrders = initHashSet[SystemId]()
+  for assignment in getActiveDefenseOrders(controller):
+    systemsWithOrders.incl(assignment.targetSystem)
+
+  # Get systems with actual fleet presence
+  var systemsWithFleets = initHashSet[SystemId]()
+  for fleet in filtered.ownFleets:
+    systemsWithFleets.incl(fleet.location)
+
+  # Find systems that have orders but no fleets
+  for systemId in systemsWithOrders:
+    if systemId notin systemsWithFleets:
+      result.add(systemId)
+
+# =============================================================================
 # Intelligent Standing Order Management
 # =============================================================================
 

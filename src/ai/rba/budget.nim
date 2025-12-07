@@ -179,22 +179,12 @@ proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[Build
 
 proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,
                         needDefenses: bool, hasStarbase: bool): seq[BuildOrder] =
-  ## Generate defense-related build orders (starbases, ground batteries)
+  ## Generate defense-related build orders (ground batteries)
+  ## Note: Starbases now handled by Eparch (facility system), not budget.nim
   ## Uses BudgetTracker to prevent overspending
   result = @[]
 
-  if needDefenses and not hasStarbase:
-    let starbaseCost = getShipConstructionCost(ShipClass.Starbase)
-    if tracker.canAfford(Defense, starbaseCost):
-      result.add(BuildOrder(
-        colonySystem: colony.systemId,
-        buildType: BuildType.Ship,
-        quantity: 1,
-        shipClass: some(ShipClass.Starbase),
-        buildingType: none(string),
-        industrialUnits: 0
-      ))
-      tracker.recordTransaction(Defense, starbaseCost)
+  # Starbases removed - now handled by Eparch as facilities (Spaceport → Shipyard → Starbase)
 
   # Ground batteries (cheap defense)
   let groundBatteryCost = getBuildingCost("GroundBattery")

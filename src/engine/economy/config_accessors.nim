@@ -23,6 +23,7 @@ macro getShipField*(shipClass: ShipClass, fieldName: untyped, config: untyped): 
   result = nnkCaseStmt.newTree(shipClass)
 
   # Map ShipClass enum values to config field names
+  # Note: Starbases are facilities (not in ShipClass, use facilities.toml)
   let shipMappings = {
     "Fighter": "fighter",
     "Corvette": "corvette",
@@ -41,7 +42,6 @@ macro getShipField*(shipClass: ShipClass, fieldName: untyped, config: untyped): 
     "TroopTransport": "troop_transport",
     "ETAC": "etac",
     "Scout": "scout",
-    "Starbase": "starbase",
     "PlanetBreaker": "planetbreaker"
   }
 
@@ -74,6 +74,7 @@ macro getConstructionTimeField*(shipClass: ShipClass, config: untyped): untyped 
   result = nnkCaseStmt.newTree(shipClass)
 
   # Map ShipClass to construction time field names
+  # Note: Starbases are facilities (not in ShipClass, use facilities.toml)
   let shipMappings = {
     "Fighter": "fighter_base_time",
     "Corvette": "corvette_base_time",
@@ -92,7 +93,6 @@ macro getConstructionTimeField*(shipClass: ShipClass, config: untyped): untyped 
     "TroopTransport": "troop_transport_base_time",
     "ETAC": "etac_base_time",
     "Scout": "scout_base_time",
-    "Starbase": "starbase_base_time",
     "PlanetBreaker": "planetbreaker_base_time"
   }
 

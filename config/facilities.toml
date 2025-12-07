@@ -30,6 +30,22 @@ max_per_planet = -1  # unlimited
 requires_spaceport = true
 fixed_orbit = true  # Cannot move out of system
 
+[starbase]
+name = "Starbase"
+class = "SB"
+cst_min = 3
+build_cost = 300
+upkeep_cost = 15
+defense_strength = 50
+attack_strength = 45
+description = "Immobile orbital defense platform providing economic and defensive bonuses"
+build_time = 3  # turns (three months)
+max_per_planet = -1  # unlimited
+requires_spaceport = true  # Built using spaceport lift capacity
+fixed_orbit = true  # Cannot move out of system
+economic_lift_bonus = 2  # ELI+2 per operational starbase
+growth_bonus = 0.05  # 5% population growth per operational starbase
+
 [construction]
 # Construction rules
 repair_rate_per_turn = 0.25  # 25% of DS restored per turn

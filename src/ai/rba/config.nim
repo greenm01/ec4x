@@ -41,6 +41,7 @@ type
     reconnaissance*: float
     special_units*: float
     technology*: float
+    filler_budget_reserved*: float  # Capacity filler budget reservation (Gap Fix)
 
 
 # ==============================================================================
@@ -269,6 +270,34 @@ type
     prioritize_high_value_targets*: bool
 
 # ==============================================================================
+# Gap Fix Configuration (Phase 1-2)
+# ==============================================================================
+
+type
+  FeedbackSystemConfig* = object
+    ## Rich feedback generation configuration (Gap 6)
+    enabled*: bool
+    suggest_cheaper_alternatives*: bool
+    min_partial_fulfillment_ratio*: float
+
+  ReprioritizationConfig* = object
+    ## Enhanced reprioritization configuration (Gap 4)
+    enable_quantity_adjustment*: bool
+    min_quantity_reduction*: int
+    enable_substitution*: bool
+    max_cost_reduction_factor*: float
+    facility_critical_to_high_turns*: int
+    facility_high_to_medium_turns*: int
+
+  StandingOrdersIntegrationConfig* = object
+    ## Standing order integration configuration (Gap 5)
+    generate_support_requirements*: bool
+    defense_gap_priority_boost*: int
+    filler_standing_order_bias*: float
+    track_colony_defense_history*: bool
+    max_history_entries*: int
+
+# ==============================================================================
 # Root Configuration
 # ==============================================================================
 
@@ -324,6 +353,10 @@ type
     intelligence_patrol_detection*: PatrolDetectionConfig
     # Drungarius module (intelligence coordinator)
     drungarius*: DrungariusConfig
+    # Gap Fix modules (Phase 1-2)
+    feedback_system*: FeedbackSystemConfig
+    reprioritization*: ReprioritizationConfig
+    standing_orders_integration*: StandingOrdersIntegrationConfig
 
 # ==============================================================================
 # Config Validation

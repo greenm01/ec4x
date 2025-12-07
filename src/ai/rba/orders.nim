@@ -165,8 +165,9 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
               &"{controller.houseId} Feedback iteration {feedbackIteration + 1}/{MAX_FEEDBACK_ITERATIONS} - " &
               &"unfulfilled: {getUnfulfilledSummary(controller)}")
 
-      # Reprioritize all advisors (budget-aware)
-      reprioritizeAllAdvisors(controller, filtered.ownHouse.treasury)
+      # Reprioritize all advisors (budget-aware with substitution)
+      let cstLevel = filtered.ownHouse.techTree.levels.constructionTech
+      reprioritizeAllAdvisors(controller, filtered.ownHouse.treasury, cstLevel)
 
       # Re-run mediation with adjusted priorities
       allocation = mediateAndAllocateBudget(controller, filtered, currentAct)
@@ -184,11 +185,26 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     result.orderPacket.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
 
     # Execute build orders (ships, buildings, ground units)
-    result.orderPacket.buildOrders = generateBuildOrdersWithBudget(
+    var buildOrders = generateBuildOrdersWithBudget(
       controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
       allocation.budgets[AdvisorType.Domestikos],
       controller.domestikosRequirements
     )
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Domestikos build orders: {buildOrders.len}")
+
+    # Append facility orders from Eparch (Shipyards/Spaceports)
+    let facilityOrdersLoop = executeFacilityOrders(controller, filtered, allocation)
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Eparch facility orders: {facilityOrdersLoop.len}")
+
+    buildOrders.add(facilityOrdersLoop)
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Total build orders after Eparch: {buildOrders.len}")
+
+    result.orderPacket.buildOrders = buildOrders
 
     feedbackIteration += 1
 

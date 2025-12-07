@@ -175,37 +175,31 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
 
 proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
   ## Automatically submit repair requests for crippled starbases at colony
-  ## Starbases always use shipyard facilities (priority 2, lower than ship repairs)
+  ## Starbases use spaceport facilities and do NOT consume dock space
+  ## Per architecture: Starbases are facilities that require Spaceports
 
   if systemId notin state.colonies:
     return
 
   var colony = state.colonies[systemId]
 
-  # Check if colony has shipyard (starbases require shipyard, not spaceport)
-  let shipyardCapacity = colony.getShipyardDockCapacity()
-  if shipyardCapacity == 0:
-    return  # No shipyard available
+  # Check if colony has spaceport (starbases require spaceport for repair)
+  let spaceportCount = colony.spaceports.len
+  if spaceportCount == 0:
+    return  # No spaceport available
 
   # Submit repairs for crippled starbases
+  # Note: Starbases do NOT consume dock capacity (they are facilities, not ships)
   for idx, starbase in colony.starbases:
     if starbase.isCrippled:
-      # Check if shipyard has capacity
-      let activeProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
-      if activeProjects >= shipyardCapacity:
-        logDebug(LogCategory.lcEconomy,
-                 &"Colony-{systemId} has no shipyard capacity for starbase repair " &
-                 &"({activeProjects}/{shipyardCapacity} docks used)")
-        continue  # No capacity, skip this starbase
-
       # Calculate repair cost (25% of starbase build cost)
       # TODO: Get actual starbase build cost from config (for now use estimate)
-      let starbaseBuildCost = 100  # Placeholder - starbases are expensive
+      let starbaseBuildCost = 300  # From facilities.toml
       let repairCost = (starbaseBuildCost.float * 0.25).int
 
       let repair = RepairProject(
         targetType: econ_types.RepairTargetType.Starbase,
-        facilityType: econ_types.FacilityType.Shipyard,
+        facilityType: econ_types.FacilityType.Spaceport,  # Use Spaceport, not Shipyard
         fleetId: none(FleetId),
         squadronIdx: none(int),
         shipIdx: none(int),
@@ -219,7 +213,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
       colony.repairQueue.add(repair)
       logInfo(LogCategory.lcEconomy,
               &"Submitted repair for starbase-{starbase.id} at colony-{systemId} " &
-              &"(cost: {repairCost} PP, shipyard)")
+              &"(cost: {repairCost} PP, spaceport, no dock space)")
 
   # Update colony state
   state.colonies[systemId] = colony

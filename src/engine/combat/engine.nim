@@ -84,10 +84,10 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       # Create ELI unit using house ELI level, not ship stats
       # Count scouts for mesh network bonus
       var scoutCount = 0
-      var hasStarbase = false
+      # TODO: Check if battle system has starbases (colony facilities, not squadrons)
+      # Starbases moved to facility system - need colony data to determine presence
+      var hasStarbase = false  # Placeholder - needs colony data integration
       for sq in detectorTF.squadrons:
-        if sq.squadron.flagship.shipClass == ShipClass.Starbase:
-          hasStarbase = true
         if sq.squadron.scoutShips().len > 0:
           scoutCount += sq.squadron.scoutShips().len
 

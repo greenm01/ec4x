@@ -164,8 +164,6 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
         result.etacs += 1
       of ShipClass.TroopTransport:
         result.transports += 1
-      of ShipClass.Starbase:
-        discard  # Starbases counted separately per colony
       of ShipClass.PlanetBreaker:
         result.planetBreakers += 1
 

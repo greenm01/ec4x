@@ -3,6 +3,7 @@
 ## Execute advisor requirements using allocated budgets
 
 import std/[strformat, options, random, tables]
+import ../../../common/types/units
 import ../../../engine/[fog_of_war, logger, orders]
 import ../../../engine/research/types as res_types
 import ../../../engine/espionage/types as esp_types
@@ -76,6 +77,68 @@ proc executeTerraformOrders*(
   result = generateTerraformOrders(controller, filtered, rng)
 
   return result
+
+proc executeFacilityOrders*(
+  controller: AIController,
+  filtered: FilteredGameState,
+  allocation: MultiAdvisorAllocation
+): seq[BuildOrder] =
+  ## Execute Eparch facility requirements (Shipyards/Spaceports)
+  ## Converts fulfilled EconomicRequirements into BuildOrders
+
+  result = @[]
+
+  let eparchBudget = allocation.budgets.getOrDefault(AdvisorType.Eparch, 0)
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === EXECUTING FACILITY ORDERS ===")
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Eparch budget: {eparchBudget}PP")
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Fulfilled requirements count: " &
+          &"{allocation.eparchFeedback.fulfilledRequirements.len}")
+
+  # Get fulfilled requirements from Eparch feedback
+  for econReq in allocation.eparchFeedback.fulfilledRequirements:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Processing fulfilled requirement: " &
+            &"type={econReq.requirementType}, target={econReq.targetColony}")
+
+    # Only process Facility requirements
+    if econReq.requirementType != EconomicRequirementType.Facility:
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Skipping non-facility requirement ({econReq.requirementType})")
+      continue
+
+    # Facility type must be specified
+    if econReq.facilityType.isNone:
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Facility requirement missing facilityType!")
+      continue
+
+    let facilityType = econReq.facilityType.get()
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} CREATING BUILDORDER: {facilityType} at {econReq.targetColony}")
+
+    # Convert to BuildOrder
+    let buildOrder = BuildOrder(
+      colonySystem: econReq.targetColony,
+      buildType: BuildType.Building,
+      quantity: 1,
+      shipClass: none(ShipClass),
+      buildingType: some(facilityType),
+      industrialUnits: 0
+    )
+
+    result.add(buildOrder)
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} *** FACILITY BUILDORDER CREATED: {facilityType} at " &
+            &"{econReq.targetColony} (cost={econReq.estimatedCost}PP) ***")
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Facility orders: {result.len} facilities queued")
 
 proc executeDiplomaticActions*(
   controller: AIController,

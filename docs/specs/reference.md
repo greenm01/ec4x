@@ -34,7 +34,7 @@ Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/F
 
 *Source: config/ships.toml*
 
-**Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](assets.md#244-starbases). They are built via the Colony pipeline (Eparch advisor) and stored at colonies, never assigned to fleets or squadrons.
+**Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](assets.md#244-starbases). They are built via the Colony pipeline and stored at colonies, never assigned to fleets or squadrons.
 
 **Ship Role Classifications:**
 
@@ -89,14 +89,15 @@ Orbital facilities are infrastructure built at colonies that provide combat, eco
 
 <!-- ORBITAL_FACILITIES_TABLE_START -->
 
-| **Class** | **Name**  | CST | PC  | MC  | AS  | DS  | Build Time |
-| --------- | --------- |:---:|:---:|:---:|:---:|:---:|:----------:|
-| SB        | Starbase  | 3   | 300 | 5%  | 45  | 50  | 3 turns    |
+| **Class** | **Name** | CST | PC  | MC  | AS  | DS  | Build Time |
+| --------- | -------- |:---:|:---:|:---:|:---:|:---:|:----------:|
+| SB        | Starbase | 3   | 300 | 5%  | 45  | 50  | 3 turns    |
 
 *Source: config/facilities.toml*
 
 **Notes:**
-- Built via Colony pipeline (Eparch advisor), requires operational Spaceport
+
+- Built via Colony pipeline; requires operational Spaceport
 - Repairs use Spaceport (not Shipyard), cost 75 PP (25%), take 1 turn, no dock consumption
 - AS/DS scale with WEP technology (+10% per level above WEP I)
 - Economic bonuses: +5% growth/production per Starbase (max 3 per colony)
