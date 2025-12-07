@@ -47,6 +47,8 @@ import ./types as res_types
 
 # Import config access
 import ../config/ground_units_config
+import ../config/facilities_config
+import ../research/effects  # CST dock capacity scaling
 
 # Helper functions from gamestate
 proc getOperationalStarbaseCount*(colony: Colony): int =
@@ -72,13 +74,13 @@ proc getTotalGroundDefense*(colony: Colony): int =
   result = colony.groundBatteries * 10  # Each battery = 10 defense
 
 proc getTotalConstructionDocks*(colony: Colony): int =
-  ## Calculate total construction dock capacity
+  ## Calculate total construction dock capacity (uses pre-calculated effectiveDocks)
   result = 0
   for sp in colony.spaceports:
-    result += sp.docks
+    result += sp.effectiveDocks
   for sy in colony.shipyards:
     if not sy.isCrippled:
-      result += sy.docks
+      result += sy.effectiveDocks
 
 proc hasSpaceport*(colony: Colony): bool =
   ## Check if colony has at least one operational spaceport
@@ -197,11 +199,18 @@ proc commissionCompletedProjects*(
       if completed.colonyId in state.colonies:
         var colony = getColony(completed.colonyId)
 
-        # Create new spaceport (5 docks per facilities_config.toml)
+        # Create new spaceport (docks from facilities_config.toml, scaled by CST)
+        let baseDocks = globalFacilitiesConfig.spaceport.docks
+        let cstLevel = state.houses[colony.owner].techTree.levels.constructionTech
+        let effectiveDocks = effects.calculateEffectiveDocks(baseDocks, cstLevel)
+
         let spaceport = Spaceport(
           id: $completed.colonyId & "-SP-" & $(colony.spaceports.len + 1),
           commissionedTurn: state.turn,
-          docks: 5  # From facilities_config: spaceport.docks
+          baseDocks: baseDocks,
+          effectiveDocks: effectiveDocks,
+          constructionQueue: @[],
+          activeConstructions: @[]
         )
 
         colony.spaceports.add(spaceport)
@@ -230,12 +239,19 @@ proc commissionCompletedProjects*(
           # This shouldn't happen if build validation worked correctly
           continue
 
-        # Create new shipyard (10 docks per facilities_config.toml)
+        # Create new shipyard (docks from facilities_config.toml, scaled by CST)
+        let baseDocks = globalFacilitiesConfig.shipyard.docks
+        let cstLevel = state.houses[colony.owner].techTree.levels.constructionTech
+        let effectiveDocks = effects.calculateEffectiveDocks(baseDocks, cstLevel)
+
         let shipyard = Shipyard(
           id: $completed.colonyId & "-SY-" & $(colony.shipyards.len + 1),
           commissionedTurn: state.turn,
-          docks: 10,  # From facilities_config: shipyard.docks
-          isCrippled: false
+          baseDocks: baseDocks,
+          effectiveDocks: effectiveDocks,
+          isCrippled: false,
+          constructionQueue: @[],
+          activeConstructions: @[]
         )
 
         colony.shipyards.add(shipyard)
@@ -249,6 +265,48 @@ proc commissionCompletedProjects*(
           eventType: res_types.GameEventType.BuildingCompleted,
           houseId: colony.owner,
           description: "Shipyard commissioned at " & $completed.colonyId,
+          systemId: some(completed.colonyId)
+        ))
+
+    # Special handling for drydocks
+    elif completed.projectType == econ_types.ConstructionType.Building and
+         completed.itemId == "Drydock":
+      if completed.colonyId in state.colonies:
+        var colony = getColony(completed.colonyId)
+
+        # Validate spaceport prerequisite
+        if not hasSpaceport(colony):
+          logError(LogCategory.lcEconomy,
+                  &"Drydock construction failed - no spaceport at {completed.colonyId}")
+          # This shouldn't happen if build validation worked correctly
+          continue
+
+        # Create new drydock (docks from facilities_config.toml, scaled by CST)
+        let baseDocks = globalFacilitiesConfig.drydock.docks
+        let cstLevel = state.houses[colony.owner].techTree.levels.constructionTech
+        let effectiveDocks = effects.calculateEffectiveDocks(baseDocks, cstLevel)
+
+        let drydock = Drydock(
+          id: $completed.colonyId & "-DD-" & $(colony.drydocks.len + 1),
+          commissionedTurn: state.turn,
+          baseDocks: baseDocks,
+          effectiveDocks: effectiveDocks,
+          isCrippled: false,
+          repairQueue: @[],
+          activeRepairs: @[]
+        )
+
+        colony.drydocks.add(drydock)
+        saveColony(completed.colonyId, colony)
+
+        logInfo(LogCategory.lcEconomy,
+          &"Commissioned drydock {drydock.id} at {completed.colonyId} " &
+          &"(Total repair docks: {getTotalRepairDocks(colony)})")
+
+        events.add(res_types.GameEvent(
+          eventType: res_types.GameEventType.BuildingCompleted,
+          houseId: colony.owner,
+          description: "Drydock commissioned at " & $completed.colonyId,
           systemId: some(completed.colonyId)
         ))
 

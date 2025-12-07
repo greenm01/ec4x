@@ -1,13 +1,14 @@
 ## Repair Queue Management
 ##
 ## Handles automatic extraction of crippled ships from fleets and submission
-## to repair queues at colonies with shipyard/spaceport capacity.
+## to repair queues at colonies with drydock capacity.
 ##
 ## Design:
 ## - Fleets with crippled ships at colonies automatically submit repair requests
 ## - Ships extracted from squadrons → repair queue (1 turn, 25% cost)
 ## - Repaired ships recommission through standard pipeline (squadron → fleet)
-## - Construction projects take precedence over repairs for dock capacity
+## - Drydocks are repair-only facilities (10 docks each)
+## - Shipyards are construction-only facilities (clean separation of concerns)
 
 import std/[tables, options, strformat]
 import ../gamestate
@@ -151,12 +152,12 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
     fleet.squadrons[squadronIdx] = squadron
     state.fleets[fleetId] = fleet
 
-  # Create repair project (shipyards only)
+  # Create repair project (drydocks only)
   let cost = calculateRepairCost(shipClass)
 
   let repair = RepairProject(
     targetType: econ_types.RepairTargetType.Ship,
-    facilityType: econ_types.FacilityType.Shipyard,
+    facilityType: econ_types.FacilityType.Drydock,  # Drydocks only
     fleetId: some(fleetId),
     squadronIdx: some(squadronIdx),
     shipIdx: some(shipIdx),
@@ -169,7 +170,7 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
 
   logInfo(LogCategory.lcEconomy,
           &"Extracted crippled {shipClass} from fleet-{fleetId} squad-{squadronIdx} " &
-          &"for repair (cost: {cost} PP, shipyard only)")
+          &"for repair (cost: {cost} PP, drydock only)")
 
   return some(repair)
 
@@ -220,7 +221,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
 
 proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
   ## Automatically submit repair requests for fleets with crippled ships at this colony
-  ## Per economy.md:5.4 - Ship repairs require shipyards (spaceports cannot repair)
+  ## Ship repairs require drydocks (spaceports and shipyards cannot repair)
   ## Called during turn resolution after fleet movements
 
   if systemId notin state.colonies:
@@ -228,11 +229,11 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
 
   var colony = state.colonies[systemId]
 
-  # Check if colony has shipyard (required for all ship repairs)
-  let hasShipyard = colony.shipyards.len > 0
+  # Check if colony has drydock (required for all ship repairs)
+  let hasDrydock = colony.drydocks.len > 0
 
-  if not hasShipyard:
-    return  # No shipyard = no repairs
+  if not hasDrydock:
+    return  # No drydock = no repairs
 
   # Submit starbase repairs first (they have lower priority but same facility)
   submitAutomaticStarbaseRepairs(state, systemId)
@@ -258,14 +259,14 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
       for shipIdx in 0..<squadron.ships.len:
         let ship = squadron.ships[shipIdx]
         if ship.isCrippled:
-          # Check if shipyard has capacity for this repair
-          let activeProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
-          let capacity = colony.getShipyardDockCapacity()
+          # Check if drydocks have capacity
+          let drydockProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Drydock)
+          let drydockCapacity = colony.getDrydockDockCapacity()
 
-          if activeProjects >= capacity:
+          if drydockProjects >= drydockCapacity:
             logDebug(LogCategory.lcEconomy,
-                     &"Colony-{systemId} has no shipyard capacity for repair " &
-                     &"({activeProjects}/{capacity} docks used)")
+                     &"Colony-{systemId} has no drydock capacity for repair " &
+                     &"({drydockProjects}/{drydockCapacity} docks used)")
             continue  # No capacity, skip this ship
 
           # Extract and add to repair queue
@@ -274,7 +275,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
             colony.repairQueue.add(repairOpt.get())
             logInfo(LogCategory.lcEconomy,
                     &"Submitted repair for {ship.shipClass} from fleet-{fleetId} " &
-                    &"to colony-{systemId} shipyard")
+                    &"to colony-{systemId} drydock")
 
   # Update colony state
   state.colonies[systemId] = colony

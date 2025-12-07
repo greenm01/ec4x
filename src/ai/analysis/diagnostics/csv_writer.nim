@@ -78,7 +78,7 @@ const
                     "battlecruiser_ships,battleship_ships,dreadnought_ships,super_dreadnought_ships," &
                     "carrier_ships,super_carrier_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
                     "planetary_shield_units,ground_battery_units,army_units,marines_at_colonies,marines_on_transports,marine_division_units," &
-                    "total_spaceports,total_shipyards," &
+                    "total_spaceports,total_shipyards,total_drydocks," &
                     "total_invasions,clk_no_raiders,scout_count," &
                     "spy_planet,hack_starbase,total_espionage," &
                     "undefended_colonies,total_colonies,mothball_used,mothball_total," &
@@ -192,7 +192,7 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Ground Units (4 types + marine breakdown)
                  &"{metrics.planetaryShieldUnits},{metrics.groundBatteryUnits},{metrics.armyUnits},{metrics.marinesAtColonies},{metrics.marinesOnTransports},{metrics.marineDivisionUnits}," &
                  # Facilities (NEW - Gap #10 fix)
-                 &"{metrics.totalSpaceports},{metrics.totalShipyards}," &
+                 &"{metrics.totalSpaceports},{metrics.totalShipyards},{metrics.totalDrydocks}," &
                  # Intel (Phase F: removed meaningless invasionFleetsWithoutELIMesh metric)
                  &"{metrics.totalInvasions}," &
                  &"{boolToInt(metrics.clkResearchedNoRaiders)},{metrics.scoutCount}," &

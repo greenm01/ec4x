@@ -30,6 +30,22 @@ max_per_planet = -1  # unlimited
 requires_spaceport = true
 fixed_orbit = true  # Cannot move out of system
 
+[drydock]
+name = "Drydock"
+class = "DD"
+cst_min = 1
+build_cost = 150
+upkeep_cost = 5
+defense_strength = 70
+carry_limit = 10
+description = "Orbital facility dedicated to ship repair operations"
+build_time = 2  # turns (two months)
+docks = 10  # Available for repair only
+max_per_planet = -1  # unlimited
+requires_spaceport = true
+fixed_orbit = true  # Cannot move out of system
+repair_only = true  # Cannot build ships
+
 [starbase]
 name = "Starbase"
 class = "SB"

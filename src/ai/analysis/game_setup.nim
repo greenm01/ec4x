@@ -177,13 +177,19 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     result.colonies[homeSystemId].spaceports.add(Spaceport(
       id: $homeSystemId & "_spaceport1",
       commissionedTurn: 1,
-      docks: 5
+      baseDocks: 5,
+      effectiveDocks: 5,  # CST I = 1.0x multiplier
+      constructionQueue: @[],
+      activeConstructions: @[]
     ))
     result.colonies[homeSystemId].shipyards.add(Shipyard(
       id: $homeSystemId & "_shipyard1",
       commissionedTurn: 1,
-      docks: 10,
-      isCrippled: false
+      baseDocks: 10,
+      effectiveDocks: 10,  # CST I = 1.0x multiplier
+      isCrippled: false,
+      constructionQueue: @[],
+      activeConstructions: @[]
     ))
 
     # Create starting fleets at homeworld (4 fleets matching original EC)

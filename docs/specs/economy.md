@@ -258,11 +258,20 @@ Fighter Squadrons are cost-effective early-game defenders and remain relevant th
 - **Prerequisite**: Requires operational Spaceport at colony
 - **Construction Capacity**: 10 simultaneous docks
 - **Orbital construction**: Standard PP costs, no penalties
-- **Ship repairs**: 25% of ship's original PP cost, 1 turn duration (only Shipyards can repair ships)
+- **Cannot repair ships** - construction only
+
+**Drydocks:**
+
+- **Cost**: 150 PP
+- **Construction Time**: 2 turns
+- **Prerequisite**: Requires operational Spaceport at colony
+- **Repair Capacity**: 10 simultaneous docks
+- **Ship repairs**: 25% of ship's original PP cost, 1 turn duration (only Drydocks can repair ships)
+- **Cannot construct ships** - repair only
 
 **Construction Capacity Scaling:**
 
-Both facilities' dock counts scale with Construction (CST) technology level. See [Section 4.5](#45-construction-cst) for CST research progression and capacity multipliers.
+All three facilities' dock counts scale with Construction (CST) technology level. See [Section 4.5](#45-construction-cst) for CST research progression and capacity multipliers.
 
 For detailed facility capabilities and construction rules, see [Sections 5.0-5.4](#50-construction).
 
@@ -904,11 +913,11 @@ For shipyard specifications and capacity, see [Section 2.3.2.2](assets.md#23222-
 
 ## 5.5 Orbital Repair
 
-**Ship repairs require a Shipyard.** Spaceports cannot repair ships - only shipyards have the orbital infrastructure for ship repairs.
+**Ship repairs require a Drydock.** Spaceports and Shipyards cannot repair ships - only drydocks have the specialized orbital infrastructure for ship repairs.
 
 **Ship Repairs:**
 
-The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a shipyard, and the ship remains decommissioned through the repair period.
+The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a drydock, and the ship remains decommissioned through the repair period.
 
 The cost of repair equals one quarter (25%) of the ship's construction PP. All ship repairs complete in 1 turn regardless of ship class.
 
@@ -920,11 +929,11 @@ Example: You wish to repair a crippled WEP3 Light Cruiser. The cost is:
 
 **Starbase Repairs:**
 
-Starbase repairs require **spaceports** (not shipyards) and cost 25% of the starbase's construction PP (75 PP). Repair time is 1 turn.
+Starbase repairs require **spaceports** (not drydocks) and cost 25% of the starbase's construction PP (75 PP). Repair time is 1 turn.
 
 **Important:** Starbase repairs do NOT consume dock capacity. Spaceports can simultaneously repair starbases while constructing ships, as facilities and ships use separate repair queues.
 
-**Colonies without shipyards cannot repair crippled ships.** Ships must either:
+**Colonies without drydocks cannot repair crippled ships.** Ships must either:
 
-- Transfer to a colony with shipyard capacity, or
+- Transfer to a colony with drydock capacity, or
 - Be salvaged for 50% PC recovery

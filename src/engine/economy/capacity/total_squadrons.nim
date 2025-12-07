@@ -23,10 +23,11 @@
 ##
 ## Data-oriented design: Calculate violations (pure) → plan enforcement → apply enforcement
 
-import std/[tables, algorithm, options, strformat]
+import std/[tables, algorithm, options, strformat, strutils]
 import ./types
 import ../../gamestate
 import ../../squadron
+import ../types as econ_types
 import ../../../common/types/core
 import ../../../common/types/units
 import ../../../common/logger
@@ -62,6 +63,80 @@ proc countTotalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int 
       for squadron in fleet.squadrons:
         if isMilitarySquadron(squadron.flagship.shipClass):
           result += 1
+
+proc countTotalSquadronsUnderConstruction*(state: GameState,
+                                            houseId: core.HouseId): int =
+  ## Count total military squadrons currently under construction
+  ## Includes both activeConstruction and queued projects in facilities
+  ## Mirrors capital_squadrons.nim pattern but for all military ships
+  result = 0
+
+  for systemId, colony in state.colonies:
+    if colony.owner != houseId:
+      continue
+
+    # Count from facility queues (Spaceports/Shipyards)
+    for spaceport in colony.spaceports:
+      # Count active constructions (multiple simultaneous projects per facility)
+      for project in spaceport.activeConstructions:
+        if project.projectType == econ_types.ConstructionType.Ship:
+          try:
+            let shipClass = parseEnum[ShipClass](project.itemId)
+            if isMilitarySquadron(shipClass):
+              result += 1
+          except ValueError:
+            discard  # Invalid ship class, skip
+
+      # Count queued projects
+      for project in spaceport.constructionQueue:
+        if project.projectType == econ_types.ConstructionType.Ship:
+          try:
+            let shipClass = parseEnum[ShipClass](project.itemId)
+            if isMilitarySquadron(shipClass):
+              result += 1
+          except ValueError:
+            discard  # Invalid ship class, skip
+
+    for shipyard in colony.shipyards:
+      # Count active constructions (multiple simultaneous projects per facility)
+      for project in shipyard.activeConstructions:
+        if project.projectType == econ_types.ConstructionType.Ship:
+          try:
+            let shipClass = parseEnum[ShipClass](project.itemId)
+            if isMilitarySquadron(shipClass):
+              result += 1
+          except ValueError:
+            discard  # Invalid ship class, skip
+
+      # Count queued projects
+      for project in shipyard.constructionQueue:
+        if project.projectType == econ_types.ConstructionType.Ship:
+          try:
+            let shipClass = parseEnum[ShipClass](project.itemId)
+            if isMilitarySquadron(shipClass):
+              result += 1
+          except ValueError:
+            discard  # Invalid ship class, skip
+
+    # Also check legacy colony construction queue (backward compatibility)
+    if colony.underConstruction.isSome:
+      let project = colony.underConstruction.get()
+      if project.projectType == econ_types.ConstructionType.Ship:
+        try:
+          let shipClass = parseEnum[ShipClass](project.itemId)
+          if isMilitarySquadron(shipClass):
+            result += 1
+        except ValueError:
+          discard  # Invalid ship class, skip
+
+    for project in colony.constructionQueue:
+      if project.projectType == econ_types.ConstructionType.Ship:
+        try:
+          let shipClass = parseEnum[ShipClass](project.itemId)
+          if isMilitarySquadron(shipClass):
+            result += 1
+        except ValueError:
+          discard  # Invalid ship class, skip
 
 proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityViolation =
   ## Pure function - analyze house's total squadron capacity status
@@ -299,21 +374,24 @@ proc canBuildSquadron*(state: GameState, houseId: core.HouseId, shipClass: ShipC
   ## Check if house can build a new squadron of this type
   ## Returns false if house is at or over total squadron capacity
   ## Pure function - no mutations
+  ##
+  ## CRITICAL: Now includes ships under construction to prevent over-queuing
 
   # Auxiliary ships don't count toward limits
   if not isMilitarySquadron(shipClass):
     return true
 
   let violation = analyzeCapacity(state, houseId)
+  let underConstruction = countTotalSquadronsUnderConstruction(state, houseId)
 
-  # Check both total squadron capacity AND capital squadron capacity if it's a capital
-  let atTotalCapacity = violation.current >= violation.maximum
+  # Check total capacity including both commissioned AND queued ships
+  let atTotalCapacity = (violation.current + underConstruction) >= violation.maximum
 
   if capital_squadrons.isCapitalShip(shipClass):
     # Capital ships must check BOTH limits
     return not atTotalCapacity and capital_squadrons.canBuildCapitalShip(state, houseId)
   else:
-    # Escorts only check total limit
+    # Escorts only check total limit (now includes underConstruction)
     return not atTotalCapacity
 
 ## Design Notes:

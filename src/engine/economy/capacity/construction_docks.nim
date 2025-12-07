@@ -42,15 +42,13 @@ type
     repairProjects*: int        # Active repair count
 
 proc getFacilityCapacity*(spaceport: gamestate.Spaceport): FacilityCapacity =
-  ## Calculate capacity status for a spaceport
-  var used = 0
-  if spaceport.activeConstruction.isSome:
-    used += 1
+  ## Get capacity status for a spaceport (uses pre-calculated effectiveDocks)
+  let used = spaceport.activeConstructions.len
 
   result = FacilityCapacity(
     facilityId: spaceport.id,
     facilityType: econ_types.FacilityType.Spaceport,
-    maxDocks: spaceport.docks,
+    maxDocks: spaceport.effectiveDocks,
     usedDocks: used,
     isCrippled: false,  # Spaceports don't get crippled
     constructionProjects: used,
@@ -58,22 +56,31 @@ proc getFacilityCapacity*(spaceport: gamestate.Spaceport): FacilityCapacity =
   )
 
 proc getFacilityCapacity*(shipyard: gamestate.Shipyard): FacilityCapacity =
-  ## Calculate capacity status for a shipyard
-  var used = 0
-  if shipyard.activeConstruction.isSome:
-    used += 1
-  used += shipyard.activeRepairs.len
-
-  let construction = if shipyard.activeConstruction.isSome: 1 else: 0
+  ## Get capacity status for a shipyard (uses pre-calculated effectiveDocks)
+  let used = shipyard.activeConstructions.len
 
   result = FacilityCapacity(
     facilityId: shipyard.id,
     facilityType: econ_types.FacilityType.Shipyard,
-    maxDocks: shipyard.docks,
+    maxDocks: shipyard.effectiveDocks,
     usedDocks: used,
     isCrippled: shipyard.isCrippled,
-    constructionProjects: construction,
-    repairProjects: shipyard.activeRepairs.len
+    constructionProjects: used,
+    repairProjects: 0  # Shipyards don't repair (drydocks handle repairs)
+  )
+
+proc getFacilityCapacity*(drydock: gamestate.Drydock): FacilityCapacity =
+  ## Get capacity status for a drydock (uses pre-calculated effectiveDocks)
+  let used = drydock.activeRepairs.len
+
+  result = FacilityCapacity(
+    facilityId: drydock.id,
+    facilityType: econ_types.FacilityType.Drydock,
+    maxDocks: drydock.effectiveDocks,
+    usedDocks: used,
+    isCrippled: drydock.isCrippled,
+    constructionProjects: 0,  # Drydocks cannot construct
+    repairProjects: drydock.activeRepairs.len
   )
 
 proc analyzeColonyCapacity*(state: GameState, colonyId: core.SystemId): seq[FacilityCapacity] =
@@ -93,6 +100,10 @@ proc analyzeColonyCapacity*(state: GameState, colonyId: core.SystemId): seq[Faci
   # Analyze shipyards
   for shipyard in colony.shipyards:
     result.add(getFacilityCapacity(shipyard))
+
+  # Analyze drydocks
+  for drydock in colony.drydocks:
+    result.add(getFacilityCapacity(drydock))
 
 proc checkColonyViolation*(state: GameState, colonyId: core.SystemId): Option[types.CapacityViolation] =
   ## Check if colony has any facilities exceeding capacity
@@ -154,8 +165,12 @@ proc getAvailableFacilities*(state: GameState, colonyId: core.SystemId,
 
   # Collect available facilities
   for facility in facilities:
-    # Skip crippled shipyards (0 capacity)
+    # Skip crippled shipyards/drydocks (0 capacity)
     if facility.isCrippled:
+      continue
+
+    # Skip drydocks - they're repair-only, not for construction
+    if facility.facilityType == econ_types.FacilityType.Drydock:
       continue
 
     let available = facility.maxDocks - facility.usedDocks

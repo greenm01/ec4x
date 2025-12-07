@@ -73,6 +73,7 @@ FACILITIES (EPARCH - INFRASTRUCTURE)
 --------------------------------------------------------------------------------------------------
 Spaceport           | Facility  |  1  | 100  |  X   |  X   |  X   |  X   | Colony   | Required for Shipyard/Starbase
 Shipyard            | Facility  |  1  | 150  |  X   |  X   |  X   |  X   | Colony   | Ship construction/repair
+Drydock             | Facility  | 1   | 150  |  X   |  X   |  X   |  X   | Colony   | Ship construction/repair
 Starbase            | Facility  |  3  | 300  |  X   |  X   |  X   |  X   | Colony   | Orbital defense/detection
 ```
 
@@ -261,32 +262,45 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - Base docks: 5 (CST-scaled)
 - Ship construction: 2× Shipyard cost
 - Cannot repair ships
-- Can repair facilities (Starbases) without consuming dock capacity
+- Can repair facilities (Starbases, Shipyards, Drydocks) without consuming dock capacity
 - Required for: Shipyard, Starbase
 
 **Strategic Use:**
-- Minimum one per colony (unlocks Shipyard/Starbase)
-- Emergency ship construction (if Shipyards destroyed)
+- Minimum one per colony (unlocks Shipyard/Starbase/Drydock)
+- Emergency ship construction (if Drydocks destroyed)
 - Not cost-effective for regular production
-- Handles Starbase repairs (no dock consumption, allows parallel construction)
+- Handles Starbase, Shipyard, and Drydock repairs (no dock consumption, allows parallel construction)
 
 ### Shipyard
 
-**Purpose:** Efficient ship construction and repair
+**Purpose:** Efficient ship construction
 
 **Characteristics:**
 - Base cost: 150 PP
 - Base docks: 10 (CST-scaled, 2× Spaceport)
-- Ship construction: Standard cost
-- Can repair ships (only facility that repairs ships)
-- Cannot repair facilities (Spaceports handle facility repairs)
+- Ship construction: Standard construction cost
 - Requires: Spaceport
 
 **Strategic Use:**
 - Primary ship production facility
-- Critical for fleet maintenance (repair capability)
 - Build multiple per high-production colony
 - Significant advantage over Spaceports (capacity + cost)
+
+### Drydock
+
+**Purpose:** Efficient ship repair
+
+**Characteristics:**
+- Base cost: 150 PP
+- Base docks: 10 (CST-scaled)
+- Ship repair: Standard repair cost
+- Can repair ships (only facility that repairs ships)
+- Cannot repair planet based facilities
+- Requires: Spaceport
+
+**Strategic Use:**
+- Primary ship repair facility
+- Critical for fleet maintenance (repair capability)
 
 ### Starbase
 
@@ -312,20 +326,21 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 **Act 1:**
 - One Spaceport per colony (minimum, unlocks Shipyard/Starbase)
 - One Shipyard at homeworld (production core)
+- One Drydock at homeworld (production core)
 - One Starbase at homeworld (defense + economic bonus)
 
 **Act 2:**
-- Shipyards at high-production colonies
+- Shipyards and Drydocks at high-production colonies
 - Starbases at strategic/high-value colonies (2-3 per colony for max bonuses)
 - Second Spaceport only in emergencies
 
 **Act 3:**
-- Multiple Shipyards at major production centers
+- Multiple Shipyards and Drydocks at major production centers
 - Starbases at all contested systems (defense critical)
 - Spaceports remain minimal (one per colony)
 
 **Act 4:**
-- Shipyard networks across empire
+- Shipyard and Drydock networks across empire
 - Starbase networks for fortress colonies
 - Repair capacity critical (fleet + facility sustainability)
 
@@ -389,6 +404,10 @@ Each slot checks current Act and selects appropriate units from candidate lists 
 
 **Shipyard:**
 - Primary ship production facility (2× Spaceport capacity, 1× cost)
+- Build multiple at high-production colonies
+- Scales with CST (capacity increases 10% per level)
+
+**Drydock:**
 - Only facility that repairs ships (critical for fleet sustainability)
 - Build multiple at high-production colonies
 - Scales with CST (capacity increases 10% per level)

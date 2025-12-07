@@ -1,14 +1,19 @@
 ## Per-Facility Queue Management System
 ##
-## Manages construction and repair queues at individual facilities (spaceports/shipyards).
+## Manages construction and repair queues at individual facilities.
 ##
-## **FIFO Priority Model:**
-## Construction and repair projects are processed in the order queued (first in, first out).
-## Each facility independently advances its own queues.
+## **Facility Specialization:**
+## - Spaceport: Construction only (5 docks) - ground-based launch facility
+## - Shipyard: Construction only (10 docks) - orbital ship construction
+## - Drydock: Repair only (10 docks) - orbital ship repair facility
+##
+## **FIFO Queue Model:**
+## Each facility independently advances its own queues in order queued.
 ##
 ## **Facility Queue Structure:**
-## - Spaceport: constructionQueue → activeConstruction (1 project max)
-## - Shipyard: constructionQueue + repairQueue → activeConstruction + activeRepairs (total ≤ 10 docks)
+## - Spaceport: constructionQueue → activeConstructions (up to 5 docks)
+## - Shipyard: constructionQueue → activeConstructions (up to 10 docks)
+## - Drydock: repairQueue → activeRepairs (up to 10 docks)
 ##
 ## **Queue Advancement:**
 ## 1. Advance all active projects (decrement turnsRemaining)
@@ -37,34 +42,42 @@ type
 proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,
                              colonyId: core.SystemId): QueueAdvancementResult =
   ## Advance spaceport construction queue (FIFO)
-  ## Spaceports only handle construction (5 docks)
+  ## Spaceports handle multiple simultaneous construction (up to effective docks limit with CST scaling)
   result = QueueAdvancementResult(
     completedProjects: @[],
     completedRepairs: @[]
   )
 
-  # Step 1: Advance active construction
-  if spaceport.activeConstruction.isSome:
-    var project = spaceport.activeConstruction.get()
-    project.turnsRemaining -= 1
+  # Step 1: Advance all active construction projects
+  var completedIndices: seq[int] = @[]
+  for idx, project in spaceport.activeConstructions:
+    var projectCopy = project
+    projectCopy.turnsRemaining -= 1
 
-    if project.turnsRemaining <= 0:
+    if projectCopy.turnsRemaining <= 0:
       # Construction complete
       result.completedProjects.add(econ_types.CompletedProject(
         colonyId: colonyId,
-        projectType: project.projectType,
-        itemId: project.itemId
+        projectType: projectCopy.projectType,
+        itemId: projectCopy.itemId
       ))
-      spaceport.activeConstruction = none(econ_types.ConstructionProject)
+      completedIndices.add(idx)
       logEconomy("Spaceport construction complete",
                 "facility=", spaceport.id,
-                " project=", project.itemId)
+                " project=", projectCopy.itemId)
     else:
-      # Still in progress
-      spaceport.activeConstruction = some(project)
+      # Still in progress - update in place
+      spaceport.activeConstructions[idx] = projectCopy
 
-  # Step 2: Pull next project from queue if slot available
-  if spaceport.activeConstruction.isNone and spaceport.constructionQueue.len > 0:
+  # Remove completed projects (reverse order to maintain indices)
+  for idx in completedIndices.reversed:
+    spaceport.activeConstructions.delete(idx)
+
+  # Step 2: Pull new projects from queue to fill available docks
+  let availableDocks = spaceport.effectiveDocks - spaceport.activeConstructions.len
+
+  var pulled = 0
+  while pulled < availableDocks and spaceport.constructionQueue.len > 0:
     var nextProject = spaceport.constructionQueue[0]
     spaceport.constructionQueue.delete(0)
 
@@ -82,18 +95,68 @@ proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,
       logEconomy("Spaceport construction complete (instant)",
                 "facility=", spaceport.id,
                 " project=", nextProject.itemId)
-      # Don't set activeConstruction - slot remains free
+      # Don't add to activeConstructions - dock remains free
+      pulled += 1
     else:
       # Project still needs more turns
-      spaceport.activeConstruction = some(nextProject)
+      spaceport.activeConstructions.add(nextProject)
       logEconomy("Spaceport started new construction",
                 "facility=", spaceport.id,
                 " project=", nextProject.itemId)
+      pulled += 1
+
+proc advanceDrydockQueue*(drydock: var gamestate.Drydock,
+                          colonyId: core.SystemId): QueueAdvancementResult =
+  ## Advance drydock repair queue (repair-only facility)
+  ## Drydocks handle repairs only (effective docks with CST scaling, no construction)
+  result = QueueAdvancementResult(
+    completedProjects: @[],
+    completedRepairs: @[]
+  )
+
+  # Crippled drydocks can't work
+  if drydock.isCrippled:
+    return
+
+  # Step 1: Advance active repairs
+  var completedRepairIndices: seq[int] = @[]
+  for idx, repair in drydock.activeRepairs:
+    var repairCopy = repair
+    repairCopy.turnsRemaining -= 1
+
+    if repairCopy.turnsRemaining <= 0:
+      # Repair complete
+      result.completedRepairs.add(repairCopy)
+      completedRepairIndices.add(idx)
+      logEconomy("Drydock repair complete",
+                "facility=", drydock.id,
+                " target=", $repairCopy.targetType)
+    else:
+      # Still in progress - update in place
+      drydock.activeRepairs[idx] = repairCopy
+
+  # Remove completed repairs (reverse order to maintain indices)
+  for idx in completedRepairIndices.reversed:
+    drydock.activeRepairs.delete(idx)
+
+  # Step 2: Pull new repairs from queue to fill available docks
+  let availableDocks = drydock.effectiveDocks - drydock.activeRepairs.len
+
+  var pulled = 0
+  while pulled < availableDocks and drydock.repairQueue.len > 0:
+    # Pull repair project
+    let nextRepair = drydock.repairQueue[0]
+    drydock.repairQueue.delete(0)
+    drydock.activeRepairs.add(nextRepair)
+    logEconomy("Drydock started new repair",
+              "facility=", drydock.id,
+              " target=", $nextRepair.targetType)
+    pulled += 1
 
 proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
                            colonyId: core.SystemId): QueueAdvancementResult =
-  ## Advance shipyard construction + repair queues (FIFO)
-  ## Shipyards handle both construction and repair (10 docks total)
+  ## Advance shipyard construction queue (construction-only facility)
+  ## Shipyards handle multiple simultaneous construction (effective docks with CST scaling)
   result = QueueAdvancementResult(
     completedProjects: @[],
     completedRepairs: @[]
@@ -103,109 +166,67 @@ proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
   if shipyard.isCrippled:
     return
 
-  # Step 1: Advance active construction
-  if shipyard.activeConstruction.isSome:
-    var project = shipyard.activeConstruction.get()
-    project.turnsRemaining -= 1
+  # Step 1: Advance all active construction projects
+  var completedIndices: seq[int] = @[]
+  for idx, project in shipyard.activeConstructions:
+    var projectCopy = project
+    projectCopy.turnsRemaining -= 1
 
-    if project.turnsRemaining <= 0:
+    if projectCopy.turnsRemaining <= 0:
       # Construction complete
       result.completedProjects.add(econ_types.CompletedProject(
         colonyId: colonyId,
-        projectType: project.projectType,
-        itemId: project.itemId
+        projectType: projectCopy.projectType,
+        itemId: projectCopy.itemId
       ))
-      shipyard.activeConstruction = none(econ_types.ConstructionProject)
+      completedIndices.add(idx)
       logEconomy("Shipyard construction complete",
                 "facility=", shipyard.id,
-                " project=", project.itemId)
-    else:
-      # Still in progress
-      shipyard.activeConstruction = some(project)
-
-  # Step 2: Advance active repairs
-  var completedRepairIndices: seq[int] = @[]
-  for idx, repair in shipyard.activeRepairs:
-    var repairCopy = repair
-    repairCopy.turnsRemaining -= 1
-
-    if repairCopy.turnsRemaining <= 0:
-      # Repair complete
-      result.completedRepairs.add(repairCopy)
-      completedRepairIndices.add(idx)
-      logEconomy("Shipyard repair complete",
-                "facility=", shipyard.id,
-                " target=", $repairCopy.targetType)
+                " project=", projectCopy.itemId)
     else:
       # Still in progress - update in place
-      shipyard.activeRepairs[idx] = repairCopy
+      shipyard.activeConstructions[idx] = projectCopy
 
-  # Remove completed repairs (reverse order to maintain indices)
-  for idx in completedRepairIndices.reversed:
-    shipyard.activeRepairs.delete(idx)
+  # Remove completed projects (reverse order to maintain indices)
+  for idx in completedIndices.reversed:
+    shipyard.activeConstructions.delete(idx)
 
-  # Step 3: Pull new projects from queues to fill available docks (FIFO priority)
-  # Calculate available docks
-  var usedDocks = 0
-  if shipyard.activeConstruction.isSome:
-    usedDocks += 1
-  usedDocks += shipyard.activeRepairs.len
+  # Step 2: Pull new projects from queue to fill available docks
+  let availableDocks = shipyard.effectiveDocks - shipyard.activeConstructions.len
 
-  let availableDocks = shipyard.docks - usedDocks
-
-  # Pull projects from queues (FIFO - alternate between construction and repair)
-  # We'll use a simple approach: pull from queues in FIFO order considering both
   var pulled = 0
-  while pulled < availableDocks:
-    # Determine next project to pull (FIFO across both queues)
-    # For now, simple approach: pull from construction queue first, then repair queue
-    # (True FIFO would require timestamped queuing - future enhancement)
+  while pulled < availableDocks and shipyard.constructionQueue.len > 0:
+    var nextProject = shipyard.constructionQueue[0]
+    shipyard.constructionQueue.delete(0)
 
-    if shipyard.activeConstruction.isNone and shipyard.constructionQueue.len > 0:
-      # Pull construction project and immediately start it
-      var nextProject = shipyard.constructionQueue[0]
-      shipyard.constructionQueue.delete(0)
+    # CRITICAL: Decrement turnsRemaining immediately when starting
+    # This ensures "1 turn" projects complete in the same turn cycle
+    nextProject.turnsRemaining -= 1
 
-      # CRITICAL: Decrement turnsRemaining immediately when starting
-      # This ensures "1 turn" projects complete in the same turn cycle
-      nextProject.turnsRemaining -= 1
-
-      if nextProject.turnsRemaining <= 0:
-        # Project completes immediately (0-turn projects)
-        result.completedProjects.add(econ_types.CompletedProject(
-          colonyId: colonyId,
-          projectType: nextProject.projectType,
-          itemId: nextProject.itemId
-        ))
-        logEconomy("Shipyard construction complete (instant)",
-                  "facility=", shipyard.id,
-                  " project=", nextProject.itemId)
-        # Don't set activeConstruction - slot is free for next project
-        pulled += 1
-        continue
-
+    if nextProject.turnsRemaining <= 0:
+      # Project completes immediately (0-turn projects)
+      result.completedProjects.add(econ_types.CompletedProject(
+        colonyId: colonyId,
+        projectType: nextProject.projectType,
+        itemId: nextProject.itemId
+      ))
+      logEconomy("Shipyard construction complete (instant)",
+                "facility=", shipyard.id,
+                " project=", nextProject.itemId)
+      # Don't add to activeConstructions - dock remains free
+      pulled += 1
+    else:
       # Project still needs more turns
-      shipyard.activeConstruction = some(nextProject)
+      shipyard.activeConstructions.add(nextProject)
       logEconomy("Shipyard started new construction",
                 "facility=", shipyard.id,
                 " project=", nextProject.itemId)
       pulled += 1
-    elif shipyard.repairQueue.len > 0 and shipyard.activeRepairs.len < availableDocks:
-      # Pull repair project
-      let nextRepair = shipyard.repairQueue[0]
-      shipyard.repairQueue.delete(0)
-      shipyard.activeRepairs.add(nextRepair)
-      logEconomy("Shipyard started new repair",
-                "facility=", shipyard.id,
-                " target=", $nextRepair.targetType)
-      pulled += 1
-    else:
-      # No more projects to pull
-      break
 
 proc advanceColonyQueues*(colony: var gamestate.Colony): QueueAdvancementResult =
   ## Advance all facility queues at colony
   ## Returns combined results from all facilities
+  ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
   result = QueueAdvancementResult(
     completedProjects: @[],
     completedRepairs: @[]
@@ -223,10 +244,17 @@ proc advanceColonyQueues*(colony: var gamestate.Colony): QueueAdvancementResult 
     result.completedProjects.add(shipyardResult.completedProjects)
     result.completedRepairs.add(shipyardResult.completedRepairs)
 
+  # Advance all drydocks
+  for drydock in colony.drydocks.mitems:
+    let drydockResult = advanceDrydockQueue(drydock, colony.systemId)
+    result.completedProjects.add(drydockResult.completedProjects)
+    result.completedRepairs.add(drydockResult.completedRepairs)
+
 proc advanceAllQueues*(state: var GameState): tuple[projects: seq[econ_types.CompletedProject], repairs: seq[econ_types.RepairProject]] =
   ## Advance all facility queues across all colonies
   ## Called during Maintenance phase
   ## Returns all completed projects and repairs
+  ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
   result = (projects: @[], repairs: @[])
 
   for colonyId, colony in state.colonies.mpairs:
@@ -306,14 +334,18 @@ proc advanceConstruction*(colony: var gamestate.Colony): Option[econ_types.Compl
 ## Design Notes
 ## ==============================================================================
 ##
-## **FIFO Priority Implementation:**
-## Current implementation uses simplified FIFO: construction projects first, then repairs.
-## True FIFO would require timestamped queue entries to interleave construction/repair.
-## This is acceptable since both types advance simultaneously - only affects queue pulling order.
+## **Clean Separation of Concerns:**
+## Shipyards = Construction only, Drydocks = Repair only.
+## This eliminates dock contention between construction and repair projects.
+## Players build more Shipyards for production capacity, Drydocks for repair capacity.
 ##
-## **Multi-Dock Shipyard Behavior:**
-## Shipyards can run multiple repairs simultaneously (up to available docks).
-## Construction is limited to 1 active project but repairs can fill remaining docks.
+## **Multi-Dock Facility Behavior:**
+## ALL facilities can run multiple projects simultaneously up to their dock limit:
+## - Spaceports: Up to 5 simultaneous construction projects
+## - Shipyards: Up to 10 simultaneous construction projects
+## - Drydocks: Up to 10 simultaneous repair projects
+##
+## This allows efficient batch operations and maximizes facility utilization.
 ##
 ## **Spaceport Cost Penalty:**
 ## The 2x cost penalty for spaceports is applied at BUILD ORDER time (in order submission),

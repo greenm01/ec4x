@@ -1,21 +1,40 @@
-## Command Phase Resolution
+## Command Phase Resolution - Phase 3 of Canonical Turn Cycle
 ##
-## Phase 3 of turn resolution - executes player orders (builds, movements,
-## diplomatic actions, research allocation).
+## Executes player order submissions and manages commissioning/automation cycles.
+## This is the "player interaction" phase where orders are processed and queued.
 ##
-## **Execution Order:**
-## 1. Commission completed projects (frees dock capacity)
-## 2. Colony automation (auto-loading, auto-repair, auto-squadron balancing)
-## 3. Process build orders (uses freed capacity)
-## 4. Colony management (tax rates, auto-repair toggles)
-## 5. Space Guild population transfers
-## 6. Diplomatic actions
-## 7. Scout detection escalations
-## 8. Spy scout orders (join, move, rendezvous)
-## 9. Auto-load cargo at colonies
-## 10. Terraforming orders
-## 11. Fleet orders (Move, Colonize, Patrol, etc.)
-## 12. Squadron auto-balancing within fleets
+## **Canonical Execution Order:**
+##
+## **Part A: Commissioning & Automation**
+## - Commission completed projects from state.pendingCommissions
+##   (projects completed in previous turn's Maintenance Phase)
+## - Auto-create squadrons, auto-assign to fleets
+## - Auto-load PTUs onto ETAC ships (1 PTU per ETAC)
+## - Colony automation:
+##   * Auto-load fighters to carriers (if colony.autoLoadingEnabled)
+##   * Auto-submit repair orders (if colony.autoRepairEnabled)
+##   * Auto-balance squadrons across fleets (always enabled)
+##
+## **Part B: Player Submission Window** (24-hour window in multiplayer mode)
+## - Process build orders (construction, research allocation)
+## - Process colony management orders (tax rates, automation toggles)
+## - Process Space Guild population transfers
+## - Process diplomatic actions (proposals, treaty modifications)
+## - Process spy scout orders (join, move, rendezvous)
+## - Process terraforming orders
+## - Process zero-turn administrative commands (immediate execution)
+##
+## **Part C: Order Processing** (categorization & queueing)
+## - Queue combat orders for Turn N+1 Conflict Phase
+## - Execute administrative orders immediately (Reserve, Mothball, etc.)
+## - Store movement orders for Turn N Maintenance Phase execution
+## - Store special orders for dedicated phase handlers
+##
+## **Key Properties:**
+## - Commissioning happens FIRST to free dock capacity before new builds
+## - Auto-repair can use newly-freed dock capacity from commissioning
+## - Combat orders execute Turn N+1 (next Conflict Phase)
+## - Movement orders execute Turn N (this turn's Maintenance Phase)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets,
             strformat]
@@ -36,23 +55,37 @@ proc resolveCommandPhase*(state: var GameState,
                           rng: var Rand) =
   ## Phase 3: Execute orders
   ## Commissioning happens FIRST to free up dock capacity before new builds
-  logInfo("Resolve", "=== Command Phase ===", "turn=", $state.turn)
+  logInfo(LogCategory.lcOrders, &"=== Command Phase === (turn={state.turn})")
 
-  # STEP 1: Commission completed projects from previous turn's Maintenance
+  # ===================================================================
+  # PART A: COMMISSIONING & AUTOMATION
+  # ===================================================================
+  # Commission completed projects from previous turn's Maintenance
   # This clears shipyard/spaceport dock capacity and makes ships available
+  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Commissioning & automation...")
   if state.pendingCommissions.len > 0:
-    logInfo(LogCategory.lcEconomy, &"=== Commissioning Phase === ({state.pendingCommissions.len} projects)")
+    logInfo(LogCategory.lcEconomy, &"[COMMISSIONING] Processing {state.pendingCommissions.len} completed projects")
     commissioning.commissionCompletedProjects(state, state.pendingCommissions,
                                                events)
     state.pendingCommissions = @[]  # Clear after commissioning
   else:
-    logDebug(LogCategory.lcEconomy, "No projects to commission this turn")
+    logInfo(LogCategory.lcEconomy, "[COMMISSIONING] No projects to commission this turn")
 
-  # STEP 2: Colony automation (auto-loading, auto-repair, auto-squadron
-  # balancing) - Uses newly-freed dock capacity and commissioned units
+  # Colony automation (auto-loading, auto-repair, auto-squadron balancing)
+  # Uses newly-freed dock capacity and commissioned units
+  logInfo(LogCategory.lcEconomy, "[AUTOMATION] Processing colony automation...")
   automation.processColonyAutomation(state, orders)
+  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Completed commissioning & automation")
 
-  # STEP 3: Process build orders (new construction using freed capacity)
+  # ===================================================================
+  # PART B: PLAYER SUBMISSION WINDOW (simulated by AI)
+  # ===================================================================
+  # In multiplayer, this would be the window where players submit orders
+  # In AI mode, orders are pre-computed and passed to this function
+  logInfo(LogCategory.lcOrders, "[COMMAND PART B] Processing player submissions...")
+
+  # Process build orders (new construction using freed capacity)
+  logInfo(LogCategory.lcEconomy, "[BUILD ORDERS] Processing construction orders...")
   for houseId in state.houses.keys:
     if houseId in orders:
       construction.resolveBuildOrders(state, orders[houseId], events)
@@ -91,8 +124,10 @@ proc resolveCommandPhase*(state: var GameState,
     if houseId in orders:
       resolveTerraformOrders(state, orders[houseId], events)
 
+  logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
+
   # ===================================================================
-  # FLEET ORDER PROCESSING - PHASE-BASED EXECUTION
+  # PART C: ORDER PROCESSING (categorization & queueing)
   # ===================================================================
   # Per FINAL_TURN_SEQUENCE.md:
   # - Combat orders (Bombard/Invade/Blitz): Queue for Turn N+1 Conflict Phase
@@ -103,10 +138,14 @@ proc resolveCommandPhase*(state: var GameState,
   #   * Salvage: Handled in Income Phase Step 4
   #   * Espionage: Handled in Conflict Phase
 
-  logDebug(LogCategory.lcOrders, "[COMMAND PHASE] Processing fleet order submissions")
+  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Processing fleet order submissions...")
 
   # Clear previous turn's queued combat orders
   state.queuedCombatOrders = @[]
+
+  var combatQueued = 0
+  var movementQueued = 0
+  var adminExecuted = 0
 
   # Collect and categorize orders from all houses
   for houseId in state.houses.keys:
@@ -115,18 +154,21 @@ proc resolveCommandPhase*(state: var GameState,
         # Queue combat orders for next turn's Conflict Phase
         if isCombatOrder(order.orderType):
           state.queuedCombatOrders.add(order)
+          combatQueued += 1
           logDebug(LogCategory.lcOrders, &"  [QUEUED COMBAT] Fleet {order.fleetId}: {order.orderType} (executes Turn {state.turn + 1})")
 
         # Execute administrative orders immediately
         elif isAdministrativeOrder(order.orderType):
           let result = executor.executeFleetOrder(state, houseId, order)
           if result.success:
+            adminExecuted += 1
             logDebug(LogCategory.lcOrders, &"  [ADMIN] Fleet {order.fleetId}: {order.orderType} executed")
           else:
             logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {order.fleetId}: {order.orderType} - {result.message}")
 
         # Movement orders execute in Maintenance Phase (don't process here)
         elif isMovementOrder(order.orderType):
+          movementQueued += 1
           logDebug(LogCategory.lcOrders, &"  [MOVEMENT] Fleet {order.fleetId}: {order.orderType} (will execute in Maintenance Phase)")
           # Store in persistent orders so Maintenance Phase can find it
           state.fleetOrders[order.fleetId] = order
@@ -138,5 +180,5 @@ proc resolveCommandPhase*(state: var GameState,
           # Salvage: Income Phase Step 4
           # Espionage: Conflict Phase simultaneous resolution
 
-  logDebug(LogCategory.lcOrders, &"[COMMAND PHASE] Queued {state.queuedCombatOrders.len} combat orders for next turn")
+  logInfo(LogCategory.lcOrders, &"[COMMAND PART C] Completed (combat queued: {combatQueued}, movement queued: {movementQueued}, admin executed: {adminExecuted})")
 

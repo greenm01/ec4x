@@ -52,7 +52,7 @@ import ../diplomacy/[types as dip_types, proposals as dip_proposals]
 import ../blockade/engine as blockade_engine
 import ../intelligence/[detection, types as intel_types, generator as intel_gen, starbase_surveillance, scout_intel]
 import ../population/[types as pop_types]
-import ../config/[espionage_config, population_config, ground_units_config, gameplay_config, construction_config]
+import ../config/[espionage_config, population_config, ground_units_config, gameplay_config, construction_config, facilities_config]
 import ../colonization/engine as col_engine
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony
@@ -1096,7 +1096,10 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             let spaceport = Spaceport(
               id: spaceportId,
               commissionedTurn: state.turn,
-              docks: scaledDocks
+              baseDocks: globalFacilitiesConfig.spaceport.docks,
+              effectiveDocks: res_effects.calculateEffectiveDocks(globalFacilitiesConfig.spaceport.docks, cstLevel),
+              constructionQueue: @[],
+              activeConstructions: @[]
             )
             colony.spaceports.add(spaceport)
             logDebug(LogCategory.lcEconomy, &"Added Spaceport to system-{systemId} ({scaledDocks} docks, CST {cstLevel})")
@@ -1112,7 +1115,11 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             let shipyard = Shipyard(
               id: shipyardId,
               commissionedTurn: state.turn,
-              docks: scaledDocks
+              baseDocks: globalFacilitiesConfig.shipyard.docks,
+              effectiveDocks: res_effects.calculateEffectiveDocks(globalFacilitiesConfig.shipyard.docks, cstLevel),
+              isCrippled: false,
+              constructionQueue: @[],
+              activeConstructions: @[]
             )
             colony.shipyards.add(shipyard)
             logDebug(LogCategory.lcEconomy, &"Added Shipyard to system-{systemId} ({scaledDocks} docks, CST {cstLevel})")

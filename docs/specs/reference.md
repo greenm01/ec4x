@@ -105,18 +105,37 @@ Orbital facilities are infrastructure built at colonies that provide combat, eco
 
 <!-- ORBITAL_FACILITIES_TABLE_END -->
 
-## 10.4 Spacelift Command (WEP1)
+## 10.4 Construction & Repair Facilities (WEP1)
+
+<!-- CONSTRUCTION_FACILITIES_TABLE_START -->
+
+| **Class** | **Name**  | CST | PC  | MC  | Docks | DS  | Purpose                    |
+|:---------:| --------- |:---:|:---:|:---:|:-----:|:---:| -------------------------- |
+| SP        | Spaceport | 1   | 20  | 5%  | 5     | 50  | Construction only          |
+| SY        | Shipyard  | 1   | 60  | 3%  | 10    | 70  | Construction only          |
+| DD        | Drydock   | 1   | 150 | 5%  | 10    | 70  | Ship repair only           |
+
+**Notes:**
+- Spaceports: 5 construction docks, cannot repair ships, +100% PP penalty for ship construction
+- Shipyards: 10 construction docks, cannot repair ships, standard PP costs
+- Drydocks: 10 repair docks, cannot construct ships, 25% PP repair cost (1 turn)
+- All dock counts scale with CST technology (+10% per level)
+- Starbase repairs use Spaceports (not Drydocks) and don't consume dock capacity
+
+*Source: config/facilities.toml*
+
+<!-- CONSTRUCTION_FACILITIES_TABLE_END -->
+
+## 10.5 Spacelift Command (WEP1)
 
 <!-- SPACELIFT_TABLE_START -->
 
 | **Class** | **Name**         | CST | PC  | MC  | CL  | DS  |
 |:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
-| SP        | Spaceport        | 1   | 100 | 5%  | 5   | 50  |
-| SY        | Shipyard         | 1   | 150 | 3%  | 10  | 70  |
 | ET        | ETAC             | 1   | 25  | 3%  | 1   | 10  |
 | TT        | Troop Transports | 1   | 30  | 3%  | 1   | 15  |
 
-*Source: config/facilities.toml and config/ships.toml*
+*Source: config/ships.toml*
 
 <!-- SPACELIFT_TABLE_END -->
 

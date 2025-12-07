@@ -184,6 +184,7 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # Facilities (NEW - Gap #10 fix)
   result.totalSpaceports = domestikos.totalSpaceports
   result.totalShipyards = domestikos.totalShipyards
+  result.totalDrydocks = domestikos.totalDrydocks
 
   # Scout mesh (intelligence support)
   result.scoutCount = domestikos.scoutCount

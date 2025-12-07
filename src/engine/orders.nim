@@ -725,13 +725,18 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
       # This prevents escort spam while allowing flexible fleet composition
       if not total_squadrons.canBuildSquadron(state, houseId, shipClass):
         let violation = total_squadrons.analyzeCapacity(state, houseId)
+        let underConstruction = total_squadrons.countTotalSquadronsUnderConstruction(state, houseId)
 
         ctx.rejectedOrders += 1
         logWarn(LogCategory.lcEconomy,
                 &"{houseId} Build order REJECTED: Total squadron limit exceeded " &
-                &"(current={violation.current}, max={violation.maximum})")
+                &"(commissioned={violation.current}, queued={underConstruction}, " &
+                &"max={violation.maximum}, ship={shipClass}). " &
+                &"Increase Industrial Units to expand capacity.")
         return ValidationResult(valid: false,
-                               error: &"Total squadron limit exceeded ({violation.current}/{violation.maximum})")
+                               error: &"Total squadron limit exceeded " &
+                                      &"({violation.current}+{underConstruction}/{violation.maximum}). " &
+                                      &"Requires more Industrial Units.")
 
     # Check planet-breaker limit (1 per colony owned, assets.md:2.4.8)
     # TODO use new economy/capacity planet_breakers module

@@ -1494,9 +1494,9 @@ proc generateBuildRequirements*(
   var totalDocks = 0
   for colony in filtered.ownColonies:
     for spaceport in colony.spaceports:
-      totalDocks += spaceport.docks  # CST-scaled via config
+      totalDocks += spaceport.effectiveDocks  # Pre-calculated with CST scaling
     for shipyard in colony.shipyards:
-      totalDocks += shipyard.docks  # CST-scaled via config
+      totalDocks += shipyard.effectiveDocks  # Pre-calculated with CST scaling
 
   # Count docks and budget committed to high-priority requirements
   var highPriorityCost = 0

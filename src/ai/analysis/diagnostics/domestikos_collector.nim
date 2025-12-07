@@ -249,14 +249,17 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
 
   var totalSpaceports = 0
   var totalShipyards = 0
+  var totalDrydocks = 0
 
   for systemId, colony in state.colonies:
     if colony.owner == houseId:
       totalSpaceports += colony.spaceports.len
       totalShipyards += colony.shipyards.len
+      totalDrydocks += colony.drydocks.len
 
   result.totalSpaceports = totalSpaceports
   result.totalShipyards = totalShipyards
+  result.totalDrydocks = totalDrydocks
 
   # ================================================================
   # SCOUT MESH TRACKING (Intelligence support)

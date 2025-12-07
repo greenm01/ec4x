@@ -184,6 +184,7 @@ type
     # Facilities (NEW - Gap #10 fix)
     totalSpaceports*: int             # Spaceport count across all colonies
     totalShipyards*: int              # Shipyard count across all colonies
+    totalDrydocks*: int               # Drydock count across all colonies (repair-only facilities)
 
     # Intel / Tech
     totalInvasions*: int                # Phase F: Track total invasions (useful for strategy analysis)

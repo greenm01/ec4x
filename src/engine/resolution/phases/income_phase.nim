@@ -1,20 +1,32 @@
-## Income Phase Resolution - Phase 0A
+## Income Phase Resolution - Phase 2 of Canonical Turn Cycle
 ##
-## This module handles the Income Phase (Phase 2) of turn resolution:
-## - Blockade status application
-## - Ongoing espionage effects (SRP/NCV/Tax reductions, starbase crippling)
-## - EBP/CIP point purchases with over-investment penalties
-## - Spy scout detection and intelligence gathering
-## - Starbase surveillance (continuous monitoring)
-## - Income collection via economy engine
-## - Construction completion and ship commissioning
-## - Repair queue processing
-## - Research allocation (PP to RP conversion)
-## - Research breakthroughs (every 5 turns)
+## Handles all economic calculations, resource collection, and game state evaluation
+## after Conflict Phase damage has been applied.
 ##
-## Per operations.md: Production is calculated AFTER conflict, so damaged
-## infrastructure produces less. Blockades established during Conflict Phase
-## reduce GCO for the same turn's Income Phase with no delay.
+## **Canonical Execution Order:**
+##
+## Step 1: Calculate Base Production (colony GCO → gross PP)
+## Step 2: Apply Blockades (reduce GCO for blockaded colonies)
+## Step 3: Calculate Maintenance Costs (deduct from gross production → net PP)
+## Step 4: Execute Salvage Orders (recover PP from combat wreckage)
+## Step 5: Capacity Enforcement (after IU loss from combat/blockades)
+##   5a: Capital Squadron Capacity (immediate enforcement, no grace period)
+##   5b: Total Squadron Limit (2-turn grace period before auto-disband)
+##   5c: Fighter Squadron Capacity (2-turn grace period before auto-disband)
+##   5d: Planet-Breaker Enforcement (immediate, colony count limit)
+## Step 6: Collect Resources (apply net PP/RP to house treasuries)
+## Step 7: Calculate Prestige (award/deduct for turn events)
+## Step 8: House Elimination & Victory Checks
+##   8a: House Elimination (standard elimination + defensive collapse)
+##   8b: Victory Conditions (prestige/elimination/turn limit)
+## Step 9: Advance Timers (espionage effects, diplomatic timers, grace periods)
+##
+## **Key Properties:**
+## - Production calculated AFTER Conflict Phase damage (damaged facilities produce less)
+## - Blockades established in Conflict Phase affect same turn's production (no delay)
+## - Capacity enforcement uses post-blockade/post-combat IU values
+## - Elimination checks happen AFTER prestige calculation (Step 7)
+## - Victory checks happen AFTER elimination processing (Step 8a)
 
 import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
 import ../../../common/[hex, types/core, types/units, types/tech]
@@ -33,7 +45,7 @@ import ../../intelligence/[
   detection, types as intel_types, generator as intel_gen,
   starbase_surveillance, scout_intel
 ]
-import ../../config/[espionage_config, construction_config]
+import ../../config/[espionage_config, construction_config, gameplay_config]
 import ../../resolution/[fleet_orders, automation, types as res_game_types]
 import ../../commands/executor as cmd_executor  # For salvage order execution
 import ../../prestige/[types as prestige_types, events as prestige_events, application as prestige_app]
@@ -48,10 +60,19 @@ proc resolveIncomePhase*(
   ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
   logDebug(LogCategory.lcGeneral, &"[Income Phase]")
 
-  # Apply blockade status to all colonies
+  # ===================================================================
+  # STEP 2: APPLY BLOCKADES (from Conflict Phase)
+  # ===================================================================
   # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
   # reduce GCO for that same turn's Income Phase calculation - there is no delay"
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Applying blockade penalties...")
   blockade_engine.applyBlockades(state)
+
+  var blockadeCount = 0
+  for systemId, colony in state.colonies:
+    if colony.blockaded:
+      blockadeCount += 1
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Completed ({blockadeCount} colonies blockaded)")
 
   # Apply ongoing espionage effects to houses
   var activeEffects: seq[esp_types.OngoingEffect] = @[]
@@ -133,121 +154,10 @@ proc resolveIncomePhase*(
         else:
           logError(LogCategory.lcEconomy, &"{houseId} insufficient funds for EBP/CIP purchase")
 
-  # Process spy scout detection and intelligence gathering
-  # Per assets.md:2.4.2: "For every turn that a spy Scout operates in unfriendly
-  # system occupied by rival ELI, the rival will roll on the Spy Detection Table"
-  var survivingScouts = initTable[string, SpyScout]()
-
-  for scoutId, scout in state.spyScouts:
-    if scout.detected:
-      # Scout was detected in a previous turn
-      continue
-
-    var wasDetected = false
-    let scoutLocation = scout.location
-
-    # Check if system has rival ELI units (fleets with scouts or starbases)
-    # Get all houses in the system (from fleets and colonies)
-    var housesInSystem: seq[HouseId] = @[]
-
-    # Check for colonies (starbases provide detection)
-    if scoutLocation in state.colonies:
-      let colony = state.colonies[scoutLocation]
-      if colony.owner != scout.owner:
-        housesInSystem.add(colony.owner)
-
-    # Check for fleets with scouts
-    for fleetId, fleet in state.fleets:
-      if fleet.location == scoutLocation and fleet.owner != scout.owner:
-        # Check if fleet has scouts
-        for squadron in fleet.squadrons:
-          if squadron.flagship.shipClass == ShipClass.Scout:
-            if not housesInSystem.contains(fleet.owner):
-              housesInSystem.add(fleet.owner)
-            break
-
-    # For each rival house in system, roll detection
-    for rivalHouse in housesInSystem:
-      # Build ELI unit from fleets
-      var detectorELI: seq[int] = @[]
-      var hasStarbase = false
-
-      # Check for colony with starbase
-      if scoutLocation in state.colonies:
-        let colony = state.colonies[scoutLocation]
-        if colony.owner == rivalHouse:
-          # Check for operational starbase presence (not crippled)
-          for starbase in colony.starbases:
-            if not starbase.isCrippled:
-              hasStarbase = true
-              break
-
-      # Collect ELI from fleets
-      for fleetId, fleet in state.fleets:
-        if fleet.location == scoutLocation and fleet.owner == rivalHouse:
-          for squadron in fleet.squadrons:
-            if squadron.flagship.shipClass == ShipClass.Scout:
-              detectorELI.add(squadron.flagship.stats.techLevel)
-
-      # Attempt detection if there are ELI units
-      if detectorELI.len > 0:
-        let detectorUnit = ELIUnit(
-          eliLevels: detectorELI,
-          isStarbase: hasStarbase
-        )
-
-        # Roll detection with turn RNG
-        var rng = initRand(state.turn xor scoutId.hash())
-        let detectionResult = detectSpyScout(detectorUnit, scout.eliLevel, rng)
-
-        if detectionResult.detected:
-          logInfo(LogCategory.lcGeneral,
-            &"Spy scout {scoutId} detected by {rivalHouse} " &
-            &"(ELI {detectionResult.effectiveELI} vs {scout.eliLevel}, " &
-            &"rolled {detectionResult.roll} > {detectionResult.threshold})")
-          wasDetected = true
-          break
-
-    if wasDetected:
-      # Scout is destroyed, don't add to surviving scouts
-      logInfo(LogCategory.lcGeneral, &"Spy scout {scoutId} destroyed")
-    else:
-      # Scout survives and gathers intelligence
-      survivingScouts[scoutId] = scout
-
-      # Generate intelligence reports based on mission type
-      # Enhanced scout intelligence system automatically:
-      # - Generates detailed scout encounter reports
-      # - Tracks fleet movement history over time
-      # - Tracks construction activity over multiple visits
-      case scout.mission
-      of SpyMissionType.SpyOnPlanet:
-        logDebug(LogCategory.lcGeneral, &"Spy scout {scoutId} gathering planetary intelligence at system-{scoutLocation}")
-        scout_intel.processScoutIntelligence(state, scoutId, scout.owner, scoutLocation)
-        logDebug(LogCategory.lcGeneral, &"Enhanced colony intel: population, industry, defenses, construction tracking")
-
-      of SpyMissionType.HackStarbase:
-        logDebug(LogCategory.lcGeneral, &"Spy scout {scoutId} hacking starbase at system-{scoutLocation}")
-        let report = intel_gen.generateStarbaseIntelReport(state, scout.owner, scoutLocation, intel_types.IntelQuality.Spy)
-        if report.isSome:
-          var house = state.houses[scout.owner]
-          house.intelligence.addStarbaseReport(report.get())
-          state.houses[scout.owner] = house
-          logDebug(LogCategory.lcGeneral,
-            &"Intel: Treasury {report.get().treasuryBalance.get(0)} PP, Tax rate {report.get().taxRate.get(0.0)}%")
-
-      of SpyMissionType.SpyOnSystem:
-        logDebug(LogCategory.lcGeneral, &"Spy scout {scoutId} conducting system surveillance at {scoutLocation}")
-        scout_intel.processScoutIntelligence(state, scoutId, scout.owner, scoutLocation)
-        logDebug(LogCategory.lcGeneral, &"Enhanced system intel: fleet composition, movement patterns, cargo details")
-
-  # Update spy scouts in game state (remove detected ones)
-  state.spyScouts = survivingScouts
-
-  # Process starbase surveillance (continuous monitoring every turn)
-  logDebug(LogCategory.lcGeneral, &"Processing starbase surveillance...")
-  var survRng = initRand(state.turn + 12345)  # Unique seed for surveillance
-  starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng)
+  # ===================================================================
+  # STEP 1: CALCULATE BASE PRODUCTION
+  # ===================================================================
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Calculating base production...")
 
   # Convert colonies table to sequence for income phase
   # NOTE: No type conversion needed - gamestate.Colony has all economic fields
@@ -384,6 +294,14 @@ proc resolveIncomePhase*(
   logDebug(LogCategory.lcEconomy,
           "[CAPACITY ENFORCEMENT] Completed capacity enforcement")
 
+  # ===================================================================
+  # STEP 1 & 3: ECONOMY ENGINE (Production + Maintenance)
+  # ===================================================================
+  # Economy engine calculates:
+  # - Step 1: Base production (PP/RP from colonies, improvements, modifiers)
+  # - Step 3: Maintenance costs (deducted from treasuries)
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1 & 3] Running economy engine (production + maintenance)...")
+
   # Call economy engine
   let incomeReport = econ_engine.resolveIncomePhase(
     coloniesSeqIncome,
@@ -392,6 +310,13 @@ proc resolveIncomePhase*(
     houseCSTTechLevels,
     houseTreasuries
   )
+
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1 & 3] Economy engine completed")
+
+  # ===================================================================
+  # STEP 6: COLLECT RESOURCES
+  # ===================================================================
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 6] Collecting resources and applying to treasuries...")
 
   # Write back modified colonies (population growth was applied in-place)
   # CRITICAL: Colonies were copied to seq, modified via mpairs, must write back to persist
@@ -416,6 +341,9 @@ proc resolveIncomePhase*(
         colony.production = colonyReport.grossOutput
         state.colonies[colonyReport.colonyId] = colony
 
+    # ===================================================================
+    # STEP 7: CALCULATE PRESTIGE
+    # ===================================================================
     # Apply prestige events from economic activities
     for event in houseReport.prestigeEvents:
       prestige_app.applyPrestigeEvent(state, houseId, event)
@@ -440,9 +368,98 @@ proc resolveIncomePhase*(
       logWarn(LogCategory.lcEconomy,
         &"Prestige: {blockadePenalty} ({blockadedCount} colonies under blockade) → {state.houses[houseId].prestige}")
 
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 6 & 7] Resources collected, prestige calculated")
 
-  # Check victory conditions (after all economic and prestige updates)
-  # Per FINAL_TURN_SEQUENCE.md: Victory check happens in Income Phase Step 8
+  # ===================================================================
+  # STEP 8: CHECK ELIMINATION & VICTORY CONDITIONS
+  # ===================================================================
+  # Per canonical turn cycle: Elimination and victory checks happen in Income Phase Step 8
+  # Step 8a: House elimination checks (standard elimination + defensive collapse)
+  # Step 8b: Victory condition checks (after eliminations processed)
+  logInfo(LogCategory.lcGeneral, &"[INCOME STEP 8a] Checking elimination conditions...")
+
+  let gameplayConfig = globalGameplayConfig
+  var eliminatedCount = 0
+
+  for houseId, house in state.houses:
+    # Standard elimination: no colonies and no invasion capability
+    let colonies = state.getHouseColonies(houseId)
+    let fleets = state.getHouseFleets(houseId)
+
+    if colonies.len == 0:
+      # No colonies - check if house has invasion capability
+      # (marines on transports)
+      var hasInvasionCapability = false
+
+      for fleet in fleets:
+        for transport in fleet.spaceLiftShips:
+          if transport.cargo.cargoType == CargoType.Marines and
+             transport.cargo.quantity > 0:
+            hasInvasionCapability = true
+            break
+        if hasInvasionCapability:
+          break
+
+      # Eliminate if no fleets OR no loaded transports with marines
+      if fleets.len == 0 or not hasInvasionCapability:
+        # CRITICAL: Get, modify, write back to persist
+        var houseToUpdate = state.houses[houseId]
+        houseToUpdate.eliminated = true
+        state.houses[houseId] = houseToUpdate
+        eliminatedCount += 1
+
+        let reason = if fleets.len == 0:
+          "no remaining forces"
+        else:
+          "no marines for reconquest"
+
+        events.add(GameEvent(
+          eventType: GameEventType.HouseEliminated,
+          houseId: houseId,
+          description: house.name & " has been eliminated - " & reason & "!",
+          systemId: none(SystemId)
+        ))
+        logInfo(LogCategory.lcGeneral,
+          &"{house.name} eliminated! ({reason})")
+        continue
+
+    # Defensive collapse: prestige < threshold for consecutive turns
+    # CRITICAL: Get house once, modify elimination/counter, write back
+    var houseToUpdate = state.houses[houseId]
+
+    if house.prestige <
+       gameplayConfig.elimination.defensive_collapse_threshold:
+      houseToUpdate.negativePrestigeTurns += 1
+      logWarn(LogCategory.lcGeneral,
+        &"{house.name} at risk: prestige {house.prestige} " &
+        &"({houseToUpdate.negativePrestigeTurns}/" &
+        &"{gameplayConfig.elimination.defensive_collapse_turns} turns " &
+        &"until elimination)")
+
+      if houseToUpdate.negativePrestigeTurns >=
+         gameplayConfig.elimination.defensive_collapse_turns:
+        houseToUpdate.eliminated = true
+        houseToUpdate.status = HouseStatus.DefensiveCollapse
+        eliminatedCount += 1
+        events.add(GameEvent(
+          eventType: GameEventType.HouseEliminated,
+          houseId: houseId,
+          description: house.name & " has collapsed from negative prestige!",
+          systemId: none(SystemId)
+        ))
+        logInfo(LogCategory.lcGeneral,
+          &"{house.name} eliminated by defensive collapse!")
+    else:
+      # Reset counter when prestige recovers
+      houseToUpdate.negativePrestigeTurns = 0
+
+    # Write back modified house
+    state.houses[houseId] = houseToUpdate
+
+  logInfo(LogCategory.lcGeneral, &"[INCOME STEP 8a] Elimination checks completed ({eliminatedCount} houses eliminated)")
+
+  # Step 8b: Check victory conditions (after eliminations are processed)
+  logInfo(LogCategory.lcGeneral, &"[INCOME STEP 8b] Checking victory conditions...")
   let victorOpt = state.checkVictoryCondition()
   if victorOpt.isSome:
     let victorId = victorOpt.get()

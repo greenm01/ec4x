@@ -102,27 +102,43 @@ Spaceports are large ground based facilities that launch heavy-lift ships and eq
 
 **Facility Repair**: Spaceports handle repairs for facility-class units (Starbases). These repairs do NOT consume dock capacity, allowing simultaneous facility repair and ship construction.
 
-**Ship Repair**: Spaceports cannot repair ships - only Shipyards can repair ship-class units.
+**Ship Repair**: Spaceports cannot repair ships - only Drydocks can repair ship-class units.
 
 #### 2.3.2.2 Shipyards
 
 Shipyards are gateways to the stars—large bases constructed in orbit that require a spaceport to build over a period of two turns.
 
-The majority of your ship construction and repair occurs at these important facilities.
+The majority of your ship construction occurs at these important facilities.
 
-**Construction Cost**: 60 PP  
-**Construction Time**: 2 turns  
-**Prerequisite**: Requires operational Spaceport  
-**Base Capacity**: 10 docks  
+**Construction Cost**: 60 PP
+**Construction Time**: 2 turns
+**Prerequisite**: Requires operational Spaceport
+**Base Capacity**: 10 docks
 **Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](economy.md#45-construction-cst))
 
-Shipyards are equipped with docks for both construction and repair, and are fixed in orbit. Build multiple yards to increase your construction capacity at the colony.
+Shipyards are equipped with construction docks and are fixed in orbit. Build multiple yards to increase your construction capacity at the colony.
 
 **Orbital Ship Construction**: Ships built at shipyards use standard PP costs with no penalties. See [Section 5.4](economy.md#54-orbital-construction).
 
-**Ship Repairs**: Only shipyards can repair ships. Repair costs 25% of ship's original PP cost and completes in 1 turn. See [Section 5.5](economy.md#55-orbital-repair).
+**Ship Repairs**: Shipyards cannot repair ships - ship repairs require Drydocks (see [Section 2.3.2.3](#23223-drydocks)).
 
-#### 2.3.2.3 Environmental Transformation And Colonization (ETAC)
+#### 2.3.2.3 Drydocks
+
+Drydocks are specialized orbital facilities dedicated to ship repair operations. These massive maintenance stations are constructed in orbit and require a spaceport to build over a period of two turns.
+
+**Construction Cost**: 150 PP
+**Construction Time**: 2 turns
+**Prerequisite**: Requires operational Spaceport
+**Base Capacity**: 10 docks
+**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](economy.md#45-construction-cst))
+
+Drydocks are repair-only facilities and cannot construct ships. They are fixed in orbit alongside shipyards. Build multiple drydocks to increase your repair capacity at the colony.
+
+**Ship Repairs**: Only drydocks can repair ships. Repair costs 25% of ship's original PP cost and completes in 1 turn. See [Section 5.5](economy.md#55-orbital-repair).
+
+**Construction**: Drydocks cannot construct ships - ship construction requires Shipyards or Spaceports.
+
+#### 2.3.2.4 Environmental Transformation And Colonization (ETAC)
 
 ETACs plant a seed by establishing colonies on uninhabited planets. They may be reused but require PTU reload.
 
@@ -132,7 +148,7 @@ ETACs plant a seed by establishing colonies on uninhabited planets. They may be 
 
 You must load ETACs with colonists before departure. For STL capacity progression, see [Section 4.9](economy.md#49-strategic-lift-stl).
 
-#### 2.3.2.4 Troop Transports
+#### 2.3.2.5 Troop Transports
 
 Troop Transports are specialized ships that taxi Space Marine divisions between solar systems, along with their required combat gear, armored vehicles, and ammunition.
 

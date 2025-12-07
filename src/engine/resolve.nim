@@ -9,44 +9,62 @@
 ##
 ## **TURN RESOLUTION PHASES:**
 ##
-## 1. **Conflict Phase** (simultaneous) [resolution/phases/conflict_phase.nim]
-##    - Spy scout detection
-##    - Space/orbital combat resolution
-##    - Blockade resolution (simultaneous)
-##    - Planetary combat (bombard/invade/blitz, simultaneous)
-##    - Espionage operations (fleet + EBP, simultaneous)
-##    - Spy scout travel
+## **PHASE 1: CONFLICT PHASE** [resolution/phases/conflict_phase.nim]
+##   Step 1: Space Combat (simultaneous resolution)
+##   Step 2: Orbital Combat (simultaneous resolution)
+##   Step 3: Blockade Resolution (simultaneous)
+##   Step 4: Planetary Combat (bombard/invade/blitz, simultaneous)
+##   Step 5: Colonization (ETAC operations, simultaneous)
+##   Step 6: Espionage Operations (simultaneous)
+##     6a: Spy Scout Detection (pre-combat prep, excludes detected scouts)
+##     6b: Fleet-Based Espionage (SpyPlanet, SpySystem, HackStarbase)
+##     6c: Space Guild Espionage (EBP-based covert ops)
+##     6d: Starbase Surveillance (continuous monitoring)
+##   Step 7: Spy Scout Travel (1-2 jumps per turn)
 ##
-## 2. **Income Phase** (sequential) [resolution/phases/income_phase.nim]
-##    - Resource generation (PP, RP, EP, CP, IP)
-##    - Maintenance costs deducted
-##    - Colony growth/decline
-##    - Capacity enforcement (disband excess units after IU loss)
+## **PHASE 2: INCOME PHASE** [resolution/phases/income_phase.nim]
+##   Step 1: Calculate Base Production (colony GCO → PP)
+##   Step 2: Apply Blockades (reduce GCO for blockaded colonies)
+##   Step 3: Calculate Maintenance Costs (deduct from gross production)
+##   Step 4: Execute Salvage Orders (recover PP from wreckage)
+##   Step 5: Capacity Enforcement (after IU loss from combat/blockades)
+##     5a: Capital Squadron Capacity (immediate, no grace period)
+##     5b: Total Squadron Limit (2-turn grace period)
+##     5c: Fighter Squadron Capacity (2-turn grace period)
+##     5d: Planet-Breaker Enforcement (immediate, colony-based limit)
+##   Step 6: Collect Resources (apply PP/RP to house treasuries)
+##   Step 7: Calculate Prestige (award/deduct for turn events)
+##   Step 8: House Elimination & Victory Checks
+##     8a: House Elimination (standard elimination + defensive collapse)
+##     8b: Victory Conditions (prestige/elimination/turn limit)
+##   Step 9: Advance Timers (espionage effects, diplomatic timers, grace periods)
 ##
-## 3. **Command Phase** (sequential) [resolution/phases/command_phase.nim]
-##    a. Commission completed projects (frees dock capacity)
-##    b. Colony automation (processColonyAutomation):
-##       - Auto-load fighters to carriers (if colony.autoLoadingEnabled)
-##       - Auto-repair submission (if colony.autoRepairEnabled)
-##       - Auto-squadron balancing (always on)
-##    c. Process new build orders (uses freed capacity)
-##    d. Colony management (tax rates, auto-repair toggles)
-##    e. Space Guild population transfers
-##    f. Scout detection escalations
-##    g. Spy scout orders (join, move, rendezvous)
-##    h. Auto-load cargo at colonies
-##    i. Terraforming orders
-##    j. Fleet order submission (combat orders queued for Turn N+1)
+## **PHASE 3: COMMAND PHASE** [resolution/phases/command_phase.nim]
+##   Part A: Commissioning & Automation
+##     - Commission completed projects from pendingCommissions
+##     - Auto-create squadrons, auto-assign to fleets
+##     - Auto-load PTUs onto ETAC ships
+##     - Colony automation (auto-repair, auto-load fighters)
+##   Part B: Player Submission Window (24-hour window in multiplayer)
+##     - Process build orders
+##     - Process colony management orders
+##     - Process Space Guild population transfers
+##     - Process diplomatic actions
+##     - Process spy scout orders
+##     - Process terraforming orders
+##   Part C: Order Processing (categorization & queueing)
+##     - Queue combat orders for Turn N+1 Conflict Phase
+##     - Execute administrative orders immediately
+##     - Store movement orders for Maintenance Phase execution
 ##
-## 4. **Maintenance Phase** (sequential) [resolution/phases/maintenance_phase.nim]
-##    - Advance construction queues (facility + colony)
-##    - Advance repair queues
-##    - Store completed projects in state.pendingCommissions
-##    - Diplomatic state changes
-##    - Research advancement
-##    - House elimination checks
-##    - Fleet movement execution
-##    - Fleet upkeep and status decay
+## **PHASE 4: MAINTENANCE PHASE** [resolution/phases/maintenance_phase.nim]
+##   Step 1: Fleet Movement (execute movement orders from Command Phase)
+##   Step 2: Construction & Repair Advancement (advance all queues)
+##   Step 3: Diplomatic Actions (state changes take effect)
+##   Step 4: Population Arrivals (Space Guild transfers complete)
+##   Step 5: Terraforming Projects (advance active projects)
+##   Step 6: Cleanup (expire proposals, update diplomatic timers)
+##   Research Advancement: Process EL/SL/TechField upgrades (uses accumulated RP)
 ##
 ## **COMMISSIONING & AUTOMATION FLOW:**
 ## - Turn N: Build orders submitted → queued

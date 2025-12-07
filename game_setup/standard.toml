@@ -31,7 +31,7 @@ starting_distance = "balanced"      # close, balanced, far
 # What each player starts with (gameplay.md:37)
 # ACCELERATION: Boosted for 30-45 turn accelerated timeline
 treasury = 1200                     # Starting Production Points (PP) - was 1000, originally 420
-starting_prestige = 50              # Starting prestige points (gameplay.md:21)
+starting_prestige = 100             # Starting prestige points (gameplay.md:21)
 default_tax_rate = 0.50             # Default tax rate (50%)
 
 [starting_tech]
@@ -39,7 +39,7 @@ default_tax_rate = 0.50             # Default tax rate (50%)
 # ACCELERATION: Boosted critical expansion tech for Act 1
 economic_level = 3                  # EL3 - 15% production bonus (was EL1 5%)
 science_level = 2                   # SL2 - Better research (was SL1)
-construction_tech = 2               # CST2 - Faster ship building (was CST1)
+construction_tech = 1               # CST1 - Standard ship building
 weapons_tech = 1                    # WEP1 - Keep at baseline
 terraforming_tech = 1               # TER1
 electronic_intelligence = 1         # ELI1

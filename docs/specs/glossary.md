@@ -41,9 +41,10 @@
 ## Spacelift & Infrastructure
 | Term | Definition | Section Link |
 |------|------------|--------------|
+| DD | Drydock – facility for ship repair operations | [10.4](reference.md#104-construction--repair-facilities-wep1) |
 | ET | ETAC – Environmental Transformation And Colonization ship | [9.3](reference.md#103-spacelift-command-wep1) |
-| SP | Spaceport – facility for population/cargo transport | [9.3](reference.md#103-spacelift-command-wep1) |
-| SY | Shipyard – facility for ship construction | [9.3](reference.md#103-spacelift-command-wep1) |
+| SP | Spaceport – facility for construction (5 docks, +100% PP penalty) | [10.4](reference.md#104-construction--repair-facilities-wep1) |
+| SY | Shipyard – facility for ship construction (10 docks, standard PP) | [10.4](reference.md#104-construction--repair-facilities-wep1) |
 | TT | Troop Transports – ship for moving ground forces | [9.3](reference.md#103-spacelift-command-wep1) |
 
 ## Ship & Unit Statistics

@@ -96,13 +96,13 @@ Generate your star map using the tools provided in the GitHub repository (see [S
 
 You begin with a foundation for empire:
 
-**Homeworld**: Abundant Eden planet, Level V colony with 840 PU  
-**Treasury**: 1000 production points (PP)  
-**Infrastructure**: One spaceport, one shipyard  
-**Industrial Capacity**: 420 IU (0.5 × PU)  
-**Fleet**: Two Light Cruisers, two Destroyers  
-**Colonization**: Two ETACs loaded with colonists  
-**Scouts**: None—build these immediately  
+**Homeworld**: Abundant Eden planet, Level V colony with 840 PU
+**Treasury**: 1000 production points (PP)
+**Infrastructure**: One spaceport, one shipyard, one drydock
+**Industrial Capacity**: 420 IU (0.5 × PU)
+**Fleet**: Two Light Cruisers, two Destroyers
+**Colonization**: Two ETACs loaded with colonists
+**Scouts**: None—build these immediately
 **Tax Rate**: 50% (you'll want to adjust this)
 
 **Starting Technology:**

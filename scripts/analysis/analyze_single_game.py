@@ -232,6 +232,7 @@ def print_facilities_and_defenses(final_data: Dict[str, Dict], max_turn: int):
     facility_types = [
         ('total_shipyards', 'Shipyards'),
         ('total_spaceports', 'Spaceports'),
+        ('total_drydocks', 'Drydocks'),
         ('starbases_actual', 'Starbases'),
         ('planetary_shield_units', 'Planetary Shields')
     ]

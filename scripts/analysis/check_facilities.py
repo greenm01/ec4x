@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Check facility scaling (Shipyards/Spaceports) across Acts.
+Check facility scaling (Shipyards/Spaceports/Drydocks) across Acts.
 
 Expected after Eparch facility fix:
-- Act 1: 1-2 Shipyards, 1-2 Spaceports
-- Act 2: 2-3 Shipyards, 2-3 Spaceports
-- Act 3: 4-5 Shipyards, 3-4 Spaceports
-- Act 4: 5-7 Shipyards, 4-5 Spaceports
+- Act 1: 1-2 Shipyards, 1-2 Spaceports, 0-1 Drydocks
+- Act 2: 2-3 Shipyards, 2-3 Spaceports, 1-2 Drydocks
+- Act 3: 4-5 Shipyards, 3-4 Spaceports, 2-3 Drydocks
+- Act 4: 5-7 Shipyards, 4-5 Spaceports, 3-4 Drydocks
 
 Before fix: All houses stuck at 1 Shipyard, 1 Spaceport entire game.
 
@@ -50,6 +50,7 @@ def main():
             "house",
             "total_shipyards",
             "total_spaceports",
+            "total_drydocks",
             "total_colonies"
         ])
         .sort(["house", "turn"])
@@ -65,13 +66,14 @@ def main():
     act4_data = df.filter(pl.col("turn") == 30)
     max_shipyards = act4_data.select(pl.col("total_shipyards").max()).item()
     max_spaceports = act4_data.select(pl.col("total_spaceports").max()).item()
+    max_drydocks = act4_data.select(pl.col("total_drydocks").max()).item()
 
     print("=" * 80)
     print("FACILITY FIX STATUS")
     print("=" * 80)
 
-    if max_shipyards == 1 and max_spaceports == 1:
-        print("❌ FACILITIES NOT SCALING - All houses stuck at 1/1")
+    if max_shipyards == 1 and max_spaceports == 1 and max_drydocks == 0:
+        print("❌ FACILITIES NOT SCALING - All houses stuck at 1 SY / 1 SP / 0 DD")
         print("   Eparch facility requirements not being generated/fulfilled")
         print()
         print("   Possible causes:")
@@ -79,7 +81,7 @@ def main():
         print("   2. Facility requirements being generated but unfulfilled")
         print("   3. Facility requirements being deprioritized in mediation")
     else:
-        print(f"✅ FACILITIES SCALING - Max: {max_shipyards} Shipyards, {max_spaceports} Spaceports")
+        print(f"✅ FACILITIES SCALING - Max: {max_shipyards} Shipyards, {max_spaceports} Spaceports, {max_drydocks} Drydocks")
         print("   Eparch facility requirements working!")
 
     print("=" * 80)

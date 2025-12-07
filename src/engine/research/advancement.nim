@@ -15,12 +15,40 @@
 ## - Provides bonus RP, cost reductions, or free level advancements
 
 import std/[random, tables, options]
-import types, costs
+import types, costs, effects
 import ../../common/types/tech
 import ../prestige
 import ../config/[prestige_config, prestige_multiplier]
+import ../gamestate
 
 export types.ResearchAdvancement, types.AdvancementType, types.BreakthroughEvent, types.TechTree
+
+## CST Tech Upgrade Helpers
+
+proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
+  ## Recalculate all facility dock capacities when CST tech advances
+  ## Called automatically after CST level increases
+  ## Updates stored effectiveDocks values for all facilities owned by house
+  let cstLevel = state.houses[houseId].techTree.levels.constructionTech
+
+  for systemId, colony in state.colonies.mpairs:
+    if colony.owner != houseId:
+      continue
+
+    # Update spaceport capacities
+    for spaceport in colony.spaceports.mitems:
+      spaceport.effectiveDocks = effects.calculateEffectiveDocks(
+        spaceport.baseDocks, cstLevel)
+
+    # Update shipyard capacities
+    for shipyard in colony.shipyards.mitems:
+      shipyard.effectiveDocks = effects.calculateEffectiveDocks(
+        shipyard.baseDocks, cstLevel)
+
+    # Update drydock capacities
+    for drydock in colony.drydocks.mitems:
+      drydock.effectiveDocks = effects.calculateEffectiveDocks(
+        drydock.baseDocks, cstLevel)
 
 ## Maximum Tech Levels (economy.md:4.0)
 ## Caps prevent wasteful investment once maximum research levels reached
@@ -85,7 +113,7 @@ proc rollBreakthrough*(investedRP: int, rng: var Rand): Option[BreakthroughType]
 
   return none(BreakthroughType)
 
-proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
+proc applyBreakthrough*(tree: var types.TechTree, breakthrough: BreakthroughType,
                        allocation: ResearchAllocation): BreakthroughEvent =
   ## Apply breakthrough effect to tech tree
   ## Returns event for reporting
@@ -137,7 +165,7 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
 
 ## Tech Level Advancement
 
-proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[ResearchAdvancement] =
+proc attemptELAdvancement*(tree: var types.TechTree, currentEL: int): Option[ResearchAdvancement] =
   ## Attempt to advance Economic Level
   ## Returns advancement if successful
 
@@ -174,7 +202,7 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[ResearchA
 
   return none(ResearchAdvancement)
 
-proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[ResearchAdvancement] =
+proc attemptSLAdvancement*(tree: var types.TechTree, currentSL: int): Option[ResearchAdvancement] =
   ## Attempt to advance Science Level
   ## Returns advancement if successful
 
@@ -211,7 +239,7 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[ResearchA
 
   return none(ResearchAdvancement)
 
-proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[ResearchAdvancement] =
+proc attemptTechAdvancement*(state: var GameState, houseId: HouseId, tree: var types.TechTree, field: TechField): Option[ResearchAdvancement] =
   ## Attempt to advance specific tech field
   ## Returns advancement if successful
   ## Note: EL and SL use separate attemptELAdvancement/attemptSLAdvancement functions
@@ -264,6 +292,8 @@ proc attemptTechAdvancement*(tree: var TechTree, field: TechField): Option[Resea
   case field
   of TechField.ConstructionTech:
     tree.levels.constructionTech += 1
+    # Recalculate facility dock capacities for new CST level
+    applyDockCapacityUpgrade(state, houseId)
   of TechField.WeaponsTech:
     tree.levels.weaponsTech += 1
   of TechField.TerraformingTech:

@@ -5,18 +5,21 @@
 ## Tech effects implemented here:
 ## - WEP: +10% AS/DS per level (combat)
 ## - EL: +5% GCO per level (economy)
+## - CST: Dock capacity multiplier (facility docks)
 ## - TER: Terraforming cost and requirements
 ##
 ## Tech effects implemented elsewhere:
-## - CST: Squadron limit (gamestate.nim), capacity bonus (to be implemented)
+## - CST: Squadron limit (gamestate.nim)
 ## - ELI: Detection system (intelligence/detection.nim)
 ## - CLK: Cloaking system (intelligence/detection.nim)
 ## - SLD: Planetary shields (combat/ground.nim)
 ## - CIC: Counter-intelligence (espionage/types.nim)
 ## - FD: Fighter capacity multiplier (economy/fighter_capacity.nim)
-## - ACO: Carrier capacity (to be implemented)
+## - ACO: Carrier capacity (implemented here)
 
 import ../../common/types/tech
+import ../config/tech_config
+import std/options
 
 export tech.TechLevel
 
@@ -57,6 +60,24 @@ proc getConstructionCapacityMultiplier*(cstLevel: int): float =
   ## Per economy.md:4.5: +10% per level (construction capacity increases)
   ## This affects GCO calculation by boosting industrial output
   result = 1.0 + (float(cstLevel - 1) * 0.10)
+
+proc getDockCapacityMultiplier*(cstLevel: int): float =
+  ## Get dock capacity multiplier from CST tech
+  ## Per economy.md:4.5: +10% per level (dock count increases)
+  ## Formula: effectiveDocks = baseDocks × (1.0 + (CST - 1) × multiplier)
+  ## Pulls multiplier from config/tech.toml
+  let multiplierPerLevel =
+    if globalTechConfig.construction_tech.capacity_multiplier_per_level.isSome:
+      globalTechConfig.construction_tech.capacity_multiplier_per_level.get()
+    else:
+      0.10  # Default fallback
+  result = 1.0 + (float(cstLevel - 1) * multiplierPerLevel)
+
+proc calculateEffectiveDocks*(baseDocks: int, cstLevel: int): int =
+  ## Calculate effective dock capacity based on CST technology
+  ## Per economy.md:4.5 - Dock Count = base_docks × CST_MULTIPLIER (rounded down)
+  let multiplier = getDockCapacityMultiplier(cstLevel)
+  result = int(float(baseDocks) * multiplier)
 
 ## Electronic Intelligence Effects (economy.md:4.8)
 ## NOTE: Full ELI detection system implemented in intelligence/detection.nim

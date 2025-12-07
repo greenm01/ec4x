@@ -547,3 +547,6 @@ level_3_trp = 22
 level_3_cv_capacity = 5
 level_3_cx_capacity = 8
 level_3_description = "Advanced Carrier Operations"
+
+# Dock capacity scaling (economy.md:4.5)
+capacity_multiplier_per_level = 0.10  # 10% per level (1.0x at CST I, 1.9x at CST X)

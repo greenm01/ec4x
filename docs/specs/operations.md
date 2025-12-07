@@ -53,15 +53,20 @@ Allocate treasury (production points) to construction projects at your colonies.
 **Shipyards** (Orbital Construction):
 - Built in 2 turns, requires existing spaceport, provides 10 construction docks
 - Can build any ship type at standard cost (no penalty)
-- **ONLY facility that can repair ships** - spaceports cannot repair ships
-- Repairs any ship class at 25% of build cost (1 turn)
+- **Construction only** - shipyards cannot repair ships (requires drydocks)
 - Economically superior for all non-fighter construction
 
+**Drydocks** (Orbital Repair):
+- Built in 2 turns, requires existing spaceport, provides 10 repair docks
+- **ONLY facility that can repair ships** - spaceports and shipyards cannot repair ships
+- Repairs any ship class at 25% of build cost (1 turn)
+- Dedicated repair infrastructure for fleet maintenance
+
 **Ship Repair Requirements:**
-- **All ship repairs require shipyards** - spaceports cannot repair ships
+- **All ship repairs require drydocks** - spaceports and shipyards cannot repair ships
 - Repair cost: 25% of build cost
 - Repair time: 1 turn for all ship classes
-- Colonies without shipyards cannot repair crippled ships (must salvage or transfer to shipyard colony)
+- Colonies without drydocks cannot repair crippled ships (must salvage or transfer to drydock colony)
 
 **Facility Repair Requirements:**
 - **Starbase repairs require spaceports** (not shipyards)
@@ -185,7 +190,7 @@ Move your fleet to a new solar system and hold position. Your fleet travels to t
 
 ### 6.3.4 Seek Home (02)
 
-Order your fleet to return to the nearest friendly colony with repair facilities. Your damaged forces automatically navigate to safe harbor for repairs and resupply.
+Order your fleet to return to the nearest friendly colony with drydock facilities. Your damaged forces automatically navigate to safe harbor for repairs and resupply.
 
 **Use Seek Home to:**
 - Evacuate damaged fleets from combat zones
@@ -866,12 +871,12 @@ Order your fleet to automatically reinforce the nearest damaged friendly fleet. 
 
 ### 6.5.8 Auto-Repair Standing Order
 
-Order damaged fleets to automatically return to shipyards when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
+Order damaged fleets to automatically return to drydocks when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
 
 **Behavior:**
 - Fleet monitors squadron damage status
 - When crippled (threshold TBD), seeks repair
-- Identifies nearest colony with shipyard
+- Identifies nearest colony with drydock
 - Travels to repair facility
 - Conducts repairs
 - Resumes previous standing order or awaits orders
@@ -938,31 +943,31 @@ Configure standing order combat behavior with Rules of Engagement—a 0-10 scale
 
 ## 6.5 Ship Repairs and Repair Queues
 
-Damaged ships require shipyard facilities for repairs. Manage your repair priorities through explicit repair orders or automated repair queues. Balance repair capacity against construction demands to maintain fleet readiness.
+Damaged ships require drydock facilities for repairs. Manage your repair priorities through explicit repair orders or automated repair queues. Drydocks are specialized repair-only facilities separate from construction infrastructure.
 
 ### 6.5.1 Damage and Repair Mechanics
 
 **Ships accumulate damage during combat**: Hull damage, system damage, and critical hits degrade combat effectiveness. Heavily damaged ships risk destruction.
 
-**Shipyards conduct repairs**: Colonies with shipyard facilities repair damaged ships. Repair speed depends on shipyard capacity and damage severity.
+**Drydocks conduct repairs**: Colonies with drydock facilities repair damaged ships. Repair speed depends on drydock capacity and damage severity.
 
-**Repairs compete with construction**: Shipyard capacity serves both repair and construction operations. Prioritize based on strategic needs—replace losses or repair existing forces.
+**Repairs are separate from construction**: Drydock capacity is dedicated to repairs only. Shipyard construction operations do not interfere with repair operations.
 
 ### 6.5.2 Repair Queues
 
-**Automatic repair prioritization**: Your shipyards automatically queue damaged ships for repair. Ships with critical damage receive priority; light damage repairs later.
+**Automatic repair prioritization**: Your drydocks automatically queue damaged ships for repair. Ships with critical damage receive priority; light damage repairs later.
 
 **Manual queue adjustment**: Override automatic prioritization by explicitly ordering specific ships to front of queue. Prioritize capital ships or critical escorts.
 
-**Repair time scales with damage**: Lightly damaged ships repair quickly; heavily damaged ships require multiple turns. Monitor repair progress in colony management screens.
+**Repair time**: All ship repairs complete in 1 turn at 25% of original build cost. Monitor repair progress in colony management screens.
 
 ### 6.5.3 Repair Strategy
 
-**Dedicated repair colonies**: Establish rear-area colonies with extensive shipyard capacity for major repairs. Damaged fleets return to repair bases.
+**Dedicated repair colonies**: Establish rear-area colonies with extensive drydock capacity for major repairs. Damaged fleets return to repair bases.
 
-**Forward repair facilities**: Build shipyards at frontline colonies for rapid turnaround. Maintain fleet readiness near combat zones.
+**Forward repair facilities**: Build drydocks at frontline colonies for rapid turnaround. Maintain fleet readiness near combat zones.
 
-**Emergency repairs**: Lightly damaged ships remain operational. Save shipyard capacity for critically damaged units requiring immediate attention.
+**Emergency repairs**: Lightly damaged ships remain operational. Save drydock capacity for critically damaged units requiring immediate attention.
 
 **Auto-Repair standing orders**: Configure damaged fleets to automatically return to designated repair facilities when crippled. Reduces micromanagement of battle-damaged forces.
 

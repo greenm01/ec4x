@@ -61,18 +61,38 @@ EC4X uses a four-phase turn structure that separates combat resolution, economic
 
 **6. Espionage Operations** (simultaneous resolution)
 
-**6a. Fleet-Based Espionage**
+**6a. Spy Scout Detection** (pre-combat preparation)
+- Execute BEFORE combat resolution (Step 1-2)
+- Check detection for all active spy scouts
+- Detected scouts excluded from combat participation
+- Generate GameEvents (SpyScoutDetected)
+- Implementation: Executes at beginning of Conflict Phase
+
+**6b. Fleet-Based Espionage**
 - SpyPlanet: Gather colony economic/military intel
 - SpySystem: Map system defenses and fleet presence
 - HackStarbase: Infiltrate starbase systems
 - Update intelligence tables
 - Generate GameEvents (IntelGathered)
 
-**6b. Space Guild Espionage** (EBP-based covert ops)
+**6c. Space Guild Espionage** (EBP-based covert ops)
 - Tech Theft, Sabotage, Assassination, Cyber Attack
 - Economic Manipulation, Psyops, Counter-Intel
 - Intelligence Theft, Plant Disinformation, Recruit Agent
 - Generate GameEvents (EspionageSuccess, EspionageDetected)
+
+**6d. Starbase Surveillance** (continuous monitoring)
+- Automatic intelligence gathering from friendly starbases
+- Monitors adjacent systems for fleet movements
+- Updates intelligence tables with starbase sensor data
+- No player action required (passive system)
+
+**7. Spy Scout Travel**
+- Move traveling spy scouts through jump lanes
+- Travel speed: 1-2 jumps per turn based on lane control
+- Detection checks occur at intermediate systems
+- Scouts may be detected and eliminated during travel
+- Generate GameEvents (SpyScoutMoved, SpyScoutDetected)
 
 ### Key Properties
 - All orders execute from previous turn's submission
@@ -161,10 +181,52 @@ When IU drops (blockades, lost colonies), capacity limits may fall below current
 - Update house prestige totals
 - Generate GameEvents (PrestigeAwarded)
 
-**8. Check Victory Conditions**
-- Evaluate victory conditions (prestige threshold, elimination, turn limit)
-- If victory achieved: Set game state to finished
-- Generate GameEvents (VictoryAchieved) if applicable
+**8. House Elimination & Victory Checks**
+
+**8a. House Elimination** (executed first)
+
+Evaluate elimination conditions for each house in sequential order:
+
+*Standard Elimination:*
+- Condition: House has zero colonies AND no invasion capability
+- Invasion capability check:
+  - Scan all house fleets for spacelift ships
+  - Check if any transport has CargoType.Marines with quantity > 0
+  - If found: House has invasion capability
+- Elimination triggers if:
+  - Zero colonies AND zero fleets, OR
+  - Zero colonies AND no marines on transports
+- On elimination:
+  - Set house.eliminated = true
+  - Generate GameEvent(HouseEliminated)
+  - Log reason: "no remaining forces" or "no marines for reconquest"
+
+*Defensive Collapse:*
+- Condition: House prestige below threshold for consecutive turns
+- Prestige threshold: From config.gameplay.elimination.defensive_collapse_threshold
+- Turn requirement: From config.gameplay.elimination.defensive_collapse_turns
+- Logic per house:
+  - If prestige < threshold:
+    - Increment house.negativePrestigeTurns
+    - If negativePrestigeTurns ≥ required turns:
+      - Set house.eliminated = true
+      - Set house.status = HouseStatus.DefensiveCollapse
+      - Generate GameEvent(HouseEliminated, "collapsed from negative prestige")
+  - If prestige ≥ threshold:
+    - Reset house.negativePrestigeTurns = 0
+- Defensive collapse evaluation requires prestige from Step 7
+
+**8b. Victory Conditions** (executed second)
+
+Check victory conditions using non-eliminated houses:
+- **Prestige Victory:** House prestige ≥ prestige threshold (from config)
+- **Elimination Victory:** Only one non-eliminated house remains
+- **Turn Limit Victory:** Maximum turns reached, highest prestige wins
+
+On victory:
+- Set game.phase = GamePhase.Completed
+- Generate GameEvent(VictoryAchieved)
+- Log victor and victory type
 
 **9. Advance Timers**
 - Espionage effect timers (sabotage recovery)

@@ -1,14 +1,73 @@
-## Core game state representation for EC4X
+## Core Game State Management for EC4X
+##
+## This module provides the central GameState type and game initialization functions.
+## It manages all game entities (houses, colonies, fleets) and their relationships.
+##
+## ## Primary API Functions
+##
+## **Game Initialization:**
+## - `newGame(gameId, playerCount, seed)` - Create a new game with automatic setup
+## - `newGameState(gameId, playerCount, starMap)` - Create game with existing starmap
+## - `initializeHousesAndHomeworlds(state)` - Initialize houses, colonies, and starting fleets
+##
+## **House Management:**
+## - `initializeHouse(name, color)` - Create a new house with starting resources
+## - `validateTechTree(techTree)` - Validate technology levels are within bounds
+##
+## **Colony Creation:**
+## - `createHomeColony(systemId, owner)` - Create a starting homeworld colony
+## - `createETACColony(systemId, owner, planetClass, resources)` - Create ETAC-colonized system
+##
+## **Game State Queries:**
+## - `getHouse(state, houseId)` - Get house by ID
+## - `getColony(state, systemId)` - Get colony by system ID
+## - `getFleet(state, fleetId)` - Get fleet by ID
+## - `activeHousesWithId(state)` - Iterator for active houses with IDs
+## - `coloniesOwned(state, houseId)` - Iterator for colonies owned by house
+## - `fleetsOwned(state, houseId)` - Iterator for fleets owned by house
+##
+## ## Configuration
+##
+## Game setup parameters are loaded from `game_setup/standard.toml`:
+## - Starting resources (PP, prestige, tax rate)
+## - Starting technology levels (EL, SL, CST, WEP, etc.)
+## - Starting fleet composition (ETACs, Light Cruisers, Destroyers, Scouts)
+## - Starting facilities (Spaceports, Shipyards, Starbases)
+## - Starting ground forces (Armies, Marines, Ground Batteries)
+## - Homeworld characteristics (planet class, population, infrastructure)
+##
+## See: `config/game_setup_config.nim` for configuration types
+##
+## ## Architecture Notes
+##
+## **Data-Oriented Design (DoD):**
+## - All entities stored in flat `Table[Id, Entity]` structures
+## - No deep nesting or pointer chasing
+## - Efficient iteration and cache-friendly layout
+##
+## **Entity Management:**
+## - Houses: Player factions with resources and technology
+## - Colonies: Planetary settlements with production and infrastructure
+## - Fleets: Mobile ship groups with squadrons
+## - Squadrons: Ship formations within fleets
+##
+## **Separation of Concerns:**
+## - This module: Core state and initialization
+## - Resolution modules: Turn processing and game logic
+## - Economy modules: Production and resource management
+## - Combat modules: Battle resolution
+## - Diplomacy modules: Inter-house relations
 
 import std/[tables, options, strutils, math]
 import ../common/types/[core, planets, tech, diplomacy]
-import fleet, starmap
+import fleet, starmap, squadron
 import order_types  # Fleet order types (avoid circular dependency)
-import config/[prestige_config, military_config, tech_config, game_setup_config]
+import config/[prestige_config, military_config, tech_config, game_setup_config, facilities_config]
 import diplomacy/types as dip_types
 import diplomacy/proposals as dip_proposals
 import espionage/types as esp_types
 import research/types as res_types
+import research/effects  # CST dock capacity calculations
 import economy/types as econ_types
 import population/types as pop_types
 import intelligence/types as intel_types
@@ -39,20 +98,31 @@ type
     ## Ground-based launch facility (assets.md:2.3.2.1)
     id*: string                   # Unique identifier
     commissionedTurn*: int        # Turn when built
-    docks*: int                   # Construction docks (5 per spaceport)
+    baseDocks*: int               # Base docks from config (immutable)
+    effectiveDocks*: int          # Calculated: baseDocks × CST multiplier (updated on tech upgrade)
     constructionQueue*: seq[econ_types.ConstructionProject]  # Per-facility construction queue
-    activeConstruction*: Option[econ_types.ConstructionProject]  # Currently building project
+    activeConstructions*: seq[econ_types.ConstructionProject]  # Currently building projects (up to effectiveDocks limit)
 
   Shipyard* = object
     ## Orbital construction facility (assets.md:2.3.2.2)
     id*: string                   # Unique identifier
     commissionedTurn*: int        # Turn when built
-    docks*: int                   # Construction docks (10 per shipyard)
+    baseDocks*: int               # Base docks from config (immutable)
+    effectiveDocks*: int          # Calculated: baseDocks × CST multiplier (updated on tech upgrade)
     isCrippled*: bool             # Combat state (crippled shipyards can't build)
     constructionQueue*: seq[econ_types.ConstructionProject]  # Per-facility construction queue
-    activeConstruction*: Option[econ_types.ConstructionProject]  # Currently building project
+    activeConstructions*: seq[econ_types.ConstructionProject]  # Currently building projects (up to effectiveDocks limit)
+
+  Drydock* = object
+    ## Orbital repair facility - dedicated to ship repairs only
+    id*: string                   # Unique identifier
+    commissionedTurn*: int        # Turn when built
+    baseDocks*: int               # Base docks from config (immutable)
+    effectiveDocks*: int          # Calculated: baseDocks × CST multiplier (updated on tech upgrade)
+    isCrippled*: bool             # Combat state (crippled drydocks can't repair)
     repairQueue*: seq[econ_types.RepairProject]  # Per-facility repair queue
-    activeRepairs*: seq[econ_types.RepairProject]  # Currently repairing (multiple can be active)
+    activeRepairs*: seq[econ_types.RepairProject]  # Currently repairing (up to effectiveDocks limit)
+    # NOTE: No construction queues - Drydocks are repair-only
 
   CapacityViolation* = object
     ## Tracks fighter capacity violations and grace period
@@ -117,6 +187,7 @@ type
     # Facilities (assets.md:2.3.2)
     spaceports*: seq[Spaceport]               # Ground launch facilities
     shipyards*: seq[Shipyard]                 # Orbital construction facilities
+    drydocks*: seq[Drydock]                   # Orbital repair facilities
 
     # Ground defenses (assets.md:2.4.7, 2.4.9)
     planetaryShieldLevel*: int                # 0=none, 1-6=SLD level
@@ -495,30 +566,37 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     spaceports: block:
       # Create spaceports from config
       var ports: seq[Spaceport] = @[]
+      let baseDocks = globalFacilitiesConfig.spaceport.docks
+      let cstLevel = 1  # Starting tech level
+      let effectiveDocks = effects.calculateEffectiveDocks(baseDocks, cstLevel)
       for i in 1..setupConfig.starting_facilities.spaceports:
         ports.add(Spaceport(
           id: $systemId & "-spaceport-" & $i,
           commissionedTurn: 0,
-          docks: 5,
+          baseDocks: baseDocks,
+          effectiveDocks: effectiveDocks,
           constructionQueue: @[],
-          activeConstruction: none(econ_types.ConstructionProject)
+          activeConstructions: @[]
         ))
       ports,
     shipyards: block:
       # Create shipyards from config
       var yards: seq[Shipyard] = @[]
+      let baseDocks = globalFacilitiesConfig.shipyard.docks
+      let cstLevel = 1  # Starting tech level
+      let effectiveDocks = effects.calculateEffectiveDocks(baseDocks, cstLevel)
       for i in 1..setupConfig.starting_facilities.shipyards:
         yards.add(Shipyard(
           id: $systemId & "-shipyard-" & $i,
           commissionedTurn: 0,
-          docks: 10,
+          baseDocks: baseDocks,
+          effectiveDocks: effectiveDocks,
           isCrippled: false,
           constructionQueue: @[],
-          activeConstruction: none(econ_types.ConstructionProject),
-          repairQueue: @[],
-          activeRepairs: @[]
+          activeConstructions: @[]
         ))
       yards,
+    drydocks: @[],  # No starting drydocks
     planetaryShieldLevel: 0,  # No shield at start (setupConfig.starting_facilities.planetary_shields)
     groundBatteries: setupConfig.starting_facilities.ground_batteries,
     armies: setupConfig.starting_ground_forces.armies,
@@ -528,10 +606,58 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     blockadeTurns: 0
   )
 
+proc createStartingFleet(owner: HouseId, location: SystemId, fleetIdx: int, ships: seq[ShipClass]): Fleet =
+  ## Create a starting fleet with specified ship composition
+  ##
+  ## Parameters:
+  ##   - owner: House that owns this fleet
+  ##   - location: Starting system ID (usually homeworld)
+  ##   - fleetIdx: Fleet number for naming (0-based)
+  ##   - ships: List of ship classes to include in fleet
+  ##
+  ## Returns:
+  ##   A Fleet with one squadron per ship class
+  ##
+  ## Used by: `initializeHousesAndHomeworlds` during game setup
+  result = Fleet(
+    id: owner & "-fleet" & $(fleetIdx + 1),
+    owner: owner,
+    location: location,
+    squadrons: @[]
+  )
+
+  # Create one squadron per ship using squadron.nim's helper
+  for shipIdx, shipClass in ships:
+    let squadronId = owner & "-squadron" & $(fleetIdx * 10 + shipIdx + 1)
+    let squadron = createSquadron(
+      shipClass = shipClass,
+      techLevel = 1,  # Starting ships have base tech level
+      id = squadronId,
+      owner = owner,
+      location = location,
+      isCrippled = false
+    )
+
+    result.squadrons.add(squadron)
+
 proc initializeHousesAndHomeworlds*(state: var GameState) =
-  ## Initialize houses and their homeworld colonies
-  ## Called during game setup to create starting conditions
+  ## Initialize houses, their homeworld colonies, and starting fleets
+  ##
+  ## Called during game setup to create starting conditions per game_setup/standard.toml:
+  ## - Creates houses with starting resources and technology
+  ## - Creates homeworld colonies with starting infrastructure
+  ## - Creates starting fleets with initial ship composition
+  ##
+  ## Configuration loaded from: game_setup/standard.toml
+  ## See: config/game_setup_config.nim for configuration types
+  ##
+  ## Starting fleet composition example (from standard.toml):
+  ##   - 2 colonization fleets (ETAC + Light Cruiser each)
+  ##   - 2 scout fleets (Destroyer each)
+  ##
+  ## Used by: `newGame` during game initialization
   let playerCount = state.starMap.playerCount
+  let setupConfig = game_setup_config.globalGameSetupConfig
 
   for playerIdx in 0 ..< playerCount:
     let houseName = "House" & $(playerIdx + 1)
@@ -547,6 +673,46 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
     let homeworldSystemId = state.starMap.playerSystemIds[playerIdx]
     let homeworld = createHomeColony(homeworldSystemId, houseId)
     state.colonies[homeworldSystemId] = homeworld
+
+    # Create starting fleets from configuration
+    # Per standard.toml: 2 ETACs, 2 Light Cruisers, 2 Destroyers
+    var fleetIdx = 0
+
+    # Fleet 1: ETAC + Light Cruiser (colonization fleet)
+    if setupConfig.starting_fleet.etac > 0 and setupConfig.starting_fleet.light_cruiser > 0:
+      let fleet1 = createStartingFleet(houseId, homeworldSystemId, fleetIdx,
+                                       @[ShipClass.ETAC, ShipClass.LightCruiser])
+      state.fleets[fleet1.id] = fleet1
+      fleetIdx.inc
+
+    # Fleet 2: ETAC + Light Cruiser (second colonization fleet)
+    if setupConfig.starting_fleet.etac > 1 and setupConfig.starting_fleet.light_cruiser > 1:
+      let fleet2 = createStartingFleet(houseId, homeworldSystemId, fleetIdx,
+                                       @[ShipClass.ETAC, ShipClass.LightCruiser])
+      state.fleets[fleet2.id] = fleet2
+      fleetIdx.inc
+
+    # Fleet 3: Destroyer (scout fleet)
+    if setupConfig.starting_fleet.destroyer > 0:
+      let fleet3 = createStartingFleet(houseId, homeworldSystemId, fleetIdx,
+                                       @[ShipClass.Destroyer])
+      state.fleets[fleet3.id] = fleet3
+      fleetIdx.inc
+
+    # Fleet 4: Destroyer (second scout fleet)
+    if setupConfig.starting_fleet.destroyer > 1:
+      let fleet4 = createStartingFleet(houseId, homeworldSystemId, fleetIdx,
+                                       @[ShipClass.Destroyer])
+      state.fleets[fleet4.id] = fleet4
+      fleetIdx.inc
+
+    # Additional scouts if configured
+    if setupConfig.starting_fleet.scout > 0:
+      for scoutIdx in 0 ..< setupConfig.starting_fleet.scout:
+        let scoutFleet = createStartingFleet(houseId, homeworldSystemId, fleetIdx,
+                                             @[ShipClass.Scout])
+        state.fleets[scoutFleet.id] = scoutFleet
+        fleetIdx.inc
 
 proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetClass, resources: ResourceRating): Colony =
   ## Create a new ETAC-colonized system with 1 PTU (50k souls)
@@ -713,15 +879,40 @@ proc hasOperationalShipyard*(colony: Colony): bool =
   return getOperationalShipyardCount(colony) > 0
 
 proc getTotalConstructionDocks*(colony: Colony): int =
-  ## Calculate total construction docks from facilities
-  ## Spaceports: 5 docks each
-  ## Shipyards: 10 docks each (only operational ones)
+  ## Get total construction docks (uses pre-calculated effectiveDocks)
   result = 0
   for spaceport in colony.spaceports:
-    result += spaceport.docks
+    result += spaceport.effectiveDocks
   for shipyard in colony.shipyards:
     if not shipyard.isCrippled:
-      result += shipyard.docks
+      result += shipyard.effectiveDocks
+
+proc getTotalRepairDocks*(colony: Colony): int =
+  ## Get total repair docks from drydocks (uses pre-calculated effectiveDocks)
+  result = 0
+  for drydock in colony.drydocks:
+    if not drydock.isCrippled:
+      result += drydock.effectiveDocks
+
+proc getShipyardDockCapacity*(colony: Colony): int =
+  ## Get shipyard dock capacity (uses pre-calculated effectiveDocks)
+  result = 0
+  for shipyard in colony.shipyards:
+    if not shipyard.isCrippled:
+      result += shipyard.effectiveDocks
+
+proc getDrydockDockCapacity*(colony: Colony): int =
+  ## Get drydock dock capacity (uses pre-calculated effectiveDocks)
+  result = 0
+  for drydock in colony.drydocks:
+    if not drydock.isCrippled:
+      result += drydock.effectiveDocks
+
+proc getSpaceportDockCapacity*(colony: Colony): int =
+  ## Get spaceport dock capacity (uses pre-calculated effectiveDocks)
+  result = 0
+  for spaceport in colony.spaceports:
+    result += spaceport.effectiveDocks
 
 # Ground defense management (assets.md:2.4.7, 2.4.9)
 
@@ -792,13 +983,13 @@ proc checkVictoryCondition*(state: GameState): Option[HouseId] =
 
 proc getConstructionDockCapacity*(colony: Colony): int =
   ## Calculate total construction dock capacity
-  ## Uses actual dock counts from facilities
+  ## Uses pre-calculated effectiveDocks (includes CST scaling)
   result = 0
   for spaceport in colony.spaceports:
-    result += spaceport.docks  # Usually 5 per spaceport
+    result += spaceport.effectiveDocks
   for shipyard in colony.shipyards:
-    if not shipyard.isCrippled:  # Crippled shipyards can't build
-      result += shipyard.docks  # Usually 10 per shipyard
+    if not shipyard.isCrippled:
+      result += shipyard.effectiveDocks
 
 proc getActiveConstructionProjects*(colony: Colony): int =
   ## Count how many projects are currently active (underConstruction + queue)
@@ -814,30 +1005,29 @@ proc getTotalActiveProjects*(colony: Colony): int =
   ## Count total active projects (construction + repair)
   result = colony.getActiveConstructionProjects() + colony.getActiveRepairProjects()
 
-proc getShipyardDockCapacity*(colony: Colony): int =
-  ## Calculate shipyard dock capacity (for ship repairs)
-  result = 0
-  for shipyard in colony.shipyards:
-    if not shipyard.isCrippled:
-      result += shipyard.docks  # Usually 10 per shipyard
 
-proc getSpaceportDockCapacity*(colony: Colony): int =
-  ## Calculate spaceport dock capacity (for smaller ship repairs)
-  result = 0
-  for spaceport in colony.spaceports:
-    result += spaceport.docks  # Usually 5 per spaceport
-
-proc getActiveProjectsByFacility*(colony: Colony, facilityType: econ_types.FacilityType): int =
+proc getActiveProjectsByFacility*(colony: Colony,
+                                  facilityType: econ_types.FacilityType): int =
   ## Count active projects using a specific facility type
-  ## Construction projects can use any facility, repairs are facility-specific
-  ## Note: Starbase repairs do NOT consume dock capacity (facilities, not ships)
-  result = colony.getActiveConstructionProjects()  # Construction uses any docks
+  ## With facility specialization:
+  ## - Spaceports: Construction only (up to docks limit)
+  ## - Shipyards: Construction only (up to docks limit)
+  ## - Drydocks: Repair only (up to docks limit)
+  result = 0
 
-  # Add repairs specific to this facility type (excluding starbases)
-  for repair in colony.repairQueue:
-    if repair.facilityType == facilityType and
-       repair.targetType != econ_types.RepairTargetType.Starbase:
-      result += 1
+  case facilityType
+  of econ_types.FacilityType.Spaceport:
+    # Count construction projects at spaceports
+    for spaceport in colony.spaceports:
+      result += spaceport.activeConstructions.len
+  of econ_types.FacilityType.Shipyard:
+    # Count construction projects at shipyards
+    for shipyard in colony.shipyards:
+      result += shipyard.activeConstructions.len
+  of econ_types.FacilityType.Drydock:
+    # Count repair projects at drydocks
+    for drydock in colony.drydocks:
+      result += drydock.activeRepairs.len
 
 proc canAcceptMoreProjects*(colony: Colony): bool =
   ## Check if colony has dock capacity for more construction projects

@@ -54,8 +54,9 @@ type
 
   FacilityType* {.pure.} = enum
     ## Facility type for construction/repair
-    Shipyard,       # Orbital shipyard (10 docks)
-    Spaceport,      # Planetary spaceport (5 docks)
+    Shipyard,       # Orbital shipyard (10 docks, construction + repair)
+    Spaceport,      # Planetary spaceport (5 docks, construction only)
+    Drydock,        # Orbital drydock (10 docks, repair only)
 
   RepairTargetType* {.pure.} = enum
     ## What is being repaired

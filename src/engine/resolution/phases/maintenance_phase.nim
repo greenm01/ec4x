@@ -1,19 +1,50 @@
-## Maintenance Phase - Phase 0A Step: Upkeep, effect decrements, and status updates
+## Maintenance Phase Resolution - Phase 4 of Canonical Turn Cycle
 ##
-## This module handles the Maintenance Phase of turn resolution, including:
-## - Decrementing ongoing espionage effect counters
-## - Expiring pending diplomatic proposals
-## - Processing Space Guild population transfers
-## - Processing active terraforming projects
-## - Updating diplomatic status timers (dishonored, isolation)
-## - Running maintenance engine for construction queues
-## - Checking elimination conditions (no colonies, defensive collapse)
-## - Enforcing squadron capacity limits (fighters, planet-breakers, capitals)
-## - Processing tech advancements (EL, SL, TechFields)
-## - Checking victory conditions
+## Server batch processing phase: fleet movement, construction advancement,
+## diplomatic state changes, and timer updates.
 ##
-## This is part of the Phase 0A refactoring to separate resolution phases
-## into focused, single-responsibility modules.
+## **Canonical Execution Order:**
+##
+## Step 1: Fleet Movement
+## - Execute movement orders stored from Command Phase Part C
+## - Orders: Move, SeekHome, Patrol, Hold
+## - Movement happens AFTER player submission to prevent tactical exploits
+##
+## Step 2: Construction & Repair Advancement
+## - Advance all facility construction queues (capital ships at shipyards)
+## - Advance all colony construction queues (fighters, buildings at spaceports)
+## - Advance all repair queues (damaged ships, facilities)
+## - Store completed projects in state.pendingCommissions for next turn's commissioning
+##
+## Step 3: Diplomatic Actions
+## - Process diplomatic state changes (from Command Phase proposals)
+## - State changes take effect AFTER all command processing complete
+## - Ensures consistent turn boundary for treaty activations
+##
+## Step 4: Population Arrivals
+## - Process Space Guild population transfers completing this turn
+## - Handle blockaded/conquered destination fallback to nearest owned colony
+##
+## Step 5: Terraforming Projects
+## - Advance active terraforming projects on colonies
+## - Complete projects when timer reaches zero
+##
+## Step 6: Cleanup & Timer Updates
+## - Decrement ongoing espionage effect counters
+## - Expire pending diplomatic proposals (timeout tracking)
+## - Update diplomatic status timers (dishonored status, isolation penalties)
+## - Advance capacity enforcement grace period timers (from Income Phase Step 5)
+##
+## **Research Advancement:** (not a numbered step, happens after Step 6)
+## - Attempt EL (Economic Level) upgrades with accumulated ERP
+## - Attempt SL (Science Level) upgrades with accumulated SRP
+## - Attempt TechField upgrades with accumulated TRP
+## - Uses RP accumulated from Income Phase Step 6
+##
+## **Key Properties:**
+## - Completed projects stored in pendingCommissions, NOT commissioned immediately
+## - Commissioning happens next turn's Command Phase Part A
+## - Fleet movement happens LAST to position units for next Conflict Phase
 
 import std/[tables, options, strformat, strutils, algorithm, sequtils, random]
 import ../../../common/[types/core, types/units, types/tech]
@@ -213,7 +244,7 @@ proc resolveMaintenancePhase*(state: var GameState,
                               seq[econ_types.CompletedProject] =
   ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
   ## Returns completed projects for commissioning in next turn's Command Phase
-  logDebug(LogCategory.lcGeneral, &"[Maintenance Phase]")
+  logInfo(LogCategory.lcOrders, &"=== Maintenance Phase === (turn={state.turn})")
 
   result = @[]  # Will collect completed projects from construction queues
 
@@ -222,7 +253,7 @@ proc resolveMaintenancePhase*(state: var GameState,
   # ===================================================================
   # Per FINAL_TURN_SEQUENCE.md: "Movement orders execute Turn N Maintenance Phase"
   # Execute all movement orders (Move, SeekHome, Patrol, Hold)
-  logDebug(LogCategory.lcGeneral, "[MAINTENANCE] Step 1: Fleet Movement")
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 1] Fleet movement execution...")
 
   var combatReports: seq[res_types_common.CombatReport] = @[]
   fleet_order_execution.executeFleetOrdersFiltered(
@@ -234,6 +265,12 @@ proc resolveMaintenancePhase*(state: var GameState,
     isMovementOrder,  # Filter: only movement orders
     "Maintenance Phase - Fleet Movement"
   )
+  logInfo(LogCategory.lcOrders, &"[MAINTENANCE STEP 1] Completed ({combatReports.len} movement orders executed)")
+
+  # ===================================================================
+  # STEPS 4-6: POPULATION, TERRAFORMING, CLEANUP
+  # ===================================================================
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEPS 4-6] Processing population, terraforming, cleanup...")
 
   # Decrement ongoing espionage effect counters
   var remainingEffects: seq[esp_types.OngoingEffect] = @[]
@@ -273,9 +310,14 @@ proc resolveMaintenancePhase*(state: var GameState,
   # Process Space Guild population transfers arriving this turn
   resolvePopulationArrivals(state, events)
 
+  # ===================================================================
+  # STEP 3: DIPLOMATIC ACTIONS
+  # ===================================================================
   # Process diplomatic actions (moved from Command Phase)
   # Diplomatic state changes happen AFTER all commands execute
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Processing diplomatic actions...")
   diplomatic_resolution.resolveDiplomaticActions(state, orders)
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Completed diplomatic actions")
 
   # Process active terraforming projects
   processTerraformingProjects(state, events)
@@ -298,9 +340,14 @@ proc resolveMaintenancePhase*(state: var GameState,
         logInfo(LogCategory.lcGeneral,
           &"{house.name} is no longer diplomatically isolated")
 
-  # Call maintenance engine with full state support
-  # This properly advances both facility queues (capital ships) AND
-  # colony queues (fighters/buildings)
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEPS 4-6] Completed population/terraforming/cleanup")
+
+  # ===================================================================
+  # STEP 2: CONSTRUCTION & REPAIR ADVANCEMENT
+  # ===================================================================
+  # Advance construction queues for both facilities (capital ships) and
+  # colonies (fighters/buildings)
+  logInfo(LogCategory.lcEconomy, "[MAINTENANCE STEP 2] Advancing construction & repair queues...")
   let maintenanceReport = econ_engine.resolveMaintenancePhaseWithState(state)
 
   # Collect completed projects for commissioning (happens in next turn's
@@ -308,83 +355,13 @@ proc resolveMaintenancePhase*(state: var GameState,
   result.add(maintenanceReport.completedProjects)
 
   logInfo(LogCategory.lcEconomy,
-    &"Maintenance phase complete: {result.len} projects ready for " &
-    &"commissioning")
+    &"[MAINTENANCE STEP 2] Completed ({result.len} projects ready for commissioning)")
 
-  # Check for elimination and defensive collapse
-  let gameplayConfig = globalGameplayConfig
-  for houseId, house in state.houses:
-    # Standard elimination: no colonies and no invasion capability
-    let colonies = state.getHouseColonies(houseId)
-    let fleets = state.getHouseFleets(houseId)
-
-    if colonies.len == 0:
-      # No colonies - check if house has invasion capability
-      # (marines on transports)
-      var hasInvasionCapability = false
-
-      for fleet in fleets:
-        for transport in fleet.spaceLiftShips:
-          if transport.cargo.cargoType == CargoType.Marines and
-             transport.cargo.quantity > 0:
-            hasInvasionCapability = true
-            break
-        if hasInvasionCapability:
-          break
-
-      # Eliminate if no fleets OR no loaded transports with marines
-      if fleets.len == 0 or not hasInvasionCapability:
-        # CRITICAL: Get, modify, write back to persist
-        var houseToUpdate = state.houses[houseId]
-        houseToUpdate.eliminated = true
-        state.houses[houseId] = houseToUpdate
-
-        let reason = if fleets.len == 0:
-          "no remaining forces"
-        else:
-          "no marines for reconquest"
-
-        events.add(GameEvent(
-          eventType: GameEventType.HouseEliminated,
-          houseId: houseId,
-          description: house.name & " has been eliminated - " & reason & "!",
-          systemId: none(SystemId)
-        ))
-        logInfo(LogCategory.lcGeneral,
-          &"{house.name} eliminated! ({reason})")
-        continue
-
-    # Defensive collapse: prestige < threshold for consecutive turns
-    # CRITICAL: Get house once, modify elimination/counter, write back
-    var houseToUpdate = state.houses[houseId]
-
-    if house.prestige <
-       gameplayConfig.elimination.defensive_collapse_threshold:
-      houseToUpdate.negativePrestigeTurns += 1
-      logWarn(LogCategory.lcGeneral,
-        &"{house.name} at risk: prestige {house.prestige} " &
-        &"({houseToUpdate.negativePrestigeTurns}/" &
-        &"{gameplayConfig.elimination.defensive_collapse_turns} turns " &
-        &"until elimination)")
-
-      if houseToUpdate.negativePrestigeTurns >=
-         gameplayConfig.elimination.defensive_collapse_turns:
-        houseToUpdate.eliminated = true
-        houseToUpdate.status = HouseStatus.DefensiveCollapse
-        events.add(GameEvent(
-          eventType: GameEventType.HouseEliminated,
-          houseId: houseId,
-          description: house.name & " has collapsed from negative prestige!",
-          systemId: none(SystemId)
-        ))
-        logInfo(LogCategory.lcGeneral,
-          &"{house.name} eliminated by defensive collapse!")
-    else:
-      # Reset counter when prestige recovers
-      houseToUpdate.negativePrestigeTurns = 0
-
-    # Write back modified house
-    state.houses[houseId] = houseToUpdate
+  # ===================================================================
+  # HOUSE ELIMINATION CHECKS MOVED TO INCOME PHASE
+  # ===================================================================
+  # Per canonical turn cycle: House elimination checks happen in Income Phase Step 8
+  # See: src/engine/resolution/phases/income_phase.nim (Step 8a)
 
   # ===================================================================
   # CAPACITY ENFORCEMENT MOVED TO INCOME PHASE
@@ -398,15 +375,20 @@ proc resolveMaintenancePhase*(state: var GameState,
   #
   # See: src/engine/resolution/phases/income_phase.nim lines 309-383
 
+  # ===================================================================
+  # RESEARCH ADVANCEMENT
+  # ===================================================================
   # Process tech advancements
   # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP
   # is available
-  logDebug(LogCategory.lcGeneral, &"Tech Advancement")
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE] Processing research advancements...")
+  var totalAdvancements = 0
   for houseId, house in state.houses.mpairs:
     # Try to advance Economic Level (EL) with accumulated ERP
     let currentEL = house.techTree.levels.economicLevel
     let elAdv = attemptELAdvancement(house.techTree, currentEL)
     if elAdv.isSome:
+      totalAdvancements += 1
       let adv = elAdv.get()
       logInfo(LogCategory.lcResearch,
         &"{house.name}: EL {adv.elFromLevel} → {adv.elToLevel} " &
@@ -426,6 +408,7 @@ proc resolveMaintenancePhase*(state: var GameState,
     let currentSL = house.techTree.levels.scienceLevel
     let slAdv = attemptSLAdvancement(house.techTree, currentSL)
     if slAdv.isSome:
+      totalAdvancements += 1
       let adv = slAdv.get()
       logInfo(LogCategory.lcResearch,
         &"{house.name}: SL {adv.slFromLevel} → {adv.slToLevel} " &
@@ -445,8 +428,9 @@ proc resolveMaintenancePhase*(state: var GameState,
     for field in [TechField.ConstructionTech, TechField.WeaponsTech,
                   TechField.TerraformingTech, TechField.ElectronicIntelligence,
                   TechField.CounterIntelligence]:
-      let advancement = attemptTechAdvancement(house.techTree, field)
+      let advancement = attemptTechAdvancement(state, houseId, house.techTree, field)
       if advancement.isSome:
+        totalAdvancements += 1
         let adv = advancement.get()
         logInfo(LogCategory.lcResearch,
           &"{house.name}: {field} {adv.techFromLevel} → " &
@@ -465,5 +449,7 @@ proc resolveMaintenancePhase*(state: var GameState,
           description: &"{field} advanced to level {adv.techToLevel}",
           systemId: none(SystemId)
         ))
+
+  logInfo(LogCategory.lcOrders, &"[MAINTENANCE] Research advancements completed ({totalAdvancements} total advancements)")
 
   # Victory condition check moved to Income Phase (per FINAL_TURN_SEQUENCE.md)

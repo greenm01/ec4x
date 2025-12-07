@@ -101,12 +101,13 @@ def analyze_construction_rate(snapshots: List[TurnSnapshot]) -> Dict:
             potential_ships_per_turn = avg_production / 80 if avg_production > 0 else 0
 
             # Dock utilization estimate
-            # Assumption: Base homeworld has 1 spaceport (5 docks) or 1 shipyard (10 docks)
-            # With N colonies, should scale to N*10 docks (if building shipyards)
+            # Assumption: Base homeworld has 1 spaceport (5 docks) and 1 shipyard (10 docks)
+            # With N colonies, should scale to N*15 docks (if building spaceports+shipyards)
+            # Note: Drydocks (10 docks) are repair-only, don't affect construction throughput
             avg_colonies = sum(t.colonies for t in turns) / len(turns)
 
-            # Estimate dock capacity (conservative: assume 10 docks per colony)
-            estimated_docks = avg_colonies * 10
+            # Estimate construction dock capacity (conservative: assume 15 docks per colony)
+            estimated_docks = avg_colonies * 15
 
             # If ship takes 2 turns to build, effective dock throughput = docks/2 ships/turn
             estimated_throughput = estimated_docks / 2
@@ -236,8 +237,9 @@ def main():
 Common Patterns:
 
 1. **Dock Bottleneck**: AI building < 1 ship/turn with 2000+ PP treasury
-   → Cause: Limited Spaceport/Shipyard capacity (5-10 docks)
-   → Fix: AI needs to build more Shipyards at each colony
+   → Cause: Limited Spaceport/Shipyard capacity (5-15 construction docks)
+   → Fix: AI needs to build more Shipyards/Spaceports at each colony
+   → Note: Drydocks are repair-only and don't affect construction throughput
 
 2. **Treasury Hoarding**: Treasury > 2x production
    → Cause: Budget-aware logic too conservative OR dock bottleneck
@@ -253,10 +255,11 @@ Expected Healthy Patterns:
 - Act3: 3-6 ships/turn (war economy, should have 3-5 colonies with 2-3 shipyards each)
 - Act4: 5-10 ships/turn (endgame, full production)
 
-Dock Capacity Scaling:
-- 1 Colony (homeworld): 10 docks (1 shipyard) = 5 ships/turn
-- 3 Colonies: 30 docks (10 per colony) = 15 ships/turn
-- 5 Colonies: 50 docks (10 per colony) = 25 ships/turn
+Construction Dock Capacity Scaling (Spaceports + Shipyards):
+- 1 Colony (homeworld): 15 docks (1 SP @ 5 + 1 SY @ 10) = ~7 ships/turn
+- 3 Colonies: 45 docks (15 per colony) = ~22 ships/turn
+- 5 Colonies: 75 docks (15 per colony) = ~37 ships/turn
+Note: Drydocks provide repair capacity only (10 docks each)
 """)
 
 if __name__ == "__main__":
