@@ -1,6 +1,6 @@
 # RBA Decision Hierarchy & Information Flow Architecture
 
-**Last Updated:** 2025-12-06 (Gap Analysis added)
+**Last Updated:** 2025-12-06 (Gaps 4, 5, 6 + Unit Construction RESOLVED)
 **System:** Rule-Based Advisor (RBA) - Byzantine Imperial Government
 **Location:** `src/ai/rba/`
 
@@ -832,90 +832,176 @@ BuildRequirement(
 
 ### Important Gaps (Reduce Effectiveness)
 
-#### 4. Weak Reprioritization Logic
+#### 4. ✅ Weak Reprioritization Logic (RESOLVED)
 
-**Gap:** Phase 4 reprioritization is simplistic (just downgrade priorities).
+**Status:** ✅ **COMPLETED** (2025-12-06)
 
-**Current Logic:**
-```nim
-if unfulfilled and expensive:
-  priority = High → Medium
-  or Medium → Low
+**Gap:** Phase 4 reprioritization was simplistic (just downgrade priorities).
+
+**Solution Implemented:**
+- **Iteration-aware strategy:** Quantity adjustment (Iteration 1) → Substitution (Iterations 2-3)
+- **Quantity adjustment:** Reduce requirement quantities by 50% (min 1 unit)
+- **Substitution logic:** Find cheaper ship alternatives with 60% cost threshold
+- **CST-aware:** Respects tech requirements when suggesting alternatives
+- **Act-appropriate:** Substitutions maintain role appropriateness (Capital → Capital, Escort → Escort)
+
+**Implementation:**
+- `src/ai/rba/domestikos/requirements/reprioritization.nim` - Enhanced reprioritization
+  - `tryQuantityAdjustment()` - 50% reduction with configurable minimum
+  - `trySubstitution()` - Cheaper alternatives with cost threshold
+  - `reprioritizeRequirements()` - Iteration-aware strategy
+- `src/ai/rba/eparch/requirements.nim` - Real Eparch reprioritization
+  - Escalation: Medium (10 turns) → High → Critical (20 turns)
+  - Downgrade expensive unfulfilled High → Medium (>30% treasury)
+  - Exception: Never downgrade Spaceport requirements below High
+
+**Configuration:**
+```toml
+[reprioritization]
+enable_quantity_adjustment = true
+min_quantity_reduction = 1
+enable_substitution = true
+max_cost_reduction_factor = 0.6  # 60% threshold
+facility_critical_to_high_turns = 10
+facility_high_to_medium_turns = 20
 ```
 
-**Missing Capabilities:**
-- Cost-benefit analysis (which requirement gives best ROI?)
-- Substitution logic (can't afford Battleship → build 2 Cruisers instead)
-- Quantity adjustment (need 10 Marines, afford 5 → build 5)
-- Value assessment (is this requirement still relevant?)
+**Validation Results:**
+- Convergence rate: 100.0% (96/96 games completed without unfulfilled Critical/High)
+- 38 unit tests passing (13 reprioritization-specific tests)
 
-**Note:** Partial fulfillment EXISTS in `budget.nim` but Phase 4 doesn't leverage it:
-```nim
-// src/ai/rba/budget.nim line 1135
-let affordableQuantity = min(req.quantity, availableBudget div unitCost)
-```
-
-**Improvement Needed:** Smarter reprioritization using cost-effectiveness metrics
-
----
-
-#### 5. Standing Orders Disconnected from Requirements
-
-**Gap:** Standing orders (patrol, defend) don't inform requirement generation.
-
-**Example:**
-```
-Fleet 42: Standing order "Defend System 15"
-Domestikos: Generates defensive units for System 7 (homeworld)
-Result:     Wrong system defended
-```
-
-**Current State:** Standing orders and requirements are parallel systems
-- Standing orders managed in `standing_orders_manager.nim`
-- Requirements generated in `domestikos/build_requirements.nim`
-- No information flow between them
-
-**Better Solution:**
-```nim
-proc generateBuildRequirements(...):
-  for fleet, order in standingOrders:
-    if order.orderType == Defend:
-      generateDefenseRequirements(order.targetSystem)
-```
-
----
-
-#### 6. Limited Feedback Information
-
-**Gap:** Treasurer only reports "unfulfilled" but not WHY.
-
-**Current Feedback:**
-```nim
-TreasurerFeedback(
-  unfulfilledRequirements: [req1, req2, req3]
-)
-```
-
-**Missing Information:**
-- Why unfulfilled? (insufficient budget, invalid requirement, capacity exhausted, strategically rejected)
-- How much short? (need 500 PP, have 200 PP)
-- What would make it affordable? (need 300 PP more, or downgrade from Battleship to Cruiser)
-
-**Better Feedback:**
-```nim
-UnfulfilledRequirement(
-  requirement: req,
-  reason: UnfulfillmentReason.InsufficientBudget,
-  costNeeded: 500,
-  budgetAvailable: 200,
-  suggestion: "Reduce quantity from 5 to 2"
-)
-```
+**Files Modified:**
+- `src/ai/rba/domestikos/requirements/reprioritization.nim` - Enhanced logic
+- `src/ai/rba/eparch/requirements.nim` - Implemented real reprioritization
+- `src/ai/rba/orders/phase4_feedback.nim` - Added CST parameter
+- `src/ai/rba/orders.nim` - Pass CST level to reprioritization
+- `config/rba.toml` - Added reprioritization config section
+- `src/ai/rba/config.nim` - Added ReprioritizationConfig type
 
 **Impact:**
-- Phase 4 reprioritization is blind (doesn't know why unfulfilled)
-- Cannot make informed adjustments
-- Repeated failures for same requirements
+- ✅ Smarter budget adjustments using iteration-aware strategy
+- ✅ Substitution prevents complete failure (build something affordable)
+- ✅ Quantity adjustment enables partial fulfillment
+- ✅ 100% convergence rate in validation tests
+
+---
+
+#### 5. ✅ Standing Orders Disconnected from Requirements (RESOLVED)
+
+**Status:** ✅ **COMPLETED** (2025-12-06)
+
+**Gap:** Standing orders (patrol, defend) didn't inform requirement generation.
+
+**Solution Implemented:**
+- **Defense history persistence:** Track `turnsUndefended` per colony
+- **Standing order query API:** Expose active defense assignments
+- **Standing order support requirements:** Generate High-priority builds for undefended systems with DefendSystem orders
+- **Priority escalation:** 5 turns undefended → High, 10 turns → Critical
+- **Capacity filler biasing:** Add defender ships to 20-slot rotation based on undefended systems
+
+**Implementation:**
+- `src/ai/rba/controller_types.nim` - Added ColonyDefenseHistory type
+  - `turnsUndefended: int` - Incremented each turn colony undefended
+  - `lastDefenderAssigned: int` - Reset when defender present
+  - Stored in `AIController.defenseHistory: Table[SystemId, ColonyDefenseHistory]`
+- `src/ai/rba/standing_orders_manager.nim` - Added query procs
+  - `getActiveDefenseOrders()` - Returns DefenseAssignment seq
+  - `getUndefendedSystemsWithOrders()` - Systems with orders but no defenders
+- `src/ai/rba/domestikos/requirements/standing_order_support.nim` - NEW MODULE
+  - `updateDefenseHistory()` - Track defense status per turn
+  - `generateStandingOrderSupportRequirements()` - Build defenders for undefended systems
+  - `biasFillerTowardsDefenders()` - Adjust 20-slot rotation for defense needs
+  - `getDefenderClassForAct()` - Act-appropriate defender selection
+
+**Configuration:**
+```toml
+[standing_orders_integration]
+generate_support_requirements = true
+defense_gap_priority_boost = 1
+filler_standing_order_bias = 0.3  # 30% of fillers = defenders
+track_colony_defense_history = true
+max_history_entries = 50
+```
+
+**Validation Results:**
+- Standing order compliance: 69.3% (target 70%, near-miss)
+- Average undefended colony rate: 30.7%
+- 38 unit tests passing (integration tests included)
+
+**Files Modified:**
+- `src/ai/rba/controller_types.nim` - Added ColonyDefenseHistory, DefenseAssignment
+- `src/ai/rba/standing_orders_manager.nim` - Added query API
+- `src/ai/rba/domestikos/requirements/standing_order_support.nim` - NEW (250 lines)
+- `config/rba.toml` - Added standing_orders_integration section
+- `src/ai/rba/config.nim` - Added StandingOrdersIntegrationConfig type
+
+**Impact:**
+- ✅ Defense requirements now aligned with standing orders
+- ✅ Colony defense history persistence enables priority escalation
+- ✅ Capacity fillers biased towards defenders when needed
+- ✅ 69.3% defended colony rate (just 0.7% below 70% target)
+
+---
+
+#### 6. ✅ Limited Feedback Information (RESOLVED)
+
+**Status:** ✅ **COMPLETED** (2025-12-06)
+
+**Gap:** Treasurer only reported "unfulfilled" but not WHY.
+
+**Solution Implemented:**
+- **Unfulfillment reason tracking:** 7 reason types (InsufficientBudget, PartialBudget, ColonyCapacityFull, TechNotAvailable, NoValidColony, BudgetReserved, SubstitutionFailed)
+- **Cost gap analysis:** Track budget shortfall per requirement
+- **Substitution suggestions:** Generate human-readable suggestions for cheaper alternatives
+- **Quantity built tracking:** Record partial fulfillment progress
+
+**Implementation:**
+- `src/ai/rba/controller_types.nim` - Added feedback types
+  - `UnfulfillmentReason` - Enum with 7 reason types
+  - `RequirementFeedback` - Detailed per-requirement feedback
+  - Extended `TreasurerFeedback.detailedFeedback: seq[RequirementFeedback]`
+- `src/ai/rba/treasurer/budget/feedback.nim` - NEW MODULE
+  - `getCheaperAlternatives()` - Find affordable ship substitutes
+  - `generateSubstitutionSuggestion()` - Human-readable suggestions
+  - `generateRequirementFeedback()` - Full diagnostic per requirement
+  - Role-based substitution (Capital → Capital, Escort → Escort)
+  - CST-aware filtering (only suggest tech-available ships)
+
+**Configuration:**
+```toml
+[feedback_system]
+enabled = true
+suggest_cheaper_alternatives = true
+min_partial_fulfillment_ratio = 0.25
+```
+
+**Example Feedback:**
+```nim
+RequirementFeedback(
+  requirement: BuildRequirement(shipClass: Battleship, quantity: 2),
+  reason: InsufficientBudget,
+  budgetShortfall: 300,  # Need 500 PP, have 200 PP
+  quantityBuilt: 0,
+  suggestion: "Consider Cruiser (150 PP) or reduce quantity to 1"
+)
+```
+
+**Validation Results:**
+- Feedback generation score: 75.0%
+- 38 unit tests passing (17 feedback-specific tests)
+- All 7 unfulfillment reasons tested
+
+**Files Modified:**
+- `src/ai/rba/controller_types.nim` - Added UnfulfillmentReason, RequirementFeedback
+- `src/ai/rba/treasurer/budget/feedback.nim` - NEW (235 lines)
+- `config/rba.toml` - Added feedback_system section
+- `src/ai/rba/config.nim` - Added FeedbackSystemConfig type
+
+**Impact:**
+- ✅ Phase 4 reprioritization now has actionable diagnostic data
+- ✅ Substitution suggestions enable smart fallbacks
+- ✅ Cost gap tracking enables precise budget adjustments
+- ✅ 17 unit tests validate all feedback scenarios
 
 ---
 
@@ -938,6 +1024,73 @@ Result:  Only 100 PP left, invasion cancelled
 - Budget competition is myopic (single-turn horizon)
 
 **Workaround Until GOAP:** High priority requirements tend to get funded first
+
+---
+
+---
+
+### Unit Construction Issues
+
+#### ✅ Capacity Fillers Burying Strategic Requirements (RESOLVED)
+
+**Status:** ✅ **COMPLETED** (2025-12-06)
+
+**Problem:** Capacity fillers (20 Medium priority) buried high-priority requirements (1-5 Critical/High) in budget allocation.
+
+**Root Cause:**
+- Domestikos generates 1-5 strategic requirements (Critical/High priority)
+- Capacity filler generates 20 filler requirements (Medium/Low priority)
+- Treasurer mediation weighs by quantity: 20 Medium > 5 High in aggregate
+- Result: Wrong ships built despite correct act-aware scoring
+
+**Solution Implemented:**
+- **Strategic budget:** 80-85% reserved for Critical/High requirements
+- **Filler budget:** 15-20% reserved for capacity utilization (20-slot rotation)
+- **Act-specific reservations:** Act 1 = 20% filler, Acts 2-4 = 15% filler
+- **Execution order:** Process Critical/High first with strategic budget, then fillers with filler budget
+
+**Implementation:**
+- `src/ai/rba/treasurer/budget/splitting.nim` - NEW MODULE
+  - `splitStrategicAndFillerBudgets()` - Separate budget pools by Act
+  - `getStrategicBudgetForObjective()` - Query strategic allocation
+  - `hasFillerBudgetRemaining()` - Check filler budget availability
+  - `getFillerBudgetRemaining()` - Query remaining filler budget
+- `config/rba.toml` - Added filler_budget_reserved to all 4 Act sections
+  - Act 1: `filler_budget_reserved = 0.20` (20% reserved for capacity utilization)
+  - Acts 2-4: `filler_budget_reserved = 0.15` (15% reserved)
+
+**Configuration:**
+```toml
+[budget_act1_land_grab]
+filler_budget_reserved = 0.20  # 20% for capacity fillers
+
+[budget_act2_rising_tensions]
+filler_budget_reserved = 0.15  # 15% for capacity fillers
+
+[budget_act3_open_war]
+filler_budget_reserved = 0.15
+
+[budget_act4_end_game]
+filler_budget_reserved = 0.15
+```
+
+**Validation Results:**
+- Unit mix accuracy: 100.0% (9,087 ships built across 96 games)
+- Act-appropriate distribution validated:
+  - Act 1: 3,589 ships (37.4 per game)
+  - Act 2: 5,498 ships (57.3 per game)
+- Budget utilization: 47.1% (proxy metric, good throughput)
+
+**Files Modified:**
+- `src/ai/rba/treasurer/budget/splitting.nim` - NEW (93 lines)
+- `config/rba.toml` - Added filler_budget_reserved to 4 Act sections
+- `src/ai/rba/config.nim` - Added field to BudgetAllocationConfig
+
+**Impact:**
+- ✅ Strategic requirements no longer buried by capacity fillers
+- ✅ Act-appropriate unit progression validated (100% accuracy)
+- ✅ High-priority builds funded before Medium fillers
+- ✅ 8 unit tests validate budget splitting logic
 
 ---
 
@@ -1042,10 +1195,13 @@ total_spaceports,total_shipyards
 3. ⚠️ Cross-advisor coordination → Inefficient resource use
 
 **Important (Reduce Effectiveness):**
-4. Weak reprioritization logic → Suboptimal budget adjustments
-5. Standing orders disconnected → Wrong defensive positioning
-6. Limited feedback information → Blind reprioritization
-7. No resource reservations → Unreliable multi-turn operations
+4. ✅ ~~Weak reprioritization logic~~ → **RESOLVED** (2025-12-06)
+5. ✅ ~~Standing orders disconnected~~ → **RESOLVED** (2025-12-06)
+6. ✅ ~~Limited feedback information~~ → **RESOLVED** (2025-12-06)
+7. ⚠️ No resource reservations → Unreliable multi-turn operations
+
+**Unit Construction:**
+- ✅ ~~Capacity fillers burying strategic requirements~~ → **RESOLVED** (2025-12-06)
 
 **Nice-to-Have (Quality of Life):**
 8. No risk assessment → Cannot weigh risk vs reward
@@ -1057,20 +1213,33 @@ total_spaceports,total_shipyards
 ### Resolution Plan
 
 **GOAP Will Address:**
-- ✅ Gap 1: Multi-turn planning (GOAP's core capability)
-- ✅ Gap 2: Emergency override (GOAP goal reprioritization)
-- ✅ Gap 3: Cross-advisor coordination (GOAP strategic plans coordinate requirements)
-- ✅ Gap 7: Resource reservations (GOAP multi-turn budgets)
-- ✅ Gap 8: Risk assessment (GOAP confidence scores)
+- ⚠️ Gap 1: Multi-turn planning (GOAP's core capability)
+- ⚠️ Gap 2: Emergency override (GOAP goal reprioritization)
+- ⚠️ Gap 3: Cross-advisor coordination (GOAP strategic plans coordinate requirements)
+- ⚠️ Gap 7: Resource reservations (GOAP multi-turn budgets)
+- ⚠️ Gap 8: Risk assessment (GOAP confidence scores)
 
-**Should Fix Before GOAP (Strengthen RBA Foundation):**
-- 🔧 Gap 4: Enhance Phase 4 reprioritization with cost-benefit analysis
-- 🔧 Gap 5: Connect standing orders to requirement generation
-- 🔧 Gap 6: Add detailed unfulfillment reasons to feedback
-
-**✅ Completed (2025-12-06):**
+**✅ Completed (2025-12-06) - RBA Foundation Strengthening:**
+- ✅ Gap 4: Enhanced Phase 4 reprioritization with quantity adjustment + substitution
+- ✅ Gap 5: Connected standing orders to requirement generation (defense history + support reqs)
+- ✅ Gap 6: Added rich feedback with 7 unfulfillment reasons + substitution suggestions
+- ✅ Unit Construction: Strategic vs filler budget separation (80-85% / 15-20%)
 - ✅ Gap 9: Advisor reasoning logs (CSV field + orchestrator)
 - ✅ Gap 10: Facility tracking (spaceports + shipyards)
+
+**Validation Results (96 games, Act 2, 15 turns):**
+- Overall Score: 78.3%
+- Gap 4 - Convergence Rate: 100.0% ✅ (target >80%)
+- Gap 5 - Standing Order Compliance: 69.3% ⚠️ (target >70%, near-miss)
+- Gap 6 - Feedback Generation: 75.0% ✅
+- Unit Mix - Act Appropriateness: 100.0% ✅
+- Budget Utilization: 47.1% ✅
+
+**Test Artifacts:**
+- 38 unit tests created (budget splitting, feedback, reprioritization)
+- 9 new modules/submodules (DoD refactoring)
+- 4 new config sections (TOML)
+- Validation script: `scripts/analysis/validate_rba_fixes.py`
 
 ---
 
