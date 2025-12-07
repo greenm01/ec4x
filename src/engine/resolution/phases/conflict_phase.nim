@@ -8,8 +8,9 @@
 ## 2. Space/Orbital Combat
 ## 3. Blockade Resolution (simultaneous)
 ## 4. Planetary Combat (simultaneous)
-## 5. Espionage Operations (simultaneous - fleet + EBP)
-## 6. Spy Scout Travel
+## 5. Colonization (simultaneous)
+## 6. Espionage Operations (simultaneous - fleet + EBP)
+## 7. Spy Scout Travel
 
 import std/[tables, options, random, sequtils, strformat]
 import ../../../common/types/core
@@ -19,7 +20,7 @@ import ../../espionage/[types as esp_types, engine as esp_engine]
 import ../../diplomacy/[types as dip_types]
 import ../../intelligence/[spy_travel, spy_resolution, espionage_intel]
 import ../[types as res_types, combat_resolution]
-import ../[simultaneous_blockade, simultaneous_planetary, simultaneous_espionage, simultaneous_types]
+import ../[simultaneous_blockade, simultaneous_planetary, simultaneous_espionage, simultaneous_types, simultaneous]
 import ../../prestige as prestige_types
 import ../../prestige/application as prestige_app
 
@@ -128,6 +129,16 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   let planetaryCombatResults = simultaneous_planetary.resolvePlanetaryCombat(
     state, orders, rng)
   logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS PLANETARY COMBAT] Resolved {planetaryCombatResults.len} planetary combat attempts")
+
+  # ===================================================================
+  # SIMULTANEOUS COLONIZATION RESOLUTION
+  # ===================================================================
+  # ETACs establish colonies, resolve conflicts (winner-takes-all)
+  # Fallback logic for losers with AutoColonize standing orders
+  let colonizationResults = simultaneous.resolveColonization(
+    state, orders, rng, events)
+  logDebug(LogCategory.lcOrders, &"[SIMULTANEOUS COLONIZATION] " &
+           &"Resolved {colonizationResults.len} colonization attempts")
 
   # ===================================================================
   # SIMULTANEOUS ESPIONAGE RESOLUTION
