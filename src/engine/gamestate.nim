@@ -262,6 +262,12 @@ type
   GamePhase* {.pure.} = enum
     Setup, Active, Paused, Completed
 
+  GracePeriodTracker* = object
+    ## Tracks grace periods for capacity enforcement
+    ## Per FINAL_TURN_SEQUENCE.md Income Phase Step 5
+    totalSquadronsExpiry*: int  # Turn when total squadron grace expires
+    fighterCapacityExpiry*: Table[SystemId, int]  # Per-colony fighter grace
+
   GameState* = object
     gameId*: string
     turn*: int
@@ -271,6 +277,7 @@ type
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
     fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
+    queuedCombatOrders*: seq[FleetOrder]  # Combat orders queued for next turn's Conflict Phase
     standingOrders*: Table[FleetId, StandingOrder]  # Standing orders (execute when no explicit order)
     diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
     turnDeadline*: int64          # Unix timestamp
@@ -281,6 +288,7 @@ type
     populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
     pendingProposals*: seq[dip_proposals.PendingProposal]  # Pending diplomatic proposals
     pendingCommissions*: seq[econ_types.CompletedProject]  # Completed projects awaiting commissioning in next Command Phase
+    gracePeriodTimers*: Table[HouseId, GracePeriodTracker]  # Grace period tracking for capacity enforcement
 
 # Initialization
 
@@ -316,6 +324,8 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
+    fleetOrders: initTable[FleetId, FleetOrder](),
+    queuedCombatOrders: @[],
     standingOrders: initTable[FleetId, StandingOrder](),
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     ongoingEffects: @[],
@@ -323,7 +333,8 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     spyScoutOrders: initTable[string, SpyScoutOrder](),
     populationInTransit: @[],
     pendingProposals: @[],
-    pendingCommissions: @[]
+    pendingCommissions: @[],
+    gracePeriodTimers: initTable[HouseId, GracePeriodTracker]()
   )
 
   # Create houses and homeworld colonies
@@ -373,6 +384,8 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
+    fleetOrders: initTable[FleetId, FleetOrder](),
+    queuedCombatOrders: @[],
     standingOrders: initTable[FleetId, StandingOrder](),
     diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     ongoingEffects: @[],

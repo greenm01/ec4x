@@ -209,7 +209,7 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
             )
 
             for event in prestigeEvents:
-              house.prestige += event.amount
+              applyPrestigeEvent(state, houseId, event)
               logResolve("Violation prestige penalty",
                         "event=", event.description, " prestige=", $event.amount)
 

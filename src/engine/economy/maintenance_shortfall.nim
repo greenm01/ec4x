@@ -16,6 +16,7 @@ import std/[tables, algorithm]
 import ../gamestate
 import ../state_helpers
 import ../iterators
+import ../prestige
 import ../config/ground_units_config
 import ../../common/types/core
 import ../../common/logger
@@ -296,8 +297,15 @@ proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade) =
   state.withHouse(cascade.houseId):
     house.treasury = 0  # Zero treasury first
     house.treasury += cascade.salvageFromFleets + cascade.salvageFromAssets  # Add salvage
-    house.prestige -= cascade.prestigePenalty  # Apply prestige penalty
     house.consecutiveShortfallTurns += 1  # Increment shortfall counter
+
+  # Apply prestige penalty through centralized system
+  let prestigeEvent = createPrestigeEvent(
+    PrestigeSource.MaintenanceShortfall,
+    -cascade.prestigePenalty,
+    "Maintenance shortfall cascade"
+  )
+  applyPrestigeEvent(state, cascade.houseId, prestigeEvent)
 
   # Step 2: Cancel construction/research
   for systemId in cascade.constructionCancelled:

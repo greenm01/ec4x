@@ -109,3 +109,55 @@ type
     # Parameters depend on action type
     taxRate*: int                # For SetTaxRate (0-100)
     enableAutoRepair*: bool      # For SetAutoRepair (true/false)
+
+# =============================================================================
+# Fleet Order Categorization (Phase-Based Execution)
+# =============================================================================
+# Per FINAL_TURN_SEQUENCE.md, different order types execute in different phases
+
+proc isMovementOrder*(orderType: FleetOrderType): bool =
+  ## Movement orders execute in Maintenance Phase
+  ## Per FINAL_TURN_SEQUENCE.md: "Movement orders execute Turn N Maintenance Phase"
+  result = orderType in {
+    FleetOrderType.Hold,
+    FleetOrderType.Move,
+    FleetOrderType.SeekHome,
+    FleetOrderType.Patrol
+  }
+
+proc isCombatOrder*(orderType: FleetOrderType): bool =
+  ## Combat orders execute in Conflict Phase (next turn)
+  ## Per FINAL_TURN_SEQUENCE.md: "Combat orders execute Turn N+1 Conflict Phase"
+  result = orderType in {
+    FleetOrderType.Bombard,
+    FleetOrderType.Invade,
+    FleetOrderType.Blitz,
+    FleetOrderType.GuardStarbase,
+    FleetOrderType.GuardPlanet,
+    FleetOrderType.BlockadePlanet
+  }
+
+proc isAdministrativeOrder*(orderType: FleetOrderType): bool =
+  ## Administrative orders execute in Command Phase
+  ## These are immediate fleet management operations
+  result = orderType in {
+    FleetOrderType.JoinFleet,
+    FleetOrderType.Rendezvous,
+    FleetOrderType.Reserve,
+    FleetOrderType.Mothball,
+    FleetOrderType.Reactivate,
+    FleetOrderType.ViewWorld
+  }
+
+proc isSpecialOrder*(orderType: FleetOrderType): bool =
+  ## Special orders handled by specific phase systems
+  ## - Colonize: Command Phase PART A (simultaneous resolution)
+  ## - Salvage: Income Phase Step 4
+  ## - Espionage: Conflict Phase (simultaneous resolution)
+  result = orderType in {
+    FleetOrderType.Colonize,      # Command Phase PART A
+    FleetOrderType.Salvage,        # Income Phase Step 4
+    FleetOrderType.SpyPlanet,      # Conflict Phase
+    FleetOrderType.SpySystem,      # Conflict Phase
+    FleetOrderType.HackStarbase    # Conflict Phase
+  }

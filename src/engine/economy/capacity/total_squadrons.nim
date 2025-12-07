@@ -23,7 +23,7 @@
 ##
 ## Data-oriented design: Calculate violations (pure) → plan enforcement → apply enforcement
 
-import std/[tables, algorithm, options]
+import std/[tables, algorithm, options, strformat]
 import ./types
 import ../../gamestate
 import ../../squadron
@@ -74,13 +74,29 @@ proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityVi
   let maximum = calculateMaxTotalSquadrons(totalIU, mapRings, numPlayers)
   let excess = max(0, current - maximum)
 
-  # Total squadrons have 2-turn grace period
-  let severity = if excess == 0:
-                   ViolationSeverity.None
-                 elif excess > 0:
-                   ViolationSeverity.Critical  # For now, immediate enforcement
-                 else:
-                   ViolationSeverity.None
+  # Check grace period status (2-turn grace per spec)
+  var graceTurns = 0
+  var severity = ViolationSeverity.None
+
+  if excess > 0:
+    # Check if grace period is active
+    if houseId in state.gracePeriodTimers:
+      let expiry = state.gracePeriodTimers[houseId].totalSquadronsExpiry
+      if expiry > 0:
+        # Grace period active
+        graceTurns = max(0, expiry - state.turn)
+        if graceTurns > 0:
+          severity = ViolationSeverity.Warning  # Grace period active
+        else:
+          severity = ViolationSeverity.Critical  # Grace expired, enforce
+      else:
+        # No grace period set yet (will be set on first violation)
+        severity = ViolationSeverity.Warning
+        graceTurns = 2  # Will start 2-turn grace
+    else:
+      # First violation for this house
+      severity = ViolationSeverity.Warning
+      graceTurns = 2  # Will start 2-turn grace
 
   result = types.CapacityViolation(
     capacityType: CapacityType.TotalSquadron,
@@ -89,9 +105,31 @@ proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityVi
     maximum: maximum,
     excess: excess,
     severity: severity,
-    graceTurnsRemaining: 0,  # TODO: Implement grace period tracking
+    graceTurnsRemaining: graceTurns,
     violationTurn: state.turn
   )
+
+proc startGracePeriod*(state: var GameState, houseId: core.HouseId) =
+  ## Start or reset grace period for total squadron violations
+  ## Explicit mutation - sets 2-turn grace period expiry
+  if houseId notin state.gracePeriodTimers:
+    state.gracePeriodTimers[houseId] = GracePeriodTracker(
+      totalSquadronsExpiry: state.turn + 2,
+      fighterCapacityExpiry: initTable[SystemId, int]()
+    )
+  else:
+    # Update existing tracker, preserve fighter grace periods
+    var tracker = state.gracePeriodTimers[houseId]
+    tracker.totalSquadronsExpiry = state.turn + 2
+    state.gracePeriodTimers[houseId] = tracker
+
+proc clearGracePeriod*(state: var GameState, houseId: core.HouseId) =
+  ## Clear grace period when capacity violation is resolved
+  ## Explicit mutation - resets expiry to 0
+  if houseId in state.gracePeriodTimers:
+    var tracker = state.gracePeriodTimers[houseId]
+    tracker.totalSquadronsExpiry = 0
+    state.gracePeriodTimers[houseId] = tracker
 
 proc checkViolations*(state: GameState): seq[types.CapacityViolation] =
   ## Batch check all houses for total squadron capacity violations
@@ -205,8 +243,9 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
 
 proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction] =
   ## Main entry point - batch process all total squadron capacity violations
-  ## Called during Maintenance phase
-  ## Data-oriented: analyze all → plan enforcement → apply enforcement
+  ## Called during Income Phase (after IU loss from blockades/combat)
+  ## Data-oriented: analyze all → manage grace periods → plan enforcement →
+  ## apply enforcement
   ## Returns: List of enforcement actions that were actually applied
 
   result = @[]
@@ -218,16 +257,30 @@ proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAct
 
   if violations.len == 0:
     logDebug("Military", "All houses within total squadron capacity limits")
+    # Clear grace periods for houses with no violations
+    for houseId in state.houses.keys:
+      clearGracePeriod(state, houseId)
     return
 
-  logDebug("Military", "Total squadron violations found", "count=", $violations.len)
+  logDebug("Military", "Total squadron violations found", "count=",
+          $violations.len)
 
-  # Step 2: Plan enforcement
+  # Step 2: Manage grace periods and plan enforcement
   var enforcementActions: seq[types.EnforcementAction] = @[]
   for violation in violations:
-    let action = planEnforcement(state, violation)
-    if action.actionType == "auto_disband" and action.affectedUnits.len > 0:
-      enforcementActions.add(action)
+    let houseId = core.HouseId(violation.entityId)
+
+    if violation.severity == ViolationSeverity.Warning:
+      # Start grace period if not already started
+      startGracePeriod(state, houseId)
+      logDebug("Military",
+              &"House {houseId} over total squadron capacity, grace period " &
+              &"active ({violation.graceTurnsRemaining} turns remaining)")
+    elif violation.severity == ViolationSeverity.Critical:
+      # Grace expired, enforce
+      let action = planEnforcement(state, violation)
+      if action.actionType == "auto_disband" and action.affectedUnits.len > 0:
+        enforcementActions.add(action)
 
   # Step 3: Apply enforcement (mutations)
   if enforcementActions.len > 0:
@@ -236,6 +289,9 @@ proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAct
     for action in enforcementActions:
       applyEnforcement(state, action)
       result.add(action)
+      # Clear grace period after enforcement
+      let houseId = core.HouseId(action.entityId)
+      clearGracePeriod(state, houseId)
   else:
     logDebug("Military", "No total squadron violations requiring enforcement")
 

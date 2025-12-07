@@ -15,6 +15,7 @@ import ../espionage/engine as esp_engine
 import ../espionage/executor as esp_executor
 import ../espionage/types as esp_types
 import ../../common/types/core
+import ../prestige
 
 proc collectEspionageIntents*(
   state: GameState,
@@ -280,9 +281,9 @@ proc processEspionageActions*(
 
       # Apply prestige changes
       for prestigeEvent in result.attackerPrestigeEvents:
-        state.houses[attempt.attacker].prestige += prestigeEvent.amount
+        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
       for prestigeEvent in result.targetPrestigeEvents:
-        state.houses[attempt.target].prestige += prestigeEvent.amount
+        applyPrestigeEvent(state, attempt.target, prestigeEvent)
 
       # Apply ongoing effects
       if result.effect.isSome:
@@ -301,4 +302,4 @@ proc processEspionageActions*(
       logInfo(LogCategory.lcAI, &"  DETECTED by {attempt.target}")
       # Apply detection prestige penalties
       for prestigeEvent in result.attackerPrestigeEvents:
-        state.houses[attempt.attacker].prestige += prestigeEvent.amount
+        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)

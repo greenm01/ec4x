@@ -126,7 +126,14 @@ proc calculateGrossOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int =
   let industrialProd = float(validIndustrialUnits) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
 
   # Total GCO (guaranteed non-negative)
-  result = int(populationProd + industrialProd)
+  var totalGCO = populationProd + industrialProd
+
+  # Apply blockade penalty: 60% reduction → 40% effective
+  # Per operations.md:6.2.6: "Blockaded colonies produce at 40% capacity"
+  if colony.blockaded:
+    totalGCO = totalGCO * 0.4
+
+  result = int(totalGCO)
 
 proc calculateNetValue*(grossOutput: int, taxRate: int): int =
   ## Calculate NCV (Net Colony Value) from GCO and tax rate

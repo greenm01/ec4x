@@ -823,7 +823,12 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
     # Combat victory prestige (zero-sum)
     let victorPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.CombatVictory))
-    state.houses[victorHouse].prestige += victorPrestige
+    let victoryEvent = createPrestigeEvent(
+      PrestigeSource.CombatVictory,
+      victorPrestige,
+      "Won battle at " & $systemId
+    )
+    applyPrestigeEvent(state, victorHouse, victoryEvent)
     logCombat("Combat victory prestige awarded",
               "house=", state.houses[victorHouse].name,
               " prestige=", $victorPrestige)
@@ -831,7 +836,12 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     # Apply penalty to losing houses (zero-sum)
     let loserHouses = if victorHouse in attackerHouses: defenderHouses else: attackerHouses
     for loserHouse in loserHouses:
-      state.houses[loserHouse].prestige -= victorPrestige
+      let defeatEvent = createPrestigeEvent(
+        PrestigeSource.CombatVictory,
+        -victorPrestige,
+        "Lost battle at " & $systemId
+      )
+      applyPrestigeEvent(state, loserHouse, defeatEvent)
       logCombat("Combat defeat prestige penalty",
                 "house=", state.houses[loserHouse].name,
                 " prestige=", $(-victorPrestige))
@@ -840,7 +850,12 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     let enemyLosses = if victorHouse in attackerHouses: defenderLosses else: attackerLosses
     if enemyLosses > 0:
       let squadronPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.SquadronDestroyed)) * enemyLosses
-      state.houses[victorHouse].prestige += squadronPrestige
+      let squadronDestructionEvent = createPrestigeEvent(
+        PrestigeSource.SquadronDestroyed,
+        squadronPrestige,
+        "Destroyed " & $enemyLosses & " enemy squadrons at " & $systemId
+      )
+      applyPrestigeEvent(state, victorHouse, squadronDestructionEvent)
       logCombat("Squadron destruction prestige awarded",
                 "house=", state.houses[victorHouse].name,
                 " squadrons=", $enemyLosses,
@@ -848,7 +863,12 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
       # Apply penalty to houses that lost squadrons (zero-sum)
       for loserHouse in loserHouses:
-        state.houses[loserHouse].prestige -= squadronPrestige
+        let squadronLossEvent = createPrestigeEvent(
+          PrestigeSource.SquadronDestroyed,
+          -squadronPrestige,
+          "Lost " & $enemyLosses & " squadrons at " & $systemId
+        )
+        applyPrestigeEvent(state, loserHouse, squadronLossEvent)
         logCombat("Squadron loss prestige penalty",
                   "house=", state.houses[loserHouse].name,
                   " squadrons=", $enemyLosses,
@@ -1213,7 +1233,12 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
     # Prestige changes
     let attackerPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.ColonySeized))
-    state.houses[houseId].prestige += attackerPrestige
+    let invasionEvent = createPrestigeEvent(
+      PrestigeSource.ColonySeized,
+      attackerPrestige,
+      "Captured colony at " & $targetId & " via invasion"
+    )
+    applyPrestigeEvent(state, houseId, invasionEvent)
     logCombat("Invasion prestige awarded",
               "house=", $houseId, " prestige=", $attackerPrestige)
 
@@ -1229,7 +1254,12 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
                 " total_penalty=", $defenderPenalty,
                 " additional_penalty=", $int(abs(defenderPenalty) - abs(-attackerPrestige)))
 
-    state.houses[colony.owner].prestige += defenderPenalty
+    let colonyLossEvent = createPrestigeEvent(
+      PrestigeSource.ColonySeized,
+      defenderPenalty,
+      "Lost colony at " & $targetId & " to invasion" & (if wasUndefended: " (undefended)" else: "")
+    )
+    applyPrestigeEvent(state, colony.owner, colonyLossEvent)
     logCombat("Colony loss prestige penalty",
               "house=", $colony.owner, " prestige=", $defenderPenalty)
 
@@ -1438,7 +1468,12 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
     # Prestige changes (blitz gets same prestige as invasion)
     let attackerPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.ColonySeized))
-    state.houses[houseId].prestige += attackerPrestige
+    let blitzEvent = createPrestigeEvent(
+      PrestigeSource.ColonySeized,
+      attackerPrestige,
+      "Captured colony at " & $targetId & " via blitz"
+    )
+    applyPrestigeEvent(state, houseId, blitzEvent)
     logCombat("Blitz prestige awarded",
               "house=", $houseId, " prestige=", $attackerPrestige)
 
@@ -1454,7 +1489,12 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
                 " total_penalty=", $defenderPenalty,
                 " additional_penalty=", $int(abs(defenderPenalty) - abs(-attackerPrestige)))
 
-    state.houses[colony.owner].prestige += defenderPenalty
+    let colonyLossBlitzEvent = createPrestigeEvent(
+      PrestigeSource.ColonySeized,
+      defenderPenalty,
+      "Lost colony at " & $targetId & " to blitz" & (if wasUndefended: " (undefended)" else: "")
+    )
+    applyPrestigeEvent(state, colony.owner, colonyLossBlitzEvent)
     logCombat("Colony loss prestige penalty",
               "house=", $colony.owner, " prestige=", $defenderPenalty)
 

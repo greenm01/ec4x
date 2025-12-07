@@ -19,6 +19,8 @@ import ../colonization/engine as col_engine
 import types as res_types
 import ../../common/types/core
 import ../../common/types/planets
+import ../prestige as prestige_types
+import ../prestige/application as prestige_app
 
 proc collectColonizationIntents*(
   state: GameState,
@@ -172,8 +174,7 @@ proc establishColony(
   # Apply prestige award
   if colResult.prestigeEvent.isSome:
     let prestigeEvent = colResult.prestigeEvent.get()
-    state.withHouse(houseId):
-      house.prestige += prestigeEvent.amount
+    prestige_app.applyPrestigeEvent(state, houseId, prestigeEvent)
     result.prestigeAwarded = prestigeEvent.amount
     logInfo(LogCategory.lcColonization,
             &"{state.houses[houseId].name} colonized {systemId} (+{prestigeEvent.amount} prestige)")

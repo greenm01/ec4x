@@ -495,8 +495,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   # Apply prestige award
   if result.prestigeEvent.isSome:
     let prestigeEvent = result.prestigeEvent.get()
-    state.withHouse(houseId):
-      house.prestige += prestigeEvent.amount
+    applyPrestigeEvent(state, houseId, prestigeEvent)
     logInfo(LogCategory.lcColonization, &"{state.houses[houseId].name} colonized system {targetId} (+{prestigeEvent.amount} prestige)")
 
   # Generate event
