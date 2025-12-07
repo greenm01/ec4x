@@ -1,559 +1,57 @@
-## Economy resolution - Income, construction, and maintenance operations
+## Income Phase Resolution - Phase 0A
 ##
-## This module handles all economy-related resolution including:
-## - Income phase with resource collection and espionage effects
-## - Build orders and construction management
-## - Squadron management and fleet organization
-## - Cargo management for spacelift ships
-## - Population transfers via Space Guild
-## - Terraforming operations
-## - Maintenance phase with upkeep and effect tracking
+## This module handles the Income Phase (Phase 2) of turn resolution:
+## - Blockade status application
+## - Ongoing espionage effects (SRP/NCV/Tax reductions, starbase crippling)
+## - EBP/CIP point purchases with over-investment penalties
+## - Spy scout detection and intelligence gathering
+## - Starbase surveillance (continuous monitoring)
+## - Income collection via economy engine
+## - Construction completion and ship commissioning
+## - Repair queue processing
+## - Research allocation (PP to RP conversion)
+## - Research breakthroughs (every 5 turns)
 ##
-## **Construction & Commissioning Phase Architecture**
-##
-## This module handles construction and commissioning because these operations
-## represent the economic/industrial workflow of turning treasury resources
-## into operational military units. The flow is:
-##
-## 1. **Build Phase** (`resolveBuildOrders`):
-##    - Houses spend treasury on construction projects
-##    - Progress tracks toward completion over multiple turns
-##    - Represents shipyard/factory industrial capacity
-##
-## 2. **Commissioning Phase** (within construction completion):
-##    - Completed ships are added to `colony.unassignedSquadrons`
-##    - Represents the "delivery" of industrial output
-##
-## 3. **Fleet Organization Phase** (`autoBalanceSquadronsToFleets`):
-##    - Unassigned squadrons are organized into operational fleets
-##    - New fleets are created if no stationary fleets exist
-##    - Only Active fleets are considered (excludes Reserve/Mothballed)
-##    - Represents the transition from industrial output to military readiness
-##
-## This architecture keeps the economic turn resolution (treasury → ships → fleets)
-## separate from tactical fleet operations (movement, combat, espionage) which are
-## handled in fleet_orders.nim and combat_resolution.nim.
-##
-## The auto-fleet creation here enables newly-built units (especially scouts)
-## to immediately begin operational duties without requiring explicit player orders.
+## Per operations.md: Production is calculated AFTER conflict, so damaged
+## infrastructure produces less. Blockades established during Conflict Phase
+## reduce GCO for the same turn's Income Phase with no delay.
 
 import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
-import ../../common/[hex, types/core, types/units, types/tech]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../starmap, ../logger
-import ../order_types  # For StandingOrder and StandingOrderType
-import ../economy/[types as econ_types, engine as econ_engine, projects, maintenance, facility_queue]
-import ../economy/capacity/fighter as fighter_capacity
-import ../economy/capacity/planet_breakers as planet_breaker_capacity
-import ../economy/capacity/capital_squadrons as capital_squadron_capacity
-import ../economy/capacity/total_squadrons as total_squadron_capacity
-import ../research/[types as res_types, costs as res_costs, effects as res_effects, advancement]
-import ../espionage/[types as esp_types, engine as esp_engine]
-import ../diplomacy/[types as dip_types, proposals as dip_proposals]
-import ../blockade/engine as blockade_engine
-import ../intelligence/[detection, types as intel_types, generator as intel_gen, starbase_surveillance, scout_intel]
-import ../population/[types as pop_types]
-import ../config/[espionage_config, population_config, ground_units_config, gameplay_config, construction_config]
-import ../colonization/engine as col_engine
-import ./types  # Common resolution types
-import ./fleet_orders  # For findClosestOwnedColony
-import ../prestige as prestige_types
-import ../prestige/application as prestige_app
-import ./phases/income_phase  # NEW implementation with capacity enforcement
-import ./phases/maintenance_phase as maint_phase  # NEW implementation with fleet movement
-
-# Forward declarations
-proc autoBalanceSquadronsToFleets*(state: var gamestate.GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
-# NOTE: autoLoadFightersToCarriers is unused - see when false: block below
-# proc autoLoadFightersToCarriers(state: var gamestate.GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])
-
-proc resolveColonyManagementOrders*(state: var GameState, packet: OrderPacket) =
-  ## Process colony management orders - tax rates, auto-repair toggles, etc.
-  for order in packet.colonyManagement:
-    # Validate colony exists and is owned (should have been validated already)
-    if order.colonyId notin state.colonies:
-      logError(LogCategory.lcEconomy, &"Colony management failed: System-{order.colonyId} has no colony")
-      continue
-
-    var colony = state.colonies[order.colonyId]
-    if colony.owner != packet.houseId:
-      logError(LogCategory.lcEconomy, &"Colony management failed: {packet.houseId} does not own system-{order.colonyId}")
-      continue
-
-    # Execute action
-    case order.action
-    of ColonyManagementAction.SetTaxRate:
-      colony.taxRate = order.taxRate
-      logInfo(LogCategory.lcEconomy, &"Colony-{order.colonyId} tax rate set to {order.taxRate}%")
-
-    of ColonyManagementAction.SetAutoRepair:
-      colony.autoRepairEnabled = order.enableAutoRepair
-      let status = if order.enableAutoRepair: "enabled" else: "disabled"
-      logInfo(LogCategory.lcEconomy, &"Colony-{order.colonyId} auto-repair {status}")
-
-    # Write back
-    state.colonies[order.colonyId] = colony
-
-proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
-  ## Process terraforming orders - initiate new terraforming projects
-  ## Per economy.md Section 4.7
-  for order in packet.terraformOrders:
-    # Validate colony exists and is owned by house
-    if order.colonySystem notin state.colonies:
-      logError(LogCategory.lcEconomy, &"Terraforming failed: System-{order.colonySystem} has no colony")
-      continue
-
-    var colony = state.colonies[order.colonySystem]
-    if colony.owner != packet.houseId:
-      logError(LogCategory.lcEconomy, &"Terraforming failed: {packet.houseId} does not own system-{order.colonySystem}")
-      continue
-
-    # Check if already terraforming
-    if colony.activeTerraforming.isSome:
-      logError(LogCategory.lcEconomy, &"Terraforming failed: System-{order.colonySystem} already has active terraforming project")
-      continue
-
-    # Get house tech level
-    if packet.houseId notin state.houses:
-      logError(LogCategory.lcEconomy, &"Terraforming failed: House {packet.houseId} not found")
-      continue
-
-    let house = state.houses[packet.houseId]
-    let terLevel = house.techTree.levels.terraformingTech
-
-    # Validate TER level requirement
-    let currentClass = ord(colony.planetClass) + 1  # Convert enum to class number (1-7)
-    if not res_effects.canTerraform(currentClass, terLevel):
-      let targetClass = currentClass + 1
-      logError(LogCategory.lcEconomy, &"Terraforming failed: TER level {terLevel} insufficient for class {currentClass} → {targetClass} (requires TER {targetClass})")
-      continue
-
-    # Calculate costs and duration
-    let targetClass = currentClass + 1
-    let ppCost = res_effects.getTerraformingBaseCost(currentClass)
-    let turnsRequired = res_effects.getTerraformingSpeed(terLevel)
-
-    # Check house treasury has sufficient PP
-    if house.treasury < ppCost:
-      logError(LogCategory.lcEconomy, &"Terraforming failed: Insufficient PP (need {ppCost}, have {house.treasury})")
-      continue
-
-    # Deduct PP cost from house treasury
-    state.houses[packet.houseId].treasury -= ppCost
-
-    # Create terraforming project
-    let project = TerraformProject(
-      startTurn: state.turn,
-      turnsRemaining: turnsRequired,
-      targetClass: targetClass,
-      ppCost: ppCost,
-      ppPaid: ppCost
-    )
-
-    colony.activeTerraforming = some(project)
-    state.colonies[order.colonySystem] = colony
-
-    let className = case targetClass
-      of 1: "Extreme"
-      of 2: "Desolate"
-      of 3: "Hostile"
-      of 4: "Harsh"
-      of 5: "Benign"
-      of 6: "Lush"
-      of 7: "Eden"
-      else: "Unknown"
-
-    logInfo(LogCategory.lcEconomy,
-      &"{house.name} initiated terraforming of system-{order.colonySystem} " &
-      &"to {className} (class {targetClass}) - Cost: {ppCost} PP, Duration: {turnsRequired} turns")
-
-    events.add(GameEvent(
-      eventType: GameEventType.TerraformComplete,
-      houseId: packet.houseId,
-      description: house.name & " initiated terraforming of colony " & $order.colonySystem &
-                  " to " & className & " (cost: " & $ppCost & " PP, duration: " & $turnsRequired & " turns)",
-      systemId: some(order.colonySystem)
-    ))
-
-proc hasVisibilityOn(state: GameState, systemId: SystemId, houseId: HouseId): bool =
-  ## Check if a house has visibility on a system (fog of war)
-  ## A house can see a system if:
-  ## - They own a colony there
-  ## - They have a fleet present
-  ## - They have a spy scout present
-
-  # Check if house owns colony in this system
-  if systemId in state.colonies:
-    if state.colonies[systemId].owner == houseId:
-      return true
-
-  # Check if house has any fleets in this system
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == houseId and fleet.location == systemId:
-      return true
-
-  # Check if house has spy scouts in this system
-  for scoutId, scout in state.spyScouts:
-    if scout.owner == houseId and scout.location == systemId and not scout.detected:
-      return true
-
-  return false
-
-proc canGuildTraversePath(state: GameState, path: seq[SystemId], transferringHouse: HouseId): bool =
-  ## Check if Space Guild can traverse a path for a given house
-  ## Guild validates path using the house's known intel (fog of war)
-  ## Returns false if:
-  ## - Path crosses system the house has no visibility on (intel leak prevention)
-  ## - Path crosses enemy-controlled system (blockade)
-  for systemId in path:
-    # Player must have visibility on this system (prevents intel leak exploit)
-    if not hasVisibilityOn(state, systemId, transferringHouse):
-      return false
-
-    # If system has a colony, it must be friendly (not enemy-controlled)
-    if systemId in state.colonies:
-      let colony = state.colonies[systemId]
-      if colony.owner != transferringHouse:
-        # Enemy-controlled system - Guild cannot pass through
-        return false
-
-  return true
-
-proc calculateTransitTime(state: GameState, sourceSystem: SystemId, destSystem: SystemId, houseId: HouseId): tuple[turns: int, jumps: int] =
-  ## Calculate Space Guild transit time and jump distance
-  ## Per config/population.toml: turns_per_jump = 1, minimum_turns = 1
-  ## Uses pathfinding to calculate actual jump lane distance
-  ## Returns (turns: -1, jumps: 0) if path crosses enemy territory (Guild cannot complete transfer)
-  if sourceSystem == destSystem:
-    return (turns: 1, jumps: 0)  # Minimum 1 turn even for same system, 0 jumps
-
-  # Space Guild civilian transports can use all lanes (not restricted by fleet composition)
-  # Create a dummy fleet that can traverse all lanes
-  let dummyFleet = Fleet(
-    id: "transit_calc",
-    owner: "GUILD".HouseId,
-    location: sourceSystem,
-    squadrons: @[],
-    spaceliftShips: @[]
-  )
-
-  # Use starmap pathfinding to get actual jump distance
-  let pathResult = state.starMap.findPath(sourceSystem, destSystem, dummyFleet)
-
-  if pathResult.found:
-    # Check if path crosses enemy territory
-    if not canGuildTraversePath(state, pathResult.path, houseId):
-      return (turns: -1, jumps: 0)  # Cannot traverse enemy territory
-
-    # Path length - 1 = number of jumps (e.g., [A, B, C] = 2 jumps)
-    # 1 turn per jump per config/population.toml
-    let jumps = pathResult.path.len - 1
-    return (turns: max(1, jumps), jumps: jumps)
-  else:
-    # No valid path found (shouldn't happen on a connected map, but handle gracefully)
-    # Fall back to hex distance as approximation
-    if sourceSystem in state.starMap.systems and destSystem in state.starMap.systems:
-      let source = state.starMap.systems[sourceSystem]
-      let dest = state.starMap.systems[destSystem]
-      let hexDist = distance(source.coords, dest.coords)
-      let jumps = hexDist.int
-      return (turns: max(1, jumps), jumps: jumps)
-    else:
-      return (turns: 1, jumps: 0)  # Ultimate fallback
-
-proc calculateTransferCost(planetClass: PlanetClass, ptuAmount: int, jumps: int): int =
-  ## Calculate Space Guild transfer cost per config/population.toml
-  ## Formula: base_cost_per_ptu × ptu_amount × (1 + jumps × 0.20)
-  ## Source: docs/specs/economy.md Section 3.7, config/population.toml [transfer_costs]
-
-  # Base cost per PTU by planet class (config/population.toml)
-  let baseCostPerPTU = case planetClass
-    of PlanetClass.Eden: 4
-    of PlanetClass.Lush: 5
-    of PlanetClass.Benign: 6
-    of PlanetClass.Harsh: 8
-    of PlanetClass.Hostile: 10
-    of PlanetClass.Desolate: 12
-    of PlanetClass.Extreme: 15
-
-  # Distance modifier: +20% per jump (config/population.toml [transfer_modifiers])
-  # Per spec: "Base × (1 + 0.2 × jumps)" where jumps includes the first jump
-  let distanceMultiplier = if jumps > 0:
-    1.0 + (float(jumps) * 0.20)
-  else:
-    1.0  # Same system, no distance penalty
-
-  # Total cost = base × ptu × distance_modifier (rounded up)
-  let totalCost = ceil(float(baseCostPerPTU * ptuAmount) * distanceMultiplier).int
-
-  return totalCost
-
-proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent]) =
-  ## Process Space Guild population transfers between colonies
-  ## Source: docs/specs/economy.md Section 3.7, config/population.toml
-  logDebug(LogCategory.lcEconomy, &"Processing population transfers for {state.houses[packet.houseId].name}")
-
-  for transfer in packet.populationTransfers:
-    # Validate source colony exists and is owned by house
-    if transfer.sourceColony notin state.colonies:
-      logError(LogCategory.lcEconomy, &"Transfer failed: source colony {transfer.sourceColony} not found")
-      continue
-
-    var sourceColony = state.colonies[transfer.sourceColony]
-    if sourceColony.owner != packet.houseId:
-      logError(LogCategory.lcEconomy, &"Transfer failed: source colony {transfer.sourceColony} not owned by {packet.houseId}")
-      continue
-
-    # Validate destination colony exists and is owned by house
-    if transfer.destColony notin state.colonies:
-      logError(LogCategory.lcEconomy, &"Transfer failed: destination colony {transfer.destColony} not found")
-      continue
-
-    var destColony = state.colonies[transfer.destColony]
-    if destColony.owner != packet.houseId:
-      logError(LogCategory.lcEconomy, &"Transfer failed: destination colony {transfer.destColony} not owned by {packet.houseId}")
-      continue
-
-    # Critical validation: Destination must have ≥1 PTU (50k souls) to be a functional colony
-    if destColony.souls < soulsPerPtu():
-      logError(LogCategory.lcEconomy,
-        &"Transfer failed: destination colony {transfer.destColony} has only {destColony.souls} " &
-        &"souls (needs ≥{soulsPerPtu()} to accept transfers)")
-      continue
-
-    # Convert PTU amount to souls for exact transfer
-    let soulsToTransfer = transfer.ptuAmount * soulsPerPtu()
-
-    # Validate source has enough souls (can transfer any amount, even fractional PTU)
-    if sourceColony.souls < soulsToTransfer:
-      logError(LogCategory.lcEconomy,
-        &"Transfer failed: source colony {transfer.sourceColony} has only {sourceColony.souls} " &
-        &"souls (needs {soulsToTransfer} for {transfer.ptuAmount} PTU)")
-      continue
-
-    # Check concurrent transfer limit (max 5 per house per config/population.toml)
-    let activeTransfers = state.populationInTransit.filterIt(it.houseId == packet.houseId)
-    if activeTransfers.len >= globalPopulationConfig.max_concurrent_transfers:
-      logWarn(LogCategory.lcEconomy,
-        &"Transfer rejected: Maximum {globalPopulationConfig.max_concurrent_transfers} " &
-        &"concurrent transfers reached (house has {activeTransfers.len} active)")
-      continue
-
-    # Calculate transit time and jump distance
-    let (transitTime, jumps) = calculateTransitTime(state, transfer.sourceColony, transfer.destColony, packet.houseId)
-
-    # Check if Guild can complete the transfer (path must be known and not blocked)
-    if transitTime < 0:
-      logError(LogCategory.lcEconomy,
-        &"Transfer failed: No safe Guild route between {transfer.sourceColony} and {transfer.destColony} " &
-        &"(requires scouted path through friendly/neutral territory)")
-      continue
-
-    let arrivalTurn = state.turn + transitTime
-
-    # Calculate transfer cost based on destination planet class and jump distance
-    # Per config/population.toml and docs/specs/economy.md Section 3.7
-    let cost = calculateTransferCost(destColony.planetClass, transfer.ptuAmount, jumps)
-
-    # Check house treasury and deduct cost
-    var house = state.houses[packet.houseId]
-    if house.treasury < cost:
-      logError(LogCategory.lcEconomy, &"Transfer failed: Insufficient funds (need {cost} PP, have {house.treasury} PP)")
-      continue
-
-    # Deduct cost from treasury
-    house.treasury -= cost
-    state.houses[packet.houseId] = house
-
-    # Deduct souls from source colony immediately (they've departed)
-    sourceColony.souls -= soulsToTransfer
-    sourceColony.population = sourceColony.souls div 1_000_000
-    state.colonies[transfer.sourceColony] = sourceColony
-
-    # Create in-transit entry
-    let transferId = $packet.houseId & "_" & $transfer.sourceColony & "_" & $transfer.destColony & "_" & $state.turn
-    let inTransit = pop_types.PopulationInTransit(
-      id: transferId,
-      houseId: packet.houseId,
-      sourceSystem: transfer.sourceColony,
-      destSystem: transfer.destColony,
-      ptuAmount: transfer.ptuAmount,
-      costPaid: cost,
-      arrivalTurn: arrivalTurn
-    )
-    state.populationInTransit.add(inTransit)
-
-    logInfo(LogCategory.lcEconomy,
-      &"Space Guild transporting {transfer.ptuAmount} PTU ({soulsToTransfer} souls) from " &
-      &"{transfer.sourceColony} to {transfer.destColony} (arrives turn {arrivalTurn}, cost: {cost} PP)")
-
-    events.add(GameEvent(
-      eventType: GameEventType.PopulationTransfer,
-      houseId: packet.houseId,
-      description: "Space Guild transporting " & $transfer.ptuAmount & " PTU from " & $transfer.sourceColony & " to " & $transfer.destColony & " (ETA: turn " & $arrivalTurn & ", cost: " & $cost & " PP)",
-      systemId: some(transfer.sourceColony)
-    ))
-
-proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]) =
-  ## Process Space Guild population transfers that arrive this turn
-  ## Implements risk handling per config/population.toml [transfer_risks]
-  ## Per config: dest_blockaded_behavior = "closest_owned"
-  ## Per config: dest_collapsed_behavior = "closest_owned"
-  logDebug(LogCategory.lcGeneral, &"[Processing Space Guild Arrivals]")
-
-  var arrivedTransfers: seq[int] = @[]  # Indices to remove after processing
-
-  for idx, transfer in state.populationInTransit:
-    if transfer.arrivalTurn != state.turn:
-      continue  # Not arriving this turn
-
-    let soulsToDeliver = transfer.ptuAmount * soulsPerPtu()
-
-    # Check destination status
-    if transfer.destSystem notin state.colonies:
-      # Destination colony no longer exists
-      logWarn(LogCategory.lcEconomy, &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - destination colony destroyed")
-      arrivedTransfers.add(idx)
-      events.add(GameEvent(
-        eventType: GameEventType.PopulationTransfer,
-        houseId: transfer.houseId,
-        description: $transfer.ptuAmount & " PTU lost - destination " & $transfer.destSystem & " destroyed",
-        systemId: some(transfer.destSystem)
-      ))
-      continue
-
-    var destColony = state.colonies[transfer.destSystem]
-
-    # Check if destination requires alternative delivery
-    # Space Guild makes best-faith effort to deliver somewhere safe
-    # Per config/population.toml: dest_blockaded_behavior = "closest_owned"
-    # Per config/population.toml: dest_collapsed_behavior = "closest_owned"
-    # Per config/population.toml: dest_conquered_behavior = "closest_owned" (NEW)
-    var needsAlternativeDestination = false
-    var alternativeReason = ""
-
-    if destColony.owner != transfer.houseId:
-      # Destination conquered - Guild tries to find alternative colony
-      needsAlternativeDestination = true
-      alternativeReason = "conquered by " & $destColony.owner
-    elif destColony.blockaded:
-      needsAlternativeDestination = true
-      alternativeReason = "blockaded"
-    elif destColony.souls < soulsPerPtu():
-      needsAlternativeDestination = true
-      alternativeReason = "collapsed below minimum viable population"
-
-    if needsAlternativeDestination:
-      # Space Guild attempts to deliver to closest owned colony
-      let alternativeDest = findClosestOwnedColony(state, transfer.destSystem, transfer.houseId)
-
-      if alternativeDest.isSome:
-        # Deliver to alternative colony
-        let altSystemId = alternativeDest.get()
-        var altColony = state.colonies[altSystemId]
-        altColony.souls += soulsToDeliver
-        altColony.population = altColony.souls div 1_000_000
-        state.colonies[altSystemId] = altColony
-
-        logWarn(LogCategory.lcEconomy,
-          &"Transfer {transfer.id}: {transfer.ptuAmount} PTU redirected to {altSystemId} " &
-          &"- original destination {transfer.destSystem} {alternativeReason}")
-        events.add(GameEvent(
-          eventType: GameEventType.PopulationTransfer,
-          houseId: transfer.houseId,
-          description: $transfer.ptuAmount & " PTU redirected from " & $transfer.destSystem & " (" & alternativeReason & ") to " & $altSystemId,
-          systemId: some(altSystemId)
-        ))
-      else:
-        # No owned colonies - colonists are lost
-        logWarn(LogCategory.lcEconomy,
-          &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - destination {alternativeReason}, no owned colonies available")
-        events.add(GameEvent(
-          eventType: GameEventType.PopulationTransfer,
-          houseId: transfer.houseId,
-          description: $transfer.ptuAmount & " PTU lost - " & $transfer.destSystem & " " & alternativeReason & ", no owned colonies for delivery",
-          systemId: some(transfer.destSystem)
-        ))
-
-      arrivedTransfers.add(idx)
-      continue
-
-    # Successful delivery!
-    destColony.souls += soulsToDeliver
-    destColony.population = destColony.souls div 1_000_000
-    state.colonies[transfer.destSystem] = destColony
-
-    logInfo(LogCategory.lcEconomy,
-      &"Transfer {transfer.id}: {transfer.ptuAmount} PTU arrived at {transfer.destSystem} ({soulsToDeliver} souls)")
-    events.add(GameEvent(
-      eventType: GameEventType.PopulationTransfer,
-      houseId: transfer.houseId,
-      description: $transfer.ptuAmount & " PTU arrived at " & $transfer.destSystem & " from " & $transfer.sourceSystem,
-      systemId: some(transfer.destSystem)
-    ))
-
-    arrivedTransfers.add(idx)
-
-  # Remove processed transfers (in reverse order to preserve indices)
-  for idx in countdown(arrivedTransfers.len - 1, 0):
-    state.populationInTransit.del(arrivedTransfers[idx])
-
-proc processTerraformingProjects(state: var GameState, events: var seq[GameEvent]) =
-  ## Process active terraforming projects for all houses
-  ## Per economy.md Section 4.7
-
-  for colonyId, colony in state.colonies.mpairs:
-    if colony.activeTerraforming.isNone:
-      continue
-
-    let houseId = colony.owner
-    if houseId notin state.houses:
-      continue
-
-    let house = state.houses[houseId]
-    var project = colony.activeTerraforming.get()
-    project.turnsRemaining -= 1
-
-    if project.turnsRemaining <= 0:
-      # Terraforming complete!
-      # Convert int class number (1-7) back to PlanetClass enum (0-6)
-      colony.planetClass = PlanetClass(project.targetClass - 1)
-      colony.activeTerraforming = none(TerraformProject)
-
-      let className = case project.targetClass
-        of 1: "Extreme"
-        of 2: "Desolate"
-        of 3: "Hostile"
-        of 4: "Harsh"
-        of 5: "Benign"
-        of 6: "Lush"
-        of 7: "Eden"
-        else: "Unknown"
-
-      logInfo(LogCategory.lcEconomy,
-        &"{house.name} completed terraforming of {colonyId} to {className} (class {project.targetClass})")
-
-      events.add(GameEvent(
-        eventType: GameEventType.TerraformComplete,
-        houseId: houseId,
-        description: house.name & " completed terraforming colony " & $colonyId &
-                    " to " & className,
-        systemId: some(colonyId)
-      ))
-    else:
-      logDebug(LogCategory.lcEconomy,
-        &"{house.name} terraforming {colonyId}: {project.turnsRemaining} turn(s) remaining")
-      # Update project
-      colony.activeTerraforming = some(project)
-
-proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], orders: Table[HouseId, OrderPacket], rng: var Rand): seq[econ_types.CompletedProject] =
-  ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
-  ## Forward to new implementation in phases/maintenance_phase.nim
-  return maint_phase.resolveMaintenancePhase(state, events, orders, rng)
-
-proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
+import ../../../common/[hex, types/core, types/units, types/tech]
+import ../../gamestate, ../../orders, ../../fleet, ../../squadron, ../../spacelift
+import ../../starmap, ../../logger
+import ../../order_types
+import ../../economy/[types as econ_types, engine as econ_engine, projects, facility_queue]
+import ../../economy/capacity/fighter as fighter_capacity
+import ../../economy/capacity/planet_breakers as planet_breaker_capacity
+import ../../economy/capacity/capital_squadrons as capital_squadron_capacity
+import ../../economy/capacity/total_squadrons as total_squadron_capacity
+import ../../research/[types as res_types, costs as res_costs, advancement]
+import ../../espionage/[types as esp_types]
+import ../../blockade/engine as blockade_engine
+import ../../intelligence/[
+  detection, types as intel_types, generator as intel_gen,
+  starbase_surveillance, scout_intel
+]
+import ../../config/[espionage_config, construction_config]
+import ../../resolution/[fleet_orders, automation, types as res_game_types]
+import ../../commands/executor as cmd_executor  # For salvage order execution
+import ../../prestige/[types as prestige_types, events as prestige_events, application as prestige_app]
+
+proc resolveIncomePhase*(
+  state: var GameState,
+  orders: Table[HouseId, OrderPacket],
+  events: var seq[GameEvent]
+) =
   ## Phase 2: Collect income and allocate resources
-  ## Forward to new implementation in phases/income_phase.nim which includes capacity enforcement
-  income_phase.resolveIncomePhase(state, orders, events)
+  ## Production is calculated AFTER conflict, so damaged infrastructure produces less
+  ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
+  logDebug(LogCategory.lcGeneral, &"[Income Phase]")
+
+  # Apply blockade status to all colonies
+  # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
+  # reduce GCO for that same turn's Income Phase calculation - there is no delay"
+  blockade_engine.applyBlockades(state)
 
   # Apply ongoing espionage effects to houses
   var activeEffects: seq[esp_types.OngoingEffect] = @[]
@@ -625,8 +123,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
             if investmentPercent > threshold:
               let prestigePenalty = -(investmentPercent - threshold) * globalEspionageConfig.investment.penalty_per_percent
-              let prestigeEvent = prestige_types.createPrestigeEvent(
-                prestige_types.PrestigeSource.MaintenanceShortfall,
+              let prestigeEvent = prestige_events.createPrestigeEvent(
+                prestige_types.PrestigeSource.HighTaxPenalty,
                 prestigePenalty,
                 &"Over-investment penalty: -{int(prestigePenalty * -1)} (investment {investmentPercent}% exceeds {threshold}% threshold)"
               )
@@ -777,6 +275,115 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
   for houseId, house in state.houses:
     houseTreasuries[houseId] = house.treasury
 
+  # ===================================================================
+  # STEP 4: EXECUTE SALVAGE ORDERS
+  # ===================================================================
+  # Salvage orders execute in Income Phase (not Command Phase) because:
+  # 1. Fleet must survive Conflict Phase to salvage wreckage
+  # 2. Salvage is an economic operation (ships → PP)
+  # 3. Salvage PP should be included in turn's treasury before income calculation
+  logDebug(LogCategory.lcEconomy, "[SALVAGE] Executing salvage orders...")
+
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      for order in orders[houseId].fleetOrders:
+        if order.orderType == FleetOrderType.Salvage:
+          # Check if fleet still exists (survived Conflict Phase)
+          if order.fleetId in state.fleets:
+            let fleet = state.fleets[order.fleetId]
+            if fleet.owner == houseId:
+              # Execute salvage order (returns PP added to treasury)
+              let result = cmd_executor.executeFleetOrder(state, houseId, order)
+              if result.success:
+                logInfo(LogCategory.lcEconomy,
+                  &"[SALVAGE] {houseId} Fleet-{order.fleetId} salvaged ships")
+                # PP already added to treasury by executeSalvageOrder
+              else:
+                logDebug(LogCategory.lcEconomy,
+                  &"[SALVAGE] {houseId} Fleet-{order.fleetId} failed: {result.message}")
+
+  logDebug(LogCategory.lcEconomy, "[SALVAGE] Completed salvage orders")
+
+  # ===================================================================
+  # STEP 5: CAPACITY ENFORCEMENT AFTER IU LOSS
+  # ===================================================================
+  # Per FINAL_TURN_SEQUENCE.md Income Phase Step 5
+  # Enforce capacity limits AFTER IU loss from blockades/combat
+  # Order: Capital squadrons (immediate) → Total squadrons (2-turn grace) →
+  #        Fighters (2-turn grace) → Planet-breakers (immediate)
+  logDebug(LogCategory.lcEconomy,
+          "[CAPACITY ENFORCEMENT] Checking capacity violations after IU loss...")
+
+  # Check fighter squadron capacity violations (assets.md:2.4.1)
+  # Uses unified capacity management system (economy/capacity/fighter.nim)
+  # 2-turn grace period per colony
+  logDebug(LogCategory.lcEconomy,
+          "[CAPACITY] Checking fighter squadron capacity...")
+  let fighterEnforcement = fighter_capacity.processCapacityEnforcement(state)
+  for action in fighterEnforcement:
+    if action.affectedUnits.len > 0:
+      let colonyId = SystemId(parseInt(action.entityId))
+      if colonyId in state.colonies:
+        let houseId = state.colonies[colonyId].owner
+        events.add(res_game_types.GameEvent(
+          eventType: res_game_types.GameEventType.UnitDisbanded,
+          houseId: houseId,
+          description: action.description,
+          systemId: some(colonyId)
+        ))
+
+  # Check planet-breaker capacity violations (assets.md:2.4.8)
+  # Immediate enforcement (no grace period)
+  logDebug(LogCategory.lcEconomy,
+          "[CAPACITY] Checking planet-breaker capacity...")
+  let pbEnforcement =
+    planet_breaker_capacity.processCapacityEnforcement(state)
+  for action in pbEnforcement:
+    if action.affectedUnits.len > 0:
+      let houseId = HouseId(action.entityId)
+      events.add(res_game_types.GameEvent(
+        eventType: res_game_types.GameEventType.UnitDisbanded,
+        houseId: houseId,
+        description: action.description,
+        systemId: none(SystemId)
+      ))
+
+  # Check capital squadron capacity violations (reference.md Table 10.5)
+  # Immediate Space Guild seizure (no grace period)
+  logDebug(LogCategory.lcEconomy,
+          "[CAPACITY] Checking capital squadron capacity...")
+  let capitalEnforcement =
+    capital_squadron_capacity.processCapacityEnforcement(state)
+  for action in capitalEnforcement:
+    if action.affectedUnits.len > 0:
+      let houseId = HouseId(action.entityId)
+      events.add(res_game_types.GameEvent(
+        eventType: res_game_types.GameEventType.UnitDisbanded,
+        houseId: houseId,
+        description: action.description,
+        systemId: none(SystemId)
+      ))
+
+  # Check total squadron capacity (prevents escort spam)
+  # 2-turn grace period (house-wide)
+  # Runs AFTER capital squadron enforcement
+  logDebug(LogCategory.lcEconomy,
+          "[CAPACITY] Checking total squadron capacity...")
+  let totalEnforcement =
+    total_squadron_capacity.processCapacityEnforcement(state)
+  for action in totalEnforcement:
+    if action.affectedUnits.len > 0:
+      let houseId = HouseId(action.entityId)
+      events.add(res_game_types.GameEvent(
+        eventType: res_game_types.GameEventType.UnitDisbanded,
+        houseId: houseId,
+        description: action.description,
+        systemId: none(SystemId)
+      ))
+
+  logDebug(LogCategory.lcEconomy,
+          "[CAPACITY ENFORCEMENT] Completed capacity enforcement")
+
   # Call economy engine
   let incomeReport = econ_engine.resolveIncomePhase(
     coloniesSeqIncome,
@@ -824,7 +431,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     let blockadePenalty = blockade_engine.calculateBlockadePrestigePenalty(state, houseId)
     if blockadePenalty < 0:
       let blockadedCount = blockade_engine.getBlockadedColonies(state, houseId).len
-      let blockadePenaltyEvent = prestige_types.createPrestigeEvent(
+      let blockadePenaltyEvent = prestige_events.createPrestigeEvent(
         prestige_types.PrestigeSource.BlockadePenalty,
         blockadePenalty,
         &"{blockadedCount} colonies under blockade ({blockadePenalty} prestige per colony)"
@@ -1428,117 +1035,3 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
         )
 
         logDebug(LogCategory.lcResearch, &"{houseId} breakthrough effect applied (category: {event.category})")
-
-## Phase 3: Command
-
-
-proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket]) =
-  ## Auto-assign unassigned squadrons to fleets at colony, balancing squadron count
-  ##
-  ## **Purpose:** Automatically organize newly-commissioned ships into operational fleets
-  ## during the Construction & Commissioning phase of economy resolution.
-  ##
-  ## **Behavior:**
-  ## 1. Looks for Active stationary fleets at colony (Hold orders or no orders)
-  ## 2. If candidate fleets exist: distributes unassigned squadrons evenly across them
-  ## 3. If NO candidate fleets exist: creates new single-squadron fleets for each unassigned squadron
-  ##
-  ## **Fleet Status Filtering:**
-  ## - Only considers `FleetStatus.Active` fleets for auto-assignment
-  ## - Excludes `FleetStatus.Reserve` (50% maintenance, reduced combat effectiveness)
-  ## - Excludes `FleetStatus.Mothballed` (0% maintenance, offline storage)
-  ##
-  ## **Why This Matters:**
-  ## This function is critical for AI operational effectiveness. Without it, newly-built
-  ## units (especially scouts) remain in `colony.unassignedSquadrons` indefinitely and
-  ## never execute their intended missions. For example, scouts cannot perform espionage
-  ## missions unless they are organized into fleets.
-  ##
-  ## **Architecture Note:**
-  ## This function lives in economy_resolution.nim because fleet organization from
-  ## newly-commissioned ships is part of the industrial → military transition, not
-  ## tactical fleet operations. It represents the final step in the economic production
-  ## pipeline: Treasury → Construction → Commissioning → Fleet Organization.
-  if colony.unassignedSquadrons.len == 0:
-    return
-
-  # Get all fleets at this colony owned by same house
-  var candidateFleets: seq[FleetId] = @[]
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == colony.owner and fleet.location == systemId:
-      # Only consider Active fleets (exclude Reserve and Mothballed)
-      if fleet.status != FleetStatus.Active:
-        continue
-
-      # Check if fleet has stationary orders (Hold, Guard, Patrol, or no orders)
-      # These orders keep fleets at/near the colony and can accept reinforcements
-      var isStationary = true
-
-      # Check if fleet has active orders
-      if colony.owner in orders:
-        for order in orders[colony.owner].fleetOrders:
-          if order.fleetId == fleetId:
-            # Fleet is stationary if: Hold, GuardStarbase, GuardPlanet, or Patrol (at same system)
-            case order.orderType
-            of FleetOrderType.Hold, FleetOrderType.GuardStarbase, FleetOrderType.GuardPlanet:
-              isStationary = true
-            of FleetOrderType.Patrol:
-              # Patrol at same system is stationary, patrol to other system is movement
-              isStationary = (order.targetSystem.isNone or order.targetSystem.get() == systemId)
-            else:
-              isStationary = false
-            break
-
-      # Also check standing orders - fleets with movement-based standing orders should not receive squadrons
-      # Movement-based: PatrolRoute, AutoColonize, AutoReinforce, AutoRepair (when seeking shipyard)
-      # Stationary: DefendSystem, GuardColony, AutoEvade, BlockadeTarget (at target)
-      if isStationary and fleetId in state.standingOrders:
-        let standingOrder = state.standingOrders[fleetId]
-        case standingOrder.orderType
-        of StandingOrderType.PatrolRoute, StandingOrderType.AutoColonize, StandingOrderType.AutoReinforce:
-          # These always involve movement between systems
-          isStationary = false
-        of StandingOrderType.AutoRepair:
-          # AutoRepair only moves when damaged, otherwise stationary
-          # For simplicity, treat as non-stationary (don't want to add squadrons if fleet might leave for repairs)
-          isStationary = false
-        else:
-          # DefendSystem, GuardColony, AutoEvade, BlockadeTarget are stationary (at/defending a system)
-          # None, or any future order types default to stationary
-          discard
-
-      if isStationary:
-        candidateFleets.add(fleetId)
-
-  if candidateFleets.len == 0:
-    # No existing stationary fleets - create ONE consolidated fleet for ALL orphan squadrons
-    if colony.unassignedSquadrons.len > 0:
-      let newFleetId = colony.owner & "_fleet_" & $systemId & "_" & $state.turn
-      let allSquadrons = colony.unassignedSquadrons  # Collect all orphan squadrons
-      state.fleets[newFleetId] = Fleet(
-        id: newFleetId,
-        owner: colony.owner,
-        location: systemId,
-        squadrons: allSquadrons,  # All squadrons in one fleet
-        spaceLiftShips: @[],
-        status: FleetStatus.Active,
-        autoBalanceSquadrons: true
-      )
-      colony.unassignedSquadrons = @[]  # Clear the list
-      logDebug(LogCategory.lcFleet, &"Auto-created consolidated fleet {newFleetId} with {allSquadrons.len} squadrons")
-    return
-
-  # Calculate target squadron count per fleet (balanced distribution)
-  let totalSquadrons = colony.unassignedSquadrons.len +
-                        candidateFleets.mapIt(state.fleets[it].squadrons.len).foldl(a + b, 0)
-  let targetPerFleet = totalSquadrons div candidateFleets.len
-
-  # Assign squadrons to fleets to reach target count
-  for fleetId in candidateFleets:
-    var fleet = state.fleets[fleetId]
-    while fleet.squadrons.len < targetPerFleet and colony.unassignedSquadrons.len > 0:
-      let squadron = colony.unassignedSquadrons[0]
-      fleet.squadrons.add(squadron)
-      colony.unassignedSquadrons.delete(0)
-    state.fleets[fleetId] = fleet
-
