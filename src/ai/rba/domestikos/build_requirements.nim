@@ -1510,25 +1510,14 @@ proc generateBuildRequirements*(
   # Calculate remaining resources for fillers
   let availableDocks = max(0, totalDocks - docksCommitted)
 
-  # Act-aware average ship cost (matches actual unit costs per Act)
-  # Affects filler budget allocation to match ship progression
-  let avgFillerCost = case currentAct
-    of GameAct.Act1_LandGrab:
-      30  # ETACs (25), Destroyers (40), Frigates (30)
-    of GameAct.Act2_RisingTensions:
-      120  # Cruisers (120), Battlecruisers (180), Carriers (80), Destroyers (40)
-    of GameAct.Act3_TotalWar:
-      200  # Battleships (250), Dreadnoughts (400), SuperCarriers (200), Cruisers (120)
-    of GameAct.Act4_Endgame:
-      300  # SuperDreadnoughts (500), Dreadnoughts (400), Battleships (250)
+  # CRITICAL FIX: Generate fillers for ALL available docks
+  # Don't pre-filter by budget - let priority scoring and perSlotBudget handle affordability
+  # The selectBestUnit() function already filters unaffordable ships
+  # Pre-filtering causes Act 3-4 to generate 0 fillers when treasury < avgFillerCost
+  let affordableFillerCount = availableDocks
 
-  # Calculate max affordable fillers using Act-aware cost
-  let maxAffordableFillers = min(availableDocks, filtered.ownHouse.treasury div avgFillerCost)
-  let fillerBudgetEstimate = maxAffordableFillers * avgFillerCost
-
-  # Calculate affordable filler count (limited by budget OR docks, whichever is less)
-  let affordableBudgetWise = if fillerBudgetEstimate > 0: fillerBudgetEstimate div avgFillerCost else: 0
-  let affordableFillerCount = min(affordableBudgetWise, availableDocks)
+  # Calculate total filler budget (informational only, not used for filtering)
+  let fillerBudgetEstimate = filtered.ownHouse.treasury
 
   logDebug(LogCategory.lcAI,
            &"Capacity fillers: treasury={filtered.ownHouse.treasury}PP, " &
