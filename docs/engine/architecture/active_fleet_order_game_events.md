@@ -168,17 +168,18 @@ Orders abort when:
 
 ### Standing Orders Integration
 
-**Standing orders generate fleet orders that trigger events with one exception:**
+**Standing orders execute in Maintenance Phase and generate fleet orders that trigger events with one exception:**
 
 **How It Works:**
-1. Standing order execution (e.g., `AutoColonize`) writes a regular `FleetOrder` to `state.fleetOrders`
-2. Fleet order execution loop picks up persistent orders from `state.fleetOrders`
-3. Events fire when the underlying fleet order executes
+1. **Maintenance Phase Step 1a**: `standing_orders.executeStandingOrders()` runs for fleets without explicit orders
+2. Standing order execution (e.g., `AutoColonize`) writes a regular `FleetOrder` to `state.fleetOrders`
+3. **Maintenance Phase Step 1b**: Fleet order execution loop picks up persistent orders from `state.fleetOrders`
+4. Events fire when the underlying fleet order executes
 
 **Event Behavior:**
 - ❌ **OrderIssued**: Does NOT fire for standing-order-generated fleet orders
-  - Only fires for NEW orders submitted via OrderPacket
-  - Standing orders write directly to persistent `state.fleetOrders` table
+  - Only fires for NEW orders submitted via OrderPacket (in Command Phase)
+  - Standing orders write directly to persistent `state.fleetOrders` table (in Maintenance Phase)
   - Skips "newOrdersThisTurn" tracking (fleet_order_execution.nim:189)
 - ✅ **OrderCompleted/OrderFailed/OrderAborted**: Fire normally when order executes
   - Standing orders produce regular fleet orders (Move, Colonize, SeekHome, etc.)
@@ -190,8 +191,10 @@ Orders abort when:
 - Turn 3: Creates `SeekHome` order → No OrderIssued, but OrderCompleted when fleet arrives home
 
 **Code References:**
-- Standing order execution: `src/engine/standing_orders.nim:188-277` (AutoColonize example)
-- Persistent order processing: `src/engine/resolution/fleet_order_execution.nim:200-213`
+- Standing order execution entry point: `src/engine/resolution/phases/maintenance_phase.nim:262` (Step 1a)
+- Standing order logic: `src/engine/standing_orders.nim:789` (executeStandingOrders)
+- AutoColonize example: `src/engine/standing_orders.nim:188-277`
+- Persistent order processing: `src/engine/resolution/fleet_order_execution.nim:200-213` (Step 1b)
 - Event generation: `src/engine/resolution/fleet_order_execution.nim:288+`
 
 ### Fog-of-War Integration
