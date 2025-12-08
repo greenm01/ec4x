@@ -92,6 +92,9 @@ type
     lastExecutedTurn*: int             # Last turn this executed
     executionCount*: int               # Times executed
     suspended*: bool                   # Temporarily disabled (explicit order override)
+    enabled*: bool                     # Per-fleet toggle (player control)
+    activationDelayTurns*: int         # Grace period before activation after order completion
+    turnsUntilActivation*: int         # Countdown: decrements each turn without explicit order
 
   # =============================================================================
   # Colony Management Orders

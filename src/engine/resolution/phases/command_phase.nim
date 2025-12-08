@@ -159,12 +159,12 @@ proc resolveCommandPhase*(state: var GameState,
 
         # Execute administrative orders immediately
         elif isAdministrativeOrder(order.orderType):
-          let result = executor.executeFleetOrder(state, houseId, order)
-          if result.success:
+          let outcome = executor.executeFleetOrder(state, houseId, order, events)
+          if outcome == OrderOutcome.Success:
             adminExecuted += 1
             logDebug(LogCategory.lcOrders, &"  [ADMIN] Fleet {order.fleetId}: {order.orderType} executed")
           else:
-            logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {order.fleetId}: {order.orderType} - {result.message}")
+            logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {order.fleetId}: {order.orderType}")
 
         # Movement orders execute in Maintenance Phase (don't process here)
         elif isMovementOrder(order.orderType):

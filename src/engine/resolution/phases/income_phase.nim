@@ -203,15 +203,15 @@ proc resolveIncomePhase*(
           if order.fleetId in state.fleets:
             let fleet = state.fleets[order.fleetId]
             if fleet.owner == houseId:
-              # Execute salvage order (returns PP added to treasury)
-              let result = cmd_executor.executeFleetOrder(state, houseId, order)
-              if result.success:
+              # Execute salvage order (returns PP added to treasury, events added directly)
+              let outcome = cmd_executor.executeFleetOrder(state, houseId, order, events)
+              if outcome == OrderOutcome.Success:
                 logInfo(LogCategory.lcEconomy,
                   &"[SALVAGE] {houseId} Fleet-{order.fleetId} salvaged ships")
                 # PP already added to treasury by executeSalvageOrder
               else:
                 logDebug(LogCategory.lcEconomy,
-                  &"[SALVAGE] {houseId} Fleet-{order.fleetId} failed: {result.message}")
+                  &"[SALVAGE] {houseId} Fleet-{order.fleetId} failed")
 
   logDebug(LogCategory.lcEconomy, "[SALVAGE] Completed salvage orders")
 

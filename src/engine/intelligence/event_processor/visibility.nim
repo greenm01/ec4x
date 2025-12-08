@@ -107,7 +107,11 @@ proc shouldHouseSeeEvent*(
     return false
 
   # Order events - private to house
-  of res_types.GameEventType.OrderRejected:
+  of res_types.GameEventType.OrderRejected,
+     res_types.GameEventType.OrderIssued,
+     res_types.GameEventType.OrderCompleted,
+     res_types.GameEventType.OrderFailed,
+     res_types.GameEventType.OrderAborted:
     return false
 
   # Alert events - private to house

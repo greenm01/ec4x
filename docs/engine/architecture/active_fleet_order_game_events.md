@@ -190,9 +190,40 @@ Orders abort when:
 - Turn 2: Creates `Colonize` order → No OrderIssued, but OrderCompleted when colony established
 - Turn 3: Creates `SeekHome` order → No OrderIssued, but OrderCompleted when fleet arrives home
 
+**Player Controls (Strategic Safety):**
+Standing orders include multiple layers of player control to prevent unwanted automation:
+
+1. **Global Toggle** (`config/standing_orders.toml` → `activation.global_enabled`)
+   - Master switch: disable ALL standing orders for ALL fleets
+   - Overrides all per-fleet settings
+
+2. **Per-Fleet Enable/Disable** (`StandingOrder.enabled`)
+   - Individual fleet control: enable/disable standing order per fleet
+   - Default controlled by `activation.enabled_by_default` (false by default)
+
+3. **Activation Delay** (`StandingOrder.activationDelayTurns`)
+   - Grace period in turns after mission completion before standing order activates
+   - Default: `activation.default_activation_delay_turns` (1 turn)
+   - Configurable per fleet
+   - Countdown resets when explicit order issued
+
+**Activation Flow:**
+```
+Turn N:   Fleet completes Colonize order → order removed from state.fleetOrders
+Turn N:   Standing order countdown starts: turnsUntilActivation = 1
+Turn N+1: Countdown decrements: turnsUntilActivation = 0
+Turn N+1: Standing order activates → generates new fleet order
+Turn N+1: New fleet order executes → OrderCompleted event fires
+```
+
 **Code References:**
-- Standing order execution entry point: `src/engine/resolution/phases/maintenance_phase.nim:262` (Step 1a)
-- Standing order logic: `src/engine/standing_orders.nim:789` (executeStandingOrders)
+- Configuration: `config/standing_orders.toml`
+- Config loader: `src/engine/config/standing_orders_config.nim`
+- Standing order type: `src/engine/order_types.nim:84-97` (includes enabled, activationDelayTurns, turnsUntilActivation)
+- Execution entry point: `src/engine/resolution/phases/maintenance_phase.nim:262` (Step 1a)
+- Global toggle check: `src/engine/standing_orders.nim:803`
+- Per-fleet checks: `src/engine/standing_orders.nim:837-851` (enabled flag, activation delay)
+- Standing order logic: `src/engine/standing_orders.nim:790` (executeStandingOrders)
 - AutoColonize example: `src/engine/standing_orders.nim:188-277`
 - Persistent order processing: `src/engine/resolution/fleet_order_execution.nim:200-213` (Step 1b)
 - Event generation: `src/engine/resolution/fleet_order_execution.nim:288+`

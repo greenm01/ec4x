@@ -10,6 +10,7 @@ import std/[tables, options, strformat, algorithm]
 import gamestate, orders, fleet, starmap, logger, spacelift
 import order_types
 import ../common/types/[core, planets]
+import config/standing_orders_config
 
 export StandingOrderType, StandingOrder, StandingOrderParams
 
@@ -788,7 +789,7 @@ proc executeStandingOrder*(state: var GameState, fleetId: FleetId,
 
 proc executeStandingOrders*(state: var GameState, turn: int) =
   ## Execute standing orders for all fleets without explicit orders
-  ## Called during Command Phase after explicit orders are processed
+  ## Called during Maintenance Phase Step 1a before fleet movement
   ##
   ## COMPREHENSIVE LOGGING:
   ## - INFO: High-level execution summary
@@ -797,6 +798,12 @@ proc executeStandingOrders*(state: var GameState, turn: int) =
 
   logInfo(LogCategory.lcOrders,
           &"=== Standing Orders Execution: Turn {turn} ===")
+
+  # Check global master switch
+  if not globalStandingOrdersConfig.activation.global_enabled:
+    logInfo(LogCategory.lcOrders,
+            "Standing orders globally disabled in config - skipping all execution")
+    return
 
   var executedCount = 0
   var skippedCount = 0
@@ -811,18 +818,42 @@ proc executeStandingOrders*(state: var GameState, turn: int) =
                &"{fleetId} has explicit order ({explicitOrder.orderType}), " &
                &"skipping standing order")
       skippedCount += 1
+
+      # Reset activation countdown when explicit order exists
+      if fleetId in state.standingOrders:
+        var standingOrder = state.standingOrders[fleetId]
+        standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
+        state.standingOrders[fleetId] = standingOrder
+
       continue
 
     # Check for standing order
     if fleetId notin state.standingOrders:
       continue
 
-    let standingOrder = state.standingOrders[fleetId]
+    var standingOrder = state.standingOrders[fleetId]
 
     # Skip if suspended
     if standingOrder.suspended:
       logDebug(LogCategory.lcOrders,
                &"{fleetId} standing order suspended, skipping")
+      skippedCount += 1
+      continue
+
+    # Skip if not enabled (player control)
+    if not standingOrder.enabled:
+      logDebug(LogCategory.lcOrders,
+               &"{fleetId} standing order disabled by player, skipping")
+      skippedCount += 1
+      continue
+
+    # Check activation delay countdown
+    if standingOrder.turnsUntilActivation > 0:
+      # Decrement countdown
+      standingOrder.turnsUntilActivation -= 1
+      state.standingOrders[fleetId] = standingOrder
+      logDebug(LogCategory.lcOrders,
+               &"{fleetId} standing order waiting {standingOrder.turnsUntilActivation} more turn(s)")
       skippedCount += 1
       continue
 
@@ -838,6 +869,9 @@ proc executeStandingOrders*(state: var GameState, turn: int) =
       var updatedOrder = standingOrder
       updatedOrder.lastExecutedTurn = turn
       updatedOrder.executionCount += 1
+
+      # Reset activation countdown (standing order generated a new fleet order)
+      updatedOrder.turnsUntilActivation = updatedOrder.activationDelayTurns
 
       # Update params if returned (e.g., patrol index advanced)
       if result.updatedParams.isSome:

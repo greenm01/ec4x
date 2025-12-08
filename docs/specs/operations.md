@@ -787,7 +787,44 @@ Persistent behaviors that execute when fleet has no active mission:
 
 **Standing orders support Rules of Engagement**: Most defensive standing orders respect your ROE settings, determining when to fight and when to retreat.
 
-### 6.5.3 Patrol Route Standing Order
+### 6.5.3 Player Controls (Strategic Safety)
+
+Standing orders include multiple layers of control to prevent unwanted automation that could undermine your strategy:
+
+**1. Global Toggle** (`config/standing_orders.toml` → `activation.global_enabled`)
+- **Master killswitch**: Disable ALL standing orders for ALL fleets instantly
+- Overrides all per-fleet settings
+- Default: `true` (standing orders enabled)
+- Use when you want complete manual control of all fleets
+
+**2. Per-Fleet Enable/Disable** (`StandingOrder.enabled` flag)
+- **Individual fleet control**: Enable/disable standing order for each fleet independently
+- Default controlled by `activation.enabled_by_default` (false by default)
+- New fleets do NOT auto-execute standing orders unless explicitly enabled
+- Use to selectively automate specific fleets while maintaining manual control of others
+
+**3. Activation Delay Grace Period** (`StandingOrder.activationDelayTurns`)
+- **Strategic breathing room**: Grace period (in turns) after mission completion before standing order activates
+- Default: `activation.default_activation_delay_turns` (1 turn)
+- Configurable per-fleet
+- Countdown resets when you issue explicit order
+- **Critical for preventing strategic errors**: Fleet completes colonization mission, you have 1 turn to issue new orders before AutoColonize standing order takes over
+
+**Activation Flow Example:**
+```
+Turn N:   Fleet completes Colonize order → order removed
+Turn N:   Standing order countdown starts: turnsUntilActivation = 1
+Turn N+1: You can issue new explicit order OR let countdown continue
+Turn N+1: If no explicit order: countdown decrements to 0
+Turn N+1: Standing order activates → generates new fleet order (e.g., Move to next colonization target)
+```
+
+**Why These Controls Matter:**
+- **Prevents strategic blunders**: Fleet completes mission in hostile territory, standing order sends it deeper into danger
+- **Preserves player agency**: You maintain strategic control, automation serves you
+- **Supports evolving strategies**: Disable standing orders globally during war, re-enable during expansion phases
+
+### 6.5.4 Patrol Route Standing Order
 
 Establish indefinite patrol routes through multiple systems. Your fleet automatically travels the route system-by-system, engaging hostiles per ROE, providing continuous defensive coverage.
 
@@ -807,7 +844,7 @@ Establish indefinite patrol routes through multiple systems. Your fleet automati
 - Maintain continuous presence in contested zones
 - Automate routine security operations
 
-### 6.5.4 Defend System Standing Order
+### 6.5.5 Defend System Standing Order
 
 Station your fleet for permanent system defense. Your fleet remains at the system, engages hostiles per ROE, and protects colonies without requiring repeated orders.
 
@@ -826,7 +863,7 @@ Station your fleet for permanent system defense. Your fleet remains at the syste
 - Protect strategic colonies
 - Maintain defensive presence without micromanagement
 
-### 6.5.5 Guard Colony Standing Order
+### 6.5.6 Guard Colony Standing Order
 
 Defend a specific colony within a system. Functionally identical to Defend System but explicitly designates which colony to prioritize during combat.
 
@@ -835,7 +872,7 @@ Defend a specific colony within a system. Functionally identical to Defend Syste
 - Designate which infrastructure to protect
 - Create colony-specific defensive postures
 
-### 6.5.6 Auto-Colonize Standing Order
+### 6.5.7 Auto-Colonize Standing Order
 
 Order ETAC fleets to autonomously identify and colonize nearest suitable systems. Your colonization fleets automatically expand your empire without explicit orders for each colony.
 
@@ -853,7 +890,7 @@ Order ETAC fleets to autonomously identify and colonize nearest suitable systems
 - Reduce colonization micromanagement
 - Ensure rapid territory acquisition during land grabs
 
-### 6.5.7 Auto-Reinforce Standing Order
+### 6.5.8 Auto-Reinforce Standing Order
 
 Order your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers squadrons to restore combat effectiveness.
 

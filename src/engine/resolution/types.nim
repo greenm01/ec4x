@@ -37,7 +37,12 @@ type
     SpyMissionDetected,  # Caught and foiled
     # Scout Events
     ScoutDetected,  # Scout caught during mission
-    ScoutDestroyed  # Scout eliminated
+    ScoutDestroyed,  # Scout eliminated
+    # Fleet Order Lifecycle Events
+    OrderIssued,  # Order submitted/validated
+    OrderCompleted,  # Order successfully executed
+    OrderFailed,  # Order execution failed (validation, conditions)
+    OrderAborted  # Order cancelled (target lost, conditions changed)
 
   CombatReport* = object
     systemId*: SystemId
