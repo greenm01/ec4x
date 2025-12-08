@@ -76,6 +76,7 @@ type
     raw_quality*: string        # "Abundant"
     colony_level*: int          # Infrastructure level (5 = Level V)
     population_units*: int      # Starting population in PU (840)
+    industrial_units*: int
 
   GameSetupConfig* = object
     ## Complete game setup configuration

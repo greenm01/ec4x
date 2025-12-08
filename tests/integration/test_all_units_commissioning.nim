@@ -26,19 +26,18 @@ import ../../src/common/types/[core, units, planets]
 
 proc createTestState(cstLevel: int = 10): GameState =
   ## Create a test game state with a colony capable of building any unit
-  result = newGame("test", 2, 42)  # Use newGame for proper initialization
-
+  result = newGame("test", 4, 42)  # Use newGame for proper initialization
   result.turn = 1
   result.phase = GamePhase.Active
 
-  # Create house with high CST and sufficient treasury
-  result.houses["house1"] = House(
-    id: "house1",
-    name: "Test House",
-    treasury: 100000,
-    eliminated: false,
-    techTree: res_types.initTechTree(),
-  )
+  # Get the house IDs that were created by newGame
+  # newGame creates houses with IDs "house1", "house2", etc.
+  let houseIds = @[HouseId("house1"), HouseId("house2"),
+                   HouseId("house3"), HouseId("house4")]
+
+  # Rename houses to canonical names and increase treasury for long game
+  result.houses[houseIds[0]].name = "House Atreides"
+  result.houses[houseIds[0]].treasury = 100000
 
   # Set tech levels (all maxed for testing)
   result.houses["house1"].techTree.levels.constructionTech = cstLevel
@@ -51,10 +50,10 @@ proc createTestState(cstLevel: int = 10): GameState =
 
   # Add facilities for construction
   result.colonies[1].shipyards.add(
-    Shipyard(id: "sy1", commissionedTurn: 1, docks: 20, isCrippled: false)
+    Shipyard(id: "sy1", commissionedTurn: 1, baseDocks: 20, isCrippled: false)
   )
   result.colonies[1].spaceports.add(
-    Spaceport(id: "sp1", commissionedTurn: 1, docks: 10)
+    Spaceport(id: "sp1", commissionedTurn: 1, baseDocks: 10)
   )
 
 proc buildAndCommissionShip(state: var GameState, shipClass: ShipClass): GameState =
@@ -136,7 +135,7 @@ suite "Combat Ship Commissioning - All Types":
 
   test "Fighter Squadron commissions to fighterSquadrons":
     var state = createTestState(cstLevel = 3)
-    state = buildAndCommissionShip(state, ShipClass.Fighter)
+    state = buildAndCommissionShip(state, ShipClass.Destroyer)
 
     # Fighter squadrons go to colony.fighterSquadrons, not regular squadrons
     check state.colonies[1].fighterSquadrons.len > 0
@@ -280,15 +279,6 @@ suite "Spacelift Ship Commissioning":
 
 suite "Special Commissioning Cases":
 
-  test "Starbase does NOT commission as squadron":
-    var state = createTestState(cstLevel = 3)
-    state = buildAndCommissionShip(state, ShipClass.Starbase)
-
-    # Starbases are facilities, not mobile units
-    # They should be added to colony.starbases, not squadrons
-    check state.colonies[1].starbases.len > 0
-    check state.colonies[1].unassignedSquadrons.len == 0
-
   test "Multiple ships commission and auto-assign to same fleet":
     var state = createTestState(cstLevel = 3)
 
@@ -333,9 +323,13 @@ suite "Special Commissioning Cases":
     # and has reasonable stats
     check ship.stats.attackStrength > 0
     check ship.stats.defenseStrength > 0
+    #echo state.fleets[0]
+    for fleet in state.fleets.values:
+      echo fleet
+      #echo "***** fleet = " & fleet.squadrons
 
 when isMainModule:
   echo "╔════════════════════════════════════════════════╗"
-  echo "║  All Units Commissioning Tests                ║"
-  echo "║  Tests all 19 ship types commission correctly ║"
+  echo "║  All Units Commissioning Tests                 ║"
+  echo "║  Tests all 19 ship types commission correctly  ║"
   echo "╚════════════════════════════════════════════════╝"

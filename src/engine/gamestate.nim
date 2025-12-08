@@ -62,7 +62,8 @@ import std/[tables, options, strutils, math]
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, starmap, squadron
 import order_types  # Fleet order types (avoid circular dependency)
-import config/[prestige_config, military_config, tech_config, game_setup_config, facilities_config]
+import config/[prestige_config, military_config, tech_config, game_setup_config]
+import config/[facilities_config, prestige_multiplier]
 import diplomacy/types as dip_types
 import diplomacy/proposals as dip_proposals
 import espionage/types as esp_types
@@ -386,6 +387,9 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
   var starMap = newStarMap(playerCount, seed)
   starMap.populate()
 
+  # Initialize the prestige multiplier
+  initializePrestigeMultiplier(starmap.systems.len, playerCount)
+
   # Create game state with populated map
   result = GameState(
     gameId: gameId,
@@ -529,7 +533,7 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     populationTransferUnits: homeworldCfg.population_units,  # PTU for Space Guild transfers
     infrastructure: homeworldCfg.colony_level,  # Infrastructure level from config
     industrial: econ_types.IndustrialUnits(
-      units: homeworldCfg.population_units div 2,  # Start at 50% of PU (420 IU for 840 PU homeworld)
+      units: homeworldCfg.industrial_units,  # IU for industry
       investmentCost: econ_types.BASE_IU_COST
     ),
     planetClass: planetClass,  # Planet class from config
