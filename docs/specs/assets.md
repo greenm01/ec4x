@@ -140,7 +140,7 @@ Drydocks are repair-only facilities and cannot construct ships. They are fixed i
 
 #### 2.3.2.4 Environmental Transformation And Colonization (ETAC)
 
-ETACs plant a seed by establishing colonies on uninhabited planets. They may be reused but require PTU reload.
+ETACs plant a seed by establishing colonies on uninhabited planets. They may be reused but require PTU reload. Empty ETACs are auto-reloaded when positioned at House owned colonies.
 
 **Carry Limit (CL)**: 1 PTU at STL I, scales with Strategic Lift (STL) technology  
 **Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
@@ -432,13 +432,11 @@ You can rebuild shields within one turn if destroyed.
 
 **Ground Batteries**:
 
-Ground Batteries are static defense units positioned on your planet's surface. They serve as a deterrent against enemy fleets and support planetary defense during bombardment and invasion. They lob kinetic shells into orbit—technology and research don't upgrade them.
+Ground Batteries are static defense units positioned on your planet's surface. They serve as a deterrent against enemy fleets and support planetary defense during bombardment and invasion. They lob kinetic shells into orbit—technology and are low-tech cannons that are not upgraded by tech.
 
 **Construction Time**: 1 turn  
 **Quantity Limit**: No limit—you can build as many as you can afford  
 **Technology**: Static stats, no WEP scaling
-
-Ground Batteries are the only units that construct in a single turn.
 
 For bombardment mechanics and how shields/batteries interact, see [Section 7.5](operations.md#75-planetary-bombardment).
 
