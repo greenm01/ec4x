@@ -18,6 +18,7 @@ import ../diplomacy/[types as dip_types, engine as dip_engine]
 import ../intelligence/diplomatic_intel
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony, resolveMovementOrder
+import ./event_factory/init as event_factory
 import ../intelligence/[types as intel_types, combat_intel]
 
 proc getTargetBucket(shipClass: ShipClass): TargetBucket =
@@ -749,21 +750,19 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
             # Execute the seek home movement immediately (fleet retreats in same turn)
             resolveMovementOrder(state, houseId, seekHomeOrder, events)
 
-            events.add(GameEvent(
-              eventType: GameEventType.Battle,
-              houseId: houseId,
-              description: "Fleet " & fleetId & " retreated from combat - seeking nearest friendly system " & $safeDestination.get(),
-              systemId: some(systemId)
+            events.add(event_factory.battle(
+              houseId,
+              systemId,
+              "Fleet " & fleetId & " retreated from combat - seeking nearest friendly system " & $safeDestination.get()
             ))
           else:
             logWarn("Combat", "Fleet retreated but has no safe destination - holding position",
                     "fleetId=", $fleetId, " houseId=", $houseId)
             # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
-            events.add(GameEvent(
-              eventType: GameEventType.Battle,
-              houseId: houseId,
-              description: "Fleet " & fleetId & " retreated from combat but has no friendly colonies - holding position",
-              systemId: some(systemId)
+            events.add(event_factory.battle(
+              houseId,
+              systemId,
+              "Fleet " & fleetId & " retreated from combat but has no friendly colonies - holding position"
             ))
 
   # 6. Determine attacker and defender houses for reporting
@@ -876,11 +875,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
   # Generate event
   let victorName = if victor.isSome: state.houses[victor.get()].name else: "No one"
-  events.add(GameEvent(
-    eventType: GameEventType.Battle,
-    houseId: if victor.isSome: victor.get() else: "",
-    description: "Battle at " & $systemId & ". Victor: " & victorName,
-    systemId: some(systemId)
+  events.add(event_factory.battle(
+    if victor.isSome: victor.get() else: HouseId(""),
+    systemId,
+    "Battle at " & $systemId & ". Victor: " & victorName
   ))
 
   logCombat("Battle complete", "victor=", victorName)
@@ -1051,11 +1049,11 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   if shipsDestroyedInDock:
     eventDesc &= " (ship under construction destroyed)"
 
-  events.add(GameEvent(
-    eventType: GameEventType.Bombardment,
-    houseId: houseId,
-    description: eventDesc,
-    systemId: some(targetId)
+  # Note: Bombardment doesn't have a factory function yet, using battle as fallback
+  events.add(event_factory.battle(
+    houseId,
+    targetId,
+    eventDesc
   ))
 
 # ============================================================================
@@ -1264,11 +1262,10 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
               "house=", $colony.owner, " prestige=", $defenderPenalty)
 
     # Generate event
-    events.add(GameEvent(
-      eventType: GameEventType.SystemCaptured,
-      houseId: houseId,
-      description: houseId & " captured colony at " & $targetId & " from " & colony.owner,
-      systemId: some(targetId)
+    events.add(event_factory.systemCaptured(
+      houseId,
+      targetId,
+      colony.owner
     ))
   else:
     # Invasion failed - ALL attacking marines destroyed (no retreat from ground combat)
@@ -1296,11 +1293,10 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     state.fleets[order.fleetId] = updatedFleet
 
     # Generate event
-    events.add(GameEvent(
-      eventType: GameEventType.InvasionRepelled,
-      houseId: colony.owner,
-      description: colony.owner & " repelled " & houseId & " invasion at " & $targetId & " - all attacking marines destroyed",
-      systemId: some(targetId)
+    events.add(event_factory.invasionRepelled(
+      colony.owner,
+      targetId,
+      houseId
     ))
 
   state.colonies[targetId] = updatedColony
@@ -1499,11 +1495,11 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
               "house=", $colony.owner, " prestige=", $defenderPenalty)
 
     # Generate event
-    events.add(GameEvent(
-      eventType: GameEventType.ColonyCaptured,
-      houseId: houseId,
-      description: houseId & " blitzed colony at " & $targetId & " from " & colony.owner & " (assets seized)",
-      systemId: some(targetId)
+    # Note: ColonyCaptured doesn't have a factory function, using systemCaptured
+    events.add(event_factory.systemCaptured(
+      houseId,
+      targetId,
+      colony.owner
     ))
   else:
     # Blitz failed - ALL attacking marines destroyed (no retreat from ground combat)
@@ -1535,11 +1531,10 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     state.fleets[order.fleetId] = updatedFleet
 
     # Generate event
-    events.add(GameEvent(
-      eventType: GameEventType.InvasionRepelled,
-      houseId: colony.owner,
-      description: colony.owner & " repelled " & houseId & " blitz at " & $targetId & " - all attacking marines destroyed",
-      systemId: some(targetId)
+    events.add(event_factory.invasionRepelled(
+      colony.owner,
+      targetId,
+      houseId
     ))
 
   state.colonies[targetId] = updatedColony

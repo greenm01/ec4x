@@ -36,7 +36,7 @@
 
 import std/[tables, options, strformat, sequtils]
 import ../../common/types/[core, units]
-import ../gamestate, ../fleet, ../squadron, ../logger, ../orders, ../order_types
+import ../gamestate, ../fleet, ../squadron, ../spacelift, ../logger, ../orders, ../order_types
 import ../economy/repair_queue
 import ../economy/capacity/carrier_hangar
 import ./types as res_types
@@ -141,6 +141,107 @@ proc autoLoadFightersToCarriers*(state: var GameState, colony: var Colony,
     logInfo(LogCategory.lcFleet, &"Auto-loaded {loadedCount} fighters at {systemId}")
   else:
     logDebug(LogCategory.lcFleet, &"No fighters loaded at {systemId} (carriers at capacity)")
+
+proc autoLoadColonistsToETACs*(
+  state: var GameState, colony: var Colony, systemId: SystemId,
+  orders: Table[HouseId, OrderPacket]
+) =
+  ## Auto-load colonists (PTUs) onto empty ETACs stationed at colony
+  ## Always enabled (no toggle) - essential for colonization gameplay
+  ##
+  ## **Behavior:**
+  ## 1. Find Active ETACs at colony with empty cargo
+  ## 2. Only consider stationary ETACs (no movement orders)
+  ## 3. Load 1 PTU per ETAC (ETAC capacity = 1 PTU)
+  ## 4. Extract PTU from colony population (with extraction cost)
+  ## 5. Skip if colony population <= 1 (preserve minimum population)
+  ##
+  ## **Extraction Cost:**
+  ## - Cost = 1.0 / (1.0 + 0.00657 * population)
+  ## - Higher population = lower extraction cost
+  ## - Minimum 1 PU retained at colony
+  ##
+  ## **Edge Cases:**
+  ## - Colony pop <= 1: Skip loading (preserve population)
+  ## - ETAC already has cargo: Skip (already loaded)
+  ## - ETAC has movement orders: Skip (don't load moving ETACs)
+  ## - No ETACs: No-op
+  ##
+  ## **Called From:** processColonyAutomation() after fighter loading
+  ##
+  ## **Design Note:** This eliminates the need for manual PTU loading
+  ## and makes colonization gameplay smooth. ETACs stationed at colonies
+  ## automatically prepare for colonization missions.
+
+  if colony.population <= 1:
+    # Don't extract last population unit
+    return
+
+  # Find Active stationary ETACs at colony with empty cargo
+  var loadedCount = 0
+
+  for fleetId, fleet in state.fleets.mpairs:
+    if fleet.owner != colony.owner or fleet.location != systemId:
+      continue
+
+    if fleet.status != FleetStatus.Active:
+      continue
+
+    # Check if fleet is stationary (no movement orders)
+    var isStationary = true
+    if colony.owner in orders:
+      for order in orders[colony.owner].fleetOrders:
+        if order.fleetId == fleetId:
+          # Moving orders: skip this fleet
+          if order.orderType in [FleetOrderType.Move, FleetOrderType.Colonize,
+                                 FleetOrderType.Patrol, FleetOrderType.SeekHome]:
+            isStationary = false
+          break
+
+    if not isStationary:
+      continue
+
+    # Check standing orders (persistent movement behaviors)
+    if fleetId in state.standingOrders:
+      let standingOrder = state.standingOrders[fleetId]
+      # Movement-based standing orders: skip this fleet
+      if standingOrder.orderType in [StandingOrderType.PatrolRoute,
+                                     StandingOrderType.AutoColonize,
+                                     StandingOrderType.AutoReinforce,
+                                     StandingOrderType.AutoRepair,
+                                     StandingOrderType.BlockadeTarget]:
+        continue
+
+    # Load colonists onto empty ETACs
+    for ship in fleet.spaceLiftShips.mitems:
+      if ship.shipClass != ShipClass.ETAC:
+        continue
+
+      if ship.cargo.cargoType != CargoType.None:
+        continue  # Skip already-loaded ETACs
+
+      if colony.population <= 1:
+        break  # Stop loading if population runs out
+
+      # Extract PTU from colony
+      let extractionCost =
+        1.0 / (1.0 + 0.00657 * colony.population.float)
+      let newPopulation = colony.population.float - extractionCost
+      colony.population = max(1, newPopulation.int)
+
+      # Load PTU onto ETAC
+      ship.cargo.cargoType = CargoType.Colonists
+      ship.cargo.quantity = 1
+
+      loadedCount += 1
+
+      logDebug(LogCategory.lcEconomy,
+        &"Loaded 1 PTU onto {ship.id} at {systemId} " &
+        &"(extraction: {extractionCost:.2f} PU, remaining: {colony.population})")
+
+  if loadedCount > 0:
+    logInfo(LogCategory.lcEconomy,
+      &"Auto-loaded {loadedCount} PTUs to ETACs at {systemId}")
 
 proc autoSubmitRepairs*(state: var GameState, systemId: SystemId) =
   ## Automatically submit repair requests for crippled ships at colony
@@ -291,13 +392,14 @@ proc processColonyAutomation*(state: var GameState, orders: Table[HouseId, Order
   ##
   ## **Automation Steps:**
   ## 1. Auto-load fighters to carriers (per-colony toggle)
-  ## 2. Auto-repair submission (per-colony toggle)
-  ## 3. Auto-squadron balancing (always enabled)
+  ## 2. Auto-load colonists to ETACs (always enabled)
+  ## 3. Auto-repair submission (per-colony toggle)
+  ## 4. Auto-squadron balancing (always enabled)
   ##
   ## **Batch Processing:**
   ## - Processes all colonies in single pass
   ## - Efficient: single iteration over colonies
-  ## - Clear ordering: fighters → repairs → squadrons
+  ## - Clear ordering: fighters → ETACs → repairs → squadrons
   ##
   ## **Called From:** resolveCommandPhase() in resolve.nim
 
@@ -308,12 +410,16 @@ proc processColonyAutomation*(state: var GameState, orders: Table[HouseId, Order
     if colony.autoLoadingEnabled and colony.fighterSquadrons.len > 0:
       autoLoadFightersToCarriers(state, colony, systemId, orders)
 
-  # Step 2: Auto-repair submission (respects per-colony toggle)
+  # Step 2: Auto-load colonists to ETACs (always enabled)
+  for systemId, colony in state.colonies.mpairs:
+    autoLoadColonistsToETACs(state, colony, systemId, orders)
+
+  # Step 3: Auto-repair submission (respects per-colony toggle)
   for systemId, colony in state.colonies:
     if colony.autoRepairEnabled:
       autoSubmitRepairs(state, systemId)
 
-  # Step 3: Auto-squadron balancing (always enabled)
+  # Step 4: Auto-squadron balancing (always enabled)
   for systemId, colony in state.colonies.mpairs:
     if colony.unassignedSquadrons.len > 0:
       autoBalanceSquadronsToFleets(state, colony, systemId, orders)

@@ -47,6 +47,7 @@ import ../../intelligence/[
 ]
 import ../../config/[espionage_config, construction_config, gameplay_config]
 import ../../resolution/[fleet_orders, automation, types as res_game_types]
+import ../../resolution/event_factory/init as event_factory
 import ../../commands/executor as cmd_executor  # For salvage order execution
 import ../../prestige/[types as prestige_types, events as prestige_events, application as prestige_app]
 
@@ -235,11 +236,11 @@ proc resolveIncomePhase*(
       let colonyId = SystemId(parseInt(action.entityId))
       if colonyId in state.colonies:
         let houseId = state.colonies[colonyId].owner
-        events.add(res_game_types.GameEvent(
-          eventType: res_game_types.GameEventType.UnitDisbanded,
-          houseId: houseId,
-          description: action.description,
-          systemId: some(colonyId)
+        events.add(event_factory.unitDisbanded(
+          houseId,
+          "Fighter Squadron",
+          action.description,
+          some(colonyId)
         ))
 
   # Check planet-breaker capacity violations (assets.md:2.4.8)
@@ -251,11 +252,11 @@ proc resolveIncomePhase*(
   for action in pbEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
-      events.add(res_game_types.GameEvent(
-        eventType: res_game_types.GameEventType.UnitDisbanded,
-        houseId: houseId,
-        description: action.description,
-        systemId: none(SystemId)
+      events.add(event_factory.unitDisbanded(
+        houseId,
+        "Planet-Breaker",
+        action.description,
+        none(SystemId)
       ))
 
   # Check capital squadron capacity violations (reference.md Table 10.5)
@@ -267,11 +268,11 @@ proc resolveIncomePhase*(
   for action in capitalEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
-      events.add(res_game_types.GameEvent(
-        eventType: res_game_types.GameEventType.UnitDisbanded,
-        houseId: houseId,
-        description: action.description,
-        systemId: none(SystemId)
+      events.add(event_factory.unitDisbanded(
+        houseId,
+        "Capital Squadron",
+        action.description,
+        none(SystemId)
       ))
 
   # Check total squadron capacity (prevents escort spam)
@@ -284,11 +285,11 @@ proc resolveIncomePhase*(
   for action in totalEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
-      events.add(res_game_types.GameEvent(
-        eventType: res_game_types.GameEventType.UnitDisbanded,
-        houseId: houseId,
-        description: action.description,
-        systemId: none(SystemId)
+      events.add(event_factory.unitDisbanded(
+        houseId,
+        "Squadron",
+        action.description,
+        none(SystemId)
       ))
 
   logDebug(LogCategory.lcEconomy,
@@ -413,11 +414,9 @@ proc resolveIncomePhase*(
         else:
           "no marines for reconquest"
 
-        events.add(GameEvent(
-          eventType: GameEventType.HouseEliminated,
-          houseId: houseId,
-          description: house.name & " has been eliminated - " & reason & "!",
-          systemId: none(SystemId)
+        events.add(event_factory.houseEliminated(
+          houseId,
+          HouseId("unknown")  # No specific eliminator for standard elimination
         ))
         logInfo(LogCategory.lcGeneral,
           &"{house.name} eliminated! ({reason})")
@@ -441,11 +440,9 @@ proc resolveIncomePhase*(
         houseToUpdate.eliminated = true
         houseToUpdate.status = HouseStatus.DefensiveCollapse
         eliminatedCount += 1
-        events.add(GameEvent(
-          eventType: GameEventType.HouseEliminated,
-          houseId: houseId,
-          description: house.name & " has collapsed from negative prestige!",
-          systemId: none(SystemId)
+        events.add(event_factory.houseEliminated(
+          houseId,
+          HouseId("defensive_collapse")  # Self-elimination from negative prestige
         ))
         logInfo(LogCategory.lcGeneral,
           &"{house.name} eliminated by defensive collapse!")

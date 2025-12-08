@@ -7,12 +7,17 @@ import ../gamestate, ../fleet
 import detection
 import types as intel_types  # For DetectionEventType, ScoutLossEvent
 import ../diplomacy/engine as dip_engine  # For getDiplomaticState
+import ../resolution/event_factory/intelligence as intelligence_events
+import ../resolution/types as res_types
 
 # =============================================================================
 # Spy Scout Detection Resolution
 # =============================================================================
 
-proc resolveSpyDetection*(state: var GameState): seq[string] =
+proc resolveSpyDetection*(
+  state: var GameState,
+  events: var seq[res_types.GameEvent]
+): seq[string] =
   ## Resolve detection rolls for all active spy scouts
   ## Per assets.md:2.4.2: "For every turn that a spy Scout operates in
   ## unfriendly system occupied by rival ELI, the rival will roll on
@@ -75,6 +80,14 @@ proc resolveSpyDetection*(state: var GameState): seq[string] =
             )
             state.scoutLossEvents.add(event)
 
+            # Create GameEvent for scout detection
+            events.add(intelligence_events.scoutDetected(
+              spy.owner,
+              fleet.owner,
+              spy.location,
+              "Spy Scout"
+            ))
+
             result.add("Spy scout " & spyId & " detected by " & $fleet.owner &
                       " (Roll: " & $detectionResult.roll & " > " &
                       $detectionResult.threshold & ", ELI: " &
@@ -125,6 +138,14 @@ proc resolveSpyDetection*(state: var GameState): seq[string] =
             )
             state.scoutLossEvents.add(event)
 
+            # Create GameEvent for scout detection
+            events.add(intelligence_events.scoutDetected(
+              spy.owner,
+              otherSpy.owner,
+              spy.location,
+              "Spy Scout"
+            ))
+
             result.add("Spy scout " & spyId & " detected by rival spy scout " &
                       otherSpyId & " (Roll: " & $detectionResult.roll & " > " &
                       $detectionResult.threshold & ", ELI: " &
@@ -170,6 +191,14 @@ proc resolveSpyDetection*(state: var GameState): seq[string] =
                 turn: state.turn
               )
               state.scoutLossEvents.add(event)
+
+              # Create GameEvent for scout detection
+              events.add(intelligence_events.scoutDetected(
+                spy.owner,
+                colony.owner,
+                spy.location,
+                "Spy Scout"
+              ))
 
               result.add("Spy scout " & spyId & " detected by starbase at " &
                         $system & " (Roll: " & $detectionResult.roll & " > " &

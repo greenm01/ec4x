@@ -44,6 +44,7 @@ import ../../common/types/[core, units]
 import ../gamestate, ../fleet, ../squadron, ../spacelift, ../logger
 import ../economy/types as econ_types
 import ./types as res_types
+import ./event_factory/init as event_factory
 
 # Import config access
 import ../config/ground_units_config
@@ -157,11 +158,10 @@ proc commissionCompletedProjects*(
         saveColony(completed.colonyId, colony)
 
         # Generate event
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.ShipCommissioned,
-          houseId: colony.owner,
-          description: "Fighter Squadron commissioned at " & $completed.colonyId,
-          systemId: some(completed.colonyId)
+        events.add(event_factory.shipCommissioned(
+          colony.owner,
+          ShipClass.Fighter,
+          completed.colonyId
         ))
 
     # Special handling for starbases
@@ -187,11 +187,10 @@ proc commissionCompletedProjects*(
           &"Growth bonus: {int(getStarbaseGrowthBonus(colony) * 100.0)}%)")
 
         # Generate event
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.ShipCommissioned,
-          houseId: colony.owner,
-          description: "Starbase commissioned at " & $completed.colonyId,
-          systemId: some(completed.colonyId)
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          "Starbase",
+          completed.colonyId
         ))
 
     # Special handling for spaceports
@@ -221,11 +220,10 @@ proc commissionCompletedProjects*(
           &"Commissioned spaceport {spaceport.id} at {completed.colonyId} " &
           &"(Total construction docks: {getTotalConstructionDocks(colony)})")
 
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.BuildingCompleted,
-          houseId: colony.owner,
-          description: "Spaceport commissioned at " & $completed.colonyId,
-          systemId: some(completed.colonyId)
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          "Spaceport",
+          completed.colonyId
         ))
 
     # Special handling for shipyards
@@ -262,11 +260,10 @@ proc commissionCompletedProjects*(
           &"Commissioned shipyard {shipyard.id} at {completed.colonyId} " &
           &"(Total construction docks: {getTotalConstructionDocks(colony)})")
 
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.BuildingCompleted,
-          houseId: colony.owner,
-          description: "Shipyard commissioned at " & $completed.colonyId,
-          systemId: some(completed.colonyId)
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          "Shipyard",
+          completed.colonyId
         ))
 
     # Special handling for drydocks
@@ -304,11 +301,10 @@ proc commissionCompletedProjects*(
           &"Commissioned drydock {drydock.id} at {completed.colonyId} " &
           &"(Total repair docks: {getTotalRepairDocks(colony)})")
 
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.BuildingCompleted,
-          houseId: colony.owner,
-          description: "Drydock commissioned at " & $completed.colonyId,
-          systemId: some(completed.colonyId)
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          "Drydock",
+          completed.colonyId
         ))
 
     # Special handling for ground batteries
@@ -325,11 +321,10 @@ proc commissionCompletedProjects*(
           &"Deployed ground battery at {completed.colonyId} " &
           &"(Total ground defenses: {getTotalGroundDefense(colony)})")
 
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.BuildingCompleted,
-          houseId: colony.owner,
-          description: "Ground battery deployed at " & $completed.colonyId,
-          systemId: some(completed.colonyId)
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          "Ground Battery",
+          completed.colonyId
         ))
 
     # Special handling for planetary shields (replacement, not upgrade)
@@ -348,11 +343,10 @@ proc commissionCompletedProjects*(
           &"Deployed planetary shield SLD{colony.planetaryShieldLevel} at {completed.colonyId} " &
           &"(Block chance: {int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0)}%)")
 
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.BuildingCompleted,
-          houseId: colony.owner,
-          description: "Planetary Shield SLD" & $colony.planetaryShieldLevel & " deployed at " & $completed.colonyId,
-          systemId: some(completed.colonyId)
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          &"Planetary Shield SLD{colony.planetaryShieldLevel}",
+          completed.colonyId
         ))
 
     # Special handling for Marines (MD)
@@ -383,11 +377,11 @@ proc commissionCompletedProjects*(
             &"Recruited Marine Division at {completed.colonyId} " &
             &"(Total Marines: {colony.marines} MD, {colony.souls} souls remaining)")
 
-          events.add(res_types.GameEvent(
-            eventType: res_types.GameEventType.UnitRecruited,
-            houseId: colony.owner,
-            description: "Marine Division recruited at " & $completed.colonyId & " (total: " & $colony.marines & " MD)",
-            systemId: some(completed.colonyId)
+          events.add(event_factory.unitRecruited(
+            colony.owner,
+            "Marine Division",
+            completed.colonyId,
+            1
           ))
 
     # Special handling for Armies (AA)
@@ -418,11 +412,11 @@ proc commissionCompletedProjects*(
             &"Mustered Army Division at {completed.colonyId} " &
             &"(Total Armies: {colony.armies} AA, {colony.souls} souls remaining)")
 
-          events.add(res_types.GameEvent(
-            eventType: res_types.GameEventType.UnitRecruited,
-            houseId: colony.owner,
-            description: "Army Division mustered at " & $completed.colonyId & " (total: " & $colony.armies & " AA)",
-            systemId: some(completed.colonyId)
+          events.add(event_factory.unitRecruited(
+            colony.owner,
+            "Army Division",
+            completed.colonyId,
+            1
           ))
 
     # Handle ship construction
@@ -446,11 +440,10 @@ proc commissionCompletedProjects*(
             saveColony(completed.colonyId, colony)
             logInfo(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {completed.colonyId}")
 
-            events.add(res_types.GameEvent(
-              eventType: res_types.GameEventType.ShipCommissioned,
-              houseId: owner,
-              description: "Fighter squadron commissioned at " & $completed.colonyId,
-              systemId: some(completed.colonyId)
+            events.add(event_factory.shipCommissioned(
+              owner,
+              ShipClass.Fighter,
+              completed.colonyId
             ))
             continue
 
@@ -596,11 +589,10 @@ proc commissionCompletedProjects*(
                     &"(total: {state.houses[owner].planetBreakerCount})")
 
           # Generate event
-          events.add(res_types.GameEvent(
-            eventType: res_types.GameEventType.ShipCommissioned,
-            houseId: owner,
-            description: $shipClass & " commissioned at " & $completed.colonyId,
-            systemId: some(completed.colonyId)
+          events.add(event_factory.shipCommissioned(
+            owner,
+            shipClass,
+            completed.colonyId
           ))
 
         except ValueError:

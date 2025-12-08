@@ -17,6 +17,7 @@ import ../state_helpers
 import ../starmap
 import ../colonization/engine as col_engine
 import types as res_types
+import event_factory/init as event_factory
 import ../../common/types/core
 import ../../common/types/planets
 import ../prestige as prestige_types
@@ -180,11 +181,10 @@ proc establishColony(
             &"{state.houses[houseId].name} colonized {systemId} (+{prestigeEvent.amount} prestige)")
 
   # Generate ColonyEstablished event for diagnostics
-  events.add(res_types.GameEvent(
-    eventType: res_types.GameEventType.ColonyEstablished,
-    houseId: houseId,
-    description: "Established colony at system " & $systemId,
-    systemId: some(systemId)
+  events.add(event_factory.colonyEstablished(
+    houseId,
+    systemId,
+    result.prestigeAwarded
   ))
 
   result.success = true

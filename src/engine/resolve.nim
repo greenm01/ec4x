@@ -85,6 +85,7 @@ import diplomacy/[types as dip_types]
 import research/[types as res_types_research]
 import commands/[executor, spy_scout_orders]
 import intelligence/[spy_travel, spy_resolution]
+import intelligence/event_processor/init as event_processor
 import economy/repair_queue
 # Import resolution modules
 import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage, commissioning, automation, construction]
@@ -247,6 +248,15 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       raise newException(ValueError, "Colony " & $systemId & " has " & $colony.unassignedSpaceLiftShips.len & " unassigned spacelift ships at turn end")
 
   logDebug("Resolve", "Turn validation passed - all commissioned units assigned", "turn=", $result.newState.turn)
+
+  # Process events for intelligence generation (fog-of-war filtered)
+  # Converts GameEvents into per-house intelligence reports
+  event_processor.processEventsForIntelligence(
+    result.newState,
+    result.events,
+    result.newState.turn
+  )
+  logInfo(LogCategory.lcOrders, &"Intelligence event processing complete ({result.events.len} events)")
 
   # Advance to next turn
   result.newState.turn += 1

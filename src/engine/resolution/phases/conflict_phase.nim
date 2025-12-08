@@ -49,7 +49,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Spy scouts that go undetected remain hidden and don't participate in combat
   # Per assets.md:2.4.2 - detection checks occur each turn for active spy scouts
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a] Spy scout detection (pre-combat prep)...")
-  let detectionResults = spy_resolution.resolveSpyDetection(state)
+  let detectionResults = spy_resolution.resolveSpyDetection(state, events)
   for msg in detectionResults:
     logInfo("Intelligence", "Spy detection", msg)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6a] Completed ({detectionResults.len} detection checks)")
@@ -176,7 +176,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # ===================================================================
   # Process OrderPacket.espionageAction (EBP-based espionage)
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Space Guild espionage (EBP-based covert ops)...")
-  simultaneous_espionage.processEspionageActions(state, orders, rng)
+  simultaneous_espionage.processEspionageActions(state, orders, rng, events)
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Completed EBP-based espionage processing")
 
   # ===================================================================

@@ -56,6 +56,7 @@ import ../config/[espionage_config, population_config, ground_units_config, game
 import ../colonization/engine as col_engine
 import ./types  # Common resolution types
 import ./fleet_orders  # For findClosestOwnedColony
+import ./event_factory/init as event_factory
 import ../prestige as prestige_types
 import ../prestige/application as prestige_app
 import ./phases/income_phase  # NEW implementation with capacity enforcement
@@ -166,12 +167,12 @@ proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: 
       &"{house.name} initiated terraforming of system-{order.colonySystem} " &
       &"to {className} (class {targetClass}) - Cost: {ppCost} PP, Duration: {turnsRequired} turns")
 
-    events.add(GameEvent(
-      eventType: GameEventType.TerraformComplete,
-      houseId: packet.houseId,
-      description: house.name & " initiated terraforming of colony " & $order.colonySystem &
-                  " to " & className & " (cost: " & $ppCost & " PP, duration: " & $turnsRequired & " turns)",
-      systemId: some(order.colonySystem)
+    # Note: This was using TerraformComplete incorrectly for "initiated" - should be constructionStarted
+    events.add(event_factory.constructionStarted(
+      packet.houseId,
+      &"Terraforming to {className}",
+      order.colonySystem,
+      ppCost
     ))
 
 proc hasVisibilityOn(state: GameState, systemId: SystemId, houseId: HouseId): bool =
@@ -386,11 +387,13 @@ proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, even
       &"Space Guild transporting {transfer.ptuAmount} PTU ({soulsToTransfer} souls) from " &
       &"{transfer.sourceColony} to {transfer.destColony} (arrives turn {arrivalTurn}, cost: {cost} PP)")
 
-    events.add(GameEvent(
-      eventType: GameEventType.PopulationTransfer,
-      houseId: packet.houseId,
-      description: "Space Guild transporting " & $transfer.ptuAmount & " PTU from " & $transfer.sourceColony & " to " & $transfer.destColony & " (ETA: turn " & $arrivalTurn & ", cost: " & $cost & " PP)",
-      systemId: some(transfer.sourceColony)
+    events.add(event_factory.populationTransfer(
+      packet.houseId,
+      transfer.ptuAmount,
+      transfer.sourceColony,
+      transfer.destColony,
+      true,
+      &"Space Guild transport initiated (ETA: turn {arrivalTurn}, cost: {cost} PP)"
     ))
 
 proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]) =
@@ -413,11 +416,13 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
       # Destination colony no longer exists
       logWarn(LogCategory.lcEconomy, &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - destination colony destroyed")
       arrivedTransfers.add(idx)
-      events.add(GameEvent(
-        eventType: GameEventType.PopulationTransfer,
-        houseId: transfer.houseId,
-        description: $transfer.ptuAmount & " PTU lost - destination " & $transfer.destSystem & " destroyed",
-        systemId: some(transfer.destSystem)
+      events.add(event_factory.populationTransfer(
+        transfer.houseId,
+        transfer.ptuAmount,
+        transfer.sourceSystem,
+        transfer.destSystem,
+        false,
+        "destination destroyed"
       ))
       continue
 
@@ -457,21 +462,25 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
         logWarn(LogCategory.lcEconomy,
           &"Transfer {transfer.id}: {transfer.ptuAmount} PTU redirected to {altSystemId} " &
           &"- original destination {transfer.destSystem} {alternativeReason}")
-        events.add(GameEvent(
-          eventType: GameEventType.PopulationTransfer,
-          houseId: transfer.houseId,
-          description: $transfer.ptuAmount & " PTU redirected from " & $transfer.destSystem & " (" & alternativeReason & ") to " & $altSystemId,
-          systemId: some(altSystemId)
+        events.add(event_factory.populationTransfer(
+          transfer.houseId,
+          transfer.ptuAmount,
+          transfer.sourceSystem,
+          altSystemId,
+          true,
+          &"redirected from {transfer.destSystem} ({alternativeReason})"
         ))
       else:
         # No owned colonies - colonists are lost
         logWarn(LogCategory.lcEconomy,
           &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - destination {alternativeReason}, no owned colonies available")
-        events.add(GameEvent(
-          eventType: GameEventType.PopulationTransfer,
-          houseId: transfer.houseId,
-          description: $transfer.ptuAmount & " PTU lost - " & $transfer.destSystem & " " & alternativeReason & ", no owned colonies for delivery",
-          systemId: some(transfer.destSystem)
+        events.add(event_factory.populationTransfer(
+          transfer.houseId,
+          transfer.ptuAmount,
+          transfer.sourceSystem,
+          transfer.destSystem,
+          false,
+          &"{alternativeReason}, no owned colonies for delivery"
         ))
 
       arrivedTransfers.add(idx)
@@ -484,11 +493,13 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
 
     logInfo(LogCategory.lcEconomy,
       &"Transfer {transfer.id}: {transfer.ptuAmount} PTU arrived at {transfer.destSystem} ({soulsToDeliver} souls)")
-    events.add(GameEvent(
-      eventType: GameEventType.PopulationTransfer,
-      houseId: transfer.houseId,
-      description: $transfer.ptuAmount & " PTU arrived at " & $transfer.destSystem & " from " & $transfer.sourceSystem,
-      systemId: some(transfer.destSystem)
+    events.add(event_factory.populationTransfer(
+      transfer.houseId,
+      transfer.ptuAmount,
+      transfer.sourceSystem,
+      transfer.destSystem,
+      true,
+      ""
     ))
 
     arrivedTransfers.add(idx)
@@ -532,12 +543,10 @@ proc processTerraformingProjects(state: var GameState, events: var seq[GameEvent
       logInfo(LogCategory.lcEconomy,
         &"{house.name} completed terraforming of {colonyId} to {className} (class {project.targetClass})")
 
-      events.add(GameEvent(
-        eventType: GameEventType.TerraformComplete,
-        houseId: houseId,
-        description: house.name & " completed terraforming colony " & $colonyId &
-                    " to " & className,
-        systemId: some(colonyId)
+      events.add(event_factory.terraformComplete(
+        houseId,
+        colonyId,
+        className
       ))
     else:
       logDebug(LogCategory.lcEconomy,

@@ -15,6 +15,7 @@ import ../diplomacy/[types as dip_types]
 import ../config/population_config
 import ../prestige
 import ./types  # Common resolution types
+import ./event_factory/init as event_factory
 import ../intelligence/generator
 import ../intelligence/types as intel_types
 
@@ -266,9 +267,11 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   let targetId = order.targetSystem.get()
   let startId = fleet.location
 
-  # Already at destination
+  # Already at destination - clear order (arrival complete)
   if startId == targetId:
-    logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} already at destination")
+    if not isSpyScout and order.fleetId in state.fleetOrders:
+      state.fleetOrders.del(order.fleetId)
+      logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination, order complete")
     return
 
   logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} moving from {startId} to {targetId}")
@@ -337,7 +340,13 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
     # Update fleet location
     fleet.location = newLocation
     state.fleets[order.fleetId] = fleet
-    logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
+
+    # Check if we've arrived at final destination - clear order if so (N+1 behavior)
+    if newLocation == targetId and order.fleetId in state.fleetOrders:
+      state.fleetOrders.del(order.fleetId)
+      logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination {targetId}, order complete")
+    else:
+      logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
 
   # Automatic intelligence gathering when arriving at system
   # ANY fleet presence reveals enemy colonies (passive reconnaissance)
@@ -493,17 +502,18 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   state.fleets[order.fleetId] = fleet
 
   # Apply prestige award
+  var prestigeAwarded = 0
   if result.prestigeEvent.isSome:
     let prestigeEvent = result.prestigeEvent.get()
+    prestigeAwarded = prestigeEvent.amount
     applyPrestigeEvent(state, houseId, prestigeEvent)
     logInfo(LogCategory.lcColonization, &"{state.houses[houseId].name} colonized system {targetId} (+{prestigeEvent.amount} prestige)")
 
   # Generate event
-  events.add(GameEvent(
-    eventType: GameEventType.ColonyEstablished,
-    houseId: houseId,
-    description: "Established colony at system " & $targetId,
-    systemId: some(targetId)
+  events.add(event_factory.colonyEstablished(
+    houseId,
+    targetId,
+    prestigeAwarded
   ))
 
 proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
@@ -564,11 +574,11 @@ proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: Fleet
   state.houses[houseId] = house
 
   # Generate event
-  events.add(GameEvent(
-    eventType: GameEventType.IntelGathered,
-    houseId: houseId,
-    description: &"Completed long-range scan of system {targetId}",
-    systemId: some(targetId)
+  events.add(event_factory.intelGathered(
+    houseId,
+    HouseId("neutral"),  # ViewWorld doesn't target a specific house
+    targetId,
+    "long-range planetary scan"
   ))
 
   # Order completes - fleet remains at system (player must issue new orders)

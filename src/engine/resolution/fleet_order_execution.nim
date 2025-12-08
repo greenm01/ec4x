@@ -14,6 +14,7 @@ import ../gamestate, ../orders, ../fleet, ../squadron, ../logger, ../order_types
 import ../diplomacy/[types as dip_types]
 import ../commands/[executor]
 import ./[types as res_types, fleet_orders, combat_resolution, simultaneous]
+import ./event_factory/init as event_factory
 
 type
   OrderCategoryFilter* = proc(orderType: FleetOrderType): bool
@@ -274,11 +275,18 @@ proc executeFleetOrdersFiltered*(
 
       # Add events from order execution
       for eventMsg in result.eventsGenerated:
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.Battle,
-          houseId: houseId,
-          description: eventMsg,
-          systemId: order.targetSystem
+        let systemId = if order.targetSystem.isSome:
+          order.targetSystem.get()
+        else:
+          # Fallback to fleet location if no target system
+          if actualOrder.fleetId in state.fleets:
+            state.fleets[actualOrder.fleetId].location
+          else:
+            SystemId(0)  # Fallback
+        events.add(event_factory.battle(
+          houseId,
+          systemId,
+          eventMsg
         ))
 
       # Handle combat orders that trigger battles

@@ -14,8 +14,11 @@ import ../squadron
 import ../espionage/engine as esp_engine
 import ../espionage/executor as esp_executor
 import ../espionage/types as esp_types
+import ../config/espionage_config
 import ../../common/types/core
 import ../prestige
+import ./event_factory/intelligence as intelligence_events
+import ./types as res_types
 
 proc collectEspionageIntents*(
   state: GameState,
@@ -171,7 +174,8 @@ proc wasEspionageHandled*(
 proc processEspionageActions*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
 ) =
   ## Process OrderPacket.espionageAction for all houses
   ## This handles EBP-based espionage actions (TechTheft, Assassination, etc.)
@@ -285,6 +289,74 @@ proc processEspionageActions*(
       for prestigeEvent in result.targetPrestigeEvents:
         applyPrestigeEvent(state, attempt.target, prestigeEvent)
 
+      # Create espionage event based on action type
+      case attempt.action
+      of esp_types.EspionageAction.SabotageLow:
+        if attempt.targetSystem.isSome:
+          events.add(intelligence_events.sabotageConducted(
+            attempt.attacker,
+            attempt.target,
+            attempt.targetSystem.get(),
+            result.iuDamage,
+            "Low"
+          ))
+      of esp_types.EspionageAction.SabotageHigh:
+        if attempt.targetSystem.isSome:
+          events.add(intelligence_events.sabotageConducted(
+            attempt.attacker,
+            attempt.target,
+            attempt.targetSystem.get(),
+            result.iuDamage,
+            "High"
+          ))
+      of esp_types.EspionageAction.TechTheft:
+        events.add(intelligence_events.techTheftExecuted(
+          attempt.attacker,
+          attempt.target,
+          result.srpStolen
+        ))
+      of esp_types.EspionageAction.Assassination:
+        events.add(intelligence_events.assassinationAttempted(
+          attempt.attacker,
+          attempt.target,
+          globalEspionageConfig.effects.assassination_srp_reduction
+        ))
+      of esp_types.EspionageAction.EconomicManipulation:
+        events.add(intelligence_events.economicManipulationExecuted(
+          attempt.attacker,
+          attempt.target,
+          globalEspionageConfig.effects.economic_ncv_reduction
+        ))
+      of esp_types.EspionageAction.CyberAttack:
+        if attempt.targetSystem.isSome:
+          events.add(intelligence_events.cyberAttackConducted(
+            attempt.attacker,
+            attempt.target,
+            attempt.targetSystem.get()
+          ))
+      of esp_types.EspionageAction.PsyopsCampaign:
+        events.add(intelligence_events.psyopsCampaignLaunched(
+          attempt.attacker,
+          attempt.target,
+          globalEspionageConfig.effects.psyops_tax_reduction
+        ))
+      of esp_types.EspionageAction.IntelligenceTheft:
+        events.add(intelligence_events.intelligenceTheftExecuted(
+          attempt.attacker,
+          attempt.target
+        ))
+      of esp_types.EspionageAction.PlantDisinformation:
+        events.add(intelligence_events.disinformationPlanted(
+          attempt.attacker,
+          attempt.target
+        ))
+      of esp_types.EspionageAction.CounterIntelSweep:
+        if attempt.targetSystem.isSome:
+          events.add(intelligence_events.counterIntelSweepExecuted(
+            attempt.attacker,
+            attempt.targetSystem.get()
+          ))
+
       # Apply ongoing effects
       if result.effect.isSome:
         state.ongoingEffects.add(result.effect.get())
@@ -303,3 +375,12 @@ proc processEspionageActions*(
       # Apply detection prestige penalties
       for prestigeEvent in result.attackerPrestigeEvents:
         applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
+
+      # Create detection event
+      if attempt.targetSystem.isSome:
+        events.add(intelligence_events.spyMissionDetected(
+          attempt.attacker,
+          attempt.target,
+          attempt.targetSystem.get(),
+          $attempt.action
+        ))

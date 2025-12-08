@@ -9,11 +9,13 @@
 
 import common/[hex, system]
 import engine/[ship, squadron, fleet, spacelift, starmap, gamestate, orders, resolve]
+import engine/resolution/event_factory/init as event_factory
 
 # Re-export all public types and procedures
 # Note: types are re-exported through their respective modules (gamestate, fleet, etc.)
 export hex, ship, squadron, spacelift, system, fleet, starmap
 export gamestate, orders, resolve
+export event_factory
 # Note: Combat system available via engine/combat/ submodules when needed
 
 # Version information

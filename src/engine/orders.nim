@@ -139,6 +139,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
   ## - Fleet ownership (prevents controlling enemy fleets)
   ## - Target validity (system exists, path exists)
   ## - Required capabilities (spacelift, combat, scout)
+  ## Creates GameEvent when orders are rejected
   result = ValidationResult(valid: true, error: "")
 
   # NEW: Check if this is actually a SpyScout "fleet"
@@ -340,6 +341,7 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
   ## - Fleet ownership (prevents controlling enemy fleets)
   ## - Target validity (systems exist, paths exist)
   ## - Colony ownership (prevents building at enemy colonies)
+  ## Creates GameEvents for rejected orders
   result = ValidationResult(valid: true, error: "")
 
   # Check house exists

@@ -144,8 +144,7 @@ proc executeMoveOrder(
   order: FleetOrder
 ): OrderExecutionResult =
   ## Order 01: Move to new system and hold position
-  ## Movement logic handled by resolveMovementOrder in resolve.nim
-  ## This proc marks the order as executed
+  ## Calls resolveMovementOrder to execute actual movement with pathfinding
 
   # Per economy.md:3.9 - Reserve and Mothballed fleets cannot move
   if fleet.status == FleetStatus.Reserve:
@@ -169,10 +168,15 @@ proc executeMoveOrder(
       eventsGenerated: @[]
     )
 
+  # Execute actual movement using centralized movement arbiter
+  # Events are handled by the calling context (fleet_order_execution.nim)
+  var events: seq[resolution_types.GameEvent] = @[]
+  fleet_orders.resolveMovementOrder(state, fleet.owner, order, events)
+
   result = OrderExecutionResult(
     success: true,
     message: "Fleet " & $fleet.id & " moving to " & $order.targetSystem.get(),
-    eventsGenerated: @["Fleet movement initiated"]
+    eventsGenerated: @[]
   )
 
 # =============================================================================

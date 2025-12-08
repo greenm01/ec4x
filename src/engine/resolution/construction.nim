@@ -28,6 +28,7 @@ import ../order_types
 import ../economy/[types as econ_types, projects, facility_queue]
 import ../economy/capacity/construction_docks as dock_capacity
 import ./types as res_types
+import ./event_factory/init as event_factory
 
 proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var seq[res_types.GameEvent]) =
   ## Process construction orders for a house with budget validation
@@ -181,11 +182,11 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
           &"Location: {queueLocation}, Treasury: {oldTreasury} → {house.treasury} PP)")
 
         # Generate event
-        events.add(res_types.GameEvent(
-          eventType: res_types.GameEventType.ConstructionStarted,
-          houseId: packet.houseId,
-          description: "Started " & projectDesc & " at system " & $order.colonySystem,
-          systemId: some(order.colonySystem)
+        events.add(event_factory.constructionStarted(
+          packet.houseId,
+          projectDesc,
+          order.colonySystem,
+          project.costTotal
         ))
       else:
         # Treasury insufficient (race condition: spent between validation and deduction)

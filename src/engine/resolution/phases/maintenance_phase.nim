@@ -61,6 +61,7 @@ import ../../config/[gameplay_config, population_config]
 import ../[types as res_types_common]
 import ../fleet_orders  # For findClosestOwnedColony
 import ../diplomatic_resolution
+import ../event_factory/init as event_factory
 import ../../prestige
 
 # Forward declaration for helper procs
@@ -92,12 +93,13 @@ proc resolvePopulationArrivals*(state: var GameState,
         &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - " &
         &"destination colony destroyed")
       arrivedTransfers.add(idx)
-      events.add(GameEvent(
-        eventType: GameEventType.PopulationTransfer,
-        houseId: transfer.houseId,
-        description: $transfer.ptuAmount & " PTU lost - destination " &
-                    $transfer.destSystem & " destroyed",
-        systemId: some(transfer.destSystem)
+      events.add(event_factory.populationTransfer(
+        transfer.houseId,
+        transfer.ptuAmount,
+        transfer.sourceSystem,
+        transfer.destSystem,
+        false,
+        "destination destroyed"
       ))
       continue
 
@@ -139,26 +141,26 @@ proc resolvePopulationArrivals*(state: var GameState,
           &"Transfer {transfer.id}: {transfer.ptuAmount} PTU redirected to " &
           &"{altSystemId} - original destination {transfer.destSystem} " &
           &"{alternativeReason}")
-        events.add(GameEvent(
-          eventType: GameEventType.PopulationTransfer,
-          houseId: transfer.houseId,
-          description: $transfer.ptuAmount & " PTU redirected from " &
-                      $transfer.destSystem & " (" & alternativeReason &
-                      ") to " & $altSystemId,
-          systemId: some(altSystemId)
+        events.add(event_factory.populationTransfer(
+          transfer.houseId,
+          transfer.ptuAmount,
+          transfer.sourceSystem,
+          altSystemId,
+          true,
+          &"redirected from {transfer.destSystem} ({alternativeReason})"
         ))
       else:
         # No owned colonies - colonists are lost
         logWarn(LogCategory.lcEconomy,
           &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - " &
           &"destination {alternativeReason}, no owned colonies available")
-        events.add(GameEvent(
-          eventType: GameEventType.PopulationTransfer,
-          houseId: transfer.houseId,
-          description: $transfer.ptuAmount & " PTU lost - " &
-                      $transfer.destSystem & " " & alternativeReason &
-                      ", no owned colonies for delivery",
-          systemId: some(transfer.destSystem)
+        events.add(event_factory.populationTransfer(
+          transfer.houseId,
+          transfer.ptuAmount,
+          transfer.sourceSystem,
+          transfer.destSystem,
+          false,
+          &"{alternativeReason}, no owned colonies for delivery"
         ))
 
       arrivedTransfers.add(idx)
@@ -172,12 +174,13 @@ proc resolvePopulationArrivals*(state: var GameState,
     logInfo(LogCategory.lcEconomy,
       &"Transfer {transfer.id}: {transfer.ptuAmount} PTU arrived at " &
       &"{transfer.destSystem} ({soulsToDeliver} souls)")
-    events.add(GameEvent(
-      eventType: GameEventType.PopulationTransfer,
-      houseId: transfer.houseId,
-      description: $transfer.ptuAmount & " PTU arrived at " &
-                  $transfer.destSystem & " from " & $transfer.sourceSystem,
-      systemId: some(transfer.destSystem)
+    events.add(event_factory.populationTransfer(
+      transfer.houseId,
+      transfer.ptuAmount,
+      transfer.sourceSystem,
+      transfer.destSystem,
+      true,
+      ""
     ))
 
     arrivedTransfers.add(idx)
@@ -223,12 +226,10 @@ proc processTerraformingProjects(state: var GameState,
         &"{house.name} completed terraforming of {colonyId} to {className} " &
         &"(class {project.targetClass})")
 
-      events.add(GameEvent(
-        eventType: GameEventType.TerraformComplete,
-        houseId: houseId,
-        description: house.name & " completed terraforming colony " &
-                    $colonyId & " to " & className,
-        systemId: some(colonyId)
+      events.add(event_factory.terraformComplete(
+        houseId,
+        colonyId,
+        className
       ))
     else:
       logDebug(LogCategory.lcEconomy,
@@ -397,11 +398,10 @@ proc resolveMaintenancePhase*(state: var GameState,
         applyPrestigeEvent(state, houseId, adv.prestigeEvent.get())
         logDebug(LogCategory.lcResearch,
           &"+{adv.prestigeEvent.get().amount} prestige")
-      events.add(GameEvent(
-        eventType: GameEventType.TechAdvance,
-        houseId: houseId,
-        description: &"Economic Level advanced to {adv.elToLevel}",
-        systemId: none(SystemId)
+      events.add(event_factory.techAdvance(
+        houseId,
+        "Economic Level",
+        adv.elToLevel
       ))
 
     # Try to advance Science Level (SL) with accumulated SRP
@@ -417,11 +417,10 @@ proc resolveMaintenancePhase*(state: var GameState,
         applyPrestigeEvent(state, houseId, adv.prestigeEvent.get())
         logDebug(LogCategory.lcResearch,
           &"+{adv.prestigeEvent.get().amount} prestige")
-      events.add(GameEvent(
-        eventType: GameEventType.TechAdvance,
-        houseId: houseId,
-        description: &"Science Level advanced to {adv.slToLevel}",
-        systemId: none(SystemId)
+      events.add(event_factory.techAdvance(
+        houseId,
+        "Science Level",
+        adv.slToLevel
       ))
 
     # Try to advance technology fields with accumulated TRP
@@ -443,11 +442,10 @@ proc resolveMaintenancePhase*(state: var GameState,
             &"+{adv.prestigeEvent.get().amount} prestige")
 
         # Generate event
-        events.add(GameEvent(
-          eventType: GameEventType.TechAdvance,
-          houseId: houseId,
-          description: &"{field} advanced to level {adv.techToLevel}",
-          systemId: none(SystemId)
+        events.add(event_factory.techAdvance(
+          houseId,
+          $field,
+          adv.techToLevel
         ))
 
   logInfo(LogCategory.lcOrders, &"[MAINTENANCE] Research advancements completed ({totalAdvancements} total advancements)")

@@ -25,7 +25,7 @@
 ## - Fleet Orders: docs/specs/operations.md
 ## - Espionage: docs/specs/diplomacy.md
 
-import std/[unittest, tables, options, strformat, times, sequtils, random, strutils]
+import std/[unittest, tables, options, strformat, times, sequtils, random, strutils, hashes, algorithm]
 import ../../src/engine/[gamestate, orders, resolve, starmap, fleet, squadron]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
@@ -167,12 +167,49 @@ proc determineAct(turn: int): string =
   elif turn <= 45: "Act4"
   else: "Act5"
 
-proc findNearestUncolonized(state: GameState, fromSystem: SystemId): Option[SystemId] =
+proc findNearestUncolonized(state: GameState, houseId: HouseId,
+                             fromSystem: SystemId): Option[SystemId] =
   ## Finds nearest uncolonized system for ETAC orders
+  ## Prioritizes adjacent systems first, then nearest by path distance
+  ##
+  ## NOTE: This test helper is INTENTIONALLY omniscient (not fog-of-war filtered)
+  ## The test's purpose is to exercise the engine, not simulate realistic AI
+  ## Real AI (RBA/GOAP) respects fog-of-war via createFogOfWarView()
+
+  # First, collect all directly adjacent uncolonized systems
+  var adjacentUncolonized: seq[SystemId] = @[]
+  for lane in state.starMap.lanes:
+    var adjacentSystem: Option[SystemId] = none(SystemId)
+
+    if lane.source == fromSystem:
+      adjacentSystem = some(lane.destination)
+    elif lane.destination == fromSystem:
+      adjacentSystem = some(lane.source)
+
+    if adjacentSystem.isSome:
+      let sysId = adjacentSystem.get()
+      if sysId notin state.colonies:
+        adjacentUncolonized.add(sysId)
+
+  # Return lowest SystemId for determinism (prevents oscillation)
+  if adjacentUncolonized.len > 0:
+    adjacentUncolonized.sort()
+    return some(adjacentUncolonized[0])
+
+  # No adjacent systems available, find nearest by collecting all uncolonized
+  # and using hash-based distribution to avoid conflicts
+  var uncolonizedSystems: seq[SystemId] = @[]
   for systemId, system in state.starMap.systems:
     if systemId notin state.colonies:
-      return some(systemId)
-  return none(SystemId)
+      uncolonizedSystems.add(systemId)
+
+  if uncolonizedSystems.len == 0:
+    return none(SystemId)
+
+  # Use house ID hash to deterministically select different distant systems
+  let houseHash = hash(houseId)
+  let targetIndex = abs(houseHash) mod uncolonizedSystems.len
+  return some(uncolonizedSystems[targetIndex])
 
 proc findUnexploredSystem(state: GameState, houseId: HouseId, fromSystem: SystemId): Option[SystemId] =
   ## Finds an unexplored system for scout orders
@@ -512,38 +549,59 @@ proc generateFleetOrdersForAct(turn: int, houseId: HouseId,
 
   # Find this house's fleets and colonies
   var myFleets: seq[(FleetId, Fleet)] = @[]
+  var myFleetsWithoutOrders: seq[(FleetId, Fleet)] = @[]
   var myColonies: seq[SystemId] = @[]
   var enemyColonies: seq[(SystemId, HouseId)] = @[]
 
   for fleetId, fleet in state.fleets:
     if fleet.owner == houseId:
       myFleets.add((fleetId, fleet))
+      # Track fleets without orders for assigning new missions
+      if fleetId notin state.fleetOrders:
+        myFleetsWithoutOrders.add((fleetId, fleet))
 
   for systemId, colony in state.colonies:
     if colony.owner == houseId:
       myColonies.add(systemId)
     else:
-      # Check diplomatic state
-      let relation = dip_types.getDiplomaticState(
-        state.houses[houseId].diplomaticRelations, colony.owner)
-      if relation == dip_types.DiplomaticState.Enemy:
-        enemyColonies.add((systemId, colony.owner))
+      # Any other house's colony is a potential target (can attack regardless of diplomatic state)
+      enemyColonies.add((systemId, colony.owner))
 
   let currentAct = determineAct(turn)
+
+  # Find homeworld (largest colony by population)
+  var homeworld: SystemId = SystemId(0)
+  var maxPop = 0
+  for colonyId in myColonies:
+    let colony = state.colonies[colonyId]
+    if colony.population > maxPop:
+      maxPop = colony.population
+      homeworld = colonyId
 
   # Act-specific fleet orders
   case currentAct:
   of "Act1":
     # EXPANSION - Colonization with ETACs
-    # ETACs need to move to uncolonized systems, then colonize
+    # Only colonize systems adjacent to homeworld (prevent endless wandering)
     for (fleetId, fleet) in myFleets:
-      let hasETAC = fleet.squadrons.anyIt(it.flagship.shipClass == ShipClass.ETAC)
-      if hasETAC:
-        let nearbySystem = findNearestUncolonized(state, fleet.location)
+      # ETACs are spacelift ships, not squadron ships
+      let hasETAC = fleet.spaceLiftShips.anyIt(it.shipClass == ShipClass.ETAC)
+      if hasETAC and homeworld != SystemId(0):
+        # Find target adjacent to homeworld (not fleet's current location!)
+        let nearbySystem = findNearestUncolonized(state, houseId, homeworld)
         if nearbySystem.isSome:
           let targetSystem = nearbySystem.get()
-          if fleet.location == targetSystem:
+
+          # Debug: Check if fleet has existing order
+          let hasExistingOrder = fleetId in state.fleetOrders
+          let atDestination = (fleet.location == targetSystem)
+          if turn <= 10:
+            echo &"[DEBUG] {houseId} {fleetId} at {fleet.location}, target={targetSystem}, hasOrder={hasExistingOrder}, atDest={atDestination}"
+
+          if atDestination:
             # Already at target, colonize!
+            if turn <= 10:
+              echo &"[DEBUG] {houseId} COLONIZE order: {fleetId} at {fleet.location} -> colonize {targetSystem}"
             result.add(FleetOrder(
               fleetId: fleetId,
               orderType: FleetOrderType.Colonize,
@@ -551,8 +609,10 @@ proc generateFleetOrdersForAct(turn: int, houseId: HouseId,
               targetFleet: none(FleetId),
               priority: 0
             ))
-          else:
-            # Move to uncolonized system first
+          elif fleetId in myFleetsWithoutOrders.mapIt(it[0]):
+            # Only assign Move orders to fleets without existing orders
+            if turn <= 10:
+              echo &"[DEBUG] {houseId} MOVE order: {fleetId} at {fleet.location} -> move to {targetSystem}"
             result.add(FleetOrder(
               fleetId: fleetId,
               orderType: FleetOrderType.Move,
@@ -563,7 +623,7 @@ proc generateFleetOrdersForAct(turn: int, houseId: HouseId,
 
   of "Act2":
     # EARLY CONFLICT - Movement to enemy systems, espionage, light bombardment
-    for (fleetId, fleet) in myFleets:
+    for (fleetId, fleet) in myFleetsWithoutOrders:
       # Scouts perform espionage on enemy colonies
       let hasScout = fleet.squadrons.anyIt(it.flagship.shipClass == ShipClass.Scout)
       if hasScout and fleet.squadrons.len == 1 and enemyColonies.len > 0:
@@ -575,7 +635,8 @@ proc generateFleetOrdersForAct(turn: int, houseId: HouseId,
         ))
 
       # Transports with marines prepare for invasion
-      let hasTransport = fleet.squadrons.anyIt(it.flagship.shipClass == ShipClass.TroopTransport)
+      # Transports are spacelift ships, not squadron ships
+      let hasTransport = fleet.spaceLiftShips.anyIt(it.shipClass == ShipClass.TroopTransport)
       if hasTransport and enemyColonies.len > 0:
         let (targetSystem, targetHouse) = enemyColonies[0]
         # Move toward enemy system (invasion prep)
@@ -590,7 +651,7 @@ proc generateFleetOrdersForAct(turn: int, houseId: HouseId,
 
   of "Act3":
     # TOTAL WAR - Bombardment, Invasion, Blitz operations
-    for (fleetId, fleet) in myFleets:
+    for (fleetId, fleet) in myFleetsWithoutOrders:
       if enemyColonies.len > 0:
         let (targetSystem, targetHouse) = enemyColonies[0]
 
@@ -609,8 +670,10 @@ proc generateFleetOrdersForAct(turn: int, houseId: HouseId,
           ))
 
         # Transports invade weakened enemy colonies
-        let hasTransport = fleet.squadrons.anyIt(it.flagship.shipClass == ShipClass.TroopTransport)
+        # Transports are spacelift ships, not squadron ships
+        let hasTransport = fleet.spaceLiftShips.anyIt(it.shipClass == ShipClass.TroopTransport)
         if hasTransport and turn >= 18:  # After bombardment has weakened defenses
+          echo &"[DEBUG] {houseId} generating INVADE order: fleet={fleetId} -> system={targetSystem} (turn {turn})"
           result.add(FleetOrder(
             fleetId: fleetId,
             orderType: FleetOrderType.Invade,
@@ -621,7 +684,7 @@ proc generateFleetOrdersForAct(turn: int, houseId: HouseId,
 
   of "Act4":
     # ENDGAME - Overwhelming force, strategic bombardment
-    for (fleetId, fleet) in myFleets:
+    for (fleetId, fleet) in myFleetsWithoutOrders:
       if enemyColonies.len > 0:
         let (targetSystem, targetHouse) = enemyColonies[0]
 
@@ -888,6 +951,50 @@ proc runComprehensiveProgression(): GameTestResult =
   result.events = allEvents
 
 # =============================================================================
+# Event Analysis Functions
+# =============================================================================
+
+proc countEventsByType(events: seq[GameEvent],
+                        eventType: GameEventType): int =
+  ## Count events of specific type
+  result = 0
+  for event in events:
+    if event.eventType == eventType:
+      result.inc
+
+proc countEventsByHouse(events: seq[GameEvent],
+                         houseId: HouseId): int =
+  ## Count events for specific house
+  result = 0
+  for event in events:
+    if event.houseId == houseId:
+      result.inc
+
+proc getEventsByType(events: seq[GameEvent],
+                      eventType: GameEventType): seq[GameEvent] =
+  ## Get all events of specific type
+  result = @[]
+  for event in events:
+    if event.eventType == eventType:
+      result.add(event)
+
+proc getEventsByHouse(events: seq[GameEvent],
+                       houseId: HouseId): seq[GameEvent] =
+  ## Get all events for specific house
+  result = @[]
+  for event in events:
+    if event.houseId == houseId:
+      result.add(event)
+
+proc countEventsByTypeAndHouse(events: seq[GameEvent], eventType: GameEventType,
+                                 houseId: HouseId): int =
+  ## Count events of specific type for specific house
+  result = 0
+  for event in events:
+    if event.eventType == eventType and event.houseId == houseId:
+      result.inc
+
+# =============================================================================
 # Validation Functions
 # =============================================================================
 
@@ -956,13 +1063,17 @@ proc validateBasicProgression(checkpoints: seq[CheckpointData]) =
   echo &"[PASS] Started with {turn7Colonies} homeworlds"
 
   # Colonization takes time (ETAC build → commission → move → colonize)
-  # Expect expansion by turn 45 or 70
+  # In this test, Act1 only colonizes adjacent systems, so expansion completes quickly
+  doAssert turn7Colonies > 4, &"[FAIL] Expected colonization by turn 7 (started: 4, turn7: {turn7Colonies})"
+  echo &"[PASS] Colonies expanded from 4 to {turn7Colonies} by turn 7"
+
+  # Expect expansion to stabilize after Act1 (all adjacent systems colonized)
   if turn45Colonies > turn7Colonies:
-    echo &"[PASS] Colonies expanded from {turn7Colonies} to {turn45Colonies} by turn 45"
+    echo &"[PASS] Further expansion to {turn45Colonies} by turn 45"
   elif turn70Colonies > turn7Colonies:
-    echo &"[PASS] Colonies expanded from {turn7Colonies} to {turn70Colonies} by turn 70"
+    echo &"[PASS] Further expansion to {turn70Colonies} by turn 70"
   else:
-    doAssert false, &"[FAIL] No colony expansion by turn 70 (started: {turn7Colonies}, turn70: {turn70Colonies})"
+    echo &"[INFO] Colonization completed in Act1 ({turn7Colonies} colonies, no further expansion)"
 
   # 3. Multiple unit types must be commissioned
   let finalCheckpoint = checkpoints[^1]
@@ -1209,6 +1320,204 @@ proc validateDiplomacy(checkpoints: seq[CheckpointData]) =
 
   echo ""
 
+proc validateEvents(events: seq[GameEvent]) =
+  ## Validate game events tell the story of the game
+  echo "=== EVENT VALIDATION CHECKS ==="
+
+  let totalEvents = events.len
+  doAssert totalEvents > 0, "[FAIL] No events generated!"
+  echo &"[INFO] Total events: {totalEvents}"
+
+  # Count events by category
+  let commissioning = countEventsByType(events,
+    GameEventType.ShipCommissioned)
+  let buildingsComplete = countEventsByType(events,
+    GameEventType.BuildingCompleted)
+  let unitsRecruited = countEventsByType(events,
+    GameEventType.UnitRecruited)
+  let techAdvances = countEventsByType(events,
+    GameEventType.TechAdvance)
+  let coloniesEstablished = countEventsByType(events,
+    GameEventType.ColonyEstablished)
+  let bombardments = countEventsByType(events,
+    GameEventType.Bombardment)
+  let battles = countEventsByType(events,
+    GameEventType.Battle) + countEventsByType(events,
+    GameEventType.BattleOccurred)
+  let invasions = countEventsByType(events,
+    GameEventType.InvasionRepelled)
+  let ordersRejected = countEventsByType(events,
+    GameEventType.OrderRejected)
+
+  echo ""
+  echo "=== EVENT BREAKDOWN ==="
+  echo &"  ShipCommissioned:    {commissioning:4}"
+  echo &"  BuildingCompleted:   {buildingsComplete:4}"
+  echo &"  UnitRecruited:       {unitsRecruited:4}"
+  echo &"  TechAdvance:         {techAdvances:4}"
+  echo &"  ColonyEstablished:   {coloniesEstablished:4}"
+  echo &"  Bombardment:         {bombardments:4}"
+  echo &"  Battle:              {battles:4}"
+  echo &"  InvasionRepelled:    {invasions:4}"
+  echo &"  OrderRejected:       {ordersRejected:4}"
+  echo ""
+
+  # Validation: Ships should be commissioned
+  doAssert commissioning > 0,
+    "[FAIL] No ships commissioned across 70 turns!"
+  echo &"[PASS] {commissioning} ships commissioned"
+
+  # Validation: Buildings should be built
+  doAssert buildingsComplete > 0,
+    "[FAIL] No buildings completed across 70 turns!"
+  echo &"[PASS] {buildingsComplete} buildings completed"
+
+  # Validation: Tech should advance (70 turns with 4 houses = 280 advances)
+  doAssert techAdvances > 100,
+    &"[FAIL] Insufficient tech advances: {techAdvances} " &
+    &"(expected >100 for 70 turns)"
+  echo &"[PASS] {techAdvances} tech advances (research working)"
+
+  # Validation: Order rejections should be minimal
+  # Some rejections are OK (CST gating, budget limits), but <10% is healthy
+  let orderRejectionRate = (ordersRejected.float / totalEvents.float) * 100.0
+  if orderRejectionRate > 10.0:
+    echo &"[WARN] High order rejection rate: " &
+      &"{orderRejectionRate:.1f}% ({ordersRejected} rejected)"
+  else:
+    echo &"[PASS] Order rejection rate: {orderRejectionRate:.1f}% (healthy)"
+
+  # Validation: Colonization may or may not happen (check checkpoints instead)
+  if coloniesEstablished > 0:
+    echo &"[PASS] {coloniesEstablished} colonies established"
+  else:
+    echo "[INFO] No colonization events (check checkpoints for details)"
+
+  # Validation: Combat may or may not happen (depends on orders)
+  if bombardments > 0 or battles > 0 or invasions > 0:
+    echo &"[PASS] Combat occurred: {bombardments} bombardments, " &
+      &"{battles} battles, {invasions} invasions"
+  else:
+    echo "[INFO] No combat events (peaceful game or orders not executed)"
+
+  echo ""
+
+proc validateEventsByHouse(events: seq[GameEvent]) =
+  ## Validate per-house event distribution
+  echo "=== PER-HOUSE EVENT ANALYSIS ==="
+
+  let houseIds = @[HouseId("house1"), HouseId("house2"),
+                   HouseId("house3"), HouseId("house4")]
+
+  for houseId in houseIds:
+    let houseEvents = getEventsByHouse(events, houseId)
+    let shipEvents = countEventsByTypeAndHouse(events,
+      GameEventType.ShipCommissioned, houseId)
+    let buildingEvents = countEventsByTypeAndHouse(events,
+      GameEventType.BuildingCompleted, houseId)
+    let techEvents = countEventsByTypeAndHouse(events,
+      GameEventType.TechAdvance, houseId)
+
+    echo &"{houseId}:"
+    echo &"  Total events:        {houseEvents.len:3}"
+    echo &"  Ships commissioned:  {shipEvents:3}"
+    echo &"  Buildings completed: {buildingEvents:3}"
+    echo &"  Tech advances:       {techEvents:3}"
+
+    # Each house should have activity
+    doAssert houseEvents.len > 0,
+      &"[FAIL] {houseId} has no events!"
+
+    # Each house should commission at least some ships
+    doAssert shipEvents > 0,
+      &"[FAIL] {houseId} commissioned no ships!"
+
+    # Each house should build at least some buildings
+    doAssert buildingEvents > 0,
+      &"[FAIL] {houseId} completed no buildings!"
+
+    # Each house should advance tech
+    doAssert techEvents > 0,
+      &"[FAIL] {houseId} made no tech advances!"
+
+  echo "[PASS] All houses show activity in events"
+  echo ""
+
+proc validateActProgression(events: seq[GameEvent],
+                             checkpoints: seq[CheckpointData]) =
+  ## Validate events align with Act progression expectations
+  echo "=== ACT PROGRESSION VALIDATION ==="
+
+  # We generate events across 70 turns spanning all 5 Acts
+  # Let's verify the story matches expectations
+
+  # Act 1 (Turns 1-7): Expansion phase
+  echo "Act 1 (Turns 1-7) - Land Grab:"
+  let act1Ships = block:
+    var count = 0
+    for houseId, data in checkpoints[0].perHouseData:
+      count += data.etacCount + data.scoutCount + data.destroyerCount
+    count
+  echo &"  Early ships: {act1Ships} (ETACs, Scouts, Escorts)"
+  doAssert act1Ships > 0, "[FAIL] No early expansion ships in Act 1"
+  echo "  [PASS] Act 1 expansion occurred"
+
+  # Act 2 (Turns 8-15): Military buildup
+  echo "Act 2 (Turns 8-15) - Rising Tensions:"
+  let act2CapitalShips = block:
+    var count = 0
+    for houseId, data in checkpoints[1].perHouseData:
+      count += data.cruiserCount + data.heavyCruiserCount +
+        data.battlecruiserCount
+    count
+  if act2CapitalShips > 0:
+    echo &"  Capital ships: {act2CapitalShips} (Cruisers+)"
+    echo "  [PASS] Act 2 capital buildup occurred"
+  else:
+    echo "  [WARN] No capital ships by turn 15 (CST may be slow)"
+
+  # Act 3 (Turns 16-25): Total war
+  echo "Act 3 (Turns 16-25) - Total War:"
+  let act3HeavyShips = block:
+    var count = 0
+    for houseId, data in checkpoints[2].perHouseData:
+      count += data.battleshipCount + data.dreadnoughtCount
+    count
+  if act3HeavyShips > 0:
+    echo &"  Heavy capitals: {act3HeavyShips} (Battleships+)"
+    echo "  [PASS] Act 3 heavy capital deployment occurred"
+  else:
+    echo "  [WARN] No heavy capitals by turn 25 (check CST advancement)"
+
+  # Act 4 (Turns 26-45): Endgame
+  echo "Act 4 (Turns 26-45) - Endgame:"
+  let act4UltimateShips = block:
+    var count = 0
+    for houseId, data in checkpoints[4].perHouseData:
+      count += data.superDreadnoughtCount + data.planetBreakerCount
+    count
+  if act4UltimateShips > 0:
+    echo &"  Ultimate units: {act4UltimateShips} (SuperDreadnought+)"
+    echo "  [PASS] Act 4 ultimate weapons deployed"
+  else:
+    echo "  [INFO] No ultimate weapons by turn 45 " &
+      "(requires CST 6+ or CST 10 for PlanetBreaker)"
+
+  # Act 5 (Turns 46-70): Extended endgame
+  echo "Act 5 (Turns 46-70) - Extended Endgame:"
+  let act5FinalShips = block:
+    var count = 0
+    for houseId, data in checkpoints[6].perHouseData:
+      count += data.battleshipCount + data.dreadnoughtCount +
+        data.superDreadnoughtCount + data.planetBreakerCount
+    count
+  echo &"  Final heavy fleet: {act5FinalShips} ships"
+  doAssert act5FinalShips > 0,
+    "[FAIL] No heavy capital ships by turn 70!"
+  echo "  [PASS] Act 5 sustained heavy fleet operations"
+
+  echo ""
+
 proc validateUnitDiversity(checkpoints: seq[CheckpointData]) =
   ## Validate multiple unit types commissioned
   echo "=== UNIT DIVERSITY CHECKS ==="
@@ -1264,6 +1573,11 @@ suite "Comprehensive Mock 4X Game: 70-Turn 4-Player":
     validateUnitDiversity(result.checkpoints)
     validateDiplomacy(result.checkpoints)
     validateStateIntegrity(result.state)
+
+    # NEW: Event-based validations
+    validateEvents(result.events)
+    validateEventsByHouse(result.events)
+    validateActProgression(result.events, result.checkpoints)
 
     echo "================================================================================"
     echo "TEST COMPLETE"
