@@ -78,6 +78,7 @@ planet_class = "Eden"               # Abundant Eden planet
 raw_quality = "Abundant"            # Abundant quality
 colony_level = 5                    # Level V colony
 population_units = 840              # 840 PU
+industrial_units = 420              # 50% of PU
 
 [optional_balance_overrides]
 # Moderator can override specific balance values for this scenario only

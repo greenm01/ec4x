@@ -116,7 +116,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   ## Resolve a complete game turn
   ## Returns new game state and events that occurred
 
-  logDebug("Resolve", "Turn resolution starting", "turn=", $state.turn)
+  logResolve("Turn resolution starting", "turn=", $state.turn)
 
   result.newState = state  # Start with current state
   result.events = @[]
@@ -268,4 +268,3 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 ## OLD IMPLEMENTATION - NOW DISABLED
 ## Command Phase logic has been extracted to resolution/phases/command_phase.nim
 ## This implementation is kept for reference but is no longer used
-
