@@ -6,7 +6,7 @@
 ## - Minor/restricted lanes or rival territory: 1 jump/turn
 ## - Detection checks at each intermediate system
 
-import std/[tables, options]
+import std/[tables, options, strformat]
 import ../../common/types/core
 import ../gamestate, ../fleet, ../orders
 import ../diplomacy/engine as dip_engine
@@ -135,9 +135,50 @@ proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
     if spy.state != SpyScoutState.Traveling:
       continue
 
+    # Check if target is still valid
+    let targetSystem = spy.targetSystem
+    var missionAborted = false
+    var abortReason = ""
+
+    # Check mission-specific abort conditions
+    case spy.mission
+    of SpyMissionType.SpyOnPlanet, SpyMissionType.SpyOnSystem:
+      # Target colony lost (destroyed or uncolonized)
+      if targetSystem notin state.colonies:
+        missionAborted = true
+        abortReason = "target colony no longer exists"
+      else:
+        # Target house eliminated
+        let colony = state.colonies[targetSystem]
+        if colony.owner in state.houses:
+          if state.houses[colony.owner].eliminated:
+            missionAborted = true
+            abortReason = "target house eliminated"
+    of SpyMissionType.HackStarbase:
+      # Target starbase destroyed
+      if targetSystem notin state.colonies:
+        missionAborted = true
+        abortReason = "target colony no longer exists"
+      else:
+        let colony = state.colonies[targetSystem]
+        if colony.starbases.len == 0:
+          missionAborted = true
+          abortReason = "target starbase destroyed"
+        elif colony.owner in state.houses:
+          if state.houses[colony.owner].eliminated:
+            missionAborted = true
+            abortReason = "target house eliminated"
+
+    if missionAborted:
+      # Mission no longer viable - abort
+      # Note: Events not added here due to function signature limitations
+      # Scout removal is sufficient for game logic
+      state.spyScouts.del(spyId)
+      result.add(&"Spy scout {spyId} {spy.mission} aborted: {abortReason}")
+      continue
+
     # Determine target for this turn's movement
     # Scout moves toward final targetSystem
-    let targetSystem = spy.targetSystem
 
     # Create movement order for spy scout
     let moveOrder = FleetOrder(

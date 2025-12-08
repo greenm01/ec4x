@@ -272,6 +272,14 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
     if not isSpyScout and order.fleetId in state.fleetOrders:
       state.fleetOrders.del(order.fleetId)
       logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination, order complete")
+      # Generate OrderCompleted event for successful arrival
+      events.add(event_factory.orderCompleted(
+        houseId,
+        order.fleetId,
+        "Move",
+        details = &"arrived at {targetId}",
+        systemId = some(targetId)
+      ))
     return
 
   logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} moving from {startId} to {targetId}")
@@ -579,6 +587,21 @@ proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: Fleet
     HouseId("neutral"),  # ViewWorld doesn't target a specific house
     targetId,
     "long-range planetary scan"
+  ))
+
+  # Generate OrderCompleted event for successful scan
+  var scanDetails = if targetId in state.colonies:
+    let colony = state.colonies[targetId]
+    &"scanned {targetId} (owner: {colony.owner})"
+  else:
+    &"scanned uncolonized system {targetId}"
+
+  events.add(event_factory.orderCompleted(
+    houseId,
+    order.fleetId,
+    "ViewWorld",
+    details = scanDetails,
+    systemId = some(targetId)
   ))
 
   # Order completes - fleet remains at system (player must issue new orders)

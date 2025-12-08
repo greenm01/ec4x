@@ -378,6 +378,15 @@ proc resolveColonizationConflict*(
       prestigeAwarded: 0
     ))
 
+    # Generate OrderFailed event for colonization conflict loss
+    events.add(event_factory.orderFailed(
+      loser.houseId,
+      loser.fleetId,
+      "Colonize",
+      reason = "lost colonization race to another house",
+      systemId = some(loser.targetSystem)
+    ))
+
 proc resolveColonization*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
@@ -434,6 +443,15 @@ proc resolveColonization*(
           actualTarget: none(SystemId),
           prestigeAwarded: 0
         ))
+
+        # Generate OrderFailed event for no viable colonization target
+        events.add(event_factory.orderFailed(
+          loser.houseId,
+          loser.fleetId,
+          "Colonize",
+          reason = "no viable fallback colonization target found",
+          systemId = some(originalTargets[loser.fleetId])
+        ))
       break
 
     # Detect conflicts on fallback targets
@@ -468,6 +486,15 @@ proc resolveColonization*(
       outcome: ResolutionOutcome.NoViableTarget,
       actualTarget: none(SystemId),
       prestigeAwarded: 0
+    ))
+
+    # Generate OrderFailed event for exhausted fallback attempts
+    events.add(event_factory.orderFailed(
+      loser.houseId,
+      loser.fleetId,
+      "Colonize",
+      reason = "exhausted all fallback colonization attempts",
+      systemId = some(originalTargets[loser.fleetId])
     ))
 
 proc wasColonizationHandled*(

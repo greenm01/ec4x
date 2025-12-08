@@ -189,6 +189,14 @@ proc executeFleetOrdersFiltered*(
         newOrdersThisTurn.incl(order.fleetId)
         state.fleetOrders[order.fleetId] = order
 
+        # Generate OrderIssued event for new order
+        events.add(event_factory.orderIssued(
+          houseId,
+          order.fleetId,
+          $order.orderType,
+          systemId = order.targetSystem
+        ))
+
   # Step 2: Add PERSISTENT orders from previous turns (not overridden)
   for fleetId, persistentOrder in state.fleetOrders:
     if fleetId in newOrdersThisTurn:
@@ -236,6 +244,15 @@ proc executeFleetOrdersFiltered*(
           let fleet = state.fleets[order.fleetId]
           let safeDestination = findClosestOwnedColony(state, fleet.location, houseId)
 
+          # Generate OrderAborted event
+          events.add(event_factory.orderAborted(
+            houseId,
+            order.fleetId,
+            $order.orderType,
+            reason = validation.reason,
+            systemId = some(fleet.location)
+          ))
+
           if safeDestination.isSome:
             actualOrder = FleetOrder(
               fleetId: order.fleetId,
@@ -267,27 +284,12 @@ proc executeFleetOrdersFiltered*(
         logWarn(LogCategory.lcOrders, &"  [SKIPPED] Fleet {order.fleetId} order invalid at execution")
         continue
 
-    # Execute the validated order
-    let result = executor.executeFleetOrder(state, houseId, actualOrder)
+    # Execute the validated order (events added directly via mutable parameter)
+    let outcome = executor.executeFleetOrder(state, houseId, actualOrder, events)
 
-    if result.success:
+    if outcome == OrderOutcome.Success:
       logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} executed")
-
-      # Add events from order execution
-      for eventMsg in result.eventsGenerated:
-        let systemId = if order.targetSystem.isSome:
-          order.targetSystem.get()
-        else:
-          # Fallback to fleet location if no target system
-          if actualOrder.fleetId in state.fleets:
-            state.fleets[actualOrder.fleetId].location
-          else:
-            SystemId(0)  # Fallback
-        events.add(event_factory.battle(
-          houseId,
-          systemId,
-          eventMsg
-        ))
+      # Events already added via mutable parameter
 
       # Handle combat orders that trigger battles
       if actualOrder.orderType in {FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz}:
@@ -342,7 +344,15 @@ proc executeFleetOrdersFiltered*(
             resolveBlitz(state, houseId, actualOrder, events)
           else:
             discard
-    else:
-      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order failed: {result.message}")
+    elif outcome == OrderOutcome.Failed:
+      # Order failed validation - remove from queue
+      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} failed validation")
+      if actualOrder.fleetId in state.fleetOrders:
+        state.fleetOrders.del(actualOrder.fleetId)
+    elif outcome == OrderOutcome.Aborted:
+      # Order aborted (target lost, conditions changed) - remove from queue
+      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} aborted")
+      if actualOrder.fleetId in state.fleetOrders:
+        state.fleetOrders.del(actualOrder.fleetId)
 
   logDebug(LogCategory.lcOrders, &"[{phaseDescription}] Completed fleet order execution")
