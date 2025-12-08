@@ -31,6 +31,7 @@ import ../types as econ_types
 import ../../../common/types/core
 import ../../../common/types/units
 import ../../../common/logger
+import ../../config/military_config
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 
@@ -39,13 +40,15 @@ import ./capital_squadrons
 
 proc calculateMaxTotalSquadrons*(industrialUnits: int, mapRings: int = 3, numPlayers: int = 4): int =
   ## Pure calculation of maximum total squadron capacity
-  ## Formula: max(20, floor(Total_House_IU ÷ 50) × mapMultiplier)
-  ## Minimum: 20 squadrons regardless of IU
+  ## Formula: max(minimum, floor(Total_House_IU ÷ divisor) × mapMultiplier)
+  ## Values configurable in config/military.toml [squadron_limits]
   ## This is roughly 2x the capital squadron limit
-  let baseLimit = int(float(industrialUnits) / 50.0)
+  let divisor = float(globalMilitaryConfig.squadron_limits.total_squadron_iu_divisor)
+  let minimum = globalMilitaryConfig.squadron_limits.total_squadron_minimum
+  let baseLimit = int(float(industrialUnits) / divisor)
   let mapMultiplier = capital_squadrons.getMapSizeMultiplier(mapRings, numPlayers)
   let scaledLimit = int(float(baseLimit) * mapMultiplier)
-  return max(20, scaledLimit)
+  return max(minimum, scaledLimit)
 
 proc isMilitarySquadron*(shipClass: ShipClass): bool =
   ## Check if a ship class counts toward total squadron limits
@@ -144,10 +147,15 @@ proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityVi
 
   let totalIU = state.getTotalHouseIndustrialUnits(houseId)
   let current = countTotalSquadronsInFleets(state, houseId)
+  let underConstruction = countTotalSquadronsUnderConstruction(state, houseId)
   let mapRings = int(state.starMap.numRings)
   let numPlayers = state.starMap.playerCount
   let maximum = calculateMaxTotalSquadrons(totalIU, mapRings, numPlayers)
   let excess = max(0, current - maximum)
+
+  # DEBUG: Log capacity at key turns
+  if state.turn in [1, 15, 25, 35, 45]:
+    logInfo("Military", &"{houseId} T{state.turn}: {current}/{maximum} squadrons (IU={totalIU}), {underConstruction} ships under construction")
 
   # Check grace period status (2-turn grace per spec)
   var graceTurns = 0

@@ -91,7 +91,7 @@ EC4X has **two separate construction pipelines** that operate independently:
 
 ### 1. Dock Construction Pipeline
 
-**Units Built:** All ships (18 total, excluding starbases which are facilities)
+**Units Built:** All ships (18 total, excluding facilities)
 
 **Requirements:**
 - Colony must have at least one **Spaceport** or **Shipyard**
@@ -133,6 +133,37 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - PlanetaryShield requires CST V minimum
 - Starbases are facilities built via Colony pipeline (not ships in Dock pipeline)
 
+## Repair Pipelines
+
+EC4X has **one repair pipeline** that operate independently:
+
+### 1. Dock Repair Pipeline
+
+**Units Built:** All ships (18 total, excluding facilities)
+
+**Requirements:**
+- Colony must have at least one **Drydock** or one **Spaceport**
+- Available dock capacity (not all docks in use)
+- Sufficient Production Points (PP)
+
+**Dock Capacity:**
+- **Drydock**: 10 base docks × CST multiplier
+  - CST I: 10 docks, CST II: 11 docks, CST III: 12 docks, etc.
+  - Cost: Standard ship repair cost
+  - Can repair ships (only facility that repairs ships)
+- **Spaceport**: 5 base docks × CST multiplier
+  - CST I: 5 docks, CST II: 5.5 docks, CST III: 6 docks, etc.
+  - Cannot repair ships
+  - Can repair facilities without consuming dock capacity
+  
+**CST Scaling Formula:**
+```
+docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
+```
+
+**Example (CST VI):**
+- Drydock: 10 × (1.0 + 5 × 0.10) = 15 docks
+
 ---
 
 ## Act-Based Strategy
@@ -154,8 +185,9 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - **Army** (garrison forces)
 
 **Facilities:**
-- **Spaceport** (minimum one per colony, required for Shipyard/Starbase)
+- **Spaceport** (minimum one per colony, required for Shipyard/Drydock/Starbase)
 - **Shipyard** (preferred for production)
+  **Drydock** (only facility that conducts ship repairs)
 - **Starbase** (orbital defense for key colonies)
 
 **Strategy:**
@@ -269,7 +301,7 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 - Minimum one per colony (unlocks Shipyard/Starbase/Drydock)
 - Emergency ship construction (if Drydocks destroyed)
 - Not cost-effective for regular production
-- Handles Starbase, Shipyard, and Drydock repairs (no dock consumption, allows parallel construction)
+- Handles facility repair (Starbase, Shipyard, and Drydock) with no dock consumption and allows parallel construction.
 
 ### Shipyard
 
@@ -399,7 +431,7 @@ Each slot checks current Act and selects appropriate units from candidate lists 
 **Spaceport:**
 - Minimum one per colony (requirement for Shipyard/Starbase)
 - Emergency ship construction only (2× cost inefficient)
-- Handles facility repairs (Starbases, no dock consumption)
+- Handles facility repairs (Starbases, Shipyards, Drydocks - no dock consumption)
 - Not prioritized for multiple builds
 
 **Shipyard:**

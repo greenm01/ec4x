@@ -48,6 +48,7 @@ import ./types as res_types
 # Import config access
 import ../config/ground_units_config
 import ../config/facilities_config
+import ../config/military_config
 import ../research/effects  # CST dock capacity scaling
 
 # Helper functions from gamestate
@@ -518,21 +519,30 @@ proc commissionCompletedProjects*(
           # Create the ship
           let ship = newEnhancedShip(shipClass, techLevel)
 
-          # Find squadrons at this system belonging to this house
+          # Capital ships (CR >= 7) always create new squadrons as flagship
+          # Escorts try to join existing squadrons first
+          let isCapitalShip = ship.stats.commandRating >= globalMilitaryConfig.squadron_limits.capital_ship_cr_threshold
+
           var assignedSquadron: SquadronId = ""
-          for fleetId, fleet in state.fleets:
-            if fleet.owner == owner and fleet.location == completed.colonyId:
-              for squadron in fleet.squadrons:
-                if canAddShip(squadron, ship):
-                  # Found a squadron with capacity
-                  assignedSquadron = squadron.id
+          var squadronsChecked = 0
+
+          if not isCapitalShip:
+            # Escorts: try to join existing squadrons
+            for fleetId, fleet in state.fleets:
+              if fleet.owner == owner and fleet.location == completed.colonyId:
+                for squadron in fleet.squadrons:
+                  squadronsChecked += 1
+                  if canAddShip(squadron, ship):
+                    # Found a squadron with capacity
+                    assignedSquadron = squadron.id
+                    logDebug(LogCategory.lcFleet, &"Ship {shipClass} can join squadron {squadron.id} (CR={squadron.flagship.stats.commandRating}, avail={squadron.availableCommandCapacity()})")
+                    break
+                if assignedSquadron != "":
                   break
-              if assignedSquadron != "":
-                break
 
           # Add ship to existing squadron or create new one
           if assignedSquadron != "":
-            # Add to existing squadron
+            # Add to existing squadron (escorts only)
             for fleetId, fleet in state.fleets.mpairs:
               if fleet.owner == owner:
                 for squadron in fleet.squadrons.mitems:
@@ -542,8 +552,15 @@ proc commissionCompletedProjects*(
                     break
 
           else:
+            # No existing squadron has capacity - create new one
+            logInfo(LogCategory.lcFleet, &"No existing squadron can fit {shipClass} (checked {squadronsChecked} squadrons), creating new squadron")
             # Create new squadron with this ship as flagship
-            let newSquadronId = $owner & "_sq_" & $state.fleets.len & "_" & $state.turn
+            # Use total squadron count across all fleets to ensure unique IDs
+            var totalSquadrons = 0
+            for fleetId, fleet in state.fleets:
+              if fleet.owner == owner:
+                totalSquadrons += fleet.squadrons.len
+            let newSquadronId = $owner & "_sq_" & $totalSquadrons & "_" & $state.turn
             let newSq = newSquadron(ship, newSquadronId, owner, completed.colonyId)
 
             # Find or create fleet at this location

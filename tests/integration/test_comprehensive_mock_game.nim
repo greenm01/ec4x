@@ -30,6 +30,9 @@ import ../../src/engine/[gamestate, orders, resolve, starmap, fleet, squadron]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/diplomacy/types as dip_types
+import ../../src/engine/resolution/types as resolution_types
+import ../../src/engine/resolution/commissioning
+import ../../src/engine/economy/types as econ_types
 import ../../src/engine/state_helpers
 import ../../src/common/types/[core, units, planets, tech]
 import ../../src/common/logger
@@ -1264,6 +1267,100 @@ suite "Comprehensive Mock 4X Game: 70-Turn 4-Player":
 
     echo "================================================================================"
     echo "TEST COMPLETE"
+    echo "================================================================================"
+    echo ""
+
+  test "should commission escorts as flagships when no capitals available":
+    ## Test that escorts can form squadrons with escort flagships
+    ## Verifies ships aren't lost when no capital ships are available
+
+    echo ""
+    echo "================================================================================"
+    echo "ESCORT FLAGSHIP TEST - Escorts Only, No Capitals"
+    echo "================================================================================"
+    echo ""
+
+    # Setup: Use 4-player test state but only test one house
+    var testState = create4PlayerTestState()
+    testState.turn = 1
+
+    # Clear all starting fleets (so we test pure escort commissioning)
+    testState.fleets.clear()
+
+    # Pick one house to test - must match the colony owner
+    let colonyId = testState.colonies.pairs.toSeq[0][0]  # Get first colony
+    let houseId = testState.colonies[colonyId].owner  # Get the owner of that colony
+
+    # Build escort ships only: 10 Destroyers (CR=4, CC=2)
+    echo "[SETUP] Building 10 Destroyers (CR=4, CC=2) with no capital ships"
+    var completedProjects: seq[econ_types.CompletedProject] = @[]
+    for i in 1..10:
+      completedProjects.add(econ_types.CompletedProject(
+        colonyId: colonyId,
+        projectType: econ_types.ConstructionType.Ship,
+        itemId: "Destroyer"
+      ))
+
+    # Commission all escorts
+    echo "[TEST] Commissioning 10 escorts..."
+    var events: seq[resolution_types.GameEvent] = @[]
+    commissionCompletedProjects(testState, completedProjects, events)
+
+    # Verify no ships lost
+    var totalShips = 0
+    for fleetId, fleet in testState.fleets:
+      if fleet.owner == houseId:
+        for squadron in fleet.squadrons:
+          totalShips += squadron.allShips().len
+
+    echo &"[RESULT] Total ships in fleets: {totalShips}"
+    doAssert totalShips == 10, &"[FAIL] Ships lost during commissioning! Expected 10, got {totalShips}"
+    echo "[PASS] All 10 escorts commissioned successfully"
+
+    # Verify squadron structure
+    var squadronCount = 0
+    var escortFlagshipCount = 0
+    for fleetId, fleet in testState.fleets:
+      if fleet.owner == houseId:
+        squadronCount += fleet.squadrons.len
+        for squadron in fleet.squadrons:
+          # Check if flagship is an escort (CR < 7)
+          if squadron.flagship.stats.commandRating < 7:
+            escortFlagshipCount += 1
+
+          # Verify CR/CC constraint
+          let totalCC = squadron.totalCommandCost()
+          let flagshipCR = squadron.flagship.stats.commandRating
+          doAssert totalCC <= flagshipCR,
+            &"[FAIL] Squadron {squadron.id} violates CR/CC: {totalCC} CC > {flagshipCR} CR"
+
+    echo &"[RESULT] Created {squadronCount} squadrons"
+    echo &"[RESULT] Escort flagships: {escortFlagshipCount}/{squadronCount}"
+    doAssert escortFlagshipCount > 0, "[FAIL] No escort flagships created!"
+    echo "[PASS] Escorts successfully became flagships"
+
+    # Expected: With CR=4 and CC=2, each Destroyer flagship can command 1 additional Destroyer
+    # 10 Destroyers should form: 5 squadrons (2 ships each)
+    echo &"[INFO] Expected ~5 squadrons (2 destroyers each with CR=4)"
+    doAssert squadronCount >= 3 and squadronCount <= 7,
+      &"[FAIL] Unexpected squadron count: {squadronCount} (expected 4-6)"
+    echo &"[PASS] Squadron count reasonable: {squadronCount}"
+
+    # Verify all flagships respect CR/CC limits
+    for fleetId, fleet in testState.fleets:
+      if fleet.owner == houseId:
+        for squadron in fleet.squadrons:
+          let shipCount = squadron.allShips().len
+          let availCR = squadron.flagship.stats.commandRating
+          let usedCC = squadron.totalCommandCost()
+          echo &"[INFO] Squadron {squadron.id}: {shipCount} ships, CR={availCR}, used CC={usedCC}"
+          doAssert usedCC <= availCR,
+            &"[FAIL] Squadron overfilled: {usedCC} CC > {availCR} CR"
+
+    echo "[PASS] All squadrons respect CR/CC limits"
+    echo ""
+    echo "================================================================================"
+    echo "ESCORT FLAGSHIP TEST COMPLETE"
     echo "================================================================================"
     echo ""
 

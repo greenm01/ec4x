@@ -21,9 +21,11 @@ capacity_violation_grace_period = 2  # 2 turns grace before auto-disband
 
 [squadron_limits]
 # BALANCE: Capital squadron limit formula: max(8, floor(Total_House_IU ÷ 100) × 2)
-# BALANCE: Total squadron limit formula: max(20, floor(Total_House_IU ÷ 50))
-squadron_limit_iu_divisor = 100    # IU divisor: 1 capital per 100 IU × 2
+# BALANCE: Total squadron limit formula: max(40, floor(Total_House_IU ÷ 50))
+squadron_limit_iu_divisor = 100    # IU divisor for capitals: 1 capital per 100 IU × 2
 squadron_limit_minimum = 8         # Minimum capital squadron slots regardless of IU
+total_squadron_iu_divisor = 50     # IU divisor for total squadrons: 1 squadron per 50 IU
+total_squadron_minimum = 40        # Minimum total squadron slots (starting capacity)
 
 # Capital ship definition
 capital_ship_cr_threshold = 7  # Ships with CR >= 7 are capital ships
