@@ -1,242 +1,75 @@
-# Generated game directories
-offline_game/
-test_game/
-*_offline/
-demo_game/
-example_game/
-data/games/
-data/snapshots/
+# Ignore everything
+*
 
-# Test and tuning directories (temporary workspaces)
-test_*/
-balance_tuning/
-# Note: tools/ai_tuning/ is tracked (permanent tools)
+# Whitelist directories
+!*/
 
-# Build artifacts
+# Whitelist source and documentation
+!*.nim
+!*.nims
+!*.nimble
+!*.md
+
+# Whitelist config and scripts
+!*.toml
+!*.yaml
+!*.yml
+!*.json
+!*.py
+!*.sh
+!*.fish
+!*.nix
+
+# Whitelist assets
+!*.png
+!*.jpg
+!*.jpeg
+!*.svg
+!*.xlsx
+!*.xls
+
+# Whitelist root files
+!.gitignore
+!LICENSE*
+!README*
+
+# Re-ignore build/temp directories
+nimcache/
+nimblecache/
 bin/
 build/
 dist/
+offline_game/
+test_game/
+*_offline/
+data/games/
+data/snapshots/
+test_*/
+balance_tuning/
+balance_results/
+ai_training/
+ai_inference/
+training_data/
+models/
+venv/
+.venv/
+__pycache__/
+wandb/
+logs/
+.cache/
 
-# Nim compiler generated files
+# Re-ignore temp/generated files
+*.log
+*.tmp
+*.temp
+*.backup
+*.save
+*.state
+*.pyc
+*.pyo
 *.exe
 *.out
 *.so
 *.dylib
 *.dll
-nimcache/
-
-# Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
-*.log
-logs/
-
-# Generated documentation (HTML and CSS)
-*.html
-*.css
-docs/api/
-
-# Nix flake lock file (dependency lock)
 flake.lock
-
-# Temporary files
-*.tmp
-*.temp
-*.backup
-.cache/
-
-# Test output files
-test_output.txt
-test_report.csv
-
-# Game state files (if any)
-*.save
-*.state
-
-# Compiled binaries - Pattern-based exclusions
-/client
-/moderator
-/main
-
-# All executables in src/ and tests/ (but not .nim files)
-src/**/[!.]*.exe
-src/**/[!.]*.out
-tests/**/[!.]*.exe
-tests/**/[!.]*.out
-
-# Specific binary patterns
-# NOTE: Don't use wildcards that block directories
-tests/unit/test_*[!.nim]
-tests/integration/test_*[!.nim]
-tests/balance/test_*[!.nim]
-tests/scenarios/**/[!.]*[!.nim]
-
-# All balance test binaries (no extension)
-tests/balance/ai_controller
-tests/balance/analyze_results
-tests/balance/coevolution
-tests/balance/evolve_ai
-tests/balance/game_setup
-tests/balance/generate_training_data
-tests/balance/run_simulation
-
-# Nim-compiled executables (no extension on Linux)
-# All executables in src/engine subdirectories
-src/engine/combat/starbase
-src/engine/combat/ground
-src/engine/combat/engine
-src/engine/economy/types
-src/engine/economy/production
-src/engine/economy/engine
-src/engine/economy/income
-src/engine/economy/construction
-src/engine/economy/maintenance
-src/engine/research/types
-src/engine/research/costs
-src/engine/research/effects
-src/engine/research/advancement
-src/engine/config/prestige_config
-src/engine/config/espionage_config
-src/engine/config/diplomacy_config
-src/engine/config/gameplay_config
-src/engine/config/military_config
-src/engine/config/facilities_config
-src/engine/config/ground_units_config
-src/engine/config/combat_config
-src/engine/config/construction_config
-src/engine/config/economy_config
-src/engine/config/ships_config
-src/engine/config/tech_config
-src/engine/config/population_config
-src/engine/config/house_themes
-src/engine/diplomacy/engine
-src/engine/colonization/engine
-src/engine/espionage/engine
-src/engine/squadron
-src/engine/salvage
-src/engine/intelligence/generator
-src/engine/intelligence/combat_intel
-src/engine/intelligence/types
-src/engine/commands/executor
-src/engine/spacelift
-src/engine/orders
-src/engine/fleet
-src/engine/resolution/combat_resolution
-src/engine/resolve
-src/engine/gamestate
-src/engine/fog_of_war
-
-# Combat test results (large files)
-combat_test_results.json
-combat_summary.json
-combat_stats.csv
-
-# Balance test results (JSON outputs for AI analysis)
-balance_results/
-tests/balance/*.json
-tests/balance/balance_results/
-
-# Claude-generated analysis scripts (not tracked)
-claude_scripts/
-
-# AI Training and Inference (DO NOT COMMIT LARGE DATA)
-# Training data from simulations
-ai_training/training_data/
-ai_training/raw_data/
-training_data/
-*.jsonl
-
-# Model files (large)
-ai_training/models/
-ai_inference/models/
-models/
-*.gguf
-*.safetensors
-*.bin
-*.pt
-*.pth
-
-# Python virtual environments
-ai_training/venv/
-ai_inference/venv/
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-
-# Model training outputs
-ai_training/ec4x-mistral-*/
-ai_training/checkpoints/
-ai_training/runs/
-ai_training/logs/
-wandb/
-
-# llama.cpp build artifacts
-llama.cpp/build/
-llama.cpp/models/*.gguf
-llama.cpp/*.exe
-llama.cpp/*.dll
-llama.cpp/*.so
-llama.cpp/server
-llama.cpp/quantize
-llama.cpp/main
-tests/scenarios/balance/asymmetric_warfare
-tests/integration/test_fleet_movement
-src/engine/resolve
-tests/debug_roe4
-tests/scenarios/orders/roe_retreat
-tests/scenarios/orders/blockade_mechanics
-tests/scenarios/orders/diplomatic_filtering
-tests/scenarios/orders/guard_behaviors
-tests/scenarios/orders/threatening_orders
-tests/scenarios/balance/asymmetric_warfare
-src/engine/economy/types
-src/engine/economy/production
-src/engine/economy/income
-src/engine/economy/construction
-src/engine/economy/maintenance
-src/engine/economy/engine
-src/engine/research/types
-src/engine/research/costs
-src/engine/research/advancement
-src/engine/research/effects
-tests/integration/test_m5_economy_integration
-tests/unit/test_economy
-tests/unit/test_research
-tests/balance/test_economy_balance
-tests/balance/run_simulation
-tests/balance/.build_git_hash
-
-# Compiled test binaries (no extension, executable)
-tests/test_*[!.nim][!.py][!.sh]
-tests/*/test_*[!.nim][!.py][!.sh]
-tests/*/*/test_*[!.nim][!.py][!.sh]
-tests/run_*[!.nim][!.py][!.sh]
-tests/*/run_*[!.nim][!.py][!.sh]
-
-# All executables in tests/ (blanket rule)
-tests/**/*
-!tests/**/*.nim
-!tests/**/*.py
-!tests/**/*.sh
-!tests/**/*.toml
-!tests/**/*.md
-!tests/**/*.txt
-!tests/**/*.csv
-!tests/**/
-
