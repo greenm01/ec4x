@@ -166,6 +166,34 @@ Orders abort when:
 - Hostile forces present at rendezvous point
 - Target house eliminated (spy orders)
 
+### Standing Orders Integration
+
+**Standing orders generate fleet orders that trigger events with one exception:**
+
+**How It Works:**
+1. Standing order execution (e.g., `AutoColonize`) writes a regular `FleetOrder` to `state.fleetOrders`
+2. Fleet order execution loop picks up persistent orders from `state.fleetOrders`
+3. Events fire when the underlying fleet order executes
+
+**Event Behavior:**
+- ❌ **OrderIssued**: Does NOT fire for standing-order-generated fleet orders
+  - Only fires for NEW orders submitted via OrderPacket
+  - Standing orders write directly to persistent `state.fleetOrders` table
+  - Skips "newOrdersThisTurn" tracking (fleet_order_execution.nim:189)
+- ✅ **OrderCompleted/OrderFailed/OrderAborted**: Fire normally when order executes
+  - Standing orders produce regular fleet orders (Move, Colonize, SeekHome, etc.)
+  - These orders execute through normal flow and generate completion events
+
+**Example: AutoColonize Standing Order**
+- Turn 1: Creates `Move` order → No OrderIssued, but OrderCompleted when fleet moves
+- Turn 2: Creates `Colonize` order → No OrderIssued, but OrderCompleted when colony established
+- Turn 3: Creates `SeekHome` order → No OrderIssued, but OrderCompleted when fleet arrives home
+
+**Code References:**
+- Standing order execution: `src/engine/standing_orders.nim:188-277` (AutoColonize example)
+- Persistent order processing: `src/engine/resolution/fleet_order_execution.nim:200-213`
+- Event generation: `src/engine/resolution/fleet_order_execution.nim:288+`
+
 ### Fog-of-War Integration
 
 The OrderAborted event is critical for AI behavior:
