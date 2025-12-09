@@ -3,6 +3,7 @@
 import std/[unittest, options, tables, strutils]
 import ../src/common/types/[core, units]
 import ../src/engine/[gamestate, fleet, squadron, starmap]
+import ../src/engine/initialization/game
 import ../src/engine/economy/maintenance
 import ../src/engine/economy/types as econ_types
 

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/verify_tech_implementation.sh:*)",
+      "Bash(grep -v '# Safe:' wc -l /tmp/unsafe_gets.txt head -20 /tmp/unsafe_gets.txt)",
+      "Bash(do echo \"=== $func ===\" grep -rn \"$func\" src/engine/ --include=\"*.nim\")",
+      "Bash(echo \"Tech effects that ARE used:\" grep -rn \"getWeaponsBonus\\|getEconomicBonus\\|applyWeaponsBonus\\|applyEconomicBonus\\|getTerraformingBaseCost\\|getTerraformingSpeed\\|canTerraform\" src/engine/ --include=\"*.nim\")",
+      "Bash(wc -l echo \"  function calls found\" echo \"\" echo \"Sample usages:\" grep -rn \"applyWeaponsBonus\\|applyEconomicBonus\" src/engine/ --include=\"*.nim\")",
+      "Bash(echo \"Tech effects that ARE used:\" grep -rn \"getWeaponsBonus\\|getEconomicBonus\\|applyWeaponsBonus\\|applyEconomicBonus\\|getTerraformingBaseCost\" src/engine/ --include=\"*.nim\")",
+      "Bash(wc -l echo \"\" echo \"Sample usages:\" grep -n \"applyWeaponsBonus\\|applyEconomicBonus\" src/engine/*.nim)",
+      "Bash(nimble build:*)",
+      "Bash(./tests/combat/test_ground_combat)",
+      "Bash(./test_ground_combat:*)",
+      "Bash(../../test_ground_combat)",
+      "Bash(tests/combat/test_ground_combat)",
+      "Bash(tests/combat/test_space_combat)",
+      "Bash(tests/combat/test_starbase_mechanics)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

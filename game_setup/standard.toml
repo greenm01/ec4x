@@ -49,15 +49,31 @@ counter_intelligence = 1            # CIC1
 fighter_doctrine = 1                # FD I (1.0x multiplier)
 advanced_carrier_ops = 1            # ACO I (CV=3FS, CX=5FS)
 
+
+# Initial fleet composition, per Esterian Conquest v1.5 - 4 fleets total:
+# - 2 colonization fleets (ETAC each with 1 PTU)
+# - 2 colonization fleets (Light Cruiser each)
+# - All fleets start with guard-blockade orders on homeworld
+
 [starting_fleet]
-# Initial fleet composition - 4 fleets total:
-# - 2 colonization fleets (ETAC + Light Cruiser each)
-# - 2 scout fleets (Destroyer each)
-etac = 2                            # 2 ETACs (fully loaded with PTUs)
-light_cruiser = 2                   # 2 Light Cruisers (one with each ETAC)
-destroyer = 2                       # 2 Destroyers (scout/exploration fleets)
-scout = 0                           # 0 Scouts
-# All other ship types: 0
+fleet_count = 4  # Number of starting fleets to create
+
+# NOTE: [fleet1-4] sections must be parsed manually due to toml_serialization
+# limitations. The parser in game_setup_config.nim handles these via string parsing.
+
+# [fleet1]
+# ships = ["ETAC"]
+# cargo_ptu = 1
+
+# [fleet2]
+# ships = ["LightCruiser"]
+
+# [fleet3]
+# ships = ["ETAC"]
+# cargo_ptu = 1
+
+# [fleet4]
+# ships = ["LightCruiser"]
 
 [starting_facilities]
 # Homeworld starting facilities and defenses
@@ -79,6 +95,11 @@ raw_quality = "Abundant"            # Abundant quality
 colony_level = 5                    # Level V colony
 population_units = 840              # 840 PU
 industrial_units = 420              # 50% of PU
+
+[house_naming]
+# House naming configuration (previously hardcoded in gamestate.nim)
+name_pattern = "House{index}"       # Pattern for house names (use {index} placeholder)
+use_theme_names = false              # If true, load from house_themes.toml
 
 [optional_balance_overrides]
 # Moderator can override specific balance values for this scenario only

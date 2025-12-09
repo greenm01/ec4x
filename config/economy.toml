@@ -280,3 +280,49 @@ harsh_pp_per_ptu = 8
 hostile_pp_per_ptu = 10
 desolate_pp_per_ptu = 12
 extreme_pp_per_ptu = 15
+
+# ============================================================================
+# INDUSTRIAL GROWTH MECHANICS
+# Source: engine refactoring - previously hardcoded values
+# ============================================================================
+
+[industrial_growth]
+# IU passive growth formula: max(min_growth, floor(PU / divisor))
+# RESOLVED: Use 100.0 for 2x rate (30-turn accelerated games)
+# Previous conflict: income.nim used 100.0, industrial_investment.nim used 200.0
+passive_growth_divisor = 100.0     # Divisor for PU to IU conversion
+passive_growth_minimum = 2.0       # Minimum 2 IU growth per turn
+applies_modifiers = true            # Apply tax + starbase bonuses
+
+# ============================================================================
+# STARBASE BONUSES
+# Source: Previously hardcoded in gamestate.nim and production.nim
+# ============================================================================
+
+[starbase_bonuses]
+growth_bonus_per_starbase = 0.05   # 5% population growth per starbase
+max_starbases_for_bonus = 3        # Max 3 starbases (15% max bonus)
+eli_bonus_per_starbase = 2         # ELI+2 per operational starbase
+
+# ============================================================================
+# SQUADRON CAPACITY
+# Source: Previously in capital_squadrons.nim
+# ============================================================================
+
+[squadron_capacity]
+# Capital squadron formula: max(minimum, floor(Total_IU / divisor) * multiplier)
+capital_squadron_iu_divisor = 100   # IU divisor for capacity calculation
+capital_squadron_multiplier = 2     # Multiplier after division
+capital_squadron_minimum = 8        # Minimum capacity regardless of IU
+
+# ============================================================================
+# PRODUCTION MODIFIERS
+# Source: Previously hardcoded in production.nim
+# ============================================================================
+
+[production_modifiers]
+el_bonus_per_level = 0.05          # 5% per EL (Economic Level)
+cst_bonus_per_level = 0.10         # 10% per CST (Construction Tech)
+blockade_penalty = 0.40            # 40% production when blockaded
+prod_growth_numerator = 50.0       # (50 - taxRate) / 500 formula
+prod_growth_denominator = 500.0

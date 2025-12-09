@@ -12,6 +12,7 @@ import std/[times, strformat, random, tables, options, sequtils, stats, algorith
 import unittest
 import stress_framework
 import ../../src/engine/[gamestate, resolve, orders]
+import ../../src/engine/initialization/game
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/common/types/core

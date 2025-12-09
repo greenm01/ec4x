@@ -4,6 +4,7 @@
 
 import std/[unittest, tables, options]
 import ../../src/engine/[gamestate, resolve, orders, starmap]
+import ../../src/engine/initialization/game
 import ../../src/engine/research/types as res_types
 import ../../src/common/types/[core, planets, units, tech]
 

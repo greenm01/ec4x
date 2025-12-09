@@ -15,6 +15,7 @@
 
 import std/[unittest, tables, options, strformat, sequtils]
 import ../../src/engine/[gamestate, orders, resolve, spacelift, squadron]
+import ../../src/engine/initialization/game
 import ../../src/engine/economy/types as econ_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types

@@ -13,6 +13,7 @@ import std/math
 import types, production
 import ../prestige
 import ../gamestate  # For unified Colony type
+import ../config/economy_config
 
 export types.ColonyIncomeReport, types.HouseIncomeReport, types.IncomePhaseReport
 
@@ -256,8 +257,9 @@ proc applyIndustrialGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
 
   # Base growth scales with population size (2x accelerated for 30-45 turn games)
   # Larger populations naturally build more infrastructure
-  # Was: currentPU / 200.0 → now currentPU / 100.0 (2x growth rate)
-  let baseIndustrialGrowth = max(2.0, floor(currentPU / 100.0))
+  let growthConfig = economy_config.globalEconomyConfig.industrial_growth
+  let baseIndustrialGrowth = max(growthConfig.passive_growth_minimum,
+                                 floor(currentPU / growthConfig.passive_growth_divisor))
 
   # Apply same tax and starbase modifiers as population
   # Low taxes → more economic freedom → faster industrialization

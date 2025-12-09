@@ -1,0 +1,85 @@
+## Configuration Resolution
+##
+## Handles defaults, fallbacks, and backward compatibility for game setup configs.
+## Part of the game initialization refactoring (Phase 2).
+
+import std/[strutils, tables]
+import ../config/game_setup_config
+import ../../common/types/units
+
+proc parseShipClassName*(name: string): ShipClass =
+  ## Parse ship class name from config string
+  ## Handles various naming formats (CamelCase, snake_case, etc.)
+  case name.toLower()
+  of "etac": ShipClass.ETAC
+  of "scout": ShipClass.Scout
+  of "destroyer": ShipClass.Destroyer
+  of "lightcruiser", "light_cruiser": ShipClass.LightCruiser
+  of "cruiser": ShipClass.Cruiser
+  of "heavycruiser", "heavy_cruiser": ShipClass.HeavyCruiser
+  of "battlecruiser", "battle_cruiser": ShipClass.BattleCruiser
+  of "battleship": ShipClass.Battleship
+  of "dreadnought": ShipClass.Dreadnought
+  of "superdreadnought", "super_dreadnought": ShipClass.SuperDreadnought
+  of "carrier": ShipClass.Carrier
+  of "supercarrier", "super_carrier": ShipClass.SuperCarrier
+  of "raider": ShipClass.Raider
+  of "planetbreaker", "planet_breaker": ShipClass.PlanetBreaker
+  else:
+    raise newException(ValueError, "Unknown ship class: " & name)
+
+proc resolveFleetConfiguration*(config: GameSetupConfig): seq[seq[ShipClass]] =
+  ## Resolve fleet configuration from TOML setup
+  ## Returns sequence of fleet compositions (each fleet is a seq[ShipClass])
+  ##
+  ## Priority:
+  ## 1. Try individual [fleet1], [fleet2], etc. sections (if uncommented)
+  ## 2. Fall back to aggregated counts (etac, light_cruiser, destroyer, scout)
+
+  result = @[]
+  let fleetConfig = config.starting_fleet
+
+  # Try individual fleet configs first
+  if fleetConfig.fleet_count > 0:
+    let individualFleets = game_setup_config.loadIndividualFleetConfigs()
+
+    if individualFleets.len > 0:
+      # Use individual fleet configurations
+      for fleetIdx in 1..fleetConfig.fleet_count:
+        if individualFleets.hasKey(fleetIdx):
+          let fleet = individualFleets[fleetIdx]
+          var shipClasses: seq[ShipClass] = @[]
+          for shipName in fleet.ships:
+            try:
+              shipClasses.add(parseShipClassName(shipName))
+            except ValueError as e:
+              # Skip invalid ship names
+              discard
+          if shipClasses.len > 0:
+            result.add(shipClasses)
+
+      if result.len > 0:
+        return result
+
+  # Fallback: Use aggregated counts
+  # Create colonization fleets (ETAC + Light Cruiser pairs)
+  let etacCount = fleetConfig.etac
+  let cruiserCount = fleetConfig.light_cruiser
+
+  if etacCount > 0 and cruiserCount > 0:
+    let pairs = min(etacCount, cruiserCount)
+    for i in 0..<pairs:
+      result.add(@[ShipClass.ETAC, ShipClass.LightCruiser])
+
+  # Create destroyer scout fleets
+  for i in 0..<fleetConfig.destroyer:
+    result.add(@[ShipClass.Destroyer])
+
+  # Create scout fleets
+  for i in 0..<fleetConfig.scout:
+    result.add(@[ShipClass.Scout])
+
+proc getStartingTreasury*(config: GameSetupConfig): int =
+  ## Get starting treasury from config
+  ## Returns configured treasury value
+  result = config.starting_resources.treasury

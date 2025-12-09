@@ -3,7 +3,7 @@
 ## Loads game setup parameters from game_setup/standard.toml using toml_serialization
 ## Defines starting conditions for players (homeworld, fleet, facilities, tech)
 
-import std/[os, strutils]
+import std/[os, strutils, options, tables]
 import toml_serialization
 import ../../common/logger
 import ../../common/types/planets
@@ -52,10 +52,22 @@ type
 
   StartingFleetConfig* = object
     ## Initial fleet composition
+    fleet_count*: int           # Number of individual fleets to create
+    # Fallback aggregated counts (used if individual fleet sections not available)
     etac*: int
     light_cruiser*: int
     destroyer*: int
     scout*: int
+
+  FleetConfig* = object
+    ## Individual fleet configuration (new per-fleet format)
+    ships*: seq[string]         # Ship class names (e.g., ["ETAC", "LightCruiser"])
+    cargo_ptu*: Option[int]     # Optional PTU cargo override for ETACs
+
+  HouseNamingConfig* = object
+    ## House naming configuration
+    name_pattern*: string       # Pattern with {index} placeholder
+    use_theme_names*: bool      # Whether to use house_themes.toml
 
   StartingFacilitiesConfig* = object
     ## Homeworld starting facilities
@@ -89,6 +101,7 @@ type
     starting_facilities*: StartingFacilitiesConfig
     starting_ground_forces*: StartingGroundForcesConfig
     homeworld*: HomeworldConfig
+    house_naming*: Option[HouseNamingConfig]  # Optional, defaults if not present
 
 proc loadGameSetupConfig*(configPath: string = "game_setup/standard.toml"): GameSetupConfig =
   ## Load game setup configuration from TOML file
@@ -125,6 +138,135 @@ proc parseResourceRating*(ratingName: string): ResourceRating =
   of "veryrich", "very_rich": ResourceRating.VeryRich
   else:
     raise newException(ValueError, "Invalid resource rating: " & ratingName)
+
+proc parseFleetConfigSection*(configContent: string, fleetIdx: int): Option[FleetConfig] =
+  ## Parse a single [fleetN] section from TOML content
+  ## Returns Some(FleetConfig) if section exists and is valid, None otherwise
+  let sectionName = "[fleet" & $fleetIdx & "]"
+  let sectionStart = configContent.find(sectionName)
+
+  if sectionStart < 0:
+    return none(FleetConfig)
+
+  # Skip past the section header line to start of actual content
+  var contentStart = sectionStart + sectionName.len
+  while contentStart < configContent.len and configContent[contentStart] != '\n':
+    contentStart += 1
+  contentStart += 1  # Skip the newline
+
+  # Find the end of this section (next [section] header at start of line, or end of file)
+  var sectionEnd = configContent.len
+  var i = contentStart
+  while i < configContent.len:
+    # Check if this is a new section header ([ at start of line)
+    if configContent[i] == '[':
+      # Check if this [ is at the start of a line (after newline or whitespace)
+      var isLineStart = true
+      if i > contentStart:
+        var j = i - 1
+        while j >= contentStart and configContent[j] != '\n':
+          if configContent[j] notin {' ', '\t', '\r'}:
+            isLineStart = false
+            break
+          j -= 1
+      if isLineStart:
+        sectionEnd = i
+        break
+    i += 1
+
+  let sectionContent = configContent[contentStart ..< sectionEnd]
+
+  # Parse ships array - look for: ships = ["Ship1", "Ship2"]
+  var ships: seq[string] = @[]
+  let shipsPattern = "ships"
+  let shipsStart = sectionContent.find(shipsPattern)
+
+  if shipsStart >= 0:
+    # Find the array content between [ and ]
+    let arrayStart = sectionContent.find("[", shipsStart)
+
+    if arrayStart >= 0:
+      let arrayEnd = sectionContent.find("]", arrayStart)
+
+      if arrayEnd > arrayStart:
+        let arrayContent = sectionContent[arrayStart + 1 ..< arrayEnd]
+
+        # Split by comma and clean up quotes
+        for shipStr in arrayContent.split(','):
+          let cleaned = shipStr.strip().strip(chars = {'"', '\''})
+          if cleaned.len > 0:
+            ships.add(cleaned)
+
+  # Parse optional cargo_ptu
+  var cargoPtu: Option[int] = none(int)
+  let cargoPattern = "cargo_ptu"
+  let cargoStart = sectionContent.find(cargoPattern)
+  if cargoStart >= 0:
+    # Extract the number after cargo_ptu =
+    let eqPos = sectionContent.find("=", cargoStart)
+    if eqPos >= 0:
+      var numStr = ""
+      for i in (eqPos + 1) ..< sectionContent.len:
+        let c = sectionContent[i]
+        if c in '0'..'9':
+          numStr.add(c)
+        elif numStr.len > 0:
+          break
+      if numStr.len > 0:
+        try:
+          cargoPtu = some(parseInt(numStr))
+        except ValueError:
+          discard
+
+  if ships.len > 0:
+    return some(FleetConfig(ships: ships, cargoPtu: cargoPtu))
+  else:
+    return none(FleetConfig)
+
+proc loadIndividualFleetConfigs*(configPath: string = "game_setup/fleets.toml"): Table[int, FleetConfig] =
+  ## Load individual fleet configurations from TOML file
+  ## Parses [fleet1], [fleet2], ... [fleetN] sections
+  ## Returns table mapping fleet index to FleetConfig
+  ##
+  ## Note: Uses separate fleets.toml file to avoid toml_serialization conflicts
+  ## with indexed table sections in main standard.toml
+
+  result = initTable[int, FleetConfig]()
+
+  if not fileExists(configPath):
+    logWarn("Config", "Game setup config not found", "path=", configPath)
+    return
+
+  let configContent = readFile(configPath)
+  logDebug("Config", "Loaded fleet config file", "path=", configPath, "size=", $configContent.len)
+
+  # Parse individual [fleetN] sections (1-indexed)
+  var fleetIdx = 1
+  while true:
+    let fleetConfig = parseFleetConfigSection(configContent, fleetIdx)
+    if fleetConfig.isNone:
+      break
+
+    result[fleetIdx] = fleetConfig.get()
+    logDebug("Config", "Loaded fleet config",
+             "fleet=", $fleetIdx, "ships=", $fleetConfig.get().ships.len)
+    fleetIdx += 1
+
+  logInfo("Config", "Loaded individual fleet configs", "count=", $(fleetIdx - 1))
+
+proc getHouseNamePattern*(config: GameSetupConfig): string =
+  ## Get house naming pattern from config, with fallback default
+  if config.house_naming.isSome:
+    return config.house_naming.get().name_pattern
+  else:
+    return "House{index}"  # Default pattern
+
+proc useThemeNames*(config: GameSetupConfig): bool =
+  ## Check if config specifies using theme names from house_themes.toml
+  if config.house_naming.isSome:
+    return config.house_naming.get().use_theme_names
+  else:
+    return false  # Default: don't use theme names
 
 ## Global configuration instance
 

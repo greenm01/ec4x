@@ -27,6 +27,7 @@
 
 import std/[unittest, tables, options, strformat, times, sequtils, random, strutils, hashes, algorithm]
 import ../../src/engine/[gamestate, orders, resolve, starmap, fleet, squadron]
+import ../../src/engine/initialization/game
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
 import ../../src/engine/diplomacy/types as dip_types

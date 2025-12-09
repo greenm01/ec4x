@@ -5,11 +5,13 @@
 
 import std/[tables, strformat, sequtils, strutils, algorithm]
 import ../../engine/[gamestate, starmap, fleet, squadron, spacelift]
+import ../../engine/initialization/[house, colony]
 import ../../engine/config/[prestige_multiplier, house_themes, gameplay_config]
 import ../../common/types/[core, units, planets, tech]
 import ../../common/[system]
 
-export gamestate.initializeHouse, gamestate.createHomeColony
+export house.initializeHouse
+export colony.createHomeColony
 export squadron.createSquadron
 
 proc generateBalancedStarMap*(numPlayers: int): StarMap =
@@ -156,7 +158,7 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     let houseId = (&"house-{houseName.toLower()}").HouseId
 
     # Initialize house with standard starting conditions
-    result.houses[houseId] = initializeHouse(houseName, houseColor)
+    result.houses[houseId] = house.initializeHouse(houseName, houseColor)
 
     # BALANCE FIX: Use randomized mapping instead of direct index
     # houseOrder[i] gives this house's randomized position in the player system list
@@ -164,7 +166,7 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     let homeSystemId = result.starMap.playerSystemIds[positionIndex]
 
     # Create home colony
-    result.colonies[homeSystemId] = createHomeColony(homeSystemId, houseId)
+    result.colonies[homeSystemId] = colony.createHomeColony(homeSystemId, houseId)
 
     # BALANCE FIX: Normalize starting system quality to ensure fairness
     # Override procedural generation to give all players identical starting conditions

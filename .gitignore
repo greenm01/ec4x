@@ -27,6 +27,7 @@
 !*.svg
 !*.xlsx
 !*.xls
+!*.adoc
 
 # Whitelist root files
 !.gitignore

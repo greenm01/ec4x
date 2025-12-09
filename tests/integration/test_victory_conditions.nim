@@ -3,6 +3,7 @@
 import std/[unittest, tables, options]
 import ../../src/engine/victory/[types, engine]
 import ../../src/engine/gamestate
+import ../../src/engine/initialization/[game, house]
 import ../../src/engine/starmap
 import ../../src/common/types/core
 

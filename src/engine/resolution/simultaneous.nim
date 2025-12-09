@@ -15,6 +15,7 @@ import ../spacelift
 import ../logger
 import ../state_helpers
 import ../starmap
+import ../initialization/colony
 import ../colonization/engine as col_engine
 import types as res_types
 import event_factory/init as event_factory

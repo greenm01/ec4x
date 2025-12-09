@@ -8,9 +8,11 @@ import ../../../common/types/core
 import ../../../engine/gamestate
 import ../../../engine/fog_of_war
 import ../../../engine/economy/types as econ_types
+import ../../../engine/config/economy_config
 import ../../common/types as ai_types
 import ../controller_types
 import ../shared/intelligence_types
+import ../config as rba_config
 
 type
   IUInvestmentOpportunity* = object
@@ -57,8 +59,11 @@ proc calculateIUInvestmentCost*(currentIU: int, targetIU: int, populationUnits: 
 
 proc calculatePassiveIUGrowth*(populationUnits: int): int =
   ## Calculate passive IU growth per turn
-  ## Formula: max(1, floor(PU / 200))
-  return max(1, int(floor(float(populationUnits) / 200.0)))
+  ## Formula: max(min, floor(PU / divisor))
+  ## RESOLVED: Now uses economy config (100.0) matching engine behavior
+  let growthConfig = economy_config.globalEconomyConfig.industrial_growth
+  return max(int(growthConfig.passive_growth_minimum),
+             int(floor(float(populationUnits) / growthConfig.passive_growth_divisor)))
 
 proc estimateIUProductionValue*(iu: int, elTech: int): int =
   ## Estimate PP production per turn from IU

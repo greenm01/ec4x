@@ -71,8 +71,9 @@ proc needsReconnaissance*(
     let report = filtered.ownHouse.intelligence.colonyReports[systemId]
     let turnsSince = filtered.turn - report.gatheredTurn
 
-    # Intel is stale if > 10 turns old
-    if turnsSince > 10:
+    # Intel is stale if beyond threshold
+    # RESOLVED: Use config value (10 turns)
+    if turnsSince > config.globalRBAConfig.intelligence.colony_intel_stale_threshold:
       return true
 
   # Check if we have any fleet movement intel for this system
