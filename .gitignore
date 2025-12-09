@@ -74,3 +74,4 @@ logs/
 *.dylib
 *.dll
 flake.lock
+.aider*
