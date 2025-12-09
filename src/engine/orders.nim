@@ -62,12 +62,7 @@ type
 
   DiplomaticActionType* {.pure.} = enum
     ## Diplomatic actions per diplomacy.md:8.1
-    ## 4-level diplomatic system: Neutral, Ally (allies), Hostile, Enemy
-    ProposeAllyPact,  # Propose pact with another house (→ Ally)
-    AcceptProposal,            # Accept pending proposal
-    RejectProposal,            # Reject pending proposal
-    WithdrawProposal,          # Cancel own proposal
-    BreakPact,                 # Break existing non-aggression pact (→ Neutral)
+    ## 3-level diplomatic system: Neutral, Hostile, Enemy
     DeclareHostile,            # Escalate to Hostile (deep space combat)
     DeclareEnemy,              # Escalate to Enemy (open war, planetary attacks)
     SetNeutral                 # De-escalate to Neutral (peace)
