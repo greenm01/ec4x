@@ -7,7 +7,7 @@
 ## 2. Mediate remaining budget via Basileus priority queue
 ## 3. Generate per-advisor feedback (fulfilled/unfulfilled requirements)
 
-import std/[tables, strformat, options]
+import std/[tables, strformat, options, strutils]
 import ../../../common/types/core
 import ../../../engine/[logger, gamestate, fog_of_war]
 import ../../../engine/diplomacy/types as dip_types
