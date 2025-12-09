@@ -5,7 +5,7 @@
 ##
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 552-612)
 
-import std/[strformat, tables, strutils]
+import std/strformat # Removed tables and strutils, as they are not used
 import ./types
 import ../../../engine/gamestate
 import ../../../engine/diplomacy/types as dip_types
