@@ -290,10 +290,8 @@ type
     negativePrestigeTurns*: int  # Consecutive turns with prestige < 0 (defensive collapse)
     turnsWithoutOrders*: int     # Consecutive turns without submitting orders (MIA autopilot)
     diplomaticRelations*: dip_types.DiplomaticRelations  # Relations with other houses
-    violationHistory*: dip_types.ViolationHistory  # Track pact violations
+    violationHistory*: dip_types.ViolationHistory  # Track violations (no separate dishonored/isolation objects)
     espionageBudget*: esp_types.EspionageBudget  # EBP/CIP points
-    dishonoredStatus*: dip_types.DishonoredStatus  # Pact violation penalty
-    diplomaticIsolation*: dip_types.DiplomaticIsolation  # Pact violation penalty
     taxPolicy*: econ_types.TaxPolicy  # Current tax rate and 6-turn history
     consecutiveShortfallTurns*: int  # Consecutive turns of missed maintenance payment (economy.md:3.11)
 
@@ -351,7 +349,6 @@ type
     fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
     queuedCombatOrders*: seq[FleetOrder]  # Combat orders queued for next turn's Conflict Phase
     standingOrders*: Table[FleetId, StandingOrder]  # Standing orders (execute when no explicit order)
-    diplomacy*: Table[(HouseId, HouseId), DiplomaticState]
     turnDeadline*: int64          # Unix timestamp
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
     spyScouts*: Table[string, SpyScout]  # Active spy scouts on intelligence missions
