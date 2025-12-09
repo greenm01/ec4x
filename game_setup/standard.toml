@@ -60,20 +60,7 @@ fleet_count = 4  # Number of starting fleets to create
 
 # NOTE: [fleet1-4] sections must be parsed manually due to toml_serialization
 # limitations. The parser in game_setup_config.nim handles these via string parsing.
-
-# [fleet1]
-# ships = ["ETAC"]
-# cargo_ptu = 1
-
-# [fleet2]
-# ships = ["LightCruiser"]
-
-# [fleet3]
-# ships = ["ETAC"]
-# cargo_ptu = 1
-
-# [fleet4]
-# ships = ["LightCruiser"]
+# Fleets are configured in fleets.toml
 
 [starting_facilities]
 # Homeworld starting facilities and defenses
