@@ -363,7 +363,7 @@ proc resolveScoutDetectionEscalations*(state: var GameState) =
     )
 
     # Spy scout detection triggers Hostile escalation
-    # Only escalate if currently Neutral (don't escalate Ally or downgrade Enemy)
+    # Only escalate if currently Neutral (don't downgrade Enemy)
     if currentState == dip_types.DiplomaticState.Neutral:
       # Escalate to Hostile
       var detectorHouse = state.houses[event.detectorHouse]

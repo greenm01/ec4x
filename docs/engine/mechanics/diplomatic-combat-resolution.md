@@ -357,20 +357,17 @@ proc isNonThreateningButProvocative(order: FleetOrderType): bool =
 ### 7.1 Legacy Systems to Remove
 
 **Dishonored Status:**
-- Currently exists in codebase
-- **Action**: Remove entirely
-- **Reason**: Replaced by simple escalation ladder + negotiated de-escalation
+- Was previously in codebase, now removed.
+- **Reason**: Replaced by simple escalation ladder + negotiated de-escalation.
 
 **Ally Diplomatic State:**
-- Currently defined in diplomatic types
-- **Action**: Remove or mark as unused
-- **Reason**: Zero-sum conquest game, no formal alliances
-- **Alternative**: Neutral status provides temporary cooperation capability
+- Was previously defined in diplomatic types, now removed.
+- **Reason**: Zero-sum conquest game, no formal alliances.
+- **Alternative**: Neutral status provides temporary cooperation capability.
 
 **Treaty System:**
-- May exist in codebase
-- **Action**: Replace with simple de-escalation offers
-- **Reason**: Simpler to implement and understand, achieves same strategic goals
+- Was previously in codebase, now removed.
+- **Reason**: Replaced by simple de-escalation offers.
 
 ### 7.2 Current Implementation Issues
 

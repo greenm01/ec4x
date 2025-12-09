@@ -303,10 +303,7 @@ proc executeFleetOrdersFiltered*(
           # Check for enemy/neutral fleets
           for otherFleet in state.fleets.values:
             if otherFleet.location == targetSystem and otherFleet.owner != houseId:
-              let relation = dip_types.getDiplomaticState(
-                state.houses[houseId].diplomaticRelations,
-                otherFleet.owner
-              )
+              let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(otherFleet.owner)
               if relation == dip_types.DiplomaticState.Enemy or
                  relation == dip_types.DiplomaticState.Neutral:
                 hasHostileForces = true
@@ -316,10 +313,7 @@ proc executeFleetOrdersFiltered*(
           if targetSystem in state.colonies:
             let colony = state.colonies[targetSystem]
             if colony.owner != houseId and colony.starbases.len > 0:
-              let relation = dip_types.getDiplomaticState(
-                state.houses[houseId].diplomaticRelations,
-                colony.owner
-              )
+              let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(colony.owner)
               if relation == dip_types.DiplomaticState.Enemy or
                  relation == dip_types.DiplomaticState.Neutral:
                 hasHostileForces = true
