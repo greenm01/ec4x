@@ -98,7 +98,6 @@ type
     enemyCount: int
     hostileCount: int
     neutralCount: int
-    allyCount: int
 
   CheckpointData = object
     ## Captures game state at a checkpoint turn
@@ -163,12 +162,13 @@ proc create4PlayerTestState(): GameState =
   dip_types.setDiplomaticState(result.houses[houseIds[1]].diplomaticRelations,
                                 houseIds[0], dip_types.DiplomaticState.Neutral, 0)
 
-  # house3 (Ordos) + house4 (Corrino) - Allied
-  # (Allies can attack same target simultaneously)
+  # house3 (Ordos) + house4 (Corrino) - Neutral
+  # (Neutral houses can coordinate attacks on same target)
+  # NOTE: Ally state was removed, using Neutral instead
   dip_types.setDiplomaticState(result.houses[houseIds[2]].diplomaticRelations,
-                                houseIds[3], dip_types.DiplomaticState.Ally, 0)
+                                houseIds[3], dip_types.DiplomaticState.Neutral, 0)
   dip_types.setDiplomaticState(result.houses[houseIds[3]].diplomaticRelations,
-                                houseIds[2], dip_types.DiplomaticState.Ally, 0)
+                                houseIds[2], dip_types.DiplomaticState.Neutral, 0)
 
   # house3/house4 vs house2 - Neutral (allows allies to attack if they have threatening orders)
   dip_types.setDiplomaticState(result.houses[houseIds[2]].diplomaticRelations,
@@ -1228,7 +1228,6 @@ proc captureCheckpoint(state: GameState, turn: int): CheckpointData =
         of dip_types.DiplomaticState.Enemy: checkpoint.enemyCount.inc
         of dip_types.DiplomaticState.Hostile: checkpoint.hostileCount.inc
         of dip_types.DiplomaticState.Neutral: checkpoint.neutralCount.inc
-        of dip_types.DiplomaticState.Ally: checkpoint.allyCount.inc
 
     result.perHouseData[houseId] = checkpoint
 
@@ -1732,18 +1731,18 @@ proc validateDiplomacy(checkpoints: seq[CheckpointData]) =
 
   let finalCheckpoint = checkpoints[^1]
   var totalEnemies = 0
-  var totalAllies = 0
+  var totalHostile = 0
   var totalNeutral = 0
 
   for houseId, data in finalCheckpoint.perHouseData:
     totalEnemies += data.enemyCount
-    totalAllies += data.allyCount
+    totalHostile += data.hostileCount
     totalNeutral += data.neutralCount
 
-  echo &"[INFO] Diplomatic relations: {totalEnemies} enemy, {totalAllies} ally, {totalNeutral} neutral"
+  echo &"[INFO] Diplomatic relations: {totalEnemies} enemy, {totalHostile} hostile, {totalNeutral} neutral"
 
   # We set initial diplomatic states, so there should be at least some relations
-  let totalRelations = totalEnemies + totalAllies + totalNeutral
+  let totalRelations = totalEnemies + totalHostile + totalNeutral
   doAssert totalRelations > 0, "[FAIL] No diplomatic relations found"
   echo "[PASS] Diplomatic relations maintained"
 
