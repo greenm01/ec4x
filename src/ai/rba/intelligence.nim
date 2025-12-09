@@ -358,16 +358,15 @@ proc calculateDistance*(starMap: StarMap, fromSystem: SystemId, toSystem: System
     return pathResult.path.len
   return 999  # Unreachable
 
-proc countSharedBorders*(intelSnapshot: IntelligenceSnapshot, ownHouse: HouseId, targetHouse: HouseId): int =
+proc countSharedBorders*(filtered: FilteredGameState, intelSnapshot: IntelligenceSnapshot, ownHouse: HouseId, targetHouse: HouseId): int =
   ## Count systems where we share borders with the target house
-  ## Uses intelSnapshot.knownEnemyColonies (our intel view of their colonies)
+  ## Uses filtered.ownColonies for our colonies and intelSnapshot.knownEnemyColonies for enemy colonies
   result = 0
 
-  # Find our colonies (from ownColonies in filtered state)
+  # Find our colonies (from filtered.ownColonies)
   var ownColonySystems: seq[SystemId] = @[]
-  for (systemId, colony) in intelSnapshot.colonyReports:
-    if colony.targetOwner == ownHouse:
-      ownColonySystems.add(systemId)
+  for colony in filtered.ownColonies:
+    ownColonySystems.add(colony.systemId)
 
   # Find target colonies (from intelSnapshot.knownEnemyColonies)
   var targetColonySystems: seq[SystemId] = @[]
@@ -378,7 +377,7 @@ proc countSharedBorders*(intelSnapshot: IntelligenceSnapshot, ownHouse: HouseId,
   # Count adjacent pairs
   for ownSys in ownColonySystems:
     for targetSys in targetColonySystems:
-      let distance = calculateDistance(intelSnapshot.starMap, ownSys, targetSys)
+      let distance = calculateDistance(filtered.starMap, ownSys, targetSys)
       if distance == 1: # Systems are adjacent if distance is 1 jump
         result += 1
         # IMPORTANT: Break here to count each of our colonies once for shared border
