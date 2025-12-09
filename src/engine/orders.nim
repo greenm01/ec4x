@@ -51,7 +51,7 @@ type
     buildingType*: Option[string]      # For Building type
     industrialUnits*: int              # For Infrastructure type
 
-  BuildType* {.pure.} = enum
+  BuildType* = enum {.pure.}
     Ship, Building, Infrastructure
 
   DiplomaticAction* = object
