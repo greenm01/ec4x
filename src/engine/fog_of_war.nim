@@ -365,10 +365,20 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
     result.housePrestige[otherId] = otherHouse.prestige
     result.houseEliminated[otherId] = otherHouse.eliminated
 
-  for key, dipState in state.diplomacy:
-    let (house1, house2) = key
-    if house1 == houseId or house2 == houseId:
-      result.houseDiplomacy[(house1, house2)] = dipState
+  # Populate diplomatic relations involving the viewing house
+  # 1. Relations *from* the viewing house *to* other houses
+  let viewingHouse = state.houses.getOrDefault(houseId)
+  for targetHouseId, relation in viewingHouse.diplomaticRelations.relations:
+    result.houseDiplomacy[(houseId, targetHouseId)] = relation.state
+
+  # 2. Relations *from* other houses *to* the viewing house
+  #    This ensures a complete bilateral view for the viewing house.
+  for otherHouseId, otherHouse in state.houses:
+    if otherHouseId == houseId: # Skip self
+      continue
+    if otherHouse.diplomaticRelations.relations.hasKey(houseId):
+      let relationToViewingHouse = otherHouse.diplomaticRelations.relations[houseId]
+      result.houseDiplomacy[(otherHouseId, houseId)] = relationToViewingHouse.state
 
 proc getIntelStaleness*(filtered: FilteredGameState, systemId: SystemId): int =
   ## Calculate how many turns old intel is for a system
