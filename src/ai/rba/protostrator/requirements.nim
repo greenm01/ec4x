@@ -48,7 +48,7 @@ proc calculateDynamicThresholds(filtered: FilteredGameState): tuple[overwhelming
   # Dynamic thresholds as % of average prestige
   # - Overwhelming: 35% of average (seek NAP to avoid conflict)
   # - Moderate: 15% of average (NAP if diplomatic-focused)
-  # - Strong: 25% of average (strong ally threshold)
+  # - Strong: 25% of average (strong diplomatic relations threshold)
   #
   # These percentages scale naturally with game progression:
   # Early game (avg ~300): overwhelming=105, moderate=45, strong=75
@@ -375,8 +375,10 @@ proc generateDiplomaticRequirements*(
     # Determine proposal type for pact proposals
     var proposalType: Option[dip_proposals.ProposalType] = none(dip_proposals.ProposalType)
     if target.recommendedAction == DiplomaticRequirementType.ProposePact:
-      # Only AllyPact is currently implemented in diplomacy engine
-      proposalType = some(dip_proposals.ProposalType.AllyPact)
+      # AllyPact is no longer implemented. A ProposePact requirement
+      # might map to a SetNeutral diplomatic action directly, or
+      # to a different specific proposal type not yet defined.
+      proposalType = none(dip_proposals.ProposalType) # Set to none for now to resolve compilation.
 
     result.requirements.add(DiplomaticRequirement(
       requirementType: target.recommendedAction,
