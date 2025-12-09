@@ -10,7 +10,7 @@
 import std/tables
 import ../../common/types/[core, diplomacy, units]
 import ../prestige
-import ../config/[prestige_config, prestige_multiplier, diplomacy_config]
+import ../config/diplomacy_config # Removed unused prestige_config, prestige_multiplier
 
 export core.HouseId
 export diplomacy.DiplomaticState

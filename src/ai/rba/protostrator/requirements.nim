@@ -304,18 +304,6 @@ proc generateDiplomaticRequirements*(
           target.priority = RequirementPriority.High
           target.reason = &"War against {houseId}: {warEval.reason} (score: {warEval.score:.1f})"
 
-    of dip_types.DiplomaticState.Ally:
-      # Have NAP - maintain or upgrade to alliance
-      if prestigeGap > thresholds.strong and p.diplomacyValue > 0.7:
-        # Strong ally - consider alliance
-        target.recommendedAction = DiplomaticRequirementType.ProposePact
-        target.priority = RequirementPriority.Medium
-        target.reason = &"Upgrade NAP to Alliance with {houseId} (mutual benefit)"
-      else:
-        # Maintain NAP
-        target.recommendedAction = DiplomaticRequirementType.MaintainRelations
-        target.priority = RequirementPriority.Low
-        target.reason = &"Maintain NAP with {houseId}"
 
     of dip_types.DiplomaticState.Hostile:
       # Tensions escalated from deep space combat
