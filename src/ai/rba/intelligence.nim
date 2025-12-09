@@ -250,7 +250,7 @@ proc findBestColonizationTarget*(controller: var AIController, filtered: Filtere
 
   return none(SystemId)
 
-proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): seq[EconomicIntelligence] =
+proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): seq[intelligence_types.EconomicIntelligence] =
   ## Assess enemy economic strength for targeting
   result = @[]
 
@@ -263,7 +263,7 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
     if targetHouse == controller.houseId:
       continue
 
-    var intel = EconomicIntelligence(
+    var intel = intelligence_types.EconomicIntelligence(
       targetHouse: targetHouse,
       estimatedProduction: 0,
       highValueTargets: @[],
