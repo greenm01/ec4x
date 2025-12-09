@@ -1,6 +1,6 @@
 ## Protostrator Collector - Diplomacy & Foreign Affairs Domain
 ##
-## Tracks diplomatic relationships (4-level system: Neutral, Ally, Hostile, Enemy),
+## Tracks diplomatic relationships (3-level system: Neutral, Hostile, Enemy),
 ## pact violations, dishonored status, diplomatic isolation, and bilateral relations.
 ##
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 552-612)
@@ -22,7 +22,6 @@ proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): Diagnostic
   # ================================================================
 
   # Count diplomatic relationships
-  var allyCount = 0
   var hostileCount = 0
   var enemyCount = 0
   var neutralCount = 0
@@ -37,14 +36,11 @@ proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): Diagnostic
     case dipState
     of DiplomaticState.Neutral:
       neutralCount += 1
-    of DiplomaticState.Ally:
-      allyCount += 1
     of DiplomaticState.Hostile:
       hostileCount += 1
     of DiplomaticState.Enemy:
       enemyCount += 1
 
-  result.allyStatusCount = allyCount
   result.hostileStatusCount = hostileCount
   result.enemyStatusCount = enemyCount
   result.neutralStatusCount = neutralCount
@@ -74,7 +70,7 @@ proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): Diagnostic
   # ================================================================
 
   # Format: "houseId:state;houseId:state;..." (up to 12 houses)
-  # State codes: N=Neutral, A=Ally, H=Hostile, E=Enemy
+  # State codes: N=Neutral, H=Hostile, E=Enemy
   var relations: seq[string] = @[]
   for otherHouseId, otherHouse in state.houses:
     if otherHouseId == houseId or otherHouse.eliminated:
@@ -83,7 +79,6 @@ proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): Diagnostic
     let dipState = house.diplomaticRelations.getDiplomaticState(otherHouseId)
     let stateStr = case dipState
       of DiplomaticState.Neutral: "N"
-      of DiplomaticState.Ally: "A"
       of DiplomaticState.Hostile: "H"
       of DiplomaticState.Enemy: "E"
 
