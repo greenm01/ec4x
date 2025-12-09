@@ -69,7 +69,11 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
       state.standingOrders[newFleet.id] = StandingOrder(
         fleetId: newFleet.id,
         orderType: StandingOrderType.GuardColony,
-        params: StandingOrderParams(),
+        params: StandingOrderParams(
+          orderType: StandingOrderType.GuardColony,
+          defendTargetSystem: homeworldSystemId,  # Guard homeworld
+          defendMaxRange: 0  # Stay at homeworld only
+        ),
         roe: 6,  # Standard combat posture
         createdTurn: 0,
         lastExecutedTurn: 0,
