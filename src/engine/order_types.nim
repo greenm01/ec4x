@@ -5,7 +5,7 @@ import std/options
 import ../common/types/[core, planets]
 
 type
-  FleetOrderType {.pure.}* = enum
+  FleetOrderType* = enum {.pure.}
     Hold              # Hold position, do nothing
     Move              # Navigate to target system
     SeekHome          # Find closest friendly system
