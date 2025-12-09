@@ -10,6 +10,7 @@ import std/[tables, options, sequtils, strformat]
 import ../../common/types/[core, combat, units]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../spacelift, ../logger
 import ../state_helpers
+import ../initialization/colony
 import ../colonization/engine as col_engine
 import ../diplomacy/[types as dip_types]
 import ../config/population_config

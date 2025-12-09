@@ -7,6 +7,7 @@ import std/[tables, options, sets, hashes, algorithm]
 import ../common/types
 import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap]
 import ../../common/types/[core, planets]
+import ./config
 
 # =============================================================================
 # Intelligence Gathering & Analysis
@@ -142,12 +143,13 @@ proc getIntelAge*(controller: AIController, systemId: SystemId, currentTurn: int
 
 proc needsReconnaissanceController*(controller: AIController, systemId: SystemId, currentTurn: int): bool =
   ## Check if a system needs reconnaissance
-  ## Returns true if we have no intel or intel is stale (>5 turns old)
+  ## Returns true if we have no intel or intel is stale
   if systemId notin controller.intelligence:
     return true
 
   let age = currentTurn - controller.intelligence[systemId].lastUpdated
-  return age > 5  # Intel becomes stale after 5 turns
+  # RESOLVED: Use config value (10 turns)
+  return age > config.globalRBAConfig.intelligence.colony_intel_stale_threshold
 
 proc findBestColonizationTarget*(controller: var AIController, filtered: FilteredGameState,
                                   fromSystem: SystemId, fleetId: FleetId): Option[SystemId] =

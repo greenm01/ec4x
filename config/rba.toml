@@ -430,3 +430,39 @@ filler_standing_order_bias = 0.3
 track_colony_defense_history = true
 max_history_entries = 50
 
+# ==============================================================================
+# EPARCH INDUSTRIAL INVESTMENT
+# Source: Previously hardcoded in industrial_investment.nim
+# ==============================================================================
+
+[eparch_industrial]
+# RESOLVED: Match economy.toml (100.0) - was 200.0
+iu_growth_divisor = 100.0           # IU passive growth divisor
+iu_payback_threshold_turns = 10     # Investment payback threshold
+iu_affordability_multiplier = 3     # Treasury safety multiplier (cost * 3)
+iu_investment_fraction = 0.25       # Invest 25% of IU deficit
+iu_minimum_investment = 10          # Minimum 10 IU per investment
+
+# ==============================================================================
+# TREASURY THRESHOLDS
+# Source: Previously hardcoded across RBA modules
+# ==============================================================================
+
+[treasury_thresholds]
+terraform_minimum = 800             # Min treasury for terraforming decisions
+terraform_buffer = 200              # Reserve buffer for terraforming
+transfer_healthy = 500              # Healthy treasury for logistics transfers
+salvage_critical = 100              # Critical threshold for salvage decisions
+reactivation_healthy = 1000         # Healthy treasury for reactivation
+
+# ==============================================================================
+# AFFORDABILITY CHECKS
+# Source: Previously hardcoded in build_requirements.nim
+# ==============================================================================
+
+[affordability_checks]
+# Treasury multipliers for different build decisions
+general_multiplier = 1.5            # General affordability check (1.5x cost)
+shield_multiplier = 2.0             # Shield affordability check (2x cost)
+critical_multiplier = 3.0           # Critical threshold check (3x cost)
+

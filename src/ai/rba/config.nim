@@ -298,6 +298,33 @@ type
     max_history_entries*: int
 
 # ==============================================================================
+# Eparch Industrial Investment Configuration
+# ==============================================================================
+
+type
+  EparchIndustrialConfig* = object
+    ## Industrial investment thresholds and parameters
+    iu_growth_divisor*: float
+    iu_payback_threshold_turns*: int
+    iu_affordability_multiplier*: int
+    iu_investment_fraction*: float
+    iu_minimum_investment*: int
+
+  TreasuryThresholdsConfig* = object
+    ## Treasury health thresholds for various AI decisions
+    terraform_minimum*: int
+    terraform_buffer*: int
+    transfer_healthy*: int
+    salvage_critical*: int
+    reactivation_healthy*: int
+
+  AffordabilityChecksConfig* = object
+    ## Treasury multipliers for affordability checks
+    general_multiplier*: float
+    shield_multiplier*: float
+    critical_multiplier*: float
+
+# ==============================================================================
 # Root Configuration
 # ==============================================================================
 
@@ -357,6 +384,10 @@ type
     feedback_system*: FeedbackSystemConfig
     reprioritization*: ReprioritizationConfig
     standing_orders_integration*: StandingOrdersIntegrationConfig
+    # Eparch industrial investment (refactoring Phase 4)
+    eparch_industrial*: EparchIndustrialConfig
+    treasury_thresholds*: TreasuryThresholdsConfig
+    affordability_checks*: AffordabilityChecksConfig
 
 # ==============================================================================
 # Config Validation

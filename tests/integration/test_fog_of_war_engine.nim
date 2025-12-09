@@ -12,6 +12,7 @@
 
 import std/[unittest, tables, options, sets]
 import ../../src/engine/[gamestate, fog_of_war, starmap, fleet, squadron, spacelift]
+import ../../src/engine/initialization/game
 import ../../src/common/[hex, system]
 import ../../src/common/types/[core, planets, tech, units, combat]
 import ../../src/engine/intelligence/types as intel_types

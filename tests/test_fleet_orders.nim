@@ -4,6 +4,7 @@
 import std/[unittest, options, tables, strutils]
 import ../src/common/[hex, system, types/core, types/units]
 import ../src/engine/[gamestate, orders, fleet, squadron, starmap, spacelift]
+import ../src/engine/initialization/game
 import ../src/engine/commands/executor
 
 # =============================================================================
@@ -31,9 +32,9 @@ proc createTestGameState(): GameState =
   result = newGameState("test_game", 2, testMap)
 
   # Add test houses
-  result.houses["house1"] = initializeHouse("TestHouse1", "blue")
+  result.houses["house1"] = gamestate.initializeHouse("TestHouse1", "blue")
   result.houses["house1"].id = "house1"
-  result.houses["house2"] = initializeHouse("TestHouse2", "red")
+  result.houses["house2"] = gamestate.initializeHouse("TestHouse2", "red")
   result.houses["house2"].id = "house2"
 
   # Add test colonies

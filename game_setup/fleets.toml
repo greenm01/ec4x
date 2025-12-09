@@ -1,0 +1,21 @@
+# Starting Fleet Compositions
+# Separate file to avoid toml_serialization conflicts with indexed tables
+# 4 fleets total:
+# - Fleet 1: ETAC + Light Cruiser (colonization fleet with 1 PTU)
+# - Fleet 2: ETAC + Light Cruiser (colonization fleet with 1 PTU)
+# - Fleet 3: Destroyer (scout fleet)
+# - Fleet 4: Destroyer (scout fleet)
+
+[fleet1]
+ships = ["ETAC", "LightCruiser"]
+cargo_ptu = 1
+
+[fleet2]
+ships = ["ETAC", "LightCruiser"]
+cargo_ptu = 1
+
+[fleet3]
+ships = ["Destroyer"]
+
+[fleet4]
+ships = ["Destroyer"]

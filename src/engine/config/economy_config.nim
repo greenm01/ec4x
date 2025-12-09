@@ -164,6 +164,32 @@ type
     desolate_pp_per_ptu*: int
     extreme_pp_per_ptu*: int
 
+  IndustrialGrowthConfig* = object
+    ## IU passive growth configuration
+    passive_growth_divisor*: float
+    passive_growth_minimum*: float
+    applies_modifiers*: bool
+
+  StarbaseBonusesConfig* = object
+    ## Starbase economic bonuses
+    growth_bonus_per_starbase*: float
+    max_starbases_for_bonus*: int
+    eli_bonus_per_starbase*: int
+
+  SquadronCapacityConfig* = object
+    ## Capital squadron capacity limits
+    capital_squadron_iu_divisor*: int
+    capital_squadron_multiplier*: int
+    capital_squadron_minimum*: int
+
+  ProductionModifiersConfig* = object
+    ## Production calculation modifiers
+    el_bonus_per_level*: float
+    cst_bonus_per_level*: float
+    blockade_penalty*: float
+    prod_growth_numerator*: float
+    prod_growth_denominator*: float
+
   EconomyConfig* = object
     ## Complete economy configuration loaded from TOML
     population*: PopulationConfig
@@ -177,6 +203,10 @@ type
     tax_population_growth*: TaxPopulationGrowthConfig
     industrial_investment*: IndustrialInvestmentConfig
     colonization*: ColonizationConfig
+    industrial_growth*: IndustrialGrowthConfig
+    starbase_bonuses*: StarbaseBonusesConfig
+    squadron_capacity*: SquadronCapacityConfig
+    production_modifiers*: ProductionModifiersConfig
 
 proc loadEconomyConfig*(configPath: string = "config/economy.toml"): EconomyConfig =
   ## Load economy configuration from TOML file

@@ -4,6 +4,7 @@
 
 import std/[unittest, tables, options, sets]
 import ../../src/engine/[gamestate, fog_of_war, starmap, fleet, squadron]
+import ../../src/engine/initialization/game
 import ../../src/engine/research/types as res_types
 import ../../src/common/system
 import ../../src/common/types/[core, planets, tech, units]
