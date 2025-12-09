@@ -290,7 +290,7 @@ type
     negativePrestigeTurns*: int  # Consecutive turns with prestige < 0 (defensive collapse)
     turnsWithoutOrders*: int     # Consecutive turns without submitting orders (MIA autopilot)
     diplomaticRelations*: dip_types.DiplomaticRelations  # Relations with other houses
-    violationHistory*: dip_types.ViolationHistory  # Track violations (no separate dishonored/isolation objects)
+    violationHistory*: dip_types.ViolationHistory  # Track violations
     espionageBudget*: esp_types.EspionageBudget  # EBP/CIP points
     taxPolicy*: econ_types.TaxPolicy  # Current tax rate and 6-turn history
     consecutiveShortfallTurns*: int  # Consecutive turns of missed maintenance payment (economy.md:3.11)

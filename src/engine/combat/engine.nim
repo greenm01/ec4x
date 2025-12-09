@@ -143,8 +143,6 @@ proc resolveCombat*(context: BattleContext): CombatResult =
     let roundResults = resolveRound(
       taskForces,
       roundNum,
-      diplomaticRelations,
-      systemOwner,
       rng,
       desperationBonus = 0,
       allowAmbush = context.allowAmbush,
@@ -171,8 +169,6 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       let desperationResults = resolveRound(
         taskForces,
         roundNum + 1,  # Desperation is a bonus "round"
-        diplomaticRelations,
-        systemOwner,
         rng,
         desperationBonus = 2,  # +2 CER to all attacks
         allowAmbush = context.allowAmbush,
