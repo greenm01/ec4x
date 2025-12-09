@@ -176,25 +176,6 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
     result.recommendHostile = hostileScore > 0.5
     result.recommendEnemy = enemyScore > 0.7  # Higher threshold for war
 
-  of dip_types.DiplomaticState.Ally:
-    # Should we break the pact?
-    var breakScore = 0.0
-
-    # Aggressive strategy willing to violate
-    if controller.strategy == AIStrategy.Aggressive:
-      breakScore += 0.4
-
-    # Much weaker target = tempting
-    if result.relativeMilitaryStrength > 2.0:
-      breakScore += 0.3
-
-    # Low diplomacy value = less concerned with reputation
-    breakScore += (1.0 - p.diplomacyValue) * 0.4
-
-    # High risk tolerance
-    breakScore += p.riskTolerance * 0.2
-
-    result.recommendBreak = breakScore > 0.7  # High threshold for violation
 
   of dip_types.DiplomaticState.Hostile:
     # Hostile state - tensions escalated, should we escalate to war or de-escalate?
