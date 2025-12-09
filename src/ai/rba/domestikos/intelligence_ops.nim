@@ -7,6 +7,7 @@ import std/tables # Removed options
 import ../../../engine/[gamestate, fog_of_war, fleet, starmap]
 import ../../../common/types/core
 import ../controller_types # For AIController
+import ../controller_types # For AIController
 import ../config
 import ../shared/intelligence_types
 
