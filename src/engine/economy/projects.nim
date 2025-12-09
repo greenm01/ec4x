@@ -13,12 +13,10 @@
 ## - resolution/construction.nim: "How orders work" (validation, routing, treasury)
 ## - economy/facility_queue.nim: "Queue management" (advancement, completion)
 
-import std/options
 import math
 import types
 import ../../common/types/units
 import ../gamestate  # For Colony type (IU cost calculations)
-import ../logger
 import config_accessors  # DoD refactoring: macro-generated config accessors
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
