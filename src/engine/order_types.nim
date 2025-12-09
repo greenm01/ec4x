@@ -62,6 +62,7 @@ proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool 
   # Standing Orders - Persistent Fleet Behaviors
   # =============================================================================
 
+type
   StandingOrderType* {.pure.} = enum
     ## Persistent fleet behaviors that execute when no explicit order given
     ## Reduces micromanagement, provides quality-of-life for players and AI
