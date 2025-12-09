@@ -3,7 +3,7 @@
 ## Extracted from build_requirements.nim to maintain file size limits
 ## Handles threat assessment and intelligence-driven military analysis
 
-import std/[options, tables]
+import std/tables # Removed options
 import ../../../engine/[gamestate, fog_of_war, fleet, starmap]
 import ../../../common/types/core
 import ../controller_types # For AIController
