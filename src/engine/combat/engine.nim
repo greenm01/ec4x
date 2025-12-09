@@ -66,10 +66,9 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       if detectorIdx == targetIdx or not targetTF.isCloaked:
         continue
 
-      # Check diplomatic relations - only detect enemies
-      let dipState = diplomaticRelations.getOrDefault((detectorTF.house, targetTF.house), DiplomaticState.Enemy)
-      if dipState != DiplomaticState.Enemy:
-        continue
+      # Diplomatic relations are assumed to be hostile at this point,
+      # as combat task forces are assembled based on conflict_phase.nim's checks.
+      # No further diplomatic checks needed within the combat engine's detection phase.
 
       # Create ELI unit using house ELI level, not ship stats
       # Count scouts for mesh network bonus
