@@ -31,32 +31,23 @@ type
     ## Key is other HouseId, value is relation with that house
     relations*: Table[HouseId, DiplomaticRelation]
 
-  ## Non-Aggression Pact Violations
+  ## Violation Tracking (simplified to match 3-state system)
 
   ViolationRecord* = object
-    ## Record of non-aggression pact violation
+    ## Record of diplomatic violation (e.g., attacking a Neutral house)
     violator*: HouseId
     victim*: HouseId
     turn*: int
     description*: string
 
-  DishonoredStatus* = object
-    ## Track dishonored status after violation (diplomacy.md:8.1.2)
-    active*: bool
-    turnsRemaining*: int  # 3 turns of dishonored status
-    violationTurn*: int   # When violation occurred
-
-  DiplomaticIsolation* = object
-    ## Track diplomatic isolation after violation (diplomacy.md:8.1.2)
-    active*: bool
-    turnsRemaining*: int  # 5 turns cannot form new pacts
-    violationTurn*: int
+  # DishonoredStatus and DiplomaticIsolation are no longer distinct types
+  # They are handled directly by `ViolationHistory` and diplomatic rules.
 
   ViolationHistory* = object
-    ## Track violation history for repeat offenses
+    ## Track violation history and associated penalties.
+    ## Per docs/engine/mechanics/diplomatic-combat-resolution.md
     violations*: seq[ViolationRecord]
-    dishonored*: DishonoredStatus
-    isolation*: DiplomaticIsolation
+    # No explicit `dishonored` or `isolation` objects, just `violations`
 
   ## Diplomatic Events
 
@@ -76,67 +67,21 @@ type
     events*: seq[DiplomaticEvent]
     violations*: seq[ViolationRecord]
 
-  ## Fleet Classification for Escalation Rules
+# FleetClassification and classifyFleet are no longer needed with the 3-state system.
 
-  FleetClassification* {.pure.} = enum
-    ## Classify fleets for diplomatic escalation purposes
-    ## Scout-only fleets trigger "Hostile" escalation
-    ## Combat/mixed fleets trigger "Enemy" escalation
-    ScoutOnly      # Only contains Scout squadrons (→ Hostile)
-    Combat         # Contains combat squadrons (capital ships, escorts, raiders) (→ Enemy)
-    Mixed          # Contains both scouts and combat squadrons (→ Enemy)
+## Configuration accessors (updated for 3-state system)
 
-## Fleet Classification Helper
+# These functions are removed as DishonoredStatus and DiplomaticIsolation are removed.
+# proc dishonoredDuration*(): int = ...
+# proc isolationDuration*(): int = ...
+# proc pactReinstatementCooldown*(): int = ...
+# proc violationRepeatWindow*(): int = ...
 
-proc classifyFleet*(fleet: auto): FleetClassification =
-  ## Classify a fleet based on squadron composition
-  ## Used to determine appropriate diplomatic escalation level
-  var hasScouts = false
-  var hasCombat = false
-
-  for squadron in fleet.squadrons:
-    if squadron.flagship.shipClass == ShipClass.Scout:
-      hasScouts = true
-    else:
-      hasCombat = true
-
-  if hasScouts and hasCombat:
-    return FleetClassification.Mixed
-  elif hasScouts:
-    return FleetClassification.ScoutOnly
-  else:
-    return FleetClassification.Combat
-
-## Configuration accessors per diplomacy.md:8.1.2
-## Values loaded from diplomacy.toml and prestige.toml
-
-proc dishonoredDuration*(): int =
-  ## Get dishonored status duration from config
-  globalDiplomacyConfig.pact_violations.dishonored_status_turns
-
-proc isolationDuration*(): int =
-  ## Get diplomatic isolation duration from config
-  globalDiplomacyConfig.pact_violations.diplomatic_isolation_turns
-
-proc pactReinstatementCooldown*(): int =
-  ## Get pact reinstatement cooldown from config
-  globalDiplomacyConfig.pact_violations.pact_reinstatement_cooldown
-
-proc violationRepeatWindow*(): int =
-  ## Get repeat violation window from config
-  globalDiplomacyConfig.pact_violations.repeat_violation_window
-
-proc violationPrestigePenalty*(): int =
-  ## Get violation prestige penalty from prestige config with dynamic scaling
-  applyMultiplier(globalPrestigeConfig.diplomacy.pact_violation)
-
-proc violationRepeatPenalty*(): int =
-  ## Get repeat violation prestige penalty from prestige config with dynamic scaling
-  applyMultiplier(globalPrestigeConfig.diplomacy.repeat_violation)
-
-proc dishonoredBonusPrestige*(): int =
-  ## Get dishonored bonus prestige from prestige config with dynamic scaling
-  applyMultiplier(globalPrestigeConfig.diplomacy.dishonored_bonus)
+# Prestige penalties are now derived directly from actions and `globalPrestigeConfig.diplomacy`.
+# The multipliers are applied where the prestige event is created, not through these accessors.
+# proc violationPrestigePenalty*(): int = ...
+# proc violationRepeatPenalty*(): int = ...
+# proc dishonoredBonusPrestige*(): int = ...
 
 ## Helper Procs
 
@@ -149,17 +94,7 @@ proc initDiplomaticRelations*(): DiplomaticRelations =
 proc initViolationHistory*(): ViolationHistory =
   ## Initialize empty violation history
   result = ViolationHistory(
-    violations: @[],
-    dishonored: DishonoredStatus(
-      active: false,
-      turnsRemaining: 0,
-      violationTurn: 0
-    ),
-    isolation: DiplomaticIsolation(
-      active: false,
-      turnsRemaining: 0,
-      violationTurn: 0
-    )
+    violations: @[]
   )
 
 proc getDiplomaticState*(relations: DiplomaticRelations, otherHouse: HouseId): DiplomaticState =
@@ -176,9 +111,8 @@ proc setDiplomaticState*(relations: var DiplomaticRelations, otherHouse: HouseId
     sinceTurn: turn
   )
 
-proc isInPact*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
-  ## Check if in non-aggression pact with house
-  return getDiplomaticState(relations, otherHouse) == DiplomaticState.Ally
+# isInPact is removed as there are no "pacts" in the new 3-state system.
+# proc isInPact*(relations: DiplomaticRelations, otherHouse: HouseId): bool = ...
 
 proc isEnemy*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
   ## Check if house is enemy (open war)
@@ -193,23 +127,7 @@ proc isHostileOrEnemy*(relations: DiplomaticRelations, otherHouse: HouseId): boo
   let state = getDiplomaticState(relations, otherHouse)
   return state in {DiplomaticState.Hostile, DiplomaticState.Enemy}
 
-proc canFormPact*(history: ViolationHistory): bool =
-  ## Check if house can form new non-aggression pacts (not isolated)
-  return not history.isolation.active
-
-proc canReinstatePact*(history: ViolationHistory, otherHouse: HouseId, currentTurn: int): bool =
-  ## Check if can reinstate pact with specific house (5 turn cooldown)
-  ## Per diplomacy.md:8.1.2
-  for violation in history.violations:
-    if violation.victim == otherHouse:
-      let turnsSince = currentTurn - violation.turn
-      if turnsSince < pactReinstatementCooldown():
-        return false
-  return true
-
-proc countRecentViolations*(history: ViolationHistory, currentTurn: int): int =
-  ## Count violations within repeat window
-  result = 0
-  for violation in history.violations:
-    if currentTurn - violation.turn <= violationRepeatWindow():
-      result += 1
+# canFormPact and canReinstatePact are removed as there are no "pacts" in the new 3-state system.
+# proc canFormPact*(history: ViolationHistory): bool = ...
+# proc canReinstatePact*(history: ViolationHistory, otherHouse: HouseId, currentTurn: int): bool = ...
+# proc countRecentViolations*(history: ViolationHistory, currentTurn: int): int = ...
