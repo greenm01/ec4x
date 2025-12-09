@@ -12,13 +12,7 @@ import ../../../../common/types/core
 import ../../controller_types
 import ../../config
 import ../../shared/intelligence_types
-
-proc calculateDistance(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId): int =
-  ## Calculate jump distance between two systems
-  let pathResult = starMap.findPath(fromSystem, toSystem, Fleet())
-  if pathResult.found:
-    return pathResult.path.len
-  return 999
+import ../intelligence # For calculateDistance
 
 proc analyzeFleetComposition(squadronDetails: Option[seq[intel_types.SquadronIntel]]): FleetComposition =
   ## Analyze squadron details to determine fleet composition

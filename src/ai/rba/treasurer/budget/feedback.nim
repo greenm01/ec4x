@@ -7,7 +7,7 @@
 
 import std/[options, strformat, sequtils, tables, algorithm]
 import ../../../../common/types/[core, units]
-import ../../../../engine/[logger, gamestate]
+import ../../../../engine/logger
 import ../../../../engine/economy/config_accessors
 import ../../controller_types
 import ../../config
