@@ -6,11 +6,11 @@
 ## Architecture: Centralized analysis (Drungarius Phase 0) → Domain summaries → Advisor consumption
 ## All types designed for minimal allocations and efficient passing
 
-import std/[tables, options, sets]
+import std/[tables, options]
 import ../../../common/types/[core, tech, units]
 import ../../../engine/combat/types as combat_types
 import ../../../engine/intelligence/types as intel_types
-import ../../common/types  # For GameAct
+import ../../common/types # For GameAct
 
 # Forward declaration of RequirementPriority from controller_types
 # This avoids circular dependency since controller_types imports intelligence_types

@@ -5,7 +5,7 @@
 ##
 ## Phase C implementation
 
-import std/[tables, options, sequtils, strformat, algorithm, strutils]
+import std/[tables, options, strformat, algorithm, strutils]
 import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../engine/combat/types as combat_types
