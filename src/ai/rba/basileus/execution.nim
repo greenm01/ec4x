@@ -59,11 +59,11 @@ proc executeDiplomaticActions*(
       if req.proposalType.isSome:
         let propType = req.proposalType.get()
         # AllyPact has been removed. Other proposal types are handled by the else branch.
-        else:
-          # Other proposal types (e.g., TradeAgreement, MilitaryAlliance) are not yet fully implemented
-          # in the execution phase. Log a warning and skip for now.
-          logWarn(LogCategory.lcAI,
-                  &"  Proposal type {propType} not yet implemented, skipping proposal to {req.targetHouse}")
+      else:
+        # Other proposal types (e.g., TradeAgreement, MilitaryAlliance) are not yet fully implemented
+        # in the execution phase. Log a warning and skip for now.
+        logWarn(LogCategory.lcAI,
+                &"  Proposal type {propType} not yet implemented, skipping proposal to {req.targetHouse}")
 
     of DiplomaticRequirementType.BreakPact:
       result.add(DiplomaticAction(
