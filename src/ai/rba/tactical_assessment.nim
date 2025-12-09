@@ -4,7 +4,6 @@
 ## Handles relative strength assessment and vulnerable target identification
 
 import std/[tables, options, algorithm]
-import ../common/types
 import ../../engine/[gamestate, fog_of_war, fleet]
 import ../../engine/intelligence/types as intel_types
 import ../../common/types/core

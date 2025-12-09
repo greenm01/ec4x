@@ -2,7 +2,6 @@
 ##
 ## Core types for prestige tracking and victory conditions
 
-import std/options
 import ../../common/types/core
 
 export core.HouseId

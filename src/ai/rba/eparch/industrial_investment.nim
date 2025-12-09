@@ -12,7 +12,6 @@ import ../../../engine/config/economy_config
 import ../../common/types as ai_types
 import ../controller_types
 import ../shared/intelligence_types
-import ../config as rba_config
 
 type
   IUInvestmentOpportunity* = object

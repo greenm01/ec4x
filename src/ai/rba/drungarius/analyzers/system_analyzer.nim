@@ -8,7 +8,7 @@
 import std/[tables, options, sets, algorithm, strformat]
 import ../../../../engine/[gamestate, fog_of_war, starmap, fleet, logger]
 import ../../../../engine/intelligence/types as intel_types
-import ../../../../common/types/[core, units]
+import ../../../../common/types/core
 import ../../controller_types
 import ../../config
 import ../../shared/intelligence_types

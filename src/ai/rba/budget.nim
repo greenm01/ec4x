@@ -8,7 +8,7 @@
 ## - Stellaris weight-based AI system
 ## - Priority-based task assignment (Game Developer 2015)
 
-import std/[tables, options, algorithm, strformat, sequtils, strutils]
+import std/[tables, options, algorithm, strformat, sequtils]
 import ../common/types
 import ../../engine/[gamestate, orders, fleet, logger, fog_of_war, squadron]
 import ../../engine/economy/projects  # For budget execution

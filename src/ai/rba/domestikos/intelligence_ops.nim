@@ -6,7 +6,6 @@
 import std/[options, tables]
 import ../../../engine/[gamestate, fog_of_war, fleet, starmap]
 import ../../../common/types/core
-import ../controller_types
 import ../config
 import ../shared/intelligence_types
 
