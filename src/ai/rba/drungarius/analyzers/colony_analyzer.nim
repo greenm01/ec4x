@@ -12,7 +12,7 @@ import ../../../../common/types/core
 import ../../controller_types
 import ../../config
 import ../../shared/intelligence_types
-import ../intelligence # For calculateDistance
+import ../../intelligence # For calculateDistance
 
 proc findNearestOwnColony(systemId: SystemId, ownColonies: seq[Colony], starMap: StarMap): int =
   ## Find distance to nearest friendly colony
