@@ -282,29 +282,29 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
     
     var knownColonyCountForTarget = 0
 
-    // Gather data from visible enemy colonies for this targetHouseId
+    # Gather data from visible enemy colonies for this targetHouseId
     for visibleColony in filtered.visibleColonies:
       if visibleColony.owner == targetHouseId:
         knownColonyCountForTarget += 1
         if visibleColony.production.isSome:
           enemyAssessment.estimatedTotalProduction += visibleColony.production.get()
 
-          // Identify high-value economic targets and convert to HighValueTarget type
+          # Identify high-value economic targets and convert to HighValueTarget type
           if visibleColony.production.get() >= 50:
             result.highValueTargets.add(intelligence_types.HighValueTarget(
               systemId: visibleColony.systemId,
               owner: visibleColony.owner,
-              estimatedValue: visibleColony.production.get() * 10, // Example multiplier
-              estimatedDefenses: visibleColony.estimatedDefenses.get(0), // Requires Option.get(0) fallback
-              hasStarbase: visibleColony.starbaseLevel.get(0) > 0, // Requires Option.get(0) fallback
-              shipyardCount: visibleColony.shipyardCount.get(0), // Requires Option.get(0) fallback
-              lastUpdated: visibleColony.intelTurn.get(filtered.turn), // Requires Option.get(0) fallback
-              intelQuality: intel_types.IntelQuality.Visual // Or derive from context
+              estimatedValue: visibleColony.production.get() * 10, # Example multiplier
+              estimatedDefenses: visibleColony.estimatedDefenses.get(0), # Requires Option.get(0) fallback
+              hasStarbase: visibleColony.starbaseLevel.get(0) > 0, # Requires Option.get(0) fallback
+              shipyardCount: visibleColony.shipyardCount.get(0), # Requires Option.get(0) fallback
+              lastUpdated: visibleColony.intelTurn.get(filtered.turn), # Requires Option.get(0) fallback
+              intelQuality: intel_types.IntelQuality.Visual # Or derive from context
             ))
 
     enemyAssessment.knownColonyCount = knownColonyCountForTarget
 
-    // Calculate relative strength
+    # Calculate relative strength
     if ourProduction > 0:
       enemyAssessment.relativeStrength = float(enemyAssessment.estimatedTotalProduction) / float(ourProduction)
     else:
