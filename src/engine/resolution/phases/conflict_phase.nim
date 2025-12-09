@@ -28,6 +28,7 @@ import ../../../common/logger as common_logger
 import ../../gamestate, ../../orders, ../../order_types, ../../fleet, ../../squadron, ../../logger, ../../state_helpers
 import ../../espionage/[types as esp_types, engine as esp_engine]
 import ../../diplomacy/[types as dip_types]
+import ../../research/[types as res_types_research]
 import ../../intelligence/[spy_travel, spy_resolution, espionage_intel, starbase_surveillance]
 import ../[types as res_types, combat_resolution]
 import ../[simultaneous_blockade, simultaneous_planetary, simultaneous_espionage, simultaneous_types, simultaneous]
@@ -43,6 +44,45 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   logInfo(LogCategory.lcOrders, &"Using RNG for combat resolution (seed={state.turn})")
 
   # ===================================================================
+  # MERGE QUEUED COMBAT ORDERS
+  # ===================================================================
+  # Combat orders queued in Turn N-1 Command Phase execute here in Turn N
+  # Ships moved during Turn N-1 Maintenance Phase and are now at destination
+  var effectiveOrders = orders  # Start with current turn orders
+
+  logInfo(LogCategory.lcOrders, &"Merging {state.queuedCombatOrders.len} queued combat orders from previous turn...")
+
+  for queuedOrder in state.queuedCombatOrders:
+    # Find fleet owner
+    if queuedOrder.fleetId notin state.fleets:
+      logDebug(LogCategory.lcOrders, &"  [SKIP] Fleet {queuedOrder.fleetId} no longer exists")
+      continue
+
+    let fleetOwner = state.fleets[queuedOrder.fleetId].owner
+
+    # Ensure owner has order packet
+    if fleetOwner notin effectiveOrders:
+      effectiveOrders[fleetOwner] = OrderPacket(
+        houseId: fleetOwner,
+        turn: state.turn,
+        fleetOrders: @[],
+        buildOrders: @[],
+        researchAllocation: res_types_research.initResearchAllocation(),
+        diplomaticActions: @[],
+        populationTransfers: @[],
+        terraformOrders: @[],
+        espionageAction: none(esp_types.EspionageAttempt),
+        ebpInvestment: 0,
+        cipInvestment: 0
+      )
+
+    # Add queued order to owner's fleet orders
+    effectiveOrders[fleetOwner].fleetOrders.add(queuedOrder)
+    logDebug(LogCategory.lcOrders, &"  [EXEC] {queuedOrder.orderType} from fleet {queuedOrder.fleetId} (owner: {fleetOwner})")
+
+  logInfo(LogCategory.lcOrders, &"Queued combat orders merged into effective orders")
+
+  # ===================================================================
   # STEP 6a: SPY SCOUT DETECTION (Pre-Combat Prep)
   # ===================================================================
   # Resolve spy scout detection BEFORE combat
@@ -55,6 +95,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6a] Completed ({detectionResults.len} detection checks)")
 
   # Find all systems where combat should occur based on diplomatic status and orders.
+  # Use effectiveOrders (includes merged queued combat orders)
   var combatSystems: seq[SystemId] = @[]
 
   for systemId, system in state.starMap.systems:
@@ -93,8 +134,9 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
           # from either house in this system.
           var foundProvocativeOrder = false
           for h in @[house1, house2]:
-            if h in orders:
-              for order in orders[h].fleetOrders:
+            # Check effective orders (includes queued orders)
+            if h in effectiveOrders:
+              for order in effectiveOrders[h].fleetOrders:
                 # Check if the fleet for this order is actually in the current system
                 if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId:
                   if order.orderType.isThreateningFleetOrder() or order.orderType.isNonThreateningButProvocativeFleetOrder():
@@ -102,7 +144,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
                     break
               if foundProvocativeOrder:
                 break
-          
+
           if foundProvocativeOrder:
             systemHasCombat = true
             logDebug(LogCategory.lcCombat, &"Combat triggered: {house1} vs {house2} (Hostile status with provocative orders)")
@@ -116,14 +158,15 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
           # Check if system is controlled (has a colony)
           let systemOwner = if systemId in state.colonies: some(state.colonies[systemId].owner) else: none(HouseId)
 
-          if house1 in orders and systemOwner.isSome and systemOwner.get() == house2:
-            for order in orders[house1].fleetOrders:
+          # Check effective orders (includes queued orders)
+          if house1 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house2:
+            for order in effectiveOrders[house1].fleetOrders:
               if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
                 house1ThreateningHouse2 = true
                 break
 
-          if house2 in orders and systemOwner.isSome and systemOwner.get() == house1:
-            for order in orders[house2].fleetOrders:
+          if house2 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house1:
+            for order in effectiveOrders[house2].fleetOrders:
               if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
                 house2ThreateningHouse1 = true
                 break
@@ -134,7 +177,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
         if systemHasCombat:
           break # Found a combat pair, add system and move on.
-      
+
       if systemHasCombat:
         combatSystems.add(systemId)
         break # System added, move to next system.
@@ -145,7 +188,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Resolve combat in each system (operations.md:7.0)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEPS 1 & 2] Resolving space/orbital combat ({combatSystems.len} systems)...")
   for systemId in combatSystems:
-    resolveBattle(state, systemId, orders, combatReports, events, rng)
+    resolveBattle(state, systemId, effectiveOrders, combatReports, events, rng)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEPS 1 & 2] Completed ({combatReports.len} battles resolved)")
 
   # ===================================================================
@@ -154,7 +197,8 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Resolve all blockade attempts simultaneously to prevent
   # first-mover advantage
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 3] Resolving blockade attempts...")
-  let blockadeResults = simultaneous_blockade.resolveBlockades(state, orders,
+  let blockadeResults = simultaneous_blockade.resolveBlockades(state,
+                                                                effectiveOrders,
                                                                 rng)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 3] Completed ({blockadeResults.len} blockade attempts)")
 
@@ -178,7 +222,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Resolve all planetary combat (bombard/invade/blitz) simultaneously
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 4] Resolving planetary combat...")
   let planetaryCombatResults = simultaneous_planetary.resolvePlanetaryCombat(
-    state, orders, rng)
+    state, effectiveOrders, rng)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 4] Completed ({planetaryCombatResults.len} planetary combat attempts)")
 
   # ===================================================================
@@ -188,7 +232,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Fallback logic for losers with AutoColonize standing orders
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 5] Resolving colonization attempts...")
   let colonizationResults = simultaneous.resolveColonization(
-    state, orders, rng, events)
+    state, effectiveOrders, rng, events)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 5] Completed ({colonizationResults.len} colonization attempts)")
 
   # ===================================================================
@@ -197,7 +241,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Resolve fleet-based espionage orders simultaneously
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Fleet-based espionage (SpyPlanet, SpySystem, HackStarbase)...")
   let espionageResults = simultaneous_espionage.resolveEspionage(state,
-                                                                  orders, rng)
+                                                                  effectiveOrders, rng)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6b] Completed ({espionageResults.len} fleet espionage attempts)")
 
   # ===================================================================
@@ -205,7 +249,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # ===================================================================
   # Process OrderPacket.espionageAction (EBP-based espionage)
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Space Guild espionage (EBP-based covert ops)...")
-  simultaneous_espionage.processEspionageActions(state, orders, rng, events)
+  simultaneous_espionage.processEspionageActions(state, effectiveOrders, rng, events)
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Completed EBP-based espionage processing")
 
   # ===================================================================

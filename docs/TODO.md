@@ -94,6 +94,7 @@
 - Remove old LLM-related files/folders
 - Exclude JSON files from repo if possible
 - Clean up any remaining obsolete documentation
+- Keep `.claude/` out of git repo (already in .gitignore, verify not tracked)
 
 ---
 
