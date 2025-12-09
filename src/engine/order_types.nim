@@ -63,7 +63,7 @@ proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool 
   # =============================================================================
 
 type
-  StandingOrderType* {.pure.} = enum
+  StandingOrderType* = enum {.pure.}
     ## Persistent fleet behaviors that execute when no explicit order given
     ## Reduces micromanagement, provides quality-of-life for players and AI
     ## See docs/architecture/standing-orders.md for complete design
@@ -123,7 +123,7 @@ type
   # Colony Management Orders
   # =============================================================================
 
-  ColonyManagementAction* {.pure.} = enum
+  ColonyManagementAction* = enum {.pure.}
     ## Colony-level management actions for player control
     SetTaxRate        # Adjust colony tax rate (0-100)
     SetAutoRepair     # Toggle automatic repair submission

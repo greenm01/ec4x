@@ -58,12 +58,11 @@
 ## - Combat modules: Battle resolution
 ## - Diplomacy modules: Inter-house relations
 
-import std/[tables, options, strutils, math]
+import std/[tables, options, math] # Removed strutils, as it's not used in this module's logic
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, starmap, squadron
 import order_types  # Fleet order types (avoid circular dependency)
-import config/[prestige_config, military_config, tech_config, game_setup_config]
-import config/[facilities_config, prestige_multiplier, economy_config]
+import config/[military_config, economy_config] # Removed unused prestige_config, tech_config, game_setup_config, facilities_config, prestige_multiplier
 import diplomacy/types as dip_types
 import diplomacy/proposals as dip_proposals
 import espionage/types as esp_types
@@ -81,7 +80,7 @@ export diplomacy.DiplomaticState
 export fleet.SpaceLiftShip, fleet.SpaceLiftCargo, fleet.CargoType  # ARCHITECTURE FIX
 
 type
-  BuildingType* {.pure.} = enum
+  BuildingType* = enum {.pure.}
     Infrastructure, Shipyard, ResearchLab, DefenseGrid
 
   FighterSquadron* = object
@@ -208,13 +207,13 @@ type
   # Re-export proper TechTree from research module
   TechTree* = res_types.TechTree
 
-  SpyMissionType* {.pure.} = enum
+  SpyMissionType* = enum {.pure.}
     ## Types of spy scout missions (operations.md:6.2.9-6.2.11)
     SpyOnPlanet     # Order 09: Gather planet intelligence
     HackStarbase    # Order 10: Infiltrate starbase network
     SpyOnSystem     # Order 11: System reconnaissance
 
-  SpyScoutState* {.pure.} = enum
+  SpyScoutState* = enum {.pure.}
     ## Operational state of spy scout
     Traveling    # En route to target
     OnMission    # Arrived at target, gathering intel
@@ -239,7 +238,7 @@ type
     currentPathIndex*: int        # Progress through path (0-based)
     mergedScoutCount*: int        # Number of scouts merged (for mesh bonus)
 
-  SpyScoutOrderType* {.pure.} = enum
+  SpyScoutOrderType* = enum {.pure.}
     ## Order types for spy scout fleets
     ## Transparent to user - spy scouts behave like normal fleets
     Hold              # Stay at current location on mission
@@ -265,14 +264,14 @@ type
     fallbackSystem*: SystemId   # Safe retreat destination
     lastUpdated*: int           # Turn when route was validated
 
-  AutoRetreatPolicy* {.pure.} = enum
+  AutoRetreatPolicy* = enum {.pure.}
     ## Player setting for automatic fleet retreats
     Never,              # Never auto-retreat (player always controls)
     MissionsOnly,       # Only abort missions (ETAC, Guard, Blockade) when target lost
     ConservativeLosing, # Retreat fleets when clearly losing combat
     AggressiveSurvival  # Retreat any fleet at risk of destruction
 
-  HouseStatus* {.pure.} = enum
+  HouseStatus* = enum {.pure.}
     ## Player/house operational status (gameplay.md:1.4)
     Active,              # Normal play - submitting orders
     Autopilot,           # Temporary MIA mode (3+ consecutive turns without orders)
@@ -329,7 +328,7 @@ type
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference
 
-  GamePhase* {.pure.} = enum
+  GamePhase* = enum {.pure.}
     Setup, Active, Paused, Completed
 
   GracePeriodTracker* = object
