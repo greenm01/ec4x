@@ -36,6 +36,28 @@ type
     targetFleet*: Option[FleetId]
     priority*: int  # Execution order within turn
 
+proc isThreateningFleetOrder*(orderType: FleetOrderType): bool =
+  ## Returns true if the order immediately escalates to Enemy status.
+  ## Per docs/engine/mechanics/diplomatic-combat-resolution.md Section 3.1
+  case orderType
+  of FleetOrderType.BlockadePlanet, FleetOrderType.Bombard, FleetOrderType.Invade,
+     FleetOrderType.Blitz, FleetOrderType.HackStarbase:
+    true
+  else:
+    false
+
+proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool =
+  ## Returns true if the order escalates Neutral->Hostile on first offense,
+  ## and Hostile->Enemy on second offense.
+  ## Per docs/engine/mechanics/diplomatic-combat-resolution.md Section 3.2
+  case orderType
+  of FleetOrderType.Hold, FleetOrderType.Patrol, FleetOrderType.SpyPlanet,
+     FleetOrderType.SpySystem, FleetOrderType.ViewWorld, FleetOrderType.Salvage,
+     FleetOrderType.JoinFleet, FleetOrderType.Rendezvous:
+    true
+  else:
+    false
+
   # =============================================================================
   # Standing Orders - Persistent Fleet Behaviors
   # =============================================================================

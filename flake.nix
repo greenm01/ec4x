@@ -21,6 +21,7 @@
             python311Packages.pip
             python311Packages.virtualenv
             aider-chat
+            python311Packages.google-generativeai
 
             # Data Analysis Stack (Terminal-focused)
             python311Packages.polars       # Fast DataFrame library (already present)
