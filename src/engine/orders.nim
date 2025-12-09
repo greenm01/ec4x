@@ -51,7 +51,7 @@ type
     buildingType*: Option[string]      # For Building type
     industrialUnits*: int              # For Infrastructure type
 
-  BuildType* = enum {.pure.}
+  BuildType* {.pure.} = enum
     Ship, Building, Infrastructure
 
   DiplomaticAction* = object
@@ -60,7 +60,7 @@ type
     proposalId*: Option[string]  # For accept/reject/withdraw actions
     message*: Option[string]     # Optional diplomatic message
 
-  DiplomaticActionType* = enum {.pure.}
+  DiplomaticActionType* {.pure.} = enum
     ## Diplomatic actions per diplomacy.md:8.1
     ## 3-level diplomatic system: Neutral, Hostile, Enemy
     DeclareHostile,            # Escalate to Hostile (deep space combat)
