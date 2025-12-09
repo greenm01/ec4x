@@ -58,7 +58,7 @@
 ## - Combat modules: Battle resolution
 ## - Diplomacy modules: Inter-house relations
 
-import std/[tables, options, math] # Removed strutils, as it's not used in this module's logic
+import std/[tables, math] # Removed options, as it's not directly used for procedures like some/none
 import ../common/types/[core, planets, tech, diplomacy]
 import fleet, starmap, squadron
 import order_types  # Fleet order types (avoid circular dependency)
