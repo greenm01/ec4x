@@ -7,7 +7,7 @@ import std/[tables, strformat, sequtils, strutils, algorithm]
 import ../../engine/[gamestate, starmap, fleet, squadron, spacelift]
 import ../../engine/initialization/[house, colony]
 import ../../engine/config/[prestige_multiplier, house_themes, gameplay_config]
-import ../../common/types/[core, units, planets, tech]
+import ../../common/types/[core, units, planets, tech, diplomacy]
 import ../../common/[system]
 
 export house.initializeHouse
