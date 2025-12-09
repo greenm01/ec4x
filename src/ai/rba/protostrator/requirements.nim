@@ -253,7 +253,7 @@ proc generateDiplomaticRequirements*(
             targetColonies += 1
 
         # Calculate shared borders and allies
-        let sharedBorders = intelligence.countSharedBorders(intelSnapshot, controller.houseId, houseId)
+        let sharedBorders = intelligence.countSharedBorders(filtered, intelSnapshot, controller.houseId, houseId)
         # In the 3-state system, there are no formal allies to count for target house.
         # Assume 0 allies, as this contributes to "target isolated" for war evaluation.
         let targetAllies = 0 
