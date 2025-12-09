@@ -250,13 +250,13 @@ proc findBestColonizationTarget*(controller: var AIController, filtered: Filtere
 
   return none(SystemId)
 
-proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): intelligence_types.EconomicIntelligence =
+proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): intel_types.EconomicIntelligence =
   ## Assess enemy economic strength for targeting
-  result = intelligence_types.EconomicIntelligence(
-    enemyEconomicStrength: initTable[HouseId, intelligence_types.EconomicAssessment](),
+  result = intel_types.EconomicIntelligence(
+    enemyEconomicStrength: initTable[HouseId, intel_types.EconomicAssessment](),
     highValueTargets: @[], # This will be populated with HighValueTarget objects
-    enemyTechGaps: initTable[HouseId, intelligence_types.TechGapAnalysis](),
-    constructionActivity: initTable[SystemId, intelligence_types.ConstructionTrend](),
+    enemyTechGaps: initTable[HouseId, intel_types.TechGapAnalysis](),
+    constructionActivity: initTable[SystemId, intel_types.ConstructionTrend](),
     lastUpdated: filtered.turn
   )
 
@@ -269,7 +269,7 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
     if targetHouseId == controller.houseId:
       continue
 
-    var enemyAssessment = intelligence_types.EconomicAssessment(
+    var enemyAssessment = intel_types.EconomicAssessment(
       houseId: targetHouseId,
       knownColonyCount: 0,
       estimatedTotalProduction: 0,
