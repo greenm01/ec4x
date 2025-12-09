@@ -12,6 +12,8 @@ import ../../../engine/combat/types as combat_types
 import ../../../engine/intelligence/types as intel_types
 import ../../common/types # For GameAct
 
+export intel_types.IntelQuality # Re-export IntelQuality from engine intelligence types
+
 # Forward declaration of RequirementPriority from controller_types
 # This avoids circular dependency since controller_types imports intelligence_types
 type
