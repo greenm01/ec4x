@@ -6,7 +6,7 @@
 ## - House hostility tracking
 ## - Diplomatic landscape changes
 
-import std/[tables, options, sequtils, strformat, strutils]
+import std/[tables, options, strformat, strutils]
 import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/core

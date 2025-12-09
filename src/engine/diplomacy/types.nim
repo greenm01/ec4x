@@ -9,8 +9,8 @@
 
 import std/tables
 import ../../common/types/[core, diplomacy, units]
-import ../prestige
-import ../config/diplomacy_config # Removed unused prestige_config, prestige_multiplier
+import ../config/diplomacy_config
+import ../prestige # Corrected import order
 
 export core.HouseId
 export diplomacy.DiplomaticState
