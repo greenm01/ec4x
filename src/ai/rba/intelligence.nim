@@ -264,7 +264,6 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
       continue
 
     var intel = intelligence_types.EconomicIntelligence(
-      targetHouse: targetHouse,
       estimatedProduction: 0,
       highValueTargets: @[],
       economicStrength: 0.0
