@@ -8,7 +8,7 @@ import core
 # =============================================================================
 
 type
-  DiplomaticState* = enum {.pure.}
+  DiplomaticState * = enum
     ## Relations between houses - 3-level system
     ## Neutral: Default state, safe passage
     ## Hostile: Tense relations, potential for combat

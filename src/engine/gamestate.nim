@@ -81,7 +81,7 @@ export diplomacy.DiplomaticState
 export fleet.SpaceLiftShip, fleet.SpaceLiftCargo, fleet.CargoType  # ARCHITECTURE FIX
 
 type
-  BuildingType* = enum {.pure.}
+  BuildingType * = enum
     Infrastructure, Shipyard, ResearchLab, DefenseGrid
 
   FighterSquadron* = object
@@ -208,13 +208,13 @@ type
   # Re-export proper TechTree from research module
   TechTree* = res_types.TechTree
 
-  SpyMissionType* = enum {.pure.}
+  SpyMissionType * = enum
     ## Types of spy scout missions (operations.md:6.2.9-6.2.11)
     SpyOnPlanet     # Order 09: Gather planet intelligence
     HackStarbase    # Order 10: Infiltrate starbase network
     SpyOnSystem     # Order 11: System reconnaissance
 
-  SpyScoutState* = enum {.pure.}
+  SpyScoutState * = enum
     ## Operational state of spy scout
     Traveling    # En route to target
     OnMission    # Arrived at target, gathering intel
@@ -239,7 +239,7 @@ type
     currentPathIndex*: int        # Progress through path (0-based)
     mergedScoutCount*: int        # Number of scouts merged (for mesh bonus)
 
-  SpyScoutOrderType* = enum {.pure.}
+  SpyScoutOrderType * = enum
     ## Order types for spy scout fleets
     ## Transparent to user - spy scouts behave like normal fleets
     Hold              # Stay at current location on mission
@@ -265,14 +265,14 @@ type
     fallbackSystem*: SystemId   # Safe retreat destination
     lastUpdated*: int           # Turn when route was validated
 
-  AutoRetreatPolicy* = enum {.pure.}
+  AutoRetreatPolicy * = enum
     ## Player setting for automatic fleet retreats
     Never,              # Never auto-retreat (player always controls)
     MissionsOnly,       # Only abort missions (ETAC, Guard, Blockade) when target lost
     ConservativeLosing, # Retreat fleets when clearly losing combat
     AggressiveSurvival  # Retreat any fleet at risk of destruction
 
-  HouseStatus* = enum {.pure.}
+  HouseStatus * = enum
     ## Player/house operational status (gameplay.md:1.4)
     Active,              # Normal play - submitting orders
     Autopilot,           # Temporary MIA mode (3+ consecutive turns without orders)
@@ -329,7 +329,7 @@ type
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference
 
-  GamePhase* = enum {.pure.}
+  GamePhase * = enum
     Setup, Active, Paused, Completed
 
   GracePeriodTracker* = object
