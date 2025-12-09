@@ -143,12 +143,8 @@ proc executeFacilityOrders*(
 proc executeDiplomaticActions*(
   controller: AIController,
   filtered: FilteredGameState
-): seq[DiplomaticAction] {.deprecated: "Use basileus/execution.executeDiplomaticActions".} =
-  ## DEPRECATED: Use basileus/execution.executeDiplomaticActions instead
+): seq[DiplomaticAction] =
   ## Execute Protostrator diplomatic requirements (costs 0 PP)
-  ##
-  ## This function now redirects to the centralized Basileus execution module
+  ## This function redirects to the centralized Basileus execution module
   ## for cleaner separation of concerns (advisors recommend, Basileus executes)
-
-  # Redirect to Basileus centralized execution
   return basileus_exec.executeDiplomaticActions(controller, filtered)
