@@ -145,7 +145,6 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
     starMap: starMap,
-    diplomacy: initTable[(HouseId, HouseId), DiplomaticState](),
     turnDeadline: 0,
     ongoingEffects: @[],
     spyScouts: initTable[string, SpyScout]()
@@ -203,9 +202,13 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
   let houseIds = toSeq(result.houses.keys)
   for i in 0..<houseIds.len:
     for j in (i+1)..<houseIds.len:
-      let house1 = houseIds[i]
-      let house2 = houseIds[j]
-      result.diplomacy[(house1, house2)] = DiplomaticState.Neutral
+      let house1Id = houseIds[i]
+      let house2Id = houseIds[j]
+      
+      # Set relations for house1 towards house2
+      result.houses[house1Id].diplomaticRelations[(house1Id, house2Id)] = DiplomaticState.Neutral
+      # Set relations for house2 towards house1
+      result.houses[house2Id].diplomaticRelations[(house2Id, house1Id)] = DiplomaticState.Neutral
 
 proc printGameSetup*(game: GameState) =
   ## Print game setup summary for debugging
@@ -217,7 +220,6 @@ proc printGameSetup*(game: GameState) =
   echo &"Systems: {game.starMap.systems.len}"
   echo &"Colonies: {game.colonies.len}"
   echo &"Fleets: {game.fleets.len}"
-  echo &"Diplomatic Relations: {game.diplomacy.len}"
 
   echo &"\n{repeat(\"=\", 70)}"
   echo "House Details"
@@ -271,7 +273,6 @@ when isMainModule:
   echo &"  ✓ {game.houses.len} houses initialized"
   echo &"  ✓ {game.colonies.len} home colonies created"
   echo &"  ✓ {game.fleets.len} starting fleets created"
-  echo &"  ✓ {game.diplomacy.len} diplomatic relations initialized"
   echo &"  ✓ {game.starMap.systems.len} star systems generated"
 
   # Verify each house has a homeworld and fleet
