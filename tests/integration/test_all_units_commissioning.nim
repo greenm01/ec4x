@@ -15,7 +15,7 @@
 
 import std/[unittest, tables, options, strformat, sequtils]
 import ../../src/engine/[gamestate, orders, resolve, spacelift, squadron]
-import ../../src/engine/initialization/game
+import ../../src/engine/initialization/[game, colony]
 import ../../src/engine/economy/types as econ_types
 import ../../src/engine/research/types as res_types
 import ../../src/engine/espionage/types as esp_types
@@ -30,6 +30,11 @@ proc createTestState(cstLevel: int = 10): GameState =
   result = newGame("test", 4, 42)  # Use newGame for proper initialization
   result.turn = 1
   result.phase = GamePhase.Active
+
+  # Clear starting fleets and standing orders (this test needs clean slate)
+  result.fleets.clear()
+  result.standingOrders.clear()
+  result.fleetOrders.clear()
 
   # Get the house IDs that were created by newGame
   # newGame creates houses with IDs "house1", "house2", etc.
@@ -48,6 +53,10 @@ proc createTestState(cstLevel: int = 10): GameState =
 
   # Create colony using helper
   result.colonies[1] = createHomeColony(SystemId(1), "house1")
+
+  # Clear ground forces for clean testing (prevent auto-loading)
+  result.colonies[1].armies = 0
+  result.colonies[1].marines = 0
 
   # Add facilities for construction
   result.colonies[1].shipyards.add(
@@ -136,7 +145,7 @@ suite "Combat Ship Commissioning - All Types":
 
   test "Fighter Squadron commissions to fighterSquadrons":
     var state = createTestState(cstLevel = 3)
-    state = buildAndCommissionShip(state, ShipClass.Destroyer)
+    state = buildAndCommissionShip(state, ShipClass.Fighter)
 
     # Fighter squadrons go to colony.fighterSquadrons, not regular squadrons
     check state.colonies[1].fighterSquadrons.len > 0
