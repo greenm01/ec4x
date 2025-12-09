@@ -20,6 +20,7 @@
             python311
             python311Packages.pip
             python311Packages.virtualenv
+            aider-chat
 
             # Data Analysis Stack (Terminal-focused)
             python311Packages.polars       # Fast DataFrame library (already present)
@@ -29,6 +30,11 @@
             python311Packages.numpy        # Statistical functions
             python311Packages.scipy        # Advanced statistics
             python311Packages.click        # CLI framework
+
+            # dev tools
+            git
+            git-filter-repo 
+            
           ];
           shellHook = ''
             export IN_NIX_SHELL=1
