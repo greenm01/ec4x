@@ -234,10 +234,13 @@ proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAct
 
   result = @[]
 
-  logDebug("Military", "Checking carrier hangar capacity")
+  logDebug("Military", "Checking carrier hangar capacity",
+           " fleets=", $state.fleets.len)
 
   # Check all carriers for violations (should find none)
   let violations = checkViolations(state)
+
+  logDebug("Military", "Carrier check complete", " violations=", $violations.len)
 
   if violations.len == 0:
     logDebug("Military", "All carriers within hangar capacity limits")
