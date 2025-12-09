@@ -6,7 +6,7 @@
 ## - Infrastructure investment patterns
 ## - Construction velocity analysis
 
-import std/[tables, strformat, algorithm] # Removed options, sequtils
+import std/[tables, strformat, algorithm]
 import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/core
