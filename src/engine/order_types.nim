@@ -5,7 +5,7 @@ import std/options
 import ../common/types/[core, planets]
 
 type
-  FleetOrderType*{.pure.} = enum
+  FleetOrderType* {.pure.} = enum
     Hold              # Hold position, do nothing
     Move              # Navigate to target system
     SeekHome          # Find closest friendly system
@@ -21,7 +21,7 @@ type
     SpySystem         # Reconnaissance of system
     HackStarbase      # Electronic warfare
     JoinFleet         # Merge with another fleet (scouts gain mesh network ELI bonus)
-    Rendezvous        # Coordinate movement with fleet
+    Rendezvous        # Meet with other spy scouts/fleets at location
     Salvage           # Recover wreckage
     Reserve           # Place fleet on reserve status (50% maint, half AS/DS, can't move)
     Mothball          # Mothball fleet (0% maint, offline, screened in combat)
@@ -62,7 +62,7 @@ proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool 
   # Standing Orders - Persistent Fleet Behaviors
   # =============================================================================
 
-  StandingOrderType*{.pure.} = enum
+  StandingOrderType* {.pure.} = enum
     ## Persistent fleet behaviors that execute when no explicit order given
     ## Reduces micromanagement, provides quality-of-life for players and AI
     ## See docs/architecture/standing-orders.md for complete design
@@ -122,7 +122,7 @@ proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool 
   # Colony Management Orders
   # =============================================================================
 
-  ColonyManagementAction*{.pure.} = enum
+  ColonyManagementAction* {.pure.} = enum
     ## Colony-level management actions for player control
     SetTaxRate        # Adjust colony tax rate (0-100)
     SetAutoRepair     # Toggle automatic repair submission
