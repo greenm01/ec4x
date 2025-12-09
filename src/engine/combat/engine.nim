@@ -36,8 +36,6 @@ proc resolveCombat*(context: BattleContext): CombatResult =
   # Working copy of Task Forces
   var taskForces = context.taskForces
 
-  # Diplomatic relations (now passed in via state.houses[].diplomaticRelations)
-  # For the Combat Engine itself, we still need a way to determine hostility between TFs.
     # The actual diplomatic state checks happen in conflict_phase.nim before calling resolveCombat.
     # So, for the purpose of the combat engine's internal logic, we assume all provided TFs are hostile to each other
     # or their hostility is determined by their diplomatic status.
