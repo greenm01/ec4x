@@ -9,6 +9,7 @@ import ../../engine/initialization/[house, colony]
 import ../../engine/config/[prestige_multiplier, house_themes, gameplay_config]
 import ../../common/types/[core, units, planets, tech, diplomacy]
 import ../../common/[system]
+import ../../engine/diplomacy/types as dip_types # For DiplomaticRelation
 
 export house.initializeHouse
 export colony.createHomeColony
