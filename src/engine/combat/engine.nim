@@ -38,25 +38,13 @@ proc resolveCombat*(context: BattleContext): CombatResult =
 
   # Diplomatic relations (now passed in via state.houses[].diplomaticRelations)
   # For the Combat Engine itself, we still need a way to determine hostility between TFs.
-  # This part of the code needs to respect the dynamic diplomatic states between specific houses,
-  # but for simplicity, the core combat engine assumes it's provided with already hostile TFs.
-  # The actual diplomatic state checks happen in conflict_phase.nim before calling resolveCombat.
-  # So, for the purpose of the combat engine's internal logic, we assume all provided TFs are hostile to each other
-  # or their hostility is determined by their diplomatic status.
-  # The below is a placeholder, as the actual diplomatic state comes from `state.houses[houseId].diplomaticRelations`
-  # for specific pairs.
-
-  # System owner (this would normally come from the GameState, for example,
-  # state.colonies[context.systemId].owner, but is passed through context now or derived from it)
-  # Keeping it as none for now, as the combat engine does not directly manage system ownership
-  # for diplomatic relation lookups; it's fed the TaskForces already assembled based on hostility.
+    # The actual diplomatic state checks happen in conflict_phase.nim before calling resolveCombat.
+    # So, for the purpose of the combat engine's internal logic, we assume all provided TFs are hostile to each other
+    # or their hostility is determined by their diplomatic status.
 
   # PRE-COMBAT DETECTION PHASE (Section 7.3.1.1)
   # Scouts and Starbases attempt to detect cloaked Raiders before combat begins
   # If detected, Raiders lose ambush advantage and attack in Phase 3 instead
-  #
-  # Pre-detected houses: Houses already detected in previous combat phase (e.g., space combat)
-  # remain detected in subsequent phases (e.g., orbital combat)
 
   # Create std/random Rand from CombatRNG state for detection system
   # Detection uses std/random.Rand, combat uses CombatRNG
