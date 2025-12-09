@@ -50,9 +50,9 @@ proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): Diagnostic
   # ================================================================
 
   # Violation tracking
+  # DishonoredStatus and DiplomaticIsolation fields have been removed from House.
+  # Their logic is now implicitly handled by ViolationHistory and diplomatic rules.
   result.pactViolationsTotal = house.violationHistory.violations.len
-  result.dishonoredStatusActive = house.dishonoredStatus.active
-  result.diplomaticIsolationTurns = house.diplomaticIsolation.turnsRemaining
 
   # ================================================================
   # TREATY ACTIVITY METRICS (cumulative counts)
