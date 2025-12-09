@@ -8,7 +8,7 @@ import ../common/types
 import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap]
 import ../../common/types/[core, planets]
 import ./config
-import ./shared/intelligence_types as intel_types # For IntelligenceSnapshot
+import ./shared/intelligence_types as intelligence_types # For IntelligenceSnapshot
 
 # =============================================================================
 # Intelligence Gathering & Analysis
