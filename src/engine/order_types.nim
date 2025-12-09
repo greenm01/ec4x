@@ -5,7 +5,7 @@ import std/options
 import ../common/types/[core, planets]
 
 type
-  FleetOrderType* = enum {.pure.}
+  FleetOrderType * = enum
     Hold              # Hold position, do nothing
     Move              # Navigate to target system
     SeekHome          # Find closest friendly system
@@ -62,7 +62,7 @@ proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool 
   # Standing Orders - Persistent Fleet Behaviors
   # =============================================================================
 
-  StandingOrderType* = enum {.pure.}
+  StandingOrderType * = enum
     ## Persistent fleet behaviors that execute when no explicit order given
     ## Reduces micromanagement, provides quality-of-life for players and AI
     ## See docs/architecture/standing-orders.md for complete design
@@ -122,7 +122,7 @@ proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool 
   # Colony Management Orders
   # =============================================================================
 
-  ColonyManagementAction* = enum {.pure.}
+  ColonyManagementAction * = enum
     ## Colony-level management actions for player control
     SetTaxRate        # Adjust colony tax rate (0-100)
     SetAutoRepair     # Toggle automatic repair submission
