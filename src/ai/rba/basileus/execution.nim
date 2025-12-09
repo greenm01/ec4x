@@ -58,18 +58,10 @@ proc executeDiplomaticActions*(
     of DiplomaticRequirementType.ProposePact:
       if req.proposalType.isSome:
         let propType = req.proposalType.get()
-        case propType
-        of dip_proposals.ProposalType.AllyPact:
-          result.add(DiplomaticAction(
-            targetHouse: req.targetHouse,
-            actionType: DiplomaticActionType.ProposeAllyPact,
-            proposalId: none(string),
-            message: some(req.reason)
-          ))
-          logInfo(LogCategory.lcAI,
-                  &"  Proposing NAP to {req.targetHouse}: {req.reason}")
+        # AllyPact has been removed. Other proposal types are handled by the else branch.
         else:
-          # Other proposal types not yet implemented in diplomacy system
+          # Other proposal types (e.g., TradeAgreement, MilitaryAlliance) are not yet fully implemented
+          # in the execution phase. Log a warning and skip for now.
           logWarn(LogCategory.lcAI,
                   &"  Proposal type {propType} not yet implemented, skipping proposal to {req.targetHouse}")
 
