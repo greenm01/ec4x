@@ -278,7 +278,7 @@ For each pair of houses present in the system:
 
 **Per House Pair:**
 ```nim
-type DiplomaticState* {.pure.} = enum
+type DiplomaticState* = enum {.pure.}
   Neutral,  # Default, safe passage
   Hostile,  # Warning state
   Enemy     # Active war
