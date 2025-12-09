@@ -6,7 +6,6 @@
 ## REFACTORED: 2025-12-06 - Extracted from monolithic diagnostics.nim
 ## NEW FIELDS: totalSpaceports, totalShipyards, advisorReasoning
 
-import std/tables
 import ../../../engine/gamestate  # For GameState, HouseId, SystemId
 import ../../../common/types/core  # For TechField, ShipClass
 import ../../common/types  # For AIStrategy
