@@ -60,7 +60,7 @@ type
     proposalId*: Option[string]  # For accept/reject/withdraw actions
     message*: Option[string]     # Optional diplomatic message
 
-  DiplomaticActionType* {.pure.} = enum
+  DiplomaticActionType* = enum {.pure.}
     ## Diplomatic actions per diplomacy.md:8.1
     ## 3-level diplomatic system: Neutral, Hostile, Enemy
     DeclareHostile,            # Escalate to Hostile (deep space combat)
