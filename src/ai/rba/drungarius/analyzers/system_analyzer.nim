@@ -12,7 +12,7 @@ import ../../../../common/types/core
 import ../../controller_types
 import ../../config
 import ../../shared/intelligence_types
-import ../intelligence # For calculateDistance
+import ../../intelligence # For calculateDistance
 
 proc analyzeFleetComposition(squadronDetails: Option[seq[intel_types.SquadronIntel]]): FleetComposition =
   ## Analyze squadron details to determine fleet composition
