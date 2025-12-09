@@ -242,7 +242,7 @@ A player in autopilot can still win through prestige accumulation if their empir
 
 **Final Conflict Rule:**
 
-When only two active players remain in the game (excluding Defensive Collapse and Autopilot empires), their diplomatic status automatically converts to Enemy per [Section 8.1.4](diplomacy.md#814-enemy) and cannot be changed. Non-Aggression Pacts dissolve. Neutral status cannot be established. There can be only one Emperor—the final two houses must fight for the throne. This rule takes effect at the start of the Income Phase when the condition is detected.
+When only two active players remain in the game (excluding Defensive Collapse and Autopilot empires), their diplomatic status automatically converts to Enemy per [Section 8.1.4](diplomacy.md#814-enemy) and cannot be changed. Neutral status cannot be established. There can be only one Emperor—the final two houses must fight for the throne. This rule takes effect at the start of the Income Phase when the condition is detected.
 
 ---
 
@@ -299,8 +299,8 @@ You gather intelligence in all of the following situations:
 You gather intelligence regardless of diplomatic relationships:
 
 - Enemy forces: Intelligence gathered, combat may occur
-- Neutral forces: Intelligence gathered, no combat
-- Non-Aggression partners: Intelligence gathered, no combat (unless pact violated)
+- Hostile forces: Intelligence gathered, combat may occur
+- Neutral forces: Intelligence gathered, combat only if threatening orders are present
 
 This reflects the reality that military forces cannot remain completely hidden when operating in the same system, even if diplomatic protocols prevent engagement.
 

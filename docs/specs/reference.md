@@ -196,10 +196,6 @@ The zero-sum system ensures **losers actively decline** rather than merely slowi
 | Tech Advancement                   | `TechAdvancement`      | +2    | Absolute     |
 | Colony Establishment               | `ColonyEstablishment`  | +5    | Absolute     |
 | System Capture                     | `SystemCapture`        | +10   | Zero-Sum     |
-| Diplomatic Pact Formation          | `DiplomaticPact`       | +5    | Absolute     |
-| Pact Violation (penalty)           | `PactViolation`        | -10   | Pure Penalty |
-| Repeat Violation (penalty)         | `RepeatViolation`      | -10   | Pure Penalty |
-| Attack Dishonored House            | `DishonoredBonus`      | +1    | Absolute     |
 | Tech Theft Success                 | `TechTheftSuccess`     | +2    | Zero-Sum     |
 | Assassination Success              | `AssassinationSuccess` | +5    | Zero-Sum     |
 | Espionage Attempt Failed (penalty) | `EspionageFailure`     | -2    | Pure Penalty |
@@ -243,8 +239,8 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 
 - Tax penalties apply periodically based on rolling 6-turn average, not instantaneously
 - Maintenance shortfall escalates: Turn 1 (-5), Turn 2 (-7), Turn 3 (-9), continues +2/turn
-- See [Section 3.1.3](economy.md#313-tax-rate) for full tax mechanics
-- See [Section 3.2](economy.md#32-maintenance-costs) for maintenance mechanics
+- See [Section 3.2](economy.md#32-tax-rate) for full tax mechanics
+- See [Section 3.11](economy.md#311-maintenance-tax-shortfall-consequences) for maintenance mechanics
 
 ### Undefended Colony Penalty
 

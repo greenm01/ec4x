@@ -291,7 +291,6 @@ proc generateDiplomaticSection(oldState: GameState, newState: GameState, perspec
       let statusStr = case relation
         of DiplomaticState.Enemy: "WAR"
         of DiplomaticState.Hostile: "Hostile (Deep Space Combat)"
-        of DiplomaticState.Ally: "Non-Aggression Pact"
         of DiplomaticState.Neutral: "Neutral"
 
       let priorityMark = if relation in {DiplomaticState.Enemy, DiplomaticState.Hostile}: "⚠ " else: ""

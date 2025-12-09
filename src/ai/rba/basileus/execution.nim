@@ -27,10 +27,10 @@ proc executeDiplomaticActions*(
   ## Basileus authority: Direct execution without Treasurer approval
   ##
   ## Converts Protostrator requirements to diplomatic actions:
-  ## - DeclareWar → DeclareEnemy
-  ## - ProposePact → ProposeAllyPact (or future Alliance)
-  ## - BreakPact → BreakPact
-  ## - SeekPeace → SetNeutral
+  ## - DeclareWar → DeclareEnemy (escalate to war)
+  ## - ProposePact → (proposals not yet implemented)
+  ## - BreakPact → DeclareHostile (escalate from neutral)
+  ## - SeekPeace → SetNeutral (de-escalate to peace)
   ## - MaintainRelations → No action
 
   result = @[]
@@ -67,14 +67,17 @@ proc executeDiplomaticActions*(
                 &"  Proposal type not specified/implemented, skipping proposal to {req.targetHouse}")
 
     of DiplomaticRequirementType.BreakPact:
+      # BreakPact maps to DeclareHostile in new 3-state system
+      # Breaking cooperation = first step toward conflict
       result.add(DiplomaticAction(
         targetHouse: req.targetHouse,
-        actionType: DiplomaticActionType.BreakPact,
+        actionType: DiplomaticActionType.DeclareHostile,
         proposalId: none(string),
         message: some(req.reason)
       ))
       logInfo(LogCategory.lcAI,
-              &"  Breaking pact with {req.targetHouse}: {req.reason}")
+              &"  Breaking cooperation with {req.targetHouse} " &
+              &"(declaring Hostile): {req.reason}")
 
     of DiplomaticRequirementType.SeekPeace:
       result.add(DiplomaticAction(

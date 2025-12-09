@@ -54,9 +54,9 @@ proc isHostile*(
     ]:
       return true
 
-  # Patrol in controlled territory without NAP
+  # Patrol in controlled territory by hostile/enemy forces
   if attackerControlsSystem and targetOrders == FleetOrder.Patrol:
-    if relation != DiplomaticState.Ally:
+    if relation in {DiplomaticState.Hostile, DiplomaticState.Enemy}:
       return true
 
   # Default: not hostile

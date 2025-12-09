@@ -335,24 +335,6 @@ proc resolveMaintenancePhase*(state: var GameState,
   # Process active terraforming projects
   processTerraformingProjects(state, events)
 
-  # Update diplomatic status timers for all houses
-  for houseId, house in state.houses.mpairs:
-    # Update dishonored status
-    if house.dishonoredStatus.active:
-      house.dishonoredStatus.turnsRemaining -= 1
-      if house.dishonoredStatus.turnsRemaining <= 0:
-        house.dishonoredStatus.active = false
-        logInfo(LogCategory.lcGeneral,
-          &"{house.name} is no longer dishonored")
-
-    # Update diplomatic isolation
-    if house.diplomaticIsolation.active:
-      house.diplomaticIsolation.turnsRemaining -= 1
-      if house.diplomaticIsolation.turnsRemaining <= 0:
-        house.diplomaticIsolation.active = false
-        logInfo(LogCategory.lcGeneral,
-          &"{house.name} is no longer diplomatically isolated")
-
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEPS 4-6] Completed population/terraforming/cleanup")
 
   # ===================================================================

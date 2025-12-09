@@ -22,15 +22,6 @@ proc hasIntelCorruption*(effects: seq[esp_types.OngoingEffect], targetHouse: Hou
       return some(effect)
   return none(esp_types.OngoingEffect)
 
-proc hasDishonoredCorruption*(dishonoredStatus: dip_types.DishonoredStatus): Option[float] =
-  ## Check if a house is dishonored (causing intel corruption)
-  ## Dishonored houses have disorganized/demoralized forces → bad intelligence
-  ## Returns corruption magnitude if dishonored (duration from config)
-  if dishonoredStatus.active and dishonoredStatus.turnsRemaining > 0:
-    let config = globalDiplomacyConfig
-    return some(config.pact_violations.dishonor_corruption_magnitude)
-  return none(float)
-
 ## Integer Corruption
 
 proc corruptInt*(value: int, magnitude: float, rng: var Rand): int =

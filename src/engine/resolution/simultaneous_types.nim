@@ -92,7 +92,6 @@ type
     targetSystem*: SystemId
     orderType*: string                # "SpyPlanet", "SpySystem", or "HackStarbase"
     espionageStrength*: int           # House prestige (higher prestige = better intelligence)
-    isDishonored*: bool               # Dishonored houses go to end of priority list
 
   EspionageConflict* = object
     ## Multiple houses conducting espionage in same system

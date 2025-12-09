@@ -43,9 +43,6 @@ proc collectEspionageIntents*(
       # Higher prestige = better intelligence operations
       let espionageStrength = state.houses[houseId].prestige
 
-      # Check if house is dishonored
-      let isDishonored = state.houses[houseId].dishonoredStatus.active
-
       # Get target from order
       if order.targetSystem.isNone:
         continue
@@ -57,8 +54,7 @@ proc collectEspionageIntents*(
         fleetId: order.fleetId,
         targetSystem: targetSystem,
         orderType: $order.orderType,
-        espionageStrength: espionageStrength,
-        isDishonored: isDishonored
+        espionageStrength: espionageStrength
       ))
 
 proc detectEspionageConflicts*(
@@ -91,44 +87,20 @@ proc resolveEspionageConflict*(
   if conflict.intents.len == 0:
     return
 
-  # Sort by: 1) honored status (honored first), 2) prestige (highest first), 3) random tiebreaker
+  # Sort by: 1) prestige (highest first), 2) random tiebreaker
   var sorted = conflict.intents
+  let seed = tiebreakerSeed(state.turn, conflict.targetSystem)
+  var rng = initRand(seed)
 
-  # Separate honored and dishonored houses
-  var honored: seq[EspionageIntent] = @[]
-  var dishonored: seq[EspionageIntent] = @[]
-
-  for intent in sorted:
-    if intent.isDishonored:
-      dishonored.add(intent)
+  sorted.sort do (a, b: EspionageIntent) -> int:
+    if a.espionageStrength != b.espionageStrength:
+      return cmp(b.espionageStrength, a.espionageStrength)  # Descending
     else:
-      honored.add(intent)
-
-  # Sort honored houses by prestige (descending)
-  if honored.len > 0:
-    let seed = tiebreakerSeed(state.turn, conflict.targetSystem)
-    var honoredRng = initRand(seed)
-
-    honored.sort do (a, b: EspionageIntent) -> int:
-      if a.espionageStrength != b.espionageStrength:
-        return cmp(b.espionageStrength, a.espionageStrength)  # Descending
-      else:
-        return honoredRng.rand(1) * 2 - 1  # Random: -1 or 1
-
-  # Sort dishonored houses randomly
-  if dishonored.len > 0:
-    let seed = tiebreakerSeed(state.turn, conflict.targetSystem) + 1000  # Different seed
-    var dishonoredRng = initRand(seed)
-
-    dishonored.sort do (a, b: EspionageIntent) -> int:
-      return dishonoredRng.rand(1) * 2 - 1  # Pure random
-
-  # Combine: honored first, then dishonored
-  sorted = honored & dishonored
+      return rng.rand(1) * 2 - 1  # Random: -1 or 1
 
   let first = sorted[0]
   logDebug(LogCategory.lcCombat,
-           &"{conflict.intents.len} houses conducting espionage at {conflict.targetSystem}, priority: {first.houseId} (prestige: {first.espionageStrength}, dishonored: {first.isDishonored})")
+           &"{conflict.intents.len} houses conducting espionage at {conflict.targetSystem}, priority: {first.houseId} (prestige: {first.espionageStrength})")
 
   # All espionage attempts succeed, but in priority order
   # (Actual espionage resolution happens in main loop with proper detection rolls)

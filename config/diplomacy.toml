@@ -6,21 +6,6 @@
 # - CORE MECHANICS: Diplomatic state rules
 
 # ============================================================================
-# NON-AGGRESSION PACT VIOLATIONS
-# Source: docs/specs/diplomacy.md Section 8.1.2
-# ============================================================================
-
-[pact_violations]
-# BALANCE: Violation consequences and durations
-dishonored_status_turns = 3        # Dishonored status lasts 3 turns
-dishonor_corruption_magnitude = 0.5  # 50% intelligence corruption from dishonor
-diplomatic_isolation_turns = 5      # Cannot form new pacts for 5 turns
-pact_reinstatement_cooldown = 5    # Cannot reinstate pact for 5 turns
-repeat_violation_window = 10       # Repeat violations within 10 turns trigger extra penalty
-
-# Note: Prestige penalties for violations are in prestige.toml [diplomacy] section
-
-# ============================================================================
 # ESPIONAGE ACTION EFFECTS
 # Source: docs/specs/diplomacy.md Section 8.2.1
 # ============================================================================
