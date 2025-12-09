@@ -206,9 +206,14 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
       let house2Id = houseIds[j]
       
       # Set relations for house1 towards house2
-      result.houses[house1Id].diplomaticRelations[(house1Id, house2Id)] = DiplomaticState.Neutral
+      var house1 = result.houses[house1Id] # Get mutable copy of house1
+      house1.diplomaticRelations[(house1Id, house2Id)] = DiplomaticState.Neutral
+      result.houses[house1Id] = house1 # Store modified house1 back
+
       # Set relations for house2 towards house1
-      result.houses[house2Id].diplomaticRelations[(house2Id, house1Id)] = DiplomaticState.Neutral
+      var house2 = result.houses[house2Id] # Get mutable copy of house2
+      house2.diplomaticRelations[(house2Id, house1Id)] = DiplomaticState.Neutral
+      result.houses[house2Id] = house2 # Store modified house2 back
 
 proc printGameSetup*(game: GameState) =
   ## Print game setup summary for debugging
