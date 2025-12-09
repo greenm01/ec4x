@@ -41,7 +41,7 @@ Neutral → Hostile → Enemy
 #### 2.1.1 Neutral → Hostile
 
 **Triggers:**
-- Fleet stops in defender's system with non-threatening orders
+- Fleet stops in defender's system with non-threatening but provocative orders
 - First offense only (warning)
 
 **Examples:**
@@ -66,7 +66,7 @@ Neutral → Hostile → Enemy
   - HackStarbase (13)
   - BlockadeTarget (SO)
 
-**Note:** Threatening orders escalate directly to Enemy even from Neutral if first offense
+**Note:** Threatening orders escalate directly to Enemy even from Neutral if first offense against a controlled system.
 
 ### 2.2 Negotiated De-escalation (Requires Agreement)
 
@@ -106,7 +106,7 @@ Enemy ⟷ Hostile ⟷ Neutral
 
 ### 3.1 Threatening Orders (Immediate Enemy Status)
 
-These orders immediately escalate to **Enemy** status when executed in defender's system:
+These orders immediately escalate to **Enemy** status when executed in defender's controlled system:
 
 | Order Code        | Order Name                 | Combat Phases                    |
 |-------------------|----------------------------|----------------------------------|
@@ -117,9 +117,9 @@ These orders immediately escalate to **Enemy** status when executed in defender'
 | 13                | HackStarbase               | Space → Orbital                  |
 | SO-BlockadeTarget | Blockade Target (Standing) | Space → Orbital                  |
 
-### 3.2 Non-Threatening Orders (Gradual Escalation)
+### 3.2 Non-Threatening but Provocative Orders (Gradual Escalation)
 
-These orders escalate Neutral→Hostile on first offense, Hostile→Enemy on second offense:
+These orders escalate Neutral→Hostile on first offense, Hostile→Enemy on second offense when executed in defender's controlled system:
 
 | Order Code     | Order Name   | Can Target Defender? | Notes                                           |
 |----------------|--------------|----------------------|-------------------------------------------------|
@@ -138,11 +138,11 @@ These orders escalate Neutral→Hostile on first offense, Hostile→Enemy on sec
 | Order Code | Order Name | Condition     | Notes                                          |
 |------------|------------|---------------|------------------------------------------------|
 | 01         | Move       | Transit only  | Safe if passing through to another destination |
-| 01         | Move       | Stopping      | Escalates if destination IS defender's system  |
+| 01         | Move       | Stopping      | Does NOT escalate if destination IS defender's system and no provocative orders |
 
-### 3.4 Orders That Cannot Target Defender's System
+### 3.4 Orders That Cannot Target Defender's System (No Escalation Risk)
 
-These orders physically cannot be executed at another house's facilities:
+These orders physically cannot be executed at another house's facilities or systems:
 
 | Order Code       | Order Name     | Reason                              |
 |------------------|----------------|-------------------------------------|
