@@ -1,8 +1,8 @@
 # EC4X TODO & Roadmap
 
-**Last Updated:** 2025-12-06
+**Last Updated:** 2025-12-08
 **Current Phase:** Phase 2 Complete - Ready for Phase 3
-**Test Status:** 35 integration test files, 669 test cases - ALL PASSING ✅
+**Test Status:** 36 integration test files, 673 test cases - ALL PASSING ✅
 **Balance Status:** RBA functional, 2 balance issues identified
 
 ---
@@ -26,6 +26,7 @@
 - RBA AI functional (Phase 2 complete)
 - Diagnostic infrastructure (130+ metrics)
 - GOAP infrastructure (not yet integrated)
+- Game initialization refactoring (modular, config-driven)
 
 🔴 **Active Issues:**
 1. Alliance pacts: 0 formed (thresholds too high)
