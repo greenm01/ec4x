@@ -291,7 +291,7 @@ proc gatherEconomicIntelligence*(controller: var AIController, filtered: Filtere
 
           # Identify high-value economic targets and convert to HighValueTarget type
           if visibleColony.production.get() >= 50:
-            result.highValueTargets.add(intelligence_types.HighValueTarget(
+            result.highValueTargets.add(intel_types.HighValueTarget(
               systemId: visibleColony.systemId,
               owner: visibleColony.owner,
               estimatedValue: visibleColony.production.get() * 10, # Example multiplier
