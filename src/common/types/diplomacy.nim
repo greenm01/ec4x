@@ -9,13 +9,11 @@ import core
 
 type
   DiplomaticState* {.pure.} = enum
-    ## Relations between houses - 4-level system
-    ## Neutral: Default state, no formal relations
-    ## Ally: Formal pact, mutual defense in combat
-    ## Hostile: Tensions escalated, combat in deep space
-    ## Enemy: Open war, planetary attacks
+    ## Relations between houses - 3-level system
+    ## Neutral: Default state, safe passage
+    ## Hostile: Tense relations, potential for combat
+    ## Enemy: Active warfare, combat on sight
     Neutral          # Default state
-    Ally             # Formal alliance pact, mutual defense
     Hostile          # Escalated tensions from deep space combat
     Enemy            # Open war from planetary attacks
 
