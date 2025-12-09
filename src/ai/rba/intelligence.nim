@@ -250,43 +250,67 @@ proc findBestColonizationTarget*(controller: var AIController, filtered: Filtere
 
   return none(SystemId)
 
-proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): seq[intelligence_types.EconomicIntelligence] =
+proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): intelligence_types.EconomicIntelligence =
   ## Assess enemy economic strength for targeting
-  result = @[]
+  result = intelligence_types.EconomicIntelligence(
+    enemyEconomicStrength: initTable[HouseId, intelligence_types.EconomicAssessment](),
+    highValueTargets: @[], # This will be populated with HighValueTarget objects
+    enemyTechGaps: initTable[HouseId, intelligence_types.TechGapAnalysis](),
+    constructionActivity: initTable[SystemId, intelligence_types.ConstructionTrend](),
+    lastUpdated: filtered.turn
+  )
 
   var ourProduction = 0
   for colony in filtered.ownColonies:
     if colony.owner == controller.houseId:
       ourProduction += colony.production
 
-  for targetHouse in filtered.housePrestige.keys:
-    if targetHouse == controller.houseId:
+  for targetHouseId in filtered.housePrestige.keys:
+    if targetHouseId == controller.houseId:
       continue
 
-    var intel = intelligence_types.EconomicIntelligence(
-      estimatedProduction: 0,
-      highValueTargets: @[],
-      economicStrength: 0.0
+    var enemyAssessment = intelligence_types.EconomicAssessment(
+      houseId: targetHouseId,
+      knownColonyCount: 0,
+      estimatedTotalProduction: 0,
+      estimatedIncome: none(int),
+      estimatedTechSpending: none(int),
+      taxRate: none(float),
+      relativeStrength: 0.0,
+      lastUpdated: filtered.turn
     )
+    
+    var knownColonyCountForTarget = 0
 
-    # Gather data from visible enemy colonies
-    for colony in filtered.visibleColonies:
-      if colony.owner != targetHouse:
-        continue
+    // Gather data from visible enemy colonies for this targetHouseId
+    for visibleColony in filtered.visibleColonies:
+      if visibleColony.owner == targetHouseId:
+        knownColonyCountForTarget += 1
+        if visibleColony.production.isSome:
+          enemyAssessment.estimatedTotalProduction += visibleColony.production.get()
 
-      # VisibleColony has Option[int] for production (limited intel)
-      if colony.production.isSome:
-        intel.estimatedProduction += colony.production.get()
+          // Identify high-value economic targets and convert to HighValueTarget type
+          if visibleColony.production.get() >= 50:
+            result.highValueTargets.add(intelligence_types.HighValueTarget(
+              systemId: visibleColony.systemId,
+              owner: visibleColony.owner,
+              estimatedValue: visibleColony.production.get() * 10, // Example multiplier
+              estimatedDefenses: visibleColony.estimatedDefenses.get(0), // Requires Option.get(0) fallback
+              hasStarbase: visibleColony.starbaseLevel.get(0) > 0, // Requires Option.get(0) fallback
+              shipyardCount: visibleColony.shipyardCount.get(0), // Requires Option.get(0) fallback
+              lastUpdated: visibleColony.intelTurn.get(filtered.turn), // Requires Option.get(0) fallback
+              intelQuality: intel_types.IntelQuality.Visual // Or derive from context
+            ))
 
-        # Identify high-value economic targets
-        if colony.production.get() >= 50:
-          intel.highValueTargets.add(colony.systemId)
+    enemyAssessment.knownColonyCount = knownColonyCountForTarget
 
-    # Calculate relative strength
+    // Calculate relative strength
     if ourProduction > 0:
-      intel.economicStrength = float(intel.estimatedProduction) / float(ourProduction)
+      enemyAssessment.relativeStrength = float(enemyAssessment.estimatedTotalProduction) / float(ourProduction)
+    else:
+      enemyAssessment.relativeStrength = 1.0
 
-    result.add(intel)
+    result.enemyEconomicStrength[targetHouseId] = enemyAssessment
 
 # =============================================================================
 # Fog-of-War Strategic Assessment
