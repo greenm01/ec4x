@@ -7,7 +7,7 @@
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 950-1250)
 ## NEW: Advisor reasoning log support (Gap #9 fix)
 
-import std/[options, algorithm, strformat, tables, logging]
+import std/[options, algorithm, strformat, tables]
 import ./types
 import ./domestikos_collector  # Military commander
 import ./logothete_collector   # Research & technology
