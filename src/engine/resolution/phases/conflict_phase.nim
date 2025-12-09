@@ -83,13 +83,14 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
             house2
           )
 
-          # Combat occurs if houses are enemies OR neutral (no pact protection)
+          # Combat occurs if houses are enemies OR hostile (no pact protection)
           # BUT: Cloaked fleets can remain hidden unless detected
           if relation == dip_types.DiplomaticState.Enemy or
-             relation == dip_types.DiplomaticState.Neutral:
+             relation == dip_types.DiplomaticState.Hostile:
 
             # STEALTH DETECTION CHECK
             # Check if either side is cloaked and undetected
+            # TODO: Proper ELI Mesh detection for Raiders/Scouts
             let house1Cloaked = houseFleets[house1].anyIt(it.isCloaked())
             let house2Cloaked = houseFleets[house2].anyIt(it.isCloaked())
             let house1HasScouts = houseFleets[house1].anyIt(it.squadrons.anyIt(it.hasScouts()))
