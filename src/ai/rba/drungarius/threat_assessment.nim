@@ -9,13 +9,7 @@ import ../../../common/types/core
 import ../controller_types # For AIController
 import ../config
 import ../shared/intelligence_types
-
-proc calculateDistance(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId): int =
-  ## Calculate jump distance between two systems
-  let pathResult = starMap.findPath(fromSystem, toSystem, Fleet())
-  if pathResult.found:
-    return pathResult.path.len
-  return 999  # Unreachable
+import ../intelligence # For calculateDistance
 
 proc assessColonyThreat*(
   colonyId: SystemId,

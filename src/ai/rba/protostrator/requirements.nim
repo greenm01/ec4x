@@ -13,6 +13,7 @@ import ../../../engine/diplomacy/proposals as dip_proposals
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_types
+import ../intelligence # For countSharedBorders
 
 # =============================================================================
 # Dynamic Prestige Threshold Calculation

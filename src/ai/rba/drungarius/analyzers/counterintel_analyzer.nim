@@ -6,7 +6,7 @@
 ## - Counter-intelligence investment priorities
 ## - Detection risk assessment
 
-import std/[tables, sequtils, strformat, strutils, algorithm]
+import std/[tables, sequtils, strformat, strutils, algorithm] # Removed options
 import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/core

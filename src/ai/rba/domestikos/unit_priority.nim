@@ -12,7 +12,7 @@
 ## Integration: Called by build_requirements.nim capacity filler
 
 import std/[tables, options]
-import ../../../common/types/units
+import ../../../common/types/units # Removed core
 import ../../../engine/economy/config_accessors
 import ../../common/types as ai_common_types
 

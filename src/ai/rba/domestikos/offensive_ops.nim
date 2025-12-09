@@ -6,7 +6,7 @@
 ## - Probing attacks: Scout enemy defenses with expendable scouts
 ## - Counter-attacks: Exploit enemy vulnerabilities (weak/absent defenses)
 
-import std/[options, strformat, sets]
+import std/[options, strformat, sets] # Removed tables
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger, starmap]
 import ../../../engine/diplomacy/types as dip_types  # For isEnemy
