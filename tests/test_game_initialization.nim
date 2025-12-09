@@ -108,8 +108,8 @@ suite "Game Initialization Tests":
 
       let homeworld = game.colonies[homeworldSystemId]
       check homeworld.owner == houseId
-      check homeworld.populationUnits > 0
-      check homeworld.industrial.units > 0
+      check homeworld.populationUnits == 840  # From standard.toml
+      check homeworld.industrial.units == 420  # From standard.toml
 
   test "fleets have correct squadron and spacelift structure":
     let game = newGame("test-game-4", 2, seed = 11111)
