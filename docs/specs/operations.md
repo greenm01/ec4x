@@ -1231,9 +1231,9 @@ Space combat occurs when mobile fleets encounter each other in the same system. 
 
 **Diplomatic Status Determines Combat:**
 - **Enemy Status**: Combat occurs automatically (always hostile)
-- **Neutral Status**: Combat occurs if Neutral fleets have **threatening orders** (Invade, Bombard, Blitz, Blockade) in system you control
+- **Hostile Status**: Combat occurs if Hostile fleets have **threatening or provocative orders** in a system you control, or if already engaged.
+- **Neutral Status**: Combat occurs only if Neutral fleets have **threatening orders** (Invade, Bombard, Blitz, Blockade) in a system you control.
 - **Neutral + Non-Threatening**: No combat (peaceful coexistence)
-- **Non-Aggression Pact**: Combat does NOT occur (pact prevents hostilities, even with threatening orders)
 
 **Rules of Engagement (ROE 0-10):**
 
@@ -1260,8 +1260,8 @@ When three or more houses have mobile fleets in the same system:
 - Each house forms separate task force
 - Each squadron targets hostile houses based on diplomatic status
 - Enemy status: Always hostile
-- Neutral status: Hostile if they have threatening orders in your controlled system
-- Non-Aggression Pact: Never hostile
+- Hostile status: Always hostile if provocative orders are present, or engaged in combat
+- Neutral status: Only hostile if threatening orders are issued against your controlled system
 - All combat phases (Raiders, Fighters, Capitals) resolve simultaneously with multi-faction targeting
 
 ### 7.3.2 Combat Initiative and Phases

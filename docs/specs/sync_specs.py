@@ -243,20 +243,6 @@ def generate_prestige_table(config: Dict[str, Any]) -> str:
         ("economic", "tech_advancement", "Tech Advancement", "TechAdvancement"),
         ("economic", "establish_colony", "Colony Establishment", "ColonyEstablishment"),
         ("military", "invade_planet", "System Capture", "SystemCapture"),
-        (
-            "diplomacy",
-            "diplomatic_pact_formation",
-            "Diplomatic Pact Formation",
-            "DiplomaticPact",
-        ),
-        ("diplomacy", "pact_violation", "Pact Violation (penalty)", "PactViolation"),
-        (
-            "diplomacy",
-            "repeat_violation",
-            "Repeat Violation (penalty)",
-            "RepeatViolation",
-        ),
-        ("diplomacy", "dishonored_bonus", "Attack Dishonored House", "DishonoredBonus"),
         ("espionage", "tech_theft", "Tech Theft Success", "TechTheftSuccess"),
         (
             "espionage",
@@ -1340,18 +1326,6 @@ def replace_inline_values_diplomacy(
 
     # Define inline value replacements for diplomacy.md
     replacements = {
-        "DISHONORED_TURNS": lambda: str(
-            diplomacy_config["pact_violations"]["dishonored_status_turns"]
-        ),
-        "DIPLOMATIC_ISOLATION_TURNS": lambda: str(
-            diplomacy_config["pact_violations"]["diplomatic_isolation_turns"]
-        ),
-        "REPEAT_VIOLATION_WINDOW": lambda: str(
-            diplomacy_config["pact_violations"]["repeat_violation_window"]
-        ),
-        "PACT_REINSTATEMENT_TURNS": lambda: str(
-            diplomacy_config["pact_violations"]["pact_reinstatement_cooldown"]
-        ),
         "TECH_THEFT_SRP": lambda: str(
             diplomacy_config["espionage_effects"]["tech_theft_srp_stolen"]
         ),

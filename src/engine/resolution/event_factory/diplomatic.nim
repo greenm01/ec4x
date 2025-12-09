@@ -32,28 +32,3 @@ proc peaceSigned*(
     systemId: none(SystemId)
   )
 
-proc allianceFormed*(
-  house1: HouseId,
-  house2: HouseId
-): res_types.GameEvent =
-  ## Create event for alliance formation
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.AllianceFormed,
-    houseId: house1,
-    description: &"Alliance formed between {house1} and {house2}",
-    systemId: none(SystemId)
-  )
-
-proc allianceBroken*(
-  house1: HouseId,
-  house2: HouseId,
-  breakingHouse: HouseId
-): res_types.GameEvent =
-  ## Create event for alliance breaking
-  let otherHouse = if breakingHouse == house1: house2 else: house1
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.AllianceBroken,
-    houseId: breakingHouse,
-    description: &"{breakingHouse} broke alliance with {otherHouse}",
-    systemId: none(SystemId)
-  )

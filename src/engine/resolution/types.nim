@@ -21,7 +21,7 @@ type
     OrderRejected,
     # New types for AI/client visibility
     PrestigeGained, PrestigeLost,  # Prestige changes
-    WarDeclared, PeaceSigned, AllianceFormed, AllianceBroken,  # Diplomatic
+    WarDeclared, PeaceSigned,  # Diplomatic
     ResourceWarning, ThreatDetected, AutomationCompleted,  # Alerts
     # Espionage Events (event-driven intelligence integration)
     SpyMissionSucceeded,  # Passive intel (SpyOnPlanet/System/HackStarbase)

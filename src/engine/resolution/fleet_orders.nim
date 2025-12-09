@@ -63,7 +63,7 @@ proc estimatePathRisk*(state: GameState, path: seq[SystemId], houseId: HouseId):
     elif systemId in state.colonies:
       let colony = state.colonies[systemId]
       if colony.owner != houseId:
-        # Foreign but not enemy (neutral/ally) - moderate risk
+        # Foreign but not enemy (neutral) - moderate risk
         result += 3
     else:
       # Unexplored or empty - low risk

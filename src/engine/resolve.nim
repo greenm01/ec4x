@@ -81,7 +81,7 @@ import ../common/types/core
 import ../common/logger as common_logger
 import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, logger
 import espionage/[types as esp_types, engine as esp_engine]
-import diplomacy/[types as dip_types]
+import diplomacy/[types as dip_types] # Renamed to avoid conflict with gamestate.diplomacy
 import research/[types as res_types_research]
 import commands/[executor, spy_scout_orders]
 import intelligence/[spy_travel, spy_resolution]
@@ -219,7 +219,6 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
 
   # Phase 2: Income (resource collection + capacity enforcement after IU loss)
-  # Note: Auto-repair submission now happens in Command Phase after commissioning
   resolveIncomePhase(result.newState, effectiveOrders, result.events)
 
   # Phase 3: Command (commissioning → build orders → fleet orders → diplomatic actions)

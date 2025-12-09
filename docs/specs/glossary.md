@@ -120,14 +120,12 @@
 |------|------------|--------------|
 | CIP | Counter-Intelligence Point – defense against espionage; costs 40 PP each | [8.3](diplomacy.md#83-counter-intelligence-command-cic) |
 | Detection | Process of discovering espionage attempts or cloaked Raiders via dice rolls | [8.3](diplomacy.md#83-counter-intelligence-command-cic) |
-| Diplomatic Isolation | Cannot establish new NAPs for 5 turns after pact violation | [8.1.2](diplomacy.md#812-non-aggression-pacts) |
-| Dishonored | Reputation penalty lasting 3 turns after NAP violation | [8.1.2](diplomacy.md#812-non-aggression-pacts) |
 | EBP | Espionage Budget Point – cost 40 PP each; used for covert actions | [8.2](diplomacy.md#82-subversion-subterfuge) |
-| Enemy | Diplomatic status commanding fleets to engage at every opportunity | [8.1.3](diplomacy.md#813-enemy) |
+| Enemy | Diplomatic status commanding fleets to engage at every opportunity | [8.1.4](diplomacy.md#814-enemy) |
 | Espionage | Covert operations including tech theft, sabotage, assassination, and psyops | [8.2](diplomacy.md#82-subversion-subterfuge) |
 | Fog of War | Restricted visibility requiring active intelligence gathering to see rivals | [1.5.2](gameplay.md#152-fog-of-war) |
-| NAP | Non-Aggression Pact – agreement to not attack each other | [8.1.2](diplomacy.md#812-non-aggression-pacts) |
-| Neutral | Diplomatic status where fleets avoid hostilities outside controlled territory | [8.1.1](diplomacy.md#811-neutral) |
+| Hostile | Diplomatic status signifying tense relations and limited engagement | [8.1.3](diplomacy.md#813-hostile) |
+| Neutral | Diplomatic status where fleets avoid hostilities outside controlled territory | [8.1.2](diplomacy.md#812-neutral) |
 | ROE | Rules of Engagement – aggression level 00–10 | [7.1.1](operations.md#711-rules-of-engagement-roe) |
 | Territorial Control | System ownership determined by presence of colony | [8.1.5](diplomacy.md#815-territorial-control) |
 

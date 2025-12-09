@@ -93,20 +93,16 @@ proc resolveCommandPhase*(state: var GameState,
   # Process colony management orders (tax rates, auto-repair toggles)
   for houseId in state.houses.keys:
     if houseId in orders:
-      resolveColonyManagementOrders(state, orders[houseId])
+      economy_resolution.resolveColonyManagementOrders(state, orders[houseId])
 
   # Process Space Guild population transfers
   for houseId in state.houses.keys:
     if houseId in orders:
-      resolvePopulationTransfers(state, orders[houseId], events)
-
-  # Process diplomatic actions - MOVED TO MAINTENANCE PHASE
-  # Diplomatic state changes happen AFTER all commands execute
-  # See maintenance_step.nim for diplomatic action resolution
+      economy_resolution.resolvePopulationTransfers(state, orders[houseId], events)
 
   # Process scout detection escalations (from Conflict Phase spy detections)
   # SpyScoutDetected events trigger Hostile escalation
-  resolveScoutDetectionEscalations(state)
+  diplomatic_resolution.resolveScoutDetectionEscalations(state)
 
   # Process spy scout orders (join, move, rendezvous)
   # Spy scouts can merge with each other or with normal fleets

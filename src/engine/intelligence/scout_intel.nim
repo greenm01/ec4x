@@ -186,9 +186,8 @@ proc processScoutIntelligence*(
 
   let turn = state.turn
 
-  # Check if scout owner has corrupted intelligence (disinformation or dishonor)
+  # Check if scout owner has corrupted intelligence (disinformation)
   let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, scoutOwner)
-  let dishonoredCorruption = corruption.hasDishonoredCorruption(state.houses[scoutOwner].dishonoredStatus)
   var rng = initRand(turn xor hash(scoutOwner) xor int(systemId))  # Deterministic corruption per turn/house/system
 
   # Generate scout encounter report for fleets
@@ -198,9 +197,8 @@ proc processScoutIntelligence*(
   var fleetEncounter = generateScoutFleetEncounter(state, scoutId, scoutOwner, systemId, turn)
   if fleetEncounter.isSome:
     # Apply corruption if scout owner's intelligence is compromised
-    if corruptionEffect.isSome or dishonoredCorruption.isSome:
-      let magnitude = if corruptionEffect.isSome: corruptionEffect.get().magnitude
-                      else: dishonoredCorruption.get()
+    if corruptionEffect.isSome:
+      let magnitude = corruptionEffect.get().magnitude
       var corrupted = fleetEncounter.get()
       corrupted = corruption.corruptScoutEncounter(corrupted, magnitude, rng)
       house.intelligence.addScoutEncounter(corrupted)
@@ -229,9 +227,8 @@ proc processScoutIntelligence*(
   var colonyEncounter = generateScoutColonyObservation(state, scoutId, scoutOwner, systemId, turn)
   if colonyEncounter.isSome:
     # Apply corruption if scout owner's intelligence is compromised
-    if corruptionEffect.isSome or dishonoredCorruption.isSome:
-      let magnitude = if corruptionEffect.isSome: corruptionEffect.get().magnitude
-                      else: dishonoredCorruption.get()
+    if corruptionEffect.isSome:
+      let magnitude = corruptionEffect.get().magnitude
       var corrupted = colonyEncounter.get()
       corrupted = corruption.corruptScoutEncounter(corrupted, magnitude, rng)
       house.intelligence.addScoutEncounter(corrupted)

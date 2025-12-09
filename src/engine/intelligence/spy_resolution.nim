@@ -103,17 +103,17 @@ proc resolveSpyDetection*(
 
         # Only check if both scouts are in the same system
         if otherSpy.location == system:
-          # Check diplomatic relations - allies don't fight each other
+          # Check diplomatic relations - neutral houses don't fight each other
           let dipState = dip_engine.getDiplomaticState(
             state.houses[otherSpy.owner].diplomaticRelations,
             spy.owner
           )
 
-          if dipState == DiplomaticState.Ally:
-            # Allies share intelligence about each other's scouts but don't engage
-            result.add("Spy scout " & spyId & " encountered allied spy scout " &
-                      otherSpyId & " (intelligence shared)")
-            continue  # No detection combat between allies
+          if dipState == DiplomaticState.Neutral:
+            # Neutral houses allow safe passage, scouts don't engage
+            result.add("Spy scout " & spyId & " encountered neutral spy scout " &
+                      otherSpyId & " (safe passage)")
+            continue  # No detection combat between neutral houses
           # Spy scouts can detect each other using ELI detection
           # Each scout acts as a single-unit ELI detector
           let detectorUnit = ELIUnit(

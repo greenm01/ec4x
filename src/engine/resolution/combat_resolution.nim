@@ -102,11 +102,11 @@ proc autoEscalateDiplomacy(
       )
 
       # Only escalate if current state is less hostile than target
-      # Neutral (0) < Ally (1) < Hostile (2) < Enemy (3)
+      # Only escalate if current state is less hostile than target
+      # Neutral (0) < Hostile (1) < Enemy (2)
       if ord(currentState1) < ord(targetState):
         var house = state.houses[house1]
-        dip_engine.setDiplomaticState(
-          house.diplomaticRelations,
+        house.diplomaticRelations.setDiplomaticState(
           house2,
           targetState,
           state.turn
@@ -125,8 +125,7 @@ proc autoEscalateDiplomacy(
 
       if ord(currentState2) < ord(targetState):
         var house = state.houses[house2]
-        dip_engine.setDiplomaticState(
-          house.diplomaticRelations,
+        house.diplomaticRelations.setDiplomaticState(
           house1,
           targetState,
           state.turn
@@ -150,11 +149,11 @@ proc executeCombat(
   systemOwner: Option[HouseId],
   includeStarbases: bool,
   includeUnassignedSquadrons: bool,
-  combatPhase: string
+  combatPhase: string,
+  preDetectedHouses: seq[HouseId] = @[]  # Houses already detected in previous combat phase
 ): tuple[outcome: CombatResult, fleetsAtSystem: seq[(FleetId, Fleet)], detectedHouses: seq[HouseId]] =
   ## Helper function to execute a combat phase
   ## Returns combat outcome, fleets that participated, and newly detected cloaked houses
-  ## preDetectedHouses: Houses already detected in previous combat phase
 
   if fleetsInCombat.len < 2:
     return (CombatResult(), @[], @[])
@@ -272,6 +271,18 @@ proc executeCombat(
   let allowAmbush = (combatPhase == "Space Combat")
   let allowStarbaseCombat = (combatPhase == "Orbital Combat" or includeStarbases)
 
+  # Build diplomatic relations table for combat logic
+  var diplomaticRelations = initTable[tuple[a, b: HouseId], dip_types.DiplomaticState]()
+  let houseIds = toSeq(taskForces.keys)
+  for i in 0..<houseIds.len:
+    for j in (i+1)..<houseIds.len:
+      let houseA = houseIds[i]
+      let houseB = houseIds[j]
+      let stateAtoB = dip_engine.getDiplomaticState(state.houses[houseA].diplomaticRelations, houseB)
+      let stateBtoA = dip_engine.getDiplomaticState(state.houses[houseB].diplomaticRelations, houseA)
+      diplomaticRelations[(houseA, houseB)] = stateAtoB
+      diplomaticRelations[(houseB, houseA)] = stateBtoA
+
   var battleContext = BattleContext(
     systemId: systemId,
     taskForces: allTaskForces,
@@ -279,7 +290,9 @@ proc executeCombat(
     maxRounds: 20,
     allowAmbush: allowAmbush,
     allowStarbaseCombat: allowStarbaseCombat,
-    preDetectedHouses: preDetectedHouses
+    preDetectedHouses: preDetectedHouses,
+    diplomaticRelations: diplomaticRelations,
+    systemOwner: systemOwner
   )
 
   # Execute battle
@@ -501,7 +514,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           state, systemId, orbitalFleets, systemOwner,
           includeStarbases = true,
           includeUnassignedSquadrons = true,
-          "Orbital Combat"
+          "Orbital Combat",
+          preDetectedHouses = detectedInSpace  # Pass detection status from space combat
         )
         orbitalCombatOutcome = outcome
         orbitalCombatFleets = fleets

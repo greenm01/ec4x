@@ -5,7 +5,7 @@
 ##
 ## Based on EC4X specifications Section 7.0 Combat
 
-import std/options
+import std/[options, tables]
 import ../../common/types/[core, units, combat as commonCombat, diplomacy]
 import ../squadron, ../fleet
 
@@ -151,6 +151,8 @@ type
     allowAmbush*: bool        # If true, undetected Raiders get +4 CER ambush bonus
     allowStarbaseCombat*: bool  # If true, starbases can fight; if false, they only detect
     preDetectedHouses*: seq[HouseId]  # Houses already detected in previous combat phase
+    diplomaticRelations*: Table[tuple[a, b: HouseId], DiplomaticState]  # Diplomatic relations for combat logic
+    systemOwner*: Option[HouseId]  # Owner of the system for defensive context
 
 # Export types that were declared after initial exports
 export CombatFacility, CombatTargetId, CombatTargetKind

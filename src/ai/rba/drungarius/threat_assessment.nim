@@ -9,7 +9,7 @@ import ../../../common/types/core
 import ../controller_types # For AIController
 import ../config
 import ../shared/intelligence_types
-import ../../intelligence # For calculateDistance
+import ../intelligence # For calculateDistance
 
 proc assessColonyThreat*(
   colonyId: SystemId,

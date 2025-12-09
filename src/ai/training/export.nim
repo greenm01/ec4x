@@ -140,9 +140,9 @@ proc encodeGameState*(state: GameState, houseId: HouseId): seq[float] =
     if otherHouseId != houseId and houseCount < 25:
       let dipState = dip_types.getDiplomaticState(house.diplomaticRelations, otherHouseId)
 
-      # One-hot encode diplomatic state
+      # One-hot encode diplomatic state (3-state system)
       result[idx] = (if dipState == dip_types.DiplomaticState.Neutral: 1.0 else: 0.0); inc idx
-      result[idx] = (if dipState == dip_types.DiplomaticState.Ally: 1.0 else: 0.0); inc idx
+      result[idx] = (if dipState == dip_types.DiplomaticState.Hostile: 1.0 else: 0.0); inc idx
       result[idx] = (if dipState == dip_types.DiplomaticState.Enemy: 1.0 else: 0.0); inc idx
 
       # Relative strength (their prestige / our prestige)

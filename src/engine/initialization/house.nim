@@ -51,10 +51,6 @@ proc initializeHouse*(name: string, color: string): House =
     diplomaticRelations: dip_types.initDiplomaticRelations(),
     violationHistory: dip_types.initViolationHistory(),
     espionageBudget: esp_types.initEspionageBudget(),
-    dishonoredStatus: dip_types.DishonoredStatus(
-      active: false, turnsRemaining: 0, violationTurn: 0),
-    diplomaticIsolation: dip_types.DiplomaticIsolation(
-      active: false, turnsRemaining: 0, violationTurn: 0),
     taxPolicy: econ_types.TaxPolicy(
       currentRate: 50, history: @[50]),  # Default 50% tax rate
     planetBreakerCount: 0,

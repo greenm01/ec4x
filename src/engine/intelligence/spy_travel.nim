@@ -42,18 +42,18 @@ proc checkTravelDetection(state: GameState, spyId: string,
   # Check detection by rival fleets
   for fleet in state.fleets.values:
     if fleet.location == systemId and fleet.owner != spy.owner:
-      # Check diplomatic relations - allies don't interdict
+      # Check diplomatic relations - neutral/friendly houses don't interdict
       let dipState = dip_engine.getDiplomaticState(
         state.houses[fleet.owner].diplomaticRelations,
         spy.owner
       )
 
-      if dipState == DiplomaticState.Ally:
-        # Allies share intelligence but don't destroy scouts
+      if dipState == DiplomaticState.Neutral:
+        # Neutral houses allow safe passage but don't destroy scouts
         return intel_types.DetectionResult(
           detected: true,
           detectorHouse: fleet.owner,
-          isAllyDetection: true,  # Flag for special handling
+          isAllyDetection: true,  # Flag for safe passage
           roll: 0,
           threshold: 0
         )
@@ -80,8 +80,8 @@ proc checkTravelDetection(state: GameState, spyId: string,
         spy.owner
       )
 
-      if dipState == DiplomaticState.Ally:
-        # Ally detection - no destruction
+      if dipState == DiplomaticState.Neutral:
+        # Neutral detection - safe passage, no destruction
         return intel_types.DetectionResult(
           detected: true,
           detectorHouse: colony.owner,

@@ -66,9 +66,9 @@ Combat observers (scout squadrons or neutral forces in system) witness the entir
 
 ### 9.2.4 Diplomatic Intelligence
 
-Major diplomatic events are public knowledge. All houses automatically receive intelligence reports when Non-Aggression pacts form, when pacts are violated, when war is declared, and when peace treaties end hostilities.
+Major diplomatic events are public knowledge. All houses automatically receive intelligence reports when diplomatic states change (e.g., Neutral to Hostile, Hostile to Enemy, or vice-versa).
 
-Diplomatic intelligence includes the houses involved, the nature of the event, and resulting status changes. Pact violations trigger public dishonor, visible to all houses. This transparency reflects the political reality that major diplomatic shifts cannot be concealed in a small region of contested space.
+Diplomatic intelligence includes the houses involved, the nature of the event, and resulting status changes. This transparency reflects the political reality that major diplomatic shifts cannot be concealed in a small region of contested space.
 
 See [Section 8.1](diplomacy.md#81-diplomacy) for complete diplomatic mechanics.
 

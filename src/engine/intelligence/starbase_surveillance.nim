@@ -144,15 +144,13 @@ proc processAllStarbaseSurveillance*(state: var GameState, turn: int, rng: var R
       var surveillance = generateStarbaseSurveillance(state, systemId, colony.owner, turn, rng)
 
       if surveillance.isSome:
-        # Apply corruption if starbase owner's intelligence is compromised (disinformation or dishonor)
+        # Apply corruption if starbase owner's intelligence is compromised (disinformation)
         let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, colony.owner)
-        let dishonoredCorruption = corruption.hasDishonoredCorruption(state.houses[colony.owner].dishonoredStatus)
 
-        if corruptionEffect.isSome or dishonoredCorruption.isSome:
+        if corruptionEffect.isSome:
           var corruptionRng = initRand(turn xor hash(colony.owner) xor int(systemId))
           var report = surveillance.get()
-          let magnitude = if corruptionEffect.isSome: corruptionEffect.get().magnitude
-                          else: dishonoredCorruption.get()
+          let magnitude = corruptionEffect.get().magnitude
 
           # Corrupt detected fleet data (tuples -> corrupted tuples)
           var corruptedDetected: seq[tuple[fleetId: FleetId, location: SystemId, owner: HouseId, shipCount: int]] = @[]

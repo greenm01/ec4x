@@ -25,7 +25,7 @@
 import std/[tables, options, random, sequtils, strformat]
 import ../../../common/types/core
 import ../../../common/logger as common_logger
-import ../../gamestate, ../../orders, ../../fleet, ../../squadron, ../../logger, ../../state_helpers
+import ../../gamestate, ../../orders, ../../order_types, ../../fleet, ../../squadron, ../../logger, ../../state_helpers
 import ../../espionage/[types as esp_types, engine as esp_engine]
 import ../../diplomacy/[types as dip_types]
 import ../../intelligence/[spy_travel, spy_resolution, espionage_intel, starbase_surveillance]
@@ -113,13 +113,16 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
           var house1ThreateningHouse2 = false
           var house2ThreateningHouse1 = false
 
-          if house1 in orders and isSystemControlledBy(state, systemId, house2):
+          # Check if system is controlled (has a colony)
+          let systemOwner = if systemId in state.colonies: some(state.colonies[systemId].owner) else: none(HouseId)
+
+          if house1 in orders and systemOwner.isSome and systemOwner.get() == house2:
             for order in orders[house1].fleetOrders:
               if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
                 house1ThreateningHouse2 = true
                 break
-          
-          if house2 in orders and isSystemControlledBy(state, systemId, house1):
+
+          if house2 in orders and systemOwner.isSome and systemOwner.get() == house1:
             for order in orders[house2].fleetOrders:
               if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
                 house2ThreateningHouse1 = true
