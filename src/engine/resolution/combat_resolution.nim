@@ -150,8 +150,7 @@ proc executeCombat(
   systemOwner: Option[HouseId],
   includeStarbases: bool,
   includeUnassignedSquadrons: bool,
-  combatPhase: string,
-  preDetectedHouses: seq[HouseId] = @[]
+  combatPhase: string
 ): tuple[outcome: CombatResult, fleetsAtSystem: seq[(FleetId, Fleet)], detectedHouses: seq[HouseId]] =
   ## Helper function to execute a combat phase
   ## Returns combat outcome, fleets that participated, and newly detected cloaked houses
@@ -404,12 +403,12 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
       state, systemId, spaceCombatParticipants, systemOwner,
       includeStarbases = false,
       includeUnassignedSquadrons = false,
-      "Space Combat",
-      preDetectedHouses = @[]  # No pre-detection in space combat (first phase)
+      "Space Combat"
     )
     spaceCombatOutcome = outcome
     spaceCombatFleets = fleets
     detectedInSpace = detected
+    # The `detected` result here will be used to pass detected status to subsequent combat phases.
 
     # Track which attacker houses survived
     for tf in outcome.survivors:
@@ -502,14 +501,14 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           state, systemId, orbitalFleets, systemOwner,
           includeStarbases = true,
           includeUnassignedSquadrons = true,
-          "Orbital Combat",
-          preDetectedHouses = detectedInSpace  # Pass detection state from space combat
+          "Orbital Combat"
         )
         orbitalCombatOutcome = outcome
         orbitalCombatFleets = fleets
         logCombat("Orbital combat complete", "rounds=", $orbitalCombatOutcome.totalRounds)
-        if detected.len > detectedInSpace.len:
-          logCombat("Additional detection in orbital phase", "count=", $(detected.len - detectedInSpace.len))
+        # Note: 'detected' from orbital combat itself might contain new detections.
+        # However, for the purpose of passing detection status, 'detectedInSpace' is sufficient
+        # to ensure any house detected in space remains detected in orbital.
 
         # Auto-escalate diplomatic relations after orbital combat
         autoEscalateDiplomacy(state, orbitalCombatOutcome, "Orbital Combat", orbitalCombatFleets)

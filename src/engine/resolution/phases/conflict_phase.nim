@@ -54,62 +54,87 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
     logInfo("Intelligence", "Spy detection", msg)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6a] Completed ({detectionResults.len} detection checks)")
 
-  # Find all systems with hostile fleets
+  # Find all systems where combat should occur based on diplomatic status and orders.
   var combatSystems: seq[SystemId] = @[]
 
   for systemId, system in state.starMap.systems:
-    # Check if multiple houses have fleets here
+    # Get all houses with active fleets or colonies at this system.
     var housesPresent: seq[HouseId] = @[]
-    var houseFleets: Table[HouseId, seq[Fleet]] = initTable[HouseId, seq[Fleet]]()
-
     for fleet in state.fleets.values:
-      if fleet.location == systemId:
-        if fleet.owner notin housesPresent:
-          housesPresent.add(fleet.owner)
-          houseFleets[fleet.owner] = @[]
-        houseFleets[fleet.owner].add(fleet)
+      if fleet.location == systemId and fleet.owner notin housesPresent:
+        housesPresent.add(fleet.owner)
+    if systemId in state.colonies and state.colonies[systemId].owner notin housesPresent:
+      housesPresent.add(state.colonies[systemId].owner)
 
-    if housesPresent.len > 1:
-      # Check if any pairs of houses are at war AND can detect each other
-      var combatDetected = false
-      for i in 0..<housesPresent.len:
-        for j in (i+1)..<housesPresent.len:
-          let house1 = housesPresent[i]
-          let house2 = housesPresent[j]
+    # Need at least two houses to have a conflict.
+    if housesPresent.len < 2:
+      continue
 
-          # Check diplomatic state between these two houses
-          let relation = dip_types.getDiplomaticState(
-            state.houses[house1].diplomaticRelations,
-            house2
-          )
+    var systemHasCombat = false
+    for i in 0..<housesPresent.len:
+      for j in (i+1)..<housesPresent.len:
+        let house1 = housesPresent[i]
+        let house2 = housesPresent[j]
 
-          # Combat occurs if houses are enemies OR hostile (no pact protection)
-          # BUT: Cloaked fleets can remain hidden unless detected
-          if relation == dip_types.DiplomaticState.Enemy or
-             relation == dip_types.DiplomaticState.Hostile:
+        # Get diplomatic state between these two houses from house1's perspective.
+        let relation1to2 = state.houses[house1].diplomaticRelations.getDiplomaticState(house2)
+        # Get diplomatic state between these two houses from house2's perspective.
+        let relation2to1 = state.houses[house2].diplomaticRelations.getDiplomaticState(house1)
 
-            # STEALTH DETECTION CHECK
-            # Check if either side is cloaked and undetected
-            # TODO: Proper ELI Mesh detection for Raiders/Scouts
-            let house1Cloaked = houseFleets[house1].anyIt(it.isCloaked())
-            let house2Cloaked = houseFleets[house2].anyIt(it.isCloaked())
-            let house1HasScouts = houseFleets[house1].anyIt(it.squadrons.anyIt(it.hasScouts()))
-            let house2HasScouts = houseFleets[house2].anyIt(it.squadrons.anyIt(it.hasScouts()))
+        # Combat decision logic per docs/engine/mechanics/diplomatic-combat-resolution.md
+        if relation1to2 == dip_types.DiplomaticState.Enemy or
+           relation2to1 == dip_types.DiplomaticState.Enemy:
+          # If either side declares the other 'Enemy', combat occurs.
+          systemHasCombat = true
+          logDebug(LogCategory.lcCombat, &"Combat triggered: {house1} vs {house2} (Enemy status)")
+        elif relation1to2 == dip_types.DiplomaticState.Hostile or
+             relation2to1 == dip_types.DiplomaticState.Hostile:
+          # If either side declares 'Hostile', combat occurs if there are ANY threatening or provocative orders
+          # from either house in this system.
+          var foundProvocativeOrder = false
+          for h in @[house1, house2]:
+            if h in orders:
+              for order in orders[h].fleetOrders:
+                # Check if the fleet for this order is actually in the current system
+                if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId:
+                  if order.orderType.isThreateningFleetOrder() or order.orderType.isNonThreateningButProvocativeFleetOrder():
+                    foundProvocativeOrder = true
+                    break
+              if foundProvocativeOrder:
+                break
+          
+          if foundProvocativeOrder:
+            systemHasCombat = true
+            logDebug(LogCategory.lcCombat, &"Combat triggered: {house1} vs {house2} (Hostile status with provocative orders)")
+        elif relation1to2 == dip_types.DiplomaticState.Neutral and
+             relation2to1 == dip_types.DiplomaticState.Neutral:
+          # If both are Neutral, combat only occurs if threatening orders are issued
+          # against a system controlled by the other house.
+          var house1ThreateningHouse2 = false
+          var house2ThreateningHouse1 = false
 
-            # Combat only triggers if both sides can detect each other
-            # If house1 is cloaked, house2 needs scouts to detect them
-            # If house2 is cloaked, house1 needs scouts to detect them
-            let house1Detected = not house1Cloaked or house2HasScouts
-            let house2Detected = not house2Cloaked or house1HasScouts
+          if house1 in orders and isSystemControlledBy(state, systemId, house2):
+            for order in orders[house1].fleetOrders:
+              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
+                house1ThreateningHouse2 = true
+                break
+          
+          if house2 in orders and isSystemControlledBy(state, systemId, house1):
+            for order in orders[house2].fleetOrders:
+              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
+                house2ThreateningHouse1 = true
+                break
 
-            if house1Detected and house2Detected:
-              combatDetected = true
-              break
-        if combatDetected:
-          break
+          if house1ThreateningHouse2 or house2ThreateningHouse1:
+            systemHasCombat = true
+            logDebug(LogCategory.lcCombat, &"Combat triggered: {house1} vs {house2} (Neutral status with threatening orders against controlled system)")
 
-      if combatDetected:
+        if systemHasCombat:
+          break # Found a combat pair, add system and move on.
+      
+      if systemHasCombat:
         combatSystems.add(systemId)
+        break # System added, move to next system.
 
   # ===================================================================
   # STEPS 1 & 2: SPACE & ORBITAL COMBAT

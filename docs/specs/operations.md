@@ -154,21 +154,22 @@ Explicit orders that execute until completed or overridden:
 | 02  | Seek home               | None                                     |
 | 03  | Patrol a System         | None                                     |
 | 04  | Guard a Starbase        | Combat ship(s)                           |
-| 05  | Guard/Blockade a Planet | Combat ship(s)                           |
-| 06  | Bombard a Planet        | Combat ship(s)                           |
-| 07  | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
-| 08  | Blitz a Planet          | Loaded Troop Transports                  |
-| 09  | Spy on a Planet         | Scout-only fleet (1+ scout squadrons)    |
-| 10  | Hack a Starbase         | Scout-only fleet (1+ scout squadrons)    |
-| 11  | Spy on a System         | Scout-only fleet (1+ scout squadrons)    |
-| 12  | Colonize a Planet       | One ETAC                                 |
-| 13  | Join another Fleet      | None                                     |
-| 14  | Rendezvous at System    | None                                     |
-| 15  | Salvage                 | Friendly Colony System                   |
-| 16  | Place on Reserve        | At friendly colony                       |
-| 17  | Mothball Fleet          | At friendly colony with Spaceport        |
-| 18  | Reactivate Fleet        | Reserve or Mothballed fleet              |
-| 19  | View a World            | Any ship type                            |
+| 05  | Guard a Planet          | Combat ship(s)                           |
+| 06  | Blockade a Planet       | Combat ship(s)                           |
+| 07  | Bombard a Planet        | Combat ship(s)                           |
+| 08  | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
+| 09  | Blitz a Planet          | Loaded Troop Transports                  |
+| 10  | Colonize a Planet       | One ETAC                                 |
+| 11  | Spy on a Planet         | Scout-only fleet (1+ scout squadrons)    |
+| 12  | Spy on a System         | Scout-only fleet (1+ scout squadrons)    |
+| 13  | Hack a Starbase         | Scout-only fleet (1+ scout squadrons)    |
+| 14  | Join another Fleet      | None                                     |
+| 15  | Rendezvous at System    | None                                     |
+| 16  | Salvage                 | Friendly Colony System                   |
+| 17  | Place on Reserve        | At friendly colony                       |
+| 18  | Mothball Fleet          | At friendly colony with Spaceport        |
+| 19  | Reactivate Fleet        | Reserve or Mothballed fleet              |
+| 20  | View a World            | Any ship type                            |
 
 ### 6.3.2 Hold Position (00)
 
@@ -215,16 +216,23 @@ Station your fleet at an orbiting starbase for defensive operations. Your fleet 
 - Create fortified defensive positions
 - Support starbase fire during orbital combat
 
-### 6.3.7 Guard/Blockade Planet (05)
+### 6.3.7 Guard Planet (05)
 
-Deploy your fleet for planetary operations—either defending friendly colonies or blockading enemy planets. Your fleet maintains low orbit, participating in orbital combat or economic warfare.
+Deploy your fleet to defend a friendly planet. Your fleet maintains low orbit, participating in orbital combat to protect the colony.
 
-**Use Guard/Blockade to:**
+**Use Guard Planet to:**
 - Defend high-value colonies from bombardment
-- Establish orbital blockades cutting enemy production
 - Support ground forces during invasion attempts
 
-### 6.3.8 Bombard Planet (06)
+### 6.3.8 Blockade a Planet (06)
+
+Deploy your fleet to blockade an enemy planet. Your fleet maintains low orbit, participating in orbital combat and engaging in economic warfare.
+
+**Use Blockade to:**
+- Establish orbital blockades cutting enemy production
+- Prevent enemy reinforcements from landing
+
+### 6.3.9 Bombard a Planet (07)
 
 Order devastating orbital bombardment of enemy colonies. Your fleet systematically destroys infrastructure, reducing the colony's industrial capacity and effectiveness.
 
@@ -240,7 +248,7 @@ Order devastating orbital bombardment of enemy colonies. Your fleet systematical
 - Punish enemy aggression
 - **WARNING**: Bombardment generates massive diplomatic penalties
 
-### 6.3.9 Invade Planet (07)
+### 6.3.10 Invade a Planet (08)
 
 Launch ground invasion of enemy colonies. Your fleet deploys marines and army units to seize control, conducting ground combat against defending forces.
 
@@ -259,7 +267,7 @@ Launch ground invasion of enemy colonies. Your fleet deploys marines and army un
 - Capture strategic colonies intact
 - Expand your empire through force
 
-### 6.3.10 Blitz Planet (08)
+### 6.3.11 Blitz a Planet (09)
 
 Execute rapid planetary assault combining orbital bombardment with immediate ground invasion. Your forces strike simultaneously, overwhelming defenders before they can coordinate defense.
 
@@ -272,7 +280,24 @@ Execute rapid planetary assault combining orbital bombardment with immediate gro
 - Exploit tactical windows before reinforcements arrive
 - Reduce siege time for strategic operations
 
-### 6.3.11 Spy on Planet (09)
+### 6.3.12 Colonize a Planet (10)
+
+Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure.
+
+**Requirements:**
+- Fleet must contain at least one ETAC ship
+- ETAC must carry PTUs (Population Transfer Units)
+- Target system cannot already have a colony (one colony per system)
+
+**Results:**
+- New colony established at infrastructure Level I
+- PTUs consumed (ETAC cargo emptied)
+- Awards prestige for expansion
+- **ETAC behavior after colonization:**
+  - With AutoColonize standing order: Automatically returns home for PTU reload, then resumes colonization
+  - Without standing orders: Remains at new colony (requires manual orders)
+
+### 6.3.13 Spy on a Planet (11)
 
 Deploy intelligence operatives to gather colony-level intelligence. Your scout ships conduct covert reconnaissance, gathering data on infrastructure, defenses, and economic output.
 
@@ -288,7 +313,7 @@ Multiple scouts working together gain enhanced Electronic Intelligence (ELI) bon
 - **4-5 scouts:** +2 ELI bonus
 - **6+ scouts:** +3 ELI bonus (maximum)
 
-Deploy larger scout formations for improved survival rates and better intelligence penetration. Scout mesh networks can be created by deploying multiple scouts together or by merging spy scout fleets using Order 13 (Join Fleet) or Order 14 (Rendezvous).
+Deploy larger scout formations for improved survival rates and better intelligence penetration. Scout mesh networks can be created by deploying multiple scouts together or by merging spy scout fleets using Order 14 (Join Fleet) or Order 15 (Rendezvous).
 
 **Spy Scout Travel Mechanics:**
 
@@ -328,31 +353,7 @@ When spy scouts from different houses operate in the same system:
 - Track enemy economic development
 - Identify strategic targets for strikes
 
-### 6.3.12 Hack Starbase (10)
-
-Conduct cyber warfare operations against enemy starbases. Your intelligence units penetrate starbase networks, extracting economic data, research information, and operational intelligence.
-
-**Requirements:**
-- Fleet must contain **only Scout squadrons** (no combat ships or spacelift)
-- One or more scout squadrons allowed (multi-scout deployments supported)
-- Target system must have enemy starbase
-- Spy scouts are consumed permanently when deployed (cannot be recovered)
-
-**Spy Scout Travel & Mesh Bonuses:** See Order 09 (Spy on Planet) for travel mechanics, detection rules, and mesh network bonuses
-
-**Intelligence Gathered:**
-- Research progress
-- Economic production data
-- Fleet movements
-- Strategic plans
-
-**Use Hack Starbase to:**
-- Steal research advances
-- Identify enemy fleet deployments
-- Discover enemy strategic intentions
-- Gain economic intelligence
-
-### 6.3.13 Spy on System (11)
+### 6.3.14 Spy on a System (12)
 
 Deploy surveillance operations to detect hostile fleet movements. Your scout ships monitor jump lane traffic, track enemy fleet positions, and provide early warning of invasions.
 
@@ -361,7 +362,7 @@ Deploy surveillance operations to detect hostile fleet movements. Your scout shi
 - One or more scout squadrons allowed (multi-scout deployments supported)
 - Spy scouts are consumed permanently when deployed (cannot be recovered)
 
-**Spy Scout Travel & Mesh Bonuses:** See Order 09 (Spy on Planet) for travel mechanics, detection rules, and mesh network bonuses
+**Spy Scout Travel & Mesh Bonuses:** See Order 11 (Spy on Planet) for travel mechanics, detection rules, and mesh network bonuses
 
 **Intelligence Gathered:**
 - All fleets present in system
@@ -375,24 +376,31 @@ Deploy surveillance operations to detect hostile fleet movements. Your scout shi
 - Identify enemy patrol patterns
 - Support strategic planning
 
-### 6.3.14 Colonize Planet (12)
+### 6.3.15 Hack a Starbase (13)
 
-Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure.
+Conduct cyber warfare operations against enemy starbases. Your intelligence units penetrate starbase networks, extracting economic data, research information, and operational intelligence.
 
 **Requirements:**
-- Fleet must contain at least one ETAC ship
-- ETAC must carry PTUs (Population Transfer Units)
-- Target system cannot already have a colony (one colony per system)
+- Fleet must contain **only Scout squadrons** (no combat ships or spacelift)
+- One or more scout squadrons allowed (multi-scout deployments supported)
+- Target system must have enemy starbase
+- Spy scouts are consumed permanently when deployed (cannot be recovered)
 
-**Results:**
-- New colony established at infrastructure Level I
-- PTUs consumed (ETAC cargo emptied)
-- Awards prestige for expansion
-- **ETAC behavior after colonization:**
-  - With AutoColonize standing order: Automatically returns home for PTU reload, then resumes colonization
-  - Without standing orders: Remains at new colony (requires manual orders)
+**Spy Scout Travel & Mesh Bonuses:** See Order 11 (Spy on Planet) for travel mechanics, detection rules, and mesh network bonuses
 
-### 6.3.15 Join Another Fleet (13)
+**Intelligence Gathered:**
+- Research progress
+- Economic production data
+- Fleet movements
+- Strategic plans
+
+**Use Hack Starbase to:**
+- Steal research advances
+- Identify enemy fleet deployments
+- Discover enemy strategic intentions
+- Gain economic intelligence
+
+### 6.3.16 Join Another Fleet (14)
 
 Transfer your fleet to merge with another fleet at the same location. Consolidate forces, reinforce battle groups, or reorganize for strategic operations. All squadrons and spacelift ships from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
 
@@ -411,20 +419,20 @@ When joining fleets containing scout squadrons, the scouts automatically gain me
 
 **Tactical Example:**
 1. Commission 3 single-scout squadrons at a staging system
-2. Use Order 13 to merge scout fleets together
+2. Use Order 14 to merge scout fleets together
 3. Deploy the consolidated 3-scout squadron on a spy mission
 4. Benefit from +1 mesh network ELI bonus during mission and detection rolls
 
 **Spy Scout Fleet Merging:**
 
-Order 13 works with spy scout fleets deployed on intelligence missions (Orders 09/10/11):
+Order 14 works with spy scout fleets deployed on intelligence missions (Orders 11/12/13):
 - **Normal Fleet → Spy Scout Fleet:** The spy scouts convert back to squadrons and join the normal fleet, spy scout fleet disbanded
 - **Spy Scout Fleet → Normal Fleet:** The spy scouts convert back to squadrons and join the target fleet, spy scout fleet disbanded
 - **Spy Scout Fleet → Spy Scout Fleet:** Scouts merge together, increasing mesh network bonuses (up to +3 ELI maximum)
 
 Spy scout fleets operate transparently like normal fleets but accept limited orders (Hold, Move, spy missions, Join, Rendezvous, Salvage, Reserve/Mothball, ViewWorld)
 
-### 6.3.16 Rendezvous at System (14)
+### 6.3.17 Rendezvous at System (15)
 
 Order your fleet to travel to a designated system and await further instructions. Coordinate multi-fleet operations by designating rendezvous points. Multiple fleets with Rendezvous orders to the same system automatically merge when they arrive, with all forces consolidating into the fleet with the lowest ID.
 
@@ -436,7 +444,7 @@ Order your fleet to travel to a designated system and await further instructions
 
 **Spy Scout Fleet Integration:**
 
-Spy scout fleets deployed on intelligence missions (Orders 09/10/11) can participate in rendezvous operations:
+Spy scout fleets deployed on intelligence missions (Orders 11/12/13) can participate in rendezvous operations:
 - Spy scouts with Rendezvous orders to the same system are automatically collected
 - When rendezvous completes, spy scouts convert back to squadrons
 - All scout squadrons merge into the host fleet (lowest fleet ID)
@@ -445,7 +453,7 @@ Spy scout fleets deployed on intelligence missions (Orders 09/10/11) can partici
 
 This allows spy scouts to rejoin normal operations after completing intelligence missions or to merge with other forces for combined operations
 
-### 6.3.17 Salvage (15)
+### 6.3.18 Salvage (16)
 
 Recover resources from destroyed ships and derelict facilities in friendly systems. Your fleet conducts salvage operations, recovering production points from battle debris.
 
@@ -458,7 +466,7 @@ Recover resources from destroyed ships and derelict facilities in friendly syste
 - Maximize economic efficiency
 - Clean up post-battle debris
 
-### 6.3.18 Place on Reserve (16)
+### 6.3.19 Place on Reserve (17)
 
 Place your fleet in Reserve status—reduced readiness with lower maintenance costs. Reserve fleets remain stationed at their colony with 50% maintenance cost and reduced combat effectiveness.
 
@@ -474,7 +482,7 @@ Place your fleet in Reserve status—reduced readiness with lower maintenance co
 - Maintain defensive reserves at major colonies
 - Store second-line forces for emergency mobilization
 
-### 6.3.19 Mothball Fleet (17)
+### 6.3.20 Mothball Fleet (18)
 
 Mothball your fleet for long-term storage—zero maintenance cost but defenseless. Mothballed fleets remain at their colony with no maintenance cost and cannot participate in combat.
 
@@ -492,7 +500,7 @@ Mothball your fleet for long-term storage—zero maintenance cost but defenseles
 - Maintain strategic reserve with minimal budget impact
 - **WARNING**: Mothballed fleets MUST be screened during combat
 
-### 6.3.20 Reactivate Fleet (18)
+### 6.3.21 Reactivate Fleet (19)
 
 Reactivate Reserve or Mothballed fleets to Active status. Your fleet returns to full operational readiness with 100% maintenance cost and combat effectiveness.
 
@@ -508,7 +516,7 @@ Reactivate Reserve or Mothballed fleets to Active status. Your fleet returns to 
 - Respond to emerging threats
 - Return mothballed fleets to operational status
 
-### 6.3.21 View a World (19)
+### 6.3.22 View a World (20)
 
 Send a fleet to perform long-range planetary reconnaissance from the edge of a solar system. Your ship approaches the system edge, conducts a long-range scan of the planet, then backs off into deep space—gathering intelligence without orbital approach or detection risk.
 
