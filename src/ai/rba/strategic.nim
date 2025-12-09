@@ -86,7 +86,7 @@ proc assessCombatSituation*(controller: AIController, filtered: FilteredGameStat
     myHouse.diplomaticRelations,
     result.targetOwner
   )
-  result.violatesPact = dipState == dip_types.DiplomaticState.Ally
+  result.violatesPact = dipState != dip_types.DiplomaticState.Enemy
 
   result.attackerFleetStrength = calculateFleetStrengthAtSystem(
     filtered, targetSystem, controller.houseId
