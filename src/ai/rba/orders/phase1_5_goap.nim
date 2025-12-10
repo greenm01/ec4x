@@ -12,11 +12,11 @@ import std/[tables, options, sequtils, algorithm, times] # Add times for cpuTime
 import ../goap/core/types
 import ../goap/state/snapshot as goap_snapshot # Alias to avoid name clashes
 import ../goap/planner/search
-import ../goap/integration/[conversion, plan_tracking]
-import ../controller_types
+import ../goap/integration/[conversion, plan_tracking, replanning] # Added replanning for ReplanReason
+import ../controller_types # For UnfulfillmentReason, RequirementFeedback
 import ../../common/types as ai_types
 import ../../../common/types/core
-import ../../../engine/[gamestate, fog_of_war, logger] # Add logger
+import ../../../engine/[gamestate, fog_of_war, logger, research/types as res_types] # Added res_types for TechField parsing
 import ../config # Import RBA config for GOAPConfig
 
 export goap_snapshot.createWorldStateSnapshot # Export it for other phases to use
@@ -164,6 +164,7 @@ type
     planningTimeMs*: float                      # Performance metric
 
 proc executePhase15_GOAP*(
+  controller: var AIController, # Pass the controller for replanning state and tracker
   houseId: HouseId, # Pass houseId
   homeworld: SystemId, # Pass homeworld
   currentTurn: int, # Pass current turn
@@ -172,8 +173,10 @@ proc executePhase15_GOAP*(
 ): Phase15Result =
   ## Execute Phase 1.5: GOAP Strategic Planning
   ##
-  ## This is called by order_generation.nim between phase1 and phase2
-  ## If GOAP disabled, returns empty result
+  ## This is called by order_generation.nim between phase1 and phase2.
+  ## If GOAP disabled, returns empty result.
+  ##
+  ## Integrates detailed replanning feedback to generate targeted goals.
 
   result = Phase15Result(
     goals: @[],
@@ -190,10 +193,145 @@ proc executePhase15_GOAP*(
   let startTime = cpuTime()
 
   # Step 1: Extract strategic goals
-  result.goals = extractStrategicGoals(houseId, homeworld, currentTurn, intel, config)
-  logInfo(LogCategory.lcAI, &"{houseId} GOAP: Extracted {result.goals.len} strategic goals.")
+  var currentGoals = extractStrategicGoals(houseId, homeworld, currentTurn, intel, config)
+  logInfo(LogCategory.lcAI, &"{houseId} GOAP: Extracted {currentGoals.len} initial strategic goals.")
 
-  # Step 2: Generate plans
+  # Step 2: Incorporate replanning feedback to generate targeted goals or adjust priorities
+  if controller.replanNeeded:
+    logInfo(LogCategory.lcAI, &"{houseId} GOAP: Replanning triggered. Reason: {controller.replanReason.get()}")
+
+    # Find the specific failed plan that triggered the replan, if applicable
+    var failedPlan: Option[TrackedPlan] = none(TrackedPlan)
+    for p in controller.goapPlanTracker.activePlans:
+      if p.status == PlanStatus.Failed and p.lastFailedActionReason == controller.replanReason:
+        failedPlan = some(p)
+        break
+
+    if failedPlan.isSome:
+      let reason = failedPlan.get().lastFailedActionReason.get()
+      let suggestion = failedPlan.get().lastFailedActionSuggestion.getOrDefault("")
+      logInfo(LogCategory.lcAI, &"{houseId} GOAP: Specific failed plan identified for replanning. Reason: {reason}, Suggestion: '{suggestion}'")
+
+      case reason
+      of ReplanReason.TechNeeded:
+        # Try to extract required tech from suggestion, or infer from failed action
+        if failedPlan.get().plan.actions.len > failedPlan.get().currentActionIndex:
+          let failedAction = failedPlan.get().plan.actions[failedPlan.get().currentActionIndex]
+          if failedAction.actionType == ActionType.BuildFleet and failedAction.shipClass.isSome:
+            # This requires knowing the CST level for the ship.
+            # For simplicity, we create a generic research goal if the suggestion is vague,
+            # or try to parse the suggestion.
+            logWarn(LogCategory.lcAI, &"GOAP: TechNeeded replan triggered by BuildFleet action. Requires more precise tech lookup.")
+            # Fallback for now: high priority general tech goal or attempt to parse suggestion
+            var targetTechField: Option[TechField] = none(TechField)
+            if suggestion.contains("Construction Tech"):
+                targetTechField = some(res_types.TechField.ConstructionTech)
+            else:
+                targetTechField = some(res_types.TechField.WeaponryTech) # Guess
+            
+            if targetTechField.isSome:
+                let newGoal = Goal(
+                    goalType: GoalType.AchieveTechLevel,
+                    priority: 0.99, # Very high priority
+                    techField: targetTechField,
+                    requiredTechLevel: some(5), # Assume max level needed
+                    description: &"Urgent: Achieve {targetTechField.get()} due to previous plan failure."
+                )
+                currentGoals.add(newGoal)
+                logInfo(LogCategory.lcAI, &"{houseId} GOAP: Injected high-priority '{newGoal.description}' goal.")
+
+          elif failedAction.actionType == ActionType.AllocateResearch and failedAction.techField.isSome:
+            let newGoal = Goal(
+                goalType: GoalType.AchieveTechLevel,
+                priority: 0.99, # Very high priority
+                techField: failedAction.techField,
+                requiredTechLevel: some(config.planningDepth), # Attempt to reach a higher level
+                description: &"Urgent: Advance {failedAction.techField.get()} due to previous plan failure."
+            )
+            currentGoals.add(newGoal)
+            logInfo(LogCategory.lcAI, &"{houseId} GOAP: Injected high-priority '{newGoal.description}' goal.")
+
+        # If we can't infer specific tech, a general push for tech or re-planning original goal might occur.
+        # This highlights a need for more structured 'suggestion' content.
+        # For now, if no specific tech goal is injected, it will fall through to general replan.
+
+      of ReplanReason.BudgetFailure:
+        # Boost economic goals or modify existing goals to be cheaper
+        # For now, add a high priority goal to gain treasury
+        let newGoal = Goal(
+            goalType: GoalType.GainTreasury,
+            priority: 0.95, # High priority
+            description: "Urgent: Replenish treasury due to previous budget shortfall."
+        )
+        currentGoals.add(newGoal)
+        logInfo(LogCategory.lcAI, &"{houseId} GOAP: Injected high-priority '{newGoal.description}' goal.")
+        
+        # Also, consider slightly reducing the priority of expensive goals to make way for economic ones
+        for i in 0 ..< currentGoals.len:
+            if currentGoals[i].requiredResources.isSome and currentGoals[i].requiredResources.get() > config.treasury * 0.5: # Expensive goal
+                currentGoals[i].priority *= 0.8 # Reduce priority
+                logDebug(LogCategory.lcAI, &"GOAP: Reduced priority of expensive goal '{currentGoals[i].description}' due to budget failure.")
+
+
+      of ReplanReason.CapacityFull:
+        # Add a high priority goal to build a shipyard or spaceport
+        if failedPlan.get().plan.actions.len > failedPlan.get().currentActionIndex:
+          let failedAction = failedPlan.get().plan.actions[failedPlan.get().currentActionIndex]
+          if failedAction.actionType == ActionType.BuildFacility and failedAction.itemId.isSome and failedAction.target.isSome:
+            let facilityType = failedAction.itemId.get()
+            let targetSystem = failedAction.target.get()
+            let newGoal = Goal(
+                goalType: GoalType.BuildFacility,
+                priority: 0.98, # Very high priority
+                target: some(targetSystem),
+                itemId: some(facilityType),
+                description: &"Urgent: Build {facilityType} at {targetSystem} due to capacity limits."
+            )
+            currentGoals.add(newGoal)
+            logInfo(LogCategory.lcAI, &"{houseId} GOAP: Injected high-priority '{newGoal.description}' goal.")
+          # Fallback if no specific facility/system info
+          else:
+            let newGoal = Goal(
+                goalType: GoalType.BuildFacility,
+                priority: 0.90, # High priority
+                description: "Urgent: Build construction facilities due to capacity limits."
+            )
+            currentGoals.add(newGoal)
+            logInfo(LogCategory.lcAI, &"{houseId} GOAP: Injected high-priority '{newGoal.description}' goal.")
+
+      of ReplanReason.PlanInvalidated:
+        # If a plan was invalidated (e.g., target system captured by another house),
+        # remove that specific goal from the list to avoid replanning for it.
+        # This requires matching goals to the invalidated plan.
+        currentGoals = currentGoals.filterIt(it != failedPlan.get().plan.goal)
+        logInfo(LogCategory.lcAI, &"{houseId} GOAP: Removed invalidated goal '{failedPlan.get().plan.goal.description}'.")
+
+      of ReplanReason.BetterOpportunity:
+        # `detectNewOpportunities` already adds new goals, so here we ensure they are high priority.
+        # The 'newOpportunities' are added in checkGOAPReplanningNeeded, this path is just for replan.
+        # It's already handled by 'extractStrategicGoals' and prioritization.
+        logDebug(LogCategory.lcAI, &"{houseId} GOAP: BetterOpportunity replan handled by general goal extraction and prioritization.")
+        discard
+      
+      of ReplanReason.PlanFailed, ReplanReason.BudgetShortfall, ReplanReason.ExternalEvent, ReplanReason.PlanStalled:
+        # For these generic reasons, a general re-evaluation of all goals is the strategy.
+        logInfo(LogCategory.lcAI, &"{houseId} GOAP: Generic replan for reason '{reason}'. Re-evaluating all goals.")
+      
+      else:
+        logInfo(LogCategory.lcAI, &"{houseId} GOAP: Unhandled replan reason '{reason}'. Performing general goal re-evaluation.")
+    else:
+      logWarn(LogCategory.lcAI, &"{houseId} GOAP: Replanning triggered but no specific failed plan found matching reason '{controller.replanReason.get()}'. Performing general goal re-evaluation.")
+
+    # Reset replan flags after handling
+    controller.replanNeeded = false
+    controller.replanReason = none(ReplanReason)
+  
+  # Re-prioritize goals after potential injection/modification
+  result.goals = prioritizeGoals(currentGoals)
+  logInfo(LogCategory.lcAI, &"{houseId} GOAP: {result.goals.len} goals after replan adjustment and prioritization.")
+
+
+  # Step 3: Generate plans (for the potentially modified/prioritized goals)
   result.plans = generateStrategicPlans(result.goals, houseId, homeworld, currentTurn, intel, config)
   logInfo(LogCategory.lcAI, &"{houseId} GOAP: Generated {result.plans.len} strategic plans.")
 
