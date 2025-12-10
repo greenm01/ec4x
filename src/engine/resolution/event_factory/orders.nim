@@ -6,82 +6,106 @@
 
 import std/[options, strformat]
 import ../../../common/types/core
-import ../types as res_types
+import ../../../engine/order_types # For FleetOrderType
+import ../types as event_types # Renamed alias to avoid confusion with res_types.GameEvent in engine/resolution
+
+# Export the new event_types alias explicitly
+export event_types
 
 proc orderRejected*(
   houseId: HouseId,
-  orderType: string,
+  orderType: string, # This should be FleetOrderType, but matching existing for now
   reason: string,
-  systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+  systemId: Option[SystemId] = none(SystemId),
+  fleetId: Option[FleetId] = none(FleetId) # Added fleetId
+): event_types.GameEvent =
   ## Create event for rejected order (validation failure)
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.OrderRejected,
-    houseId: houseId,
+  event_types.GameEvent(
+    kind: event_types.GameEventKind.OrderRejected,
+    turn: 0, # Will be set by event dispatcher
+    houseId: some(houseId),
+    systemId: systemId,
     description: &"{orderType} order rejected: {reason}",
-    systemId: systemId
+    fleetId: fleetId,
+    orderType: orderType,
+    reason: some(reason)
   )
 
 proc orderFailed*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string,
+  orderType: string, # This should be FleetOrderType
   reason: string,
   systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Order execution failed (validation failure at execution time)
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.OrderFailed,
-    houseId: houseId,
+  event_types.GameEvent(
+    kind: event_types.GameEventKind.OrderFailed,
+    turn: 0, # Will be set by event dispatcher
+    houseId: some(houseId),
+    systemId: systemId,
     description: &"Fleet {fleetId} {orderType} failed: {reason}",
-    systemId: systemId
+    fleetId: some(fleetId),
+    orderType: orderType,
+    reason: some(reason)
   )
 
 proc orderAborted*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string,
+  orderType: string, # This should be FleetOrderType
   reason: string,
   systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Order cancelled/aborted (target lost, conditions changed)
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.OrderAborted,
-    houseId: houseId,
+  event_types.GameEvent(
+    kind: event_types.GameEventKind.OrderAborted,
+    turn: 0, # Will be set by event dispatcher
+    houseId: some(houseId),
+    systemId: systemId,
     description: &"Fleet {fleetId} {orderType} aborted: {reason}",
-    systemId: systemId
+    fleetId: some(fleetId),
+    orderType: orderType,
+    reason: some(reason)
   )
 
 proc orderIssued*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string,
+  orderType: string, # This should be FleetOrderType
   systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Order submitted and added to fleet orders queue
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.OrderIssued,
-    houseId: houseId,
+  event_types.GameEvent(
+    kind: event_types.GameEventKind.OrderIssued,
+    turn: 0, # Will be set by event dispatcher
+    houseId: some(houseId),
+    systemId: systemId,
     description: &"Fleet {fleetId}: Order issued - {orderType}",
-    systemId: systemId
+    fleetId: some(fleetId),
+    orderType: orderType
   )
 
 proc orderCompleted*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string,
+  orderType: string, # This should be FleetOrderType
   details: string = "",
   systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Order successfully completed (state change or one-shot operation)
   let desc = if details.len > 0:
     &"Fleet {fleetId} {orderType} completed: {details}"
   else:
     &"Fleet {fleetId} {orderType} completed"
 
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.OrderCompleted,
-    houseId: houseId,
+  event_types.GameEvent(
+    kind: event_types.GameEventKind.OrderCompleted,
+    turn: 0, # Will be set by event dispatcher
+    houseId: some(houseId),
+    systemId: systemId,
     description: desc,
-    systemId: systemId
+    fleetId: some(fleetId),
+    orderType: orderType,
+    details: some(details)
   )
