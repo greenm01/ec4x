@@ -291,7 +291,7 @@ proc reportGOAPProgress*(
 
     if actionFulfilled:
       # RBA fulfilled the requirement, now check if the actual outcome occurred using events
-      let outcomeSuccessful = checkActualOutcome(
+      let outcomeSuccessful = event_outcome_checker.checkActualOutcome( # NEW CALL
         controller.houseId, currentAction, initialGameState, intelSnapshot, controller.techLevels, events
       )
       
