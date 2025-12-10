@@ -128,11 +128,42 @@ proc evaluateWarReadiness(
     score += 1.0
     reasons.add("target isolated")
 
-  # Factor 6: Scale by personality aggression
-  score *= personality.aggression
+  # Factor 6: Personality-adjusted war threshold
+  # REMOVED: score *= personality.aggression (this made peaceful AIs never declare war)
+  # NEW: Aggression affects threshold, not score
+  #
+  # Base thresholds (act-dependent):
+  # - Act 1-2: 3.0 (moderate threshold for early expansion wars)
+  # - Act 3-4: 2.5 (lower threshold for total war era)
+  #
+  # Personality scaling:
+  # - Aggressive (0.7+): -1.0 threshold (easier to declare war)
+  # - Moderate (0.3-0.7): +0.0 threshold (baseline)
+  # - Defensive (0.0-0.3): +1.0 threshold (harder to declare war)
+  let baseThreshold = case currentAct
+    of ai_types.GameAct.Act1_LandGrab: 3.0
+    of ai_types.GameAct.Act2_RisingTensions: 3.0
+    of ai_types.GameAct.Act3_TotalWar: 2.5
+    of ai_types.GameAct.Act4_Endgame: 2.5
 
-  let shouldDeclare = score >= 3.0
+  let personalityAdjustment = if personality.aggression >= 0.7:
+      -1.0  # Aggressive personalities declare war easier
+    elif personality.aggression >= 0.3:
+      0.0   # Moderate personalities use base threshold
+    else:
+      1.0   # Defensive personalities avoid war
+
+  let warThreshold = baseThreshold + personalityAdjustment
+
+  let shouldDeclare = score >= warThreshold
   let reason = if shouldDeclare: reasons.join(", ") else: ""
+
+  # DEBUG: Log war evaluation for diagnosis
+  if score > 0.0 or shouldDeclare:
+    logDebug(LogCategory.lcAI,
+             &"War eval: own={ownPrestige} target={targetPrestige} gap={prestigeGap} " &
+             &"score={score:.2f} threshold={warThreshold:.1f} (base={baseThreshold:.1f} adj={personalityAdjustment:+.1f}) " &
+             &"declare={shouldDeclare} reasons=[{reasons.join(\", \")}]")
 
   return (shouldDeclare, score, reason)
 
