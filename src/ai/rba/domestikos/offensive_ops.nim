@@ -434,10 +434,8 @@ proc generateCounterAttackOrders*(
 
     # Primary: Intelligence-identified vulnerable targets
     for opportunity in snapshot.military.vulnerableTargets:
-      # Filter: only diplomatic enemies
-      let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(opportunity.owner)
-      if not isEnemy:
-        continue
+      # No diplomatic filtering - attack ANY house (neutrals, hostiles, enemies)
+      # Surprise attacks and opportunistic land grabs are valid strategies
 
       # Calculate intelligence-driven priority
       let priority = calculateInvasionPriority(opportunity, opportunity.intelQuality)
@@ -467,10 +465,7 @@ proc generateCounterAttackOrders*(
         if hvTarget.estimatedDefenses > 0:
           continue
 
-        # Filter: only diplomatic enemies
-        let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(hvTarget.owner)
-        if not isEnemy:
-          continue
+        # No diplomatic filtering - attack ANY house for economic disruption
 
         # Find available fleet
         for attacker in availableAttackers:
@@ -508,10 +503,9 @@ proc generateCounterAttackOrders*(
     if visibleColony.owner == controller.houseId:
       continue  # Skip own colonies
 
-    # Check diplomatic stance - only counter-attack enemies
-    let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
-    if not isEnemy:
-      continue  # Skip allies/neutrals
+    # No diplomatic filtering - attack ANY house (neutrals, hostiles, enemies)
+    # Design: Zero-sum conquest game with no allies, only 3 states (Neutral/Hostile/Enemy)
+    # Surprise attacks on neutrals are valid strategy for land grab and positioning
 
     enemyColoniesFound += 1
 
