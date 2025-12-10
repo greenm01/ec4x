@@ -167,7 +167,7 @@ nimble evolveAIQuick        # 10 gen test (~5 min)
 nimble evolveAI             # 50 gen (~2-4 hours)
 
 # Cleanup
-nimble clean                # Remove build artifacts
+nimble tidy                # Remove build artifacts
 ```
 
 ---

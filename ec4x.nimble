@@ -64,7 +64,7 @@ task check, "Check syntax of all source files":
   exec "nim check src/cli/ec4x.nim"
   echo "All syntax checks passed!"
 
-task clean, "Clean build artifacts":
+task tidy, "Clean build artifacts":
   echo "Cleaning build artifacts..."
   exec "rm -rf bin/ nimcache/"
   exec "find . -name '*.exe' -delete 2>/dev/null || true"
