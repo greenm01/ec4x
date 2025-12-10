@@ -7004,14 +7004,51 @@
       "kind": "object"
     },
     {
-      "name": "GameEvent",
-      "module": "types",
-      "kind": "object"
-    },
-    {
       "name": "GameEventType",
       "module": "types",
-      "kind": "enum"
+      "kind": "enum",
+      "description": "Categories of game events; discriminator for GameEvent",
+      "values": [
+        "General", "OrderIssued", "OrderCompleted", "OrderRejected", "OrderFailed", "OrderAborted",
+        "CombatResult", "Espionage", "Diplomacy", "Research", "Economy", "Colony", "Fleet",
+        "Intelligence", "Prestige", "ColonyEstablished", "SystemCaptured", "ColonyCaptured",
+        "TerraformComplete", "Battle", "BattleOccurred", "Bombardment", "FleetDestroyed",
+        "InvasionRepelled", "ConstructionStarted", "ShipCommissioned", "BuildingCompleted",
+        "UnitRecruited", "UnitDisbanded", "TechAdvance", "HouseEliminated", "PopulationTransfer",
+        "IntelGathered", "PrestigeGained", "PrestigeLost", "WarDeclared", "PeaceSigned",
+        "ResourceWarning", "ThreatDetected", "AutomationCompleted", "SpyMissionSucceeded",
+        "SabotageConducted", "TechTheftExecuted", "AssassinationAttempted",
+        "EconomicManipulationExecuted", "CyberAttackConducted", "PsyopsCampaignLaunched",
+        "IntelligenceTheftExecuted", "DisinformationPlanted", "CounterIntelSweepExecuted",
+        "SpyMissionDetected", "ScoutDetected", "ScoutDestroyed"
+      ]
+    },
+    {
+      "name": "GameEvent",
+      "module": "types",
+      "kind": "object",
+      "description": "Base type for all game events (sum type using eventType as discriminator)",
+      "fields": [
+        {"name": "eventType", "type": "GameEventType", "description": "Discriminator for the specific event data"},
+        {"name": "turn", "type": "int", "description": "Turn number when the event occurred"},
+        {"name": "houseId", "type": "Option[HouseId]", "description": "House that triggered or is primarily affected"},
+        {"name": "systemId", "type": "Option[SystemId]", "description": "System primarily affected"},
+        {"name": "description", "type": "string", "description": "Human-readable summary for logs/UI"}
+      ],
+      "case_fields": [
+        {"case_value": ["General", "Battle", "BattleOccurred", "Bombardment", "ResourceWarning", "ThreatDetected", "AutomationCompleted"], "fields": [{"name": "message", "type": "string", "description": "Generic message or simple description"}]},
+        {"case_value": ["OrderIssued", "OrderCompleted", "OrderRejected", "OrderFailed", "OrderAborted"], "fields": [{"name": "fleetId", "type": "Option[FleetId]", "description": "Fleet associated with the order"}, {"name": "orderType", "type": "Option[string]", "description": "String representation of the order type"}, {"name": "reason", "type": "Option[string]", "description": "Why order failed/rejected/aborted"}, {"name": "details", "type": "Option[string]", "description": "Extra details for completion"}]},
+        {"case_value": ["CombatResult", "SystemCaptured", "ColonyCaptured", "InvasionRepelled"], "fields": [{"name": "attackingHouseId", "type": "Option[HouseId]"}, {"name": "defendingHouseId", "type": "Option[HouseId]"}, {"name": "outcome", "type": "Option[string]", "description": "e.g., 'Victory', 'Defeat'"}, {"name": "newOwner", "type": "Option[HouseId]", "description": "If system ownership changed"}, {"name": "totalAttackStrength", "type": "Option[int]"}, {"name": "totalDefenseStrength", "type": "Option[int]"}, {"name": "attackerLosses", "type": "Option[int]"}, {"name": "defenderLosses", "type": "Option[int]"}]},
+        {"case_value": ["Espionage", "SpyMissionSucceeded", "SabotageConducted", "TechTheftExecuted", "AssassinationAttempted", "EconomicManipulationExecuted", "CyberAttackConducted", "PsyopsCampaignLaunched", "IntelligenceTheftExecuted", "DisinformationPlanted", "CounterIntelSweepExecuted"], "fields": [{"name": "targetHouseId", "type": "HouseId"}, {"name": "targetSystemId", "type": "Option[SystemId]"}, {"name": "operationType", "type": "Option[esp_types.EspionageAction]", "description": "Specific espionage action type"}, {"name": "success", "type": "Option[bool]", "description": "Whether the operation succeeded"}, {"name": "detected", "type": "Option[bool]", "description": "Whether the operation was detected"}, {"name": "sourceHouseId", "type": "Option[HouseId]", "description": "House that initiated the espionage (redundant with houseId, but kept for clarity)"}]},
+        {"case_value": ["Diplomacy", "WarDeclared", "PeaceSigned"], "fields": [{"name": "sourceHouseId", "type": "Option[HouseId]"}, {"name": "targetHouseId", "type": "HouseId"}, {"name": "action", "type": "DiplomaticActionType"}, {"name": "proposalType", "type": "Option[DiplomaticProposalType]"}, {"name": "success", "type": "Option[bool]"}, {"name": "oldState", "type": "Option[DiplomaticState]"}, {"name": "newState", "type": "Option[DiplomaticState]"}]},
+        {"case_value": ["Research", "TechAdvance"], "fields": [{"name": "techField", "type": "TechField"}, {"name": "oldLevel", "type": "Option[int]"}, {"name": "newLevel", "type": "Option[int]"}, {"name": "breakthrough", "type": "Option[string]"}]},
+        {"case_value": ["Economy", "ConstructionStarted", "PopulationTransfer", "TerraformComplete"], "fields": [{"name": "category", "type": "Option[string]"}, {"name": "amount", "type": "Option[int]"}, {"name": "details", "type": "Option[string]"}]},
+        {"case_value": ["Colony", "ColonyEstablished"], "fields": [{"name": "colonyEventType", "type": "Option[string]"}, {"name": "newOwner", "type": "Option[HouseId]"}, {"name": "oldOwner", "type": "Option[HouseId]"}, {"name": "details", "type": "Option[string]"}]},
+        {"case_value": ["Fleet", "FleetDestroyed"], "fields": [{"name": "fleetEventType", "type": "Option[string]"}, {"name": "fleetId", "type": "Option[FleetId]"}, {"name": "shipClass", "type": "Option[ShipClass]"}, {"name": "details", "type": "Option[string]"}]},
+        {"case_value": ["Intelligence", "IntelGathered", "SpyMissionDetected", "ScoutDetected", "ScoutDestroyed"], "fields": [{"name": "sourceHouseId", "type": "Option[HouseId]"}, {"name": "targetHouseId", "type": "Option[HouseId]"}, {"name": "targetSystemId", "type": "Option[SystemId]"}, {"name": "intelType", "type": "Option[string]"}, {"name": "details", "type": "Option[string]"}]},
+        {"case_value": ["Prestige", "PrestigeGained", "PrestigeLost"], "fields": [{"name": "sourceHouseId", "type": "Option[HouseId]"}, {"name": "changeAmount", "type": "Option[int]"}, {"name": "details", "type": "Option[string]"}]},
+        {"case_value": ["HouseEliminated"], "fields": [{"name": "eliminatedBy", "type": "Option[HouseId]"}]}
+      ]
     },
     {
       "name": "CombatReport",
