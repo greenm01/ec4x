@@ -1098,6 +1098,34 @@ Target: 2026-Q2
 Status: Planning phase
 
 
+Gap 6: Proactive Prestige Management (Avoid Penalties, Exploit Opponent Penalties) [ ] NOT STARTED
+--------------------------------------------------------------------------------------------------
+**Current Status**: The AI reacts to immediate penalties (e.g., budget for EBP/CIP investment) but lacks specific GOAP goals or RBA logic to proactively avoid or exploit prestige penalties such as the `Undefended Colony Penalty` or `Espionage/Counter-Intel Over-Investment` *through explicit strategic planning*. It mostly reacts to the budget/allocation feedback from the Treasurer.
+
+**Impact**: The AI may accrue unnecessary prestige penalties or miss opportunities to strategically inflict them on rivals, playing sub-optimally in competitive scenarios.
+
+**Plan**:
+1.  **GOAP Goal for Prestige**: Introduce a `MaintainPrestige` or `AvoidPenalty` GOAP goal type. This goal would be active when the AI's prestige is low or penalties are imminent.
+2.  **RBA Awareness**: Modify relevant advisors (e.g., `Domestikos`, `Drungarius`, `Eparch`) to factor potential prestige penalties into their requirement generation. For example, `Domestikos` might prioritize ground units for undefended colonies.
+3.  **Enemy Analysis**: Enhance `IntelligenceSnapshot` and corresponding GOAP goal extraction to identify enemy colonies that are currently "undefended" (no ground units) for targeted `InvadeColony` GOAP goals, explicitly aiming for the higher prestige penalty.
+
+Status: Not Started
+
+
+Gap 7: Endgame & Elimination Strategy [ ] NOT STARTED
+------------------------------------------------------
+**Current Status**: The AI detects `isFinalConfrontation` and its own `House.eliminated` status but lacks dedicated GOAP goals or RBA strategies for the endgame (last two players) or when facing its own elimination (`Last-Stand Invasion Capability`). `Protostrator`'s diplomatic requirements might not adjust optimally in final conflict.
+
+**Impact**: The AI might play sub-optimally in critical endgame scenarios, failing to aggressively pursue total victory or execute desperate last-stand maneuvers effectively. Its diplomatic actions might be inappropriate for the game state.
+
+**Plan**:
+1.  **GOAP Endgame Goal**: Introduce a high-priority `AchieveTotalVictory` GOAP goal type that is activated when `isFinalConfrontation` is true, overriding diplomatic goals like `ImproveRelations`.
+2.  **GOAP Survival Goal**: Introduce a `LastStandReconquest` GOAP goal type that is activated if the AI has lost all colonies but retains fleets with marines, overriding most other goals.
+3.  **Diplomacy Overrides**: Ensure `Protostrator`'s diplomatic requirements generation is correctly adjusted (e.g., no `ProposeAlliance`) during the `Final Confrontation` game state.
+
+Status: Not Started
+
+
 PHASE 6: NEURAL NETWORK TRAINING (FUTURE)
 ------------------------------------------
 [ ] Export GOAP/RBA decisions as training data
