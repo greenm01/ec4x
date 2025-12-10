@@ -755,59 +755,60 @@ LOGOTHETE → Tech requirements coordinated (CST needed for Carriers)
 
 ==== Turn-by-Turn Action Sequence
 
-[cols="1,5"]
-|===
-|Turn |Actions
-
-|5
-a|*ACTION:* BuildFleet(Destroyer, qty=5)
-
-Cost:: 200 PP
-Precondition:: treasury ≥ 200 PP
-Effect:: fleet_strength += 500
-Assigned:: Domestikos
-
-|6
-a|*ACTION:* BuildFleet(Carrier, qty=2)
-
-Cost:: 240 PP
-Precondition:: CST ≥ III, treasury ≥ 240 PP
-Effect:: carrier_capacity += 24 fighters
-Assigned:: Domestikos
-
-|7
-a|*ACTION:* BuildGroundForces(Marine, qty=10)
-
-Cost:: 500 PP
-Precondition:: transport_capacity ≥ 10 PTU
-Effect:: ground_strength += 1000
-Assigned:: Domestikos
-
-|8
-a|*ACTION:* MoveFleet(invasion_fleet, System 42)
-
-Cost:: 0 PP
-Precondition:: path_exists, fleet_ready
-Effect:: fleet_location = System 42
-Assigned:: Domestikos (Phase 5)
-
-|9
-a|*ACTION:* AssembleInvasionForce()
-
-Cost:: 0 PP
-Precondition:: fleet + marines at System 42
-Effect:: invasion_ready = true
-Assigned:: Domestikos
-
-|10
-a|*ACTION:* InvadeSystem(System 42)
-
-Cost:: 0 PP
-Precondition:: invasion_ready = true
-Effect:: owner(System 42) = self
-Success:: 85% (based on combat strength)
-Assigned:: Domestikos (Phase 3)
-|===
+```
++------+-------------------------------------------------------+
+| Turn | Actions                                               |
++------+-------------------------------------------------------+
+|  5   | +---------------------------------------------------+ |
+|      | | ACTION: BuildFleet(Destroyer, qty=5)            | |
+|      | | Cost: 200 PP                                    | |
+|      | | Precondition: treasury >= 200 PP                | |
+|      | | Effect: fleet_strength += 500                   | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  6   | +---------------------------------------------------+ |
+|      | | ACTION: BuildFleet(Carrier, qty=2)              | |
+|      | | Cost: 240 PP                                    | |
+|      | | Precondition: CST >= III, treasury >= 240 PP    | |
+|      | | Effect: carrier_capacity += 24 fighters         | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  7   | +---------------------------------------------------+ |
+|      | | ACTION: BuildGroundForces(Marine, qty=10)       | |
+|      | | Cost: 500 PP                                    | |
+|      | | Precondition: transport_capacity >= 10 PTU      | |
+|      | | Effect: ground_strength += 1000                 | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  8   | +---------------------------------------------------+ |
+|      | | ACTION: MoveFleet(invasion_fleet, System 42)    | |
+|      | | Cost: 0 PP                                      | |
+|      | | Precondition: path_exists, fleet_ready          | |
+|      | | Effect: fleet_location = System 42              | |
+|      | | Assigned: Domestikos (Phase 5)                  | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  9   | +---------------------------------------------------+ |
+|      | | ACTION: AssembleInvasionForce()                 | |
+|      | | Cost: 0 PP                                      | |
+|      | | Precondition: fleet + marines at System 42      | |
+|      | | Effect: invasion_ready = true                   | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+| 10   | +---------------------------------------------------+ |
+|      | | ACTION: InvadeSystem(System 42)                 | |
+|      | | Cost: 0 PP                                      | |
+|      | | Precondition: invasion_ready = true             | |
+|      | | Effect: owner(System 42) = self                 | |
+|      | | Success: 85% (based on combat strength)         | |
+|      | | Assigned: Domestikos (Phase 3)                  | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+```
 
 ==== Dependencies
 
@@ -821,187 +822,166 @@ Turn 9 → 10:: Force assembled before invasion
 === Plan Tracking & Progress
 
 .Goal: "Conquer System 42"
-****
-*Status:* IN PROGRESS (Turn 7/10)
+```
+Status: IN PROGRESS (Turn 7/10)
 
-[cols="1,3,1,1"]
-|===
-|Turn |Planned Action |Cost |Actual Status
++------+----------------------------------------+--------------+
+| Turn | Planned Action                         | Actual Status|
++------+----------------------------------------+--------------+
+|  5   | Build 5 Destroyers (200 PP)           | [X] COMPLETE |
+|      |                                        |   5/5 built  |
++------+----------------------------------------+--------------+
+|  6   | Build 2 Carriers (240 PP)             | [X] COMPLETE |
+|      |                                        |   2/2 built  |
++------+----------------------------------------+--------------+
+|  7   | Build 10 Marines (500 PP)             | [ ] PARTIAL  |
+|      |                                        |   7/10 built |
+|      |                                        |   (300 PP)   |
+|      | Issue: Treasury only had 300 PP       |              |
+|      | Replan: Defer 3 Marines to Turn 8     |              |
++------+----------------------------------------+--------------+
+|  8   | [ADJUSTED] Build 3 Marines (150 PP)   | [ ] PENDING  |
+|      | Move fleet to System 42                | [ ] PENDING  |
++------+----------------------------------------+--------------+
+|  9   | Assemble invasion force                | [ ] PENDING  |
++------+----------------------------------------+--------------+
+| 10   | Invade System 42                       | [ ] PENDING  |
++------+----------------------------------------+--------------+
 
-|5
-|Build 5 Destroyers
-|200 PP
-|[x] COMPLETE +
-5/5 built
-
-|6
-|Build 2 Carriers
-|240 PP
-|[x] COMPLETE +
-2/2 built
-
-|7
-|Build 10 Marines
-|500 PP
-|[ ] PARTIAL +
-7/10 built (300 PP) +
-_Issue: Treasury only had 300 PP_ +
-_Replan: Defer 3 Marines to Turn 8_
-
-|8
-|[ADJUSTED] Build 3 Marines +
-Move fleet to System 42
-|150 PP +
-0 PP
-|[ ] PENDING
-
-|9
-|Assemble invasion force
-|0 PP
-|[ ] PENDING
-
-|10
-|Invade System 42
-|0 PP
-|[ ] PENDING
-|===
-
-*Progress:* 40% (2.5/5 actions complete) +
-*Budget Consumed:* 500 PP / 940 PP (53%) +
-*On Track:* DELAYED (1 turn behind)
-****
+Progress: 40% (2.5/5 actions complete)
+Budget Consumed: 500 PP / 940 PP (53%)
+On Track: DELAYED (1 turn behind)
+```
 
 == Feedback & Adaptation
 
 === Replanning Triggers
 
+.Replanning Trigger System
+```
 GOAP monitors 5 replanning conditions per turn:
 
-==== Trigger 1: Goal Failed
++--------------------------------------------------------------+
+| TRIGGER 1: GOAL FAILED                                       |
++--------------------------------------------------------------+
+| Condition: Goal cannot be completed with available resources |
+|                                                              |
+| Example:                                                     |
+|   Goal: "Build 10 Battleships"                               |
+|   Turn 5: Treasury = 50 PP (need 2000 PP)                    |
+|   Trigger: Insufficient treasury projection                  |
+|   Action: Cancel goal or replan with cheaper units           |
++--------------------------------------------------------------+
 
-.Condition: Goal cannot be completed with available resources
-[example]
-====
-*Example:*
++--------------------------------------------------------------+
+| TRIGGER 2: MAJOR THREAT DETECTED                             |
++--------------------------------------------------------------+
+| Condition: Critical threat to survival (homeworld, etc)      |
+|                                                              |
+| Example:                                                     |
+|   Turn 12: Enemy invasion fleet approaching homeworld        |
+|   Threat Level: Critical (30 Battleships, ETA 2 turns)       |
+|   Trigger: Emergency defense required                        |
+|   Action: Cancel all offensive goals, shift to defense       |
++--------------------------------------------------------------+
 
-Goal:: "Build 10 Battleships"
-Turn 5:: Treasury = 50 PP (need 2000 PP)
-Trigger:: Insufficient treasury projection
-Action:: Cancel goal or replan with cheaper units
-====
++--------------------------------------------------------------+
+| TRIGGER 3: OPPORTUNITY APPEARED                              |
++--------------------------------------------------------------+
+| Condition: High-value target becomes available               |
+|                                                              |
+| Example:                                                     |
+|   Turn 8: Intel reports System 15 undefended (5 PF system)   |
+|   Opportunity: Easy conquest (high prestige)                 |
+|   Trigger: Add opportunistic goal                            |
+|   Action: Insert "Conquer System 15" (Priority 60)           |
++--------------------------------------------------------------+
 
-==== Trigger 2: Major Threat Detected
++--------------------------------------------------------------+
+| TRIGGER 4: PLAN STALLED                                      |
++--------------------------------------------------------------+
+| Condition: No progress on goal for 2+ consecutive turns      |
+|                                                              |
+| Example:                                                     |
+|   Goal: "Research CST VI"                                    |
+|   Turns 5-7: 0 RP allocated (budget competition lost)        |
+|   Trigger: Stalled progress                                  |
+|   Action: Boost priority or defer goal                       |
++--------------------------------------------------------------+
 
-.Condition: Critical threat to survival (homeworld, etc)
-[example]
-====
-*Example:*
-
-Turn 12:: Enemy invasion fleet approaching homeworld
-Threat Level:: Critical (30 Battleships, ETA 2 turns)
-Trigger:: Emergency defense required
-Action:: Cancel all offensive goals, shift to defense
-====
-
-==== Trigger 3: Opportunity Appeared
-
-.Condition: High-value target becomes available
-[example]
-====
-*Example:*
-
-Turn 8:: Intel reports System 15 undefended (5 PF system)
-Opportunity:: Easy conquest (high prestige)
-Trigger:: Add opportunistic goal
-Action:: Insert "Conquer System 15" (Priority 60)
-====
-
-==== Trigger 4: Plan Stalled
-
-.Condition: No progress on goal for 2+ consecutive turns
-[example]
-====
-*Example:*
-
-Goal:: "Research CST VI"
-Turns 5-7:: 0 RP allocated (budget competition lost)
-Trigger:: Stalled progress
-Action:: Boost priority or defer goal
-====
-
-==== Trigger 5: Goal Completed
-
-.Condition: Goal successfully achieved
-[example]
-====
-*Example:*
-
-Goal:: "Conquer System 42"
-Turn 10:: System 42 captured (invasion success)
-Trigger:: Goal complete
-Action:: Remove goal, select next priority goal
-====
++--------------------------------------------------------------+
+| TRIGGER 5: GOAL COMPLETED                                    |
++--------------------------------------------------------------+
+| Condition: Goal successfully achieved                        |
+|                                                              |
+| Example:                                                     |
+|   Goal: "Conquer System 42"                                  |
+|   Turn 10: System 42 captured (invasion success)             |
+|   Trigger: Goal complete                                     |
+|   Action: Remove goal, select next priority goal             |
++--------------------------------------------------------------+
+```
 
 === Adaptation Flow
 
-==== Adaptation Process (When Replan Triggered)
-
-.Step 1: Detect Deviation
-****
-*GOAP compares:* Expected state vs Actual state
-
-*Example:*
-
-Expected:: 10 Marines built by Turn 7
-Actual:: 7 Marines built (300 PP shortage)
-Deviation:: -3 Marines (-30%)
-****
-
-.Step 2: Assess Impact
-****
-*Can goal still be achieved?*
-
-* If yes: Adjust timeline (1 turn delay)
-* If no: Replan or cancel goal
-
-*Example:*
-
-Marine shortage:: 3 Marines
-Impact:: Invasion success drops 85% → 70%
-Decision:: Acceptable (above 60% threshold)
-Action:: Delay invasion 1 turn
-****
-
-.Step 3: Generate New Plan
-****
-*Re-run A* planner with updated constraints*
-
-*New Plan:*
-
-* Turn 8: Build 3 Marines (150 PP)
-* Turn 9: Move fleet to System 42
-* Turn 10: Assemble invasion force
-* Turn 11: Invade System 42 (1 turn delay)
-****
-
-.Step 4: Update RBA Guidance
-****
-*Send revised guidance to RBA*
-
-*Turn 8 Instructions:*
-
-* Domestikos: Build 3 Marines (High priority)
-* Treasurer: Allocate 150 PP for Marines
-****
-
-.Step 5: Continue Tracking
-****
-*Monitor revised plan execution*
-
-* Update progress tracking
-* Watch for new deviations
-* Continue turn-by-turn adaptation
-****
+.Adaptation Process (When Replan Triggered)
+```
+STEP 1: DETECT DEVIATION
++-------------------------------------------------+
+| GOAP compares:                                  |
+|   Expected state vs Actual state                |
+|                                                 |
+| Example:                                        |
+|   Expected: 10 Marines built by Turn 7          |
+|   Actual: 7 Marines built (300 PP shortage)     |
+|   Deviation: -3 Marines (-30%)                  |
++-------------------------------------------------+
+                         |
+                         v
+STEP 2: ASSESS IMPACT
++-------------------------------------------------+
+| Can goal still be achieved?                     |
+|   - If yes: Adjust timeline (1 turn delay)      |
+|   - If no: Replan or cancel goal                |
+|                                                 |
+| Example:                                        |
+|   Marine shortage: 3 Marines                    |
+|   Impact: Invasion success drops 85% -> 70%     |
+|   Decision: Acceptable (above 60% threshold)    |
+|   Action: Delay invasion 1 turn                 |
++-------------------------------------------------+
+                         |
+                         v
+STEP 3: GENERATE NEW PLAN
++-------------------------------------------------+
+| Re-run A* planner with updated constraints      |
+|                                                 |
+| New Plan:                                       |
+|   Turn 8: Build 3 Marines (150 PP)              |
+|   Turn 9: Move fleet to System 42               |
+|   Turn 10: Assemble invasion force              |
+|   Turn 11: Invade System 42 (1 turn delay)      |
++-------------------------------------------------+
+                         |
+                         v
+STEP 4: UPDATE RBA GUIDANCE
++-------------------------------------------------+
+| Send revised guidance to RBA                    |
+|                                                 |
+| Turn 8 Instructions:                            |
+|   Domestikos: Build 3 Marines (High priority)   |
+|   Treasurer: Allocate 150 PP for Marines        |
++-------------------------------------------------+
+                         |
+                         v
+STEP 5: CONTINUE TRACKING
++-------------------------------------------------+
+| Monitor revised plan execution                  |
+|   - Update progress tracking                    |
+|   - Watch for new deviations                    |
+|   - Continue turn-by-turn adaptation            |
++-------------------------------------------------+
+```
 
 == Implementation Status
 
