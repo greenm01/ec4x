@@ -69,6 +69,8 @@ proc checkActualOutcome(
   ## Checks if a GOAP action had its intended effect by comparing initial game state
   ## with the intelligence snapshot after orders have been processed, and by analyzing events.
   case action.actionType
+import ../../../engine/order_types # For FleetOrderType, needed for comparison
+
   of ActionType.BuildFleet:
     let initialCount = getFleetCount(initialGameState, houseId, action.target, action.shipClass)
     let currentCount = getFleetCount(intelSnapshot, houseId, action.target, action.shipClass)
@@ -85,43 +87,51 @@ proc checkActualOutcome(
     let initialTechLevel = initialGameState.techLevels[houseId].getOrDefault(action.techField, 0) # Use getOrDefault for safety
     let currentTechLevel = currentTechLevels.getOrDefault(action.techField, 0)
     return currentTechLevel > initialTechLevel
-  of ActionType.AttackColony:
-    # Check for a CombatResultEvent indicating a successful capture or significant victory
+  of ActionType.MoveFleet, ActionType.AttackColony, ActionType.AssembleInvasionForce,
+     ActionType.EstablishDefense, ActionType.ConductScoutMission:
+    # Check for specific FleetOrder events (OrderIssued, OrderCompleted, OrderFailed, OrderRejected, OrderAborted)
+    # Match the action with a completed event for success
+    # Match with failed/rejected/aborted events for failure
+    var fleetOrderEventFound = false
     for event in events:
-      if event.kind == GameEventKind.CombatResult:
-        let combatEvent = CombatResultEvent(event)
-        if combatEvent.attackingHouseId == houseId and combatEvent.systemId == action.target:
-          if combatEvent.newOwner.isSome and combatEvent.newOwner.get() == houseId:
-            logInfo(LogCategory.lcAI, &"AttackColony outcome: System {action.target} successfully captured by {houseId} (via CombatResultEvent).")
-            return true
-          # Could also check for other definitions of success, e.g., enemy fleet destroyed
-          # For now, focus on capture as the primary goal of AttackColony.
-    return false # Assume failure if no successful capture event found
+      if event.houseId.isSome and event.houseId.get() == houseId and event.fleetId.isSome:
+        if (event.kind == GameEventKind.OrderCompleted and $event.orderType == $action.actionType) or # Check string conversion
+           (event.kind == GameEventKind.OrderIssued and $event.orderType == $action.actionType): # Issued is also a success for multi-turn orders
+          # Further validate if fleetId and targetSystem match (if applicable)
+          if action.target.isSome and event.systemId.isSome and action.target.get() != event.systemId.get():
+            continue # Target mismatch, not this action's event
+          logInfo(LogCategory.lcAI, &"Fleet action '{action.actionType}' outcome: Completed/Issued (via event {event.kind}).")
+          return true
+        elif (event.kind == GameEventKind.OrderFailed or event.kind == GameEventKind.OrderRejected or event.kind == GameEventKind.OrderAborted) and
+             $event.orderType == $action.actionType:
+          logWarn(LogCategory.lcAI, &"Fleet action '{action.actionType}' outcome: FAILED (via event {event.kind}: {event.reason.getOrDefault("No reason provided")}).")
+          return false
+    
+    # If no explicit event found, assume pending for this turn.
+    logDebug(LogCategory.lcAI, &"Fleet action '{action.actionType}' outcome: No explicit event found. Assuming pending.")
+    return true # Default to true for pending orders, failure will be caught by stalled plan logic
   of ActionType.ConductEspionage:
-    # Check for EspionageEvent indicating success
+    # Check for EspionageEvent indicating success or failure
     for event in events:
       if event.kind == GameEventKind.Espionage:
-        let espionageEvent = EspionageEvent(event)
-        if espionageEvent.sourceHouseId.isSome and espionageEvent.sourceHouseId.get() == houseId and
-           espionageEvent.targetHouseId == action.targetHouse.get() and
-           espionageEvent.operationType == action.espionageAction:
-          if espionageEvent.success:
+        if event.sourceHouseId.isSome and event.sourceHouseId.get() == houseId and
+           event.targetHouseId == action.targetHouse.get() and
+           event.operationType == action.espionageAction:
+          if event.success:
             logInfo(LogCategory.lcAI, &"ConductEspionage outcome: Operation '{action.espionageAction}' against {action.targetHouse.get()} succeeded (via EspionageEvent).")
             return true
           else:
             logWarn(LogCategory.lcAI, &"ConductEspionage outcome: Operation '{action.espionageAction}' against {action.targetHouse.get()} FAILED (via EspionageEvent).")
             return false # Explicit failure from event
-    # If no event explicitly states success or failure, we can't be sure this turn.
     logDebug(LogCategory.lcAI, &"ConductEspionage outcome: No explicit event for operation '{action.espionageAction}'. Assuming pending/ongoing.")
-    return true # If RBA fulfilled, assume it's ongoing/pending success without explicit failure
+    return true # Default to true, rely on stalled plan for actual failure
   of ActionType.ProposeAlliance:
     if action.targetHouse.isSome:
       for event in events:
         if event.kind == GameEventKind.Diplomacy:
-          let diplomacyEvent = DiplomacyEvent(event)
-          if diplomacyEvent.sourceHouseId.isSome and diplomacyEvent.sourceHouseId.get() == houseId and
-             diplomacyEvent.targetHouseId == action.targetHouse.get() and
-             diplomacyEvent.action == DiplomacyActionType.ProposeAlliance and diplomacyEvent.success.getOrDefault(false):
+          if event.sourceHouseId.isSome and event.sourceHouseId.get() == houseId and
+             event.targetHouseId == action.targetHouse.get() and
+             event.action == DiplomaticActionType.ProposeAlliance and event.success.getOrDefault(false):
             logInfo(LogCategory.lcAI, &"ProposeAlliance outcome: Alliance with {action.targetHouse.get()} successfully established (via DiplomacyEvent).")
             return true
     return false # No successful alliance event found
@@ -129,17 +139,18 @@ proc checkActualOutcome(
     if action.targetHouse.isSome:
       for event in events:
         if event.kind == GameEventKind.Diplomacy:
-          let diplomacyEvent = DiplomacyEvent(event)
-          if diplomacyEvent.sourceHouseId.isSome and diplomacyEvent.sourceHouseId.get() == houseId and
-             diplomacyEvent.targetHouseId == action.targetHouse.get() and
-             diplomacyEvent.action == DiplomacyActionType.DeclareWar and diplomacyEvent.success.getOrDefault(false):
+          if event.sourceHouseId.isSome and event.sourceHouseId.get() == houseId and
+             event.targetHouseId == action.targetHouse.get() and
+             event.action == DiplomaticActionType.DeclareWar and event.success.getOrDefault(false):
             logInfo(LogCategory.lcAI, &"DeclareWar outcome: War successfully declared on {action.targetHouse.get()} (via DiplomacyEvent).")
             return true
     return false # No successful war declaration event found
-  # For actions not explicitly checked here, assume RBA fulfillment implies success for now,
-  # or that their success/failure is implicit in the world state or other mechanisms.
+  of ActionType.GainTreasury, ActionType.SpendTreasury, ActionType.TerraformPlanet:
+    # These are internal GOAP actions or have their outcomes checked by other mechanisms/future events
+    return true # Assume success if GOAP generated them
   else:
-    return true # Default to true for unchecked actions, relying on RBA fulfillment.
+    # For any other actions, assume success for now.
+    return true
 
 
 # Helper to match a GOAP action to an RBA requirement
