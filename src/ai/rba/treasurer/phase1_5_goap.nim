@@ -15,6 +15,7 @@ type
   Phase15Result* = object
     goapBudgetEstimates*: Option[Table[DomainType, int]]
     activeGoalsDescription*: seq[string] # For logging/debugging
+    goapReservedBudget*: Option[int] # NEW: Amount to reserve for future GOAP actions
 
 proc defaultGOAPConfig*(): GOAPConfig =
   ## Provides a default GOAP configuration.
@@ -86,11 +87,10 @@ proc generateStrategicPlans*(
     if plan.isSome:
       let newPlan = plan.get()
       controller.planTracker.addPlan(TrackedPlan(
-        goal: goal,
         plan: newPlan,
         currentActionIndex: 0,
         status: PlanStatus.Active,
-        startedTurn: filtered.turn
+        startTurn: filtered.turn # Corrected field name from startedTurn to startTurn
       ))
       logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: Successfully generated plan for {goal.name}.")
       if controller.goapConfig.debugLogging:
@@ -106,28 +106,54 @@ proc generateStrategicPlans*(
 proc estimateBudgetRequirements*(
   controller: AIController,
   filtered: FilteredGameState
-): Option[Table[DomainType, int]] =
-  ## Estimates current-turn budget requirements based on active GOAP plans.
-  ## Uses the allocateBudgetToGoals function to sum up costs by domain.
+): Phase15Result =
+  ## Estimates current-turn budget requirements and future reservations
+  ## based on active GOAP plans.
+
+  # Initialize result with default none values
+  result = Phase15Result(
+    goapBudgetEstimates: none(Table[DomainType, int]),
+    goapReservedBudget: none(int),
+    activeGoalsDescription: @[]
+  )
 
   if controller.planTracker.activePlans.len == 0:
-    return none(Table[DomainType, int])
+    return result
 
   let worldState = createWorldStateSnapshot(filtered, controller.houseId)
-  let estimates = allocateBudgetToGoals(
+  let currentTurnEstimates = allocateBudgetToGoals(
     filtered.ownHouse.treasury, # Current treasury, for context (not hard limit)
     controller.planTracker.activePlans,
     filtered.turn
   )
 
-  if estimates.len > 0:
+  if currentTurnEstimates.len > 0:
+    result.goapBudgetEstimates = some(currentTurnEstimates)
     if controller.goapConfig.debugLogging:
       logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: Current turn budget estimates:")
-      for domain, cost in estimates:
+      for domain, cost in currentTurnEstimates:
         logInfo(LogCategory.lcAI, &"  - {domain}: {cost}PP")
-    return some(estimates)
-  else:
-    return none(Table[DomainType, int])
+
+    # --- Placeholder for multi-turn budget reservation ---
+    var totalCurrentGoapCost = 0
+    for cost in currentTurnEstimates.values:
+      totalCurrentGoapCost += cost
+
+    let availableTreasury = filtered.ownHouse.treasury
+    if availableTreasury > totalCurrentGoapCost:
+      let surplus = availableTreasury - totalCurrentGoapCost
+      # Reserve a percentage of the surplus for future turns, capped at a reasonable amount
+      # Max 200 PP reservation (config-driven in future)
+      let reservationAmount = min(int(float(surplus) * 0.2), 200)
+      if reservationAmount > 0:
+        result.goapReservedBudget = some(reservationAmount)
+        if controller.goapConfig.debugLogging:
+          logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: Reserved {reservationAmount}PP for future turns.")
+  
+  # Ensure activeGoalsDescription is always set
+  result.activeGoalsDescription = controller.goapActiveGoals
+
+  return result
 
 proc executePhase15_GOAP*(
   controller: var AIController,
@@ -141,9 +167,10 @@ proc executePhase15_GOAP*(
   ## Main entry point for GOAP Phase 1.5: Strategic Planning.
   ## Orchestrates goal extraction, plan generation/tracking, and budget estimation.
 
-  result = Phase15Result(
+  result = Phase15Result( # Initialize for safety, will be overwritten by estimatesResult
     goapBudgetEstimates: none(Table[DomainType, int]),
-    activeGoalsDescription: @[]
+    activeGoalsDescription: @[],
+    goapReservedBudget: none(int)
   )
 
   if not controller.goapEnabled:
@@ -170,17 +197,18 @@ proc executePhase15_GOAP*(
     controller.planTracker.advanceTurn(filtered.turn, worldState)
     controller.goapActiveGoals = newSeq[string]()
     for trackedPlan in controller.planTracker.activePlans:
-      controller.goapActiveGoals.add(trackedPlan.goal.name)
+      controller.goapActiveGoals.add(trackedPlan.plan.goal.name) # Use plan.goal.name
 
   # Step 3: Estimate current-turn budget requirements from active plans and store in controller
-  let estimates = estimateBudgetRequirements(controller, filtered)
-  controller.goapBudgetEstimates = estimates # Store in controller for Basileus to retrieve
-  result.goapBudgetEstimates = estimates
-  result.activeGoalsDescription = controller.goapActiveGoals
+  let estimatesResult = estimateBudgetRequirements(controller, filtered)
+  controller.goapBudgetEstimates = estimatesResult.goapBudgetEstimates # Store in controller for Basileus to retrieve
+  controller.goapReservedBudget = estimatesResult.goapReservedBudget # Store reserved budget
+  result = estimatesResult # Return the full result
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} GOAP: Phase 1.5 complete - " &
           &"{controller.planTracker.activePlans.len} active plans, " &
-          &"estimated budget={result.goapBudgetEstimates.isSome}")
+          &"estimated budget={result.goapBudgetEstimates.isSome}, " &
+          &"reserved budget={result.goapReservedBudget.getOrDefault(0)}PP")
 
   return result

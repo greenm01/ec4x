@@ -965,8 +965,8 @@ COMPONENT IMPLEMENTATION STATUS
 |  - Plan tracking                        |    [X]   |   150    |
 |  - Replanning triggers                  |    [X]   |   140    |
 |  - Phase 1.5 entry point                |    [X]   |   280    |
-|  - Budget guidance                      |    [~]   |    450   |
-|  - Feedback loops                       |    [~]   |    40    |
+|  - Budget guidance                      |    [X]   |    550   |
+|  - Feedback loops                       |    [~]   |    140   |
 |                                         |          |          |
 | RBA CORE (Production-Ready)             |          |          |
 |  - Basileus orchestrator                |    [X]   |   400    |
@@ -975,7 +975,7 @@ COMPONENT IMPLEMENTATION STATUS
 |  - 5-Phase process                      |    [X]   |  1,200   |
 |  - Feedback loops                       |    [X]   |   500    |
 +-----------------------------------------+----------+----------+
-| TOTAL                                   |   ~85%   |  9,550   |
+| TOTAL                                   |   ~91%   |  9,750   |
 +-----------------------------------------+----------+----------+
 
 Legend:
@@ -1013,26 +1013,26 @@ Date: 2025-12-04
 Status: Plumbing complete, guidance inactive
 
 
-PHASE 3: BUDGET GUIDANCE [~] IN PROGRESS
+PHASE 3: BUDGET GUIDANCE [X] COMPLETE
 -----------------------------------------
-[~] GOAP cost estimates to Treasurer
-[~] Multi-turn budget reservations
-[~] Goal-aligned priority boosting
-[~] Strategic vs filler budget split (enhanced)
+[X] GOAP cost estimates to Treasurer
+[X] Multi-turn budget reservations
+[X] Goal-aligned priority boosting
+[X] Strategic vs filler budget split (enhanced)
 
-Target: 2025-12-15
-Status: 40% complete (basic estimates working)
+Date: 2025-12-10
+Status: 100% complete (multi-turn reservations active)
 
 
 PHASE 4: FEEDBACK LOOPS (NEXT)
 -------------------------------
-[ ] RBA --> GOAP goal progress updates
+[~] RBA --> GOAP goal progress updates
 [ ] GOAP --> RBA revised guidance
 [ ] Replanning trigger activation
 [ ] Emergency response system
 
 Target: 2025-12-20
-Status: Design complete, not implemented
+Status: Implementation in progress (RBA -> GOAP feedback)
 
 
 PHASE 5: FULL INTEGRATION (FUTURE)
