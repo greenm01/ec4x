@@ -267,10 +267,12 @@ proc detectNewOpportunities*(
     if not alreadyTargeted:
       # Create an opportunistic invasion goal
       # Need to get owner for the goal description
-      let enemyOwner = state.knownEnemyColonies.find(
-        (e: tuple[systemId: SystemId, owner: HouseId]) => e.systemId == opp
-      ).owner
-
+      var enemyOwner: HouseId
+      for enemyColony in state.knownEnemyColonies:
+        if enemyColony.systemId == opp:
+          enemyOwner = enemyColony.owner
+          break
+      
       result.add(Goal(
         goalType: GoalType.InvadeColony,
         priority: 0.85, # High priority for opportunistic invasions
