@@ -13,14 +13,18 @@ import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_types
+import ../goap/core/types # For GoalType
+import ../goap/integration/plan_tracking # For PlanTracker, PlanStatus
 
 proc generateEspionageRequirements*(
   controller: AIController,
   filtered: FilteredGameState,
   intelSnapshot: IntelligenceSnapshot,
-  currentAct: GameAct
+  currentAct: GameAct,
+  availableBudget: int # Total PP available to house for this turn
 ): EspionageRequirements =
-  ## Generate espionage requirements with intelligence-driven priorities
+  ## Generate espionage requirements with intelligence-driven priorities.
+  ## Also factors in "MaintainPrestige" GOAP goal to avoid over-investment penalties.
   ##
   ## Priority tiers:
   ## - Critical: EBP/CIP investment in early game (Act 1-2)
@@ -38,6 +42,17 @@ proc generateEspionageRequirements*(
   let currentEBP = filtered.ownHouse.espionageBudget.ebpPoints
   let currentCIP = filtered.ownHouse.espionageBudget.cipPoints
 
+  # Check if "MaintainPrestige" GOAP goal is active (Gap 6)
+  let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
+    it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
+  )
+  let prestigePenaltyThresholdRatio = 0.05 # 5% of budget as per docs/specs/diplomacy.md
+  let ppPerEBP_CIP = 40 # As per docs/specs/diplomacy.md
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Drungarius: Generating espionage requirements " &
+          &"(EBP={currentEBP}, CIP={currentCIP}, Act={currentAct}, MaintainPrestigeActive={isMaintainPrestigeActive})")
+
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Drungarius: Generating espionage requirements " &
           &"(EBP={currentEBP}, CIP={currentCIP}, Act={currentAct})")
@@ -49,11 +64,52 @@ proc generateEspionageRequirements*(
     of ai_types.GameAct.Act3_TotalWar: 15
     of ai_types.GameAct.Act4_Endgame: 20
 
-  let targetCIP = case currentAct
+  var targetCIP = case currentAct # Use var for modification
     of ai_types.GameAct.Act1_LandGrab: 3
     of ai_types.GameAct.Act2_RisingTensions: 7
     of ai_types.GameAct.Act3_TotalWar: 12
     of ai_types.GameAct.Act4_Endgame: 15
+
+  # === PRESTIGE AWARENESS (Gap 6): Adjust target EBP/CIP if MaintainPrestige is active ===
+  var adjustedTargetEBP = targetEBP
+  var adjustedTargetCIP = targetCIP
+
+  if isMaintainPrestigeActive:
+    # Estimate total PP to reach targets
+    let estimatedEBP_PP_cost = (targetEBP - currentEBP) * ppPerEBP_CIP
+    let estimatedCIP_PP_cost = (targetCIP - currentCIP) * ppPerEBP_CIP
+    let totalEstimatedInvestment_PP = estimatedEBP_PP_cost + estimatedCIP_PP_cost
+
+    let prestigePenaltyThreshold_PP = int(float(availableBudget) * prestigePenaltyThresholdRatio)
+
+    if totalEstimatedInvestment_PP > prestigePenaltyThreshold_PP:
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Drungarius: MaintainPrestige active and EBP/CIP over-investment risk. " &
+                               &"Estimated cost {totalEstimatedInvestment_PP}PP > threshold {prestigePenaltyThreshold_PP}PP. Reducing targets.")
+      
+      # Reduce targets to avoid penalties. Prioritize CIP over EBP for defense.
+      if estimatedEBP_PP_cost > 0:
+        # Reduce EBP target first if it's the larger contributor to overspending
+        # Simple heuristic: scale down EBP target to fit within threshold
+        let newEBP_PP_cost = max(0, prestigePenaltyThreshold_PP - estimatedCIP_PP_cost) # remaining budget for EBP
+        adjustedTargetEBP = currentEBP + (newEBP_PP_cost div ppPerEBP_CIP)
+        adjustedTargetEBP = min(adjustedTargetEBP, targetEBP) # Don't go above original target
+
+      if estimatedCIP_PP_cost > 0 and adjustedTargetEBP < targetEBP: # Only adjust CIP if EBP was reduced
+        # If still over after EBP adjustment, reduce CIP too
+        let newTotalEstimated_PP = (adjustedTargetEBP - currentEBP) * ppPerEBP_CIP + estimatedCIP_PP_cost
+        if newTotalEstimated_PP > prestigePenaltyThreshold_PP:
+            let newCIP_PP_cost = max(0, prestigePenaltyThreshold_PP - (adjustedTargetEBP - currentEBP) * ppPerEBP_CIP)
+            adjustedTargetCIP = currentCIP + (newCIP_PP_cost div ppPerEBP_CIP)
+            adjustedTargetCIP = min(adjustedTargetCIP, targetCIP) # Don't go above original target
+
+      logInfo(LogCategory.lcAI, &"{controller.houseId} Drungarius: Adjusted targets - EBP: {targetEBP}→{adjustedTargetEBP}, CIP: {targetCIP}→{adjustedTargetCIP}.")
+    else:
+      logDebug(LogCategory.lcAI, &"{controller.houseId} Drungarius: MaintainPrestige active, but EBP/CIP investment within safe limits.")
+
+  # Use adjusted targets for requirement generation
+  targetEBP = adjustedTargetEBP
+  targetCIP = adjustedTargetCIP
+
 
   # === CRITICAL/HIGH: EBP Investment (early game) ===
   if currentEBP < targetEBP:
@@ -65,7 +121,7 @@ proc generateEspionageRequirements*(
     else:
       RequirementPriority.Medium
 
-    let investmentCost = ebpGap * 10  # Rough estimate: 10PP per EBP point
+    let investmentCost = ebpGap * ppPerEBP_CIP # Actual cost: 40 PP per EBP point
 
     result.requirements.add(EspionageRequirement(
       requirementType: EspionageRequirementType.EBPInvestment,
@@ -85,7 +141,7 @@ proc generateEspionageRequirements*(
     else:
       RequirementPriority.Medium
 
-    let investmentCost = cipGap * 10  # 10PP per CIP point
+    let investmentCost = cipGap * ppPerEBP_CIP # Actual cost: 40 PP per CIP point
 
     result.requirements.add(EspionageRequirement(
       requirementType: EspionageRequirementType.CIPInvestment,

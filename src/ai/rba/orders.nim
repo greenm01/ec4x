@@ -87,7 +87,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # PHASE 1: MULTI-ADVISOR REQUIREMENT GENERATION
   # ==========================================================================
-  generateAllAdvisorRequirements(controller, filtered, intelSnapshot, currentAct)
+  generateAllAdvisorRequirements(controller, filtered, intelSnapshot, currentAct, filtered.ownHouse.treasury)
 
   # ==========================================================================
   # PHASE 2: BASILEUS MEDIATION & BUDGET ALLOCATION
