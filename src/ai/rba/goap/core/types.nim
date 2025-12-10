@@ -115,6 +115,7 @@ type
     ConstructStarbase         ## Build starbase for defense
     ExpandProduction          ## Increase colony output
     CreateInvasionForce       ## Build transports + marines
+    EnsureRepairCapacity      ## Build drydocks or increase repair capacity
     # Research domain goals (Logothete)
     AchieveTechLevel          ## Reach specific tech level
     CloseResearchGap          ## Match enemy tech
