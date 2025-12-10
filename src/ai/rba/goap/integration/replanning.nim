@@ -172,13 +172,70 @@ proc repairPlan*(
   state: WorldStateSnapshot,
   config: GOAPConfig
 ): Option[GOAPlan] =
-  ## Attempt to repair a failed plan.
+  ## Attempt to repair a failed plan using detailed feedback if available.
   ## Strategy:
   ## - If early in plan: Generate completely new plan for the same goal.
   ## - If late in plan: Try to find alternative actions for the remaining steps (Phase 5).
+  ## - If specific failure reason: Attempt targeted repair/re-planning.
 
   let progress = failedPlan.actionsCompleted.float / max(failedPlan.plan.actions.len, 1).float
 
+  logInfo(LogCategory.lcAI, &"GOAP Repair: Attempting to repair plan '{failedPlan.plan.goal.description}' (Progress: {progress:.2f})")
+
+  # 1. Check for specific failure reasons first (targeted repair)
+  if failedPlan.lastFailedActionReason.isSome:
+    let reason = failedPlan.lastFailedActionReason.get()
+    let suggestion = failedPlan.lastFailedActionSuggestion.getOrDefault("No specific suggestion.")
+    logInfo(LogCategory.lcAI, &"GOAP Repair: Specific failure reason detected: {reason}. Suggestion: {suggestion}")
+
+    case reason
+    of ReplanReason.TechNeeded:
+      # If a build/research action failed due to missing tech, generate a new research goal
+      logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to missing tech. Proposing new research goal.")
+      # The detailed feedback should ideally specify *which* tech field/level is needed.
+      # For now, if the original goal was related to something that needs tech (e.g., building a ship),
+      # we assume the suggestion might contain the tech info or we need to infer it.
+      # This part relies heavily on future parsing of 'suggestion' or richer 'Action' data.
+      # Placeholder: A new GOAP goal "AchieveTechLevel" needs to be dynamically created.
+      # For immediate repair, we might try to replan the original goal, hoping tech will be planned.
+      # Or, a direct replanning of a 'Research' goal might be injected into the tracker.
+      # For now, we'll fall back to replanning the original goal, expecting requirement generation to pick up tech.
+      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+
+    of ReplanReason.BudgetFailure:
+      logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to insufficient budget. Trying cheaper alternatives or adjusting cost.")
+      # Try to generate alternative plans for the original goal, prioritizing cheaper ones
+      let alternatives = generateAlternativePlans(state, failedPlan.plan.goal, maxAlternatives = 3, planningDepth = config.planningDepth)
+      let bestAlternative = selectBestAlternative(alternatives, state, prioritizeSpeed = true) # Prefer cheaper/faster
+      if bestAlternative.isSome:
+        logInfo(LogCategory.lcAI, &"GOAP Repair: Found cheaper alternative plan for '{failedPlan.plan.goal.description}'.")
+        return bestAlternative
+      else:
+        # If no cheaper alternative, maybe generate a 'GainTreasury' goal or just replan original
+        logWarn(LogCategory.lcAI, &"GOAP Repair: No cheaper alternative found. Re-planning original goal.")
+        return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+
+    of ReplanReason.CapacityFull:
+      logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to capacity limits. Proposing new facility build goal.")
+      # If a build action failed due to full colony capacity,
+      # a new GOAP goal "BuildFacility" for Shipyard/Spaceport should be generated.
+      # This requires knowing which system was targeted and what facility type (from suggestion/original action).
+      # For now, fallback to replanning original goal.
+      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+
+    of ReplanReason.PlanInvalidated:
+      logInfo(LogCategory.lcAI, &"GOAP Repair: Plan invalidated by world state. Generating new plan for the same goal.")
+      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+    
+    of ReplanReason.ExternalEvent:
+      logInfo(LogCategory.lcAI, &"GOAP Repair: Plan affected by external event. Re-planning for '{failedPlan.plan.goal.description}'.")
+      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+
+    else:
+      # For other specific failure reasons not explicitly handled, fall through to generic repair.
+      logInfo(LogCategory.lcAI, &"GOAP Repair: Unhandled specific failure reason '{reason}'. Falling back to generic repair.")
+
+  # 2. Generic repair based on progress
   if progress < 0.3 or failedPlan.plan.actions.len < 3:
     # Early failure or very short plan - just replan from scratch for the same goal.
     logInfo(LogCategory.lcAI, &"GOAP Repair: Early plan failure or short plan. Re-planning from scratch for goal '{failedPlan.plan.goal.description}'.")
@@ -186,12 +243,8 @@ proc repairPlan*(
 
   else:
     # Late failure - try to continue with alternative actions or a partial replan.
-    # For Phase 4, we primarily replan entirely. Phase 5 will implement partial repair.
-    #
-    # TODO Phase 5: Implement partial plan repair
-    # This would involve creating a new sub-goal for the *remaining* actions
-    # or finding alternative actions for the current/next few steps.
-    # For now, as a fallback, we replan the whole thing.
+    # Currently, partial repair for late failures is not fully implemented and we replan the whole thing.
+    # TODO Phase 5: Implement robust partial plan repair for late failures.
     logInfo(LogCategory.lcAI, &"GOAP Repair: Late plan failure. Re-planning entire plan for goal '{failedPlan.plan.goal.description}' as partial repair not yet implemented.")
     return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
 
