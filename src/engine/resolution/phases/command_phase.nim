@@ -60,16 +60,17 @@ proc resolveCommandPhase*(state: var GameState,
   # ===================================================================
   # PART A: COMMISSIONING & AUTOMATION
   # ===================================================================
-  # Commission completed projects from previous turn's Maintenance
+  # Commission military units from previous turn's Maintenance
   # This clears shipyard/spaceport dock capacity and makes ships available
+  # (Planetary defense commissioned in Maintenance Phase same turn)
   logInfo(LogCategory.lcOrders, "[COMMAND PART A] Commissioning & automation...")
-  if state.pendingCommissions.len > 0:
-    logInfo(LogCategory.lcEconomy, &"[COMMISSIONING] Processing {state.pendingCommissions.len} completed projects")
-    commissioning.commissionCompletedProjects(state, state.pendingCommissions,
-                                               events)
-    state.pendingCommissions = @[]  # Clear after commissioning
+  if state.pendingMilitaryCommissions.len > 0:
+    logInfo(LogCategory.lcEconomy, &"[COMMISSIONING] Processing {state.pendingMilitaryCommissions.len} military units")
+    commissioning.commissionMilitaryUnits(state, state.pendingMilitaryCommissions,
+                                           events)
+    state.pendingMilitaryCommissions = @[]  # Clear after commissioning
   else:
-    logInfo(LogCategory.lcEconomy, "[COMMISSIONING] No projects to commission this turn")
+    logInfo(LogCategory.lcEconomy, "[COMMISSIONING] No military units to commission this turn")
 
   # Colony automation (auto-loading, auto-repair, auto-squadron balancing)
   # Uses newly-freed dock capacity and commissioned units

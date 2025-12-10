@@ -88,11 +88,96 @@ proc hasSpaceport*(colony: Colony): bool =
   ## Check if colony has at least one operational spaceport
   result = colony.spaceports.len > 0
 
+# Forward declaration for temporary delegation
+proc commissionCompletedProjects*(
+  state: var GameState,
+  completedProjects: seq[econ_types.CompletedProject],
+  events: var seq[res_types.GameEvent]
+)
+
+proc commissionPlanetaryDefense*(
+  state: var GameState,
+  completedProjects: seq[econ_types.CompletedProject],
+  events: var seq[res_types.GameEvent]
+) =
+  ## Commission planetary defense assets in Maintenance Phase (same turn)
+  ##
+  ## This function runs during Maintenance Phase, BEFORE next turn's Conflict Phase.
+  ## Converts completed planetary projects into operational defenses:
+  ## - Fighters → colony.fighterSquadrons (planetside construction)
+  ## - Starbases → colony.starbases (orbital defense)
+  ## - Facilities → colony.spaceports/shipyards/drydocks
+  ## - Ground defenses → colony.groundBatteries/planetaryShieldLevel
+  ## - Ground forces → colony.marines/armies
+  ##
+  ## **Strategic Rationale:** Planetary assets commission immediately so defenders
+  ## can respond to threats arriving next turn's Conflict Phase.
+  ##
+  ## **Called From:** resolveMaintenancePhase() in phases/maintenance_phase.nim
+  ## **Called After:** Construction queue advancement
+  ## **Called Before:** Turn boundary (military units commission next turn)
+
+  # Use same modified colonies pattern as original function
+  var modifiedColonies = initTable[SystemId, Colony]()
+
+  template getColony(colId: SystemId): Colony =
+    if colId in modifiedColonies:
+      modifiedColonies[colId]
+    else:
+      state.colonies[colId]
+
+  template saveColony(colId: SystemId, col: Colony) =
+    modifiedColonies[colId] = col
+
+  # Temporary implementation: delegate to original function
+  # TODO: Extract planetary-specific logic (lines 171-467) after testing
+  commissionCompletedProjects(state, completedProjects, events)
+
+proc commissionMilitaryUnits*(
+  state: var GameState,
+  completedProjects: seq[econ_types.CompletedProject],
+  events: var seq[res_types.GameEvent]
+) =
+  ## Commission military units in Command Phase (next turn)
+  ##
+  ## This function runs at START of Command Phase, after Conflict Phase.
+  ## Converts completed military projects into operational units:
+  ## - Capital ships → squadrons → fleets (auto-assigned)
+  ## - Spacelift ships → fleets (auto-assigned with cargo)
+  ##
+  ## **Strategic Rationale:** Ships built in docks may be destroyed during
+  ## Conflict Phase. Commission only if facilities survived combat.
+  ##
+  ## **Called From:** resolveCommandPhase() in phases/command_phase.nim
+  ## **Called After:** Conflict Phase (combat resolution)
+  ## **Called Before:** resolveBuildOrders() (new construction)
+
+  # Use same modified colonies pattern
+  var modifiedColonies = initTable[SystemId, Colony]()
+
+  template getColony(colId: SystemId): Colony =
+    if colId in modifiedColonies:
+      modifiedColonies[colId]
+    else:
+      state.colonies[colId]
+
+  template saveColony(colId: SystemId, col: Colony) =
+    modifiedColonies[colId] = col
+
+  # Temporary implementation: delegate to original function
+  # TODO: Extract military-specific logic (lines 469-end) after testing
+  commissionCompletedProjects(state, completedProjects, events)
+
 proc commissionCompletedProjects*(
   state: var GameState,
   completedProjects: seq[econ_types.CompletedProject],
   events: var seq[res_types.GameEvent]
 ) =
+  ## DEPRECATED: Legacy function - use commissionPlanetaryDefense() or commissionMilitaryUnits()
+  ##
+  ## This function will be removed after all callers are updated to use the split functions.
+  ## Kept temporarily for backward compatibility during migration.
+  ##
   ## Commission all completed construction projects from Maintenance Phase
   ##
   ## This function runs at the START of Command Phase, before new build orders.

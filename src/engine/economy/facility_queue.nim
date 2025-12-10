@@ -24,7 +24,7 @@
 ## Ships built at spaceports cost 2x PP (applied at order submission time)
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
-import std/[options, tables, algorithm]
+import std/[options, tables, algorithm, strutils]
 import types
 import ../gamestate
 import ../economy/types as econ_types
@@ -249,6 +249,23 @@ proc advanceColonyQueues*(colony: var gamestate.Colony): QueueAdvancementResult 
     let drydockResult = advanceDrydockQueue(drydock, colony.systemId)
     result.completedProjects.add(drydockResult.completedProjects)
     result.completedRepairs.add(drydockResult.completedRepairs)
+
+proc isPlanetaryDefense*(project: econ_types.CompletedProject): bool =
+  ## Returns true if project should commission in Maintenance Phase
+  ## Planetary assets: Facilities, ground forces, fighters (planetside)
+  ## Military assets: Ships built in docks (Command Phase after combat)
+
+  if project.projectType == econ_types.ConstructionType.Building:
+    return project.itemId in [
+      "Starbase", "Spaceport", "Shipyard", "Drydock",
+      "GroundBattery", "Marine", "Army"
+    ] or project.itemId.startsWith("PlanetaryShield")
+
+  # Fighters are planetside, commission with planetary defense
+  if project.projectType == econ_types.ConstructionType.Ship:
+    return project.itemId == "Fighter"
+
+  return false
 
 proc advanceAllQueues*(state: var GameState): tuple[projects: seq[econ_types.CompletedProject], repairs: seq[econ_types.RepairProject]] =
   ## Advance all facility queues across all colonies

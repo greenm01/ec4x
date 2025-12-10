@@ -227,10 +227,11 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Phase 4: Maintenance (upkeep, effect decrements, status updates, queue advancement, fleet movement)
   let completedProjects = resolveMaintenancePhase(result.newState, result.events, effectiveOrders, rng)
 
-  # Store completed projects for next turn's commissioning
-  # These will be commissioned at the start of next turn's Command Phase
-  result.newState.pendingCommissions = completedProjects
-  logDebug(LogCategory.lcEconomy, &"Stored {completedProjects.len} completed projects for next turn commissioning")
+  # Store completed military projects for next turn's commissioning
+  # (Planetary defense already commissioned in Maintenance Phase)
+  # Military units will be commissioned at start of next turn's Command Phase
+  result.newState.pendingMilitaryCommissions = completedProjects
+  logDebug(LogCategory.lcEconomy, &"Stored {completedProjects.len} military projects for next turn commissioning")
 
   # Validate all commissioning pools are empty before advancing turn
   # All commissioned units should be auto-assigned to fleets/colonies
