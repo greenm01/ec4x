@@ -29,12 +29,16 @@ proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPCon
 
   # 1. Check if plan explicitly failed or invalidated
   if plan.status == PlanStatus.Failed:
-    return (true, ReplanReason.PlanFailed)
+    # If the plan failed, use the specific reason from the last failed action if available
+    if plan.lastFailedActionReason.isSome:
+      return (true, plan.lastFailedActionReason.get().toReplanReason()) # Convert UnfulfillmentReason to ReplanReason
+    else:
+      return (true, ReplanReason.PlanFailed) # Generic failure
   if plan.status == PlanStatus.Invalidated:
     return (true, ReplanReason.PlanInvalidated)
   if plan.status == PlanStatus.Completed:
     # Completed plans don't need replanning, they should be archived.
-    return (false, ReplanReason.PlanFailed) # Dummy reason
+    return (false, ReplanReason.PlanFailed) # Dummy reason, as this branch implies no replan
 
   # 2. Check for budget constraints for immediate next action
   if plan.currentActionIndex < plan.plan.actions.len:
