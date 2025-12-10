@@ -1145,9 +1145,20 @@ Gap 7: Endgame & Elimination Strategy [~] IN PROGRESS
 **Plan**:
 1.  **GOAP Endgame Goal**: [X] Introduce a high-priority `AchieveTotalVictory` GOAP goal type that is activated when `isFinalConfrontation` is true, overriding diplomatic goals like `ImproveRelations`.
 2.  **GOAP Survival Goal**: [X] Introduce a `LastStandReconquest` GOAP goal type that is activated if the AI has lost all colonies but retains fleets with marines, overriding most other goals.
-3.  **Diplomacy Overrides**: [ ] Ensure `Protostrator`'s diplomatic requirements generation is correctly adjusted (e.g., no `ProposeAlliance`) during the `Final Confrontation` game state.
+3.  **Diplomacy Overrides**: [X] Ensure `Protostrator`'s diplomatic requirements generation is correctly adjusted (e.g., no `ProposeAlliance`) during the `Final Confrontation` game state.
 
-Status: In Progress
+Status: Complete
+
+
+Gap 7: Endgame & Elimination Strategy [X] COMPLETE
+------------------------------------------------------
+**Current Status**: The AI now has `AchieveTotalVictory` and `LastStandReconquest` GOAP goals, and `Protostrator`'s diplomatic requirements are correctly adjusted (suppressing alliances, prioritizing war) during `Final Confrontation` and when these goals are active.
+
+**Impact**: The AI will play more optimally in endgame scenarios, aggressively pursuing victory or executing desperate last-stand maneuvers, and avoiding inappropriate diplomatic actions.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
 
 
 PHASE 6: NEURAL NETWORK TRAINING (FUTURE)
