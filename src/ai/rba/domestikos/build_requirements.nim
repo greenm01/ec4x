@@ -1483,8 +1483,10 @@ proc generateBuildRequirements*(
   #   - 83% Military fillers → mismatched with 30% Military budget
   # Solution: Budget-matched 20-slot rotation + smart dock/budget balancing
   #   - Matches budget percentages (45% Expansion, 25% Military, 10% Recon, 10% SpecialUnits, 10% Defense)
-  #   - Act-aware ship mix (Fighters in Act 1-2, Transports in Act 3-4)
+  #   - Act-aware ship mix (Fighters all acts, PlanetBreakers Act 4)
+  #   - TroopTransports ONLY via assessOffensiveReadiness() (paired with Marines)
   #   - Accounts for actual high-priority costs and dock usage
+  #   - Treasury-aware: No fillers when hoarding (>5000PP indicates budget problem)
 
   # STEP 1: Calculate available docks and budget
   # Count ACTUAL docks across all colonies (spaceports + shipyards)
@@ -1510,14 +1512,25 @@ proc generateBuildRequirements*(
   # Calculate remaining resources for fillers
   let availableDocks = max(0, totalDocks - docksCommitted)
 
-  # CRITICAL FIX: Generate fillers for ALL available docks
-  # Don't pre-filter by budget - let priority scoring and perSlotBudget handle affordability
-  # The selectBestUnit() function already filters unaffordable ships
-  # Pre-filtering causes Act 3-4 to generate 0 fillers when treasury < avgFillerCost
-  let affordableFillerCount = availableDocks
+  # CRITICAL: Only generate capacity fillers when NOT hoarding treasury
+  # If treasury > 5000PP, it indicates a spending problem (budget not utilized),
+  # NOT a capacity problem (not enough requirements). Generating more requirements
+  # when existing ones aren't being funded just creates noise.
+  #
+  # Thresholds:
+  #   - Treasury < 1000PP: Generate fillers for ALL available docks (need more options)
+  #   - Treasury 1000-5000PP: Generate fillers for 50% of docks (moderate spending)
+  #   - Treasury > 5000PP: Generate 0 fillers (fix budget allocation first)
+  let treasury = filtered.ownHouse.treasury
+  let affordableFillerCount = if treasury > 5000:
+      0  # HOARDING: Fix budget allocation, don't generate filler spam
+    elif treasury > 1000:
+      availableDocks div 2  # MODERATE: Generate some fillers
+    else:
+      availableDocks  # LOW TREASURY: Generate all fillers
 
   # Calculate total filler budget (informational only, not used for filtering)
-  let fillerBudgetEstimate = filtered.ownHouse.treasury
+  let fillerBudgetEstimate = treasury
 
   logDebug(LogCategory.lcAI,
            &"Capacity fillers: treasury={filtered.ownHouse.treasury}PP, " &
@@ -1674,38 +1687,28 @@ proc generateBuildRequirements*(
       estimatedCost = getShipConstructionCost(ShipClass.Scout)
       requirementType = RequirementType.ReconnaissanceGap
 
-    of 13, 14:  # 10% SpecialUnits (2 slots) - ACT-AWARE: Fighters (all acts), Transports (Act 2+), PlanetBreakers (Act 4)
-      # Rotate between Fighter and TroopTransport based on act and slot
+    of 13, 14:  # 10% SpecialUnits (2 slots) - ACT-AWARE: Fighters (all acts), PlanetBreakers (Act 4)
+      # IMPORTANT: TroopTransports REMOVED from capacity filler
+      # Rationale: Transports should ONLY be built when paired with Marines and
+      # coordinated with invasion plans via assessOffensiveReadiness().
+      # Building transports as "filler" creates massive spam (589 transports in 45 turns)
+      # with no Marines to load (only 45 Marines total = 7.6% utilization).
       case currentAct
-      of GameAct.Act1_LandGrab:
-        # Act 1: Fighters for colony defense and space combat
+      of GameAct.Act1_LandGrab, GameAct.Act2_RisingTensions, GameAct.Act3_TotalWar:
+        # Acts 1-3: Fighters for colony defense and space combat
         shipClass = some(ShipClass.Fighter)
-        reason = "Fighter capacity (filler, colony defense)"
+        reason = "Fighter capacity (filler, space combat/defense)"
         estimatedCost = getShipConstructionCost(ShipClass.Fighter)
-      of GameAct.Act2_RisingTensions, GameAct.Act3_TotalWar:
-        # Act 2-3: Mix of Fighters and TroopTransports (rotate by slot)
-        if i mod 2 == 0:
-          shipClass = some(ShipClass.Fighter)
-          reason = "Fighter capacity (filler, space combat)"
-          estimatedCost = getShipConstructionCost(ShipClass.Fighter)
-        else:
-          shipClass = some(ShipClass.TroopTransport)
-          reason = "Transport capacity (filler, invasion/blitz prep)"
-          estimatedCost = getShipConstructionCost(ShipClass.TroopTransport)
       of GameAct.Act4_Endgame:
-        # Act 4: PlanetBreaker (CST 10) if available, else rotate Fighter/Transport
+        # Act 4: PlanetBreaker (CST 10) if available, else Fighters
         if cstLevel >= getShipCSTRequirement(ShipClass.PlanetBreaker) and i mod 3 == 0:
           shipClass = some(ShipClass.PlanetBreaker)
           reason = "Planet-Breaker (filler, strategic weapon)"
           estimatedCost = getShipConstructionCost(ShipClass.PlanetBreaker)
-        elif i mod 2 == 0:
+        else:
           shipClass = some(ShipClass.Fighter)
           reason = "Fighter capacity (filler, space superiority)"
           estimatedCost = getShipConstructionCost(ShipClass.Fighter)
-        else:
-          shipClass = some(ShipClass.TroopTransport)
-          reason = "Transport capacity (filler, invasion prep)"
-          estimatedCost = getShipConstructionCost(ShipClass.TroopTransport)
       objective = BuildObjective.SpecialUnits
       requirementType = RequirementType.StrategicAsset
 
