@@ -1,6 +1,6 @@
 import std/[tables, options, sequtils, algorithm, sugar]
 import ../../../common/types/core # For HouseId, SystemId, FleetId
-import ../../../engine/[gamestate, logger]
+import ../../../engine/[gamestate, logger, event_types] # Added event_types
 import ../controller_types # For AIController, AdvisorRequirement, RequirementFulfillmentStatus, IntelligenceSnapshot, RequirementPriority, BuildRequirement, ResearchRequirement, EspionageRequirement, EconomicRequirement
 import ../goap/core/types # For GOAPlan, WorldStateSnapshot, Action, ActionType, GoalType, TechField
 import ../goap/integration/[plan_tracking, replanning] # For PlanTracker, shouldReplan, ReplanReason
@@ -63,10 +63,11 @@ proc checkActualOutcome(
   action: Action,
   initialGameState: GameState,
   intelSnapshot: IntelligenceSnapshot,
-  currentTechLevels: Table[TechField, int] # AI's current tech levels from controller
+  currentTechLevels: Table[TechField, int], # AI's current tech levels from controller
+  events: seq[GameEvent] # Events from the current turn, filtered for AI visibility
 ): bool =
   ## Checks if a GOAP action had its intended effect by comparing initial game state
-  ## with the intelligence snapshot after orders have been processed.
+  ## with the intelligence snapshot after orders have been processed, and by analyzing events.
   case action.actionType
   of ActionType.BuildFleet:
     let initialCount = getFleetCount(initialGameState, houseId, action.target, action.shipClass)
@@ -81,51 +82,63 @@ proc checkActualOutcome(
     let currentCount = getFacilityOrGroundUnitCount(intelSnapshot, houseId, action.target, action.itemId, false)
     return currentCount > initialCount
   of ActionType.AllocateResearch:
-    let initialTechLevel = initialGameState.techLevels[houseId][action.techField]
-    let currentTechLevel = currentTechLevels[action.techField]
+    let initialTechLevel = initialGameState.techLevels[houseId].getOrDefault(action.techField, 0) # Use getOrDefault for safety
+    let currentTechLevel = currentTechLevels.getOrDefault(action.techField, 0)
     return currentTechLevel > initialTechLevel
   of ActionType.AttackColony:
-    # Check if system ownership changed to this house, indicating a successful invasion/takeover.
-    let initialOwner = initialGameState.systems.getOrDefault(action.target).owner
-    let currentOwner = intelSnapshot.knownSystems.getOrDefault(action.target).owner # Use intel as latest known state
-
-    if initialOwner.isSome and currentOwner.isSome:
-      if initialOwner.get() != houseId and currentOwner.get() == houseId:
-        logInfo(LogCategory.lcAI, &"AttackColony outcome: System {action.target} successfully captured by {houseId}.")
-        return true
-    # Further checks could include comparing fleet/ground force strength before and after if more detailed combat logs were available.
-    return false # Assume failure if not captured
+    # Check for a CombatResultEvent indicating a successful capture or significant victory
+    for event in events:
+      if event.kind == GameEventKind.CombatResult:
+        let combatEvent = CombatResultEvent(event)
+        if combatEvent.attackingHouseId == houseId and combatEvent.systemId == action.target:
+          if combatEvent.newOwner.isSome and combatEvent.newOwner.get() == houseId:
+            logInfo(LogCategory.lcAI, &"AttackColony outcome: System {action.target} successfully captured by {houseId} (via CombatResultEvent).")
+            return true
+          # Could also check for other definitions of success, e.g., enemy fleet destroyed
+          # For now, focus on capture as the primary goal of AttackColony.
+    return false # Assume failure if no successful capture event found
   of ActionType.ConductEspionage:
-    # Direct outcome verification for espionage is challenging without explicit event logs
-    # like "intel gained" or "sabotage successful".
-    # For now, we assume success if the action was fulfilled by RBA.
-    # TODO: Enhance by checking if the AI's known intel (e.g., fleet composition, facility counts)
-    # for the target system/house significantly improved, or if an event log confirms success.
-    logDebug(LogCategory.lcAI, &"ConductEspionage outcome: Assuming success if RBA fulfilled. Requires event logs for full verification.")
-    return true # Placeholder: needs game event feedback
+    # Check for EspionageEvent indicating success
+    for event in events:
+      if event.kind == GameEventKind.Espionage:
+        let espionageEvent = EspionageEvent(event)
+        if espionageEvent.sourceHouseId.isSome and espionageEvent.sourceHouseId.get() == houseId and
+           espionageEvent.targetHouseId == action.targetHouse.get() and
+           espionageEvent.operationType == action.espionageAction:
+          if espionageEvent.success:
+            logInfo(LogCategory.lcAI, &"ConductEspionage outcome: Operation '{action.espionageAction}' against {action.targetHouse.get()} succeeded (via EspionageEvent).")
+            return true
+          else:
+            logWarn(LogCategory.lcAI, &"ConductEspionage outcome: Operation '{action.espionageAction}' against {action.targetHouse.get()} FAILED (via EspionageEvent).")
+            return false # Explicit failure from event
+    # If no event explicitly states success or failure, we can't be sure this turn.
+    logDebug(LogCategory.lcAI, &"ConductEspionage outcome: No explicit event for operation '{action.espionageAction}'. Assuming pending/ongoing.")
+    return true # If RBA fulfilled, assume it's ongoing/pending success without explicit failure
   of ActionType.ProposeAlliance:
     if action.targetHouse.isSome:
-      let initialDiplomacy = initialGameState.diplomaticStates.getOrDefault(houseId).getOrDefault(action.targetHouse.get())
-      let currentDiplomacy = intelSnapshot.diplomaticRelations.getOrDefault(action.targetHouse.get())
-      if currentDiplomacy == DiplomaticState.Alliance and initialDiplomacy != DiplomaticState.Alliance:
-        logInfo(LogCategory.lcAI, &"ProposeAlliance outcome: Alliance with {action.targetHouse.get()} successfully established.")
-        return true
-    return false
+      for event in events:
+        if event.kind == GameEventKind.Diplomacy:
+          let diplomacyEvent = DiplomacyEvent(event)
+          if diplomacyEvent.sourceHouseId.isSome and diplomacyEvent.sourceHouseId.get() == houseId and
+             diplomacyEvent.targetHouseId == action.targetHouse.get() and
+             diplomacyEvent.action == DiplomacyActionType.ProposeAlliance and diplomacyEvent.success.getOrDefault(false):
+            logInfo(LogCategory.lcAI, &"ProposeAlliance outcome: Alliance with {action.targetHouse.get()} successfully established (via DiplomacyEvent).")
+            return true
+    return false # No successful alliance event found
   of ActionType.DeclareWar:
     if action.targetHouse.isSome:
-      let initialDiplomacy = initialGameState.diplomaticStates.getOrDefault(houseId).getOrDefault(action.targetHouse.get())
-      let currentDiplomacy = intelSnapshot.diplomaticRelations.getOrDefault(action.targetHouse.get())
-      if currentDiplomacy == DiplomaticState.War and initialDiplomacy != DiplomaticState.War:
-        logInfo(LogCategory.lcAI, &"DeclareWar outcome: War successfully declared on {action.targetHouse.get()}.")
-        return true
-    return false
-  # Add other actions here that need direct outcome verification.
-  # For now, other actions are primarily deemed successful if RBA fulfills their requirements,
-  # or if game events report success.
+      for event in events:
+        if event.kind == GameEventKind.Diplomacy:
+          let diplomacyEvent = DiplomacyEvent(event)
+          if diplomacyEvent.sourceHouseId.isSome and diplomacyEvent.sourceHouseId.get() == houseId and
+             diplomacyEvent.targetHouseId == action.targetHouse.get() and
+             diplomacyEvent.action == DiplomacyActionType.DeclareWar and diplomacyEvent.success.getOrDefault(false):
+            logInfo(LogCategory.lcAI, &"DeclareWar outcome: War successfully declared on {action.targetHouse.get()} (via DiplomacyEvent).")
+            return true
+    return false # No successful war declaration event found
+  # For actions not explicitly checked here, assume RBA fulfillment implies success for now,
+  # or that their success/failure is implicit in the world state or other mechanisms.
   else:
-    # For actions not explicitly checked here, assume RBA fulfillment implies success for now.
-    # More complex outcome checks (e.g., specific event outcomes)
-    # would require parsing game event logs or deeper state comparisons.
     return true # Default to true for unchecked actions, relying on RBA fulfillment.
 
 
@@ -192,11 +205,12 @@ proc reportGOAPProgress*(
   allocationResult: MultiAdvisorAllocation, # Get full allocation result for feedback
   currentTurn: int,
   intelSnapshot: IntelligenceSnapshot,
-  initialGameState: GameState # For comparing changes to world state to determine action success
+  initialGameState: GameState, # For comparing changes to world state to determine action success
+  events: seq[GameEvent] # Events from the current turn, filtered for AI visibility
 ) =
   ## Reports RBA execution results back to the GOAP PlanTracker.
   ## This allows GOAP to update its plans, detect failures, and adapt.
-  logInfo(LogCategory.lcAI, &"Phase 4 Feedback: Reporting GOAP progress for turn {currentTurn}")
+  logInfo(LogCategory.lcAI, &"Phase 4 Feedback: Reporting GOAP progress for turn {currentTurn} with {events.len} events.")
 
   if not controller.goapEnabled:
     logDebug(LogCategory.lcAI, "GOAP is disabled, skipping progress reporting.")
@@ -265,9 +279,9 @@ proc reportGOAPProgress*(
         break
 
     if actionFulfilled:
-      # RBA fulfilled the requirement, now check if the actual outcome occurred
+      # RBA fulfilled the requirement, now check if the actual outcome occurred using events
       let outcomeSuccessful = checkActualOutcome(
-        controller.houseId, currentAction, initialGameState, intelSnapshot, controller.techLevels
+        controller.houseId, currentAction, initialGameState, intelSnapshot, controller.techLevels, events
       )
       
       if outcomeSuccessful:
@@ -275,7 +289,8 @@ proc reportGOAPProgress*(
         logInfo(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED by {fulfillingAdvisor.get()} and OUTCOME SUCCESSFUL.")
       else:
         # RBA allocated resources, but the intended outcome did not materialize this turn.
-        # This could indicate a problem (e.g., construction blocked, research not yet mature).
+        # This could indicate a problem (e.g., construction blocked, research not yet mature),
+        # or an explicit failure detected via events.
         # Mark as failed for now to trigger replanning, or potentially a "stalled" state.
         controller.planTracker.markActionFailed(planIdx, trackedPlan.currentActionIndex)
         logWarn(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED by {fulfillingAdvisor.get()}, but OUTCOME FAILED. Re-evaluating plan.")
@@ -349,14 +364,15 @@ proc generateFeedback*(
   allocationResult: MultiAdvisorAllocation,
   currentTurn: int,
   intelSnapshot: IntelligenceSnapshot,
-  initialGameState: GameState
+  initialGameState: GameState,
+  events: seq[GameEvent] # Events from the current turn, filtered for AI visibility
 ) =
   ## Coordinates the feedback phase for GOAP and RBA.
   ## This involves reporting GOAP action progress and checking if replanning is needed.
   logInfo(LogCategory.lcAI, &"--- Phase 4: Starting feedback cycle for House {controller.houseId} (Turn {currentTurn}) ---")
 
   # 1. Report RBA's allocation results and actual outcomes to GOAP PlanTracker
-  reportGOAPProgress(controller, allocationResult, currentTurn, intelSnapshot, initialGameState)
+  reportGOAPProgress(controller, allocationResult, currentTurn, intelSnapshot, initialGameState, events)
 
   # 2. Check if replanning is needed based on updated plan status and world state
   let replanReason = checkGOAPReplanningNeeded(controller, currentTurn, intelSnapshot)
