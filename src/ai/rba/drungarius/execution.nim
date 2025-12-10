@@ -1,7 +1,7 @@
 import std/[tables, options, strformat, algorithm, sequtils]
 import ../../../common/types/core
 import ../../../engine/[gamestate, logger]
-import ../../../engine/espionage/types as esp_types
+import ../../../engine/resolution/types as event_types # For EspionageAction
 import ../controller_types # For AIController, AdvisorType, EspionageRequirements, MultiAdvisorAllocation
 import ../config # For globalRBAConfig
 

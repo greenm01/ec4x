@@ -6,29 +6,36 @@
 
 import std/[options, strformat]
 import ../../../common/types/core
-import ../types as res_types
+import ../../../common/types/tech # For TechField (for techType field in event)
+import ../types as event_types # Now refers to src/engine/resolution/types.nim
+
+# Export event_types alias for GameEvent types
+export event_types
 
 proc houseEliminated*(
   eliminatedHouse: HouseId,
   eliminatedBy: HouseId
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for house elimination
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.HouseEliminated,
-    houseId: eliminatedHouse,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.HouseEliminated, # Use specific HouseEliminated type
+    houseId: some(eliminatedHouse),
     description: &"{eliminatedHouse} eliminated by {eliminatedBy}",
-    systemId: none(SystemId)
+    systemId: none(SystemId),
+    eliminatedBy: some(eliminatedBy)
   )
 
 proc techAdvance*(
   houseId: HouseId,
-  techType: string,
+  techType: string, # This should be TechField.str
   newLevel: int
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for technology advancement
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.TechAdvance,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Research, # Use specific Research event type
+    houseId: some(houseId),
     description: &"{techType} advanced to level {newLevel}",
-    systemId: none(SystemId)
+    systemId: none(SystemId),
+    techField: some(parseEnum[TechField](techType)), # Convert string to TechField
+    newLevel: some(newLevel)
   )

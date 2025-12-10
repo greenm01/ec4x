@@ -8,8 +8,7 @@ import ../../engine/gamestate  # For FallbackRoute
 import ../../engine/order_types  # For StandingOrder
 import ../../engine/commands/zero_turn_commands  # For ZeroTurnCommand
 import ../../common/types/[core, units, planets]  # For ShipClass, PlanetClass
-import ../../engine/espionage/types as esp_types  # For EspionageAction
-import ../../engine/diplomacy/proposals as dip_proposals  # For ProposalType
+import ../../engine/resolution/types as event_types # For EspionageAction, DiplomaticProposalType, GameEvent etc.
 import ./shared/intelligence_types  # Enhanced intelligence types (Phase B+)
 import ../../ai/goap/types as goap_types # For GOAPConfig
 import ../../ai/goap/plan_tracking as goap_plan # For PlanTracker

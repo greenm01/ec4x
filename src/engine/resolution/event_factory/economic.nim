@@ -6,20 +6,25 @@
 
 import std/[options, strformat]
 import ../../../common/types/core
-import ../types as res_types
+import ../types as event_types # Now refers to src/engine/resolution/types.nim
+
+# Export event_types alias for GameEvent types
+export event_types
 
 proc constructionStarted*(
   houseId: HouseId,
   itemType: string,
   systemId: SystemId,
   cost: int
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for construction order acceptance
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.ConstructionStarted,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Economy, # Use generic Economy event type
+    houseId: some(houseId),
     description: &"Started construction: {itemType} (cost: {cost} PP)",
-    systemId: some(systemId)
+    systemId: some(systemId),
+    category: some("Construction"),
+    details: some(&"Item: {itemType}, Cost: {cost}PP")
   )
 
 proc populationTransfer*(
@@ -29,7 +34,7 @@ proc populationTransfer*(
   destSystem: SystemId,
   success: bool,
   reason: string = ""
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for population transfer via Space Guild
   let desc = if success:
     &"Population transfer: {ptuAmount} PTU from {sourceSystem} to " &
@@ -37,23 +42,28 @@ proc populationTransfer*(
   else:
     &"Population transfer failed: {ptuAmount} PTU from {sourceSystem} to " &
     &"{destSystem} - {reason}"
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.PopulationTransfer,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Economy, # Use generic Economy event type
+    houseId: some(houseId),
     description: desc,
-    systemId: some(destSystem)
+    systemId: some(destSystem),
+    category: some("PopulationTransfer"),
+    amount: some(ptuAmount),
+    details: some(&"From {sourceSystem}, Success: {success}, Reason: {reason}")
   )
 
 proc terraformComplete*(
   houseId: HouseId,
   systemId: SystemId,
   newEnvironment: string
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for terraforming completion
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.TerraformComplete,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    houseId: some(houseId),
     description: &"Terraforming complete at system {systemId}: now " &
                   &"{newEnvironment}",
-    systemId: some(systemId)
+    systemId: some(systemId),
+    colonyEventType: some("TerraformComplete"),
+    details: some(&"New Planet Class: {newEnvironment}")
   )
