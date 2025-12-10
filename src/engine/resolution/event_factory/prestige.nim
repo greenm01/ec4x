@@ -6,20 +6,26 @@
 
 import std/[options, strformat]
 import ../../../common/types/core
-import ../types as res_types
+import ../types as event_types # Now refers to src/engine/resolution/types.nim
+
+# Export event_types alias for GameEvent types
+export event_types
 
 proc prestigeGained*(
   houseId: HouseId,
   amount: int,
   reason: string,
   systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for prestige gain
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.PrestigeGained,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Prestige, # Use specific Prestige event type
+    houseId: some(houseId),
     description: &"Gained {amount} prestige: {reason}",
-    systemId: systemId
+    systemId: systemId,
+    sourceHouseId: some(houseId),
+    changeAmount: some(amount),
+    details: some(reason)
   )
 
 proc prestigeLost*(
@@ -27,11 +33,14 @@ proc prestigeLost*(
   amount: int,
   reason: string,
   systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for prestige loss
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.PrestigeLost,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Prestige, # Use specific Prestige event type
+    houseId: some(houseId),
     description: &"Lost {amount} prestige: {reason}",
-    systemId: systemId
+    systemId: systemId,
+    sourceHouseId: some(houseId),
+    changeAmount: some(-amount), # Negative amount for loss
+    details: some(reason)
   )

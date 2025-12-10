@@ -6,32 +6,40 @@
 
 import std/[options, strformat]
 import ../../../common/types/[core, units]
-import ../types as res_types
+import ../types as event_types # Now refers to src/engine/resolution/types.nim
+
+# Export event_types alias for GameEvent types
+export event_types
 
 proc shipCommissioned*(
   houseId: HouseId,
   shipClass: ShipClass,
   systemId: SystemId
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for ship commissioning
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.ShipCommissioned,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Fleet, # Use generic Fleet event type
+    houseId: some(houseId),
     description: &"{shipClass} commissioned at system {systemId}",
-    systemId: some(systemId)
+    systemId: some(systemId),
+    fleetEventType: some("Created"),
+    shipClass: some(shipClass),
+    details: some(&"ShipClass: {shipClass}")
   )
 
 proc buildingCompleted*(
   houseId: HouseId,
   buildingType: string,
   systemId: SystemId
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for building completion
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.BuildingCompleted,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    houseId: some(houseId),
     description: &"{buildingType} completed at system {systemId}",
-    systemId: some(systemId)
+    systemId: some(systemId),
+    colonyEventType: some("BuildingCompleted"),
+    details: some(&"BuildingType: {buildingType}")
   )
 
 proc unitRecruited*(
@@ -39,17 +47,19 @@ proc unitRecruited*(
   unitType: string,
   systemId: SystemId,
   quantity: int = 1
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for ground unit recruitment
   let desc = if quantity == 1:
     &"{unitType} recruited at system {systemId}"
   else:
     &"{quantity} {unitType} units recruited at system {systemId}"
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.UnitRecruited,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    houseId: some(houseId),
     description: desc,
-    systemId: some(systemId)
+    systemId: some(systemId),
+    colonyEventType: some("UnitRecruited"),
+    details: some(&"UnitType: {unitType}, Quantity: {quantity}")
   )
 
 proc unitDisbanded*(
@@ -57,11 +67,13 @@ proc unitDisbanded*(
   unitType: string,
   reason: string,
   systemId: Option[SystemId] = none(SystemId)
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for unit disbanding (manual or capacity enforcement)
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.UnitDisbanded,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    houseId: some(houseId),
     description: &"{unitType} disbanded: {reason}",
-    systemId: systemId
+    systemId: systemId,
+    colonyEventType: some("UnitDisbanded"),
+    details: some(&"UnitType: {unitType}, Reason: {reason}")
   )

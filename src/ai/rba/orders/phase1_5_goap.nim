@@ -17,6 +17,7 @@ import ../controller_types # For UnfulfillmentReason, RequirementFeedback
 import ../../common/types as ai_types
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, logger, research/types as res_types] # Added res_types for TechField parsing
+import ../../../engine/resolution/types as event_types # Use engine/resolution/types for GameEvent
 import ../config # Import RBA config for GOAPConfig
 
 export goap_snapshot.createWorldStateSnapshot # Export it for other phases to use

@@ -12,7 +12,8 @@
 
 import std/[tables, options, random, sequtils, sets, strformat]
 import ../../common/types/[core, tech, units]
-import ../../engine/[gamestate, fog_of_war, orders, logger, fleet, event_types] # Added event_types
+import ../../engine/[gamestate, fog_of_war, orders, logger, fleet]
+import ../../engine/resolution/types as event_types # Use engine/resolution/types for GameEvent
 import ../../engine/commands/zero_turn_commands
 import ../../engine/research/types as res_types
 import ../common/types as ai_types

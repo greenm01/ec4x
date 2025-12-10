@@ -6,21 +6,25 @@
 
 import std/[options, strformat]
 import ../../../common/types/core
-import ../types as res_types
+import ../types as event_types # Now refers to src/engine/resolution/types.nim
+
+# Export event_types alias for GameEvent types
+export event_types
 
 proc resourceWarning*(
   houseId: HouseId,
   resourceType: string,
   currentAmount: int,
   warningThreshold: int
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for low resource warning
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.ResourceWarning,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.General, # Use General event type for warnings
+    houseId: some(houseId),
     description: &"Low {resourceType}: {currentAmount} (threshold: " &
                   &"{warningThreshold})",
-    systemId: none(SystemId)
+    systemId: none(SystemId),
+    message: &"Resource Warning: Low {resourceType} ({currentAmount}/{warningThreshold})"
   )
 
 proc threatDetected*(
@@ -28,25 +32,27 @@ proc threatDetected*(
   threatType: string,
   threatSource: HouseId,
   systemId: SystemId
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for detected threat (enemy fleet, spy, etc.)
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.ThreatDetected,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.General, # Use General event type for threats
+    houseId: some(houseId),
     description: &"{threatType} detected from {threatSource} at system " &
                   &"{systemId}",
-    systemId: some(systemId)
+    systemId: some(systemId),
+    message: &"Threat Detected: {threatType} from {threatSource} at {systemId}"
   )
 
 proc automationCompleted*(
   houseId: HouseId,
   actionType: string,
   systemId: SystemId
-): res_types.GameEvent =
+): event_types.GameEvent =
   ## Create event for completed automation (auto-repair, auto-load, etc.)
-  res_types.GameEvent(
-    eventType: res_types.GameEventType.AutomationCompleted,
-    houseId: houseId,
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.General, # Use General event type
+    houseId: some(houseId),
     description: &"Automation completed: {actionType} at system {systemId}",
-    systemId: some(systemId)
+    systemId: some(systemId),
+    message: &"Automation Completed: {actionType} at {systemId}"
   )
