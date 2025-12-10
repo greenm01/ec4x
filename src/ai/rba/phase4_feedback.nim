@@ -221,9 +221,12 @@ proc reportGOAPProgress*(
 
     # Check if the current GOAP action was fulfilled by RBA
     var actionFulfilled = false
+    var fulfillingAdvisor: Option[AdvisorType] = none(AdvisorType)
+
     for fulfilledReq in allFulfilledReqs:
       if matchActionToRequirement(currentAction, fulfilledReq):
         actionFulfilled = true
+        fulfillingAdvisor = some(fulfilledReq.advisor)
         break
 
     if actionFulfilled:
@@ -234,13 +237,13 @@ proc reportGOAPProgress*(
       
       if outcomeSuccessful:
         controller.planTracker.markActionComplete(planIdx, trackedPlan.currentActionIndex)
-        logInfo(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED and OUTCOME SUCCESSFUL.")
+        logInfo(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED by {fulfillingAdvisor.get()} and OUTCOME SUCCESSFUL.")
       else:
         # RBA allocated resources, but the intended outcome did not materialize this turn.
         # This could indicate a problem (e.g., construction blocked, research not yet mature).
         # Mark as failed for now to trigger replanning, or potentially a "stalled" state.
         controller.planTracker.markActionFailed(planIdx, trackedPlan.currentActionIndex)
-        logWarn(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED by RBA, but OUTCOME FAILED. Re-evaluating plan.")
+        logWarn(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED by {fulfillingAdvisor.get()}, but OUTCOME FAILED. Re-evaluating plan.")
     else:
       # If action was not explicitly fulfilled by RBA, check if it was explicitly unfulfilled (especially critical ones)
       var actionFailed = false
