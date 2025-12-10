@@ -1050,7 +1050,7 @@ Gap 5: Comprehensive Repair Planning and Drydock Management [~] IN PROGRESS
 ---------------------------------------------------------------------------
 [X] Damage Tracking in AssetInventory
 [X] Drydock Need Assessment logic
-[ ] GOAP Goal for Repair Capacity
+[X] GOAP Goal for Repair Capacity
 [ ] Refined AutoRepair Logic
 
 Status: In Progress
