@@ -85,16 +85,40 @@ proc checkActualOutcome(
     let currentTechLevel = currentTechLevels[action.techField]
     return currentTechLevel > initialTechLevel
   of ActionType.AttackColony:
-    # TODO: Implement combat outcome verification (e.g., check for system ownership change, fleet losses, ground unit changes)
-    # This would require parsing combat event logs or detailed state comparison post-combat.
-    return true # Assume success if executed for now
+    # Check if system ownership changed to this house, indicating a successful invasion/takeover.
+    let initialOwner = initialGameState.systems.getOrDefault(action.target).owner
+    let currentOwner = intelSnapshot.knownSystems.getOrDefault(action.target).owner # Use intel as latest known state
+
+    if initialOwner.isSome and currentOwner.isSome:
+      if initialOwner.get() != houseId and currentOwner.get() == houseId:
+        logInfo(LogCategory.lcAI, &"AttackColony outcome: System {action.target} successfully captured by {houseId}.")
+        return true
+    # Further checks could include comparing fleet/ground force strength before and after if more detailed combat logs were available.
+    return false # Assume failure if not captured
   of ActionType.ConductEspionage:
-    # TODO: Implement espionage outcome verification (e.g., check for intel gained, successful sabotage/assassination, counter-detection)
-    # This would require parsing espionage event logs.
-    return true # Assume success if executed for now
-  of ActionType.ProposeAlliance, ActionType.DeclareWar:
-    # TODO: Implement diplomatic outcome verification (e.g., check diplomatic state change, event logs)
-    return true # Assume success if executed for now
+    # Direct outcome verification for espionage is challenging without explicit event logs
+    # like "intel gained" or "sabotage successful".
+    # For now, we assume success if the action was fulfilled by RBA.
+    # TODO: Enhance by checking if the AI's known intel (e.g., fleet composition, facility counts)
+    # for the target system/house significantly improved, or if an event log confirms success.
+    logDebug(LogCategory.lcAI, &"ConductEspionage outcome: Assuming success if RBA fulfilled. Requires event logs for full verification.")
+    return true # Placeholder: needs game event feedback
+  of ActionType.ProposeAlliance:
+    if action.targetHouse.isSome:
+      let initialDiplomacy = initialGameState.diplomaticStates.getOrDefault(houseId).getOrDefault(action.targetHouse.get())
+      let currentDiplomacy = intelSnapshot.diplomaticRelations.getOrDefault(action.targetHouse.get())
+      if currentDiplomacy == DiplomaticState.Alliance and initialDiplomacy != DiplomaticState.Alliance:
+        logInfo(LogCategory.lcAI, &"ProposeAlliance outcome: Alliance with {action.targetHouse.get()} successfully established.")
+        return true
+    return false
+  of ActionType.DeclareWar:
+    if action.targetHouse.isSome:
+      let initialDiplomacy = initialGameState.diplomaticStates.getOrDefault(houseId).getOrDefault(action.targetHouse.get())
+      let currentDiplomacy = intelSnapshot.diplomaticRelations.getOrDefault(action.targetHouse.get())
+      if currentDiplomacy == DiplomaticState.War and initialDiplomacy != DiplomaticState.War:
+        logInfo(LogCategory.lcAI, &"DeclareWar outcome: War successfully declared on {action.targetHouse.get()}.")
+        return true
+    return false
   # Add other actions here that need direct outcome verification.
   # For now, other actions are primarily deemed successful if RBA fulfills their requirements,
   # or if game events report success.
