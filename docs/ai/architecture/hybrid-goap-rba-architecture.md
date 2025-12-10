@@ -1,8 +1,13 @@
 # Hybrid GOAP/RBA AI Architecture
 
 **Last Updated:** 2025-12-10
-**Status:** Design Document (GOAP implemented, integration in progress)
+**Status:** Design Document (GOAP fully integrated, ongoing refinement)
 **System:** Byzantine Imperial AI with Strategic Planning Layer
+
+---
+
+**Note on Phase Numbering:**
+The conceptual phases outlined in this document (e.g., "Phase 0: Intelligence Distribution") map directly to the corresponding phase blocks defined and executed within `src/ai/rba/orders.nim`. For full clarity, refer to the `src/ai/rba/orders.nim` file for the precise sequence and implementation details of each phase.
 
 ---
 
@@ -307,146 +312,169 @@ PHASE 4: FEEDBACK TO GOAP
 
 ### Per-Turn Integration Flow
 
+```mermaid
+graph TD
+    subgraph AI Turn Cycle
+        A[Start Turn N] --> P0(Phase 0: Intelligence Distribution);
+        P0 --> P1(Phase 1: Multi-Advisor Requirement Generation);
+        P1 --> P1_5(Phase 1.5: GOAP Strategic Planning);
+        P1_5 --> P2(Phase 2: Mediation & Budget Allocation);
+        P2 --> P3(Phase 3: Requirement Execution - Non-Iterative);
+        P3 --> P3_4(Phase 3/4: Unified Feedback Loop - Iterative Execution & Reprioritization);
+        P3_4 --> P5(Phase 5: Strategic Operations Planning);
+        P5 --> P6(Phase 6: Standing Orders Assignment);
+        P6 --> P7(Phase 7: Tactical Fleet Orders);
+        P7 --> P7_5(Phase 7.5: Colony Management);
+        P7_5 --> P8(Phase 8: Logistics Optimization);
+        P8 --> P8_5(Phase 8.5: Report GOAP Progress);
+        P8_5 --> Z[End Turn N / Start Turn N+1];
+    end
 ```
-TURN N: HYBRID GOAP/RBA EXECUTION
-==================================
 
-+--------------------------------------------------------------+
-| PHASE 0: INTELLIGENCE (RBA)                                  |
-+--------------------------------------------------------------+
-| Drungarius --> IntelligenceSnapshot                          |
-|  - Update threat assessments                                 |
-|  - Detect opportunities                                      |
-|  - Track enemy construction                                  |
-+--------------------+-------------------------------------+----+
-                     |
-                     +--> [To GOAP: World state update]
-                     |
-                     +--> [To RBA: Advisor distribution]
-                           |
-                           v
+```
+DETAILED PER-TURN EXECUTION FLOW
+================================
 
-+--------------------------------------------------------------+
-| PHASE 1: REQUIREMENT GENERATION (RBA)                        |
-+--------------------------------------------------------------+
-| All 6 advisors generate requirements                        |
-|  Domestikos --> BuildRequirements                           |
-|  Logothete --> ResearchRequirements                         |
-|  Drungarius --> EspionageRequirements                       |
-|  Eparch --> EconomicRequirements                            |
-|  Protostrator --> DiplomaticActions                         |
-+--------------------+-----------------------------------------+
-                     |
-                     +--> [To GOAP: Extract strategic goals]
-                           |
-                           v
-
-+--------------------------------------------------------------+
-| PHASE 1.5: STRATEGIC PLANNING (GOAP)                         |
-+--------------------------------------------------------------+
-| +----------------------------------------------------------+ |
-| | STEP 1: Goal Extraction                                 | |
-| |  - Parse requirements for strategic intent              | |
-| |  - Identify multi-turn objectives                       | |
-| |  - Prioritize by urgency + strategic value              | |
-| +----------------------------------------------------------+ |
-|                          |                                   |
-|                          v                                   |
-| +----------------------------------------------------------+ |
-| | STEP 2: Plan Generation (if needed)                     | |
-| |  - For new goals --> run A* planner                     | |
-| |  - For active goals --> check progress                  | |
-| |  - Detect plan failures --> trigger replan              | |
-| +----------------------------------------------------------+ |
-|                          |                                   |
-|                          v                                   |
-| +----------------------------------------------------------+ |
-| | STEP 3: Cost Estimation                                 | |
-| |  - Per-turn budget needs for each goal                  | |
-| |  - Multi-turn resource reservations                     | |
-| |  - Priority weights for mediation                       | |
-| +----------------------------------------------------------+ |
-|                                                              |
-| Output:                                                      |
-|  - Active goals with current-turn actions                   |
-|  - Cost estimates per advisor                               |
-|  - Budget reservation requests                              |
-+--------------------+-----------------------------------------+
-                     |
-                     | Strategic Guidance
-                     |
-                     v
-
-+--------------------------------------------------------------+
-| PHASE 2: MEDIATION & ALLOCATION (RBA + GOAP)                |
-+--------------------------------------------------------------+
-| Treasurer allocates budget with GOAP guidance               |
-|                                                              |
-| Input:                                                       |
-|  - RBA Requirements (from Phase 1)                          |
-|  - GOAP Guidance (from Phase 1.5)                           |
-|  - Treasury available                                        |
-|                                                              |
-| Process:                                                     |
-|  1. Count Critical/High/Medium requirements                 |
-|  2. Apply personality weights (Aggressive, Balanced, etc)   |
-|  3. Apply GOAP priority boost (goal-aligned requirements)   |
-|  4. Allocate PP proportionally                              |
-|                                                              |
-| Output: MultiAdvisorAllocation                              |
-|  - budgets: Table[AdvisorType, int]                         |
-|  - reserved: int (for future turns)                         |
-+--------------------+-----------------------------------------+
-                     |
-                     | Budget Allocations
-                     |
-                     v
-
-+--------------------------------------------------------------+
-| PHASE 3/4: EXECUTION & FEEDBACK (RBA)                       |
-+--------------------------------------------------------------+
-| Iterative fulfillment (3 iterations max)                    |
-|                                                              |
-| ITERATION 1:                                                |
-|  [X] Process requirements with allocated budgets            |
-|  [X] Track fulfilled/unfulfilled per advisor                |
-|  [X] Check convergence (any Critical/High unfulfilled?)     |
-|                                                              |
-| IF unfulfilled Critical/High --> ITERATION 2:               |
-|  [X] Reprioritize: downgrade expensive requirements         |
-|  [X] Substitute: suggest cheaper alternatives               |
-|  [X] Retry execution                                        |
-|                                                              |
-| Output: OrderPacket (ships, research, espionage, etc)       |
-+--------------------+-----------------------------------------+
-                     |
-                     | Execution Results
-                     |
-                     v
-
-+--------------------------------------------------------------+
-| PHASE 5: FEEDBACK TO GOAP (Bidirectional)                   |
-+--------------------------------------------------------------+
-| RBA --> GOAP:                                                |
-|  - Goal progress updates ("Built 5/10 Destroyers")          |
-|  - Plan failures ("Couldn't afford Marines")                |
-|  - Unexpected events ("Homeworld attacked!")                |
-|                                                              |
-| GOAP --> GOAP:                                               |
-|  - Update world state snapshot                               |
-|  - Check goal completion                                     |
-|  - Trigger replanning if needed                              |
-|                                                              |
-| Replanning Triggers:                                         |
-|  - Goal failed (insufficient resources)                      |
-|  - Goal completed (mark success)                             |
-|  - Major threat detected (shift priorities)                  |
-|  - Opportunity appeared (add opportunistic goal)             |
-|  - Plan stalled (>2 turns without progress)                  |
-+--------------------------------------------------------------+
-                     |
-                     v
-               [Next Turn]
++------------------------------------------------------------------------------------+
+| PHASE 0: INTELLIGENCE DISTRIBUTION (Drungarius, `generateIntelligenceSnapshot`)    |
++------------------------------------------------------------------------------------+
+| Input: FilteredGameState, AIController                                             |
+| Output: IntelligenceSnapshot (stored in AIController)                              |
+| Process: Consolidates all visible game state information for internal AI use,      |
+|          respecting Fog of War. Updates threat assessments, opportunities.         |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 1: MULTI-ADVISOR REQUIREMENT GENERATION (`generateAllAdvisorRequirements`)   |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, IntelligenceSnapshot                       |
+| Output: Advisor-specific Requirement objects (stored in AIController)              |
+| Process: Each of the 6 advisors generates a list of prioritized requirements       |
+|          (e.g., build ships, research tech, conduct espionage) for the turn.       |
+|          GOAP's active plans influence these requirements, boosting priorities.    |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 1.5: GOAP STRATEGIC PLANNING (`executePhase15_GOAP`)                         |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, IntelligenceSnapshot                       |
+| Output: Updated AIController.goapPlanTracker, GOAP budget estimates for Treasurer  |
+| Process:                                                                           |
+|  - GOAL EXTRACTION: Identify strategic goals from the current world state.         |
+|  - PRIORITY REASSESSMENT: Dynamically adjust goal priorities based on game context.|
+|  - TARGETED GOAL INJECTION: If replanning, add specific high-priority goals (e.g., |
+|    `AchieveTechLevel` for `TechNeeded` failure, `GainTreasury` for `BudgetFailure`).|
+|  - PLAN GENERATION/REPAIR: Creates new multi-turn plans for goals, or attempts    |
+|    `repairPlan` for failed/stalled plans using detailed feedback.                  |
+|  - BUDGET ESTIMATION: Provides GOAP's estimated costs for each domain to Treasurer.|
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 2: BASILEUS MEDIATION & BUDGET ALLOCATION (`mediateAndAllocateBudget`)       |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, all Advisor Requirements, GOAP estimates   |
+| Output: MultiAdvisorAllocation (stored in AIController.lastTurnAllocationResult)   |
+| Process:                                                                           |
+|  - BASILEUS MEDIATION: Weights all requirements by `AIPersonality`, `GameAct`,     |
+|    and GOAP priority boosts. Resolves conflicts.                                   |
+|  - TREASURER ALLOCATION: Reserves minimum budgets (recon, expansion), then         |
+|    distributes remaining PP/RP/EBP/CIP based on weighted requirements.             |
+|  - DETAILED FEEDBACK: Generates `RequirementFeedback` for unfulfilled              |
+|    requirements, including specific reasons and suggestions for GOAP/RBA.          |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 3: REQUIREMENT EXECUTION (Non-Iterative Orders)                              |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, MultiAdvisorAllocation                     |
+| Output: Partial OrderPacket (research, espionage, terraform, diplomatic actions)   |
+| Process: Converts initially allocated budgets and fulfilled requirements into      |
+|          orders for research, espionage, terraforming, and diplomacy.              |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 3/4: UNIFIED FEEDBACK LOOP (Iterative Execution & Reprioritization)          |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, MultiAdvisorAllocation                     |
+| Output: Finalized Build Orders, potentially adjusted other orders                  |
+| Process: (Up to 3 iterations)                                                      |
+|  - EXECUTION: All advisor order execution procedures (including build orders) run. |
+|  - CONVERGENCE CHECK: `hasUnfulfilledCriticalOrHigh` checks if high-priority       |
+|    requirements remain unfulfilled from the Treasurer's feedback.                  |
+|  - REPRIORITIZATION: If unfulfilled, `reprioritizeAllAdvisors` modifies advisor   |
+|    requirements using detailed Treasurer feedback.                                 |
+|  - RE-ALLOCATION/RE-EXECUTION: Budget is re-allocated and orders re-executed      |
+|    with adjusted priorities until convergence or iteration limit reached.          |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 5: STRATEGIC OPERATIONS PLANNING (`identifyInvasionOpportunities`)           |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: CoordinatedOperation objects (for GOAP planning)                           |
+| Process: Identifies high-level strategic opportunities for military operations     |
+|          (e.g., vulnerable enemy colonies for invasion) and queues them for GOAP.  |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 6: STANDING ORDERS ASSIGNMENT (`assignStandingOrders`)                       |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: Updated AIController.standingOrders, Logistics build requirements          |
+| Process: Assigns persistent routine orders to fleets (e.g., `AutoRepair`,          |
+|          `AutoColonize`, `DefendSystem`). Includes intelligent Drydock selection   |
+|          for `AutoRepair`. Logistics-generated build requirements (e.g., Drydocks)|
+|          are added to Domestikos' requirements.                                    |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 7: TACTICAL FLEET ORDERS (`generateFleetOrders`)                             |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: Tactical FleetOrder objects                                                |
+| Process: Generates explicit movement and combat orders for non-routine or          |
+|          offensive fleet operations, overriding standing orders.                   |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 7.5: COLONY MANAGEMENT (`generateColonyManagementOrders`)                    |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: ColonyManagementOrder objects                                              |
+| Process: Manages colony-specific settings (e.g., tax rates, auto-repair flags).    |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 8: LOGISTICS OPTIMIZATION (`generateLogisticsOrders`)                        |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: ZeroTurnCommands (cargo, squadrons), PopulationTransferOrders, FleetOrders  |
+| Process: Optimizes use of existing assets: cargo, population transfers, fleet       |
+|          lifecycle (Salvage, Mothball, Reactivate), and Drydock management.        |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 8.5: REPORT GOAP PROGRESS (RBA -> GOAP Feedback, `generateFeedback`)         |
++------------------------------------------------------------------------------------+
+| Input: AIController, MultiAdvisorAllocation, GameEvents                            |
+| Output: Updated AIController.goapPlanTracker, `controller.replanNeeded` flag      |
+| Process:                                                                           |
+|  - PROGRESS REPORTING: Matches RBA outcomes to GOAP actions; uses `GameEvent`s    |
+|    to verify success/failure (`checkActualOutcome`). Stores detailed feedback.     |
+|  - REPLANNING TRIGGERS: `checkGOAPReplanningNeeded` assesses plan health, detects  |
+|    opportunities, and sets a flag for next turn's GOAP planning if needed.         |
++------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -959,6 +987,8 @@ COMPONENT IMPLEMENTATION STATUS
 |  - Diplomatic goals & actions           |    [X]   |   200    |
 |  - Espionage goals & actions            |    [X]   |   250    |
 |  - Economic goals & actions             |    [X]   |   200    |
+|  - Repair/Drydock goals & actions       |    [X]   |    50    |
+|  - Prestige goals & actions             |    [X]   |    50    |
 |                                         |          |          |
 | RBA-GOAP INTEGRATION                    |          |          |
 |  - Goal extraction                      |    [X]   |   200    |
@@ -966,23 +996,22 @@ COMPONENT IMPLEMENTATION STATUS
 |  - Replanning triggers                  |    [X]   |   140    |
 |  - Phase 1.5 entry point                |    [X]   |   280    |
 |  - Budget guidance                      |    [X]   |    550   |
-|  - Feedback loops                       |    [X]   |    245   |
+|  - Feedback loops (Phase 8.5)           |    [X]   |    245   |
 |                                         |          |          |
 | RBA CORE (Production-Ready)             |          |          |
 |  - Basileus orchestrator                |    [X]   |   400    |
 |  - 6 Advisors (Domestikos, etc)         |    [X]   |  3,200   |
 |  - Treasurer (CFO)                      |    [X]   |   800    |
-|  - 5-Phase process                      |    [X]   |  1,200   |
-|  - Feedback loops                       |    [X]   |   500    |
+|  - 9-Phase process (0-8.5)              |    [X]   |  1,200   |
+|  - Feedback loops (RBA internal)        |    [X]   |   500    |
 +-----------------------------------------+----------+----------+
-| TOTAL                                   |   ~92%   |  9,855   |
+| TOTAL                                   |  ~99%    |  10,045  |
 +-----------------------------------------+----------+----------+
 
 Legend:
   [X] = Complete and tested
   [~] = Implemented but needs enhancement
   [ ] = Not yet implemented
-```
 
 ### Integration Roadmap
 
@@ -1024,7 +1053,7 @@ Date: 2025-12-10
 Status: 100% complete (multi-turn reservations active)
 
 
-PHASE 4: FEEDBACK LOOPS [X] COMPLETE
+PHASE 8.5: FEEDBACK LOOPS [X] COMPLETE
 -------------------------------------
 [X] RBA --> GOAP goal progress updates
 [X] GOAP reacts to detailed unfulfillment reasons (`TechNeeded`, `BudgetFailure`, `CapacityFull`)
@@ -1033,17 +1062,6 @@ PHASE 4: FEEDBACK LOOPS [X] COMPLETE
 
 Target: 2025-12-20
 Status: Complete, further refinement in Phase 5
-
-
-PHASE 5: FULL INTEGRATION (FUTURE)
------------------------------------
-[ ] Multi-turn coordination
-[ ] Cross-advisor dependencies
-[ ] Risk assessment integration
-[ ] Diagnostic visibility
-
-Target: 2026-Q1
-Status: Specification phase
 
 
 Gap 1: GOAP's Direct Actionability of Detailed Feedback [X] COMPLETE
@@ -1085,17 +1103,6 @@ Gap 5: Comprehensive Repair Planning and Drydock Management [X] COMPLETE
 [X] Refined AutoRepair Logic
 
 Status: Complete
-
-
-PHASE 6: NEURAL NETWORK TRAINING (FUTURE)
-------------------------------------------
-[ ] Export GOAP/RBA decisions as training data
-[ ] Train NN on GPU (desktop)
-[ ] NN learns from GOAP strategic patterns
-[ ] Hybrid NN/GOAP/RBA system
-
-Target: 2026-Q2
-Status: Planning phase
 
 
 Gap 6: Proactive Prestige Management (Avoid Penalties, Exploit Opponent Penalties) [~] IN PROGRESS
