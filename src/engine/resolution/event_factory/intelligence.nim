@@ -18,7 +18,8 @@ proc intelGathered*(
 ): event_types.GameEvent =
   ## Create event for successful intelligence gathering (legacy ViewWorld)
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Intelligence, # Use specific Intelligence event type
+    eventType: event_types.GameEventType.IntelGathered, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"Gathered {intelType} intelligence on {targetHouse} at " &
                   &"system {systemId}",
@@ -37,7 +38,8 @@ proc spyMissionSucceeded*(
   ## Create event for successful passive intelligence mission
   ## missionType: "SpyOnPlanet", "SpyOnSystem", or "HackStarbase"
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage, # Use specific Espionage event type
+    eventType: event_types.GameEventType.SpyMissionSucceeded, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"{missionType} mission succeeded against {target} at " &
                   &"system {systemId}",
@@ -67,7 +69,8 @@ proc sabotageConducted*(
     else: esp_types.EspionageAction.SabotageLowImpact # Default
   
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.SabotageConducted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Sabotage ({sabotageType}) conducted against {target} at " &
                   &"system {systemId}: {damage} IU destroyed",
@@ -88,7 +91,8 @@ proc techTheftExecuted*(
 ): event_types.GameEvent =
   ## Create event for technology theft
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.TechTheftExecuted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Tech theft executed against {target}: {srpStolen} SRP " &
                   &"stolen",
@@ -108,7 +112,8 @@ proc assassinationAttempted*(
 ): event_types.GameEvent =
   ## Create event for assassination operation
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.AssassinationAttempted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Assassination attempted against {target}: {srpReduction} " &
                   &"SRP disruption",
@@ -128,7 +133,8 @@ proc economicManipulationExecuted*(
 ): event_types.GameEvent =
   ## Create event for economic manipulation
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.EconomicManipulationExecuted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Economic manipulation executed against {target}: " &
                   &"{ncvReduction} NCV reduction",
@@ -148,7 +154,8 @@ proc cyberAttackConducted*(
 ): event_types.GameEvent =
   ## Create event for cyber attack on starbase
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.CyberAttackConducted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Cyber attack conducted against {target} starbase at " &
                   &"system {targetSystem}",
@@ -168,7 +175,8 @@ proc psyopsCampaignLaunched*(
 ): event_types.GameEvent =
   ## Create event for psychological operations campaign
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.PsyopsCampaignLaunched, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Psyops campaign launched against {target}: {taxIncrease}% " &
                   &"tax increase",
@@ -187,7 +195,8 @@ proc intelligenceTheftExecuted*(
 ): event_types.GameEvent =
   ## Create event for intelligence database theft
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.IntelligenceTheftExecuted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Intelligence database stolen from {target}",
     systemId: none(SystemId),
@@ -204,7 +213,8 @@ proc disinformationPlanted*(
 ): event_types.GameEvent =
   ## Create event for disinformation operation
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.DisinformationPlanted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker),
     description: &"Disinformation planted in {target}'s intelligence network",
     systemId: none(SystemId),
@@ -225,7 +235,8 @@ proc counterIntelSweepExecuted*(
 ): event_types.GameEvent =
   ## Create event for counter-intelligence sweep
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.CounterIntelSweepExecuted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(defender),
     description: &"Counter-intelligence sweep executed at system {targetSystem}",
     systemId: some(targetSystem),
@@ -253,7 +264,8 @@ proc spyMissionDetected*(
     else: esp_types.EspionageAction.GatherIntelligence
 
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Espionage,
+    eventType: event_types.GameEventType.SpyMissionDetected, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(attacker), # The house whose mission was detected
     description: &"{missionType} mission detected by {target} at " &
                   &"system {targetSystem}",
@@ -279,7 +291,8 @@ proc scoutDetected*(
 ): event_types.GameEvent =
   ## Create event for scout detection
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Intelligence, # Use Intelligence event type
+    eventType: event_types.GameEventType.ScoutDetected, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(owner), # The scout's owner
     description: &"{scoutType} scout detected by {detector} at " &
                   &"system {systemId}",
@@ -298,7 +311,8 @@ proc scoutDestroyed*(
 ): event_types.GameEvent =
   ## Create event for scout destruction
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Fleet, # Use Fleet event type for destruction
+    eventType: event_types.GameEventType.ScoutDestroyed, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(owner), # The scout's owner
     description: &"Scout destroyed by {destroyer} at system {systemId}",
     systemId: some(systemId),

@@ -19,7 +19,8 @@ proc resourceWarning*(
 ): event_types.GameEvent =
   ## Create event for low resource warning
   event_types.GameEvent(
-    eventType: event_types.GameEventType.General, # Use General event type for warnings
+    eventType: event_types.GameEventType.ResourceWarning, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"Low {resourceType}: {currentAmount} (threshold: " &
                   &"{warningThreshold})",
@@ -35,7 +36,8 @@ proc threatDetected*(
 ): event_types.GameEvent =
   ## Create event for detected threat (enemy fleet, spy, etc.)
   event_types.GameEvent(
-    eventType: event_types.GameEventType.General, # Use General event type for threats
+    eventType: event_types.GameEventType.ThreatDetected, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"{threatType} detected from {threatSource} at system " &
                   &"{systemId}",
@@ -50,7 +52,8 @@ proc automationCompleted*(
 ): event_types.GameEvent =
   ## Create event for completed automation (auto-repair, auto-load, etc.)
   event_types.GameEvent(
-    eventType: event_types.GameEventType.General, # Use General event type
+    eventType: event_types.GameEventType.AutomationCompleted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"Automation completed: {actionType} at system {systemId}",
     systemId: some(systemId),

@@ -5867,26 +5867,6 @@
     {
       "module": "turn_report",
       "sig": "proc formatReport*(report: TurnReport): string"
-    },
-    {
-      "module": "event_outcome_checker",
-      "sig": "proc checkActualOutcome*(houseId: HouseId, action: goap_types.Action, initialGameState: GameState, intelSnapshot: controller_types.IntelligenceSnapshot, currentTechLevels: Table[goap_types.TechField, int], events: seq[event_types.GameEvent]): bool"
-    },
-    {
-      "module": "event_outcome_checker",
-      "sig": "proc getFleetCount*(gs: GameState, houseId: HouseId, systemId: SystemId, shipClass: string): int"
-    },
-    {
-      "module": "event_outcome_checker",
-      "sig": "proc getFleetCount*(intel: controller_types.IntelligenceSnapshot, houseId: HouseId, systemId: SystemId, shipClass: string): int"
-    },
-    {
-      "module": "event_outcome_checker",
-      "sig": "proc getFacilityOrGroundUnitCount*(gs: GameState, houseId: HouseId, systemId: SystemId, itemId: string, isFacility: bool): int"
-    },
-    {
-      "module": "event_outcome_checker",
-      "sig": "proc getFacilityOrGroundUnitCount*(intel: controller_types.IntelligenceSnapshot, houseId: HouseId, systemId: SystemId, itemId: string, isFacility: bool): int"
     }
   ],
   "types": [

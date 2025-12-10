@@ -17,7 +17,7 @@
 
 import std/[tables, options]
 import ../../../../common/types/[core, tech, diplomacy, units]
-import ../../../../engine/resolution/types as event_types # For EspionageAction
+import ../../../../engine/resolution/types # For EspionageAction (now directly from here)
 
 # =============================================================================
 # World State Snapshot (Immutable Planning State)
