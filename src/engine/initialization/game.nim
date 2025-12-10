@@ -125,7 +125,8 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     scoutLossEvents: @[],
     populationInTransit: @[],
     pendingProposals: @[],
-    pendingCommissions: @[],
+    pendingMilitaryCommissions: @[],
+    pendingPlanetaryCommissions: @[],
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker]()
   )
 
@@ -169,7 +170,8 @@ proc newGameState*(gameId: string, playerCount: int,
     scoutLossEvents: @[],
     populationInTransit: @[],
     pendingProposals: @[],
-    pendingCommissions: @[],
+    pendingMilitaryCommissions: @[],
+    pendingPlanetaryCommissions: @[],
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker]()
   )
 

@@ -355,7 +355,8 @@ type
     scoutLossEvents*: seq[intel_types.ScoutLossEvent]  # Scout losses for diplomatic processing (NEW)
     populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
     pendingProposals*: seq[dip_proposals.PendingProposal]  # Pending diplomatic proposals
-    pendingCommissions*: seq[econ_types.CompletedProject]  # Completed projects awaiting commissioning in next Command Phase
+    pendingMilitaryCommissions*: seq[econ_types.CompletedProject]  # Military units awaiting commissioning in next Command Phase
+    pendingPlanetaryCommissions*: seq[econ_types.CompletedProject]  # Unused - planetary assets commission immediately in Maintenance Phase
     gracePeriodTimers*: Table[HouseId, GracePeriodTracker]  # Grace period tracking for capacity enforcement
 
 # Initialization

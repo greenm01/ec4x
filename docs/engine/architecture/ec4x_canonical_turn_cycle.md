@@ -1,8 +1,8 @@
 # EC4X Canonical Turn Sequence Specification
 
 **Purpose:** Complete and definitive turn order specification for EC4X  
-**Last Updated:** 2025-12-07  
-**Status:** Implementation Complete
+**Last Updated:** 2025-12-09
+**Status:** Implementation Complete (Split Commissioning System)
 
 ---
 
@@ -257,11 +257,13 @@ On victory:
 
 ### Part A: Server Processing (BEFORE Player Window)
 
-**1. Commissioning**
-- Commission completed projects from Maintenance Phase
+**1. Military Unit Commissioning**
+- Commission military units completed in previous turn's Maintenance Phase
+- **Military units only:** Capital ships, spacelift ships (ETAC, TroopTransport)
 - Frees dock space at shipyards/spaceports
 - Auto-create squadrons, auto-assign to fleets
 - Auto-load 1 PTU onto ETAC ships
+- **Note:** Planetary defense (facilities, fighters, ground units) already commissioned in Maintenance Phase
 
 **2. Colony Automation**
 - Auto-load fighters to carriers (uses newly-freed hangar capacity)
@@ -322,14 +324,33 @@ Players can immediately interact with newly-commissioned ships and colonies.
 
 **2. Construction and Repair Advancement** (parallel processing)
 
-**Construction Queue:**
+**2a. Construction Queue Advancement:**
 - Advance build queues (ships, ground units, facilities)
-- Mark projects as completed (return CompletedProject list)
+- Mark projects as completed
 - Consume PP/RP from treasuries
 - Generate GameEvents (ConstructionProgress)
-- **Note:** Completed projects commissioned in NEXT turn's Command Phase Part A
 
-**Repair Queue:**
+**2b. Split Commissioning (NEW - 2025-12-09):**
+
+Completed projects split into two commissioning paths:
+
+*Planetary Defense Assets (Commission Immediately - Same Turn):*
+- **Facilities:** Starbases, Spaceports, Shipyards, Drydocks
+- **Ground Defense:** Ground Batteries, Planetary Shields (SLD1-6)
+- **Ground Forces:** Marines, Armies
+- **Fighters:** Built planetside, commission with planetary defense
+- **Strategic Rationale:** Defenders need immediate defenses against threats arriving next turn
+- **Timing:** Commission immediately in Maintenance Phase Step 2b
+- **Result:** Available for defense in NEXT turn's Conflict Phase ✓
+
+*Military Units (Commission Next Turn):*
+- **Capital Ships:** All ship classes (Corvette → PlanetBreaker)
+- **Spacelift Ships:** ETAC, TroopTransport
+- **Strategic Rationale:** Ships may be destroyed in docks during Conflict Phase
+- **Timing:** Stored in pendingMilitaryCommissions, commission next turn's Command Phase Part A
+- **Result:** Verified docks survived combat before commissioning
+
+**2c. Repair Queue:**
 - Advance ship repairs (1 turn at shipyards, 25% cost)
 - Advance facility repairs (1 turn at spaceports, 25% cost)
 - Mark repairs as completed
@@ -468,10 +489,12 @@ Execute immediately during Command Phase Part B player window:
    - Blockades applied in Income Phase Step 2
    - Capacity calculated with reduced IU in Step 5
 
-10. **Construction completes in Maintenance, commissions in Command**
-    - Construction marks projects complete in Maintenance Phase
-    - Commissioning happens next turn's Command Phase Part A
-    - One turn delay between completion and operational status
+10. **Split Commissioning System (2025-12-09)**
+    - **Planetary Defense:** Commission same turn in Maintenance Phase Step 2b
+      - Facilities, ground units, fighters available for next turn's defense
+    - **Military Units:** Commission next turn in Command Phase Part A
+      - Ships verified docks survived combat before commissioning
+    - **Strategic Timing:** Defenders get immediate protection, ships wait for safety check
 
 ---
 

@@ -54,9 +54,10 @@ import ../../../common/[types/core, types/units, types/tech]
 import ../../gamestate, ../../orders, ../../logger
 import ../../order_types
 import ../fleet_order_execution  # For movement order execution
-import ../../economy/[types as econ_types, engine as econ_engine]
+import ../../economy/[types as econ_types, engine as econ_engine, facility_queue]
 # Capacity enforcement imports removed - now in income_phase.nim
 import ../../research/[types as res_types, advancement]
+import ../commissioning  # For planetary defense commissioning
 import ../../espionage/[types as esp_types]
 import ../../diplomacy/[proposals as dip_proposals]
 import ../../population/[types as pop_types]
@@ -345,12 +346,28 @@ proc resolveMaintenancePhase*(state: var GameState,
   logInfo(LogCategory.lcEconomy, "[MAINTENANCE STEP 2] Advancing construction & repair queues...")
   let maintenanceReport = econ_engine.resolveMaintenancePhaseWithState(state)
 
-  # Collect completed projects for commissioning (happens in next turn's
-  # Command Phase)
-  result.add(maintenanceReport.completedProjects)
+  # Split completed projects by commissioning phase
+  var planetaryProjects: seq[econ_types.CompletedProject] = @[]
+  var militaryProjects: seq[econ_types.CompletedProject] = @[]
+
+  for project in maintenanceReport.completedProjects:
+    if facility_queue.isPlanetaryDefense(project):
+      planetaryProjects.add(project)
+    else:
+      militaryProjects.add(project)
+
+  # Step 2a: Commission planetary defense immediately (same turn)
+  if planetaryProjects.len > 0:
+    logInfo(LogCategory.lcEconomy,
+      &"[MAINTENANCE STEP 2a] Commissioning {planetaryProjects.len} planetary defense assets")
+    commissioning.commissionPlanetaryDefense(state, planetaryProjects, events)
+
+  # Collect military projects for next turn's Command Phase commissioning
+  result.add(militaryProjects)
 
   logInfo(LogCategory.lcEconomy,
-    &"[MAINTENANCE STEP 2] Completed ({result.len} projects ready for commissioning)")
+    &"[MAINTENANCE STEP 2] Completed ({planetaryProjects.len} planetary commissioned, " &
+    &"{militaryProjects.len} military pending)")
 
   # ===================================================================
   # HOUSE ELIMINATION CHECKS MOVED TO INCOME PHASE

@@ -366,13 +366,100 @@ Capital Ship?          Everything Else?
 
 **Purpose:** Queue advancement for both facility queues (capital ships) and colony queues (fighters/buildings).
 
-### Commissioning & Automation
+### Split Commissioning System (2025-12-09)
 
 **Module:** `src/engine/resolution/commissioning.nim`
-- `commissionCompletedProjects(state, completedProjects, events)` - Commission all completed projects
-  - Converts completed construction into operational units
-  - Called at START of Command Phase (before new build orders)
-  - Frees dock capacity immediately for new construction
+
+EC4X uses a **dual-phase commissioning system** based on strategic timing requirements:
+
+#### Planetary Defense Commissioning (Maintenance Phase)
+
+**Function:** `commissionPlanetaryDefense(state, completedProjects, events)`
+- **When:** Maintenance Phase Step 2b (same turn as completion)
+- **What:** Facilities, ground units, fighters
+- **Strategic Rationale:** Defenders need immediate protection against threats arriving next turn's Conflict Phase
+
+**Assets Commissioned:**
+- **Facilities:** Starbases, Spaceports, Shipyards, Drydocks
+- **Ground Defense:** Ground Batteries, Planetary Shields (SLD1-6)
+- **Ground Forces:** Marines, Armies
+- **Fighters:** Built planetside, commission with planetary defense
+
+**Result:** Available for defense in NEXT turn's Conflict Phase ✓
+
+#### Military Unit Commissioning (Command Phase)
+
+**Function:** `commissionMilitaryUnits(state, completedProjects, events)`
+- **When:** Command Phase Part A (next turn after completion)
+- **What:** Ships built in orbital docks
+- **Strategic Rationale:** Ships may be destroyed in docks during Conflict Phase; verify dock survival first
+
+**Assets Commissioned:**
+- **Capital Ships:** All ship classes (Corvette → PlanetBreaker)
+- **Spacelift Ships:** ETAC, TroopTransport
+
+**Result:** Frees dock capacity for new construction, ships auto-assigned to fleets
+
+#### Commissioning Comparison Table
+
+| Asset Type | Commissioning Phase | Timing | Rationale |
+|------------|---------------------|--------|-----------|
+| **Starbases** | Maintenance Phase 2b | Same turn | Orbital defense platform |
+| **Spaceports** | Maintenance Phase 2b | Same turn | Construction facility |
+| **Shipyards** | Maintenance Phase 2b | Same turn | Construction/repair facility |
+| **Drydocks** | Maintenance Phase 2b | Same turn | Repair facility |
+| **Ground Batteries** | Maintenance Phase 2b | Same turn | Surface defenses |
+| **Planetary Shields** | Maintenance Phase 2b | Same turn | Bombardment protection |
+| **Marines** | Maintenance Phase 2b | Same turn | Invasion defense |
+| **Armies** | Maintenance Phase 2b | Same turn | Garrison defense |
+| **Fighters** | Maintenance Phase 2b | Same turn | Built planetside |
+| **Capital Ships** | Command Phase Part A | Next turn | Built in docks (may be destroyed) |
+| **Spacelift Ships** | Command Phase Part A | Next turn | Built in docks (may be destroyed) |
+
+#### Commissioning Flow Diagram
+
+```
+Turn N Maintenance Phase:
+  ├─ Step 2a: Construction completes
+  ├─ Step 2b: Split completed projects
+  │    ├─ Planetary Defense → commissionPlanetaryDefense() [IMMEDIATE]
+  │    │    └─ Marines, Fighters, Facilities operational
+  │    └─ Military Units → pendingMilitaryCommissions [STORED]
+  │
+Turn N+1 Conflict Phase:
+  └─ Planetary defense assets defend against attacks ✓
+
+Turn N+1 Command Phase Part A:
+  └─ commissionMilitaryUnits() [AFTER combat dock survival check]
+       └─ Ships operational, docks freed for new construction
+```
+
+#### Strategic Example: Marine Defense
+
+```
+Turn 5 Command Phase:
+  Player sees enemy fleet approaching
+  Submits build order: 3 Marines
+
+Turn 5 Maintenance Phase:
+  Marines complete construction (1-turn build time)
+  → commissionPlanetaryDefense() executes immediately
+  → 3 Marines operational at colony
+
+Turn 6 Conflict Phase:
+  Enemy fleet arrives, attempts invasion
+  → 3 Marines defend successfully! ✓
+  Colony survives due to immediate commissioning
+```
+
+#### Legacy Function (Deprecated)
+
+**Function:** `commissionCompletedProjects(state, completedProjects, events)`
+- **Status:** Deprecated, maintained for backward compatibility
+- **Replacement:** Use `commissionPlanetaryDefense()` or `commissionMilitaryUnits()`
+- **Note:** Will be removed after all callers updated
+
+### Automation
 
 **Module:** `src/engine/resolution/automation.nim`
 - `processColonyAutomation(state, orders)` - Batch automation processor
