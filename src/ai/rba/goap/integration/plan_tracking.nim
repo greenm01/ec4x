@@ -6,6 +6,7 @@
 import std/[tables, options, sequtils]
 import ../core/types
 import ../state/snapshot
+import ../../controller_types # For UnfulfillmentReason, RequirementFeedback
 
 # =============================================================================
 # Plan Status Types
@@ -32,6 +33,9 @@ type
     actionsCompleted*: int
     actionsFailed*: int
     lastUpdateTurn*: int
+    # Specific feedback for the last failed action, used for intelligent replanning
+    lastFailedActionReason*: Option[UnfulfillmentReason]
+    lastFailedActionSuggestion*: Option[string]
 
 # =============================================================================
 # Plan Tracker
@@ -115,7 +119,13 @@ proc failPlan*(tracker: var PlanTracker, planIndex: int) =
   tracker.activePlans[planIndex].lastUpdateTurn = tracker.currentTurn
 
 
-proc markActionFailed*(tracker: var PlanTracker, planIndex: int, actionIndex: int) =
+proc markActionFailed*(
+  tracker: var PlanTracker,
+  planIndex: int,
+  actionIndex: int,
+  unfulfillmentReason: Option[UnfulfillmentReason] = none(UnfulfillmentReason),
+  suggestion: Option[string] = none(string)
+) =
   ## Mark a specific action within a plan as failed.
   ## If the current action fails, the plan effectively fails.
   if planIndex < 0 or planIndex >= tracker.activePlans.len or
@@ -125,6 +135,8 @@ proc markActionFailed*(tracker: var PlanTracker, planIndex: int, actionIndex: in
   tracker.activePlans[planIndex].actionsFailed.inc()
   tracker.activePlans[planIndex].status = PlanStatus.Failed # A single failed action often means the plan failed
   tracker.activePlans[planIndex].lastUpdateTurn = tracker.currentTurn
+  tracker.activePlans[planIndex].lastFailedActionReason = unfulfillmentReason
+  tracker.activePlans[planIndex].lastFailedActionSuggestion = suggestion
 
 proc pausePlan*(tracker: var PlanTracker, planIndex: int) =
   ## Temporarily pause a plan
