@@ -23,6 +23,21 @@ type
     BudgetFailure       # Failed due to insufficient budget for action (general)
     CapacityFull        # Failed due to capacity limits (e.g., colony docks full)
 
+proc toReplanReason*(reason: UnfulfillmentReason): ReplanReason =
+  ## Converts an UnfulfillmentReason from RBA into a GOAP ReplanReason.
+  case reason
+  of UnfulfillmentReason.TechNotAvailable:
+    return ReplanReason.TechNeeded
+  of UnfulfillmentReason.InsufficientBudget, UnfulfillmentReason.PartialBudget,
+     UnfulfillmentReason.BudgetReserved, UnfulfillmentReason.SubstitutionFailed:
+    return ReplanReason.BudgetFailure
+  of UnfulfillmentReason.ColonyCapacityFull:
+    return ReplanReason.CapacityFull
+  of UnfulfillmentReason.NoValidColony:
+    # This might require a more specific GOAP reason, but for now,
+    # it indicates a fundamental issue with the plan's target.
+    return ReplanReason.PlanInvalidated
+
 proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPConfig): (bool, ReplanReason) =
   ## Determine if a plan needs replanning.
   ## Returns: (shouldReplan, reason)
