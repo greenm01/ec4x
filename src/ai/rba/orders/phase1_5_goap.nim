@@ -8,49 +8,27 @@
 ## - Output: GOAPlan seq, enhanced requirements with cost estimates
 ## - Called by: order_generation.nim between phase1 and phase2
 
-import std/[tables, options, sequtils, algorithm]
+import std/[tables, options, sequtils, algorithm, times] # Add times for cpuTime()
 import ../goap/core/types
-import ../goap/state/snapshot
+import ../goap/state/snapshot as goap_snapshot # Alias to avoid name clashes
 import ../goap/planner/search
 import ../goap/integration/[conversion, plan_tracking]
 import ../controller_types
 import ../../common/types as ai_types
 import ../../../common/types/core
-import ../../../engine/[gamestate, fog_of_war]
+import ../../../engine/[gamestate, fog_of_war, logger] # Add logger
+import ../config # Import RBA config for GOAPConfig
 
-# =============================================================================
-# GOAP Integration Configuration
-# =============================================================================
-
-type
-  GOAPConfig* = object
-    ## Configuration for GOAP strategic planning
-    enabled*: bool                    # Enable/disable GOAP
-    planningDepth*: int               # Max turns to plan ahead
-    confidenceThreshold*: float       # Min confidence to execute plan
-    maxConcurrentPlans*: int          # Max active plans at once
-    defensePriority*: float           # Weight for defensive goals (0.0-1.0)
-    offensePriority*: float           # Weight for offensive goals (0.0-1.0)
-    logPlans*: bool                   # Debug: log all generated plans
-
-proc defaultGOAPConfig*(): GOAPConfig =
-  ## Default GOAP configuration
-  result = GOAPConfig(
-    enabled: true,
-    planningDepth: 5,
-    confidenceThreshold: 0.6,
-    maxConcurrentPlans: 5,
-    defensePriority: 0.7,
-    offensePriority: 0.5,
-    logPlans: false
-  )
+export goap_snapshot.createWorldStateSnapshot # Export it for other phases to use
 
 # =============================================================================
 # Phase 1.5: Goal Extraction
 # =============================================================================
 
 proc extractStrategicGoals*(
-  state: FilteredGameState,
+  houseId: HouseId, # Pass houseId for snapshot creation
+  homeworld: SystemId, # Pass homeworld for snapshot creation
+  currentTurn: int, # Pass current turn for snapshot creation
   intel: IntelligenceSnapshot,
   config: GOAPConfig
 ): seq[Goal] =
@@ -60,7 +38,7 @@ proc extractStrategicGoals*(
   ## Called after Phase 1 (Requirements generation)
 
   # Convert to WorldStateSnapshot for GOAP
-  let worldState = createWorldStateSnapshot(state, intel)
+  let worldState = createWorldStateSnapshot(houseId, homeworld, currentTurn, config, intel)
 
   # Extract goals from all domains
   var allGoals = extractAllGoalsFromState(worldState)
@@ -94,7 +72,9 @@ proc extractStrategicGoals*(
 
 proc generateStrategicPlans*(
   goals: seq[Goal],
-  state: FilteredGameState,
+  houseId: HouseId,
+  homeworld: SystemId,
+  currentTurn: int,
   intel: IntelligenceSnapshot,
   config: GOAPConfig
 ): seq[GOAPlan] =
@@ -104,17 +84,19 @@ proc generateStrategicPlans*(
 
   result = @[]
 
-  let worldState = createWorldStateSnapshot(state, intel)
+  let worldState = createWorldStateSnapshot(houseId, homeworld, currentTurn, config, intel)
 
   # Generate plan for each goal
   for goal in goals:
-    let maybePlan = planForGoal(worldState, goal)
+    let maybePlan = planForGoal(worldState, goal, config.planningDepth) # Pass planning depth
     if maybePlan.isSome:
       let plan = maybePlan.get()
 
       # Filter by confidence threshold
       if plan.confidence >= config.confidenceThreshold:
         result.add(plan)
+        if config.logPlans:
+          logDebug(LogCategory.lcAI, &"GOAP Plan Generated: {getPlanDescription(plan)}")
 
   # Sort by confidence * priority
   result = result.sortedByIt(-(it.confidence * it.goal.priority))
@@ -122,6 +104,9 @@ proc generateStrategicPlans*(
   # Limit to max concurrent plans
   if result.len > config.maxConcurrentPlans:
     result = result[0 ..< config.maxConcurrentPlans]
+    if config.logPlans:
+      logDebug(LogCategory.lcAI, &"GOAP: Limiting to {config.maxConcurrentPlans} concurrent plans.")
+
 
 # =============================================================================
 # Phase 1.5: Budget Estimation
@@ -165,31 +150,6 @@ proc convertBudgetEstimatesToStrings*(
 
     result[domainName] = cost
 
-proc annotatePlansWithBudget*(
-  plans: seq[GOAPlan],
-  availableBudget: int
-): seq[tuple[plan: GOAPlan, allocated: int, fundingRatio: float]] =
-  ## Annotate plans with budget allocation
-  ##
-  ## Used when budget is limited - determines how much each plan gets
-
-  result = @[]
-
-  let goals = plans.mapIt(it.goal)
-  let allocations = allocateBudgetToGoals(goals, availableBudget)
-
-  for alloc in allocations:
-    # Find the plan matching this goal
-    for plan in plans:
-      if plan.goal.goalType == alloc.goal.goalType and
-         plan.goal.target == alloc.goal.target:
-        result.add((
-          plan: plan,
-          allocated: alloc.allocated,
-          fundingRatio: alloc.fundingRatio
-        ))
-        break
-
 # =============================================================================
 # Phase 1.5: Main Entry Point
 # =============================================================================
@@ -204,7 +164,9 @@ type
     planningTimeMs*: float                      # Performance metric
 
 proc executePhase15_GOAP*(
-  state: FilteredGameState,
+  houseId: HouseId, # Pass houseId
+  homeworld: SystemId, # Pass homeworld
+  currentTurn: int, # Pass current turn
   intel: IntelligenceSnapshot,
   config: GOAPConfig
 ): Phase15Result =
@@ -222,59 +184,45 @@ proc executePhase15_GOAP*(
   )
 
   if not config.enabled:
+    logDebug(LogCategory.lcAI, &"{houseId} GOAP is disabled for Phase 1.5, skipping.")
     return  # GOAP disabled, skip
 
-  # TODO: Add timing
-  # let startTime = cpuTime()
+  let startTime = cpuTime()
 
   # Step 1: Extract strategic goals
-  result.goals = extractStrategicGoals(state, intel, config)
+  result.goals = extractStrategicGoals(houseId, homeworld, currentTurn, intel, config)
+  logInfo(LogCategory.lcAI, &"{houseId} GOAP: Extracted {result.goals.len} strategic goals.")
 
   # Step 2: Generate plans
-  result.plans = generateStrategicPlans(result.goals, state, intel, config)
+  result.plans = generateStrategicPlans(result.goals, houseId, homeworld, currentTurn, intel, config)
+  logInfo(LogCategory.lcAI, &"{houseId} GOAP: Generated {result.plans.len} strategic plans.")
 
   # Step 3: Estimate budget requirements
   result.budgetEstimates = estimateBudgetRequirements(result.plans)
   result.budgetEstimatesStr = convertBudgetEstimatesToStrings(result.budgetEstimates)
 
-  # TODO: Calculate planning time
-  # result.planningTimeMs = (cpuTime() - startTime) * 1000.0
+  result.planningTimeMs = (cpuTime() - startTime) * 1000.0
+  logInfo(LogCategory.lcAI, &"{houseId} GOAP planning completed in {result.planningTimeMs:.2f} ms.")
 
   # Debug logging
   if config.logPlans:
-    # TODO: Add proper logging
-    # logger.info(&"Phase 1.5 GOAP: Generated {result.plans.len} plans from {result.goals.len} goals")
-    discard
+    logDebug(LogCategory.lcAI, &"{houseId} Phase 1.5 GOAP: Generated {result.plans.len} plans from {result.goals.len} goals")
+    for plan in result.plans:
+      logDebug(LogCategory.lcAI, &"  - {getPlanDescription(plan)}")
+    for domain, cost in result.budgetEstimates:
+      logDebug(LogCategory.lcAI, &"  - Estimated budget for {domain}: {cost} PP")
 
 # =============================================================================
 # Phase 1.5: Integration Helpers
 # =============================================================================
 
-proc mergeGOAPEstimatesIntoDomestikosRequirements*(
-  requirements: var BuildRequirements,
-  budgetEstimates: Table[DomainType, int]
-) =
-  ## Merge GOAP budget estimates into Domestikos build requirements
-  ##
-  ## Enhances Phase 2 mediation with strategic cost awareness
-  ## Modifies requirements in-place
-
-  # TODO Phase 4: Implement requirements enhancement
-  # This would add GOAP cost estimates as additional data on requirements
-  # For now, this is a placeholder
-
-  discard
-
 proc integrateGOAPPlansIntoController*(
   controller: var AIController,
   plans: seq[GOAPlan]
 ) =
-  ## Store GOAP plans in AI controller for tracking
-  ##
-  ## Allows Phase 5 strategic coordinator to track multi-turn execution
+  ## Store new GOAP plans in AI controller's PlanTracker for active tracking.
+  ## This is called after Phase 1.5 if new plans are generated.
 
-  # TODO Phase 4: Add activeGOAPlans field to AIController
-  # For now, this is a placeholder
-  # controller.activeGOAPlans = plans
-
-  discard
+  for plan in plans:
+    controller.goapPlanTracker.addPlan(plan)
+    logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: Actively tracking plan for goal: {plan.goal.description}")

@@ -19,6 +19,8 @@
 9. **2-space indentation** - consistent formatting (NEP-1)
 10. **Spaces around operators** - `let total = value + modifier * 2`
 
+The src tree API is located in docs/api/api.json for efficient context.
+
 ---
 
 ## Design Patterns (DRY & DoD)

@@ -11,6 +11,8 @@ import ../../common/types/[core, units, planets]  # For ShipClass, PlanetClass
 import ../../engine/espionage/types as esp_types  # For EspionageAction
 import ../../engine/diplomacy/proposals as dip_proposals  # For ProposalType
 import ./shared/intelligence_types  # Enhanced intelligence types (Phase B+)
+import ../../ai/goap/types as goap_types # For GOAPConfig
+import ../../ai/goap/plan_tracking as goap_plan # For PlanTracker
 
 # Re-export RequirementPriority from intelligence_types for convenience
 export intelligence_types.RequirementPriority
@@ -275,6 +277,9 @@ type
     goapEnabled*: bool  # Quick check if GOAP is enabled
     goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
     goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
+    goapBudgetEstimates*: Option[Table[DomainType, int]] # Current-turn budget guidance from GOAP
+    goapConfig*: goap_types.GOAPConfig # Configuration for the GOAP planner
+    planTracker*: goap_plan.PlanTracker # Manages GOAP's multi-turn plans
 
     # Phase C: Enhanced intelligence distribution
     intelligenceSnapshot*: Option[IntelligenceSnapshot]  # Current turn's intelligence from Drungarius

@@ -61,10 +61,8 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
-    # GOAP Phase 4 initialization
-    goapEnabled: false,  # Disabled by default, enabled via config
-    goapLastPlanningTurn: -1,
-    goapActiveGoals: @[]
+    goapConfig: globalRBAConfig.goap, # Initialize GOAP config from global RBA config
+    goapPlanTracker: newPlanTracker() # Initialize GOAP plan tracker
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
@@ -83,10 +81,8 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
-    # GOAP Phase 4 initialization
-    goapEnabled: false,  # Disabled by default, enabled via config
-    goapLastPlanningTurn: -1,
-    goapActiveGoals: @[]
+    goapConfig: globalRBAConfig.goap, # Initialize GOAP config from global RBA config
+    goapPlanTracker: newPlanTracker() # Initialize GOAP plan tracker
   )
 
 # =============================================================================

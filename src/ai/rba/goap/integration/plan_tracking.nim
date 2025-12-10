@@ -71,7 +71,8 @@ proc addPlan*(tracker: var PlanTracker, plan: GOAPlan) =
 # =============================================================================
 
 proc advancePlan*(tracker: var PlanTracker, planIndex: int) =
-  ## Mark current action as complete and advance to next
+  ## Mark current action as complete and advance to next action in the plan.
+  ## This is typically called by the feedback system after RBA successfully executes a GOAP-aligned action.
   if planIndex < 0 or planIndex >= tracker.activePlans.len:
     return
 
@@ -79,18 +80,50 @@ proc advancePlan*(tracker: var PlanTracker, planIndex: int) =
   tracker.activePlans[planIndex].actionsCompleted.inc()
   tracker.activePlans[planIndex].lastUpdateTurn = tracker.currentTurn
 
-  # Check if plan is complete
-  let plan = tracker.activePlans[planIndex]
-  if plan.currentActionIndex >= plan.plan.actions.len:
+  # Check if the plan is fully completed
+  if tracker.activePlans[planIndex].currentActionIndex >= tracker.activePlans[planIndex].plan.actions.len:
+    tracker.activePlans[planIndex].status = PlanStatus.Completed
+    # Optionally, add some final state assessment to confirm goal achievement
+    # For now, reaching the end of actions marks it as completed.
+
+proc markActionComplete*(tracker: var PlanTracker, planIndex: int, actionIndex: int) =
+  ## Mark a specific action within a plan as complete, without necessarily advancing.
+  ## Useful for out-of-sequence completion or for re-validating the plan.
+  if planIndex < 0 or planIndex >= tracker.activePlans.len or
+     actionIndex < 0 or actionIndex >= tracker.activePlans[planIndex].plan.actions.len:
+    return
+
+  # For now, we only advance the currentActionIndex if the completed action is the *current* one.
+  # If an earlier action is reported as complete, we just update total count.
+  if actionIndex == tracker.activePlans[planIndex].currentActionIndex:
+    tracker.activePlans[planIndex].currentActionIndex.inc()
+  tracker.activePlans[planIndex].actionsCompleted.inc()
+  tracker.activePlans[planIndex].lastUpdateTurn = tracker.currentTurn
+
+  if tracker.activePlans[planIndex].currentActionIndex >= tracker.activePlans[planIndex].plan.actions.len:
     tracker.activePlans[planIndex].status = PlanStatus.Completed
 
+
 proc failPlan*(tracker: var PlanTracker, planIndex: int) =
-  ## Mark plan as failed
+  ## Mark a plan as having failed its execution.
+  ## This typically triggers replanning or cancellation.
   if planIndex < 0 or planIndex >= tracker.activePlans.len:
     return
 
   tracker.activePlans[planIndex].status = PlanStatus.Failed
   tracker.activePlans[planIndex].actionsFailed.inc()
+  tracker.activePlans[planIndex].lastUpdateTurn = tracker.currentTurn
+
+
+proc markActionFailed*(tracker: var PlanTracker, planIndex: int, actionIndex: int) =
+  ## Mark a specific action within a plan as failed.
+  ## If the current action fails, the plan effectively fails.
+  if planIndex < 0 or planIndex >= tracker.activePlans.len or
+     actionIndex < 0 or actionIndex >= tracker.activePlans[planIndex].plan.actions.len:
+    return
+
+  tracker.activePlans[planIndex].actionsFailed.inc()
+  tracker.activePlans[planIndex].status = PlanStatus.Failed # A single failed action often means the plan failed
   tracker.activePlans[planIndex].lastUpdateTurn = tracker.currentTurn
 
 proc pausePlan*(tracker: var PlanTracker, planIndex: int) =
@@ -129,29 +162,52 @@ proc isPlanStillValid*(plan: TrackedPlan, state: WorldStateSnapshot): bool =
     # For now, we don't immediately invalidate on budget shortfall
     discard
 
-  # Check goal-specific validity
+  # Check goal-specific validity (refined for common cases)
   case plan.plan.goal.goalType
   of GoalType.DefendColony:
-    # If colony no longer vulnerable, plan succeeded early
+    # If the target colony is no longer vulnerable (e.g., threat removed, or defenses built up)
+    # AND if the goal's target system is defined.
     if plan.plan.goal.target.isSome:
       let targetSystem = plan.plan.goal.target.get()
-      if targetSystem notin state.vulnerableColonies:
-        return true  # Actually succeeded, not invalid
+      # If the system is not in the list of currently vulnerable colonies (meaning it's safe now)
+      if not state.vulnerableColonies.anyIt(it == targetSystem):
+        return true  # Goal implicitly achieved/no longer needed, plan is valid but should be completed.
 
-  of GoalType.InvadeColony:
-    # If target colony no longer exists or already conquered
+  of GoalType.InvadeColony, GoalType.SecureSystem:
+    # If the target system is now owned by us, the goal is achieved.
+    # OR if the target no longer exists (destroyed) or is no longer an enemy.
     if plan.plan.goal.target.isSome:
       let targetSystem = plan.plan.goal.target.get()
-      # Check if we already own it (success)
       if targetSystem in state.ownedColonies:
-        return true  # Succeeded
-      # Check if target still exists as enemy colony
-      let stillEnemy = state.knownEnemyColonies.anyIt(it.systemId == targetSystem)
-      if not stillEnemy:
-        return false  # Target disappeared (maybe destroyed)
+        return true # Goal achieved.
+      # Check if the target is still an *enemy* colony for invasion/securing.
+      let stillEnemyTarget = state.knownEnemyColonies.anyIt(it.systemId == targetSystem)
+      if not stillEnemyTarget:
+        # Target is no longer an enemy colony (e.g., neutral, destroyed, or another AI took it)
+        return false # Plan is invalid as its premise (attacking an enemy colony) is false.
+
+  of GoalType.AchieveTechLevel, GoalType.CloseResearchGap:
+    # If the house already has the desired tech level.
+    if plan.plan.goal.techField.isSome and plan.plan.goal.requiredTechLevel.isSome:
+      let field = plan.plan.goal.techField.get()
+      let requiredLevel = plan.plan.goal.requiredTechLevel.get()
+      if state.techLevels.getOrDefault(field, 0) >= requiredLevel:
+        return true # Goal achieved.
+
+  of GoalType.EliminateFleet:
+    # If the target fleet no longer exists or is not in the system.
+    if plan.plan.goal.targetFleet.isSome and plan.plan.goal.target.isSome:
+      let targetFleetId = plan.plan.goal.targetFleet.get()
+      let targetSystemId = plan.plan.goal.target.get()
+      # Check if any enemy fleet matching the target is still present at the system
+      let enemyFleetPresent = state.fleetsAtSystem.getOrDefault(targetSystemId, @[]).anyIt(
+        it.owner != state.houseId and it.fleetId == targetFleetId)
+      if not enemyFleetPresent:
+        return true # Goal achieved (fleet eliminated or moved).
 
   else:
-    # Default: assume plan is still valid
+    # For other goal types, a general check might be applied or they are assumed valid
+    # until explicit failure is reported or a more specific validity check is added.
     discard
 
   return true
@@ -203,6 +259,17 @@ proc getNextAction*(tracker: PlanTracker, planIndex: int): Option[Action] =
     return none(Action)  # Plan complete
 
   return some(plan.plan.actions[plan.currentActionIndex])
+
+proc getPlanProgress*(plan: TrackedPlan): float =
+  ## Returns the progress of the plan as a percentage (0.0 to 1.0).
+  if plan.plan.actions.len == 0:
+    return 1.0 # A plan with no actions is "completed"
+
+  result = plan.actionsCompleted.float / plan.plan.actions.len.float
+
+proc getPlanDescription*(plan: GOAPlan): string =
+  ## Provides a concise description of the GOAP plan and its goal.
+  result = $"Goal: {plan.goal.description} (P: {plan.goal.priority:.2f}) - {plan.actions.len} actions, {plan.totalCost} PP, {plan.estimatedTurns} turns"
 
 # =============================================================================
 # Turn Update

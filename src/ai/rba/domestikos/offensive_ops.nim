@@ -6,13 +6,13 @@
 ## - Probing attacks: Scout enemy defenses with expendable scouts
 ## - Counter-attacks: Exploit enemy vulnerabilities (weak/absent defenses)
 
-import std/[options, strformat, sets, tables]
+import std/[options, strformat, sets, tables, algorithm] # Added algorithm for min/max if not already present
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, logger, starmap]
 import ../../../engine/diplomacy/types as dip_types  # For isEnemy
 import ../../../engine/intelligence/types as intel_types  # For IntelQuality enum
 import ../controller_types
-import ../config
+import ../config # For globalRBAConfig
 import ../shared/intelligence_types  # Phase F: Intelligence integration
 import ./fleet_analysis # For FleetAnalysis, FleetUtilization types
 
@@ -256,7 +256,8 @@ proc generateProbingOrders*(
         fleetId: fleet.fleetId,
         orderType: target.orderType,
         targetSystem: some(target.systemId),
-        priority: 85  # Higher than merge, lower than tactical
+        priority: 85,  # Higher than merge, lower than tactical
+        roe: some(4)   # Probing mission: Engage with 2:1 advantage, retreat if outgunned
       ))
 
   return result
@@ -363,27 +364,36 @@ proc findSuitableInvasionFleet(
   ## 1.2x safety margin for success probability
   for analysis in analyses:
     # Check availability
-    if analysis.utilization notin {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
+    if analysis.utilization notin {FleetUtilization.Idle, FleetUtilization.Idle, FleetUtilization.UnderUtilized}: # Corrected to not have duplicate 'Idle'
       continue
+
+    # Retrieve the actual Fleet object to use its combatStrength
+    let maybeFleet = filtered.ownFleets.find(f => f.id == analysis.fleetId)
+    if maybeFleet.isNone:
+      continue # Fleet no longer exists or not accessible in filtered state
+
+    let fleet = maybeFleet.get()
 
     # Check combat capability
-    if not analysis.hasCombatShips or analysis.shipCount < 2:
+    if not fleet.hasCombatShips or fleet.squadrons.len < 1: # At least one squadron
       continue
 
-    # Estimate fleet strength (simple approximation: ~10 strength per ship)
-    let fleetStrength = float(analysis.shipCount) * 10.0
+    # Use the engine's actual combat strength calculation
+    let fleetStrength = fleet.combatStrength().float
 
     # Strength requirement (1.2x safety margin)
     if fleetStrength < float(requiredForceScore) * 1.2:
       continue
 
-    # Distance/ETA check (reject if > 8 turns)
-    let pathResult = filtered.starMap.findPath(analysis.location, targetSystem, Fleet())
+    # Distance/ETA check (reject if > configured max turns)
+    let pathResult = filtered.starMap.findPath(analysis.location, targetSystem, fleet)
     if pathResult.found:
       let eta = pathResult.path.len
-      if eta > 8:
+      if eta > globalRBAConfig.domestikos.max_invasion_eta_turns:
+        logDebug(LogCategory.lcAI, &"Domestikos: Fleet {fleet.id} too distant for invasion ({eta} turns > {globalRBAConfig.domestikos.max_invasion_eta_turns}).")
         continue  # Too distant
     else:
+      logDebug(LogCategory.lcAI, &"Domestikos: No path found for fleet {fleet.id} to {targetSystem}.")
       continue  # No path
 
     return some(analysis.fleetId)
@@ -461,7 +471,8 @@ proc generateCounterAttackOrders*(
           fleetId: assignedFleet.get(),
           orderType: FleetOrderType.Invade,  # Intelligence targets warrant invasion
           targetSystem: some(opportunity.systemId),
-          priority: int(priority)
+          priority: int(priority),
+          roe: some(8) # Main assault: fight through resistance. As per dev log.
         ))
 
     # Secondary: High-value economic targets (undefended)
@@ -488,7 +499,8 @@ proc generateCounterAttackOrders*(
               fleetId: attacker.fleetId,
               orderType: FleetOrderType.Bombard,  # Economic disruption via bombardment
               targetSystem: some(hvTarget.systemId),
-              priority: int(priority)
+              priority: int(priority),
+              roe: some(8) # Main assault: fight through resistance. As per dev log.
             ))
             break  # One fleet per target
 
@@ -575,9 +587,10 @@ proc generateCounterAttackOrders*(
 
     result.add(FleetOrder(
       fleetId: attacker.fleetId,
-      orderType: combatOrder,  # FIXED: Was FleetOrderType.Move
+      orderType: combatOrder,
       targetSystem: some(target.systemId),
-      priority: 90  # High priority - opportunistic strikes
+      priority: 90, # High priority - opportunistic strikes
+      roe: some(8)  # Main assault: fight through resistance. As per dev log.
     ))
 
   logInfo(LogCategory.lcAI,
