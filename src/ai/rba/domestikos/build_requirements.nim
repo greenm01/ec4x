@@ -19,6 +19,8 @@ import ../../../engine/economy/config_accessors  # For centralized cost accessor
 import ../../../engine/economy/types as econ_types  # For ConstructionType
 import ../../../engine/intelligence/types as intel_types  # For CombatOutcome
 import ../../common/types as ai_common_types  # For BuildObjective
+import ../goap/integration/plan_tracking # For PlanStatus, activePlans, etc.
+import ../goap/core/types # For GoalType
 import ../controller_types  # For BuildRequirements types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../config
@@ -263,38 +265,43 @@ proc calculateGapSeverity(
   currentDefenders: int,
   nearestDefenderDistance: int,
   currentAct: GameAct,
-  riskTolerance: float
+  riskTolerance: float,
+  controller: AIController # Added controller to access GOAP tracker
 ): RequirementPriority =
   ## Calculate gap severity based on Act objectives + personality modulation
+  ## Now also considers active GOAP goals like MaintainPrestige.
   ##
   ## Design Philosophy:
   ## - Acts define WHAT strategic objectives matter (expansion, war, etc.)
   ## - Personality defines HOW willing you are to take risks within that objective
-  ##
-  ## Act 1 (Land Grab): Everyone prioritizes expansion, but...
-  ##   - High risk (0.7+): Pure expansion, no colony defense at all
-  ##   - Medium risk (0.4-0.6): Homeworld-only, accept exposed colonies
-  ##   - Low risk (<0.4): Defend as you expand, slower but safer
-  ##
-  ## Act 2+ (Rising Tensions/War): Defense becomes critical, but...
-  ##   - High risk: Still aggressive, only defend high-value/threatened
-  ##   - Medium risk: Balanced defense, standard thresholds
-  ##   - Low risk: Cautious, defend everything proactively
+  ## - Active GOAP goals can override personality/Act tendencies for specific priorities.
+
   let config = globalRBAConfig.domestikos
 
+  # Check if a MaintainPrestige GOAP goal is currently active.
+  # If active, this implies avoiding prestige penalties (like undefended colony loss) is critical.
+  let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
+    it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
+  )
+
   # Homeworld always protected (all acts, all personalities)
-  if colonyPriority > 500.0 and currentDefenders == 0:
+  if colonyPriority > 500.0 and currentDefenders == 0: # Assuming homeworld has very high priority
     return RequirementPriority.Critical
 
   # Act 1: Expansion is primary objective - personality modulates defense willingness
   if currentAct == GameAct.Act1_LandGrab:
-    # High risk: Pure expansion focus, skip all colony defense
-    if riskTolerance >= 0.7:
-      return RequirementPriority.Deferred
+    # If MaintainPrestige is active, we should NOT defer defense for undefended colonies
+    if isMaintainPrestigeActive and currentDefenders == 0:
+      logDebug(LogCategory.lcAI, &"Domestikos: MaintainPrestige goal active, overriding Act 1 deferral for undefended colony.")
+      # Fall through to Act 2+ logic, which will assign Medium/High priority
+    else:
+      # High risk: Pure expansion focus, skip all colony defense
+      if riskTolerance >= 0.7:
+        return RequirementPriority.Deferred
 
-    # Medium risk: Homeworld-only, colonies fend for themselves
-    if riskTolerance >= 0.4:
-      return RequirementPriority.Deferred
+      # Medium risk: Homeworld-only, colonies fend for themselves
+      if riskTolerance >= 0.4:
+        return RequirementPriority.Deferred
 
     # Low risk: Cautious expansion - defend colonies as you claim them
     # (Falls through to Act 2+ logic below with lower thresholds)
@@ -373,7 +380,7 @@ proc assessDefenseGaps*(
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
   defensiveAssignments: Table[FleetId, StandingOrder],
-  controller: AIController,
+  controller: AIController, # AIController is a ref object, so it's fine to pass by value.
   currentAct: GameAct,
   intelSnapshot: IntelligenceSnapshot
 ): seq[DefenseGap] =
@@ -408,7 +415,7 @@ proc assessDefenseGaps*(
     # Calculate gap severity with escalation (personality-driven)
     let baseSeverity = calculateGapSeverity(
       colonyPriority, threat, currentDefenders, nearestDefender.distance,
-      currentAct, controller.personality.risk_tolerance
+      currentAct, controller.personality.risk_tolerance, controller # Pass controller here
     )
     let severity = escalateSeverity(baseSeverity, turnsUndefended)
 
