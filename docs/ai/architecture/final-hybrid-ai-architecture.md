@@ -989,6 +989,7 @@ COMPONENT IMPLEMENTATION STATUS
 |  - Economic goals & actions             |    [X]   |   200    |
 |  - Repair/Drydock goals & actions       |    [X]   |    50    |
 |  - Prestige goals & actions             |    [X]   |    50    |
+|  - Endgame/Elimination goals & actions  |    [X]   |    50    |
 |                                         |          |          |
 | RBA-GOAP INTEGRATION                    |          |          |
 |  - Goal extraction                      |    [X]   |   200    |
@@ -1005,7 +1006,7 @@ COMPONENT IMPLEMENTATION STATUS
 |  - 9-Phase process (0-8.5)              |    [X]   |  1,200   |
 |  - Feedback loops (RBA internal)        |    [X]   |   500    |
 +-----------------------------------------+----------+----------+
-| TOTAL                                   |  ~99%    |  10,045  |
+| TOTAL                                   |  100%    |  10,095  |
 +-----------------------------------------+----------+----------+
 
 Legend:
@@ -1161,8 +1162,8 @@ Gap 7: Endgame & Elimination Strategy [X] COMPLETE
 Status: Complete
 
 
-PHASE 6: NEURAL NETWORK TRAINING (FUTURE)
-------------------------------------------
+PHASE 6: NEURAL NETWORK TRAINING (FUTURE) [ ] NOT STARTED
+----------------------------------------------------------
 [ ] Export GOAP/RBA decisions as training data
 [ ] Train NN on GPU (desktop)
 [ ] NN learns from GOAP strategic patterns
