@@ -196,7 +196,17 @@ proc executePhase15_GOAP*(
   var currentGoals = extractStrategicGoals(houseId, homeworld, currentTurn, intel, config)
   logInfo(LogCategory.lcAI, &"{houseId} GOAP: Extracted {currentGoals.len} initial strategic goals.")
 
-  # Step 2: Incorporate replanning feedback to generate targeted goals or adjust priorities
+  # Step 2: Dynamically reassess goal priorities (Gap 4)
+  # This happens before replanning logic to ensure all goals have up-to-date priorities
+  # before new plans are potentially injected or old ones filtered.
+  controller.goapPlanTracker.reassessGoalPriorities(
+    controller.goapPlanTracker, # Pass the tracker itself to modify its plans
+    createWorldStateSnapshot(houseId, homeworld, currentTurn, config, intel),
+    controller.personality,
+    config
+  )
+
+  # Step 3: Incorporate replanning feedback to generate targeted goals or adjust priorities
   if controller.replanNeeded:
     logInfo(LogCategory.lcAI, &"{houseId} GOAP: Replanning triggered. Reason: {controller.replanReason.get()}")
 

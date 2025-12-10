@@ -1070,11 +1070,11 @@ Gap 3: Advanced Plan Repair [X] COMPLETE
 Status: Complete
 
 
-Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [ ] NOT STARTED
+Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [~] IN PROGRESS
 -------------------------------------------------------------------------------------------------
-[ ] Implement Goal Re-evaluation (`src/ai/rba/goap/integration/replanning.nim`)
+[X] Implement Goal Re-evaluation (`src/ai/rba/goap/integration/replanning.nim`)
 
-Status: Not Started
+Status: In Progress
 
 
 Gap 5: Comprehensive Repair Planning and Drydock Management [X] COMPLETE
