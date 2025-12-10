@@ -9,6 +9,7 @@
 ## Architecture: Fleet → Squadrons (combat) + SpaceLiftShips (separate)
 
 import ../common/types/[core, units]
+import config/military_config
 
 export HouseId, SystemId, ShipClass
 
@@ -40,10 +41,13 @@ proc newSpaceLiftShip*(id: string, shipClass: ShipClass, owner: HouseId,
                        location: SystemId): SpaceLiftShip =
   ## Create a new spacelift ship
   ## Ships start empty (cargo.quantity = 0)
+  ## Cargo capacity loaded from config/military.toml
 
   let capacity = case shipClass
-    of ShipClass.TroopTransport: 1  # 1 MD (Marine Division)
-    of ShipClass.ETAC: 1            # 1 PTU (Population Transfer Unit)
+    of ShipClass.TroopTransport:
+      globalMilitaryConfig.spacelift_capacity.troop_transport_capacity
+    of ShipClass.ETAC:
+      globalMilitaryConfig.spacelift_capacity.etac_capacity
     else: 0
 
   result = SpaceLiftShip(

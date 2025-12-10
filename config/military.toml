@@ -31,6 +31,16 @@ total_squadron_minimum = 40        # Minimum total squadron slots (starting capa
 capital_ship_cr_threshold = 7  # Ships with CR >= 7 are capital ships
 
 # ============================================================================
+# SPACELIFT CARGO CAPACITY
+# ============================================================================
+
+[spacelift_capacity]
+# BALANCE: Cargo capacity for spacelift ships
+# Tactical doctrine: Bombard → Invade (requires meaningful ground force)
+troop_transport_capacity = 3  # Marine Divisions per TroopTransport
+etac_capacity = 1             # Population Transfer Units per ETAC
+
+# ============================================================================
 # SALVAGE MECHANICS
 # ============================================================================
 
