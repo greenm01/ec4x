@@ -12,7 +12,7 @@
 
 import std/[tables, options, random, sequtils, sets, strformat]
 import ../../common/types/[core, tech, units]
-import ../../engine/[gamestate, fog_of_war, orders, logger, fleet]
+import ../../engine/[gamestate, fog_of_war, orders, logger, fleet, event_types] # Added event_types
 import ../../engine/commands/zero_turn_commands
 import ../../engine/research/types as res_types
 import ../common/types as ai_types
@@ -36,7 +36,7 @@ type
     zeroTurnCommands*: seq[ZeroTurnCommand]  # Execute first
     orderPacket*: OrderPacket                # Execute after
 
-proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): AIOrderSubmission =
+proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand, events: seq[GameEvent]): AIOrderSubmission =
   ## Generate complete AI order submission using Byzantine Imperial Government structure
   ##
   ## Returns both zero-turn commands (immediate execution) and order packet (turn resolution)
@@ -352,7 +352,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     allocation, # Result of budget allocation and requirement fulfillment
     filtered.turn,
     intelSnapshot,
-    filtered.baseGameState # GameState before current turn's orders take effect
+    filtered.baseGameState, # GameState before current turn's orders take effect
+    events # Pass events for outcome verification
   )
 
   logInfo(LogCategory.lcAI,
