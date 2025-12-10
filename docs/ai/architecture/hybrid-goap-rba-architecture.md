@@ -1117,9 +1117,9 @@ Gap 6: Proactive Prestige Management (Avoid Penalties, Exploit Opponent Penaltie
     *   [X] Modify `Domestikos` to prioritize ground units for undefended colonies when `MaintainPrestige` is active.
     *   [X] Modify `Drungarius` to factor potential prestige penalties into EBP/CIP investment requirements when `MaintainPrestige` is active.
     *   [X] Modify `Eparch` to factor potential prestige penalties (e.g., for `Maintenance Shortfall`) into their requirement generation.
-3.  **Enemy Analysis**: Enhance `IntelligenceSnapshot` and corresponding GOAP goal extraction to identify enemy colonies that are currently "undefended" (no ground units) for targeted `InvadeColony` GOAP goals, explicitly aiming for the higher prestige penalty.
+3.  **Enemy Analysis**: [X] Enhance `IntelligenceSnapshot` and corresponding GOAP goal extraction to identify enemy colonies that are currently "undefended" (no ground units) for targeted `InvadeColony` GOAP goals, explicitly aiming for the higher prestige penalty.
 
-Status: In Progress
+Status: Complete
 
 
 Gap 7: Endgame & Elimination Strategy [ ] NOT STARTED
