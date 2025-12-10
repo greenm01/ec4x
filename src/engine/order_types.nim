@@ -35,6 +35,7 @@ type
     targetSystem*: Option[SystemId]
     targetFleet*: Option[FleetId]
     priority*: int  # Execution order within turn
+    roe*: Option[int]  # Mission-specific retreat threshold (overrides standing order)
 
 proc isThreateningFleetOrder*(orderType: FleetOrderType): bool =
   ## Returns true if the order immediately escalates to Enemy status.

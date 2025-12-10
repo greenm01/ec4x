@@ -14,6 +14,7 @@ import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
 import ../../common/types as ai_types
 import ../basileus/mediation
+import ../../../ai/goap/conversion # For DomainType
 
 type
   MultiAdvisorAllocation* = object
@@ -161,7 +162,7 @@ proc allocateBudgetMultiAdvisor*(
   availableBudget: int,
   houseId: HouseId,
   filtered: FilteredGameState,  # For war status detection
-  goapBudgetEstimates: Option[Table[string, int]] = none(Table[string, int])  # NEW: GOAP estimates by domain
+  goapBudgetEstimates: Option[Table[DomainType, int]] = none(Table[DomainType, int])  # NEW: GOAP estimates by domain
 ): MultiAdvisorAllocation =
   ## Hybrid budget allocation strategy:
   ## 1. Reserve minimums (prevents starvation)
@@ -169,7 +170,7 @@ proc allocateBudgetMultiAdvisor*(
   ## 3. Combine reserves + mediated budgets
   ## 4. Generate per-advisor feedback
   ##
-  ## GOAP Phase 4 Enhancement:
+  ## GOAP Phase 3 Enhancement:
   ## - If goapBudgetEstimates provided, uses strategic cost estimates for informed allocation
   ## - Prioritizes advisors with active GOAP plans
 
@@ -180,17 +181,17 @@ proc allocateBudgetMultiAdvisor*(
           &"{houseId} Treasurer: Multi-advisor allocation starting " &
           &"(budget={availableBudget}PP, act={currentAct}, atWar={atWar})")
 
-  # GOAP Phase 4: Log strategic budget estimates if provided
+  # GOAP Phase 3: Log strategic budget estimates if provided
   if goapBudgetEstimates.isSome:
     let estimates = goapBudgetEstimates.get()
     var totalEstimate = 0
-    for domain, cost in estimates:
+    for domain, cost in estimates: # Iterate over DomainType
       totalEstimate += cost
     logInfo(LogCategory.lcAI,
             &"{houseId} Treasurer: GOAP strategic estimates: {totalEstimate}PP total")
-    for domain, cost in estimates:
+    for domain, cost in estimates: # Iterate over DomainType
       if cost > 0:
-        logInfo(LogCategory.lcAI, &"{houseId}   - {domain}: {cost}PP")
+        logInfo(LogCategory.lcAI, &"{houseId}   - {$domain}: {cost}PP") # Convert DomainType to string for logging
 
     # If GOAP estimates exceed available budget, log warning
     if totalEstimate > availableBudget:
@@ -209,10 +210,10 @@ proc allocateBudgetMultiAdvisor*(
           &"(recon={minReconBudget}PP, expansion={minExpansionBudget}PP), " &
           &"mediating {remainingBudget}PP")
 
-  # === STEP 2: Mediate remaining budget with war-aware weights ===
+  # === STEP 2: Mediate remaining budget with war-aware weights and GOAP estimates ===
   let mediation = mediateRequirements(
     domestikosReqs, logotheteReqs, drungariusReqs, eparchReqs, protostratorReqs,
-    personality, currentAct, remainingBudget, houseId, atWar
+    personality, currentAct, remainingBudget, houseId, atWar, goapBudgetEstimates
   )
 
   # === STEP 3: Combine reserves + mediated allocations ===

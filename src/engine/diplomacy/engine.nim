@@ -44,3 +44,19 @@ proc setNeutral*(relations: var DiplomaticRelations, otherHouse: HouseId,
     prestigeEvents: @[]
   )
 
+proc setHostile*(relations: var DiplomaticRelations, otherHouse: HouseId,
+                turn: int): DiplomaticEvent =
+  ## Set diplomatic state to hostile
+  let oldState = getDiplomaticState(relations, otherHouse)
+  setDiplomaticState(relations, otherHouse, DiplomaticState.Hostile, turn)
+
+  return DiplomaticEvent(
+    houseId: "",  # Set by caller
+    otherHouse: otherHouse,
+    oldState: oldState,
+    newState: DiplomaticState.Hostile,
+    turn: turn,
+    reason: "Diplomatic status set to Hostile",
+    prestigeEvents: @[]
+  )
+

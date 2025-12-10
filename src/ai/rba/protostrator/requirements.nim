@@ -410,3 +410,164 @@ proc reprioritizeDiplomaticRequirements*(
           &"Protostrator: Diplomatic requirements unchanged (iteration {result.iteration})")
 
   return result
+## Protostrator Diplomatic Requirements Module
+##
+## Byzantine Imperial Protostrator - Diplomatic Requirements Generation
+##
+## Generates diplomatic requirements with priorities for Basileus mediation
+## Intelligence-driven diplomacy (NAPs with strong enemies, wars against weak)
+
+import std/[tables, options, strformat, strutils, algorithm] # Added algorithm for max
+import ../../../common/types/[core, diplomacy]
+import ../../../engine/[gamestate, fog_of_war, logger]
+import ../../../engine/diplomacy/types as dip_types
+import ../../../engine/diplomacy/proposals as dip_proposals # For ProposalType
+import ../controller_types
+import ../shared/intelligence_types  # For IntelligenceSnapshot
+import ../../common/types as ai_types # For GameAct
+import ../intelligence # For countSharedBorders
+import ./assessment # For assessDiplomaticSituation, DiplomaticAssessment
+import ../config # For globalRBAConfig
+
+# =============================================================================
+# Helper Functions for Dynamic Thresholds (moved to config for now)
+# (Original calculateDynamicThresholds logic is now implicit via config)
+# =============================================================================
+
+proc generateDiplomaticRequirements*(
+  controller: AIController,
+  filtered: FilteredGameState,
+  intelSnapshot: IntelligenceSnapshot
+): DiplomaticRequirements =
+  ## Generate diplomatic requirements with intelligence-driven priorities
+  ##
+  ## Priority tiers:
+  ## - Critical: Emergency peace with overwhelming enemies, urgent alliance
+  ## - High: NAPs with stronger powers, war declarations against vulnerable enemies
+  ## - Medium: Alliance proposals, pact renewals
+  ## - Low: Opportunistic diplomacy, relationship maintenance
+  ## - Deferred: Luxury diplomacy (non-strategic pacts)
+  ##
+  ## NOTE: Diplomacy costs 0 PP, so no budget feedback needed
+  ## Basileus provides feedback on priority conflicts only
+
+  result.requirements = @[]
+  result.generatedTurn = filtered.turn
+  result.iteration = 0
+
+  let p = controller.personality
+  let house = filtered.ownHouse
+  let myPrestige = house.prestige
+  let rbaConfig = globalRBAConfig.protostrator # Access Protostrator-specific config
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Protostrator: Generating diplomatic requirements " &
+          &"(prestige={myPrestige}, diplomacyValue={p.diplomacyValue:.2f})")
+
+  for houseId, otherPrestige in filtered.housePrestige:
+    if houseId == controller.houseId:
+      continue
+
+    let assessment = assessDiplomaticSituation(controller, filtered, houseId, intelSnapshot)
+
+    case assessment.currentState
+    of dip_types.DiplomaticState.Neutral:
+      if assessment.recommendPact:
+        result.requirements.add(DiplomaticRequirement(
+          requirementType: DiplomaticRequirementType.ProposePact,
+          priority: RequirementPriority.High, # High priority for proactive pacts
+          targetHouse: houseId,
+          proposalType: some(dip_proposals.ProposalType.NonAggressionPact), # Assuming NAP for now
+          estimatedCost: 0,
+          reason: assessment.pactReason,
+          expectedBenefit: "Secure borders and avoid costly conflicts"
+        ))
+      elif assessment.recommendHostile:
+        result.requirements.add(DiplomaticRequirement(
+          requirementType: DiplomaticRequirementType.SetHostile, # New action to explicitly set hostile
+          priority: RequirementPriority.Medium,
+          targetHouse: houseId,
+          estimatedCost: 0,
+          reason: assessment.hostileReason,
+          expectedBenefit: "Escalate tensions, prepare for conflict"
+        ))
+      elif assessment.recommendEnemy:
+        result.requirements.add(DiplomaticRequirement(
+          requirementType: DiplomaticRequirementType.DeclareWar,
+          priority: RequirementPriority.High,
+          targetHouse: houseId,
+          estimatedCost: 0,
+          reason: assessment.enemyReason,
+          expectedBenefit: "Expand territory and prestige through conquest"
+        ))
+      else:
+        # Maintain neutral relations
+        logDebug(LogCategory.lcAI, &"Protostrator: Maintaining neutral relations with {houseId}.")
+
+
+    of dip_types.DiplomaticState.Hostile:
+      if assessment.recommendEnemy:
+        result.requirements.add(DiplomaticRequirement(
+          requirementType: DiplomaticRequirementType.DeclareWar,
+          priority: RequirementPriority.Critical, # Critical to act decisively when hostile
+          targetHouse: houseId,
+          estimatedCost: 0,
+          reason: assessment.enemyReason,
+          expectedBenefit: "Resolve conflict through decisive action"
+        ))
+      elif assessment.recommendNeutral:
+        result.requirements.add(DiplomaticRequirement(
+          requirementType: DiplomaticRequirementType.SeekPeace,
+          priority: RequirementPriority.High,
+          targetHouse: houseId,
+          estimatedCost: 0,
+          reason: assessment.neutralReason,
+          expectedBenefit: "De-escalate tensions, avoid full war"
+        ))
+      else:
+        # Maintain hostile relations
+        logDebug(LogCategory.lcAI, &"Protostrator: Maintaining hostile relations with {houseId}.")
+
+
+    of dip_types.DiplomaticState.Enemy:
+      if assessment.recommendNeutral: # This covers seeking peace
+        result.requirements.add(DiplomaticRequirement(
+          requirementType: DiplomaticRequirementType.SeekPeace,
+          priority: RequirementPriority.Critical, # Critical to seek peace with overwhelming enemy
+          targetHouse: houseId,
+          estimatedCost: 0,
+          reason: assessment.neutralReason,
+          expectedBenefit: "End costly war and rebuild strength"
+        ))
+      else:
+        # Continue war
+        logDebug(LogCategory.lcAI, &"Protostrator: Continuing war with {houseId}.")
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Protostrator: Generated {result.requirements.len} diplomatic requirements")
+
+  return result
+
+proc reprioritizeDiplomaticRequirements*(
+  originalRequirements: DiplomaticRequirements,
+  basileusFeedback: string  # Future: Basileus priority conflict feedback
+): DiplomaticRequirements =
+  ## Reprioritize diplomatic requirements based on Basileus feedback
+  ##
+  ## NOTE: Diplomacy costs 0 PP, so no Treasurer feedback needed
+  ## This function handles priority conflicts from Basileus (future implementation)
+
+  result = DiplomaticRequirements(
+    requirements: originalRequirements.requirements,
+    generatedTurn: originalRequirements.generatedTurn,
+    iteration: originalRequirements.iteration + 1
+  )
+
+  # For now, no complex reprioritization needed (diplomacy costs 0 PP)
+  # Future: Handle Basileus feedback on priority conflicts
+  # e.g., "War declaration conflicts with NAP proposal to ally"
+
+  logInfo(LogCategory.lcAI,
+          &"Protostrator: Diplomatic requirements unchanged (iteration {result.iteration})")
+
+  return result

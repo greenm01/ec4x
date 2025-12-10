@@ -58,6 +58,40 @@ type
     criticalTechGaps*: seq[TechField]          ## Behind enemies
 
     # Intelligence gaps
+    # --- Territory state additions ---
+    homeworld*: SystemId                    ## The AI's homeworld system ID
+    totalColonies*: int                     ## Total number of colonies owned
+    totalIU*: int                           ## Total industrial units across all colonies
+    fleetsAtSystem*: Table[SystemId, seq[FleetIntel]] ## All known fleets at specific systems (own + enemy intel)
+
+    # --- Strategic intelligence ---
+    knownEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]]
+    invasionOpportunities*: seq[SystemId]   ## Weak enemy colonies
+    diplomaticRelations*: Table[HouseId, DiplomaticState]
+
+    # --- Tech state ---
+    techLevels*: Table[TechField, int]
+    researchProgress*: Table[TechField, int]  ## Current RP accumulated
+    criticalTechGaps*: seq[TechField]          ## Behind enemies
+
+    # --- Intelligence gaps ---
+    # --- Territory state additions ---
+    homeworld*: SystemId                    ## The AI's homeworld system ID
+    totalColonies*: int                     ## Total number of colonies owned
+    totalIU*: int                           ## Total industrial units across all colonies
+    fleetsAtSystem*: Table[SystemId, seq[FleetIntel]] ## All known fleets at specific systems (own + enemy intel)
+
+    # --- Strategic intelligence ---
+    knownEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]]
+    invasionOpportunities*: seq[SystemId]   ## Weak enemy colonies
+    diplomaticRelations*: Table[HouseId, DiplomaticState]
+
+    # --- Tech state ---
+    techLevels*: Table[TechField, int]
+    researchProgress*: Table[TechField, int]  ## Current RP accumulated
+    criticalTechGaps*: seq[TechField]          ## Behind enemies
+
+    # --- Intelligence gaps ---
     staleIntelSystems*: seq[SystemId]       ## Need reconnaissance
     espionageTargets*: seq[HouseId]         ## High-value spy targets
 
@@ -118,11 +152,11 @@ type
     deadline*: Option[int]     ## Turn by which goal must be achieved (optional)
     preconditions*: seq[PreconditionRef]  ## Must be true before planning
     successCondition*: SuccessConditionRef  ## Goal achieved when true
-    description*: string       ## For logging/debugging
+    description*: string       ## For logging/debugging. Can be auto-generated or manual.
 
   PreconditionRef* = ref object
     ## Reference to shared precondition (DRY: defined once in conditions.nim)
-    conditionId*: string       ## Unique identifier
+    conditionId*: string       ## Unique identifier (e.g., "HasMinBudget")
     params*: Table[string, int]  ## Parameters (e.g., minBudget=200)
 
   SuccessConditionRef* = ref object
@@ -219,16 +253,8 @@ type
 # Configuration
 # =============================================================================
 
-type
-  GOAPConfig* = object
-    ## GOAP planner configuration (loaded from config/rba.toml)
-    enabled*: bool             ## Enable/disable GOAP system
-    planningDepth*: int        ## Max turns to plan ahead (3-10)
-    confidenceThreshold*: float  ## Min confidence to execute (0.5-0.9)
-    explorationWeight*: float  ## Heuristic: new actions vs known paths
-    defenseWeight*: float      ## Goal priority: defense vs offense
-    multiTurnPreference*: float  ## Prefer long-term plans vs immediate actions
-    logPlans*: bool            ## Debug: log all generated plans
+import ../../config # Import GOAPConfig from the centralized RBA config
+# No GOAPConfig definition here, as it's imported from config.nim
 
 # =============================================================================
 # Helper Functions

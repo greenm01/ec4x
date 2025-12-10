@@ -143,6 +143,7 @@ type
     split_threshold_act1*: int
     merge_threshold_act2*: int
     rendezvous_preference*: string
+    max_invasion_eta_turns*: int # Max turns for a fleet to reach an invasion target
 
     # ZeroTurnCommand Fleet Management (merge/detach/transfer)
     fleet_management_enabled*: bool
@@ -273,6 +274,24 @@ type
 # Gap Fix Configuration (Phase 1-2)
 # ==============================================================================
 
+
+
+type
+  GOAPConfig* = object
+    ## Configuration for GOAP strategic planning
+    enabled*: bool                    # Enable/disable GOAP
+    planning_depth*: int               # Max turns to plan ahead
+    confidence_threshold*: float       # Min confidence to execute plan
+    max_concurrent_plans*: int          # Max active plans at once
+    defense_priority*: float           # Weight for defensive goals (0.0-1.0)
+    offense_priority*: float           # Weight for offensive goals (0.0-1.0)
+    log_plans*: bool                   # Debug: log all generated plans
+    budget_guidance_boost_factor*: float # How much GOAP estimates boost RBA requirements (0.0-1.0)
+    replan_stalled_turns*: int         # Number of turns without progress to trigger replan
+    replan_budget_shortfall_ratio*: float # % of remaining cost below which to trigger replan
+    new_opportunity_scan_frequency*: int # How often to check for new opportunities (turns)
+
+
 type
   FeedbackSystemConfig* = object
     ## Rich feedback generation configuration (Gap 6)
@@ -388,6 +407,7 @@ type
     eparch_industrial*: EparchIndustrialConfig
     treasury_thresholds*: TreasuryThresholdsConfig
     affordability_checks*: AffordabilityChecksConfig
+    goap*: GOAPConfig # New GOAP configuration section
 
 # ==============================================================================
 # Config Validation
@@ -475,6 +495,9 @@ proc validateRBAConfig*(config: RBAConfig) =
   validatePositive(config.tactical.max_invasion_eta_turns, "tactical.max_invasion_eta_turns")
   validatePositive(config.tactical.max_response_eta_turns, "tactical.max_response_eta_turns")
 
+  # Validate Domestikos Admiral config
+  validatePositive(config.domestikos.max_invasion_eta_turns, "domestikos.max_invasion_eta_turns")
+
   # Validate orders parameters are ratios
   validateRatio(config.orders.research_max_percent, "orders.research_max_percent")
   validateRatio(config.orders.espionage_investment_percent, "orders.espionage_investment_percent")
@@ -496,6 +519,39 @@ proc validateRBAConfig*(config: RBAConfig) =
   validatePositive(config.economic.terraforming_costs_harsh_to_benign, "economic.terraforming_costs_harsh_to_benign")
   validatePositive(config.economic.terraforming_costs_benign_to_lush, "economic.terraforming_costs_benign_to_lush")
   validatePositive(config.economic.terraforming_costs_lush_to_eden, "economic.terraforming_costs_lush_to_eden")
+
+# Validate GOAP parameters
+validatePositive(config.goap.planning_depth, "goap.planning_depth")
+validateRatio(config.goap.confidence_threshold, "goap.confidence_threshold")
+validatePositive(config.goap.max_concurrent_plans, "goap.max_concurrent_plans")
+validateRatio(config.goap.defense_priority, "goap.defense_priority")
+validateRatio(config.goap.offense_priority, "goap.offense_priority")
+validateRatio(config.goap.budget_guidance_boost_factor, "goap.budget_guidance_boost_factor")
+validatePositive(config.goap.replan_stalled_turns, "goap.replan_stalled_turns")
+validateRatio(config.goap.replan_budget_shortfall_ratio, "goap.replan_budget_shortfall_ratio")
+validateNonNegative(config.goap.new_opportunity_scan_frequency, "goap.new_opportunity_scan_frequency") # Can be 0 for every turn
+
+# Validate GOAP parameters
+validatePositive(config.goap.planning_depth, "goap.planning_depth")
+validateRatio(config.goap.confidence_threshold, "goap.confidence_threshold")
+validatePositive(config.goap.max_concurrent_plans, "goap.max_concurrent_plans")
+validateRatio(config.goap.defense_priority, "goap.defense_priority")
+validateRatio(config.goap.offense_priority, "goap.offense_priority")
+validateRatio(config.goap.budget_guidance_boost_factor, "goap.budget_guidance_boost_factor")
+validatePositive(config.goap.replan_stalled_turns, "goap.replan_stalled_turns")
+validateRatio(config.goap.replan_budget_shortfall_ratio, "goap.replan_budget_shortfall_ratio")
+validateNonNegative(config.goap.new_opportunity_scan_frequency, "goap.new_opportunity_scan_frequency") # Can be 0 for every turn
+
+# Validate GOAP parameters
+validatePositive(config.goap.planning_depth, "goap.planning_depth")
+validateRatio(config.goap.confidence_threshold, "goap.confidence_threshold")
+validatePositive(config.goap.max_concurrent_plans, "goap.max_concurrent_plans")
+validateRatio(config.goap.defense_priority, "goap.defense_priority")
+validateRatio(config.goap.offense_priority, "goap.offense_priority")
+validateRatio(config.goap.budget_guidance_boost_factor, "goap.budget_guidance_boost_factor")
+validatePositive(config.goap.replan_stalled_turns, "goap.replan_stalled_turns")
+validateRatio(config.goap.replan_budget_shortfall_ratio, "goap.replan_budget_shortfall_ratio")
+validatePositive(config.goap.new_opportunity_scan_frequency, "goap.new_opportunity_scan_frequency")
 
 # ==============================================================================
 # Config Loading

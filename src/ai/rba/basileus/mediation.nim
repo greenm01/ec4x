@@ -11,6 +11,7 @@ import ../controller_types
 import ../../common/types as ai_types
 import ../../../engine/logger
 import ./personality
+import ../../ai/goap/conversion # For DomainType, getDomainType
 
 # Weighted requirement for unified priority queue
 type
@@ -176,9 +177,11 @@ proc mediateRequirements*(
   currentAct: ai_types.GameAct,
   availableBudget: int,
   houseId: HouseId,
-  isAtWar: bool = false  # NEW: War status parameter
+  isAtWar: bool = false,  # NEW: War status parameter
+  goapBudgetEstimates: Option[Table[DomainType, int]] = none(Table[DomainType, int])  # NEW: GOAP budget estimates by domain
 ): MediatedAllocation =
   ## Mediate competing requirements from all advisors using personality weights
+  ## and GOAP strategic budget guidance.
   ## Returns budget allocation per advisor + fulfilled/unfulfilled requirements
 
   logInfo(LogCategory.lcAI,
@@ -203,13 +206,25 @@ proc mediateRequirements*(
   logInfo(LogCategory.lcAI,
           &"{houseId} Basileus: Processing {allRequirements.len} total requirements")
 
-  # 3. Create weighted priority queue with war-aware urgency
+  # 3. Create weighted priority queue with war-aware urgency and GOAP boost
   var weightedReqs: seq[WeightedRequirement] = @[]
+  let goapEstimates = if goapBudgetEstimates.isSome: goapBudgetEstimates.get() else: initTable[DomainType, int]()
+  let goapBoostMultiplier = 1.5 # How much GOAP-aligned requirements are boosted
 
   for req in allRequirements:
     let urgency = calculateUrgencyScore(req.priority, req.requirementType, isAtWar)
     let advisorWeight = weights[req.advisor]
-    let weightedScore = urgency * advisorWeight
+    var weightedScore = urgency * advisorWeight
+
+    # Apply GOAP priority boost if estimates are available and relevant
+    let domain = getDomainType(req)
+    if domain.isSome and goapEstimates.contains(domain.get()):
+      # If GOAP has an estimate for this domain, boost the requirement's score
+      # This aligns RBA tactical decisions with GOAP's strategic plan
+      weightedScore *= goapBoostMultiplier
+      logDebug(LogCategory.lcAI,
+               &"{houseId} Basileus: GOAP Boosted {req.advisor} {req.requirementType} ({req.reason}) " &
+               &"to {weightedScore:.2f} (Domain: {domain.get()})")
 
     weightedReqs.add(WeightedRequirement(
       requirement: req,
@@ -386,3 +401,27 @@ proc mediateRequirements*(
             &"feedback loop will attempt reprioritization")
 
   return result
+
+proc getDomainType*(req: AdvisorRequirement): Option[DomainType] =
+  ## Helper to map AdvisorRequirement to GOAP DomainType
+  case req.advisor
+  of AdvisorType.Domestikos:
+    # Domestikos handles both Fleet and Build actions, need to be more specific
+    # For budget guidance, we can map broadly to Fleet/Build
+    if req.requirementType.contains("Offensive") or req.requirementType.contains("Defense"):
+      # Could be Fleet for movement or Build for ships
+      result = some(DomainType.Fleet)
+    elif req.requirementType.contains("Build"):
+      result = some(DomainType.Build)
+    else:
+      result = none(DomainType) # Or default to Fleet? For now, explicit is better
+  of AdvisorType.Logothete:
+    result = some(DomainType.Research)
+  of AdvisorType.Drungarius:
+    result = some(DomainType.Espionage)
+  of AdvisorType.Eparch:
+    result = some(DomainType.Economy)
+  of AdvisorType.Protostrator:
+    result = some(DomainType.Diplomacy)
+  of AdvisorType.Treasurer:
+    result = none(DomainType) # Treasurer doesn't map to a GOAP domain for budget guidance
