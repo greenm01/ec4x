@@ -142,10 +142,22 @@ proc reportGOAPProgress*(
         break
 
     if actionFulfilled:
-      controller.planTracker.markActionComplete(planIdx, trackedPlan.currentActionIndex)
-      logInfo(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' fulfilled.")
+      # RBA fulfilled the requirement, now check if the actual outcome occurred
+      let outcomeSuccessful = checkActualOutcome(
+        controller.houseId, currentAction, initialGameState, intelSnapshot, controller.techLevels
+      )
+      
+      if outcomeSuccessful:
+        controller.planTracker.markActionComplete(planIdx, trackedPlan.currentActionIndex)
+        logInfo(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED and OUTCOME SUCCESSFUL.")
+      else:
+        # RBA allocated resources, but the intended outcome did not materialize this turn.
+        # This could indicate a problem (e.g., construction blocked, research not yet mature).
+        # Mark as failed for now to trigger replanning, or potentially a "stalled" state.
+        controller.planTracker.markActionFailed(planIdx, trackedPlan.currentActionIndex)
+        logWarn(LogCategory.lcAI, &"GOAP: Action '{currentAction.name}' of plan '{trackedPlan.plan.goal.name}' FULFILLED by RBA, but OUTCOME FAILED. Re-evaluating plan.")
     else:
-      # If action was not explicitly fulfilled, check if it was explicitly unfulfilled (especially critical ones)
+      # If action was not explicitly fulfilled by RBA, check if it was explicitly unfulfilled (especially critical ones)
       var actionFailed = false
       for unfulfilledReq in allUnfulfilledReqs:
         if matchActionToRequirement(currentAction, unfulfilledReq) and
