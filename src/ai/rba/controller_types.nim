@@ -233,6 +233,18 @@ type
   # Note: Diplomacy doesn't cost PP, so no ProtostratorFeedback from Treasurer
   # Basileus provides feedback on priority conflicts only
 
+  AdvisorRequirement* = object
+    ## Generic wrapper for all advisor requirements, used in mediation and feedback.
+    advisor*: AdvisorType
+    buildReq*: Option[BuildRequirement]
+    researchReq*: Option[ResearchRequirement]
+    espionageReq*: Option[EspionageRequirement]
+    economicReq*: Option[EconomicRequirement]
+    diplomaticReq*: Option[DiplomaticRequirement]
+    # For matching to GOAP actions, e.g., "BuildFleet", "AllocateResearch"
+    requirementType*: string # A string representation of the underlying requirement type for matching
+    priority*: intelligence_types.RequirementPriority # Include priority here for easy access in mediation (from shared/intelligence_types)
+
   # ThreatLevel, FleetMovement, IntelligenceSnapshot now imported from shared/intelligence_types.nim (Phase B+)
   # Kept here for backward compatibility exports
   ThreatLevel* {.pure.} = enum
