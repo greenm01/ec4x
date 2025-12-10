@@ -332,4 +332,12 @@ proc generateFeedback*(
   else:
     logDebug(LogCategory.lcAI, "Phase 4: No GOAP replanning required this turn.")
 
+  # 3. If new opportunities were detected (and replanning isn't already triggered), integrate them.
+  # This is handled within checkGOAPReplanningNeeded, which triggers replanning if needed.
+  # However, if it didn't trigger replanning (e.g., lower priority opportunities), we might still want to add them.
+  # For now, `checkGOAPReplanningNeeded` directly signals replanning if `BetterOpportunity` is found.
+  # A more nuanced approach would be to integrate opportunities *after* replanning if the current plan is valid.
+  # For Phase 4, we'll keep the `checkGOAPReplanningNeeded` to trigger the replan.
+  # The actual addition of new plans happens in Phase 1 (planning) if replanNeeded is true.
+
   logInfo(LogCategory.lcAI, &"--- Phase 4: Feedback cycle completed for House {controller.houseId} (Turn {currentTurn}) ---")
