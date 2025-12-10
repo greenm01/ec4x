@@ -300,7 +300,8 @@ proc checkGOAPReplanningNeeded*(
     let currentGoals = controller.planTracker.activePlans.mapIt(it.plan.goal)
     let newOpportunities = detectNewOpportunities(currentGoals, currentWorldState)
     if newOpportunities.len > 0:
-      logInfo(LogCategory.lcAI, &"GOAP: Detected {newOpportunities.len} new strategic opportunities. Considering replanning.")
+      let opportunityDescriptions = newOpportunities.mapIt(it.description).join(", ")
+      logInfo(LogCategory.lcAI, &"GOAP: Detected {newOpportunities.len} new strategic opportunities: [{opportunityDescriptions}]. Considering replanning.")
       # The integration for adding these opportunities will happen in the planning phase,
       # but detecting them here can trigger a replan to re-evaluate goals.
       return some(ReplanReason.BetterOpportunity)
