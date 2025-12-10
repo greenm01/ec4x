@@ -132,6 +132,11 @@ proc createWorldStateSnapshot*(
   # --- Strategic intelligence ---
   result.knownEnemyColonies = intelSnapshot.knownEnemyColonies
   result.invasionOpportunities = intelSnapshot.military.invasionOpportunities.mapIt(it.systemId)
+  # Populate undefended enemy colonies for prestige targeting (Gap 6)
+  result.undefendedEnemyColonies = intelSnapshot.military.vulnerableTargets.filterIt(
+    it.estimatedDefenses == 0 # Filter for targets with 0 estimated defenses
+  ).mapIt((it.systemId, it.owner)) # Extract system ID and owner
+
   result.staleIntelSystems = intelSnapshot.intelligence.staleIntelSystems
   result.espionageTargets = intelSnapshot.espionage.highPriorityTargets.mapIt(it.targetHouse.getOrDefault(0.HouseId)) # Map to HouseId if targetHouse exists
 

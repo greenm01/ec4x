@@ -50,6 +50,7 @@ type
     # Strategic intelligence
     knownEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]]
     invasionOpportunities*: seq[SystemId]   ## Weak enemy colonies
+    undefendedEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]] ## Enemy colonies with 0 ground/orbital defense
     diplomaticRelations*: Table[HouseId, DiplomaticState]
 
     # Tech state
