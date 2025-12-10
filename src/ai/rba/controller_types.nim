@@ -118,6 +118,15 @@ type
 
   RequirementFeedback* = object
     ## Detailed feedback for a single unfulfilled requirement (Gap 6)
+    requirement*: AdvisorRequirement # General type to hold any requirement type
+    originalAdvisorReason*: string # The original reason string from the advisor
+    unfulfillmentReason*: UnfulfillmentReason # Specific reason Treasurer could not fulfill
+    budgetShortfall*: int           # PP gap (0 if partial fulfillment)
+    quantityBuilt*: int             # How many were affordable (0 if none)
+    suggestion*: Option[string]     # AI-generated suggestion for next steps
+
+  RequirementFeedback* = object
+    ## Detailed feedback for a single unfulfilled requirement (Gap 6)
     requirement*: BuildRequirement
     reason*: UnfulfillmentReason
     budgetShortfall*: int           # PP gap (0 if partial fulfillment)
