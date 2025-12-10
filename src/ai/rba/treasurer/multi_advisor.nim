@@ -8,13 +8,14 @@
 ## 3. Generate per-advisor feedback (fulfilled/unfulfilled requirements)
 
 import std/[tables, strformat, options, strutils]
-import ../../../common/types/core
+import ../../../common/types/[core, units] # Added units
 import ../../../engine/[logger, gamestate, fog_of_war]
 import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
 import ../../common/types as ai_types
 import ../basileus/mediation
 import ../../../ai/goap/conversion # For DomainType
+import ../../ai/goap/core/types # For TechField (Needed for TechField in feedback logic for research)
 
 type
   MultiAdvisorAllocation* = object
@@ -31,7 +32,8 @@ type
 proc extractBuildFeedback*(
   mediation: MediatedAllocation,
   domestikosReqs: BuildRequirements,
-  availableBudget: int
+  availableBudget: int,
+  currentCSTLevel: int # Added for tech-related suggestions
 ): TreasurerFeedback =
   ## Extract Treasurer feedback for Domestikos from mediation results
 
@@ -41,15 +43,19 @@ proc extractBuildFeedback*(
     deferredRequirements: @[],
     totalBudgetAvailable: availableBudget,
     totalBudgetSpent: mediation.domestikosBudget,
-    totalUnfulfilledCost: 0
+    totalUnfulfilledCost: 0,
+    detailedFeedback: @[] # Initialize detailed feedback
   )
 
-  # Separate fulfilled/unfulfilled Domestikos requirements
+  # Separate fulfilled/unfulfilled Domestikos requirements and generate detailed feedback
+  var currentBudget = mediation.domestikosBudget # Budget actually allocated to Domestikos this turn
+
   for weightedReq in mediation.fulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Domestikos:
       if weightedReq.requirement.buildReq.isSome:
         result.fulfilledRequirements.add(weightedReq.requirement.buildReq.get())
-
+        # No detailed feedback for fulfilled requirements, as they succeeded
+  
   for weightedReq in mediation.unfulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Domestikos:
       if weightedReq.requirement.buildReq.isSome:
@@ -57,7 +63,57 @@ proc extractBuildFeedback*(
         if req.priority == RequirementPriority.Deferred:
           result.deferredRequirements.add(req)
         else:
-          result.unfulfilledRequirements.add(req)
+          result.unfulfilledRequirements.add(req) # Keep for summary
+
+          # Generate detailed feedback for unfulfilled build requirements
+          let shortfall = req.estimatedCost - currentBudget # Approximate shortfall
+          var unfulfillmentReason = UnfulfillmentReason.InsufficientBudget
+          var suggestion = ""
+
+          if req.shipClass.isSome:
+            let shipData = getShipClassData(req.shipClass.get())
+            if currentCSTLevel < shipData.cstLevel:
+              unfulfillmentReason = UnfulfillmentReason.TechNotAvailable
+              suggestion = &"Research Construction Tech to level {shipData.cstLevel} to build {req.shipClass.get()}."
+            else:
+              # Insufficient budget for this ship, suggest a cheaper alternative if possible
+              # This is a heuristic and can be improved with more detailed ship data/AI config
+              let cheaperShips = [ShipClass.Corvette, ShipClass.Frigate, ShipClass.Destroyer] # Example cheaper ships
+              var affordableAlternative: Option[ShipClass] = none(ShipClass)
+              for sClass in cheaperShips:
+                let altShipData = getShipClassData(sClass)
+                if currentCSTLevel >= altShipData.cstLevel and currentBudget >= altShipData.buildCost: # Check if affordable with remaining budget
+                  affordableAlternative = some(sClass)
+                  break
+              
+              if affordableAlternative.isSome:
+                suggestion = &"Increase budget for Domestikos. Or consider building a cheaper ship like {affordableAlternative.get()} (cost {getShipClassData(affordableAlternative.get()).buildCost}PP)."
+              else:
+                suggestion = &"Increase budget for Domestikos to build {req.shipClass.get()} (needed {req.estimatedCost}PP, had {currentBudget}PP)."
+          elif req.itemId.isSome:
+            case req.itemId.get()
+            of "Shipyard", "Spaceport":
+              # Facilities are handled by Eparch, so this indicates a cross-advisor mismatch or budget issue
+              unfulfillmentReason = UnfulfillmentReason.BudgetReserved # Assuming Eparch's budget was insufficient or redirected
+              suggestion = &"Increase budget for Eparch/Domestikos to build {req.itemId.get()} (needed {req.estimatedCost}PP, had {currentBudget}PP)."
+            of "Marine", "Army", "GroundBattery", "PlanetaryShield":
+              unfulfillmentReason = UnfulfillmentReason.InsufficientBudget
+              suggestion = &"Increase budget for Domestikos to build {req.itemId.get()} (needed {req.estimatedCost}PP, had {currentBudget}PP)."
+            else:
+              unfulfillmentReason = UnfulfillmentReason.InsufficientBudget
+              suggestion = &"Increase budget for Domestikos/Eparch for {req.itemId.get()} (needed {req.estimatedCost}PP, had {currentBudget}PP)."
+          else:
+            unfulfillmentReason = UnfulfillmentReason.InsufficientBudget
+            suggestion = &"Increase budget for this build requirement (needed {req.estimatedCost}PP, had {currentBudget}PP)."
+
+          result.detailedFeedback.add(RequirementFeedback(
+            requirement: AdvisorRequirement(advisor: AdvisorType.Domestikos, buildReq: some(req), priority: req.priority, requirementType: $req.requirementType),
+            originalAdvisorReason: req.reason,
+            unfulfillmentReason: unfulfillmentReason,
+            budgetShortfall: shortfall,
+            quantityBuilt: 0, # Assuming no partial fulfillment for now
+            suggestion: some(suggestion)
+          ))
           result.totalUnfulfilledCost += req.estimatedCost
 
   return result
@@ -73,8 +129,11 @@ proc extractScienceFeedback*(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     totalRPAvailable: availableBudget,
-    totalRPSpent: mediation.logotheteBudget
+    totalRPSpent: mediation.logotheteBudget,
+    detailedFeedback: @[] # Initialize detailed feedback
   )
+
+  var currentRPBudget = mediation.logotheteBudget
 
   for weightedReq in mediation.fulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Logothete:
@@ -84,8 +143,19 @@ proc extractScienceFeedback*(
   for weightedReq in mediation.unfulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Logothete:
       if weightedReq.requirement.researchReq.isSome:
-        result.unfulfilledRequirements.add(weightedReq.requirement.researchReq.get())
+        let req = weightedReq.requirement.researchReq.get()
+        result.unfulfilledRequirements.add(req) # Keep for summary
 
+        # Generate detailed feedback for unfulfilled research requirements
+        let shortfall = req.estimatedCost - currentRPBudget # Approximate shortfall
+        result.detailedFeedback.add(RequirementFeedback(
+          requirement: AdvisorRequirement(advisor: AdvisorType.Logothete, researchReq: some(req), priority: req.priority, requirementType: "ResearchRequirement"),
+          originalAdvisorReason: req.reason,
+          unfulfillmentReason: UnfulfillmentReason.InsufficientBudget,
+          budgetShortfall: shortfall,
+          quantityBuilt: 0,
+          suggestion: some(&"Increase budget for Logothete's research. Needed {req.estimatedCost}RP, had {currentRPBudget}RP for this requirement.")
+        ))
   return result
 
 proc extractDrungariusFeedback*(
@@ -99,8 +169,11 @@ proc extractDrungariusFeedback*(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     totalBudgetAvailable: availableBudget,
-    totalBudgetSpent: mediation.drungariusBudget
+    totalBudgetSpent: mediation.drungariusBudget,
+    detailedFeedback: @[] # Initialize detailed feedback
   )
+
+  var currentEspionageBudget = mediation.drungariusBudget
 
   for weightedReq in mediation.fulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Drungarius:
@@ -110,8 +183,19 @@ proc extractDrungariusFeedback*(
   for weightedReq in mediation.unfulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Drungarius:
       if weightedReq.requirement.espionageReq.isSome:
-        result.unfulfilledRequirements.add(weightedReq.requirement.espionageReq.get())
+        let req = weightedReq.requirement.espionageReq.get()
+        result.unfulfilledRequirements.add(req) # Keep for summary
 
+        # Generate detailed feedback for unfulfilled espionage requirements
+        let shortfall = req.estimatedCost - currentEspionageBudget # Approximate shortfall
+        result.detailedFeedback.add(RequirementFeedback(
+          requirement: AdvisorRequirement(advisor: AdvisorType.Drungarius, espionageReq: some(req), priority: req.priority, requirementType: $req.requirementType),
+          originalAdvisorReason: req.reason,
+          unfulfillmentReason: UnfulfillmentReason.InsufficientBudget,
+          budgetShortfall: shortfall,
+          quantityBuilt: 0,
+          suggestion: some(&"Increase budget for Drungarius' espionage. Needed {req.estimatedCost}PP, had {currentEspionageBudget}PP for this requirement.")
+        ))
   return result
 
 proc extractEparchFeedback*(
@@ -125,8 +209,11 @@ proc extractEparchFeedback*(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     totalBudgetAvailable: availableBudget,
-    totalBudgetSpent: mediation.eparchBudget
+    totalBudgetSpent: mediation.eparchBudget,
+    detailedFeedback: @[] # Initialize detailed feedback
   )
+
+  var currentEconomicBudget = mediation.eparchBudget
 
   for weightedReq in mediation.fulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Eparch:
@@ -136,8 +223,19 @@ proc extractEparchFeedback*(
   for weightedReq in mediation.unfulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Eparch:
       if weightedReq.requirement.economicReq.isSome:
-        result.unfulfilledRequirements.add(weightedReq.requirement.economicReq.get())
+        let req = weightedReq.requirement.economicReq.get()
+        result.unfulfilledRequirements.add(req) # Keep for summary
 
+        # Generate detailed feedback for unfulfilled economic requirements
+        let shortfall = req.estimatedCost - currentEconomicBudget # Approximate shortfall
+        result.detailedFeedback.add(RequirementFeedback(
+          requirement: AdvisorRequirement(advisor: AdvisorType.Eparch, economicReq: some(req), priority: req.priority, requirementType: $req.requirementType),
+          originalAdvisorReason: req.reason,
+          unfulfillmentReason: UnfulfillmentReason.InsufficientBudget,
+          budgetShortfall: shortfall,
+          quantityBuilt: 0,
+          suggestion: some(&"Increase budget for Eparch's economic actions. Needed {req.estimatedCost}PP, had {currentEconomicBudget}PP for this requirement.")
+        ))
   return result
 
 proc isAtWar*(filtered: FilteredGameState, houseId: HouseId): bool =
@@ -249,7 +347,9 @@ proc allocateBudgetMultiAdvisor*(
   result.iteration = 0
 
   # === STEP 4: Generate per-advisor feedback ===
-  result.treasurerFeedback = extractBuildFeedback(mediation, domestikosReqs, availableBudget)
+  let cstLevel = filtered.ownHouse.techTree.levels.constructionTech # Get CST level here
+  
+  result.treasurerFeedback = extractBuildFeedback(mediation, domestikosReqs, availableBudget, cstLevel)
   result.scienceFeedback = extractScienceFeedback(mediation, logotheteReqs, availableBudget)
   result.drungariusFeedback = extractDrungariusFeedback(mediation, drungariusReqs, availableBudget)
   result.eparchFeedback = extractEparchFeedback(mediation, eparchReqs, availableBudget)
