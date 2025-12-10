@@ -18,11 +18,12 @@ proc shipCommissioned*(
 ): event_types.GameEvent =
   ## Create event for ship commissioning
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Fleet, # Use generic Fleet event type
+    eventType: event_types.GameEventType.ShipCommissioned, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"{shipClass} commissioned at system {systemId}",
     systemId: some(systemId),
-    fleetEventType: some("Created"),
+    fleetEventType: some("Created"), # Specific detail for case branch (redundant but for clarity)
     shipClass: some(shipClass),
     details: some(&"ShipClass: {shipClass}")
   )
@@ -34,11 +35,12 @@ proc buildingCompleted*(
 ): event_types.GameEvent =
   ## Create event for building completion
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    eventType: event_types.GameEventType.BuildingCompleted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"{buildingType} completed at system {systemId}",
     systemId: some(systemId),
-    colonyEventType: some("BuildingCompleted"),
+    colonyEventType: some("BuildingCompleted"), # Specific detail for case branch (redundant but for clarity)
     details: some(&"BuildingType: {buildingType}")
   )
 
@@ -54,11 +56,12 @@ proc unitRecruited*(
   else:
     &"{quantity} {unitType} units recruited at system {systemId}"
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    eventType: event_types.GameEventType.UnitRecruited, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: desc,
     systemId: some(systemId),
-    colonyEventType: some("UnitRecruited"),
+    colonyEventType: some("UnitRecruited"), # Specific detail for case branch (redundant but for clarity)
     details: some(&"UnitType: {unitType}, Quantity: {quantity}")
   )
 
@@ -70,10 +73,11 @@ proc unitDisbanded*(
 ): event_types.GameEvent =
   ## Create event for unit disbanding (manual or capacity enforcement)
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    eventType: event_types.GameEventType.UnitDisbanded, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"{unitType} disbanded: {reason}",
     systemId: systemId,
-    colonyEventType: some("UnitDisbanded"),
+    colonyEventType: some("UnitDisbanded"), # Specific detail for case branch (redundant but for clarity)
     details: some(&"UnitType: {unitType}, Reason: {reason}")
   )

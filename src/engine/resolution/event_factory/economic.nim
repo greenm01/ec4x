@@ -19,11 +19,12 @@ proc constructionStarted*(
 ): event_types.GameEvent =
   ## Create event for construction order acceptance
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Economy, # Use generic Economy event type
+    eventType: event_types.GameEventType.ConstructionStarted, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"Started construction: {itemType} (cost: {cost} PP)",
     systemId: some(systemId),
-    category: some("Construction"),
+    category: some("Construction"), # Specific detail for case branch (redundant but for clarity)
     details: some(&"Item: {itemType}, Cost: {cost}PP")
   )
 
@@ -43,11 +44,12 @@ proc populationTransfer*(
     &"Population transfer failed: {ptuAmount} PTU from {sourceSystem} to " &
     &"{destSystem} - {reason}"
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Economy, # Use generic Economy event type
+    eventType: event_types.GameEventType.PopulationTransfer, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: desc,
     systemId: some(destSystem),
-    category: some("PopulationTransfer"),
+    category: some("PopulationTransfer"), # Specific detail for case branch (redundant but for clarity)
     amount: some(ptuAmount),
     details: some(&"From {sourceSystem}, Success: {success}, Reason: {reason}")
   )
@@ -59,11 +61,12 @@ proc terraformComplete*(
 ): event_types.GameEvent =
   ## Create event for terraforming completion
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Colony, # Use generic Colony event type
+    eventType: event_types.GameEventType.TerraformComplete, # Specific event type
+    turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     description: &"Terraforming complete at system {systemId}: now " &
                   &"{newEnvironment}",
     systemId: some(systemId),
-    colonyEventType: some("TerraformComplete"),
+    colonyEventType: some("TerraformComplete"), # Specific detail for case branch (redundant but for clarity)
     details: some(&"New Planet Class: {newEnvironment}")
   )

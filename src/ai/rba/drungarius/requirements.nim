@@ -8,7 +8,7 @@
 import std/[options, strformat, tables]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, logger]
-import ../../../engine/resolution/types as event_types # For EspionageAction
+import ../../../engine/resolution/types # For EspionageAction
 import ../../../common/types/diplomacy as dip_types # For DiplomaticState
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot

@@ -8,7 +8,7 @@ import ../core/types
 import ../state/snapshot
 import ../../controller_types # For UnfulfillmentReason, RequirementFeedback
 import ../../../engine/gamestate # For Colony, SystemId, etc.
-import ../../../engine/resolution/types # For GameEventKind, CombatResultEvent, DiplomaticEvent, EspionageEvent
+import ../../../engine/resolution/types # For GameEvent, GameEventType, CombatResultEvent, DiplomaticEvent, EspionageEvent
 
 # =============================================================================
 # Plan Status Types
