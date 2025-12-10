@@ -1194,23 +1194,12 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
           if isSpaceLift:
-            # Spacelift ships commission to unassigned list
-            let capacity = case shipClass
-              of ShipClass.TroopTransport: 1  # 1 MD (Marine Division)
-              of ShipClass.ETAC: 1            # 1 PTU (Population Transfer Unit)
-              else: 0
-
-            let spaceLiftShip = SpaceLiftShip(
-              id: "", # Will be assigned
-              shipClass: shipClass,
-              owner: colony.owner,
-              location: colony.systemId,
-              isCrippled: false,  # Repaired!
-              cargo: SpaceLiftCargo(
-                cargoType: CargoType.None,
-                quantity: 0,
-                capacity: capacity
-              )
+            # Spacelift ships commission to unassigned list (use newSpaceLiftShip for config-based capacity)
+            let spaceLiftShip = newSpaceLiftShip(
+              id = "", # Will be assigned during fleet integration
+              shipClass = shipClass,
+              owner = colony.owner,
+              location = colony.systemId
             )
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
             logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} as spacelift ship (repaired)")

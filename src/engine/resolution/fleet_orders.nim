@@ -636,9 +636,9 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
         # Determine what cargo this ship can carry
         case ship.shipClass
         of ShipClass.TroopTransport:
-          # Auto-load marines if available
+          # Auto-load marines if available (capacity from config)
           if colony.marines > 0:
-            let loadAmount = min(1, colony.marines)  # TroopTransport capacity = 1 MD
+            let loadAmount = min(ship.cargo.capacity, colony.marines)
             if mutableShip.loadCargo(CargoType.Marines, loadAmount):
               colony.marines -= loadAmount
               modified = true

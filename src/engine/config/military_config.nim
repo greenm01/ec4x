@@ -24,11 +24,16 @@ type
     salvage_value_multiplier*: float
     emergency_salvage_multiplier*: float
 
+  SpaceLiftCapacityConfig* = object
+    troop_transport_capacity*: int  # Marine Divisions per TroopTransport
+    etac_capacity*: int             # Population Transfer Units per ETAC
+
   MilitaryConfig* = object
     ## Complete military configuration loaded from TOML
     fighter_mechanics*: FighterMechanicsConfig
     squadron_limits*: SquadronLimitsConfig
     salvage*: SalvageConfig
+    spacelift_capacity*: SpaceLiftCapacityConfig
 
 proc loadMilitaryConfig*(configPath: string = "config/military.toml"): MilitaryConfig =
   ## Load military configuration from TOML file
