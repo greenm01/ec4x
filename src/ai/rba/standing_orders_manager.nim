@@ -96,14 +96,16 @@ proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,
 # Standing Order Assignment
 # =============================================================================
 
-proc createAutoRepairOrder*(fleet: Fleet, homeworld: SystemId,
+proc createAutoRepairOrder*(fleet: Fleet, filtered: FilteredGameState,
                            damageThreshold: float = 0.3): StandingOrder =
-  ## Create AutoRepair standing order for damaged fleet
-  ## Returns to homeworld shipyard when damage exceeds threshold
+  ## Create AutoRepair standing order for damaged fleet.
+  ## Finds the best available Drydock for repair.
+
+  let bestDrydockSystem = findBestDrydockForRepair(filtered, fleet.location)
 
   logDebug(LogCategory.lcAI,
            &"{fleet.id} Assigning AutoRepair standing order " &
-           &"(threshold {(damageThreshold * 100).int}%, target {homeworld})")
+           &"(threshold {(damageThreshold * 100).int}%, target {bestDrydockSystem.getOrDefault(0.SystemId)})")
 
   result = StandingOrder(
     fleetId: fleet.id,
@@ -111,7 +113,7 @@ proc createAutoRepairOrder*(fleet: Fleet, homeworld: SystemId,
     params: StandingOrderParams(
       orderType: StandingOrderType.AutoRepair,
       repairDamageThreshold: damageThreshold,
-      targetShipyard: some(homeworld)
+      targetShipyard: bestDrydockSystem # Now dynamic
     ),
     roe: 3,  # Cautious ROE - avoid combat while damaged
     createdTurn: 0,  # Will be set by caller
@@ -403,14 +405,20 @@ proc assignStandingOrders*(controller: var AIController,
     # Assign standing order based on role
     case role
     of FleetRole.Damaged:
-      # Damaged fleets automatically return to shipyard
-      let order = createAutoRepairOrder(fleet, homeworld, 0.3)
-      result[fleet.id] = order
-      assignedCount += 1
+      # Damaged fleets automatically return to best available Drydock
+      let order = createAutoRepairOrder(fleet, filtered, 0.3) # Pass filtered to find best drydock
+      if order.params.targetShipyard.isSome: # Only assign if a repair target was found
+        result[fleet.id] = order
+        assignedCount += 1
 
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Fleet {fleet.id}: Assigned AutoRepair " &
-              &"(damaged fleet → homeworld {homeworld})")
+        logInfo(LogCategory.lcAI,
+                &"{controller.houseId} Fleet {fleet.id}: Assigned AutoRepair " &
+                &"(damaged fleet → best drydock {order.params.targetShipyard.get()})")
+      else:
+        skippedCount += 1
+        logDebug(LogCategory.lcAI,
+                 &"{controller.houseId} Fleet {fleet.id}: Skipped AutoRepair " &
+                 &"(no suitable drydock found)")
 
     of FleetRole.Colonizer:
       # ETAC fleets automatically colonize
@@ -493,22 +501,45 @@ proc assignStandingOrders*(controller: var AIController,
 # Standing Order Conversion to Fleet Orders
 # =============================================================================
 
-proc findNearestShipyard*(filtered: FilteredGameState, fromSystem: SystemId): Option[SystemId] =
-  ## Find nearest colony with shipyard for repairs
-  ## Returns closest shipyard colony, or homeworld as fallback
-
-  var nearestSystem: Option[SystemId] = none(SystemId)
+proc findBestDrydockForRepair*(filtered: FilteredGameState, fleetLocation: SystemId): Option[SystemId] =
+  ## Find the best colony with an operational Drydock for a fleet needing repair.
+  ## Considers available capacity and proximity.
+  result = none(SystemId)
+  var bestScore = -1.0 # Higher score is better
 
   for colony in filtered.ownColonies:
-    # Check if colony has operational shipyard
-    if hasOperationalShipyard(colony):
-      # Calculate distance (BFS would be more accurate, but this is a simple heuristic)
-      # For now, just find any shipyard - pathfinding happens in order execution
-      if nearestSystem.isNone:
-        nearestSystem = some(colony.systemId)
-        break
+    let totalRepairDocks = colony.getTotalRepairDocks() # Includes all operational Drydocks
+    if totalRepairDocks == 0:
+      continue # No drydocks or all crippled
 
-  return nearestSystem
+    var availableDocks = 0
+    for drydock in colony.drydocks:
+      if not drydock.isCrippled:
+        availableDocks += (drydock.effectiveDocks - drydock.activeRepairs.len)
+    
+    if availableDocks <= 0:
+      continue # No available slots
+
+    # Calculate distance score (closer is better, arbitrary scaling for now)
+    # This needs actual pathfinding distance, approximating with Euclidean distance for now
+    let sysPos = filtered.starMap.systems[colony.systemId].position
+    let fleetPos = filtered.starMap.systems[fleetLocation].position
+    let distance = sqrt(pow(float(sysPos.x - fleetPos.x), 2) + pow(float(sysPos.y - fleetPos.y), 2))
+    
+    # Simple scoring: prefer more available docks, penalize distance
+    # Example: score = (availableDocks * 10.0) - distance
+    # Higher available docks is better, lower distance is better
+    
+    # For now, a simpler scoring: prefer more available docks strongly, then closer
+    var currentScore = float(availableDocks) * 100.0 # High weight for available docks
+    if distance > 0:
+      currentScore -= distance # Penalize distance
+
+    if currentScore > bestScore:
+      bestScore = currentScore
+      result = some(colony.systemId)
+      
+  return result
 
 proc findNearestUnclaimedSystem*(filtered: FilteredGameState,
                                  fromSystem: SystemId,
@@ -548,15 +579,11 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
   case standingOrder.orderType
 
   of StandingOrderType.AutoRepair:
-    # Find nearest shipyard for repairs
-    let targetShipyard = if standingOrder.params.targetShipyard.isSome:
-      standingOrder.params.targetShipyard
-    else:
-      findNearestShipyard(filtered, fleet.location)
+    let targetShipyard = standingOrder.params.targetShipyard # This is now set by createAutoRepairOrder
 
     if targetShipyard.isSome:
       logDebug(LogCategory.lcAI,
-               &"{fleet.id} AutoRepair: Moving to shipyard at {targetShipyard.get}")
+               &"{fleet.id} AutoRepair: Moving to drydock at {targetShipyard.get}")
 
       return some(FleetOrder(
         fleetId: fleet.id,
@@ -567,7 +594,7 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
       ))
     else:
       logWarn(LogCategory.lcAI,
-              &"{fleet.id} AutoRepair: No shipyard found, holding position")
+              &"{fleet.id} AutoRepair: No specific repair target, holding position")
       return none(FleetOrder)
 
   of StandingOrderType.AutoColonize:
