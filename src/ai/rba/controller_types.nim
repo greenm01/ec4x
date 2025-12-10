@@ -166,6 +166,7 @@ type
     priority*: RequirementPriority
     targetHouse*: Option[HouseId]
     operation*: Option[esp_types.EspionageAction]
+    targetSystem*: Option[SystemId] # Added for operations targeting specific systems (e.g., sabotage)
     estimatedCost*: int  # PP cost for EBP/CIP
     reason*: string
 
