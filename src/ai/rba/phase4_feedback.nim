@@ -8,6 +8,91 @@ import ../orders/phase1_5_goap # For createWorldStateSnapshot (aliased from goap
 import ../treasurer/multi_advisor # For MultiAdvisorAllocation, AdvisorRequirement
 import ../config # For globalRBAConfig
 
+# Helper functions for checking actual outcomes of actions
+proc getFleetCount(gs: GameState, houseId: HouseId, systemId: SystemId, shipClass: string): int =
+  ## Returns the total number of ships of a given class for a house in a system from GameState.
+  if systemId not in gs.systems: return 0
+  let sys = gs.systems[systemId]
+  if houseId not in sys.fleets: return 0
+  for _, fleet in sys.fleets[houseId]:
+    if $fleet.shipClass == shipClass: # Assuming shipClass can be compared as string
+      result += fleet.numShips
+
+proc getFleetCount(intel: IntelligenceSnapshot, houseId: HouseId, systemId: SystemId, shipClass: string): int =
+  ## Returns the total number of ships of a given class for a house in a system from IntelligenceSnapshot.
+  if systemId not in intel.knownSystems: return 0
+  let sysIntel = intel.knownSystems[systemId]
+  if houseId not in sysIntel.fleets: return 0
+  for _, fleetIntel in sysIntel.fleets[houseId]:
+    if fleetIntel.shipClass == shipClass: # Assuming FleetIntel has a string field `shipClass`
+      result += fleetIntel.numShips # Assuming FleetIntel has `numShips: int`
+
+proc getFacilityOrGroundUnitCount(gs: GameState, houseId: HouseId, systemId: SystemId, itemId: string, isFacility: bool): int =
+  ## Returns the count of a facility or ground unit for a house in a system from GameState.
+  if systemId not in gs.systems: return 0
+  let sys = gs.systems[systemId]
+  if houseId not in sys.facilities and isFacility: return 0
+  if houseId not in sys.groundForces and not isFacility: return 0
+
+  if isFacility:
+    if sys.facilities[houseId].contains(itemId):
+      return sys.facilities[houseId][itemId]
+  else: # Ground units
+    if sys.groundForces[houseId].contains(itemId):
+      return sys.groundForces[houseId][itemId]
+  return 0
+
+proc getFacilityOrGroundUnitCount(intel: IntelligenceSnapshot, houseId: HouseId, systemId: SystemId, itemId: string, isFacility: bool): int =
+  ## Returns the count of a facility or ground unit for a house in a system from IntelligenceSnapshot.
+  if systemId not in intel.knownSystems: return 0
+  let sysIntel = intel.knownSystems[systemId]
+  if houseId not in sysIntel.facilities and isFacility: return 0
+  if houseId not in sysIntel.groundForces and not isFacility: return 0
+  
+  if isFacility:
+    if sysIntel.facilities[houseId].contains(itemId):
+      return sysIntel.facilities[houseId][itemId]
+  else: # Ground units
+    if sysIntel.groundForces[houseId].contains(itemId):
+      return sysIntel.groundForces[houseId][itemId]
+  return 0
+
+
+proc checkActualOutcome(
+  houseId: HouseId,
+  action: Action,
+  initialGameState: GameState,
+  intelSnapshot: IntelligenceSnapshot,
+  currentTechLevels: Table[TechField, int] # AI's current tech levels from controller
+): bool =
+  ## Checks if a GOAP action had its intended effect by comparing initial game state
+  ## with the intelligence snapshot after orders have been processed.
+  case action.actionType
+  of ActionType.BuildFleet:
+    let initialCount = getFleetCount(initialGameState, houseId, action.target, action.shipClass)
+    let currentCount = getFleetCount(intelSnapshot, houseId, action.target, action.shipClass)
+    return currentCount > initialCount
+  of ActionType.BuildFacility:
+    let initialCount = getFacilityOrGroundUnitCount(initialGameState, houseId, action.target, action.itemId, true)
+    let currentCount = getFacilityOrGroundUnitCount(intelSnapshot, houseId, action.target, action.itemId, true)
+    return currentCount > initialCount
+  of ActionType.BuildGroundForces:
+    let initialCount = getFacilityOrGroundUnitCount(initialGameState, houseId, action.target, action.itemId, false)
+    let currentCount = getFacilityOrGroundUnitCount(intelSnapshot, houseId, action.target, action.itemId, false)
+    return currentCount > initialCount
+  of ActionType.AllocateResearch:
+    let initialTechLevel = initialGameState.techLevels[houseId][action.techField]
+    let currentTechLevel = currentTechLevels[action.techField]
+    return currentTechLevel > initialTechLevel
+  # Add other actions here that need direct outcome verification.
+  # For now, other actions (espionage, economic) are primarily deemed successful
+  # if RBA fulfills their requirements, or if game events report success.
+  else:
+    # For actions not explicitly checked here, assume RBA fulfillment implies success for now.
+    # More complex outcome checks (e.g., combat results, espionage success/failure events)
+    # would require parsing game event logs or deeper state comparisons.
+    return true # Default to true for unchecked actions, relying on RBA fulfillment.
+
 
 # Helper to match a GOAP action to an RBA requirement
 proc matchActionToRequirement(action: Action, requirement: AdvisorRequirement): bool =
