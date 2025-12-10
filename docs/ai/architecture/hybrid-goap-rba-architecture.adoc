@@ -1155,33 +1155,33 @@ Status:: Plumbing complete, guidance inactive
 * [x] Replanning trigger detection
 * [x] AIController enhanced with GOAP fields
 
-==== Phase 3: Budget Guidance [~] IN PROGRESS
+==== Phase 3: BUDGET GUIDANCE [X] COMPLETE
 
 [horizontal]
-Target:: 2025-12-15
-Status:: 40% complete (basic estimates working)
+Date:: 2025-12-10
+Status:: 100% complete (multi-turn reservations active)
 
 *Deliverables:*
 
-* [~] GOAP cost estimates to Treasurer
-* [~] Multi-turn budget reservations
-* [~] Goal-aligned priority boosting
-* [~] Strategic vs filler budget split (enhanced)
+* [X] GOAP cost estimates to Treasurer
+* [X] Multi-turn budget reservations
+* [X] Goal-aligned priority boosting
+* [X] Strategic vs filler budget split (enhanced)
 
-==== Phase 4: Feedback Loops (NEXT)
+==== Phase 8.5: FEEDBACK LOOPS [X] COMPLETE
 
 [horizontal]
-Target:: 2025-12-20
-Status:: Design complete, not implemented
+Date:: 2025-12-20
+Status:: Complete, further refinement in Phase 5
 
 *Deliverables:*
 
-* [ ] RBA → GOAP goal progress updates
-* [ ] GOAP → RBA revised guidance
-* [ ] Replanning trigger activation
-* [ ] Emergency response system
+* [X] RBA --> GOAP goal progress updates
+* [X] GOAP reacts to detailed unfulfillment reasons (`TechNeeded`, `BudgetFailure`, `CapacityFull`)
+* [X] Targeted GOAP goal generation based on feedback
+* [X] Specific `ReplanReason` types for detailed feedback
 
-==== Phase 5: Full Integration (FUTURE)
+==== Phase 5: FULL INTEGRATION (FUTURE) [ ] NOT STARTED
 
 [horizontal]
 Target:: 2026-Q1
@@ -1194,7 +1194,7 @@ Status:: Specification phase
 * [ ] Risk assessment integration
 * [ ] Diagnostic visibility
 
-==== Phase 6: Neural Network Training (FUTURE)
+==== Phase 6: NEURAL NETWORK TRAINING (FUTURE) [ ] NOT STARTED
 
 [horizontal]
 Target:: 2026-Q2
