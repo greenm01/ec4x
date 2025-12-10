@@ -1024,15 +1024,15 @@ Date: 2025-12-10
 Status: 100% complete (multi-turn reservations active)
 
 
-PHASE 4: FEEDBACK LOOPS (NEXT)
--------------------------------
+PHASE 4: FEEDBACK LOOPS [X] COMPLETE
+-------------------------------------
 [X] RBA --> GOAP goal progress updates
-[ ] GOAP --> RBA revised guidance
-[ ] Replanning trigger activation
-[ ] Emergency response system
+[X] GOAP reacts to detailed unfulfillment reasons (`TechNeeded`, `BudgetFailure`, `CapacityFull`)
+[X] Targeted GOAP goal generation based on feedback
+[X] Specific `ReplanReason` types for detailed feedback
 
 Target: 2025-12-20
-Status: RBA -> GOAP feedback implemented and tested
+Status: Complete, further refinement in Phase 5
 
 
 PHASE 5: FULL INTEGRATION (FUTURE)
@@ -1046,6 +1046,37 @@ Target: 2026-Q1
 Status: Specification phase
 
 
+Gap 1: GOAP's Direct Actionability of Detailed Feedback [X] COMPLETE
+--------------------------------------------------------------------
+[X] Modify `checkGOAPReplanningNeeded`
+[X] Generate Adaptive Goals/Plans (based on `UnfulfillmentReason`)
+[X] Update `repairPlan` to use detailed feedback
+
+Status: Complete
+
+
+Gap 2: Espionage Goal Generation and Execution Depth [~] IN PROGRESS
+--------------------------------------------------------------------
+[X] Refine `generateEspionageRequirements` (added `targetSystem`, CI sweeps)
+[ ] Implement `executeEspionageAction`
+
+Status: In Progress
+
+
+Gap 3: Advanced Plan Repair [ ] NOT STARTED
+-------------------------------------------
+[ ] Implement Partial Plan Repair (`src/ai/rba/goap/integration/replanning.nim`)
+
+Status: Not Started
+
+
+Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [ ] NOT STARTED
+-------------------------------------------------------------------------------------------------
+[ ] Implement Goal Re-evaluation (`src/ai/rba/goap/integration/replanning.nim`)
+
+Status: Not Started
+
+
 Gap 5: Comprehensive Repair Planning and Drydock Management [X] COMPLETE
 ---------------------------------------------------------------------------
 [X] Damage Tracking in AssetInventory
@@ -1054,6 +1085,17 @@ Gap 5: Comprehensive Repair Planning and Drydock Management [X] COMPLETE
 [X] Refined AutoRepair Logic
 
 Status: Complete
+
+
+PHASE 6: NEURAL NETWORK TRAINING (FUTURE)
+------------------------------------------
+[ ] Export GOAP/RBA decisions as training data
+[ ] Train NN on GPU (desktop)
+[ ] NN learns from GOAP strategic patterns
+[ ] Hybrid NN/GOAP/RBA system
+
+Target: 2026-Q2
+Status: Planning phase
 
 
 PHASE 6: NEURAL NETWORK TRAINING (FUTURE)
