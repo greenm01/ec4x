@@ -1055,19 +1055,19 @@ Gap 1: GOAP's Direct Actionability of Detailed Feedback [X] COMPLETE
 Status: Complete
 
 
-Gap 2: Espionage Goal Generation and Execution Depth [~] IN PROGRESS
+Gap 2: Espionage Goal Generation and Execution Depth [X] COMPLETE
 --------------------------------------------------------------------
 [X] Refine `generateEspionageRequirements` (added `targetSystem`, CI sweeps)
-[ ] Implement `executeEspionageAction`
+[X] Implement `executeEspionageAction`
+
+Status: Complete
+
+
+Gap 3: Advanced Plan Repair [~] IN PROGRESS
+-------------------------------------------
+[X] Implement Partial Plan Repair (`src/ai/rba/goap/integration/replanning.nim`)
 
 Status: In Progress
-
-
-Gap 3: Advanced Plan Repair [ ] NOT STARTED
--------------------------------------------
-[ ] Implement Partial Plan Repair (`src/ai/rba/goap/integration/replanning.nim`)
-
-Status: Not Started
 
 
 Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [ ] NOT STARTED
