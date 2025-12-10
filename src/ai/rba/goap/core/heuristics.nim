@@ -150,6 +150,10 @@ proc estimateGoalCost*(state: WorldStateSnapshot, goal: Goal): float =
   of GoalType.TransferPopulation:
     # Space Guild PTU costs (variable)
     return 100.0  # Conservative estimate
+  of GoalType.MaintainPrestige:
+    # Cost to maintain prestige is typically defensive investments or avoiding penalties
+    # Estimate a moderate cost for defensive actions or intel sweeps.
+    return 150.0
 
   of GoalType.TerraformPlanet:
     # Planetary development (expensive, multi-turn)
