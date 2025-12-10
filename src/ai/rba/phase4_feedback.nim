@@ -304,3 +304,28 @@ proc checkGOAPReplanningNeeded*(
 
 
   return none(ReplanReason)
+
+proc generateFeedback*(
+  controller: var AIController,
+  allocationResult: MultiAdvisorAllocation,
+  currentTurn: int,
+  intelSnapshot: IntelligenceSnapshot,
+  initialGameState: GameState
+) =
+  ## Coordinates the feedback phase for GOAP and RBA.
+  ## This involves reporting GOAP action progress and checking if replanning is needed.
+  logInfo(LogCategory.lcAI, &"--- Phase 4: Starting feedback cycle for House {controller.houseId} (Turn {currentTurn}) ---")
+
+  # 1. Report RBA's allocation results and actual outcomes to GOAP PlanTracker
+  reportGOAPProgress(controller, allocationResult, currentTurn, intelSnapshot, initialGameState)
+
+  # 2. Check if replanning is needed based on updated plan status and world state
+  let replanReason = checkGOAPReplanningNeeded(controller, currentTurn, intelSnapshot)
+  if replanReason.isSome:
+    logWarn(LogCategory.lcAI, &"Phase 4: GOAP REPLANNING REQUIRED! Reason: {replanReason.get()}")
+    controller.replanNeeded = true # Signal to the main AI loop that replanning is required
+    controller.replanReason = replanReason # Store the reason for replanning
+  else:
+    logDebug(LogCategory.lcAI, "Phase 4: No GOAP replanning required this turn.")
+
+  logInfo(LogCategory.lcAI, &"--- Phase 4: Feedback cycle completed for House {controller.houseId} (Turn {currentTurn}) ---")
