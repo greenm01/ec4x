@@ -19,6 +19,9 @@ type
     BetterOpportunity   # New, higher-priority goal emerged (external detection)
     ExternalEvent       # Enemy action changed situation (e.g., system lost)
     PlanStalled         # No progress on plan for too many turns
+    TechNeeded          # Failed due to missing tech (e.g., cannot build ship)
+    BudgetFailure       # Failed due to insufficient budget for action (general)
+    CapacityFull        # Failed due to capacity limits (e.g., colony docks full)
 
 proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPConfig): (bool, ReplanReason) =
   ## Determine if a plan needs replanning.
