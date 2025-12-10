@@ -1046,6 +1046,16 @@ Target: 2026-Q1
 Status: Specification phase
 
 
+Gap 5: Comprehensive Repair Planning and Drydock Management [~] IN PROGRESS
+---------------------------------------------------------------------------
+[X] Damage Tracking in AssetInventory
+[X] Drydock Need Assessment logic
+[ ] GOAP Goal for Repair Capacity
+[ ] Refined AutoRepair Logic
+
+Status: In Progress
+
+
 PHASE 6: NEURAL NETWORK TRAINING (FUTURE)
 ------------------------------------------
 [ ] Export GOAP/RBA decisions as training data
