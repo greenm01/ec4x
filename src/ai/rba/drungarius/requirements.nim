@@ -147,6 +147,7 @@ proc generateEspionageRequirements*(
         priority: RequirementPriority.High,
         targetHouse: some(targetOwner),
         operation: some(esp_types.EspionageAction.SabotageHigh),
+        targetSystem: some(targetSystem), # Set target system for system-specific operation
         estimatedCost: 50,  # High sabotage operation cost estimate
         reason: &"High-value sabotage target - system {targetSystem} (undefended, high industry)"
       ))
@@ -230,6 +231,7 @@ proc generateEspionageRequirements*(
           priority: RequirementPriority.Low,
           targetHouse: some(targetOwner),
           operation: some(esp_types.EspionageAction.CyberAttack),
+          targetSystem: some(targetSystem), # Set target system for system-specific operation
           estimatedCost: 30,  # Cyber attack cost estimate
           reason: &"Cyber attack on {targetOwner} system {targetSystem}"
         ))
