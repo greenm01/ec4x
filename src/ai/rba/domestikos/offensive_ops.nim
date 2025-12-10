@@ -275,14 +275,17 @@ proc selectCombatOrderType(
   ## - Strong defense → Bombard only (invasion too risky)
   ## - No transports → Bombard only
 
-  # Find fleet and check for troop transports (marines)
-  var hasTransports = false
+  # Find fleet and check for troop transports with LOADED Marines
+  var hasLoadedTransports = false
+  var totalMarines = 0
   for fleet in filtered.ownFleets:
     if fleet.id == fleetId:
-      for squadron in fleet.squadrons:
-        if squadron.flagship.shipClass == ShipClass.TroopTransport:
-          hasTransports = true
-          break
+      # Check spacelift ships for loaded Marines
+      for ship in fleet.spaceLiftShips:
+        if ship.shipClass == ShipClass.TroopTransport:
+          if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
+            hasLoadedTransports = true
+            totalMarines += ship.cargo.quantity
       break
 
   # Estimate target defense strength (0-10 scale)
@@ -292,27 +295,28 @@ proc selectCombatOrderType(
     let defenses = targetColony.estimatedDefenses.get()
     defenseStrength = defenses  # Ground defenses (armies, marines, batteries)
 
-  # Decision logic based on defenses and fleet composition
-  if not hasTransports:
-    # No transports - can only bombard
+  # Decision logic based on defenses, fleet composition, AND loaded Marines
+  if not hasLoadedTransports or totalMarines == 0:
+    # No loaded transports - can ONLY bombard (no invasion possible)
     return FleetOrderType.Bombard
 
-  elif defenseStrength <= 2 and shipCount >= 3:
-    # Weak/no defenses, strong fleet with transports → Blitz
+  # Have loaded Marines - can attempt invasion or blitz
+  elif defenseStrength <= 2 and shipCount >= 3 and totalMarines >= 3:
+    # Weak/no defenses, strong fleet with adequate Marines → Blitz
     # Simultaneous bombardment + invasion for quick victory
     return FleetOrderType.Blitz
 
   elif defenseStrength <= 5 and shipCount >= 2:
     # Moderate defenses → Bombard first to soften
-    # AI will need to follow up with invasion on next turn
+    # AI will follow up with invasion on next turn once defenses weakened
     return FleetOrderType.Bombard
 
-  elif shipCount >= 4:
-    # Strong fleet can attempt invasion even with moderate defenses
+  elif shipCount >= 4 and totalMarines >= 6:
+    # Strong fleet with strong Marine force → Invade
     return FleetOrderType.Invade
 
   else:
-    # Strong defenses or weak fleet → Just bombard
+    # Insufficient Marines or strong defenses → Just bombard
     # Soften target for future invasion
     return FleetOrderType.Bombard
 
@@ -401,10 +405,12 @@ proc generateCounterAttackOrders*(
            &"{controller.houseId} Invasion: Evaluating invasion opportunities " &
            &"(total fleets: {analyses.len})")
 
-  # Find available combat fleets (idle or under-utilized)
+  # Find available combat fleets (idle, under-utilized, or optimally-defended)
+  # IMPORTANT: Include Optimal fleets with DefendSystem standing orders
+  # Rationale: Defensive fleets can be reassigned for offensive ops (standing orders are strategic defaults)
   var availableAttackers: seq[FleetAnalysis] = @[]
   for analysis in analyses:
-    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
+    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized, FleetUtilization.Optimal}:
       if analysis.hasCombatShips and analysis.shipCount >= 2:
         # Need at least 2 ships for counter-attack
         availableAttackers.add(analysis)
