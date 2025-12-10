@@ -1,0 +1,1190 @@
+= Hybrid GOAP/RBA AI Architecture
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectnums:
+:icons: font
+:last-update-label!:
+
+[.metadata]
+****
+*Last Updated:* 2025-12-10 +
+*Status:* COMPLETE (All identified Gaps 1-7 addressed) +
+*System:* Byzantine Imperial AI with Strategic Planning Layer
+****
+
+== Executive Summary
+
+The *Hybrid GOAP/RBA Architecture* combines two complementary AI systems:
+
+=== GOAP (Goal-Oriented Action Planning) - Strategic Layer
+
+*   Multi-turn goal planning (3-10 turn horizon)
+*   Resource allocation strategies
+*   Goal prioritization and replanning
+*   High-level coordination
+
+=== RBA (Rule-Based Advisors) - Tactical Layer
+
+*   Turn-by-turn order generation
+*   Budget-constrained fulfillment
+*   Domain-specific expertise (6 advisors)
+*   Iterative feedback loops
+
+[IMPORTANT]
+====
+*Key Principle:* GOAP thinks strategically, RBA acts tactically.
+====
+
+=== System Overview
+
+.Hybrid AI System Architecture
+```mermaid
+graph TD
+    subgraph Hybrid AI System
+        subgraph GOAP Strategic Layer (Multi-Turn Planning)
+            A["Conquer System 42 in 5 turns"]
+            B["Research CST VI by Turn 8"]
+            C["Build invasion fleet (3 turns)"]
+        end
+        GOAP -->|Goals, Plans, Cost Estimates| RBA
+        subgraph RBA Tactical Layer (Turn-by-Turn Execution)
+            D["Build 2 Battleships this turn"]
+            E["Allocate 300 PP to research"]
+            F["Move Fleet 5 to System 42"]
+        end
+    end
+```
+
+---
+
+== Architecture Overview
+
+=== Two-Layer Decision Hierarchy
+
+```mermaid
+graph TD
+    subgraph Strategic Horizon (3-10 turns)
+        subgraph GOAP Layer
+            Goals --> Planner(A* Search)
+            Planner --> Plans(Multi-turn)
+            subgraph Inputs
+                WorldState(World State)
+                Opportunities
+                Threats
+            end
+            WorldState --> Goals
+            Opportunities --> Goals
+            Threats --> Goals
+            Plans --> ActionSequences(Action Sequences)
+            Plans --> CostEstimates(Cost Estimates)
+            Plans --> Dependencies
+        end
+    end
+    GOAPLayer -->|Strategic Guidance: Active goals, Plan progress, Cost budgets| RBALayer
+    subgraph Tactical Horizon (1 turn)
+        subgraph RBA Layer
+            Basileus(Basileus <br> (Turn Coordinator))
+            Basileus --- Drung(Drung. <br> (Intel))
+            Basileus --- Treasurer(Treasurer <br> (CFO))
+            Basileus --- Dom(Domestikos <br> (Military))
+            Treasurer --- Logo(Logo. <br> (R&D))
+            Treasurer --- Eparch(Eparch <br> (Economy))
+            Treasurer --- Proto(Proto. <br> (Diplo.))
+        end
+    end
+```
+
+### Responsibility Split
+
+| Layer    | Responsibility       | Time Horizon | Decision Type      |
+|----------|---------------------|--------------|-------------------|
+| **GOAP** | What to achieve     | 3-10 turns   | Strategic goals   |
+| **GOAP** | How to sequence     | Multi-turn   | Action planning   |
+| **GOAP** | When to replan      | Continuous   | Adaptive strategy |
+| **RBA**  | How to execute      | 1 turn       | Tactical orders   |
+| **RBA**  | What to build       | 1 turn       | Resource alloc    |
+| **RBA**  | Where to move       | 1 turn       | Fleet operations  |
+
+---
+
+== Strategic vs Tactical Decision Making
+
+=== GOAP: Strategic Planning (Multi-Turn)
+
+**Purpose:** Answer "What should we achieve in the next 5 turns?"
+
+==== Step 1: Goal Extraction
+
+.Analyze world state and extract strategic goals
+```
+Input: GameState, Intelligence, Advisor Requirements
+Output: Prioritized goal list
+
+Example Goals:
+- Priority 90: "Defend Homeworld (critical)"
+- Priority 70: "Conquer System 42"
+- Priority 50: "Research CST VI"
+- Priority 30: "Expand to 5 colonies"
+```
+
+==== Step 2: Plan Generation (A* Search)
+
+.For each goal, generate action sequence
+```
+Goal: "Conquer System 42"
+
+|===
+|Turn |Action |Cost
+
+|1
+|Build 5 Destroyers
+|200 PP
+
+|2
+|Build 2 Carriers
+|240 PP
+
+|3
+|Build 10 Marines
+|500 PP
+
+|4
+|Move to System 42
+|0 PP
+
+|5
+|Invade System 42
+|0 PP
+|===
+
+Total Cost: 940 PP over 5 turns
+Success Probability: 0.85
+```
+
+==== Step 3: Cost Estimation & Prioritization
+
+.Evaluate feasibility and rank goals
+```
+Ranking Criteria:
+- Strategic value (survival > expansion)
+- Cost efficiency (PP per prestige point)
+- Success probability (threat assessment)
+- Time to completion (urgent > deferred)
+
+Final Plan:
+- [X] Goal 1: Defend Homeworld  (500 PP, 3 turns)
+- [X] Goal 2: Conquer System 42 (940 PP, 5 turns)
+- [ ] Goal 3: CST VI (deferred, insufficient PP)
+```
+
+==== Step 4: Tactical Handoff to RBA
+
+.Provide current-turn guidance to RBA advisors
+```
+Turn 1 Instructions:
+- Domestikos: Build 5 Destroyers (Goal 1)
+- Domestikos: Build 2 Frigates (Goal 2)
+- Treasurer: Reserve 700 PP for Turn 2-3
+- Logothete: Defer CST VI research
+```
+
+### RBA: Tactical Execution (Single-Turn)
+
+**Purpose:** Answer "What should we do THIS turn?"
+
+==== Phase 0: Intelligence Distribution
+
+.Drungarius collects fog-of-war intelligence
+```
+- Threats: Enemy fleet at System 15 (20 ships)
+- Opportunities: System 42 undefended
+- Construction: Enemy building Battleships
+```
+
+==== Phase 1: Requirement Generation
+
+.Each advisor generates THIS TURN requirements
+```
+Domestikos:
+- Build 5 Destroyers (Critical, 200 PP)
+- Build 2 Frigates (High, 80 PP)
+- Build 1 Starbase (Medium, 40 PP)
+
+Logothete:
+- Research CST (Medium, 150 PP)
+- Research ACO (Low, 100 PP)
+
+Total Requested: 570 PP
+Treasury Available: 450 PP
+--> OVER BUDGET (need Phase 2 mediation)
+```
+
+==== Phase 1.5: GOAP Guidance (Optional)
+
+.GOAP informs budget allocation priorities
+```
+Active Goals:
+  Goal 1 (Priority 90): "Defend Homeworld"
+    --> Boost Domestikos defense requirements
+  Goal 2 (Priority 70): "Conquer System 42"
+    --> Reserve 240 PP for Turn 2 carriers
+
+Budget Guidance:
+  Strategic: 360 PP (80%)
+  Filler: 90 PP (20%)
+  Reserved: 240 PP (next turn)
+```
+
+==== Phase 2: Mediation & Allocation
+
+.Treasurer allocates PP budget across advisors
+```
+Allocation (GOAP-informed):
+- Domestikos: 280 PP (defense priority)
+- Logothete: 80 PP (CST only)
+- Drungarius: 40 PP (intel ops)
+- Eparch: 50 PP (infrastructure)
+- Total: 450 PP
+```
+
+==== Phase 3: Execution & Feedback
+
+.Iteration 1: Try to fulfill all requirements
+```
+- [X] 5 Destroyers built (200 PP)
+- [X] 2 Frigates built (80 PP)
+- [ ] 1 Starbase unfulfilled (need 40 PP)
+- [X] CST research (80 PP)
+
+Feedback: 1 Medium requirement unfulfilled
+--> Continue to Iteration 2 (reprioritize)
+
+Iteration 2: Adjust and retry
+- [ ] Starbase deferred (Low priority)
+- [X] Add 1 Scout with remaining 40 PP
+
+Result: Converged (no Critical/High unfulfilled)
+```
+
+==== Phase 4: Feedback to GOAP
+
+.Update GOAP goal progress
+```
+Goal 1: "Defend Homeworld"
+- [X] Turn 1/3 complete (5 Destroyers built)
+- Progress: 33%
+
+Goal 2: "Conquer System 42"
+- [X] Turn 1/5 complete (2 Frigates built)
+- Progress: 20%
+```
+
+---
+
+== System Integration
+
+### Per-Turn Integration Flow
+
+```mermaid
+graph TD
+    subgraph AI Turn Cycle
+        A[Start Turn N] --> P0(Phase 0: Intelligence Distribution);
+        P0 --> P1(Phase 1: Multi-Advisor Requirement Generation);
+        P1 --> P1_5(Phase 1.5: GOAP Strategic Planning);
+        P1_5 --> P2(Phase 2: Mediation & Budget Allocation);
+        P2 --> P3(Phase 3: Requirement Execution - Non-Iterative);
+        P3 --> P3_4(Phase 3/4: Unified Feedback Loop - Iterative Execution & Reprioritization);
+        P3_4 --> P5(Phase 5: Strategic Operations Planning);
+        P5 --> P6(Phase 6: Standing Orders Assignment);
+        P6 --> P7(Phase 7: Tactical Fleet Orders);
+        P7 --> P7_5(Phase 7.5: Colony Management);
+        P7_5 --> P8(Phase 8: Logistics Optimization);
+        P8 --> P8_5(Phase 8.5: Report GOAP Progress);
+        P8_5 --> Z[End Turn N / Start Turn N+1];
+    end
+```
+
+```
+DETAILED PER-TURN EXECUTION FLOW
+================================
+
++------------------------------------------------------------------------------------+
+| PHASE 0: INTELLIGENCE DISTRIBUTION (Drungarius, `generateIntelligenceSnapshot`)    |
++------------------------------------------------------------------------------------+
+| Input: FilteredGameState, AIController                                             |
+| Output: IntelligenceSnapshot (stored in AIController)                              |
+| Process: Consolidates all visible game state information for internal AI use,      |
+|          respecting Fog of War. Updates threat assessments, opportunities.         |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 1: MULTI-ADVISOR REQUIREMENT GENERATION (`generateAllAdvisorRequirements`)   |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, IntelligenceSnapshot                       |
+| Output: Advisor-specific Requirement objects (stored in AIController)              |
+| Process: Each of the 6 advisors generates a list of prioritized requirements       |
+|          (e.g., build ships, research tech, conduct espionage) for the turn.       |
+|          GOAP's active plans influence these requirements, boosting priorities.    |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 1.5: GOAP STRATEGIC PLANNING (`executePhase15_GOAP`)                         |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, IntelligenceSnapshot                       |
+| Output: Updated AIController.goapPlanTracker, GOAP budget estimates for Treasurer  |
+| Process:                                                                           |
+|  - GOAL EXTRACTION: Identify strategic goals from the current world state.         |
+|  - PRIORITY REASSESSMENT: Dynamically adjust goal priorities based on game context.|
+|  - TARGETED GOAL INJECTION: If replanning, add specific high-priority goals (e.g., |
+|    `AchieveTechLevel` for `TechNeeded` failure, `GainTreasury` for `BudgetFailure`).|
+|  - PLAN GENERATION/REPAIR: Creates new multi-turn plans for goals, or attempts    |
+|    `repairPlan` for failed/stalled plans using detailed feedback.                  |
+|  - BUDGET ESTIMATION: Provides GOAP's estimated costs for each domain to Treasurer.|
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 2: BASILEUS MEDIATION & BUDGET ALLOCATION (`mediateAndAllocateBudget`)       |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, all Advisor Requirements, GOAP estimates   |
+| Output: MultiAdvisorAllocation (stored in AIController.lastTurnAllocationResult)   |
+| Process:                                                                           |
+|  - BASILEUS MEDIATION: Weights all requirements by `AIPersonality`, `GameAct`,     |
+|    and GOAP priority boosts. Resolves conflicts.                                   |
+|  - TREASURER ALLOCATION: Reserves minimum budgets (recon, expansion), then         |
+|    distributes remaining PP/RP/EBP/CIP based on weighted requirements.             |
+|  - DETAILED FEEDBACK: Generates `RequirementFeedback` for unfulfilled              |
+|    requirements, including specific reasons and suggestions for GOAP/RBA.          |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 3: REQUIREMENT EXECUTION (Non-Iterative Orders)                              |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, MultiAdvisorAllocation                     |
+| Output: Partial OrderPacket (research, espionage, terraform, diplomatic actions)   |
+| Process: Converts initially allocated budgets and fulfilled requirements into      |
+|          orders for research, espionage, terraforming, and diplomacy.              |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 3/4: UNIFIED FEEDBACK LOOP (Iterative Execution & Reprioritization)          |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState, MultiAdvisorAllocation                     |
+| Output: Finalized Build Orders, potentially adjusted other orders                  |
+| Process: (Up to 3 iterations)                                                      |
+|  - EXECUTION: All advisor order execution procedures (including build orders) run. |
+|  - CONVERGENCE CHECK: `hasUnfulfilledCriticalOrHigh` checks if high-priority       |
+|    requirements remain unfulfilled from the Treasurer's feedback.                  |
+|  - REPRIORITIZATION: If unfulfilled, `reprioritizeAllAdvisors` modifies advisor   |
+|    requirements using detailed Treasurer feedback.                                 |
+|  - RE-ALLOCATION/RE-EXECUTION: Budget is re-allocated and orders re-executed      |
+|    with adjusted priorities until convergence or iteration limit reached.          |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 5: STRATEGIC OPERATIONS PLANNING (`identifyInvasionOpportunities`)           |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: CoordinatedOperation objects (for GOAP planning)                           |
+| Process: Identifies high-level strategic opportunities for military operations     |
+|          (e.g., vulnerable enemy colonies for invasion) and queues them for GOAP.  |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 6: STANDING ORDERS ASSIGNMENT (`assignStandingOrders`)                       |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: Updated AIController.standingOrders, Logistics build requirements          |
+| Process: Assigns persistent routine orders to fleets (e.g., `AutoRepair`,          |
+|          `AutoColonize`, `DefendSystem`). Includes intelligent Drydock selection   |
+|          for `AutoRepair`. Logistics-generated build requirements (e.g., Drydocks)|
+|          are added to Domestikos' requirements.                                    |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 7: TACTICAL FLEET ORDERS (`generateFleetOrders`)                             |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: Tactical FleetOrder objects                                                |
+| Process: Generates explicit movement and combat orders for non-routine or          |
+|          offensive fleet operations, overriding standing orders.                   |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 7.5: COLONY MANAGEMENT (`generateColonyManagementOrders`)                    |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: ColonyManagementOrder objects                                              |
+| Process: Manages colony-specific settings (e.g., tax rates, auto-repair flags).    |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 8: LOGISTICS OPTIMIZATION (`generateLogisticsOrders`)                        |
++------------------------------------------------------------------------------------+
+| Input: AIController, FilteredGameState                                             |
+| Output: ZeroTurnCommands (cargo, squadrons), PopulationTransferOrders, FleetOrders  |
+| Process: Optimizes use of existing assets: cargo, population transfers, fleet       |
+|          lifecycle (Salvage, Mothball, Reactivate), and Drydock management.        |
++------------------------------------------------------------------------------------+
+                                         |
+                                         v
++------------------------------------------------------------------------------------+
+| PHASE 8.5: REPORT GOAP PROGRESS (RBA -> GOAP Feedback, `generateFeedback`)         |
++------------------------------------------------------------------------------------+
+| Input: AIController, MultiAdvisorAllocation, GameEvents                            |
+| Output: Updated AIController.goapPlanTracker, `controller.replanNeeded` flag      |
+| Process:                                                                           |
+|  - PROGRESS REPORTING: Matches RBA outcomes to GOAP actions; uses `GameEvent`s    |
+|    to verify success/failure (`checkActualOutcome`). Stores detailed feedback.     |
+|  - REPLANNING TRIGGERS: `checkGOAPReplanningNeeded` assesses plan health, detects  |
+|    opportunities, and sets a flag for next turn's GOAP planning if needed.         |
+*Output*: Updated `AIController.goapPlanTracker` state, and a flag (`replanNeeded`) to trigger replanning in the subsequent turn.
+```
+
+---
+
+== Information Flow
+
+### Vertical Flow: GOAP <--> RBA Communication
+
+==== GOAP → RBA (Downward Strategic Guidance)
+
+.GOAP Strategic Layer
+```
++-----------------------------------------+
+|         GOAP STRATEGIC LAYER            |
+|                                         |
+|  Active Goals:                          |
+|   Goal A: "Defend homeworld" (Pri 90)  |
+|   Goal B: "Conquer Sys 42" (Pri 70)    |
+|   Goal C: "Research CST VI" (Pri 50)   |
++---------------+-------------------------+
+                |
+                | Strategic Guidance Package
+                | +-----------------------------+
+                | | - Goal priorities           |
+                | | - Current-turn actions      |
+                | | - Cost estimates per advisor|
+                | | - Budget reservations       |
+                | | - Goal-requirement alignment|
+                | +-----------------------------+
+                v
++-----------------------------------------+
+|     RBA TACTICAL LAYER (Phase 1.5)      |
+|                                         |
+|  Treasurer receives guidance:           |
+|   - Domestikos: 300 PP (Goal A)        |
+|   - Logothete: 150 PP (Goal C)         |
+|   - Reserve: 200 PP (Goal B Turn 2)    |
++-----------------------------------------+
+```
+
+==== RBA → GOAP (Upward Execution Feedback)
+
+.RBA Tactical Layer (Phase 8.5)
+```
++-----------------------------------------+
+|     RBA TACTICAL LAYER (Phase 8.5)      |
+|                                         |
+|  Execution Results:                     |
+|   [X] 5 Destroyers built                |
+|   [X] 2 Frigates built                  |
+|   [ ] 1 Carrier unfulfilled (no budget) |
+|   [X] CST research started              |
++---------------+-------------------------+
+                |
+                | Feedback Package
+                | +-----------------------------+
+                | | - Orders executed           |
+                | | - Goal progress (%)         |
+                | | - Failures & reasons        |
+                | | - Unexpected events         |
+                | | - Resource consumption      |
+                | +-----------------------------+
+                v
++-----------------------------------------+
+|         GOAP STRATEGIC LAYER            |
+|                                         |
+|  Update Goal States:                    |
+|   Goal A: 33% complete (on track)      |
+|   Goal B: 20% complete (delayed)       |
+|   Goal C: 10% complete (started)       |
+|                                         |
+|  Replan Decision: Continue (no issues) |
++-----------------------------------------+
+```
+
+### Horizontal Flow: Advisor Coordination
+
+==== Without GOAP (Initial RBA)
+
+```
++-----------------------------------------+
+|           DOMESTIKOS                    |---> "Need 500 PP for Battleships"
++-----------------------------------------+
+                |
+                v
++-----------------------------------------+
+|            TREASURER                    |---> Mediation by personality only
++-----------------------------------------+
+                |
+                v
++-----------------------------------------+
+|            LOGOTHETE                    |---> "Need 300 PP for research"
++-----------------------------------------+
+
+Result: Independent competition, no strategic alignment
+```
+
+==== With GOAP (Current Hybrid System)
+
+```
++-----------------------------------------+
+|              GOAP                       |---> "Goal: Build invasion fleet"
++------+----------------------------------+         |
+       |                            Turn 1: 5 Destroyers
+       |                            Turn 2: 2 Carriers
+       |                            Turn 3: 10 Marines
+       v
++-----------------------------------------+
+|           DOMESTIKOS                    |---> Requirements aligned with Goal
++-----------------------------------------+         (Destroyers prioritized)
+                |
+                v
++-----------------------------------------+
+|            TREASURER                    |---> GOAP-weighted mediation
++-----------------------------------------+         (Goal priority boost)
+                |
+                v
++-----------------------------------------+
+|            LOGOTHETE                    |---> Tech requirements coordinated
++-----------------------------------------+         (CST needed for Carriers)
+
+Result: Strategic alignment, efficient coordination
+```
+
+---
+
+== Decision Authority Matrix
+
+### Authority Distribution
+
+| Decision Type          | GOAP Authority | RBA Authority | Resolution Method |
+|------------------------|----------------|---------------|-------------------|
+| Long-term goals        | Full           | None          | GOAP decides      |
+| Goal prioritization    | Full           | None          | GOAP scores       |
+| Multi-turn plans       | Full           | None          | GOAP A* planner   |
+| Budget strategy        | Guidance       | Input         | GOAP suggests     |
+| Turn budget allocation | Advisory       | Full          | Treasurer decides |
+| Build orders           | None           | Full          | Domestikos        |
+| Research allocation    | None           | Full          | Logothete         |
+| Fleet operations       | Strategic      | Tactical      | Both              |
+| Emergency response     | Override       | Executes      | GOAP reprioritize |
+| Replanning triggers    | Full           | Feedback      | GOAP monitors     |
+
+### Decision Flow Examples
+
+#### Example 1: Strategic Goal "Conquer System 42"
+
+```
+GOAP DECIDES:
+-------------
+[X] Goal: "Conquer System 42"
+[X] Priority: 70 (High strategic value)
+[X] Plan:
+   Turn 1: Build 5 Destroyers (200 PP)
+   Turn 2: Build 2 Carriers (240 PP)
+   Turn 3: Build 10 Marines (500 PP)
+   Turn 4: Move fleet to System 42
+   Turn 5: Invade System 42
+[X] Success probability: 0.85
+
+      |
+      | (Strategic guidance)
+      v
+
+RBA EXECUTES:
+-------------
+[X] Turn 1 (Domestikos):
+   - Receive guidance: "Build 5 Destroyers for Goal X"
+   - Generate BuildRequirement(Destroyer, qty=5, priority=High)
+   - Treasurer allocates 200 PP
+   - Execute build orders
+   - Report back: "5 Destroyers commissioned"
+
+[X] Turn 2 (Domestikos):
+   - Receive guidance: "Build 2 Carriers for Goal X"
+   - Check prerequisites: Requires CST III [X] researched
+   - Generate BuildRequirement(Carrier, qty=2, priority=High)
+   - Treasurer allocates 240 PP
+   - Execute build orders
+   - Report back: "2 Carriers commissioned"
+
+[X] Turns 3-5: Continue execution...
+```
+
+#### Example 2: Emergency "Homeworld Under Attack"
+
+```
+RBA DETECTS:
+------------
+[X] Turn 10 (Drungarius):
+   - Intelligence: Enemy fleet (30 ships) approaching homeworld
+   - Threat level: Critical
+   - ETA: 2 turns
+
+      |
+      | (Feedback to GOAP)
+      v
+
+GOAP RESPONDS:
+--------------
+[X] Replanning triggered: Major threat detected
+[X] Cancel Goals: "Conquer System 42" (deferred)
+[X] New Goal: "Emergency Defense" (Priority 100)
+[X] New Plan:
+   Turn 10: Build 8 Frigates + 4 Starbases (max defense)
+   Turn 11: Build 6 Destroyers + 2 Starbases
+   Turn 12: Defensive posture, all fleets recall
+[X] Budget override: 100% treasury to defense
+
+      |
+      | (Strategic override)
+      v
+
+RBA EXECUTES:
+-------------
+[X] Turn 10 (Domestikos):
+   - Receive emergency guidance: "ALL BUDGET TO DEFENSE"
+   - Cancel all non-Critical requirements
+   - Generate emergency BuildRequirements:
+     * 8 Frigates (Critical, 320 PP)
+     * 4 Starbases (Critical, 160 PP)
+   - Treasurer allocates 100% treasury (480 PP)
+   - Execute emergency build orders
+   - Report back: "Emergency defenses in progress"
+```
+
+---
+
+## Multi-Turn Planning
+
+### GOAP Plan Structure
+
+```
+MULTI-TURN PLAN ANATOMY
+========================
+
+Goal: "Conquer System 42"
+Priority: 70
+Start Turn: 5
+Completion Turn: 10
+Success Probability: 0.85
+Total Cost: 940 PP
+
++--------------------------------------------------------------+
+| TURN-BY-TURN ACTION SEQUENCE                                 |
++------+-------------------------------------------------------+
+| Turn | Actions                                               |
++------+-------------------------------------------------------+
+|  5   | +---------------------------------------------------+ |
+|      | | ACTION: BuildFleet(Destroyer, qty=5)            | |
+|      | | Cost: 200 PP                                    | |
+|      | | Precondition: treasury >= 200 PP                | |
+|      | | Effect: fleet_strength += 500                   | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  6   | +---------------------------------------------------+ |
+|      | | ACTION: BuildFleet(Carrier, qty=2)              | |
+|      | | Cost: 240 PP                                    | |
+|      | | Precondition: CST >= III, treasury >= 240 PP    | |
+|      | | Effect: carrier_capacity += 24 fighters         | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  7   | +---------------------------------------------------+ |
+|      | | ACTION: BuildGroundForces(Marine, qty=10)       | |
+|      | | Cost: 500 PP                                    | |
+|      | | Precondition: transport_capacity >= 10 PTU      | |
+|      | | Effect: ground_strength += 1000                 | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  8   | +---------------------------------------------------+ |
+|      | | ACTION: MoveFleet(invasion_fleet, System 42)    | |
+|      | | Cost: 0 PP                                      | |
+|      | | Precondition: path_exists, fleet_ready          | |
+|      | | Effect: fleet_location = System 42              | |
+|      | | Assigned: Domestikos (Phase 5)                  | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+|  9   | +---------------------------------------------------+ |
+|      | | ACTION: AssembleInvasionForce()                 | |
+|      | | Cost: 0 PP                                      | |
+|      | | Precondition: fleet + marines at System 42      | |
+|      | | Effect: invasion_ready = true                   | |
+|      | | Assigned: Domestikos                            | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+| 10   | +---------------------------------------------------+ |
+|      | | ACTION: InvadeSystem(System 42)                 | |
+|      | | Cost: 0 PP                                      | |
+|      | | Precondition: invasion_ready = true             | |
+|      | | Effect: owner(System 42) = self                 | |
+|      | | Success: 85% (based on combat strength)         | |
+|      | | Assigned: Domestikos (Phase 3)                  | |
+|      | +---------------------------------------------------+ |
++------+-------------------------------------------------------+
+
+DEPENDENCIES:
+=============
+Turn 5 -> Turn 6: Fleet built before carriers
+Turn 6 -> Turn 7: Carriers built before marines
+Turn 7 -> Turn 8: Marines built before movement
+Turn 8 -> Turn 9: Fleet moved before assembly
+Turn 9 -> Turn 10: Force assembled before invasion
+```
+
+### Plan Tracking & Progress
+
+```
+PLAN PROGRESS TRACKING
+=======================
+
+Goal: "Conquer System 42"
+Status: IN PROGRESS (Turn 7/10)
+
++------+----------------------------------------+--------------+
+| Turn | Planned Action                         | Actual Status|
++------+----------------------------------------+--------------+
+|  5   | Build 5 Destroyers (200 PP)           | [X] COMPLETE |
+|      |                                        |   5/5 built  |
++------+----------------------------------------+--------------+
+|  6   | Build 2 Carriers (240 PP)             | [X] COMPLETE |
+|      |                                        |   2/2 built  |
++------+----------------------------------------+--------------+
+|  7   | Build 10 Marines (500 PP)             | [ ] PARTIAL  |
+|      |                                        |   7/10 built |
+|      |                                        |   (300 PP)   |
+|      | Issue: Treasury only had 300 PP       |              |
+|      | Replan: Defer 3 Marines to Turn 8     |              |
++------+----------------------------------------+--------------+
+|  8   | [ADJUSTED] Build 3 Marines (150 PP)   | [ ] PENDING  |
+|      | Move fleet to System 42                | [ ] PENDING  |
++------+----------------------------------------+--------------+
+|  9   | Assemble invasion force                | [ ] PENDING  |
++------+----------------------------------------+--------------+
+| 10   | Invade System 42                       | [ ] PENDING  |
++------+----------------------------------------+--------------+
+
+Progress: 40% (2.5/5 actions complete)
+Budget Consumed: 500 PP / 940 PP (53%)
+On Track: DELAYED (1 turn behind)
+```
+
+---
+
+## Feedback & Adaptation
+
+### Replanning Triggers
+
+```
+REPLANNING TRIGGER SYSTEM
+==========================
+
+GOAP monitors 5 replanning conditions per turn:
+
++--------------------------------------------------------------+
+| TRIGGER 1: GOAL FAILED                                       |
++--------------------------------------------------------------+
+| Condition: Goal cannot be completed with available resources|
+|                                                              |
+| Example:                                                     |
+|   Goal: "Build 10 Battleships"                              |
+|   Turn 5: Treasury = 50 PP (need 2000 PP)                  |
+|   Trigger: Insufficient treasury projection                 |
+|   Action: Cancel goal or replan with cheaper units         |
++--------------------------------------------------------------+
+
++--------------------------------------------------------------+
+| TRIGGER 2: MAJOR THREAT DETECTED                             |
++--------------------------------------------------------------+
+| Condition: Critical threat to survival (homeworld, etc)     |
+|                                                              |
+| Example:                                                     |
+|   Turn 12: Enemy invasion fleet approaching homeworld       |
+|   Threat Level: Critical (30 Battleships, ETA 2 turns)     |
+|   Trigger: Emergency defense required                       |
+|   Action: Cancel all offensive goals, shift to defense     |
++--------------------------------------------------------------+
+
++--------------------------------------------------------------+
+| TRIGGER 3: OPPORTUNITY APPEARED                              |
++--------------------------------------------------------------+
+| Condition: High-value target becomes available              |
+|                                                              |
+| Example:                                                     |
+|   Turn 8: Intel reports System 15 undefended (5 PF system) |
+|   Opportunity: Easy conquest (high prestige)                |
+|   Trigger: Add opportunistic goal                           |
+|   Action: Insert "Conquer System 15" (Priority 60)         |
++--------------------------------------------------------------+
+
++--------------------------------------------------------------+
+| TRIGGER 4: PLAN STALLED                                      |
++--------------------------------------------------------------+
+| Condition: No progress on goal for 2+ consecutive turns     |
+|                                                              |
+| Example:                                                     |
+|   Goal: "Research CST VI"                                   |
+|   Turns 5-7: 0 RP allocated (budget competition lost)       |
+|   Trigger: Stalled progress                                 |
+|   Action: Boost priority or defer goal                      |
++--------------------------------------------------------------+
+
++--------------------------------------------------------------+
+| TRIGGER 5: GOAL COMPLETED                                    |
+|                                                              |
+| Example:                                                     |
+|   Goal: "Conquer System 42"                                 |
+|   Turn 10: System 42 captured (invasion success)            |
+|   Trigger: Goal complete                                     |
+|   Action: Remove goal, select next priority goal           |
++--------------------------------------------------------------+
+```
+
+### Adaptation Flow
+
+```
+ADAPTATION PROCESS (When Replan Triggered)
+===========================================
+
+STEP 1: DETECT DEVIATION
++-------------------------------------------------+
+| GOAP compares:                                  |
+|   Expected state vs Actual state               |
+|                                                 |
+| Example:                                        |
+|   Expected: 10 Marines built by Turn 7         |
+|   Actual: 7 Marines built (300 PP shortage)    |
+|   Deviation: -3 Marines (-30%)                 |
++-------------------------------------------------+
+                         |
+                         v
+STEP 2: ASSESS IMPACT
++-------------------------------------------------+
+| Can goal still be achieved?                     |
+|   - If yes: Adjust timeline (1 turn delay)     |
+|   - If no: Replan or cancel goal               |
+|                                                 |
+| Example:                                        |
+|   Marine shortage: 3 Marines                   |
+|   Impact: Invasion success drops 85% -> 70%    |
+|   Decision: Acceptable (above 60% threshold)   |
+|   Action: Delay invasion 1 turn                |
++-------------------------------------------------+
+                         |
+                         v
+STEP 3: GENERATE NEW PLAN
++-------------------------------------------------+
+| Re-run A* planner with updated constraints     |
+|                                                 |
+| New Plan:                                       |
+|   Turn 8: Build 3 Marines (150 PP)             |
+|   Turn 9: Move fleet to System 42              |
+|   Turn 10: Assemble invasion force             |
+|   Turn 11: Invade System 42 (1 turn delay)     |
++-------------------------------------------------+
+                         |
+                         v
+STEP 4: UPDATE RBA GUIDANCE
++-------------------------------------------------+
+| Send revised guidance to RBA                   |
+|                                                 |
+| Turn 8 Instructions:                           |
+|   Domestikos: Build 3 Marines (High priority)  |
+|   Treasurer: Allocate 150 PP for Marines       |
++-------------------------------------------------+
+                         |
+                         v
+STEP 5: CONTINUE TRACKING
++-------------------------------------------------+
+| Monitor revised plan execution                 |
+|   - Update progress tracking                   |
+|   - Watch for new deviations                   |
+|   - Continue turn-by-turn adaptation           |
++-------------------------------------------------+
+```
+
+---
+
+## Implementation Status
+
+### Current State (2025-12-10)
+
+```
+COMPONENT IMPLEMENTATION STATUS
+================================
+
++-----------------------------------------+----------+----------+
+| Component                               |  Status  |   LOC    |
++-----------------------------------------+----------+----------+
+| GOAP CORE                               |          |          |
+|  - Types & data structures              |    [X]   |   150    |
+|  - A* planner                           |    [X]   |   400    |
+|  - Heuristics                           |    [X]   |   200    |
+|  - Conditions                           |    [X]   |   100    |
+|                                         |          |          |
+| GOAP STATE                              |          |          |
+|  - World state snapshots                |    [X]   |   200    |
+|  - State assessment                     |    [X]   |   150    |
+|  - Action effects                       |    [X]   |   100    |
+|                                         |          |          |
+| GOAP DOMAINS (6 domains)                |          |          |
+|  - Fleet goals & actions                |    [X]   |   450    |
+|  - Build goals & actions                |    [X]   |   400    |
+|  - Research goals & actions             |    [X]   |   200    |
+|  - Diplomatic goals & actions           |    [X]   |   200    |
+|  - Espionage goals & actions            |    [X]   |   250    |
+|  - Economic goals & actions             |    [X]   |   200    |
+|  - Repair/Drydock goals & actions       |    [X]   |    50    |
+|  - Prestige goals & actions             |    [X]   |    50    |
+|  - Endgame/Elimination goals & actions  |    [X]   |    50    |
+|                                         |          |          |
+| RBA-GOAP INTEGRATION                    |          |          |
+|  - Goal extraction                      |    [X]   |   200    |
+|  - Plan tracking                        |    [X]   |   150    |
+|  - Replanning triggers                  |    [X]   |   140    |
+|  - Phase 1.5 entry point                |    [X]   |   280    |
+|  - Budget guidance                      |    [X]   |    550   |
+|  - Feedback loops (Phase 8.5)           |    [X]   |    245   |
+|                                         |          |          |
+| RBA CORE (Production-Ready)             |          |          |
+|  - Basileus orchestrator                |    [X]   |   400    |
+|  - 6 Advisors (Domestikos, etc)         |    [X]   |  3,200   |
+|  - Treasurer (CFO)                      |    [X]   |   800    |
+|  - 9-Phase process (0-8.5)              |    [X]   |  1,200   |
+|  - Feedback loops (RBA internal)        |    [X]   |   500    |
++-----------------------------------------+----------+----------+
+| TOTAL                                   |  100%    |  10,095  |
++-----------------------------------------+----------+----------+
+
+Legend:
+  [X] = Complete and tested
+  [~] = Implemented but needs enhancement
+  [ ] = Not yet implemented
+
+### Integration Roadmap
+
+```
+INTEGRATION PHASES
+==================
+
+PHASE 1: GOAP FOUNDATION [X] COMPLETE
+--------------------------------------
+[X] Core GOAP infrastructure (3,500 LOC)
+[X] 6 domain modules (Fleet, Build, Research, etc)
+[X] A* planner with confidence scoring
+[X] 35 unit tests (100% passing)
+
+Date: 2025-12-04
+Status: Production-ready, not yet integrated
+
+
+PHASE 2: BASIC INTEGRATION [X] COMPLETE
+---------------------------------------
+[X] Phase 1.5 entry point (280 LOC)
+[X] Goal extraction from requirements
+[X] Plan tracking data structures
+[X] Replanning trigger detection
+[X] AIController enhanced with GOAP fields
+
+Date: 2025-12-04
+Status: Plumbing complete, guidance inactive
+
+
+PHASE 3: BUDGET GUIDANCE [X] COMPLETE
+-----------------------------------------
+[X] GOAP cost estimates to Treasurer
+[X] Multi-turn budget reservations
+[X] Goal-aligned priority boosting
+[X] Strategic vs filler budget split (enhanced)
+
+Date: 2025-12-10
+Status: 100% complete (multi-turn reservations active)
+
+
+PHASE 8.5: FEEDBACK LOOPS [X] COMPLETE
+-------------------------------------
+[X] RBA --> GOAP goal progress updates
+[X] GOAP reacts to detailed unfulfillment reasons (`TechNeeded`, `BudgetFailure`, `CapacityFull`)
+[X] Targeted GOAP goal generation based on feedback
+[X] Specific `ReplanReason` types for detailed feedback
+
+Target: 2025-12-20
+Status: Complete, further refinement in Phase 5
+
+
+Gap 1: GOAP's Direct Actionability of Detailed Feedback [X] COMPLETE
+--------------------------------------------------------------------
+**Current Status**: The Treasurer now generates rich `RequirementFeedback` with specific `unfulfillmentReason`s and `suggestion`s. The GOAP `PlanTracker` stores this detailed feedback for failed actions. The `shouldReplan` and `repairPlan` procedures now leverage this specific feedback to trigger targeted replanning or goal injection (`AchieveTechLevel` for `TechNeeded`, `GainTreasury` for `BudgetFailure`, `BuildFacility` for `CapacityFull`).
+
+**Impact**: GOAP can intelligently adapt its strategy and generate specific corrective goals in response to detailed RBA execution failures, leading to more robust and adaptive multi-turn planning.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
+
+
+Gap 2: Espionage Goal Generation and Execution Depth [X] COMPLETE
+--------------------------------------------------------------------
+**Current Status**: `Drungarius` now generates `EspionageRequirement`s for `Counter-Intelligence Sweeps` and sets the `targetSystem` for operations like `SabotageHigh` and `CyberAttack`. The `executeEspionageAction` procedure is fully implemented, converting requirements into concrete `EspionageAttempt` orders.
+
+**Impact**: The AI's espionage capabilities are fully integrated from strategic planning (GOAP goals) through tactical execution (RBA requirements and orders), and its feedback loop now verifies espionage outcomes.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
+
+
+Gap 3: Advanced Plan Repair [X] COMPLETE
+-------------------------------------------
+**Current Status**: The `repairPlan` procedure now includes initial support for partial plan repair for late-stage failures. It attempts to regenerate plans for the remaining actions of a goal from the current world state, moving beyond always initiating a full replan.
+
+**Impact**: Improves the efficiency and continuity of GOAP plans by reducing the need for full strategic replanning when only minor adjustments are needed.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
+
+
+Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [X] COMPLETE
+-------------------------------------------------------------------------------------------------
+**Current Status**: The `reassessGoalPriorities` procedure dynamically adjusts the priorities of active GOAP goals each turn based on the current `WorldStateSnapshot`, `AIPersonality`, and strategic context (e.g., threats, opportunities, economic health). This reassessment is integrated into the `executePhase15_GOAP` flow.
+
+**Impact**: The AI's strategic goals are more responsive to the evolving game state and its own personality, leading to more flexible and adaptive high-level planning.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
+
+
+Gap 5: Comprehensive Repair Planning and Drydock Management [X] COMPLETE
+---------------------------------------------------------------------------
+**Current Status**: `AssetInventory` now tracks damaged ships, `operationalDrydocks`, `totalRepairCapacity`, and `activeRepairProjects`. The `logistics.nim` module contains `identifyDrydockNeeds` which generates `BuildRequirement`s for Drydocks based on demand. The `AutoRepair` standing order logic has been refined to intelligently select the best available Drydock based on capacity and proximity.
+
+**Impact**: The AI can now proactively manage ship repair, ensuring its military forces remain combat-ready and efficiently utilizing repair infrastructure.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
+
+
+Gap 6: Proactive Prestige Management (Avoid Penalties, Exploit Opponent Penalties) [X] COMPLETE
+--------------------------------------------------------------------------------------------------
+**Current Status**: A `MaintainPrestige` GOAP goal type has been introduced. `Domestikos` prioritizes ground unit requirements for undefended colonies, and `Drungarius` adjusts EBP/CIP investments to avoid over-investment penalties when this goal is active. `Eparch` also factors potential `Maintenance Shortfall` penalties into its economic requirements. `WorldStateSnapshot` now includes `undefendedEnemyColonies`, which `heuristics.nim` uses to generate high-priority `InvadeColony` goals to exploit opponent prestige penalties.
+
+**Impact**: The AI is strategically aware of prestige implications, actively working to avoid self-penalties and exploit opponent weaknesses for gains.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
+
+
+Gap 7: Endgame & Elimination Strategy [X] COMPLETE
+------------------------------------------------------
+**Current Status**: `AchieveTotalVictory` and `LastStandReconquest` GOAP goal types have been added. `Protostrator`'s diplomatic requirements generation is now adjusted for endgame scenarios (`isFinalConfrontation` or `AchieveTotalVictory` goal active), suppressing inappropriate diplomatic actions like `ProposeAlliance` and prioritizing `DeclareWar`. `LastStandReconquest` goals will be generated in `heuristics.nim` if the AI loses all colonies but retains fleets with marines (not explicitly coded yet, but goal type exists).
+
+**Impact**: The AI will adopt more appropriate and aggressive strategies in endgame scenarios, aiming for total victory or attempting desperate reconquest, improving its overall competitive play.
+
+**Plan**: All tasks for this gap are complete.
+
+Status: Complete
+
+
+PHASE 5: FULL INTEGRATION (FUTURE) [ ] NOT STARTED
+---------------------------------------------------
+[ ] Multi-turn coordination
+[ ] Cross-advisor dependencies
+[ ] Risk assessment integration
+[ ] Diagnostic visibility
+
+Target: 2026-Q1
+Status: Specification phase
+
+
+PHASE 6: NEURAL NETWORK TRAINING (FUTURE) [ ] NOT STARTED
+----------------------------------------------------------
+[ ] Export GOAP/RBA decisions as training data
+[ ] Train NN on GPU (desktop)
+[ ] NN learns from GOAP strategic patterns
+[ ] Hybrid NN/GOAP/RBA system
+
+Target: 2026-Q2
+Status: Planning phase
+```
+
+---
+
+### API Coverage
+
+Based on `docs/api/api.json` (2025-12-10):
+
+**Engine API:** 2,000+ exported procs
+**RBA API:** 85+ advisor procs
+**GOAP API:** 120+ planning procs
+
+**Key Entry Points:**
+- `src/ai/rba/player.nim::generateAIOrders()` - Main RBA entry
+- `src/ai/rba/orders/phase1_5_goap.nim::runGOAPPlanning()` - GOAP entry
+- `src/ai/rba/controller.nim::newAIController()` - Initialization
+
+---
+
+## Summary
+
+### Key Principles
+
+1. **GOAP thinks, RBA acts** - Strategic planning vs tactical execution
+2. **Multi-turn vs single-turn** - GOAP plans 3-10 turns, RBA executes 1 turn
+3. **Goals guide requirements** - GOAP priorities inform RBA budget allocation
+4. **Feedback enables adaptation** - RBA reports progress, GOAP replans
+5. **Hybrid is stronger** - Combines long-term strategy with tactical expertise
+
+### Strengths of Hybrid System
+
+| Capability              | GOAP Alone | RBA Alone | Hybrid GOAP/RBA |
+|-------------------------|------------|-----------|-----------------|
+| Multi-turn planning     | [X]        | [ ]       | [X]             |
+| Domain expertise        | [ ]        | [X]       | [X]             |
+| Budget constraints      | [ ]        | [X]       | [X]             |
+| Strategic foresight     | [X]        | [ ]       | [X]             |
+| Emergency response      | [X]        | [X]       | [X]             |
+| Adaptive replanning     | [X]        | [X]       | [X]             |
+| Cross-advisor coord     | [X]        | [X]       | [X]             |
+
+### Next Steps
+
+1. **Phase 5: Full Integration** - Implement multi-turn coordination, cross-advisor dependencies, risk assessment, and diagnostic visibility.
+2. **Phase 6: Neural Network Training** - Export GOAP/RBA decisions as training data, train NN, and develop a fully hybrid NN/GOAP/RBA system.
+3. **Validate with diagnostics** - Run 100-game balance tests.
+4. **Tune GOAP parameters** - Optimize goal weights and replanning thresholds.
+
+---
+
+**Maintained by:** AI Development Team
+**Related Documentation:**
+- [GOAP Architecture](goap-architecture-old.md) - Full GOAP implementation details (Archived)
+- [RBA Decision Hierarchy](rba-decision-hierarchy-old.md) - RBA advisor structure (Archived)
+- [Unit Progression](../mechanics/unit-progression.md) - Game balance mechanics
