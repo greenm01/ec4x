@@ -84,12 +84,23 @@ proc checkActualOutcome(
     let initialTechLevel = initialGameState.techLevels[houseId][action.techField]
     let currentTechLevel = currentTechLevels[action.techField]
     return currentTechLevel > initialTechLevel
+  of ActionType.AttackColony:
+    # TODO: Implement combat outcome verification (e.g., check for system ownership change, fleet losses, ground unit changes)
+    # This would require parsing combat event logs or detailed state comparison post-combat.
+    return true # Assume success if executed for now
+  of ActionType.ConductEspionage:
+    # TODO: Implement espionage outcome verification (e.g., check for intel gained, successful sabotage/assassination, counter-detection)
+    # This would require parsing espionage event logs.
+    return true # Assume success if executed for now
+  of ActionType.ProposeAlliance, ActionType.DeclareWar:
+    # TODO: Implement diplomatic outcome verification (e.g., check diplomatic state change, event logs)
+    return true # Assume success if executed for now
   # Add other actions here that need direct outcome verification.
-  # For now, other actions (espionage, economic) are primarily deemed successful
-  # if RBA fulfills their requirements, or if game events report success.
+  # For now, other actions are primarily deemed successful if RBA fulfills their requirements,
+  # or if game events report success.
   else:
     # For actions not explicitly checked here, assume RBA fulfillment implies success for now.
-    # More complex outcome checks (e.g., combat results, espionage success/failure events)
+    # More complex outcome checks (e.g., specific event outcomes)
     # would require parsing game event logs or deeper state comparisons.
     return true # Default to true for unchecked actions, relying on RBA fulfillment.
 
