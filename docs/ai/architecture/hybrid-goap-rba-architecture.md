@@ -1070,11 +1070,11 @@ Gap 3: Advanced Plan Repair [X] COMPLETE
 Status: Complete
 
 
-Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [~] IN PROGRESS
+Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [X] COMPLETE
 -------------------------------------------------------------------------------------------------
 [X] Implement Goal Re-evaluation (`src/ai/rba/goap/integration/replanning.nim`)
 
-Status: In Progress
+Status: Complete
 
 
 Gap 5: Comprehensive Repair Planning and Drydock Management [X] COMPLETE
@@ -1098,18 +1098,18 @@ Target: 2026-Q2
 Status: Planning phase
 
 
-Gap 6: Proactive Prestige Management (Avoid Penalties, Exploit Opponent Penalties) [ ] NOT STARTED
+Gap 6: Proactive Prestige Management (Avoid Penalties, Exploit Opponent Penalties) [~] IN PROGRESS
 --------------------------------------------------------------------------------------------------
 **Current Status**: The AI reacts to immediate penalties (e.g., budget for EBP/CIP investment) but lacks specific GOAP goals or RBA logic to proactively avoid or exploit prestige penalties such as the `Undefended Colony Penalty` or `Espionage/Counter-Intel Over-Investment` *through explicit strategic planning*. It mostly reacts to the budget/allocation feedback from the Treasurer.
 
 **Impact**: The AI may accrue unnecessary prestige penalties or miss opportunities to strategically inflict them on rivals, playing sub-optimally in competitive scenarios.
 
 **Plan**:
-1.  **GOAP Goal for Prestige**: Introduce a `MaintainPrestige` or `AvoidPenalty` GOAP goal type. This goal would be active when the AI's prestige is low or penalties are imminent.
+1.  **GOAP Goal for Prestige**: [X] Introduce `MaintainPrestige` GOAP goal type. This goal will be active when the AI's prestige is low or penalties are imminent.
 2.  **RBA Awareness**: Modify relevant advisors (e.g., `Domestikos`, `Drungarius`, `Eparch`) to factor potential prestige penalties into their requirement generation. For example, `Domestikos` might prioritize ground units for undefended colonies.
 3.  **Enemy Analysis**: Enhance `IntelligenceSnapshot` and corresponding GOAP goal extraction to identify enemy colonies that are currently "undefended" (no ground units) for targeted `InvadeColony` GOAP goals, explicitly aiming for the higher prestige penalty.
 
-Status: Not Started
+Status: In Progress
 
 
 Gap 7: Endgame & Elimination Strategy [ ] NOT STARTED

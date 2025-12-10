@@ -137,6 +137,7 @@ type
     StealIntelligence         ## Intelligence Theft (steal entire intel database)
     PlantDisinformation       ## Plant Disinformation (corrupt enemy intel 20-40% for 2 turns)
     EstablishIntelNetwork     ## Build EBP/CIP capability
+    MaintainPrestige          ## Avoid penalties, improve diplomatic standing
     # Economic domain goals (Eparch)
     TransferPopulation        ## Move population between colonies via Space Guild
     TerraformPlanet           ## Improve planet class
