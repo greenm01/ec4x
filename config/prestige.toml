@@ -70,8 +70,8 @@ high_max = 80         # 61-80: High (+1 CER + critical auto-success if >9)
 # These are base values BEFORE dynamic multiplier application
 # Dynamic multiplier (15.0x for medium maps) scales these values automatically
 # Combined effect: 5x base × 15x multiplier = 75x total acceleration
-tech_advancement = 10               # Was 2 → 5x increase (major research milestone)
-establish_colony = 25               # Was 5 → 5x increase (major expansion)
+tech_advancement = 2                # REDUCED: Tech should give modest prestige (not primary focus)
+establish_colony = 1                # MINIMAL: Colonization should give almost no prestige (conquest is the focus)
 max_population = 15                 # Was 3 → 5x increase
 iu_milestone_50 = 5                 # Was 1 → 5x increase
 iu_milestone_75 = 10                # Was 2 → 5x increase

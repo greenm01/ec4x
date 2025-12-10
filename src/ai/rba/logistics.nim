@@ -406,17 +406,13 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
       else:
         isIdle = true
 
-      if isIdle:
-        # Unload marines to free capacity
-        result.add(CargoManagementOrder(
-          houseId: controller.houseId,
-          colonySystem: fleet.location,
-          action: CargoManagementAction.UnloadCargo,
-          fleetId: fleet.id,
-          cargoType: some(CargoType.Marines),
-          quantity: some(0)  # 0 = unload all
-        ))
-        logInfo(LogCategory.lcAI, &"{controller.houseId} Unloading marines from transport {fleet.id} (mission complete)")
+      # DISABLED: Never auto-unload Marines from transports
+      # Rationale:
+      # - Marines should stay loaded for continuous offensive operations
+      # - Fleets at homeworld are preparing for next attack, not "mission complete"
+      # - Only unload Marines manually when needed for specific garrison duty
+      # - Invasion fleets need to stay ready for immediate deployment
+      discard  # Keep Marines loaded
 
 ## =============================================================================
 ## POPULATION TRANSFER OPTIMIZATION
