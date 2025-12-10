@@ -31,6 +31,7 @@ proc mediateAndAllocateBudget*(
 
   # Get GOAP budget estimates from the controller, which were generated in Phase 1.5
   let goapEstimates = controller.goapBudgetEstimates # Directly use the stored estimates
+  let goapReservedAmount = controller.goapReservedBudget # Use the GOAP reserved amount
 
   # Perform multi-advisor allocation
   result = allocateBudgetMultiAdvisor(
@@ -44,7 +45,8 @@ proc mediateAndAllocateBudget*(
     filtered.ownHouse.treasury,
     controller.houseId,
     filtered,
-    goapEstimates # Pass GOAP estimates to the allocator
+    goapEstimates, # Pass GOAP estimates to the allocator
+    goapReservedAmount # Pass GOAP reserved amount
   )
 
   # Store feedback in the controller for subsequent phases (Phase 3 and 4)
@@ -52,6 +54,7 @@ proc mediateAndAllocateBudget*(
   controller.scienceFeedback = some(result.scienceFeedback)
   controller.drungariusFeedback = some(result.drungariusFeedback)
   controller.eparchFeedback = some(result.eparchFeedback)
+  controller.lastTurnAllocationResult = some(result) # Store the full allocation result
   # Protostrator doesn't have direct budget feedback from Treasurer as diplomacy costs 0
 
   logInfo(LogCategory.lcAI, &"{controller.houseId} Treasurer: Phase 2 complete. Allocated budget to advisors.")

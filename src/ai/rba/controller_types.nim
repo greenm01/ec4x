@@ -278,8 +278,10 @@ type
     goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
     goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
     goapBudgetEstimates*: Option[Table[DomainType, int]] # Current-turn budget guidance from GOAP
+    goapReservedBudget*: Option[int] # Amount GOAP wants to reserve for future turns
     goapConfig*: goap_types.GOAPConfig # Configuration for the GOAP planner
     planTracker*: goap_plan.PlanTracker # Manages GOAP's multi-turn plans
+    lastTurnAllocationResult*: Option[MultiAdvisorAllocation] # NEW: Stores result of last turn's budget allocation
 
     # Phase C: Enhanced intelligence distribution
     intelligenceSnapshot*: Option[IntelligenceSnapshot]  # Current turn's intelligence from Drungarius

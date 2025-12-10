@@ -20,6 +20,7 @@ type
   MultiAdvisorAllocation* = object
     ## Result of multi-advisor budget allocation
     budgets*: Table[AdvisorType, int]  # PP allocated to each advisor
+    reservedBudget*: int # NEW: Budget reserved by GOAP for future turns (not allocated this turn)
     treasurerFeedback*: TreasurerFeedback  # For Domestikos
     scienceFeedback*: ScienceFeedback  # For Logothete
     drungariusFeedback*: DrungariusFeedback  # For Drungarius
@@ -162,7 +163,8 @@ proc allocateBudgetMultiAdvisor*(
   availableBudget: int,
   houseId: HouseId,
   filtered: FilteredGameState,  # For war status detection
-  goapBudgetEstimates: Option[Table[DomainType, int]] = none(Table[DomainType, int])  # NEW: GOAP estimates by domain
+  goapBudgetEstimates: Option[Table[DomainType, int]] = none(Table[DomainType, int]),  # GOAP estimates by domain
+  goapReservedAmount: Option[int] = none(int)  # NEW: Amount GOAP wants to reserve for future turns
 ): MultiAdvisorAllocation =
   ## Hybrid budget allocation strategy:
   ## 1. Reserve minimums (prevents starvation)
@@ -205,15 +207,34 @@ proc allocateBudgetMultiAdvisor*(
   let reservedBudget = minReconBudget + minExpansionBudget
   let remainingBudget = availableBudget - reservedBudget
 
+  let actualGoapReserved = goapReservedAmount.getOrDefault(0)
+
   logInfo(LogCategory.lcAI,
           &"{houseId} Treasurer: Reserved {reservedBudget}PP " &
           &"(recon={minReconBudget}PP, expansion={minExpansionBudget}PP), " &
           &"mediating {remainingBudget}PP")
+  if actualGoapReserved > 0:
+    logInfo(LogCategory.lcAI,
+            &"{houseId} Treasurer: GOAP requested {actualGoapReserved}PP for future turns.")
+
+  # Subtract GOAP reserved amount from the available budget for current turn allocation
+  let budgetForCurrentAllocation = remainingBudget - actualGoapReserved
+  if budgetForCurrentAllocation < 0:
+    logWarn(LogCategory.lcAI,
+            &"{houseId} Treasurer: GOAP reservation of {actualGoapReserved}PP exceeds available " &
+            &"budget for current allocation ({remainingBudget}PP). Allocating 0 to advisors.")
+    # Set budgets to 0 and proceed, ensuring no negative allocations
+    # This might need a more sophisticated conflict resolution if GOAP reservation is sacred
+    # For now, current allocations take priority if budget is tight
+  
+  let effectiveBudgetForMediation = max(0, budgetForCurrentAllocation)
+  logInfo(LogCategory.lcAI,
+          &"{houseId} Treasurer: Effective budget for current turn mediation: {effectiveBudgetForMediation}PP")
 
   # === STEP 2: Mediate remaining budget with war-aware weights and GOAP estimates ===
   let mediation = mediateRequirements(
     domestikosReqs, logotheteReqs, drungariusReqs, eparchReqs, protostratorReqs,
-    personality, currentAct, remainingBudget, houseId, atWar, goapBudgetEstimates
+    personality, currentAct, effectiveBudgetForMediation, houseId, atWar, goapBudgetEstimates
   )
 
   # === STEP 3: Combine reserves + mediated allocations ===
@@ -224,6 +245,7 @@ proc allocateBudgetMultiAdvisor*(
   result.budgets[AdvisorType.Eparch] = mediation.eparchBudget
   result.budgets[AdvisorType.Protostrator] = 0  # Diplomacy costs 0 PP
   result.budgets[AdvisorType.Treasurer] = 0  # Treasurer doesn't get budget
+  result.reservedBudget = actualGoapReserved # Store the amount actually reserved
   result.iteration = 0
 
   # === STEP 4: Generate per-advisor feedback ===
@@ -245,10 +267,11 @@ proc allocateBudgetMultiAdvisor*(
   logInfo(LogCategory.lcAI,
           &"{houseId} Treasurer: Final budgets - " &
           &"Domestikos={result.budgets[AdvisorType.Domestikos]}PP " &
-          &"(+{reservedBudget}PP reserved), " &
+          &"(+{reservedBudget}PP local reserved), " &
           &"Logothete={result.budgets[AdvisorType.Logothete]}PP, " &
           &"Drungarius={result.budgets[AdvisorType.Drungarius]}PP, " &
-          &"Eparch={result.budgets[AdvisorType.Eparch]}PP")
+          &"Eparch={result.budgets[AdvisorType.Eparch]}PP, " &
+          &"GOAP Reserved={result.reservedBudget}PP")
 
   # Log unfulfilled counts for feedback loop
   logInfo(LogCategory.lcAI,
