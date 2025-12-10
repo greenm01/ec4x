@@ -99,6 +99,37 @@ proc generateEspionageRequirements*(
 
   # === HIGH: Operations against high-value targets ===
   # Prioritize sabotage of undefended high-industry colonies
+  # === MEDIUM/HIGH: Counter-Intelligence Sweep (defensive) ===
+  # Prioritize defensive sweeps if CIP is low or personality is risk-averse
+  if currentCIP < targetCIP: # Only if CIP is below target (i.e. we need more defense)
+    let priority = if currentCIP < 5: RequirementPriority.High else: RequirementPriority.Medium
+    let cost = 4 # Fixed cost for Counter-Intelligence Sweep
+
+    result.requirements.add(EspionageRequirement(
+      requirementType: EspionageRequirementType.Operation,
+      priority: priority,
+      targetHouse: none(HouseId), # Counter-Intelligence Sweep is self-focused
+      operation: some(esp_types.EspionageAction.CounterIntelligenceSweep),
+      estimatedCost: cost,
+      reason: &"Defensive Counter-Intelligence Sweep (CIP: {currentCIP}/{targetCIP})"
+    ))
+    result.totalEstimatedCost += cost
+  else:
+    # If CIP is sufficient, still consider sweeps based on risk tolerance or perceived threat
+    if p.riskTolerance < 0.4 and currentCIP < 10: # Risk-averse, maintain good CIP
+      let cost = 4
+      result.requirements.add(EspionageRequirement(
+        requirementType: EspionageRequirementType.Operation,
+        priority: RequirementPriority.Medium,
+        targetHouse: none(HouseId),
+        operation: some(esp_types.EspionageAction.CounterIntelligenceSweep),
+        estimatedCost: cost,
+        reason: &"Maintain Counter-Intelligence posture (risk tolerance: {p.riskTolerance:.2f})"
+      ))
+      result.totalEstimatedCost += cost
+
+  # === HIGH: Operations against high-value targets ===
+  # Prioritize sabotage of undefended high-industry colonies
   if currentEBP >= 7 and intelSnapshot.highValueTargets.len > 0:
     # Target the first high-value target (already sorted by priority in intelligence report)
     let targetSystem = intelSnapshot.highValueTargets[0]
