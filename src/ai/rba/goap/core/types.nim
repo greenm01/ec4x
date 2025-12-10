@@ -139,6 +139,10 @@ type
     PlantDisinformation       ## Plant Disinformation (corrupt enemy intel 20-40% for 2 turns)
     EstablishIntelNetwork     ## Build EBP/CIP capability
     MaintainPrestige          ## Avoid penalties, improve diplomatic standing
+    # Endgame/Elimination Goals (Gap 7)
+    AchieveTotalVictory       ## Eliminate all remaining opponents
+    LastStandReconquest       ## Recapture a colony after losing all
+
     # Economic domain goals (Eparch)
     TransferPopulation        ## Move population between colonies via Space Guild
     TerraformPlanet           ## Improve planet class
