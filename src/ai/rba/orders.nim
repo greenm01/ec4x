@@ -248,6 +248,14 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let standingOrders = assignStandingOrders(controller, filtered, filtered.turn)
   controller.standingOrders = standingOrders
 
+  # Add Logistics-generated build requirements (e.g., for Drydocks) to Domestikos requirements
+  if result.buildRequirements.len > 0:
+    if controller.domestikosRequirements.isNone:
+      controller.domestikosRequirements = some(BuildRequirements(requirements: @[], totalEstimatedCost: 0))
+    controller.domestikosRequirements.get().requirements.add(result.buildRequirements)
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Logistics added {result.buildRequirements.len} build requirements (e.g., Drydocks)")
+
   # Convert strategic standing orders to explicit fleet orders
   var strategicOrdersConverted = 0
   for fleetId, standingOrder in standingOrders:

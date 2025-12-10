@@ -116,6 +116,13 @@ type
     totalTreasury*: int                 # Current PP reserves
     maintenanceCost*: int               # Per-turn maintenance burden
 
+    # Repair and Drydock Assets (Gap 5)
+    damagedShips*: seq[tuple[fleetId: FleetId, shipClass: ShipClass, systemId: SystemId]] # List of damaged ships/fleets
+    totalDamagedShipHP*: int            # Sum of estimated HP needed for repair
+    operationalDrydocks*: int           # Count of non-crippled drydocks
+    totalRepairCapacity*: int           # Sum of effectiveDocks for all operational drydocks
+    activeRepairProjects*: int          # Number of projects currently in drydock
+
 proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetInventory =
   ## Scan entire house assets and build comprehensive inventory
   ##
@@ -211,6 +218,26 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
                                             squadron.flagship.isCrippled,
                                             fleet.status)
       result.maintenanceCost += shipCost * squadron.ships.len
+
+  # Track damaged ships and total repair capacity (Gap 5)
+  for fleet in filtered.ownFleets:
+    for squadron in fleet.squadrons:
+      if squadron.flagship.isCrippled:
+        result.damagedShips.add((fleet.id, squadron.flagship.shipClass, fleet.location))
+        # Assuming a crippled ship needs 50% of its max HP repaired as a heuristic
+        # A more complex model would track actual HP
+        result.totalDamagedShipHP += getShipClassData(squadron.flagship.shipClass).maxHP div 2
+      for ship in squadron.ships:
+        if ship.isCrippled:
+          result.damagedShips.add((fleet.id, ship.shipClass, fleet.location))
+          result.totalDamagedShipHP += getShipClassData(ship.shipClass).maxHP div 2
+  
+  for colony in filtered.ownColonies:
+    for drydock in colony.drydocks:
+      if not drydock.isCrippled:
+        result.operationalDrydocks += 1
+        result.totalRepairCapacity += drydock.effectiveDocks
+        result.activeRepairProjects += drydock.activeRepairs.len
 
 ## =============================================================================
 ## ASSET REALLOCATION STRATEGY
@@ -1232,6 +1259,65 @@ proc recommendFleetRebalancing*(controller: AIController, inventory: AssetInvent
   # etc.
 
 ## =============================================================================
+## DRYDOCKS AND REPAIR MANAGEMENT (Gap 5)
+## =============================================================================
+
+proc identifyDrydockNeeds*(controller: AIController, inventory: AssetInventory,
+                          filtered: FilteredGameState): seq[BuildRequirement] =
+  ## Identifies if more Drydocks are needed based on damaged fleets and repair capacity.
+  ## Generates BuildRequirements for Drydocks.
+  result = @[]
+
+  # Only consider building Drydocks if we have damaged ships and a capacity shortfall
+  if inventory.damagedShips.len == 0:
+    return @[]
+
+  let currentRepairCapacity = inventory.totalRepairCapacity
+  let activeRepairDemand = inventory.activeRepairProjects # Projects already in drydocks
+  let estimatedNewRepairDemand = inventory.damagedShips.len # Heuristic: one dock per damaged ship
+  let requiredCapacity = activeRepairDemand + estimatedNewRepairDemand
+
+  logInfo(LogCategory.lcAI, &"{controller.houseId} Drydock Need: Damaged ships={inventory.damagedShips.len}, " &
+                           &"Current Capacity={currentRepairCapacity}, Active Projects={activeRepairDemand}")
+
+  # Determine if we need more drydock capacity
+  # Threshold: If current capacity is less than required capacity AND we have many damaged ships
+  let capacityShortfall = requiredCapacity - currentRepairCapacity
+  if capacityShortfall > 0 and inventory.damagedShips.len > globalRBAConfig.logistics.min_damaged_ships_for_drydock:
+    logInfo(LogCategory.lcAI, &"{controller.houseId} Drydock Need: Capacity shortfall of {capacityShortfall} docks detected.")
+    
+    # Calculate how many Drydocks to build (each Drydock provides 'baseDocks' docks)
+    let drydockBaseDocks = filtered.getDrydockDockCapacity(filtered.ownColonies.values.toSeq[0]) # Get base docks from an existing Drydock or config
+    let numDrydocksToBuild = max(1, capacityShortfall div max(1, drydockBaseDocks)) # Build at least 1, if positive shortfall
+    
+    if numDrydocksToBuild > 0:
+      # Find suitable colonies to build drydocks (prefer homeworld or high-industry core worlds)
+      var targetSystem: Option[SystemId] = none(SystemId)
+      if controller.homeworld != 0.SystemId:
+        targetSystem = some(controller.homeworld)
+      elif filtered.ownColonies.len > 0:
+        # Fallback to the first available colony
+        targetSystem = some(filtered.ownColonies.values.toSeq[0].systemId)
+
+      if targetSystem.isSome:
+        result.add(BuildRequirement(
+          requirementType: RequirementType.Infrastructure,
+          priority: RequirementPriority.High,
+          shipClass: none(ShipClass),
+          itemId: some("Drydock"),
+          quantity: numDrydocksToBuild,
+          buildObjective: BuildObjective.Infrastructure,
+          targetSystem: targetSystem,
+          estimatedCost: globalRBAConfig.logistics.drydock_build_cost * numDrydocksToBuild, # Use config for cost
+          reason: &"Build {numDrydocksToBuild} Drydock(s) due to {inventory.damagedShips.len} damaged ships and {capacityShortfall} dock shortfall."
+        ))
+        logInfo(LogCategory.lcAI, &"{controller.houseId} Drydock Need: Generated build requirement for {numDrydocksToBuild} Drydock(s) at {targetSystem.get()}.")
+      else:
+        logWarn(LogCategory.lcAI, &"{controller.houseId} Drydock Need: No suitable system found to build Drydocks.")
+
+  return result
+
+## =============================================================================
 ## LOGISTICS MASTER PLANNER
 ## =============================================================================
 
@@ -1240,7 +1326,8 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
                                 cargo: seq[CargoManagementOrder],
                                 population: seq[PopulationTransferOrder],
                                 squadrons: seq[SquadronManagementOrder],
-                                fleetOrders: seq[FleetOrder]
+                                fleetOrders: seq[FleetOrder],
+                                buildRequirements: seq[BuildRequirement] # Added for Drydock needs
                               ] =
   ## Master function to generate ALL logistics-related orders
   ##
@@ -1254,15 +1341,19 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
 
   logInfo(LogCategory.lcAI, &"{controller.houseId} Logistics: {inventory.totalFleets} fleets, " &
                            &"{inventory.scouts} scouts, {inventory.etacs} ETACs, " &
-                           &"{inventory.undefendedColonies.len} undefended colonies")
+                           &"{inventory.undefendedColonies.len} undefended colonies, " &
+                           &"{inventory.damagedShips.len} damaged ships")
 
-  # Step 2: Generate cargo orders (highest priority - combat/expansion critical)
+  # Step 2: Identify Drydock needs (Gap 5)
+  result.buildRequirements = identifyDrydockNeeds(controller, inventory, filtered)
+
+  # Step 3: Generate cargo orders (highest priority - combat/expansion critical)
   result.cargo = generateCargoOrders(controller, inventory, filtered)
 
-  # Step 3: Generate population transfers (optimize growth)
+  # Step 4: Generate population transfers (optimize growth)
   result.population = generatePopulationTransfers(controller, inventory, filtered)
 
-  # Step 4: Optimize fleet compositions for operations
+  # Step 5: Optimize fleet compositions for operations
   result.squadrons = recommendFleetRebalancing(controller, inventory, filtered)
 
   # Step 5: Fleet lifecycle management (Reserve/Mothball/Salvage/Reactivate)
