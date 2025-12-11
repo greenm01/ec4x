@@ -149,6 +149,94 @@ proc createConductScoutMissionAction*(
   )
 
 # =============================================================================
+# Phase 3: Multi-Turn Invasion Actions
+# =============================================================================
+
+proc createBombardPlanetAction*(
+  systemId: SystemId,
+  targetHouse: HouseId,
+  estimatedBatteries: int
+): Action =
+  ## Create action to bombard planet and destroy ground defenses
+  ##
+  ## Phase 3: Enables multi-turn Bombardment → Invasion sequences
+  ## Duration estimates bombardment turns needed to destroy batteries
+
+  result = Action(
+    actionType: ActionType.BombardPlanet,
+    cost: 0,  # No PP cost, but fleet must be available
+    duration: max(1, estimatedBatteries div 2),  # Estimate bombardment turns
+    target: some(systemId),
+    targetHouse: some(targetHouse),
+    shipClass: none(ShipClass),
+    quantity: estimatedBatteries,  # Store battery count for tracking
+    techField: none(TechField),
+    preconditions: @[
+      createPrecondition(ConditionKind.HasFleetStrength, {"minStrength": 10}.toTable)
+    ],
+    effects: @[],  # Defense reduction handled by game engine during execution
+    description: "Bombard " & $systemId & " to destroy " & $estimatedBatteries & " batteries"
+  )
+
+proc createBlitzPlanetAction*(
+  systemId: SystemId,
+  targetHouse: HouseId,
+  defenseStrength: int
+): Action =
+  ## Create action for rapid combined bombardment + insertion (weak defenses)
+  ##
+  ## Phase 3: Single-turn operation for poorly defended colonies
+  ## Requires: 3+ ships, 3+ marines, defenses ≤5
+
+  result = Action(
+    actionType: ActionType.BlitzPlanet,
+    cost: 0,  # No PP cost
+    duration: 1,  # Single-turn operation
+    target: some(systemId),
+    targetHouse: some(targetHouse),
+    shipClass: none(ShipClass),
+    quantity: defenseStrength,  # Store defense strength for tracking
+    techField: none(TechField),
+    preconditions: @[
+      createPrecondition(ConditionKind.HasFleetStrength, {"minStrength": 3}.toTable)
+      # TODO: Add HasMarines and WeakDefenses conditions in future
+    ],
+    effects: @[
+      createEffect(EffectKind.GainControl, {"systemId": int(systemId)}.toTable)
+    ],
+    description: "Blitz " & $systemId & " (defenses: " & $defenseStrength & ")"
+  )
+
+proc createInvadePlanetAction*(
+  systemId: SystemId,
+  targetHouse: HouseId,
+  defenseStrength: int
+): Action =
+  ## Create action for formal ground assault (moderate defenses, after bombardment)
+  ##
+  ## Phase 3: Multi-turn operation requiring prior bombardment
+  ## Requires: 4+ ships, 6+ marines, batteries destroyed
+
+  result = Action(
+    actionType: ActionType.InvadePlanet,
+    cost: 0,  # No PP cost
+    duration: 1,  # Invasion turn (after bombardment complete)
+    target: some(systemId),
+    targetHouse: some(targetHouse),
+    shipClass: none(ShipClass),
+    quantity: defenseStrength,  # Store defense strength for tracking
+    techField: none(TechField),
+    preconditions: @[
+      createPrecondition(ConditionKind.HasFleetStrength, {"minStrength": 4}.toTable)
+      # TODO: Add HasMarines and NoGroundBatteries conditions in future
+    ],
+    effects: @[
+      createEffect(EffectKind.GainControl, {"systemId": int(systemId)}.toTable)
+    ],
+    description: "Invade " & $systemId & " (defenses: " & $defenseStrength & ")"
+  )
+
+# =============================================================================
 # Fleet Action Planning
 # =============================================================================
 
@@ -194,7 +282,10 @@ proc planInvasionActions*(
 ): seq[Action] =
   ## Plan action sequence to achieve invasion goal
   ##
-  ## Returns ordered list of actions for invasion
+  ## Phase 3: Chooses assault type based on defense strength
+  ## - Weak defenses (≤5): Blitz (single-turn combined assault)
+  ## - Moderate defenses (6-8): Bombard → Invade (multi-turn sequence)
+  ## - Strong defenses (>8): Extended bombardment → Invade
 
   result = @[]
 
@@ -207,21 +298,65 @@ proc planInvasionActions*(
   let systemId = goal.target.get()
   let targetHouse = goal.targetHouse.get()
 
-  # Multi-step invasion plan:
-  # 1. Assemble invasion force
+  # Estimate defense strength from intelligence
+  # TODO: Get actual defense data from intelSnapshot
+  var defenseStrength = 5  # Default estimate
+  var estimatedBatteries = 3
+
+  # Check if we have intelligence on this system
+  for opportunity in state.intelSnapshot.military.vulnerableTargets:
+    if opportunity.systemId == systemId:
+      defenseStrength = opportunity.estimatedDefenses div 10
+      estimatedBatteries = defenseStrength
+      break
+
+  # Multi-step invasion plan based on defense strength:
+  # 1. Assemble invasion force at staging point
   let assembleAction = createAssembleInvasionForceAction(
     systemId,
     requiredStrength = 20  # Minimum invasion strength
   )
   result.add(assembleAction)
 
-  # 2. Execute attack
-  let attackAction = createAttackColonyAction(
-    systemId,
-    targetHouse,
-    attackStrength = 20
-  )
-  result.add(attackAction)
+  # 2. Choose assault type based on intelligence
+  if defenseStrength <= 5:
+    # Weak defenses: Blitz (single-turn combined assault)
+    let blitzAction = createBlitzPlanetAction(
+      systemId,
+      targetHouse,
+      defenseStrength
+    )
+    result.add(blitzAction)
+  elif defenseStrength <= 8:
+    # Moderate defenses: Bombard → Invade (multi-turn sequence)
+    let bombardAction = createBombardPlanetAction(
+      systemId,
+      targetHouse,
+      estimatedBatteries
+    )
+    result.add(bombardAction)
+
+    let invadeAction = createInvadePlanetAction(
+      systemId,
+      targetHouse,
+      defenseStrength
+    )
+    result.add(invadeAction)
+  else:
+    # Strong defenses: Extended bombardment → Invade
+    let bombardAction = createBombardPlanetAction(
+      systemId,
+      targetHouse,
+      estimatedBatteries * 2  # Double bombardment time for heavy defenses
+    )
+    result.add(bombardAction)
+
+    let invadeAction = createInvadePlanetAction(
+      systemId,
+      targetHouse,
+      defenseStrength
+    )
+    result.add(invadeAction)
 
   # 3. Establish garrison (post-conquest defense)
   let garrisonAction = createEstablishDefenseAction(
