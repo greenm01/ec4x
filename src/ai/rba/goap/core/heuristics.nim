@@ -28,12 +28,12 @@ proc estimateGoalCost*(state: WorldStateSnapshot, goal: Goal): float =
     return 100.0
 
   of GoalType.InvadeColony:
-    # Need transport (60 PP) + marines (50 PP) + escort (100 PP) minimum
-    return 210.0
+    # Need sufficient force: roughly 500 PP for transports, marines, and escorts to take a defended colony
+    return 500.0
 
   of GoalType.SecureSystem:
-    # Similar to invasion but may need multiple transports
-    return 300.0
+    # Similar to invasion but for sustained control and potentially more resistance, higher estimate
+    return 800.0
 
   of GoalType.EliminateFleet:
     # Need superior fleet strength (estimate 200 PP)
