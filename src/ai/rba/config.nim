@@ -297,6 +297,15 @@ type
     replan_budget_shortfall_ratio*: float # % of remaining cost below which to trigger replan
     new_opportunity_scan_frequency*: int # How often to check for new opportunities (turns)
 
+    # Phase 3: Invasion Planning Parameters
+    invasion_min_strength_ratio*: float # Need X times estimated enemy strength
+    invasion_max_distance*: int         # Max jumps to invasion target
+    invasion_bombardment_estimate*: int # Estimated bombardment turns
+    invasion_priority_boost*: float     # Priority boost for invasion goals
+
+    # Phase 3: Campaign Coordination
+    disable_rba_campaigns_with_goap*: bool # Disable Phase 2 RBA campaigns when GOAP handles invasions
+
 
 type
   FeedbackSystemConfig* = object

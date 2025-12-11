@@ -278,6 +278,11 @@ type
     goapPlansCompleted*: int          # Completed plans (cumulative)
     goapGoalsExtracted*: int          # Strategic goals extracted this turn
     goapPlanningTimeMs*: float        # Phase 1.5 planning overhead (ms)
+    # Phase 3: GOAP Invasion Metrics
+    goapInvasionGoals*: int           # Invasion goals generated this turn
+    goapInvasionPlans*: int           # Active invasion plans (subset of plansActive)
+    goapActionsExecuted*: int         # GOAP actions converted to orders this turn
+    goapActionsFailed*: int           # GOAP actions that couldn't be executed
 
   DiagnosticSession* = object
     ## Collection of all diagnostics for a game session
@@ -485,5 +490,10 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     goapPlansActive: 0,
     goapPlansCompleted: 0,
     goapGoalsExtracted: 0,
-    goapPlanningTimeMs: 0.0
+    goapPlanningTimeMs: 0.0,
+    # Phase 3: GOAP Invasion Metrics
+    goapInvasionGoals: 0,
+    goapInvasionPlans: 0,
+    goapActionsExecuted: 0,
+    goapActionsFailed: 0
   )

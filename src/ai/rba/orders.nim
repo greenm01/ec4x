@@ -21,6 +21,7 @@ import ./[controller_types, budget, drungarius, tactical, intelligence, logistic
 import ./orders/[phase0_intelligence, phase1_requirements, phase1_5_goap, phase2_mediation, phase3_execution, colony_management, phase4_feedback]
 import ./goap/integration/plan_tracking  # For addPlan
 import ./basileus/execution  # For AdvisorType and centralized execution
+import ./domestikos/fleet_analysis  # For GOAP plan execution
 
 export core, orders, standing_orders_manager, zero_turn_commands
 
@@ -300,6 +301,37 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Converted {strategicOrdersConverted} strategic standing orders")
+
+  # ==========================================================================
+  # PHASE 6.5: GOAP PLAN EXECUTION (Phase 3 Integration)
+  # ==========================================================================
+  # Execute active GOAP plans (strategic multi-turn operations)
+  # Priority: GOAP plans > RBA campaigns > RBA tactical
+  if controller.goapEnabled and controller.goapPlanTracker.getActivePlanCount() > 0:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} === Phase 6.5: GOAP Plan Execution ===")
+
+    # Analyze fleets for plan execution
+    let analyses = fleet_analysis.analyzeFleetUtilization(
+      filtered,
+      controller.houseId,
+      initTable[FleetId, FleetOrder](),  # No tactical orders yet
+      controller.standingOrders
+    )
+
+    # Execute all active plans
+    let goapOrders = plan_tracking.executeAllPlans(
+      controller.goapPlanTracker,
+      filtered,
+      analyses
+    )
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} GOAP generated {goapOrders.len} strategic orders")
+
+    # Add GOAP orders with highest priority
+    for order in goapOrders:
+      result.orderPacket.fleetOrders.add(order)
 
   # ==========================================================================
   # PHASE 7: TACTICAL FLEET ORDERS
