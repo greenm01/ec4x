@@ -85,6 +85,9 @@ const
                     "invalid_orders,total_orders," &
                     "colonies_lost,colonies_gained,colonies_gained_via_colonization,colonies_gained_via_conquest,ships_lost,ships_gained,fighters_lost,fighters_gained," &
                     "bilateral_relations," &
+                    "events_order_completed,events_order_failed,events_order_rejected," &
+                    "events_combat_total,events_bombardment,events_colony_captured," &
+                    "events_espionage_total,events_diplomatic_total,events_research_total,events_colony_total," &
                     "advisor_reasoning"
 
   ## Actual CSV column count from header string
@@ -206,6 +209,10 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.coloniesLost},{metrics.coloniesGained},{metrics.coloniesGainedViaColonization},{metrics.coloniesGainedViaConquest},{metrics.shipsLost},{metrics.shipsGained},{metrics.fightersLost},{metrics.fightersGained}," &
                  # Bilateral Diplomatic Relations
                  &"{metrics.bilateralRelations}," &
+                 # Event Counts (for balance testing)
+                 &"{metrics.eventsOrderCompleted},{metrics.eventsOrderFailed},{metrics.eventsOrderRejected}," &
+                 &"{metrics.eventsCombatTotal},{metrics.eventsBombardment},{metrics.eventsColonyCaptured}," &
+                 &"{metrics.eventsEspionageTotal},{metrics.eventsDiplomaticTotal},{metrics.eventsResearchTotal},{metrics.eventsColonyTotal}," &
                  # Advisor Reasoning (NEW - Gap #9 fix, CSV-escaped)
                  &"\"{escapedReasoning}\""
 

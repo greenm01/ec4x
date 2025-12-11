@@ -95,3 +95,65 @@ proc invasionRepelled*(
     defendingHouseId: some(houseId),
     outcome: some("Defeat") # Attacker defeated
   )
+
+proc bombardment*(
+  attackingHouse: HouseId,
+  defendingHouse: HouseId,
+  systemId: SystemId,
+  infrastructureDamage: int,
+  populationKilled: int,
+  facilitiesDestroyed: int
+): event_types.GameEvent =
+  ## Create event for planetary bombardment
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.Bombardment,
+    turn: 0,
+    houseId: some(attackingHouse),
+    description: &"Bombarded system {systemId} held by {defendingHouse}: " &
+                 &"{infrastructureDamage} IU damaged, {populationKilled} PU " &
+                 &"killed",
+    systemId: some(systemId),
+    message: &"Infrastructure: {infrastructureDamage} IU, Population: " &
+             &"{populationKilled} PU, Facilities: {facilitiesDestroyed}"
+  )
+
+proc colonyCaptured*(
+  attackingHouse: HouseId,
+  defendingHouse: HouseId,
+  systemId: SystemId,
+  captureMethod: string  # "Invasion" or "Blitz"
+): event_types.GameEvent =
+  ## Create event for colony capture via ground assault
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.ColonyCaptured,
+    turn: 0,
+    houseId: some(attackingHouse),
+    description: &"Captured colony at {systemId} from {defendingHouse} " &
+                 &"via {captureMethod}",
+    systemId: some(systemId),
+    attackingHouseId: some(attackingHouse),
+    defendingHouseId: some(defendingHouse),
+    newOwner: some(attackingHouse),
+    outcome: some(captureMethod)
+  )
+
+proc battleOccurred*(
+  systemId: SystemId,
+  attackers: seq[HouseId],
+  defenders: seq[HouseId],
+  outcome: string  # "Decisive", "Stalemate", etc.
+): event_types.GameEvent =
+  ## Create event for battle between multiple houses (neutral observer)
+  ## Used for intelligence reports when house observes combat but doesn't
+  ## participate
+  let housesInvolved = attackers & defenders
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.BattleOccurred,
+    turn: 0,
+    houseId: if attackers.len > 0: some(attackers[0]) else: none(HouseId),
+    description: &"Battle at system {systemId} between " &
+                 &"{attackers.len} attacker(s) and {defenders.len} " &
+                 &"defender(s)",
+    systemId: some(systemId),
+    message: &"Outcome: {outcome}, Houses involved: {housesInvolved.len}"
+  )

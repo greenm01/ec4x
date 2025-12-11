@@ -1,9 +1,10 @@
 import std/[tables, algorithm, options, sequtils]
-import ../../common/types/core # For HouseId, SystemId, FleetId
+import ../../../common/types/core # For HouseId, SystemId, FleetId (fixed path)
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../controller_types # For AdvisorType, RequirementType, BuildRequirement, ResearchRequirement, etc.
 import ../config # For globalRBAConfig
-import ../goap/core/types # For DomainType, GOAPlan (needed for GOAP integration)
+# GOAP not yet integrated - commented out
+# import ../goap/core/types # For DomainType, GOAPlan (needed for GOAP integration)
 import ../../common/types # For AIPersonality
 
 type
@@ -160,7 +161,6 @@ proc allocateBudgetMultiAdvisor*(
       of AdvisorType.Eparch: "Economic"
       of AdvisorType.Protostrator: "Diplomatic"
       of AdvisorType.Basileus: "" # Basileus itself doesn't have a domain for budget allocation
-    else: ""
 
     if domainName != "" and goapBudgetEstimates.hasKey(domainName):
       let goapAlloc = goapBudgetEstimates[domainName]
@@ -203,11 +203,12 @@ proc allocateBudgetMultiAdvisor*(
 
   return result
 import std/[tables, algorithm, options, sequtils]
-import ../../common/types/core # For HouseId, SystemId, FleetId
+import ../../../common/types/core # For HouseId, SystemId, FleetId (fixed path)
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../controller_types # For AdvisorType, RequirementType, BuildRequirement, ResearchRequirement, etc.
 import ../config # For globalRBAConfig
-import ../goap/core/types # For DomainType, GOAPlan (needed for GOAP integration)
+# GOAP not yet integrated - commented out
+# import ../goap/core/types # For DomainType, GOAPlan (needed for GOAP integration)
 import ../../common/types # For AIPersonality
 
 type
@@ -364,7 +365,6 @@ proc allocateBudgetMultiAdvisor*(
       of AdvisorType.Eparch: "Economic"
       of AdvisorType.Protostrator: "Diplomatic"
       of AdvisorType.Basileus: "" # Basileus itself doesn't have a domain for budget allocation
-    else: ""
 
     if domainName != "" and goapBudgetEstimates.hasKey(domainName):
       let goapAlloc = goapBudgetEstimates[domainName]

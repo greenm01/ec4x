@@ -4,7 +4,7 @@
 ## DRY Principle: Single source of truth for victory event creation
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
-import std/[options, strformat]
+import std/[options, strformat, strutils]
 import ../../../common/types/core
 import ../../../common/types/tech # For TechField (for techType field in event)
 import ../types as event_types # Now refers to src/engine/resolution/types.nim
@@ -27,15 +27,29 @@ proc houseEliminated*(
 
 proc techAdvance*(
   houseId: HouseId,
-  techType: string, # This should be TechField.str
+  techType: string, # TechField enum name OR "Economic Level" / "Science Level"
   newLevel: int
 ): event_types.GameEvent =
   ## Create event for technology advancement
+  ## Handles both tech fields (CST, WEP, etc.) and research levels (EL, SL)
+
+  # EL and SL are not TechField enum values, so use TechAdvance event with first tech field as placeholder
+  if techType in ["Economic Level", "Science Level"]:
+    return event_types.GameEvent(
+      eventType: event_types.GameEventType.TechAdvance,
+      houseId: some(houseId),
+      description: &"{techType} advanced to level {newLevel}",
+      systemId: none(SystemId),
+      techField: TechField.ConstructionTech, # Placeholder for EL/SL
+      newLevel: some(newLevel)
+    )
+
+  # Regular tech field advancement
   event_types.GameEvent(
-    eventType: event_types.GameEventType.Research, # Use specific Research event type
+    eventType: event_types.GameEventType.TechAdvance,
     houseId: some(houseId),
     description: &"{techType} advanced to level {newLevel}",
     systemId: none(SystemId),
-    techField: some(parseEnum[TechField](techType)), # Convert string to TechField
+    techField: parseEnum[TechField](techType),
     newLevel: some(newLevel)
   )

@@ -9,9 +9,13 @@ import ../../engine/order_types  # For StandingOrder
 import ../../engine/commands/zero_turn_commands  # For ZeroTurnCommand
 import ../../common/types/[core, units, planets]  # For ShipClass, PlanetClass
 import ../../engine/resolution/types as event_types # For EspionageAction, DiplomaticProposalType, GameEvent etc.
+import ../../engine/espionage/types as esp_types # For EspionageAction
+import ../../engine/diplomacy/proposals as dip_proposals # For ProposalType
 import ./shared/intelligence_types  # Enhanced intelligence types (Phase B+)
-import ../../ai/goap/types as goap_types # For GOAPConfig
-import ../../ai/goap/plan_tracking as goap_plan # For PlanTracker
+import ./multi_advisor/mediation # For MultiAdvisorAllocation
+# GOAP not yet integrated - commented out
+# import ../../ai/goap/types as goap_types # For GOAPConfig
+# import ../../ai/goap/plan_tracking as goap_plan # For PlanTracker
 
 # Re-export RequirementPriority from intelligence_types for convenience
 export intelligence_types.RequirementPriority
@@ -123,14 +127,6 @@ type
     budgetShortfall*: int           # PP gap (0 if partial fulfillment)
     quantityBuilt*: int             # How many were affordable (0 if none)
     suggestion*: Option[string]     # AI-generated suggestion for next steps
-
-  RequirementFeedback* = object
-    ## Detailed feedback for a single unfulfilled requirement (Gap 6)
-    requirement*: BuildRequirement
-    reason*: UnfulfillmentReason
-    budgetShortfall*: int           # PP gap (0 if partial fulfillment)
-    quantityBuilt*: int             # How many were affordable (0 if none)
-    suggestion*: Option[string]     # AI-generated suggestion
 
   TreasurerFeedback* = object
     ## Treasurer's feedback to Admiral on which requirements were fulfilled
@@ -294,14 +290,14 @@ type
     drungariusFeedback*: Option[DrungariusFeedback]  # Treasurer feedback on espionage budget
     eparchFeedback*: Option[EparchFeedback]  # Treasurer feedback on economic budget
 
-    # GOAP Phase 4: Strategic planning integration
-    goapEnabled*: bool  # Quick check if GOAP is enabled
-    goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
-    goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
-    goapBudgetEstimates*: Option[Table[DomainType, int]] # Current-turn budget guidance from GOAP
-    goapReservedBudget*: Option[int] # Amount GOAP wants to reserve for future turns
-    goapConfig*: goap_types.GOAPConfig # Configuration for the GOAP planner
-    planTracker*: goap_plan.PlanTracker # Manages GOAP's multi-turn plans
+    # GOAP Phase 4: Strategic planning integration (not yet integrated - commented out)
+    # goapEnabled*: bool  # Quick check if GOAP is enabled
+    # goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
+    # goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
+    # goapBudgetEstimates*: Option[Table[DomainType, int]] # Current-turn budget guidance from GOAP
+    # goapReservedBudget*: Option[int] # Amount GOAP wants to reserve for future turns
+    # goapConfig*: goap_types.GOAPConfig # Configuration for the GOAP planner
+    # planTracker*: goap_plan.PlanTracker # Manages GOAP's multi-turn plans
     lastTurnAllocationResult*: Option[MultiAdvisorAllocation] # NEW: Stores result of last turn's budget allocation
 
     # Phase C: Enhanced intelligence distribution

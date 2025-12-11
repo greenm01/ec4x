@@ -1085,16 +1085,15 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     fleet.spaceLiftShips.len  # Invasion threat assessment
   )
 
-  # Generate event
-  var eventDesc = "Bombarded system " & $targetId & ", destroyed " & $infrastructureLoss & " infrastructure"
-  if shipsDestroyedInDock:
-    eventDesc &= " (ship under construction destroyed)"
-
-  # Note: Bombardment doesn't have a factory function yet, using battle as fallback
-  events.add(event_factory.battle(
+  # Generate bombardment event
+  let facilitiesDestroyed = if shipsDestroyedInDock: 1 else: 0
+  events.add(event_factory.bombardment(
     houseId,
+    colony.owner,  # Defending house
     targetId,
-    eventDesc
+    infrastructureLoss,
+    result.populationDamage,
+    facilitiesDestroyed
   ))
 
   # Generate OrderCompleted event
@@ -1347,10 +1346,11 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
               "house=", $colony.owner, " prestige=", $defenderPenalty)
 
     # Generate event
-    events.add(event_factory.systemCaptured(
+    events.add(event_factory.colonyCaptured(
       houseId,
+      colony.owner,
       targetId,
-      colony.owner
+      "Invasion"
     ))
 
     # Generate OrderCompleted event for successful invasion
@@ -1633,11 +1633,11 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
               "house=", $colony.owner, " prestige=", $defenderPenalty)
 
     # Generate event
-    # Note: ColonyCaptured doesn't have a factory function, using systemCaptured
-    events.add(event_factory.systemCaptured(
+    events.add(event_factory.colonyCaptured(
       houseId,
+      colony.owner,
       targetId,
-      colony.owner
+      "Blitz"
     ))
 
     # Generate OrderCompleted event for successful blitz

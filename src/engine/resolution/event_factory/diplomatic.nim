@@ -24,8 +24,8 @@ proc warDeclared*(
     description: &"{declaringHouse} declared war on {targetHouse}",
     systemId: none(SystemId),
     sourceHouseId: some(declaringHouse),
-    targetHouseId: targetHouse,
-    action: DiplomaticActionType.DeclareWar, # Specific action field for case branch
+    targetHouseId: some(targetHouse),
+    action: some("DeclareWar"), # Specific action field for case branch
     success: some(true),
     newState: some(DiplomaticState.Enemy)
   )
@@ -42,8 +42,8 @@ proc peaceSigned*(
     description: &"Peace treaty signed between {house1} and {house2}",
     systemId: none(SystemId),
     sourceHouseId: some(house1), # One of the signing parties
-    targetHouseId: house2, # The other signing party
-    action: DiplomaticActionType.ProposePeace, # Specific action field for case branch
+    targetHouseId: some(house2), # The other signing party
+    action: some("ProposePeace"), # Specific action field for case branch
     success: some(true),
     newState: some(DiplomaticState.Neutral) # Assuming peace leads to neutral
   )
