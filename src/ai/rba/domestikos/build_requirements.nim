@@ -1514,22 +1514,11 @@ proc generateBuildRequirements*(
   # Calculate remaining resources for fillers
   let availableDocks = max(0, totalDocks - docksCommitted)
 
-  # CRITICAL: Only generate capacity fillers when NOT hoarding treasury
-  # If treasury > 5000PP, it indicates a spending problem (budget not utilized),
-  # NOT a capacity problem (not enough requirements). Generating more requirements
-  # when existing ones aren't being funded just creates noise.
-  #
-  # Thresholds:
-  #   - Treasury < 1000PP: Generate fillers for ALL available docks (need more options)
-  #   - Treasury 1000-5000PP: Generate fillers for 50% of docks (moderate spending)
-  #   - Treasury > 5000PP: Generate 0 fillers (fix budget allocation first)
+  # Generate capacity fillers for all available docks
+  # The budget allocator will naturally limit spending based on available budget
+  # Generating requirements doesn't commit spending - it just gives options
   let treasury = filtered.ownHouse.treasury
-  let affordableFillerCount = if treasury > 5000:
-      0  # HOARDING: Fix budget allocation, don't generate filler spam
-    elif treasury > 1000:
-      availableDocks div 2  # MODERATE: Generate some fillers
-    else:
-      availableDocks  # LOW TREASURY: Generate all fillers
+  let affordableFillerCount = availableDocks
 
   # Calculate total filler budget (informational only, not used for filtering)
   let fillerBudgetEstimate = treasury

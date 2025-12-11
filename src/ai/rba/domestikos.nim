@@ -187,6 +187,12 @@ proc generateDomestikosOrders*(
     )
     offensiveFleetOrders.add(probingOrders)
 
+    # Reconnaissance to maintain fresh intelligence on enemy colonies
+    let reconOrders = generateReconnaissanceOrders(
+      filtered, analyses, controller, currentAct
+    )
+    offensiveFleetOrders.add(reconOrders)
+
     # Counter-attacks against vulnerable targets (Phase F: Intelligence-driven)
     # Lowered threshold from 0.5 → 0.3 to enable more personalities (Balanced, Economic, Espionage, Diplomatic)
     if controller.personality.aggression > 0.3:
@@ -209,6 +215,12 @@ proc generateDomestikosOrders*(
       filtered, analyses, controller, intelSnapshot
     )
     offensiveFleetOrders.add(probingOrders)
+
+    # Reconnaissance to maintain fresh intelligence on enemy colonies
+    let reconOrders = generateReconnaissanceOrders(
+      filtered, analyses, controller, currentAct
+    )
+    offensiveFleetOrders.add(reconOrders)
 
   of DomestikosStrategy.ProbingAttacks, DomestikosStrategy.DefensiveConsolidation,
      DomestikosStrategy.OpportunisticCounter:
