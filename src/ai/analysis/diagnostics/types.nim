@@ -187,6 +187,12 @@ type
 
     # Intel / Tech
     totalInvasions*: int                # Phase F: Track total invasions (useful for strategy analysis)
+    vulnerableTargets_count*: int       # Phase 1: Count from intelligence snapshot
+    invasionOrders_generated*: int      # Phase 1: Total invasion orders created this turn
+    invasionOrders_bombard*: int        # Phase 1: Bombardment orders created
+    invasionOrders_invade*: int         # Phase 1: Invasion orders created
+    invasionOrders_blitz*: int          # Phase 1: Blitz orders created
+    invasionOrders_canceled*: int       # Phase 1: Orders rejected/canceled
     clkResearchedNoRaiders*: bool       # Has CLK but no Raiders built
     scoutCount*: int                    # Phase 2c: Current scout count for ELI mesh tracking
     spyPlanetMissions*: int             # Cumulative SpyOnPlanet missions

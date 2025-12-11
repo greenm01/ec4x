@@ -44,6 +44,13 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   result.cloakedAmbushSuccess = 0
   result.shieldsActivatedCount = 0
 
+  # Phase 1: Invasion order tracking (populated during order generation)
+  result.invasionOrders_generated = 0
+  result.invasionOrders_bombard = 0
+  result.invasionOrders_invade = 0
+  result.invasionOrders_blitz = 0
+  result.invasionOrders_canceled = 0
+
   # ================================================================
   # CAPACITY MANAGEMENT (Fighter & Squadron Limits)
   # ================================================================

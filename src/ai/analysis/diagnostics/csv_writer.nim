@@ -79,7 +79,9 @@ const
                     "carrier_ships,super_carrier_ships,etac_ships,troop_transport_ships,planet_breaker_ships,total_ships," &
                     "planetary_shield_units,ground_battery_units,army_units,marines_at_colonies,marines_on_transports,marine_division_units," &
                     "total_spaceports,total_shipyards,total_drydocks," &
-                    "total_invasions,clk_no_raiders,scout_count," &
+                    "total_invasions,vulnerable_targets_count,invasion_orders_generated," &
+                    "invasion_orders_bombard,invasion_orders_invade,invasion_orders_blitz,invasion_orders_canceled," &
+                    "clk_no_raiders,scout_count," &
                     "spy_planet,hack_starbase,total_espionage," &
                     "undefended_colonies,total_colonies,mothball_used,mothball_total," &
                     "invalid_orders,total_orders," &
@@ -198,7 +200,8 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Facilities (NEW - Gap #10 fix)
                  &"{metrics.totalSpaceports},{metrics.totalShipyards},{metrics.totalDrydocks}," &
                  # Intel (Phase F: removed meaningless invasionFleetsWithoutELIMesh metric)
-                 &"{metrics.totalInvasions}," &
+                 &"{metrics.totalInvasions},{metrics.vulnerableTargets_count},{metrics.invasionOrders_generated}," &
+                 &"{metrics.invasionOrders_bombard},{metrics.invasionOrders_invade},{metrics.invasionOrders_blitz},{metrics.invasionOrders_canceled}," &
                  &"{boolToInt(metrics.clkResearchedNoRaiders)},{metrics.scoutCount}," &
                  &"{metrics.spyPlanetMissions},{metrics.hackStarbaseMissions},{metrics.totalEspionageMissions}," &
                  # Defense

@@ -338,8 +338,8 @@ threat_high_distance = 2               # Enemy 2 jumps away = High
 threat_moderate_distance = 4           # Enemy 4 jumps away = Moderate
 
 # Vulnerability assessment
-vulnerability_defense_ratio_threshold = 0.3  # Defender/Attacker < 0.3 = vulnerable
-vulnerability_value_threshold = 50           # Min production to be high-value target
+vulnerability_defense_ratio_threshold = 0.5  # Defender/Attacker < 0.5 = vulnerable
+vulnerability_value_threshold = 30           # Min production to be invasion target
 
 # Combat learning (Phase C)
 combat_report_learning_enabled = true   # Learn from combat encounters
