@@ -329,6 +329,35 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
 
   result = @[]
 
+  # PROACTIVE PATH: Load marines on ANY empty transport at a colony with marines
+  # This ensures transports are always ready for invasion operations
+  # Don't wait for explicit operations to be created - keep transports loaded
+  for fleet in filtered.ownFleets:
+    # Check if fleet has empty transports
+    var hasEmptyTransport = false
+    for spaceLift in fleet.spaceLiftShips:
+      if spaceLift.shipClass == ShipClass.TroopTransport and spaceLift.isEmpty:
+        hasEmptyTransport = true
+        break
+
+    if hasEmptyTransport:
+      # Check if fleet is at a colony with marines
+      for colony in filtered.ownColonies:
+        if colony.systemId == fleet.location and colony.marines > 0:
+          # Generate load order - proactively keep transports loaded
+          result.add(CargoManagementOrder(
+            houseId: controller.houseId,
+            colonySystem: colony.systemId,
+            action: CargoManagementAction.LoadCargo,
+            fleetId: fleet.id,
+            cargoType: some(CargoType.Marines),
+            quantity: some(1)  # Load 1 MD per transport
+          ))
+          logInfo(LogCategory.lcAI,
+                  &"{controller.houseId} Logistics: Proactively loading " &
+                  &"marines onto transport {fleet.id} at {colony.systemId}")
+          break  # Move to next fleet after loading
+
   # CRITICAL PATH: Load transports for invasion operations
   for operation in controller.operations:
     if operation.operationType == ai_types.OperationType.Invasion:

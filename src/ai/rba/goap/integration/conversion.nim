@@ -7,7 +7,8 @@ import std/[tables, options, sequtils, algorithm]
 import ../core/[types, conditions]
 import ../state/snapshot
 import ../domains/fleet/[goals as fleet_goals, bridge as fleet_bridge]
-import ../domains/build/[goals as build_goals, bridge as build_bridge]
+# TODO: Build domain merged with Fleet domain in MVP - separate later
+# import ../domains/build/[goals as build_goals, bridge as build_bridge]
 import ../domains/research/[goals as research_goals, bridge as research_bridge]
 import ../domains/diplomatic/[goals as diplomatic_goals, bridge as diplomatic_bridge]
 import ../domains/espionage/[goals as espionage_goals, bridge as espionage_bridge]
@@ -30,9 +31,9 @@ proc extractAllGoalsFromState*(state: WorldStateSnapshot): seq[Goal] =
   let fleetGoals = fleet_bridge.extractFleetGoalsFromState(state)
   result.add(fleetGoals)
 
-  # Build domain goals (Domestikos)
-  let buildGoals = build_bridge.extractBuildGoalsFromState(state)
-  result.add(buildGoals)
+  # Build domain goals (Domestikos) - TODO: Merged with Fleet in MVP
+  # let buildGoals = build_bridge.extractBuildGoalsFromState(state)
+  # result.add(buildGoals)
 
   # Research domain goals (Logothete)
   let researchGoals = research_bridge.extractResearchGoalsFromState(state)

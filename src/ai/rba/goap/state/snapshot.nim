@@ -141,7 +141,7 @@ proc createWorldStateSnapshot*(
   result.undefendedEnemyColonies = intel.military.vulnerableTargets.filterIt(it.estimatedDefenses == 0).mapIt((it.systemId, it.owner))
     
   result.staleIntelSystems = intel.espionage.staleIntelSystems
-  result.espionageTargets = intel.espionage.highPriorityTargets.mapIt(it.houseId.getOrDefault(HouseId(""))) # Assuming targetHouse is often present
+  result.espionageTargets = intel.espionage.highPriorityTargets.mapIt(it.houseId)
     
   # Store the full intelligence snapshot
   result.intelSnapshot = intel

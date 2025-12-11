@@ -92,6 +92,7 @@ proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPCon
 # =============================================================================
 
 proc generateAlternativePlans*(
+  config: GOAPConfig,  # Added config parameter
   state: WorldStateSnapshot,
   goal: Goal,
   maxAlternatives: int = 3,
@@ -126,19 +127,6 @@ proc generateAlternativePlans*(
     for existing in unique:
       # Compare goals and actions for uniqueness
       if existing.goal == plan.goal and existing.actions.len == plan.actions.len and existing.totalCost == plan.totalCost:
-        isDuplicate = true
-        break
-    if not isDuplicate:
-      unique.add(plan)
-  result = unique
-
-  # Ensure uniqueness (simple approach for now)
-  # Manual deduplication since deduplicate doesn't support custom comparison
-  var unique: seq[GOAPlan] = @[]
-  for plan in result:
-    var isDuplicate = false
-    for existing in unique:
-      if existing.goal.description == plan.goal.description and existing.totalCost == plan.totalCost:
         isDuplicate = true
         break
     if not isDuplicate:
@@ -226,7 +214,7 @@ proc repairPlan*(
     of ReplanReason.BudgetFailure:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to insufficient budget. Trying cheaper alternatives or adjusting cost.")
       # Try to generate alternative plans for the original goal, prioritizing cheaper ones
-      let alternatives = generateAlternativePlans(state, failedPlan.plan.goal, maxAlternatives = 3, planningDepth = config.planning_depth)
+      let alternatives = generateAlternativePlans(config, state, failedPlan.plan.goal, maxAlternatives = 3, planningDepth = config.planning_depth)
       let bestAlternative = selectBestAlternative(alternatives, state, prioritizeSpeed = true) # Prefer cheaper/faster
       if bestAlternative.isSome:
         logInfo(LogCategory.lcAI, &"GOAP Repair: Found cheaper alternative plan for '{failedPlan.plan.goal.description}'.")
@@ -323,7 +311,7 @@ proc replanWithBudgetConstraint*(
 
   for goal in allSortedGoals:
     # Try to plan for this goal with the configured planning depth
-    let maybePlan = planForGoal(state, goal)
+    let maybePlan = planForGoal(config, state, goal)
     if maybePlan.isNone:
       logDebug(LogCategory.lcAI, &"GOAP Budget Replan: Could not generate plan for goal '{goal.description}'.")
       continue
@@ -338,7 +326,7 @@ proc replanWithBudgetConstraint*(
     elif remainingBudget > 0:
       # If not fully affordable, try cheaper alternatives
       logDebug(LogCategory.lcAI, &"GOAP Budget Replan: Plan for '{goal.description}' too expensive ({plan.totalCost}), trying alternatives.")
-      let alternatives = generateAlternativePlans(state, goal, maxAlternatives = 3, planningDepth = config.planningDepth)
+      let alternatives = generateAlternativePlans(config, state, goal, maxAlternatives = 3, planningDepth = config.planning_depth)
       let bestAlternative = selectBestAlternative(alternatives, state, prioritizeSpeed = true) # Prefer faster/cheaper alternatives
 
       if bestAlternative.isSome:
@@ -463,7 +451,7 @@ proc integrateNewOpportunities*(
       if lowestPriorityPlanIdx >= 0 and newGoal.priority > lowestPriority:
         let pausedPlanDescription = tracker.activePlans[lowestPriorityPlanIdx].plan.goal.description
         tracker.pausePlan(lowestPriorityPlanIdx) # Pause the old plan
-        let newPlan = planForGoal(state, newGoal)
+        let newPlan = planForGoal(config, state, newGoal)
         if newPlan.isSome:
           tracker.addPlan(newPlan.get())
           logInfo(LogCategory.lcAI, &"GOAP Opportunity: Paused plan for '{pausedPlanDescription}' to pursue new opportunity: '{newPlan.get().goal.description}'")
@@ -471,7 +459,7 @@ proc integrateNewOpportunities*(
         logDebug(LogCategory.lcAI, &"GOAP Opportunity: Cannot integrate '{newGoal.description}' - max concurrent plans reached and new goal not higher priority.")
     else:
       # Under capacity - add all new goals
-      let newPlan = planForGoal(state, newGoal)
+      let newPlan = planForGoal(config, state, newGoal)
       if newPlan.isSome:
         tracker.addPlan(newPlan.get())
         logInfo(LogCategory.lcAI, &"GOAP Opportunity: Integrated new goal: '{newPlan.get().goal.description}'")

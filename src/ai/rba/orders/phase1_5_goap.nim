@@ -14,7 +14,8 @@ import ../goap/state/snapshot as goap_snapshot # Alias to avoid name clashes
 import ../goap/planner/search
 import ../goap/integration/[conversion, plan_tracking, replanning] # Added replanning for ReplanReason
 import ../goap/domains/fleet/bridge as fleet_bridge # MVP: Fleet domain
-import ../goap/domains/build/bridge as build_bridge # MVP: Build domain
+# TODO: Build domain merged with Fleet in MVP - separate later
+# import ../goap/domains/build/bridge as build_bridge # MVP: Build domain
 import ../controller_types # For UnfulfillmentReason, RequirementFeedback
 import ../shared/intelligence_types # For IntelligenceSnapshot
 import ../../common/types as ai_types
@@ -200,12 +201,13 @@ proc executePhase15_GOAP*(
   let startTime = cpuTime()
 
   # Create world state snapshot from filtered game state
-  let worldState = goap_snapshot.createWorldStateSnapshot(filtered)
+  let worldState = goap_snapshot.createWorldStateSnapshot(filtered, intel)
 
-  # Extract goals (Fleet + Build only for MVP)
+  # Extract goals (Fleet only for MVP - Build domain merged with Fleet)
   var allGoals: seq[Goal] = @[]
   allGoals.add(fleet_bridge.extractFleetGoalsFromState(worldState))
-  allGoals.add(build_bridge.extractBuildGoalsFromState(worldState))
+  # TODO: Build domain merged with Fleet in MVP - separate later
+  # allGoals.add(build_bridge.extractBuildGoalsFromState(worldState))
 
   # Apply priority weights from config
   for i in 0 ..< allGoals.len:
@@ -227,7 +229,7 @@ proc executePhase15_GOAP*(
 
   # Generate plans for each goal
   for goal in result.goals:
-    let maybePlan = planForGoal(worldState, goal)
+    let maybePlan = planForGoal(config, worldState, goal)
     if maybePlan.isSome:
       let plan = maybePlan.get()
       if plan.confidence >= config.confidence_threshold:

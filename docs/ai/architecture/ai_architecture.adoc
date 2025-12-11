@@ -968,7 +968,7 @@ COMPONENT IMPLEMENTATION STATUS (MVP)
 |  - Phase 1.5 entry point                |    [X]   |   280    |
 |  - Budget guidance (observation only)   |    [~]   |   100    |
 |  - Feedback loops (Phase 8.5, basic)    |    [X]   |    60    |
-|  - Order conversion (RBA→GOAP)          |    [D]   |     0    |
+|  - Order conversion (RBA->GOAP)         |    [D]   |     0    |
 |  - Advanced replanning                  |    [D]   |     0    |
 |                                         |          |          |
 | RBA CORE (Production-Ready)             |          |          |
