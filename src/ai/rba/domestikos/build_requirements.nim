@@ -280,9 +280,11 @@ proc calculateGapSeverity(
 
   # Check if a MaintainPrestige GOAP goal is currently active.
   # If active, this implies avoiding prestige penalties (like undefended colony loss) is critical.
-  let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
-    it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
-  )
+  # TODO: Re-enable once goapPlanTracker is integrated into AIController
+  let isMaintainPrestigeActive = false
+  # let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
+  #   it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
+  # )
 
   # Homeworld always protected (all acts, all personalities)
   if colonyPriority > 500.0 and currentDefenders == 0: # Assuming homeworld has very high priority
@@ -859,13 +861,6 @@ proc assessStrategicAssets*(
         logInfo(LogCategory.lcAI,
                 &"Domestikos: {idealCarriers}x {carrierClass} unaffordable (cost={carrierCost * idealCarriers}PP, " &
                 &"treasury={filtered.ownHouse.treasury}PP, have {fighterCount} fighters without carrier support)")
-
-  # =============================================================================
-  # STARBASES (Moved to Eparch - facilities, not ships)
-  # =============================================================================
-  # Starbases are now immobile facilities managed by Eparch (economic advisor)
-  # Eparch handles facility construction: Spaceport → Shipyard → Starbase
-  # Domestikos no longer builds Starbases (they're not ships anymore)
 
   # =============================================================================
   # TRANSPORTS (for invasion & logistics)

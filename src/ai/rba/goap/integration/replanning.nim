@@ -1,10 +1,12 @@
-import std/[tables, options, sequtils, algorithm]
+import std/[tables, options, sequtils, algorithm, strformat]
 import ../core/[types, heuristics]
 import ../state/snapshot
 import ../planner/search
 import plan_tracking
-import ../../../engine/logger # For logging
-import ../config # For GOAPConfig and RequirementPriority
+import ../../../../engine/logger # For logging
+import ../../../../common/types/core # For HouseId
+import ../../config # For GOAPConfig and RequirementPriority
+import ../../controller_types # For UnfulfillmentReason
 
 # =============================================================================
 # Replanning Triggers
@@ -101,19 +103,20 @@ proc generateAlternativePlans*(
   result = @[]
 
   # 1. Generate a base plan with default settings
-  let basePlan = planForGoal(state, goal, planningDepth)
+  let basePlan = planForGoal(state, goal)
   if basePlan.isSome:
     result.add(basePlan.get())
 
   # 2. Try generating plans with different planning depths (for varied time horizons)
-  for depthMod in [-1, 1]: # Try depth -1 and +1 from original
-    let alternativeDepth = max(1, min(10, planningDepth + depthMod))
-    if alternativeDepth == planningDepth: continue # Don't re-generate identical plans
-
-    let altPlan = planForGoal(state, goal, alternativeDepth)
-    if altPlan.isSome:
-      result.add(altPlan.get())
-      if result.len >= maxAlternatives: break
+  # TODO: planForGoal doesn't support depth parameter yet, so this is disabled
+  # for depthMod in [-1, 1]: # Try depth -1 and +1 from original
+  #   let alternativeDepth = max(1, min(10, planningDepth + depthMod))
+  #   if alternativeDepth == planningDepth: continue # Don't re-generate identical plans
+  #
+  #   let altPlan = planForGoal(state, goal)
+  #   if altPlan.isSome:
+  #     result.add(altPlan.get())
+  #     if result.len >= maxAlternatives: break
 
   # TODO Phase 5: Implement more sophisticated alternative plan generation
   # - Try different action ordering by modifying heuristic weights (e.g., prioritize cheaper actions)
@@ -121,9 +124,17 @@ proc generateAlternativePlans*(
   # - Explore different resource allocation strategies (e.g., less capital ships, more escorts)
 
   # Ensure uniqueness (simple approach for now)
-  result = result.deduplicate(proc(a, b: GOAPlan): bool =
-    a.goal.description == b.goal.description and a.totalCost == b.totalCost
-  )
+  # Manual deduplication since deduplicate doesn't support custom comparison
+  var unique: seq[GOAPlan] = @[]
+  for plan in result:
+    var isDuplicate = false
+    for existing in unique:
+      if existing.goal.description == plan.goal.description and existing.totalCost == plan.totalCost:
+        isDuplicate = true
+        break
+    if not isDuplicate:
+      unique.add(plan)
+  result = unique
 
 proc selectBestAlternative*(
   alternatives: seq[GOAPlan],
@@ -184,9 +195,10 @@ proc repairPlan*(
 
   # 1. Check for specific failure reasons first (targeted repair)
   if failedPlan.lastFailedActionReason.isSome:
-    let reason = failedPlan.lastFailedActionReason.get()
-    let suggestion = failedPlan.lastFailedActionSuggestion.getOrDefault("No specific suggestion.")
-    logInfo(LogCategory.lcAI, &"GOAP Repair: Specific failure reason detected: {reason}. Suggestion: {suggestion}")
+    let unfulfillmentReason = failedPlan.lastFailedActionReason.get()
+    let reason = toReplanReason(unfulfillmentReason)  # Convert to ReplanReason
+    let suggestion = failedPlan.lastFailedActionSuggestion.get("No specific suggestion.")
+    logInfo(LogCategory.lcAI, &"GOAP Repair: Specific failure reason detected: {unfulfillmentReason} -> {reason}. Suggestion: {suggestion}")
 
     case reason
     of ReplanReason.TechNeeded:
@@ -200,7 +212,7 @@ proc repairPlan*(
       # For immediate repair, we might try to replan the original goal, hoping tech will be planned.
       # Or, a direct replanning of a 'Research' goal might be injected into the tracker.
       # For now, we'll fall back to replanning the original goal, expecting requirement generation to pick up tech.
-      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+      return planForGoal(state, failedPlan.plan.goal)
 
     of ReplanReason.BudgetFailure:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to insufficient budget. Trying cheaper alternatives or adjusting cost.")
@@ -213,7 +225,7 @@ proc repairPlan*(
       else:
         # If no cheaper alternative, maybe generate a 'GainTreasury' goal or just replan original
         logWarn(LogCategory.lcAI, &"GOAP Repair: No cheaper alternative found. Re-planning original goal.")
-        return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+        return planForGoal(state, failedPlan.plan.goal)
 
     of ReplanReason.CapacityFull:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to capacity limits. Proposing new facility build goal.")
@@ -221,15 +233,15 @@ proc repairPlan*(
       # a new GOAP goal "BuildFacility" for Shipyard/Spaceport should be generated.
       # This requires knowing which system was targeted and what facility type (from suggestion/original action).
       # For now, fallback to replanning original goal.
-      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+      return planForGoal(state, failedPlan.plan.goal)
 
     of ReplanReason.PlanInvalidated:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Plan invalidated by world state. Generating new plan for the same goal.")
-      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+      return planForGoal(state, failedPlan.plan.goal)
     
     of ReplanReason.ExternalEvent:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Plan affected by external event. Re-planning for '{failedPlan.plan.goal.description}'.")
-      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+      return planForGoal(state, failedPlan.plan.goal)
 
     else:
       # For other specific failure reasons not explicitly handled, fall through to generic repair.
@@ -239,7 +251,7 @@ proc repairPlan*(
   if progress < 0.3 or failedPlan.plan.actions.len < 3:
     # Early failure or very short plan - just replan from scratch for the same goal.
     logInfo(LogCategory.lcAI, &"GOAP Repair: Early plan failure or short plan. Re-planning from scratch for goal '{failedPlan.plan.goal.description}'.")
-    return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+    return planForGoal(state, failedPlan.plan.goal)
 
   else:
     # Late failure - try to implement partial plan repair.
@@ -258,7 +270,7 @@ proc repairPlan*(
     # This effectively tries to find a path for the *rest* of the original plan.
     # A more sophisticated partial repair would modify the preconditions of the remaining actions
     # to reflect the *actual* world state, not just the planned effects.
-    let newPartialPlan = planForGoal(state, remainingGoal, config.planningDepth)
+    let newPartialPlan = planForGoal(state, remainingGoal)
       
     if newPartialPlan.isSome:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Successfully generated partial plan for '{failedPlan.plan.goal.description}'.")
@@ -271,7 +283,7 @@ proc repairPlan*(
     else:
       logWarn(LogCategory.lcAI, &"GOAP Repair: Failed to generate partial plan for '{failedPlan.plan.goal.description}'. Falling back to full replan.")
       # Fallback to replanning the entire goal if partial repair fails
-      return planForGoal(state, failedPlan.plan.goal, config.planningDepth)
+      return planForGoal(state, failedPlan.plan.goal)
 
 # =============================================================================
 # Budget-Constrained Replanning
@@ -289,26 +301,20 @@ proc replanWithBudgetConstraint*(
 
   result = @[]
 
-  # Collect all active goals, prioritizing critical/high goals first.
-  var goalsByPriority: Table[RequirementPriority, seq[Goal]]
-  goalsByPriority.init()
+  # Collect all active goals and sort by priority (highest first)
+  var allSortedGoals: seq[Goal] = @[]
   for p in tracker.activePlans:
     if p.status == PlanStatus.Active:
-      let prio = determineRequirementPriority(p.plan.goal.priority) # Convert float to enum
-      if not goalsByPriority.hasKey(prio):
-        goalsByPriority[prio] = @[]
-      goalsByPriority[prio].add(p.plan.goal)
+      allSortedGoals.add(p.plan.goal)
 
-  var allSortedGoals: seq[Goal] = @[]
-  for prio in [RequirementPriority.Critical, RequirementPriority.High, RequirementPriority.Medium, RequirementPriority.Low, RequirementPriority.Deferred]:
-    if goalsByPriority.hasKey(prio):
-      allSortedGoals.add(goalsByPriority[prio].sortedByIt(-it.priority)) # Sort by float priority within categories
+  # Sort by priority descending (highest priority first)
+  allSortedGoals = allSortedGoals.sortedByIt(-it.priority)
 
   var remainingBudget = availableBudget
 
   for goal in allSortedGoals:
     # Try to plan for this goal with the configured planning depth
-    let maybePlan = planForGoal(state, goal, config.planningDepth)
+    let maybePlan = planForGoal(state, goal)
     if maybePlan.isNone:
       logDebug(LogCategory.lcAI, &"GOAP Budget Replan: Could not generate plan for goal '{goal.description}'.")
       continue
@@ -448,7 +454,7 @@ proc integrateNewOpportunities*(
       if lowestPriorityPlanIdx >= 0 and newGoal.priority > lowestPriority:
         let pausedPlanDescription = tracker.activePlans[lowestPriorityPlanIdx].plan.goal.description
         tracker.pausePlan(lowestPriorityPlanIdx) # Pause the old plan
-        let newPlan = planForGoal(state, newGoal, config.planningDepth)
+        let newPlan = planForGoal(state, newGoal)
         if newPlan.isSome:
           tracker.addPlan(newPlan.get())
           logInfo(LogCategory.lcAI, &"GOAP Opportunity: Paused plan for '{pausedPlanDescription}' to pursue new opportunity: '{newPlan.get().goal.description}'")
@@ -456,7 +462,7 @@ proc integrateNewOpportunities*(
         logDebug(LogCategory.lcAI, &"GOAP Opportunity: Cannot integrate '{newGoal.description}' - max concurrent plans reached and new goal not higher priority.")
     else:
       # Under capacity - add all new goals
-      let newPlan = planForGoal(state, newGoal, config.planningDepth)
+      let newPlan = planForGoal(state, newGoal)
       if newPlan.isSome:
         tracker.addPlan(newPlan.get())
         logInfo(LogCategory.lcAI, &"GOAP Opportunity: Integrated new goal: '{newPlan.get().goal.description}'")

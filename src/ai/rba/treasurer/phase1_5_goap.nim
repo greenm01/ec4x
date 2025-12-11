@@ -1,12 +1,12 @@
 import std/[tables, options, strformat]
 import ../../../engine/[gamestate, logger, order_types, starmap]
 import ../../../engine/intelligence/types as intel_types
-import ../../../ai/goap/types # For Goal, Action, GOAPlan, GOAPConfig
-import ../../../ai/goap/plan_tracking # For PlanTracker, TrackedPlan
-import ../../../ai/goap/snapshot # For createWorldStateSnapshot
-import ../../../ai/goap/conversion # For extractAllGoalsFromState, allocateBudgetToGoals, DomainType
-import ../../../ai/goap/search # For planForGoal
-import ../../../ai/goap/heuristics # For estimateGoalCost
+import ../goap/core/types # Fixed path
+import ../goap/planning/plan_tracking # Fixed path
+import ../goap/integration/snapshot # Fixed path
+import ../goap/integration/conversion # Fixed path
+import ../goap/planning/search # Fixed path
+import ../goap/planning/heuristics # Fixed path
 import ../controller_types # For AIController, BuildRequirements etc.
 import ../config # For globalRBAConfig
 

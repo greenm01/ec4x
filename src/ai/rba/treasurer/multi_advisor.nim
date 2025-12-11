@@ -14,20 +14,12 @@ import ../../../engine/diplomacy/types as dip_types
 import ../controller_types
 import ../../common/types as ai_types
 import ../basileus/mediation
-import ../../../ai/goap/conversion # For DomainType
-import ../../ai/goap/core/types # For TechField (Needed for TechField in feedback logic for research)
+import ../goap/integration/conversion # For DomainType (fixed path)
+import ../goap/core/types # For TechField (fixed path)
 
-type
-  MultiAdvisorAllocation* = object
-    ## Result of multi-advisor budget allocation
-    budgets*: Table[AdvisorType, int]  # PP allocated to each advisor
-    reservedBudget*: int # NEW: Budget reserved by GOAP for future turns (not allocated this turn)
-    treasurerFeedback*: TreasurerFeedback  # For Domestikos
-    scienceFeedback*: ScienceFeedback  # For Logothete
-    drungariusFeedback*: DrungariusFeedback  # For Drungarius
-    eparchFeedback*: EparchFeedback  # For Eparch
-    # No feedback for Protostrator (diplomacy costs 0 PP)
-    iteration*: int
+# MultiAdvisorAllocation now defined in controller_types.nim to avoid
+# circular dependency (controller_types was importing from obsolete
+# multi_advisor/mediation.nim)
 
 proc extractBuildFeedback*(
   mediation: MediatedAllocation,
@@ -71,25 +63,28 @@ proc extractBuildFeedback*(
           var suggestion = ""
 
           if req.shipClass.isSome:
-            let shipData = getShipClassData(req.shipClass.get())
-            if currentCSTLevel < shipData.cstLevel:
-              unfulfillmentReason = UnfulfillmentReason.TechNotAvailable
-              suggestion = &"Research Construction Tech to level {shipData.cstLevel} to build {req.shipClass.get()}."
-            else:
-              # Insufficient budget for this ship, suggest a cheaper alternative if possible
-              # This is a heuristic and can be improved with more detailed ship data/AI config
-              let cheaperShips = [ShipClass.Corvette, ShipClass.Frigate, ShipClass.Destroyer] # Example cheaper ships
-              var affordableAlternative: Option[ShipClass] = none(ShipClass)
-              for sClass in cheaperShips:
-                let altShipData = getShipClassData(sClass)
-                if currentCSTLevel >= altShipData.cstLevel and currentBudget >= altShipData.buildCost: # Check if affordable with remaining budget
-                  affordableAlternative = some(sClass)
-                  break
-              
-              if affordableAlternative.isSome:
-                suggestion = &"Increase budget for Domestikos. Or consider building a cheaper ship like {affordableAlternative.get()} (cost {getShipClassData(affordableAlternative.get()).buildCost}PP)."
-              else:
-                suggestion = &"Increase budget for Domestikos to build {req.shipClass.get()} (needed {req.estimatedCost}PP, had {currentBudget}PP)."
+            # TODO: Implement ship class tech requirements check
+            # For now, assume all ships are available if we have sufficient budget
+            discard
+            # let shipData = getShipClassData(req.shipClass.get())
+            # if currentCSTLevel < shipData.cstLevel:
+            #   unfulfillmentReason = UnfulfillmentReason.TechNotAvailable
+            #   suggestion = &"Research Construction Tech to level {shipData.cstLevel} to build {req.shipClass.get()}."
+            # else:
+            #   # Insufficient budget for this ship, suggest a cheaper alternative if possible
+            #   # This is a heuristic and can be improved with more detailed ship data/AI config
+            #   let cheaperShips = [ShipClass.Corvette, ShipClass.Frigate, ShipClass.Destroyer] # Example cheaper ships
+            #   var affordableAlternative: Option[ShipClass] = none(ShipClass)
+            #   for sClass in cheaperShips:
+            #     let altShipData = getShipClassData(sClass)
+            #     if currentCSTLevel >= altShipData.cstLevel and currentBudget >= altShipData.buildCost: # Check if affordable with remaining budget
+            #       affordableAlternative = some(sClass)
+            #       break
+            #
+            #   if affordableAlternative.isSome:
+            #     suggestion = &"Increase budget for Domestikos. Or consider building a cheaper ship like {affordableAlternative.get()} (cost {getShipClassData(affordableAlternative.get()).buildCost}PP)."
+            #   else:
+            suggestion = &"Increase budget for Domestikos to build {req.shipClass.get()} (needed {req.estimatedCost}PP, had {currentBudget}PP)."
           elif req.itemId.isSome:
             case req.itemId.get()
             of "Shipyard", "Spaceport":
@@ -107,7 +102,7 @@ proc extractBuildFeedback*(
             suggestion = &"Increase budget for this build requirement (needed {req.estimatedCost}PP, had {currentBudget}PP)."
 
           result.detailedFeedback.add(RequirementFeedback(
-            requirement: AdvisorRequirement(advisor: AdvisorType.Domestikos, buildReq: some(req), priority: req.priority, requirementType: $req.requirementType),
+            requirement: controller_types.AdvisorRequirement(advisor: AdvisorType.Domestikos, buildReq: some(req), priority: req.priority, requirementType: $req.requirementType),
             originalAdvisorReason: req.reason,
             unfulfillmentReason: unfulfillmentReason,
             budgetShortfall: shortfall,
@@ -129,8 +124,7 @@ proc extractScienceFeedback*(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     totalRPAvailable: availableBudget,
-    totalRPSpent: mediation.logotheteBudget,
-    detailedFeedback: @[] # Initialize detailed feedback
+    totalRPSpent: mediation.logotheteBudget
   )
 
   var currentRPBudget = mediation.logotheteBudget
@@ -146,16 +140,8 @@ proc extractScienceFeedback*(
         let req = weightedReq.requirement.researchReq.get()
         result.unfulfilledRequirements.add(req) # Keep for summary
 
-        # Generate detailed feedback for unfulfilled research requirements
-        let shortfall = req.estimatedCost - currentRPBudget # Approximate shortfall
-        result.detailedFeedback.add(RequirementFeedback(
-          requirement: AdvisorRequirement(advisor: AdvisorType.Logothete, researchReq: some(req), priority: req.priority, requirementType: "ResearchRequirement"),
-          originalAdvisorReason: req.reason,
-          unfulfillmentReason: UnfulfillmentReason.InsufficientBudget,
-          budgetShortfall: shortfall,
-          quantityBuilt: 0,
-          suggestion: some(&"Increase budget for Logothete's research. Needed {req.estimatedCost}RP, had {currentRPBudget}RP for this requirement.")
-        ))
+        # TODO: Implement detailed feedback mechanism
+        # ScienceFeedback type currently doesn't support detailedFeedback field
   return result
 
 proc extractDrungariusFeedback*(
@@ -169,8 +155,7 @@ proc extractDrungariusFeedback*(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     totalBudgetAvailable: availableBudget,
-    totalBudgetSpent: mediation.drungariusBudget,
-    detailedFeedback: @[] # Initialize detailed feedback
+    totalBudgetSpent: mediation.drungariusBudget
   )
 
   var currentEspionageBudget = mediation.drungariusBudget
@@ -186,16 +171,8 @@ proc extractDrungariusFeedback*(
         let req = weightedReq.requirement.espionageReq.get()
         result.unfulfilledRequirements.add(req) # Keep for summary
 
-        # Generate detailed feedback for unfulfilled espionage requirements
-        let shortfall = req.estimatedCost - currentEspionageBudget # Approximate shortfall
-        result.detailedFeedback.add(RequirementFeedback(
-          requirement: AdvisorRequirement(advisor: AdvisorType.Drungarius, espionageReq: some(req), priority: req.priority, requirementType: $req.requirementType),
-          originalAdvisorReason: req.reason,
-          unfulfillmentReason: UnfulfillmentReason.InsufficientBudget,
-          budgetShortfall: shortfall,
-          quantityBuilt: 0,
-          suggestion: some(&"Increase budget for Drungarius' espionage. Needed {req.estimatedCost}PP, had {currentEspionageBudget}PP for this requirement.")
-        ))
+        # TODO: Implement detailed feedback mechanism
+        # DrungariusFeedback type currently doesn't support detailedFeedback field
   return result
 
 proc extractEparchFeedback*(
@@ -209,8 +186,7 @@ proc extractEparchFeedback*(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     totalBudgetAvailable: availableBudget,
-    totalBudgetSpent: mediation.eparchBudget,
-    detailedFeedback: @[] # Initialize detailed feedback
+    totalBudgetSpent: mediation.eparchBudget
   )
 
   var currentEconomicBudget = mediation.eparchBudget
@@ -226,16 +202,8 @@ proc extractEparchFeedback*(
         let req = weightedReq.requirement.economicReq.get()
         result.unfulfilledRequirements.add(req) # Keep for summary
 
-        # Generate detailed feedback for unfulfilled economic requirements
-        let shortfall = req.estimatedCost - currentEconomicBudget # Approximate shortfall
-        result.detailedFeedback.add(RequirementFeedback(
-          requirement: AdvisorRequirement(advisor: AdvisorType.Eparch, economicReq: some(req), priority: req.priority, requirementType: $req.requirementType),
-          originalAdvisorReason: req.reason,
-          unfulfillmentReason: UnfulfillmentReason.InsufficientBudget,
-          budgetShortfall: shortfall,
-          quantityBuilt: 0,
-          suggestion: some(&"Increase budget for Eparch's economic actions. Needed {req.estimatedCost}PP, had {currentEconomicBudget}PP for this requirement.")
-        ))
+        # TODO: Implement detailed feedback mechanism
+        # EparchFeedback type currently doesn't support detailedFeedback field
   return result
 
 proc isAtWar*(filtered: FilteredGameState, houseId: HouseId): bool =
@@ -305,7 +273,7 @@ proc allocateBudgetMultiAdvisor*(
   let reservedBudget = minReconBudget + minExpansionBudget
   let remainingBudget = availableBudget - reservedBudget
 
-  let actualGoapReserved = goapReservedAmount.getOrDefault(0)
+  let actualGoapReserved = goapReservedAmount.get(0)
 
   logInfo(LogCategory.lcAI,
           &"{houseId} Treasurer: Reserved {reservedBudget}PP " &

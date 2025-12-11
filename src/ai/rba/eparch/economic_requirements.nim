@@ -42,9 +42,11 @@ proc generateEconomicRequirements*(
           &"(Treasury={currentTreasury}PP, NetIncome={currentIncome}PP, Maintenance={maintenanceCost}PP)")
 
   # Check if "MaintainPrestige" GOAP goal is active.
-  let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
-    it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
-  )
+  # TODO: Re-enable once goapPlanTracker is integrated into AIController
+  let isMaintainPrestigeActive = false
+  # let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
+  #   it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
+  # )
 
   # === CRITICAL: Avoid Maintenance Shortfall Prestige Penalty (Gap 6) ===
   # See docs/specs/diplomacy.md "Prestige Penalty Mechanics"

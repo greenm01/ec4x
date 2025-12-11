@@ -368,7 +368,11 @@ proc findSuitableInvasionFleet(
       continue
 
     # Retrieve the actual Fleet object to use its combatStrength
-    let maybeFleet = filtered.ownFleets.find(f => f.id == analysis.fleetId)
+    var maybeFleet: Option[Fleet] = none(Fleet)
+    for f in filtered.ownFleets:
+      if f.id == analysis.fleetId:
+        maybeFleet = some(f)
+        break
     if maybeFleet.isNone:
       continue # Fleet no longer exists or not accessible in filtered state
 

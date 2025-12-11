@@ -7,8 +7,8 @@ import std/[tables, options, sequtils]
 import ../core/types
 import ../state/snapshot
 import ../../controller_types # For UnfulfillmentReason, RequirementFeedback
-import ../../../engine/gamestate # For Colony, SystemId, etc.
-import ../../../engine/resolution/types # For GameEvent, GameEventType, CombatResultEvent, DiplomaticEvent, EspionageEvent
+import ../../../../engine/gamestate # For Colony, SystemId, etc.
+import ../../../../engine/resolution/types # For GameEvent, GameEventType, CombatResultEvent, DiplomaticEvent, EspionageEvent
 
 # =============================================================================
 # Plan Status Types
@@ -201,23 +201,27 @@ proc isPlanStillValid*(plan: TrackedPlan, state: WorldStateSnapshot): bool =
         return false # Plan is invalid as its premise (attacking an enemy colony) is false.
 
   of GoalType.AchieveTechLevel, GoalType.CloseResearchGap:
-    # If the house already has the desired tech level.
-    if plan.plan.goal.techField.isSome and plan.plan.goal.requiredTechLevel.isSome:
-      let field = plan.plan.goal.techField.get()
-      let requiredLevel = plan.plan.goal.requiredTechLevel.get()
-      if state.techLevels.getOrDefault(field, 0) >= requiredLevel:
-        return true # Goal achieved.
+    # TODO: Implement tech level goal validation
+    # Need to parse tech level from goal params or successCondition
+    discard
+    # if plan.plan.goal.techField.isSome and plan.plan.goal.requiredTechLevel.isSome:
+    #   let field = plan.plan.goal.techField.get()
+    #   let requiredLevel = plan.plan.goal.requiredTechLevel.get()
+    #   if state.techLevels.getOrDefault(field, 0) >= requiredLevel:
+    #     return true # Goal achieved.
 
   of GoalType.EliminateFleet:
-    # If the target fleet no longer exists or is not in the system.
-    if plan.plan.goal.targetFleet.isSome and plan.plan.goal.target.isSome:
-      let targetFleetId = plan.plan.goal.targetFleet.get()
-      let targetSystemId = plan.plan.goal.target.get()
-      # Check if any enemy fleet matching the target is still present at the system
-      let enemyFleetPresent = state.fleetsAtSystem.getOrDefault(targetSystemId, @[]).anyIt(
-        it.owner != state.houseId and it.fleetId == targetFleetId)
-      if not enemyFleetPresent:
-        return true # Goal achieved (fleet eliminated or moved).
+    # TODO: Implement fleet elimination goal validation
+    # Need to parse fleet ID from goal params or successCondition
+    discard
+    # if plan.plan.goal.targetFleet.isSome and plan.plan.goal.target.isSome:
+    #   let targetFleetId = plan.plan.goal.targetFleet.get()
+    #   let targetSystemId = plan.plan.goal.target.get()
+    #   # Check if any enemy fleet matching the target is still present at the system
+    #   let enemyFleetPresent = state.fleetsAtSystem.getOrDefault(targetSystemId, @[]).anyIt(
+    #     it.owner != state.houseId and it.fleetId == targetFleetId)
+    #   if not enemyFleetPresent:
+    #     return true # Goal achieved (fleet eliminated or moved).
 
   else:
     # For other goal types, a general check might be applied or they are assumed valid

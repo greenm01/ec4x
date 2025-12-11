@@ -128,31 +128,26 @@ proc checkGOAPReplanningNeeded*(controller: AIController): bool =
   ## Phase 5 Integration: Called after Phase 4 feedback loop
   ## Returns true if significant unfulfilled requirements exist
 
-  if not controller.goapEnabled:
-    return false  # GOAP disabled
-
-  if controller.goapActiveGoals.len == 0:
-    return false  # No active GOAP plans
-
-  # Count total unfulfilled requirements
-  var totalUnfulfilled = 0
-
-  if controller.treasurerFeedback.isSome:
-    totalUnfulfilled += controller.treasurerFeedback.get().unfulfilledRequirements.len
-
-  if controller.scienceFeedback.isSome:
-    totalUnfulfilled += controller.scienceFeedback.get().unfulfilledRequirements.len
-
-  if controller.drungariusFeedback.isSome:
-    totalUnfulfilled += controller.drungariusFeedback.get().unfulfilledRequirements.len
-
-  if controller.eparchFeedback.isSome:
-    totalUnfulfilled += controller.eparchFeedback.get().unfulfilledRequirements.len
-
-  # Trigger replanning if >=3 unfulfilled requirements
-  if totalUnfulfilled >= 3:
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Phase 4: {totalUnfulfilled} unfulfilled requirements - GOAP replanning needed")
-    return true
-
+  # TODO: GOAP integration incomplete (controller.goapEnabled field doesn't exist)
+  # Stubbed out for now
   return false
+  # 
+  #   if controller.treasurerFeedback.isSome:
+  #     totalUnfulfilled += controller.treasurerFeedback.get().unfulfilledRequirements.len
+  # 
+  #   if controller.scienceFeedback.isSome:
+  #     totalUnfulfilled += controller.scienceFeedback.get().unfulfilledRequirements.len
+  # 
+  #   if controller.drungariusFeedback.isSome:
+  #     totalUnfulfilled += controller.drungariusFeedback.get().unfulfilledRequirements.len
+  # 
+  #   if controller.eparchFeedback.isSome:
+  #     totalUnfulfilled += controller.eparchFeedback.get().unfulfilledRequirements.len
+  # 
+  #   # Trigger replanning if >=3 unfulfilled requirements
+  #   if totalUnfulfilled >= 3:
+  #     logInfo(LogCategory.lcAI,
+  #             &"{controller.houseId} Phase 4: {totalUnfulfilled} unfulfilled requirements - GOAP replanning needed")
+  #     return true
+  # 
+  #   return false

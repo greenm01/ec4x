@@ -8,7 +8,7 @@
 import std/[options, strformat, tables]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, logger]
-import ../../../engine/resolution/types # For EspionageAction
+import ../../../engine/espionage/types as esp_types # For EspionageAction
 import ../../../common/types/diplomacy as dip_types # For DiplomaticState
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
@@ -43,9 +43,11 @@ proc generateEspionageRequirements*(
   let currentCIP = filtered.ownHouse.espionageBudget.cipPoints
 
   # Check if "MaintainPrestige" GOAP goal is active (Gap 6)
-  let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
-    it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
-  )
+  # TODO: Re-enable once goapPlanTracker is integrated into AIController
+  let isMaintainPrestigeActive = false
+  # let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
+  #   it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
+  # )
   let prestigePenaltyThresholdRatio = 0.05 # 5% of budget as per docs/specs/diplomacy.md
   let ppPerEBP_CIP = 40 # As per docs/specs/diplomacy.md
 
@@ -58,7 +60,7 @@ proc generateEspionageRequirements*(
           &"(EBP={currentEBP}, CIP={currentCIP}, Act={currentAct})")
 
   # === EBP/CIP Investment Target Levels by Act ===
-  let targetEBP = case currentAct
+  var targetEBP = case currentAct # Use var for modification
     of ai_types.GameAct.Act1_LandGrab: 5
     of ai_types.GameAct.Act2_RisingTensions: 10
     of ai_types.GameAct.Act3_TotalWar: 15
@@ -165,7 +167,7 @@ proc generateEspionageRequirements*(
       requirementType: EspionageRequirementType.Operation,
       priority: priority,
       targetHouse: none(HouseId), # Counter-Intelligence Sweep is self-focused
-      operation: some(esp_types.EspionageAction.CounterIntelligenceSweep),
+      operation: some(esp_types.EspionageAction.CounterIntelSweep),
       estimatedCost: cost,
       reason: &"Defensive Counter-Intelligence Sweep (CIP: {currentCIP}/{targetCIP})"
     ))
@@ -178,7 +180,7 @@ proc generateEspionageRequirements*(
         requirementType: EspionageRequirementType.Operation,
         priority: RequirementPriority.Medium,
         targetHouse: none(HouseId),
-        operation: some(esp_types.EspionageAction.CounterIntelligenceSweep),
+        operation: some(esp_types.EspionageAction.CounterIntelSweep),
         estimatedCost: cost,
         reason: &"Maintain Counter-Intelligence posture (risk tolerance: {p.riskTolerance:.2f})"
       ))

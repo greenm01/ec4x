@@ -60,40 +60,6 @@ type
     criticalTechGaps*: seq[TechField]          ## Behind enemies
 
     # Intelligence gaps
-    # --- Territory state additions ---
-    homeworld*: SystemId                    ## The AI's homeworld system ID
-    totalColonies*: int                     ## Total number of colonies owned
-    totalIU*: int                           ## Total industrial units across all colonies
-    fleetsAtSystem*: Table[SystemId, seq[FleetIntel]] ## All known fleets at specific systems (own + enemy intel)
-
-    # --- Strategic intelligence ---
-    knownEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]]
-    invasionOpportunities*: seq[SystemId]   ## Weak enemy colonies
-    diplomaticRelations*: Table[HouseId, DiplomaticState]
-
-    # --- Tech state ---
-    techLevels*: Table[TechField, int]
-    researchProgress*: Table[TechField, int]  ## Current RP accumulated
-    criticalTechGaps*: seq[TechField]          ## Behind enemies
-
-    # --- Intelligence gaps ---
-    # --- Territory state additions ---
-    homeworld*: SystemId                    ## The AI's homeworld system ID
-    totalColonies*: int                     ## Total number of colonies owned
-    totalIU*: int                           ## Total industrial units across all colonies
-    fleetsAtSystem*: Table[SystemId, seq[FleetIntel]] ## All known fleets at specific systems (own + enemy intel)
-
-    # --- Strategic intelligence ---
-    knownEnemyColonies*: seq[tuple[systemId: SystemId, owner: HouseId]]
-    invasionOpportunities*: seq[SystemId]   ## Weak enemy colonies
-    diplomaticRelations*: Table[HouseId, DiplomaticState]
-
-    # --- Tech state ---
-    techLevels*: Table[TechField, int]
-    researchProgress*: Table[TechField, int]  ## Current RP accumulated
-    criticalTechGaps*: seq[TechField]          ## Behind enemies
-
-    # --- Intelligence gaps ---
     staleIntelSystems*: seq[SystemId]       ## Need reconnaissance
     espionageTargets*: seq[HouseId]         ## High-value spy targets
 
@@ -156,6 +122,7 @@ type
     priority*: float           ## 0.0-1.0, higher = more urgent (from RBA requirement priority)
     target*: Option[SystemId]  ## For location-based goals
     targetHouse*: Option[HouseId]  ## For diplomatic/military goals
+    techField*: Option[TechField]  ## For research goals
     requiredResources*: int    ## Estimated PP cost (updated during planning)
     deadline*: Option[int]     ## Turn by which goal must be achieved (optional)
     preconditions*: seq[PreconditionRef]  ## Must be true before planning

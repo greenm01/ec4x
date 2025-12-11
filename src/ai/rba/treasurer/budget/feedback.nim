@@ -140,7 +140,12 @@ proc generateRequirementFeedback*(
   ## Tracks WHY requirement failed and suggests alternatives
 
   var feedback = RequirementFeedback(
-    requirement: req,
+    requirement: AdvisorRequirement(
+      advisor: AdvisorType.Domestikos,
+      buildReq: some(req),
+      requirementType: $req.requirementType,
+      priority: req.priority
+    ),
     quantityBuilt: quantityBuilt,
     budgetShortfall: 0,
     suggestion: none(string)
@@ -157,7 +162,7 @@ proc generateRequirementFeedback*(
 
     if budgetAvailable < unitCost:
       # Insufficient budget for even 1 unit
-      feedback.reason = UnfulfillmentReason.InsufficientBudget
+      feedback.unfulfillmentReason = UnfulfillmentReason.InsufficientBudget
       feedback.budgetShortfall = unitCost - budgetAvailable
 
       # Generate substitution suggestion if enabled
@@ -167,7 +172,7 @@ proc generateRequirementFeedback*(
 
     elif not hasAvailableCapacity:
       # No dock space available
-      feedback.reason = UnfulfillmentReason.ColonyCapacityFull
+      feedback.unfulfillmentReason = UnfulfillmentReason.ColonyCapacityFull
       feedback.budgetShortfall = 0
       feedback.suggestion = some(
         "No available dock capacity. Build Shipyard or wait for " &
@@ -176,7 +181,7 @@ proc generateRequirementFeedback*(
     elif req.shipClass.isSome and
          getShipCSTRequirement(req.shipClass.get()) > cstLevel:
       # Tech requirement not met
-      feedback.reason = UnfulfillmentReason.TechNotAvailable
+      feedback.unfulfillmentReason = UnfulfillmentReason.TechNotAvailable
       feedback.budgetShortfall = 0
       let requiredCST = getShipCSTRequirement(req.shipClass.get())
       feedback.suggestion = some(
@@ -185,12 +190,12 @@ proc generateRequirementFeedback*(
 
     else:
       # Budget was reserved for higher priority
-      feedback.reason = UnfulfillmentReason.BudgetReserved
+      feedback.unfulfillmentReason = UnfulfillmentReason.BudgetReserved
       feedback.budgetShortfall = 0
 
   else:
     # Partial fulfillment
-    feedback.reason = UnfulfillmentReason.PartialBudget
+    feedback.unfulfillmentReason = UnfulfillmentReason.PartialBudget
     let unitCost = if req.shipClass.isSome:
                      getShipConstructionCost(req.shipClass.get())
                    else:
@@ -231,6 +236,6 @@ proc generateDetailedFeedback*(
 
     # Log feedback for diagnostics
     logDebug(LogCategory.lcAI,
-             &"Feedback: {req.reason} -> {feedback.reason}, " &
+             &"Feedback: {req.reason} -> {feedback.unfulfillmentReason}, " &
              &"shortfall={feedback.budgetShortfall}PP, " &
              &"built={quantityBuilt}/{req.quantity}")
