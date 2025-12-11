@@ -82,7 +82,8 @@ proc calculateFleetCombatStrength(fleet: Fleet): int =
 # =============================================================================
 
 proc createWorldStateSnapshot*(
-  filtered: FilteredGameState
+  filtered: FilteredGameState,
+  intel: IntelligenceSnapshot # NEW: Pass intelligence snapshot
 ): WorldStateSnapshot =
   ## Create immutable world state snapshot for GOAP planning.
   ## Converts FilteredGameState (fog-of-war filtered) → WorldStateSnapshot.
@@ -122,14 +123,28 @@ proc createWorldStateSnapshot*(
   result.ownedColonies = filtered.ownColonies.mapIt(it.systemId)
   # Note: homeworld parameter is not stored in WorldStateSnapshot (not part of type definition)
 
-  # Vulnerable/undefended colonies - TODO: assess from local defenses
-  result.vulnerableColonies = @[]
-  result.undefendedColonies = @[]
-
-  # --- Strategic intelligence (from visible assets) ---
-  result.knownEnemyColonies = filtered.visibleColonies.mapIt((it.systemId, it.owner))
-  result.invasionOpportunities = @[]  # TODO: analyze visible enemy colonies for weak ones
-  result.undefendedEnemyColonies = @[]  # TODO: filter visible colonies by defense strength
+  # Vulnerable/undefended colonies - populated from Drungarius intelligence
+  # Using intel.military.threatsByColony for undefended/vulnerable check
+  # And intel.military.vulnerableTargets for invasion opportunities.
+  result.vulnerableColonies = intel.military.threatsByColony.keys.toSeq.filterIt(
+    intel.military.threatsByColony[it].level == ThreatLevel.tlHigh or
+    intel.military.threatsByColony[it].level == ThreatLevel.tlCritical
+  )
+  result.undefendedColonies = intel.military.threatsByColony.keys.toSeq.filterIt(
+    intel.military.threatsByColony[it].level == ThreatLevel.tlCritical and
+    (intel.military.threatsByColony[it].estimatedEnemyStrength == 0) # Truly undefended against external fleets
+  )
+    
+  # --- Strategic intelligence (from Drungarius IntelligenceSnapshot) ---
+  result.knownEnemyColonies = intel.knownEnemyColonies
+  result.invasionOpportunities = intel.military.vulnerableTargets.mapIt(it.systemId)
+  result.undefendedEnemyColonies = intel.military.vulnerableTargets.filterIt(it.estimatedDefenses == 0).mapIt((it.systemId, it.owner))
+    
+  result.staleIntelSystems = intel.espionage.staleIntelSystems
+  result.espionageTargets = intel.espionage.highPriorityTargets.mapIt(it.houseId.getOrDefault(HouseId(""))) # Assuming targetHouse is often present
+    
+  # Store the full intelligence snapshot
+  result.intelSnapshot = intel
 
   result.staleIntelSystems = @[]  # TODO: track stale intelligence
   result.espionageTargets = @[]  # TODO: identify espionage targets

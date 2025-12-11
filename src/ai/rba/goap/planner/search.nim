@@ -209,6 +209,7 @@ proc planActions*(
 # =============================================================================
 
 proc planForGoal*(
+  config: GOAPConfig, # NEW: Pass GOAP config
   state: WorldStateSnapshot,
   goal: Goal
 ): Option[GOAPlan] =
@@ -216,16 +217,16 @@ proc planForGoal*(
   ##
   ## Uses A* search to find optimal action sequence
   ## Returns none if no actions available or no plan found
-
+    
   # Get domain-specific actions for this goal
   let availableActions = getAvailableActionsForGoal(state, goal)
-
+    
   if availableActions.len == 0:
     return none(GOAPlan)
-
-  # Run A* search to find plan
-  let maybePlan = planActions(state, goal, availableActions, maxIterations = 500)
-
+    
+  # Run A* search to find plan, using max_search_nodes from config
+  let maybePlan = planActions(state, goal, availableActions, maxIterations = config.max_search_nodes)
+    
   if maybePlan.isSome:
     # Add confidence score to plan
     var plan = maybePlan.get()

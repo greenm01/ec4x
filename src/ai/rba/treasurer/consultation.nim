@@ -204,7 +204,9 @@ proc blendRequirementsWithBaseline*(
   for objective in [BuildObjective.Defense, BuildObjective.Military]:
     if requiredPP[objective] > 0:
       let targetPercent = float(requiredPP[objective]) / float(availableBudget)
-      allocation[objective] = min(targetPercent, 0.85)  # Cap at 85% to leave room for other objectives
+      # No hard cap here; the overall normalization will ensure sum to 1.0.
+      # This allows these objectives to claim a larger share if their requirements are high.
+      allocation[objective] = targetPercent
 
   # Reconnaissance and SpecialUnits: Blend 70/30 (strategic flexibility)
   for objective in [BuildObjective.Reconnaissance, BuildObjective.SpecialUnits]:

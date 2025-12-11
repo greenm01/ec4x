@@ -32,6 +32,7 @@ proc defaultGOAPConfig*(): GOAPConfig =
 proc extractStrategicGoals*(
   controller: var AIController,
   filtered: FilteredGameState,
+  intel: IntelligenceSnapshot, # NEW
   domestikosReqs: BuildRequirements,
   logotheteReqs: ResearchRequirements,
   drungariusReqs: EspionageRequirements,
@@ -43,7 +44,7 @@ proc extractStrategicGoals*(
   ## For now, it will use the GOAP's internal `extractAllGoalsFromState` which
   ## examines the `WorldStateSnapshot` for predefined goal conditions.
 
-  let worldState = createWorldStateSnapshot(filtered, controller.houseId)
+  let worldState = createWorldStateSnapshot(filtered, intel)
   # TODO: Integrate RBA requirements into GOAP goals more explicitly
   # For now, GOAP's own goal extraction from world state is primary
   result = extractAllGoalsFromState(worldState)
@@ -57,6 +58,7 @@ proc extractStrategicGoals*(
 proc generateStrategicPlans*(
   controller: var AIController,
   filtered: FilteredGameState,
+  intel: IntelligenceSnapshot, # NEW
   goals: seq[Goal]
 ): void =
   ## Generates new GOAP plans for unaddressed goals or refreshes existing ones.
@@ -83,6 +85,7 @@ proc generateStrategicPlans*(
 
   for goal in unaddressedGoals:
     logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: Planning for goal: {goal.name} (Priority: {goal.priority})")
+    # Pass controller.goapConfig
     let plan = planForGoal(controller.goapConfig, worldState, goal)
     if plan.isSome:
       let newPlan = plan.get()
@@ -90,7 +93,7 @@ proc generateStrategicPlans*(
         plan: newPlan,
         currentActionIndex: 0,
         status: PlanStatus.Active,
-        startTurn: filtered.turn # Corrected field name from startedTurn to startTurn
+        startTurn: filtered.turn
       ))
       logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: Successfully generated plan for {goal.name}.")
       if controller.goapConfig.debugLogging:
@@ -105,7 +108,8 @@ proc generateStrategicPlans*(
 
 proc estimateBudgetRequirements*(
   controller: AIController,
-  filtered: FilteredGameState
+  filtered: FilteredGameState,
+  intel: IntelligenceSnapshot # NEW
 ): Phase15Result =
   ## Estimates current-turn budget requirements and future reservations
   ## based on active GOAP plans.
@@ -184,23 +188,23 @@ proc executePhase15_GOAP*(
 
   # Step 1: Extract strategic goals
   let goals = extractStrategicGoals(
-    controller, filtered, domestikosReqs, logotheteReqs, drungariusReqs,
+    controller, filtered, intel, domestikosReqs, logotheteReqs, drungariusReqs,
     eparchReqs, protostratorReqs
   )
-
+    
   # Step 2: Generate/track strategic plans
   if filtered.turn == 0 or (filtered.turn - controller.goapLastPlanningTurn) >= controller.goapConfig.replanIntervalTurns:
-    generateStrategicPlans(controller, filtered, goals)
+    generateStrategicPlans(controller, filtered, intel, goals)
   else:
     # Still advance plan tracker even if not replanning
-    let worldState = createWorldStateSnapshot(filtered, controller.houseId)
+    let worldState = createWorldStateSnapshot(filtered, intel)
     controller.planTracker.advanceTurn(filtered.turn, worldState)
     controller.goapActiveGoals = newSeq[string]()
     for trackedPlan in controller.planTracker.activePlans:
       controller.goapActiveGoals.add(trackedPlan.plan.goal.name) # Use plan.goal.name
-
+    
   # Step 3: Estimate current-turn budget requirements from active plans and store in controller
-  let estimatesResult = estimateBudgetRequirements(controller, filtered)
+  let estimatesResult = estimateBudgetRequirements(controller, filtered, intel)
   controller.goapBudgetEstimates = estimatesResult.goapBudgetEstimates # Store in controller for Basileus to retrieve
   controller.goapReservedBudget = estimatesResult.goapReservedBudget # Store reserved budget
   result = estimatesResult # Return the full result

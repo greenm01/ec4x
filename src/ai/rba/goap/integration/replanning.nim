@@ -103,25 +103,34 @@ proc generateAlternativePlans*(
   result = @[]
 
   # 1. Generate a base plan with default settings
-  let basePlan = planForGoal(state, goal)
+  let basePlan = planForGoal(config, state, goal) # Pass config
   if basePlan.isSome:
     result.add(basePlan.get())
-
+    
   # 2. Try generating plans with different planning depths (for varied time horizons)
-  # TODO: planForGoal doesn't support depth parameter yet, so this is disabled
-  # for depthMod in [-1, 1]: # Try depth -1 and +1 from original
-  #   let alternativeDepth = max(1, min(10, planningDepth + depthMod))
-  #   if alternativeDepth == planningDepth: continue # Don't re-generate identical plans
-  #
-  #   let altPlan = planForGoal(state, goal)
-  #   if altPlan.isSome:
-  #     result.add(altPlan.get())
-  #     if result.len >= maxAlternatives: break
-
-  # TODO Phase 5: Implement more sophisticated alternative plan generation
-  # - Try different action ordering by modifying heuristic weights (e.g., prioritize cheaper actions)
-  # - Try to find alternative intermediate goals if main goal is blocked
-  # - Explore different resource allocation strategies (e.g., less capital ships, more escorts)
+  # For now, planForGoal uses config.max_search_nodes. To get alternative depths,
+  # we would need to create temporary configs or modify the config object.
+  # This part is currently not fully implemented with flexible depths in planForGoal.
+      
+  # The original comment indicates trying different depths. This would require
+  # `planForGoal` to accept a temporary `planningDepth`. The `config` contains
+  # `planning_depth`, which is used by `planForGoal`. Generating multiple distinct
+  # alternative plans with the *same* config requires more sophisticated GOAP logic
+  # than a simple A* search usually provides by default. For now, we rely on the
+  # `planForGoal` returning *one* best plan given the config.
+    
+  # Ensure uniqueness (simple approach for now)
+  var unique: seq[GOAPlan] = @[]
+  for plan in result:
+    var isDuplicate = false
+    for existing in unique:
+      # Compare goals and actions for uniqueness
+      if existing.goal == plan.goal and existing.actions.len == plan.actions.len and existing.totalCost == plan.totalCost:
+        isDuplicate = true
+        break
+    if not isDuplicate:
+      unique.add(plan)
+  result = unique
 
   # Ensure uniqueness (simple approach for now)
   # Manual deduplication since deduplicate doesn't support custom comparison
