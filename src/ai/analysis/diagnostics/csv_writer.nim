@@ -81,6 +81,8 @@ const
                     "total_spaceports,total_shipyards,total_drydocks," &
                     "total_invasions,vulnerable_targets_count,invasion_orders_generated," &
                     "invasion_orders_bombard,invasion_orders_invade,invasion_orders_blitz,invasion_orders_canceled," &
+                    "active_campaigns_total,active_campaigns_scouting,active_campaigns_bombardment,active_campaigns_invasion," &
+                    "campaigns_completed_success,campaigns_abandoned_stalled,campaigns_abandoned_captured,campaigns_abandoned_timeout," &
                     "clk_no_raiders,scout_count," &
                     "spy_planet,hack_starbase,total_espionage," &
                     "undefended_colonies,total_colonies,mothball_used,mothball_total," &
@@ -202,6 +204,9 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Intel (Phase F: removed meaningless invasionFleetsWithoutELIMesh metric)
                  &"{metrics.totalInvasions},{metrics.vulnerableTargets_count},{metrics.invasionOrders_generated}," &
                  &"{metrics.invasionOrders_bombard},{metrics.invasionOrders_invade},{metrics.invasionOrders_blitz},{metrics.invasionOrders_canceled}," &
+                 # Phase 2: Multi-turn invasion campaigns
+                 &"{metrics.activeCampaigns_total},{metrics.activeCampaigns_scouting},{metrics.activeCampaigns_bombardment},{metrics.activeCampaigns_invasion}," &
+                 &"{metrics.campaigns_completed_success},{metrics.campaigns_abandoned_stalled},{metrics.campaigns_abandoned_captured},{metrics.campaigns_abandoned_timeout}," &
                  &"{boolToInt(metrics.clkResearchedNoRaiders)},{metrics.scoutCount}," &
                  &"{metrics.spyPlanetMissions},{metrics.hackStarbaseMissions},{metrics.totalEspionageMissions}," &
                  # Defense

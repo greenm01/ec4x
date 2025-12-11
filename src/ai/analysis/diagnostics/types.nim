@@ -193,6 +193,15 @@ type
     invasionOrders_invade*: int         # Phase 1: Invasion orders created
     invasionOrders_blitz*: int          # Phase 1: Blitz orders created
     invasionOrders_canceled*: int       # Phase 1: Orders rejected/canceled
+    # Phase 2: Multi-turn invasion campaign tracking
+    activeCampaigns_total*: int         # Total active campaigns this turn
+    activeCampaigns_scouting*: int      # Campaigns in Scouting phase
+    activeCampaigns_bombardment*: int   # Campaigns in Bombardment phase
+    activeCampaigns_invasion*: int      # Campaigns in Invasion phase
+    campaigns_completed_success*: int   # Campaigns completed successfully (cumulative)
+    campaigns_abandoned_stalled*: int   # Campaigns abandoned due to stall (cumulative)
+    campaigns_abandoned_captured*: int  # Campaigns abandoned - target taken by other (cumulative)
+    campaigns_abandoned_timeout*: int   # Campaigns abandoned due to timeout (cumulative)
     clkResearchedNoRaiders*: bool       # Has CLK but no Raiders built
     scoutCount*: int                    # Phase 2c: Current scout count for ELI mesh tracking
     spyPlanetMissions*: int             # Cumulative SpyOnPlanet missions

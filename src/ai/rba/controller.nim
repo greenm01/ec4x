@@ -70,7 +70,9 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     goapBudgetEstimates: none(Table[conversion.DomainType, int]),
     goapReservedBudget: none(int),
     goapConfig: globalRBAConfig.goap,
-    goapPlanTracker: newPlanTracker()
+    goapPlanTracker: newPlanTracker(),
+    # Phase 2: Multi-turn invasion campaigns
+    activeCampaigns: @[]
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
@@ -96,7 +98,9 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     goapBudgetEstimates: none(Table[conversion.DomainType, int]),
     goapReservedBudget: none(int),
     goapConfig: globalRBAConfig.goap,
-    goapPlanTracker: newPlanTracker()
+    goapPlanTracker: newPlanTracker(),
+    # Phase 2: Multi-turn invasion campaigns
+    activeCampaigns: @[]
   )
 
 # =============================================================================

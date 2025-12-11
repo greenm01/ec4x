@@ -298,6 +298,13 @@ aggressive_transport_ratio = 0.33          # Aggressive AI: 1 transport per 3 co
 aggressive_marine_per_transport = 1        # 1 marine division per transport
 reactive_invasion_multiplier = 1.5         # Defensive AI: 1.5x enemy defenses for invasion
 
+# Phase 2: Invasion Campaign Management (Multi-turn invasion sequencing)
+# Enables Bombardment → Invasion sequences across multiple turns
+max_concurrent_campaigns = 3               # Maximum simultaneous invasion campaigns
+campaign_stall_timeout = 3                 # Turns without action before abandoning campaign
+campaign_bombardment_max = 10              # Max bombardment rounds before reassessment
+campaign_intel_freshness = 5               # Max age (turns) for intel to be considered fresh
+
 # Fighter/Carrier requirements (threat-based)
 fighter_threat_threshold_low = 0.2         # Threat > 0.2 = threatened colony
 fighter_threat_threshold_high = 0.5        # Threat > 0.5 = high-threat colony

@@ -519,6 +519,29 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
       let intel = ctrl.intelligenceSnapshot.get()
       result.vulnerableTargets_count = intel.military.vulnerableTargets.len
 
+    # Phase 2: Populate campaign metrics from active campaigns
+    result.activeCampaigns_total = ctrl.activeCampaigns.len
+    result.activeCampaigns_scouting = 0
+    result.activeCampaigns_bombardment = 0
+    result.activeCampaigns_invasion = 0
+
+    for campaign in ctrl.activeCampaigns:
+      case campaign.phase
+      of InvasionCampaignPhase.Scouting:
+        result.activeCampaigns_scouting += 1
+      of InvasionCampaignPhase.Bombardment:
+        result.activeCampaigns_bombardment += 1
+      of InvasionCampaignPhase.Invasion:
+        result.activeCampaigns_invasion += 1
+      of InvasionCampaignPhase.Consolidation:
+        # Consolidation phase is transitional, not counted separately
+        discard
+
+    # Note: Cumulative campaign metrics (completed_success, abandoned_*)
+    # are incremented in offensive_ops.nim when campaigns are removed
+    # and tracked in DiagnosticOrchestrator's cumulative state
+    # For now, these remain 0 until we add persistent state tracking
+
     result.goapEnabled = ctrl.goapEnabled
     if ctrl.goapEnabled:
       result.goapPlansActive = ctrl.goapPlanTracker.activePlans.len
