@@ -140,12 +140,9 @@ proc generateRequirementFeedback*(
   ## Tracks WHY requirement failed and suggests alternatives
 
   var feedback = RequirementFeedback(
-    requirement: AdvisorRequirement(
-      advisor: AdvisorType.Domestikos,
-      buildReq: some(req),
-      requirementType: $req.requirementType,
-      priority: req.priority
-    ),
+    requirement: req, # Already a BuildRequirement
+    originalAdvisorReason: req.reason,
+    unfulfillmentReason: UnfulfillmentReason.InsufficientBudget, # Default, will be updated below
     quantityBuilt: quantityBuilt,
     budgetShortfall: 0,
     suggestion: none(string)

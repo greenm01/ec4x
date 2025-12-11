@@ -14,21 +14,8 @@ import ./personality
 import ../goap/integration/conversion # Fixed path
 
 # Weighted requirement for unified priority queue
+# Note: AdvisorRequirement is imported from controller_types
 type
-  AdvisorRequirement* = object
-    ## Generic wrapper for any advisor requirement
-    advisor*: AdvisorType
-    priority*: RequirementPriority
-    requirementType*: string  # "BuildRequirement", "ResearchRequirement", etc.
-    estimatedCost*: int
-    reason*: string
-    # Original requirement data (for execution phase)
-    buildReq*: Option[BuildRequirement]
-    researchReq*: Option[ResearchRequirement]
-    espionageReq*: Option[EspionageRequirement]
-    economicReq*: Option[EconomicRequirement]
-    diplomaticReq*: Option[DiplomaticRequirement]
-
   WeightedRequirement* = object
     ## Requirement with calculated weighted score for priority queue
     requirement*: AdvisorRequirement

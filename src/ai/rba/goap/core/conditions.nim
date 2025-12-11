@@ -100,9 +100,9 @@ proc checkPrecondition*(state: WorldStateSnapshot, cond: PreconditionRef): bool 
     return state.totalFleetStrength >= minStrength
 
   of FleetAtLocation:
-    # NOTE: Would need fleet location tracking in WorldStateSnapshot
-    # For now, return true (conservative estimate)
-    return true
+    # MVP: Simplified check (assumes fleets can reach target if idle fleets exist)
+    # Post-MVP: Add actual fleet location tracking in WorldStateSnapshot
+    return state.idleFleets.len > 0
 
   # Tech
   of HasTechLevel:

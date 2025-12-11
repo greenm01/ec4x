@@ -257,6 +257,13 @@ type
     eventsResearchTotal*: int     # Research/TechAdvance events this turn
     eventsColonyTotal*: int       # Colony-related events this turn
 
+    # GOAP Metrics (MVP: Fleet + Build domains)
+    goapEnabled*: bool                # Is GOAP strategic planning enabled?
+    goapPlansActive*: int             # Active plans in GOAP tracker
+    goapPlansCompleted*: int          # Completed plans (cumulative)
+    goapGoalsExtracted*: int          # Strategic goals extracted this turn
+    goapPlanningTimeMs*: float        # Phase 1.5 planning overhead (ms)
+
   DiagnosticSession* = object
     ## Collection of all diagnostics for a game session
     gameId*: string
@@ -456,5 +463,12 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     bilateralRelations: "",
 
     # Advisor Reasoning (NEW)
-    advisorReasoning: ""
+    advisorReasoning: "",
+
+    # GOAP Metrics
+    goapEnabled: false,
+    goapPlansActive: 0,
+    goapPlansCompleted: 0,
+    goapGoalsExtracted: 0,
+    goapPlanningTimeMs: 0.0
   )

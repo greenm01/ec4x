@@ -6,57 +6,16 @@
 import std/[tables, options, sequtils]
 import ../core/types
 import ../state/snapshot
-import ../../controller_types # For UnfulfillmentReason, RequirementFeedback
+import ../../controller_types # For UnfulfillmentReason, PlanTracker, TrackedPlan, PlanStatus
 import ../../../../engine/gamestate # For Colony, SystemId, etc.
 import ../../../../engine/resolution/types # For GameEvent, GameEventType, CombatResultEvent, DiplomaticEvent, EspionageEvent
 
-# =============================================================================
-# Plan Status Types
-# =============================================================================
-
-type
-  PlanStatus* {.pure.} = enum
-    ## Status of a multi-turn plan
-    Active        # Plan is currently being executed
-    Completed     # Plan successfully achieved its goal
-    Failed        # Plan failed (action couldn't be executed)
-    Invalidated   # Plan no longer viable (preconditions violated)
-    Paused        # Plan temporarily paused (lower priority work)
-
-  TrackedPlan* = object
-    ## A GOAP plan being tracked across turns
-    plan*: GOAPlan
-    status*: PlanStatus
-    startTurn*: int
-    currentActionIndex*: int  # Which action we're executing
-    turnsInExecution*: int    # How many turns we've been working on this
-
-    # Success/failure tracking
-    actionsCompleted*: int
-    actionsFailed*: int
-    lastUpdateTurn*: int
-    # Specific feedback for the last failed action, used for intelligent replanning
-    lastFailedActionReason*: Option[UnfulfillmentReason]
-    lastFailedActionSuggestion*: Option[string]
+# Re-export types from controller_types for convenience
+export controller_types.PlanStatus, controller_types.TrackedPlan, controller_types.PlanTracker, controller_types.newPlanTracker
 
 # =============================================================================
-# Plan Tracker
+# Plan Tracker Operations
 # =============================================================================
-
-type
-  PlanTracker* = object
-    ## Manages all active GOAP plans for a house
-    activePlans*: seq[TrackedPlan]
-    completedPlans*: seq[TrackedPlan]  # History
-    currentTurn*: int
-
-proc newPlanTracker*(): PlanTracker =
-  ## Create a new plan tracker
-  result = PlanTracker(
-    activePlans: @[],
-    completedPlans: @[],
-    currentTurn: 0
-  )
 
 proc addPlan*(tracker: var PlanTracker, plan: GOAPlan) =
   ## Start tracking a new plan

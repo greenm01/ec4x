@@ -5,6 +5,7 @@
 import std/[strformat, options, strutils]
 import ../../../engine/logger
 import ../controller_types
+import ../shared/intelligence_types # For IntelligenceSnapshot
 import ../domestikos/requirements/reprioritization  # Gap 4 enhanced reprioritization
 import ../logothete/requirements as logothete_req
 import ../drungarius/requirements as drungarius_req
@@ -121,6 +122,58 @@ proc getUnfulfilledSummary*(controller: AIController): string =
     summary.add(&"Eparch={controller.eparchFeedback.get().unfulfilledRequirements.len}")
 
   result = summary.join(", ")
+
+# =============================================================================
+# GOAP Feedback (Phase 8.5)
+# =============================================================================
+
+proc checkGOAPReplanningNeeded*(
+  controller: var AIController,
+  turn: int,
+  intel: IntelligenceSnapshot
+) =
+  ## Check if GOAP replanning should be triggered (MVP: basic stall detection)
+  ##
+  ## Sets controller.goapLastPlanningTurn to -1 to force replan next turn
+
+  var needsReplan = false
+  var replanReason = ""
+
+  # Check for stalled plans
+  for plan in controller.goapPlanTracker.activePlans:
+    let turnsSinceUpdate = turn - plan.lastUpdateTurn
+    if turnsSinceUpdate >= controller.goapConfig.replan_stalled_turns:
+      needsReplan = true
+      replanReason = &"Plan stalled for {turnsSinceUpdate} turns"
+      break
+
+  if needsReplan:
+    logWarn(LogCategory.lcAI, &"{controller.houseId} GOAP: Replanning triggered - {replanReason}")
+    controller.goapLastPlanningTurn = -1  # Force replan next turn
+
+proc reportGOAPProgress*(
+  controller: var AIController,
+  allocation: MultiAdvisorAllocation,
+  turn: int,
+  intel: IntelligenceSnapshot
+) =
+  ## Report GOAP plan progress and update tracker (MVP: simplified tracking)
+  ##
+  ## Called in Phase 8.5 to provide feedback to GOAP about plan execution
+
+  if not controller.goapEnabled:
+    return
+
+  logInfo(LogCategory.lcAI, &"{controller.houseId} === Phase 8.5: GOAP Feedback ===")
+
+  # Simplified progress tracking for MVP: Check if plans are advancing
+  let activePlansCount = controller.goapPlanTracker.activePlans.len
+  let completedPlansCount = controller.goapPlanTracker.completedPlans.len
+
+  logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: {activePlansCount} active, {completedPlansCount} completed")
+
+  # Check for replanning triggers
+  checkGOAPReplanningNeeded(controller, turn, intel)
 
 proc checkGOAPReplanningNeeded*(controller: AIController): bool =
   ## Check if GOAP replanning should be triggered
