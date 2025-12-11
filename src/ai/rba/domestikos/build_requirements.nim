@@ -628,7 +628,7 @@ proc assessOffensiveReadiness*(
   # Defensive/Economic: Only build for opportunities
   elif opportunities.len > 0:
     let opp = opportunities[0]  # Highest priority target
-    let requiredMarines = max(2, int(float(opp.estimatedDefenses) * 1.5))
+    let requiredMarines = max(2, int(float(opp.estimatedDefenses) * 2.5)) # Increased for stronger ground attack
     let requiredTransports = (requiredMarines + 0) div 1  # 1 marine per transport
 
     if transportCount < requiredTransports:

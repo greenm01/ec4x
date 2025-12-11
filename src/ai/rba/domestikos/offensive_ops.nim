@@ -302,19 +302,18 @@ proc selectCombatOrderType(
     return FleetOrderType.Bombard
 
   # Have loaded Marines - can attempt invasion or blitz
-  elif defenseStrength <= 2 and shipCount >= 3 and totalMarines >= 3:
-    # Weak/no defenses, strong fleet with adequate Marines → Blitz
-    # Simultaneous bombardment + invasion for quick victory
+  # Now we have loaded marines
+  elif defenseStrength <= 5 and shipCount >= 3 and totalMarines >= 3:
+    # Blitz against weak to moderate defenses with adequate forces
     return FleetOrderType.Blitz
 
-  elif defenseStrength <= 5 and shipCount >= 2:
-    # Moderate defenses → Bombard first to soften
-    # AI will follow up with invasion on next turn once defenses weakened
-    return FleetOrderType.Bombard
-
-  elif shipCount >= 4 and totalMarines >= 6:
-    # Strong fleet with strong Marine force → Invade
+  elif defenseStrength <= 8 and shipCount >= 4 and totalMarines >= 6:
+    # Invade against moderate to strong defenses with very strong forces
     return FleetOrderType.Invade
+
+  else:
+    # Fallback: Bombard if not meeting Blitz/Invade criteria, to soften defenses
+    return FleetOrderType.Bombard
 
   else:
     # Insufficient Marines or strong defenses → Just bombard
@@ -386,7 +385,7 @@ proc findSuitableInvasionFleet(
     let fleetStrength = fleet.combatStrength().float
 
     # Strength requirement (1.2x safety margin)
-    if fleetStrength < float(requiredForceScore) * 1.2:
+    if fleetStrength < float(requiredForceScore) * 1.5: # Increased safety margin for invasion force
       continue
 
     # Distance/ETA check (reject if > configured max turns)

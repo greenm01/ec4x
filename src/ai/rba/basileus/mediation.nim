@@ -306,13 +306,19 @@ proc mediateRequirements*(
 
   if isAtWar:
     # War-time: Enforce 45% minimum for military
-    let minMilitaryBudget = int(float(availableBudget) * 0.45)
+    let minMilitaryPercent = case currentAct
+      of ai_types.GameAct.Act1_LandGrab: 0.45
+      of ai_types.GameAct.Act2_RisingTensions: 0.50 # Slightly more aggressive in Act 2
+      of ai_types.GameAct.Act3_TotalWar: 0.60 # Significantly more for Total War
+      of ai_types.GameAct.Act4_Endgame: 0.70 # Maximum for Endgame
+
+    let minMilitaryBudget = int(float(availableBudget) * minMilitaryPercent)
     if militaryBudget < minMilitaryBudget:
       let shortfall = minMilitaryBudget - militaryBudget
 
       logInfo(LogCategory.lcAI,
               &"{houseId} Basileus: WAR - Military budget ({militaryBudget}PP = {militaryPercent*100:.1f}%) " &
-              &"below 45% floor, reallocating {shortfall}PP from civilian advisors")
+              &"below {minMilitaryPercent*100:.1f}% floor, reallocating {shortfall}PP from civilian advisors")
 
       # Reallocate from civilian advisors (Logothete, Eparch) proportionally
       let civilianBudget = result.logotheteBudget + result.eparchBudget
