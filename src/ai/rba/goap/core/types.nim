@@ -17,6 +17,7 @@
 
 import std/[tables, options]
 import ../../../../common/types/[core, tech, diplomacy, units]
+import ../../shared/intelligence_types  # For IntelligenceSnapshot
 
 # =============================================================================
 # World State Snapshot (Immutable Planning State)

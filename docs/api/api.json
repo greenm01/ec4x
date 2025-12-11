@@ -1,3 +1,323 @@
+Processing: src/core.nim
+Processing: src/cli/ec4x.nim
+Processing: src/cli/commands/data.nim
+Processing: src/cli/commands/analyze.nim
+Processing: src/transport/nostr/client.nim
+Processing: src/transport/nostr/crypto.nim
+Processing: src/transport/nostr/events.nim
+Processing: src/transport/nostr/filter.nim
+Processing: src/transport/nostr/types.nim
+Processing: src/storage/json_storage.nim
+Processing: src/main/client.nim
+Processing: src/main/daemon.nim
+Processing: src/main/moderator.nim
+Processing: src/main/moderator/config.nim
+Processing: src/main/moderator/create.nim
+Processing: src/engine/ai_special_modes.nim
+Processing: src/engine/fleet.nim
+Processing: src/engine/fog_of_war.nim
+Processing: src/engine/iterators.nim
+Processing: src/engine/logger.nim
+Processing: src/engine/setup.nim
+Processing: src/engine/ship.nim
+Processing: src/engine/starmap.nim
+Processing: src/engine/state_helpers.nim
+Processing: src/engine/validation.nim
+Processing: src/engine/config.nim
+Processing: src/engine/order_types.nim
+Processing: src/engine/orders.nim
+Processing: src/engine/prestige.nim
+Processing: src/engine/salvage.nim
+Processing: src/engine/squadron.nim
+Processing: src/engine/standing_orders.nim
+Processing: src/engine/gamestate.nim
+Processing: src/engine/resolve.nim
+Processing: src/engine/spacelift.nim
+Processing: src/engine/initialization/colony.nim
+Processing: src/engine/initialization/config_resolver.nim
+Processing: src/engine/initialization/fleet.nim
+Processing: src/engine/initialization/house.nim
+Processing: src/engine/initialization/validation.nim
+Processing: src/engine/initialization/game.nim
+Processing: src/engine/config/combat_config.nim
+Processing: src/engine/config/construction_config.nim
+Processing: src/engine/config/diplomacy_config.nim
+Processing: src/engine/config/espionage_config.nim
+Processing: src/engine/config/facilities_config.nim
+Processing: src/engine/config/gameplay_config.nim
+Processing: src/engine/config/ground_units_config.nim
+Processing: src/engine/config/house_themes.nim
+Processing: src/engine/config/population_config.nim
+Processing: src/engine/config/prestige_config.nim
+Processing: src/engine/config/prestige_multiplier.nim
+Processing: src/engine/config/ships_config.nim
+Processing: src/engine/config/standing_orders_config.nim
+Processing: src/engine/config/starmap_config.nim
+Processing: src/engine/config/tech_config.nim
+Processing: src/engine/config/validators.nim
+Processing: src/engine/config/economy_config.nim
+Processing: src/engine/config/game_setup_config.nim
+Processing: src/engine/config/military_config.nim
+Processing: src/engine/prestige/advancement.nim
+Processing: src/engine/prestige/application.nim
+Processing: src/engine/prestige/combat.nim
+Processing: src/engine/prestige/economic.nim
+Processing: src/engine/prestige/effects.nim
+Processing: src/engine/prestige/events.nim
+Processing: src/engine/prestige/sources.nim
+Processing: src/engine/prestige/types.nim
+Processing: src/engine/victory/types.nim
+Processing: src/engine/victory/engine.nim
+Processing: src/engine/resolution/simultaneous_planetary.nim
+Processing: src/engine/resolution/simultaneous_resolver.nim
+Processing: src/engine/resolution/simultaneous_blockade.nim
+Processing: src/engine/resolution/automation.nim
+Processing: src/engine/resolution/construction.nim
+Processing: src/engine/resolution/diplomatic_resolution.nim
+Processing: src/engine/resolution/fleet_order_execution.nim
+Processing: src/engine/resolution/simultaneous.nim
+Processing: src/engine/resolution/simultaneous_types.nim
+Processing: src/engine/resolution/simultaneous_espionage.nim
+Processing: src/engine/resolution/commissioning.nim
+Processing: src/engine/resolution/economy_resolution.nim
+Processing: src/engine/resolution/combat_resolution.nim
+Processing: src/engine/resolution/fleet_orders.nim
+Processing: src/engine/resolution/types.nim
+Processing: src/engine/resolution/phases/income_phase.nim
+Processing: src/engine/resolution/phases/conflict_phase.nim
+Processing: src/engine/resolution/phases/command_phase.nim
+Processing: src/engine/resolution/phases/maintenance_phase.nim
+Processing: src/engine/resolution/event_factory/alerts.nim
+Processing: src/engine/resolution/event_factory/commissioning.nim
+Processing: src/engine/resolution/event_factory/economic.nim
+Processing: src/engine/resolution/event_factory/prestige.nim
+Processing: src/engine/resolution/event_factory/init.nim
+Processing: src/engine/resolution/event_factory/diplomatic.nim
+Processing: src/engine/resolution/event_factory/intelligence.nim
+Processing: src/engine/resolution/event_factory/military.nim
+Processing: src/engine/resolution/event_factory/orders.nim
+Processing: src/engine/resolution/event_factory/victory.nim
+Processing: src/engine/research/costs.nim
+Processing: src/engine/research/types.nim
+Processing: src/engine/research/advancement.nim
+Processing: src/engine/research/effects.nim
+Processing: src/engine/population/transfers.nim
+Processing: src/engine/population/types.nim
+Processing: src/engine/morale/types.nim
+Processing: src/engine/intelligence/blockade_intel.nim
+Processing: src/engine/intelligence/combat_intel.nim
+Processing: src/engine/intelligence/detection.nim
+Processing: src/engine/intelligence/diplomatic_intel.nim
+Processing: src/engine/intelligence/espionage_intel.nim
+Processing: src/engine/intelligence/types.nim
+Processing: src/engine/intelligence/corruption.nim
+Processing: src/engine/intelligence/generator.nim
+Processing: src/engine/intelligence/starbase_surveillance.nim
+Processing: src/engine/intelligence/spy_travel.nim
+Processing: src/engine/intelligence/spy_resolution.nim
+Processing: src/engine/intelligence/scout_intel.nim
+Processing: src/engine/intelligence/event_processor/helpers.nim
+Processing: src/engine/intelligence/event_processor/init.nim
+Processing: src/engine/intelligence/event_processor/converters.nim
+Processing: src/engine/intelligence/event_processor/visibility.nim
+Processing: src/engine/espionage/action_descriptors.nim
+Processing: src/engine/espionage/engine.nim
+Processing: src/engine/espionage/types.nim
+Processing: src/engine/espionage/executor.nim
+Processing: src/engine/economy/facility_damage.nim
+Processing: src/engine/economy/maintenance.nim
+Processing: src/engine/economy/config_accessors.nim
+Processing: src/engine/economy/engine.nim
+Processing: src/engine/economy/maintenance_shortfall.nim
+Processing: src/engine/economy/production.nim
+Processing: src/engine/economy/projects.nim
+Processing: src/engine/economy/repair_queue.nim
+Processing: src/engine/economy/types.nim
+Processing: src/engine/economy/income.nim
+Processing: src/engine/economy/facility_queue.nim
+Processing: src/engine/economy/capacity/fighter.nim
+Processing: src/engine/economy/capacity/planet_breakers.nim
+Processing: src/engine/economy/capacity/capital_squadrons.nim
+Processing: src/engine/economy/capacity/construction_docks.nim
+Processing: src/engine/economy/capacity/total_squadrons.nim
+Processing: src/engine/economy/capacity/types.nim
+Processing: src/engine/economy/capacity/carrier_hangar.nim
+Processing: src/engine/diplomacy/proposals.nim
+Processing: src/engine/diplomacy/types.nim
+Processing: src/engine/diplomacy/engine.nim
+Processing: src/engine/commands/spy_scout_orders.nim
+Processing: src/engine/commands/zero_turn_commands.nim
+Processing: src/engine/commands/executor.nim
+Processing: src/engine/combat/cer.nim
+Processing: src/engine/combat/resolution.nim
+Processing: src/engine/combat/retreat.nim
+Processing: src/engine/combat/starbase.nim
+Processing: src/engine/combat/ground.nim
+Processing: src/engine/combat/damage.nim
+Processing: src/engine/combat/targeting.nim
+Processing: src/engine/combat/types.nim
+Processing: src/engine/combat/engine.nim
+Processing: src/engine/colonization/engine.nim
+Processing: src/engine/blockade/engine.nim
+Processing: src/engine/analytics/claude_formats.nim
+Processing: src/engine/analytics/smart_export.nim
+Processing: src/engine/analytics/types.nim
+Processing: src/daemon/processor.nim
+Processing: src/daemon/publisher.nim
+Processing: src/daemon/scheduler.nim
+Processing: src/daemon/subscriber.nim
+Processing: src/common/hex.nim
+Processing: src/common/logger.nim
+Processing: src/common/system.nim
+Processing: src/common/types/combat.nim
+Processing: src/common/types/core.nim
+Processing: src/common/types/diplomacy.nim
+Processing: src/common/types/planets.nim
+Processing: src/common/types/tech.nim
+Processing: src/common/types/units.nim
+Processing: src/ai/ai_main.nim
+Processing: src/ai/sweep/params/goap_params.nim
+Processing: src/ai/tuning/coevolution.nim
+Processing: src/ai/tuning/evolve_ai.nim
+Processing: src/ai/tuning/genetic_ai.nim
+Processing: src/ai/analysis/analyze_results.nim
+Processing: src/ai/analysis/balance_framework.nim
+Processing: src/ai/analysis/parallel_sim.nim
+Processing: src/ai/analysis/test_economy_balance.nim
+Processing: src/ai/analysis/test_minimal_balance.nim
+Processing: src/ai/analysis/test_strategy_balance.nim
+Processing: src/ai/analysis/test_turn_reports.nim
+Processing: src/ai/analysis/types.nim
+Processing: src/ai/analysis/balance_test_config.nim
+Processing: src/ai/analysis/diagnostics.nim
+Processing: src/ai/analysis/game_setup.nim
+Processing: src/ai/analysis/run_simulation.nim
+Processing: src/ai/analysis/diagnostics/basileus_collector.nim
+Processing: src/ai/analysis/diagnostics/domestikos_collector.nim
+Processing: src/ai/analysis/diagnostics/drungarius_collector.nim
+Processing: src/ai/analysis/diagnostics/eparch_collector.nim
+Processing: src/ai/analysis/diagnostics/logothete_collector.nim
+Processing: src/ai/analysis/diagnostics/protostrator_collector.nim
+Processing: src/ai/analysis/diagnostics/csv_writer.nim
+Processing: src/ai/analysis/diagnostics/orchestrator.nim
+Processing: src/ai/analysis/diagnostics/types.nim
+Processing: src/ai/analysis/formatters/compact.nim
+Processing: src/ai/analysis/formatters/markdown.nim
+Processing: src/ai/analysis/formatters/terminal.nim
+Processing: src/ai/analysis/data/loader.nim
+Processing: src/ai/analysis/data/manager.nim
+Processing: src/ai/analysis/data/statistics.nim
+Processing: src/ai/analysis/analyzers/analyzer.nim
+Processing: src/ai/analysis/analyzers/performance.nim
+Processing: src/ai/analysis/analyzers/red_flags.nim
+Processing: src/ai/analysis/ai_modules/types.nim
+Processing: src/ai/training/export.nim
+Processing: src/ai/rba/basileus.nim
+Processing: src/ai/rba/drungarius.nim
+Processing: src/ai/rba/eparch.nim
+Processing: src/ai/rba/logothete.nim
+Processing: src/ai/rba/protostrator.nim
+Processing: src/ai/rba/strategic.nim
+Processing: src/ai/rba/player.nim
+Processing: src/ai/rba/budget.nim
+Processing: src/ai/rba/tactical.nim
+Processing: src/ai/rba/tactical_assessment.nim
+Processing: src/ai/rba/treasurer.nim
+Processing: src/ai/rba/intelligence.nim
+Processing: src/ai/rba/config.nim
+Processing: src/ai/rba/controller.nim
+Processing: src/ai/rba/controller_types.nim
+Processing: src/ai/rba/domestikos.nim
+Processing: src/ai/rba/logistics.nim
+Processing: src/ai/rba/orders.nim
+Processing: src/ai/rba/phase4_feedback.nim
+Processing: src/ai/rba/standing_orders_manager.nim
+Processing: src/ai/rba/goap/state/assessment.nim
+Processing: src/ai/rba/goap/state/effects.nim
+Processing: src/ai/rba/goap/state/snapshot.nim
+Processing: src/ai/rba/goap/planner/node.nim
+Processing: src/ai/rba/goap/planner/search.nim
+Processing: src/ai/rba/goap/integration/conversion.nim
+Processing: src/ai/rba/goap/integration/plan_tracking.nim
+Processing: src/ai/rba/goap/integration/replanning.nim
+Processing: src/ai/rba/goap/domains/research/actions.nim
+Processing: src/ai/rba/goap/domains/research/bridge.nim
+Processing: src/ai/rba/goap/domains/research/goals.nim
+Processing: src/ai/rba/goap/domains/fleet/actions.nim
+Processing: src/ai/rba/goap/domains/fleet/bridge.nim
+Processing: src/ai/rba/goap/domains/fleet/goals.nim
+Processing: src/ai/rba/goap/domains/espionage/actions.nim
+Processing: src/ai/rba/goap/domains/espionage/bridge.nim
+Processing: src/ai/rba/goap/domains/espionage/goals.nim
+Processing: src/ai/rba/goap/domains/economic/actions.nim
+Processing: src/ai/rba/goap/domains/economic/bridge.nim
+Processing: src/ai/rba/goap/domains/economic/goals.nim
+Processing: src/ai/rba/goap/domains/diplomatic/actions.nim
+Processing: src/ai/rba/goap/domains/diplomatic/bridge.nim
+Processing: src/ai/rba/goap/domains/diplomatic/goals.nim
+Processing: src/ai/rba/goap/core/conditions.nim
+Processing: src/ai/rba/goap/core/heuristics.nim
+Processing: src/ai/rba/goap/core/types.nim
+Processing: src/ai/rba/treasurer/allocation.nim
+Processing: src/ai/rba/treasurer/consultation.nim
+Processing: src/ai/rba/treasurer/multi_advisor.nim
+Processing: src/ai/rba/treasurer/phase1_5_goap.nim
+Processing: src/ai/rba/treasurer/phase2_mediation.nim
+Processing: src/ai/rba/treasurer/budget/splitting.nim
+Processing: src/ai/rba/treasurer/budget/feedback.nim
+Processing: src/ai/rba/shared/colony_assessment.nim
+Processing: src/ai/rba/shared/intelligence_types.nim
+Processing: src/ai/rba/shared/resource_tracking/tracker.nim
+Processing: src/ai/rba/protostrator/assessment.nim
+Processing: src/ai/rba/protostrator/diplomatic_requirements.nim
+Processing: src/ai/rba/protostrator/requirements.nim
+Processing: src/ai/rba/orders/colony_management.nim
+Processing: src/ai/rba/orders/phase0_intelligence.nim
+Processing: src/ai/rba/orders/phase3_execution.nim
+Processing: src/ai/rba/orders/phase5_strategic.nim
+Processing: src/ai/rba/orders/utils.nim
+Processing: src/ai/rba/orders/phase1_5_goap.nim
+Processing: src/ai/rba/orders/phase1_requirements.nim
+Processing: src/ai/rba/orders/phase2_mediation.nim
+Processing: src/ai/rba/orders/phase4_feedback.nim
+Processing: src/ai/rba/logothete/allocation.nim
+Processing: src/ai/rba/logothete/requirements.nim
+Processing: src/ai/rba/eparch/terraforming.nim
+Processing: src/ai/rba/eparch/requirements.nim
+Processing: src/ai/rba/eparch/industrial_investment.nim
+Processing: src/ai/rba/eparch/economic_requirements.nim
+Processing: src/ai/rba/drungarius/operations.nim
+Processing: src/ai/rba/drungarius/threat_assessment.nim
+Processing: src/ai/rba/drungarius/intelligence_distribution.nim
+Processing: src/ai/rba/drungarius/init.nim
+Processing: src/ai/rba/drungarius/execution.nim
+Processing: src/ai/rba/drungarius/requirements.nim
+Processing: src/ai/rba/drungarius/analyzers/colony_analyzer.nim
+Processing: src/ai/rba/drungarius/analyzers/combat_analyzer.nim
+Processing: src/ai/rba/drungarius/analyzers/construction_trends_analyzer.nim
+Processing: src/ai/rba/drungarius/analyzers/counterintel_analyzer.nim
+Processing: src/ai/rba/drungarius/analyzers/diplomatic_events_analyzer.nim
+Processing: src/ai/rba/drungarius/analyzers/starbase_analyzer.nim
+Processing: src/ai/rba/drungarius/analyzers/surveillance_analyzer.nim
+Processing: src/ai/rba/drungarius/analyzers/system_analyzer.nim
+Processing: src/ai/rba/domestikos/fleet_analysis.nim
+Processing: src/ai/rba/domestikos/staging.nim
+Processing: src/ai/rba/domestikos/defensive_ops.nim
+Processing: src/ai/rba/domestikos/fleet_management.nim
+Processing: src/ai/rba/domestikos/intelligence_ops.nim
+Processing: src/ai/rba/domestikos/unit_priority.nim
+Processing: src/ai/rba/domestikos/build_requirements.nim
+Processing: src/ai/rba/domestikos/exploration_ops.nim
+Processing: src/ai/rba/domestikos/offensive_ops.nim
+Processing: src/ai/rba/domestikos/requirements/defense_gaps.nim
+Processing: src/ai/rba/domestikos/requirements/reprioritization.nim
+Processing: src/ai/rba/domestikos/requirements/standing_order_support.nim
+Processing: src/ai/rba/domestikos/requirements/types.nim
+Processing: src/ai/rba/basileus/personality.nim
+Processing: src/ai/rba/basileus/execution.nim
+Processing: src/ai/rba/basileus/mediation.nim
+Processing: src/ai/common/types.nim
+Processing: src/client/reports/turn_report.nim
 {
   "procs": [
     {
@@ -1609,22 +1929,6 @@
       "sig": "proc wasColonizationHandled*("
     },
     {
-      "module": "combat_resolution",
-      "sig": "proc resolveBattle*(state: var GameState, systemId: SystemId,"
-    },
-    {
-      "module": "combat_resolution",
-      "sig": "proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrder,"
-    },
-    {
-      "module": "combat_resolution",
-      "sig": "proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,"
-    },
-    {
-      "module": "combat_resolution",
-      "sig": "proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,"
-    },
-    {
       "module": "simultaneous_espionage",
       "sig": "proc collectEspionageIntents*("
     },
@@ -1721,6 +2025,22 @@
       "sig": "proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])"
     },
     {
+      "module": "combat_resolution",
+      "sig": "proc resolveBattle*(state: var GameState, systemId: SystemId,"
+    },
+    {
+      "module": "combat_resolution",
+      "sig": "proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+    },
+    {
+      "module": "combat_resolution",
+      "sig": "proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+    },
+    {
+      "module": "combat_resolution",
+      "sig": "proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+    },
+    {
       "module": "fleet_orders",
       "sig": "proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool"
     },
@@ -1805,14 +2125,6 @@
       "sig": "proc unitDisbanded*("
     },
     {
-      "module": "diplomatic",
-      "sig": "proc warDeclared*("
-    },
-    {
-      "module": "diplomatic",
-      "sig": "proc peaceSigned*("
-    },
-    {
       "module": "economic",
       "sig": "proc constructionStarted*("
     },
@@ -1823,6 +2135,22 @@
     {
       "module": "economic",
       "sig": "proc terraformComplete*("
+    },
+    {
+      "module": "prestige",
+      "sig": "proc prestigeGained*("
+    },
+    {
+      "module": "prestige",
+      "sig": "proc prestigeLost*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc warDeclared*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc peaceSigned*("
     },
     {
       "module": "intelligence",
@@ -1901,6 +2229,18 @@
       "sig": "proc invasionRepelled*("
     },
     {
+      "module": "military",
+      "sig": "proc bombardment*("
+    },
+    {
+      "module": "military",
+      "sig": "proc colonyCaptured*("
+    },
+    {
+      "module": "military",
+      "sig": "proc battleOccurred*("
+    },
+    {
       "module": "orders",
       "sig": "proc orderRejected*("
     },
@@ -1919,14 +2259,6 @@
     {
       "module": "orders",
       "sig": "proc orderCompleted*("
-    },
-    {
-      "module": "prestige",
-      "sig": "proc prestigeGained*("
-    },
-    {
-      "module": "prestige",
-      "sig": "proc prestigeLost*("
     },
     {
       "module": "victory",
@@ -2425,22 +2757,6 @@
       "sig": "proc processScoutIntelligence*("
     },
     {
-      "module": "converters",
-      "sig": "proc convertCombatEvent*("
-    },
-    {
-      "module": "converters",
-      "sig": "proc convertEspionageEvent*("
-    },
-    {
-      "module": "converters",
-      "sig": "proc convertColonizationEvent*("
-    },
-    {
-      "module": "converters",
-      "sig": "proc convertScoutDetectionEvent*("
-    },
-    {
       "module": "helpers",
       "sig": "proc hasFleetInSystem*("
     },
@@ -2459,6 +2775,22 @@
     {
       "module": "init",
       "sig": "proc processEventsForIntelligence*("
+    },
+    {
+      "module": "converters",
+      "sig": "proc convertCombatEvent*("
+    },
+    {
+      "module": "converters",
+      "sig": "proc convertEspionageEvent*("
+    },
+    {
+      "module": "converters",
+      "sig": "proc convertColonizationEvent*("
+    },
+    {
+      "module": "converters",
+      "sig": "proc convertScoutDetectionEvent*("
     },
     {
       "module": "visibility",
@@ -3115,6 +3447,10 @@
     {
       "module": "engine",
       "sig": "proc setNeutral*(relations: var DiplomaticRelations, otherHouse: HouseId,"
+    },
+    {
+      "module": "engine",
+      "sig": "proc setHostile*(relations: var DiplomaticRelations, otherHouse: HouseId,"
     },
     {
       "module": "spy_scout_orders",
@@ -4093,10 +4429,6 @@
       "sig": "proc getStrategies*(scenario: BalanceTestScenario): seq[AIStrategy]"
     },
     {
-      "module": "run_simulation",
-      "sig": "proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], seed: int64"
-    },
-    {
       "module": "game_setup",
       "sig": "proc generateBalancedStarMap*(numPlayers: int): StarMap"
     },
@@ -4113,20 +4445,12 @@
       "sig": "proc printGameSetup*(game: GameState)"
     },
     {
+      "module": "run_simulation",
+      "sig": "proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], seed: int64"
+    },
+    {
       "module": "basileus_collector",
       "sig": "proc collectBasileusMetrics*(state: GameState, houseId: HouseId,"
-    },
-    {
-      "module": "csv_writer",
-      "sig": "proc writeCSVHeader*(file: File)"
-    },
-    {
-      "module": "csv_writer",
-      "sig": "proc writeCSVRow*(file: File, metrics: DiagnosticMetrics)"
-    },
-    {
-      "module": "csv_writer",
-      "sig": "proc writeDiagnosticsCSV*(filename: string, metrics: seq[DiagnosticMetrics])"
     },
     {
       "module": "domestikos_collector",
@@ -4145,12 +4469,24 @@
       "sig": "proc collectLogotheteMetrics*(state: GameState, houseId: HouseId,"
     },
     {
-      "module": "orchestrator",
-      "sig": "proc collectDiagnostics*(state: GameState, houseId: HouseId,"
-    },
-    {
       "module": "protostrator_collector",
       "sig": "proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): DiagnosticMetrics"
+    },
+    {
+      "module": "csv_writer",
+      "sig": "proc writeCSVHeader*(file: File)"
+    },
+    {
+      "module": "csv_writer",
+      "sig": "proc writeCSVRow*(file: File, metrics: DiagnosticMetrics)"
+    },
+    {
+      "module": "csv_writer",
+      "sig": "proc writeDiagnosticsCSV*(filename: string, metrics: seq[DiagnosticMetrics])"
+    },
+    {
+      "module": "orchestrator",
+      "sig": "proc collectDiagnostics*(state: GameState, houseId: HouseId,"
     },
     {
       "module": "types",
@@ -4469,78 +4805,6 @@
       "sig": "proc generateBuildOrdersWithBudget*(controller: AIController,"
     },
     {
-      "module": "controller",
-      "sig": "proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality"
-    },
-    {
-      "module": "controller",
-      "sig": "proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemId"
-    },
-    {
-      "module": "controller",
-      "sig": "proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId"
-    },
-    {
-      "module": "domestikos",
-      "sig": "proc updateStandingOrdersWithDomestikosChanges*("
-    },
-    {
-      "module": "domestikos",
-      "sig": "proc generateDomestikosOrders*("
-    },
-    {
-      "module": "orders",
-      "sig": "proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): AIOrderSubmission"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createAutoRepairOrder*(fleet: Fleet, homeworld: SystemId,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createAutoEvadeOrder*(fleet: Fleet, fallbackSystem: SystemId,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createDefendSystemOrder*(fleet: Fleet, targetSystem: SystemId,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createAutoColonizeOrder*(fleet: Fleet, maxRange: int,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc getActiveDefenseOrders*("
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc getUndefendedSystemsWithOrders*("
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc assignStandingOrders*(controller: var AIController,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc findNearestShipyard*(filtered: FilteredGameState, fromSystem: SystemId): Option[SystemId]"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc findNearestUnclaimedSystem*(filtered: FilteredGameState,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,"
-    },
-    {
       "module": "tactical",
       "sig": "proc getOwnedColonies*(filtered: FilteredGameState, houseId: HouseId): seq[Colony]"
     },
@@ -4621,22 +4885,6 @@
       "sig": "proc identifyVulnerableTargets*(controller: var AIController, filtered: FilteredGameState): seq[tuple[systemId: SystemId, owner: HouseId, relativeStrength: float]]"
     },
     {
-      "module": "config",
-      "sig": "proc validateRBAConfig*(config: RBAConfig)"
-    },
-    {
-      "module": "config",
-      "sig": "proc loadRBAConfig*(configPath: string"
-    },
-    {
-      "module": "config",
-      "sig": "proc reloadRBAConfig*()"
-    },
-    {
-      "module": "config",
-      "sig": "proc reloadRBAConfigFromPath*(configPath: string)"
-    },
-    {
       "module": "intelligence",
       "sig": "proc identifyEnemyHomeworlds*(filtered: FilteredGameState): seq[SystemId]"
     },
@@ -4683,6 +4931,46 @@
     {
       "module": "intelligence",
       "sig": "proc countSharedBorders*(filtered: FilteredGameState, intelSnapshot: IntelligenceSnapshot, ownHouse: HouseId, targetHouse: HouseId): int"
+    },
+    {
+      "module": "config",
+      "sig": "proc validateRBAConfig*(config: RBAConfig)"
+    },
+    {
+      "module": "config",
+      "sig": "proc loadRBAConfig*(configPath: string"
+    },
+    {
+      "module": "config",
+      "sig": "proc reloadRBAConfig*()"
+    },
+    {
+      "module": "config",
+      "sig": "proc reloadRBAConfigFromPath*(configPath: string)"
+    },
+    {
+      "module": "controller",
+      "sig": "proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality"
+    },
+    {
+      "module": "controller",
+      "sig": "proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemId"
+    },
+    {
+      "module": "controller",
+      "sig": "proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId"
+    },
+    {
+      "module": "controller_types",
+      "sig": "proc newPlanTracker*(): PlanTracker"
+    },
+    {
+      "module": "domestikos",
+      "sig": "proc updateStandingOrdersWithDomestikosChanges*("
+    },
+    {
+      "module": "domestikos",
+      "sig": "proc generateDomestikosOrders*("
     },
     {
       "module": "logistics",
@@ -4738,6 +5026,10 @@
     },
     {
       "module": "logistics",
+      "sig": "proc identifyDrydockNeeds*(controller: AIController, inventory: AssetInventory,"
+    },
+    {
+      "module": "logistics",
       "sig": "proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameState,"
     },
     {
@@ -4751,6 +5043,74 @@
     {
       "module": "logistics",
       "sig": "proc convertSquadronToZeroTurnCommands*("
+    },
+    {
+      "module": "orders",
+      "sig": "proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand, events: seq[GameEvent]): AIOrderSubmission"
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc reportGOAPProgress*("
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc checkGOAPReplanningNeeded*("
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc generateFeedback*("
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc findBestDrydockForRepair*(filtered: FilteredGameState,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createAutoRepairOrder*(fleet: Fleet, filtered: FilteredGameState,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createAutoEvadeOrder*(fleet: Fleet, fallbackSystem: SystemId,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createDefendSystemOrder*(fleet: Fleet, targetSystem: SystemId,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createAutoColonizeOrder*(fleet: Fleet, maxRange: int,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc getActiveDefenseOrders*("
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc getUndefendedSystemsWithOrders*("
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc assignStandingOrders*(controller: var AIController,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc findBestDrydockForRepair*(filtered: FilteredGameState, fleetLocation: SystemId): Option[SystemId]"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc findNearestUnclaimedSystem*(filtered: FilteredGameState,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,"
     },
     {
       "module": "assessment",
@@ -4826,10 +5186,6 @@
     },
     {
       "module": "snapshot",
-      "sig": "proc simulateAction*(state: WorldStateSnapshot, action: Action): WorldStateSnapshot"
-    },
-    {
-      "module": "snapshot",
       "sig": "proc snapshotDelta*(before, after: WorldStateSnapshot): string"
     },
     {
@@ -4874,10 +5230,6 @@
     },
     {
       "module": "plan_tracking",
-      "sig": "proc newPlanTracker*(): PlanTracker"
-    },
-    {
-      "module": "plan_tracking",
       "sig": "proc addPlan*(tracker: var PlanTracker, plan: GOAPlan)"
     },
     {
@@ -4886,7 +5238,15 @@
     },
     {
       "module": "plan_tracking",
+      "sig": "proc markActionComplete*(tracker: var PlanTracker, planIndex: int, actionIndex: int)"
+    },
+    {
+      "module": "plan_tracking",
       "sig": "proc failPlan*(tracker: var PlanTracker, planIndex: int)"
+    },
+    {
+      "module": "plan_tracking",
+      "sig": "proc markActionFailed*("
     },
     {
       "module": "plan_tracking",
@@ -4918,11 +5278,23 @@
     },
     {
       "module": "plan_tracking",
+      "sig": "proc getPlanProgress*(plan: TrackedPlan): float"
+    },
+    {
+      "module": "plan_tracking",
+      "sig": "proc getPlanDescription*(plan: GOAPlan): string"
+    },
+    {
+      "module": "plan_tracking",
       "sig": "proc advanceTurn*(tracker: var PlanTracker, newTurn: int, state: WorldStateSnapshot)"
     },
     {
       "module": "replanning",
-      "sig": "proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot): (bool, ReplanReason)"
+      "sig": "proc toReplanReason*(reason: UnfulfillmentReason): ReplanReason"
+    },
+    {
+      "module": "replanning",
+      "sig": "proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPConfig): (bool, ReplanReason)"
     },
     {
       "module": "replanning",
@@ -5253,20 +5625,28 @@
       "sig": "proc allocateBudgetMultiAdvisor*("
     },
     {
-      "module": "feedback",
-      "sig": "proc getCheaperAlternatives*("
+      "module": "phase1_5_goap",
+      "sig": "proc defaultGOAPConfig*(): GOAPConfig"
     },
     {
-      "module": "feedback",
-      "sig": "proc generateSubstitutionSuggestion*("
+      "module": "phase1_5_goap",
+      "sig": "proc extractStrategicGoals*("
     },
     {
-      "module": "feedback",
-      "sig": "proc generateRequirementFeedback*("
+      "module": "phase1_5_goap",
+      "sig": "proc generateStrategicPlans*("
     },
     {
-      "module": "feedback",
-      "sig": "proc generateDetailedFeedback*("
+      "module": "phase1_5_goap",
+      "sig": "proc estimateBudgetRequirements*("
+    },
+    {
+      "module": "phase1_5_goap",
+      "sig": "proc executePhase15_GOAP*("
+    },
+    {
+      "module": "phase2_mediation",
+      "sig": "proc mediateAndAllocateBudget*("
     },
     {
       "module": "splitting",
@@ -5283,6 +5663,22 @@
     {
       "module": "splitting",
       "sig": "proc getFillerBudgetRemaining*(split: BudgetSplit, spent: int): int"
+    },
+    {
+      "module": "feedback",
+      "sig": "proc getCheaperAlternatives*("
+    },
+    {
+      "module": "feedback",
+      "sig": "proc generateSubstitutionSuggestion*("
+    },
+    {
+      "module": "feedback",
+      "sig": "proc generateRequirementFeedback*("
+    },
+    {
+      "module": "feedback",
+      "sig": "proc generateDetailedFeedback*("
     },
     {
       "module": "colony_assessment",
@@ -5389,50 +5785,6 @@
       "sig": "proc generateIntelligenceSnapshot*("
     },
     {
-      "module": "phase1_5_goap",
-      "sig": "proc defaultGOAPConfig*(): GOAPConfig"
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc extractStrategicGoals*("
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc generateStrategicPlans*("
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc estimateBudgetRequirements*("
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc convertBudgetEstimatesToStrings*("
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc annotatePlansWithBudget*("
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc executePhase15_GOAP*("
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc mergeGOAPEstimatesIntoDomestikosRequirements*("
-    },
-    {
-      "module": "phase1_5_goap",
-      "sig": "proc integrateGOAPPlansIntoController*("
-    },
-    {
-      "module": "phase1_requirements",
-      "sig": "proc generateAllAdvisorRequirements*("
-    },
-    {
-      "module": "phase2_mediation",
-      "sig": "proc mediateAndAllocateBudget*("
-    },
-    {
       "module": "phase3_execution",
       "sig": "proc executeResearchAllocation*("
     },
@@ -5451,22 +5803,6 @@
     {
       "module": "phase3_execution",
       "sig": "proc executeDiplomaticActions*("
-    },
-    {
-      "module": "phase4_feedback",
-      "sig": "proc hasUnfulfilledCriticalOrHigh*(controller: AIController): bool"
-    },
-    {
-      "module": "phase4_feedback",
-      "sig": "proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int, cstLevel: int)"
-    },
-    {
-      "module": "phase4_feedback",
-      "sig": "proc getUnfulfilledSummary*(controller: AIController): string"
-    },
-    {
-      "module": "phase4_feedback",
-      "sig": "proc checkGOAPReplanningNeeded*(controller: AIController): bool"
     },
     {
       "module": "phase5_strategic",
@@ -5503,6 +5839,62 @@
     {
       "module": "utils",
       "sig": "proc calculateTotalCost*(buildOrders: seq[BuildOrder]): int"
+    },
+    {
+      "module": "phase1_5_goap",
+      "sig": "proc extractStrategicGoals*("
+    },
+    {
+      "module": "phase1_5_goap",
+      "sig": "proc generateStrategicPlans*("
+    },
+    {
+      "module": "phase1_5_goap",
+      "sig": "proc estimateBudgetRequirements*("
+    },
+    {
+      "module": "phase1_5_goap",
+      "sig": "proc convertBudgetEstimatesToStrings*("
+    },
+    {
+      "module": "phase1_5_goap",
+      "sig": "proc executePhase15_GOAP*("
+    },
+    {
+      "module": "phase1_5_goap",
+      "sig": "proc integrateGOAPPlansIntoController*("
+    },
+    {
+      "module": "phase1_requirements",
+      "sig": "proc generateAllAdvisorRequirements*("
+    },
+    {
+      "module": "phase2_mediation",
+      "sig": "proc mediateAndAllocateBudget*("
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc hasUnfulfilledCriticalOrHigh*(controller: AIController): bool"
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int, cstLevel: int)"
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc getUnfulfilledSummary*(controller: AIController): string"
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc checkGOAPReplanningNeeded*("
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc reportGOAPProgress*("
+    },
+    {
+      "module": "phase4_feedback",
+      "sig": "proc checkGOAPReplanningNeeded*(controller: AIController): bool"
     },
     {
       "module": "allocation",
@@ -5549,6 +5941,14 @@
       "sig": "proc generateIUInvestmentRecommendations*("
     },
     {
+      "module": "economic_requirements",
+      "sig": "proc generateEconomicRequirements*("
+    },
+    {
+      "module": "economic_requirements",
+      "sig": "proc reprioritizeEconomicRequirements*("
+    },
+    {
       "module": "operations",
       "sig": "proc selectEspionageTarget*(controller: AIController, filtered: FilteredGameState, rng: var Rand): HouseId"
     },
@@ -5563,14 +5963,6 @@
     {
       "module": "operations",
       "sig": "proc generateEspionageAction*(controller: AIController, filtered: FilteredGameState,"
-    },
-    {
-      "module": "requirements",
-      "sig": "proc generateEspionageRequirements*("
-    },
-    {
-      "module": "requirements",
-      "sig": "proc reprioritizeEspionageRequirements*("
     },
     {
       "module": "threat_assessment",
@@ -5595,6 +5987,18 @@
     {
       "module": "intelligence_distribution",
       "sig": "proc generateIntelligenceReport*("
+    },
+    {
+      "module": "execution",
+      "sig": "proc executeEspionageAction*("
+    },
+    {
+      "module": "requirements",
+      "sig": "proc generateEspionageRequirements*("
+    },
+    {
+      "module": "requirements",
+      "sig": "proc reprioritizeEspionageRequirements*("
     },
     {
       "module": "colony_analyzer",
@@ -5655,10 +6059,6 @@
     {
       "module": "system_analyzer",
       "sig": "proc detectPatrolRoutes*("
-    },
-    {
-      "module": "exploration_ops",
-      "sig": "proc generateExplorationOrders*("
     },
     {
       "module": "fleet_analysis",
@@ -5773,6 +6173,14 @@
       "sig": "proc reprioritizeRequirements*("
     },
     {
+      "module": "exploration_ops",
+      "sig": "proc generateExplorationOrders*("
+    },
+    {
+      "module": "exploration_ops",
+      "sig": "proc generateReconnaissanceOrders*("
+    },
+    {
       "module": "offensive_ops",
       "sig": "proc generateMergeOrders*("
     },
@@ -5825,18 +6233,6 @@
       "sig": "proc biasFillerTowardsDefenders*("
     },
     {
-      "module": "mediation",
-      "sig": "proc calculateUrgencyScore*("
-    },
-    {
-      "module": "mediation",
-      "sig": "proc convertToAdvisorRequirements*("
-    },
-    {
-      "module": "mediation",
-      "sig": "proc mediateRequirements*(domestikosReqs: BuildRequirements, logotheteReqs: ResearchRequirements, drungariusReqs: EspionageRequirements, eparchReqs: EconomicRequirements, protostratorReqs: DiplomaticRequirements, personality: AIPersonality, currentAct: ai_types.GameAct, availableBudget: int, houseId: HouseId, isAtWar: bool = false, goapBudgetEstimates: Option[Table[DomainType, int]] = none(Table[DomainType, int])): MediatedAllocation"
-    },
-    {
       "module": "personality",
       "sig": "proc calculateAdvisorWeights*("
     },
@@ -5855,6 +6251,22 @@
     {
       "module": "execution",
       "sig": "proc executeAllImperialDecisions*("
+    },
+    {
+      "module": "mediation",
+      "sig": "proc calculateUrgencyScore*("
+    },
+    {
+      "module": "mediation",
+      "sig": "proc convertToAdvisorRequirements*("
+    },
+    {
+      "module": "mediation",
+      "sig": "proc getDomainType*(req: AdvisorRequirement): Option[DomainType]"
+    },
+    {
+      "module": "mediation",
+      "sig": "proc mediateRequirements*("
     },
     {
       "module": "types",
@@ -6033,15 +6445,7 @@
     {
       "name": "FleetOrder",
       "module": "order_types",
-      "kind": "object",
-      "fields": [
-        {"name": "fleetId", "type": "FleetId"},
-        {"name": "orderType", "type": "FleetOrderType"},
-        {"name": "targetSystem", "type": "Option[SystemId]"},
-        {"name": "targetFleet", "type": "Option[FleetId]"},
-        {"name": "priority", "type": "int"},
-        {"name": "roe", "type": "Option[int]", "description": "Mission-specific retreat threshold, overrides standing order"}
-      ]
+      "kind": "object"
     },
     {
       "name": "StandingOrderType",
@@ -7004,58 +7408,6 @@
       "kind": "object"
     },
     {
-      "name": "GameEventType",
-      "module": "types",
-      "kind": "enum",
-      "description": "Categories of game events; discriminator for GameEvent",
-      "values": [
-        "General", "OrderIssued", "OrderCompleted", "OrderRejected", "OrderFailed", "OrderAborted",
-        "CombatResult", "Espionage", "Diplomacy", "Research", "Economy", "Colony", "Fleet",
-        "Intelligence", "Prestige", "ColonyEstablished", "SystemCaptured", "ColonyCaptured",
-        "TerraformComplete", "Battle", "BattleOccurred", "Bombardment", "FleetDestroyed",
-        "InvasionRepelled", "ConstructionStarted", "ShipCommissioned", "BuildingCompleted",
-        "UnitRecruited", "UnitDisbanded", "TechAdvance", "HouseEliminated", "PopulationTransfer",
-        "IntelGathered", "PrestigeGained", "PrestigeLost", "WarDeclared", "PeaceSigned",
-        "ResourceWarning", "ThreatDetected", "AutomationCompleted", "SpyMissionSucceeded",
-        "SabotageConducted", "TechTheftExecuted", "AssassinationAttempted",
-        "EconomicManipulationExecuted", "CyberAttackConducted", "PsyopsCampaignLaunched",
-        "IntelligenceTheftExecuted", "DisinformationPlanted", "CounterIntelSweepExecuted",
-        "SpyMissionDetected", "ScoutDetected", "ScoutDestroyed"
-      ]
-    },
-    {
-      "name": "GameEvent",
-      "module": "types",
-      "kind": "object",
-      "description": "Base type for all game events (sum type using eventType as discriminator)",
-      "fields": [
-        {"name": "eventType", "type": "GameEventType", "description": "Discriminator for the specific event data"},
-        {"name": "turn", "type": "int", "description": "Turn number when the event occurred"},
-        {"name": "houseId", "type": "Option[HouseId]", "description": "House that triggered or is primarily affected"},
-        {"name": "systemId", "type": "Option[SystemId]", "description": "System primarily affected"},
-        {"name": "description", "type": "string", "description": "Human-readable summary for logs/UI"}
-      ],
-      "case_fields": [
-        {"case_value": ["General", "Battle", "BattleOccurred", "Bombardment", "ResourceWarning", "ThreatDetected", "AutomationCompleted"], "fields": [{"name": "message", "type": "string", "description": "Generic message or simple description"}]},
-        {"case_value": ["OrderIssued", "OrderCompleted", "OrderRejected", "OrderFailed", "OrderAborted"], "fields": [{"name": "fleetId", "type": "Option[FleetId]", "description": "Fleet associated with the order"}, {"name": "orderType", "type": "Option[string]", "description": "String representation of the order type"}, {"name": "reason", "type": "Option[string]", "description": "Why order failed/rejected/aborted"}, {"name": "details", "type": "Option[string]", "description": "Extra details for completion"}]},
-        {"case_value": ["CombatResult", "SystemCaptured", "ColonyCaptured", "InvasionRepelled"], "fields": [{"name": "attackingHouseId", "type": "Option[HouseId]"}, {"name": "defendingHouseId", "type": "Option[HouseId]"}, {"name": "outcome", "type": "Option[string]", "description": "e.g., 'Victory', 'Defeat'"}, {"name": "newOwner", "type": "Option[HouseId]", "description": "If system ownership changed"}, {"name": "totalAttackStrength", "type": "Option[int]"}, {"name": "totalDefenseStrength", "type": "Option[int]"}, {"name": "attackerLosses", "type": "Option[int]"}, {"name": "defenderLosses", "type": "Option[int]"}]},
-        {"case_value": ["Espionage", "SpyMissionSucceeded", "SabotageConducted", "TechTheftExecuted", "AssassinationAttempted", "EconomicManipulationExecuted", "CyberAttackConducted", "PsyopsCampaignLaunched", "IntelligenceTheftExecuted", "DisinformationPlanted", "CounterIntelSweepExecuted"], "fields": [{"name": "targetHouseId", "type": "HouseId"}, {"name": "targetSystemId", "type": "Option[SystemId]"}, {"name": "operationType", "type": "Option[esp_types.EspionageAction]", "description": "Specific espionage action type"}, {"name": "success", "type": "Option[bool]", "description": "Whether the operation succeeded"}, {"name": "detected", "type": "Option[bool]", "description": "Whether the operation was detected"}, {"name": "sourceHouseId", "type": "Option[HouseId]", "description": "House that initiated the espionage (redundant with houseId, but kept for clarity)"}]},
-        {"case_value": ["Diplomacy", "WarDeclared", "PeaceSigned"], "fields": [{"name": "sourceHouseId", "type": "Option[HouseId]"}, {"name": "targetHouseId", "type": "HouseId"}, {"name": "action", "type": "DiplomaticActionType"}, {"name": "proposalType", "type": "Option[DiplomaticProposalType]"}, {"name": "success", "type": "Option[bool]"}, {"name": "oldState", "type": "Option[DiplomaticState]"}, {"name": "newState", "type": "Option[DiplomaticState]"}]},
-        {"case_value": ["Research", "TechAdvance"], "fields": [{"name": "techField", "type": "TechField"}, {"name": "oldLevel", "type": "Option[int]"}, {"name": "newLevel", "type": "Option[int]"}, {"name": "breakthrough", "type": "Option[string]"}]},
-        {"case_value": ["Economy", "ConstructionStarted", "PopulationTransfer", "TerraformComplete"], "fields": [{"name": "category", "type": "Option[string]"}, {"name": "amount", "type": "Option[int]"}, {"name": "details", "type": "Option[string]"}]},
-        {"case_value": ["Colony", "ColonyEstablished"], "fields": [{"name": "colonyEventType", "type": "Option[string]"}, {"name": "newOwner", "type": "Option[HouseId]"}, {"name": "oldOwner", "type": "Option[HouseId]"}, {"name": "details", "type": "Option[string]"}]},
-        {"case_value": ["Fleet", "FleetDestroyed"], "fields": [{"name": "fleetEventType", "type": "Option[string]"}, {"name": "fleetId", "type": "Option[FleetId]"}, {"name": "shipClass", "type": "Option[ShipClass]"}, {"name": "details", "type": "Option[string]"}]},
-        {"case_value": ["Intelligence", "IntelGathered", "SpyMissionDetected", "ScoutDetected", "ScoutDestroyed"], "fields": [{"name": "sourceHouseId", "type": "Option[HouseId]"}, {"name": "targetHouseId", "type": "Option[HouseId]"}, {"name": "targetSystemId", "type": "Option[SystemId]"}, {"name": "intelType", "type": "Option[string]"}, {"name": "details", "type": "Option[string]"}]},
-        {"case_value": ["Prestige", "PrestigeGained", "PrestigeLost"], "fields": [{"name": "sourceHouseId", "type": "Option[HouseId]"}, {"name": "changeAmount", "type": "Option[int]"}, {"name": "details", "type": "Option[string]"}]},
-        {"case_value": ["HouseEliminated"], "fields": [{"name": "eliminatedBy", "type": "Option[HouseId]"}]}
-      ]
-    },
-    {
-      "name": "CombatReport",
-      "module": "types",
-      "kind": "object"
-    },
-    {
       "name": "ResolutionOutcome",
       "module": "simultaneous_types",
       "kind": "enum"
@@ -7103,6 +7455,16 @@
     {
       "name": "EspionageConflict",
       "module": "simultaneous_types",
+      "kind": "object"
+    },
+    {
+      "name": "GameEventType",
+      "module": "types",
+      "kind": "enum"
+    },
+    {
+      "name": "CombatReport",
+      "module": "types",
       "kind": "object"
     },
     {
@@ -8131,161 +8493,6 @@
       "kind": "object"
     },
     {
-      "name": "AdvisorType",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "RequirementType",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "ColonyDefenseHistory",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "BuildRequirement",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "BuildRequirements",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "RequirementFulfillmentStatus",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "UnfulfillmentReason",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "RequirementFeedback",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "TreasurerFeedback",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "ResearchRequirement",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "ResearchRequirements",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "ScienceFeedback",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "EspionageRequirementType",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "EspionageRequirement",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "EspionageRequirements",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "DrungariusFeedback",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "EconomicRequirementType",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "EconomicRequirement",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "EconomicRequirements",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "EparchFeedback",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "DiplomaticRequirementType",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "DiplomaticRequirement",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "DiplomaticRequirements",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "ThreatLevel",
-      "module": "controller_types",
-      "kind": "enum"
-    },
-    {
-      "name": "ReconUpdate",
-      "module": "controller_types",
-      "kind": "object"
-    },
-    {
-      "name": "FleetUtilization",
-      "module": "domestikos",
-      "kind": "enum"
-    },
-    {
-      "name": "FleetAnalysis",
-      "module": "domestikos",
-      "kind": "object"
-    },
-    {
-      "name": "DomestikosStrategy",
-      "module": "domestikos",
-      "kind": "enum"
-    },
-    {
-      "name": "AIOrderSubmission",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "FleetRole",
-      "module": "standing_orders_manager",
-      "kind": "enum"
-    },
-    {
-      "name": "DefenseAssignment",
-      "module": "standing_orders_manager",
-      "kind": "object"
-    },
-    {
       "name": "StrategyPersonalityConfig",
       "module": "config",
       "kind": "object"
@@ -8381,6 +8588,11 @@
       "kind": "object"
     },
     {
+      "name": "GOAPConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
       "name": "FeedbackSystemConfig",
       "module": "config",
       "kind": "object"
@@ -8414,6 +8626,171 @@
       "name": "RBAConfig",
       "module": "config",
       "kind": "object"
+    },
+    {
+      "name": "AdvisorType",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "RequirementType",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "ColonyDefenseHistory",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "BuildRequirement",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "BuildRequirements",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "RequirementFulfillmentStatus",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "UnfulfillmentReason",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "RequirementFeedback",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "TreasurerFeedback",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "PlanStatus",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "TrackedPlan",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "PlanTracker",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "ResearchRequirement",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "ResearchRequirements",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "ScienceFeedback",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "EspionageRequirementType",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "EspionageRequirement",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "EspionageRequirements",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "DrungariusFeedback",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "EconomicRequirementType",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "EconomicRequirement",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "EconomicRequirements",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "EparchFeedback",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "DiplomaticRequirementType",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "DiplomaticRequirement",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "DiplomaticRequirements",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "MultiAdvisorAllocation",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "AdvisorRequirement",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "ThreatLevel",
+      "module": "controller_types",
+      "kind": "enum"
+    },
+    {
+      "name": "ReconUpdate",
+      "module": "controller_types",
+      "kind": "object"
+    },
+    {
+      "name": "FleetUtilization",
+      "module": "domestikos",
+      "kind": "enum"
+    },
+    {
+      "name": "FleetAnalysis",
+      "module": "domestikos",
+      "kind": "object"
+    },
+    {
+      "name": "DomestikosStrategy",
+      "module": "domestikos",
+      "kind": "enum"
     },
     {
       "name": "CargoManagementAction",
@@ -8461,6 +8838,21 @@
       "kind": "object"
     },
     {
+      "name": "AIOrderSubmission",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "FleetRole",
+      "module": "standing_orders_manager",
+      "kind": "enum"
+    },
+    {
+      "name": "DefenseAssignment",
+      "module": "standing_orders_manager",
+      "kind": "object"
+    },
+    {
       "name": "ThreatLevel",
       "module": "assessment",
       "kind": "enum"
@@ -8499,21 +8891,6 @@
       "name": "DomainType",
       "module": "conversion",
       "kind": "enum"
-    },
-    {
-      "name": "PlanStatus",
-      "module": "plan_tracking",
-      "kind": "enum"
-    },
-    {
-      "name": "TrackedPlan",
-      "module": "plan_tracking",
-      "kind": "object"
-    },
-    {
-      "name": "PlanTracker",
-      "module": "plan_tracking",
-      "kind": "object"
     },
     {
       "name": "ReplanReason",
@@ -8561,13 +8938,8 @@
       "kind": "object"
     },
     {
-      "name": "GOAPConfig",
-      "module": "types",
-      "kind": "object"
-    },
-    {
-      "name": "MultiAdvisorAllocation",
-      "module": "multi_advisor",
+      "name": "Phase15Result",
+      "module": "phase1_5_goap",
       "kind": "object"
     },
     {
@@ -8786,11 +9158,6 @@
       "kind": "object"
     },
     {
-      "name": "GOAPConfig",
-      "module": "phase1_5_goap",
-      "kind": "object"
-    },
-    {
       "name": "Phase15Result",
       "module": "phase1_5_goap",
       "kind": "object"
@@ -8846,9 +9213,9 @@
       "kind": "object"
     },
     {
-      "name": "AdvisorRequirement",
-      "module": "mediation",
-      "kind": "object"
+      "name": "#   AdvisorType",
+      "module": "personality",
+      "kind": "enum"
     },
     {
       "name": "WeightedRequirement",
@@ -8859,11 +9226,6 @@
       "name": "MediatedAllocation",
       "module": "mediation",
       "kind": "object"
-    },
-    {
-      "name": "#   AdvisorType",
-      "module": "personality",
-      "kind": "enum"
     },
     {
       "name": "GameAct",

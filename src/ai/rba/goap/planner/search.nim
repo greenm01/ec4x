@@ -7,6 +7,7 @@ import ../../../../common/types/units  # For ShipClass
 import node
 import ../core/[types, conditions, heuristics]
 import ../state/[snapshot, effects]
+import ../../config  # For GOAPConfig
 
 # =============================================================================
 # Goal Success Checking
@@ -224,8 +225,9 @@ proc planForGoal*(
   if availableActions.len == 0:
     return none(GOAPlan)
     
-  # Run A* search to find plan, using max_search_nodes from config
-  let maybePlan = planActions(state, goal, availableActions, maxIterations = config.max_search_nodes)
+  # Run A* search to find plan, using planning_depth * 100 as search node limit
+  let maxSearchNodes = config.planning_depth * 100  # e.g., 10 turns * 100 = 1000 nodes
+  let maybePlan = planActions(state, goal, availableActions, maxIterations = maxSearchNodes)
     
   if maybePlan.isSome:
     # Add confidence score to plan
