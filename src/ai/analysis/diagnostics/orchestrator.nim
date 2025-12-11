@@ -387,7 +387,7 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
 
   # Count colonization vs conquest events (regardless of prevMetrics)
   for event in events:
-    if event.houseId == houseId:
+    if event.houseId.isSome and event.houseId.get == houseId:
       case event.eventType
       of res_types.GameEventType.ColonyEstablished:
         result.coloniesGainedViaColonization += 1
@@ -430,3 +430,57 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # ================================================================
 
   result.advisorReasoning = buildReasoningLog(state, houseId, orders)
+
+  # ================================================================
+  # PHASE H: Count events by type (for balance testing)
+  # ================================================================
+
+  for event in events:
+    case event.eventType
+    of res_types.GameEventType.OrderCompleted:
+      result.eventsOrderCompleted += 1
+    of res_types.GameEventType.OrderFailed:
+      result.eventsOrderFailed += 1
+    of res_types.GameEventType.OrderRejected:
+      result.eventsOrderRejected += 1
+    of res_types.GameEventType.Bombardment:
+      result.eventsBombardment += 1
+      result.eventsCombatTotal += 1
+    of res_types.GameEventType.ColonyCaptured:
+      result.eventsColonyCaptured += 1
+      result.eventsCombatTotal += 1
+    of res_types.GameEventType.CombatResult, res_types.GameEventType.Battle,
+       res_types.GameEventType.BattleOccurred,
+       res_types.GameEventType.SystemCaptured,
+       res_types.GameEventType.InvasionRepelled,
+       res_types.GameEventType.FleetDestroyed:
+      result.eventsCombatTotal += 1
+    of res_types.GameEventType.Espionage,
+       res_types.GameEventType.SpyMissionSucceeded,
+       res_types.GameEventType.SabotageConducted,
+       res_types.GameEventType.TechTheftExecuted,
+       res_types.GameEventType.AssassinationAttempted,
+       res_types.GameEventType.EconomicManipulationExecuted,
+       res_types.GameEventType.CyberAttackConducted,
+       res_types.GameEventType.PsyopsCampaignLaunched,
+       res_types.GameEventType.IntelligenceTheftExecuted,
+       res_types.GameEventType.DisinformationPlanted,
+       res_types.GameEventType.CounterIntelSweepExecuted,
+       res_types.GameEventType.SpyMissionDetected:
+      result.eventsEspionageTotal += 1
+    of res_types.GameEventType.Diplomacy,
+       res_types.GameEventType.WarDeclared,
+       res_types.GameEventType.PeaceSigned:
+      result.eventsDiplomaticTotal += 1
+    of res_types.GameEventType.Research,
+       res_types.GameEventType.TechAdvance:
+      result.eventsResearchTotal += 1
+    of res_types.GameEventType.Colony,
+       res_types.GameEventType.ColonyEstablished,
+       res_types.GameEventType.TerraformComplete,
+       res_types.GameEventType.BuildingCompleted,
+       res_types.GameEventType.UnitRecruited,
+       res_types.GameEventType.UnitDisbanded:
+      result.eventsColonyTotal += 1
+    else:
+      discard  # Other event types not tracked

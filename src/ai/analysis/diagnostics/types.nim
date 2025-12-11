@@ -245,6 +245,18 @@ type
     # Advisor Reasoning (NEW - Gap #9 fix)
     advisorReasoning*: string     # Structured log of advisor decision rationales
 
+    # Event Counts (NEW - track event generation for balance testing)
+    eventsOrderCompleted*: int    # OrderCompleted events this turn
+    eventsOrderFailed*: int       # OrderFailed events this turn
+    eventsOrderRejected*: int     # OrderRejected events this turn
+    eventsCombatTotal*: int       # Total combat events (Battle, SystemCaptured, etc.)
+    eventsBombardment*: int       # Bombardment events this turn
+    eventsColonyCaptured*: int    # ColonyCaptured events this turn
+    eventsEspionageTotal*: int    # Total espionage events this turn
+    eventsDiplomaticTotal*: int   # Total diplomatic events this turn
+    eventsResearchTotal*: int     # Research/TechAdvance events this turn
+    eventsColonyTotal*: int       # Colony-related events this turn
+
   DiagnosticSession* = object
     ## Collection of all diagnostics for a game session
     gameId*: string

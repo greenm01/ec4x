@@ -350,6 +350,20 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
     fleet.location = newLocation
     state.fleets[order.fleetId] = fleet
 
+    # Generate OrderCompleted event for fleet movement
+    let moveDetails = if newLocation == targetId:
+      &"arrived at {targetId}"
+    else:
+      &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
+
+    events.add(event_factory.orderCompleted(
+      houseId,
+      order.fleetId,
+      "Move",
+      details = moveDetails,
+      systemId = some(newLocation)
+    ))
+
     # Check if we've arrived at final destination - clear order if so (N+1 behavior)
     if newLocation == targetId and order.fleetId in state.fleetOrders:
       state.fleetOrders.del(order.fleetId)

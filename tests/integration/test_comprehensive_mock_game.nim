@@ -1408,7 +1408,7 @@ proc countEventsByHouse(events: seq[GameEvent],
   ## Count events for specific house
   result = 0
   for event in events:
-    if event.houseId == houseId:
+    if event.houseId.isSome and event.houseId.get == houseId:
       result.inc
 
 proc getEventsByType(events: seq[GameEvent],
@@ -1424,7 +1424,7 @@ proc getEventsByHouse(events: seq[GameEvent],
   ## Get all events for specific house
   result = @[]
   for event in events:
-    if event.houseId == houseId:
+    if event.houseId.isSome and event.houseId.get == houseId:
       result.add(event)
 
 proc countEventsByTypeAndHouse(events: seq[GameEvent], eventType: GameEventType,
@@ -1432,7 +1432,7 @@ proc countEventsByTypeAndHouse(events: seq[GameEvent], eventType: GameEventType,
   ## Count events of specific type for specific house
   result = 0
   for event in events:
-    if event.eventType == eventType and event.houseId == houseId:
+    if event.eventType == eventType and event.houseId.isSome and event.houseId.get == houseId:
       result.inc
 
 # =============================================================================

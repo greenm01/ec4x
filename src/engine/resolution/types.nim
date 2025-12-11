@@ -26,109 +26,125 @@ type
     Fleet,                # Fleet created, destroyed, or major status change
     Intelligence,         # Intel gathered or updated
     Prestige,             # Prestige gained or lost
-    # New event types were already merged here based on previous work.
-    # We ensure they are all present for the case statement.
-    ColonyEstablished, SystemCaptured, ColonyCaptured, TerraformComplete,
-    Battle, BattleOccurred, Bombardment, FleetDestroyed, InvasionRepelled,
-    ConstructionStarted, ShipCommissioned, BuildingCompleted, UnitRecruited,
-    UnitDisbanded,
-    TechAdvance, HouseEliminated, PopulationTransfer, IntelGathered,
-    PrestigeGained, PrestigeLost,
-    WarDeclared, PeaceSigned,
-    ResourceWarning, ThreatDetected, AutomationCompleted,
-    SpyMissionSucceeded, SabotageConducted, TechTheftExecuted, AssassinationAttempted,
-    EconomicManipulationExecuted, CyberAttackConducted, PsyopsCampaignLaunched,
-    IntelligenceTheftExecuted, DisinformationPlanted, CounterIntelSweepExecuted,
-    SpyMissionDetected, ScoutDetected, ScoutDestroyed
+    # Specific event types
+    ColonyEstablished,    # Colony founded
+    SystemCaptured,       # System ownership changed via combat
+    ColonyCaptured,       # Colony captured via invasion
+    TerraformComplete,    # Terraforming project completed
+    Battle,               # Generic battle event
+    BattleOccurred,       # Battle observed by third party
+    Bombardment,          # Planetary bombardment
+    FleetDestroyed,       # Fleet eliminated in combat
+    InvasionRepelled,     # Successful defense against invasion
+    ConstructionStarted,  # Construction project initiated
+    ShipCommissioned,     # New ship entered service
+    BuildingCompleted,    # Building construction finished
+    UnitRecruited,        # Ground unit recruited
+    UnitDisbanded,        # Unit disbanded
+    TechAdvance,          # Technology level increased
+    HouseEliminated,      # House eliminated from game
+    PopulationTransfer,   # Population moved between systems
+    IntelGathered,        # Intelligence report generated
+    PrestigeGained,       # Prestige increased
+    PrestigeLost,         # Prestige decreased
+    WarDeclared,          # War declaration
+    PeaceSigned,          # Peace treaty signed
+    ResourceWarning,      # Resource shortage warning
+    ThreatDetected,       # Threat identified
+    AutomationCompleted,  # Automated task completed
+    SpyMissionSucceeded,  # Espionage operation succeeded
+    SabotageConducted,    # Sabotage operation executed
+    TechTheftExecuted,    # Technology stolen
+    AssassinationAttempted, # Assassination attempt
+    EconomicManipulationExecuted, # Economic warfare executed
+    CyberAttackConducted, # Cyber attack executed
+    PsyopsCampaignLaunched, # Psychological operations launched
+    IntelligenceTheftExecuted, # Intelligence stolen
+    DisinformationPlanted, # Disinformation planted
+    CounterIntelSweepExecuted, # Counter-intelligence sweep
+    SpyMissionDetected,   # Enemy espionage detected
+    ScoutDetected,        # Scout detected in system
+    ScoutDestroyed        # Scout eliminated
     
   GameEvent* = ref object of RootObj
     ## Base type for all game events.
     ## Uses a 'case' statement on `eventType` to hold specific event data.
-    eventType*: GameEventType
     turn*: int # Added turn field
     houseId*: Option[HouseId] # House that triggered or is primarily affected
     systemId*: Option[SystemId] # System primarily affected
     description*: string # Human-readable summary for logs/UI
+    # Common optional fields used by multiple event types
+    sourceHouseId*: Option[HouseId] # Source house for multi-house events
+    targetHouseId*: Option[HouseId] # Target house for multi-house events
+    targetSystemId*: Option[SystemId] # Target system for operations
+    success*: Option[bool] # Whether operation/action succeeded
+    detected*: Option[bool] # Whether operation was detected
+    details*: Option[string] # Additional details for various events
+    fleetId*: Option[FleetId] # Fleet involved in event
+    newOwner*: Option[HouseId] # New owner after ownership change
+    oldOwner*: Option[HouseId] # Previous owner before ownership change
 
-    case eventType
-    of General, Battle, BattleOccurred, Bombardment, ResourceWarning, ThreatDetected, AutomationCompleted:
+    case eventType*: GameEventType
+    of General, Battle, BattleOccurred, Bombardment, ResourceWarning,
+       ThreatDetected, AutomationCompleted:
       message*: string # Generic message or simple description
 
     of OrderIssued, OrderCompleted, OrderRejected, OrderFailed, OrderAborted:
-      ## Events for fleet and other orders.
-      fleetId*: Option[FleetId]
+      ## Events for fleet and other orders (fleetId/details in common fields)
       orderType*: Option[string] # String representation of the order type (e.g., "MoveFleet", "BuildFleet")
       reason*: Option[string] # Why it failed/rejected/aborted
-      details*: Option[string] # Extra details for completion (e.g. for OrderCompleted)
 
     of CombatResult, SystemCaptured, ColonyCaptured, InvasionRepelled:
-      ## Events for combat outcomes
+      ## Events for combat outcomes (newOwner/oldOwner in common fields)
       attackingHouseId*: Option[HouseId]
       defendingHouseId*: Option[HouseId]
       outcome*: Option[string] # "Victory", "Defeat", "Draw", "MutualAnnihilation" for CombatResult
-      newOwner*: Option[HouseId] # If system ownership changed (for SystemCaptured/ColonyCaptured)
       totalAttackStrength*: Option[int]
       totalDefenseStrength*: Option[int]
       attackerLosses*: Option[int]
       defenderLosses*: Option[int]
-      # For SystemCaptured/ColonyCaptured/InvasionRepelled, oldOwner can be derived or added if needed
 
     of Espionage, SpyMissionSucceeded, SabotageConducted, TechTheftExecuted, AssassinationAttempted,
        EconomicManipulationExecuted, CyberAttackConducted, PsyopsCampaignLaunched,
-       IntelligenceTheftExecuted, DisinformationPlanted, CounterIntelSweepExecuted:
-      ## Events for espionage operations (sourceHouseId is now event.houseId)
-      targetHouseId*: HouseId
-      targetSystemId*: Option[SystemId] # For system-specific ops (e.g., SabotageHigh, CyberAttack)
-      operationType*: esp_types.EspionageAction # e.g., SabotageHigh, TechTheft
-      success*: Option[bool] # Whether the operation succeeded
-      detected*: Option[bool] # Whether the operation was detected
-      # Specific effects details could go here, e.g., damageAmount: Option[int]
+       IntelligenceTheftExecuted, DisinformationPlanted, CounterIntelSweepExecuted, SpyMissionDetected:
+      ## Events for espionage operations (success/detected in common fields)
+      operationType*: Option[esp_types.EspionageAction] # e.g., SabotageHigh, TechTheft
 
     of Diplomacy, WarDeclared, PeaceSigned:
-      ## Events for diplomatic actions
-      sourceHouseId*: Option[HouseId] # House that initiated the diplomatic action
-      targetHouseId*: HouseId
-      action*: DiplomaticActionType # e.g., ProposeAlliance, DeclareWar
-      proposalType*: Option[DiplomaticProposalType] # e.g., NonAggressionPact, Alliance
-      success*: Option[bool]
+      ## Events for diplomatic actions (success in common fields)
+      action*: Option[string] # e.g., "ProposeAlliance", "DeclareWar"
+      proposalType*: Option[string] # e.g., "NonAggressionPact", "Alliance"
       oldState*: Option[DiplomaticState]
       newState*: Option[DiplomaticState]
 
     of Research, TechAdvance:
-      houseId*: HouseId # Redundant with event.houseId but kept for clarity
+      ## Research events (houseId in common fields)
       techField*: TechField
       oldLevel*: Option[int]
       newLevel*: Option[int]
       breakthrough*: Option[string] # "Minor", "Major", "Revolutionary"
 
-    of Economy, ConstructionStarted, PopulationTransfer, TerraformComplete:
+    of Economy, ConstructionStarted, PopulationTransfer:
+      ## Economic events (details in common fields)
       category*: Option[string] # "Income", "Maintenance", "Production" for generic Economy
       amount*: Option[int] # PP, IU, etc.
-      details*: Option[string] # Specifics of the economic event
 
-    of Colony, ColonyEstablished:
-      colonyEventType*: Option[string] # "Established", "Lost", "Damage" for generic Colony
-      newOwner*: Option[HouseId]
-      oldOwner*: Option[HouseId]
-      details*: Option[string] # Additional details for colony events
+    of Colony, ColonyEstablished, BuildingCompleted, UnitRecruited, UnitDisbanded, TerraformComplete:
+      ## Colony events (newOwner/oldOwner/details in common fields)
+      colonyEventType*: Option[string] # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited", "UnitDisbanded", "TerraformComplete"
 
-    of Fleet, FleetDestroyed:
+    of Fleet, FleetDestroyed, ShipCommissioned, ScoutDestroyed:
+      ## Fleet events (fleetId/details in common fields)
       fleetEventType*: Option[string] # "Created", "Destroyed", "Crippled", "Repaired" for generic Fleet
-      fleetId*: Option[FleetId]
-      shipClass*: Option[ShipClass] # For fleet creation/destruction/crippling
-      details*: Option[string]
+      shipClass*: Option[ShipClass] # For fleet creation/destruction/crippling/commissioning/scout destruction
 
-    of Intelligence, IntelGathered, SpyMissionDetected, ScoutDetected, ScoutDestroyed:
-      sourceHouseId*: Option[HouseId] # House that gathered/detected
-      targetHouseId*: Option[HouseId] # House that was targeted/detected
-      targetSystemId*: Option[SystemId] # System where intel was gathered/detection occurred
+    of Intelligence, IntelGathered, ScoutDetected:
+      ## Intelligence events (details in common fields)
       intelType*: Option[string] # "ScoutReport", "SpyReport", "CombatIntel" for IntelGathered
-      details*: Option[string]
 
     of Prestige, PrestigeGained, PrestigeLost:
-      sourceHouseId*: Option[HouseId] # House that gained/lost prestige
+      ## Prestige events (details in common fields)
       changeAmount*: Option[int]
-      details*: Option[string]
 
     of HouseEliminated:
       eliminatedBy*: Option[HouseId] # House that eliminated them

@@ -26,7 +26,7 @@ proc shouldHouseSeeEvent*(
   ## - Economic events: Private to house
 
   # Own events always visible
-  if event.houseId == houseId:
+  if event.houseId.isSome and event.houseId.get == houseId:
     return true
 
   # Check event type for specific visibility rules
@@ -120,4 +120,17 @@ proc shouldHouseSeeEvent*(
 
   # Legacy intel gathering - private to house
   of res_types.GameEventType.IntelGathered:
+    return false
+
+  # Generic/categorical event types - default to private
+  of res_types.GameEventType.General,
+     res_types.GameEventType.CombatResult,
+     res_types.GameEventType.Espionage,
+     res_types.GameEventType.Diplomacy,
+     res_types.GameEventType.Research,
+     res_types.GameEventType.Economy,
+     res_types.GameEventType.Colony,
+     res_types.GameEventType.Fleet,
+     res_types.GameEventType.Intelligence,
+     res_types.GameEventType.Prestige:
     return false

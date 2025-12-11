@@ -1,5 +1,6 @@
 import std/[options, strformat]
 import ../../../common/types/core
+import ../../../common/types/units # For ShipClass
 import ../../../engine/espionage/types as esp_types # For EspionageAction (for operationType field in event)
 import ../types as event_types # Now refers to src/engine/resolution/types.nim
 
@@ -45,8 +46,8 @@ proc spyMissionSucceeded*(
                   &"system {systemId}",
     systemId: some(systemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
-    operationType: some(esp_types.EspionageAction.GatherIntelligence), # Generic for passive intel
+    targetHouseId: some(target),
+    operationType: none(esp_types.EspionageAction), # Passive intel, no specific operation
     success: some(true),
     detected: some(false)
   )
@@ -64,10 +65,10 @@ proc sabotageConducted*(
 ): event_types.GameEvent =
   ## Create event for sabotage operation (Low or High)
   let opType = case sabotageType
-    of "Low Impact": esp_types.EspionageAction.SabotageLowImpact
-    of "High Impact": esp_types.EspionageAction.SabotageHighImpact
-    else: esp_types.EspionageAction.SabotageLowImpact # Default
-  
+    of "Low Impact": esp_types.EspionageAction.SabotageLow
+    of "High Impact": esp_types.EspionageAction.SabotageHigh
+    else: esp_types.EspionageAction.SabotageLow # Default
+
   event_types.GameEvent(
     eventType: event_types.GameEventType.SabotageConducted, # Specific event type
     turn: 0, # Will be set by event dispatcher
@@ -76,7 +77,7 @@ proc sabotageConducted*(
                   &"system {systemId}: {damage} IU destroyed",
     systemId: some(systemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
+    targetHouseId: some(target),
     targetSystemId: some(systemId),
     operationType: some(opType),
     success: some(true),
@@ -98,8 +99,8 @@ proc techTheftExecuted*(
                   &"stolen",
     systemId: none(SystemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
-    operationType: some(esp_types.EspionageAction.StealTechnology),
+    targetHouseId: some(target),
+    operationType: some(esp_types.EspionageAction.TechTheft),
     success: some(true),
     detected: some(false),
     details: some(&"SRP stolen: {srpStolen}")
@@ -119,7 +120,7 @@ proc assassinationAttempted*(
                   &"SRP disruption",
     systemId: none(SystemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
+    targetHouseId: some(target),
     operationType: some(esp_types.EspionageAction.Assassination),
     success: some(true), # Assume success for the event, actual effect is SRP reduction
     detected: some(false),
@@ -140,7 +141,7 @@ proc economicManipulationExecuted*(
                   &"{ncvReduction} NCV reduction",
     systemId: none(SystemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
+    targetHouseId: some(target),
     operationType: some(esp_types.EspionageAction.EconomicManipulation),
     success: some(true),
     detected: some(false),
@@ -161,7 +162,7 @@ proc cyberAttackConducted*(
                   &"system {targetSystem}",
     systemId: some(targetSystem),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
+    targetHouseId: some(target),
     targetSystemId: some(targetSystem),
     operationType: some(esp_types.EspionageAction.CyberAttack),
     success: some(true),
@@ -182,8 +183,8 @@ proc psyopsCampaignLaunched*(
                   &"tax increase",
     systemId: none(SystemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
-    operationType: some(esp_types.EspionageAction.PropagandaCampaign),
+    targetHouseId: some(target),
+    operationType: some(esp_types.EspionageAction.PsyopsCampaign),
     success: some(true),
     detected: some(false),
     details: some(&"Tax increase: {taxIncrease}%")
@@ -201,7 +202,7 @@ proc intelligenceTheftExecuted*(
     description: &"Intelligence database stolen from {target}",
     systemId: none(SystemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
+    targetHouseId: some(target),
     operationType: some(esp_types.EspionageAction.IntelligenceTheft),
     success: some(true),
     detected: some(false)
@@ -219,7 +220,7 @@ proc disinformationPlanted*(
     description: &"Disinformation planted in {target}'s intelligence network",
     systemId: none(SystemId),
     sourceHouseId: some(attacker),
-    targetHouseId: target,
+    targetHouseId: some(target),
     operationType: some(esp_types.EspionageAction.PlantDisinformation),
     success: some(true),
     detected: some(false)
@@ -241,8 +242,8 @@ proc counterIntelSweepExecuted*(
     description: &"Counter-intelligence sweep executed at system {targetSystem}",
     systemId: some(targetSystem),
     sourceHouseId: some(defender), # The house performing the sweep
-    targetHouseId: defender, # Target is self
-    operationType: some(esp_types.EspionageAction.CounterIntelligenceSweep),
+    targetHouseId: some(defender), # Target is self
+    operationType: some(esp_types.EspionageAction.CounterIntelSweep),
     success: some(true), # Assume sweep itself is successful
     detected: some(false) # Sweep cannot be detected as it's defensive
   )
@@ -259,9 +260,9 @@ proc spyMissionDetected*(
 ): event_types.GameEvent =
   ## Create event for detected espionage mission
   let opType = case missionType
-    of "Sabotage": esp_types.EspionageAction.SabotageLowImpact # Generic for detection
-    of "Tech Theft": esp_types.EspionageAction.StealTechnology
-    else: esp_types.EspionageAction.GatherIntelligence
+    of "Sabotage": esp_types.EspionageAction.SabotageLow # Generic for detection
+    of "Tech Theft": esp_types.EspionageAction.TechTheft
+    else: esp_types.EspionageAction.IntelligenceTheft
 
   event_types.GameEvent(
     eventType: event_types.GameEventType.SpyMissionDetected, # Specific event type
@@ -271,7 +272,7 @@ proc spyMissionDetected*(
                   &"system {targetSystem}",
     systemId: some(targetSystem),
     sourceHouseId: some(attacker), # The attacker's house
-    targetHouseId: target, # The defender's house
+    targetHouseId: some(target), # The defender's house
     targetSystemId: some(targetSystem),
     operationType: some(opType),
     success: some(false), # Mission failed due to detection

@@ -21,13 +21,13 @@ proc orderRejected*(
 ): event_types.GameEvent =
   ## Create event for rejected order (validation failure)
   event_types.GameEvent(
-    kind: event_types.GameEventKind.OrderRejected,
+    eventType: event_types.GameEventType.OrderRejected,
     turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     systemId: systemId,
     description: &"{orderType} order rejected: {reason}",
     fleetId: fleetId,
-    orderType: orderType,
+    orderType: some(orderType),
     reason: some(reason)
   )
 
@@ -40,13 +40,13 @@ proc orderFailed*(
 ): event_types.GameEvent =
   ## Order execution failed (validation failure at execution time)
   event_types.GameEvent(
-    kind: event_types.GameEventKind.OrderFailed,
+    eventType: event_types.GameEventType.OrderFailed,
     turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId} {orderType} failed: {reason}",
     fleetId: some(fleetId),
-    orderType: orderType,
+    orderType: some(orderType),
     reason: some(reason)
   )
 
@@ -59,13 +59,13 @@ proc orderAborted*(
 ): event_types.GameEvent =
   ## Order cancelled/aborted (target lost, conditions changed)
   event_types.GameEvent(
-    kind: event_types.GameEventKind.OrderAborted,
+    eventType: event_types.GameEventType.OrderAborted,
     turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId} {orderType} aborted: {reason}",
     fleetId: some(fleetId),
-    orderType: orderType,
+    orderType: some(orderType),
     reason: some(reason)
   )
 
@@ -77,13 +77,13 @@ proc orderIssued*(
 ): event_types.GameEvent =
   ## Order submitted and added to fleet orders queue
   event_types.GameEvent(
-    kind: event_types.GameEventKind.OrderIssued,
+    eventType: event_types.GameEventType.OrderIssued,
     turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId}: Order issued - {orderType}",
     fleetId: some(fleetId),
-    orderType: orderType
+    orderType: some(orderType)
   )
 
 proc orderCompleted*(
@@ -100,12 +100,12 @@ proc orderCompleted*(
     &"Fleet {fleetId} {orderType} completed"
 
   event_types.GameEvent(
-    kind: event_types.GameEventKind.OrderCompleted,
+    eventType: event_types.GameEventType.OrderCompleted,
     turn: 0, # Will be set by event dispatcher
     houseId: some(houseId),
     systemId: systemId,
     description: desc,
     fleetId: some(fleetId),
-    orderType: orderType,
+    orderType: some(orderType),
     details: some(details)
   )
