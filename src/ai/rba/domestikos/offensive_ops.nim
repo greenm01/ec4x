@@ -315,11 +315,6 @@ proc selectCombatOrderType(
     # Fallback: Bombard if not meeting Blitz/Invade criteria, to soften defenses
     return FleetOrderType.Bombard
 
-  else:
-    # Insufficient Marines or strong defenses → Just bombard
-    # Soften target for future invasion
-    return FleetOrderType.Bombard
-
 proc calculateInvasionPriority(
   opportunity: InvasionOpportunity,
   intelQuality: intel_types.IntelQuality
