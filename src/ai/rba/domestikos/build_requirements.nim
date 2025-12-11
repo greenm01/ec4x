@@ -863,32 +863,73 @@ proc assessStrategicAssets*(
                 &"treasury={filtered.ownHouse.treasury}PP, have {fighterCount} fighters without carrier support)")
 
   # =============================================================================
-  # TRANSPORTS (for invasion & logistics)
+  # MARINES & TRANSPORTS (for invasion & logistics)
   # =============================================================================
-  if cstLevel >= 3:  # Transports available at CST 3
-    var transportCount = 0
-    for fleet in filtered.ownFleets:
-      transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
+  # Strategy: Build marines FIRST (they're the cargo), then transports to carry them
+  # Marines should be built proactively to enable invasion operations
 
-    # Aggressive houses want transports for invasion
-    let wantsTransports = personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions
-    if wantsTransports:
-      let targetTransports = filtered.ownColonies.len div 3  # ~1 transport per 3 colonies
+  # Count existing marines and transports
+  var transportCount = 0
+  var marineCount = 0
 
-      if transportCount < targetTransports:
-        let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
-        let req = BuildRequirement(
-          requirementType: RequirementType.StrategicAsset,
-          priority: RequirementPriority.Low,
-          shipClass: some(ShipClass.TroopTransport),
-          quantity: targetTransports - transportCount,
-          buildObjective: BuildObjective.SpecialUnits,
-          targetSystem: none(SystemId),
-          estimatedCost: transportCost * (targetTransports - transportCount),
-          reason: &"Invasion transports (have {transportCount}/{targetTransports})"
-        )
-        logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x TroopTransport ({req.estimatedCost}PP) - {req.reason}")
-        result.add(req)
+  for fleet in filtered.ownFleets:
+    transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
+  for colony in filtered.ownColonies:
+    marineCount += colony.marines
+
+  # Determine if house wants invasion capability
+  # Lower threshold than transports - marines are useful for defense too
+  let wantsInvasionCapability = personality.aggression > 0.4 or currentAct >= GameAct.Act2_RisingTensions
+
+  if wantsInvasionCapability:
+    # STEP 1: Build marines first (need cargo before transports)
+    let marineCost = getMarineBuildCost()
+
+    # Target marines based on colonies owned (1 MD per colony minimum for invasion readiness)
+    # Plus extra for aggressive personalities
+    let baseMarineTarget = filtered.ownColonies.len
+    let aggressionBonus = if personality.aggression > 0.7: filtered.ownColonies.len else: 0
+    let targetMarines = baseMarineTarget + aggressionBonus
+
+    if marineCount < targetMarines:
+      let neededMarines = targetMarines - marineCount
+      let marineReq = BuildRequirement(
+        requirementType: RequirementType.StrategicAsset,
+        priority: RequirementPriority.Medium,  # Marines before transports
+        itemId: some("Marine"),
+        shipClass: none(ShipClass),
+        quantity: neededMarines,
+        buildObjective: BuildObjective.Military,
+        targetSystem: none(SystemId),
+        estimatedCost: marineCost * neededMarines,
+        reason: &"Marine garrisons for invasion prep (have {marineCount}/{targetMarines})"
+      )
+      logInfo(LogCategory.lcAI, &"Domestikos requests: {marineReq.quantity}x Marine ({marineReq.estimatedCost}PP) - {marineReq.reason}")
+      result.add(marineReq)
+
+    # STEP 2: Build transports once we have marines (only if CST 3+)
+    if cstLevel >= 3:
+      # Only aggressive houses in Act2+ get transports
+      let wantsTransports = personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions
+      if wantsTransports:
+        # Target: 1 transport per 2 marines (each transport carries 1 MD, want reserves)
+        let targetTransports = marineCount div 2
+
+        if transportCount < targetTransports:
+          let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
+          let neededTransports = targetTransports - transportCount
+          let req = BuildRequirement(
+            requirementType: RequirementType.StrategicAsset,
+            priority: RequirementPriority.Low,  # After marines
+            shipClass: some(ShipClass.TroopTransport),
+            quantity: neededTransports,
+            buildObjective: BuildObjective.SpecialUnits,
+            targetSystem: none(SystemId),
+            estimatedCost: transportCost * neededTransports,
+            reason: &"Invasion transports (have {transportCount}/{targetTransports} for {marineCount} marines)"
+          )
+          logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x TroopTransport ({req.estimatedCost}PP) - {req.reason}")
+          result.add(req)
 
   # =============================================================================
   # CAPITAL SHIPS (DNs, BBs, BCs - main battle line)

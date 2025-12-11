@@ -332,18 +332,25 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
   # PROACTIVE PATH: Load marines on ANY empty transport at a colony with marines
   # This ensures transports are always ready for invasion operations
   # Don't wait for explicit operations to be created - keep transports loaded
+  var fleetsWithEmptyTransports = 0
+  var fleetsAtColonies = 0
+  var marineLoadOrdersGenerated = 0
+
   for fleet in filtered.ownFleets:
     # Check if fleet has empty transports
     var hasEmptyTransport = false
     for spaceLift in fleet.spaceLiftShips:
       if spaceLift.shipClass == ShipClass.TroopTransport and spaceLift.isEmpty:
         hasEmptyTransport = true
+        fleetsWithEmptyTransports.inc()
+        logDebug(LogCategory.lcAI, &"{controller.houseId} Fleet {fleet.id} has empty transport at {fleet.location}")
         break
 
     if hasEmptyTransport:
       # Check if fleet is at a colony with marines
       for colony in filtered.ownColonies:
         if colony.systemId == fleet.location and colony.marines > 0:
+          fleetsAtColonies.inc()
           # Generate load order - proactively keep transports loaded
           result.add(CargoManagementOrder(
             houseId: controller.houseId,
@@ -353,10 +360,15 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
             cargoType: some(CargoType.Marines),
             quantity: some(1)  # Load 1 MD per transport
           ))
+          marineLoadOrdersGenerated.inc()
           logInfo(LogCategory.lcAI,
                   &"{controller.houseId} Logistics: Proactively loading " &
                   &"marines onto transport {fleet.id} at {colony.systemId}")
           break  # Move to next fleet after loading
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Proactive marine loading: {fleetsWithEmptyTransports} empty transports, " &
+          &"{fleetsAtColonies} at colonies with marines, {marineLoadOrdersGenerated} orders generated")
 
   # CRITICAL PATH: Load transports for invasion operations
   for operation in controller.operations:
