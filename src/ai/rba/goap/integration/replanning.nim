@@ -221,12 +221,12 @@ proc repairPlan*(
       # For immediate repair, we might try to replan the original goal, hoping tech will be planned.
       # Or, a direct replanning of a 'Research' goal might be injected into the tracker.
       # For now, we'll fall back to replanning the original goal, expecting requirement generation to pick up tech.
-      return planForGoal(state, failedPlan.plan.goal)
+      return planForGoal(config, state, failedPlan.plan.goal) # Pass config
 
     of ReplanReason.BudgetFailure:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to insufficient budget. Trying cheaper alternatives or adjusting cost.")
       # Try to generate alternative plans for the original goal, prioritizing cheaper ones
-      let alternatives = generateAlternativePlans(state, failedPlan.plan.goal, maxAlternatives = 3, planningDepth = config.planningDepth)
+      let alternatives = generateAlternativePlans(state, failedPlan.plan.goal, maxAlternatives = 3, planningDepth = config.planning_depth)
       let bestAlternative = selectBestAlternative(alternatives, state, prioritizeSpeed = true) # Prefer cheaper/faster
       if bestAlternative.isSome:
         logInfo(LogCategory.lcAI, &"GOAP Repair: Found cheaper alternative plan for '{failedPlan.plan.goal.description}'.")
@@ -234,7 +234,7 @@ proc repairPlan*(
       else:
         # If no cheaper alternative, maybe generate a 'GainTreasury' goal or just replan original
         logWarn(LogCategory.lcAI, &"GOAP Repair: No cheaper alternative found. Re-planning original goal.")
-        return planForGoal(state, failedPlan.plan.goal)
+        return planForGoal(config, state, failedPlan.plan.goal) # Pass config
 
     of ReplanReason.CapacityFull:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Action failed due to capacity limits. Proposing new facility build goal.")
@@ -242,15 +242,15 @@ proc repairPlan*(
       # a new GOAP goal "BuildFacility" for Shipyard/Spaceport should be generated.
       # This requires knowing which system was targeted and what facility type (from suggestion/original action).
       # For now, fallback to replanning original goal.
-      return planForGoal(state, failedPlan.plan.goal)
+      return planForGoal(config, state, failedPlan.plan.goal) # Pass config
 
     of ReplanReason.PlanInvalidated:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Plan invalidated by world state. Generating new plan for the same goal.")
-      return planForGoal(state, failedPlan.plan.goal)
-    
+      return planForGoal(config, state, failedPlan.plan.goal) # Pass config
+
     of ReplanReason.ExternalEvent:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Plan affected by external event. Re-planning for '{failedPlan.plan.goal.description}'.")
-      return planForGoal(state, failedPlan.plan.goal)
+      return planForGoal(config, state, failedPlan.plan.goal) # Pass config
 
     else:
       # For other specific failure reasons not explicitly handled, fall through to generic repair.
@@ -260,12 +260,12 @@ proc repairPlan*(
   if progress < 0.3 or failedPlan.plan.actions.len < 3:
     # Early failure or very short plan - just replan from scratch for the same goal.
     logInfo(LogCategory.lcAI, &"GOAP Repair: Early plan failure or short plan. Re-planning from scratch for goal '{failedPlan.plan.goal.description}'.")
-    return planForGoal(state, failedPlan.plan.goal)
+    return planForGoal(config, state, failedPlan.plan.goal) # Pass config
 
   else:
     # Late failure - try to implement partial plan repair.
     logInfo(LogCategory.lcAI, &"GOAP Repair: Attempting partial plan repair for late failure of '{failedPlan.plan.goal.description}'.")
-      
+
     # For partial repair, create a new temporary goal representing the remaining actions
     # The preconditions for this sub-goal would be the effects of the last completed action.
     # For now, a simplified approach: replan the remainder of the actions.
@@ -274,13 +274,13 @@ proc repairPlan*(
     # Create a new goal that is a continuation of the failed plan's goal.
     # The target is the same, but planning will start from the current world state.
     let remainingGoal = failedPlan.plan.goal
-      
+
     # Attempt to plan from the current action onwards.
     # This effectively tries to find a path for the *rest* of the original plan.
     # A more sophisticated partial repair would modify the preconditions of the remaining actions
     # to reflect the *actual* world state, not just the planned effects.
-    let newPartialPlan = planForGoal(state, remainingGoal)
-      
+    let newPartialPlan = planForGoal(config, state, remainingGoal) # Pass config
+
     if newPartialPlan.isSome:
       logInfo(LogCategory.lcAI, &"GOAP Repair: Successfully generated partial plan for '{failedPlan.plan.goal.description}'.")
       # Adjust the new plan to reflect that it's a continuation
@@ -292,7 +292,7 @@ proc repairPlan*(
     else:
       logWarn(LogCategory.lcAI, &"GOAP Repair: Failed to generate partial plan for '{failedPlan.plan.goal.description}'. Falling back to full replan.")
       # Fallback to replanning the entire goal if partial repair fails
-      return planForGoal(state, failedPlan.plan.goal)
+      return planForGoal(config, state, failedPlan.plan.goal) # Pass config
 
 # =============================================================================
 # Budget-Constrained Replanning
