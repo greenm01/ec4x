@@ -318,6 +318,28 @@ type
     fleetId*: FleetId
     scheduledTurn*: int  # Turn when intel update is expected
 
+  # Phase 2: Multi-turn invasion campaign tracking
+  InvasionCampaignPhase* {.pure.} = enum
+    ## Campaign lifecycle phases for multi-turn invasion operations
+    Scouting       ## Gathering intelligence on target
+    Bombardment    ## Destroying ground batteries
+    Invasion       ## Landing marines (Blitz or Invade)
+    Consolidation  ## Post-conquest defense
+
+  InvasionCampaign* = object
+    ## Multi-turn invasion campaign state tracker
+    ## Enables Bombard → Invade sequences across multiple turns
+    targetSystem*: SystemId
+    targetOwner*: HouseId
+    phase*: InvasionCampaignPhase
+    assignedFleets*: seq[FleetId]  # Fleets committed to this campaign
+    startTurn*: int
+    lastActionTurn*: int  # Last turn an order was generated
+    bombardmentRounds*: int  # Turns spent bombarding
+    estimatedBatteriesRemaining*: int
+    priority*: float
+    abandonReason*: Option[string]  # Why campaign was abandoned (if applicable)
+
   AIController* = ref object
     houseId*: HouseId
     strategy*: AIStrategy
@@ -355,3 +377,6 @@ type
 
     # Phase C: Enhanced intelligence distribution
     intelligenceSnapshot*: Option[IntelligenceSnapshot]  # Current turn's intelligence from Drungarius
+
+    # Phase 2: Multi-turn invasion campaigns
+    activeCampaigns*: seq[InvasionCampaign]  # Ongoing invasion operations

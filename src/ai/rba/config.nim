@@ -182,6 +182,12 @@ type
     fighters_per_carrier*: int
     max_carriers*: int
 
+    # Phase 2: Invasion Campaign Management
+    max_concurrent_campaigns*: int
+    campaign_stall_timeout*: int
+    campaign_bombardment_max*: int
+    campaign_intel_freshness*: int
+
 # ==============================================================================
 # Intelligence Integration Configuration (Phase B+)
 # ==============================================================================
