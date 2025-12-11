@@ -151,7 +151,10 @@ type
     # Fleet actions (Domestikos)
     MoveFleet                 ## Move fleet to system
     AssembleInvasionForce     ## Coordinate multiple fleets
-    AttackColony              ## Execute invasion
+    AttackColony              ## Execute invasion (deprecated - use BombardPlanet/BlitzPlanet/InvadePlanet)
+    BombardPlanet             ## Phase 3: Orbital bombardment to destroy ground defenses
+    BlitzPlanet               ## Phase 3: Combined bombardment + rapid insertion (weak defenses)
+    InvadePlanet              ## Phase 3: Formal ground assault (moderate defenses, after bombardment)
     EstablishDefense          ## Assign guard duty
     ConductScoutMission       ## Reconnaissance operation
     # Build actions (Domestikos)

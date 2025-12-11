@@ -184,3 +184,109 @@ proc allocateBudgetToGoals*(
       break
     else:
       break
+# =============================================================================
+# Phase 3: GOAP Action → RBA FleetOrder Conversion (CRITICAL)
+# =============================================================================
+
+import ../../../../engine/[fog_of_war, order_types, fleet]
+import ../../shared/intelligence_types
+import ../../domestikos/fleet_analysis
+
+proc convertGOAPActionToRBAOrder*(
+  action: Action,
+  filtered: FilteredGameState,
+  analyses: seq[FleetAnalysis]
+): Option[FleetOrder] =
+  ## Convert GOAP action to RBA FleetOrder
+  ##
+  ## Phase 3: Bridges GOAP strategic planning with RBA tactical execution
+  ## Maps GOAP ActionType to appropriate FleetOrderType with ROE
+
+  if action.target.isNone:
+    return none(FleetOrder)
+
+  let targetSystem = action.target.get()
+
+  # Find best available fleet for this action
+  var bestFleet: Option[FleetAnalysis] = none(FleetAnalysis)
+  
+  for analysis in analyses:
+    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
+      bestFleet = some(analysis)
+      break
+
+  if bestFleet.isNone:
+    return none(FleetOrder)
+
+  let fleet = bestFleet.get()
+
+  # Convert action type to fleet order
+  case action.actionType
+  of ActionType.MoveFleet:
+    return some(FleetOrder(
+      fleetId: fleet.fleetId,
+      orderType: FleetOrderType.Move,
+      targetSystem: some(targetSystem),
+      priority: 70,  # Strategic movement
+      roe: some(6)   # Defensive posture
+    ))
+
+  of ActionType.BombardPlanet:
+    return some(FleetOrder(
+      fleetId: fleet.fleetId,
+      orderType: FleetOrderType.Bombard,
+      targetSystem: some(targetSystem),
+      priority: 95,  # High priority - active campaign
+      roe: some(8)   # Aggressive - destroy ground defenses
+    ))
+
+  of ActionType.BlitzPlanet:
+    return some(FleetOrder(
+      fleetId: fleet.fleetId,
+      orderType: FleetOrderType.Blitz,
+      targetSystem: some(targetSystem),
+      priority: 100,  # Maximum priority - rapid assault
+      roe: some(9)    # Aggressive blitz
+    ))
+
+  of ActionType.InvadePlanet:
+    return some(FleetOrder(
+      fleetId: fleet.fleetId,
+      orderType: FleetOrderType.Invade,
+      targetSystem: some(targetSystem),
+      priority: 100,  # Maximum priority - invasion assault
+      roe: some(10)   # All-out invasion
+    ))
+
+  of ActionType.ConductScoutMission:
+    return some(FleetOrder(
+      fleetId: fleet.fleetId,
+      orderType: FleetOrderType.SpyPlanet,
+      targetSystem: some(targetSystem),
+      priority: 85,  # High priority - intelligence gathering
+      roe: some(4)   # Cautious - gather intel and retreat
+    ))
+
+  of ActionType.EstablishDefense:
+    return some(FleetOrder(
+      fleetId: fleet.fleetId,
+      orderType: FleetOrderType.Patrol,
+      targetSystem: some(targetSystem),
+      priority: 80,  # Important - defensive posture
+      roe: some(6)   # Defensive posture
+    ))
+
+  of ActionType.AttackColony:
+    # Deprecated - use BombardPlanet/BlitzPlanet/InvadePlanet instead
+    # Fallback to Bombard for compatibility
+    return some(FleetOrder(
+      fleetId: fleet.fleetId,
+      orderType: FleetOrderType.Bombard,
+      targetSystem: some(targetSystem),
+      priority: 90,
+      roe: some(8)
+    ))
+
+  else:
+    # Other action types don't map to fleet orders
+    return none(FleetOrder)
