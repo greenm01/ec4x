@@ -896,7 +896,7 @@ proc assessStrategicAssets*(
       let marineReq = BuildRequirement(
         requirementType: RequirementType.StrategicAsset,
         priority: RequirementPriority.Medium,  # Marines before transports
-        itemId: some("Marine"),
+        itemId: some("Marine"),  # Must match config section name [marine_division]
         shipClass: none(ShipClass),
         quantity: neededMarines,
         buildObjective: BuildObjective.Military,

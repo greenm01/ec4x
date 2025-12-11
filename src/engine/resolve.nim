@@ -40,8 +40,8 @@
 ##   Step 9: Advance Timers (espionage effects, diplomatic timers, grace periods)
 ##
 ## **PHASE 3: COMMAND PHASE** [resolution/phases/command_phase.nim]
-##   Part A: Commissioning & Automation
-##     - Commission completed projects from pendingCommissions
+##   Part A: Ship Commissioning & Automation
+##     - Commission completed ships from pendingMilitaryCommissions
 ##     - Auto-create squadrons, auto-assign to fleets
 ##     - Auto-load PTUs onto ETAC ships
 ##     - Colony automation (auto-repair, auto-load fighters)
@@ -59,7 +59,9 @@
 ##
 ## **PHASE 4: MAINTENANCE PHASE** [resolution/phases/maintenance_phase.nim]
 ##   Step 1: Fleet Movement (execute movement orders from Command Phase)
-##   Step 2: Construction & Repair Advancement (advance all queues)
+##   Step 2: Construction & Repair Advancement
+##     2a: Advance all queues (facility + colony construction)
+##     2b: Commission planetary defense (fighters, facilities, ground forces)
 ##   Step 3: Diplomatic Actions (state changes take effect)
 ##   Step 4: Population Arrivals (Space Guild transfers complete)
 ##   Step 5: Terraforming Projects (advance active projects)
@@ -68,13 +70,16 @@
 ##
 ## **COMMISSIONING & AUTOMATION FLOW:**
 ## - Turn N: Build orders submitted → queued
-## - Turn N: Maintenance advances queues → stores completions in pendingCommissions
-## - Turn N+1: Command Phase commissions → automation → new builds
+## - Turn N: Maintenance advances queues → commissions planetary defense (same turn)
+## - Turn N: Maintenance stores ship completions in pendingMilitaryCommissions
+## - Turn N+1: Command Phase commissions ships → automation → new builds
 ##
-## This ordering ensures:
-## - Commissioning frees dock capacity before automation
-## - Auto-repair can use newly freed capacity
-## - New builds see accurate available capacity
+## **Split Commissioning Rationale:**
+## - Planetary defense (fighters, facilities, ground forces) commission same turn
+##   → Available for defense in next turn's Conflict Phase
+## - Ships commission next turn (after Conflict Phase dock survival check)
+##   → Frees dock capacity before automation and new builds
+## - Auto-repair and new builds see accurate available capacity
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../common/types/core
@@ -221,17 +226,17 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Phase 2: Income (resource collection + capacity enforcement after IU loss)
   resolveIncomePhase(result.newState, effectiveOrders, result.events)
 
-  # Phase 3: Command (commissioning → build orders → fleet orders → diplomatic actions)
+  # Phase 3: Command (ship commissioning → automation → build orders → fleet orders → diplomatic actions)
   command_phase.resolveCommandPhase(result.newState, effectiveOrders, result.combatReports, result.events, rng)
 
-  # Phase 4: Maintenance (upkeep, effect decrements, status updates, queue advancement, fleet movement)
-  let completedProjects = resolveMaintenancePhase(result.newState, result.events, effectiveOrders, rng)
+  # Phase 4: Maintenance (fleet movement → construction advancement → planetary defense commissioning → diplomatic actions)
+  let completedShips = resolveMaintenancePhase(result.newState, result.events, effectiveOrders, rng)
 
-  # Store completed military projects for next turn's commissioning
-  # (Planetary defense already commissioned in Maintenance Phase)
-  # Military units will be commissioned at start of next turn's Command Phase
-  result.newState.pendingMilitaryCommissions = completedProjects
-  logDebug(LogCategory.lcEconomy, &"Stored {completedProjects.len} military projects for next turn commissioning")
+  # Store completed ships for next turn's commissioning
+  # (Planetary defense already commissioned in Maintenance Phase Step 2b)
+  # Ships will be commissioned at start of next turn's Command Phase Part A
+  result.newState.pendingMilitaryCommissions = completedShips
+  logDebug(LogCategory.lcEconomy, &"Stored {completedShips.len} ships for next turn commissioning")
 
   # Validate all commissioning pools are empty before advancing turn
   # All commissioned units should be auto-assigned to fleets/colonies

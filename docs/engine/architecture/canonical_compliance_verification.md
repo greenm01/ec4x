@@ -137,7 +137,7 @@ The EC4X resolution engine is now 100% compliant with the canonical turn cycle s
 
 | Canonical Part | Implementation | Logging | Status |
 |----------------|----------------|---------|--------|
-| **Part A: Commissioning** | `commissioning.commissionCompletedProjects()` | `[COMMAND PART A]` | ✅ |
+| **Part A: Ship Commissioning** | `commissioning.commissionShips()` | `[COMMAND PART A]` | ✅ |
 | **Part A: Automation** | `automation.processColonyAutomation()` | `[COMMAND PART A]` | ✅ |
 | **Part B: Player Submissions** | Build orders, colony management, diplomatic | `[COMMAND PART B]` | ✅ |
 | **Part C: Order Processing** | Categorization and queueing | `[COMMAND PART C]` | ✅ |
@@ -149,10 +149,11 @@ The EC4X resolution engine is now 100% compliant with the canonical turn cycle s
 **Logging Level:** INFO (production-visible)
 
 **Key Properties:**
-- Commissioning happens FIRST to free dock capacity
+- Ship commissioning happens FIRST to free dock capacity
 - Auto-repair can use newly-freed capacity
 - Combat orders queued for Turn N+1 Conflict Phase
 - Movement orders stored for Turn N Maintenance Phase
+- Planetary defense already commissioned in Maintenance Phase Step 2b
 
 ---
 
@@ -161,7 +162,8 @@ The EC4X resolution engine is now 100% compliant with the canonical turn cycle s
 | Canonical Step | Implementation | Logging | Status |
 |----------------|----------------|---------|--------|
 | **Step 1: Fleet Movement** | `fleet_order_execution.executeFleetOrdersFiltered()` | `[MAINTENANCE STEP 1]` | ✅ |
-| **Step 2: Construction Advancement** | `econ_engine.resolveMaintenancePhaseWithState()` | `[MAINTENANCE STEP 2]` | ✅ |
+| **Step 2a: Construction Advancement** | `econ_engine.resolveMaintenancePhaseWithState()` | `[MAINTENANCE STEP 2]` | ✅ |
+| **Step 2b: Planetary Defense Commissioning** | `commissioning.commissionPlanetaryDefense()` | `[MAINTENANCE STEP 2]` | ✅ |
 | **Step 3: Diplomatic Actions** | `diplomatic_resolution.resolveDiplomaticActions()` | `[MAINTENANCE STEP 3]` | ✅ |
 | **Step 4: Population Arrivals** | `resolvePopulationArrivals()` | `[MAINTENANCE STEPS 4-6]` | ✅ |
 | **Step 5: Terraforming Projects** | `processTerraformingProjects()` | `[MAINTENANCE STEPS 4-6]` | ✅ |
@@ -175,8 +177,9 @@ The EC4X resolution engine is now 100% compliant with the canonical turn cycle s
 **Logging Level:** INFO (production-visible)
 
 **Key Properties:**
-- Completed projects stored in `state.pendingCommissions`
-- Commissioning happens NEXT turn's Command Phase Part A
+- Planetary defense commissioned immediately (Step 2b: fighters, facilities, ground forces)
+- Completed ships stored in `state.pendingMilitaryCommissions`
+- Ship commissioning happens NEXT turn's Command Phase Part A
 - Fleet movement positions units for next Conflict Phase
 
 ---
@@ -195,9 +198,10 @@ The EC4X resolution engine is now 100% compliant with the canonical turn cycle s
 | **Capacity enforcement** | Income Phase Step 5 | After salvage, uses post-blockade IU values | ✅ |
 | **Elimination checks** | Income Phase Step 8a | After prestige (Step 7), before victory (Step 8b) | ✅ |
 | **Victory checks** | Income Phase Step 8b | After elimination (Step 8a) | ✅ |
-| **Commissioning timing** | Command Phase Part A (first operation) | Frees dock capacity before automation/builds | ✅ |
+| **Planetary defense commissioning** | Maintenance Phase Step 2b | Commissioned same turn (available for defense next turn) | ✅ |
+| **Ship commissioning timing** | Command Phase Part A (first operation) | Frees dock capacity before automation/builds | ✅ |
 | **Fleet movement** | Maintenance Phase Step 1 (first operation) | Positions units for next Conflict Phase | ✅ |
-| **Construction advancement** | Maintenance Phase Step 2 | Projects complete, stored for next turn commission | ✅ |
+| **Construction advancement** | Maintenance Phase Step 2a | Projects complete, split for commissioning | ✅ |
 
 ---
 

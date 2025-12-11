@@ -258,7 +258,7 @@ proc isPlanetaryDefense*(project: econ_types.CompletedProject): bool =
   if project.projectType == econ_types.ConstructionType.Building:
     return project.itemId in [
       "Starbase", "Spaceport", "Shipyard", "Drydock",
-      "GroundBattery", "Marine", "Army"
+      "GroundBattery", "Marine", "marine_division", "Army", "army"
     ] or project.itemId.startsWith("PlanetaryShield")
 
   # Fighters are planetside, commission with planetary defense

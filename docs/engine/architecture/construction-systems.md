@@ -389,7 +389,7 @@ EC4X uses a **dual-phase commissioning system** based on strategic timing requir
 
 #### Military Unit Commissioning (Command Phase)
 
-**Function:** `commissionMilitaryUnits(state, completedProjects, events)`
+**Function:** `commissionShips(state, completedProjects, events)`
 - **When:** Command Phase Part A (next turn after completion)
 - **What:** Ships built in orbital docks
 - **Strategic Rationale:** Ships may be destroyed in docks during Conflict Phase; verify dock survival first
@@ -430,7 +430,7 @@ Turn N+1 Conflict Phase:
   └─ Planetary defense assets defend against attacks ✓
 
 Turn N+1 Command Phase Part A:
-  └─ commissionMilitaryUnits() [AFTER combat dock survival check]
+  └─ commissionShips() [AFTER combat dock survival check]
        └─ Ships operational, docks freed for new construction
 ```
 
@@ -451,13 +451,6 @@ Turn 6 Conflict Phase:
   → 3 Marines defend successfully! ✓
   Colony survives due to immediate commissioning
 ```
-
-#### Legacy Function (Deprecated)
-
-**Function:** `commissionCompletedProjects(state, completedProjects, events)`
-- **Status:** Deprecated, maintained for backward compatibility
-- **Replacement:** Use `commissionPlanetaryDefense()` or `commissionMilitaryUnits()`
-- **Note:** Will be removed after all callers updated
 
 ### Automation
 

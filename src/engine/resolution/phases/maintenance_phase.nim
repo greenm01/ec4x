@@ -356,18 +356,18 @@ proc resolveMaintenancePhase*(state: var GameState,
     else:
       militaryProjects.add(project)
 
-  # Step 2a: Commission planetary defense immediately (same turn)
+  # Step 2b: Commission planetary defense immediately (same turn)
   if planetaryProjects.len > 0:
     logInfo(LogCategory.lcEconomy,
-      &"[MAINTENANCE STEP 2a] Commissioning {planetaryProjects.len} planetary defense assets")
+      &"[MAINTENANCE STEP 2b] Commissioning {planetaryProjects.len} planetary defense assets")
     commissioning.commissionPlanetaryDefense(state, planetaryProjects, events)
 
-  # Collect military projects for next turn's Command Phase commissioning
+  # Collect ship projects for next turn's Command Phase commissioning
   result.add(militaryProjects)
 
   logInfo(LogCategory.lcEconomy,
     &"[MAINTENANCE STEP 2] Completed ({planetaryProjects.len} planetary commissioned, " &
-    &"{militaryProjects.len} military pending)")
+    &"{militaryProjects.len} ships pending)")
 
   # ===================================================================
   # HOUSE ELIMINATION CHECKS MOVED TO INCOME PHASE

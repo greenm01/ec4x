@@ -233,6 +233,8 @@ proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport 
       let completed = advanceConstruction(colony)
       if completed.isSome:
         result.completedProjects.add(completed.get())
+      # CRITICAL FIX: Write modified colony back to state (Nim Table copy semantics!)
+      state.colonies[systemId] = colony
 
   # Infrastructure repairs handled by repair_queue.nim during Construction Phase
   # Damaged infrastructure tracked in colony.infrastructureDamage

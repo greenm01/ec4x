@@ -58,25 +58,25 @@ proc resolveCommandPhase*(state: var GameState,
   logInfo(LogCategory.lcOrders, &"=== Command Phase === (turn={state.turn})")
 
   # ===================================================================
-  # PART A: COMMISSIONING & AUTOMATION
+  # PART A: SHIP COMMISSIONING & AUTOMATION
   # ===================================================================
-  # Commission military units from previous turn's Maintenance
+  # Commission ships from previous turn's Maintenance
   # This clears shipyard/spaceport dock capacity and makes ships available
-  # (Planetary defense commissioned in Maintenance Phase same turn)
-  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Commissioning & automation...")
+  # (Planetary defense commissioned in Maintenance Phase Step 2b)
+  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Ship commissioning & automation...")
   if state.pendingMilitaryCommissions.len > 0:
-    logInfo(LogCategory.lcEconomy, &"[COMMISSIONING] Processing {state.pendingMilitaryCommissions.len} military units")
-    commissioning.commissionMilitaryUnits(state, state.pendingMilitaryCommissions,
-                                           events)
+    logInfo(LogCategory.lcEconomy, &"[COMMISSIONING] Processing {state.pendingMilitaryCommissions.len} ships")
+    commissioning.commissionShips(state, state.pendingMilitaryCommissions,
+                                   events)
     state.pendingMilitaryCommissions = @[]  # Clear after commissioning
   else:
-    logInfo(LogCategory.lcEconomy, "[COMMISSIONING] No military units to commission this turn")
+    logInfo(LogCategory.lcEconomy, "[COMMISSIONING] No ships to commission this turn")
 
   # Colony automation (auto-loading, auto-repair, auto-squadron balancing)
   # Uses newly-freed dock capacity and commissioned units
   logInfo(LogCategory.lcEconomy, "[AUTOMATION] Processing colony automation...")
   automation.processColonyAutomation(state, orders)
-  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Completed commissioning & automation")
+  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Completed ship commissioning & automation")
 
   # ===================================================================
   # PART B: PLAYER SUBMISSION WINDOW (simulated by AI)
