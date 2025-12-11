@@ -93,6 +93,9 @@ proc adjustPriorityForAffordability*(
   ## - If no: Downgrade by one level (preserves Critical priority)
   ##
   ## Rationale: 2x cost threshold ensures we can afford unit + still do other things
+  ##
+  ## Act 4 Exception: For Critical/High priority in Act 4, only require 1.0x cost
+  ## (no buffer) to enable aggressive military buildup in endgame
 
   let totalCost = unitCost * quantity
 
@@ -100,10 +103,19 @@ proc adjustPriorityForAffordability*(
   if totalCost < 100:
     return basePriority
 
-  # Economic health check: can we afford 1.5x the cost?
-  # RELAXED from 2x to 1.5x - original threshold too strict
-  # Ensures we can afford unit + have 50% buffer for other needs
-  let economicHealthy = treasury >= (totalCost * 3 div 2)  # 1.5x using integer math
+  # Act 4 exception: Relax affordability for Critical/High priority units
+  # Rationale: Endgame should commit to expensive military assets when affordable
+  let isAct4HighPriority = (currentAct == ai_common_types.GameAct.Act4_Endgame) and
+                            (basePriority in {RequirementPriority.Critical,
+                                              RequirementPriority.High})
+
+  # Determine affordability threshold
+  let costThreshold = if isAct4HighPriority:
+                        totalCost  # 1.0x - just need to afford it
+                      else:
+                        totalCost * 3 div 2  # 1.5x - need buffer for other needs
+
+  let economicHealthy = treasury >= costThreshold
 
   if not economicHealthy and basePriority != RequirementPriority.Critical:
     # Poor economy - downgrade by one level
@@ -113,9 +125,10 @@ proc adjustPriorityForAffordability*(
       of RequirementPriority.Low: RequirementPriority.Deferred
       else: basePriority
 
+    let thresholdDesc = if isAct4HighPriority: "1.0x" else: "1.5x"
     logDebug(LogCategory.lcAI,
              &"Priority adjustment: {unitType} ({totalCost}PP) unaffordable " &
-             &"(treasury={treasury}PP, need 1.5x={totalCost * 3 div 2}PP), {basePriority} → {adjusted}")
+             &"(treasury={treasury}PP, need {thresholdDesc}={costThreshold}PP), {basePriority} → {adjusted}")
     return adjusted
   else:
     return basePriority
@@ -540,8 +553,9 @@ proc assessExpansionNeeds*(
   # Target: Based on map rings (one ETAC per ring for parallel colonization)
   # Standard game: 4 players = 4 rings → 4 ETACs max
   # Large game: 8 players = 8 rings → 8 ETACs max
+  # Increased from 50% to 75% of uncolonized systems for more aggressive Act 1 expansion
   let mapRings = int(filtered.starMap.numRings)
-  let targetETACs = min(mapRings, (uncolonizedVisible + 1) div 2)
+  let targetETACs = min(mapRings, max(1, (uncolonizedVisible * 3) div 4))
 
   logDebug(LogCategory.lcAI,
            &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
@@ -625,6 +639,32 @@ proc assessOffensiveReadiness*(
         reason: &"Marines (aggressive, have {loadedMarines}/{targetMarines})"
       ))
 
+    # Planet-Breakers for Act 3+ conquest operations (CST 10+)
+    # Rationale: Bombardment capability before invasions, softens defenses
+    if currentAct >= GameAct.Act3_TotalWar and cstLevel >= 10:
+      var planetBreakerCount = 0
+      for fleet in filtered.ownFleets:
+        for squadron in fleet.squadrons:
+          if squadron.flagship.shipClass == ShipClass.PlanetBreaker:
+            planetBreakerCount += 1
+
+      let targetPlanetBreakers = max(1, filtered.ownColonies.len div 5)  # 1 per 5 colonies
+      if planetBreakerCount < targetPlanetBreakers:
+        let needed = targetPlanetBreakers - planetBreakerCount
+        let priority = if currentAct == GameAct.Act4_Endgame:
+                         RequirementPriority.High  # Act 4: High priority
+                       else:
+                         RequirementPriority.Medium  # Act 3: Medium priority
+        result.add(BuildRequirement(
+          requirementType: RequirementType.OffensivePrep,
+          priority: priority,
+          shipClass: some(ShipClass.PlanetBreaker),
+          quantity: needed,
+          buildObjective: ai_common_types.BuildObjective.SpecialUnits,
+          estimatedCost: getShipConstructionCost(ShipClass.PlanetBreaker) * needed,
+          reason: &"Conquest capability (aggressive, have {planetBreakerCount}/{targetPlanetBreakers})"
+        ))
+
   # Defensive/Economic: Only build for opportunities
   elif opportunities.len > 0:
     let opp = opportunities[0]  # Highest priority target
@@ -655,6 +695,33 @@ proc assessOffensiveReadiness*(
         estimatedCost: getMarineBuildCost() * (requiredMarines - loadedMarines),
         reason: &"Marines for {opp.systemId} (need {requiredMarines})"
       ))
+
+    # Planet-Breakers for Act 3+ conquest operations (CST 10+)
+    # Rationale: Opportunistic bombardment before invasion, improves success rate
+    if currentAct >= GameAct.Act3_TotalWar and cstLevel >= 10:
+      var planetBreakerCount = 0
+      for fleet in filtered.ownFleets:
+        for squadron in fleet.squadrons:
+          if squadron.flagship.shipClass == ShipClass.PlanetBreaker:
+            planetBreakerCount += 1
+
+      # For opportunistic invasion, request 1 Planet-Breaker per vulnerable target
+      if planetBreakerCount < opportunities.len:
+        let needed = min(3, opportunities.len - planetBreakerCount)  # Cap at 3 per turn
+        let priority = if currentAct == GameAct.Act4_Endgame:
+                         RequirementPriority.Critical  # Act 4: Critical for conquest
+                       else:
+                         RequirementPriority.High  # Act 3: High priority
+        result.add(BuildRequirement(
+          requirementType: RequirementType.OffensivePrep,
+          priority: priority,
+          shipClass: some(ShipClass.PlanetBreaker),
+          quantity: needed,
+          targetSystem: some(opp.systemId),
+          buildObjective: ai_common_types.BuildObjective.SpecialUnits,
+          estimatedCost: getShipConstructionCost(ShipClass.PlanetBreaker) * needed,
+          reason: &"Bombardment for {opp.systemId} (opportunistic conquest)"
+        ))
 
 proc assessStrategicAssets*(
   filtered: FilteredGameState,

@@ -193,7 +193,7 @@ attack_strength = 50
 defense_strength = 20
 command_cost = 6
 command_rating = 6
-tech_level = 10
+tech_level = 8  # Lowered from 10 to make available in Act 3-4 (CST 10 rarely reached)
 build_cost = 400
 upkeep_cost = 20  # MC = 5% of 400 = 20
 special_capability = "SHP"
