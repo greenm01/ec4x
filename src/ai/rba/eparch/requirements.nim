@@ -43,7 +43,8 @@ proc getTargetShipyards(act: ai_common_types.GameAct, colonyCount: int): int =
     max(colonyCount, (colonyCount * 3) div 2)
   of ai_common_types.GameAct.Act4_Endgame:
     # Act 4: Over-capacity for endgame capital ship production
-    (colonyCount * 2)
+    # Increased from 2.0x to 2.5x to address late-game hoarding
+    (colonyCount * 5) div 2  # 2.5x using integer math
 
 proc findBestShipyardColony(colonies: seq[Colony]): Option[SystemId] =
   ## Select colony with highest production, no existing Shipyard, AND has Spaceport
@@ -108,7 +109,8 @@ proc getTargetStarbases(act: ai_common_types.GameAct, colonyCount: int): int =
     colonyCount
   of ai_common_types.GameAct.Act4_Endgame:
     # Act 4: 1-2 per colony (full infrastructure)
-    colonyCount + (colonyCount div 2)
+    # Increased from 1.5x to 2.0x to address late-game hoarding
+    colonyCount * 2
 
 proc generateFacilityRequirements(
   filtered: FilteredGameState,

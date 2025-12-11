@@ -68,21 +68,21 @@ proc calculateAdvisorWeights*(
       result[AdvisorType.Domestikos] *= 1.3
       result[AdvisorType.Logothete] *= 0.9
   of ai_types.GameAct.Act3_TotalWar, ai_types.GameAct.Act4_Endgame:
-    let warMultiplier = if act == ai_types.GameAct.Act4_Endgame: 2.2 else: 2.0  # Increased from 1.8
-    let researchMultiplier = if act == ai_types.GameAct.Act4_Endgame: 0.6 else: 0.7
+    let warMultiplier = if act == ai_types.GameAct.Act4_Endgame: 2.5 else: 2.0  # Act 4: Aggressive military focus
+    let researchMultiplier = if act == ai_types.GameAct.Act4_Endgame: 0.5 else: 0.7  # Reduced research in Act 4
 
     if isAtWar:
       # War-time: Maximum military prioritization
       result[AdvisorType.Domestikos] *= warMultiplier
       result[AdvisorType.Logothete] *= researchMultiplier  # Minimum research during war
-      result[AdvisorType.Drungarius] *= 1.15  # Intelligence valuable in war
-      result[AdvisorType.Protostrator] *= 0.70  # DOWN (focus on war, not diplomacy)
+      result[AdvisorType.Drungarius] *= 1.20  # Intelligence more valuable in late-game war
+      result[AdvisorType.Protostrator] *= 0.60  # Further reduced (focus on war, not diplomacy)
     else:
       # Peace-time: Moderate military boost + research investment
-      result[AdvisorType.Domestikos] *= (if act == ai_types.GameAct.Act4_Endgame: 1.6 else: 1.3)
-      result[AdvisorType.Logothete] *= (if act == ai_types.GameAct.Act4_Endgame: 1.2 else: 0.8)
-      result[AdvisorType.Drungarius] *= 1.10
-      result[AdvisorType.Protostrator] *= 0.85
+      result[AdvisorType.Domestikos] *= (if act == ai_types.GameAct.Act4_Endgame: 2.0 else: 1.3)  # Act 4: Strong peacetime military
+      result[AdvisorType.Logothete] *= (if act == ai_types.GameAct.Act4_Endgame: 1.0 else: 0.8)  # Maintain some tech in Act 4
+      result[AdvisorType.Drungarius] *= 1.15  # Increased peacetime intelligence
+      result[AdvisorType.Protostrator] *= 0.75  # Reduced peacetime diplomacy
 
 proc describeWeightRationale*(
   advisorType: AdvisorType,
