@@ -73,7 +73,7 @@ FACILITIES (EPARCH - INFRASTRUCTURE)
 --------------------------------------------------------------------------------------------------
 Spaceport           | Facility  |  1  | 100  |  X   |  X   |  X   |  X   | Colony   | Required for Shipyard/Drydock/Starbase
 Shipyard            | Facility  |  1  | 150  |  X   |  X   |  X   |  X   | Colony   | Ship construction only
-Drydock             | Facility  |  1  | 150  |  X   |  X   |  X   |  X   | Colony   | Ship repair only
+Drydock             | Facility  |  1  | 150  |      |  X   |  X   |  X   | Colony   | Ship repair only
 Starbase            | Facility  |  3  | 300  |  X   |  X   |  X   |  X   | Colony   | Orbital defense/detection
 ```
 

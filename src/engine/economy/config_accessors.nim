@@ -181,7 +181,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       requiresShipyard: false,
       cstRequirement: 0
     )
-  of "Army":
+  of "Army", "army":
     BuildingConfig(
       cost: globalGroundUnitsConfig.army.build_cost,
       time: 1,
@@ -189,7 +189,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       requiresShipyard: false,
       cstRequirement: 0
     )
-  of "Marine":
+  of "Marine", "marine_division":
     BuildingConfig(
       cost: globalGroundUnitsConfig.marine_division.build_cost,
       time: 1,

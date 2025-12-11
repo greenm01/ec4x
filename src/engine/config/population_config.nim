@@ -40,6 +40,9 @@ type
     dest_blockaded_behavior*: string
     dest_collapsed_behavior*: string
 
+  RecruitmentConfig* = object
+    min_viable_population*: int
+
   AiStrategyConfig* = object
     min_treasury_for_transfer*: int
     min_source_population*: int
@@ -57,6 +60,7 @@ type
     transfer_modifiers*: TransferModifiersConfig
     transfer_limits*: TransferLimitsConfig
     transfer_risks*: TransferRisksConfig
+    recruitment*: RecruitmentConfig
     ai_strategy*: AiStrategyConfig
 
 proc loadPopulationConfig*(configPath: string = "config/population.toml"): PopulationConfig =
@@ -82,6 +86,9 @@ proc soulsPerPtu*(): int =
 
 proc ptuSizeMillions*(): float =
   config.ptu_definition.ptu_size_millions
+
+proc minViablePopulation*(): int =
+  config.recruitment.min_viable_population
 
 ## Helper to reload configuration (for testing)
 

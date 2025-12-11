@@ -59,6 +59,11 @@ dest_blockaded_behavior = "closest_owned"
 # If no owned colonies exist, colonists are lost
 dest_collapsed_behavior = "closest_owned"
 
+[recruitment]
+# Ground unit recruitment constraints
+min_viable_population = 5000       # Minimum souls required after recruiting ground units (armies/marines)
+                                   # Players can recruit down to this level (bare minimum for colony viability)
+
 [ai_strategy]
 # AI decision making for population transfers
 min_treasury_for_transfer = 200    # Only transfer if treasury > this

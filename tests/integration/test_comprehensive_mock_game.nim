@@ -2153,7 +2153,7 @@ suite "Comprehensive Mock 4X Game: 100-Turn 4-Player":
     # Commission all escorts
     echo "[TEST] Commissioning 10 escorts..."
     var events: seq[resolution_types.GameEvent] = @[]
-    commissionCompletedProjects(testState, completedProjects, events)
+    commissionShips(testState, completedProjects, events)
 
     # Verify no ships lost
     var totalShips = 0

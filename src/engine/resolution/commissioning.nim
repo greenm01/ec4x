@@ -50,6 +50,7 @@ import ./event_factory/init as event_factory
 import ../config/ground_units_config
 import ../config/facilities_config
 import ../config/military_config
+import ../config/population_config  # For minViablePopulation
 import ../research/effects  # CST dock capacity scaling
 
 # Helper functions from gamestate
@@ -88,13 +89,6 @@ proc hasSpaceport*(colony: Colony): bool =
   ## Check if colony has at least one operational spaceport
   result = colony.spaceports.len > 0
 
-# Forward declaration for temporary delegation
-proc commissionCompletedProjects*(
-  state: var GameState,
-  completedProjects: seq[econ_types.CompletedProject],
-  events: var seq[res_types.GameEvent]
-)
-
 proc commissionPlanetaryDefense*(
   state: var GameState,
   completedProjects: seq[econ_types.CompletedProject],
@@ -129,91 +123,8 @@ proc commissionPlanetaryDefense*(
   template saveColony(colId: SystemId, col: Colony) =
     modifiedColonies[colId] = col
 
-  # Temporary implementation: delegate to original function
-  # TODO: Extract planetary-specific logic (lines 171-467) after testing
-  commissionCompletedProjects(state, completedProjects, events)
-
-proc commissionMilitaryUnits*(
-  state: var GameState,
-  completedProjects: seq[econ_types.CompletedProject],
-  events: var seq[res_types.GameEvent]
-) =
-  ## Commission military units in Command Phase (next turn)
-  ##
-  ## This function runs at START of Command Phase, after Conflict Phase.
-  ## Converts completed military projects into operational units:
-  ## - Capital ships → squadrons → fleets (auto-assigned)
-  ## - Spacelift ships → fleets (auto-assigned with cargo)
-  ##
-  ## **Strategic Rationale:** Ships built in docks may be destroyed during
-  ## Conflict Phase. Commission only if facilities survived combat.
-  ##
-  ## **Called From:** resolveCommandPhase() in phases/command_phase.nim
-  ## **Called After:** Conflict Phase (combat resolution)
-  ## **Called Before:** resolveBuildOrders() (new construction)
-
-  # Use same modified colonies pattern
-  var modifiedColonies = initTable[SystemId, Colony]()
-
-  template getColony(colId: SystemId): Colony =
-    if colId in modifiedColonies:
-      modifiedColonies[colId]
-    else:
-      state.colonies[colId]
-
-  template saveColony(colId: SystemId, col: Colony) =
-    modifiedColonies[colId] = col
-
-  # Temporary implementation: delegate to original function
-  # TODO: Extract military-specific logic (lines 469-end) after testing
-  commissionCompletedProjects(state, completedProjects, events)
-
-proc commissionCompletedProjects*(
-  state: var GameState,
-  completedProjects: seq[econ_types.CompletedProject],
-  events: var seq[res_types.GameEvent]
-) =
-  ## DEPRECATED: Legacy function - use commissionPlanetaryDefense() or commissionMilitaryUnits()
-  ##
-  ## This function will be removed after all callers are updated to use the split functions.
-  ## Kept temporarily for backward compatibility during migration.
-  ##
-  ## Commission all completed construction projects from Maintenance Phase
-  ##
-  ## This function runs at the START of Command Phase, before new build orders.
-  ## It converts completed construction projects into operational units:
-  ## - Fighters → colony.fighterSquadrons
-  ## - Facilities → colony.spaceports/shipyards/starbases
-  ## - Ground units → colony.marines/armies/groundBatteries
-  ## - Capital ships → squadrons → fleets (auto-assigned)
-  ## - Spacelift ships → fleets (auto-assigned with cargo)
-  ##
-  ## **Pure Commissioning:** This function only handles commissioning.
-  ## Auto-loading fighters to carriers is a separate step.
-  ## Auto-balancing squadrons to fleets happens at end of Command Phase.
-  ##
-  ## **Called From:** resolveCommandPhase() in resolve.nim
-  ## **Called After:** Maintenance Phase (queue advancement)
-  ## **Called Before:** resolveBuildOrders() (new construction)
-
-  # Track modified colonies to prevent read-modify-write race conditions
-  # When multiple units complete at same colony in one turn, each must see
-  # the accumulated changes from previous units in the same batch
-  var modifiedColonies = initTable[SystemId, Colony]()
-
-  # Helper to get colony (from modified table first, then state)
-  template getColony(colId: SystemId): Colony =
-    if colId in modifiedColonies:
-      modifiedColonies[colId]
-    else:
-      state.colonies[colId]
-
-  # Helper to save modified colony
-  template saveColony(colId: SystemId, col: Colony) =
-    modifiedColonies[colId] = col
-
   for completed in completedProjects:
-    logDebug(LogCategory.lcEconomy, &"Commissioning: {completed.projectType} at system-{completed.colonyId}")
+    logInfo(LogCategory.lcEconomy, &"Commissioning planetary defense: {completed.projectType} itemId={completed.itemId} at system-{completed.colonyId}")
 
     # Special handling for fighter squadrons
     # Fighters can come through as either:
@@ -436,22 +347,22 @@ proc commissionCompletedProjects*(
 
     # Special handling for Marines (MD)
     elif completed.projectType == econ_types.ConstructionType.Building and
-         completed.itemId == "Marine":
+         (completed.itemId == "Marine" or completed.itemId == "marine_division"):
       if completed.colonyId in state.colonies:
         var colony = getColony(completed.colonyId)
 
         # Get population cost from config
         let marinePopCost = globalGroundUnitsConfig.marine_division.population_cost
-        const minViablePopulation = 1_000_000  # 1 PU minimum for colony viability
+        let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < marinePopCost:
           logWarn(LogCategory.lcEconomy,
             &"Colony {completed.colonyId} lacks population to recruit Marines " &
             &"({colony.souls} souls < {marinePopCost})")
-        elif colony.souls - marinePopCost < minViablePopulation:
+        elif colony.souls - marinePopCost < minViablePop:
           logWarn(LogCategory.lcEconomy,
             &"Colony {completed.colonyId} cannot recruit Marines - would leave colony below minimum viable size " &
-            &"({colony.souls - marinePopCost} < {minViablePopulation} souls)")
+            &"({colony.souls - marinePopCost} < {minViablePop} souls)")
         else:
           colony.marines += 1  # Add 1 Marine Division
           colony.souls -= marinePopCost  # Deduct recruited souls
@@ -471,22 +382,22 @@ proc commissionCompletedProjects*(
 
     # Special handling for Armies (AA)
     elif completed.projectType == econ_types.ConstructionType.Building and
-         completed.itemId == "Army":
+         (completed.itemId == "Army" or completed.itemId == "army"):
       if completed.colonyId in state.colonies:
         var colony = getColony(completed.colonyId)
 
         # Get population cost from config
         let armyPopCost = globalGroundUnitsConfig.army.population_cost
-        const minViablePopulation = 1_000_000  # 1 PU minimum for colony viability
+        let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < armyPopCost:
           logWarn(LogCategory.lcEconomy,
             &"Colony {completed.colonyId} lacks population to muster Army " &
             &"({colony.souls} souls < {armyPopCost})")
-        elif colony.souls - armyPopCost < minViablePopulation:
+        elif colony.souls - armyPopCost < minViablePop:
           logWarn(LogCategory.lcEconomy,
             &"Colony {completed.colonyId} cannot muster Army - would leave colony below minimum viable size " &
-            &"({colony.souls - armyPopCost} < {minViablePopulation} souls)")
+            &"({colony.souls - armyPopCost} < {minViablePop} souls)")
         else:
           colony.armies += 1  # Add 1 Army Division
           colony.souls -= armyPopCost  # Deduct recruited souls
@@ -504,8 +415,49 @@ proc commissionCompletedProjects*(
             1
           ))
 
-    # Handle ship construction
-    elif completed.projectType == econ_types.ConstructionType.Ship:
+  # Write all modified colonies back to state
+  # This ensures multiple units completing at same colony see accumulated changes
+  logDebug(LogCategory.lcEconomy, &"Writing {modifiedColonies.len} modified colonies back to state")
+  for systemId, colony in modifiedColonies:
+    state.colonies[systemId] = colony
+    logDebug(LogCategory.lcEconomy, &"  Colony {systemId}: marines={colony.marines}, armies={colony.armies}")
+
+proc commissionShips*(
+  state: var GameState,
+  completedProjects: seq[econ_types.CompletedProject],
+  events: var seq[res_types.GameEvent]
+) =
+  ## Commission ships in Command Phase (next turn)
+  ##
+  ## This function runs at START of Command Phase, after Conflict Phase.
+  ## Converts completed ship construction into operational units:
+  ## - Capital ships → squadrons → fleets (auto-assigned)
+  ## - Spacelift ships → fleets (auto-assigned with cargo)
+  ##
+  ## **Strategic Rationale:** Ships built in docks may be destroyed during
+  ## Conflict Phase. Commission only if facilities survived combat.
+  ##
+  ## **Called From:** resolveCommandPhase() in phases/command_phase.nim
+  ## **Called After:** Conflict Phase (combat resolution)
+  ## **Called Before:** resolveBuildOrders() (new construction)
+
+  # Use same modified colonies pattern
+  var modifiedColonies = initTable[SystemId, Colony]()
+
+  template getColony(colId: SystemId): Colony =
+    if colId in modifiedColonies:
+      modifiedColonies[colId]
+    else:
+      state.colonies[colId]
+
+  template saveColony(colId: SystemId, col: Colony) =
+    modifiedColonies[colId] = col
+
+  for completed in completedProjects:
+    logInfo(LogCategory.lcEconomy, &"Commissioning ship: {completed.projectType} itemId={completed.itemId} at system-{completed.colonyId}")
+
+    # Handle ship construction (dock-built units only)
+    if completed.projectType == econ_types.ConstructionType.Ship:
       if completed.colonyId in state.colonies:
         var colony = getColony(completed.colonyId)
         let owner = colony.owner
@@ -514,25 +466,12 @@ proc commissionCompletedProjects*(
         try:
           let shipClass = parseEnum[ShipClass](completed.itemId)
 
-          # Handle special ship types first
-          # 1. Fighter squadrons → colony.fighterSquadrons
+          # Skip fighters - they're handled by planetary defense
           if shipClass == ShipClass.Fighter:
-            let fighterSq = FighterSquadron(
-              id: $completed.colonyId & "-FS-" & $(colony.fighterSquadrons.len + 1),
-              commissionedTurn: state.turn
-            )
-            colony.fighterSquadrons.add(fighterSq)
-            saveColony(completed.colonyId, colony)
-            logInfo(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {completed.colonyId}")
-
-            events.add(event_factory.shipCommissioned(
-              owner,
-              ShipClass.Fighter,
-              completed.colonyId
-            ))
+            logDebug(LogCategory.lcEconomy, &"Skipping fighter - handled by planetary defense commissioning")
             continue
 
-          # 2. Check if this is a spacelift ship (ETAC or TroopTransport)
+          # Check if this is a spacelift ship (ETAC or TroopTransport)
           # Note: Starbases are now handled as facilities (Building path above)
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
@@ -688,4 +627,5 @@ proc commissionCompletedProjects*(
   logDebug(LogCategory.lcEconomy, &"Writing {modifiedColonies.len} modified colonies back to state")
   for systemId, colony in modifiedColonies:
     state.colonies[systemId] = colony
-    logDebug(LogCategory.lcEconomy, &"  Colony {systemId}: marines={colony.marines}, armies={colony.armies}")
+    logDebug(LogCategory.lcEconomy, &"  Colony {systemId}: unassignedSpaceLiftShips={colony.unassignedSpaceLiftShips.len}")
+
