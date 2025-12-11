@@ -106,7 +106,7 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
       let filteredView = createFogOfWarView(game, controller.houseId)
 
       # Generate orders using RBA (returns both zero-turn commands and order packet)
-      let aiSubmission = ai.generateAIOrders(controller, filteredView, rng)
+      let aiSubmission = ai.generateAIOrders(controller, filteredView, rng, @[])
 
       # Execute zero-turn commands first (immediate, at friendly colonies)
       for cmd in aiSubmission.zeroTurnCommands:

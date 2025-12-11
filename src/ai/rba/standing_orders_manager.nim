@@ -17,6 +17,10 @@ import ./controller_types
 
 export StandingOrderType, StandingOrder, StandingOrderParams
 
+# Forward declarations
+proc findBestDrydockForRepair*(filtered: FilteredGameState,
+                                fleetLocation: SystemId): Option[SystemId]
+
 # =============================================================================
 # Fleet Role Assessment
 # =============================================================================
@@ -102,10 +106,14 @@ proc createAutoRepairOrder*(fleet: Fleet, filtered: FilteredGameState,
   ## Finds the best available Drydock for repair.
 
   let bestDrydockSystem = findBestDrydockForRepair(filtered, fleet.location)
+  let targetSystem = if bestDrydockSystem.isSome:
+                       bestDrydockSystem.get
+                     else:
+                       0.SystemId
 
   logDebug(LogCategory.lcAI,
            &"{fleet.id} Assigning AutoRepair standing order " &
-           &"(threshold {(damageThreshold * 100).int}%, target {bestDrydockSystem.getOrDefault(0.SystemId)})")
+           &"(threshold {(damageThreshold * 100).int}%, target {targetSystem})")
 
   result = StandingOrder(
     fleetId: fleet.id,
@@ -520,12 +528,11 @@ proc findBestDrydockForRepair*(filtered: FilteredGameState, fleetLocation: Syste
     if availableDocks <= 0:
       continue # No available slots
 
-    # Calculate distance score (closer is better, arbitrary scaling for now)
-    # This needs actual pathfinding distance, approximating with Euclidean distance for now
-    let sysPos = filtered.starMap.systems[colony.systemId].position
-    let fleetPos = filtered.starMap.systems[fleetLocation].position
-    let distance = sqrt(pow(float(sysPos.x - fleetPos.x), 2) + pow(float(sysPos.y - fleetPos.y), 2))
-    
+    # TODO: Calculate distance score (closer is better)
+    # Systems don't have .position field (hex-based map, not coordinates)
+    # Need to implement hex pathfinding distance calculation
+    let distance = 1.0  # Placeholder
+
     # Simple scoring: prefer more available docks, penalize distance
     # Example: score = (availableDocks * 10.0) - distance
     # Higher available docks is better, lower distance is better

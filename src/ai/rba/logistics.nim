@@ -223,15 +223,18 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
   for fleet in filtered.ownFleets:
     for squadron in fleet.squadrons:
       if squadron.flagship.isCrippled:
-        result.damagedShips.add((fleet.id, squadron.flagship.shipClass, fleet.location))
-        # Assuming a crippled ship needs 50% of its max HP repaired as a heuristic
-        # A more complex model would track actual HP
-        result.totalDamagedShipHP += getShipClassData(squadron.flagship.shipClass).maxHP div 2
+        result.damagedShips.add((fleet.id, squadron.flagship.shipClass,
+          fleet.location))
+        # TODO: Implement actual criplled ship tracking system
+        # Using placeholder value of 100 HP per crippled ship
+        # This game not not have HP. ships state is either undamaged, crippled, or destroyed.
+        # destroyed ships are deleted from the game, per Section 7 in operations.md
+        result.totalDamagedShipHP += 100
       for ship in squadron.ships:
         if ship.isCrippled:
           result.damagedShips.add((fleet.id, ship.shipClass, fleet.location))
-          result.totalDamagedShipHP += getShipClassData(ship.shipClass).maxHP div 2
-  
+          result.totalDamagedShipHP += 100
+
   for colony in filtered.ownColonies:
     for drydock in colony.drydocks:
       if not drydock.isCrippled:
@@ -1281,15 +1284,24 @@ proc identifyDrydockNeeds*(controller: AIController, inventory: AssetInventory,
                            &"Current Capacity={currentRepairCapacity}, Active Projects={activeRepairDemand}")
 
   # Determine if we need more drydock capacity
-  # Threshold: If current capacity is less than required capacity AND we have many damaged ships
+  # Threshold: If current capacity is less than required AND many damaged ships
   let capacityShortfall = requiredCapacity - currentRepairCapacity
-  if capacityShortfall > 0 and inventory.damagedShips.len > globalRBAConfig.logistics.min_damaged_ships_for_drydock:
-    logInfo(LogCategory.lcAI, &"{controller.houseId} Drydock Need: Capacity shortfall of {capacityShortfall} docks detected.")
-    
-    # Calculate how many Drydocks to build (each Drydock provides 'baseDocks' docks)
-    let drydockBaseDocks = filtered.getDrydockDockCapacity(filtered.ownColonies.values.toSeq[0]) # Get base docks from an existing Drydock or config
-    let numDrydocksToBuild = max(1, capacityShortfall div max(1, drydockBaseDocks)) # Build at least 1, if positive shortfall
-    
+  const minDamagedShipsForDrydock = 3  # TODO: Move to config
+  if capacityShortfall > 0 and
+     inventory.damagedShips.len > minDamagedShipsForDrydock:
+    logInfo(LogCategory.lcAI, &"{controller.houseId} Drydock Need: " &
+      &"Capacity shortfall of {capacityShortfall} docks detected.")
+
+    # Calculate how many Drydocks to build (each provides 'baseDocks' docks)
+    # Use first colony as reference for drydock capacity
+    let drydockBaseDocks =
+      if filtered.ownColonies.len > 0:
+        getDrydockDockCapacity(filtered.ownColonies[0])
+      else:
+        3  # Default capacity if no colonies
+    let numDrydocksToBuild = max(1,
+      capacityShortfall div max(1, drydockBaseDocks))
+
     if numDrydocksToBuild > 0:
       # Find suitable colonies to build drydocks (prefer homeworld or high-industry core worlds)
       var targetSystem: Option[SystemId] = none(SystemId)
@@ -1297,7 +1309,7 @@ proc identifyDrydockNeeds*(controller: AIController, inventory: AssetInventory,
         targetSystem = some(controller.homeworld)
       elif filtered.ownColonies.len > 0:
         # Fallback to the first available colony
-        targetSystem = some(filtered.ownColonies.values.toSeq[0].systemId)
+        targetSystem = some(filtered.ownColonies[0].systemId)
 
       if targetSystem.isSome:
         result.add(BuildRequirement(
@@ -1306,10 +1318,12 @@ proc identifyDrydockNeeds*(controller: AIController, inventory: AssetInventory,
           shipClass: none(ShipClass),
           itemId: some("Drydock"),
           quantity: numDrydocksToBuild,
-          buildObjective: BuildObjective.Infrastructure,
+          buildObjective: BuildObjective.Defense,  # Drydocks support fleet
           targetSystem: targetSystem,
-          estimatedCost: globalRBAConfig.logistics.drydock_build_cost * numDrydocksToBuild, # Use config for cost
-          reason: &"Build {numDrydocksToBuild} Drydock(s) due to {inventory.damagedShips.len} damaged ships and {capacityShortfall} dock shortfall."
+          estimatedCost: 150 * numDrydocksToBuild,  # TODO: Use config
+          reason: &"Build {numDrydocksToBuild} Drydock(s) due to " &
+            &"{inventory.damagedShips.len} damaged ships and " &
+            &"{capacityShortfall} dock shortfall."
         ))
         logInfo(LogCategory.lcAI, &"{controller.houseId} Drydock Need: Generated build requirement for {numDrydocksToBuild} Drydock(s) at {targetSystem.get()}.")
       else:

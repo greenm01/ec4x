@@ -4,8 +4,8 @@ import ../controller_types # For AIController, all requirements and feedback typ
 import ../../common/types as ai_types # For GameAct
 import ../basileus/mediation # For mediateRequirements
 import ../treasurer/multi_advisor # For allocateBudgetMultiAdvisor, MultiAdvisorAllocation
-import ../../../ai/goap/conversion # For DomainType
-import ../../../ai/goap/snapshot # For createWorldStateSnapshot
+import ../goap/integration/conversion # Fixed path
+import ../goap/integration/snapshot # Fixed path
 
 proc mediateAndAllocateBudget*(
   controller: var AIController,

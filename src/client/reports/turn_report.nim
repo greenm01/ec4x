@@ -308,7 +308,7 @@ proc generateAlertsSection(events: seq[GameEvent], newState: GameState, perspect
   )
 
   # Filter events relevant to this player
-  let relevantEvents = events.filterIt(it.houseId == perspective)
+  let relevantEvents = events.filterIt(it.houseId.isSome and it.houseId.get() == perspective)
 
   if relevantEvents.len == 0:
     result.lines.add("No new alerts")

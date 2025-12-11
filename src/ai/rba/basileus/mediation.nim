@@ -11,7 +11,7 @@ import ../controller_types
 import ../../common/types as ai_types
 import ../../../engine/logger
 import ./personality
-import ../../ai/goap/conversion # For DomainType, getDomainType
+import ../goap/integration/conversion # Fixed path
 
 # Weighted requirement for unified priority queue
 type
@@ -166,6 +166,30 @@ proc convertToAdvisorRequirements*(
       economicReq: none(EconomicRequirement),
       diplomaticReq: some(req)
     ))
+
+proc getDomainType*(req: AdvisorRequirement): Option[DomainType] =
+  ## Helper to map AdvisorRequirement to GOAP DomainType
+  case req.advisor
+  of AdvisorType.Domestikos:
+    # Domestikos handles both Fleet and Build actions, need to be more specific
+    # For budget guidance, we can map broadly to Fleet/Build
+    if req.requirementType.contains("Offensive") or req.requirementType.contains("Defense"):
+      # Could be Fleet for movement or Build for ships
+      result = some(DomainType.FleetDomain)
+    elif req.requirementType.contains("Build"):
+      result = some(DomainType.BuildDomain)
+    else:
+      result = none(DomainType) # Or default to Fleet? For now, explicit is better
+  of AdvisorType.Logothete:
+    result = some(DomainType.ResearchDomain)
+  of AdvisorType.Drungarius:
+    result = some(DomainType.EspionageDomain)
+  of AdvisorType.Eparch:
+    result = some(DomainType.EconomicDomain)
+  of AdvisorType.Protostrator:
+    result = some(DomainType.DiplomaticDomain)
+  of AdvisorType.Treasurer:
+    result = none(DomainType) # Treasurer doesn't map to a GOAP domain for budget guidance
 
 proc mediateRequirements*(
   domestikosReqs: BuildRequirements,
@@ -402,26 +426,3 @@ proc mediateRequirements*(
 
   return result
 
-proc getDomainType*(req: AdvisorRequirement): Option[DomainType] =
-  ## Helper to map AdvisorRequirement to GOAP DomainType
-  case req.advisor
-  of AdvisorType.Domestikos:
-    # Domestikos handles both Fleet and Build actions, need to be more specific
-    # For budget guidance, we can map broadly to Fleet/Build
-    if req.requirementType.contains("Offensive") or req.requirementType.contains("Defense"):
-      # Could be Fleet for movement or Build for ships
-      result = some(DomainType.Fleet)
-    elif req.requirementType.contains("Build"):
-      result = some(DomainType.Build)
-    else:
-      result = none(DomainType) # Or default to Fleet? For now, explicit is better
-  of AdvisorType.Logothete:
-    result = some(DomainType.Research)
-  of AdvisorType.Drungarius:
-    result = some(DomainType.Espionage)
-  of AdvisorType.Eparch:
-    result = some(DomainType.Economy)
-  of AdvisorType.Protostrator:
-    result = some(DomainType.Diplomacy)
-  of AdvisorType.Treasurer:
-    result = none(DomainType) # Treasurer doesn't map to a GOAP domain for budget guidance

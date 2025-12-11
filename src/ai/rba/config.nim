@@ -520,38 +520,20 @@ proc validateRBAConfig*(config: RBAConfig) =
   validatePositive(config.economic.terraforming_costs_benign_to_lush, "economic.terraforming_costs_benign_to_lush")
   validatePositive(config.economic.terraforming_costs_lush_to_eden, "economic.terraforming_costs_lush_to_eden")
 
-# Validate GOAP parameters
-validatePositive(config.goap.planning_depth, "goap.planning_depth")
-validateRatio(config.goap.confidence_threshold, "goap.confidence_threshold")
-validatePositive(config.goap.max_concurrent_plans, "goap.max_concurrent_plans")
-validateRatio(config.goap.defense_priority, "goap.defense_priority")
-validateRatio(config.goap.offense_priority, "goap.offense_priority")
-validateRatio(config.goap.budget_guidance_boost_factor, "goap.budget_guidance_boost_factor")
-validatePositive(config.goap.replan_stalled_turns, "goap.replan_stalled_turns")
-validateRatio(config.goap.replan_budget_shortfall_ratio, "goap.replan_budget_shortfall_ratio")
-validateNonNegative(config.goap.new_opportunity_scan_frequency, "goap.new_opportunity_scan_frequency") # Can be 0 for every turn
-
-# Validate GOAP parameters
-validatePositive(config.goap.planning_depth, "goap.planning_depth")
-validateRatio(config.goap.confidence_threshold, "goap.confidence_threshold")
-validatePositive(config.goap.max_concurrent_plans, "goap.max_concurrent_plans")
-validateRatio(config.goap.defense_priority, "goap.defense_priority")
-validateRatio(config.goap.offense_priority, "goap.offense_priority")
-validateRatio(config.goap.budget_guidance_boost_factor, "goap.budget_guidance_boost_factor")
-validatePositive(config.goap.replan_stalled_turns, "goap.replan_stalled_turns")
-validateRatio(config.goap.replan_budget_shortfall_ratio, "goap.replan_budget_shortfall_ratio")
-validateNonNegative(config.goap.new_opportunity_scan_frequency, "goap.new_opportunity_scan_frequency") # Can be 0 for every turn
-
-# Validate GOAP parameters
-validatePositive(config.goap.planning_depth, "goap.planning_depth")
-validateRatio(config.goap.confidence_threshold, "goap.confidence_threshold")
-validatePositive(config.goap.max_concurrent_plans, "goap.max_concurrent_plans")
-validateRatio(config.goap.defense_priority, "goap.defense_priority")
-validateRatio(config.goap.offense_priority, "goap.offense_priority")
-validateRatio(config.goap.budget_guidance_boost_factor, "goap.budget_guidance_boost_factor")
-validatePositive(config.goap.replan_stalled_turns, "goap.replan_stalled_turns")
-validateRatio(config.goap.replan_budget_shortfall_ratio, "goap.replan_budget_shortfall_ratio")
-validatePositive(config.goap.new_opportunity_scan_frequency, "goap.new_opportunity_scan_frequency")
+  # Validate GOAP parameters
+  validatePositive(config.goap.planning_depth, "goap.planning_depth")
+  validateRatio(config.goap.confidence_threshold, "goap.confidence_threshold")
+  validatePositive(config.goap.max_concurrent_plans, "goap.max_concurrent_plans")
+  validateRatio(config.goap.defense_priority, "goap.defense_priority")
+  validateRatio(config.goap.offense_priority, "goap.offense_priority")
+  validateRatio(config.goap.budget_guidance_boost_factor,
+    "goap.budget_guidance_boost_factor")
+  validatePositive(config.goap.replan_stalled_turns,
+    "goap.replan_stalled_turns")
+  validateRatio(config.goap.replan_budget_shortfall_ratio,
+    "goap.replan_budget_shortfall_ratio")
+  validateNonNegative(config.goap.new_opportunity_scan_frequency,
+    "goap.new_opportunity_scan_frequency")
 
 # ==============================================================================
 # Config Loading

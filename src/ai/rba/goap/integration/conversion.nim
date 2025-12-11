@@ -88,32 +88,40 @@ proc getDomainForGoal*(goal: Goal): DomainType =
   case goal.goalType
   # Fleet domain
   of GoalType.DefendColony, GoalType.SecureSystem, GoalType.InvadeColony,
-     GoalType.EliminateFleet, GoalType.EstablishFleetPresence, GoalType.ConductReconnaissance:
+     GoalType.EliminateFleet, GoalType.EstablishFleetPresence,
+     GoalType.ConductReconnaissance, GoalType.AchieveTotalVictory,
+     GoalType.LastStandReconquest:
     return FleetDomain
 
   # Build domain
-  of GoalType.EstablishShipyard, GoalType.BuildFleet, GoalType.ConstructStarbase,
-     GoalType.ExpandProduction, GoalType.CreateInvasionForce:
+  of GoalType.EstablishShipyard, GoalType.BuildFleet,
+     GoalType.ConstructStarbase, GoalType.ExpandProduction,
+     GoalType.CreateInvasionForce, GoalType.EnsureRepairCapacity:
     return BuildDomain
 
   # Research domain
-  of GoalType.AchieveTechLevel, GoalType.CloseResearchGap, GoalType.UnlockCapability:
+  of GoalType.AchieveTechLevel, GoalType.CloseResearchGap,
+     GoalType.UnlockCapability:
     return ResearchDomain
 
   # Diplomatic domain
-  of GoalType.SecureAlliance, GoalType.DeclareWar, GoalType.ImproveRelations, GoalType.IsolateEnemy:
+  of GoalType.SecureAlliance, GoalType.DeclareWar,
+     GoalType.ImproveRelations, GoalType.IsolateEnemy:
     return DiplomaticDomain
 
   # Espionage domain
-  of GoalType.GatherIntelligence, GoalType.StealTechnology, GoalType.SabotageEconomy,
-     GoalType.AssassinateLeader, GoalType.DisruptEconomy, GoalType.PropagandaCampaign,
-     GoalType.CyberAttack, GoalType.CounterIntelSweep, GoalType.StealIntelligence,
-     GoalType.PlantDisinformation, GoalType.EstablishIntelNetwork:
+  of GoalType.GatherIntelligence, GoalType.StealTechnology,
+     GoalType.SabotageEconomy, GoalType.AssassinateLeader,
+     GoalType.DisruptEconomy, GoalType.PropagandaCampaign,
+     GoalType.CyberAttack, GoalType.CounterIntelSweep,
+     GoalType.StealIntelligence, GoalType.PlantDisinformation,
+     GoalType.EstablishIntelNetwork:
     return EspionageDomain
 
   # Economic domain
-  of GoalType.TransferPopulation, GoalType.TerraformPlanet, GoalType.DevelopInfrastructure,
-     GoalType.BalanceEconomy:
+  of GoalType.TransferPopulation, GoalType.TerraformPlanet,
+     GoalType.DevelopInfrastructure, GoalType.BalanceEconomy,
+     GoalType.MaintainPrestige:
     return EconomicDomain
 
 proc groupGoalsByDomain*(goals: seq[Goal]): Table[DomainType, seq[Goal]] =

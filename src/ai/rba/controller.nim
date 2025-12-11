@@ -60,9 +60,10 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     standingOrders: initTable[FleetId, StandingOrder](),
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
-    pendingIntelUpdates: @[],
-    goapConfig: globalRBAConfig.goap, # Initialize GOAP config from global RBA config
-    goapPlanTracker: newPlanTracker() # Initialize GOAP plan tracker
+    pendingIntelUpdates: @[]
+    # TODO: GOAP fields commented out - not yet integrated
+    # goapConfig: globalRBAConfig.goap,
+    # goapPlanTracker: newPlanTracker()
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
@@ -80,13 +81,14 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     standingOrders: initTable[FleetId, StandingOrder](),
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
-    pendingIntelUpdates: @[],
-    goapConfig: globalRBAConfig.goap, # Initialize GOAP config from global RBA config
-    goapPlanTracker: newPlanTracker() # Initialize GOAP plan tracker
+    pendingIntelUpdates: @[]
+    # TODO: GOAP fields commented out - not yet integrated
+    # goapConfig: globalRBAConfig.goap,
+    # goapPlanTracker: newPlanTracker()
   )
 
 # =============================================================================
 # High-Level Coordination Functions
 # =============================================================================
 
-# Note: Tactical/strategic functions imported later to avoid circular dependency
+# TODO: Note: Tactical/strategic functions imported later to avoid circular dependency

@@ -12,7 +12,8 @@ import ../../engine/resolution/types as event_types # For EspionageAction, Diplo
 import ../../engine/espionage/types as esp_types # For EspionageAction
 import ../../engine/diplomacy/proposals as dip_proposals # For ProposalType
 import ./shared/intelligence_types  # Enhanced intelligence types (Phase B+)
-import ./multi_advisor/mediation # For MultiAdvisorAllocation
+# Removed circular import: ./multi_advisor/mediation (obsolete file)
+# MultiAdvisorAllocation now defined in treasurer/multi_advisor
 # GOAP not yet integrated - commented out
 # import ../../ai/goap/types as goap_types # For GOAPConfig
 # import ../../ai/goap/plan_tracking as goap_plan # For PlanTracker
@@ -236,6 +237,17 @@ type
 
   # Note: Diplomacy doesn't cost PP, so no ProtostratorFeedback from Treasurer
   # Basileus provides feedback on priority conflicts only
+
+  MultiAdvisorAllocation* = object
+    ## Result of multi-advisor budget allocation (Phase 2)
+    ## Combines budgets allocated to each advisor with feedback
+    budgets*: Table[AdvisorType, int]  # PP allocated to each advisor
+    reservedBudget*: int  # Budget reserved by GOAP for future turns
+    treasurerFeedback*: TreasurerFeedback  # For Domestikos
+    scienceFeedback*: ScienceFeedback  # For Logothete
+    drungariusFeedback*: DrungariusFeedback  # For Drungarius
+    eparchFeedback*: EparchFeedback  # For Eparch
+    iteration*: int  # Reprioritization iteration count
 
   AdvisorRequirement* = object
     ## Generic wrapper for all advisor requirements, used in mediation and feedback.

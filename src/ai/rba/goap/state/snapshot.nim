@@ -8,12 +8,12 @@
 ## - Immutable snapshot (value type, no mutation)
 ## - Extracts planning-relevant data only
 
-import std/[tables, options, sequtils, algorithm]
+import std/[tables, options, sequtils, algorithm, strformat, strutils]
 import ../../../../common/types/[core, tech]
 import ../../../../engine/[fog_of_war, gamestate, fleet, logger] # Added logger for debug
 import ../core/types
-import ../../controller_types # For IntelligenceSnapshot and related types
-import ../config # For GOAPConfig
+import ../../shared/intelligence_types # For IntelligenceSnapshot
+import ../../config # For GOAPConfig
 
 # =============================================================================
 # Helper Functions
@@ -55,7 +55,18 @@ proc calculateFleetCombatStrength(fleet: Fleet): int =
   var strength = 0
   for squadron in fleet.squadrons:
     # A simple heuristic: heavier ships contribute more
-    for ship in squadron.allShips:
+    # Count flagship
+    case squadron.flagship.shipClass
+    of ShipClass.Fighter: strength += 1
+    of ShipClass.Corvette, ShipClass.Frigate: strength += 2
+    of ShipClass.Destroyer, ShipClass.Cruiser: strength += 4
+    of ShipClass.Battleship, ShipClass.Dreadnought: strength += 8
+    of ShipClass.Carrier: strength += 5 # Carriers have fighters, but less direct combat
+    of ShipClass.TroopTransport: strength += 1 # Very little combat value
+    else: discard
+
+    # Count other ships in squadron
+    for ship in squadron.ships:
       case ship.shipClass
       of ShipClass.Fighter: strength += 1
       of ShipClass.Corvette, ShipClass.Frigate: strength += 2
@@ -71,89 +82,89 @@ proc calculateFleetCombatStrength(fleet: Fleet): int =
 # =============================================================================
 
 proc createWorldStateSnapshot*(
-  houseId: HouseId, # The AI's house ID
-  homeworld: SystemId, # The AI's homeworld system ID
-  currentTurn: int,
-  config: GOAPConfig, # GOAP configuration (for planning depth, etc.)
-  intelSnapshot: IntelligenceSnapshot # Comprehensive intelligence from Drungarius
+  filtered: FilteredGameState
 ): WorldStateSnapshot =
   ## Create immutable world state snapshot for GOAP planning.
-  ## Converts FilteredGameState (from intelSnapshot) → WorldStateSnapshot.
+  ## Converts FilteredGameState (fog-of-war filtered) → WorldStateSnapshot.
   ## Respects fog-of-war (only uses visible/known information).
 
   result = WorldStateSnapshot(
-    turn: currentTurn,
-    houseId: houseId
+    turn: filtered.turn,
+    houseId: filtered.viewingHouse
   )
 
-  # --- Economic state ---
-  result.treasury = intelSnapshot.economy.currentTreasury
-  result.production = intelSnapshot.economy.totalProduction
-  result.maintenanceCost = intelSnapshot.economy.totalMaintenanceCost
-  result.netIncome = intelSnapshot.economy.netIncome
+  # --- Economic state (from own house) ---
+  result.treasury = filtered.ownHouse.treasury
+  result.production = filtered.ownColonies.mapIt(it.production).foldl(a + b, 0)
+  result.maintenanceCost = 0  # TODO: Calculate from fleets and buildings
+  result.netIncome = result.production - result.maintenanceCost
 
   # --- Military state ---
   var totalCER = 0
   var idleFleetIds: seq[FleetId] = @[]
-  result.fleetsAtSystem = initTable[SystemId, seq[FleetIntel]]() # Initialize table
 
-  # Populate fleetsAtSystem and calculate total CER for own fleets
-  for fleet in intelSnapshot.military.ownFleets:
-    # Use the engine's actual combat strength for GOAP's world state
-    totalCER += fleet.combatStrength() 
-    if not intelSnapshot.military.ownFleetOrders.hasKey(fleet.fleetId):
-      idleFleetIds.add(fleet.fleetId)
-    
-    # Add to fleetsAtSystem for later use (e.g. for eliminate fleet goal validation)
-    if not result.fleetsAtSystem.hasKey(fleet.location):
-      result.fleetsAtSystem[fleet.location] = @[]
-    result.fleetsAtSystem[fleet.location].add(fleet)
+  # Calculate total CER for own fleets
+  for fleet in filtered.ownFleets:
+    # Calculate simple combat strength
+    totalCER += calculateFleetCombatStrength(fleet)
 
-  # Add known enemy fleets to fleetsAtSystem
-  for fleet in intelSnapshot.military.enemyFleets:
-    if not result.fleetsAtSystem.hasKey(fleet.location):
-      result.fleetsAtSystem[fleet.location] = @[]
-    result.fleetsAtSystem[fleet.location].add(fleet)
+    # Check if fleet has orders
+    if not filtered.ownFleetOrders.hasKey(fleet.id):
+      idleFleetIds.add(fleet.id)
 
   result.totalFleetStrength = totalCER
   result.idleFleets = idleFleetIds
 
-  # Fleets under threat (from intel snapshot's threat assessment)
-  result.fleetsUnderThreat = intelSnapshot.military.fleetsUnderThreat.mapIt((it.fleetId, it.threatLevel.int))
+  # Fleets under threat - TODO: calculate from visible enemy fleets
+  result.fleetsUnderThreat = @[]
 
   # --- Territory state ---
-  result.ownedColonies = intelSnapshot.economy.ownedColonies.mapIt(it.systemId)
-  result.homeworld = homeworld
+  result.ownedColonies = filtered.ownColonies.mapIt(it.systemId)
+  # Note: homeworld parameter is not stored in WorldStateSnapshot (not part of type definition)
 
-  # Vulnerable/undefended colonies (from intel snapshot's threat assessment)
-  result.vulnerableColonies = intelSnapshot.military.vulnerableColonies
-  result.undefendedColonies = intelSnapshot.military.undefendedColonies
-  
-  # --- Strategic intelligence ---
-  result.knownEnemyColonies = intelSnapshot.knownEnemyColonies
-  result.invasionOpportunities = intelSnapshot.military.invasionOpportunities.mapIt(it.systemId)
-  # Populate undefended enemy colonies for prestige targeting (Gap 6)
-  result.undefendedEnemyColonies = intelSnapshot.military.vulnerableTargets.filterIt(
-    it.estimatedDefenses == 0 # Filter for targets with 0 estimated defenses
-  ).mapIt((it.systemId, it.owner)) # Extract system ID and owner
+  # Vulnerable/undefended colonies - TODO: assess from local defenses
+  result.vulnerableColonies = @[]
+  result.undefendedColonies = @[]
 
-  result.staleIntelSystems = intelSnapshot.intelligence.staleIntelSystems
-  result.espionageTargets = intelSnapshot.espionage.highPriorityTargets.mapIt(it.targetHouse.getOrDefault(0.HouseId)) # Map to HouseId if targetHouse exists
+  # --- Strategic intelligence (from visible assets) ---
+  result.knownEnemyColonies = filtered.visibleColonies.mapIt((it.systemId, it.owner))
+  result.invasionOpportunities = @[]  # TODO: analyze visible enemy colonies for weak ones
+  result.undefendedEnemyColonies = @[]  # TODO: filter visible colonies by defense strength
+
+  result.staleIntelSystems = @[]  # TODO: track stale intelligence
+  result.espionageTargets = @[]  # TODO: identify espionage targets
 
   # --- Diplomatic relations ---
-  result.diplomaticRelations = intelSnapshot.diplomacy.diplomaticRelations
+  result.diplomaticRelations = initTable[HouseId, DiplomaticState]()
+  # Extract diplomatic relations for this house
+  for key, dipState in filtered.houseDiplomacy:
+    let (house1, house2) = key
+    if house1 == filtered.viewingHouse:
+      result.diplomaticRelations[house2] = dipState
+    elif house2 == filtered.viewingHouse:
+      result.diplomaticRelations[house1] = dipState
 
-  # --- Tech state ---
-  # Populate tech levels from the intelligence snapshot
-  for field, level in intelSnapshot.research.techLevels:
-    result.techLevels[field] = level
-  for field, rp in intelSnapshot.research.researchProgress:
-    result.researchProgress[field] = rp
-  result.criticalTechGaps = intelSnapshot.research.criticalTechGaps
+  # --- Tech state (from own house) ---
+  # Convert TechLevel object → Table[TechField, int]
+  # Note: EL and SL are NOT TechField enum values (they're separate research levels)
+  result.techLevels = initTable[TechField, int]()
+  let techLvl = filtered.ownHouse.techTree.levels
+  result.techLevels[TechField.ConstructionTech] = techLvl.constructionTech
+  result.techLevels[TechField.WeaponsTech] = techLvl.weaponsTech
+  result.techLevels[TechField.TerraformingTech] = techLvl.terraformingTech
+  result.techLevels[TechField.ElectronicIntelligence] = techLvl.electronicIntelligence
+  result.techLevels[TechField.CloakingTech] = techLvl.cloakingTech
+  result.techLevels[TechField.ShieldTech] = techLvl.shieldTech
+  result.techLevels[TechField.CounterIntelligence] = techLvl.counterIntelligence
+  result.techLevels[TechField.FighterDoctrine] = techLvl.fighterDoctrine
+  result.techLevels[TechField.AdvancedCarrierOps] = techLvl.advancedCarrierOps
 
-  # Other important strategic values
-  result.totalColonies = result.ownedColonies.len
-  result.totalIU = intelSnapshot.economy.totalIndustrialUnits
+  # Extract TRP (technology research points) per field from ResearchPoints
+  result.researchProgress = filtered.ownHouse.techTree.accumulated.technology
+  result.criticalTechGaps = @[]  # TODO: identify tech gaps vs visible enemies
+
+  # Note: totalColonies and totalIU fields don't exist in WorldStateSnapshot
+  # Can be calculated from ownedColonies.len if needed
 
 proc snapshotDelta*(before, after: WorldStateSnapshot): string =
   ## Calculate diff between two snapshots (for debugging)
@@ -168,10 +179,6 @@ proc snapshotDelta*(before, after: WorldStateSnapshot): string =
     changes.add(&"Fleet Strength: {before.totalFleetStrength} -> {after.totalFleetStrength}")
   if after.ownedColonies.len != before.ownedColonies.len:
     changes.add(&"Owned Colonies: {before.ownedColonies.len} -> {after.ownedColonies.len}")
-  if after.totalColonies != before.totalColonies:
-    changes.add(&"Total Colonies: {before.totalColonies} -> {after.totalColonies}")
-  if after.totalIU != before.totalIU:
-    changes.add(&"Total IU: {before.totalIU} -> {after.totalIU}")
   if after.idleFleets.len != before.idleFleets.len:
     changes.add(&"Idle Fleets: {before.idleFleets.len} -> {after.idleFleets.len}")
   if after.vulnerableColonies.len != before.vulnerableColonies.len:

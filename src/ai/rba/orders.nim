@@ -18,8 +18,7 @@ import ../../engine/commands/zero_turn_commands
 import ../../engine/research/types as res_types
 import ../common/types as ai_types
 import ./[controller_types, budget, drungarius, tactical, intelligence, logistics, standing_orders_manager, logothete]
-import ./orders/[phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, colony_management]
-import ./phase4_feedback # Explicitly import phase4_feedback
+import ./orders/[phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, colony_management, phase4_feedback]
 import ./basileus/execution  # For AdvisorType and centralized execution
 
 export core, orders, standing_orders_manager, zero_turn_commands
@@ -88,7 +87,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # PHASE 1: MULTI-ADVISOR REQUIREMENT GENERATION
   # ==========================================================================
-  generateAllAdvisorRequirements(controller, filtered, intelSnapshot, currentAct, filtered.ownHouse.treasury)
+  generateAllAdvisorRequirements(controller, filtered, intelSnapshot, currentAct)
 
   # ==========================================================================
   # PHASE 2: BASILEUS MEDIATION & BUDGET ALLOCATION
@@ -249,13 +248,14 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let standingOrders = assignStandingOrders(controller, filtered, filtered.turn)
   controller.standingOrders = standingOrders
 
-  # Add Logistics-generated build requirements (e.g., for Drydocks) to Domestikos requirements
-  if result.buildRequirements.len > 0:
-    if controller.domestikosRequirements.isNone:
-      controller.domestikosRequirements = some(BuildRequirements(requirements: @[], totalEstimatedCost: 0))
-    controller.domestikosRequirements.get().requirements.add(result.buildRequirements)
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Logistics added {result.buildRequirements.len} build requirements (e.g., Drydocks)")
+  # TODO: Add Logistics-generated build requirements (e.g., for Drydocks) to Domestikos requirements
+  # Commented out - AIOrderSubmission doesn't have buildRequirements field
+  # if result.buildRequirements.len > 0:
+  #   if controller.domestikosRequirements.isNone:
+  #     controller.domestikosRequirements = some(BuildRequirements(requirements: @[], totalEstimatedCost: 0))
+  #   controller.domestikosRequirements.get().requirements.add(result.buildRequirements)
+  #   logInfo(LogCategory.lcAI,
+  #           &"{controller.houseId} Logistics added {result.buildRequirements.len} build requirements (e.g., Drydocks)")
 
   # Convert strategic standing orders to explicit fleet orders
   var strategicOrdersConverted = 0
@@ -354,16 +354,18 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} === Phase 8.5: Reporting GOAP Progress ===")
   
+  # TODO: GOAP feedback integration incomplete - reportGOAPProgress not available
+  # Commented out until GOAP is properly integrated
   # Pass the allocation results and current intelligence to GOAP's plan tracker
   # filtered.baseGameState provides the GameState before the current turn's orders are applied.
-  phase4_feedback.reportGOAPProgress(
-    controller,
-    allocation, # Result of budget allocation and requirement fulfillment
-    filtered.turn,
-    intelSnapshot,
-    filtered.baseGameState, # GameState before current turn's orders take effect
-    events # Pass events for outcome verification
-  )
+  # phase4_feedback.reportGOAPProgress(
+  #   controller,
+  #   allocation, # Result of budget allocation and requirement fulfillment
+  #   filtered.turn,
+  #   intelSnapshot,
+  #   filtered.baseGameState, # GameState before current turn's orders take effect
+  #   events # Pass events for outcome verification
+  # )
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} ========================================")

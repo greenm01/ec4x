@@ -85,11 +85,13 @@ proc generateAllAdvisorRequirements*(
   # === DRUNGARIUS: Espionage requirements ===
   logInfo(LogCategory.lcAI, &"{controller.houseId} Drungarius: Generating espionage requirements")
 
+  let availableBudget = filtered.ownHouse.treasury  # Total PP available for this turn
   controller.drungariusRequirements = some(drungarius_req.generateEspionageRequirements(
     controller,
     filtered,
     intelSnapshot,
-    currentAct
+    currentAct,
+    availableBudget
   ))
 
   logInfo(LogCategory.lcAI,

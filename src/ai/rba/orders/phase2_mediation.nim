@@ -12,8 +12,8 @@ import ./utils
 proc mediateAndAllocateBudget*(
   controller: var AIController,
   filtered: FilteredGameState,
-  currentAct: ai_types.GameAct,
-  goapBudgetEstimates: Option[Table[string, int]] = none(Table[string, int])  # NEW: from Phase 1.5
+  currentAct: ai_types.GameAct
+  # goapBudgetEstimates: Option[Table[DomainType, int]] = none(Table[DomainType, int])  # GOAP not yet integrated
 ): MultiAdvisorAllocation =
   ## Phase 2: Basileus mediation and Treasurer budget allocation
   ## Returns per-advisor budgets and feedback
@@ -25,11 +25,11 @@ proc mediateAndAllocateBudget*(
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} === Phase 2: Basileus Mediation & Allocation ===")
 
-  # GOAP Phase 4: Log active strategic goals
-  if controller.goapEnabled and controller.goapActiveGoals.len > 0:
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Active GOAP goals ({controller.goapActiveGoals.len}): " &
-            controller.goapActiveGoals[0..min(2, controller.goapActiveGoals.len-1)].join(", "))
+  # GOAP Phase 4: Log active strategic goals (GOAP not yet integrated)
+  # if controller.goapEnabled and controller.goapActiveGoals.len > 0:
+  #   logInfo(LogCategory.lcAI,
+  #           &"{controller.houseId} Active GOAP goals ({controller.goapActiveGoals.len}): " &
+  #           controller.goapActiveGoals[0..min(2, controller.goapActiveGoals.len-1)].join(", "))
 
   # Calculate available budget (projected treasury)
   let projectedTreasury = calculateProjectedTreasury(filtered)
@@ -37,7 +37,7 @@ proc mediateAndAllocateBudget*(
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Projected treasury: {projectedTreasury}PP")
 
-  # Multi-advisor allocation (hybrid: reserves + mediation + GOAP estimates)
+  # Multi-advisor allocation (hybrid: reserves + mediation)
   result = allocateBudgetMultiAdvisor(
     controller.domestikosRequirements.get(),
     controller.logotheteRequirements.get(),
@@ -48,8 +48,8 @@ proc mediateAndAllocateBudget*(
     currentAct,
     projectedTreasury,
     controller.houseId,
-    filtered,  # For war status detection
-    goapBudgetEstimates  # NEW: GOAP Phase 4 strategic cost estimates
+    filtered  # For war status detection
+    # goapBudgetEstimates omitted - GOAP not yet integrated, will use default
   )
 
   # Store feedback in controller for feedback loop

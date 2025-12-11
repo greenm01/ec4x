@@ -71,6 +71,19 @@ proc estimateGoalCost*(state: WorldStateSnapshot, goal: Goal): float =
     # Transport + marines + escorts
     return 210.0
 
+  of GoalType.EnsureRepairCapacity:
+    # Need drydock capacity (estimate cost of drydock infrastructure)
+    return 100.0
+
+  # Fleet Domain (strategic goals)
+  of GoalType.AchieveTotalVictory:
+    # Ultimate goal - very expensive (combined fleet + conquest operations)
+    return 1000.0
+
+  of GoalType.LastStandReconquest:
+    # Desperate measure - need major fleet rebuild
+    return 800.0
+
   # Research Domain
   of GoalType.AchieveTechLevel:
     # Estimate RP cost (each level costs ~50 RP conservative estimate)
