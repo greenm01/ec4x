@@ -14,6 +14,7 @@ import ../../../engine/intelligence/types as intel_types  # For IntelQuality enu
 import ../controller_types
 import ../config # For globalRBAConfig
 import ../shared/intelligence_types  # Phase F: Intelligence integration
+import ../intelligence # For calculateDistance
 import ./fleet_analysis # For FleetAnalysis, FleetUtilization types
 
 proc generateMergeOrders*(
@@ -536,11 +537,23 @@ proc generateCounterAttackOrders*(
     # AI will bombard defended colonies to soften defenses, then invade when weak
     var priority = 100.0
     if visibleColony.estimatedIndustry.isSome:
-      priority += visibleColony.estimatedIndustry.get().float * 2.0
+      priority += visibleColony.estimatedIndustry.get().float * 1.0
 
-    # Prioritize undefended colonies (easier targets)
+    # Prioritize undefended colonies (easier targets - doubled from 50 to 100)
     if not hasDefenders:
-      priority += 50.0  # +50 priority bonus for undefended colonies
+      priority += 100.0  # +100 priority bonus for undefended colonies
+
+    # Distance penalty: -5 per jump beyond 5
+    # Find nearest own colony for distance calculation
+    var minDistance = 999
+    for ownColony in filtered.ownColonies:
+      let dist = calculateDistance(filtered.starMap, visibleColony.systemId,
+                                    ownColony.systemId)
+      if dist < minDistance:
+        minDistance = dist
+
+    if minDistance > 5:
+      priority -= float((minDistance - 5) * 5)  # -5 per jump beyond 5
 
     vulnerableTargets.add(VulnerableTarget(
       systemId: visibleColony.systemId,
@@ -566,10 +579,15 @@ proc generateCounterAttackOrders*(
 
   # Assign attackers to targets
   let maxAttacks = min(availableAttackers.len, vulnerableTargets.len)
+  var attackedSystems: seq[SystemId] = @[]  # Track assigned targets
 
   for i in 0..<maxAttacks:
     let attacker = availableAttackers[i]
     let target = vulnerableTargets[i]
+
+    # Skip if this target already has an attack order
+    if target.systemId in attackedSystems:
+      continue
 
     # NEW: Select appropriate combat order based on fleet composition and target defenses
     let combatOrder = selectCombatOrderType(
@@ -590,6 +608,8 @@ proc generateCounterAttackOrders*(
       priority: 90, # High priority - opportunistic strikes
       roe: some(8)  # Main assault: fight through resistance. As per dev log.
     ))
+
+    attackedSystems.add(target.systemId)  # Mark system as attacked
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Invasion: Generated {result.len} invasion orders")

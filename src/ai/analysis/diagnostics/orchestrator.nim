@@ -332,6 +332,26 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
         colonizeCount += 1
     result.colonizeOrdersSubmitted = colonizeCount
 
+    # Phase 1: Count invasion orders by type
+    var bombardCount = 0
+    var invadeCount = 0
+    var blitzCount = 0
+    for fleetOrder in packet.fleetOrders:
+      case fleetOrder.orderType
+      of FleetOrderType.Bombard:
+        bombardCount += 1
+      of FleetOrderType.Invade:
+        invadeCount += 1
+      of FleetOrderType.Blitz:
+        blitzCount += 1
+      else:
+        discard
+
+    result.invasionOrders_bombard = bombardCount
+    result.invasionOrders_invade = invadeCount
+    result.invasionOrders_blitz = blitzCount
+    result.invasionOrders_generated = bombardCount + invadeCount + blitzCount
+
     # Total orders
     result.totalOrders = packet.fleetOrders.len + packet.buildOrders.len
 
@@ -493,6 +513,12 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # ================================================================
   if controller.isSome:
     let ctrl = controller.get()
+
+    # Phase 1: Populate vulnerable targets count from intelligence snapshot
+    if ctrl.intelligenceSnapshot.isSome:
+      let intel = ctrl.intelligenceSnapshot.get()
+      result.vulnerableTargets_count = intel.military.vulnerableTargets.len
+
     result.goapEnabled = ctrl.goapEnabled
     if ctrl.goapEnabled:
       result.goapPlansActive = ctrl.goapPlanTracker.activePlans.len

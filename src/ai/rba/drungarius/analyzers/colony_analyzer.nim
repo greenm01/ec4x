@@ -5,8 +5,8 @@
 ##
 ## Phase B implementation - highest priority analyzer
 
-import std/[tables, options, algorithm]
-import ../../../../engine/[gamestate, fog_of_war, starmap, fleet]
+import std/[tables, options, algorithm, strformat]
+import ../../../../engine/[gamestate, fog_of_war, starmap, fleet, logger]
 import ../../../../engine/intelligence/types as intel_types
 import ../../../../common/types/core
 import ../../controller_types
@@ -34,6 +34,11 @@ proc analyzeColonyIntelligence*(
   result.highValueTargets = @[]
 
   let config = globalRBAConfig.intelligence
+
+  # Phase 1 diagnostic: Log intelligence database size
+  logInfo(LogCategory.lcAI,
+    &"{filtered.viewingHouse} Colony Analyzer: Processing " &
+    &"{filtered.ownHouse.intelligence.colonyReports.len} colony intel reports")
 
   # Iterate through all colony intelligence reports
   for systemId, report in filtered.ownHouse.intelligence.colonyReports:
@@ -69,7 +74,15 @@ proc analyzeColonyIntelligence*(
     if economicValue > 0:
       let defenseRatio = totalDefenseStrength.float / economicValue.float
 
+      # Log ALL candidate evaluations for diagnostic visibility
+      logDebug(LogCategory.lcAI,
+        &"{filtered.viewingHouse} Colony Analyzer: Evaluating system {systemId} " &
+        &"(owner: {report.targetOwner}) - value={economicValue}, " &
+        &"defenses={totalDefenseStrength}, ratio={defenseRatio:.2f}")
+
       if defenseRatio < config.vulnerability_defense_ratio_threshold:
+        logInfo(LogCategory.lcAI,
+          &"{filtered.viewingHouse} Colony Analyzer: TARGET IDENTIFIED - {systemId}")
         # Vulnerable: weak defenses for its value
         let distance = findNearestOwnColony(systemId, filtered.ownColonies, filtered.starMap)
 
@@ -90,6 +103,11 @@ proc analyzeColonyIntelligence*(
           lastIntelTurn: report.gatheredTurn,
           intelQuality: report.quality
         ))
+      else:
+        logDebug(LogCategory.lcAI,
+          &"{filtered.viewingHouse} Colony Analyzer: REJECTED - defenses too " &
+          &"strong (ratio {defenseRatio:.2f} >= threshold " &
+          &"{config.vulnerability_defense_ratio_threshold})")
 
   # Sort vulnerable targets by vulnerability score (most vulnerable first)
   result.vulnerableTargets.sort(proc(a, b: InvasionOpportunity): int =

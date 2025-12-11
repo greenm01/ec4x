@@ -379,9 +379,13 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
       # Generate basic intelligence report on enemy colony
       let intelReport = generateColonyIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
       if intelReport.isSome:
-        state.withHouse(houseId):
-          house.intelligence.addColonyReport(intelReport.get())
-        logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} gathered intelligence on enemy colony at {newLocation}")
+        # Use withHouse template to ensure proper write-back
+        var h = state.houses[houseId]
+        h.intelligence.addColonyReport(intelReport.get())
+        state.houses[houseId] = h
+        logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} ({houseId}) gathered intelligence on enemy colony at {newLocation} (owner: {colony.owner}) - DB now has {h.intelligence.colonyReports.len} reports")
+      else:
+        logWarn(LogCategory.lcFleet, &"Fleet {order.fleetId} ({houseId}) failed to generate intel report for enemy colony at {newLocation}")
 
   # Check for fleet encounters at destination with STEALTH DETECTION
   # Per assets.md:2.4.3 - Cloaked fleets can only be detected by scouts or starbases

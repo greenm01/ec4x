@@ -79,3 +79,8 @@ proc collectDrungariusMetrics*(state: GameState, houseId: HouseId): DiagnosticMe
 
   # TODO: Track total invasions (useful for strategy analysis)
   result.totalInvasions = 0
+
+  # Phase 1: Invasion planning metrics
+  # NOTE: vulnerableTargets_count populated during intelligence analysis
+  # (see colony_analyzer.nim analyzeColonyIntelligence)
+  result.vulnerableTargets_count = 0  # Updated by order generation phase
