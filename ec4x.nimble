@@ -67,6 +67,8 @@ task check, "Check syntax of all source files":
 task tidy, "Clean build artifacts":
   echo "Cleaning build artifacts..."
   exec "rm -rf bin/ nimcache/"
+  echo "Cleaning balance data..."
+  exec "find balance_results/ -type f -delete"
   exec "find . -name '*.exe' -delete 2>/dev/null || true"
   exec "find . -name 'test_*' -type f -executable -delete 2>/dev/null || true"
   echo "Clean completed!"
