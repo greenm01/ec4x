@@ -17,7 +17,6 @@
 
 import std/[tables, options]
 import ../../../../common/types/[core, tech, diplomacy, units]
-import ../../../../engine/resolution/types # For EspionageAction (now directly from here)
 
 # =============================================================================
 # World State Snapshot (Immutable Planning State)
@@ -223,13 +222,6 @@ type
     plans*: seq[GOAPlan]
     multiTurnOps*: seq[GOAPlan]  ## Plans requiring >1 turn
     totalEstimatedCost*: int
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
-import ../../config # Import GOAPConfig from the centralized RBA config
-# No GOAPConfig definition here, as it's imported from config.nim
 
 # =============================================================================
 # Helper Functions
