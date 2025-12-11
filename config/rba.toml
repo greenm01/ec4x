@@ -258,6 +258,7 @@ enabled = true                      # Enable domestikos module for colony defens
 split_threshold_act1 = 2            # Split fleets with 2+ ships in Act 1
 merge_threshold_act2 = 3            # Merge when 3+ idle single-ship fleets
 rendezvous_preference = "homeworld" # Where to merge fleets: homeworld, frontline, center
+max_invasion_eta_turns = 8          # Maximum ETA for invasion operations
 
 # ZeroTurnCommand Fleet Management (Immediate-execution fleet operations)
 fleet_management_enabled = true     # Enable merge/detach/transfer using ZeroTurnCommand API
@@ -465,4 +466,23 @@ reactivation_healthy = 1000         # Healthy treasury for reactivation
 general_multiplier = 1.5            # General affordability check (1.5x cost)
 shield_multiplier = 2.0             # Shield affordability check (2x cost)
 critical_multiplier = 3.0           # Critical threshold check (3x cost)
+
+# ==============================================================================
+# GOAP STRATEGIC PLANNING
+# ==============================================================================
+# Goal-Oriented Action Planning for multi-turn strategic decision making
+# Status: MVP integration (Fleet + Build domains only)
+
+[goap]
+enabled = true                          # Enabled for MVP integration testing
+planning_depth = 3                      # Max turns to plan ahead
+confidence_threshold = 0.5              # Min confidence to execute plan
+max_concurrent_plans = 3                # Limit active plans
+defense_priority = 0.8                  # Weight for defensive goals
+offense_priority = 0.6                  # Weight for offensive goals
+log_plans = true                        # Debug logging (enable for MVP)
+budget_guidance_boost_factor = 0.3      # GOAP budget estimates boost RBA requirements
+replan_stalled_turns = 3                # Replan if no progress for 3 turns
+replan_budget_shortfall_ratio = 0.8     # Replan if remaining cost > 80% of treasury
+new_opportunity_scan_frequency = 2      # Check for new opportunities every 2 turns
 

@@ -3,9 +3,115 @@
 ## Core planning algorithm: finds optimal action sequence to achieve goal
 
 import std/[tables, options, heapqueue, sequtils]
+import ../../../../common/types/units  # For ShipClass
 import node
 import ../core/[types, conditions, heuristics]
 import ../state/[snapshot, effects]
+
+# =============================================================================
+# Goal Success Checking
+# =============================================================================
+
+proc isGoalAchieved(state: WorldStateSnapshot, goal: Goal): bool =
+  ## Goal-specific success checks (pragmatic for MVP)
+  ## Returns true if the goal has been achieved in the current state
+  case goal.goalType
+  of GoalType.DefendColony:
+    if goal.target.isNone: return false
+    return goal.target.get() notin state.undefendedColonies
+
+  of GoalType.InvadeColony:
+    if goal.target.isNone: return false
+    return goal.target.get() in state.ownedColonies
+
+  of GoalType.BuildFleet:
+    return state.idleFleets.len > 0
+
+  of GoalType.EstablishShipyard:
+    return true  # Assume success for MVP (track shipyards post-MVP)
+
+  else:
+    return false
+
+# =============================================================================
+# Action Library (Domain-Specific)
+# =============================================================================
+
+proc getAvailableActionsForGoal(state: WorldStateSnapshot, goal: Goal): seq[Action] =
+  ## Return actions applicable to this goal type (Fleet + Build only for MVP)
+  result = @[]
+
+  case goal.goalType
+  of GoalType.DefendColony:
+    if goal.target.isSome and state.idleFleets.len > 0:
+      result.add(Action(
+        actionType: ActionType.MoveFleet,
+        cost: 10,
+        duration: 1,
+        target: goal.target,
+        preconditions: @[hasMinBudget(10)],
+        effects: @[],
+        description: "Move fleet to " & $goal.target.get()
+      ))
+      result.add(Action(
+        actionType: ActionType.EstablishDefense,
+        cost: 0,
+        duration: 1,
+        target: goal.target,
+        preconditions: @[],
+        effects: @[],
+        description: "Assign defense duty"
+      ))
+
+  of GoalType.InvadeColony:
+    if goal.target.isSome:
+      result.add(Action(
+        actionType: ActionType.MoveFleet,
+        cost: 10,
+        duration: 2,
+        target: goal.target,
+        preconditions: @[hasMinBudget(10)],
+        effects: @[],
+        description: "Move invasion force"
+      ))
+      result.add(Action(
+        actionType: ActionType.AttackColony,
+        cost: 50,
+        duration: 1,
+        target: goal.target,
+        preconditions: @[hasMinBudget(50)],
+        effects: @[],
+        description: "Invade colony"
+      ))
+
+  of GoalType.BuildFleet:
+    if goal.target.isSome:
+      result.add(Action(
+        actionType: ActionType.ConstructShips,
+        cost: 100,
+        duration: 2,
+        target: goal.target,
+        shipClass: some(ShipClass.Cruiser),
+        quantity: 1,
+        preconditions: @[hasMinBudget(100), controlsSystem(goal.target.get())],
+        effects: @[],
+        description: "Build 1 Cruiser"
+      ))
+
+  of GoalType.EstablishShipyard:
+    if goal.target.isSome:
+      result.add(Action(
+        actionType: ActionType.BuildFacility,
+        cost: 150,
+        duration: 3,
+        target: goal.target,
+        preconditions: @[hasMinBudget(150), controlsSystem(goal.target.get())],
+        effects: @[],
+        description: "Build Shipyard"
+      ))
+
+  else:
+    discard
 
 # =============================================================================
 # A* Search
@@ -45,28 +151,8 @@ proc planActions*(
     let current = openSet.pop()
 
     # Goal check: Are we there yet?
-    if goal.successCondition != nil:
-      if checkSuccessCondition(current.state, goal.successCondition):
-        # Found solution!
-        return some(GOAPlan(
-          goal: goal,
-          actions: current.actionsExecuted,
-          totalCost: current.totalCost.int,
-          estimatedTurns: current.actionsExecuted.mapIt(it.duration).foldl(a + b, 0),
-          confidence: estimatePlanConfidence(current.state, GOAPlan(
-            goal: goal,
-            actions: current.actionsExecuted,
-            totalCost: current.totalCost.int,
-            estimatedTurns: 0,
-            confidence: 0.0,
-            dependencies: @[]
-          )),
-          dependencies: @[]
-        ))
-
-    # Simplified goal check (Phase 3: basic version)
-    # TODO: Proper success condition evaluation in Phase 4
-    if current.actionsExecuted.len >= 3:  # Max plan depth for Phase 3
+    if isGoalAchieved(current.state, goal):
+      # Found solution! Reconstruct path
       return some(GOAPlan(
         goal: goal,
         actions: current.actionsExecuted,
@@ -126,57 +212,24 @@ proc planForGoal*(
   state: WorldStateSnapshot,
   goal: Goal
 ): Option[GOAPlan] =
-  ## Plan action sequence for goal
+  ## Plan action sequence for goal (MVP: Fleet + Build domains)
   ##
-  ## Determines available actions based on goal type
-  ## Simplified for Phase 3 - returns basic plans
+  ## Uses A* search to find optimal action sequence
+  ## Returns none if no actions available or no plan found
 
-  # Phase 3: Simplified planning without full action library
-  # Just return a basic plan based on goal type
-  case goal.goalType
-  of GoalType.DefendColony:
-    if goal.target.isNone:
-      return none(GOAPlan)
+  # Get domain-specific actions for this goal
+  let availableActions = getAvailableActionsForGoal(state, goal)
 
-    # Simple defense plan
-    return some(GOAPlan(
-      goal: goal,
-      actions: @[],  # Placeholder
-      totalCost: goal.requiredResources,
-      estimatedTurns: 2,
-      confidence: 0.8,
-      dependencies: @[]
-    ))
+  if availableActions.len == 0:
+    return none(GOAPlan)
 
-  of GoalType.InvadeColony:
-    # Simple invasion plan
-    return some(GOAPlan(
-      goal: goal,
-      actions: @[],
-      totalCost: goal.requiredResources,
-      estimatedTurns: 3,
-      confidence: 0.6,
-      dependencies: @[]
-    ))
+  # Run A* search to find plan
+  let maybePlan = planActions(state, goal, availableActions, maxIterations = 500)
 
-  of GoalType.BuildFleet:
-    # Simple build plan
-    return some(GOAPlan(
-      goal: goal,
-      actions: @[],
-      totalCost: goal.requiredResources,
-      estimatedTurns: 2,
-      confidence: 0.9,
-      dependencies: @[]
-    ))
-
+  if maybePlan.isSome:
+    # Add confidence score to plan
+    var plan = maybePlan.get()
+    plan.confidence = estimatePlanConfidence(state, plan)
+    return some(plan)
   else:
-    # Default plan
-    return some(GOAPlan(
-      goal: goal,
-      actions: @[],
-      totalCost: goal.requiredResources,
-      estimatedTurns: 1,
-      confidence: 0.7,
-      dependencies: @[]
-    ))
+    return none(GOAPlan)

@@ -19,6 +19,7 @@ import ../../../engine/gamestate
 import ../../../engine/orders
 import ../../../engine/resolution/types as res_types
 import ../../common/types
+import ../../rba/controller_types  # For GOAP metrics collection
 
 # Forward declaration for espionage mission counting
 type
@@ -94,11 +95,13 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
                         orders: Option[OrderPacket] = none(OrderPacket),
                         gameId: string = "",
                         maxTurns: int = 100,
-                        events: seq[res_types.GameEvent] = @[]): DiagnosticMetrics =
+                        events: seq[res_types.GameEvent] = @[],
+                        controller: Option[AIController] = none(AIController)): DiagnosticMetrics =
   ## Collect all diagnostic metrics for a house at current turn
   ##
   ## maxTurns: expected game length for Act calculation (default 100)
   ## events: Game events from turn resolution (for colonization vs conquest tracking)
+  ## controller: Optional AI controller for GOAP metrics collection
   result = initDiagnosticMetrics(state.turn, houseId, strategy, gameId)
 
   # Set total systems on map (constant for all houses/turns)
@@ -484,3 +487,17 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
       result.eventsColonyTotal += 1
     else:
       discard  # Other event types not tracked
+
+  # ================================================================
+  # PHASE H: Collect GOAP metrics (if controller provided)
+  # ================================================================
+  if controller.isSome:
+    let ctrl = controller.get()
+    result.goapEnabled = ctrl.goapEnabled
+    if ctrl.goapEnabled:
+      result.goapPlansActive = ctrl.goapPlanTracker.activePlans.len
+      result.goapPlansCompleted = ctrl.goapPlanTracker.completedPlans.len
+      result.goapGoalsExtracted = ctrl.goapActiveGoals.len
+      # Note: goapPlanningTimeMs is tracked in Phase 1.5 result
+      # For now, we don't have access to that here, so leave it at 0.0
+      # Post-MVP: Consider storing last planning time in controller

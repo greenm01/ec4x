@@ -930,44 +930,46 @@ STEP 5: CONTINUE TRACKING
 
 ## Implementation Status
 
-### Current State (2025-12-10)
+### Current State (2025-12-10 - MVP DEPLOYED)
 
 ```
-COMPONENT IMPLEMENTATION STATUS
-================================
+COMPONENT IMPLEMENTATION STATUS (MVP)
+=====================================
 
 +-----------------------------------------+----------+----------+
 | Component                               |  Status  |   LOC    |
 +-----------------------------------------+----------+----------+
-| GOAP CORE                               |          |          |
+| GOAP CORE (MVP)                         |          |          |
 |  - Types & data structures              |    [X]   |   150    |
-|  - A* planner                           |    [X]   |   400    |
-|  - Heuristics                           |    [X]   |   200    |
-|  - Conditions                           |    [X]   |   100    |
+|  - A* planner (Fleet + Build only)      |    [X]   |   280    |
+|  - Heuristics (basic)                   |    [~]   |   200    |
+|  - Conditions (simplified)              |    [~]   |   100    |
 |                                         |          |          |
-| GOAP STATE                              |          |          |
+| GOAP STATE (MVP)                        |          |          |
 |  - World state snapshots                |    [X]   |   200    |
-|  - State assessment                     |    [X]   |   150    |
-|  - Action effects                       |    [X]   |   100    |
+|  - State assessment (basic)             |    [~]   |   150    |
+|  - Action effects (Fleet + Build)       |    [~]   |    50    |
 |                                         |          |          |
-| GOAP DOMAINS (6 domains)                |          |          |
-|  - Fleet goals & actions                |    [X]   |   450    |
-|  - Build goals & actions                |    [X]   |   400    |
-|  - Research goals & actions             |    [X]   |   200    |
-|  - Diplomatic goals & actions           |    [X]   |   200    |
-|  - Espionage goals & actions            |    [X]   |   250    |
-|  - Economic goals & actions             |    [X]   |   200    |
-|  - Repair/Drydock goals & actions       |    [X]   |    50    |
-|  - Prestige goals & actions             |    [X]   |    50    |
-|  - Endgame/Elimination goals & actions  |    [X]   |    50    |
+| GOAP DOMAINS (2 of 6 implemented)       |          |          |
+|  - Fleet goals & actions (MVP)          |    [X]   |   250    |
+|  - Build goals & actions (MVP)          |    [X]   |   200    |
+|  - Research goals & actions             |    [D]   |   200    |
+|  - Diplomatic goals & actions           |    [D]   |   200    |
+|  - Espionage goals & actions            |    [D]   |   250    |
+|  - Economic goals & actions             |    [D]   |   200    |
+|  - Repair/Drydock goals & actions       |    [D]   |    50    |
+|  - Prestige goals & actions             |    [D]   |    50    |
+|  - Endgame/Elimination goals & actions  |    [D]   |    50    |
 |                                         |          |          |
-| RBA-GOAP INTEGRATION                    |          |          |
-|  - Goal extraction                      |    [X]   |   200    |
-|  - Plan tracking                        |    [X]   |   150    |
-|  - Replanning triggers                  |    [X]   |   140    |
+| RBA-GOAP INTEGRATION (MVP)              |          |          |
+|  - Goal extraction (Fleet + Build)      |    [X]   |   200    |
+|  - Plan tracking (simplified)           |    [X]   |   150    |
+|  - Replanning triggers (basic)          |    [X]   |   140    |
 |  - Phase 1.5 entry point                |    [X]   |   280    |
-|  - Budget guidance                      |    [X]   |    550   |
-|  - Feedback loops (Phase 8.5)           |    [X]   |    245   |
+|  - Budget guidance (observation only)   |    [~]   |   100    |
+|  - Feedback loops (Phase 8.5, basic)    |    [X]   |    60    |
+|  - Order conversion (RBA→GOAP)          |    [D]   |     0    |
+|  - Advanced replanning                  |    [D]   |     0    |
 |                                         |          |          |
 | RBA CORE (Production-Ready)             |          |          |
 |  - Basileus orchestrator                |    [X]   |   400    |
@@ -976,12 +978,14 @@ COMPONENT IMPLEMENTATION STATUS
 |  - 9-Phase process (0-8.5)              |    [X]   |  1,200   |
 |  - Feedback loops (RBA internal)        |    [X]   |   500    |
 +-----------------------------------------+----------+----------+
-| TOTAL                                   |  100%    |  10,095  |
+| MVP TOTAL                               |   40%    |  7,360   |
+| FULL IMPLEMENTATION TARGET              |  100%    | 13,500   |
 +-----------------------------------------+----------+----------+
 
 Legend:
-  [X] = Complete and tested
-  [~] = Implemented but needs enhancement
+  [X] = Complete and tested in MVP
+  [~] = Implemented but simplified/basic
+  [D] = Deferred to post-MVP
   [ ] = Not yet implemented
 
 ### Integration Roadmap
@@ -1013,103 +1017,156 @@ Date: 2025-12-04
 Status: Plumbing complete, guidance inactive
 
 
-PHASE 3: BUDGET GUIDANCE [X] COMPLETE
------------------------------------------
-[X] GOAP cost estimates to Treasurer
-[X] Multi-turn budget reservations
-[X] Goal-aligned priority boosting
-[X] Strategic vs filler budget split (enhanced)
+PHASE 3: BUDGET GUIDANCE [~] MVP COMPLETE
+------------------------------------------
+[X] GOAP cost estimates calculated
+[~] Budget guidance (observation only, not yet influencing Treasurer)
+[D] Multi-turn budget reservations (deferred to post-MVP)
+[D] Goal-aligned priority boosting (deferred to post-MVP)
 
 Date: 2025-12-10
-Status: 100% complete (multi-turn reservations active)
+Status: MVP complete - GOAP generates budget estimates but doesn't influence RBA yet
 
 
-PHASE 8.5: FEEDBACK LOOPS [X] COMPLETE
--------------------------------------
-[X] RBA --> GOAP goal progress updates
-[X] GOAP reacts to detailed unfulfillment reasons (`TechNeeded`, `BudgetFailure`, `CapacityFull`)
-[X] Targeted GOAP goal generation based on feedback
-[X] Specific `ReplanReason` types for detailed feedback
-
-Target: 2025-12-20
-Status: Complete, further refinement in Phase 5
-
-
-Gap 1: GOAP's Direct Actionability of Detailed Feedback [X] COMPLETE
---------------------------------------------------------------------
-**Current Status**: The Treasurer now generates rich `RequirementFeedback` with specific `unfulfillmentReason`s and `suggestion`s. The GOAP `PlanTracker` stores this detailed feedback for failed actions. The `shouldReplan` and `repairPlan` procedures now leverage this specific feedback to trigger targeted replanning or goal injection (`AchieveTechLevel` for `TechNeeded`, `GainTreasury` for `BudgetFailure`, `BuildFacility` for `CapacityFull`).
-
-**Impact**: GOAP can intelligently adapt its strategy and generate specific corrective goals in response to detailed RBA execution failures, leading to more robust and adaptive multi-turn planning.
-
-**Plan**: All tasks for this gap are complete.
-
-Status: Complete
-
-
-Gap 2: Espionage Goal Generation and Execution Depth [X] COMPLETE
---------------------------------------------------------------------
-**Current Status**: `Drungarius` now generates `EspionageRequirement`s for `Counter-Intelligence Sweeps` and sets the `targetSystem` for operations like `SabotageHigh` and `CyberAttack`. The `executeEspionageAction` procedure is fully implemented, converting requirements into concrete `EspionageAttempt` orders.
-
-**Impact**: The AI's espionage capabilities are fully integrated from strategic planning (GOAP goals) through tactical execution (RBA requirements and orders), and its feedback loop now verifies espionage outcomes.
-
-**Plan**: All tasks for this gap are complete.
-
-Status: Complete
-
-
-Gap 3: Advanced Plan Repair [X] COMPLETE
+PHASE 8.5: FEEDBACK LOOPS [~] MVP COMPLETE
 -------------------------------------------
-**Current Status**: The `repairPlan` procedure now includes initial support for partial plan repair for late-stage failures. It attempts to regenerate plans for the remaining actions of a goal from the current world state, moving beyond always initiating a full replan.
+[X] Basic plan tracking (activePlans, completedPlans)
+[X] Stall detection and replanning triggers
+[D] RBA → GOAP goal progress updates (deferred to post-MVP)
+[D] Detailed unfulfillment reason handling (deferred to post-MVP)
+[D] Targeted GOAP goal generation based on feedback (deferred to post-MVP)
 
-**Impact**: Improves the efficiency and continuity of GOAP plans by reducing the need for full strategic replanning when only minor adjustments are needed.
-
-**Plan**: All tasks for this gap are complete.
-
-Status: Complete
-
-
-Gap 4: Dynamic Goal/Priority Adjustment based on Game State and Opponent Actions [X] COMPLETE
--------------------------------------------------------------------------------------------------
-**Current Status**: The `reassessGoalPriorities` procedure dynamically adjusts the priorities of active GOAP goals each turn based on the current `WorldStateSnapshot`, `AIPersonality`, and strategic context (e.g., threats, opportunities, economic health). This reassessment is integrated into the `executePhase15_GOAP` flow.
-
-**Impact**: The AI's strategic goals are more responsive to the evolving game state and its own personality, leading to more flexible and adaptive high-level planning.
-
-**Plan**: All tasks for this gap are complete.
-
-Status: Complete
+Date: 2025-12-10
+Status: MVP complete - simplified tracking only, no detailed feedback integration
 
 
-Gap 5: Comprehensive Repair Planning and Drydock Management [X] COMPLETE
----------------------------------------------------------------------------
-**Current Status**: `AssetInventory` now tracks damaged ships, `operationalDrydocks`, `totalRepairCapacity`, and `activeRepairProjects`. The `logistics.nim` module contains `identifyDrydockNeeds` which generates `BuildRequirement`s for Drydocks based on demand. The `AutoRepair` standing order logic has been refined to intelligently select the best available Drydock based on capacity and proximity.
+Gap 1: GOAP's Direct Actionability of Detailed Feedback [D] DEFERRED TO POST-MVP
+------------------------------------------------------------------------------------
+**MVP Status**: Infrastructure exists but not yet connected. `RequirementFeedback` with `unfulfillmentReason` is generated by Treasurer, and `PlanTracker` has fields for storing failure reasons, but the feedback loop from RBA to GOAP replanning is not yet implemented.
 
-**Impact**: The AI can now proactively manage ship repair, ensuring its military forces remain combat-ready and efficiently utilizing repair infrastructure.
+**Deferred Tasks**:
+- Integrating `RequirementFeedback` into GOAP replanning logic
+- Implementing `repairPlan` procedure for targeted goal injection
+- Adding context-aware replanning (e.g., `AchieveTechLevel` for `TechNeeded`)
 
-**Plan**: All tasks for this gap are complete.
-
-Status: Complete
-
-
-Gap 6: Proactive Prestige Management (Avoid Penalties, Exploit Opponent Penalties) [X] COMPLETE
---------------------------------------------------------------------------------------------------
-**Current Status**: A `MaintainPrestige` GOAP goal type has been introduced. `Domestikos` prioritizes ground unit requirements for undefended colonies, and `Drungarius` adjusts EBP/CIP investments to avoid over-investment penalties when this goal is active. `Eparch` also factors potential `Maintenance Shortfall` penalties into its economic requirements. `WorldStateSnapshot` now includes `undefendedEnemyColonies`, which `heuristics.nim` uses to generate high-priority `InvadeColony` goals to exploit opponent prestige penalties.
-
-**Impact**: The AI is strategically aware of prestige implications, actively working to avoid self-penalties and exploit opponent weaknesses for gains.
-
-**Plan**: All tasks for this gap are complete.
-
-Status: Complete
+Status: Deferred to Post-MVP
 
 
-Gap 7: Endgame & Elimination Strategy [X] COMPLETE
+Gap 2: Espionage Goal Generation and Execution Depth [D] DEFERRED TO POST-MVP
+--------------------------------------------------------------------------------
+**MVP Status**: Espionage domain exists (250 LOC of goal/action definitions) but is not integrated into Phase 1.5 goal extraction or plan generation.
+
+**Deferred Tasks**:
+- Integrating espionage goals into GOAP planning
+- Connecting GOAP espionage actions to RBA `Drungarius` requirements
+- Testing espionage plan execution and feedback
+
+Status: Deferred to Post-MVP
+
+
+Gap 3: Advanced Plan Repair [D] DEFERRED TO POST-MVP
 ------------------------------------------------------
-**Current Status**: `AchieveTotalVictory` and `LastStandReconquest` GOAP goal types have been added. `Protostrator`'s diplomatic requirements generation is now adjusted for endgame scenarios (`isFinalConfrontation` or `AchieveTotalVictory` goal active), suppressing inappropriate diplomatic actions like `ProposeAlliance` and prioritizing `DeclareWar`. `LastStandReconquest` goals will be generated in `heuristics.nim` if the AI loses all colonies but retains fleets with marines (not explicitly coded yet, but goal type exists).
+**MVP Status**: Basic replanning trigger exists (stall detection), but no partial plan repair or continuation logic implemented.
 
-**Impact**: The AI will adopt more appropriate and aggressive strategies in endgame scenarios, aiming for total victory or attempting desperate reconquest, improving its overall competitive play.
+**Deferred Tasks**:
+- Implementing `repairPlan` procedure for late-stage failures
+- Adding partial plan regeneration from current world state
+- Testing plan repair vs. full replanning efficiency
 
-**Plan**: All tasks for this gap are complete.
+Status: Deferred to Post-MVP
 
-Status: Complete
+
+Gap 4: Dynamic Goal/Priority Adjustment [D] DEFERRED TO POST-MVP
+------------------------------------------------------------------
+**MVP Status**: Goals are generated with static priorities from config. No dynamic reassessment based on evolving game state.
+
+**Deferred Tasks**:
+- Implementing `reassessGoalPriorities` procedure
+- Integrating personality-based priority adjustments
+- Testing dynamic priority changes in response to threats/opportunities
+
+Status: Deferred to Post-MVP
+
+
+Gap 5: Comprehensive Repair Planning and Drydock Management [D] DEFERRED TO POST-MVP
+--------------------------------------------------------------------------------------
+**MVP Status**: Repair/Drydock domain exists (50 LOC) but not integrated into planning.
+
+**Deferred Tasks**:
+- Integrating repair goals into GOAP planning
+- Connecting to RBA logistics and standing orders
+- Testing automated drydock management
+
+Status: Deferred to Post-MVP
+
+
+Gap 6: Proactive Prestige Management [D] DEFERRED TO POST-MVP
+---------------------------------------------------------------
+**MVP Status**: Prestige domain exists (50 LOC) but not integrated.
+
+**Deferred Tasks**:
+- Integrating `MaintainPrestige` goal into planning
+- Connecting to RBA advisor prestige-aware logic
+- Testing prestige penalty avoidance and exploitation
+
+Status: Deferred to Post-MVP
+
+
+Gap 7: Endgame & Elimination Strategy [D] DEFERRED TO POST-MVP
+----------------------------------------------------------------
+**MVP Status**: Endgame domain exists (50 LOC) but not integrated.
+
+**Deferred Tasks**:
+- Integrating `AchieveTotalVictory` and `LastStandReconquest` goals
+- Adjusting diplomatic requirements for endgame scenarios
+- Testing endgame strategy transitions
+
+Status: Deferred to Post-MVP
+
+
+### MVP STATUS SUMMARY (2025-12-10)
+
+**Implemented Features:**
+- ✅ A* Planner for Fleet + Build domains only
+- ✅ AIController integration (7 GOAP fields active)
+- ✅ Phase 1.5 entry point (goal extraction and plan generation)
+- ✅ Phase 8.5 feedback loop (simplified tracking)
+- ✅ Diagnostic integration (5 GOAP metrics in CSV output)
+- ✅ Configuration system ([goap] section in rba.toml)
+- ✅ Plan tracking (activePlans, completedPlans)
+- ✅ Replanning triggers (stall detection after N turns)
+
+**Deferred to Post-MVP:**
+- ❌ Research, Diplomatic, Espionage, Economic, Repair, Prestige, Endgame domains
+- ❌ GOAP → RBA order conversion (plans generated but not executed)
+- ❌ Budget guidance integration (estimates calculated but don't influence Treasurer)
+- ❌ Advanced replanning with detailed feedback (RequirementFeedback → GOAP)
+- ❌ Complex condition/effect implementations
+- ❌ Multi-turn budget reservations
+- ❌ Goal-aligned priority boosting
+- ❌ Dynamic goal priority reassessment
+- ❌ Partial plan repair
+
+**Testing Results:**
+- ✅ Baseline test (GOAP disabled): 5 turns, no crashes
+- ✅ Integration test (GOAP enabled): 5 turns, plan generation working
+- ✅ Phase 1.5 executes: "GOAP: Extracted N goals", "GOAP: Generated M plans"
+- ✅ Phase 8.5 executes: "GOAP: X active, Y completed", replanning triggers
+- ✅ Planning overhead: ~0.02ms per house per turn (negligible)
+- ✅ Diagnostics: 5 GOAP metrics present in CSV output
+
+**Known Limitations:**
+1. **Goal extraction returns 0 goals** in early game - expected behavior as FleetGoals and BuildGoals require specific conditions (undefended colonies, idle fleets, etc.)
+2. **Plans marked as stalled** after N turns - normal for observation-only mode since plans aren't converted to RBA orders
+3. **GOAP Reserved=0PP** in budget allocation - budget guidance not yet influencing Treasurer
+4. **No visible gameplay impact** - GOAP is in observation mode, generates plans but RBA doesn't execute them
+
+**Next Steps (Post-MVP):**
+1. GOAP → RBA order conversion (Phase 4.5)
+2. Budget guidance integration (Phase 3 enhancement)
+3. Advanced replanning with RequirementFeedback (Gap 1)
+4. Research + Diplomatic domains (expand beyond Fleet + Build)
+5. Multi-plan dependencies and coordination
 
 
 PHASE 5: FULL INTEGRATION (FUTURE) [ ] NOT STARTED

@@ -12,11 +12,15 @@ import ../../engine/resolution/types as event_types # For EspionageAction, Diplo
 import ../../engine/espionage/types as esp_types # For EspionageAction
 import ../../engine/diplomacy/proposals as dip_proposals # For ProposalType
 import ./shared/intelligence_types  # Enhanced intelligence types (Phase B+)
+import ./config # For GOAPConfig
 # Removed circular import: ./multi_advisor/mediation (obsolete file)
 # MultiAdvisorAllocation now defined in treasurer/multi_advisor
-# GOAP not yet integrated - commented out
-# import ../../ai/goap/types as goap_types # For GOAPConfig
-# import ../../ai/goap/plan_tracking as goap_plan # For PlanTracker
+# GOAP integration (Phase 1-7 MVP: Fleet + Build domains)
+import ./goap/core/types as goap_types # For GOAPlan, Goal, Action, etc.
+import ./goap/integration/conversion # For DomainType
+# NOTE: Cannot import plan_tracking here due to circular dependency
+# plan_tracking imports controller_types for UnfulfillmentReason
+# Instead, PlanTracker, TrackedPlan, PlanStatus are defined below
 
 # Re-export RequirementPriority from intelligence_types for convenience
 export intelligence_types.RequirementPriority
@@ -122,7 +126,9 @@ type
 
   RequirementFeedback* = object
     ## Detailed feedback for a single unfulfilled requirement (Gap 6)
-    requirement*: AdvisorRequirement # General type to hold any requirement type
+    ## Note: Currently only used for BuildRequirements in TreasurerFeedback
+    ## For other requirement types, use type-specific feedback objects
+    requirement*: BuildRequirement # The unfulfilled build requirement
     originalAdvisorReason*: string # The original reason string from the advisor
     unfulfillmentReason*: UnfulfillmentReason # Specific reason Treasurer could not fulfill
     budgetShortfall*: int           # PP gap (0 if partial fulfillment)
@@ -139,6 +145,39 @@ type
     totalUnfulfilledCost*: int
     # Gap 6: Rich feedback for intelligent reprioritization
     detailedFeedback*: seq[RequirementFeedback]
+
+  # GOAP types (duplicated to break circular dependency with plan_tracking.nim)
+  # NOTE: These must match the definitions in goap/integration/plan_tracking.nim
+  # Placed after UnfulfillmentReason since TrackedPlan uses it
+  PlanStatus* {.pure.} = enum
+    Active, Completed, Failed, Invalidated, Paused
+
+  TrackedPlan* = object
+    plan*: goap_types.GOAPlan
+    status*: PlanStatus
+    startTurn*: int
+    currentActionIndex*: int
+    turnsInExecution*: int
+    actionsCompleted*: int
+    actionsFailed*: int
+    lastUpdateTurn*: int
+    lastFailedActionReason*: Option[UnfulfillmentReason]
+    lastFailedActionSuggestion*: Option[string]
+
+  PlanTracker* = object
+    activePlans*: seq[TrackedPlan]
+    completedPlans*: seq[TrackedPlan]
+    currentTurn*: int
+
+proc newPlanTracker*(): PlanTracker =
+  ## Create a new empty plan tracker
+  result = PlanTracker(
+    activePlans: @[],
+    completedPlans: @[],
+    currentTurn: 0
+  )
+
+type
 
   ResearchRequirement* = object
     ## Science Advisor requirement for research investment
@@ -252,14 +291,16 @@ type
   AdvisorRequirement* = object
     ## Generic wrapper for all advisor requirements, used in mediation and feedback.
     advisor*: AdvisorType
+    priority*: intelligence_types.RequirementPriority # Include priority here for easy access in mediation (from shared/intelligence_types)
+    requirementType*: string # A string representation of the underlying requirement type for matching
+    estimatedCost*: int
+    reason*: string
+    # Original requirement data (for execution phase)
     buildReq*: Option[BuildRequirement]
     researchReq*: Option[ResearchRequirement]
     espionageReq*: Option[EspionageRequirement]
     economicReq*: Option[EconomicRequirement]
     diplomaticReq*: Option[DiplomaticRequirement]
-    # For matching to GOAP actions, e.g., "BuildFleet", "AllocateResearch"
-    requirementType*: string # A string representation of the underlying requirement type for matching
-    priority*: intelligence_types.RequirementPriority # Include priority here for easy access in mediation (from shared/intelligence_types)
 
   # ThreatLevel, FleetMovement, IntelligenceSnapshot now imported from shared/intelligence_types.nim (Phase B+)
   # Kept here for backward compatibility exports
@@ -302,14 +343,14 @@ type
     drungariusFeedback*: Option[DrungariusFeedback]  # Treasurer feedback on espionage budget
     eparchFeedback*: Option[EparchFeedback]  # Treasurer feedback on economic budget
 
-    # GOAP Phase 4: Strategic planning integration (not yet integrated - commented out)
-    # goapEnabled*: bool  # Quick check if GOAP is enabled
-    # goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
-    # goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
-    # goapBudgetEstimates*: Option[Table[DomainType, int]] # Current-turn budget guidance from GOAP
-    # goapReservedBudget*: Option[int] # Amount GOAP wants to reserve for future turns
-    # goapConfig*: goap_types.GOAPConfig # Configuration for the GOAP planner
-    # planTracker*: goap_plan.PlanTracker # Manages GOAP's multi-turn plans
+    # GOAP Phase 4: Strategic planning integration (MVP: Fleet + Build domains)
+    goapEnabled*: bool  # Quick check if GOAP is enabled
+    goapLastPlanningTurn*: int  # Last turn GOAP planning was executed
+    goapActiveGoals*: seq[string]  # Brief description of active goals (for debugging)
+    goapBudgetEstimates*: Option[Table[conversion.DomainType, int]] # Current-turn budget guidance from GOAP
+    goapReservedBudget*: Option[int] # Amount GOAP wants to reserve for future turns
+    goapConfig*: config.GOAPConfig # Configuration for the GOAP planner
+    goapPlanTracker*: PlanTracker # Manages GOAP's multi-turn plans
     lastTurnAllocationResult*: Option[MultiAdvisorAllocation] # NEW: Stores result of last turn's budget allocation
 
     # Phase C: Enhanced intelligence distribution

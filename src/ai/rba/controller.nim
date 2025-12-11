@@ -2,11 +2,13 @@
 ##
 ## Coordinates all AI subsystems and manages AI state
 
-import std/tables
+import std/[tables, options]
 import ../common/types
 import ./[controller_types, config]
 import ../../engine/[gamestate, order_types]
 import ../../common/types/core
+import ./goap/core/types as goap_types
+import ./goap/integration/[plan_tracking, conversion]
 
 export controller_types
 export StandingOrder, StandingOrderType, StandingOrderParams
@@ -60,10 +62,15 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     standingOrders: initTable[FleetId, StandingOrder](),
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
-    pendingIntelUpdates: @[]
-    # TODO: GOAP fields commented out - not yet integrated
-    # goapConfig: globalRBAConfig.goap,
-    # goapPlanTracker: newPlanTracker()
+    pendingIntelUpdates: @[],
+    # GOAP strategic planning integration (MVP: Fleet + Build domains)
+    goapEnabled: globalRBAConfig.goap.enabled,
+    goapLastPlanningTurn: -1,
+    goapActiveGoals: @[],
+    goapBudgetEstimates: none(Table[conversion.DomainType, int]),
+    goapReservedBudget: none(int),
+    goapConfig: globalRBAConfig.goap,
+    goapPlanTracker: newPlanTracker()
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
@@ -81,10 +88,15 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     standingOrders: initTable[FleetId, StandingOrder](),
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
-    pendingIntelUpdates: @[]
-    # TODO: GOAP fields commented out - not yet integrated
-    # goapConfig: globalRBAConfig.goap,
-    # goapPlanTracker: newPlanTracker()
+    pendingIntelUpdates: @[],
+    # GOAP strategic planning integration (MVP: Fleet + Build domains)
+    goapEnabled: globalRBAConfig.goap.enabled,
+    goapLastPlanningTurn: -1,
+    goapActiveGoals: @[],
+    goapBudgetEstimates: none(Table[conversion.DomainType, int]),
+    goapReservedBudget: none(int),
+    goapConfig: globalRBAConfig.goap,
+    goapPlanTracker: newPlanTracker()
   )
 
 # =============================================================================

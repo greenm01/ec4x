@@ -102,7 +102,7 @@ proc extractBuildFeedback*(
             suggestion = &"Increase budget for this build requirement (needed {req.estimatedCost}PP, had {currentBudget}PP)."
 
           result.detailedFeedback.add(RequirementFeedback(
-            requirement: controller_types.AdvisorRequirement(advisor: AdvisorType.Domestikos, buildReq: some(req), priority: req.priority, requirementType: $req.requirementType),
+            requirement: req, # Already a BuildRequirement
             originalAdvisorReason: req.reason,
             unfulfillmentReason: unfulfillmentReason,
             budgetShortfall: shortfall,

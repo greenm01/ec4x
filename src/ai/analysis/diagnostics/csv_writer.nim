@@ -88,7 +88,8 @@ const
                     "events_order_completed,events_order_failed,events_order_rejected," &
                     "events_combat_total,events_bombardment,events_colony_captured," &
                     "events_espionage_total,events_diplomatic_total,events_research_total,events_colony_total," &
-                    "advisor_reasoning"
+                    "advisor_reasoning," &
+                    "goap_enabled,goap_plans_active,goap_plans_completed,goap_goals_extracted,goap_planning_time_ms"
 
   ## Actual CSV column count from header string
   ActualCSVColumns = countCSVColumns(CSVHeaderString)
@@ -214,7 +215,9 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.eventsCombatTotal},{metrics.eventsBombardment},{metrics.eventsColonyCaptured}," &
                  &"{metrics.eventsEspionageTotal},{metrics.eventsDiplomaticTotal},{metrics.eventsResearchTotal},{metrics.eventsColonyTotal}," &
                  # Advisor Reasoning (NEW - Gap #9 fix, CSV-escaped)
-                 &"\"{escapedReasoning}\""
+                 &"\"{escapedReasoning}\"," &
+                 # GOAP Metrics (MVP: Fleet + Build domains)
+                 &"{boolToInt(metrics.goapEnabled)},{metrics.goapPlansActive},{metrics.goapPlansCompleted},{metrics.goapGoalsExtracted},{metrics.goapPlanningTimeMs}"
 
   # Runtime validation: ensure row has same column count as header
   when defined(csvDebug):

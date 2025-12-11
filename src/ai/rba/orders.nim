@@ -18,7 +18,8 @@ import ../../engine/commands/zero_turn_commands
 import ../../engine/research/types as res_types
 import ../common/types as ai_types
 import ./[controller_types, budget, drungarius, tactical, intelligence, logistics, standing_orders_manager, logothete]
-import ./orders/[phase0_intelligence, phase1_requirements, phase2_mediation, phase3_execution, colony_management, phase4_feedback]
+import ./orders/[phase0_intelligence, phase1_requirements, phase1_5_goap, phase2_mediation, phase3_execution, colony_management, phase4_feedback]
+import ./goap/integration/plan_tracking  # For addPlan
 import ./basileus/execution  # For AdvisorType and centralized execution
 
 export core, orders, standing_orders_manager, zero_turn_commands
@@ -88,6 +89,28 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # PHASE 1: MULTI-ADVISOR REQUIREMENT GENERATION
   # ==========================================================================
   generateAllAdvisorRequirements(controller, filtered, intelSnapshot, currentAct)
+
+  # ==========================================================================
+  # PHASE 1.5: GOAP STRATEGIC PLANNING (if enabled)
+  # ==========================================================================
+  if controller.goapEnabled:
+    logInfo(LogCategory.lcAI, &"{controller.houseId} === Phase 1.5: GOAP Planning ===")
+
+    let phase15Result = phase1_5_goap.executePhase15_GOAP(
+      controller,
+      filtered,
+      intelSnapshot,
+      controller.goapConfig
+    )
+
+    # Store results for potential Phase 2 integration
+    controller.goapBudgetEstimates = some(phase15Result.budgetEstimates)
+    controller.goapActiveGoals = phase15Result.plans.mapIt(it.goal.description)
+    controller.goapLastPlanningTurn = filtered.turn
+
+    # Add plans to tracker
+    for plan in phase15Result.plans:
+      controller.goapPlanTracker.addPlan(plan)
 
   # ==========================================================================
   # PHASE 2: BASILEUS MEDIATION & BUDGET ALLOCATION
@@ -351,21 +374,15 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # PHASE 8.5: REPORT GOAP PROGRESS (RBA -> GOAP Feedback)
   # ==========================================================================
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} === Phase 8.5: Reporting GOAP Progress ===")
-  
-  # TODO: GOAP feedback integration incomplete - reportGOAPProgress not available
-  # Commented out until GOAP is properly integrated
-  # Pass the allocation results and current intelligence to GOAP's plan tracker
-  # filtered.baseGameState provides the GameState before the current turn's orders are applied.
-  # phase4_feedback.reportGOAPProgress(
-  #   controller,
-  #   allocation, # Result of budget allocation and requirement fulfillment
-  #   filtered.turn,
-  #   intelSnapshot,
-  #   filtered.baseGameState, # GameState before current turn's orders take effect
-  #   events # Pass events for outcome verification
-  # )
+  if controller.goapEnabled:
+    logInfo(LogCategory.lcAI, &"{controller.houseId} === Phase 8.5: GOAP Feedback ===")
+
+    phase4_feedback.reportGOAPProgress(
+      controller,
+      allocation,
+      filtered.turn,
+      intelSnapshot
+    )
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} ========================================")
