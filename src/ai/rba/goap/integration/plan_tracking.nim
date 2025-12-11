@@ -271,3 +271,73 @@ proc advanceTurn*(tracker: var PlanTracker, newTurn: int, state: WorldStateSnaps
 
   # Archive finished plans
   archiveCompletedPlans(tracker)
+# =============================================================================
+# Phase 3: Plan Execution Framework
+# =============================================================================
+
+import ../../../../engine/[fog_of_war, order_types]
+import ../../domestikos/fleet_analysis
+import ./conversion
+
+proc executePlanStep*(
+  tracker: var PlanTracker,
+  planIndex: int,
+  filtered: FilteredGameState,
+  analyses: seq[FleetAnalysis]
+): Option[FleetOrder] =
+  ## Execute the current action of a plan
+  ##
+  ## Phase 3: Converts GOAP action to RBA FleetOrder
+  ## Advances plan if action completes
+  ## Returns FleetOrder if action can be executed
+
+  if planIndex < 0 or planIndex >= tracker.activePlans.len:
+    return none(FleetOrder)
+
+  var plan = tracker.activePlans[planIndex]
+
+  # Check if plan is active
+  if plan.status != PlanStatus.Active:
+    return none(FleetOrder)
+
+  # Get next action
+  let actionOpt = getNextAction(tracker, planIndex)
+  if actionOpt.isNone:
+    # Plan complete
+    tracker.activePlans[planIndex].status = PlanStatus.Completed
+    return none(FleetOrder)
+
+  let action = actionOpt.get()
+
+  # Convert GOAP action to RBA FleetOrder
+  let orderOpt = convertGOAPActionToRBAOrder(action, filtered, analyses)
+
+  if orderOpt.isSome:
+    # Action successfully converted - advance plan
+    advancePlan(tracker, planIndex)
+    return orderOpt
+  else:
+    # Action couldn't be executed (no suitable fleet, etc.)
+    # Don't fail the plan immediately - it might succeed next turn
+    return none(FleetOrder)
+
+proc executeAllPlans*(
+  tracker: var PlanTracker,
+  filtered: FilteredGameState,
+  analyses: seq[FleetAnalysis]
+): seq[FleetOrder] =
+  ## Execute all active plans in priority order
+  ##
+  ## Phase 3: Main entry point for GOAP plan execution
+  ## Combines results into unified order list
+
+  result = @[]
+
+  # Execute plans in order (already sorted by priority during planning)
+  for i in 0 ..< tracker.activePlans.len:
+    if tracker.activePlans[i].status == PlanStatus.Active:
+      let orderOpt = executePlanStep(tracker, i, filtered, analyses)
+      if orderOpt.isSome:
+        result.add(orderOpt.get())
+
+  return result

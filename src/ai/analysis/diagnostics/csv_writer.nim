@@ -93,7 +93,8 @@ const
                     "events_combat_total,events_bombardment,events_colony_captured," &
                     "events_espionage_total,events_diplomatic_total,events_research_total,events_colony_total," &
                     "advisor_reasoning," &
-                    "goap_enabled,goap_plans_active,goap_plans_completed,goap_goals_extracted,goap_planning_time_ms"
+                    "goap_enabled,goap_plans_active,goap_plans_completed,goap_goals_extracted,goap_planning_time_ms," &
+                    "goap_invasion_goals,goap_invasion_plans,goap_actions_executed,goap_actions_failed"
 
   ## Actual CSV column count from header string
   ActualCSVColumns = countCSVColumns(CSVHeaderString)
@@ -225,7 +226,9 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  # Advisor Reasoning (NEW - Gap #9 fix, CSV-escaped)
                  &"\"{escapedReasoning}\"," &
                  # GOAP Metrics (MVP: Fleet + Build domains)
-                 &"{boolToInt(metrics.goapEnabled)},{metrics.goapPlansActive},{metrics.goapPlansCompleted},{metrics.goapGoalsExtracted},{metrics.goapPlanningTimeMs}"
+                 &"{boolToInt(metrics.goapEnabled)},{metrics.goapPlansActive},{metrics.goapPlansCompleted},{metrics.goapGoalsExtracted},{metrics.goapPlanningTimeMs}," &
+                 # Phase 3: GOAP Invasion Metrics
+                 &"{metrics.goapInvasionGoals},{metrics.goapInvasionPlans},{metrics.goapActionsExecuted},{metrics.goapActionsFailed}"
 
   # Runtime validation: ensure row has same column count as header
   when defined(csvDebug):

@@ -732,11 +732,16 @@ proc generateCounterAttackOrders*(
   # PHASE 2: NEW CAMPAIGN CREATION (PRIORITY 2)
   # ==========================================================================
   # Create new campaigns from intelligence vulnerableTargets
+  # Can be disabled when GOAP handles strategic invasion planning
 
   let config = globalRBAConfig.domestikos
+  let goapConfig = globalRBAConfig.goap
   let maxConcurrentCampaigns = config.max_concurrent_campaigns
 
-  if controller.activeCampaigns.len < maxConcurrentCampaigns:
+  # Check if RBA campaigns are disabled in favor of GOAP planning
+  let skipCampaigns = controller.goapEnabled and goapConfig.disable_rba_campaigns_with_goap
+
+  if not skipCampaigns and controller.activeCampaigns.len < maxConcurrentCampaigns:
     if intelSnapshot.isSome:
       let snapshot = intelSnapshot.get()
       let availableSlots = maxConcurrentCampaigns - controller.activeCampaigns.len

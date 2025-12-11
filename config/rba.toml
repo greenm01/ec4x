@@ -482,14 +482,23 @@ critical_multiplier = 3.0           # Critical threshold check (3x cost)
 
 [goap]
 enabled = true                          # Enabled for MVP integration testing
-planning_depth = 3                      # Max turns to plan ahead
+planning_depth = 5                      # Phase 3: Max turns to plan ahead (increased for multi-turn invasions)
 confidence_threshold = 0.5              # Min confidence to execute plan
-max_concurrent_plans = 3                # Limit active plans
+max_concurrent_plans = 5                # Phase 3: Limit active plans (increased from 3)
 defense_priority = 0.8                  # Weight for defensive goals
-offense_priority = 0.6                  # Weight for offensive goals
+offense_priority = 0.7                  # Phase 3: Weight for offensive goals (increased from 0.6)
 log_plans = true                        # Debug logging (enable for MVP)
 budget_guidance_boost_factor = 0.3      # GOAP budget estimates boost RBA requirements
 replan_stalled_turns = 3                # Replan if no progress for 3 turns
 replan_budget_shortfall_ratio = 0.8     # Replan if remaining cost > 80% of treasury
-new_opportunity_scan_frequency = 2      # Check for new opportunities every 2 turns
+new_opportunity_scan_frequency = 3      # Phase 3: Check for new opportunities every 3 turns (reduced frequency)
+
+# Phase 3: Invasion Planning Parameters
+invasion_min_strength_ratio = 1.5       # Need 1.5x estimated enemy strength
+invasion_max_distance = 8               # Max jumps to invasion target
+invasion_bombardment_estimate = 3       # Estimated bombardment turns for moderate defenses
+invasion_priority_boost = 0.2           # Priority boost for invasion goals
+
+# Phase 3: Campaign Coordination
+disable_rba_campaigns_with_goap = false # Set true to disable Phase 2 RBA campaigns when GOAP handles invasions
 
