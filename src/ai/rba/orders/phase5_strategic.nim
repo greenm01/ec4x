@@ -149,7 +149,10 @@ proc executeReplanning*(
 
     # Regenerate plans with affordable goals only
     result.goals = affordableGoals
-    result.plans = generateStrategicPlans(result.goals, state, intel, config)
+    # The generateStrategicPlans from treasurer/phase1_5_goap.nim expects controller and intel
+    # It modifies the controller's plan tracker, so we then retrieve the plans from there.
+    generateStrategicPlans(controller, state, intel, result.goals)
+    result.plans = controller.goapPlanTracker.activePlans.mapIt(it.plan) # Retrieve updated plans from tracker
     result.budgetEstimates = estimateBudgetRequirements(result.plans)
     result.budgetEstimatesStr = convertBudgetEstimatesToStrings(result.budgetEstimates)
 

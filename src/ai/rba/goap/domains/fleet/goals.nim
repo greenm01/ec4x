@@ -57,21 +57,21 @@ proc createInvadeColonyGoal*(
   ## - Target must be known enemy colony
   ##
   ## Success: System added to ownedColonies
-
+    
   result = Goal(
     goalType: GoalType.InvadeColony,
     priority: priority,
     target: some(systemId),
     targetHouse: some(targetHouse),
-    requiredResources: 210,  # Transport (60) + Marines (50) + Escorts (100)
+    requiredResources: 500,  # Based on estimateGoalCost heuristic: 500 PP
     deadline: none(int),
     preconditions: @[
-      hasMinBudget(210)
+      hasMinBudget(500)
     ],
     successCondition: nil,
     description: "Invade colony at system " & $systemId & " owned by " & targetHouse
   )
-
+    
 proc createSecureSystemGoal*(
   systemId: SystemId,
   priority: float,
@@ -81,16 +81,16 @@ proc createSecureSystemGoal*(
   ##
   ## Similar to InvadeColony but focuses on military control
   ## May require larger force for sustained presence
-
+    
   result = Goal(
     goalType: GoalType.SecureSystem,
     priority: priority,
     target: some(systemId),
     targetHouse: none(HouseId),
-    requiredResources: if sustainedPresence: 400 else: 300,
+    requiredResources: 800, # Based on estimateGoalCost heuristic: 800 PP
     deadline: none(int),
     preconditions: @[
-      hasMinBudget(300)
+      hasMinBudget(800)
     ],
     successCondition: nil,
     description: "Secure system " & $systemId

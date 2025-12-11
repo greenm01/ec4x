@@ -61,6 +61,8 @@ type
     # Intelligence gaps
     staleIntelSystems*: seq[SystemId]       ## Need reconnaissance
     espionageTargets*: seq[HouseId]         ## High-value spy targets
+    
+    intelSnapshot*: IntelligenceSnapshot    ## Full intelligence snapshot from Drungarius (Phase 0)
 
 # =============================================================================
 # Goal System (What to Achieve)
