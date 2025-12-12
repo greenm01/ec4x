@@ -20,7 +20,8 @@ proc generateExplorationOrders*(
   controller: AIController
 ): seq[FleetOrder] =
   ## Generate exploration orders for Act 1
-  ## Sends idle fleets to adjacent unscouted systems
+  ## Sends idle fleets with ViewWorld orders to gather intelligence
+  ## Priority: Find enemy homeworlds, track fleet movements, map exploration
   result = @[]
 
   # Find unexplored systems (Adjacent visibility = known but not scouted)
@@ -52,9 +53,9 @@ proc generateExplorationOrders*(
 
     result.add(FleetOrder(
       fleetId: explorer.fleetId,
-      orderType: FleetOrderType.Move,
+      orderType: FleetOrderType.ViewWorld,
       targetSystem: some(target),
-      priority: 70  # Higher than logistics, lower than defense
+      priority: 80  # High priority - find enemy homeworlds & track fleets
     ))
 
     logDebug(LogCategory.lcAI,

@@ -211,21 +211,55 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
       break
 
   if not hasColonists:
-    # ETAC empty - automatically return to nearest friendly colony for PTU reload
-    # This ensures ETACs don't sit idle after colonization
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} AutoColonize: Empty ETAC returning home for PTU reload")
+    # ETAC empty - find nearest colony with available PTU for reload
+    # Don't send to colonies with low population (they need PTU for growth)
+    const MIN_POPULATION_FOR_PTU_EXTRACTION = 3  # Colonies need 3+ PU to spare PTU
 
-    let seekHomeOrder = FleetOrder(
+    var bestColony: Option[SystemId] = none(SystemId)
+    var bestDistance = 999
+
+    # Scan friendly colonies for PTU availability
+    # Note: Houses always know where their own colonies are (fog of war doesn't apply)
+    for colonyId, colony in state.colonies:
+      if colony.owner != fleet.owner:
+        continue  # Only consider own colonies
+
+      # Check if colony has enough population to spare PTU
+      if colony.population < MIN_POPULATION_FOR_PTU_EXTRACTION:
+        continue
+
+      # Calculate distance via jump lanes
+      let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
+      if not pathResult.found:
+        continue
+
+      let distance = pathResult.path.len - 1
+      if distance < bestDistance:
+        bestDistance = distance
+        bestColony = some(colonyId)
+
+    if bestColony.isNone:
+      # No colonies with available PTU - this is a problem!
+      logWarn(LogCategory.lcOrders,
+              &"{fleetId} AutoColonize: No colonies with available PTU (need pop >= {MIN_POPULATION_FOR_PTU_EXTRACTION})")
+      return ExecutionResult(success: false,
+                            error: "No colonies available for PTU refill")
+
+    let targetColony = bestColony.get()
+    logInfo(LogCategory.lcOrders,
+            &"{fleetId} AutoColonize: Empty ETAC seeking PTU reload at {targetColony} " &
+            &"({bestDistance} jumps, pop {state.colonies[targetColony].population})")
+
+    let moveOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.SeekHome,
-      targetSystem: none(SystemId),  # SeekHome finds nearest colony automatically
+      orderType: FleetOrderType.Move,
+      targetSystem: some(targetColony),
       priority: 100
     )
-    state.fleetOrders[fleetId] = seekHomeOrder
+    state.fleetOrders[fleetId] = moveOrder
 
     return ExecutionResult(success: true,
-                          action: "Seeking home for PTU reload")
+                          action: &"Seeking PTU reload at {targetColony}")
 
   # Find best colonization target
   let targetOpt = findBestColonizationTarget(state, fleet, fleet.location,

@@ -467,11 +467,8 @@ proc assessReconnaissanceGaps*(
   let enemyHouses = intelSnapshot.military.enemyMilitaryCapability.len
 
   # Calculate need: 1 scout per 2 stale systems + 1 per enemy house (min 3)
+  # No hardcoded caps - budget and strategic objectives determine actual builds
   var targetScouts = max(3, staleIntelSystems.len div 2) + min(3, enemyHouses)
-
-  # Act 1: Minimal scouts (any ship can explore)
-  if currentAct == ai_common_types.GameAct.Act1_LandGrab:
-    targetScouts = min(targetScouts, 3)
 
   if scoutCount < targetScouts:
     let scoutCost = getShipConstructionCost(ShipClass.Scout)
@@ -532,10 +529,20 @@ proc assessExpansionNeeds*(
   if uncolonizedVisible == 0:
     return  # No targets
 
-  # Count ETACs (in fleets + under construction + queued)
+  # Count ETACs by status: total, under construction, ready to colonize
   var etacCount = 0
+  var readyETACs = 0  # ETACs with loaded PTU ready to colonize
+  var emptyETACs = 0  # ETACs returning home for PTU refill
+
   for fleet in filtered.ownFleets:
-    etacCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.ETAC)
+    for ship in fleet.spaceLiftShips:
+      if ship.shipClass == ShipClass.ETAC:
+        etacCount += 1
+        # Check if ETAC has colonists loaded (ready to colonize)
+        if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
+          readyETACs += 1
+        else:
+          emptyETACs += 1
 
   # Also count ETACs under construction (prevents duplicate orders)
   for colony in filtered.ownColonies:
@@ -550,16 +557,21 @@ proc assessExpansionNeeds*(
          queuedProject.itemId == "ETAC":
         etacCount += 1
 
-  # Target: Based on map rings (one ETAC per ring for parallel colonization)
-  # Standard game: 4 players = 4 rings → 4 ETACs max
-  # Large game: 8 players = 8 rings → 8 ETACs max
-  # Increased from 50% to 75% of uncolonized systems for more aggressive Act 1 expansion
-  let mapRings = int(filtered.starMap.numRings)
-  let targetETACs = min(mapRings, max(1, (uncolonizedVisible * 3) div 4))
+  # Smart targeting: Build ETACs until all systems colonized
+  # Account for ETACs in transit, empty ETACs reloading, and combat losses
+  # Strategy: Maintain enough ready+building ETACs to colonize remaining systems + buffer
+  let targetETACs = if uncolonizedVisible > 0:
+    # Need at least 1 ETAC per uncolonized system
+    # Add 30% buffer for: transit time, PTU reload cycles, combat losses
+    # This prevents spam while ensuring colonization continues
+    max(1, int(uncolonizedVisible.float * 1.3))
+  else:
+    # All systems colonized - maintain current count, don't build more
+    etacCount
 
   logDebug(LogCategory.lcAI,
            &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
-           &"mapRings {mapRings}, uncolonizedVisible {uncolonizedVisible}")
+           &"uncolonizedVisible {uncolonizedVisible}")
 
   if etacCount < targetETACs:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
@@ -1017,12 +1029,27 @@ proc assessStrategicAssets*(
   # Capital ship requirements based on game phase and personality
   let totalCapitalShips = dreadnoughtCount + battleshipCount + battlecruiserCount
 
-  # Target capital ship count scales with game phase
-  let targetCapitalShips = case currentAct
-    of GameAct.Act1_LandGrab: 2  # Small core fleet
-    of GameAct.Act2_RisingTensions: 4  # Expanding fleet
-    of GameAct.Act3_TotalWar: 8  # Major battle fleet
-    of GameAct.Act4_Endgame: 12  # Massive endgame fleet
+  # Dynamic target based on strategic situation (not hardcoded by Act)
+  # Base: 1 capital per 2 colonies (fleet projection capability)
+  # Modifiers: enemy capability, personality aggression, game phase
+  let colonyCount = filtered.ownColonies.len
+  let baseTarget = max(2, colonyCount div 2)  # Min 2 for core fleet
+
+  # Enemy military pressure increases capital need
+  # Count enemy capital ships from fleet intelligence
+  var enemyCapitalThreat = 0
+  for fleet in intelSnapshot.military.knownEnemyFleets:
+    if fleet.composition.isSome:
+      enemyCapitalThreat += fleet.composition.get().capitalShips
+
+  let threatModifier = if enemyCapitalThreat > totalCapitalShips * 2: 1.5
+                       elif enemyCapitalThreat > totalCapitalShips: 1.2
+                       else: 1.0
+
+  # Personality: aggressive players want more capitals for offense
+  let personalityModifier = 1.0 + (personality.aggression * 0.3)
+
+  let targetCapitalShips = int(float(baseTarget) * threatModifier * personalityModifier)
 
   if totalCapitalShips < targetCapitalShips:
     # Choose capital ship type based on CST level and personality
@@ -1162,14 +1189,15 @@ proc assessStrategicAssets*(
     # Undefended colonies incur +50% prestige penalty when lost (-15 vs -10)
     let isUndefended = (colony.armies == 0 and colony.marines == 0 and currentBatteries == 0)
 
-    # ACT-AWARE: Baseline target matches economic capacity
-    # Act 1: 1 battery (13PP after cost reduction, affordable for expanding colonies)
-    # Act 2: 2 batteries (26PP, mature economy)
-    # Act 3+: 3 batteries (39PP, full fortification with economic surplus)
-    let baselineTarget = case currentAct
-      of GameAct.Act1_LandGrab: 1  # Minimal baseline: expansion priority
-      of GameAct.Act2_RisingTensions: 2  # Moderate: consolidation
-      of GameAct.Act3_TotalWar, GameAct.Act4_Endgame: 3  # Full: war economy
+    # VALUE-BASED: Baseline target scales with colony importance (not hardcoded by Act)
+    # High-value colonies justify more defense investment
+    # Cost: 1 battery = 13PP, 2 batteries = 26PP, 3 batteries = 39PP
+    let baselineTarget = if colony.production >= 150:
+      3  # High production: full fortification
+    elif colony.production >= 50:
+      2  # Medium production: moderate defense
+    else:
+      1  # Low production: minimal defense
 
     # INTELLIGENCE-DRIVEN: Calculate threat at this colony
     let threat = estimateLocalThreat(colony.systemId, filtered, controller)
@@ -1229,14 +1257,15 @@ proc assessStrategicAssets*(
     # Undefended colonies incur +50% prestige penalty when lost (-15 vs -10)
     let isUndefended = (currentArmies == 0 and currentMarines == 0 and currentBatteries == 0)
 
-    # ACT-AWARE: Baseline target matches economic capacity
-    # Act 1: 0 armies (10PP after cost reduction, batteries prioritized first)
-    # Act 2: 1 army (10PP, basic garrison)
-    # Act 3+: 2 armies (20PP, full ground defense)
-    let baselineTarget = case currentAct
-      of GameAct.Act1_LandGrab: 0  # Minimal: batteries first, armies later
-      of GameAct.Act2_RisingTensions: 1  # Basic garrison
-      of GameAct.Act3_TotalWar, GameAct.Act4_Endgame: 2  # Full ground defense
+    # VALUE-BASED: Baseline target scales with colony importance (not hardcoded by Act)
+    # Armies are last-line defense after batteries
+    # Cost: 1 army = 10PP, 2 armies = 20PP
+    let baselineTarget = if colony.production >= 150:
+      2  # High production: full garrison
+    elif colony.production >= 50 and currentBatteries >= 1:
+      1  # Medium production with batteries: basic garrison
+    else:
+      0  # Low production: batteries prioritized, armies later
 
     # INTELLIGENCE-DRIVEN: Calculate threat at this colony
     let threat = estimateLocalThreat(colony.systemId, filtered, controller)
