@@ -78,6 +78,40 @@ proc calculateColonyDefensePriority(
         if distance <= 2:  # Enemy fleet within 2 jumps = frontier colony
           priority += 75.0
           break
+
+    # Phase 4.3: Predictive threat from fleet movements
+    # Detect approaching enemy fleets and boost defensive priority
+    for houseId, movements in snapshot.enemyFleetMovements:
+      for movement in movements:
+        # Calculate distance from moved fleet to this colony
+        let pathResult = filtered.starMap.findPath(movement.lastKnownLocation, colony.systemId, Fleet())
+        if pathResult.found:
+          let distance = pathResult.path.len
+          # Fleet is approaching if within 3 jumps and recently moved
+          if distance <= 3:
+            # Priority boost scales with proximity and fleet strength
+            let proximityMultiplier = case distance
+              of 1: 3.0  # Adjacent = imminent threat
+              of 2: 2.0  # 2 jumps = near threat
+              else: 1.0  # 3 jumps = potential threat
+
+            let strengthFactor = float(movement.estimatedStrength) / 100.0
+            let movementBoost = proximityMultiplier * strengthFactor * 50.0
+            priority += movementBoost
+
+            logDebug(LogCategory.lcAI,
+                     &"{controller.houseId} Domestikos: Fleet movement detected - " &
+                     &"{houseId} fleet {movement.fleetId} at distance {distance} from " &
+                     &"{colony.systemId}, boost +{movementBoost:.1f}")
+
+    # Phase 4.3: Staleness penalty for blind spots
+    # Colonies with stale intel are potentially at risk
+    if colony.systemId in snapshot.staleIntelSystems:
+      # Reduce priority slightly for stale intel (unknown = risky to commit forces)
+      priority *= 0.9
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} Domestikos: Stale intel at {colony.systemId}, " &
+               &"defensive priority reduced (blind spot)")
   else:
     # === FALLBACK: Distance-based frontier detection (legacy behavior) ===
     let pathToHomeworld = filtered.starMap.findPath(colony.systemId, homeworld, Fleet())
