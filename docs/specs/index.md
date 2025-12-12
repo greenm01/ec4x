@@ -62,11 +62,14 @@ The complete EC4X game specification is organized into the following documents:
 ### Game Systems
 
 - **[Military Assets](assets.md)** - Ships, fleets, squadrons, and special units
-- **[Economy](economy.md)** - Economics, R&D, and construction systems
+- **[Economy](economy.md)** - Economics system
+- **[Research & Development](research_development.md)** - R&D systems
+- **[Construction](construction.md)** - Construction systems
 
 ### Operations
 
-- **[Operations](operations.md)** - Movement and combat mechanics
+- **[Operations](operations.md)** - Movement mechanics
+- **[Combat](combat.md)** - Combat mechanics
 - **[Diplomacy](diplomacy.md)** - Diplomatic states and espionage
 - **[Intelligence](intelligence.md)** - Intelligence gathering, reports, and fog of war
 

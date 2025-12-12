@@ -600,7 +600,7 @@ Higher CLK tiers significantly reduce detection probability, enabling Raiders to
 - **Assassination**: Eliminate enemy commanders (advanced missions)
 - **Blockade Running**: Covert supply runs to besieged colonies
 
-For complete Raider specifications and mission types, see [Sections 2.4.3](assets.md#243-raiders) and [Section 9.0](operations.md#90-covert-operations).
+For complete Raider specifications and mission types, see [Section 2.4.3](assets.md#243-raiders) and [Section 9.0](intelligence.md#90-intelligence-system).
 
 **Strategic Considerations:**
 

@@ -12,7 +12,7 @@ Your scout squadrons are the eyes and ears of your House. When dispatched on rec
 
 Scouts provide the highest quality intelligence available. Their reports are detailed, accurate, and current. However, even scout intelligence can be compromised. Houses that successfully plant disinformation in your intelligence network or those operating under the stigma of dishonor may corrupt scout reports with false data. See [Section 9.4](#94-intelligence-corruption) for details on intelligence reliability.
 
-Scout missions are described in [Section 6.2.10-6.2.12](operations.md#6210-spy-on-a-planet-09) of the Operations manual.
+Scout missions are described in [Section 6.3.13-6.3.15](operations.md#6313-spy-on-a-planet-11) of the Operations manual.
 
 ### 9.1.2 Fleet Encounters
 
@@ -116,7 +116,7 @@ Dishonored intelligence corruption is more severe than disinformation, introduci
 
 The final two houses remaining in the game are exempt from dishonor and its intelligence effects. This exception ensures the endgame remains decisive rather than random.
 
-Dishonor mechanics are described in [Section 8.1.2](diplomacy.md#812-non-aggression-pacts).
+Dishonor mechanics are described in [Section 8.1.2](diplomacy.md#812-neutral).
 
 ### 9.4.3 Corruption Detection
 
