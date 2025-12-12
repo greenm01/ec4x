@@ -5,7 +5,7 @@
 ## Generates espionage requirements with priorities for Basileus mediation
 ## Includes EBP/CIP investment and operation requirements
 
-import std/[options, strformat, tables]
+import std/[options, strformat, tables, algorithm, sets]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../../../engine/espionage/types as esp_types # For EspionageAction
@@ -15,6 +15,328 @@ import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_types
 import ../goap/core/types # For GoalType
 import ../goap/integration/plan_tracking # For PlanTracker, PlanStatus
+
+# =============================================================================
+# Phase 5.1: Multi-Factor Espionage Target Scoring
+# =============================================================================
+
+type
+  EspionageTargetScore = object
+    ## Scored espionage target with multi-factor analysis
+    houseId: HouseId
+    score: float
+    techValue: float      # Steal research from tech leaders
+    economicValue: float  # Sabotage high producers
+    militaryThreat: float # Gather intel on strong enemies
+    ciWeakness: float     # Target houses with low counter-intel
+    diplomaticWeight: float # Prioritize enemies over neutrals
+
+proc scoreEspionageTarget*(
+  targetHouse: HouseId,
+  ownHouse: HouseId,
+  intelSnapshot: IntelligenceSnapshot,
+  filtered: FilteredGameState,
+  personality: ai_types.AIPersonality,
+  currentAct: GameAct
+): EspionageTargetScore =
+  ## Phase 5.1: Score espionage target based on multiple strategic factors
+  ## Higher score = more valuable target for espionage operations
+
+  result.houseId = targetHouse
+  result.score = 0.0
+
+  # 1. Tech Value: Target houses ahead in tech (steal research)
+  result.techValue = 0.0
+  if intelSnapshot.research.enemyTechLevels.hasKey(targetHouse):
+    let enemyTech = intelSnapshot.research.enemyTechLevels[targetHouse]
+    # Sum tech levels across all fields
+    var totalEnemyTech = 0
+    for field, level in enemyTech.techLevels:
+      totalEnemyTech += level
+
+    # Compare to our tech (rough proxy: assume we're around Act-appropriate level)
+    let ourTechEstimate = case currentAct
+      of ai_types.GameAct.Act1_LandGrab: 15      # ~3 per field
+      of ai_types.GameAct.Act2_RisingTensions: 25  # ~5 per field
+      of ai_types.GameAct.Act3_TotalWar: 35       # ~7 per field
+      of ai_types.GameAct.Act4_Endgame: 45        # ~9 per field
+
+    if totalEnemyTech > ourTechEstimate:
+      result.techValue = float(totalEnemyTech - ourTechEstimate) / 10.0  # 0.0-3.0 range
+
+  # 2. Economic Value: Target high producers (sabotage priority)
+  result.economicValue = 0.0
+  if intelSnapshot.economic.enemyEconomicStrength.hasKey(targetHouse):
+    let enemyEcon = intelSnapshot.economic.enemyEconomicStrength[targetHouse]
+    result.economicValue = float(enemyEcon.estimatedTotalProduction) / 100.0  # 0.0-5.0+ range
+
+  # 3. Military Threat: Target strong militaries (need intel)
+  result.militaryThreat = 0.0
+  var enemyFleetCount = 0
+  var enemyTotalStrength = 0
+  for fleet in intelSnapshot.military.knownEnemyFleets:
+    if fleet.owner == targetHouse:
+      enemyFleetCount += 1
+      enemyTotalStrength += fleet.estimatedStrength
+
+  result.militaryThreat = float(enemyTotalStrength) / 200.0  # 0.0-5.0+ range
+
+  # 4. CI Weakness: Target houses with low counter-intel (easier operations)
+  result.ciWeakness = 0.0
+  if intelSnapshot.espionage.detectionRisks.hasKey(targetHouse):
+    let risk = intelSnapshot.espionage.detectionRisks[targetHouse]
+    case risk
+    of DetectionRiskLevel.Unknown:
+      result.ciWeakness = 2.5  # Unknown = moderate assumption
+    of DetectionRiskLevel.Low:
+      result.ciWeakness = 3.0  # Easy target
+    of DetectionRiskLevel.Moderate:
+      result.ciWeakness = 1.5  # Moderate target
+    of DetectionRiskLevel.High:
+      result.ciWeakness = 0.5  # Risky target
+    of DetectionRiskLevel.Critical:
+      result.ciWeakness = 0.1  # Very risky (almost avoid)
+  else:
+    result.ciWeakness = 2.0  # Unknown = assume moderate
+
+  # 5. Diplomatic Weight: Prioritize enemies over neutrals
+  result.diplomaticWeight = 1.0  # Base weight
+  let dipKey = (ownHouse, targetHouse)
+  if filtered.houseDiplomacy.hasKey(dipKey):
+    let dipState = filtered.houseDiplomacy[dipKey]
+    case dipState
+    of dip_types.DiplomaticState.Enemy:
+      result.diplomaticWeight = 3.0  # Open war = high priority
+    of dip_types.DiplomaticState.Hostile:
+      result.diplomaticWeight = 2.0  # Hostile = medium-high priority
+    of dip_types.DiplomaticState.Neutral:
+      result.diplomaticWeight = 1.0  # Neutral = base priority
+
+  # Calculate weighted score based on personality
+  # Aggressive personalities weight military threat higher
+  # Economic personalities weight economic value higher
+  # Risk-averse personalities weight CI weakness higher
+
+  let aggressionWeight = personality.aggression
+  let economicWeight = personality.economicFocus
+  let riskWeight = 1.0 - personality.riskTolerance  # Low risk = prefer easy targets
+
+  result.score =
+    (result.techValue * 1.0) +           # Tech always valuable
+    (result.economicValue * economicWeight * 1.5) +  # Economic focus amplifies
+    (result.militaryThreat * aggressionWeight * 1.5) + # Aggression amplifies
+    (result.ciWeakness * riskWeight * 1.2) +         # Risk-averse prefer easy
+    (result.diplomaticWeight * 2.0)                  # Diplomacy always important
+
+  return result
+
+proc selectBestEspionageTargets*(
+  intelSnapshot: IntelligenceSnapshot,
+  filtered: FilteredGameState,
+  personality: ai_types.AIPersonality,
+  currentAct: GameAct,
+  maxTargets: int = 3
+): seq[HouseId] =
+  ## Phase 5.1: Select best espionage targets using multi-factor scoring
+  ## Returns up to maxTargets houses sorted by score (best first)
+
+  var scoredTargets: seq[EspionageTargetScore] = @[]
+
+  # Score all known enemy houses
+  var candidateHouses = initHashSet[HouseId]()
+  for (systemId, owner) in intelSnapshot.knownEnemyColonies:
+    if owner != filtered.viewingHouse:
+      candidateHouses.incl(owner)
+
+  for fleet in intelSnapshot.military.knownEnemyFleets:
+    if fleet.owner != filtered.viewingHouse:
+      candidateHouses.incl(fleet.owner)
+
+  # Score each candidate
+  for house in candidateHouses:
+    let score = scoreEspionageTarget(
+      house, filtered.viewingHouse, intelSnapshot, filtered, personality, currentAct
+    )
+    scoredTargets.add(score)
+
+  # Sort by score (highest first)
+  scoredTargets.sort(proc(a, b: EspionageTargetScore): int =
+    if a.score > b.score: -1
+    elif a.score < b.score: 1
+    else: 0
+  )
+
+  # Return top N targets
+  result = @[]
+  for i in 0 ..< min(maxTargets, scoredTargets.len):
+    result.add(scoredTargets[i].houseId)
+    logDebug(LogCategory.lcAI,
+             &"Espionage target {i+1}: {scoredTargets[i].houseId} " &
+             &"(score={scoredTargets[i].score:.1f}, tech={scoredTargets[i].techValue:.1f}, " &
+             &"econ={scoredTargets[i].economicValue:.1f}, military={scoredTargets[i].militaryThreat:.1f}, " &
+             &"ci={scoredTargets[i].ciWeakness:.1f}, diplo={scoredTargets[i].diplomaticWeight:.1f})")
+
+  return result
+
+# =============================================================================
+# Phase 5.3: Economic Intelligence for Sabotage
+# =============================================================================
+
+type
+  SabotageTarget = object
+    ## Prioritized sabotage target with bottleneck analysis
+    systemId: SystemId
+    owner: HouseId
+    score: float
+    shipyardCount: int
+    activeProjects: int
+    productionValue: int
+    reason: string
+
+proc selectSabotageBottlenecks*(
+  intelSnapshot: IntelligenceSnapshot,
+  maxTargets: int = 3
+): seq[SabotageTarget] =
+  ## Phase 5.3: Select sabotage targets based on economic bottlenecks
+  ## Prioritizes shipyard concentrations and high-value infrastructure
+
+  result = @[]
+  var scoredTargets: seq[SabotageTarget] = @[]
+
+  # Analyze construction activity for shipyard concentrations
+  for systemId, activity in intelSnapshot.economic.constructionActivity:
+    # Find system owner
+    var owner: HouseId = HouseId("")
+    for (sysId, ownerHouse) in intelSnapshot.knownEnemyColonies:
+      if sysId == systemId:
+        owner = ownerHouse
+        break
+
+    if owner == HouseId(""):
+      continue  # Unknown owner, skip
+
+    # Calculate bottleneck score
+    let shipyardWeight = activity.shipyardCount * 100  # Shipyards are high value
+    let projectWeight = activity.constructionQueue.len * 20  # Active projects = busy
+    let activityWeight = case activity.activityLevel
+      of ConstructionActivityLevel.VeryHigh: 80
+      of ConstructionActivityLevel.High: 50
+      of ConstructionActivityLevel.Moderate: 20
+      of ConstructionActivityLevel.Low: 5
+      else: 0
+
+    # Infrastructure value (IU and starbases)
+    let infrastructureValue = activity.observedInfrastructure * 10 + activity.observedStarbases * 50
+
+    # Total score
+    let totalScore = float(shipyardWeight + projectWeight + activityWeight + infrastructureValue)
+
+    if totalScore > 0:
+      scoredTargets.add(SabotageTarget(
+        systemId: systemId,
+        owner: owner,
+        score: totalScore,
+        shipyardCount: activity.shipyardCount,
+        activeProjects: activity.constructionQueue.len,
+        productionValue: activity.observedInfrastructure,
+        reason: if activity.shipyardCount >= 2:
+          &"Shipyard concentration ({activity.shipyardCount} yards)"
+        elif activity.activityLevel == ConstructionActivityLevel.VeryHigh:
+          "Very high construction activity"
+        else:
+          "High-value infrastructure target"
+      ))
+
+  # Sort by score (highest first)
+  scoredTargets.sort(proc(a, b: SabotageTarget): int =
+    if a.score > b.score: -1
+    elif a.score < b.score: 1
+    else: 0
+  )
+
+  # Return top N targets
+  for i in 0 ..< min(maxTargets, scoredTargets.len):
+    result.add(scoredTargets[i])
+    logDebug(LogCategory.lcAI,
+             &"Sabotage target {i+1}: {scoredTargets[i].systemId} ({scoredTargets[i].owner}) " &
+             &"score={scoredTargets[i].score:.0f} - {scoredTargets[i].reason}")
+
+  return result
+
+# =============================================================================
+# Phase 5.2: Counter-Intelligence Assessment
+# =============================================================================
+
+proc assessCounterIntelligenceNeeds*(
+  filtered: FilteredGameState,
+  intelSnapshot: IntelligenceSnapshot,
+  currentCIP: int,
+  targetCIP: int
+): seq[EspionageRequirement] =
+  ## Phase 5.2: Assess counter-intelligence needs based on detected threats
+  ## Returns CIP investment and counter-intel sweep requirements
+
+  result = @[]
+
+  # Track detected espionage activity by house
+  var espionageActivityByHouse = initTable[HouseId, int]()
+
+  # Check for detected espionage operations from intelligence
+  if intelSnapshot.espionage.detectionRisks.len > 0:
+    # Houses with detection risks indicate they're running operations
+    for houseId, risk in intelSnapshot.espionage.detectionRisks:
+      case risk
+      of DetectionRiskLevel.High, DetectionRiskLevel.Critical:
+        # High/Critical risk = we're detecting heavy espionage
+        if not espionageActivityByHouse.hasKey(houseId):
+          espionageActivityByHouse[houseId] = 0
+        espionageActivityByHouse[houseId] += 3  # Heavy activity
+      of DetectionRiskLevel.Moderate:
+        if not espionageActivityByHouse.hasKey(houseId):
+          espionageActivityByHouse[houseId] = 0
+        espionageActivityByHouse[houseId] += 1  # Moderate activity
+      else:
+        discard
+
+  # Calculate total espionage threat
+  var totalThreat = 0
+  for house, activity in espionageActivityByHouse:
+    totalThreat += activity
+
+  # If significant espionage threat detected, boost CIP investment
+  if totalThreat >= 5 and currentCIP < (targetCIP + 3):
+    let cipBoost = min(3, (targetCIP + 3) - currentCIP)
+    let investmentCost = cipBoost * 40  # 40 PP per CIP point
+
+    result.add(EspionageRequirement(
+      requirementType: EspionageRequirementType.CIPInvestment,
+      priority: RequirementPriority.High,
+      targetHouse: none(HouseId),
+      operation: none(esp_types.EspionageAction),
+      estimatedCost: investmentCost,
+      reason: &"Emergency CIP boost (detected {totalThreat} espionage threats)"
+    ))
+
+    logInfo(LogCategory.lcAI,
+            &"Counter-Intel: Detected heavy espionage activity ({totalThreat} threats), " &
+            &"boosting CIP by {cipBoost} points")
+
+  # Generate counter-intel sweeps for each active threat
+  for houseId, activity in espionageActivityByHouse:
+    if activity >= 2:  # Significant activity (2+ operations)
+      result.add(EspionageRequirement(
+        requirementType: EspionageRequirementType.Operation,
+        priority: RequirementPriority.High,
+        targetHouse: none(HouseId),  # Counter-intel is defensive
+        operation: some(esp_types.EspionageAction.CounterIntelSweep),
+        estimatedCost: 4,
+        reason: &"Counter-intel sweep vs {houseId} espionage (activity level: {activity})"
+      ))
+
+      logInfo(LogCategory.lcAI,
+              &"Counter-Intel: Scheduling sweep against {houseId} operations")
+
+  return result
 
 proc generateEspionageRequirements*(
   controller: AIController,
@@ -55,9 +377,8 @@ proc generateEspionageRequirements*(
           &"{controller.houseId} Drungarius: Generating espionage requirements " &
           &"(EBP={currentEBP}, CIP={currentCIP}, Act={currentAct}, MaintainPrestigeActive={isMaintainPrestigeActive})")
 
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Drungarius: Generating espionage requirements " &
-          &"(EBP={currentEBP}, CIP={currentCIP}, Act={currentAct})")
+  # Phase 5.1: Select best espionage targets using multi-factor scoring
+  let bestTargets = selectBestEspionageTargets(intelSnapshot, filtered, p, currentAct, maxTargets = 3)
 
   # === EBP/CIP Investment Target Levels by Act ===
   var targetEBP = case currentAct # Use var for modification
@@ -155,26 +476,30 @@ proc generateEspionageRequirements*(
     ))
     result.totalEstimatedCost += investmentCost
 
-  # === HIGH: Operations against high-value targets ===
-  # Prioritize sabotage of undefended high-industry colonies
-  # === MEDIUM/HIGH: Counter-Intelligence Sweep (defensive) ===
-  # Prioritize defensive sweeps if CIP is low or personality is risk-averse
-  if currentCIP < targetCIP: # Only if CIP is below target (i.e. we need more defense)
-    let priority = if currentCIP < 5: RequirementPriority.High else: RequirementPriority.Medium
-    let cost = 4 # Fixed cost for Counter-Intelligence Sweep
+  # === MEDIUM/HIGH: Phase 5.2 - Intelligence-Driven Counter-Intelligence ===
+  # Use intelligence to detect espionage threats and respond
+  let ciRequirements = assessCounterIntelligenceNeeds(filtered, intelSnapshot, currentCIP, targetCIP)
+  for req in ciRequirements:
+    result.requirements.add(req)
+    result.totalEstimatedCost += req.estimatedCost
 
-    result.requirements.add(EspionageRequirement(
-      requirementType: EspionageRequirementType.Operation,
-      priority: priority,
-      targetHouse: none(HouseId), # Counter-Intelligence Sweep is self-focused
-      operation: some(esp_types.EspionageAction.CounterIntelSweep),
-      estimatedCost: cost,
-      reason: &"Defensive Counter-Intelligence Sweep (CIP: {currentCIP}/{targetCIP})"
-    ))
-    result.totalEstimatedCost += cost
-  else:
-    # If CIP is sufficient, still consider sweeps based on risk tolerance or perceived threat
-    if p.riskTolerance < 0.4 and currentCIP < 10: # Risk-averse, maintain good CIP
+  # Fallback: Basic risk-based sweeps if no threats detected
+  if ciRequirements.len == 0:
+    if currentCIP < targetCIP:
+      let priority = if currentCIP < 5: RequirementPriority.High else: RequirementPriority.Medium
+      let cost = 4
+
+      result.requirements.add(EspionageRequirement(
+        requirementType: EspionageRequirementType.Operation,
+        priority: priority,
+        targetHouse: none(HouseId),
+        operation: some(esp_types.EspionageAction.CounterIntelSweep),
+        estimatedCost: cost,
+        reason: &"Preventive Counter-Intelligence Sweep (CIP: {currentCIP}/{targetCIP})"
+      ))
+      result.totalEstimatedCost += cost
+    elif p.riskTolerance < 0.4 and currentCIP < 10:
+      # Risk-averse personalities maintain CI posture
       let cost = 4
       result.requirements.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
@@ -182,40 +507,72 @@ proc generateEspionageRequirements*(
         targetHouse: none(HouseId),
         operation: some(esp_types.EspionageAction.CounterIntelSweep),
         estimatedCost: cost,
-        reason: &"Maintain Counter-Intelligence posture (risk tolerance: {p.riskTolerance:.2f})"
+        reason: &"Maintain CI posture (risk tolerance: {p.riskTolerance:.2f})"
       ))
       result.totalEstimatedCost += cost
 
-  # === HIGH: Operations against high-value targets ===
-  # Prioritize sabotage of undefended high-industry colonies
-  if currentEBP >= 7 and intelSnapshot.highValueTargets.len > 0:
-    # Target the first high-value target (already sorted by priority in intelligence report)
-    let targetSystem = intelSnapshot.highValueTargets[0]
+  # === HIGH: Phase 5.3 - Economic Bottleneck Sabotage ===
+  # Target shipyard concentrations and high-value infrastructure
+  if currentEBP >= 7:
+    let bottlenecks = selectSabotageBottlenecks(intelSnapshot, maxTargets = 2)
 
-    # Find the owner from intelligence
-    var targetOwner: HouseId = HouseId("")
-    for (systemId, owner) in intelSnapshot.knownEnemyColonies:
-      if systemId == targetSystem:
-        targetOwner = owner
-        break
-
-    if targetOwner != HouseId(""):
+    if bottlenecks.len > 0:
+      # Target top bottleneck with high-priority sabotage
+      let primary = bottlenecks[0]
       result.requirements.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
         priority: RequirementPriority.High,
-        targetHouse: some(targetOwner),
+        targetHouse: some(primary.owner),
         operation: some(esp_types.EspionageAction.SabotageHigh),
-        targetSystem: some(targetSystem), # Set target system for system-specific operation
-        estimatedCost: 50,  # High sabotage operation cost estimate
-        reason: &"High-value sabotage target - system {targetSystem} (undefended, high industry)"
+        targetSystem: some(primary.systemId),
+        estimatedCost: 50,
+        reason: &"Economic bottleneck sabotage - {primary.systemId}: {primary.reason}"
       ))
       result.totalEstimatedCost += 50
 
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Drungarius: Targeting bottleneck {primary.systemId} " &
+              &"({primary.shipyardCount} shipyards, score={primary.score:.0f})")
+
+      # If aggressive and multiple bottlenecks, add secondary target
+      if bottlenecks.len >= 2 and p.aggression > 0.6 and currentEBP >= 12:
+        let secondary = bottlenecks[1]
+        result.requirements.add(EspionageRequirement(
+          requirementType: EspionageRequirementType.Operation,
+          priority: RequirementPriority.Medium,
+          targetHouse: some(secondary.owner),
+          operation: some(esp_types.EspionageAction.SabotageHigh),
+          targetSystem: some(secondary.systemId),
+          estimatedCost: 50,
+          reason: &"Secondary bottleneck - {secondary.systemId}: {secondary.reason}"
+        ))
+        result.totalEstimatedCost += 50
+    elif intelSnapshot.highValueTargets.len > 0:
+      # Fallback: Use legacy high-value target list if no bottlenecks identified
+      let targetSystem = intelSnapshot.highValueTargets[0]
+      var targetOwner: HouseId = HouseId("")
+      for (systemId, owner) in intelSnapshot.knownEnemyColonies:
+        if systemId == targetSystem:
+          targetOwner = owner
+          break
+
+      if targetOwner != HouseId(""):
+        result.requirements.add(EspionageRequirement(
+          requirementType: EspionageRequirementType.Operation,
+          priority: RequirementPriority.High,
+          targetHouse: some(targetOwner),
+          operation: some(esp_types.EspionageAction.SabotageHigh),
+          targetSystem: some(targetSystem),
+          estimatedCost: 50,
+          reason: &"High-value target - system {targetSystem}"
+        ))
+        result.totalEstimatedCost += 50
+
   # === HIGH: Operations against enemies ===
-  # Phase E: Prioritize based on espionage intelligence (detection risk, coverage gaps)
-  if currentEBP >= 8 and intelSnapshot.espionageOpportunities.len > 0:
-    # Target first espionage opportunity, but check detection risk
-    let targetHouse = intelSnapshot.espionageOpportunities[0]
+  # Phase 5.1: Use multi-factor scored targets instead of simple list
+  if currentEBP >= 8 and bestTargets.len > 0:
+    # Target best-scored house
+    let targetHouse = bestTargets[0]
 
     # Phase E: Check detection risk from counter-intelligence analysis
     var detectionRiskNote = ""
@@ -237,15 +594,15 @@ proc generateEspionageRequirements*(
       targetHouse: some(targetHouse),
       operation: some(esp_types.EspionageAction.IntelligenceTheft),
       estimatedCost: 40,  # Intelligence theft cost estimate
-      reason: &"Intelligence theft from enemy {targetHouse} (espionage opportunity identified){detectionRiskNote}"
+      reason: &"Intelligence theft from {targetHouse} (multi-factor scoring: best target){detectionRiskNote}"
     ))
     result.totalEstimatedCost += 40
 
   # === MEDIUM: Disinformation operations ===
   if currentEBP >= 6 and p.aggression > 0.6:
-    # Aggressive AIs use disinformation to confuse enemies
-    if intelSnapshot.espionageOpportunities.len > 0:
-      let targetHouse = intelSnapshot.espionageOpportunities[0]
+    # Phase 5.1: Aggressive AIs target military threats with disinformation
+    if bestTargets.len > 0:
+      let targetHouse = bestTargets[0]  # Best target (likely military threat)
 
       result.requirements.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
@@ -253,15 +610,16 @@ proc generateEspionageRequirements*(
         targetHouse: some(targetHouse),
         operation: some(esp_types.EspionageAction.PlantDisinformation),
         estimatedCost: 35,  # Disinformation cost estimate
-        reason: &"Plant disinformation against {targetHouse} (aggression={p.aggression:.2f})"
+        reason: &"Plant disinformation against {targetHouse} (aggression={p.aggression:.2f}, scored target)"
       ))
       result.totalEstimatedCost += 35
 
   # === MEDIUM: Economic manipulation ===
   if currentEBP >= 6 and p.economicFocus > 0.6:
-    # Economic-focused AIs target enemy economies
-    if intelSnapshot.espionageOpportunities.len > 0:
-      let targetHouse = intelSnapshot.espionageOpportunities[0]
+    # Phase 5.1: Economic-focused AIs target high producers
+    if bestTargets.len > 0:
+      # For economic ops, prefer second-best target if available (diversify)
+      let targetHouse = if bestTargets.len >= 2: bestTargets[1] else: bestTargets[0]
 
       result.requirements.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
@@ -269,7 +627,7 @@ proc generateEspionageRequirements*(
         targetHouse: some(targetHouse),
         operation: some(esp_types.EspionageAction.EconomicManipulation),
         estimatedCost: 35,  # Economic manipulation cost estimate
-        reason: &"Economic manipulation against {targetHouse} (economicFocus={p.economicFocus:.2f})"
+        reason: &"Economic manipulation against {targetHouse} (economicFocus={p.economicFocus:.2f}, scored target)"
       ))
       result.totalEstimatedCost += 35
 
@@ -297,9 +655,9 @@ proc generateEspionageRequirements*(
 
   # === DEFERRED: Assassination (luxury operation) ===
   if currentEBP >= 10 and p.aggression > 0.8:
-    # Only very aggressive AIs with high EBP attempt assassination
-    if intelSnapshot.espionageOpportunities.len > 0:
-      let targetHouse = intelSnapshot.espionageOpportunities[0]
+    # Phase 5.1: Very aggressive AIs target most threatening enemy
+    if bestTargets.len > 0:
+      let targetHouse = bestTargets[0]  # Best target (highest threat)
 
       result.requirements.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
@@ -307,7 +665,7 @@ proc generateEspionageRequirements*(
         targetHouse: some(targetHouse),
         operation: some(esp_types.EspionageAction.Assassination),
         estimatedCost: 60,  # Assassination cost estimate (expensive)
-        reason: &"Assassination attempt on {targetHouse} (luxury operation, aggression={p.aggression:.2f})"
+        reason: &"Assassination attempt on {targetHouse} (luxury operation, aggression={p.aggression:.2f}, highest-scored threat)"
       ))
       result.totalEstimatedCost += 60
 
