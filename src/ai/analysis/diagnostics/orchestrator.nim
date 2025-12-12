@@ -20,6 +20,7 @@ import ../../../engine/orders
 import ../../../engine/resolution/types as res_types
 import ../../common/types
 import ../../rba/controller_types  # For GOAP metrics collection
+import ../../../engine/logger  # For debug logging
 
 # Forward declaration for espionage mission counting
 type
@@ -102,7 +103,12 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   ## maxTurns: expected game length for Act calculation (default 100)
   ## events: Game events from turn resolution (for colonization vs conquest tracking)
   ## controller: Optional AI controller for GOAP metrics collection
-  result = initDiagnosticMetrics(state.turn, houseId, strategy, gameId)
+
+  # NOTE: state.turn has been incremented at end of resolveTurn (resolve.nim:267)
+  # Events in the `events` parameter are from the turn BEFORE the increment
+  # Use turn-1 to correctly attribute events to the turn they occurred in
+  let actualTurn = if state.turn > 1: state.turn - 1 else: state.turn
+  result = initDiagnosticMetrics(actualTurn, houseId, strategy, gameId)
 
   # Set total systems on map (constant for all houses/turns)
   result.totalSystemsOnMap = state.starMap.systems.len
