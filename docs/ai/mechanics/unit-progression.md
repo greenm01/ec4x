@@ -107,7 +107,7 @@ EC4X has **two separate construction pipelines** that operate independently:
 - **Shipyard**: 10 base docks × CST multiplier
   - CST I: 10 docks, CST II: 11 docks, CST III: 12 docks, etc.
   - Cost: Standard ship construction cost
-  - Can repair ships (only facility that repairs ships)
+  - Cannot repair ships (use Drydock for repairs)
 
 **CST Scaling Formula:**
 ```
