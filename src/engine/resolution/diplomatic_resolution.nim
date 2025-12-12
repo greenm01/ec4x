@@ -13,8 +13,12 @@ import ../config/diplomacy_config
 import ../prestige
 import ../intelligence/diplomatic_intel
 import ../intelligence/types as intel_types  # For DetectionEventType
+import types as res_types  # For GameEvent
+import event_factory/init as event_factory
 
-proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, OrderPacket]) =
+proc resolveDiplomaticActions*(state: var GameState,
+                                orders: Table[HouseId, OrderPacket],
+                                events: var seq[res_types.GameEvent]) =
   ## Process diplomatic actions (per gameplay.md:1.3.3 - Command Phase)
   for houseId in state.houses.keys:
     if houseId in orders:
@@ -26,6 +30,11 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
           logResolve("Declared Hostile",
                      "declarer=", $houseId, " target=", $action.targetHouse)
 
+          # Get old state before change
+          let oldState = dip_engine.getDiplomaticState(
+            state.houses[houseId].diplomaticRelations,
+            action.targetHouse
+          )
 
           # Get mutable copy of house to modify diplomatic relations
           var house = state.houses[houseId]
@@ -37,6 +46,15 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
           )
           # Write back modified house to persist changes
           state.houses[houseId] = house
+
+          # Emit DiplomaticRelationChanged event (Phase 7d)
+          events.add(event_factory.diplomaticRelationChanged(
+            houseId,
+            action.targetHouse,
+            oldState,
+            dip_types.DiplomaticState.Hostile,
+            "Hostility declared"
+          ))
 
           # Generate hostility declaration intelligence
           diplomatic_intel.generateHostilityDeclarationIntel(
@@ -61,6 +79,9 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
           # Write back modified house to persist changes
           state.houses[houseId] = house
 
+          # Emit WarDeclared event (Phase 7d)
+          events.add(event_factory.warDeclared(houseId, action.targetHouse))
+
           # Generate war declaration intelligence
           diplomatic_intel.generateWarDeclarationIntel(
             state,
@@ -84,6 +105,9 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
           # Write back modified house to persist changes
           state.houses[houseId] = house
 
+          # Emit PeaceSigned event (Phase 7d)
+          events.add(event_factory.peaceSigned(houseId, action.targetHouse))
+
           # Generate peace treaty intelligence
           diplomatic_intel.generatePeaceTreatyIntel(
             state,
@@ -92,7 +116,8 @@ proc resolveDiplomaticActions*(state: var GameState, orders: Table[HouseId, Orde
             state.turn
           )
 
-proc resolveScoutDetectionEscalations*(state: var GameState) =
+proc resolveScoutDetectionEscalations*(state: var GameState,
+                                        events: var seq[res_types.GameEvent]) =
   ## Process scout loss events and trigger appropriate diplomatic escalations
   ## Per scout mechanics revision: SpyScoutDetected → Hostile escalation
   ## Escalation only goes UP, never down: Neutral → Hostile → Enemy
@@ -127,6 +152,15 @@ proc resolveScoutDetectionEscalations*(state: var GameState) =
         state.turn
       )
       state.houses[event.detectorHouse] = detectorHouse
+
+      # Emit DiplomaticRelationChanged event (Phase 7d)
+      events.add(event_factory.diplomaticRelationChanged(
+        event.detectorHouse,
+        event.owner,
+        currentState,
+        dip_types.DiplomaticState.Hostile,
+        "Spy scout detected"
+      ))
 
       logInfo("Diplomacy", "Spy detection escalation",
              "detector=", $event.detectorHouse,

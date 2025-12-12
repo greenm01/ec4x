@@ -49,6 +49,10 @@ type
     PrestigeLost,         # Prestige decreased
     WarDeclared,          # War declaration
     PeaceSigned,          # Peace treaty signed
+    DiplomaticRelationChanged, # Diplomatic state change (any transition with reason)
+    TreatyProposed,       # Treaty proposal submitted
+    TreatyAccepted,       # Treaty proposal accepted
+    TreatyBroken,         # Treaty violation/broken
     ResourceWarning,      # Resource shortage warning
     ThreatDetected,       # Threat identified
     AutomationCompleted,  # Automated task completed
@@ -146,12 +150,14 @@ type
       ## Events for espionage operations (success/detected in common fields)
       operationType*: Option[esp_types.EspionageAction] # e.g., SabotageHigh, TechTheft
 
-    of Diplomacy, WarDeclared, PeaceSigned:
+    of Diplomacy, WarDeclared, PeaceSigned, DiplomaticRelationChanged,
+       TreatyProposed, TreatyAccepted, TreatyBroken:
       ## Events for diplomatic actions (success in common fields)
       action*: Option[string] # e.g., "ProposeAlliance", "DeclareWar"
       proposalType*: Option[string] # e.g., "NonAggressionPact", "Alliance"
       oldState*: Option[DiplomaticState]
       newState*: Option[DiplomaticState]
+      changeReason*: Option[string] # Why the relation changed or treaty was broken
 
     of Research, TechAdvance:
       ## Research events (houseId in common fields)

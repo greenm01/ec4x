@@ -331,7 +331,7 @@ proc resolveMaintenancePhase*(state: var GameState,
   # Process diplomatic actions (moved from Command Phase)
   # Diplomatic state changes happen AFTER all commands execute
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Processing diplomatic actions...")
-  diplomatic_resolution.resolveDiplomaticActions(state, orders)
+  diplomatic_resolution.resolveDiplomaticActions(state, orders, events)
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Completed diplomatic actions")
 
   # Process active terraforming projects
