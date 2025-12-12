@@ -10,7 +10,7 @@ This section covers jump lane travel, ship commissioning pipelines, fleet orders
 
 Your fleets travel between star systems via **jump lanes**—pre-calculated routes through hyperspace connecting adjacent systems. Jump lanes define your strategic map: systems without lanes remain unreachable, while densely connected systems become strategic crossroads.
 
-For complete details on jump lane classes, distribution, and the starmap structure, see [Section 2.1 Star Map](assets.md#21-star-map).
+For complete details on jump lane classes, distribution, and the starmap structure, see [Section 2.1 Star Map](02-assets.md#21-star-map).
 
 ### 6.1.2 Jump Lane Movement Rules
 
@@ -317,7 +317,7 @@ Deploy larger scout formations for improved survival rates and better intelligen
 
 **Spy Scout Travel Mechanics:**
 
-Spy scouts travel through jump lanes following normal movement rules ([Section 6.1.2](#612-jump-lane-movement)):
+Spy scouts travel through jump lanes following normal movement rules ([Section 6.1.2](06-operations.md#612-jump-lane-movement)):
 - **Controlled Major Lanes:** 2 jumps per turn when spy owner controls all systems along the major lane path
 - **Minor/Restricted Lanes or Rival Territory:** 1 jump per turn
 - **Detection Checks:** Detection rolls occur at each intermediate system during travel
@@ -335,7 +335,7 @@ When spy scouts from different houses operate in the same system:
 
 **Hostile/Neutral Scouts:**
 - Each spy scout makes independent detection rolls against rival scouts
-- Detection uses standard ELI detection tables (see [assets.md Section 2.4.2](assets.md#242-scouts))
+- Detection uses standard ELI detection tables (see [assets.md Section 2.4.2](02-assets.md#242-scouts))
 - **Mutual Detection:** Both scouts detect each other → both destroyed, both houses get intel reports
 - **One-Sided Detection:** Only one scout detects the other → one survives, one destroyed, detector gets intel report
 - **Stealth Stalemate:** Neither detects the other → both continue missions, no intel reports generated
@@ -412,7 +412,7 @@ Transfer your fleet to merge with another fleet at the same location. Consolidat
 
 **Scout Mesh Network Formation:**
 
-When joining fleets containing scout squadrons, the scouts automatically gain mesh network bonuses based on total scout count (see [assets.md Section 2.4.2](assets.md#242-scouts) for mesh network modifier table):
+When joining fleets containing scout squadrons, the scouts automatically gain mesh network bonuses based on total scout count (see [assets.md Section 2.4.2](02-assets.md#242-scouts) for mesh network modifier table):
 - **2-3 scouts:** +1 ELI bonus
 - **4-5 scouts:** +2 ELI bonus
 - **6+ scouts:** +3 ELI bonus (maximum)

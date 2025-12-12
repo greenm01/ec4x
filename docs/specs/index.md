@@ -57,26 +57,26 @@ The complete EC4X game specification is organized into the following documents:
 
 ### Core Rules
 
-- **[Gameplay](gameplay.md)** - How you play, prestige system, setup, and turn structure
+- **[Gameplay](01-gameplay.md)** - How you play, prestige system, setup, and turn structure
 
 ### Game Systems
 
-- **[Military Assets](assets.md)** - Ships, fleets, squadrons, and special units
-- **[Economy](economy.md)** - Economics system
-- **[Research & Development](research_development.md)** - R&D systems
-- **[Construction](construction.md)** - Construction systems
+- **[Military Assets](02-assets.md)** - Ships, fleets, squadrons, and special units
+- **[Economy](03-economy.md)** - Economics system
+- **[Research & Development](04-research_development.md)** - R&D systems
+- **[Construction](05-construction.md)** - Construction systems
 
 ### Operations
 
-- **[Operations](operations.md)** - Movement mechanics
-- **[Combat](combat.md)** - Combat mechanics
-- **[Diplomacy](diplomacy.md)** - Diplomatic states and espionage
-- **[Intelligence](intelligence.md)** - Intelligence gathering, reports, and fog of war
+- **[Operations](06-operations.md)** - Movement mechanics
+- **[Combat](07-combat.md)** - Combat mechanics
+- **[Diplomacy](08-diplomacy.md)** - Diplomatic states and espionage
+- **[Intelligence](09-intelligence.md)** - Intelligence gathering, reports, and fog of war
 
 ### Reference
 
-- **[Game Data Tables](reference.md)** - Ship stats, tech trees, and data tables
-- **[Glossary](glossary.md)** - Comprehensive definitions of game terms and abbreviations
+- **[Game Data Tables](10-reference.md)** - Ship stats, tech trees, and data tables
+- **[Glossary](11-glossary.md)** - Comprehensive definitions of game terms and abbreviations
 
 ---
 

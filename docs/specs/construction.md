@@ -47,7 +47,7 @@ Ships (excluding fighter squadrons) constructed planet-side incur a **100% PC in
 Base ship cost: 50 PP  
 Planet-side construction: 50 PP × 2 = 100 PP total
 
-For spaceport specifications and capacity, see [Section 2.3.2.1](assets.md#23221-spaceports).
+For spaceport specifications and capacity, see [Section 2.3.2.1](02-assets.md#23221-spaceports).
 
 ## 5.3 Planet-side Repair
 
@@ -63,7 +63,7 @@ Shipyard construction of a ship in orbit is the standard method of commissioning
 
 Ships built at shipyards use their base PP cost with no modifiers. This is the economically efficient construction method.
 
-For shipyard specifications and capacity, see [Section 2.3.2.2](assets.md#23222-shipyards).
+For shipyard specifications and capacity, see [Section 2.3.2.2](02-assets.md#23222-shipyards).
 
 ## 5.5 Orbital Repair
 

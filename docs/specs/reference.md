@@ -34,7 +34,7 @@ Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/F
 
 *Source: config/ships.toml*
 
-**Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](assets.md#244-starbases). They are built via the Colony pipeline and stored at colonies, never assigned to fleets or squadrons.
+**Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](02-assets.md#244-starbases). They are built via the Colony pipeline and stored at colonies, never assigned to fleets or squadrons.
 
 **Ship Role Classifications:**
 
@@ -239,8 +239,8 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 
 - Tax penalties apply periodically based on rolling 6-turn average, not instantaneously
 - Maintenance shortfall escalates: Turn 1 (-5), Turn 2 (-7), Turn 3 (-9), continues +2/turn
-- See [Section 3.2](economy.md#32-tax-rate) for full tax mechanics
-- See [Section 3.9.1](economy.md#391-maintenance-tax-shortfall-consequences) for maintenance mechanics
+- See [Section 3.2](03-economy.md#32-tax-rate) for full tax mechanics
+- See [Section 3.9.1](03-economy.md#391-maintenance-tax-shortfall-consequences) for maintenance mechanics
 
 ### Undefended Colony Penalty
 
@@ -273,15 +273,15 @@ Ground units received 33% cost reductions to make defensive investments more acc
 
 | Limit Description                             | Rule Details                                                                                                                                                                                                                   | Source Section                                             |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| Total Squadrons (per house)                   | Maximum = Total House (IU ÷ 50) × mapMultiplier (round down, minimum 20). Includes ALL military squadrons (escorts + capitals). Excludes fighters and auxiliary ships. 2-turn grace period, then auto-disband weakest escorts. | [3.12](economy.md#312-house-combat-squadron-limit)         |
-| Capital Squadrons (per house)                 | Maximum = Total House (IU ÷ 100) × 2 × mapMultiplier (round down, minimum 8). Squadrons with capital ships. Subset of total squadron limit. No grace period, immediate enforcement with 50% salvage.                           | [3.12](economy.md#312-house-combat-squadron-limit)         |
-| Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                                  | [2.4.8](assets.md#248-planet-breaker)                      |
-| Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess.              | [2.4.1](assets.md#241-fighter-squadrons-carriers)          |
-| Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                                          | [2.4.1](assets.md#241-fighter-squadrons-carriers)          |
-| Scout CER Bonus                               | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.                                                                                                                                     | [7.3.3](operations.md#733-combat-effectiveness-rating-cer) |
-| Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass).                                                           | [7.3.3](operations.md#733-combat-effectiveness-rating-cer) |
-| Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                                    | [6.2.6](operations.md#626-guardblockade-a-planet-05)       |
-| Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                                    | [3.2](economy.md#32-tax-rate)                              |
+| Total Squadrons (per house)                   | Maximum = Total House (IU ÷ 50) × mapMultiplier (round down, minimum 20). Includes ALL military squadrons (escorts + capitals). Excludes fighters and auxiliary ships. 2-turn grace period, then auto-disband weakest escorts. | [3.12](03-economy.md#312-house-combat-squadron-limit)         |
+| Capital Squadrons (per house)                 | Maximum = Total House (IU ÷ 100) × 2 × mapMultiplier (round down, minimum 8). Squadrons with capital ships. Subset of total squadron limit. No grace period, immediate enforcement with 50% salvage.                           | [3.12](03-economy.md#312-house-combat-squadron-limit)         |
+| Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                                  | [2.4.8](02-assets.md#248-planet-breaker)                      |
+| Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess.              | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
+| Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                                          | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
+| Scout CER Bonus                               | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.                                                                                                                                     | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
+| Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass).                                                           | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
+| Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                                    | [6.2.6](06-operations.md#626-guardblockade-a-planet-05)       |
+| Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                                    | [3.2](03-economy.md#32-tax-rate)                              |
 
 **Map Size Multipliers** (affects both total and capital squadron limits):
 

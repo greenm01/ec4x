@@ -12,7 +12,7 @@ Your scout squadrons are the eyes and ears of your House. When dispatched on rec
 
 Scouts provide the highest quality intelligence available. Their reports are detailed, accurate, and current. However, even scout intelligence can be compromised. Houses that successfully plant disinformation in your intelligence network or those operating under the stigma of dishonor may corrupt scout reports with false data. See [Section 9.4](#94-intelligence-corruption) for details on intelligence reliability.
 
-Scout missions are described in [Section 6.3.13-6.3.15](operations.md#6313-spy-on-a-planet-11) of the Operations manual.
+Scout missions are described in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) of the Operations manual.
 
 ### 9.1.2 Fleet Encounters
 
@@ -32,7 +32,7 @@ This level of detail transforms strategic decision-making. Knowing an enemy's ec
 
 Advanced sensor arrays installed on starbases monitor their system continuously. A starbase watches its home system, detecting non-stealthed fleet movements, combat activity, and bombardment operations. This active surveillance provides early warning of enemy fleet approaches and documents hostile activity in your territory.
 
-Scouts and cloaked Raiders can evade starbase detection through stealth. Detection mechanics are described in [Section 7.1.3](operations.md#713-cloaking-and-detection).
+Scouts and cloaked Raiders can evade starbase detection through stealth. Detection mechanics are described in [Section 7.2.4](07-combat.md#724-cloaking-and-detection).
 
 ## 9.2 Intelligence Reports
 
@@ -70,7 +70,7 @@ Major diplomatic events are public knowledge. All houses automatically receive i
 
 Diplomatic intelligence includes the houses involved, the nature of the event, and resulting status changes. This transparency reflects the political reality that major diplomatic shifts cannot be concealed in a small region of contested space.
 
-See [Section 8.1](diplomacy.md#81-diplomacy) for complete diplomatic mechanics.
+See [Section 8.1](08-diplomacy.md#81-diplomacy) for complete diplomatic mechanics.
 
 ### 9.2.5 Espionage Detection
 
@@ -106,7 +106,7 @@ The variance is significant enough to cause serious errors in strategic planning
 
 Counter-Intelligence Sweeps can block disinformation attempts. Investing in counter-intelligence protection is the only defense against this insidious form of espionage.
 
-See [Section 8.2.2](diplomacy.md#822-intelligence-warfare-actions) for disinformation mechanics and costs.
+See [Section 8.2.2](08-diplomacy.md#822-intelligence-warfare-actions) for disinformation mechanics and costs.
 
 ### 9.4.2 Dishonor and Intelligence Failure
 
@@ -116,7 +116,7 @@ Dishonored intelligence corruption is more severe than disinformation, introduci
 
 The final two houses remaining in the game are exempt from dishonor and its intelligence effects. This exception ensures the endgame remains decisive rather than random.
 
-Dishonor mechanics are described in [Section 8.1.2](diplomacy.md#812-neutral).
+Dishonor mechanics are described in [Section 8.1.2](08-diplomacy.md#812-neutral).
 
 ### 9.4.3 Corruption Detection
 

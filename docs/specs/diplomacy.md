@@ -30,7 +30,7 @@ Regardless of diplomatic status, all your units will defend your House colonies 
 
 ### 8.1.6 Territorial Control
 
-Your house controls territory in systems containing your colony. Each system can contain only one colony per the colonization rules in [Section 6.3.12](operations.md#6312-colonize-a-planet-10).
+Your house controls territory in systems containing your colony. Each system can contain only one colony per the colonization rules in [Section 6.3.12](06-operations.md#6312-colonize-a-planet-10).
 
 **Territory Classifications:**
 
@@ -137,7 +137,7 @@ Intelligence warfare creates a meta-game layer where information itself becomes 
 
 Houses must balance offensive espionage (sabotage, assassination) with intelligence warfare. A well-timed disinformation campaign can cause more damage than physical sabotage by poisoning enemy strategic planning. Intelligence Theft can reveal enemy war plans, allowing preemptive counter-measures. Counter-Intelligence Sweeps protect your most sensitive operations from enemy surveillance.
 
-The interplay between **Intelligence Corruption** (disinformation and dishonor) and **Counter-Intelligence** creates strategic depth. See [Section 9.4](intelligence.md#94-intelligence-corruption) for complete intelligence corruption mechanics.
+The interplay between **Intelligence Corruption** (disinformation and dishonor) and **Counter-Intelligence** creates strategic depth. See [Section 9.4](09-intelligence.md#94-intelligence-corruption) for complete intelligence corruption mechanics.
 
 ## 8.3 Counter Intelligence Command (CIC)
 

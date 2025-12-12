@@ -59,7 +59,7 @@ If your House's prestige drops below zero and stays there for three consecutive 
 
 **For You:** The game calculates scaling automatically when the map generates. Larger maps mean longer campaigns—plan accordingly.
 
-See [Section 10.4](reference.md#104-prestige) for mathematical details.
+See [Section 10.4](10-reference.md#104-prestige) for mathematical details.
 
 ---
 
@@ -90,7 +90,7 @@ The game server executes every tedious task a human moderator would handle:
 
 **Map Generation:**
 
-Generate your star map using the tools provided in the GitHub repository (see [Section 2.1](assets.md#21-star-map)). The server loads the map at game initialization. Map size determines prestige scaling automatically—larger maps mean longer campaigns.
+Generate your star map using the tools provided in the GitHub repository (see [Section 2.1](02-assets.md#21-star-map)). The server loads the map at game initialization. Map size determines prestige scaling automatically—larger maps mean longer campaigns.
 
 **Your Starting Position:**
 
@@ -107,7 +107,7 @@ You begin with a foundation for empire:
 
 **Starting Technology:**
 
-Your House begins at technology tier 1 across all domains: EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I. Every House starts equal. Your research priorities determine how quickly you advance. See [Section 4.0](research_development.md#40-research-development) for tech effects and [Section 10.11](reference.md#1011-technology-research) for advancement costs.
+Your House begins at technology tier 1 across all domains: EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I. Every House starts equal. Your research priorities determine how quickly you advance. See [Section 4.0](04-research_development.md#40-research-development) for tech effects and [Section 10.11](10-reference.md#1011-technology-research) for advancement costs.
 
 **Diplomacy & Communication:**
 
@@ -134,7 +134,7 @@ Space battles, orbital bombardment, ground invasions, and espionage operations a
 
 ### 1.3.2 Income Phase
 
-After conflict resolution, all economic factors ([Section 3](economy.md#30-economics)) are recalculated and production points deposited in your house treasury. Production calculates **after** conflict, accounting for infrastructure damage from bombardment or invasion.
+After conflict resolution, all economic factors ([Section 3](03-economy.md#30-economics)) are recalculated and production points deposited in your house treasury. Production calculates **after** conflict, accounting for infrastructure damage from bombardment or invasion.
 
 This phase accounts for population growth at each colony, construction progress, maintenance costs, taxes, and R&D. Your House prestige points are recalculated and updated. The game server processes these calculations automatically using the master game state.
 
@@ -146,7 +146,7 @@ In the new turn, you decide which construction orders to place and where to inve
 
 ### 1.3.3 Command Phase
 
-In the command phase, you issue fleet orders ([Section 6.3](operations.md#63-fleet-orders)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](diplomacy.md#81-diplomacy)) toward rival Houses.
+In the command phase, you issue fleet orders ([Section 6.3](06-operations.md#63-fleet-orders)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](08-diplomacy.md#81-diplomacy)) toward rival Houses.
 
 Build orders may fail if shipyards were destroyed in the conflict phase. You issue fleet movement and colonization orders for execution in the next turn's conflict phase.
 
@@ -193,7 +193,7 @@ If you fail to submit orders for three consecutive turns, your empire automatica
 - Construction focuses on defensive infrastructure and essential facilities
 - No new offensive operations or colonization attempts
 - Diplomatic stances remain unchanged
-- Engages Enemy-status houses that enter controlled territory per [Section 8.1.4](diplomacy.md#814-enemy)
+- Engages Enemy-status houses that enter controlled territory per [Section 8.1.4](08-diplomacy.md#814-enemy)
 
 When you return and submit new orders, your empire immediately exits autopilot and resumes normal operations.
 
@@ -216,8 +216,8 @@ Your House is eliminated from the game when you lose all colonies AND have no in
 
 If you lose all your colonies but retain fleets with loaded marine divisions, you can attempt desperate reconquest operations:
 
-- **Invasion Orders**: Target enemy colonies per [Section 7.6.1](combat.md#761-planetary-invasion)
-- **Blitz Operations**: Execute high-risk planetary assaults per [Section 7.6.2](combat.md#762-planetary-blitz)
+- **Invasion Orders**: Target enemy colonies per [Section 7.6.1](07-combat.md#761-planetary-invasion)
+- **Blitz Operations**: Execute high-risk planetary assaults per [Section 7.6.2](07-combat.md#762-planetary-blitz)
 - **No Elimination**: Your House remains active as long as marines exist on transports
 - **Empty Transports**: If you have only empty transports or non-combat ships, you are eliminated
 
@@ -242,7 +242,7 @@ A player in autopilot can still win through prestige accumulation if their empir
 
 **Final Conflict Rule:**
 
-When only two active players remain in the game (excluding Defensive Collapse and Autopilot empires), their diplomatic status automatically converts to Enemy per [Section 8.1.4](diplomacy.md#814-enemy) and cannot be changed. Neutral status cannot be established. There can be only one Emperor—the final two houses must fight for the throne. This rule takes effect at the start of the Income Phase when the condition is detected.
+When only two active players remain in the game (excluding Defensive Collapse and Autopilot empires), their diplomatic status automatically converts to Enemy per [Section 8.1.4](08-diplomacy.md#814-enemy) and cannot be changed. Neutral status cannot be established. There can be only one Emperor—the final two houses must fight for the throne. This rule takes effect at the start of the Income Phase when the condition is detected.
 
 ---
 
@@ -282,16 +282,16 @@ EC4X uses four intelligence quality tiers:
 3. **Perfect** (Scouts & Owned Assets) - Complete accuracy, all details, real-time updates
 4. **None** (Fog of War) - No intelligence available
 
-See [Section 9.3](intelligence.md#93-intelligence-quality-levels) for complete quality level specifications.
+See [Section 9.3](09-intelligence.md#93-intelligence-quality-levels) for complete quality level specifications.
 
 **Intelligence Collection Scenarios:**
 
 You gather intelligence in all of the following situations:
 
-- **Patrol operations**: Visual quality fleet intel per [Section 6.2.4](operations.md#624-patrol-a-system-03)
+- **Patrol operations**: Visual quality fleet intel per [Section 6.2.4](06-operations.md#624-patrol-a-system-03)
 - **Fleet movement**: Visual quality intel when passing through systems with foreign forces
 - **Combat engagements**: Perfect quality intel revealed pre-combat for all participants
-- **Scout reconnaissance**: Perfect quality intel from missions per [Section 6.2.9-6.2.12](operations.md#629-spy-on-a-planet-09)
+- **Scout reconnaissance**: Perfect quality intel from missions per [Section 6.2.9-6.2.12](06-operations.md#629-spy-on-a-planet-09)
 - **Espionage operations**: Spy quality intel from SpyOnPlanet, SpyOnSystem, HackStarbase
 
 **Diplomatic Status Independence:**
@@ -306,7 +306,7 @@ This reflects the reality that military forces cannot remain completely hidden w
 
 **Intelligence Reports:**
 
-All intelligence is stored in your house's intelligence database with timestamps. See [Section 9](intelligence.md) for complete intelligence system documentation including:
+All intelligence is stored in your house's intelligence database with timestamps. See [Section 9](09-intelligence.md) for complete intelligence system documentation including:
 
 - Report types and contents
 - Intelligence corruption from disinformation/dishonor
@@ -318,7 +318,7 @@ All intelligence is stored in your house's intelligence database with timestamps
 You do not have automatic visibility into:
 
 - Rival empire economics (income, production, treasury)
-- Rival empire technology levels (requires espionage per [Section 8.2](diplomacy.md#82-subversion-subterfuge))
+- Rival empire technology levels (requires espionage per [Section 8.2](08-diplomacy.md#82-subversion-subterfuge))
 - Fleet movements in systems without your friendly presence
 - Colony development and construction projects
 - Strategic intentions and future orders

@@ -175,7 +175,7 @@ Raiders can cloak, becoming invisible until detected. Detection determines initi
 - Detection is NOT automatic—it's a dice roll based on tech levels
 - ELI (Electronic Intelligence) tech level vs CLK (Cloaking) tech level
 - Multiple scouts improve detection through mesh network bonuses
-- See assets.md Section 2.4.2 for full ELI mesh network calculation
+- See 02-assets.md Section 2.4.2 for full ELI mesh network calculation
 - Starbases get +2 ELI bonus for detection
 
 **Ambush Advantage (Space Combat Only):**

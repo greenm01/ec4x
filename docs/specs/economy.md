@@ -18,7 +18,7 @@ The PTU-to-PU ratio increases exponentially with colony size. Small colonies are
 
 **Strategic consequence**: Transferring colonists from mature worlds to new colonies is advantageous. The mother world loses relatively few PUs while the daughter colony gains significant productive capacity. This incentivizes colonial expansion rather than concentrating population on homeworlds.
 
-For planet classification and maximum PU capacity by planet class, see [Section 2.2](assets.md#22-solar-systems).
+For planet classification and maximum PU capacity by planet class, see [Section 2.2](02-assets.md#22-solar-systems).
 
 The relationship between PU and PTU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
@@ -166,7 +166,7 @@ Where:
 - Tax multiplier = `(1 - tax_rate)` (e.g., 50% tax → 0.5 multiplier)
 - Starbase bonus = 0.05 per operational starbase, max 0.15 (3 starbases)
 
-High taxes throttle industrial development. Low taxes accelerate it. For starbase economic benefits, see [Section 2.4.4](assets.md#244-starbases).
+High taxes throttle industrial development. Low taxes accelerate it. For starbase economic benefits, see [Section 2.4.4](02-assets.md#244-starbases).
 
 **Active IU Investment:**
 
@@ -204,7 +204,7 @@ You can move PTU between colonies to accelerate development. Due to the exponent
 
 You transport PTU via two methods:
 
-1. **Environmental Transformation and Colonization ships (ETACs)**: Plant new colonies. See [Section 2.3.2.3](assets.md#23223-environmental-transformation-and-colonization-etac) for unit specifications.
+1. **Environmental Transformation and Colonization ships (ETACs)**: Plant new colonies. See [Section 2.3.2.3](02-assets.md#23223-environmental-transformation-and-colonization-etac) for unit specifications.
 
 2. **Space Guild contracts**: Move PTU between established colonies. Guild fees and mechanics are handled through the Income Phase interface.
 
@@ -219,7 +219,7 @@ Max FS per Colony = floor(IU / 100) × FD_MULTIPLIER
 Where:
 
 - **IU**: Industrial Units at the colony
-- **FD_MULTIPLIER**: From Fighter Doctrine (FD) research [Section 4.12](#412-fighter-doctrine-fd)
+- **FD_MULTIPLIER**: From Fighter Doctrine (FD) research [Section 4.12](04-research_development.md#412-fighter-doctrine-fd)
 
 **No Infrastructure Required**: Fighters are built planet-side via distributed manufacturing. No spaceports, shipyards, or starbases required.
 
@@ -235,7 +235,7 @@ Fighter Squadrons have zero ongoing maintenance cost. Once built, they're free t
 
 **Carriers:**
 
-Fighter Squadrons can be loaded onto carriers for mobility. Carrier capacity depends on carrier type and Advanced Carrier Operations (ACO) technology. See [Section 2.4.1](assets.md#241-fighter-squadrons--carriers) for carrier loading mechanics and [Section 4.13](#413-advanced-carrier-operations-aco) for ACO research.
+Fighter Squadrons can be loaded onto carriers for mobility. Carrier capacity depends on carrier type and Advanced Carrier Operations (ACO) technology. See [Section 2.4.1](02-assets.md#241-fighter-squadrons--carriers) for carrier loading mechanics and [Section 4.13](04-research_development.md#413-advanced-carrier-operations-aco) for ACO research.
 
 **Strategic Considerations:**
 
@@ -271,9 +271,9 @@ Fighter Squadrons are cost-effective early-game defenders and remain relevant th
 
 **Construction Capacity Scaling:**
 
-All three facilities' dock counts scale with Construction (CST) technology level. See [Section 4.5](#45-construction-cst) for CST research progression and capacity multipliers.
+All three facilities' dock counts scale with Construction (CST) technology level. See [Section 4.5](04-research_development.md#45-construction-cst) for CST research progression and capacity multipliers.
 
-For detailed facility capabilities and construction rules, see [Sections 5.0-5.4](#50-construction).
+For detailed facility capabilities and construction rules, see [Sections 5.0-5.4](05-construction.md#50-construction).
 
 ## 3.8 Research & Development Investment
 
@@ -285,6 +285,6 @@ You allocate PP to three research pools during the Income Phase:
 
 **Tactical Research Points (TRP)**: Advances weapons (WEP) and construction (CST) technologies. WEP improvements increase ship combat effectiveness. CST improvements increase facility construction capacity and unlock advanced hull classes.
 
-Research pools accumulate over multiple turns. Technologies require specific point thresholds and Science Level (SL) prerequisites to unlock. For complete research progression tables and technology effects, see [Section 4.0](#40-research--development).
+Research pools accumulate over multiple turns. Technologies require specific point thresholds and Science Level (SL) prerequisites to unlock. For complete research progression tables and technology effects, see [Section 4.0](04-research_development.md#40-research--development).
 
 ---
