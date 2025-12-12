@@ -8,8 +8,8 @@
 
 [.metadata]
 ****
-*Last Updated:* 2025-12-10 +
-*Status:* COMPLETE (All identified Gaps 1-7 addressed) +
+*Last Updated:* 2025-12-12 +
+*Status:* RBA Intelligence Unification COMPLETE (Phases 1-8) | GOAP MVP Deployed +
 *System:* Byzantine Imperial AI with Strategic Planning Layer
 ****
 
@@ -55,6 +55,215 @@ graph TD
         end
     end
 ```
+
+---
+
+== RBA Intelligence Unification (2025-12-12)
+
+[IMPORTANT]
+====
+*Status:* COMPLETE - All 5 RBA advisors now use unified IntelligenceSnapshot +
+*Impact:* Intelligence-driven decision making across all domains +
+*Commits:* Phases 4-8 (5 commits, ~800 LOC added)
+====
+
+=== Overview
+
+The RBA Intelligence Unification project (December 2025) transformed all 5 Byzantine advisors from heuristic-based to intelligence-driven decision making. This work addressed 36 intelligence gaps and eliminated architectural duplication between `controller.intelligence` and `house.intelligence`.
+
+=== Architecture Changes
+
+**Before (Pre-Unification):**
+```
+controller.intelligence: Table[SystemId, IntelligenceReport]  # 36 usage sites
+house.intelligence: IntelligenceDatabase                       # Engine authoritative
+→ Architectural duplication, sync issues, stale data
+```
+
+**After (Post-Unification):**
+```
+IntelligenceSnapshot (generated from house.intelligence each turn)
+  ├── military: MilitaryIntelligence
+  ├── economic: EconomicIntelligence
+  ├── diplomatic: DiplomaticIntelligence
+  ├── research: ResearchIntelligence
+  └── espionage: EspionageIntelligence
+→ Single source of truth, DRY principle, fresh intelligence
+```
+
+=== Implementation Phases (Dec 2025)
+
+==== Phase 4: Domestikos (Military Advisor) Enhancements
+
+**File:** `src/ai/rba/domestikos/`
+
+**Enhancements:**
+* **Fleet Composition Analysis** - Uses detailed fleet intelligence vs single strength number
+* **Defensive Capability Assessment** - Analyzes ground batteries, shields, starbases, orbiting fleets
+* **Predictive Defense Allocation** - Uses fleet movement tracking to detect approaching threats
+* **Combat Doctrine Adaptation** - Adjusts ROE based on observed enemy behavior (Aggressive/Defensive/Raiding/Balanced)
+
+**New Module:** `combat_doctrine_adapter.nim` (125 lines)
+
+**Key Functions:**
+```nim
+proc adaptTacticsToEnemyDoctrine*(enemyHouse, intelSnapshot) -> ROERecommendation
+  # Counters: Aggressive → Defensive, Defensive → Aggressive, Raiding → Pursuit
+```
+
+==== Phase 5: Drungarius (Intelligence Advisor) Enhancements
+
+**File:** `src/ai/rba/drungarius/requirements.nim`
+
+**Enhancements:**
+* **Multi-Factor Espionage Targeting** - 5-factor scoring (tech value, economic value, military threat, CI weakness, diplomatic weight)
+* **Counter-Intelligence Assessment** - Proactive response to detected espionage (emergency CIP boost + sweeps)
+* **Economic Intelligence for Sabotage** - Targets bottlenecks (shipyard concentrations, construction choke points)
+
+**Key Functions:**
+```nim
+proc scoreEspionageTarget*(...) -> EspionageTargetScore  # 5-factor analysis
+proc assessCounterIntelligenceNeeds*(...) -> seq[EspionageRequirement]
+proc selectSabotageBottlenecks*(...) -> seq[SabotageTarget]
+```
+
+**Intelligence-Driven Changes:**
+* Espionage targets selected by strategic value, not just prestige
+* Counter-intel operations triggered by detection risk levels
+* Sabotage prioritizes high-value chokepoints (shipyards, construction hubs)
+
+==== Phase 6: Logothete (Research Advisor) Enhancements
+
+**Files:**
+* `src/ai/rba/logothete/requirements.nim` (enhanced)
+* `src/ai/rba/logothete/counter_tech.nim` (new, 140 lines)
+
+**Enhancements:**
+* **Competitive Research Strategy** - Uses urgent research needs, tech gaps, tech advantages
+* **Threat-Responsive Research** - Prioritizes combat tech when under attack
+* **Counter-Tech Selection** - Reactive research to counter enemy advantages
+
+**New Module:** `counter_tech.nim`
+
+**Key Functions:**
+```nim
+proc selectCounterTech*(enemyHouse, enemyTechLevels, ourTechLevels, intelSnapshot) -> seq[CounterTechRecommendation]
+  # 5 counter strategies:
+  # 1. Counter Superior Weapons → Match their weapons
+  # 2. Counter Superior CST → Match construction tech (gates units)
+  # 3. Counter Strong Economy → Use ELI (Electronic Intelligence)
+  # 4. Counter Espionage → Use CIC (Counter-Intelligence)
+  # 5. Counter Advanced Fighters → Match fighter doctrine
+```
+
+**Intelligence-Driven Changes:**
+* Research priorities driven by competitive intelligence (gaps/advantages)
+* Counter-tech automatically selected for top 2 threats per enemy
+* Threat-responsive: Weapons prioritized when under critical threat (not shields - shields are planetary only)
+
+==== Phase 7: Eparch (Economic Advisor) Enhancements
+
+**Files:**
+* `src/ai/rba/eparch/requirements.nim` (threat-aware facilities)
+* `src/ai/rba/eparch/economic_requirements.nim` (competitive assessment)
+
+**Enhancements:**
+
+**7.1: Blockade Prediction - Threat-Aware Infrastructure**
+* Enhanced all facility selection functions (Shipyard, Spaceport, Starbase)
+* **Threat penalties:**
+  - Critical: 80-90% penalty (avoid building in combat zones)
+  - High: 50-70% penalty (risky location)
+  - Moderate: 20-30% penalty (slight risk)
+* **Staleness penalty:** 10-15% for blind spots (unknown risk)
+* **Starbases get heavier penalties** (90% for Critical) due to high cost
+
+**7.2: Enemy Infrastructure Intelligence - Competitive Assessment**
+* Created `assessCompetitiveEconomicPosition()` - analyzes relative economic strength
+* **Flags economic pressure** if producing <70% of average enemy
+* **Infrastructure priority boost:** 1.5-2.0x when significantly behind
+* Compares: production output, shipyard counts, economic capabilities
+
+**Key Functions:**
+```nim
+proc findBestShipyardColony*(..., intelSnapshot) -> Option[SystemId]
+  # Applies threat penalties, avoids threatened colonies
+proc assessCompetitiveEconomicPosition*(ourHouse, intelSnapshot) -> EconomicCompetitiveAssessment
+  # productionRatio, enemyShipyardAdvantage, infrastructurePriorityBoost
+```
+
+**Intelligence-Driven Changes:**
+* Infrastructure placement considers threat levels (avoid building in war zones)
+* Economic strategy responds to competitive pressure (boost when behind)
+* No more expensive starbases in threatened colonies
+
+==== Phase 8: Protostrator (Diplomatic Advisor) Enhancements
+
+**File:** `src/ai/rba/protostrator/assessment.nim`
+
+**Enhancements:**
+
+**8.1: Enemy Relations Intelligence - Enemies Under Pressure**
+* Created `identifyEnemiesUnderPressure()` - finds distracted/vulnerable enemies
+* Analyzes: wars, diplomatic breaks, combat activity, hostility levels
+* **Opportunity score:** Fighting on multiple fronts = vulnerable
+* **Use cases:**
+  - Domestikos: Target distracted enemies for attack
+  - Drungarius: Opportunistic espionage when enemies busy
+  - Protostrator: Diplomatic escalation timing
+
+**8.2: Impending Attack Detection - Diplomatic Urgency Assessment**
+* Created `assessDiplomaticUrgency()` - detects attack warning signs
+* **6 threat indicators tracked:**
+  1. Fleet buildup near borders (CRITICAL)
+  2. Recent scouting activity (war preparation)
+  3. Espionage activity (hostile intentions)
+  4. Military capability growth (rapid buildup)
+  5. Diplomatic hostility escalation (Aggressive posture)
+  6. Existing diplomatic state (already at war)
+* **5-level urgency scoring:** None/Low/Moderate/High/Critical
+* Provides specific indicators and recommended actions
+
+**Key Functions:**
+```nim
+proc identifyEnemiesUnderPressure*(filtered, intelSnapshot) -> seq[tuple[houseId, distractedBy, opportunityScore]]
+proc assessDiplomaticUrgency*(filtered, intelSnapshot) -> seq[ThreatIndicator]
+  # Returns: source, urgency (Critical/High/Moderate/Low), indicators, recommendedAction
+```
+
+**Intelligence-Driven Changes:**
+* Diplomatic decisions based on threat assessment (not just personality)
+* Attack timing considers enemy distractions (fighting on multiple fronts)
+* Defensive diplomacy prioritized when threat indicators detected
+
+=== Impact Summary
+
+**Code Changes:**
+* **5 commits** (Phases 4-8)
+* **~800 lines added** across 8 files
+* **3 new modules created** (combat_doctrine_adapter, counter_tech, competitive assessment)
+* **All pre-commit checks passing** ✅
+
+**Intelligence Usage:**
+* **36 intelligence gaps addressed**
+* **Deprecated:** `controller.intelligence` (architectural duplication eliminated)
+* **Unified:** All advisors use `IntelligenceSnapshot` from `house.intelligence`
+* **Domain coverage:** Military, Economic, Diplomatic, Research, Espionage
+
+**Decision Making Improvements:**
+* **Domestikos:** Threat-aware defense, doctrine-based tactics
+* **Drungarius:** Strategic espionage targeting, proactive counter-intel
+* **Logothete:** Competitive research, counter-tech strategies
+* **Eparch:** Threat-aware infrastructure, competitive economic response
+* **Protostrator:** Attack detection, enemy pressure exploitation
+
+**Expected Behavioral Changes:**
+* More strategic infrastructure placement (avoid threatened colonies)
+* Better economic competition (respond to enemy production advantages)
+* Smarter military timing (attack distracted enemies)
+* Improved threat awareness (detect fleet buildups and escalations)
+* Proactive counter-intelligence (respond to espionage pressure)
+* Research priorities driven by competitive landscape
 
 ---
 
