@@ -175,7 +175,7 @@ iterator fleetsWithStandingOrders*(state: GameState): tuple[id: FleetId, fleet: 
   ##
   ## Example:
   ##   for (fleetId, fleet, standingOrder) in state.fleetsWithStandingOrders():
-  ##     # Execute standing order
+  ##     # Activate standing order
   for fleetId, standingOrder in state.standingOrders:
     if fleetId in state.fleets:
       yield (fleetId, state.fleets[fleetId], standingOrder)

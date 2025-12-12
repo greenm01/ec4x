@@ -79,7 +79,7 @@ type
     BlockadeTarget    # Maintain blockade on enemy colony
 
   StandingOrderParams* = object
-    ## Parameters for standing order execution
+    ## Parameters for standing order activation
     ## Different parameters for different order types
     case orderType*: StandingOrderType
     of PatrolRoute:
@@ -113,8 +113,8 @@ type
     params*: StandingOrderParams
     roe*: int                          # Rules of Engagement (0-10)
     createdTurn*: int                  # When order was issued
-    lastExecutedTurn*: int             # Last turn this executed
-    executionCount*: int               # Times executed
+    lastActivatedTurn*: int            # Last turn this activated
+    activationCount*: int              # Times activated
     suspended*: bool                   # Temporarily disabled (explicit order override)
     enabled*: bool                     # Per-fleet toggle (player control)
     activationDelayTurns*: int         # Grace period before activation after order completion

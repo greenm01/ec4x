@@ -76,8 +76,8 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
         ),
         roe: 6,  # Standard combat posture
         createdTurn: 0,
-        lastExecutedTurn: 0,
-        executionCount: 0,
+        lastActivatedTurn: 0,
+        activationCount: 0,
         suspended: false,
         enabled: true,  # Enabled by default for starting fleets
         activationDelayTurns: 0,  # No delay for initial setup

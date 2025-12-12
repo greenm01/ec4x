@@ -1,8 +1,14 @@
-## Standing Orders Execution System
+## Standing Orders Activation System
 ##
-## Implements persistent fleet behaviors that execute automatically when
+## Implements persistent fleet behaviors that activate automatically when
 ## no explicit order is given for a turn. Reduces micromanagement and provides
 ## quality-of-life improvements for both players and AI.
+##
+## Three-tier order lifecycle (applies to both active and standing orders):
+## - Initiate (Command Phase Part B): Player configures standing order rules
+## - Validate (Command Phase Part C): Engine validates configuration
+## - Activate (Maintenance Phase Step 1a): Check conditions, generate fleet orders
+## - Execute (Conflict/Income Phase): Missions happen at targets
 ##
 ## See docs/architecture/standing-orders.md for complete design.
 
@@ -17,8 +23,8 @@ import intelligence/types as intel_types
 export StandingOrderType, StandingOrder, StandingOrderParams
 
 type
-  ExecutionResult* = object
-    ## Result of standing order execution attempt
+  ActivationResult* = object
+    ## Result of standing order activation attempt
     success*: bool
     action*: string               # Description of action taken
     error*: string                # Error message if failed
@@ -125,11 +131,11 @@ proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
               result.add(fleet)
 
 # =============================================================================
-# Execution Logic - Per Order Type
+# Activation Logic - Per Order Type
 # =============================================================================
 
-proc executePatrolRoute(state: var GameState, fleetId: FleetId,
-                       params: StandingOrderParams): ExecutionResult =
+proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
+                       params: StandingOrderParams): ActivationResult =
   ## Execute patrol route - move to next system in path
   ## Loops continuously through patrol path
   let fleet = state.fleets[fleetId]
@@ -144,7 +150,7 @@ proc executePatrolRoute(state: var GameState, fleetId: FleetId,
   if nextSystem notin state.starMap.systems:
     logWarn(LogCategory.lcOrders,
             &"{fleetId} PatrolRoute failed: Target system {nextSystem} does not exist")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: &"Target system {nextSystem} does not exist")
 
   # Generate move order to next patrol point
@@ -166,14 +172,14 @@ proc executePatrolRoute(state: var GameState, fleetId: FleetId,
           &"{fleetId} PatrolRoute: {fleet.location} → system-{nextSystem} " &
           &"(step {currentIndex + 1}/{params.patrolSystems.len})")
 
-  return ExecutionResult(
+  return ActivationResult(
     success: true,
     action: &"Move to system-{nextSystem}",
     updatedParams: some(newParams)
   )
 
-proc executeDefendSystem(state: var GameState, fleetId: FleetId,
-                        params: StandingOrderParams): ExecutionResult =
+proc activateDefendSystem(state: var GameState, fleetId: FleetId,
+                        params: StandingOrderParams): ActivationResult =
   ## Execute defend system - stay at target or return if moved away
   let fleet = state.fleets[fleetId]
   let targetSystem = params.defendTargetSystem
@@ -196,7 +202,7 @@ proc executeDefendSystem(state: var GameState, fleetId: FleetId,
     logInfo(LogCategory.lcOrders,
             &"{fleetId} DefendSystem: At target system-{targetSystem}, patrolling")
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Patrol system-{targetSystem}")
 
   # Check distance from target (via jump lanes, not as the crow flies)
@@ -205,7 +211,7 @@ proc executeDefendSystem(state: var GameState, fleetId: FleetId,
     # Can't reach target - suspended order, log warning
     logWarn(LogCategory.lcOrders,
             &"{fleetId} DefendSystem: Cannot reach target system-{targetSystem}, no valid path")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "No path to target system")
 
   let distance = pathResult.path.len - 1  # Path includes start, so subtract 1
@@ -223,7 +229,7 @@ proc executeDefendSystem(state: var GameState, fleetId: FleetId,
     logInfo(LogCategory.lcOrders,
             &"{fleetId} DefendSystem: {distance} jumps from target, returning to system-{targetSystem}")
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Return to system-{targetSystem}")
 
   # Within range but not at target - hold position
@@ -238,7 +244,7 @@ proc executeDefendSystem(state: var GameState, fleetId: FleetId,
   logInfo(LogCategory.lcOrders,
           &"{fleetId} DefendSystem: {distance} jumps from target (within range {maxRange}), holding position")
 
-  return ExecutionResult(success: true,
+  return ActivationResult(success: true,
                         action: "Hold position within defensive range")
 
 proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation: SystemId,
@@ -296,8 +302,8 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
 
   return some(candidates[0][0])
 
-proc executeAutoColonize(state: var GameState, fleetId: FleetId,
-                        params: StandingOrderParams): ExecutionResult =
+proc activateAutoColonize(state: var GameState, fleetId: FleetId,
+                        params: StandingOrderParams): ActivationResult =
   ## Execute auto-colonize - find and colonize nearest suitable system
   ## For ETAC fleets that should automatically expand
   let fleet = state.fleets[fleetId]
@@ -309,7 +315,7 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
   if fleet.spaceLiftShips.len == 0:
     logWarn(LogCategory.lcOrders,
             &"{fleetId} AutoColonize failed: Fleet has no spacelift ships")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "No spacelift ships for colonization")
 
   # Check if any spacelift ship carries colonists
@@ -351,7 +357,7 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
       # No colonies with available PTU - this is a problem!
       logWarn(LogCategory.lcOrders,
               &"{fleetId} AutoColonize: No colonies with available PTU (need pop >= {MIN_POPULATION_FOR_PTU_EXTRACTION})")
-      return ExecutionResult(success: false,
+      return ActivationResult(success: false,
                             error: "No colonies available for PTU refill")
 
     let targetColony = bestColony.get()
@@ -367,7 +373,7 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = moveOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Seeking PTU reload at {targetColony}")
 
   # Find best colonization target
@@ -378,7 +384,7 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
   if targetOpt.isNone:
     logDebug(LogCategory.lcOrders,
              &"{fleetId} AutoColonize: No suitable systems within {params.colonizeMaxRange} jumps")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "No colonization targets available")
 
   let targetSystem = targetOpt.get()
@@ -400,7 +406,7 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
     logInfo(LogCategory.lcOrders,
             &"{fleetId} AutoColonize: At target system-{targetSystem}, colonizing")
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Colonize system-{targetSystem}")
 
   # Move to colonization target
@@ -418,11 +424,11 @@ proc executeAutoColonize(state: var GameState, fleetId: FleetId,
           &"{fleetId} AutoColonize: Moving to system-{targetSystem} " &
           &"({planetClass}, {distance} jumps)")
 
-  return ExecutionResult(success: true,
+  return ActivationResult(success: true,
                         action: &"Move to colonization target system-{targetSystem}")
 
-proc executeAutoRepair(state: var GameState, fleetId: FleetId,
-                      params: StandingOrderParams): ExecutionResult =
+proc activateAutoRepair(state: var GameState, fleetId: FleetId,
+                      params: StandingOrderParams): ActivationResult =
   ## Execute auto-repair - return to nearest shipyard when ships are crippled
   ## Triggers when crippled ship percentage exceeds threshold
   let fleet = state.fleets[fleetId]
@@ -444,7 +450,7 @@ proc executeAutoRepair(state: var GameState, fleetId: FleetId,
 
   if totalShips == 0:
     # No ships (shouldn't happen, but safety check)
-    return ExecutionResult(success: false, error: "Fleet has no ships")
+    return ActivationResult(success: false, error: "Fleet has no ships")
 
   let crippledPercent = crippledShips.float / totalShips.float
 
@@ -467,7 +473,7 @@ proc executeAutoRepair(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = holdOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: "Hold (fleet healthy)")
 
   # Fleet damaged - find nearest shipyard
@@ -509,7 +515,7 @@ proc executeAutoRepair(state: var GameState, fleetId: FleetId,
     logWarn(LogCategory.lcOrders,
             &"{fleetId} AutoRepair failed: No accessible shipyard found " &
             &"({crippledShips}/{totalShips} ships crippled)")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "No accessible shipyard")
 
   let targetSystem = nearestShipyard.get()
@@ -528,7 +534,7 @@ proc executeAutoRepair(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = holdOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Hold at shipyard (repairing)")
 
   # Move to shipyard
@@ -544,11 +550,11 @@ proc executeAutoRepair(state: var GameState, fleetId: FleetId,
   )
   state.fleetOrders[fleetId] = moveOrder
 
-  return ExecutionResult(success: true,
+  return ActivationResult(success: true,
                         action: &"Return to shipyard at system-{targetSystem}")
 
-proc executeAutoReinforce(state: var GameState, fleetId: FleetId,
-                         params: StandingOrderParams): ExecutionResult =
+proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
+                         params: StandingOrderParams): ActivationResult =
   ## Execute auto-reinforce - join damaged friendly fleet
   ## Finds nearest damaged fleet and moves to join it
   let fleet = state.fleets[fleetId]
@@ -651,7 +657,7 @@ proc executeAutoReinforce(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = holdOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: "Hold (no damaged fleets)")
 
   let targetId = targetFleetId.get()
@@ -669,7 +675,7 @@ proc executeAutoReinforce(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = joinOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Join fleet {targetId}")
 
   # Move to target fleet
@@ -685,7 +691,7 @@ proc executeAutoReinforce(state: var GameState, fleetId: FleetId,
   )
   state.fleetOrders[fleetId] = moveOrder
 
-  return ExecutionResult(success: true,
+  return ActivationResult(success: true,
                         action: &"Move to reinforce {targetId}")
 
 proc calculateFleetStrength(fleet: Fleet): int =
@@ -697,8 +703,8 @@ proc calculateFleetStrength(fleet: Fleet): int =
     for ship in squadron.ships:
       result += ship.stats.attackStrength
 
-proc executeAutoEvade(state: var GameState, fleetId: FleetId,
-                     params: StandingOrderParams, roe: int): ExecutionResult =
+proc activateAutoEvade(state: var GameState, fleetId: FleetId,
+                     params: StandingOrderParams, roe: int): ActivationResult =
   ## Execute auto-evade - retreat to fallback system when outnumbered
   ## Uses evadeTriggerRatio to determine when to retreat
   let fleet = state.fleets[fleetId]
@@ -736,7 +742,7 @@ proc executeAutoEvade(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = holdOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: "Hold (no hostiles)")
 
   # Calculate strength ratio
@@ -765,7 +771,7 @@ proc executeAutoEvade(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = holdOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Hold (strength ratio {strengthRatio:.2f})")
 
   # Retreat to fallback system
@@ -775,14 +781,14 @@ proc executeAutoEvade(state: var GameState, fleetId: FleetId,
   if fallbackSystem notin state.starMap.systems:
     logWarn(LogCategory.lcOrders,
             &"{fleetId} AutoEvade failed: Fallback system-{fallbackSystem} does not exist")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "Fallback system does not exist")
 
   let pathResult = state.starMap.findPath(currentLocation, fallbackSystem, fleet)
   if not pathResult.found:
     logWarn(LogCategory.lcOrders,
             &"{fleetId} AutoEvade failed: Cannot reach fallback system-{fallbackSystem}")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "Cannot reach fallback system")
 
   let distance = pathResult.path.len - 1
@@ -800,7 +806,7 @@ proc executeAutoEvade(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = holdOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: "Hold at fallback")
 
   # Retreat to fallback
@@ -817,11 +823,11 @@ proc executeAutoEvade(state: var GameState, fleetId: FleetId,
   )
   state.fleetOrders[fleetId] = moveOrder
 
-  return ExecutionResult(success: true,
+  return ActivationResult(success: true,
                         action: &"Retreat to fallback system-{fallbackSystem}")
 
-proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
-                          params: StandingOrderParams): ExecutionResult =
+proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
+                          params: StandingOrderParams): ActivationResult =
   ## Execute blockade target - maintain blockade on enemy colony
   ## Moves to target colony and issues BlockadePlanet order
   let fleet = state.fleets[fleetId]
@@ -835,7 +841,7 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
   if not hasColonyIntel(state, fleet.owner, targetColony):
     logWarn(LogCategory.lcOrders,
             &"{fleetId} BlockadeTarget failed: No intel on colony at system-{targetColony}")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "No intel on target colony")
 
   # Verify target exists and is enemy colony
@@ -843,7 +849,7 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
     logWarn(LogCategory.lcOrders,
             &"{fleetId} BlockadeTarget failed: Colony at system-{targetColony} no longer exists " &
             &"(intel may be stale)")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "Target colony no longer exists")
 
   let colony = state.colonies[targetColony]
@@ -852,7 +858,7 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
   if colony.owner == fleet.owner:
     logWarn(LogCategory.lcOrders,
             &"{fleetId} BlockadeTarget failed: Cannot blockade own colony at system-{targetColony}")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "Cannot blockade own colony")
 
   # If already at target, issue blockade order
@@ -869,7 +875,7 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
     )
     state.fleetOrders[fleetId] = blockadeOrder
 
-    return ExecutionResult(success: true,
+    return ActivationResult(success: true,
                           action: &"Blockade colony at system-{targetColony}")
 
   # Move to target colony
@@ -877,7 +883,7 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
   if not pathResult.found:
     logWarn(LogCategory.lcOrders,
             &"{fleetId} BlockadeTarget failed: Cannot reach target system-{targetColony}")
-    return ExecutionResult(success: false,
+    return ActivationResult(success: false,
                           error: "Cannot reach target colony")
 
   let distance = pathResult.path.len - 1
@@ -894,7 +900,7 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
   )
   state.fleetOrders[fleetId] = moveOrder
 
-  return ExecutionResult(success: true,
+  return ActivationResult(success: true,
                         action: &"Move to blockade target at system-{targetColony}")
 
 # =============================================================================
@@ -914,60 +920,65 @@ proc resetStandingOrderGracePeriod*(state: var GameState, fleetId: FleetId) =
       &"{standingOrder.activationDelayTurns} turn(s)")
 
 # =============================================================================
-# Main Execution Function
+# Main Activation Function
 # =============================================================================
 
-proc executeStandingOrder*(state: var GameState, fleetId: FleetId,
-                          standingOrder: StandingOrder, turn: int): ExecutionResult =
+proc activateStandingOrder*(state: var GameState, fleetId: FleetId,
+                          standingOrder: StandingOrder, turn: int): ActivationResult =
   ## Execute a single standing order
   ## Called during Command Phase for fleets without explicit orders
 
   case standingOrder.orderType
   of StandingOrderType.None:
-    return ExecutionResult(success: true, action: "No standing order")
+    return ActivationResult(success: true, action: "No standing order")
 
   of StandingOrderType.PatrolRoute:
-    return executePatrolRoute(state, fleetId, standingOrder.params)
+    return activatePatrolRoute(state, fleetId, standingOrder.params)
 
   of StandingOrderType.DefendSystem, StandingOrderType.GuardColony:
-    return executeDefendSystem(state, fleetId, standingOrder.params)
+    return activateDefendSystem(state, fleetId, standingOrder.params)
 
   of StandingOrderType.AutoColonize:
-    return executeAutoColonize(state, fleetId, standingOrder.params)
+    return activateAutoColonize(state, fleetId, standingOrder.params)
 
   of StandingOrderType.AutoReinforce:
-    return executeAutoReinforce(state, fleetId, standingOrder.params)
+    return activateAutoReinforce(state, fleetId, standingOrder.params)
 
   of StandingOrderType.AutoRepair:
-    return executeAutoRepair(state, fleetId, standingOrder.params)
+    return activateAutoRepair(state, fleetId, standingOrder.params)
 
   of StandingOrderType.AutoEvade:
-    return executeAutoEvade(state, fleetId, standingOrder.params, standingOrder.roe)
+    return activateAutoEvade(state, fleetId, standingOrder.params, standingOrder.roe)
 
   of StandingOrderType.BlockadeTarget:
-    return executeBlockadeTarget(state, fleetId, standingOrder.params)
+    return activateBlockadeTarget(state, fleetId, standingOrder.params)
 
-proc executeStandingOrders*(state: var GameState, turn: int, events: var seq[resolution_types.GameEvent]) =
-  ## Execute standing orders for all fleets without explicit orders
-  ## Called during Maintenance Phase Step 1a before fleet movement
+proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[resolution_types.GameEvent]) =
+  ## Activate standing orders for all fleets without explicit orders
+  ## Called during Maintenance Phase Step 1a
+  ##
+  ## Three-tier order lifecycle:
+  ## - Initiate (Command Phase): Player configures standing order rules
+  ## - Activate (Maintenance Phase): Standing orders generate fleet orders ← THIS PROC
+  ## - Execute (Conflict/Income Phase): Missions happen at targets
   ##
   ## COMPREHENSIVE LOGGING:
-  ## - INFO: High-level execution summary
+  ## - INFO: High-level activation summary
   ## - DEBUG: Per-fleet decision logic
   ## - WARN: Failures and issues
   ##
-  ## Phase 7b: Emits StandingOrderActivated events when orders execute
+  ## Phase 7b: Emits StandingOrderActivated events when orders activate
 
   logInfo(LogCategory.lcOrders,
-          &"=== Standing Orders Execution: Turn {turn} ===")
+          &"=== Standing Order Activation: Turn {turn} ===")
 
   # Check global master switch
   if not globalStandingOrdersConfig.activation.global_enabled:
     logInfo(LogCategory.lcOrders,
-            "Standing orders globally disabled in config - skipping all execution")
+            "Standing orders globally disabled in config - skipping all activation")
     return
 
-  var executedCount = 0
+  var activatedCount = 0
   var skippedCount = 0
   var failedCount = 0
   var notImplementedCount = 0
@@ -1028,13 +1039,13 @@ proc executeStandingOrders*(state: var GameState, turn: int, events: var seq[res
       skippedCount += 1
       continue
 
-    # Execute standing order
-    let result = executeStandingOrder(state, fleetId, standingOrder, turn)
+    # Activate standing order
+    let result = activateStandingOrder(state, fleetId, standingOrder, turn)
 
     if result.success:
-      executedCount += 1
+      activatedCount += 1
       logInfo(LogCategory.lcOrders,
-              &"{fleetId} executed {standingOrder.orderType}: {result.action}")
+              &"{fleetId} activated {standingOrder.orderType}: {result.action}")
 
       # Get generated fleet order type
       let generatedOrderType = if fleetId in state.fleetOrders:
@@ -1052,10 +1063,10 @@ proc executeStandingOrders*(state: var GameState, turn: int, events: var seq[res
         fleet.location
       ))
 
-      # Update execution tracking and params
+      # Update activation tracking and params
       var updatedOrder = standingOrder
-      updatedOrder.lastExecutedTurn = turn
-      updatedOrder.executionCount += 1
+      updatedOrder.lastActivatedTurn = turn
+      updatedOrder.activationCount += 1
 
       # Reset activation countdown (standing order generated a new fleet order)
       updatedOrder.turnsUntilActivation = updatedOrder.activationDelayTurns
@@ -1077,8 +1088,8 @@ proc executeStandingOrders*(state: var GameState, turn: int, events: var seq[res
               &"{fleetId} {standingOrder.orderType} failed: {result.error}")
 
   # Summary logging
-  let totalAttempted = executedCount + failedCount + notImplementedCount
+  let totalAttempted = activatedCount + failedCount + notImplementedCount
   logInfo(LogCategory.lcOrders,
-          &"Standing Orders Summary: {executedCount}/{totalAttempted} executed, " &
+          &"Standing Orders Summary: {activatedCount}/{totalAttempted} activated, " &
           &"{skippedCount} skipped (explicit orders), {failedCount} failed, " &
           &"{notImplementedCount} not implemented")
