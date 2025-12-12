@@ -558,17 +558,10 @@ proc assessExpansionNeeds*(
          queuedProject.itemId == "ETAC":
         etacCount += 1
 
-  # Smart targeting: Build ETACs until all systems colonized
-  # Account for ETACs in transit, empty ETACs reloading, and combat losses
-  # Strategy: Maintain enough ready+building ETACs to colonize remaining systems + buffer
-  let targetETACs = if uncolonizedVisible > 0:
-    # Need at least 1 ETAC per uncolonized system
-    # Add 30% buffer for: transit time, PTU reload cycles, combat losses
-    # This prevents spam while ensuring colonization continues
-    max(1, int(uncolonizedVisible.float * 1.3))
-  else:
-    # All systems colonized - maintain current count, don't build more
-    etacCount
+  # Smart targeting: Cap ETACs based on map size to prevent spam
+  # Formula: playerCount + numRings (e.g., 4 players + 3 rings = 7 ETACs)
+  # This provides enough ETACs for parallel colonization without overbuilding.
+  let targetETACs = filtered.starMap.playerCount + int(filtered.starMap.numRings)
 
   logDebug(LogCategory.lcAI,
            &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
