@@ -497,11 +497,12 @@ proc assessExpansionNeeds*(
   currentAct: GameAct
 ): seq[BuildRequirement] =
   ## Intelligence-driven ETAC requirements for colonization
-  ## Only active in Acts 1-2 (expansion phases)
+  ## Active in Acts 1-3 (continues expansion into early war if systems available)
   result = @[]
 
-  # Only Acts 1-2 (expansion phase)
-  if currentAct notin {ai_common_types.GameAct.Act1_LandGrab, ai_common_types.GameAct.Act2_RisingTensions}:
+  # Acts 1-3: Continue expansion if systems available
+  # Act 4 (Endgame): Stop expansion, focus on winning
+  if currentAct == ai_common_types.GameAct.Act4_Endgame:
     return
 
   # Count uncolonized visible systems
@@ -576,10 +577,15 @@ proc assessExpansionNeeds*(
   if etacCount < targetETACs:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
     let needed = targetETACs - etacCount
-    let priority = if currentAct == ai_common_types.GameAct.Act1_LandGrab:
-      RequirementPriority.High  # Land grab urgency
-    else:
-      RequirementPriority.Medium
+    let priority = case currentAct
+      of ai_common_types.GameAct.Act1_LandGrab:
+        RequirementPriority.High  # Land grab urgency
+      of ai_common_types.GameAct.Act2_RisingTensions:
+        RequirementPriority.Medium  # Balanced expansion
+      of ai_common_types.GameAct.Act3_TotalWar:
+        RequirementPriority.Low  # Military priority, but finish expansion
+      else:
+        RequirementPriority.Low
 
     result.add(BuildRequirement(
       requirementType: RequirementType.ExpansionSupport,
@@ -1754,7 +1760,10 @@ proc generateBuildRequirements*(
       # CRITICAL: Add ETACs already generated THIS turn (prevents slot 0-8 each making an ETAC)
       currentETACs += etacsGeneratedThisTurn
 
-      let etacCap = int(filtered.starMap.numRings)
+      # ETAC cap: Ring-based scaling to support parallel colonization
+      # Formula: playerCount + numRings (e.g., 4 players + 3 rings = 7 ETACs per house)
+      # ETACs are reusable - this cap allows parallel expansion across map rings
+      let etacCap = filtered.starMap.playerCount + int(filtered.starMap.numRings)
 
       logDebug(LogCategory.lcAI, &"ETAC cap: {currentETACs}/{etacCap} (slot {slot}, turn reqs: {etacsGeneratedThisTurn})")
 
