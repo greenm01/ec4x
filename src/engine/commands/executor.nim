@@ -738,6 +738,35 @@ proc executeSpyPlanetOrder(
 
   state.spyScouts[spyId] = spyScout
 
+  # Emit SpyScoutDeployed event (Phase 7b)
+  # Get target house from colony (or empty string if uncolonized)
+  let targetHouseId = if targetSystem in state.colonies:
+    state.colonies[targetSystem].owner
+  else:
+    ""
+  events.add(event_factory.spyScoutDeployed(
+    spyId,
+    fleet.owner,
+    "SpyOnPlanet",
+    targetSystem,
+    targetHouseId,
+    fleet.location
+  ))
+
+  # Emit ScoutMeshNetworkFormed event if multiple scouts merged (Phase 7b)
+  if totalScouts > 1:
+    let meshBonus = if totalScouts >= 6: 3
+                    elif totalScouts >= 4: 2
+                    elif totalScouts >= 2: 1
+                    else: 0
+    events.add(event_factory.scoutMeshNetworkFormed(
+      fleet.owner,
+      @[fleet.id],
+      totalScouts,
+      meshBonus,
+      fleet.location
+    ))
+
   # Remove ALL scouts from fleet (they all become the spy scout)
   var updatedFleet = fleet
   updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
@@ -868,6 +897,35 @@ proc executeHackStarbaseOrder(
 
   state.spyScouts[spyId] = spyScout
 
+  # Emit SpyScoutDeployed event (Phase 7b)
+  # Get target house from colony (or empty string if uncolonized)
+  let targetHouseId2 = if targetSystem in state.colonies:
+    state.colonies[targetSystem].owner
+  else:
+    ""
+  events.add(event_factory.spyScoutDeployed(
+    spyId,
+    fleet.owner,
+    "HackStarbase",
+    targetSystem,
+    targetHouseId2,
+    fleet.location
+  ))
+
+  # Emit ScoutMeshNetworkFormed event if multiple scouts merged (Phase 7b)
+  if totalScouts > 1:
+    let meshBonus2 = if totalScouts >= 6: 3
+                     elif totalScouts >= 4: 2
+                     elif totalScouts >= 2: 1
+                     else: 0
+    events.add(event_factory.scoutMeshNetworkFormed(
+      fleet.owner,
+      @[fleet.id],
+      totalScouts,
+      meshBonus2,
+      fleet.location
+    ))
+
   # Remove ALL scouts from fleet (they all become the spy scout)
   var updatedFleet = fleet
   updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
@@ -977,6 +1035,35 @@ proc executeSpySystemOrder(
   )
 
   state.spyScouts[spyId] = spyScout
+
+  # Emit SpyScoutDeployed event (Phase 7b)
+  # Get target house from colony (or empty string if uncolonized)
+  let targetHouseId3 = if targetSystem in state.colonies:
+    state.colonies[targetSystem].owner
+  else:
+    ""
+  events.add(event_factory.spyScoutDeployed(
+    spyId,
+    fleet.owner,
+    "SpyOnSystem",
+    targetSystem,
+    targetHouseId3,
+    fleet.location
+  ))
+
+  # Emit ScoutMeshNetworkFormed event if multiple scouts merged (Phase 7b)
+  if totalScouts > 1:
+    let meshBonus3 = if totalScouts >= 6: 3
+                     elif totalScouts >= 4: 2
+                     elif totalScouts >= 2: 1
+                     else: 0
+    events.add(event_factory.scoutMeshNetworkFormed(
+      fleet.owner,
+      @[fleet.id],
+      totalScouts,
+      meshBonus3,
+      fleet.location
+    ))
 
   # Remove ALL scouts from fleet (they all become the spy scout)
   var updatedFleet = fleet

@@ -406,6 +406,20 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
           logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
           enemyFleetsAtLocation.add((otherFleetId, otherFleet))
 
+    # Generate fleet encounter event (Phase 7b)
+    if enemyFleetsAtLocation.len > 0:
+      let encounteredIds = enemyFleetsAtLocation.mapIt(it.fleetId)
+      let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(enemyFleetsAtLocation[0].fleet.owner)
+      let diplomaticStatus = $relation
+
+      events.add(event_factory.fleetEncounter(
+        houseId,
+        order.fleetId,
+        encounteredIds,
+        diplomaticStatus,
+        newLocation
+      ))
+
     # Automatic fleet intelligence gathering - detected enemy fleets
     if enemyFleetsAtLocation.len > 0:
       let systemIntelReport = generateSystemIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)

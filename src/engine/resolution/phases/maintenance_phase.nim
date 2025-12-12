@@ -262,8 +262,9 @@ proc resolveMaintenancePhase*(state: var GameState,
   # Step 1a: Execute standing orders for fleets without explicit orders
   # Standing orders generate fleet orders (Move, Colonize, SeekHome, etc.)
   # These are written to state.fleetOrders and picked up by Step 1b
+  # Phase 7b: Emits StandingOrderActivated/Suspended events
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 1a] Executing standing orders...")
-  standing_orders.executeStandingOrders(state, state.turn)
+  standing_orders.executeStandingOrders(state, state.turn, events)
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 1a] Completed standing order execution")
 
   # Step 1b: Execute all movement orders (Move, SeekHome, Patrol, Hold)

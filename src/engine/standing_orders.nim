@@ -11,6 +11,7 @@ import gamestate, orders, fleet, starmap, logger, spacelift
 import order_types
 import ../common/types/[core, planets]
 import config/standing_orders_config
+import resolution/[event_factory/init as event_factory, types as resolution_types]
 
 export StandingOrderType, StandingOrder, StandingOrderParams
 
@@ -787,7 +788,7 @@ proc executeStandingOrder*(state: var GameState, fleetId: FleetId,
   of StandingOrderType.BlockadeTarget:
     return executeBlockadeTarget(state, fleetId, standingOrder.params)
 
-proc executeStandingOrders*(state: var GameState, turn: int) =
+proc executeStandingOrders*(state: var GameState, turn: int, events: var seq[resolution_types.GameEvent]) =
   ## Execute standing orders for all fleets without explicit orders
   ## Called during Maintenance Phase Step 1a before fleet movement
   ##
@@ -795,6 +796,8 @@ proc executeStandingOrders*(state: var GameState, turn: int) =
   ## - INFO: High-level execution summary
   ## - DEBUG: Per-fleet decision logic
   ## - WARN: Failures and issues
+  ##
+  ## Phase 7b: Emits StandingOrderActivated events when orders execute
 
   logInfo(LogCategory.lcOrders,
           &"=== Standing Orders Execution: Turn {turn} ===")
@@ -824,6 +827,15 @@ proc executeStandingOrders*(state: var GameState, turn: int) =
         var standingOrder = state.standingOrders[fleetId]
         standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
         state.standingOrders[fleetId] = standingOrder
+
+        # Emit StandingOrderSuspended event (suspended by explicit order)
+        events.add(event_factory.standingOrderSuspended(
+          fleet.owner,
+          fleetId,
+          $standingOrder.orderType,
+          "explicit order issued",
+          fleet.location
+        ))
 
       continue
 
@@ -864,6 +876,22 @@ proc executeStandingOrders*(state: var GameState, turn: int) =
       executedCount += 1
       logInfo(LogCategory.lcOrders,
               &"{fleetId} executed {standingOrder.orderType}: {result.action}")
+
+      # Get generated fleet order type
+      let generatedOrderType = if fleetId in state.fleetOrders:
+        $state.fleetOrders[fleetId].orderType
+      else:
+        "None"
+
+      # Emit StandingOrderActivated event (Phase 7b)
+      events.add(event_factory.standingOrderActivated(
+        fleet.owner,
+        fleetId,
+        $standingOrder.orderType,
+        generatedOrderType,
+        result.action,
+        fleet.location
+      ))
 
       # Update execution tracking and params
       var updatedOrder = standingOrder

@@ -36,7 +36,7 @@ proc spyMissionSucceeded*(
   systemId: SystemId,
   missionType: string
 ): event_types.GameEvent =
-  ## Create event for successful passive intelligence mission
+  ## Create event for successful passive intelligence mission (legacy)
   ## missionType: "SpyOnPlanet", "SpyOnSystem", or "HackStarbase"
   event_types.GameEvent(
     eventType: event_types.GameEventType.SpyMissionSucceeded, # Specific event type
@@ -50,6 +50,104 @@ proc spyMissionSucceeded*(
     operationType: none(esp_types.EspionageAction), # Passive intel, no specific operation
     success: some(true),
     detected: some(false)
+  )
+
+proc scoutColonyIntelGathered*(
+  spyHouse: HouseId,
+  targetHouse: HouseId,
+  systemId: SystemId,
+  fleetId: FleetId,
+  defenses: int,
+  economicValue: int,
+  hasStarbase: bool,
+  quality: string
+): event_types.GameEvent =
+  ## Create detailed event for scout-based colony intelligence gathering (SpyPlanet mission)
+  ## Captures narrative of what was discovered by scout fleet
+  var details = &"Defenses: {defenses} ground units"
+  if hasStarbase:
+    details &= ", Starbase detected"
+  details &= &", Economic output: {economicValue} PP"
+  details &= &", Intel quality: {quality}"
+
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.SpyMissionSucceeded,
+    turn: 0,
+    houseId: some(spyHouse),
+    description: &"Scout fleet {fleetId} gathered colony intelligence on " &
+                  &"{targetHouse} at {systemId}: {details}",
+    systemId: some(systemId),
+    sourceHouseId: some(spyHouse),
+    targetHouseId: some(targetHouse),
+    success: some(true),
+    detected: some(false),
+    details: some(details)
+  )
+
+proc scoutSystemIntelGathered*(
+  spyHouse: HouseId,
+  targetHouse: HouseId,
+  systemId: SystemId,
+  fleetId: FleetId,
+  fleetsDetected: int,
+  shipsDetected: int,
+  quality: string
+): event_types.GameEvent =
+  ## Create detailed event for scout-based system intelligence gathering (SpySystem mission)
+  let details = &"Detected {fleetsDetected} enemy fleets ({shipsDetected} ships total), " &
+                &"Intel quality: {quality}"
+
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.SpyMissionSucceeded,
+    turn: 0,
+    houseId: some(spyHouse),
+    description: &"Scout fleet {fleetId} gathered system intelligence at " &
+                  &"{systemId}: {details}",
+    systemId: some(systemId),
+    sourceHouseId: some(spyHouse),
+    targetHouseId: some(targetHouse),
+    success: some(true),
+    detected: some(false),
+    details: some(details)
+  )
+
+proc scoutStarbaseIntelGathered*(
+  spyHouse: HouseId,
+  targetHouse: HouseId,
+  systemId: SystemId,
+  fleetId: FleetId,
+  starbaseCount: int,
+  spaceportCount: int,
+  shipyardCount: int,
+  totalDocks: int,
+  shipsUnderConstruction: int,
+  shipsUnderRepair: int,
+  economicData: bool,
+  quality: string
+): event_types.GameEvent =
+  ## Create detailed event for scout-based starbase intelligence gathering (HackStarbase mission)
+  ## Reports on facilities, dock capacity, and construction/repair activities
+  var details = &"Facilities: {starbaseCount} starbases, {spaceportCount} spaceports, {shipyardCount} shipyards"
+  details &= &", Total docks: {totalDocks}"
+  if shipsUnderConstruction > 0:
+    details &= &", {shipsUnderConstruction} ships under construction"
+  if shipsUnderRepair > 0:
+    details &= &", {shipsUnderRepair} ships under repair"
+  if economicData:
+    details &= ", Economic/R&D data acquired"
+  details &= &", Intel quality: {quality}"
+
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.SpyMissionSucceeded,
+    turn: 0,
+    houseId: some(spyHouse),
+    description: &"Scout fleet {fleetId} hacked starbase at {systemId}: {details}",
+    systemId: some(systemId),
+    sourceHouseId: some(spyHouse),
+    targetHouseId: some(targetHouse),
+    success: some(true),
+    detected: some(false),
+    details: some(details)
   )
 
 # =============================================================================
