@@ -392,6 +392,17 @@ def print_strategic_insights(df: pl.DataFrame):
         ratio = aggressive_size / economic_size if economic_size > 0 else 0
         print(f"   - Aggressive builds {ratio:.1f}x more ships than Economic")
         print(f"   - Suggests different resource allocation priorities")
+    
+    print("\n5. Colonization Analysis:")
+    # Check ETAC counts specifically
+    for strategy in strategies:
+        strat_data = df.filter(pl.col('strategy') == strategy)
+        if len(strat_data) > 0 and 'etac_ships' in strat_data.columns:
+            etacs = strat_data['etac_ships'].mean()
+            colonies = strat_data['colonies_count'].mean() if 'colonies_count' in strat_data.columns else 0
+            print(f"   {strategy:12s}: {etacs:5.2f} ETACs, {colonies:5.2f} colonies")
+            if etacs > 0 and colonies <= 1:
+                print(f"     ⚠️  ETACs built but no colonies founded!")
 
 
 def main():
