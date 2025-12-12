@@ -18,6 +18,7 @@
 import ../[gamestate, fleet, squadron, spacelift, logger]
 import ../../common/types/core
 import ../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
+import ../resolution/[event_factory/init as event_factory, types as resolution_types]
 import std/[options, algorithm, tables, strformat]
 
 # ============================================================================
@@ -299,12 +300,13 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
 # Execution - Fleet Operations (from fleet_commands.nim)
 # ============================================================================
 
-proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Split ships from source fleet to create new fleet
   ## Both fleets remain at same location
 
   # Get source fleet (CRITICAL: Table copy semantics - get-modify-write)
   var sourceFleet = state.fleets[cmd.sourceFleetId.get()]
+  let systemId = sourceFleet.location
 
   # Translate ship indices to squadron/spacelift indices
   let (squadronIndices, spaceliftIndices) = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
@@ -336,6 +338,8 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
     autoBalanceSquadrons: true
   )
 
+  let squadronsDetached = newFleet.squadrons.len
+
   # Balance squadrons in BOTH fleets
   sourceFleet.balanceSquadrons()
   newFleet.balanceSquadrons()
@@ -353,6 +357,15 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
   # Write new fleet to state
   state.fleets[newFleetId] = newFleet
 
+  # Emit FleetDetachment event (Phase 7b)
+  events.add(event_factory.fleetDetachment(
+    cmd.houseId,
+    cmd.sourceFleetId.get(),
+    newFleetId,
+    squadronsDetached,
+    systemId
+  ))
+
   return ZeroTurnResult(
     success: true,
     error: "",
@@ -363,7 +376,7 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
     warnings: @[]
   )
 
-proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Move ships from source fleet to target fleet
   ## If source becomes empty, it's deleted
 
@@ -372,9 +385,11 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurn
   # Get both fleets (CRITICAL: Table copy semantics)
   var sourceFleet = state.fleets[cmd.sourceFleetId.get()]
   var targetFleet = state.fleets[targetFleetId]
+  let systemId = sourceFleet.location
 
   # Translate ship indices to squadron/spacelift indices
   let (squadronIndices, spaceliftIndices) = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
+  let squadronsTransferred = squadronIndices.len
 
   # Transfer squadrons
   let transferredFleet = sourceFleet.split(squadronIndices)
@@ -404,6 +419,15 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurn
     state.fleets[cmd.sourceFleetId.get()] = sourceFleet
     logInfo(LogCategory.lcFleet, &"TransferShips: Transferred {squadronIndices.len} squadrons and {spaceliftIndices.len} spacelift ships from {cmd.sourceFleetId.get()} to {targetFleetId}")
 
+  # Emit FleetTransfer event (Phase 7b)
+  events.add(event_factory.fleetTransfer(
+    cmd.houseId,
+    cmd.sourceFleetId.get(),
+    targetFleetId,
+    squadronsTransferred,
+    systemId
+  ))
+
   return ZeroTurnResult(
     success: true,
     error: "",
@@ -414,7 +438,7 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurn
     warnings: @[]
   )
 
-proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Merge entire source fleet into target fleet (0 turns, at colony)
   ## Source fleet is deleted, all ships transferred to target
   ##
@@ -427,6 +451,9 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
   # Get both fleets (CRITICAL: Table copy semantics)
   let sourceFleet = state.fleets[cmd.sourceFleetId.get()]
   var targetFleet = state.fleets[targetFleetId]
+
+  let squadronsMerged = sourceFleet.squadrons.len
+  let systemId = sourceFleet.location
 
   # Merge all squadrons and spacelift ships
   targetFleet.merge(sourceFleet)
@@ -448,6 +475,15 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
 
   logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {sourceFleet.squadrons.len} squadrons and {sourceFleet.spaceLiftShips.len} spacelift ships from {cmd.sourceFleetId.get()} into {targetFleetId}")
 
+  # Emit FleetMerged event (Phase 7b)
+  events.add(event_factory.fleetMerged(
+    cmd.houseId,
+    cmd.sourceFleetId.get(),
+    targetFleetId,
+    squadronsMerged,
+    systemId
+  ))
+
   return ZeroTurnResult(
     success: true,
     error: "",
@@ -462,7 +498,7 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
 # Execution - Cargo Operations (from economy_resolution.nim)
 # ============================================================================
 
-proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Load marines or colonists onto spacelift ships at colony
   ## Source: economy_resolution.nim:409-501
 
@@ -566,6 +602,15 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResu
     state.colonies[colonySystem] = colony
     logInfo(LogCategory.lcEconomy, &"LoadCargo: Successfully loaded {totalLoaded} {cargoType} onto fleet {fleetId} at system {colonySystem}")
 
+    # Emit CargoLoaded event (Phase 7b)
+    events.add(event_factory.cargoLoaded(
+      cmd.houseId,
+      fleetId,
+      $cargoType,
+      totalLoaded,
+      colonySystem
+    ))
+
   return ZeroTurnResult(
     success: true,
     error: "",
@@ -576,7 +621,7 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResu
     warnings: if remainingToLoad > 0: @[&"Only loaded {totalLoaded} of {requestedQty} requested (capacity or availability limit)"] else: @[]
   )
 
-proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Unload cargo from spacelift ships at colony
   ## Source: economy_resolution.nim:503-547
 
@@ -630,6 +675,15 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
     state.colonies[colonySystem] = colony
     logInfo(LogCategory.lcEconomy, &"UnloadCargo: Successfully unloaded {totalUnloaded} {unloadedType} from fleet {fleetId} at system {colonySystem}")
 
+    # Emit CargoUnloaded event (Phase 7b)
+    events.add(event_factory.cargoUnloaded(
+      cmd.houseId,
+      fleetId,
+      $unloadedType,
+      totalUnloaded,
+      colonySystem
+    ))
+
   return ZeroTurnResult(
     success: true,
     error: "",
@@ -644,7 +698,7 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnRe
 # Execution - Squadron Operations (from economy_resolution.nim)
 # ============================================================================
 
-proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Create new squadron from colony's commissioned ships pool
   ## NEW: Not in current implementation - gives players manual control
   ## before auto-assignment runs during turn resolution
@@ -711,7 +765,7 @@ proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnR
     warnings: @[&"Selected {selectedSquadrons.len} squadrons, use AssignSquadronToFleet to assign to fleet"]
   )
 
-proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Transfer ship between squadrons at this colony
   ## Source: economy_resolution.nim:216-291
 
@@ -834,7 +888,7 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
     warnings: @[]
   )
 
-proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand): ZeroTurnResult =
+proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
   ## Assign existing squadron to fleet (move between fleets or create new fleet)
   ## Source: economy_resolution.nim:293-382
 
@@ -963,7 +1017,8 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand): 
 
 proc submitZeroTurnCommand*(
   state: var GameState,
-  cmd: ZeroTurnCommand
+  cmd: ZeroTurnCommand,
+  events: var seq[resolution_types.GameEvent]
 ): ZeroTurnResult =
   ## Main entry point for zero-turn administrative commands
   ## Validates and executes command immediately (0 turns)
@@ -971,7 +1026,8 @@ proc submitZeroTurnCommand*(
   ## Execution Flow:
   ##   1. Validate command (ownership, location, parameters)
   ##   2. Execute command (modify game state)
-  ##   3. Return immediate result
+  ##   3. Emit events (Phase 7b)
+  ##   4. Return immediate result
   ##
   ## Returns:
   ##   ZeroTurnResult with success flag, error message, and optional result data
@@ -993,24 +1049,24 @@ proc submitZeroTurnCommand*(
       warnings: @[]
     )
 
-  # Step 2: Execute based on command type
+  # Step 2: Execute based on command type (emits events)
   case cmd.commandType
   of ZeroTurnCommandType.DetachShips:
-    return executeDetachShips(state, cmd)
+    return executeDetachShips(state, cmd, events)
   of ZeroTurnCommandType.TransferShips:
-    return executeTransferShips(state, cmd)
+    return executeTransferShips(state, cmd, events)
   of ZeroTurnCommandType.MergeFleets:
-    return executeMergeFleets(state, cmd)
+    return executeMergeFleets(state, cmd, events)
   of ZeroTurnCommandType.LoadCargo:
-    return executeLoadCargo(state, cmd)
+    return executeLoadCargo(state, cmd, events)
   of ZeroTurnCommandType.UnloadCargo:
-    return executeUnloadCargo(state, cmd)
+    return executeUnloadCargo(state, cmd, events)
   of ZeroTurnCommandType.FormSquadron:
-    return executeFormSquadron(state, cmd)
+    return executeFormSquadron(state, cmd, events)
   of ZeroTurnCommandType.TransferShipBetweenSquadrons:
-    return executeTransferShipBetweenSquadrons(state, cmd)
+    return executeTransferShipBetweenSquadrons(state, cmd, events)
   of ZeroTurnCommandType.AssignSquadronToFleet:
-    return executeAssignSquadronToFleet(state, cmd)
+    return executeAssignSquadronToFleet(state, cmd, events)
 
 # Export main types
 export ZeroTurnCommandType, ZeroTurnCommand, ZeroTurnResult, ValidationResult

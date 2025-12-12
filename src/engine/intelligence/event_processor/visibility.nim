@@ -45,7 +45,30 @@ proc shouldHouseSeeEvent*(
      res_types.GameEventType.ColonyCaptured,
      res_types.GameEventType.InvasionRepelled,
      res_types.GameEventType.FleetDestroyed,
-     res_types.GameEventType.Bombardment:
+     res_types.GameEventType.Bombardment,
+     # Phase 7b: Detailed combat events
+     res_types.GameEventType.CombatTheaterBegan,
+     res_types.GameEventType.CombatTheaterCompleted,
+     res_types.GameEventType.CombatPhaseBegan,
+     res_types.GameEventType.CombatPhaseCompleted,
+     res_types.GameEventType.WeaponFired,
+     res_types.GameEventType.ShipDamaged,
+     res_types.GameEventType.ShipDestroyed,
+     res_types.GameEventType.FleetRetreat,
+     res_types.GameEventType.BombardmentRoundBegan,
+     res_types.GameEventType.BombardmentRoundCompleted,
+     res_types.GameEventType.ShieldActivated,
+     res_types.GameEventType.GroundBatteryFired,
+     res_types.GameEventType.InvasionBegan,
+     res_types.GameEventType.BlitzBegan,
+     res_types.GameEventType.GroundCombatRound,
+     res_types.GameEventType.StarbaseCombat,
+     res_types.GameEventType.RaiderDetected,
+     res_types.GameEventType.RaiderAmbush,
+     res_types.GameEventType.EliMeshNetworkFormed,
+     res_types.GameEventType.FighterDeployed,
+     res_types.GameEventType.FighterEngagement,
+     res_types.GameEventType.CarrierDestroyed:
     if event.systemId.isNone:
       return false
     let systemId = event.systemId.get()
@@ -87,7 +110,9 @@ proc shouldHouseSeeEvent*(
     return false
 
   # Colonization events - visible if observing system
-  of res_types.GameEventType.ColonyEstablished:
+  of res_types.GameEventType.ColonyEstablished,
+     # Phase 7b: Fleet encounter - visible if observing
+     res_types.GameEventType.FleetEncounter:
     if event.systemId.isNone:
       return false
     let systemId = event.systemId.get()
@@ -109,7 +134,17 @@ proc shouldHouseSeeEvent*(
      res_types.GameEventType.OrderIssued,
      res_types.GameEventType.OrderCompleted,
      res_types.GameEventType.OrderFailed,
-     res_types.GameEventType.OrderAborted:
+     res_types.GameEventType.OrderAborted,
+     # Phase 7b: Standing order events
+     res_types.GameEventType.StandingOrderSet,
+     res_types.GameEventType.StandingOrderActivated,
+     res_types.GameEventType.StandingOrderSuspended,
+     # Phase 7b: Fleet reorganization events (zero-turn commands)
+     res_types.GameEventType.FleetMerged,
+     res_types.GameEventType.FleetDetachment,
+     res_types.GameEventType.FleetTransfer,
+     res_types.GameEventType.CargoLoaded,
+     res_types.GameEventType.CargoUnloaded:
     return false
 
   # Alert events - private to house
@@ -119,7 +154,11 @@ proc shouldHouseSeeEvent*(
     return false
 
   # Legacy intel gathering - private to house
-  of res_types.GameEventType.IntelGathered:
+  of res_types.GameEventType.IntelGathered,
+     # Phase 7b: Scout mesh network and spy scout operations - private
+     res_types.GameEventType.ScoutMeshNetworkFormed,
+     res_types.GameEventType.SpyScoutDeployed,
+     res_types.GameEventType.SpyScoutTravel:
     return false
 
   # Generic/categorical event types - default to private

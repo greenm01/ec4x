@@ -1234,8 +1234,152 @@ Based on `docs/api/api.json` (2025-12-10):
 
 1. **Phase 5: Full Integration** - Implement multi-turn coordination, cross-advisor dependencies, risk assessment, and diagnostic visibility.
 2. **Phase 6: Neural Network Training** - Export GOAP/RBA decisions as training data, train NN, and develop a fully hybrid NN/GOAP/RBA system.
-3. **Validate with diagnostics** - Run 100-game balance tests.
-4. **Tune GOAP parameters** - Optimize goal weights and replanning thresholds.
+3. **Phase 7: Event-Based Reactive Behavior** - Add GameEvent subscription system to RBA for mid-turn reactive behavior (see TODO below).
+4. **Validate with diagnostics** - Run 100-game balance tests.
+5. **Tune GOAP parameters** - Optimize goal weights and replanning thresholds.
+
+### TODO: Rich Narrative Events & Hybrid Reports System
+
+**Status:** Partial Implementation (Espionage only) - Broader system deferred to Post-MVP
+
+**Vision:** Implement comprehensive GameEvents system per `docs/guides/GameEvents_Guide.md` to enable rich hybrid reports (state + narrative) across all game systems.
+
+**Current State (2025-12-11):**
+- ✅ **Espionage events implemented:** `scoutColonyIntelGathered`, `scoutSystemIntelGathered`, `scoutStarbaseIntelGathered`
+- ✅ Scout intelligence gathering populates intelligence database (fixed 2025-12-11)
+- ❌ **Combat events:** Basic only, lacks round-by-round narrative
+- ❌ **Fleet movement events:** Basic only, lacks detailed movement/encounter narrative
+- ❌ **Construction events:** No events for ship commissioning, building completion
+- ❌ **Diplomatic events:** No events for relation changes, treaty actions
+- ❌ **Economic events:** No events for trade, resource milestones
+- ❌ **RBA event subscription:** AI doesn't react to GameEvents during resolution
+
+**GameEvents Guide Pattern (Hybrid Reports):**
+
+Per guide lines 108-160, players need **state + events** for meaningful reports:
+
+**Example: Combat Reports**
+```
+State (aftermath):           Events (narrative):
+- 2 ships destroyed          → Round 1: Destroyer hit by railgun (42 dmg)
+- Fleet damaged              → Round 2: Frigate destroyed by missiles
+- Victory achieved           → Round 3: Cruiser retreat triggered
+```
+
+**Example: Turn Summary**
+```
+State (current):             Events (what happened):
+- Colony at 75% factory      → Fleet Alpha: Engaged at Rigel IV (Victory)
+- 4.2M population            → Scout Beta: Gathered intel on enemy
+- Tech tree progress         → Construction: Battleship commissioned
+```
+
+**Missing Event Types Needed:**
+
+**1. Combat Events** (Guide lines 42-72)
+```nim
+- WeaponFiredEvent(attacker, weapon, target, damage, hit)
+- ShipDamagedEvent(ship, damage, remaining_hp, weapon_type)
+- ShipDestroyedEvent(ship, killed_by, overkill_damage)
+- CombatPhaseCompletedEvent(phase, rounds, victor, casualties)
+- FleetRetreatEvent(fleet, reason, casualties)
+```
+
+**2. Fleet Operations Events** (Guide lines 20-23)
+```nim
+- FleetMovementBeganEvent(fleet, origin, destination, eta)
+- FleetMovementCompletedEvent(fleet, location, encounters)
+- FleetEncounterEvent(fleet, enemy_fleet, location)
+- FleetOrderAbortedEvent(fleet, order_type, reason)
+- FleetMergedEvent(fleet_a, fleet_b, resulting_fleet)
+```
+
+**3. Construction Events**
+```nim
+- ShipCommissionedEvent(ship_class, colony, turn_completed)
+- BuildingCompletedEvent(building_type, colony, bonus_granted)
+- ConstructionQueueUpdatedEvent(colony, queue_depth, eta)
+- TechResearchCompletedEvent(tech, research_time, benefits)
+```
+
+**4. Economic Events**
+```nim
+- ResourceMilestoneEvent(resource_type, threshold_crossed)
+- TradeRouteEstablishedEvent(from_colony, to_colony, value)
+- EconomicCrisisEvent(house, treasury_deficit, impact)
+- ColonyDevelopedEvent(colony, infrastructure_level)
+```
+
+**5. Diplomatic Events**
+```nim
+- DiplomaticRelationChangedEvent(house_a, house_b, old_state, new_state, reason)
+- TreatyProposedEvent(proposer, recipient, treaty_type)
+- TreatyAcceptedEvent(house_a, house_b, treaty_type, duration)
+- TreatyBrokenEvent(breaker, victim, treaty_type, prestige_penalty)
+```
+
+**Implementation Priorities:**
+
+**Phase 7a: Combat Narrative Events** (High Priority)
+- Combat is most visible, players want detailed reports
+- Current reports lack "how did I win/lose?" narrative
+- Implement weapon hit/miss, ship destruction, phase completion events
+- Enable round-by-round combat logs
+
+**Phase 7b: Fleet Operations Events** (Medium Priority)
+- Movement, encounters, mergers
+- "Where did my fleet go?" clarity
+- Retreat reasons, order failures
+
+**Phase 7c: Economic/Construction Events** (Medium Priority)
+- Ship commissioning notifications
+- Tech completion milestones
+- Building completion updates
+
+**Phase 7d: Diplomatic Events** (Lower Priority)
+- Relation changes with explanations
+- Treaty proposals/acceptances/breaks
+
+**Phase 7e: RBA Event Subscription** (After events implemented)
+- AI subscribes to filtered events
+- Reactive behavior during resolution
+- Dynamic priority adjustments
+- Opportunistic decision-making
+
+**Benefits:**
+- **Player experience:** Rich narrative reports explaining what happened and why
+- **AI behavior:** More responsive, opportunistic, realistic reactions
+- **Developer analysis:** Detailed event logs for balance tuning
+- **Debugging:** Event-driven replay system for bug reproduction
+
+**Guiding Principles (from GameEvents_Guide.md):**
+
+1. **Events represent things that happened** (temporal occurrences)
+2. **Hybrid reports:** Combine state (current situation) + events (narrative)
+3. **Fog of war filtering:** AI only receives observable events
+4. **Proper granularity:** Observable outcomes, not internal calculations
+5. **Three audiences:** AI (filtered), Player (narrative), Developer (analysis)
+
+**Current Espionage Implementation as Template:**
+
+The espionage events we just implemented (2025-12-11) serve as the template for other systems:
+```nim
+// Event factory pattern
+proc scoutColonyIntelGathered*(
+  spyHouse: HouseId, targetHouse: HouseId, systemId: SystemId,
+  fleetId: FleetId, defenses: int, economicValue: int,
+  hasStarbase: bool, quality: string
+): GameEvent =
+  // Capture rich details for narrative
+  var details = &"Defenses: {defenses}, Economy: {economicValue} PP"
+  // Return event with description + structured data
+```
+
+**References:**
+- **Guide:** `docs/guides/GameEvents_Guide.md` (comprehensive pattern documentation)
+- **Current implementation:** `src/engine/resolution/event_factory/intelligence.nim`
+- **Event processing:** `src/engine/resolution/simultaneous_espionage.nim::processScoutIntelligence`
+- **Template to replicate:** Scout intelligence events → apply to combat, fleet ops, etc.
 
 ---
 

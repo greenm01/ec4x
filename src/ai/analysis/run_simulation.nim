@@ -15,6 +15,7 @@ import ../../common/types/core
 import ../../client/reports/turn_report
 import ../../engine/research/types as res_types
 import ../../engine/espionage/types as esp_types
+import ../../engine/resolution/types as resolution_types
 
 proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 3, runUntilVictory: bool = true): JsonNode =
   ## Run a full game simulation with AI players
@@ -109,8 +110,10 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
       let aiSubmission = ai.generateAIOrders(controller, filteredView, rng, @[])
 
       # Execute zero-turn commands first (immediate, at friendly colonies)
+      # Phase 7b: Events from zero-turn commands (temporary - not used in simulation)
+      var zeroTurnEvents: seq[resolution_types.GameEvent] = @[]
       for cmd in aiSubmission.zeroTurnCommands:
-        let zt = submitZeroTurnCommand(game, cmd)
+        let zt = submitZeroTurnCommand(game, cmd, zeroTurnEvents)
         if not zt.success:
           logWarn(LogCategory.lcAI,
                   &"House {controller.houseId} zero-turn command failed: {zt.error}")

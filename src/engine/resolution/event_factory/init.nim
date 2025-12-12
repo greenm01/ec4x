@@ -17,6 +17,7 @@ import victory
 import prestige
 import diplomatic
 import alerts
+import fleet_ops
 
 export commissioning
 export military
@@ -27,3 +28,4 @@ export victory
 export prestige
 export diplomatic
 export alerts
+export fleet_ops

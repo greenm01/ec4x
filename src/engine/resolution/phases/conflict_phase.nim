@@ -244,6 +244,13 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
                                                                   effectiveOrders, rng)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6b] Completed ({espionageResults.len} fleet espionage attempts)")
 
+  # Process scout espionage results and gather intelligence
+  # Creates detailed narrative events for espionage reports
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Processing scout intelligence...")
+  simultaneous_espionage.processScoutIntelligence(state, espionageResults,
+                                                   effectiveOrders, rng, events)
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Scout intelligence gathering complete")
+
   # ===================================================================
   # STEP 6c: SPACE GUILD ESPIONAGE (EBP-based)
   # ===================================================================
@@ -268,8 +275,9 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Move traveling spy scouts through jump lanes
   # Per assets.md:2.4.2 - scouts travel 1-2 jumps per turn based on lane control
   # Detection checks occur at intermediate systems
+  # Phase 7b: Emits SpyScoutTravel events
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 7] Spy scout travel (1-2 jumps per turn)...")
-  let travelResults = spy_travel.resolveSpyScoutTravel(state)
+  let travelResults = spy_travel.resolveSpyScoutTravel(state, events)
   for msg in travelResults:
     logInfo("Intelligence", "Spy scout travel", msg)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 7] Completed ({travelResults.len} scout movements)")

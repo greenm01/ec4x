@@ -171,7 +171,7 @@ proc generateReconnaissanceOrders*(
 
     result.add(FleetOrder(
       fleetId: scout.fleetId,
-      orderType: FleetOrderType.ViewWorld,  # Deep space scan - safer, no orbital approach
+      orderType: FleetOrderType.SpyPlanet,  
       targetSystem: some(target.systemId),
       priority: 75  # Higher than exploration, lower than defense
     ))

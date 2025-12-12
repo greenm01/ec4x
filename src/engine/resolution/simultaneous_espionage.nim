@@ -19,6 +19,8 @@ import ../../common/types/core
 import ../prestige
 import ./event_factory/intelligence as intelligence_events
 import ./types as res_types
+import ../intelligence/generator as intel_generator
+import ../intelligence/types as intel_types
 
 proc collectEspionageIntents*(
   state: GameState,
@@ -356,3 +358,182 @@ proc processEspionageActions*(
           attempt.targetSystem.get(),
           $attempt.action
         ))
+
+proc processScoutIntelligence*(
+  state: var GameState,
+  results: seq[simultaneous_types.EspionageResult],
+  orders: Table[HouseId, OrderPacket],
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
+) =
+  ## Process successful scout-based espionage results and generate intelligence reports
+  ## This is the missing step that actually gathers colony/system/starbase intelligence
+  ## from SpyPlanet/SpySystem/HackStarbase orders and populates house.intelligence databases
+  ## Also creates detailed narrative events for espionage reports
+
+  for result in results:
+    # Only process successful espionage
+    if result.outcome != ResolutionOutcome.Success:
+      continue
+
+    if result.actualTarget.isNone:
+      continue
+
+    let targetSystem = result.actualTarget.get()
+    let houseId = result.houseId
+
+    # Find the original fleet order to determine order type
+    if houseId notin orders:
+      continue
+
+    let packet = orders[houseId]
+    var orderType: FleetOrderType
+
+    # Find matching fleet order
+    var found = false
+    for order in packet.fleetOrders:
+      if order.fleetId == result.fleetId and
+         order.targetSystem.isSome and
+         order.targetSystem.get() == targetSystem:
+        orderType = order.orderType
+        found = true
+        break
+
+    if not found:
+      continue
+
+    # Generate appropriate intelligence based on order type
+    case orderType
+    of FleetOrderType.SpyPlanet:
+      # Generate colony intelligence report
+      let intelReport = intel_generator.generateColonyIntelReport(
+        state, houseId, targetSystem, intel_types.IntelQuality.Spy)
+
+      if intelReport.isSome:
+        let report = intelReport.get()
+        var house = state.houses[houseId]
+        house.intelligence.addColonyReport(report)
+        state.houses[houseId] = house
+
+        # Calculate economic value for event
+        let grossOutput = report.grossOutput.get(0)
+        let industryValue = report.industry * 100
+        let economicValue = grossOutput + industryValue
+        let totalDefenses = report.defenses + report.starbaseLevel * 10
+
+        # Create rich narrative event (visible only to spy house)
+        # Scout-specific: SpyPlanet mission by scout fleet
+        events.add(intelligence_events.scoutColonyIntelGathered(
+          houseId,
+          report.targetOwner,
+          targetSystem,
+          result.fleetId,
+          totalDefenses,
+          economicValue,
+          report.starbaseLevel > 0,
+          $report.quality
+        ))
+
+        # Log success (matches existing pattern from fleet_orders.nim:386)
+        logInfo(LogCategory.lcFleet,
+          &"Fleet {result.fleetId} ({houseId}) SpyPlanet success at {targetSystem} " &
+          &"- intelligence DB now has {house.intelligence.colonyReports.len} colony reports")
+
+    of FleetOrderType.SpySystem:
+      # Generate system intelligence report (fleet composition)
+      let intelReport = intel_generator.generateSystemIntelReport(
+        state, houseId, targetSystem, intel_types.IntelQuality.Spy)
+
+      if intelReport.isSome:
+        let report = intelReport.get()
+        var house = state.houses[houseId]
+        house.intelligence.addSystemReport(report)
+        state.houses[houseId] = house
+
+        # Count detected fleets and ships
+        let fleetsDetected = report.detectedFleets.len
+        var shipsDetected = 0
+        for fleetIntel in report.detectedFleets:
+          shipsDetected += fleetIntel.shipCount
+
+        # Determine target house (first fleet's owner, or none if empty)
+        let targetHouse = if fleetsDetected > 0: report.detectedFleets[0].owner
+                          else: houseId  # Fallback
+
+        # Create rich narrative event (visible only to spy house)
+        # Scout-specific: SpySystem mission by scout fleet
+        events.add(intelligence_events.scoutSystemIntelGathered(
+          houseId,
+          targetHouse,
+          targetSystem,
+          result.fleetId,
+          fleetsDetected,
+          shipsDetected,
+          $report.quality
+        ))
+
+        logInfo(LogCategory.lcFleet,
+          &"Fleet {result.fleetId} ({houseId}) SpySystem success at {targetSystem} " &
+          &"- gathered fleet intelligence")
+
+    of FleetOrderType.HackStarbase:
+      # Generate starbase intelligence report (economic/R&D data)
+      let intelReport = intel_generator.generateStarbaseIntelReport(
+        state, houseId, targetSystem, intel_types.IntelQuality.Spy)
+
+      if intelReport.isSome:
+        let report = intelReport.get()
+        var house = state.houses[houseId]
+        house.intelligence.addStarbaseReport(report)
+        state.houses[houseId] = house
+
+        # Check if economic data was acquired (based on quality)
+        let hasEconomicData = report.quality == intel_types.IntelQuality.Spy or
+                              report.quality == intel_types.IntelQuality.Perfect
+
+        # Get facility data from colony (visible since hack succeeded)
+        let colony = state.colonies[targetSystem]
+        let starbaseCount = colony.starbases.len
+        let spaceportCount = colony.spaceports.len
+        let shipyardCount = colony.shipyards.len
+
+        # Calculate total dock capacity
+        var totalDocks = 0
+        for spaceport in colony.spaceports:
+          totalDocks += spaceport.effectiveDocks
+        for shipyard in colony.shipyards:
+          totalDocks += shipyard.effectiveDocks
+
+        # Count ships under construction (active + queued)
+        var shipsUnderConstruction = 0
+        if colony.underConstruction.isSome:
+          shipsUnderConstruction += 1
+        shipsUnderConstruction += colony.constructionQueue.len
+
+        # Count ships under repair
+        let shipsUnderRepair = colony.repairQueue.len
+
+        # Create rich narrative event (visible only to spy house)
+        # Scout-specific: HackStarbase mission by scout fleet
+        events.add(intelligence_events.scoutStarbaseIntelGathered(
+          houseId,
+          report.targetOwner,
+          targetSystem,
+          result.fleetId,
+          starbaseCount,
+          spaceportCount,
+          shipyardCount,
+          totalDocks,
+          shipsUnderConstruction,
+          shipsUnderRepair,
+          hasEconomicData,
+          $report.quality
+        ))
+
+        logInfo(LogCategory.lcFleet,
+          &"Fleet {result.fleetId} ({houseId}) HackStarbase success at {targetSystem} " &
+          &"- gathered economic/R&D intelligence")
+
+    else:
+      # Ignore non-espionage orders
+      discard

@@ -21,6 +21,92 @@ import ./fleet_orders  # For findClosestOwnedColony, resolveMovementOrder
 import ./event_factory/init as event_factory
 import ../intelligence/[types as intel_types, combat_intel]
 
+proc applySpaceLiftScreeningLosses(
+  state: var GameState,
+  combatOutcome: combat_engine.CombatResult,
+  fleetsBeforeCombat: Table[FleetId, Fleet],
+  combatPhase: string,  # "Space" or "Orbital"
+  events: var seq[GameEvent]
+) =
+  ## Apply spacelift ship losses based on task force casualties
+  ## Spacelift ships are screened by task forces - losses are proportional to task force casualties
+  ## If task force destroyed → all spacelift ships destroyed
+  ## If task force retreated → proportional spacelift ships destroyed (matching casualty %)
+
+  # Track spacelift losses by house for event generation
+  var spaceliftLossesByHouse: Table[HouseId, int] = initTable[HouseId, int]()
+
+  for fleetId, fleetBefore in fleetsBeforeCombat.pairs:
+    if fleetBefore.spaceLiftShips.len == 0:
+      continue  # No spacelift ships to lose
+
+    # Skip mothballed fleets (they don't participate in combat, handled separately)
+    if fleetBefore.status == FleetStatus.Mothballed:
+      continue
+
+    # Calculate task force casualties for this fleet
+    var squadronsBefore = fleetBefore.squadrons.len
+    var squadronsAfter = 0
+
+    if fleetId in state.fleets:
+      squadronsAfter = state.fleets[fleetId].squadrons.len
+
+    # If fleet was completely destroyed, destroy all spacelift ships
+    if squadronsAfter == 0:
+      let spaceliftCount = fleetBefore.spaceLiftShips.len
+      spaceliftLossesByHouse[fleetBefore.owner] = spaceliftLossesByHouse.getOrDefault(fleetBefore.owner, 0) + spaceliftCount
+
+      logCombat(&"{combatPhase} combat: Fleet {fleetId} destroyed, all spacelift ships lost",
+                "spaceliftShips=", $spaceliftCount)
+
+      # Fleet already destroyed, no need to update
+      continue
+
+    # Check if fleet retreated
+    let didRetreat = fleetBefore.owner in combatOutcome.retreated
+
+    # Calculate casualty percentage
+    let casualtyPercent = if squadronsBefore > 0:
+      float(squadronsBefore - squadronsAfter) / float(squadronsBefore)
+    else:
+      0.0
+
+    # Apply proportional spacelift losses if casualties occurred or fleet retreated
+    if casualtyPercent > 0.0 or didRetreat:
+      let spaceliftBefore = fleetBefore.spaceLiftShips.len
+      let spaceliftLosses = if didRetreat:
+        # On retreat, lose percentage matching task force casualties (minimum 1 if any casualties)
+        max(1, int(float(spaceliftBefore) * casualtyPercent))
+      else:
+        # Normal combat casualties
+        int(float(spaceliftBefore) * casualtyPercent)
+
+      if spaceliftLosses > 0:
+        var updatedFleet = state.fleets[fleetId]
+        let actualLosses = min(spaceliftLosses, updatedFleet.spaceLiftShips.len)
+
+        # Remove spacelift ships from the end of the list
+        if actualLosses >= updatedFleet.spaceLiftShips.len:
+          updatedFleet.spaceLiftShips = @[]
+        else:
+          updatedFleet.spaceLiftShips = updatedFleet.spaceLiftShips[0 ..< (updatedFleet.spaceLiftShips.len - actualLosses)]
+
+        state.fleets[fleetId] = updatedFleet
+        spaceliftLossesByHouse[fleetBefore.owner] = spaceliftLossesByHouse.getOrDefault(fleetBefore.owner, 0) + actualLosses
+
+        logCombat(&"{combatPhase} combat: Fleet {fleetId} spacelift screening losses",
+                  "casualties=", $actualLosses,
+                  "casualtyPercent=", $(int(casualtyPercent * 100)), "%",
+                  "retreated=", $didRetreat)
+
+  # Generate events for spacelift losses
+  for houseId, losses in spaceliftLossesByHouse:
+    events.add(event_factory.battle(
+      houseId,
+      combatOutcome.systemId,
+      &"{combatPhase} combat: {losses} spacelift ships destroyed (screened by task force)"
+    ))
+
 proc getTargetBucket(shipClass: ShipClass): TargetBucket =
   ## Determine target bucket from ship class
   ## Note: Starbases use TargetBucket.Starbase but aren't in ShipClass (they're facilities)
@@ -307,6 +393,163 @@ proc executeCombat(
 
   return (outcome, fleetsInCombat, detectedHouses)
 
+proc processCombatEvents(
+  state: var GameState,
+  systemId: SystemId,
+  combatResult: combat_engine.CombatResult,
+  theater: string,  # "SpaceCombat" or "OrbitalCombat"
+  events: var seq[GameEvent]
+) =
+  ## Process CombatResult and generate detailed combat narrative events
+  ## Emits phase, attack, damage, and retreat events based on combat outcome
+
+  # Extract houses involved
+  var attackers: seq[HouseId] = @[]
+  var defenders: seq[HouseId] = @[]
+  var casualties: seq[HouseId] = @[]
+
+  for tf in combatResult.survivors:
+    # Determine if attacker or defender based on system ownership
+    let systemOwner = if systemId in state.colonies:
+      some(state.colonies[systemId].owner)
+    else:
+      none(HouseId)
+
+    if systemOwner.isSome() and systemOwner.get() == tf.house:
+      if tf.house notin defenders:
+        defenders.add(tf.house)
+    else:
+      if tf.house notin attackers:
+        attackers.add(tf.house)
+
+  # Add eliminated and retreated houses
+  for house in combatResult.eliminated:
+    casualties.add(house)
+  for house in combatResult.retreated:
+    casualties.add(house)
+
+  # Emit theater began event
+  events.add(event_factory.combatTheaterBegan(
+    theater = theater,
+    systemId = systemId,
+    attackers = attackers,
+    defenders = defenders,
+    roundNumber = 1
+  ))
+
+  # Process each round's phases
+  for roundIdx, roundPhases in combatResult.rounds:
+    let roundNum = roundIdx + 1
+
+    for phaseResult in roundPhases:
+      # Map CombatPhase enum to phase string
+      let phaseName = case phaseResult.phase:
+        of combat_types.CombatPhase.Ambush: "RaiderAmbush"
+        of combat_types.CombatPhase.Intercept: "FighterIntercept"
+        of combat_types.CombatPhase.MainEngagement: "CapitalEngagement"
+        of combat_types.CombatPhase.PreCombat, combat_types.CombatPhase.PostCombat:
+          "PrePostCombat"  # Shouldn't occur in round results
+
+      # Emit phase began event
+      events.add(event_factory.combatPhaseBegan(
+        phase = phaseName,
+        systemId = systemId,
+        roundNumber = roundNum
+      ))
+
+      # Process attacks in this phase
+      for attack in phaseResult.attacks:
+        # Find attacker and target houses
+        var attackerHouse: Option[HouseId] = none(HouseId)
+        var targetHouse: Option[HouseId] = none(HouseId)
+
+        # Search squadrons in survivors to find houses
+        for tf in combatResult.survivors:
+          for sq in tf.squadrons:
+            if sq.squadron.id == attack.attackerId:
+              attackerHouse = some(tf.house)
+            if sq.squadron.id == attack.targetId:
+              targetHouse = some(tf.house)
+
+        if attackerHouse.isSome() and targetHouse.isSome():
+          # Emit weapon fired event
+          let weaponType = "Energy"  # Placeholder - could extract from squadron
+          events.add(event_factory.weaponFired(
+            attackerSquadron = attack.attackerId,
+            attackerHouse = attackerHouse.get(),
+            targetSquadron = attack.targetId,
+            targetHouse = targetHouse.get(),
+            weaponType = weaponType,
+            cerRoll = 5,  # Placeholder - would need to extract from cerRoll
+            cerModifier = 0,  # Placeholder
+            damage = attack.damageDealt,
+            systemId = systemId
+          ))
+
+          # Emit damage/destruction event if state changed
+          if attack.targetStateBefore != attack.targetStateAfter:
+            case attack.targetStateAfter
+            of combat_types.CombatState.Crippled:
+              events.add(event_factory.shipDamaged(
+                squadronId = attack.targetId,
+                houseId = targetHouse.get(),
+                damage = attack.damageDealt,
+                newState = "Crippled",
+                remainingDs = 0,  # Placeholder
+                systemId = systemId
+              ))
+            of combat_types.CombatState.Destroyed:
+              events.add(event_factory.shipDestroyed(
+                squadronId = attack.targetId,
+                houseId = targetHouse.get(),
+                killedByHouse = attackerHouse.get(),
+                criticalHit = attack.cerRoll.isCriticalHit,
+                overkillDamage = 0,  # Placeholder
+                systemId = systemId
+              ))
+            else:
+              discard  # Undamaged state, no event needed
+
+      # Emit phase completed event
+      var phaseCasualties: seq[HouseId] = @[]
+      for stateChange in phaseResult.stateChanges:
+        # Find house for this squadron
+        for tf in combatResult.survivors:
+          for sq in tf.squadrons:
+            if sq.squadron.id == stateChange.squadronId:
+              if tf.house notin phaseCasualties:
+                phaseCasualties.add(tf.house)
+
+      events.add(event_factory.combatPhaseCompleted(
+        phase = phaseName,
+        systemId = systemId,
+        roundNumber = roundNum,
+        phaseRounds = 1,  # Each phase is 1 round within the round
+        casualties = phaseCasualties
+      ))
+
+  # Emit retreat events
+  for house in combatResult.retreated:
+    # Find fleet ID for this house (placeholder - would need to track this)
+    let fleetId: FleetId = ""  # Placeholder - FleetId is string type
+    events.add(event_factory.fleetRetreat(
+      fleetId = fleetId,
+      houseId = house,
+      reason = "ROE",  # Placeholder - would need to track reason
+      threshold = 50,  # Placeholder
+      casualties = 0,  # Placeholder
+      systemId = systemId
+    ))
+
+  # Emit theater completed event
+  events.add(event_factory.combatTheaterCompleted(
+    theater = theater,
+    systemId = systemId,
+    victor = combatResult.victor,
+    roundNumber = combatResult.totalRounds,
+    casualties = casualties
+  ))
+
 proc resolveBattle*(state: var GameState, systemId: SystemId,
                   orders: Table[HouseId, OrderPacket],
                   combatReports: var seq[CombatReport], events: var seq[GameEvent], rng: var Rand) =
@@ -436,6 +679,9 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     # Auto-escalate diplomatic relations after space combat
     autoEscalateDiplomacy(state, spaceCombatOutcome, "Space Combat", spaceCombatFleets)
 
+    # Generate combat narrative events for space combat (Phase 7a)
+    processCombatEvents(state, systemId, spaceCombatOutcome, "SpaceCombat", events)
+
   elif attackingFleets.len > 0:
     # No mobile defenders - attackers proceed directly to orbital combat
     logCombat("No space combat - no mobile defenders")
@@ -527,6 +773,9 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         # Auto-escalate diplomatic relations after orbital combat
         autoEscalateDiplomacy(state, orbitalCombatOutcome, "Orbital Combat", orbitalCombatFleets)
 
+        # Generate combat narrative events for orbital combat (Phase 7a)
+        processCombatEvents(state, systemId, orbitalCombatOutcome, "OrbitalCombat", events)
+
       else:
         logCombat("No surviving attacker fleets for orbital combat")
     else:
@@ -615,6 +864,18 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         state.standingOrders.del(fleetId)
       logInfo(LogCategory.lcCombat, "Removed empty fleet " & $fleetId & " after combat (all squadrons destroyed)")
 
+  # Apply spacelift ship screening losses (proportional to task force casualties)
+  # Spacelift ships are screened by task forces in both space and orbital combat
+  if outcome.totalRounds > 0:
+    let combatPhaseDesc = if spaceCombatOutcome.totalRounds > 0 and orbitalCombatOutcome.totalRounds > 0:
+      "Space+Orbital"
+    elif spaceCombatOutcome.totalRounds > 0:
+      "Space"
+    else:
+      "Orbital"
+
+    applySpaceLiftScreeningLosses(state, outcome, fleetsBeforeCombatUpdate, combatPhaseDesc, events)
+
   # Check if all defenders eliminated - if so, destroy mothballed ships
   # Per economy.md:3.9 - mothballed ships are vulnerable if no Task Force defends them
   if systemOwner.isSome:
@@ -632,7 +893,6 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     if not defenderHasSurvivors:
       var mothballedFleetsDestroyed = 0
       var mothballedSquadronsDestroyed = 0
-      var spaceliftShipsDestroyed = 0
 
       for (fleetId, fleet) in fleetsAtSystem:
         if fleet.owner == defendingHouse:
@@ -644,10 +904,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           if fleet.status == FleetStatus.Mothballed:
             mothballedSquadronsDestroyed += fleet.squadrons.len
             mothballedFleetsDestroyed += 1
-            # Destroy the fleet by removing all squadrons
+            # Destroy the fleet by removing all squadrons and spacelift ships
             state.fleets[fleetId] = Fleet(
               squadrons: @[],  # Empty fleet
-              spaceLiftShips: @[],
+              spaceLiftShips: @[],  # Empty spacelift
               id: fleet.id,
               owner: fleet.owner,
               location: fleet.location,
@@ -655,23 +915,87 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
               autoBalanceSquadrons: fleet.autoBalanceSquadrons  # Preserve setting
             )
 
-          # Destroy spacelift ships in any fleet (they were screened by orbital units)
-          if fleet.spaceLiftShips.len > 0:
-            spaceliftShipsDestroyed += fleet.spaceLiftShips.len
-            # Remove spacelift ships from fleet (check again as fleet might have been emptied above)
-            if fleetId in state.fleets:
-              var updatedFleet = state.fleets[fleetId]
-              updatedFleet.spaceLiftShips = @[]
-              state.fleets[fleetId] = updatedFleet
-
       if mothballedFleetsDestroyed > 0:
-        logCombat("Mothballed squadrons destroyed - no orbital defense remains",
+        logCombat("Mothballed fleets destroyed - no orbital defense remains",
                   "squadrons=", $mothballedSquadronsDestroyed,
                   " fleets=", $mothballedFleetsDestroyed)
+        events.add(event_factory.battle(
+          defendingHouse,
+          systemId,
+          &"Orbital defenses eliminated: {mothballedFleetsDestroyed} mothballed fleets destroyed " &
+          &"({mothballedSquadronsDestroyed} squadrons)"
+        ))
 
-      if spaceliftShipsDestroyed > 0:
-        logCombat("Spacelift ships destroyed - no orbital defense remains",
-                  "ships=", $spaceliftShipsDestroyed)
+      # Destroy screened orbital facilities (spaceports, shipyards, drydocks)
+      # These facilities are protected by orbital defenses - if defenses are eliminated, they're destroyed
+      if systemId in state.colonies:
+        var colony = state.colonies[systemId]
+        var facilitiesDestroyed = 0
+        var shipsUnderConstructionLost = 0
+        var shipsUnderRepairLost = 0
+
+        # Destroy spaceports
+        if colony.spaceports.len > 0:
+          facilitiesDestroyed += colony.spaceports.len
+          logCombat("Spaceports destroyed - no orbital defense remains",
+                    "spaceports=", $colony.spaceports.len,
+                    " systemId=", $systemId)
+          colony.spaceports = @[]
+
+        # Destroy shipyards and clear their construction/repair queues
+        if colony.shipyards.len > 0:
+          facilitiesDestroyed += colony.shipyards.len
+          logCombat("Shipyards destroyed - no orbital defense remains",
+                    "shipyards=", $colony.shipyards.len,
+                    " systemId=", $systemId)
+
+          # Count ships under construction in shipyard docks
+          if colony.underConstruction.isSome:
+            let project = colony.underConstruction.get()
+            if project.facilityType.isSome and project.facilityType.get() == econ_types.FacilityType.Shipyard:
+              shipsUnderConstructionLost += 1
+
+          # Count ships under repair in shipyard docks
+          for repair in colony.repairQueue:
+            if repair.facilityType == econ_types.FacilityType.Shipyard:
+              shipsUnderRepairLost += 1
+
+          # Clear all shipyard construction/repair queues
+          facility_damage.clearFacilityQueues(colony, econ_types.FacilityType.Shipyard)
+          colony.shipyards = @[]
+
+        # Destroy drydocks and clear their repair queues
+        if colony.drydocks.len > 0:
+          facilitiesDestroyed += colony.drydocks.len
+          logCombat("Drydocks destroyed - no orbital defense remains",
+                    "drydocks=", $colony.drydocks.len,
+                    " systemId=", $systemId)
+
+          # Count ships under repair in drydock docks
+          for repair in colony.repairQueue:
+            if repair.facilityType == econ_types.FacilityType.Drydock:
+              shipsUnderRepairLost += 1
+
+          # Clear all drydock repair queues
+          facility_damage.clearFacilityQueues(colony, econ_types.FacilityType.Drydock)
+          colony.drydocks = @[]
+
+        # Clear construction queue if no facilities remain
+        if colony.spaceports.len == 0 and colony.shipyards.len == 0:
+          facility_damage.clearAllConstructionQueues(colony)
+
+        # Update colony with destroyed facilities
+        state.colonies[systemId] = colony
+
+        # Generate events for screened facility destruction
+        if facilitiesDestroyed > 0:
+          events.add(event_factory.battle(
+            defendingHouse,
+            systemId,
+            &"Orbital defenses eliminated: {facilitiesDestroyed} facilities destroyed, " &
+            &"{shipsUnderConstructionLost} ships under construction lost, " &
+            &"{shipsUnderRepairLost} ships under repair lost"
+          ))
 
   # Update starbases at colony based on survivors
   if systemOwner.isSome and systemId in state.colonies:
@@ -1052,14 +1376,17 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     updatedColony.groundBatteries = 0
 
   # Ships-in-dock destruction (economy.md:5.0)
+  # Bombardment only affects SPACEPORT docks, not shipyard docks
   var shipsDestroyedInDock = false
   if infrastructureLoss > 0 and updatedColony.underConstruction.isSome:
     let project = updatedColony.underConstruction.get()
     if project.projectType == econ_types.ConstructionType.Ship:
-      updatedColony.underConstruction = none(econ_types.ConstructionProject)
-      shipsDestroyedInDock = true
-      logCombat("Ship under construction destroyed in bombardment",
-                "systemId=", $targetId)
+      # Only destroy if in spaceport dock (bombardment doesn't affect shipyard docks)
+      if project.facilityType.isSome and project.facilityType.get() == econ_types.FacilityType.Spaceport:
+        updatedColony.underConstruction = none(econ_types.ConstructionProject)
+        shipsDestroyedInDock = true
+        logCombat("Ship under construction destroyed in bombardment (spaceport dock)",
+                  "systemId=", $targetId)
 
   state.colonies[targetId] = updatedColony
 
@@ -1085,15 +1412,24 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     fleet.spaceLiftShips.len  # Invasion threat assessment
   )
 
-  # Generate bombardment event
+  # Generate bombardment event with COMPLETE tactical data (Phase 7a fix)
+  # Attacker casualties: squadronsDestroyed + squadronsCrippled from result
+  let attackerCasualties = result.squadronsDestroyed + result.squadronsCrippled
   let facilitiesDestroyed = if shipsDestroyedInDock: 1 else: 0
-  events.add(event_factory.bombardment(
-    houseId,
-    colony.owner,  # Defending house
-    targetId,
-    infrastructureLoss,
-    result.populationDamage,
-    facilitiesDestroyed
+
+  events.add(event_factory.bombardmentRoundCompleted(
+    round = result.roundsCompleted,
+    attackingHouse = houseId,
+    defendingHouse = colony.owner,
+    systemId = targetId,
+    batteriesDestroyed = result.batteriesDestroyed,
+    batteriesCrippled = result.batteriesCrippled,
+    shieldBlocked = result.shieldBlocked,
+    groundForcesDamaged = 0,  # Not tracked separately, part of populationDamage
+    infrastructureDamage = result.infrastructureDamage,
+    populationKilled = result.populationDamage,
+    facilitiesDestroyed = facilitiesDestroyed,
+    attackerCasualties = attackerCasualties
   ))
 
   # Generate OrderCompleted event
@@ -1266,6 +1602,15 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   # Generate deterministic seed
   let invasionSeed = hash((state.turn, targetId, houseId)).int64
+
+  # Generate InvasionBegan event (Phase 7a)
+  events.add(event_factory.invasionBegan(
+    fleetId = order.fleetId,
+    attackingHouse = houseId,
+    defendingHouse = colony.owner,
+    systemId = targetId,
+    marinesLanding = attackingForces.len
+  ))
 
   # Conduct invasion
   let result = conductInvasion(attackingForces, defendingForces, defense, invasionSeed)
@@ -1566,6 +1911,18 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   # Generate deterministic seed
   let blitzSeed = hash((state.turn, targetId, houseId, "blitz")).int64
+
+  # Generate BlitzBegan event (Phase 7a)
+  # Blitz: marines get 0.5x AS penalty, transports vulnerable during insertion
+  events.add(event_factory.blitzBegan(
+    fleetId = order.fleetId,
+    attackingHouse = houseId,
+    defendingHouse = colony.owner,
+    systemId = targetId,
+    marinesLanding = attackingForces.len,
+    transportsVulnerable = true,
+    marineAsPenalty = 0.5
+  ))
 
   # Conduct blitz
   let result = conductBlitz(attackingFleet, attackingForces, defense, blitzSeed)

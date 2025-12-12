@@ -11,7 +11,7 @@ import ../../common/types/core
 import ../gamestate, ../fleet, ../orders
 import ../diplomacy/engine as dip_engine
 import detection, types as intel_types
-import ../resolution/[fleet_orders, types as resolution_types]
+import ../resolution/[fleet_orders, types as resolution_types, event_factory/init as event_factory]
 
 proc recordScoutLoss*(state: var GameState, scoutId: string,
                      eventType: intel_types.DetectionEventType,
@@ -113,10 +113,11 @@ proc checkTravelDetection(state: GameState, spyId: string,
   return intel_types.DetectionResult(detected: false, detectorHouse: "",
                                      isAllyDetection: false, roll: 0, threshold: 0)
 
-proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
+proc resolveSpyScoutTravel*(state: var GameState, events: var seq[resolution_types.GameEvent]): seq[string] =
   ## Move traveling spy scouts using centralized movement arbiter (DoD compliance)
   ## - Uses resolveMovementOrder() for all movement logic
   ## - Performs detection checks at intermediate systems
+  ## - Emits SpyScoutTravel events (Phase 7b)
   result = @[]
 
   # Collect traveling spy scout IDs first (don't modify table during iteration)
@@ -212,6 +213,24 @@ proc resolveSpyScoutTravel*(state: var GameState): seq[string] =
     if newLocation != oldLocation:
       # Scout moved - perform detection check at new location
       let detectionResult = checkTravelDetection(state, spyId, newLocation)
+
+      # Calculate travel progress
+      let totalJumps = updatedSpy.travelPath.len
+      let currentProgress = if totalJumps > 0:
+        updatedSpy.currentPathIndex
+      else:
+        0
+
+      # Emit SpyScoutTravel event (Phase 7b)
+      events.add(event_factory.spyScoutTravel(
+        spyId,
+        updatedSpy.owner,
+        oldLocation,
+        newLocation,
+        currentProgress,
+        totalJumps,
+        detectionResult.detected
+      ))
 
       if detectionResult.detected:
         if detectionResult.isAllyDetection:
