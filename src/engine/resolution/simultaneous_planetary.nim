@@ -12,6 +12,8 @@ import ../order_types
 import ../logger
 import ../squadron
 import ../../common/types/core
+import ./types as res_types
+import ./combat_resolution
 
 proc collectPlanetaryCombatIntents*(
   state: GameState,
@@ -134,9 +136,11 @@ proc resolvePlanetaryCombatConflict*(
 proc resolvePlanetaryCombat*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
 ): seq[PlanetaryCombatResult] =
   ## Main entry point: Resolve all planetary combat orders simultaneously
+  ## Then execute invasions/bombardments for winners at target
   result = @[]
 
   let intents = collectPlanetaryCombatIntents(state, orders)
@@ -148,6 +152,37 @@ proc resolvePlanetaryCombat*(
   for conflict in conflicts:
     let conflictResults = resolvePlanetaryCombatConflict(state, conflict, rng)
     result.add(conflictResults)
+
+  # Execute invasions/bombardments for winners WHO ARE AT THE TARGET
+  for res in result:
+    if res.outcome == ResolutionOutcome.Success and res.actualTarget.isSome:
+      # Verify fleet is at target location before executing
+      if res.fleetId in state.fleets:
+        let fleet = state.fleets[res.fleetId]
+        let targetSystem = res.actualTarget.get()
+
+        if fleet.location == targetSystem:
+          # Fleet is at target - execute the assault
+          logInfo(LogCategory.lcCombat, &"Executing planetary assault: {res.fleetId} at {targetSystem}")
+          let winnerHouse = res.houseId
+          if winnerHouse in orders:
+            for order in orders[winnerHouse].fleetOrders:
+              if order.fleetId == res.fleetId and
+                 order.orderType in [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
+                # Execute the planetary assault
+                case order.orderType
+                of FleetOrderType.Bombard:
+                  resolveBombardment(state, winnerHouse, order, events)
+                of FleetOrderType.Invade:
+                  resolveInvasion(state, winnerHouse, order, events)
+                of FleetOrderType.Blitz:
+                  resolveBlitz(state, winnerHouse, order, events)
+                else:
+                  discard
+                break  # Found and executed the order
+        else:
+          # Fleet not at target - skip this turn (will retry next turn if order persists)
+          logDebug(LogCategory.lcCombat, &"Skipping planetary assault: {res.fleetId} not at {targetSystem} (currently at {fleet.location})")
 
 proc wasPlanetaryCombatHandled*(
   results: seq[PlanetaryCombatResult],

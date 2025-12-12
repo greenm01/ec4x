@@ -50,8 +50,8 @@
 ## - Fleet movement happens LAST to position units for next Conflict Phase
 
 import std/[tables, options, strformat, strutils, algorithm, sequtils, random]
-import ../../../common/[types/core, types/units, types/tech]
-import ../../gamestate, ../../orders, ../../logger
+import ../../../common/[types/core, types/units, types/tech, types/combat]
+import ../../gamestate, ../../orders, ../../logger, ../../starmap
 import ../../order_types
 import ../fleet_order_execution  # For movement order execution
 import ../../economy/[types as econ_types, engine as econ_engine, facility_queue]
@@ -281,6 +281,112 @@ proc resolveMaintenancePhase*(state: var GameState,
     "Maintenance Phase - Fleet Movement"
   )
   logInfo(LogCategory.lcOrders, &"[MAINTENANCE STEP 1b] Completed ({combatReports.len} movement orders executed)")
+
+  # Step 1c: Move fleets toward their persistent order targets
+  # Check if OrderCompleted event fired - if not, move fleet toward target
+  logInfo(LogCategory.lcOrders, &"[MAINTENANCE STEP 1c] Moving fleets toward order targets... ({state.fleetOrders.len} persistent orders)")
+
+  var fleetsMovedCount = 0
+  for fleetId, persistentOrder in state.fleetOrders:
+    # Skip movement orders (already handled in Step 1b)
+    if isMovementOrder(persistentOrder.orderType):
+      continue
+
+    # Skip administrative orders (no automatic movement)
+    if isAdministrativeOrder(persistentOrder.orderType):
+      continue
+
+    # Skip colonization orders (handled in Conflict Phase with simultaneous resolution)
+    if persistentOrder.orderType == FleetOrderType.Colonize:
+      continue
+
+    # Skip special orders without movement (Salvage, ViewWorld)
+    if persistentOrder.orderType == FleetOrderType.Salvage or
+       persistentOrder.orderType == FleetOrderType.ViewWorld:
+      continue
+
+    # Skip if fleet doesn't exist
+    if fleetId notin state.fleets:
+      continue
+
+    let fleet = state.fleets[fleetId]
+
+    # Check if order has a target system
+    if persistentOrder.targetSystem.isSome:
+      let targetSystem = persistentOrder.targetSystem.get()
+
+      # Check if OrderCompleted event has fired for this order
+      # If completed, skip movement (mission accomplished)
+      var orderCompleted = false
+      for event in events:
+        if event.eventType == res_types_common.GameEventType.OrderCompleted and
+           event.fleetId.isSome and event.fleetId.get() == fleetId:
+          orderCompleted = true
+          logDebug(LogCategory.lcOrders, &"  {fleetId} mission completed, no movement needed")
+          break
+
+      if orderCompleted:
+        continue
+
+      # If fleet already at target, no movement needed
+      if fleet.location == targetSystem:
+        logDebug(LogCategory.lcOrders, &"  {fleetId} already at target {targetSystem} for {persistentOrder.orderType}")
+        continue
+
+      logDebug(LogCategory.lcOrders, &"  Moving {fleetId} toward {targetSystem} for {persistentOrder.orderType} order")
+
+      # Directly move fleet using starmap pathfinding
+      let pathResult = state.starMap.findPath(fleet.location, targetSystem, fleet)
+
+      if not pathResult.found:
+        logWarn(LogCategory.lcOrders, &"  No path found for {fleetId} from {fleet.location} to {targetSystem}")
+        continue
+
+      # Determine max jumps (1-2 per turn based on territory and lane types)
+      var maxJumps = 1
+      if pathResult.path.len >= 3:  # Need at least 2 jumps available
+        # Check 2-jump rule: all systems owned by house AND both jumps are Major lanes
+        var allSystemsOwned = true
+        for systemId in pathResult.path:
+          if systemId notin state.colonies or state.colonies[systemId].owner != fleet.owner:
+            allSystemsOwned = false
+            break
+
+        # Check if next two jumps are both major lanes
+        var nextTwoAreMajor = true
+        if allSystemsOwned:
+          for i in 0..<min(2, pathResult.path.len - 1):
+            let fromSys = pathResult.path[i]
+            let toSys = pathResult.path[i + 1]
+
+            # Find lane type between these systems
+            var laneIsMajor = false
+            for lane in state.starMap.lanes:
+              if (lane.source == fromSys and lane.destination == toSys) or
+                 (lane.source == toSys and lane.destination == fromSys):
+                if lane.laneType == LaneType.Major:
+                  laneIsMajor = true
+                break
+
+            if not laneIsMajor:
+              nextTwoAreMajor = false
+              break
+
+        # Apply 2-jump rule for major lanes in friendly territory
+        if allSystemsOwned and nextTwoAreMajor:
+          maxJumps = 2
+
+      # Move fleet along path
+      let jumpsToMove = min(maxJumps, pathResult.path.len - 1)
+      let newLocation = pathResult.path[jumpsToMove]
+
+      # Update fleet location
+      state.fleets[fleetId].location = newLocation
+      fleetsMovedCount += 1
+
+      logDebug(LogCategory.lcOrders, &"  Moved {fleetId} {jumpsToMove} jump(s) to {newLocation}")
+
+  logInfo(LogCategory.lcOrders, &"[MAINTENANCE STEP 1c] Completed ({fleetsMovedCount} fleets moved toward targets)")
 
   # ===================================================================
   # STEPS 4-6: POPULATION, TERRAFORMING, CLEANUP
