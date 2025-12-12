@@ -17,6 +17,7 @@ import ../state_helpers
 import ../starmap
 import ../initialization/colony
 import ../colonization/engine as col_engine
+import ../standing_orders
 import types as res_types
 import event_factory/init as event_factory
 import ../../common/types/core
@@ -186,6 +187,20 @@ proc establishColony(
     houseId,
     systemId,
     result.prestigeAwarded
+  ))
+
+  # Remove colonization order on success (mission complete)
+  if fleetId in state.fleetOrders:
+    state.fleetOrders.del(fleetId)
+    standing_orders.resetStandingOrderGracePeriod(state, fleetId)
+    logDebug(LogCategory.lcColonization,
+      &"Fleet {fleetId} colonization order removed (mission complete)")
+
+  # Generate OrderCompleted event for successful colonization
+  events.add(event_factory.orderCompleted(
+    houseId, fleetId, "Colonize",
+    details = &"established colony at {systemId}",
+    systemId = some(systemId)
   ))
 
   result.success = true
@@ -472,6 +487,10 @@ proc resolveColonization*(
           updatedRes.originalTarget = originalTargets[res.fleetId]
           logInfo(LogCategory.lcColonization,
                   &"House {res.houseId} fallback colonization succeeded at {res.actualTarget.get()}")
+          # Remove colonization order for successful fallback
+          if res.fleetId in state.fleetOrders:
+            state.fleetOrders.del(res.fleetId)
+            standing_orders.resetStandingOrderGracePeriod(state, res.fleetId)
         result.add(updatedRes)
 
       nextRoundLosers.add(losers)

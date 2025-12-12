@@ -13,6 +13,7 @@ import ../../common/logger as common_logger
 import ../gamestate, ../orders, ../fleet, ../squadron, ../logger, ../order_types
 import ../diplomacy/[types as dip_types]
 import ../commands/[executor]
+import ../standing_orders
 import ./[types as res_types, fleet_orders, combat_resolution, simultaneous]
 import ./event_factory/init as event_factory
 
@@ -146,13 +147,27 @@ proc validateOrderAtExecution(
         reason: "Fleet has spacelift ships (spy missions require scout-only)"
       )
 
+  of FleetOrderType.Patrol:
+    # Check if patrol system is now hostile (lost to enemy)
+    if order.targetSystem.isSome:
+      let targetId = order.targetSystem.get()
+      if targetId in state.colonies:
+        let colony = state.colonies[targetId]
+        if colony.owner != houseId:
+          let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(colony.owner)
+          if relation == dip_types.DiplomaticState.Enemy:
+            return ExecutionValidationResult(
+              valid: false, shouldAbort: true,
+              reason: "Patrol system captured by enemy"
+            )
+
   else:
     discard
 
   # Order is valid at execution time
   return ExecutionValidationResult(valid: true, shouldAbort: false, reason: "")
 
-proc executeFleetOrdersFiltered*(
+proc performOrderMaintenance*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
   events: var seq[res_types.GameEvent],
@@ -161,8 +176,8 @@ proc executeFleetOrdersFiltered*(
   categoryFilter: OrderCategoryFilter,
   phaseDescription: string
 ) =
-  ## Execute fleet orders that match the category filter
-  ## This is the core fleet order execution logic shared across phases
+  ## Manage fleet order lifecycle: validation, completion detection, and execution
+  ## This is the core fleet order maintenance logic shared across phases
 
   logDebug(LogCategory.lcOrders, &"[{phaseDescription}] Starting fleet order execution")
 
@@ -344,10 +359,12 @@ proc executeFleetOrdersFiltered*(
       logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} failed validation")
       if actualOrder.fleetId in state.fleetOrders:
         state.fleetOrders.del(actualOrder.fleetId)
+        standing_orders.resetStandingOrderGracePeriod(state, actualOrder.fleetId)
     elif outcome == OrderOutcome.Aborted:
       # Order aborted (target lost, conditions changed) - remove from queue
       logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} aborted")
       if actualOrder.fleetId in state.fleetOrders:
         state.fleetOrders.del(actualOrder.fleetId)
+        standing_orders.resetStandingOrderGracePeriod(state, actualOrder.fleetId)
 
   logDebug(LogCategory.lcOrders, &"[{phaseDescription}] Completed fleet order execution")

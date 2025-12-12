@@ -789,6 +789,22 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
                         action: &"Move to blockade target at system-{targetColony}")
 
 # =============================================================================
+# Grace Period Management
+# =============================================================================
+
+proc resetStandingOrderGracePeriod*(state: var GameState, fleetId: FleetId) =
+  ## Reset activation delay countdown when explicit order completes
+  ## Gives player time to issue new orders before standing order reactivates
+  ## Called after every order completion (via state.fleetOrders.del)
+  if fleetId in state.standingOrders:
+    var standingOrder = state.standingOrders[fleetId]
+    standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
+    state.standingOrders[fleetId] = standingOrder
+    logDebug(LogCategory.lcOrders,
+      &"Fleet {fleetId} standing order grace period reset to " &
+      &"{standingOrder.activationDelayTurns} turn(s)")
+
+# =============================================================================
 # Main Execution Function
 # =============================================================================
 

@@ -109,3 +109,21 @@ proc orderCompleted*(
     orderType: some(orderType),
     details: some(details)
   )
+
+proc fleetArrived*(
+  houseId: HouseId,
+  fleetId: FleetId,
+  orderType: string,
+  systemId: SystemId
+): event_types.GameEvent =
+  ## Fleet arrived at order target system (ready for order execution)
+  ## Generated in Maintenance Phase, checked in Conflict/Income phase
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.FleetArrived,
+    turn: 0, # Will be set by event dispatcher
+    houseId: some(houseId),
+    systemId: some(systemId),
+    description: &"Fleet {fleetId} arrived at {systemId} ({orderType} ready)",
+    fleetId: some(fleetId),
+    orderType: some(orderType)
+  )
