@@ -377,8 +377,8 @@ Starbases have fixed combat statistics that scale with Weapons (WEP) technology:
 
 Starbases participate in detection for ALL combat phases occurring in their system:
 
-- **Space Combat** ([Section 7.3](combat.md#73-space-combat)): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
-- **Orbital Combat** ([Section 7.4](combat.md#74-orbital-combat)): Starbases detect AND fight as primary orbital defenders using their full AS/DS values
+- **Space Combat** ([Section 7.3](07-combat.md#73-space-combat)): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
+- **Orbital Combat** ([Section 7.4](07-combat.md#74-orbital-combat)): Starbases detect AND fight as primary orbital defenders using their full AS/DS values
 
 **Rationale**: Advanced sensors provide system-wide detection support; physical weapons only engage threats to your colony itself.
 
