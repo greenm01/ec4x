@@ -6,12 +6,13 @@
 ##
 ## See docs/architecture/standing-orders.md for complete design.
 
-import std/[tables, options, strformat, algorithm]
+import std/[tables, options, strformat, algorithm, sets, sequtils]
 import gamestate, orders, fleet, starmap, logger, spacelift
 import order_types
 import ../common/types/[core, planets]
 import config/standing_orders_config
 import resolution/[event_factory/init as event_factory, types as resolution_types]
+import intelligence/types as intel_types
 
 export StandingOrderType, StandingOrder, StandingOrderParams
 
@@ -22,6 +23,106 @@ type
     action*: string               # Description of action taken
     error*: string                # Error message if failed
     updatedParams*: Option[StandingOrderParams]  # Updated params (e.g., patrol index)
+
+# =============================================================================
+# Fog-of-War Helpers (DRY Principle)
+# =============================================================================
+
+proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId] =
+  ## Returns all systems the house knows about through fog-of-war
+  ## Used by standing orders to avoid omniscient decisions
+  ##
+  ## **Known systems include:**
+  ## - Own colonies (always visible)
+  ## - Systems adjacent to own colonies (hex visibility)
+  ## - Scouted systems (intelligence reports)
+  ## - Enemy colonies with intel reports
+  result = initHashSet[SystemId]()
+
+  let house = state.houses[houseId]
+  let intel = house.intelligence
+
+  # 1. Own colonies (always known)
+  for colonyId, colony in state.colonies:
+    if colony.owner == houseId:
+      result.incl(colonyId)
+      # Add adjacent systems (hex visibility from owned colonies)
+      for lane in state.starMap.lanes:
+        if lane.source == colonyId:
+          result.incl(lane.destination)
+        elif lane.destination == colonyId:
+          result.incl(lane.source)
+
+  # 2. Systems with intelligence reports (scouted)
+  for systemId in intel.systemReports.keys:
+    result.incl(systemId)
+
+  # 3. Enemy colonies we know about
+  for colonyId in intel.colonyReports.keys:
+    result.incl(colonyId)
+
+proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bool =
+  ## Check if house has intel on a colony at given system
+  ## Returns true if:
+  ## - System has own colony (always known)
+  ## - System has enemy colony with intel report
+
+  # Own colony at system
+  if systemId in state.colonies and state.colonies[systemId].owner == houseId:
+    return true
+
+  # Enemy colony with intel report
+  let house = state.houses[houseId]
+  if systemId in house.intelligence.colonyReports:
+    return true
+
+  return false
+
+proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
+                                   systemId: SystemId): seq[Fleet] =
+  ## Returns enemy fleets at system that house has intel on
+  ## Used by AutoEvade and other defensive standing orders
+  ##
+  ## **Detection sources:**
+  ## - Fleet movement history (detected by scouts/surveillance)
+  ## - Combat encounters (surviving ships report enemy presence)
+  ## - System intelligence reports (SpySystem missions)
+  result = @[]
+
+  let house = state.houses[houseId]
+  let intel = house.intelligence
+
+  # Check system intel report for fleet presence
+  let systemIntel = if systemId in intel.systemReports:
+                      some(intel.systemReports[systemId])
+                    else:
+                      none(intel_types.SystemIntelReport)
+  if systemIntel.isSome:
+    # We have recent intel on fleets in this system
+    let report = systemIntel.get()
+    for fleetIntel in report.detectedFleets:
+      # Only return fleets that are actually still there
+      if fleetIntel.fleetId in state.fleets:
+        let fleet = state.fleets[fleetIntel.fleetId]
+        if fleet.location == systemId and fleet.owner != houseId:
+          result.add(fleet)
+
+  # Check fleet movement history for fleets detected at this location
+  for fleetId, history in intel.fleetMovementHistory:
+    if history.owner == houseId:
+      continue  # Skip own fleets
+
+    # Check if this fleet was last seen at this system
+    if history.sightings.len > 0:
+      let lastSighting = history.sightings[^1]  # Most recent sighting
+      if lastSighting.systemId == systemId:
+        # Verify fleet still exists and is at this location
+        if fleetId in state.fleets:
+          let fleet = state.fleets[fleetId]
+          if fleet.location == systemId:
+            # Avoid duplicates
+            if not result.anyIt(it.id == fleetId):
+              result.add(fleet)
 
 # =============================================================================
 # Execution Logic - Per Order Type
@@ -146,12 +247,20 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
   ## Find best uncolonized system for colonization
   ## Returns nearest system with preferred planet class
   ## Distance calculated via jump lanes (pathfinding), not hex distance
+  ##
+  ## **Fog-of-War Compliance:**
+  ## Only considers systems the house knows about (uses getKnownSystems helper)
   var candidates: seq[(SystemId, int, PlanetClass)] = @[]
 
-  # Scan all systems within range
-  for systemId, system in state.starMap.systems:
-    # Skip if already colonized
-    if systemId in state.colonies:
+  let houseId = fleet.owner
+
+  # Get known systems (fog-of-war compliant)
+  let knownSystems = getKnownSystems(state, houseId)
+
+  # Scan known systems within range
+  for systemId in knownSystems:
+    # Skip if we know it's colonized
+    if hasColonyIntel(state, houseId, systemId):
       continue
 
     # Check distance via jump lanes
@@ -164,7 +273,7 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
       continue
 
     # Get planet class
-    let planetClass = system.planetClass
+    let planetClass = state.starMap.systems[systemId].planetClass
     candidates.add((systemId, distance, planetClass))
 
   if candidates.len == 0:
@@ -601,26 +710,18 @@ proc executeAutoEvade(state: var GameState, fleetId: FleetId,
   # Calculate our strength
   let ourStrength = calculateFleetStrength(fleet)
 
-  # Find hostile fleets at current location
+  # Find hostile fleets at current location (fog-of-war compliant)
+  let knownEnemyFleets = getKnownEnemyFleetsInSystem(state, fleet.owner, currentLocation)
   var totalHostileStrength = 0
-  var hostileCount = 0
+  let hostileCount = knownEnemyFleets.len
 
-  for otherFleetId, otherFleet in state.fleets:
-    if otherFleetId == fleetId:
-      continue
-    if otherFleet.location != currentLocation:
-      continue
+  for enemyFleet in knownEnemyFleets:
+    let hostileStrength = calculateFleetStrength(enemyFleet)
+    totalHostileStrength += hostileStrength
 
-    # Check diplomatic status - TODO: integrate with diplomacy system
-    # For now, treat all non-owned fleets as potential hostiles
-    if otherFleet.owner != fleet.owner:
-      let hostileStrength = calculateFleetStrength(otherFleet)
-      totalHostileStrength += hostileStrength
-      hostileCount += 1
-
-      logDebug(LogCategory.lcOrders,
-               &"{fleetId} AutoEvade: Detected {otherFleetId} " &
-               &"(strength {hostileStrength})")
+    logDebug(LogCategory.lcOrders,
+             &"{fleetId} AutoEvade: Detected {enemyFleet.id} " &
+             &"(strength {hostileStrength}, intel-based)")
 
   if hostileCount == 0:
     # No hostiles - hold position
@@ -730,10 +831,18 @@ proc executeBlockadeTarget(state: var GameState, fleetId: FleetId,
            &"{fleetId} BlockadeTarget: Target=system-{targetColony}, " &
            &"Current=system-{fleet.location}")
 
-  # Verify target colony exists
+  # Verify we have intel on target colony (fog-of-war compliant)
+  if not hasColonyIntel(state, fleet.owner, targetColony):
+    logWarn(LogCategory.lcOrders,
+            &"{fleetId} BlockadeTarget failed: No intel on colony at system-{targetColony}")
+    return ExecutionResult(success: false,
+                          error: "No intel on target colony")
+
+  # Verify target exists and is enemy colony
   if targetColony notin state.colonies:
     logWarn(LogCategory.lcOrders,
-            &"{fleetId} BlockadeTarget failed: Colony at system-{targetColony} no longer exists")
+            &"{fleetId} BlockadeTarget failed: Colony at system-{targetColony} no longer exists " &
+            &"(intel may be stale)")
     return ExecutionResult(success: false,
                           error: "Target colony no longer exists")
 
