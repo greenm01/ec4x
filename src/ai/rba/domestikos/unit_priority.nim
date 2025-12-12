@@ -168,7 +168,7 @@ proc getStrategicValueScore(unit: ShipClass): float =
 
 proc getBudgetEfficiencyScore(unit: ShipClass, budget: int): float =
   ## Get budget efficiency score (0.0 - 1.0 points)
-  ## Rewards affordable units within budget constraints
+  ## Rewards filling the budget slot (higher cost ratio is better)
   let unitCost = getShipConstructionCost(unit)
 
   if unitCost > budget:
@@ -176,12 +176,10 @@ proc getBudgetEfficiencyScore(unit: ShipClass, budget: int): float =
 
   let costRatio = unitCost.float / budget.float
 
-  if costRatio <= 0.5:
-    return 1.0  # Very affordable (<= 50% of budget)
-  elif costRatio <= 0.75:
-    return 0.75  # Affordable (<= 75% of budget)
-  else:
-    return 0.5  # Barely affordable (<= 100% of budget)
+  # Score is directly proportional to budget utilization
+  # This incentivizes building the most expensive (and powerful) ship
+  # that fits within the per-slot budget for capacity fillers.
+  return costRatio
 
 proc calculateUnitPriority*(
   unit: ShipClass,
