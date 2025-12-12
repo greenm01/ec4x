@@ -14,8 +14,8 @@ type
     GuardPlanet       # Planetary defense
     BlockadePlanet    # Planetary siege
     Bombard           # Orbital bombardment
-    Invade              # Ground assault
-    Blitz               # Combined bombardment + invasion
+    Invade            # Ground assault
+    Blitz             # Combined bombardment + invasion
     Colonize          # Establish colony
     SpyPlanet         # Intelligence gathering on planet
     SpySystem         # Reconnaissance of system
