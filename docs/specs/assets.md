@@ -20,7 +20,7 @@ There are three classes of jump lanes that determine which ship types can traver
   
   <!-- LANE_DISTRIBUTION_END -->
 
-This distribution ensures 85% of lanes allow colonization ships through, reducing strategic bottlenecks while maintaining tactical complexity. Movement across the lanes is explained in [Section 6.1](operations.md#61-jump-lanes).
+This distribution ensures 85% of lanes allow colonization ships through, reducing strategic bottlenecks while maintaining tactical complexity. Movement across the lanes is explained in [Section 6.1](06-operations.md#61-jump-lanes).
 
 **Hub Connectivity**
 
@@ -44,7 +44,7 @@ Roll on the planet class and system resources tables below to determine the attr
 
 Each newly established colony begins as Level I and has potential to develop into the max Population Unit (PU) for that planet. Move colonists from larger colonies to smaller colonies to increase population growth over the natural birth rate.
 
-Advances in terraforming tech allow your planets to upgrade class and living conditions. For terraforming research and costs, see [Section 4.6](research_development.md#46-terraforming-ter).
+Advances in terraforming tech allow your planets to upgrade class and living conditions. For terraforming research and costs, see [Section 4.6](04-research_development.md#46-terraforming-ter).
 
 **Planet Class Table**
 
@@ -61,7 +61,7 @@ Advances in terraforming tech allow your planets to upgrade class and living con
 \*If the roll above is a natural eight (8), add a +1 modifier to your roll on the System Resources Table.
 \*\*If the roll is a natural nine (9) add a +2 modifier.
 
-For the relationship between PU and PTU, including economic implications and formulas, see [Section 3.1](economy.md#31-principles).
+For the relationship between PU and PTU, including economic implications and formulas, see [Section 3.1](03-economy.md#31-principles).
 
 **System Resources Table**
 
@@ -73,13 +73,13 @@ For the relationship between PU and PTU, including economic implications and for
 | 8, 9               | Rich          |
 | 10+                | Very Rich     |
 
-For how Raw Materials affect colony economic output, see the RAW INDEX table in [Section 3.1](economy.md#31-principles).
+For how Raw Materials affect colony economic output, see the RAW INDEX table in [Section 3.1](03-economy.md#31-principles).
 
 ## 2.3 Military
 
 ### 2.3.1 Space Force Ships
 
-The base game includes a number of imperial classed space combatants listed in [Section 10.1](reference.md#101-space-force-wep1).
+The base game includes a number of imperial classed space combatants listed in [Section 10.1](10-reference.md#101-space-force-wep1).
 
 ### 2.3.2 Spacelift Command
 
@@ -87,7 +87,7 @@ Spacelift Command provides commerce and transportation services supporting your 
 
 Spacelift assets have no offensive weapons capability—unescorted units are easily destroyed by rival forces.
 
-Spacelift Command attributes are listed in [Section 10.3](reference.md#103-spacelift-command-wep1).
+Spacelift Command attributes are listed in [Section 10.3](10-reference.md#103-spacelift-command-wep1).
 
 #### 2.3.2.1 Spaceports
 
@@ -96,9 +96,9 @@ Spaceports are large ground based facilities that launch heavy-lift ships and eq
 **Construction Cost**: 20 PP  
 **Construction Time**: 1 turn  
 **Base Capacity**: 5 docks  
-**Capacity Scaling**: Dock capacity increases with CST tech (see [Section 4.5](research_development.md#45-construction-cst))
+**Capacity Scaling**: Dock capacity increases with CST tech (see [Section 4.5](04-research_development.md#45-construction-cst))
 
-**Planet-side Ship Construction**: Ships built at spaceports incur a **100% PP cost penalty** due to orbital launch requirements. See [Section 5.2](economy.md#52-planet-side-construction) for construction rules.
+**Planet-side Ship Construction**: Ships built at spaceports incur a **100% PP cost penalty** due to orbital launch requirements. See [Section 5.2](05-construction.md#52-planet-side-construction) for construction rules.
 
 **Facility Repair**: Spaceports handle repairs for facility-class units (Starbases). These repairs do NOT consume dock capacity, allowing simultaneous facility repair and ship construction.
 
@@ -114,11 +114,11 @@ The majority of your ship construction occurs at these important facilities.
 **Construction Time**: 2 turns
 **Prerequisite**: Requires operational Spaceport
 **Base Capacity**: 10 docks
-**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](research_development.md#45-construction-cst))
+**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](04-research_development.md#45-construction-cst))
 
 Shipyards are equipped with construction docks and are fixed in orbit. Build multiple yards to increase your construction capacity at the colony.
 
-**Orbital Ship Construction**: Ships built at shipyards use standard PP costs with no penalties. See [Section 5.4](economy.md#54-orbital-construction).
+**Orbital Ship Construction**: Ships built at shipyards use standard PP costs with no penalties. See [Section 5.4](05-construction.md#54-orbital-construction).
 
 **Ship Repairs**: Shipyards cannot repair ships - ship repairs require Drydocks (see [Section 2.3.2.3](#23223-drydocks)).
 
@@ -130,11 +130,11 @@ Drydocks are specialized orbital facilities dedicated to ship repair operations.
 **Construction Time**: 2 turns
 **Prerequisite**: Requires operational Spaceport
 **Base Capacity**: 10 docks
-**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](research_development.md#45-construction-cst))
+**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](04-research_development.md#45-construction-cst))
 
 Drydocks are repair-only facilities and cannot construct ships. They are fixed in orbit alongside shipyards. Build multiple drydocks to increase your repair capacity at the colony.
 
-**Ship Repairs**: Only drydocks can repair ships. Repair costs 25% of ship's original PP cost and completes in 1 turn. See [Section 5.5](economy.md#55-orbital-repair).
+**Ship Repairs**: Only drydocks can repair ships. Repair costs 25% of ship's original PP cost and completes in 1 turn. See [Section 5.5](05-construction.md#55-orbital-repair).
 
 **Construction**: Drydocks cannot construct ships - ship construction requires Shipyards or Spaceports.
 
@@ -146,7 +146,7 @@ ETACs plant a seed by establishing colonies on uninhabited planets. They may be 
 **Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
 **Combat**: Zero offensive/defensive capability
 
-You must load ETACs with colonists before departure. For STL capacity progression, see [Section 4.9](research_development.md#49-strategic-lift-stl).
+You must load ETACs with colonists before departure. For STL capacity progression, see [Section 4.9](04-research_development.md#49-strategic-lift-stl).
 
 #### 2.3.2.5 Troop Transports
 
@@ -156,7 +156,7 @@ Troop Transports are specialized ships that taxi Space Marine divisions between 
 **Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
 **Combat**: Zero offensive/defensive capability
 
-For STL capacity progression, see [Section 4.9](research_development.md#49-strategic-lift-stl).
+For STL capacity progression, see [Section 4.9](04-research_development.md#49-strategic-lift-stl).
 
 ### 2.3.3 Squadrons
 
@@ -168,7 +168,7 @@ In non-hostile systems, you can reassign ships in a squadron to an already exist
 
 You can only commission squadrons in systems with a functioning shipyard.
 
-**Command Rating Enhancement**: CR can be increased through Command (CMD) research. See [Section 4.10](research_development.md#410-command-cmd) for CMD progression.
+**Command Rating Enhancement**: CR can be increased through Command (CMD) research. See [Section 4.10](04-research_development.md#410-command-cmd) for CMD progression.
 
 ### 2.3.4 Fleets
 
@@ -203,7 +203,7 @@ Where:
 
 **Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest squadrons auto-disband.
 
-For FD research progression and capacity multipliers, see [Section 4.12](research_development.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](economy.md#36-fighter-squadron-economics).
+For FD research progression and capacity multipliers, see [Section 4.12](04-research_development.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](03-economy.md#36-fighter-squadron-economics).
 
 **Carrier Operations**:
 
@@ -221,11 +221,11 @@ Fighter Squadrons can be loaded onto carriers for mobility:
 - ACO II: 6 FS capacity
 - ACO III: 8 FS capacity
 
-For Advanced Carrier Operations (ACO) research, see [Section 4.13](research_development.md#413-advanced-carrier-operations-aco).
+For Advanced Carrier Operations (ACO) research, see [Section 4.13](04-research_development.md#413-advanced-carrier-operations-aco).
 
 **Combat Mechanics**:
 
-Fighter squadrons based at your colony automatically participate in orbital defense (see [Section 7.4](operations.md#74-orbital-combat)). Carrier-based fighters participate in space combat with their carrier's task force.
+Fighter squadrons based at your colony automatically participate in orbital defense (see [Section 7.4](07-combat.md#74-orbital-combat)). Carrier-based fighters participate in space combat with their carrier's task force.
 
 Each FS contributes:
 
@@ -268,7 +268,7 @@ Detection compares total effective ELI (including modifiers) against number of S
 
 **Starbase Modifier**: Starbases add +2 to effective ELI level for detection rolls, representing superior sensor arrays and dedicated detection systems.
 
-For ELI research progression, see [Section 4.8](research_development.md#48-electronic-intelligence-eli).
+For ELI research progression, see [Section 4.8](04-research_development.md#48-electronic-intelligence-eli).
 
 **Intelligence Gathering**:
 
@@ -327,7 +327,7 @@ Random Threshold Roll (1D8): Result is 5
 Detection Roll (1D20): If the roll is 5 or higher, the Raider is detected
 ```
 
-For CLK research progression, see [Section 4.7](research_development.md#47-cloaking-clk). For ELI research, see [Section 4.8](research_development.md#48-electronic-intelligence-eli).
+For CLK research progression, see [Section 4.7](04-research_development.md#47-cloaking-clk). For ELI research, see [Section 4.8](04-research_development.md#48-electronic-intelligence-eli).
 
 **Mission Capabilities**:
 
@@ -392,14 +392,14 @@ Starbases boost both **population growth rate** and **industrial production outp
 
 - +5% per operational starbase, max +15% (3 starbases)
 - Example: Natural birthrate 2% → With 3 starbases: 2% × (1 + 0.15) = 2.3%
-- Applied in population growth formula in [Section 3.5](economy.md#35-population-growth)
+- Applied in population growth formula in [Section 3.5](03-economy.md#35-population-growth)
 
 **Industrial Production Bonus**:
 
 - +5% per operational starbase, max +15% (3 starbases)
 - Applied to IU component of GCO formula: `IU × EL_MOD × CST_MOD × (1 + PROD_GROWTH + STARBASE_BONUS)`
 - Example: 100 IU base output → With 3 starbases: 100 × (1 + 0.15) = 115 output
-- See [Section 3.1](economy.md#31-principles) for complete GCO formula
+- See [Section 3.1](03-economy.md#31-principles) for complete GCO formula
 
 **Repair**:
 
@@ -421,12 +421,12 @@ Planetary Shields (PS) and Ground Batteries (GB) are planet based assets that pr
 
 Planetary Shields protect your colonies from orbital bombardment. With increasing Shield (SLD) levels, they have a higher probability of absorbing direct hits and become more powerful.
 
-**Construction**: Requires SLD research (see [Section 4.4](economy.md#44-shields-sld))  
+**Construction**: Requires SLD research (see [Section 4.4](04-research_development.md#44-shields-sld))  
 **Cost**: Varies by SLD level  
 **Limit**: One shield per colony  
 **Upgrading**: Requires salvaging old shield (50% refund) and building new shield at higher SLD tier
 
-For SLD research progression, absorption percentages, and shield DS values, see [Section 4.4](research_development.md#44-shields-sld).
+For SLD research progression, absorption percentages, and shield DS values, see [Section 4.4](04-research_development.md#44-shields-sld).
 
 You can rebuild shields within one turn if destroyed.
 
@@ -438,7 +438,7 @@ Ground Batteries are static defense units positioned on your planet's surface. T
 **Quantity Limit**: No limit—you can build as many as you can afford  
 **Technology**: Static stats, no WEP scaling
 
-For bombardment mechanics and how shields/batteries interact, see [Section 7.5](combat.md#75-planetary-bombardment).
+For bombardment mechanics and how shields/batteries interact, see [Section 7.5](07-combat.md#75-planetary-bombardment).
 
 ### 2.4.8 Planet-Breaker
 
@@ -446,7 +446,7 @@ Planet-Breakers (PB) are high-technology, late-game siege superweapons designed 
 
 **Technology & Construction Requirement**:
 
-**Prerequisite**: CST 10 (see [Section 4.5](economy.md#45-construction-cst))  
+**Prerequisite**: CST 10 (see [Section 4.5](04-research_development.md#45-construction-cst))  
 **Construction Cost**: 400 PP  
 **Construction Time**: 1 turn  
 **Construction Location**: Requires Shipyard
@@ -465,7 +465,7 @@ Planet-Breakers completely ignore planetary shields during bombardment (SLD 1–
 
 **Bombardment Operations**:
 
-During planetary bombardment ([Section 7.5](combat.md#75-planetary-bombardment)):
+During planetary bombardment ([Section 7.5](07-combat.md#75-planetary-bombardment)):
 
 - Resolve Planet-Breaker AS separately from conventional ships
 - Planet-Breaker hits bypass shields entirely and strike ground batteries directly
@@ -495,7 +495,7 @@ Armies (AA) garrison your colonies and eradicate invaders. Their orders are to t
 
 Marines fight alongside your Army if garrisoned planet-side.
 
-For ground combat mechanics, see [Section 7.6](combat.md#76-ground-combat).
+For ground combat mechanics, see [Section 7.6](07-combat.md#76-planetary-invasion-and-blitz).
 
 ## 2.5 Space Guilds
 
@@ -511,7 +511,7 @@ When a Great House loses industrial capacity and can no longer support its capit
 
 **Capacity Formula**: Each house can maintain `max(8, floor(Total_House_IU ÷ 100) × 2)` capital squadrons. Capital ships are defined as vessels with Command Rating (CR) ≥ 7.
 
-For detailed capacity rules and economic implications, see [Section 4.11](research_development.md#411-capital-ship-capacity).
+For detailed capacity rules and economic implications, see [Section 4.11](04-research_development.md#411-capital-ship-capacity).
 
 **Enforcement**: When a house exceeds its capital squadron capacity (typically due to IU loss from colony damage, blockades, or territory loss), excess squadrons are immediately claimed by the Space Guilds. Priority for removal:
 
@@ -528,4 +528,4 @@ The house receives 50% of each ship's original build cost as salvage payment, cr
 - Crippled ships are vulnerable to involuntary salvage
 - Repair your crippled flagships quickly to avoid losing them
 
-**Reference**: See [Table 10.5](reference.md#105-game-limits-summary) for complete squadron limit details.
+**Reference**: See [Table 10.5](10-reference.md#105-game-limits-summary) for complete squadron limit details.

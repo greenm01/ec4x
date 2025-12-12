@@ -114,7 +114,7 @@ WEP affects all newly constructed ships and retrofitting existing ships:
 - Ship is unavailable during retrofit (cannot move or fight)
 - After retrofit, ship uses new WEP tier statistics
 
-For complete ship statistics by WEP level, see [Section 10.0](reference.md#100-unit-reference-tables).
+For complete ship statistics by WEP level, see [Section 10.0](10-reference.md#100-unit-reference-tables).
 
 **Strategic Considerations:**
 
@@ -145,7 +145,7 @@ Shield technology protects colonies from orbital bombardment, absorbing incoming
 
 After researching an SLD tier, Houses can construct Planetary Shields at any colony:
 
-- **Construction Cost**: Varies by SLD level (see [Section 10.0](reference.md#100-unit-reference-tables))
+- **Construction Cost**: Varies by SLD level (see [Section 10.0](10-reference.md#100-unit-reference-tables))
 - **Construction Time**: 1 turn
 - **Limit**: One shield per colony
 - **Upgrading**: Requires salvaging old shield (50% refund) and building new shield
@@ -156,7 +156,7 @@ During orbital bombardment, each incoming hit from the attacking fleet has a pro
 
 The shield itself has DS that must be overcome before it can be destroyed. Once destroyed, subsequent bombardment rounds bypass shields entirely until a new shield is constructed.
 
-For complete bombardment rules, see [Section 7.5](operations.md#75-planetary-bombardment).
+For complete bombardment rules, see [Section 7.5](07-combat.md#75-planetary-bombardment).
 
 **Strategic Considerations:**
 
@@ -219,7 +219,7 @@ Certain ship classes require minimum CST levels to construct:
 - **CST VIII**: Super-Dreadnoughts (SD)
 - **CST X**: Planet-Breakers (PB)
 
-For complete hull specifications, see [Section 10.1](reference.md#101-space-force-wep1).
+For complete hull specifications, see [Section 10.1](10-reference.md#101-space-force-wep1).
 
 **GCO Modifier:**
 
@@ -261,7 +261,7 @@ Terraforming technology allows colonies to upgrade their planet class, increasin
 1. Research the TER tier corresponding to desired upgrade
 2. Spend required PP at target colony during Income Phase
 3. Planet class upgrades immediately
-4. Maximum PU capacity increases per new planet class (see [Section 2.2](assets.md#22-solar-systems))
+4. Maximum PU capacity increases per new planet class (see [Section 2.2](02-assets.md#22-solar-systems))
 5. RAW_INDEX efficiency improves if applicable
 
 **Limits:**
@@ -298,7 +298,7 @@ Raiders are specialized covert vessels that conduct intelligence gathering, sabo
 
 **Detection Mechanics:**
 
-Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Raiders. Detection rolls compare the Raider's CLK level against the defender's ELI level using the Raider Detection Table in [Section 2.4.3](assets.md#243-raiders).
+Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Raiders. Detection rolls compare the Raider's CLK level against the defender's ELI level using the Raider Detection Table in [Section 2.4.3](02-assets.md#243-raiders).
 
 Higher CLK tiers significantly reduce detection probability, enabling Raiders to operate deep in enemy territory with relative impunity.
 
@@ -309,7 +309,7 @@ Higher CLK tiers significantly reduce detection probability, enabling Raiders to
 - **Assassination**: Eliminate enemy commanders (advanced missions)
 - **Blockade Running**: Covert supply runs to besieged colonies
 
-For complete Raider specifications and mission types, see [Section 2.4.3](assets.md#243-raiders) and [Section 9.0](intelligence.md#90-intelligence-system).
+For complete Raider specifications and mission types, see [Section 2.4.3](02-assets.md#243-raiders) and [Section 9.0](09-intelligence.md#90-intelligence-system).
 
 **Strategic Considerations:**
 
@@ -339,11 +339,11 @@ Electronic Intelligence represents sensor technology, signals analysis, and dete
 
 ELI determines a colony's ability to detect enemy Scouts and Raiders:
 
-**Scout Detection**: Uses the Scout Detection Table in [Section 2.4.2](assets.md#242-scouts). Detection probability increases with ELI tier and multiple Scout presence (mesh network effect).
+**Scout Detection**: Uses the Scout Detection Table in [Section 2.4.2](02-assets.md#242-scouts). Detection probability increases with ELI tier and multiple Scout presence (mesh network effect).
 
-**Raider Detection**: Uses the Raider Detection Table in [Section 2.4.3](assets.md#243-raiders). Higher ELI levels significantly increase detection probability against cloaked Raiders.
+**Raider Detection**: Uses the Raider Detection Table in [Section 2.4.3](02-assets.md#243-raiders). Higher ELI levels significantly increase detection probability against cloaked Raiders.
 
-**Starbase Synergy**: Starbases provide a +2 ELI modifier for detection rolls, making them critical for defending high-value colonies against covert operations. See [Section 2.4.4](assets.md#244-starbases).
+**Starbase Synergy**: Starbases provide a +2 ELI modifier for detection rolls, making them critical for defending high-value colonies against covert operations. See [Section 2.4.4](02-assets.md#244-starbases).
 
 **Strategic Considerations:**
 
@@ -419,7 +419,7 @@ Effective CR = Base CR + CMD Bonus
 
 Example: A Battleship (BB) has Base CR 9. At CMD III, Effective CR = 9 + 2 = 11.
 
-Higher CR allows flagships to command more ships within their squadron, as each ship consumes Command Cost (CC) based on its class. For squadron composition rules and CC values, see [Section 2.3.3](assets.md#233-squadrons).
+Higher CR allows flagships to command more ships within their squadron, as each ship consumes Command Cost (CC) based on its class. For squadron composition rules and CC values, see [Section 2.3.3](02-assets.md#233-squadrons).
 
 **Retrofitting:**
 
@@ -459,7 +459,7 @@ The House receives 50% of each ship's original build cost as salvage payment.
 
 Your industrial capacity directly determines fleet size. If you pursue capital ship strategies, invest heavily in IU development and protect your industrial colonies from bombardment. Losing a major industrial world can force immediate fleet reductions, potentially at the worst possible moment.
 
-For complete salvage mechanics, see [Section 2.5.1](assets.md#251-capital-ship-salvage-operations).
+For complete salvage mechanics, see [Section 2.5.1](02-assets.md#251-capital-ship-salvage-operations).
 
 ## 4.12 Fighter Doctrine (FD)
 
@@ -503,7 +503,7 @@ When FD tech increases capacity, existing fighter squadrons remain operational a
 
 **Capacity Violations**: If a colony's IU drops (due to bombardment, blockade, etc.) causing it to exceed fighter capacity, the colony receives a 2-turn grace period before oldest squadrons auto-disband.
 
-For fighter squadron economics, see [Section 3.6](#36-fighter-squadron-economics). For combat mechanics, see [Section 2.4.1](assets.md#241-fighter-squadrons--carriers).
+For fighter squadron economics, see [Section 3.6](03-economy.md#36-fighter-squadron-economics). For combat mechanics, see [Section 2.4.1](02-assets.md#241-fighter-squadrons--carriers).
 
 ## 4.13 Advanced Carrier Operations (ACO)
 
@@ -543,7 +543,7 @@ Carriers in transit or in combat zones must return to a friendly colony to take 
 
 ACO technology affects carrier capacity only and does not modify fighter squadron statistics, maintenance costs, or combat effectiveness.
 
-For carrier combat mechanics, see [Section 2.4.1](assets.md#241-fighter-squadrons--carriers).
+For carrier combat mechanics, see [Section 2.4.1](02-assets.md#241-fighter-squadrons--carriers).
 
 ## 4.14 Strategic Considerations
 
