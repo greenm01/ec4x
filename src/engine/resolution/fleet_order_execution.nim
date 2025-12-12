@@ -93,19 +93,20 @@ proc validateOrderAtExecution(
         reason: "Lost combat capability (ships crippled/destroyed)"
       )
 
-    # Check target system is now enemy-controlled (abort if so)
+    # Check if target is NOW FRIENDLY (abort - someone else captured it)
+    # Allow attacks on enemies, neutral, or uncolonized systems
     if order.targetSystem.isSome:
       let targetId = order.targetSystem.get()
       if targetId in state.colonies:
         let colony = state.colonies[targetId]
-        if colony.owner != houseId:
-          let house = state.houses[houseId]
-          if house.diplomaticRelations.isEnemy(colony.owner):
-            return ExecutionValidationResult(
-              valid: false,
-              shouldAbort: true,
-              reason: "Target system is now enemy-controlled"
-            )
+        if colony.owner == houseId:
+          # Target is now OUR colony - abort attack
+          return ExecutionValidationResult(
+            valid: false,
+            shouldAbort: true,
+            reason: "Target system is now our colony (captured by us or ally)"
+          )
+        # NOTE: If target is enemy/neutral, allow attack to proceed
 
   of FleetOrderType.JoinFleet:
     # Check target fleet still exists
