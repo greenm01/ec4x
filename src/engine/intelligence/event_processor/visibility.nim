@@ -35,6 +35,10 @@ proc shouldHouseSeeEvent*(
   # Public diplomatic events (visible to all)
   of res_types.GameEventType.WarDeclared,
      res_types.GameEventType.PeaceSigned,
+     res_types.GameEventType.DiplomaticRelationChanged,
+     res_types.GameEventType.TreatyProposed,
+     res_types.GameEventType.TreatyAccepted,
+     res_types.GameEventType.TreatyBroken,
      res_types.GameEventType.HouseEliminated:
     return true
 
