@@ -9,6 +9,7 @@ import ../combat/[types as combat_types]
 import ../diplomacy/[types as dip_types]
 import ../resolution/[types as resolution_types, fleet_orders]
 import ../resolution/event_factory/init as event_factory
+import ../standing_orders
 
 type
   OrderOutcome* {.pure.} = enum
@@ -1216,6 +1217,7 @@ proc executeJoinFleetOrder(
     # Standing orders will be used automatically by the order resolution system
     if fleet.id in state.fleetOrders:
       state.fleetOrders.del(fleet.id)
+      standing_orders.resetStandingOrderGracePeriod(state, fleet.id)
 
     events.add(event_factory.orderAborted(
         houseId = fleet.owner,
@@ -1270,6 +1272,7 @@ proc executeJoinFleetOrder(
       # Cancel order and fall back to standing orders
       if fleet.id in state.fleetOrders:
         state.fleetOrders.del(fleet.id)
+        standing_orders.resetStandingOrderGracePeriod(state, fleet.id)
 
       events.add(event_factory.orderAborted(
           houseId = fleet.owner,

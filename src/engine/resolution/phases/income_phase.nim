@@ -193,6 +193,7 @@ proc resolveIncomePhase*(
   # 1. Fleet must survive Conflict Phase to salvage wreckage
   # 2. Salvage is an economic operation (ships → PP)
   # 3. Salvage PP should be included in turn's treasury before income calculation
+  # 4. Fleet must have arrived at target (checked via arrivedFleets)
   logDebug(LogCategory.lcEconomy, "[SALVAGE] Executing salvage orders...")
 
   for houseId in state.houses.keys:
@@ -203,12 +204,22 @@ proc resolveIncomePhase*(
           if order.fleetId in state.fleets:
             let fleet = state.fleets[order.fleetId]
             if fleet.owner == houseId:
+              # Check if fleet has arrived at target
+              if order.fleetId notin state.arrivedFleets:
+                logDebug(LogCategory.lcEconomy,
+                  &"[SALVAGE] Fleet {order.fleetId} has not arrived at target, skipping")
+                continue
+
               # Execute salvage order (returns PP added to treasury, events added directly)
               let outcome = cmd_executor.executeFleetOrder(state, houseId, order, events)
               if outcome == OrderOutcome.Success:
                 logInfo(LogCategory.lcEconomy,
                   &"[SALVAGE] {houseId} Fleet-{order.fleetId} salvaged ships")
                 # PP already added to treasury by executeSalvageOrder
+                # Clear arrival status
+                if order.fleetId in state.arrivedFleets:
+                  state.arrivedFleets.del(order.fleetId)
+                  logDebug(LogCategory.lcEconomy, &"  Cleared arrival status for fleet {order.fleetId}")
               else:
                 logDebug(LogCategory.lcEconomy,
                   &"[SALVAGE] {houseId} Fleet-{order.fleetId} failed")

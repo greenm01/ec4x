@@ -17,6 +17,7 @@ type
     OrderRejected,        # An order was rejected due to validation failure
     OrderFailed,          # An order failed during execution
     OrderAborted,         # An order was aborted due to changed conditions
+    FleetArrived,         # Fleet arrived at order target (ready for execution)
     CombatResult,         # Result of a space combat or planetary assault
     Espionage,            # Outcome of an espionage operation
     Diplomacy,            # Outcome of a diplomatic action
@@ -129,7 +130,7 @@ type
        ThreatDetected, AutomationCompleted:
       message*: string # Generic message or simple description
 
-    of OrderIssued, OrderCompleted, OrderRejected, OrderFailed, OrderAborted:
+    of OrderIssued, OrderCompleted, OrderRejected, OrderFailed, OrderAborted, FleetArrived:
       ## Events for fleet and other orders (fleetId/details in common fields)
       orderType*: Option[string] # String representation of the order type (e.g., "MoveFleet", "BuildFleet")
       reason*: Option[string] # Why it failed/rejected/aborted

@@ -192,6 +192,31 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEPS 1 & 2] Completed ({combatReports.len} battles resolved)")
 
   # ===================================================================
+  # ARRIVAL FILTERING: Filter orders to only arrived fleets
+  # ===================================================================
+  # Orders requiring arrival: Bombard, Invade, Blitz, Colonize, SpyPlanet, SpySystem, HackStarbase
+  # Create filtered order set once to avoid O(H×O) iteration per step
+  var arrivedOrders = effectiveOrders
+  for houseId in arrivedOrders.keys:
+    var filteredFleetOrders: seq[FleetOrder] = @[]
+    for order in arrivedOrders[houseId].fleetOrders:
+      # Check if order requires arrival
+      const arrivalRequired = [
+        FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz,
+        FleetOrderType.Colonize,
+        FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase
+      ]
+      if order.orderType in arrivalRequired:
+        if order.fleetId in state.arrivedFleets:
+          filteredFleetOrders.add(order)
+        else:
+          logDebug(LogCategory.lcOrders, &"  [SKIP] Fleet {order.fleetId} has not arrived for {order.orderType} order")
+      else:
+        # Keep orders that don't require arrival checking
+        filteredFleetOrders.add(order)
+    arrivedOrders[houseId].fleetOrders = filteredFleetOrders
+
+  # ===================================================================
   # STEP 3: BLOCKADE RESOLUTION
   # ===================================================================
   # Resolve all blockade attempts simultaneously to prevent
@@ -222,8 +247,14 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Resolve all planetary combat (bombard/invade/blitz) simultaneously
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 4] Resolving planetary combat...")
   let planetaryCombatResults = simultaneous_planetary.resolvePlanetaryCombat(
-    state, effectiveOrders, rng, events)
+    state, arrivedOrders, rng, events)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 4] Completed ({planetaryCombatResults.len} planetary combat attempts)")
+
+  # Clear arrivedFleets for executed planetary combat orders
+  for result in planetaryCombatResults:
+    if result.fleetId in state.arrivedFleets:
+      state.arrivedFleets.del(result.fleetId)
+      logDebug(LogCategory.lcOrders, &"  Cleared arrival status for fleet {result.fleetId}")
 
   # ===================================================================
   # STEP 5: COLONIZATION
@@ -232,8 +263,14 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Fallback logic for losers with AutoColonize standing orders
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 5] Resolving colonization attempts...")
   let colonizationResults = simultaneous.resolveColonization(
-    state, effectiveOrders, rng, events)
+    state, arrivedOrders, rng, events)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 5] Completed ({colonizationResults.len} colonization attempts)")
+
+  # Clear arrivedFleets for executed colonization orders
+  for result in colonizationResults:
+    if result.fleetId in state.arrivedFleets:
+      state.arrivedFleets.del(result.fleetId)
+      logDebug(LogCategory.lcOrders, &"  Cleared arrival status for fleet {result.fleetId}")
 
   # ===================================================================
   # STEP 6b: FLEET-BASED ESPIONAGE
@@ -241,8 +278,14 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Resolve fleet-based espionage orders simultaneously
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Fleet-based espionage (SpyPlanet, SpySystem, HackStarbase)...")
   let espionageResults = simultaneous_espionage.resolveEspionage(state,
-                                                                  effectiveOrders, rng)
+                                                                  arrivedOrders, rng)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6b] Completed ({espionageResults.len} fleet espionage attempts)")
+
+  # Clear arrivedFleets for executed espionage orders
+  for result in espionageResults:
+    if result.fleetId in state.arrivedFleets:
+      state.arrivedFleets.del(result.fleetId)
+      logDebug(LogCategory.lcOrders, &"  Cleared arrival status for fleet {result.fleetId}")
 
   # Process scout espionage results and gather intelligence
   # Creates detailed narrative events for espionage reports
