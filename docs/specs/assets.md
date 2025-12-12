@@ -44,7 +44,7 @@ Roll on the planet class and system resources tables below to determine the attr
 
 Each newly established colony begins as Level I and has potential to develop into the max Population Unit (PU) for that planet. Move colonists from larger colonies to smaller colonies to increase population growth over the natural birth rate.
 
-Advances in terraforming tech allow your planets to upgrade class and living conditions. For terraforming research and costs, see [Section 4.6](economy.md#46-terraforming-ter).
+Advances in terraforming tech allow your planets to upgrade class and living conditions. For terraforming research and costs, see [Section 4.6](research_development.md#46-terraforming-ter).
 
 **Planet Class Table**
 
@@ -96,7 +96,7 @@ Spaceports are large ground based facilities that launch heavy-lift ships and eq
 **Construction Cost**: 20 PP  
 **Construction Time**: 1 turn  
 **Base Capacity**: 5 docks  
-**Capacity Scaling**: Dock capacity increases with CST tech (see [Section 4.5](economy.md#45-construction-cst))
+**Capacity Scaling**: Dock capacity increases with CST tech (see [Section 4.5](research_development.md#45-construction-cst))
 
 **Planet-side Ship Construction**: Ships built at spaceports incur a **100% PP cost penalty** due to orbital launch requirements. See [Section 5.2](economy.md#52-planet-side-construction) for construction rules.
 
@@ -114,7 +114,7 @@ The majority of your ship construction occurs at these important facilities.
 **Construction Time**: 2 turns
 **Prerequisite**: Requires operational Spaceport
 **Base Capacity**: 10 docks
-**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](economy.md#45-construction-cst))
+**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](research_development.md#45-construction-cst))
 
 Shipyards are equipped with construction docks and are fixed in orbit. Build multiple yards to increase your construction capacity at the colony.
 
@@ -130,7 +130,7 @@ Drydocks are specialized orbital facilities dedicated to ship repair operations.
 **Construction Time**: 2 turns
 **Prerequisite**: Requires operational Spaceport
 **Base Capacity**: 10 docks
-**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](economy.md#45-construction-cst))
+**Capacity Scaling**: Dock count increases with Construction (CST) technology (see [Section 4.5](research_development.md#45-construction-cst))
 
 Drydocks are repair-only facilities and cannot construct ships. They are fixed in orbit alongside shipyards. Build multiple drydocks to increase your repair capacity at the colony.
 
@@ -146,7 +146,7 @@ ETACs plant a seed by establishing colonies on uninhabited planets. They may be 
 **Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
 **Combat**: Zero offensive/defensive capability
 
-You must load ETACs with colonists before departure. For STL capacity progression, see [Section 4.9](economy.md#49-strategic-lift-stl).
+You must load ETACs with colonists before departure. For STL capacity progression, see [Section 4.9](research_development.md#49-strategic-lift-stl).
 
 #### 2.3.2.5 Troop Transports
 
@@ -156,7 +156,7 @@ Troop Transports are specialized ships that taxi Space Marine divisions between 
 **Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
 **Combat**: Zero offensive/defensive capability
 
-For STL capacity progression, see [Section 4.9](economy.md#49-strategic-lift-stl).
+For STL capacity progression, see [Section 4.9](research_development.md#49-strategic-lift-stl).
 
 ### 2.3.3 Squadrons
 
@@ -168,7 +168,7 @@ In non-hostile systems, you can reassign ships in a squadron to an already exist
 
 You can only commission squadrons in systems with a functioning shipyard.
 
-**Command Rating Enhancement**: CR can be increased through Command (CMD) research. See [Section 4.10](economy.md#410-command-cmd) for CMD progression.
+**Command Rating Enhancement**: CR can be increased through Command (CMD) research. See [Section 4.10](research_development.md#410-command-cmd) for CMD progression.
 
 ### 2.3.4 Fleets
 
@@ -203,7 +203,7 @@ Where:
 
 **Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest squadrons auto-disband.
 
-For FD research progression and capacity multipliers, see [Section 4.12](economy.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](economy.md#36-fighter-squadron-economics).
+For FD research progression and capacity multipliers, see [Section 4.12](research_development.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](economy.md#36-fighter-squadron-economics).
 
 **Carrier Operations**:
 
@@ -221,7 +221,7 @@ Fighter Squadrons can be loaded onto carriers for mobility:
 - ACO II: 6 FS capacity
 - ACO III: 8 FS capacity
 
-For Advanced Carrier Operations (ACO) research, see [Section 4.13](economy.md#413-advanced-carrier-operations-aco).
+For Advanced Carrier Operations (ACO) research, see [Section 4.13](research_development.md#413-advanced-carrier-operations-aco).
 
 **Combat Mechanics**:
 
@@ -268,7 +268,7 @@ Detection compares total effective ELI (including modifiers) against number of S
 
 **Starbase Modifier**: Starbases add +2 to effective ELI level for detection rolls, representing superior sensor arrays and dedicated detection systems.
 
-For ELI research progression, see [Section 4.8](economy.md#48-electronic-intelligence-eli).
+For ELI research progression, see [Section 4.8](research_development.md#48-electronic-intelligence-eli).
 
 **Intelligence Gathering**:
 
@@ -327,7 +327,7 @@ Random Threshold Roll (1D8): Result is 5
 Detection Roll (1D20): If the roll is 5 or higher, the Raider is detected
 ```
 
-For CLK research progression, see [Section 4.7](economy.md#47-cloaking-clk). For ELI research, see [Section 4.8](economy.md#48-electronic-intelligence-eli).
+For CLK research progression, see [Section 4.7](research_development.md#47-cloaking-clk). For ELI research, see [Section 4.8](research_development.md#48-electronic-intelligence-eli).
 
 **Mission Capabilities**:
 
@@ -377,8 +377,8 @@ Starbases have fixed combat statistics that scale with Weapons (WEP) technology:
 
 Starbases participate in detection for ALL combat phases occurring in their system:
 
-- **Space Combat** ([Section 7.3](operations.md#73-space-combat)): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
-- **Orbital Combat** ([Section 7.4](operations.md#74-orbital-combat)): Starbases detect AND fight as primary orbital defenders using their full AS/DS values
+- **Space Combat** ([Section 7.3](combat.md#73-space-combat)): Starbases contribute detection capability but are screened from combat (cannot fight or be targeted)
+- **Orbital Combat** ([Section 7.4](combat.md#74-orbital-combat)): Starbases detect AND fight as primary orbital defenders using their full AS/DS values
 
 **Rationale**: Advanced sensors provide system-wide detection support; physical weapons only engage threats to your colony itself.
 
@@ -426,7 +426,7 @@ Planetary Shields protect your colonies from orbital bombardment. With increasin
 **Limit**: One shield per colony  
 **Upgrading**: Requires salvaging old shield (50% refund) and building new shield at higher SLD tier
 
-For SLD research progression, absorption percentages, and shield DS values, see [Section 4.4](economy.md#44-shields-sld).
+For SLD research progression, absorption percentages, and shield DS values, see [Section 4.4](research_development.md#44-shields-sld).
 
 You can rebuild shields within one turn if destroyed.
 
@@ -438,7 +438,7 @@ Ground Batteries are static defense units positioned on your planet's surface. T
 **Quantity Limit**: No limit—you can build as many as you can afford  
 **Technology**: Static stats, no WEP scaling
 
-For bombardment mechanics and how shields/batteries interact, see [Section 7.5](operations.md#75-planetary-bombardment).
+For bombardment mechanics and how shields/batteries interact, see [Section 7.5](combat.md#75-planetary-bombardment).
 
 ### 2.4.8 Planet-Breaker
 
@@ -465,7 +465,7 @@ Planet-Breakers completely ignore planetary shields during bombardment (SLD 1–
 
 **Bombardment Operations**:
 
-During planetary bombardment ([Section 7.5](operations.md#75-planetary-bombardment)):
+During planetary bombardment ([Section 7.5](combat.md#75-planetary-bombardment)):
 
 - Resolve Planet-Breaker AS separately from conventional ships
 - Planet-Breaker hits bypass shields entirely and strike ground batteries directly
@@ -495,7 +495,7 @@ Armies (AA) garrison your colonies and eradicate invaders. Their orders are to t
 
 Marines fight alongside your Army if garrisoned planet-side.
 
-For ground combat mechanics, see [Section 7.6](operations.md#76-ground-combat).
+For ground combat mechanics, see [Section 7.6](combat.md#76-ground-combat).
 
 ## 2.5 Space Guilds
 
@@ -511,7 +511,7 @@ When a Great House loses industrial capacity and can no longer support its capit
 
 **Capacity Formula**: Each house can maintain `max(8, floor(Total_House_IU ÷ 100) × 2)` capital squadrons. Capital ships are defined as vessels with Command Rating (CR) ≥ 7.
 
-For detailed capacity rules and economic implications, see [Section 4.11](economy.md#411-capital-ship-capacity).
+For detailed capacity rules and economic implications, see [Section 4.11](research_development.md#411-capital-ship-capacity).
 
 **Enforcement**: When a house exceeds its capital squadron capacity (typically due to IU loss from colony damage, blockades, or territory loss), excess squadrons are immediately claimed by the Space Guilds. Priority for removal:
 

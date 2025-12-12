@@ -240,7 +240,7 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 - Tax penalties apply periodically based on rolling 6-turn average, not instantaneously
 - Maintenance shortfall escalates: Turn 1 (-5), Turn 2 (-7), Turn 3 (-9), continues +2/turn
 - See [Section 3.2](economy.md#32-tax-rate) for full tax mechanics
-- See [Section 3.11](economy.md#311-maintenance-tax-shortfall-consequences) for maintenance mechanics
+- See [Section 3.9.1](economy.md#391-maintenance-tax-shortfall-consequences) for maintenance mechanics
 
 ### Undefended Colony Penalty
 

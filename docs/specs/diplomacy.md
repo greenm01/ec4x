@@ -30,7 +30,7 @@ Regardless of diplomatic status, all your units will defend your House colonies 
 
 ### 8.1.6 Territorial Control
 
-Your house controls territory in systems containing your colony. Each system can contain only one colony per the colonization rules in [Section 6.2.12](operations.md#6212-colonize-a-planet-10).
+Your house controls territory in systems containing your colony. Each system can contain only one colony per the colonization rules in [Section 6.3.12](operations.md#6312-colonize-a-planet-10).
 
 **Territory Classifications:**
 

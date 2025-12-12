@@ -107,7 +107,7 @@ You begin with a foundation for empire:
 
 **Starting Technology:**
 
-Your House begins at technology tier 1 across all domains: EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I. Every House starts equal. Your research priorities determine how quickly you advance. See [Section 4.0](economy.md#40-research--development) for tech effects and [Section 10.11](reference.md#1011-technology-research) for advancement costs.
+Your House begins at technology tier 1 across all domains: EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I. Every House starts equal. Your research priorities determine how quickly you advance. See [Section 4.0](research_development.md#40-research-development) for tech effects and [Section 10.11](reference.md#1011-technology-research) for advancement costs.
 
 **Diplomacy & Communication:**
 
@@ -146,7 +146,7 @@ In the new turn, you decide which construction orders to place and where to inve
 
 ### 1.3.3 Command Phase
 
-In the command phase, you issue fleet orders ([Section 6.2](operations.md#62-fleet-orders)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](diplomacy.md#81-diplomacy)) toward rival Houses.
+In the command phase, you issue fleet orders ([Section 6.3](operations.md#63-fleet-orders)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](diplomacy.md#81-diplomacy)) toward rival Houses.
 
 Build orders may fail if shipyards were destroyed in the conflict phase. You issue fleet movement and colonization orders for execution in the next turn's conflict phase.
 
@@ -216,8 +216,8 @@ Your House is eliminated from the game when you lose all colonies AND have no in
 
 If you lose all your colonies but retain fleets with loaded marine divisions, you can attempt desperate reconquest operations:
 
-- **Invasion Orders**: Target enemy colonies per [Section 7.6](operations.md#76-planetary-invasion)
-- **Blitz Operations**: Execute high-risk planetary assaults per [Section 7.6.2](operations.md#762-blitz)
+- **Invasion Orders**: Target enemy colonies per [Section 7.6.1](combat.md#761-planetary-invasion)
+- **Blitz Operations**: Execute high-risk planetary assaults per [Section 7.6.2](combat.md#762-planetary-blitz)
 - **No Elimination**: Your House remains active as long as marines exist on transports
 - **Empty Transports**: If you have only empty transports or non-combat ships, you are eliminated
 
@@ -318,7 +318,7 @@ All intelligence is stored in your house's intelligence database with timestamps
 You do not have automatic visibility into:
 
 - Rival empire economics (income, production, treasury)
-- Rival empire technology levels (requires espionage per [Section 8.2](diplomacy.md#82-subversion--subterfuge))
+- Rival empire technology levels (requires espionage per [Section 8.2](diplomacy.md#82-subversion-subterfuge))
 - Fleet movements in systems without your friendly presence
 - Colony development and construction projects
 - Strategic intentions and future orders
