@@ -177,14 +177,15 @@ proc isAdministrativeOrder*(orderType: FleetOrderType): bool =
   }
 
 proc isSpecialOrder*(orderType: FleetOrderType): bool =
-  ## Special orders handled by specific phase systems
-  ## - Colonize: Command Phase PART A (simultaneous resolution)
-  ## - Salvage: Income Phase Step 4
+  ## Orders with simultaneous resolution (not combat-style turn order)
+  ## All follow universal lifecycle: Initiate (Command) → Activate (Maintenance) → Execute
+  ## - Colonize: Conflict Phase (simultaneous resolution)
+  ## - Salvage: Income Phase (simultaneous resolution)
   ## - Espionage: Conflict Phase (simultaneous resolution)
   result = orderType in {
-    FleetOrderType.Colonize,      # Command Phase PART A
-    FleetOrderType.Salvage,        # Income Phase Step 4
-    FleetOrderType.SpyPlanet,      # Conflict Phase
-    FleetOrderType.SpySystem,      # Conflict Phase
-    FleetOrderType.HackStarbase    # Conflict Phase
+    FleetOrderType.Colonize,      # Conflict Phase (simultaneous)
+    FleetOrderType.Salvage,        # Income Phase (simultaneous)
+    FleetOrderType.SpyPlanet,      # Conflict Phase (simultaneous)
+    FleetOrderType.SpySystem,      # Conflict Phase (simultaneous)
+    FleetOrderType.HackStarbase    # Conflict Phase (simultaneous)
   }

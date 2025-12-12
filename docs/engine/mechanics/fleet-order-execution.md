@@ -320,11 +320,13 @@ if targetFleetOpt.isNone:
 ### Combat Orders (Conflict Phase)
 
 **Bombard (05), Invade (06), Blitz (07):** Planetary assault
-- Execution: Queued Turn N, executed Turn N+1 in Conflict Phase
-- Movement: Handled by Step 1c in Maintenance Phase
+- Storage: Stored in `state.fleetOrders` in Command Phase Part C
+- Movement: Fleet travels toward target in Maintenance Phase Step 1c
+- Execution: Executes in Conflict Phase when fleet arrives at target
 - Completion: After successful assault or failure
 - Events: `OrderCompleted` after assault resolution
 - Cleanup: Order removed + grace period reset
+- **Note:** Executes Turn N, N+1, or later depending on travel distance
 
 ### Colonization Orders (Maintenance Phase)
 
@@ -472,8 +474,9 @@ Standardized completion pattern:
 - `FleetMoved`: Maintenance Step 1c (multiple per fleet if 2 jumps)
 - `OrderCompleted/Failed/Aborted`: Maintenance Step 1b or order execution
 
-**Turn N+1 Events (delayed):**
-- `CombatResolved`: Conflict Phase (combat orders queued Turn N)
+**Turn N+1 or Later Events (when fleet arrives):**
+- `CombatResolved`: Conflict Phase (when combat order executes at arrival)
+- `FleetArrived`: Maintenance Phase (when fleet reaches order target)
 
 ---
 
