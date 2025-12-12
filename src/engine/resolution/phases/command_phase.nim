@@ -24,19 +24,20 @@
 ## - Process terraforming orders
 ## - Process zero-turn administrative commands (immediate execution)
 ##
-## **Part C: Order Validation & Queueing**
+## **Part C: Order Validation & Storage**
+## Universal lifecycle: All non-admin orders stored in state.fleetOrders
 ## - Validate all submitted orders (active orders and standing order configs)
-## - Queue combat orders for Turn N+1 Conflict Phase (activate Turn N+1 Maintenance)
-## - Execute administrative orders immediately (Reserve, Mothball - zero-turn orders)
-## - Store movement orders for Turn N Maintenance Phase activation
-## - Standing orders validated here, activated in Maintenance Phase Step 1a
+## - Execute administrative orders immediately (Reserve, Mothball - zero-turn)
+## - Store all other orders in state.fleetOrders for activation
+## - Standing order configs validated, stored in state.standingOrders
 ##
 ## **Key Properties:**
 ## - Commissioning happens FIRST to free dock capacity before new builds
 ## - Auto-repair can use newly-freed dock capacity from commissioning
-## - Combat orders: Validated Turn N, activated Turn N+1 Maintenance, executed Turn N+1 Conflict
-## - Movement orders: Validated Turn N Command, activated Turn N Maintenance, movement happens immediately
-## - Three-tier lifecycle: Initiate (Part B) → Validate (Part C) → Activate (Maintenance) → Execute (Conflict/Income)
+## - Universal lifecycle: All orders follow same path (stored → activated → executed)
+## - No separate queues or special handling (DRY design)
+## - Admin orders execute immediately; all others stored for Maintenance Phase
+## - Four-tier lifecycle: Initiate (Part B) → Validate (Part C) → Activate (Maintenance) → Execute (Conflict/Income)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets,
             strformat]
@@ -126,41 +127,39 @@ proc resolveCommandPhase*(state: var GameState,
   logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
 
   # ===================================================================
-  # PART C: ORDER VALIDATION & QUEUEING
+  # PART C: ORDER VALIDATION & STORAGE
   # ===================================================================
-  # Three-tier order lifecycle:
+  # Universal order lifecycle (applies to ALL orders):
   # - Initiate (Command Phase Part B): Player submits orders
   # - Validate (Command Phase Part C): Engine validates and stores orders ← THIS SECTION
   # - Activate (Maintenance Phase Step 1a): Orders become active, fleets start moving
   # - Execute (Conflict/Income Phase): Missions happen at targets
   #
-  # Validation and queueing by order type:
-  # - Combat orders (Bombard/Invade/Blitz): Validate & queue for Turn N+1 Conflict Phase
-  # - Movement orders (Move/SeekHome/Patrol): Validate & store, activate in Maintenance Phase
-  # - Administrative orders (Reserve/Mothball/etc): Validate & execute immediately (zero-turn)
-  # - Special orders: Handled by dedicated resolution systems
+  # Universal order processing (DRY design):
+  # - Administrative orders: Validate & execute immediately (zero-turn)
+  # - All other orders: Validate & store in state.fleetOrders
+  #   * Move, Patrol, SeekHome, Hold
+  #   * Bombard, Invade, Blitz, Guard*
+  #   * Colonize, SpyPlanet, SpySystem, HackStarbase
+  #   * Salvage
+  # - Standing order configs: Validate & store in state.standingOrders
+  #
+  # Key principle: All non-admin orders follow same path → No special cases
 
-  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Validating and queueing fleet orders...")
+  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Validating and storing fleet orders...")
 
-  # Clear previous turn's queued combat orders
+  # Clear legacy queue (no longer used, kept for compatibility)
   state.queuedCombatOrders = @[]
 
-  var combatQueued = 0
-  var movementQueued = 0
+  var ordersStored = 0
   var adminExecuted = 0
 
   # Collect and categorize orders from all houses
   for houseId in state.houses.keys:
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
-        # Queue combat orders for next turn's Conflict Phase
-        if isCombatOrder(order.orderType):
-          state.queuedCombatOrders.add(order)
-          combatQueued += 1
-          logDebug(LogCategory.lcOrders, &"  [QUEUED COMBAT] Fleet {order.fleetId}: {order.orderType} (executes Turn {state.turn + 1})")
-
-        # Execute administrative orders immediately
-        elif isAdministrativeOrder(order.orderType):
+        # Execute administrative orders immediately (zero-turn)
+        if isAdministrativeOrder(order.orderType):
           let outcome = executor.executeFleetOrder(state, houseId, order, events)
           if outcome == OrderOutcome.Success:
             adminExecuted += 1
@@ -168,19 +167,12 @@ proc resolveCommandPhase*(state: var GameState,
           else:
             logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {order.fleetId}: {order.orderType}")
 
-        # Movement orders: validate and store, activate in Maintenance Phase
-        elif isMovementOrder(order.orderType):
-          movementQueued += 1
-          logDebug(LogCategory.lcOrders, &"  [MOVEMENT] Fleet {order.fleetId}: {order.orderType} (will activate in Maintenance Phase)")
-          # Store validated order so Maintenance Phase Step 1a can activate it
+        # All other orders: store for movement and execution
+        # Universal lifecycle: Initiate (here) → Activate (Maintenance) → Execute (Conflict/Income)
+        else:
           state.fleetOrders[order.fleetId] = order
+          ordersStored += 1
+          logDebug(LogCategory.lcOrders, &"  [STORED] Fleet {order.fleetId}: {order.orderType}")
 
-        # Special orders handled elsewhere
-        elif isSpecialOrder(order.orderType):
-          logDebug(LogCategory.lcOrders, &"  [SPECIAL] Fleet {order.fleetId}: {order.orderType} (handled by dedicated system)")
-          # Colonize: simultaneous resolution above
-          # Salvage: Income Phase Step 4
-          # Espionage: Conflict Phase simultaneous resolution
-
-  logInfo(LogCategory.lcOrders, &"[COMMAND PART C] Completed (combat queued: {combatQueued}, movement queued: {movementQueued}, admin executed: {adminExecuted})")
+  logInfo(LogCategory.lcOrders, &"[COMMAND PART C] Completed ({ordersStored} orders stored, {adminExecuted} admin executed)")
 

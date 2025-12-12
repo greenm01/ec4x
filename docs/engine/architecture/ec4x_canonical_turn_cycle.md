@@ -324,25 +324,35 @@ Players see new game state (freed dock capacity, commissioned ships, established
 
 Players can immediately interact with newly-commissioned ships and colonies.
 
-### Part C: Order Validation & Queueing (AFTER Player Window)
+### Part C: Order Validation & Storage (AFTER Player Window)
 
-**Three-Tier Order Lifecycle:** Initiate (Part B) → Validate (Part C) → Activate (Maintenance Phase) → Execute (Conflict/Income Phase)
+**Universal Order Lifecycle:** Initiate (Part B) → Validate (Part C) → Activate (Maintenance Phase) → Execute (Conflict/Income Phase)
 
-**Validation & Queueing:**
-- Validate all submitted orders (active orders and standing order configs)
-- Process build orders (add to construction queues)
-- Start tech research (allocate RP)
-- Queue combat orders for Turn N+1 Conflict Phase
-- Store movement orders for Maintenance Phase activation
-- **Note:** Standing orders validated here, activated in Maintenance Phase Step 1a
+**Order Processing:**
+1. **Administrative orders** (zero-turn): Execute immediately
+   - JoinFleet, Rendezvous, Reserve, Mothball, Reactivate, ViewWorld
+2. **All other orders**: Validate and store in `state.fleetOrders`
+   - Movement orders (Move, Patrol, SeekHome, Hold)
+   - Combat orders (Bombard, Invade, Blitz, Guard*)
+   - Simultaneous orders (Colonize, SpyPlanet, SpySystem, HackStarbase)
+   - Income orders (Salvage)
+3. **Standing order configs**: Validated and stored in `state.standingOrders`
+   - Activate in Maintenance Phase Step 1a (only if no active order exists)
+4. **Build orders**: Add to construction queues
+5. **Tech research**: Allocate RP
+
+**Key Principles:**
+- All non-admin orders follow same path: stored → activated → executed
+- No separate queues or special handling (DRY design)
+- Maintenance Phase moves fleets toward targets (all order types)
+- Appropriate phase executes mission when fleet arrives
 
 ### Key Properties
 - Commissioning -> Auto-repair -> Player sees accurate state
 - No 1-turn perception delay (colonies established before player submission)
 - Dock capacity visible includes freed space from commissioning
-- Combat orders execute Turn N+1 Conflict Phase
-- Movement orders execute Turn N Maintenance Phase
 - Zero-turn commands execute BEFORE operational orders
+- Universal lifecycle: All orders stored in `state.fleetOrders` (except admin)
 
 ---
 
@@ -497,7 +507,7 @@ Execute immediately during Command Phase Part B player window:
 | AutoEvade      | Retreat if outnumbered per ROE       | Move orders -> Maintenance Phase     |
 | BlockadeTarget | Maintain blockade on enemy colony    | Blockade orders -> Conflict Phase    |
 
-**Generation Timing:** Standing orders generate actual fleet orders during Command Phase Part C. Those generated orders then execute in their respective phases.
+**Generation Timing:** Standing orders are CONFIGURED in Command Phase Part C (validated, stored in `state.standingOrders`). They GENERATE actual fleet orders during Maintenance Phase Step 1a (only if fleet has no active order). Generated orders then follow universal lifecycle: activate (move) → execute (at arrival).
 
 ---
 
