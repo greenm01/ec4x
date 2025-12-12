@@ -5,7 +5,7 @@
 ## Generates economic requirements with priorities for Basileus mediation
 ## Focuses on terraforming, infrastructure, and colony development
 
-import std/[options, strformat, random, math, sequtils, algorithm]
+import std/[options, strformat, random, math, sequtils, algorithm, tables]
 import ../../../engine/[gamestate, fog_of_war, logger]
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
@@ -46,51 +46,119 @@ proc getTargetShipyards(act: ai_common_types.GameAct, colonyCount: int): int =
     # Increased from 2.0x to 2.5x to address late-game hoarding
     (colonyCount * 5) div 2  # 2.5x using integer math
 
-proc findBestShipyardColony(colonies: seq[Colony]): Option[SystemId] =
-  ## Select colony with highest production, no existing Shipyard, AND has Spaceport
+proc findBestShipyardColony(
+  colonies: seq[Colony],
+  intelSnapshot: Option[IntelligenceSnapshot]
+): Option[SystemId] =
+  ## Phase 7.1: Select colony with highest production, considering threat levels
   ## (Shipyards require Spaceport prerequisite per facilities.toml)
   var bestColony: Option[SystemId] = none(SystemId)
-  var highestProduction = -1  # -1 to allow colonies with 0 production
+  var highestScore = -1000.0  # Allow negative scores
 
   for colony in colonies:
     # CRITICAL: Must have Spaceport (prerequisite for Shipyard construction)
-    if colony.spaceports.len > 0 and
-       colony.shipyards.len == 0 and
-       colony.production > highestProduction:
-      bestColony = some(colony.systemId)
-      highestProduction = colony.production
+    if colony.spaceports.len > 0 and colony.shipyards.len == 0:
+      var score = float(colony.production)
+
+      # Phase 7.1: Apply threat penalty
+      if intelSnapshot.isSome:
+        let snap = intelSnapshot.get()
+        if snap.military.threatsByColony.hasKey(colony.systemId):
+          let threat = snap.military.threatsByColony[colony.systemId]
+          case threat.level
+          of intelligence_types.ThreatLevel.tlCritical:
+            score *= 0.2  # 80% penalty - avoid critical threats
+          of intelligence_types.ThreatLevel.tlHigh:
+            score *= 0.5  # 50% penalty - risky
+          of intelligence_types.ThreatLevel.tlModerate:
+            score *= 0.8  # 20% penalty - slight risk
+          else:
+            discard
+
+        # Staleness penalty for blind spots
+        if colony.systemId in snap.staleIntelSystems:
+          score *= 0.9  # 10% penalty - unknown risk
+
+      if score > highestScore:
+        bestColony = some(colony.systemId)
+        highestScore = score
 
   return bestColony
 
-proc findBestSpaceportColony(colonies: seq[Colony]): Option[SystemId] =
-  ## Select colony without Spaceport (prefer high production colonies)
+proc findBestSpaceportColony(
+  colonies: seq[Colony],
+  intelSnapshot: Option[IntelligenceSnapshot]
+): Option[SystemId] =
+  ## Phase 7.1: Select colony for Spaceport, considering threat levels
   var bestColony: Option[SystemId] = none(SystemId)
-  var highestProduction = -1  # -1 to allow colonies with 0 production
+  var highestScore = -1000.0
 
   for colony in colonies:
-    if colony.spaceports.len == 0 and
-       colony.production > highestProduction:
-      bestColony = some(colony.systemId)
-      highestProduction = colony.production
+    if colony.spaceports.len == 0:
+      var score = float(colony.production)
+
+      # Phase 7.1: Apply threat penalty
+      if intelSnapshot.isSome:
+        let snap = intelSnapshot.get()
+        if snap.military.threatsByColony.hasKey(colony.systemId):
+          let threat = snap.military.threatsByColony[colony.systemId]
+          case threat.level
+          of intelligence_types.ThreatLevel.tlCritical:
+            score *= 0.2  # Avoid critical threats
+          of intelligence_types.ThreatLevel.tlHigh:
+            score *= 0.5  # Risky
+          of intelligence_types.ThreatLevel.tlModerate:
+            score *= 0.8  # Slight risk
+          else:
+            discard
+
+        # Staleness penalty
+        if colony.systemId in snap.staleIntelSystems:
+          score *= 0.9
+
+      if score > highestScore:
+        bestColony = some(colony.systemId)
+        highestScore = score
 
   return bestColony
 
-proc findBestStarbaseColony(colonies: seq[Colony]): Option[SystemId] =
-  ## Select colony with Shipyard but no Starbase (prefer high-value targets)
+proc findBestStarbaseColony(
+  colonies: seq[Colony],
+  intelSnapshot: Option[IntelligenceSnapshot]
+): Option[SystemId] =
+  ## Phase 7.1: Select colony for Starbase, avoiding threatened locations
   ## Starbases provide economic (ELI+2) and defensive bonuses
   var bestColony: Option[SystemId] = none(SystemId)
-  var highestValue = -1
+  var highestScore = -1000.0
 
   for colony in colonies:
     # CRITICAL: Must have Spaceport (prerequisite for Starbase construction)
-    # Also prefer colonies with existing Shipyards (military/economic hubs)
-    if colony.spaceports.len > 0 and
-       colony.starbases.len == 0:
+    if colony.spaceports.len > 0 and colony.starbases.len == 0:
       # Value = production + population (economic importance)
-      let value = colony.production + colony.population
-      if value > highestValue:
+      var score = float(colony.production + colony.population)
+
+      # Phase 7.1: Apply threat penalty (Starbases are expensive - avoid risky locations)
+      if intelSnapshot.isSome:
+        let snap = intelSnapshot.get()
+        if snap.military.threatsByColony.hasKey(colony.systemId):
+          let threat = snap.military.threatsByColony[colony.systemId]
+          case threat.level
+          of intelligence_types.ThreatLevel.tlCritical:
+            score *= 0.1  # Heavy penalty - don't waste expensive Starbases
+          of intelligence_types.ThreatLevel.tlHigh:
+            score *= 0.3  # Significant penalty
+          of intelligence_types.ThreatLevel.tlModerate:
+            score *= 0.7  # Moderate penalty
+          else:
+            discard
+
+        # Staleness penalty
+        if colony.systemId in snap.staleIntelSystems:
+          score *= 0.85  # Stronger penalty for expensive Starbases
+
+      if score > highestScore:
         bestColony = some(colony.systemId)
-        highestValue = value
+        highestScore = score
 
   return bestColony
 
@@ -115,9 +183,10 @@ proc getTargetStarbases(act: ai_common_types.GameAct, colonyCount: int): int =
 proc generateFacilityRequirements(
   filtered: FilteredGameState,
   houseId: HouseId,
-  currentAct: ai_common_types.GameAct
+  currentAct: ai_common_types.GameAct,
+  intelSnapshot: Option[IntelligenceSnapshot]  # Phase 7.1: Threat-aware planning
 ): seq[EconomicRequirement] =
-  ## Generate requirements for facility construction
+  ## Phase 7.1: Generate requirements for facility construction (threat-aware)
   ## Priority order: Spaceport → Shipyard → Starbase
   result = @[]
 
@@ -143,8 +212,8 @@ proc generateFacilityRequirements(
           &"(1 per colony, then build Shipyards for production)")
 
   if currentSpaceports < spaceportsNeeded:
-    # Build at colonies without Spaceports
-    let bestColony = findBestSpaceportColony(colonies)
+    # Build at colonies without Spaceports (Phase 7.1: threat-aware)
+    let bestColony = findBestSpaceportColony(colonies, intelSnapshot)
     if bestColony.isSome:
       result.add(EconomicRequirement(
         requirementType: EconomicRequirementType.Facility,
@@ -165,10 +234,10 @@ proc generateFacilityRequirements(
           &"{houseId} Eparch: Shipyards - have {currentShipyards}, need {targetShipyards}")
 
   if currentShipyards < targetShipyards:
-    # Find best colony for Shipyard (highest production)
+    # Find best colony for Shipyard (Phase 7.1: threat-aware)
     logInfo(LogCategory.lcAI,
             &"{houseId} Eparch: Need {targetShipyards - currentShipyards} more Shipyards, finding best colony...")
-    let bestColony = findBestShipyardColony(colonies)
+    let bestColony = findBestShipyardColony(colonies, intelSnapshot)
     if bestColony.isSome:
       logInfo(LogCategory.lcAI,
               &"{houseId} Eparch: Found colony {bestColony.get()} for Shipyard construction")
@@ -194,10 +263,10 @@ proc generateFacilityRequirements(
           &"{houseId} Eparch: Starbases - have {currentStarbases}, need {targetStarbases}")
 
   if currentStarbases < targetStarbases:
-    # Find best colony for Starbase (high-value economic targets)
+    # Find best colony for Starbase (Phase 7.1: threat-aware, expensive infrastructure)
     logInfo(LogCategory.lcAI,
             &"{houseId} Eparch: Need {targetStarbases - currentStarbases} more Starbases, finding best colony...")
-    let bestColony = findBestStarbaseColony(colonies)
+    let bestColony = findBestStarbaseColony(colonies, intelSnapshot)
     if bestColony.isSome:
       logInfo(LogCategory.lcAI,
               &"{houseId} Eparch: Found colony {bestColony.get()} for Starbase construction")
@@ -294,10 +363,12 @@ proc generateEconomicRequirements*(
              &"(priority {priorityScore:.2f})")
 
   # Generate facility requirements (Shipyards and Spaceports)
+  # Phase 7.1: Pass intelligence snapshot for threat-aware facility selection
   let currentAct = ai_common_types.getCurrentGameAct(filtered.turn)
   let facilityRequirements = generateFacilityRequirements(filtered,
                                                           controller.houseId,
-                                                          currentAct)
+                                                          currentAct,
+                                                          some(intelSnapshot))
 
   for facility in facilityRequirements:
     requirements.add(facility)

@@ -10,6 +10,79 @@ import ../config # For globalRBAConfig
 
 export EconomicRequirementType, EconomicRequirement, EconomicRequirements
 
+# =============================================================================
+# Phase 7.2: Competitive Economic Assessment
+# =============================================================================
+
+type
+  EconomicCompetitiveAssessment = object
+    ## Phase 7.2: Assessment of our economic position vs enemies
+    underEconomicPressure*: bool  # Enemies significantly out-producing us
+    enemyShipyardAdvantage*: int  # How many more shipyards enemies have total
+    strongestEnemy*: Option[HouseId]  # Most economically powerful enemy
+    productionRatio*: float  # Our production / average enemy production
+    infrastructurePriorityBoost*: float  # 1.0-2.0 multiplier for infrastructure
+
+proc assessCompetitiveEconomicPosition(
+  ourHouse: House,
+  intelSnapshot: IntelligenceSnapshot
+): EconomicCompetitiveAssessment =
+  ## Phase 7.2: Compare our economic capabilities with enemy intelligence
+  result.underEconomicPressure = false
+  result.enemyShipyardAdvantage = 0
+  result.strongestEnemy = none(HouseId)
+  result.productionRatio = 1.0
+  result.infrastructurePriorityBoost = 1.0
+
+  # Calculate our total production and shipyards
+  var ourTotalProduction = 0
+  var ourShipyardCount = 0
+  for colonyId, colony in ourHouse.colonies:
+    ourTotalProduction += colony.production
+    ourShipyardCount += colony.shipyards.len
+
+  # Analyze enemy economic strength
+  var enemyCount = 0
+  var totalEnemyProduction = 0.0
+  var strongestEnemyProduction = 0.0
+  var strongestEnemyHouse: Option[HouseId] = none(HouseId)
+
+  for houseId, strength in intelSnapshot.economic.enemyEconomicStrength:
+    enemyCount += 1
+    let estimatedProduction = strength.estimatedProduction.float
+    totalEnemyProduction += estimatedProduction
+
+    if estimatedProduction > strongestEnemyProduction:
+      strongestEnemyProduction = estimatedProduction
+      strongestEnemyHouse = some(houseId)
+
+  # Count enemy shipyards from construction activity intelligence
+  var totalEnemyShipyards = 0
+  for systemId, activity in intelSnapshot.economic.constructionActivity:
+    totalEnemyShipyards += activity.shipyardCount
+
+  result.enemyShipyardAdvantage = totalEnemyShipyards - ourShipyardCount
+  result.strongestEnemy = strongestEnemyHouse
+
+  # Calculate production ratio
+  if enemyCount > 0:
+    let avgEnemyProduction = totalEnemyProduction / float(enemyCount)
+    if avgEnemyProduction > 0:
+      result.productionRatio = float(ourTotalProduction) / avgEnemyProduction
+
+  # Flag economic pressure if significantly behind
+  if result.productionRatio < 0.7:  # Producing <70% of average enemy
+    result.underEconomicPressure = true
+    result.infrastructurePriorityBoost = 1.5  # 50% priority boost
+
+  if result.productionRatio < 0.5:  # Producing <50% of average enemy
+    result.infrastructurePriorityBoost = 2.0  # 100% priority boost
+
+  # Also flag pressure if enemy shipyard advantage is significant
+  if result.enemyShipyardAdvantage >= 3:
+    result.underEconomicPressure = true
+    result.infrastructurePriorityBoost = max(result.infrastructurePriorityBoost, 1.3)
+
 proc generateEconomicRequirements*(
   controller: AIController,
   filtered: FilteredGameState,
@@ -80,8 +153,28 @@ proc generateEconomicRequirements*(
     result.requirements.add(balanceReq)
     # The actual tax adjustment will happen in phase 7.5: Colony Management
 
+  # === Phase 7.2: Competitive Economic Assessment ===
+  # Compare our economic position with enemy intelligence
+  let competitivePosition = assessCompetitiveEconomicPosition(house, intelSnapshot)
+
+  if competitivePosition.underEconomicPressure:
+    logWarn(LogCategory.lcAI,
+            &"{controller.houseId} Eparch: ECONOMIC PRESSURE DETECTED - " &
+            &"Production ratio: {competitivePosition.productionRatio:.2f}x average enemy, " &
+            &"Enemy shipyard advantage: +{competitivePosition.enemyShipyardAdvantage}, " &
+            &"Infrastructure priority boost: {competitivePosition.infrastructurePriorityBoost:.1f}x")
+
+    if competitivePosition.strongestEnemy.isSome:
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Eparch: Strongest economic rival: {competitivePosition.strongestEnemy.get()}")
+  else:
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} Eparch: Competitive position stable - " &
+             &"Production ratio: {competitivePosition.productionRatio:.2f}x average enemy")
+
   # === HIGH: Facility Construction (Shipyards, Spaceports) ===
   # Prioritize based on current production needs, defense gaps, GOAP goals
+  # Phase 7.2: Infrastructure priority boost applied if under economic pressure
   # ... (existing facility logic will go here)
 
   # === MEDIUM: IU Investment ===
