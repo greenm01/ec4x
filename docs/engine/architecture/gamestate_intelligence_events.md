@@ -37,9 +37,9 @@ and enables reactive behavior.
 │ LAYER 3: GameEvents (Temporal Stream)                            │
 │ ═══════════════════════════════════════════════════════════════  │
 │ TurnResult.events: seq[GameEvent]                                │
-│                                                                   │
+│                                                                  │
 │ Purpose: Notifications - "What just happened THIS turn"          │
-│ Lifetime: Per-turn (generated → consumed → discarded)            │
+│ Lifetime: Per-turn (generated -> consumed -> discarded)          │
 │ Filtered: By fog-of-war visibility rules                         │
 │ Used by: AI reactive behavior, client reports                    │
 └──────────────────────────────────────────────────────────────────┘
@@ -48,7 +48,7 @@ and enables reactive behavior.
 │ LAYER 2: Fog-of-War Filter (Query Layer)                         │
 │ ═══════════════════════════════════════════════════════════════  │
 │ proc createFogOfWarView*(state, houseId): FilteredGameState      │
-│                                                                   │
+│                                                                  │
 │ Purpose: Aggregation - "What can I see RIGHT NOW?"               │
 │ Lifetime: Per-query (created on demand, ephemeral)               │
 │ Combines: Current observations + historical intelligence         │
@@ -59,7 +59,7 @@ and enables reactive behavior.
 │ LAYER 1: Intelligence Database (Persistent Storage)              │
 │ ═══════════════════════════════════════════════════════════════  │
 │ house.intelligence: IntelligenceDatabase                         │
-│                                                                   │
+│                                                                  │
 │ Purpose: Storage - "What I know" (accumulated knowledge)         │
 │ Lifetime: Persistent (survives across turns)                     │
 │ Updated by: Espionage, scouting, combat observations             │
@@ -69,16 +69,16 @@ and enables reactive behavior.
 
 ### Comparison Table
 
-| Aspect | Intelligence DB | Fog-of-War | GameEvents |
-|--------|----------------|------------|------------|
-| **Purpose** | Knowledge storage | View aggregation | Temporal notifications |
-| **Lifetime** | Persistent (turns) | Ephemeral (query) | Ephemeral (per-turn) |
-| **Scope** | Per-house | Per-house snapshot | All houses (filtered) |
-| **Operations** | Write (store intel) | Read (query) | Read (consume) |
-| **Data Type** | Historical reports | Aggregated view | Event stream |
-| **Update Frequency** | On observation | On demand | Every turn |
-| **Memory** | Tables/seqs | Full state copy | Event sequence |
-| **Used By** | Fog-of-war | AI planning | AI reactive, reports |
+| Aspect               | Intelligence DB     | Fog-of-War         | GameEvents             |
+|----------------------|---------------------|--------------------|------------------------|
+| **Purpose**          | Knowledge storage   | View aggregation   | Temporal notifications |
+| **Lifetime**         | Persistent (turns)  | Ephemeral (query)  | Ephemeral (per-turn)   |
+| **Scope**            | Per-house           | Per-house snapshot | All houses (filtered)  |
+| **Operations**       | Write (store intel) | Read (query)       | Read (consume)         |
+| **Data Type**        | Historical reports  | Aggregated view    | Event stream           |
+| **Update Frequency** | On observation      | On demand          | Every turn             |
+| **Memory**           | Tables/seqs         | Full state copy    | Event sequence         |
+| **Used By**          | Fog-of-war          | AI planning        | AI reactive, reports   |
 
 ---
 
@@ -114,14 +114,14 @@ IntelligenceDatabase* = object
 
 ### Key Characteristics
 
-| Characteristic | Description |
-|----------------|-------------|
-| **Per-House** | Each house has separate intelligence database |
-| **Persistent** | Stored in GameState, survives across turns |
-| **Cumulative** | Updates/replaces old intel with new observations |
-| **Query-able** | AI asks "What do I know about System 42?" |
-| **Stale Intel** | Reports include `gatheredTurn` - intel ages |
-| **Fog-of-War** | Limits AI to observable information only |
+| Characteristic  | Description                                      |
+|-----------------|--------------------------------------------------|
+| **Per-House**   | Each house has separate intelligence database    |
+| **Persistent**  | Stored in GameState, survives across turns       |
+| **Cumulative**  | Updates/replaces old intel with new observations |
+| **Query-able**  | AI asks "What do I know about System 42?"        |
+| **Stale Intel** | Reports include `gatheredTurn` - intel ages      |
+| **Fog-of-War**  | Limits AI to observable information only         |
 
 ### Storage Location
 
@@ -231,13 +231,13 @@ VisibilityLevel* {.pure.} = enum
 
 ### Visibility Rules
 
-| Level | Can See | Source |
-|-------|---------|--------|
-| **Owned** | Full colony details, real-time | Current GameState |
+| Level        | Can See                           | Source            |
+|--------------|-----------------------------------|-------------------|
+| **Owned**    | Full colony details, real-time    | Current GameState |
 | **Occupied** | Full system details, enemy fleets | Current GameState |
-| **Scouted** | Stale intel, system topology | Intelligence DB |
-| **Adjacent** | System existence, coordinates | Star map |
-| **None** | Nothing | N/A |
+| **Scouted**  | Stale intel, system topology      | Intelligence DB   |
+| **Adjacent** | System existence, coordinates     | Star map          |
+| **None**     | Nothing                           | N/A               |
 
 ### How It Reads Intelligence
 
@@ -347,37 +347,37 @@ GameEvent* = ref object
 
 ### Event Categories
 
-| Category | Count | Examples | Purpose |
-|----------|-------|----------|---------|
-| **Combat** | 50+ | WeaponFired, ShipDestroyed, BombardmentRoundCompleted | Tactical detail |
-| **Fleet Ops** | 12 | StandingOrderActivated, SpyScoutDeployed | Fleet tracking |
-| **Construction** | 8 | ShipCommissioned, BuildingCompleted | Production updates |
-| **Economic** | 6 | PopulationTransfer, TerraformComplete | Economic events |
-| **Diplomatic** | 6 | WarDeclared, DiplomaticRelationChanged | Relations tracking |
-| **Espionage** | 15 | SpyMissionSucceeded, ScoutDetected | Intel ops |
-| **Orders** | 5 | OrderIssued, OrderCompleted, OrderAborted | Command tracking |
-| **Prestige** | 2 | PrestigeGained, PrestigeLost | Victory progress |
+| Category         | Count | Examples                                              | Purpose            |
+|------------------|-------|-------------------------------------------------------|--------------------|
+| **Combat**       | 50+   | WeaponFired, ShipDestroyed, BombardmentRoundCompleted | Tactical detail    |
+| **Fleet Ops**    | 12    | StandingOrderActivated, SpyScoutDeployed              | Fleet tracking     |
+| **Construction** | 8     | ShipCommissioned, BuildingCompleted                   | Production updates |
+| **Economic**     | 6     | PopulationTransfer, TerraformComplete                 | Economic events    |
+| **Diplomatic**   | 6     | WarDeclared, DiplomaticRelationChanged                | Relations tracking |
+| **Espionage**    | 15    | SpyMissionSucceeded, ScoutDetected                    | Intel ops          |
+| **Orders**       | 5     | OrderIssued, OrderCompleted, OrderAborted             | Command tracking   |
+| **Prestige**     | 2     | PrestigeGained, PrestigeLost                          | Victory progress   |
 
 ### Event Lifecycle
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. Generation (During Turn Resolution)                          │
-├─────────────────────────────────────────────────────────────────┤
-│ Engine modules emit events:                                     │
-│   - Combat resolution → WeaponFired, ShipDestroyed              │
-│   - Diplomatic actions → WarDeclared, PeaceSigned               │
-│   - Fleet operations → SpyScoutDeployed, StandingOrderActivated │
+┌──────────────────────────────────────────────────────────────────┐
+│ 1. Generation (During Turn Resolution)                           │
+├──────────────────────────────────────────────────────────────────┤
+│ Engine modules emit events:                                      │
+│   - Combat resolution -> WeaponFired, ShipDestroyed              │
+│   - Diplomatic actions -> WarDeclared, PeaceSigned               │
+│   - Fleet operations -> SpyScoutDeployed, StandingOrderActivated │
 │                                                                  │
-│ events.add(event_factory.weaponFired(...))                      │
-└─────────────────────────────────────────────────────────────────┘
+│ events.add(event_factory.weaponFired(...))                       │
+└──────────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ 2. Accumulation (TurnResult)                                    │
 ├─────────────────────────────────────────────────────────────────┤
 │ TurnResult = object                                             │
 │   newState: GameState                                           │
-│   events: seq[GameEvent]  # ← All events from this turn        │
+│   events: seq[GameEvent]  # <- All events from this turn        │
 │   combatReports: seq[CombatReport]                              │
 └─────────────────────────────────────────────────────────────────┘
                             ↓
@@ -385,7 +385,7 @@ GameEvent* = ref object
 │ 3. Fog-of-War Filtering (Per-House)                             │
 ├─────────────────────────────────────────────────────────────────┤
 │ proc shouldHouseSeeEvent(state, houseId, event): bool           │
-│                                                                  │
+│                                                                 │
 │ Visibility rules:                                               │
 │ - Own events: Always visible                                    │
 │ - Public events: Visible to all (war, peace, elimination)       │
@@ -395,18 +395,18 @@ GameEvent* = ref object
 └─────────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ 4. Consumption                                                   │
+│ 4. Consumption                                                  │
 ├─────────────────────────────────────────────────────────────────┤
 │ A) AI Reactive Behavior (Phase 7e - future):                    │
 │    - Update threat assessments                                  │
 │    - Trigger tactical responses                                 │
 │    - Revise strategic priorities                                │
-│                                                                  │
+│                                                                 │
 │ B) Client Reports (turn_report.nim):                            │
-│    - Convert events → human-readable narratives                 │
+│    - Convert events -> human-readable narratives                │
 │    - Priority sorting (Critical > Important > Info)             │
 │    - Context-aware formatting                                   │
-│                                                                  │
+│                                                                 │
 │ C) Diagnostics (diagnostics.nim):                               │
 │    - Track colonization vs conquest                             │
 │    - Monitor espionage activity                                 │
@@ -505,16 +505,16 @@ if event.eventType == FleetDestroyed and event.systemId == myColony:
 ├─────────────────────────────────────────────────────────────────┤
 │ 1. AI queries fog-of-war:                                       │
 │    let view = createFogOfWarView(state, houseId)                │
-│                                                                  │
+│                                                                 │
 │ 2. Fog-of-war reads intelligence:                               │
 │    - Current observations (owned/occupied systems)              │
 │    - Historical intel (house.intelligence.colonyReports)        │
 │    - Combines into FilteredGameState                            │
-│                                                                  │
+│                                                                 │
 │ 3. AI makes decisions based on filtered view:                   │
 │    - "System 42 has weak defenses (from 3-turn-old intel)"      │
 │    - "Plan invasion using 5 carriers"                           │
-│                                                                  │
+│                                                                 │
 │ 4. AI submits orders: OrderPacket                               │
 └─────────────────────────────────────────────────────────────────┘
                             ↓
@@ -526,16 +526,16 @@ if event.eventType == FleetDestroyed and event.systemId == myColony:
 │    - Espionage operations execute                               │
 │    - Diplomatic actions process                                 │
 │    - Fleet orders execute                                       │
-│                                                                  │
+│                                                                 │
 │ 6. Engine emits events:                                         │
 │    events.add(event_factory.weaponFired(...))                   │
 │    events.add(event_factory.spyScoutDeployed(...))              │
 │    events.add(event_factory.warDeclared(...))                   │
-│                                                                  │
+│                                                                 │
 │ 7. Engine updates intelligence:                                 │
 │    house.intelligence.addColonyReport(report)                   │
 │    house.intelligence.addCombatReport(combat)                   │
-│                                                                  │
+│                                                                 │
 │ 8. Return TurnResult:                                           │
 │    TurnResult(newState, events, combatReports)                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -545,16 +545,16 @@ if event.eventType == FleetDestroyed and event.systemId == myColony:
 ├─────────────────────────────────────────────────────────────────┤
 │ 9. Filter events per house (fog-of-war):                        │
 │    let filteredEvents = events.filter(shouldHouseSeeEvent)      │
-│                                                                  │
+│                                                                 │
 │ 10. AI reactive behavior (Phase 7e - future):                   │
 │     for event in filteredEvents:                                │
 │       if event.eventType == FleetDestroyed:                     │
 │         updateThreatAssessment(+50)                             │
-│                                                                  │
+│                                                                 │
 │ 11. Generate client reports:                                    │
 │     let report = generateTurnReport(oldState, turnResult, house)│
-│     # Converts events → human narratives                        │
-│                                                                  │
+│     # Converts events -> human narratives                       │
+│                                                                 │
 │ 12. Update diagnostics:                                         │
 │     collectDiagnostics(state, houseId, events)                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -565,7 +565,7 @@ if event.eventType == FleetDestroyed and event.systemId == myColony:
 │ 13. AI queries fog-of-war again:                                │
 │     let view = createFogOfWarView(state, houseId)               │
 │     # Now sees UPDATED intelligence from Turn N espionage       │
-│                                                                  │
+│                                                                 │
 │ 14. Makes new decisions with fresh intel...                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -664,14 +664,14 @@ Events discarded (not persisted)
 
 **Different Purposes:**
 
-| Aspect | Fog-of-War | GameEvents |
-|--------|------------|------------|
-| **Question Answered** | "What can I see?" | "What happened?" |
-| **Time Frame** | Current state snapshot | Temporal events |
-| **Usage Pattern** | Query current game state | Consume notifications |
-| **Lifetime** | Per-query | Per-turn |
-| **Data Type** | Aggregated state | Event stream |
-| **AI Use Case** | Strategic planning | Reactive behavior |
+| Aspect                | Fog-of-War               | GameEvents            |
+|-----------------------|--------------------------|-----------------------|
+| **Question Answered** | "What can I see?"        | "What happened?"      |
+| **Time Frame**        | Current state snapshot   | Temporal events       |
+| **Usage Pattern**     | Query current game state | Consume notifications |
+| **Lifetime**          | Per-query                | Per-turn              |
+| **Data Type**         | Aggregated state         | Event stream          |
+| **AI Use Case**       | Strategic planning       | Reactive behavior     |
 
 ### Performance Considerations
 
@@ -907,12 +907,12 @@ test "Spy operation updates intelligence and fog-of-war":
 
 ### Current Performance Characteristics
 
-| Operation | Frequency | Cost | Impact |
-|-----------|-----------|------|--------|
-| `createFogOfWarView()` | Per AI decision | ~1-2 MB copy | Medium (4x per turn) |
-| `filterEventsByVisibility()` | Per house per turn | O(n) event scan | Low (~200 events) |
-| `house.intelligence.addReport()` | Per espionage op | Table insert | Negligible |
-| Event generation | Per turn resolution | Object allocation | Low (200-500 objects) |
+| Operation                        | Frequency           | Cost              | Impact                |
+|----------------------------------|---------------------|-------------------|-----------------------|
+| `createFogOfWarView()`           | Per AI decision     | ~1-2 MB copy      | Medium (4x per turn)  |
+| `filterEventsByVisibility()`     | Per house per turn  | O(n) event scan   | Low (~200 events)     |
+| `house.intelligence.addReport()` | Per espionage op    | Table insert      | Negligible            |
+| Event generation                 | Per turn resolution | Object allocation | Low (200-500 objects) |
 
 ### Optimization Opportunities
 
@@ -945,13 +945,13 @@ for systemId in getVisibleSystems(state, houseId):
 
 **Trade-offs:**
 
-| Aspect | Snapshot (Current) | Query-Based (Alternative) |
-|--------|-------------------|---------------------------|
-| **Memory** | High (full copy) | Low (no copy) |
-| **CPU** | Medium (one-time copy) | Low (lazy evaluation) |
-| **API Complexity** | Simple (object access) | Complex (function calls) |
-| **AI Code** | Easy to write | Harder to write |
-| **Caching** | Natural (snapshot) | Manual (if needed) |
+| Aspect             | Snapshot (Current)     | Query-Based (Alternative) |
+|--------------------|------------------------|---------------------------|
+| **Memory**         | High (full copy)       | Low (no copy)             |
+| **CPU**            | Medium (one-time copy) | Low (lazy evaluation)     |
+| **API Complexity** | Simple (object access) | Complex (function calls)  |
+| **AI Code**        | Easy to write          | Harder to write           |
+| **Caching**        | Natural (snapshot)     | Manual (if needed)        |
 
 **Recommendation:** Keep snapshot approach unless profiling shows bottleneck.
 
@@ -1079,11 +1079,11 @@ TurnResult* = object
 
 **Compression Ratio:**
 
-| Data | Full State | Delta | Savings |
-|------|-----------|-------|---------|
-| **Early Game** (Turn 1-20) | 2 MB | 50-100 KB | 95% |
-| **Mid Game** (Turn 50-100) | 4 MB | 100-200 KB | 95% |
-| **Late Game** (Turn 150-200) | 5 MB | 150-300 KB | 94% |
+| Data                         | Full State | Delta      | Savings |
+|------------------------------|------------|------------|---------|
+| **Early Game** (Turn 1-20)   | 2 MB       | 50-100 KB  | 95%     |
+| **Mid Game** (Turn 50-100)   | 4 MB       | 100-200 KB | 95%     |
+| **Late Game** (Turn 150-200) | 5 MB       | 150-300 KB | 94%     |
 
 **Implementation:**
 ```nim
@@ -1163,11 +1163,11 @@ proc compressEvent(event: GameEvent): CompactGameEvent =
 
 **Compression Ratio:**
 
-| Format | Size per Event | 300 Events |
-|--------|----------------|------------|
-| **JSON** | ~200 bytes | ~60 KB |
-| **MessagePack** | ~80 bytes | ~24 KB |
-| **Custom Binary** | ~30 bytes | ~9 KB |
+| Format            | Size per Event | 300 Events |
+|-------------------|----------------|------------|
+| **JSON**          | ~200 bytes     | ~60 KB     |
+| **MessagePack**   | ~80 bytes      | ~24 KB     |
+| **Custom Binary** | ~30 bytes      | ~9 KB      |
 
 ##### 3. **Filtered State per Client (Fog-of-War Advantage)**
 
@@ -1201,11 +1201,11 @@ proc prepareClientUpdates(turnResult: TurnResult): Table[HouseId, ClientUpdate] 
 
 **Network Efficiency:**
 
-| Data | Full State (All Clients) | Filtered (Per Client) | Savings |
-|------|-------------------------|----------------------|---------|
-| **GameState** | 5 MB | 500 KB - 1 MB | 80-90% |
-| **Events** | 300 events | 50-150 events | 50-83% |
-| **Total per Client** | 5.2 MB | 520 KB - 1.1 MB | 80-90% |
+| Data                 | Full State (All Clients) | Filtered (Per Client) | Savings |
+|----------------------|--------------------------|-----------------------|---------|
+| **GameState**        | 5 MB                     | 500 KB - 1 MB         | 80-90%  |
+| **Events**           | 300 events               | 50-150 events         | 50-83%  |
+| **Total per Client** | 5.2 MB                   | 520 KB - 1.1 MB       | 80-90%  |
 
 ##### 4. **Nostr Event Structure**
 
@@ -1256,11 +1256,11 @@ for turn in 1..currentTurn:
 
 **Network Traffic Over 100 Turns:**
 
-| Approach | Traffic |
-|----------|---------|
-| **Full state each turn** | 100 turns × 5 MB = 500 MB |
-| **Delta compression** | 100 turns × 150 KB = 15 MB |
-| **Savings** | 97% |
+| Approach                 | Traffic                    |
+|--------------------------|----------------------------|
+| **Full state each turn** | 100 turns × 5 MB = 500 MB  |
+| **Delta compression**    | 100 turns × 150 KB = 15 MB |
+| **Savings**              | 97%                        |
 
 ##### 6. **Event Batching with Priority**
 
@@ -1314,14 +1314,14 @@ nim c --profiler:on --stackTrace:on -d:release src/ai/analysis/run_simulation.ni
 
 ### Summary: Optimization Priority
 
-| Priority | Optimization | When to Implement |
-|----------|--------------|-------------------|
-| **P0 (Critical)** | Delta compression for Nostr | Before multiplayer release |
-| **P0 (Critical)** | Per-client fog-of-war filtering | Already implemented! |
-| **P1 (High)** | Event binary encoding | If Nostr bandwidth limited |
-| **P2 (Medium)** | Query-based fog-of-war | If profiler shows bottleneck |
-| **P3 (Low)** | Intelligence pruning | If games exceed 200 turns |
-| **P4 (Nice)** | Event pooling | If profiler shows GC pressure |
+| Priority          | Optimization                    | When to Implement             |
+|-------------------|---------------------------------|-------------------------------|
+| **P0 (Critical)** | Delta compression for Nostr     | Before multiplayer release    |
+| **P0 (Critical)** | Per-client fog-of-war filtering | Already implemented!          |
+| **P1 (High)**     | Event binary encoding           | If Nostr bandwidth limited    |
+| **P2 (Medium)**   | Query-based fog-of-war          | If profiler shows bottleneck  |
+| **P3 (Low)**      | Intelligence pruning            | If games exceed 200 turns     |
+| **P4 (Nice)**     | Event pooling                   | If profiler shows GC pressure |
 
 **Current status:** System is well-optimized for single-player. Need P0 optimizations
 before Nostr multiplayer deployment.
@@ -1340,21 +1340,21 @@ before Nostr multiplayer deployment.
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2025-12-11 | Initial documentation of three-layer architecture |
+| Version | Date       | Changes                                           |
+|---------|------------|---------------------------------------------------|
+| 1.0     | 2025-12-11 | Initial documentation of three-layer architecture |
 
 ---
 
 ## Glossary
 
-| Term | Definition |
-|------|------------|
-| **Intelligence Database** | Per-house persistent storage of accumulated knowledge |
-| **Fog-of-War** | Query layer creating filtered snapshots per house |
-| **GameEvents** | Temporal event stream of turn happenings |
-| **FilteredGameState** | Per-house snapshot combining current + historical intel |
-| **Stale Intel** | Intelligence reports with age tracking (gatheredTurn) |
-| **Visibility Level** | System observation state (None/Adjacent/Scouted/Occupied/Owned) |
-| **Event Factory** | Functions creating structured GameEvent objects |
-| **Reactive Behavior** | AI responding to turn events (Phase 7e) |
+| Term                      | Definition                                                      |
+|---------------------------|-----------------------------------------------------------------|
+| **Intelligence Database** | Per-house persistent storage of accumulated knowledge           |
+| **Fog-of-War**            | Query layer creating filtered snapshots per house               |
+| **GameEvents**            | Temporal event stream of turn happenings                        |
+| **FilteredGameState**     | Per-house snapshot combining current + historical intel         |
+| **Stale Intel**           | Intelligence reports with age tracking (gatheredTurn)           |
+| **Visibility Level**      | System observation state (None/Adjacent/Scouted/Occupied/Owned) |
+| **Event Factory**         | Functions creating structured GameEvent objects                 |
+| **Reactive Behavior**     | AI responding to turn events (Phase 7e)                         |

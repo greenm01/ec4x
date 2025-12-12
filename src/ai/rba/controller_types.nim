@@ -344,7 +344,8 @@ type
     houseId*: HouseId
     strategy*: AIStrategy
     personality*: AIPersonality
-    intelligence*: Table[SystemId, IntelligenceReport]
+    # DEPRECATED: intelligence field removed - use intelligenceSnapshot instead
+    # See: intelligence_helpers.nim for snapshot lookup utilities
     operations*: seq[CoordinatedOperation]
     reserves*: seq[StrategicReserve]
     fallbackRoutes*: seq[FallbackRoute]
@@ -377,6 +378,7 @@ type
 
     # Phase C: Enhanced intelligence distribution
     intelligenceSnapshot*: Option[IntelligenceSnapshot]  # Current turn's intelligence from Drungarius
+    intelligenceNeedsRefresh*: bool  # Flag: Snapshot needs regeneration after events
 
     # Phase 2: Multi-turn invasion campaigns
     activeCampaigns*: seq[InvasionCampaign]  # Ongoing invasion operations

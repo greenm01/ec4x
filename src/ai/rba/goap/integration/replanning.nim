@@ -4,6 +4,7 @@ import ../state/snapshot
 import ../planner/search
 import plan_tracking
 import ../../../../engine/logger # For logging
+import ../../../../engine/resolution/types as event_types # For GameEvent
 import ../../../../common/types/core # For HouseId
 import ../../config # For GOAPConfig and RequirementPriority
 import ../../controller_types # For UnfulfillmentReason
@@ -40,7 +41,7 @@ proc toReplanReason*(reason: UnfulfillmentReason): ReplanReason =
     # it indicates a fundamental issue with the plan's target.
     return ReplanReason.PlanInvalidated
 
-proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPConfig): (bool, ReplanReason) =
+proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPConfig, events: seq[event_types.GameEvent] = @[]): (bool, ReplanReason) =
   ## Determine if a plan needs replanning.
   ## Returns: (shouldReplan, reason)
 
@@ -72,12 +73,50 @@ proc shouldReplan*(plan: TrackedPlan, state: WorldStateSnapshot, config: GOAPCon
     logInfo(LogCategory.lcAI, &"GOAP Replan: Plan '{plan.plan.goal.description}' has no more actions. Marking as invalid/completed.")
     return (true, ReplanReason.PlanInvalidated) # Effectively completed or invalid.
 
-  # 3. Check if plan has stalled (no progress for X turns)
+  # 3. Phase 3.3: Check for combat events that invalidate the plan
+  for event in events:
+    case event.eventType
+    of event_types.GameEventType.FleetDestroyed:
+      # Check if a fleet in our plan was destroyed
+      if event.houseId.isSome and event.houseId.get() == state.houseId:
+        # One of our fleets destroyed - if plan requires fleets, need to replan
+        var planRequiresFleets = false
+        for action in plan.plan.actions:
+          case action.actionType
+          of ActionType.MoveFleet, ActionType.AssembleInvasionForce,
+             ActionType.BombardPlanet, ActionType.BlitzPlanet,
+             ActionType.InvadePlanet, ActionType.EstablishDefense,
+             ActionType.ConductScoutMission:
+            planRequiresFleets = true
+            break
+          else:
+            discard
+        if planRequiresFleets:
+          logInfo(LogCategory.lcAI, &"GOAP Replan: Fleet destroyed event detected for '{plan.plan.goal.description}'. Plan requires fleets.")
+          return (true, ReplanReason.ExternalEvent)
+
+    of event_types.GameEventType.ColonyCaptured, event_types.GameEventType.SystemCaptured:
+      # Check if our target was captured by another house
+      if plan.plan.goal.target.isSome and event.systemId.isSome:
+        if plan.plan.goal.target.get() == event.systemId.get():
+          # Check if someone else captured our target (newOwner is not us)
+          if event.newOwner.isSome and event.newOwner.get() != state.houseId:
+            logInfo(LogCategory.lcAI, &"GOAP Replan: Target system {event.systemId.get()} captured by {event.newOwner.get()} (plan: '{plan.plan.goal.description}').")
+            return (true, ReplanReason.ExternalEvent)
+          # Or if we captured it (goal achieved)
+          elif event.newOwner.isSome and event.newOwner.get() == state.houseId:
+            logInfo(LogCategory.lcAI, &"GOAP Replan: Target system {event.systemId.get()} captured by us (goal achieved: '{plan.plan.goal.description}').")
+            return (true, ReplanReason.PlanInvalidated) # Goal achieved
+
+    else:
+      discard # Other events don't affect planning
+
+  # 4. Check if plan has stalled (no progress for X turns)
   if config.replanStalledTurns > 0 and state.turn - plan.lastUpdateTurn >= config.replanStalledTurns and plan.actionsCompleted < plan.plan.actions.len:
     logInfo(LogCategory.lcAI, &"GOAP Replan: Plan '{plan.plan.goal.description}' stalled for {state.turn - plan.lastUpdateTurn} turns.")
     return (true, ReplanReason.PlanStalled)
 
-  # 4. Check for external events/critical changes that invalidate the goal
+  # 5. Check for external events/critical changes that invalidate the goal
   # This relies on the `isPlanStillValid` in plan_tracking.nim
   if not isPlanStillValid(plan, state):
     logInfo(LogCategory.lcAI, &"GOAP Replan: Plan '{plan.plan.goal.description}' is no longer valid due to world state changes.")

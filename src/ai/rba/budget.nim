@@ -17,6 +17,7 @@ import ../../engine/economy/capacity/fighter  # For fighter capacity calculation
 import ../../common/types/[core, units]
 import ./treasurer     # Treasurer module for budget allocation
 import ./shared/resource_tracking/tracker  # Generic resource tracking
+import ./shared/intelligence_types  # For IntelligenceSnapshot
 
 # =============================================================================
 # Budget Tracker - RBA-specific wrapper
@@ -273,21 +274,25 @@ proc getCompositionDoctrine(personality: AIPersonality): CompositionDoctrine =
       specialistRatio: 0.15  # 15% specialists
     )
 
-proc assessAggregateThreat(intelligence: Table[SystemId, IntelligenceReport],
+proc assessAggregateThreat(intelligenceSnapshot: Option[IntelligenceSnapshot],
                           personality: AIPersonality): float =
-  ## Assess overall enemy threat level from intelligence reports
+  ## Assess overall enemy threat level from intelligence snapshot
   ## Returns threat modifier (0.8-1.2) for strategic adjustment
   ##
   ## Phase 4: Counter-Strategy Adaptation (Simplified)
   ## Uses aggregate threat assessment due to fog-of-war limitations
 
+  if intelligenceSnapshot.isNone:
+    return 1.0  # No intelligence available, neutral stance
+
+  let snap = intelligenceSnapshot.get()
   var totalThreat = 0
   var threatenedSystemCount = 0
 
-  # Aggregate enemy fleet strength across all intel reports
-  for systemId, report in intelligence:
-    if report.estimatedFleetStrength > 0 and report.owner.isSome:
-      totalThreat += report.estimatedFleetStrength
+  # Aggregate enemy fleet strength from known enemy fleets
+  for fleet in snap.military.knownEnemyFleets:
+    if fleet.estimatedStrength > 0:
+      totalThreat += fleet.estimatedStrength
       threatenedSystemCount += 1
 
   # No significant threats detected
@@ -419,7 +424,7 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
                          atSquadronLimit: bool, cstLevel: int, act: GameAct,
                          personality: AIPersonality,
                          composition: FleetComposition,
-                         intelligence: Table[SystemId, IntelligenceReport]): seq[BuildOrder] =
+                         intelligenceSnapshot: Option[IntelligenceSnapshot]): seq[BuildOrder] =
   ## Generate military build orders with PERSONALITY-DRIVEN ship preferences
   ## Uses BudgetTracker to prevent overspending
   ##
@@ -557,7 +562,7 @@ proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,
 
     # PHASE 4: COUNTER-STRATEGY ADAPTATION
     # Assess aggregate threat and apply strategic modifiers
-    let threatModifier = assessAggregateThreat(intelligence, personality)
+    let threatModifier = assessAggregateThreat(intelligenceSnapshot, personality)
 
     # Select ship with highest weighted score (personality × composition × threat)
     var bestScore = 0.0
@@ -1329,7 +1334,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
       # PRIORITY 3: MILITARY (combat ships)
       let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
-                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality, currentComposition, controller.intelligence)
+                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality, currentComposition, controller.intelligenceSnapshot)
       result.add(militaryOrders)
       projectedMilitaryCount += militaryOrders.len  # Update projected count
 

@@ -9,6 +9,7 @@ import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap]
 import ../../common/types/[core, planets]
 import ./config
 import ./shared/intelligence_types as intel_types # For IntelligenceSnapshot
+import ./shared/intelligence_helpers # DRY: Snapshot lookup utilities
 
 # =============================================================================
 # Intelligence Gathering & Analysis
@@ -87,70 +88,57 @@ proc getColony*(filtered: FilteredGameState, systemId: SystemId): Option[Colony]
       return some(colony)
   return none(Colony)
 
-proc updateIntelligence*(controller: var AIController, filtered: FilteredGameState, systemId: SystemId,
+proc updateIntelligence*(controller: var AIController,
+                         filtered: FilteredGameState, systemId: SystemId,
                          turn: int, confidenceLevel: float = 1.0) =
-  ## Update intelligence report for a system
+  ## DEPRECATED: This function wrote to controller.intelligence which has been
+  ## removed. In the new architecture, intelligence updates are handled by:
+  ##   1. Engine's IntelligenceDatabase (authoritative source)
+  ##   2. IntelligenceSnapshot (regenerated from database for AI)
+  ##   3. This function now triggers a snapshot refresh
+  ##
   ## Called when scouts gather intel or when we have direct visibility
-  ## RESPECTS FOG-OF-WAR: Updates based on visible/scouted information
-  var report = IntelligenceReport(
-    systemId: systemId,
-    lastUpdated: turn,
-    hasColony: isSystemColonized(filtered, systemId),
-    confidenceLevel: confidenceLevel
-  )
+  ## RESPECTS FOG-OF-WAR: Based on visible/scouted information
+  ##
+  ## NEW BEHAVIOR: Sets intelligenceNeedsRefresh flag to trigger snapshot
+  ## regeneration. The engine's intelligence system handles the actual data
+  ## updates automatically through fog-of-war filtering and scouting.
 
-  if report.hasColony:
-    # Check if it's our colony (full details)
-    var foundOwn = false
-    for colony in filtered.ownColonies:
-      if colony.systemId == systemId:
-        report.owner = some(colony.owner)
-        report.planetClass = some(colony.planetClass)
-        report.resources = some(colony.resources)
-        report.estimatedDefenses = colony.starbases.len * 10 + colony.groundBatteries * 5
-        foundOwn = true
-        break
+  # Trigger snapshot refresh - engine will have updated intelligence data
+  controller.intelligenceNeedsRefresh = true
 
-    # Otherwise check visible enemy colonies (limited intel)
-    if not foundOwn:
-      for visCol in filtered.visibleColonies:
-        if visCol.systemId == systemId:
-          report.owner = some(visCol.owner)
-          report.planetClass = visCol.planetClass
-          report.resources = visCol.resources
-          report.estimatedDefenses = visCol.estimatedDefenses.get(0)
-          break
+  # OLD CODE REMOVED: Previously maintained separate intelligence cache
+  # Now relies on engine's IntelligenceDatabase as single source of truth
+  # (DRY principle)
 
-  # Estimate fleet strength at this system (only visible fleets)
-  var totalStrength = 0
-  for fleet in filtered.ownFleets:
-    if fleet.location == systemId:
-      for squadron in fleet.squadrons:
-        totalStrength += squadron.combatStrength()
-  for visFleet in filtered.visibleFleets:
-    if visFleet.location == systemId:
-      # Rough estimate based on ship count
-      totalStrength += visFleet.estimatedShipCount.get(0) * 20
-
-  report.estimatedFleetStrength = totalStrength
-
-  controller.intelligence[systemId] = report
-
-proc getIntelAge*(controller: AIController, systemId: SystemId, currentTurn: int): Option[int] =
+proc getIntelAge*(controller: AIController, systemId: SystemId,
+                  currentTurn: int): Option[int] =
   ## Get how many turns old our intelligence is for a system
-  if systemId in controller.intelligence:
-    return some(currentTurn - controller.intelligence[systemId].lastUpdated)
+  ## Uses intelligenceSnapshot for lookup (DRY principle)
+  if controller.intelligenceSnapshot.isNone:
+    return none(int)
+
+  let snap = controller.intelligenceSnapshot.get()
+  let systemIntel = snap.getSystemIntel(systemId)
+
+  if systemIntel.isSome:
+    return some(currentTurn - systemIntel.get().lastIntelTurn)
+
   return none(int)
 
-proc needsReconnaissanceController*(controller: AIController, systemId: SystemId, currentTurn: int): bool =
+proc needsReconnaissanceController*(controller: AIController,
+                                    systemId: SystemId,
+                                    currentTurn: int): bool =
   ## Check if a system needs reconnaissance
   ## Returns true if we have no intel or intel is stale
-  if systemId notin controller.intelligence:
-    return true
+  ## Uses intelligenceSnapshot + intelligence_helpers (DRY principle)
+  if controller.intelligenceSnapshot.isNone:
+    return true  # No snapshot = need intel
 
-  let age = currentTurn - controller.intelligence[systemId].lastUpdated
-  # RESOLVED: Use config value (10 turns)
-  return age > config.globalRBAConfig.intelligence.colony_intel_stale_threshold
+  let snap = controller.intelligenceSnapshot.get()
+  let threshold = config.globalRBAConfig.intelligence.colony_intel_stale_threshold
+
+  return snap.isIntelStale(systemId, currentTurn, threshold)
 
 proc findBestColonizationTarget*(controller: var AIController, filtered: FilteredGameState,
                                   fromSystem: SystemId, fleetId: FleetId): Option[SystemId] =
@@ -177,44 +165,15 @@ proc findBestColonizationTarget*(controller: var AIController, filtered: Filtere
       # Distance penalty (prefer nearby, but not overwhelmingly)
       score -= float(distance) * 0.5
 
-      # Use intelligence if available
-      if systemId in controller.intelligence:
-        let intel = controller.intelligence[systemId]
-
-        # Planet quality bonus (per spec: Extreme/Desolate/Hostile/Harsh/Benign/Lush/Eden)
-        if intel.planetClass.isSome:
-          case intel.planetClass.get()
-          of PlanetClass.Eden:
-            score += 25.0  # Highest priority (Level VII: 2k+ PU)
-          of PlanetClass.Lush:
-            score += 20.0  # Level VI: 1k-2k PU
-          of PlanetClass.Benign:
-            score += 15.0  # Level V: 501-1000 PU
-          of PlanetClass.Harsh:
-            score += 10.0  # Level IV: 181-500 PU
-          of PlanetClass.Hostile:
-            score += 5.0   # Level III: 61-180 PU
-          of PlanetClass.Desolate:
-            score += 2.0   # Level II: 21-60 PU
-          of PlanetClass.Extreme:
-            score += 1.0   # Level I: 1-20 PU (still colonize if close)
-
-        # Resource bonus
-        if intel.resources.isSome:
-          case intel.resources.get()
-          of ResourceRating.VeryRich:
-            score += 20.0  # Exceptional resources
-          of ResourceRating.Rich:
-            score += 15.0  # Excellent resources
-          of ResourceRating.Abundant:
-            score += 10.0  # Good resources
-          of ResourceRating.Poor:
-            score += 3.0   # Minimal resources
-          of ResourceRating.VeryPoor:
-            score += 0.0   # Worst resources
-
-        # Confidence modifier (prefer systems we've scouted)
-        score *= intel.confidenceLevel
+      # TODO: Planet quality scoring needs proper data structure
+      # Planet class data for uncolonized systems is not currently available
+      # in VisibleSystem or IntelligenceSnapshot.
+      # For now, use simple heuristics based on visibility level.
+      let visSystem = filtered.visibleSystems.getOrDefault(systemId)
+      if visSystem.visibility in [VisibilityLevel.Scouted,
+                                  VisibilityLevel.Occupied]:
+        # System has been scouted - prefer over unknown
+        score += 5.0
       else:
         # Unknown system - small bonus for exploration
         score += 2.0

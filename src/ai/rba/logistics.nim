@@ -29,6 +29,7 @@ import ../../engine/economy/maintenance
 import ../common/types as ai_types
 import ./[controller_types, config]
 import ./shared/colony_assessment  # Shared defense assessment
+import ./shared/[intelligence_helpers, intelligence_types]  # DRY intelligence lookups
 
 ## =============================================================================
 ## LEGACY TYPE DEFINITIONS (Deprecated - for backward compatibility)
@@ -292,9 +293,9 @@ proc recommendAssetReallocations*(controller: AIController, inventory: AssetInve
     for colony in filtered.ownColonies:
       # Check intel for threats near this colony
       var threatLevel = 0.0
-      if colony.systemId in controller.intelligence:
-        let report = controller.intelligence[colony.systemId]
-        threatLevel = float(report.estimatedFleetStrength)
+      if controller.intelligenceSnapshot.isSome:
+        let snap = controller.intelligenceSnapshot.get()
+        threatLevel = float(snap.getFleetThreat(colony.systemId))
 
       # Undefended colonies with threats are priority (using shared assessment)
       let assessment = colony_assessment.assessColonyDefenseNeeds(colony, filtered)
@@ -522,12 +523,13 @@ proc generatePopulationTransfers*(controller: AIController, inventory: AssetInve
 
     # Check if safe (no enemy fleets in intel reports nearby)
     var threatLevel = 0.0
-    for systemId, report in controller.intelligence:
-      # Check intel reports for enemy activity near this colony
-      # (simplified - just checking if we have recent intel on threats)
-      if report.hasColony and report.owner.isSome and report.owner.get() != controller.houseId:
-        # Enemy colony detected - calculate threat
-        threatLevel += 0.5
+    if controller.intelligenceSnapshot.isSome:
+      let snap = controller.intelligenceSnapshot.get()
+      # Count known enemy colonies as threat indicator
+      for (enemySystemId, owner) in snap.knownEnemyColonies:
+        if owner != controller.houseId:
+          # Enemy colony detected - calculate threat
+          threatLevel += 0.5
 
     # Safe colonies have low threat
     if threatLevel > 2.0:
@@ -554,12 +556,9 @@ proc generatePopulationTransfers*(controller: AIController, inventory: AssetInve
       else: 0.5
 
     # Check if frontier (has unexplored adjacent systems in intel)
-    var frontierBonus = 0.0
-    # Use intelligence to check if this is a frontier system
-    if colony.systemId in controller.intelligence:
-      let report = controller.intelligence[colony.systemId]
-      if report.confidenceLevel < 1.0:  # Low confidence = frontier area
-        frontierBonus = 1.0
+    # TODO: Frontier detection needs proper implementation using adjacent system checks
+    # For now, assume all recipient colonies could benefit (removed deprecated intel check)
+    var frontierBonus = 0.5  # Default small bonus
 
     # Calculate recipient score (higher = better recipient)
     let recipientScore = resourceBonus + frontierBonus + (10.0 - float(colony.infrastructure))
@@ -689,10 +688,9 @@ proc identifyReserveCandidates*(controller: AIController, inventory: AssetInvent
 
     # Check if system is safe (no enemy threats in intel)
     var threatLevel = 0.0
-    if fleet.location in controller.intelligence:
-      let report = controller.intelligence[fleet.location]
-      if report.estimatedFleetStrength > 0:
-        threatLevel = float(report.estimatedFleetStrength)
+    if controller.intelligenceSnapshot.isSome:
+      let snap = controller.intelligenceSnapshot.get()
+      threatLevel = float(snap.getFleetThreat(fleet.location))
 
     if threatLevel >= 100.0:
       continue  # System under threat, keep fleet active
@@ -796,11 +794,12 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
     # Check if system is safe (use intel reports)
     # DEFAULT TO SAFE if no intel (early game before scouts deployed)
     var isSafeSystem = true
-    if fleet.location in controller.intelligence:
-      let report = controller.intelligence[fleet.location]
-      if report.estimatedFleetStrength > 50:
+    if controller.intelligenceSnapshot.isSome:
+      let snap = controller.intelligenceSnapshot.get()
+      let fleetThreat = snap.getFleetThreat(fleet.location)
+      if fleetThreat > 50:
         isSafeSystem = false
-    # If no intel report exists, assume safe (allows early-game mothballing)
+    # If no intel snapshot exists, assume safe (allows early-game mothballing)
 
     if not isSafeSystem:
       continue  # Don't mothball in threatened systems
@@ -1083,11 +1082,12 @@ proc identifyReactivationCandidates*(controller: AIController, inventory: AssetI
 
   for colony in filtered.ownColonies:
     # Check intelligence for threats at this colony
-    if colony.systemId in controller.intelligence:
-      let report = controller.intelligence[colony.systemId]
-      let threatLevel = report.estimatedFleetStrength
+    var threatLevel = 0
+    if controller.intelligenceSnapshot.isSome:
+      let snap = controller.intelligenceSnapshot.get()
+      threatLevel = snap.getFleetThreat(colony.systemId)
 
-      if threatLevel > 100:  # Significant threat detected
+    if threatLevel > 100:  # Significant threat detected
         # Calculate our current defense at this system
         var ourDefense = 0
         for fleetId, fleet in filtered.ownFleets:

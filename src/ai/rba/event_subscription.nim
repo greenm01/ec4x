@@ -110,32 +110,19 @@ proc handleCombatEvent*(
   event: event_types.GameEvent
 ) =
   ## React to combat events (battles, bombardment, invasions)
-  ## Updates threat assessments for systems where combat occurred
+  ## Triggers intelligence snapshot refresh for threat assessment updates
+  ##
+  ## NEW ARCHITECTURE: Event handlers don't mutate data directly.
+  ## Instead, they flag that the snapshot needs regeneration.
+  ## The engine's IntelligenceDatabase is the authoritative source.
 
   # Extract system ID from event
   if event.systemId.isNone:
     return
 
-  let systemId = event.systemId.get()
-
-  # Update intelligence: Mark system as combat zone
-  if controller.intelligence.hasKey(systemId):
-    var report = controller.intelligence[systemId]
-    report.lastUpdated = state.turn
-    # Increase estimated fleet strength for systems with active combat
-    report.estimatedFleetStrength += 20  # Combat indicates significant forces
-    report.confidenceLevel = 0.9  # High confidence from direct observation
-    controller.intelligence[systemId] = report
-
-  # If this is a fleet destroyed event involving our fleets, note threat
-  if event.eventType == event_types.GameEventType.FleetDestroyed:
-    if event.houseId.isSome and event.houseId.get() == controller.houseId:
-      # Our fleet was destroyed - update threat assessment in this system
-      if controller.intelligence.hasKey(systemId):
-        var report = controller.intelligence[systemId]
-        report.estimatedFleetStrength += 50  # Enemy has significant strength here
-        report.confidenceLevel = 1.0  # Absolute confidence from direct combat
-        controller.intelligence[systemId] = report
+  # Combat events indicate intelligence has changed
+  # Flag for snapshot refresh to get updated threat assessments
+  controller.intelligenceNeedsRefresh = true
 
 proc handleDiplomaticEvent*(
   controller: var AIController,
@@ -143,54 +130,34 @@ proc handleDiplomaticEvent*(
   event: event_types.GameEvent
 ) =
   ## React to diplomatic events (war declarations, peace treaties, etc.)
-  ## Updates threat assessments based on diplomatic state changes
+  ## Triggers intelligence snapshot refresh for threat reassessment
+  ##
+  ## NEW ARCHITECTURE: Flag snapshot refresh instead of direct mutation
 
   case event.eventType
   of event_types.GameEventType.WarDeclared:
-    # Someone declared war - update threat assessments
+    # War declared - threat assessments will change
     if event.sourceHouseId.isSome and event.targetHouseId.isSome:
       let attacker = event.sourceHouseId.get()
       let target = event.targetHouseId.get()
 
-      # If we're the target, escalate threat assessment for attacker's systems
-      if target == controller.houseId:
-        for systemId, report in controller.intelligence.mpairs:
-          if report.owner.isSome and report.owner.get() == attacker:
-            # Increase estimated threat from attacker
-            report.estimatedFleetStrength += 30
-            report.lastUpdated = state.turn
-
-      # If we're the attacker, mark our intelligence as outdated (need recon)
-      if attacker == controller.houseId:
-        for systemId, report in controller.intelligence.mpairs:
-          if report.owner.isSome and report.owner.get() == target:
-            # Mark target systems for reconnaissance
-            report.lastUpdated = state.turn - 5  # Fake old intel to trigger recon
+      # If we're involved, flag intelligence refresh
+      if target == controller.houseId or attacker == controller.houseId:
+        controller.intelligenceNeedsRefresh = true
 
   of event_types.GameEventType.PeaceSigned:
-    # Peace treaty signed - reduce threat estimates
+    # Peace signed - threat assessments will change
     if event.sourceHouseId.isSome and event.targetHouseId.isSome:
       let house1 = event.sourceHouseId.get()
       let house2 = event.targetHouseId.get()
 
-      # If we're involved in peace treaty, reduce threat estimates
+      # If we're involved, flag intelligence refresh
       if house1 == controller.houseId or house2 == controller.houseId:
-        let otherHouse = if house1 == controller.houseId: house2 else: house1
-        for systemId, report in controller.intelligence.mpairs:
-          if report.owner.isSome and report.owner.get() == otherHouse:
-            # Reduce perceived threat from peaceful house
-            report.estimatedFleetStrength = (report.estimatedFleetStrength * 70) div
-                100  # 30% reduction
-            report.lastUpdated = state.turn
+        controller.intelligenceNeedsRefresh = true
 
   of event_types.GameEventType.DiplomaticRelationChanged:
-    # Generic diplomatic state change - update intelligence freshness
-    if event.newState.isSome and event.targetHouseId.isSome:
-      let targetHouse = event.targetHouseId.get()
-      # Refresh intelligence on houses we have diplomatic contact with
-      for systemId, report in controller.intelligence.mpairs:
-        if report.owner.isSome and report.owner.get() == targetHouse:
-          report.lastUpdated = state.turn
+    # Diplomatic state change - refresh intelligence
+    controller.intelligenceNeedsRefresh = true
 
   else:
     discard  # Other diplomatic events don't affect threat assessment
@@ -228,47 +195,21 @@ proc handleColonyEvent*(
   event: event_types.GameEvent
 ) =
   ## React to colony events (captured, established, eliminated)
-  ## Updates strategic priorities based on territorial changes
+  ## Triggers intelligence snapshot refresh for territorial changes
+  ##
+  ## NEW ARCHITECTURE: Flag snapshot refresh instead of direct mutation
 
   if event.systemId.isNone:
     return
 
-  let systemId = event.systemId.get()
-
   case event.eventType
   of event_types.GameEventType.ColonyCaptured:
-    # Colony captured - update intelligence on new owner
-    if event.targetHouseId.isSome:
-      let newOwner = event.targetHouseId.get()
-      if controller.intelligence.hasKey(systemId):
-        var report = controller.intelligence[systemId]
-        report.owner = some(newOwner)
-        report.lastUpdated = state.turn
-        report.hasColony = true
-        # Update threat assessment based on who captured it
-        if newOwner == controller.houseId:
-          report.estimatedFleetStrength = 0  # We control it now
-        else:
-          report.estimatedFleetStrength += 40  # Enemy has forces here
-        report.confidenceLevel = 1.0  # Absolute confidence from direct observation
-        controller.intelligence[systemId] = report
+    # Colony captured - intelligence has changed
+    controller.intelligenceNeedsRefresh = true
 
   of event_types.GameEventType.ColonyEstablished:
-    # New colony established - add to intelligence
-    if event.houseId.isSome:
-      let owner = event.houseId.get()
-      var newReport = IntelligenceReport(
-        systemId: systemId,
-        lastUpdated: state.turn,
-        hasColony: true,
-        owner: some(owner),
-        estimatedFleetStrength: if owner == controller.houseId: 0 else: 10,
-        estimatedDefenses: 0,  # New colony has minimal defenses
-        planetClass: none(PlanetClass),
-        resources: none(ResourceRating),
-        confidenceLevel: 1.0  # High confidence from direct observation
-      )
-      controller.intelligence[systemId] = newReport
+    # New colony established - intelligence has changed
+    controller.intelligenceNeedsRefresh = true
 
   else:
     discard

@@ -135,6 +135,26 @@ proc isPlanStillValid*(plan: TrackedPlan, state: WorldStateSnapshot): bool =
     # For now, we don't immediately invalidate on budget shortfall
     discard
 
+  # Phase 3.2: Fleet existence validation
+  # Check if plan requires fleets but none are available
+  var requiresFleets = false
+  for i in plan.currentActionIndex ..< plan.plan.actions.len:
+    let action = plan.plan.actions[i]
+    case action.actionType
+    of ActionType.MoveFleet, ActionType.AssembleInvasionForce,
+       ActionType.BombardPlanet, ActionType.BlitzPlanet,
+       ActionType.InvadePlanet, ActionType.EstablishDefense,
+       ActionType.ConductScoutMission:
+      requiresFleets = true
+      break
+    else:
+      discard
+
+  if requiresFleets and state.idleFleets.len == 0:
+    # Plan requires fleet operations but no fleets available
+    # (likely destroyed in combat or all busy with other tasks)
+    return false
+
   # Check goal-specific validity (refined for common cases)
   case plan.plan.goal.goalType
   of GoalType.DefendColony:
