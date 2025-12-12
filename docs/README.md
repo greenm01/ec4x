@@ -17,14 +17,18 @@
 ### Game Specifications
 
 Located in `specs/`:
-- **[reference.md](specs/reference.md)** - Complete game mechanics reference
-- **[gameplay.md](specs/gameplay.md)** - Gameplay overview
-- **[economy.md](specs/economy.md)** - Economic system
-- **[diplomacy.md](specs/diplomacy.md)** - Diplomatic mechanics
-- **[operations.md](specs/operations.md)** - Fleet operations
-- **[assets.md](specs/assets.md)** - Game assets
-- **[glossary.md](specs/glossary.md)** - Game terminology
 - **[index.md](specs/index.md)** - Specification index
+- **[01-gameplay.md](specs/01-gameplay.md)** - How you play, prestige system, setup, and turn structure
+- **[02-assets.md](specs/02-assets.md)** - Ships, fleets, squadrons, and special units
+- **[03-economy.md](specs/03-economy.md)** - Economics system
+- **[04-research_development.md](specs/04-research_development.md)** - R&D systems
+- **[05-construction.md](specs/05-construction.md)** - Construction systems
+- **[06-operations.md](specs/06-operations.md)** - Movement mechanics
+- **[07-combat.md](specs/07-combat.md)** - Combat mechanics
+- **[08-diplomacy.md](specs/08-diplomacy.md)** - Diplomatic states and espionage
+- **[09-intelligence.md](specs/09-intelligence.md)** - Intelligence gathering, reports, and fog of war
+- **[10-reference.md](specs/10-reference.md)** - Ship stats, tech trees, and data tables
+- **[11-glossary.md](specs/11-glossary.md)** - Comprehensive definitions of game terms and abbreviations
 
 ### Technical Architecture
 
