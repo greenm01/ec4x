@@ -205,8 +205,9 @@ proc autoLoadColonistsToETACs*(
     if fleetId in state.standingOrders:
       let standingOrder = state.standingOrders[fleetId]
       # Movement-based standing orders: skip this fleet
+      # EXCEPTION: AutoColonize ETACs need to load PTU when they return home
+      # AutoColonize will execute after loading and send them out again
       if standingOrder.orderType in [StandingOrderType.PatrolRoute,
-                                     StandingOrderType.AutoColonize,
                                      StandingOrderType.AutoReinforce,
                                      StandingOrderType.AutoRepair,
                                      StandingOrderType.BlockadeTarget]:
