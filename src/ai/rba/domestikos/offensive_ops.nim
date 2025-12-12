@@ -267,14 +267,16 @@ proc selectCombatOrderType(
   filtered: FilteredGameState,
   fleetId: FleetId,
   shipCount: int,
-  targetColony: VisibleColony
+  targetColony: VisibleColony,
+  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
 ): FleetOrderType =
-  ## Choose appropriate combat order based on fleet composition and target defenses
+  ## Phase 4.2: Enhanced combat order selection using detailed intelligence
   ##
   ## Strategy:
-  ## - Weak/no defense + transports → Blitz (simultaneous bombardment + invasion)
-  ## - Moderate defense + transports → Bombard first to soften
-  ## - Strong defense → Bombard only (invasion too risky)
+  ## - Undefended (no ground/orbital) → Invade directly
+  ## - Light defenses (ground only) → Blitz (simultaneous bombardment + invasion)
+  ## - Moderate defenses (ground + orbital) → Invade after bombardment
+  ## - Heavy defenses (starbase + fleets) → Bombard only
   ## - No transports → Bombard only
 
   # Find fleet and check for troop transports with LOADED Marines
@@ -290,30 +292,55 @@ proc selectCombatOrderType(
             totalMarines += ship.cargo.quantity
       break
 
-  # Estimate target defense strength (0-10 scale)
-  # Higher values = stronger defenses
-  var defenseStrength = 0
-  if targetColony.estimatedDefenses.isSome:
-    let defenses = targetColony.estimatedDefenses.get()
-    defenseStrength = defenses  # Ground defenses (armies, marines, batteries)
+  # Phase 4.2: Enhanced defense assessment using intelligence
+  var groundDefenses = 0  # Armies, marines, ground batteries
+  var orbitalDefenses = 0  # Starbases, shields
+  var enemyFleets = 0  # Orbiting enemy fleets
 
-  # Decision logic based on defenses, fleet composition, AND loaded Marines
+  if intelSnapshot.isSome:
+    let snap = intelSnapshot.get()
+    # Check for detailed target intelligence
+    for target in snap.military.vulnerableTargets:
+      if target.systemId == targetColony.systemId:
+        # Extract defense components
+        groundDefenses = target.estimatedDefenses div 10  # Ground units
+        orbitalDefenses = target.estimatedDefenses mod 10  # Starbase/shields
+        break
+
+    # Check for enemy fleet presence (makes invasion much riskier)
+    for fleet in snap.military.knownEnemyFleets:
+      if fleet.lastKnownLocation == targetColony.systemId:
+        enemyFleets += 1
+  else:
+    # Fallback to basic estimate
+    if targetColony.estimatedDefenses.isSome:
+      let defenses = targetColony.estimatedDefenses.get()
+      groundDefenses = defenses div 2
+      orbitalDefenses = defenses div 2
+
+  # Calculate total defense score
+  let totalDefenses = groundDefenses + (orbitalDefenses * 2) + (enemyFleets * 5)
+
+  # Decision logic based on detailed defenses, fleet composition, and loaded Marines
   if not hasLoadedTransports or totalMarines == 0:
     # No loaded transports - can ONLY bombard (no invasion possible)
     return FleetOrderType.Bombard
 
-  # Have loaded Marines - can attempt invasion or blitz
-  # Now we have loaded marines
-  elif defenseStrength <= 5 and shipCount >= 3 and totalMarines >= 3:
-    # Blitz against weak to moderate defenses with adequate forces
+  # Have loaded Marines - evaluate invasion feasibility
+  if totalDefenses == 0 and shipCount >= 2 and totalMarines >= 2:
+    # Completely undefended - Blitz for fast capture
     return FleetOrderType.Blitz
 
-  elif defenseStrength <= 8 and shipCount >= 4 and totalMarines >= 6:
-    # Invade against moderate to strong defenses with very strong forces
+  elif totalDefenses <= 3 and enemyFleets == 0 and shipCount >= 3 and totalMarines >= 3:
+    # Light ground defenses only, no enemy fleets - Blitz
+    return FleetOrderType.Blitz
+
+  elif totalDefenses <= 8 and enemyFleets == 0 and shipCount >= 4 and totalMarines >= 6:
+    # Moderate defenses, sufficient forces - Invade (after bombardment)
     return FleetOrderType.Invade
 
   else:
-    # Fallback: Bombard if not meeting Blitz/Invade criteria, to soften defenses
+    # Heavy defenses or enemy fleet presence - Bombard only (too risky to invade)
     return FleetOrderType.Bombard
 
 proc calculateInvasionPriority(
@@ -604,9 +631,11 @@ proc generateCampaignOrder(
   campaign: var InvasionCampaign,
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
-  controller: AIController
+  controller: AIController,
+  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
 ): Option[FleetOrder] =
   ## Generate phase-appropriate order for campaign
+  ## Phase 4.2: Enhanced with intelligence for defense assessment
   ## Updates campaign.lastActionTurn if order generated
 
   # Find best available fleet (prioritize assigned fleets, then nearby idle)
@@ -698,7 +727,8 @@ proc generateCampaignOrder(
       filtered,
       fleet.fleetId,
       fleet.shipCount,
-      targetColony.get()
+      targetColony.get(),
+      intelSnapshot  # Phase 4.2: Pass intelligence for defense assessment
     )
 
     let roe = case orderType
@@ -784,7 +814,7 @@ proc generateCounterAttackOrders*(
 
     # Generate order for this campaign
     let campaignOrder = generateCampaignOrder(campaign, filtered, analyses,
-                                               controller)
+                                               controller, intelSnapshot)
     if campaignOrder.isSome:
       result.add(campaignOrder.get())
       # Update campaign in controller (important for state tracking)
@@ -1062,7 +1092,8 @@ proc generateCounterAttackOrders*(
       filtered,
       attacker.fleetId,
       attacker.shipCount,
-      target.colony  # Pass target colony for defense assessment
+      target.colony,  # Pass target colony for defense assessment
+      intelSnapshot   # Phase 4.2: Pass intelligence for enhanced defense assessment
     )
 
     logInfo(LogCategory.lcAI,
