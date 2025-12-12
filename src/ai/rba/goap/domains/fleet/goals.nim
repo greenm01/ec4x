@@ -8,9 +8,10 @@
 ## - EstablishFleetPresence: Position fleet for strategic control
 ## - ConductReconnaissance: Scout system for intelligence
 
-import std/[tables, options]
+import std/[tables, options, math]
 import ../../core/[types, conditions, heuristics]
 import ../../state/effects
+import ../../../../../engine/intelligence/types as intel_types
 import ../../../../../common/types/[core, tech]
 
 # =============================================================================
@@ -194,24 +195,46 @@ proc analyzeOffensiveOpportunities*(state: WorldStateSnapshot): seq[Goal] =
   ## Analyze invasion opportunities
   ##
   ## Returns goals for weak enemy colonies
+  ## Phase 3.4: Applies intel quality and staleness weighting
 
   result = @[]
 
-  for systemId in state.invasionOpportunities:
-    # Find owner from knownEnemyColonies
-    var owner: Option[HouseId] = none(HouseId)
-    for (sys, house) in state.knownEnemyColonies:
-      if sys == systemId:
-        owner = some(house)
-        break
+  # Use detailed vulnerable targets from intelligence snapshot
+  for target in state.intelSnapshot.military.vulnerableTargets:
+    # Base priority from vulnerability score (0.0-1.0 → 0.5-0.9 priority range)
+    var priority = 0.5 + (target.vulnerability * 0.4)
 
-    if owner.isSome:
-      let goal = createInvadeColonyGoal(
-        systemId,
-        owner.get(),
-        priority = 0.7  # Offensive operations are high but not critical
-      )
-      result.add(goal)
+    # Phase 3.4: Apply intel quality multiplier
+    let qualityMultiplier = case target.intelQuality
+      of intel_types.IntelQuality.Perfect:
+        1.2  # High confidence in assessment
+      of intel_types.IntelQuality.Spy:
+        1.0  # Good intelligence
+      of intel_types.IntelQuality.Scan:
+        0.7  # Basic scan data
+      of intel_types.IntelQuality.Visual:
+        0.5  # Visual sighting only, low confidence
+      else:
+        0.8  # Unknown quality, moderate confidence
+
+    priority *= qualityMultiplier
+
+    # Phase 3.4: Apply staleness penalty (intel >5 turns old)
+    let intelAge = state.turn - target.lastIntelTurn
+    if intelAge > 5:
+      # Decay priority by 10% per turn over 5 turns, minimum 50%
+      let stalenessPenalty = max(0.5, 1.0 - (float(intelAge - 5) * 0.1))
+      priority *= stalenessPenalty
+
+    # Clamp priority to valid range [0.0, 1.0]
+    priority = clamp(priority, 0.0, 1.0)
+
+    let goal = createInvadeColonyGoal(
+      target.systemId,
+      target.owner,
+      priority = priority
+    )
+    result.add(goal)
 
 proc analyzeReconnaissanceNeeds*(state: WorldStateSnapshot): seq[Goal] =
   ## Analyze which systems need intelligence updates

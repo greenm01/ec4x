@@ -54,7 +54,7 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     houseId: houseId,
     strategy: strategy,
     personality: getStrategyPersonality(strategy),
-    intelligence: initTable[SystemId, IntelligenceReport](),
+    # intelligence field removed - use intelligenceSnapshot instead
     operations: @[],
     reserves: @[],
     fallbackRoutes: @[],
@@ -71,6 +71,7 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     goapReservedBudget: none(int),
     goapConfig: globalRBAConfig.goap,
     goapPlanTracker: newPlanTracker(),
+    intelligenceNeedsRefresh: false,  # Initialize refresh flag
     # Phase 2: Multi-turn invasion campaigns
     activeCampaigns: @[]
   )
@@ -82,7 +83,7 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     houseId: houseId,
     strategy: AIStrategy.Balanced,
     personality: personality,
-    intelligence: initTable[SystemId, IntelligenceReport](),
+    # intelligence field removed - use intelligenceSnapshot instead
     operations: @[],
     reserves: @[],
     fallbackRoutes: @[],
@@ -99,6 +100,7 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     goapReservedBudget: none(int),
     goapConfig: globalRBAConfig.goap,
     goapPlanTracker: newPlanTracker(),
+    intelligenceNeedsRefresh: false,  # Initialize refresh flag
     # Phase 2: Multi-turn invasion campaigns
     activeCampaigns: @[]
   )

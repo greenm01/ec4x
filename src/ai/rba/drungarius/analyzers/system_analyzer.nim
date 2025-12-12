@@ -263,3 +263,67 @@ proc detectPatrolRoutes*(
               &"confidence {pattern.confidence * 100:.0f}%")
 
   result = routes
+
+# ==============================================================================
+# PHASE 2.3: FLEET MOVEMENT TRACKING
+# ==============================================================================
+
+proc trackFleetMovements*(
+  filtered: FilteredGameState,
+  previousSnapshot: Option[IntelligenceSnapshot],
+  currentTurn: int
+): Table[HouseId, seq[FleetMovement]] =
+  ## Track enemy fleet movements by comparing current positions with previous snapshot
+  ## Detects when fleets change systems between turns
+  ## Phase 2.3: Enables predictive defense allocation
+
+  result = initTable[HouseId, seq[FleetMovement]]()
+
+  # If no previous snapshot, can't detect movement
+  if previousSnapshot.isNone:
+    return
+
+  let prevSnap = previousSnapshot.get()
+
+  # Build map of previous fleet positions from previous snapshot
+  var previousPositions = initTable[FleetId, SystemId]()
+  for houseId, movements in prevSnap.enemyFleetMovements:
+    for movement in movements:
+      previousPositions[movement.fleetId] = movement.lastKnownLocation
+
+  # Check current fleet positions from FleetMovementHistory
+  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
+    # Skip own fleets
+    if history.owner == filtered.viewingHouse:
+      continue
+
+    # Check if we saw this fleet in previous snapshot
+    if not previousPositions.hasKey(fleetId):
+      # New fleet detected - not a movement, just first sighting
+      continue
+
+    let previousLocation = previousPositions[fleetId]
+    let currentLocation = history.lastKnownLocation
+
+    # Detect movement: fleet changed systems
+    if previousLocation != currentLocation:
+      # Movement detected!
+      let movement = FleetMovement(
+        fleetId: fleetId,
+        owner: history.owner,
+        lastKnownLocation: currentLocation,
+        lastSeenTurn: history.lastSeen,
+        estimatedStrength: 0  # TODO: Track strength from SystemIntelReport
+      )
+
+      # Add to result table
+      if not result.hasKey(history.owner):
+        result[history.owner] = @[]
+      result[history.owner].add(movement)
+
+      # Log detected movement
+      logInfo(LogCategory.lcAI,
+              &"Fleet movement detected - Fleet {fleetId} ({history.owner}) " &
+              &"moved from {previousLocation} to {currentLocation}")
+
+  return result

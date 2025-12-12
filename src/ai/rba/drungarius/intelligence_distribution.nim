@@ -406,20 +406,14 @@ proc generateIntelligenceReport*(
                 &"system {systemId} (owner: {colonyReport.targetOwner}, industry: {colonyReport.industry})")
 
   # === ENEMY FLEET MOVEMENTS ===
-  # Track enemy fleet positions per house
-  for fleetId, history in filtered.ownHouse.intelligence.fleetMovementHistory:
-    if history.owner != controller.houseId:
-      let movement = FleetMovement(
-        fleetId: fleetId,
-        owner: history.owner,
-        lastKnownLocation: history.lastKnownLocation,
-        lastSeenTurn: history.lastSeen,
-        estimatedStrength: 0  # TODO: Add strength tracking in future
-      )
-
-      if not result.enemyFleetMovements.hasKey(history.owner):
-        result.enemyFleetMovements[history.owner] = @[]
-      result.enemyFleetMovements[history.owner].add(movement)
+  # Track enemy fleet movements using previous snapshot comparison
+  # Phase 2.3: Detects when fleets change systems (enables predictive defense)
+  result.enemyFleetMovements =
+    system_analyzer.trackFleetMovements(
+      filtered,
+      controller.intelligenceSnapshot,
+      filtered.turn
+    )
 
   # === THREAT ASSESSMENT ===
   # Assess threats to our own colonies

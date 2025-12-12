@@ -349,6 +349,88 @@ proc estimateFleetStrength(composition: FleetComposition): float =
   ## Simple heuristic: ship count weighted by capability
   return float(composition.capitalShips * 3 + composition.escorts * 2 + composition.scouts)
 
+proc estimateEnemyFleetStrength*(
+  systemId: SystemId,
+  enemyHouse: HouseId,
+  intelSnapshot: Option[IntelligenceSnapshot]
+): tuple[minStrength: int, maxStrength: int, confidence: float] =
+  ## Phase 4.1: Enhanced enemy fleet strength estimation using intelligence
+  ## Returns (minStrength, maxStrength, confidence) based on intel quality
+  ## Uses detailed composition and tech levels when available
+
+  result = (minStrength: 0, maxStrength: 0, confidence: 0.0)
+
+  if intelSnapshot.isNone:
+    # No intelligence - return unknown
+    return (minStrength: 0, maxStrength: 500, confidence: 0.1)
+
+  let snap = intelSnapshot.get()
+
+  # Find enemy fleets at this system
+  var fleetsAtSystem: seq[EnemyFleetSummary] = @[]
+  for fleet in snap.military.knownEnemyFleets:
+    if fleet.lastKnownLocation == systemId and fleet.owner == enemyHouse:
+      fleetsAtSystem.add(fleet)
+
+  if fleetsAtSystem.len == 0:
+    # No known enemy fleets - return minimal threat
+    return (minStrength: 0, maxStrength: 100, confidence: 0.5)
+
+  # Calculate total strength from composition data
+  var totalMinStrength = 0
+  var totalMaxStrength = 0
+  var totalConfidence = 0.0
+
+  for fleet in fleetsAtSystem:
+    var fleetMin = fleet.estimatedStrength
+    var fleetMax = fleet.estimatedStrength
+
+    # If we have detailed composition, calculate more accurately
+    if fleet.composition.isSome:
+      let comp = fleet.composition.get()
+      # Base strength from composition
+      let baseStrength =
+        comp.capitalShips * 200 +
+        comp.cruisers * 100 +
+        comp.destroyers * 50 +
+        comp.escorts * 25 +
+        comp.scouts * 10
+
+      fleetMin = baseStrength
+      fleetMax = baseStrength
+
+      # Apply tech level multiplier if available
+      if snap.research.enemyTechLevels.hasKey(enemyHouse):
+        let enemyTech = snap.research.enemyTechLevels[enemyHouse]
+        # Use CST (ConstructionTech) as proxy for ship quality
+        if enemyTech.techLevels.hasKey(TechField.ConstructionTech):
+          let techLevel = enemyTech.techLevels[TechField.ConstructionTech]
+          # Higher tech = stronger ships (10% per level above 1)
+          let techMultiplier = 1.0 + (float(techLevel - 1) * 0.1)
+          fleetMin = int(float(fleetMin) * techMultiplier)
+          fleetMax = int(float(fleetMax) * techMultiplier * 1.2)  # 20% uncertainty
+    else:
+      # No composition data - use rough estimate with wider range
+      fleetMax = int(float(fleetMin) * 1.5)  # 50% uncertainty
+
+    totalMinStrength += fleetMin
+    totalMaxStrength += fleetMax
+
+    # Confidence based on intel age
+    let intelAge = snap.turn - fleet.lastSeen
+    let ageConfidence = max(0.3, 1.0 - (float(intelAge) * 0.1))  # Decay 10% per turn
+    totalConfidence += ageConfidence
+
+  # Average confidence across all fleets
+  if fleetsAtSystem.len > 0:
+    totalConfidence /= float(fleetsAtSystem.len)
+
+  result = (
+    minStrength: totalMinStrength,
+    maxStrength: totalMaxStrength,
+    confidence: totalConfidence
+  )
+
 proc findSuitableInvasionFleet(
   analyses: seq[FleetAnalysis],
   requiredForceScore: int,
