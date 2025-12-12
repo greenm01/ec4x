@@ -6,6 +6,7 @@
 import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
 import game_setup, diagnostics, balance_test_config  # Test-specific modules
 import ../../ai/rba/player as ai
+import ../../ai/rba/event_subscription  # Phase 7e: Event-based reactive behavior
 import ../../ai/common/types  # For AIStrategy type
 import ../../engine/[gamestate, resolve, orders, fog_of_war, setup, logger]
 import ../../engine/commands/zero_turn_commands
@@ -39,6 +40,7 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
   # Match houses to strategies using the starMap's player order (deterministic)
   var controllers: seq[AIController] = @[]
   var houseIds: seq[HouseId] = @[]  # Keep for diagnostic collection
+  var eventSubscriptions: seq[EventSubscription] = @[]  # Phase 7e: Reactive behavior
 
   # Build a position-to-house mapping first
   var positionToHouse = initTable[int, HouseId]()
@@ -56,6 +58,8 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
       let strategy = if i < strategies.len: strategies[i] else: AIStrategy.Balanced
       controllers.add(newAIController(houseId, strategy))
       houseIds.add(houseId)
+      # Phase 7e: Create event subscription for reactive AI behavior
+      eventSubscriptions.add(createDefaultRBASubscription(houseId))
       echo &"  {houseId}: {strategy}"
 
   echo &"\nGame initialized with {game.houses.len} houses"
@@ -130,6 +134,16 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
     # Resolve turn with actual game engine
     let turnResult = resolveTurn(game, ordersTable)
     game = turnResult.newState
+
+    # Phase 7e: Deliver events to AI controllers for reactive behavior
+    # AI updates threat assessments, priorities based on observable events
+    for i in 0..<controllers.len:
+      deliverEvents(
+        eventSubscriptions[i],
+        controllers[i],
+        game,
+        turnResult.events
+      )
 
     # Collect diagnostic metrics after turn resolution
     for i, houseId in houseIds:
