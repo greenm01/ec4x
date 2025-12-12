@@ -497,12 +497,12 @@ proc assessExpansionNeeds*(
   currentAct: GameAct
 ): seq[BuildRequirement] =
   ## Intelligence-driven ETAC requirements for colonization
-  ## Active in Acts 1-3 (continues expansion into early war if systems available)
+  ## Active in Act 1 ONLY to prevent late-game ETAC spam.
   result = @[]
 
-  # Acts 1-3: Continue expansion if systems available
-  # Act 4 (Endgame): Stop expansion, focus on winning
-  if currentAct == ai_common_types.GameAct.Act4_Endgame:
+  # Act 1 (Land Grab): Expansion is primary objective
+  # Acts 2-4: Stop proactive ETAC production, focus on military/economy
+  if currentAct != ai_common_types.GameAct.Act1_LandGrab:
     return
 
   # Count uncolonized visible systems
