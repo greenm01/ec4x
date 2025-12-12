@@ -71,8 +71,8 @@ Marine              | Offensive |  1  |  25  |      |  X   |  X   |  X   | Colon
 
 FACILITIES (EPARCH - INFRASTRUCTURE)
 --------------------------------------------------------------------------------------------------
-Spaceport           | Facility  |  1  | 100  |  X   |  X   |  X   |  X   | Colony   | Required for Shipyard/Drydock/Starbase
-Shipyard            | Facility  |  1  | 150  |  X   |  X   |  X   |  X   | Colony   | Ship construction only
+Spaceport           | Facility  |  1  | 20   |  X   |  X   |  X   |  X   | Colony   | Required for Shipyard/Drydock/Starbase
+Shipyard            | Facility  |  1  | 60   |  X   |  X   |  X   |  X   | Colony   | Ship construction only
 Drydock             | Facility  |  1  | 150  |      |  X   |  X   |  X   | Colony   | Ship repair only
 Starbase            | Facility  |  3  | 300  |  X   |  X   |  X   |  X   | Colony   | Orbital defense/detection
 ```
@@ -142,7 +142,7 @@ EC4X has **one repair pipeline** that operates independently:
 **Units Repaired:** All ships (18 total, excluding facilities)
 
 **Requirements:**
-- Colony must have at least one **Drydock** or one **Shipyard**
+- Colony must have at least one **Drydock**
 - Available dock capacity (not all docks in use)
 - Sufficient Production Points (PP)
 
@@ -290,7 +290,7 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 **Purpose:** Basic ship construction, required for advanced facilities
 
 **Characteristics:**
-- Base cost: 100 PP
+- Base cost: 20 PP
 - Base docks: 5 (CST-scaled)
 - Ship construction: 2× Shipyard cost
 - Cannot repair ships
@@ -308,7 +308,7 @@ docks = base_docks × (1.0 + (CST_level - 1) × 0.10)
 **Purpose:** Efficient ship construction only
 
 **Characteristics:**
-- Base cost: 150 PP
+- Base cost: 60 PP
 - Base docks: 10 (CST-scaled, 2× Spaceport)
 - Ship construction: Standard construction cost
 - Cannot repair ships (use Drydock for repairs)

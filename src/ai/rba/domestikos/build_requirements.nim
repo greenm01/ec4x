@@ -1976,43 +1976,9 @@ proc generateBuildRequirements*(
       estimatedCost = 40
       requirementType = RequirementType.OffensivePrep
 
-    # STEP 3: Act-aware priority assignment (not just cost-based)
-    # Capital ships should have higher priority in later Acts to match strategic value
-    # This ensures they win the weighted priority queue in Basileus mediation
-    let priority = case currentAct
-      of GameAct.Act1_LandGrab:
-        # Act 1: Expansion focus - cheap units get Medium priority
-        if estimatedCost <= 40:
-          RequirementPriority.Medium  # ETAC, Fighter, Scout, Destroyer
-        else:
-          RequirementPriority.Low  # Capitals not priority in Act 1
-
-      of GameAct.Act2_RisingTensions:
-        # Act 2: Medium capitals (Cruiser, Battlecruiser) get High priority
-        if estimatedCost <= 25:
-          RequirementPriority.Medium  # Cheap units still useful
-        elif estimatedCost <= 200:
-          RequirementPriority.High  # Cruiser=120, Battlecruiser=180
-        else:
-          RequirementPriority.Medium  # Heavy capitals deferred
-
-      of GameAct.Act3_TotalWar:
-        # Act 3: Heavy capitals (Battleship, Dreadnought) get High priority
-        if estimatedCost <= 25:
-          RequirementPriority.Low  # Cheap units less relevant
-        elif estimatedCost <= 400:
-          RequirementPriority.High  # Battleship=250, Dreadnought=350
-        else:
-          RequirementPriority.Medium  # SuperDreadnoughts
-
-      of GameAct.Act4_Endgame:
-        # Act 4: Ultimate capitals get Critical priority
-        if estimatedCost <= 40:
-          RequirementPriority.Low  # Light units irrelevant
-        elif estimatedCost >= 300:
-          RequirementPriority.Critical  # Dreadnought=350, SuperDreadnought=500+
-        else:
-          RequirementPriority.High  # Medium capitals still strong
+    # All capacity fillers are Deferred priority to use the filler budget
+    # This prevents them from competing with high-priority strategic requirements
+    let priority = RequirementPriority.Deferred
 
     # Add capacity filler requirement (ships have shipClass, ground units/facilities have itemId)
     requirements.add(BuildRequirement(
