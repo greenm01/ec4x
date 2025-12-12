@@ -270,14 +270,15 @@ proc selectCombatOrderType(
   targetColony: VisibleColony,
   intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
 ): FleetOrderType =
-  ## Phase 4.2: Enhanced combat order selection using detailed intelligence
+  ## Space-First Combat Order Selection
   ##
+  ## Philosophy: Space superiority is PRIMARY. Ground defenses are SECONDARY.
   ## Strategy:
-  ## - Undefended (no ground/orbital) → Invade directly
-  ## - Light defenses (ground only) → Blitz (simultaneous bombardment + invasion)
-  ## - Moderate defenses (ground + orbital) → Invade after bombardment
-  ## - Heavy defenses (starbase + fleets) → Bombard only
-  ## - No transports → Bombard only
+  ## 1. Check space superiority (our fleet vs their defending fleet)
+  ## 2. If we have space superiority → choose tactic based on ground defenses
+  ## 3. If we DON'T have space superiority → Bombard from range (risky to close)
+  ##
+  ## Ground defenses only affect TACTIC (Invade/Blitz/Bombard), not WHETHER to attack
 
   # Find fleet and check for troop transports with LOADED Marines
   var hasLoadedTransports = false
@@ -292,55 +293,90 @@ proc selectCombatOrderType(
             totalMarines += ship.cargo.quantity
       break
 
-  # Phase 4.2: Enhanced defense assessment using intelligence
+  # === STEP 1: ASSESS SPACE SUPERIORITY (PRIMARY) ===
+  # Find attacking fleet strength
+  var attackingFleetStrength = 0
+  for fleet in filtered.ownFleets:
+    if fleet.id == fleetId:
+      attackingFleetStrength = fleet.combatStrength()
+      break
+
+  # Find defending fleet strength at target
+  var defendingFleetStrength = 0
+  var defendingFleetCount = 0
+
+  # Check visible fleets at target location
+  for visibleFleet in filtered.visibleFleets:
+    if visibleFleet.owner == targetColony.owner and visibleFleet.location == targetColony.systemId:
+      defendingFleetCount += 1
+      # Estimate fleet strength from ship count (rough approximation)
+      if visibleFleet.estimatedShipCount.isSome:
+        # Rough estimate: 50 strength per ship
+        defendingFleetStrength += visibleFleet.estimatedShipCount.get() * 50
+      else:
+        # Unknown composition - assume 1 medium ship (100 strength)
+        defendingFleetStrength += 100
+
+  # Space superiority check
+  let hasSpaceSuperiority = defendingFleetCount == 0 or
+                           attackingFleetStrength >= defendingFleetStrength
+
+  # === STEP 2: ASSESS GROUND DEFENSES (SECONDARY - only affects tactic) ===
   var groundDefenses = 0  # Armies, marines, ground batteries
-  var orbitalDefenses = 0  # Starbases, shields
-  var enemyFleets = 0  # Orbiting enemy fleets
+  var hasStarbase = false
 
   if intelSnapshot.isSome:
     let snap = intelSnapshot.get()
     # Check for detailed target intelligence
     for target in snap.military.vulnerableTargets:
       if target.systemId == targetColony.systemId:
-        # Extract defense components
         groundDefenses = target.estimatedDefenses div 10  # Ground units
-        orbitalDefenses = target.estimatedDefenses mod 10  # Starbase/shields
+        hasStarbase = (target.estimatedDefenses mod 10) > 0
         break
-
-    # Check for enemy fleet presence (makes invasion much riskier)
-    for fleet in snap.military.knownEnemyFleets:
-      if fleet.lastKnownLocation == targetColony.systemId:
-        enemyFleets += 1
   else:
     # Fallback to basic estimate
     if targetColony.estimatedDefenses.isSome:
-      let defenses = targetColony.estimatedDefenses.get()
-      groundDefenses = defenses div 2
-      orbitalDefenses = defenses div 2
+      groundDefenses = targetColony.estimatedDefenses.get() div 2
 
-  # Calculate total defense score
-  let totalDefenses = groundDefenses + (orbitalDefenses * 2) + (enemyFleets * 5)
+  # === STEP 3: CHOOSE TACTIC ===
 
-  # Decision logic based on detailed defenses, fleet composition, and loaded Marines
+  # Check if we have transports - affects available tactics
   if not hasLoadedTransports or totalMarines == 0:
     # No loaded transports - can ONLY bombard (no invasion possible)
     return FleetOrderType.Bombard
 
-  # Have loaded Marines - evaluate invasion feasibility
-  if totalDefenses == 0 and shipCount >= 2 and totalMarines >= 2:
-    # Completely undefended - Blitz for fast capture
+  # If we DON'T have space superiority, bombard from range (too risky to close for invasion)
+  if not hasSpaceSuperiority:
+    return FleetOrderType.Bombard
+
+  # WE HAVE SPACE SUPERIORITY - choose tactic based on ground defenses only
+  # Philosophy: With space control, ground defenses just slow us down, they don't stop us
+
+  if groundDefenses == 0:
+    # No ground resistance - fast capture
     return FleetOrderType.Blitz
 
-  elif totalDefenses <= 3 and enemyFleets == 0 and shipCount >= 3 and totalMarines >= 3:
-    # Light ground defenses only, no enemy fleets - Blitz
+  elif groundDefenses <= 3:
+    # Light ground defenses - Blitz (bombardment + simultaneous landing)
     return FleetOrderType.Blitz
 
-  elif totalDefenses <= 8 and enemyFleets == 0 and shipCount >= 4 and totalMarines >= 6:
-    # Moderate defenses, sufficient forces - Invade (after bombardment)
+  elif groundDefenses <= 8 and totalMarines >= 4:
+    # Moderate ground defenses, sufficient Marines - Invade (systematic approach)
     return FleetOrderType.Invade
 
+  elif groundDefenses > 8 or totalMarines < 4:
+    # Heavy ground defenses OR insufficient Marines
+    # BLOCKADE STRATEGY: Economic warfare instead of costly ground assault
+    # Rationale: Blockade cripples production, forces defender to respond, cheaper than bombardment
+    # Use blockade for high-value colonies (estimated industry > 5)
+    if targetColony.estimatedIndustry.isSome and targetColony.estimatedIndustry.get() >= 5:
+      return FleetOrderType.BlockadePlanet  # Economic siege
+    else:
+      # Low-value colony - bombard to soften, we'll capture later
+      return FleetOrderType.Bombard
+
   else:
-    # Heavy defenses or enemy fleet presence - Bombard only (too risky to invade)
+    # Fallback: Bombard to soften defenses
     return FleetOrderType.Bombard
 
 proc calculateInvasionPriority(
@@ -465,7 +501,7 @@ proc findSuitableInvasionFleet(
   targetSystem: SystemId
 ): Option[FleetId] =
   ## Find available fleet with sufficient strength for invasion (Phase F)
-  ## 1.2x safety margin for success probability
+  ## 1.0x safety margin - take risks for opportunity strikes
   for analysis in analyses:
     # Check availability
     if analysis.utilization notin {FleetUtilization.Idle, FleetUtilization.Idle, FleetUtilization.UnderUtilized}: # Corrected to not have duplicate 'Idle'
@@ -489,8 +525,8 @@ proc findSuitableInvasionFleet(
     # Use the engine's actual combat strength calculation
     let fleetStrength = fleet.combatStrength().float
 
-    # Strength requirement (1.2x safety margin)
-    if fleetStrength < float(requiredForceScore) * 1.5: # Increased safety margin for invasion force
+    # Strength requirement (1.0x - take risks for opportunity)
+    if fleetStrength < float(requiredForceScore) * 1.0: # Even match - aggressive stance
       continue
 
     # Distance/ETA check (reject if > configured max turns)
@@ -939,6 +975,7 @@ proc generateCounterAttackOrders*(
     colony: VisibleColony  # Store colony for defense assessment (optional for intel targets)
 
   var vulnerableTargets: seq[VulnerableTarget] = @[]
+  var assignedFleets: HashSet[FleetId] = initHashSet[FleetId]()  # Track fleets already assigned
 
   # Priority 1: Use military.vulnerableTargets (invasion opportunities)
   if intelSnapshot.isSome:
@@ -964,13 +1001,15 @@ proc generateCounterAttackOrders*(
                 &"value {opportunity.estimatedValue}, confidence {opportunity.intelQuality}")
 
         # Create order directly (no need to defer to visibility targeting)
+        let fleetId = assignedFleet.get()
         result.add(FleetOrder(
-          fleetId: assignedFleet.get(),
+          fleetId: fleetId,
           orderType: FleetOrderType.Invade,  # Intelligence targets warrant invasion
           targetSystem: some(opportunity.systemId),
           priority: int(priority),
           roe: some(8) # Main assault: fight through resistance. As per dev log.
         ))
+        assignedFleets.incl(fleetId)  # Mark fleet as assigned
 
     # Secondary: High-value economic targets (undefended)
     if not intelTargetsFound:
@@ -999,18 +1038,43 @@ proc generateCounterAttackOrders*(
               priority: int(priority),
               roe: some(8) # Main assault: fight through resistance. As per dev log.
             ))
+            assignedFleets.incl(attacker.fleetId)  # Mark fleet as assigned
             break  # One fleet per target
 
-    # If intelligence targeting succeeded, return early
-    if result.len > 0:
-      return result
-
-  # === FALLBACK: VISIBILITY-BASED OPPORTUNISTIC TARGETING ===
-  # Only used when intelligence unavailable or found no suitable targets
+  # === PROXIMITY-BASED OPPORTUNISTIC TARGETING ===
+  # ALWAYS evaluate nearby visible colonies for surprise attacks
+  # Rationale: Proximity = opportunity. Attack neighbors regardless of intel quality
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Invasion: Using visibility-based targeting " &
           &"(visible colonies: {filtered.visibleColonies.len})")
+
+  # === ASSESS OVERALL ENEMY HOUSE STRENGTH ===
+  # Count total ships and colonies per house (strategic assessment)
+  var enemyHouseStrength: Table[HouseId, tuple[ships: int, colonies: int]] = initTable[HouseId, tuple[ships: int, colonies: int]]()
+
+  # Count enemy ships from visible fleets
+  for visibleFleet in filtered.visibleFleets:
+    if visibleFleet.owner != controller.houseId:
+      if not enemyHouseStrength.hasKey(visibleFleet.owner):
+        enemyHouseStrength[visibleFleet.owner] = (ships: 0, colonies: 0)
+      # Add estimated ship count (or assume 1 if unknown)
+      let shipCount = if visibleFleet.estimatedShipCount.isSome:
+                        visibleFleet.estimatedShipCount.get()
+                      else:
+                        1  # Assume at least 1 ship if detected
+      enemyHouseStrength[visibleFleet.owner].ships += shipCount
+
+  # Count enemy colonies from visible colonies
+  for visibleColony in filtered.visibleColonies:
+    if visibleColony.owner != controller.houseId:
+      if not enemyHouseStrength.hasKey(visibleColony.owner):
+        enemyHouseStrength[visibleColony.owner] = (ships: 0, colonies: 0)
+      enemyHouseStrength[visibleColony.owner].colonies += 1
+
+  # Calculate our own strength for comparison
+  let ourShips = filtered.ownFleets.len  # Total fleets (roughly proportional to ships)
+  let ourColonies = filtered.ownColonies.len
 
   # Find vulnerable enemy colonies from CURRENT visibility (not historical intel)
   var enemyColoniesFound = 0
@@ -1037,11 +1101,12 @@ proc generateCounterAttackOrders*(
     if visibleColony.estimatedIndustry.isSome:
       priority += visibleColony.estimatedIndustry.get().float * 1.0
 
-    # Prioritize undefended colonies (easier targets - doubled from 50 to 100)
+    # Prioritize undefended colonies (easier targets)
     if not hasDefenders:
       priority += 100.0  # +100 priority bonus for undefended colonies
 
-    # Distance penalty: -5 per jump beyond 5
+    # PROXIMITY BONUS: Heavily prioritize nearby targets (surprise attacks on neighbors)
+    # Rationale: Close neighbors are easy targets, low logistical cost, quick conquest
     # Find nearest own colony for distance calculation
     var minDistance = 999
     for ownColony in filtered.ownColonies:
@@ -1050,8 +1115,30 @@ proc generateCounterAttackOrders*(
       if dist < minDistance:
         minDistance = dist
 
-    if minDistance > 5:
-      priority -= float((minDistance - 5) * 5)  # -5 per jump beyond 5
+    # Distance-based priority (proximity = opportunity)
+    let proximityBonus = case minDistance
+      of 1..2: 300.0  # Immediate neighbors - ATTACK! (highest priority)
+      of 3..4: 150.0  # Close neighbors - strong opportunity
+      of 5..6: 50.0   # Moderate distance - still viable
+      else: 0.0       # Distant targets - no bonus
+
+    priority += proximityBonus
+
+    # HOUSE WEAKNESS BONUS: Prioritize attacking weak houses
+    # Rationale: Weak houses can't defend effectively, easier to conquer
+    if enemyHouseStrength.hasKey(visibleColony.owner):
+      let enemyStrength = enemyHouseStrength[visibleColony.owner]
+
+      # Compare their strength to ours (ratio < 1.0 means they're weaker)
+      let shipRatio = if ourShips > 0: float(enemyStrength.ships) / float(ourShips) else: 1.0
+      let colonyRatio = if ourColonies > 0: float(enemyStrength.colonies) / float(ourColonies) else: 1.0
+      let overallRatio = (shipRatio + colonyRatio) / 2.0
+
+      # Bonus for weak houses (ratio < 0.7 = significantly weaker)
+      if overallRatio < 0.7:
+        priority += 150.0  # Large bonus - easy prey
+      elif overallRatio < 1.0:
+        priority += 75.0   # Moderate bonus - vulnerable house
 
     vulnerableTargets.add(VulnerableTarget(
       systemId: visibleColony.systemId,
@@ -1083,6 +1170,10 @@ proc generateCounterAttackOrders*(
     let attacker = availableAttackers[i]
     let target = vulnerableTargets[i]
 
+    # Skip if this fleet already assigned by intelligence targeting
+    if attacker.fleetId in assignedFleets:
+      continue
+
     # Skip if this target already has an attack order
     if target.systemId in attackedSystems:
       continue
@@ -1108,6 +1199,7 @@ proc generateCounterAttackOrders*(
       roe: some(8)  # Main assault: fight through resistance. As per dev log.
     ))
 
+    assignedFleets.incl(attacker.fleetId)  # Mark fleet as assigned
     attackedSystems.add(target.systemId)  # Mark system as attacked
 
   logInfo(LogCategory.lcAI,

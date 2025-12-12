@@ -651,9 +651,9 @@ proc assessOffensiveReadiness*(
         reason: &"Marines (aggressive, have {loadedMarines}/{targetMarines})"
       ))
 
-    # Planet-Breakers for Act 3+ conquest operations (CST 10+)
-    # Rationale: Bombardment capability before invasions, softens defenses
-    if currentAct >= GameAct.Act3_TotalWar and cstLevel >= 10:
+    # Planet-Breakers for Act 4 conquest (CST 10+)
+    # Rationale: Ultimate weapon for late-game bombardment, softens defenses
+    if currentAct == GameAct.Act4_Endgame and cstLevel >= 10:
       var planetBreakerCount = 0
       for fleet in filtered.ownFleets:
         for squadron in fleet.squadrons:
@@ -663,13 +663,9 @@ proc assessOffensiveReadiness*(
       let targetPlanetBreakers = max(1, filtered.ownColonies.len div 5)  # 1 per 5 colonies
       if planetBreakerCount < targetPlanetBreakers:
         let needed = targetPlanetBreakers - planetBreakerCount
-        let priority = if currentAct == GameAct.Act4_Endgame:
-                         RequirementPriority.High  # Act 4: High priority
-                       else:
-                         RequirementPriority.Medium  # Act 3: Medium priority
         result.add(BuildRequirement(
           requirementType: RequirementType.OffensivePrep,
-          priority: priority,
+          priority: RequirementPriority.High,  # Act 4 ultimate weapon
           shipClass: some(ShipClass.PlanetBreaker),
           quantity: needed,
           buildObjective: ai_common_types.BuildObjective.SpecialUnits,
@@ -708,9 +704,9 @@ proc assessOffensiveReadiness*(
         reason: &"Marines for {opp.systemId} (need {requiredMarines})"
       ))
 
-    # Planet-Breakers for Act 3+ conquest operations (CST 10+)
+    # Planet-Breakers for Act 4 conquest (CST 10+)
     # Rationale: Opportunistic bombardment before invasion, improves success rate
-    if currentAct >= GameAct.Act3_TotalWar and cstLevel >= 10:
+    if currentAct == GameAct.Act4_Endgame and cstLevel >= 10:
       var planetBreakerCount = 0
       for fleet in filtered.ownFleets:
         for squadron in fleet.squadrons:
@@ -720,13 +716,9 @@ proc assessOffensiveReadiness*(
       # For opportunistic invasion, request 1 Planet-Breaker per vulnerable target
       if planetBreakerCount < opportunities.len:
         let needed = min(3, opportunities.len - planetBreakerCount)  # Cap at 3 per turn
-        let priority = if currentAct == GameAct.Act4_Endgame:
-                         RequirementPriority.Critical  # Act 4: Critical for conquest
-                       else:
-                         RequirementPriority.High  # Act 3: High priority
         result.add(BuildRequirement(
           requirementType: RequirementType.OffensivePrep,
-          priority: priority,
+          priority: RequirementPriority.Critical,  # Act 4 ultimate weapon
           shipClass: some(ShipClass.PlanetBreaker),
           quantity: needed,
           targetSystem: some(opp.systemId),
@@ -1049,17 +1041,49 @@ proc assessStrategicAssets*(
   # Personality: aggressive players want more capitals for offense
   let personalityModifier = 1.0 + (personality.aggression * 0.3)
 
-  let targetCapitalShips = int(float(baseTarget) * threatModifier * personalityModifier)
+  # Act-based dampening: Focus on cheap units in Act 1, scale up in later Acts
+  let actMultiplier = case currentAct
+    of GameAct.Act1_LandGrab: 0.5        # Act 1: 50% capital target (focus expansion)
+    of GameAct.Act2_RisingTensions: 0.8  # Act 2: 80% target (building up)
+    of GameAct.Act3_TotalWar: 1.0        # Act 3: 100% target (full military)
+    of GameAct.Act4_Endgame: 1.2         # Act 4: 120% target (total war)
+
+  let targetCapitalShips = int(float(baseTarget) * threatModifier * personalityModifier * actMultiplier)
 
   if totalCapitalShips < targetCapitalShips:
-    # Choose capital ship type based on CST level and personality
-    let capitalClass =
-      if cstLevel >= 5 and personality.aggression > 0.7:
-        ShipClass.Dreadnought  # Aggressive: DNs for firepower
-      elif cstLevel >= 4:
-        ShipClass.Battleship  # Standard: BBs for balance
-      else:
-        ShipClass.Battlecruiser  # Early: BCs for mobility
+    # Choose capital ship type respecting Act progression (per unit-progression.md)
+    # Act 1: NO capitals (only escorts)
+    # Act 2: Medium capitals (Cruiser, HeavyCruiser, Battlecruiser)
+    # Act 3: Heavy capitals (Battleship, Dreadnought, SuperCarrier)
+    # Act 4: Ultimate capitals (SuperDreadnought)
+    let capitalClass = case currentAct
+      of GameAct.Act1_LandGrab:
+        # Act 1: Focus on escorts, not capitals - skip this request
+        return result
+      of GameAct.Act2_RisingTensions:
+        # Act 2: Medium capitals only (CST I-III)
+        if cstLevel >= 3:
+          ShipClass.Battlecruiser  # CST III: Fast heavy hitter
+        elif cstLevel >= 2:
+          ShipClass.HeavyCruiser   # CST II: Heavy variant
+        else:
+          ShipClass.Cruiser        # CST I: Standard capital
+      of GameAct.Act3_TotalWar:
+        # Act 3: Heavy capitals (CST IV-V)
+        if cstLevel >= 5 and personality.aggression > 0.7:
+          ShipClass.Dreadnought    # CST V: Very heavy
+        elif cstLevel >= 4:
+          ShipClass.Battleship     # CST IV: Heavy
+        else:
+          ShipClass.Battlecruiser  # CST III: Fast capital
+      of GameAct.Act4_Endgame:
+        # Act 4: Ultimate capitals (CST VI+)
+        if cstLevel >= 6:
+          ShipClass.SuperDreadnought  # CST VI: Ultimate
+        elif cstLevel >= 5:
+          ShipClass.Dreadnought       # CST V: Very heavy
+        else:
+          ShipClass.Battleship        # CST IV: Heavy
     let capitalCost = getShipConstructionCost(capitalClass)
 
     # BUDGET-AWARE: Scale quantity based on treasury affordability
