@@ -24,17 +24,19 @@
 ## - Process terraforming orders
 ## - Process zero-turn administrative commands (immediate execution)
 ##
-## **Part C: Order Processing** (categorization & queueing)
-## - Queue combat orders for Turn N+1 Conflict Phase
-## - Execute administrative orders immediately (Reserve, Mothball, etc.)
-## - Store movement orders for Turn N Maintenance Phase execution
-## - Store special orders for dedicated phase handlers
+## **Part C: Order Validation & Queueing**
+## - Validate all submitted orders (active orders and standing order configs)
+## - Queue combat orders for Turn N+1 Conflict Phase (activate Turn N+1 Maintenance)
+## - Execute administrative orders immediately (Reserve, Mothball - zero-turn orders)
+## - Store movement orders for Turn N Maintenance Phase activation
+## - Standing orders validated here, activated in Maintenance Phase Step 1a
 ##
 ## **Key Properties:**
 ## - Commissioning happens FIRST to free dock capacity before new builds
 ## - Auto-repair can use newly-freed dock capacity from commissioning
-## - Combat orders execute Turn N+1 (next Conflict Phase)
-## - Movement orders execute Turn N (this turn's Maintenance Phase)
+## - Combat orders: Validated Turn N, activated Turn N+1 Maintenance, executed Turn N+1 Conflict
+## - Movement orders: Validated Turn N Command, activated Turn N Maintenance, movement happens immediately
+## - Three-tier lifecycle: Initiate (Part B) → Validate (Part C) → Activate (Maintenance) → Execute (Conflict/Income)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets,
             strformat]
@@ -124,18 +126,21 @@ proc resolveCommandPhase*(state: var GameState,
   logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
 
   # ===================================================================
-  # PART C: ORDER PROCESSING (categorization & queueing)
+  # PART C: ORDER VALIDATION & QUEUEING
   # ===================================================================
-  # Per FINAL_TURN_SEQUENCE.md:
-  # - Combat orders (Bombard/Invade/Blitz): Queue for Turn N+1 Conflict Phase
-  # - Movement orders (Move/SeekHome/Patrol): Execute in Turn N Maintenance Phase
-  # - Administrative orders (Reserve/Mothball/etc): Execute immediately
-  # - Special orders:
-  #   * Colonize: Already handled by simultaneous resolution above
-  #   * Salvage: Handled in Income Phase Step 4
-  #   * Espionage: Handled in Conflict Phase
+  # Three-tier order lifecycle:
+  # - Initiate (Command Phase Part B): Player submits orders
+  # - Validate (Command Phase Part C): Engine validates and stores orders ← THIS SECTION
+  # - Activate (Maintenance Phase Step 1a): Orders become active, fleets start moving
+  # - Execute (Conflict/Income Phase): Missions happen at targets
+  #
+  # Validation and queueing by order type:
+  # - Combat orders (Bombard/Invade/Blitz): Validate & queue for Turn N+1 Conflict Phase
+  # - Movement orders (Move/SeekHome/Patrol): Validate & store, activate in Maintenance Phase
+  # - Administrative orders (Reserve/Mothball/etc): Validate & execute immediately (zero-turn)
+  # - Special orders: Handled by dedicated resolution systems
 
-  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Processing fleet order submissions...")
+  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Validating and queueing fleet orders...")
 
   # Clear previous turn's queued combat orders
   state.queuedCombatOrders = @[]
@@ -163,11 +168,11 @@ proc resolveCommandPhase*(state: var GameState,
           else:
             logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {order.fleetId}: {order.orderType}")
 
-        # Movement orders execute in Maintenance Phase (don't process here)
+        # Movement orders: validate and store, activate in Maintenance Phase
         elif isMovementOrder(order.orderType):
           movementQueued += 1
-          logDebug(LogCategory.lcOrders, &"  [MOVEMENT] Fleet {order.fleetId}: {order.orderType} (will execute in Maintenance Phase)")
-          # Store in persistent orders so Maintenance Phase can find it
+          logDebug(LogCategory.lcOrders, &"  [MOVEMENT] Fleet {order.fleetId}: {order.orderType} (will activate in Maintenance Phase)")
+          # Store validated order so Maintenance Phase Step 1a can activate it
           state.fleetOrders[order.fleetId] = order
 
         # Special orders handled elsewhere

@@ -125,8 +125,8 @@ proc createAutoRepairOrder*(fleet: Fleet, filtered: FilteredGameState,
     ),
     roe: 3,  # Cautious ROE - avoid combat while damaged
     createdTurn: 0,  # Will be set by caller
-    lastExecutedTurn: 0,
-    executionCount: 0,
+    lastActivatedTurn: 0,
+    activationCount: 0,
     suspended: false
   )
 
@@ -149,8 +149,8 @@ proc createAutoEvadeOrder*(fleet: Fleet, fallbackSystem: SystemId,
     ),
     roe: roe,
     createdTurn: 0,
-    lastExecutedTurn: 0,
-    executionCount: 0,
+    lastActivatedTurn: 0,
+    activationCount: 0,
     suspended: false
   )
 
@@ -173,8 +173,8 @@ proc createDefendSystemOrder*(fleet: Fleet, targetSystem: SystemId,
     ),
     roe: roe,
     createdTurn: 0,
-    lastExecutedTurn: 0,
-    executionCount: 0,
+    lastActivatedTurn: 0,
+    activationCount: 0,
     suspended: false
   )
 
@@ -197,8 +197,8 @@ proc createAutoColonizeOrder*(fleet: Fleet, maxRange: int,
     ),
     roe: 5,  # Moderate ROE for colonization
     createdTurn: 0,
-    lastExecutedTurn: 0,
-    executionCount: 0,
+    lastActivatedTurn: 0,
+    activationCount: 0,
     suspended: false
   )
 
@@ -221,8 +221,8 @@ proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],
     ),
     roe: roe,
     createdTurn: 0,
-    lastExecutedTurn: 0,
-    executionCount: 0,
+    lastActivatedTurn: 0,
+    activationCount: 0,
     suspended: false
   )
 

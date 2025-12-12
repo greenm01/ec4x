@@ -263,8 +263,8 @@ proc generateDefensiveOrders*(
       ),
       roe: 7,  # Aggressive ROE for defense
       createdTurn: filtered.turn,
-      lastExecutedTurn: 0,
-      executionCount: 0,
+      lastActivatedTurn: 0,
+      activationCount: 0,
       suspended: false
     )
 

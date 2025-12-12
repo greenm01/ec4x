@@ -174,11 +174,12 @@ Persistent behaviors that execute automatically when no explicit order is given:
 | `AutoEvade` | Stationary | Retreat if outnumbered per ROE |
 | `BlockadeTarget` | Stationary | Maintain blockade on enemy colony |
 
-**Standing Order Execution:**
+**Standing Order Activation:**
 1. Check if fleet has explicit order → Skip if yes
-2. Execute standing order behavior
+2. Activate standing order behavior (check conditions)
 3. Generate appropriate FleetOrder for this turn
 4. Update standing order state (e.g., patrol index)
+5. Write FleetOrder to state.fleetOrders table
 
 **Why Standing Orders?**
 - **Reduces micromanagement**: Set once, executes automatically
@@ -209,7 +210,7 @@ Fleets with `fleet.autoBalanceSquadrons = true` automatically redistribute squad
 
 **Location**: `order_types.nim:StandingOrder.roe`
 
-ROE (0-10 scale) affects combat decisions during standing order execution:
+ROE (0-10 scale) affects combat decisions during standing order activation:
 
 | ROE | Behavior |
 |-----|----------|
@@ -285,7 +286,7 @@ Reserve/Mothballed fleets have **locked orders**:
 | `orders.nim` | Order packet and validation |
 | `resolve.nim` | Main turn resolution orchestrator |
 | `resolution/fleet_orders.nim` | One-time fleet order execution |
-| `standing_orders.nim` | Standing order execution engine |
+| `standing_orders.nim` | Standing order activation engine |
 | `resolution/economy_resolution.nim` | Construction, commissioning, auto-assignment |
 | `fleet.nim` | Fleet data structures and status |
 | `squadron.nim` | Squadron formation and management |

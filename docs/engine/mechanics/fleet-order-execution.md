@@ -13,6 +13,42 @@ The fleet order execution system implements the persistent order model from `ope
 
 **All orders are movement orders if the fleet is not at the mission objective.** Fleets traverse jump lanes incrementally (1-2 jumps per turn) until they reach their target system, then execute the order-specific action.
 
+### Order Lifecycle Terminology (Universal for All Orders)
+
+EC4X uses precise terminology to distinguish the four stages of order processing. **This applies to BOTH active orders AND standing orders:**
+
+**1. Initiate** (Command Phase Part B)
+- **Active orders:** Player submits explicit orders via OrderPacket
+- **Standing orders:** Player configures standing order rules
+- Events: `OrderIssued` (active orders)
+- Phase: Command Phase Part B
+
+**2. Validate** (Command Phase Part C)
+- **Both order types:** Engine validates orders and configurations
+- Active orders stored in `state.fleetOrders` for later activation
+- Standing order configs validated (conditions, targets, parameters)
+- Phase: Command Phase Part C
+
+**3. Activate** (Maintenance Phase Step 1a)
+- **Active orders:** Order becomes active, fleet starts moving toward target
+- **Standing orders:** System checks conditions and generates fleet orders
+- **Both:** Fleets begin traveling, movement happens
+- Events: `StandingOrderActivated`, `StandingOrderSuspended`
+- Phase: Maintenance Phase Step 1a
+
+**4. Execute** (Conflict/Income Phases)
+- **Both order types:** Fleet orders conduct their missions at target locations
+- Combat orders execute in Conflict Phase (Bombard, Colonize, Blockade)
+- Economic orders execute in Income Phase (Trade, Salvage)
+- Events: `OrderCompleted`, `OrderFailed`, `OrderAborted`
+- Phase: Depends on order type (Bombard→Conflict, Trade→Income)
+
+**Key Insight:** Active and standing orders follow the SAME four-tier lifecycle:
+- Active order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
+- Standing order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
+
+This document uses **"activate"** for Maintenance Phase (orders become active) and **"execute"** for Conflict/Income Phase (missions conduct at targets).
+
 ---
 
 ## Architecture Components
@@ -46,8 +82,8 @@ Turn N Sequence:
   3. Command Phase: Commissioning → Player submission → Validation
 
   4. Maintenance Phase: Fleet movement ONLY (no order execution)
-     - Step 1a: Execute standing orders (generate fleet orders)
-     - Step 1b: Order maintenance (Move orders only)
+     - Step 1a: Activate ALL orders (active + standing - both become active/ready)
+     - Step 1b: Order maintenance (lifecycle management, check completions)
      - Step 1c: Fleet movement (move all fleets toward order targets)
      - Step 1d: Detect arrivals (generate FleetArrived events)
      - Step 2: Construction/repair advancement
@@ -86,7 +122,7 @@ Turn N Sequence:
 
 ### Step 1a: Standing Order Activation
 
-**File:** `src/engine/standing_orders.nim:executeStandingOrders()`
+**File:** `src/engine/standing_orders.nim:activateStandingOrders()`
 
 **Purpose:** Generate fleet orders from standing orders for fleets without explicit orders
 
@@ -95,9 +131,9 @@ Turn N Sequence:
    - If yes: Skip standing order, reset grace period countdown, emit `StandingOrderSuspended` event
 2. Check if standing order enabled and not suspended
 3. Check grace period countdown (`turnsUntilActivation`)
-   - If > 0: Decrement and skip execution
-   - If = 0: Execute standing order
-4. Execute standing order type (AutoColonize, PatrolRoute, etc.)
+   - If > 0: Decrement and skip activation
+   - If = 0: Activate standing order
+4. Activate standing order type (AutoColonize, PatrolRoute, etc.)
 5. Write generated fleet order to `state.fleetOrders`
 6. Emit `StandingOrderActivated` event
 
@@ -416,7 +452,7 @@ Standardized completion pattern:
 - `OrderAborted`: When order cancelled due to changed conditions (Step 1b or validation)
 
 **Standing Order Events:**
-- `StandingOrderActivated`: When standing order executes (Step 1a)
+- `StandingOrderActivated`: When standing order activates (Step 1a)
 - `StandingOrderSuspended`: When explicit order overrides standing order (Step 1a)
 
 **Movement Events:**

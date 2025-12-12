@@ -20,6 +20,41 @@ EC4X uses a four-phase turn structure that separates combat resolution, economic
 
 ---
 
+## Order Lifecycle Terminology (Universal for All Orders)
+
+EC4X uses precise terminology for the three stages of order processing. **This applies to BOTH active orders AND standing orders:**
+
+### Initiate (Command Phase Part B)
+- **Active orders:** Player submits explicit orders via OrderPacket
+- **Standing orders:** Player configures standing order rules
+- Orders queued for future processing
+- Phase: Command Phase Part B
+
+### Validate (Command Phase Part C)
+- **Both order types:** Engine validates orders and configurations
+- Active orders stored in `state.fleetOrders` for later activation
+- Standing order configs validated (conditions, targets, parameters)
+- Phase: Command Phase Part C
+
+### Activate (Maintenance Phase Step 1a)
+- **Active orders:** Order becomes active, fleet starts moving toward target
+- **Standing orders:** System checks conditions and generates fleet orders
+- **Both:** Fleets begin traveling, orders written to state
+- Events: `StandingOrderActivated`, `StandingOrderSuspended`
+- Phase: Maintenance Phase Step 1a
+
+### Execute (Conflict/Income Phase)
+- **Both order types:** Fleet orders conduct their missions at target locations
+- Bombard, Colonize, Trade, Blockade, etc. actually happen
+- Results generate events (`OrderCompleted`, `OrderFailed`, etc.)
+- Phase: Depends on order type (Conflict for combat, Income for trade)
+
+**Key Insight:** Active and standing orders follow the SAME four-tier lifecycle:
+- Active order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
+- Standing order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
+
+---
+
 ## Phase 1: Conflict Phase
 
 **Purpose:** Resolve all combat and espionage operations submitted previous turn.
@@ -289,13 +324,17 @@ Players see new game state (freed dock capacity, commissioned ships, established
 
 Players can immediately interact with newly-commissioned ships and colonies.
 
-### Part C: Order Processing (AFTER Player Window)
+### Part C: Order Validation & Queueing (AFTER Player Window)
 
-- Validate submitted orders
+**Three-Tier Order Lifecycle:** Initiate (Part B) → Validate (Part C) → Activate (Maintenance Phase) → Execute (Conflict/Income Phase)
+
+**Validation & Queueing:**
+- Validate all submitted orders (active orders and standing order configs)
 - Process build orders (add to construction queues)
 - Start tech research (allocate RP)
-- Activate standing orders
-- Queue combat orders for next turn
+- Queue combat orders for Turn N+1 Conflict Phase
+- Store movement orders for Maintenance Phase activation
+- **Note:** Standing orders validated here, activated in Maintenance Phase Step 1a
 
 ### Key Properties
 - Commissioning -> Auto-repair -> Player sees accurate state
@@ -315,10 +354,23 @@ Players can immediately interact with newly-commissioned ships and colonies.
 
 ### Execution Order
 
-**1. Fleet Movement** (submitted this turn's Command Phase)
+**1. Fleet Movement and Order Activation**
+
+**1a. Order Activation** (activate ALL orders - both active and standing)
+- **Active orders:** Already validated in Command Phase Part C, now become active and ready for processing
+- **Standing orders:** Check activation conditions, generate new fleet orders
+- Standing orders write to `state.fleetOrders` table (same as active orders)
+- Generate GameEvents (StandingOrderActivated, StandingOrderSuspended)
+
+**1b. Order Maintenance** (lifecycle management)
+- Check order completions and validate conditions
+- Process order state transitions
+- Not execution - just lifecycle management
+
+**1c. Fleet Movement** (fleets move toward targets)
 - Process all Move orders (Move, SeekHome, Patrol)
 - Validate paths (fog-of-war, jump lanes)
-- Update fleet locations
+- Update fleet locations (1-2 jumps per turn)
 - Generate GameEvents (FleetMoved, FleetArrived)
 - **Positions fleets for next turn's Conflict Phase**
 
@@ -746,12 +798,13 @@ Maintenance Phase -> New positions, completed construction
 ║                             |                              ║
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ PART C: Order Processing (AFTER Player Window)        ║ ║
-║  ║   • Validate submitted orders                         ║ ║
+║  ║ PART C: Order Validation & Queueing (AFTER Window)   ║ ║
+║  ║   • Validate all submitted orders                     ║ ║
 ║  ║   • Process build orders (add to queues)              ║ ║
 ║  ║   • Start tech research (allocate RP)                 ║ ║
-║  ║   • Activate standing orders                          ║ ║
-║  ║   • Queue combat orders for next turn                 ║ ║
+║  ║   • Queue combat orders for Turn N+1 Conflict         ║ ║
+║  ║   • Store movement orders for Maintenance activation  ║ ║
+║  ║   • Note: Standing orders validated, not activated    ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                                                            ║
 ╠════════════════════════════════════════════════════════════╣
@@ -768,12 +821,22 @@ Maintenance Phase -> New positions, completed construction
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 1: Fleet Movement                                ║ ║
-║  ║  • Process Move, SeekHome, Patrol orders              ║ ║
-║  ║  • Validate paths (fog-of-war, jump lanes)            ║ ║
-║  ║  • Update fleet locations                             ║ ║
-║  ║  • Position fleets for next Conflict Phase            ║ ║
-║  ║  • GameEvents: FleetMoved, FleetArrived               ║ ║
+║  ║ Step 1: Fleet Movement & Order Activation            ║ ║
+║  ║                                                       ║ ║
+║  ║  1a. Order Activation (active + standing)            ║ ║
+║  ║   • Active orders: validated → active (ready)        ║ ║
+║  ║   • Standing orders: check conditions → generate     ║ ║
+║  ║   • GameEvents: StandingOrderActivated               ║ ║
+║  ║                                                       ║ ║
+║  ║  1b. Order Maintenance (lifecycle management)        ║ ║
+║  ║   • Check completions, validate conditions           ║ ║
+║  ║   • Process order state transitions                  ║ ║
+║  ║                                                       ║ ║
+║  ║  1c. Fleet Movement (fleets move to targets)         ║ ║
+║  ║   • Process Move, SeekHome, Patrol orders            ║ ║
+║  ║   • Validate paths (fog-of-war, jump lanes)          ║ ║
+║  ║   • Update fleet locations (1-2 jumps/turn)          ║ ║
+║  ║   • GameEvents: FleetMoved, FleetArrived             ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
