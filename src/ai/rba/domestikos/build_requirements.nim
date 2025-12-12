@@ -277,7 +277,7 @@ proc calculateGapSeverity(
   threat: float,
   currentDefenders: int,
   nearestDefenderDistance: int,
-  currentAct: GameAct,
+  currentAct: ai_common_types.GameAct,
   riskTolerance: float,
   controller: AIController # Added controller to access GOAP tracker
 ): RequirementPriority =
@@ -304,7 +304,7 @@ proc calculateGapSeverity(
     return RequirementPriority.Critical
 
   # Act 1: Expansion is primary objective - personality modulates defense willingness
-  if currentAct == GameAct.Act1_LandGrab:
+  if currentAct == ai_common_types.GameAct.Act1_LandGrab:
     # If MaintainPrestige is active, we should NOT defer defense for undefended colonies
     if isMaintainPrestigeActive and currentDefenders == 0:
       logDebug(LogCategory.lcAI, &"Domestikos: MaintainPrestige goal active, overriding Act 1 deferral for undefended colony.")
@@ -361,7 +361,7 @@ proc calculateGapSeverity(
   # Act 2: Preparation - defense matters but not urgent
   # Act 3/4: War - all colonies should be defended
   if currentDefenders == 0:
-    if currentAct == GameAct.Act2_RisingTensions:
+    if currentAct == ai_common_types.GameAct.Act2_RisingTensions:
       # Act 2: Prepare defenses, not urgent yet
       if riskTolerance < 0.4:
         return RequirementPriority.Medium  # Cautious: "Prepare now"
@@ -558,10 +558,13 @@ proc assessExpansionNeeds*(
          queuedProject.itemId == "ETAC":
         etacCount += 1
 
-  # Smart targeting: Cap ETACs based on map size to prevent spam
-  # Formula: playerCount + numRings (e.g., 4 players + 3 rings = 7 ETACs)
-  # This provides enough ETACs for parallel colonization without overbuilding.
-  let targetETACs = filtered.starMap.playerCount + int(filtered.starMap.numRings)
+  # Smart targeting: Build ETACs based on uncolonized systems
+  # Uses config values to control production rate and queuing.
+  let cfg = globalRBAConfig.domestikos
+  let targetETACs = if uncolonizedVisible > 0:
+    max(1, int(uncolonizedVisible.float * cfg.etacs_per_uncolonized_system))
+  else:
+    etacCount
 
   logDebug(LogCategory.lcAI,
            &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
@@ -569,27 +572,29 @@ proc assessExpansionNeeds*(
 
   if etacCount < targetETACs:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
-    let needed = targetETACs - etacCount
-    let priority = case currentAct
-      of ai_common_types.GameAct.Act1_LandGrab:
-        RequirementPriority.High  # Land grab urgency
-      of ai_common_types.GameAct.Act2_RisingTensions:
-        RequirementPriority.Medium  # Balanced expansion
-      of ai_common_types.GameAct.Act3_TotalWar:
-        RequirementPriority.Low  # Military priority, but finish expansion
-      else:
-        RequirementPriority.Low
+    let needed = min(targetETACs - etacCount, globalRBAConfig.domestikos.max_etacs_queued)
 
-    result.add(BuildRequirement(
-      requirementType: RequirementType.ExpansionSupport,
-      priority: priority,
-      shipClass: some(ShipClass.ETAC),
-      quantity: needed,
-      buildObjective: ai_common_types.BuildObjective.Expansion,
-      estimatedCost: etacCost * needed,
-      reason: &"Expansion (have {etacCount}/{targetETACs} ETACs, " &
-              &"{uncolonizedVisible} systems visible)"
-    ))
+    if needed > 0:
+      let priority = case currentAct
+        of ai_common_types.GameAct.Act1_LandGrab:
+          RequirementPriority.High  # Land grab urgency
+        of ai_common_types.GameAct.Act2_RisingTensions:
+          RequirementPriority.Medium  # Balanced expansion
+        of ai_common_types.GameAct.Act3_TotalWar:
+          RequirementPriority.Low  # Military priority, but finish expansion
+        else:
+          RequirementPriority.Low
+
+      result.add(BuildRequirement(
+        requirementType: RequirementType.ExpansionSupport,
+        priority: priority,
+        shipClass: some(ShipClass.ETAC),
+        quantity: needed,
+        buildObjective: ai_common_types.BuildObjective.Expansion,
+        estimatedCost: etacCost * needed,
+        reason: &"Expansion (have {etacCount}/{targetETACs} ETACs, " &
+                &"{uncolonizedVisible} systems visible)"
+      ))
 
 proc assessOffensiveReadiness*(
   filtered: FilteredGameState,
