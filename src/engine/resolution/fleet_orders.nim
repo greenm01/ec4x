@@ -19,6 +19,26 @@ import ./types  # Common resolution types
 import ./event_factory/init as event_factory
 import ../intelligence/generator
 import ../intelligence/types as intel_types
+import ../standing_orders
+
+proc completeFleetOrder*(
+  state: var GameState, fleetId: FleetId, orderType: string,
+  details: string = "", systemId: Option[SystemId] = none(SystemId),
+  events: var seq[GameEvent]
+) =
+  ## Standard completion handler: event + removal + grace period reset
+  ## Use this for all order completions to ensure consistent behavior
+  if fleetId notin state.fleets: return
+  let houseId = state.fleets[fleetId].owner
+
+  events.add(event_factory.orderCompleted(
+    houseId, fleetId, orderType, details, systemId))
+
+  if fleetId in state.fleetOrders:
+    state.fleetOrders.del(fleetId)
+    standing_orders.resetStandingOrderGracePeriod(state, fleetId)
+
+  logInfo(LogCategory.lcOrders, &"Fleet {fleetId} {orderType} order completed")
 
 proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a system is hostile to a house based on known intel (fog-of-war)
@@ -272,6 +292,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   if startId == targetId:
     if not isSpyScout and order.fleetId in state.fleetOrders:
       state.fleetOrders.del(order.fleetId)
+      standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
       logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination, order complete")
       # Generate OrderCompleted event for successful arrival
       events.add(event_factory.orderCompleted(
@@ -367,6 +388,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
     # Check if we've arrived at final destination - clear order if so (N+1 behavior)
     if newLocation == targetId and order.fleetId in state.fleetOrders:
       state.fleetOrders.del(order.fleetId)
+      standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
       logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination {targetId}, order complete")
     else:
       logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
@@ -557,6 +579,20 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
     prestigeAwarded
   ))
 
+  # Remove colonization order on success (mission complete)
+  if order.fleetId in state.fleetOrders:
+    state.fleetOrders.del(order.fleetId)
+    standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
+    logDebug(LogCategory.lcColonization,
+      &"Fleet {order.fleetId} colonization order removed (mission complete)")
+
+  # Generate OrderCompleted event for successful colonization
+  events.add(event_factory.orderCompleted(
+    houseId, order.fleetId, "Colonize",
+    details = &"established colony at {targetId}",
+    systemId = some(targetId)
+  ))
+
 proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                             events: var seq[GameEvent]) =
   ## Perform long-range planetary reconnaissance (Order 19)
@@ -636,6 +672,11 @@ proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: Fleet
     details = scanDetails,
     systemId = some(targetId)
   ))
+
+  # Remove view world order on completion
+  if order.fleetId in state.fleetOrders:
+    state.fleetOrders.del(order.fleetId)
+    standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
 
   # Order completes - fleet remains at system (player must issue new orders)
   # NOTE: Fleet is in deep space, not orbit, so no orbital combat triggered

@@ -403,6 +403,17 @@ proc weight*(laneType: LaneType): uint32 =
   of LaneType.Restricted:
     3  # Highest cost (most restrictive)
 
+proc getLaneType*(starMap: StarMap, fromSystem: SystemId,
+                  toSystem: SystemId): Option[LaneType] =
+  ## Efficient lane type lookup between two systems
+  ## Returns None if no lane exists between the systems
+  ## Used for fleet movement calculations in maintenance phase
+  for lane in starMap.lanes:
+    if (lane.source == fromSystem and lane.destination == toSystem) or
+       (lane.source == toSystem and lane.destination == fromSystem):
+      return some(lane.laneType)
+  return none(LaneType)
+
 proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathResult =
   ## Robust A* pathfinding with game rule compliance
   if start == goal:
