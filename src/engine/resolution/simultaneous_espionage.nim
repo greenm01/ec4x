@@ -51,6 +51,11 @@ proc collectEspionageIntents*(
 
       let targetSystem = order.targetSystem.get()
 
+      # Log if fleet not at target (will attempt movement in Maintenance Phase)
+      let fleet = state.fleets[order.fleetId]
+      if fleet.location != targetSystem:
+        logDebug(LogCategory.lcOrders, &"Espionage order queued: {order.fleetId} will move from {fleet.location} to {targetSystem}")
+
       result.add(EspionageIntent(
         houseId: houseId,
         fleetId: order.fleetId,
