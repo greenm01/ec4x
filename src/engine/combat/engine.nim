@@ -36,9 +36,9 @@ proc resolveCombat*(context: BattleContext): CombatResult =
   # Working copy of Task Forces
   var taskForces = context.taskForces
 
-    # The actual diplomatic state checks happen in conflict_phase.nim before calling resolveCombat.
-    # So, for the purpose of the combat engine's internal logic, we assume all provided TFs are hostile to each other
-    # or their hostility is determined by their diplomatic status.
+  # The actual diplomatic state checks happen in conflict_phase.nim before calling resolveCombat.
+  # So, for the purpose of the combat engine's internal logic, we assume all provided TFs are hostile to each other
+  # or their hostility is determined by their diplomatic status.
 
   # PRE-COMBAT DETECTION PHASE (Section 7.3.1.1)
   # Scouts and Starbases attempt to detect cloaked Raiders before combat begins

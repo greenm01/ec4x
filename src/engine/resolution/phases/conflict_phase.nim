@@ -222,7 +222,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Resolve all planetary combat (bombard/invade/blitz) simultaneously
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 4] Resolving planetary combat...")
   let planetaryCombatResults = simultaneous_planetary.resolvePlanetaryCombat(
-    state, effectiveOrders, rng)
+    state, effectiveOrders, rng, events)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 4] Completed ({planetaryCombatResults.len} planetary combat attempts)")
 
   # ===================================================================
