@@ -13,6 +13,7 @@ import ../../../engine/research/advancement  # For max tech level constants
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_types
+import ./counter_tech  # Phase 6.2: Counter-tech module
 
 proc generateResearchRequirements*(
   controller: AIController,
@@ -92,7 +93,159 @@ proc generateResearchRequirements*(
     ))
     result.totalEstimatedCost += 300
 
-  # === HIGH: Weapons Tech (driven by aggression and threats) ===
+  # === PHASE 6.1: Competitive Research Strategy ===
+  # Use intelligence to identify tech gaps and advantages
+
+  # 1. Urgent Research Needs: From intelligence analysis (Phase 2.1)
+  if intelSnapshot.research.urgentResearchNeeds.len > 0:
+    for need in intelSnapshot.research.urgentResearchNeeds:
+      # Use priority from intelligence analysis
+      result.requirements.add(ResearchRequirement(
+        techField: some(need.field),
+        priority: need.priority,
+        estimatedCost: need.estimatedTurns * 50,  # Rough PP estimate
+        reason: need.reason,
+        expectedBenefit: &"Close gap in {need.field} (target: level {need.targetLevel})"
+      ))
+      result.totalEstimatedCost += need.estimatedTurns * 50
+
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Logothete: {need.priority} research - " &
+              &"{need.field} (reason: {need.reason})")
+
+  # 2. Tech Gaps: Close any identified gaps
+  if intelSnapshot.research.techGaps.len > 0:
+    for field in intelSnapshot.research.techGaps:
+      # Don't duplicate if already in urgent needs
+      var alreadyRequested = false
+      for req in result.requirements:
+        if req.techField.isSome and req.techField.get() == field:
+          alreadyRequested = true
+          break
+
+      if not alreadyRequested:
+        result.requirements.add(ResearchRequirement(
+          techField: some(field),
+          priority: RequirementPriority.High,
+          estimatedCost: 250,
+          reason: &"Tech gap identified - we lag in {field}",
+          expectedBenefit: &"Catch up with enemy capabilities in {field}"
+        ))
+        result.totalEstimatedCost += 250
+
+        logDebug(LogCategory.lcAI,
+                 &"{controller.houseId} Logothete: Addressing tech gap - {field}")
+
+  # 3. Tech Advantages: Exploit existing leads
+  if intelSnapshot.research.techAdvantages.len > 0:
+    for field in intelSnapshot.research.techAdvantages:
+      # Don't duplicate existing requirements
+      var alreadyRequested = false
+      for req in result.requirements:
+        if req.techField.isSome and req.techField.get() == field:
+          alreadyRequested = true
+          break
+
+      if not alreadyRequested:
+        result.requirements.add(ResearchRequirement(
+          techField: some(field),
+          priority: RequirementPriority.Medium,
+          estimatedCost: 250,
+          reason: &"Exploit tech advantage in {field}",
+          expectedBenefit: &"Maintain technological superiority in {field}"
+        ))
+        result.totalEstimatedCost += 250
+
+        logDebug(LogCategory.lcAI,
+                 &"{controller.houseId} Logothete: Exploiting advantage - {field}")
+
+  # 4. Threat-Responsive Research: Combat tech vs active threats
+  if intelSnapshot.military.threatsByColony.len > 0:
+    # Count critical/high threats
+    var criticalThreats = 0
+    for systemId, threat in intelSnapshot.military.threatsByColony:
+      if threat.level in {intelligence_types.ThreatLevel.tlCritical, intelligence_types.ThreatLevel.tlHigh}:
+        criticalThreats += 1
+
+    # If multiple critical threats, prioritize weapons for combat effectiveness
+    if criticalThreats >= 2:
+      let currentWeapons = filtered.ownHouse.techTree.levels.weaponsTech
+      if currentWeapons < maxWeaponsTech:
+        # Don't duplicate if already requested
+        var alreadyRequested = false
+        for req in result.requirements:
+          if req.techField.isSome and req.techField.get() == TechField.WeaponsTech:
+            alreadyRequested = true
+            break
+
+        if not alreadyRequested:
+          result.requirements.add(ResearchRequirement(
+            techField: some(TechField.WeaponsTech),
+            priority: RequirementPriority.High,
+            estimatedCost: 250,
+            reason: &"Combat weapons (under attack: {criticalThreats} critical threats)",
+            expectedBenefit: "Improved fleet combat power vs attacking enemies"
+          ))
+          result.totalEstimatedCost += 250
+
+          logInfo(LogCategory.lcAI,
+                  &"{controller.houseId} Logothete: Prioritizing weapons - " &
+                  &"{criticalThreats} critical threats detected")
+
+  # 5. Phase 6.2: Counter-Tech Against Major Enemies
+  # Generate counter-tech recommendations for top threats
+  var enemyCounterTech = initTable[HouseId, int]()  # Track enemies we're countering
+
+  for houseId, techLevels in intelSnapshot.research.enemyTechLevels:
+    # Get counter-tech recommendations
+    let recommendations = selectCounterTech(
+      houseId, techLevels, filtered.ownHouse.techTree, intelSnapshot
+    )
+
+    # Add top 2 recommendations per enemy (avoid over-targeting single enemy)
+    var added = 0
+    for rec in recommendations:
+      if added >= 2:
+        break
+
+      # Check if not already requested
+      var alreadyRequested = false
+      for req in result.requirements:
+        if req.techField.isSome and req.techField.get() == rec.field:
+          alreadyRequested = true
+          break
+
+      if not alreadyRequested:
+        # Convert counter-tech priority (0.0-1.0) to RequirementPriority
+        let reqPriority = if rec.priority >= 0.9:
+          RequirementPriority.Critical
+        elif rec.priority >= 0.7:
+          RequirementPriority.High
+        else:
+          RequirementPriority.Medium
+
+        result.requirements.add(ResearchRequirement(
+          techField: some(rec.field),
+          priority: reqPriority,
+          estimatedCost: 250,
+          reason: &"Counter-tech vs {houseId}: {rec.reason}",
+          expectedBenefit: &"Neutralize enemy advantage in {rec.field}"
+        ))
+        result.totalEstimatedCost += 250
+        added += 1
+
+        logDebug(LogCategory.lcAI,
+                 &"{controller.houseId} Logothete: Counter-tech - {rec.field} vs {houseId} " &
+                 &"(priority={rec.priority:.2f})")
+
+    if added > 0:
+      enemyCounterTech[houseId] = added
+
+  if enemyCounterTech.len > 0:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Logothete: Generated counter-tech vs {enemyCounterTech.len} enemies")
+
+  # === HIGH: Weapons Tech (personality-driven, lower priority than gaps) ===
   if p.aggression > 0.5 or intelSnapshot.threatAssessment.len > 0:
     let currentWeapons = filtered.ownHouse.techTree.levels.weaponsTech
     if currentWeapons < maxWeaponsTech:
