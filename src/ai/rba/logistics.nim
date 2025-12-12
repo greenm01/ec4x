@@ -175,15 +175,17 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
       of ShipClass.PlanetBreaker:
         result.planetBreakers += 1
 
-    # Track spacelift cargo status
+    # Track spacelift cargo status AND count spacelift ships
     for spaceLift in fleet.spaceLiftShips:
       case spaceLift.shipClass
       of ShipClass.ETAC:
+        result.etacs += 1  # Count ETAC in total
         if spaceLift.isEmpty:
           result.emptyETACs.add((fleet.id, 1))
         else:
           result.loadedETACs.add((fleet.id, spaceLift.cargo.quantity))
       of ShipClass.TroopTransport:
+        result.transports += 1  # Count transport in total
         if spaceLift.isEmpty:
           result.emptyTransports.add((fleet.id, 1))
         else:
