@@ -63,6 +63,27 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 
 ### Execution Order
 
+**0. Merge Active Fleet Orders** (prepare orders for execution)
+
+**Purpose:** Merge orders from `state.fleetOrders` into execution context.
+
+- Iterate all orders in `state.fleetOrders` table
+- Filter for Conflict Phase orders (skip orders executing in other phases):
+  - **Include:** Bombard, Invade, Blitz, Colonize, SpyPlanet, SpySystem, HackStarbase, GuardPlanet
+  - **Exclude:** Move, Patrol, SeekHome (Maintenance Phase), Salvage (Income Phase)
+- Verify fleet exists and is alive
+- Check fleet arrival using `state.arrivedFleets` table (from Maintenance Step 1d)
+- Merge arrived orders into `effectiveOrders` by house
+- Result: All combat/espionage orders ready for execution this turn
+
+**Note:** Universal order lifecycle ensures consistency:
+- Command Phase Part C: Orders validated and stored in `state.fleetOrders`
+- Maintenance Phase Step 1a: Orders activated (standing orders generated)
+- Maintenance Phase Step 1c: Fleets move toward targets
+- Maintenance Phase Step 1d: Arrivals detected, `state.arrivedFleets` populated
+- **Conflict Phase Step 0:** Orders merged for execution ← YOU ARE HERE
+- Conflict Phase Steps 1-6: Orders execute
+
 **1. Space Combat** (simultaneous resolution)
 - **1a. Raider Detection**: Perform detection checks for all engaging fleets containing Raiders to determine surprise/ambush advantage.
 - **1b. Combat Resolution**: Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses.
@@ -139,10 +160,33 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 
 ### Execution Order
 
+**0. Apply Ongoing Espionage Effects**
+- Iterate `state.ongoingEffects`, decrement turn timers
+- Apply active effects to affected houses:
+  - **SRP Reduction:** Reduce research point generation (-10% to -50%)
+  - **NCV Reduction:** Reduce colony net value (-10% to -30%)
+  - **Tax Reduction:** Reduce tax income (-10% to -40%)
+  - **Starbase Crippled:** Mark starbase as crippled (no combat/surveillance)
+  - **Intel Blocked:** Counter-intelligence sweep blocks espionage this turn
+  - **Intel Corrupted:** Disinformation adds ±20-40% variance to intelligence reports
+- Remove expired effects (turnsRemaining = 0)
+- Generate GameEvents for effect application
+
+**0b. Process EBP/CIP Investment**
+- Purchase EBP (Espionage Budget Points) and CIP (Counter-Intelligence Points)
+- Cost: 40 PP each (from `espionage.toml`)
+- Add purchased points to `house.espionageBudget`
+- Deduct PP cost from house treasury
+- Check over-investment penalty:
+  - Threshold: >5% of turn budget (configurable)
+  - Penalty: -1 prestige per 1% over threshold
+  - Apply prestige penalty if threshold exceeded
+- Generate GameEvents (EspionageBudgetIncreased, PrestigePenalty)
+
 **1. Calculate Base Production**
 - For each colony: Base PP/RP from planet class and resource rating
 - Apply improvements (Infrastructure, Manufactories, Labs)
-- Apply espionage effects (economic sabotage, cyber attacks)
+- Apply espionage effects from Step 0 (sabotage modifiers, NCV/tax reductions)
 
 **2. Apply Blockades** (from Conflict Phase)
 - Blockaded colonies: 50% production penalty
@@ -285,6 +329,17 @@ On victory:
 
 **Critical Timing:** Game state changes happen BEFORE player submission window.
 
+### Step 0: Order Cleanup (BEFORE Part A)
+
+**Purpose:** Clean up completed/failed/aborted orders from previous turn.
+
+- Process events from Conflict/Income phases
+- Remove completed orders from `state.fleetOrders`
+- Remove failed orders (fleet destroyed, target lost)
+- Remove aborted orders (conditions no longer valid)
+- **Critical:** Runs BEFORE Part A to allow standing orders to activate in Maintenance Phase
+- Result: Clean slate for new turn's orders
+
 ### Part A: Server Processing (BEFORE Player Window)
 
 **1. Starport & Shipyard Commissioning**
@@ -336,7 +391,24 @@ Players can immediately interact with newly-commissioned ships and colonies.
 3. **Standing order configs**: Validated and stored in `state.standingOrders`
    - Activate in Maintenance Phase Step 1a (only if no active order exists)
 4. **Build orders**: Add to construction queues
-5. **Tech research**: Allocate RP
+5. **Tech research allocation** (detailed processing):
+   - Calculate total PP cost for research allocation (ERP + SRP + TRP)
+   - **Treasury scaling** (prevent negative treasury):
+     - If treasury ≤ 0: Cancel all research (bankruptcy)
+     - If cost > treasury: Scale allocations proportionally
+     - Example: 80 PP treasury, 100 PP research → scale to 80% (80 PP total)
+   - Deduct research cost from treasury (competes with builds)
+   - Calculate GHO (Gross House Output) from colony production
+   - **Convert PP → RP** using GHO and Science Level:
+     - ERP (Economic Research Points): `PP * (1 + GHO/1000) * (1 + SL/10)`
+     - SRP (Science Research Points): `PP * (1 + GHO/2000) * (1 + SL/5)`
+     - TRP (Technology Research Points): `PP * (1 + GHO/1500)` per field
+   - **Accumulate RP** in `house.techTree.accumulated`:
+     - `accumulated.economic += earnedRP.economic`
+     - `accumulated.science += earnedRP.science`
+     - `accumulated.technology[field] += earnedRP.technology[field]`
+   - Save earned RP to `house.lastTurnResearch*` for diagnostics
+   - **Note:** RP accumulation happens here in Command Phase, advancement happens in Maintenance Phase Step 7
 
 **Key Principles:**
 - All non-admin orders follow same path: stored → activated → executed
@@ -380,6 +452,16 @@ Players can immediately interact with newly-commissioned ships and colonies.
 - Update fleet locations (1-2 jumps per turn)
 - Generate GameEvents (FleetMoved, FleetArrived)
 - **Positions fleets for next turn's Conflict Phase**
+
+**1d. Fleet Arrival Detection** (detect orders ready for execution)
+- Iterate all fleet orders in `state.fleetOrders`
+- Check if fleet location matches order target system
+- If arrived:
+  - Generate `FleetArrived` event
+  - Add to `state.arrivedFleets` table (fleetId → systemId)
+  - Mark order as ready for execution
+- Result: Conflict/Income phases use `arrivedFleets` to determine which orders execute
+- **Critical:** This is THE mechanism that determines when orders execute
 
 **2. Construction and Repair Advancement** (parallel processing)
 
@@ -436,6 +518,44 @@ Completed projects split into two commissioning paths:
 - Remove destroyed entities (fleets, colonies)
 - Update fog-of-war visibility
 - Prepare for next turn's Conflict Phase
+
+**7. Research Advancement** (process tech upgrades)
+
+Process tech advancements using accumulated RP from Command Phase. Per economy.md:4.1, tech upgrades can be purchased EVERY TURN if RP is available.
+
+**7a. Breakthrough Rolls** (every 5 turns):
+- Calculate total RP invested in last 5 turns (ERP+SRP+TRP)
+- Roll for breakthrough (1d100 vs threshold based on investment)
+- Apply breakthrough effects:
+  - Bonus RP (1-10% of investment)
+  - Cost reduction (10-25% for next advancement)
+  - Free level advancement (rare, <5% chance)
+- Generate GameEvents for prestige awards
+
+**7b. Economic Level (EL) Advancement:**
+- Get current EL from `house.techTree.levels.economicLevel`
+- Check if `accumulated.economic` ≥ cost for next level
+- If sufficient: Deduct cost, increment EL, award prestige
+- Generate `TechAdvance` event
+- EL affects PP→ERP conversion rate
+
+**7c. Science Level (SL) Advancement:**
+- Get current SL from `house.techTree.levels.scienceLevel`
+- Check if `accumulated.science` ≥ cost for next level
+- If sufficient: Deduct cost, increment SL, award prestige
+- Generate `TechAdvance` event
+- SL affects PP→SRP conversion rate
+
+**7d. Technology Field Advancement:**
+- For each field (CST, WEP, TFM, ELI, CI):
+  - Get current level from `house.techTree.levels.<field>`
+  - Check if `accumulated.technology[field]` ≥ cost for next level
+  - If sufficient: Deduct cost, increment level, award prestige
+  - Generate `TechAdvance` event
+- Multiple fields can advance in same turn
+- CST affects ship build costs, WEP affects attack strength, etc.
+
+**Result:** Houses advance tech levels using accumulated RP. Research accumulation happens in Command Phase Part C, advancement happens here in Maintenance Phase.
 
 ### Key Properties
 - Server processing time (no player interaction)

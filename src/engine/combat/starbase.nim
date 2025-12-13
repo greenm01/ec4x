@@ -117,21 +117,21 @@ proc shouldStarbaseJoinCombat*(
 ##
 ## **Complete Implementation Path:**
 ##
-## 1. **Order Execution** (commands/executor.nim:596)
+## 1. **Order Execution** (commands/executor.nim)
 ##    - executeHackStarbaseOrder() validates single-scout requirement
-##    - Creates SpyScout object with HackStarbase mission type
+##    - Creates ActiveSpyMission for persistent tracking
 ##    - Scouts remain in system gathering intelligence per turn
 ##
-## 2. **Detection Mechanics** (intelligence/spy_resolution.nim)
-##    Per assets.md:2.4.2 Spy Scout Detection:
-##    - Simple formula: Target = 15 - numScouts + (defenderELI + starbaseBonus)
-##    - Starbase +2 bonus to defender's ELI
-##    - Single 1d20 roll: >= Target = Detected
+## 2. **Detection Mechanics** (intelligence/detection.nim)
+##    Per espionage.toml: ELI vs CLK detection rolls
+##    - Opposed rolls: 1d10 + ELI vs 1d10 + CLK
+##    - Starbase bonus to defender's ELI
+##    - ELI >= CLK = Detected
 ##
-## 3. **Turn Resolution** (intelligence/spy_resolution.nim)
-##    - resolveSpyScoutDetection(): Checks detection for each spy mission
-##    - Uses simple detection formula (no complex tables)
-##    - Detected scouts destroyed and mission fails
+## 3. **Turn Resolution** (resolution/phases/conflict_phase.nim)
+##    - Fleet-based spy missions resolved in Conflict Phase
+##    - Uses ELI vs CLK detection mechanics
+##    - Detected missions fail, generate detection events
 ##
 ## 4. **Intelligence Generation** (intelligence/generator.nim:156)
 ##    Per operations.md:6.2.11 - Economic and R&D intelligence:

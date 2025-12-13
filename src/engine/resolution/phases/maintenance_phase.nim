@@ -476,15 +476,17 @@ proc resolveMaintenancePhase*(state: var GameState,
   # by other systems or is not yet implemented.
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 6] Cleanup complete")
 
-   # ===================================================================
-  # RESEARCH ADVANCEMENT
   # ===================================================================
-  # Process tech advancements
-  # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP
-  # is available
-  logInfo(LogCategory.lcOrders, "[MAINTENANCE] Processing research advancements...")
+  # STEP 7: RESEARCH ADVANCEMENT
+  # ===================================================================
+  # Process tech advancements using accumulated RP from Command Phase
+  # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP available
+  # Per canonical turn cycle: Step 7 processes EL/SL/TechField upgrades
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 7] Processing research advancements...")
 
-  # Research breakthroughs (every 5 turns)
+  # -------------------------------------------------------------------
+  # STEP 7a: BREAKTHROUGH ROLLS (Every 5 Turns)
+  # -------------------------------------------------------------------
   # Per economy.md:4.1.1: Breakthrough rolls provide bonus RP, cost reductions, or free levels
   if advancement.isBreakthroughTurn(state.turn):
     logDebug(LogCategory.lcResearch, &"[RESEARCH BREAKTHROUGHS] Turn {state.turn} - rolling for breakthroughs")
@@ -517,8 +519,13 @@ proc resolveMaintenancePhase*(state: var GameState,
 
         logDebug(LogCategory.lcResearch, &"{houseId} breakthrough effect applied (category: {event.category})")
 
+  # -------------------------------------------------------------------
+  # STEP 7b-7d: TECH LEVEL ADVANCEMENT (EL, SL, Tech Fields)
+  # -------------------------------------------------------------------
+  # Process tech upgrades using accumulated RP from Command Phase Part C
   var totalAdvancements = 0
   for houseId, house in state.houses.mpairs:
+    # STEP 7b: Economic Level (EL) Advancement
     # Try to advance Economic Level (EL) with accumulated ERP
     let currentEL = house.techTree.levels.economicLevel
     let elAdv = attemptELAdvancement(house.techTree, currentEL)
@@ -538,6 +545,7 @@ proc resolveMaintenancePhase*(state: var GameState,
         adv.elToLevel
       ))
 
+    # STEP 7c: Science Level (SL) Advancement
     # Try to advance Science Level (SL) with accumulated SRP
     let currentSL = house.techTree.levels.scienceLevel
     let slAdv = attemptSLAdvancement(house.techTree, currentSL)
@@ -557,6 +565,7 @@ proc resolveMaintenancePhase*(state: var GameState,
         adv.slToLevel
       ))
 
+    # STEP 7d: Technology Field Advancement (CST, WEP, TFM, ELI, CI)
     # Try to advance technology fields with accumulated TRP
     for field in [TechField.ConstructionTech, TechField.WeaponsTech,
                   TechField.TerraformingTech, TechField.ElectronicIntelligence,

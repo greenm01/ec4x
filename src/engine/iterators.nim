@@ -65,24 +65,6 @@ iterator fleetsOwnedWithId*(state: GameState, houseId: HouseId): tuple[id: Fleet
     if fleet.owner == houseId:
       yield (fleetId, fleet)
 
-iterator spyScoutsOwned*(state: GameState, houseId: HouseId): SpyScout =
-  ## Iterate spy scouts owned by a house
-  ##
-  ## Example:
-  ##   var activeScouts = 0
-  ##   for scout in state.spyScoutsOwned(houseId):
-  ##     if not scout.detected:
-  ##       activeScouts += 1
-  for scoutId, scout in state.spyScouts:
-    if scout.owner == houseId:
-      yield scout
-
-iterator spyScoutsOwnedWithId*(state: GameState, houseId: HouseId): tuple[id: string, scout: SpyScout] =
-  ## Iterate spy scouts with IDs (for mutations)
-  for scoutId, scout in state.spyScouts:
-    if scout.owner == houseId:
-      yield (scoutId, scout)
-
 # Location-based iterators (entities at a location)
 
 iterator fleetsAtSystem*(state: GameState, systemId: SystemId): Fleet =
@@ -124,22 +106,6 @@ iterator fleetsAtSystemForHouseWithId*(state: GameState, systemId: SystemId, hou
   for fleetId, fleet in state.fleets:
     if fleet.location == systemId and fleet.owner == houseId:
       yield (fleetId, fleet)
-
-iterator spyScoutsAtSystem*(state: GameState, systemId: SystemId): SpyScout =
-  ## Iterate spy scouts at a system
-  ##
-  ## Example:
-  ##   for scout in state.spyScoutsAtSystem(systemId):
-  ##     # Process scout missions
-  for scoutId, scout in state.spyScouts:
-    if scout.location == systemId:
-      yield scout
-
-iterator spyScoutsAtSystemWithId*(state: GameState, systemId: SystemId): tuple[id: string, scout: SpyScout] =
-  ## Iterate spy scouts at system with IDs (for mutations)
-  for scoutId, scout in state.spyScouts:
-    if scout.location == systemId:
-      yield (scoutId, scout)
 
 # Condition-based iterators (entities matching criteria)
 

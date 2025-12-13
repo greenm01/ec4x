@@ -62,6 +62,11 @@ proc resolveIncomePhase*(
   ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
   logDebug(LogCategory.lcGeneral, &"[Income Phase]")
 
+  # ===================================================================
+  # STEP 0: APPLY ONGOING ESPIONAGE EFFECTS
+  # ===================================================================
+  # Per diplomacy.md:8.2 - Active espionage effects modify production/intel
+  logInfo(LogCategory.lcGeneral, "[INCOME STEP 0] Applying ongoing espionage effects...")
 
   # Apply ongoing espionage effects to houses
   var activeEffects: seq[esp_types.OngoingEffect] = @[]
@@ -100,6 +105,13 @@ proc resolveIncomePhase*(
           &"{effect.targetHouse}'s intelligence corrupted by disinformation (+/-{int(effect.magnitude * 100)}% variance)")
 
   state.ongoingEffects = activeEffects
+
+  # ===================================================================
+  # STEP 0b: PROCESS EBP/CIP INVESTMENT
+  # ===================================================================
+  # Per diplomacy.md:8.2 - Purchase EBP/CIP at 40 PP each
+  # Over-investment penalty: lose 1 prestige per 1% over 5% threshold
+  logInfo(LogCategory.lcEconomy, "[INCOME STEP 0b] Processing EBP/CIP purchases...")
 
   # Process EBP/CIP purchases (diplomacy.md:8.2)
   # EBP and CIP cost 40 PP each

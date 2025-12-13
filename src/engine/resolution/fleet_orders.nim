@@ -340,45 +340,45 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   if newLocation == targetId:
     logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination {targetId}, order complete")
 
-      # Check if this fleet is on a spy mission and start mission on arrival
-      if fleet.missionState == FleetMissionState.Traveling:
-        var updatedFleet = state.fleets[order.fleetId]
-        updatedFleet.missionState = FleetMissionState.OnSpyMission
-        updatedFleet.missionStartTurn = state.turn
+    # Check if this fleet is on a spy mission and start mission on arrival
+    if fleet.missionState == FleetMissionState.Traveling:
+      var updatedFleet = state.fleets[order.fleetId]
+      updatedFleet.missionState = FleetMissionState.OnSpyMission
+      updatedFleet.missionStartTurn = state.turn
 
-        let scoutCount = updatedFleet.squadrons.len
+      let scoutCount = updatedFleet.squadrons.len
 
-        # Register active mission
-        state.activeSpyMissions[order.fleetId] = ActiveSpyMission(
-          fleetId: order.fleetId,
-          missionType: SpyMissionType(updatedFleet.missionType.get()),
-          targetSystem: updatedFleet.location,
-          scoutCount: scoutCount,
-          startTurn: state.turn,
-          ownerHouse: updatedFleet.owner
-        )
+      # Register active mission
+      state.activeSpyMissions[order.fleetId] = ActiveSpyMission(
+        fleetId: order.fleetId,
+        missionType: SpyMissionType(updatedFleet.missionType.get()),
+        targetSystem: updatedFleet.location,
+        scoutCount: scoutCount,
+        startTurn: state.turn,
+        ownerHouse: updatedFleet.owner
+      )
 
-        # Update fleet in state
-        state.fleets[order.fleetId] = updatedFleet
+      # Update fleet in state
+      state.fleets[order.fleetId] = updatedFleet
 
-        # Generate mission start event
-        let missionName = case SpyMissionType(updatedFleet.missionType.get())
-          of SpyMissionType.SpyOnPlanet: "spy mission"
-          of SpyMissionType.HackStarbase: "starbase hack"
-          of SpyMissionType.SpyOnSystem: "system reconnaissance"
+      # Generate mission start event
+      let missionName = case SpyMissionType(updatedFleet.missionType.get())
+        of SpyMissionType.SpyOnPlanet: "spy mission"
+        of SpyMissionType.HackStarbase: "starbase hack"
+        of SpyMissionType.SpyOnSystem: "system reconnaissance"
 
-        events.add(event_factory.orderCompleted(
-          houseId,
-          order.fleetId,
-          "SpyMissionStarted",
-          details = &"{missionName} started at {targetId} ({scoutCount} scouts)",
-          systemId = some(targetId)
-        ))
+      events.add(event_factory.orderCompleted(
+        houseId,
+        order.fleetId,
+        "SpyMissionStarted",
+        details = &"{missionName} started at {targetId} ({scoutCount} scouts)",
+        systemId = some(targetId)
+      ))
 
-        logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} spy mission started at {targetId}")
+      logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} spy mission started at {targetId}")
 
-    else:
-      logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
+  else:
+    logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
 
   # Automatic intelligence gathering when arriving at system
   # ANY fleet presence reveals enemy colonies (passive reconnaissance)

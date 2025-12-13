@@ -722,7 +722,7 @@ proc executeSpyPlanetOrder(
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
-      orderType: FleetOrderType.MoveToSystem,
+      orderType: FleetOrderType.Move,
       targetSystem: some(targetSystem)
     )
     state.fleetOrders[fleet.id] = travelOrder
@@ -762,9 +762,8 @@ proc executeSpyPlanetOrder(
       fleet.id,
       "SpyPlanet",
       details = &"spy mission started at {targetSystem} ({scoutCount} scouts)",
-      systemId: some(targetSystem)
+      systemId = some(targetSystem)
     ))
-  )
 
   return OrderOutcome.Success
 
@@ -855,7 +854,7 @@ proc executeHackStarbaseOrder(
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
-      orderType: FleetOrderType.MoveToSystem,
+      orderType: FleetOrderType.Move,
       targetSystem: some(targetSystem)
     )
     state.fleetOrders[fleet.id] = travelOrder
@@ -895,9 +894,8 @@ proc executeHackStarbaseOrder(
       fleet.id,
       "HackStarbase",
       details = &"starbase hack mission started at {targetSystem} ({scoutCount} scouts)",
-      systemId: some(targetSystem)
+      systemId = some(targetSystem)
     ))
-  )
 
   return OrderOutcome.Success
 
@@ -968,7 +966,7 @@ proc executeSpySystemOrder(
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
-      orderType: FleetOrderType.MoveToSystem,
+      orderType: FleetOrderType.Move,
       targetSystem: some(targetSystem)
     )
     state.fleetOrders[fleet.id] = travelOrder
@@ -1008,9 +1006,8 @@ proc executeSpySystemOrder(
       fleet.id,
       "SpySystem",
       details = &"system reconnaissance mission started at {targetSystem} ({scoutCount} scouts)",
-      systemId: some(targetSystem)
+      systemId = some(targetSystem)
     ))
-  )
 
   return OrderOutcome.Success
 
@@ -1079,55 +1076,6 @@ proc executeJoinFleetOrder(
     return OrderOutcome.Failed
 
   let targetFleetId = order.targetFleet.get()
-
-  # Check if target is a SpyScout object
-  if targetFleetId in state.spyScouts:
-    # Normal fleet joining spy scout - convert spy scout to squadrons, merge into normal fleet
-    let spyScout = state.spyScouts[targetFleetId]
-
-    # Check same owner
-    if spyScout.owner != fleet.owner:
-      events.add(event_factory.orderFailed(
-        fleet.owner,
-        fleet.id,
-        "JoinFleet",
-        reason = "target spy scout is not owned by same house",
-        systemId = some(fleet.location)
-      ))
-      return OrderOutcome.Failed
-
-    # Check same location
-    if spyScout.location != fleet.location:
-      events.add(event_factory.orderFailed(
-        fleet.owner,
-        fleet.id,
-        "JoinFleet",
-        reason = "not at same location as target spy scout",
-        systemId = some(fleet.location)
-      ))
-      return OrderOutcome.Failed
-
-    # Convert spy scout back to squadrons
-    var updatedFleet = fleet
-    let scoutShip = newEnhancedShip(ShipClass.Scout, techLevel = spyScout.eliLevel)
-
-    for i in 0..<spyScout.mergedScoutCount:
-      let squadron = newSquadron(scoutShip, spyScout.id & "-sq-" & $i, spyScout.owner, spyScout.location)
-      updatedFleet.squadrons.add(squadron)
-
-    # Update the normal fleet (now contains scouts)
-    state.fleets[fleet.id] = updatedFleet
-
-    # Remove spy scout object
-    state.spyScouts.del(targetFleetId)
-    if targetFleetId in state.spyScoutOrders:
-      state.spyScoutOrders.del(targetFleetId)
-
-    logInfo(LogCategory.lcFleet, "Fleet " & $fleet.id & " absorbed spy scout " & $targetFleetId &
-            " (" & $spyScout.mergedScoutCount & " scout squadrons added)")
-
-    # Silent - merge operation
-    return OrderOutcome.Success
 
   # Target is a normal fleet
   let targetFleetOpt = state.getFleet(targetFleetId)
@@ -1317,19 +1265,6 @@ proc executeRendezvousOrder(
   var rendezvousFleets: seq[Fleet] = @[]
   rendezvousFleets.add(fleet)
 
-  # Collect spy scouts with Rendezvous orders at this system
-  var rendezvousSpyScouts: seq[SpyScout] = @[]
-  for spyScoutId, spyScout in state.spyScouts:
-    # Check if at same location and owned by same house
-    if spyScout.location == targetSystem and spyScout.owner == fleet.owner:
-      # Check if has Rendezvous order to same system
-      if spyScoutId in state.spyScoutOrders:
-        let spyOrder = state.spyScoutOrders[spyScoutId]
-        if spyOrder.orderType == SpyScoutOrderType.Rendezvous and
-           spyOrder.targetSystem.isSome and
-           spyOrder.targetSystem.get() == targetSystem:
-          rendezvousSpyScouts.add(spyScout)
-
   # Collect all fleets with Rendezvous orders at this system
   for fleetId, otherFleet in state.fleets:
     if fleetId == fleet.id:
@@ -1345,8 +1280,8 @@ proc executeRendezvousOrder(
            otherOrder.targetSystem.get() == targetSystem:
           rendezvousFleets.add(otherFleet)
 
-  # If only this fleet and no spy scouts, wait for others
-  if rendezvousFleets.len == 1 and rendezvousSpyScouts.len == 0:
+  # If only this fleet, wait for others
+  if rendezvousFleets.len == 1:
     # Silent - waiting
     return OrderOutcome.Success
 
@@ -1381,35 +1316,13 @@ proc executeRendezvousOrder(
     mergedCount += 1
     logInfo(LogCategory.lcFleet, "Fleet " & $f.id & " merged into rendezvous host " & $lowestId & " (source fleet removed)")
 
-  # Merge spy scouts into host fleet (convert to squadrons)
-  var scoutsMerged = 0
-  for spyScout in rendezvousSpyScouts:
-    let scoutShip = newEnhancedShip(ShipClass.Scout, techLevel = spyScout.eliLevel)
-
-    for i in 0..<spyScout.mergedScoutCount:
-      let squadron = newSquadron(scoutShip, spyScout.id & "-sq-" & $i, spyScout.owner, spyScout.location)
-      hostFleet.squadrons.add(squadron)
-
-    # Remove spy scout object
-    state.spyScouts.del(spyScout.id)
-    if spyScout.id in state.spyScoutOrders:
-      state.spyScoutOrders.del(spyScout.id)
-
-    scoutsMerged += spyScout.mergedScoutCount
-    logInfo(LogCategory.lcFleet, "Spy scout " & $spyScout.id & " merged into rendezvous host " & $lowestId &
-            " (" & $spyScout.mergedScoutCount & " scout squadrons added)")
-
   # Update host fleet
   state.fleets[lowestId] = hostFleet
 
   var message = "Rendezvous complete at " & $targetSystem & ": " & $mergedCount & " fleets merged into " & $lowestId
-  if scoutsMerged > 0:
-    message = message & ", " & $scoutsMerged & " scouts merged"
 
   # Generate OrderCompleted event for successful rendezvous
   var details = &"{mergedCount} fleet(s) merged"
-  if scoutsMerged > 0:
-    details = details & &", {scoutsMerged} scout(s) merged"
 
   events.add(event_factory.orderCompleted(
     fleet.owner,

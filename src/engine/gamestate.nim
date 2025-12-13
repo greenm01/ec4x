@@ -295,6 +295,13 @@ type
     lastTurnSpaceCombatLosses*: int  # Space battles lost
     lastTurnSpaceCombatTotal*: int   # Total space combat engagements
 
+    # Detection tracking (for diagnostics)
+    lastTurnRaidersDetected*: int        # Raiders detected by ELI
+    lastTurnRaidersStealthSuccess*: int  # Raiders evaded ELI detection
+    lastTurnEliDetectionAttempts*: int   # Total ELI detection rolls
+    lastTurnEliRollsSum*: int            # Sum of ELI rolls (for average)
+    lastTurnClkRollsSum*: int            # Sum of CLK rolls (for average)
+
     # Safe retreat routes (automatic seek-home behavior)
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference

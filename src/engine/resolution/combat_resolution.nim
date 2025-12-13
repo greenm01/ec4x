@@ -248,6 +248,7 @@ proc executeCombat(
   includeStarbases: bool,
   includeUnassignedSquadrons: bool,
   combatPhase: string,
+  events: var seq[GameEvent],
   preDetectedHouses: seq[HouseId] = @[]  # Houses already detected in previous combat phase
 ): tuple[outcome: CombatResult, fleetsAtSystem: seq[(FleetId, Fleet)], detectedHouses: seq[HouseId]] =
   ## Helper function to execute a combat phase
@@ -424,7 +425,54 @@ proc executeCombat(
       if defenderRoll >= attackerRoll:
         isDetected = true
         logInfo(LogCategory.lcCombat, &"Raider fleet from {attackerTF.house} DETECTED by {defenderTF.house}.")
+
+        # Generate RaiderDetected events for each raider fleet
+        for (fleetId, fleet) in fleetsInCombat:
+          if fleet.owner == attackerTF.house:
+            # Check if this fleet has raiders
+            var hasRaiders = false
+            for squadron in fleet.squadrons:
+              if squadron.flagship.shipClass == ShipClass.Raider:
+                hasRaiders = true
+                break
+
+            if hasRaiders:
+              let detectorType = if starbaseBonus > 0: "Starbase" else: "Scout"
+              events.add(event_factory.raiderDetected(
+                raiderFleetId = fleetId,
+                raiderHouse = attackerTF.house,
+                detectorHouse = defenderTF.house,
+                detectorType = detectorType,
+                systemId = systemId,
+                eliRoll = defenderRoll,
+                clkRoll = attackerRoll
+              ))
+
         break
+      else:
+        # Detection failed - generate stealth success events for diagnostics
+        # Visible only to raider (fog-of-war)
+        logInfo(LogCategory.lcCombat, &"Raider fleet from {attackerTF.house} evaded {defenderTF.house} detection.")
+        for (fleetId, fleet) in fleetsInCombat:
+          if fleet.owner == attackerTF.house:
+            # Check if this fleet has raiders
+            var hasRaiders = false
+            for squadron in fleet.squadrons:
+              if squadron.flagship.shipClass == ShipClass.Raider:
+                hasRaiders = true
+                break
+
+            if hasRaiders:
+              let detectorType = if starbaseBonus > 0: "Starbase" else: "Scout"
+              events.add(event_factory.raiderStealthSuccess(
+                raiderFleetId = fleetId,
+                raiderHouse = attackerTF.house,
+                detectorHouse = defenderTF.house,
+                detectorType = detectorType,
+                systemId = systemId,
+                eliRoll = defenderRoll,
+                clkRoll = attackerRoll
+              ))
 
     if isDetected:
       attackerTF.isCloaked = false
@@ -725,7 +773,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
       state, systemId, spaceCombatParticipants, systemOwner,
       includeStarbases = false,
       includeUnassignedSquadrons = false,
-      "Space Combat"
+      "Space Combat",
+      events
     )
     spaceCombatOutcome = outcome
     spaceCombatFleets = fleets
@@ -827,6 +876,7 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           includeStarbases = true,
           includeUnassignedSquadrons = true,
           "Orbital Combat",
+          events,
           preDetectedHouses = detectedInSpace  # Pass detection status from space combat
         )
         orbitalCombatOutcome = outcome

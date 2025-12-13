@@ -192,11 +192,6 @@ proc hasVisibilityOn(state: GameState, systemId: SystemId, houseId: HouseId): bo
     if fleet.owner == houseId and fleet.location == systemId:
       return true
 
-  # Check if house has spy scouts in this system
-  for scoutId, scout in state.spyScouts:
-    if scout.owner == houseId and scout.location == systemId and not scout.detected:
-      return true
-
   return false
 
 proc canGuildTraversePath(state: GameState, path: seq[SystemId], transferringHouse: HouseId): bool =

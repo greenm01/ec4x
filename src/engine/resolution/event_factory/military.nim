@@ -265,8 +265,7 @@ proc raiderDetected*(
   detectorType: string,  # "Scout" or "Starbase"
   systemId: SystemId,
   eliRoll: int,
-  clkRoll: int,
-  meshBonus: int = 0
+  clkRoll: int
 ): event_types.GameEvent =
   ## Create event for raider detection
   event_types.GameEvent(
@@ -283,8 +282,34 @@ proc raiderDetected*(
     detectorHouse: some(detectorHouse),
     detectorType: some(detectorType),
     eliRoll: some(eliRoll),
-    clkRoll: some(clkRoll),
-    meshBonus: some(meshBonus)
+    clkRoll: some(clkRoll)
+  )
+
+proc raiderStealthSuccess*(
+  raiderFleetId: FleetId,
+  raiderHouse: HouseId,
+  detectorHouse: HouseId,
+  detectorType: string,  # "Scout" or "Starbase"
+  systemId: SystemId,
+  eliRoll: int,
+  clkRoll: int
+): event_types.GameEvent =
+  ## Create event for successful stealth (CLK beat ELI)
+  ## Visible only to raider for diagnostics
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.RaiderStealthSuccess,
+    turn: 0,
+    houseId: some(raiderHouse),
+    description: &"Raider fleet {raiderFleetId} evaded detection by {detectorHouse} " &
+                 &"{detectorType} at system {systemId} (CLK {clkRoll} vs ELI {eliRoll})",
+    systemId: some(systemId),
+    sourceHouseId: some(raiderHouse),
+    targetHouseId: some(detectorHouse),
+    stealthFleetId: some(raiderFleetId),
+    attemptedDetectorHouse: some(detectorHouse),
+    attemptedDetectorType: some(detectorType),
+    stealthEliRoll: some(eliRoll),
+    stealthClkRoll: some(clkRoll)
   )
 
 proc raiderAmbush*(
@@ -307,25 +332,6 @@ proc raiderAmbush*(
     ambushFleetId: some(raiderFleetId),
     ambushTargetHouse: some(targetHouse),
     ambushBonus: some(ambushBonus)
-  )
-
-proc eliMeshNetworkFormed*(
-  house: HouseId,
-  systemId: SystemId,
-  scoutCount: int,
-  meshBonus: int  # +1, +2, or +3
-): event_types.GameEvent =
-  ## Create event for ELI mesh network formation
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.EliMeshNetworkFormed,
-    turn: 0,
-    houseId: some(house),
-    description: &"ELI mesh network formed at system {systemId} " &
-                 &"({scoutCount} scouts, +{meshBonus} ELI bonus)",
-    systemId: some(systemId),
-    meshHouse: some(house),
-    scoutCount: some(scoutCount),
-    meshBonusEli: some(meshBonus)
   )
 
 # -----------------------------------------------------------------------------

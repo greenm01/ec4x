@@ -10,19 +10,21 @@
 ## **TURN RESOLUTION PHASES:**
 ##
 ## **PHASE 1: CONFLICT PHASE** [resolution/phases/conflict_phase.nim]
+##   Step 0: Merge Active Fleet Orders (from state.fleetOrders)
 ##   Step 1: Space Combat (simultaneous resolution)
 ##   Step 2: Orbital Combat (simultaneous resolution)
 ##   Step 3: Blockade Resolution (simultaneous)
 ##   Step 4: Planetary Combat (bombard/invade/blitz, simultaneous)
 ##   Step 5: Colonization (ETAC operations, simultaneous)
 ##   Step 6: Espionage Operations (simultaneous)
-##     6a: Spy Scout Detection (pre-combat prep, excludes detected scouts)
-##     6b: Fleet-Based Espionage (SpyPlanet, SpySystem, HackStarbase)
-##     6c: Space Guild Espionage (EBP-based covert ops)
-##     6d: Starbase Surveillance (continuous monitoring)
-##   Step 7: Spy Scout Travel (1-2 jumps per turn)
+##     6a: Fleet-Based Espionage Arrival (SpyPlanet, SpySystem, HackStarbase)
+##     6a.5: Persistent Spy Mission Detection (active missions from prior turns)
+##     6b: Space Guild Espionage (EBP-based covert ops)
+##     6c: Starbase Surveillance (continuous monitoring)
 ##
 ## **PHASE 2: INCOME PHASE** [resolution/phases/income_phase.nim]
+##   Step 0: Apply Ongoing Espionage Effects (SRP/NCV/Tax reduction, intel corruption)
+##   Step 0b: Process EBP/CIP Investment (purchase espionage points, over-investment penalty)
 ##   Step 1: Calculate Base Production (colony GCO → PP)
 ##   Step 2: Apply Blockades (reduce GCO for blockaded colonies)
 ##   Step 3: Calculate Maintenance Costs (deduct from gross production)
@@ -40,6 +42,7 @@
 ##   Step 9: Advance Timers (espionage effects, diplomatic timers, grace periods)
 ##
 ## **PHASE 3: COMMAND PHASE** [resolution/phases/command_phase.nim]
+##   Step 0: Order Cleanup (clean completed/failed/aborted orders from previous turn)
 ##   Part A: Ship Commissioning & Automation
 ##     - Commission completed ships from pendingMilitaryCommissions
 ##     - Auto-create squadrons, auto-assign to fleets
@@ -50,15 +53,19 @@
 ##     - Process colony management orders
 ##     - Process Space Guild population transfers
 ##     - Process diplomatic actions
-##     - Process spy scout orders
 ##     - Process terraforming orders
 ##   Part C: Order Processing (categorization & queueing)
 ##     - Queue combat orders for Turn N+1 Conflict Phase
 ##     - Execute administrative orders immediately
 ##     - Store movement orders for Maintenance Phase execution
+##     - Process research allocation (PP → ERP/SRP/TRP, with treasury scaling)
 ##
 ## **PHASE 4: MAINTENANCE PHASE** [resolution/phases/maintenance_phase.nim]
-##   Step 1: Fleet Movement (execute movement orders from Command Phase)
+##   Step 1: Fleet Movement & Order Activation
+##     1a: Order Activation (activate orders, generate standing orders)
+##     1b: Order Maintenance (lifecycle management)
+##     1c: Fleet Movement (fleets move toward targets)
+##     1d: Fleet Arrival Detection (populate state.arrivedFleets for Conflict/Income execution)
 ##   Step 2: Construction & Repair Advancement
 ##     2a: Advance all queues (facility + colony construction)
 ##     2b: Commission planetary defense (fighters, facilities, ground forces)
@@ -66,7 +73,11 @@
 ##   Step 4: Population Arrivals (Space Guild transfers complete)
 ##   Step 5: Terraforming Projects (advance active projects)
 ##   Step 6: Cleanup (expire proposals, update diplomatic timers)
-##   Research Advancement: Process EL/SL/TechField upgrades (uses accumulated RP)
+##   Step 7: Research Advancement (process tech upgrades)
+##     7a: Breakthrough Rolls (every 5 turns)
+##     7b: EL Advancement (economic level)
+##     7c: SL Advancement (science level)
+##     7d: Tech Field Advancement (CST, WEP, TFM, ELI, CI)
 ##
 ## **COMMISSIONING & AUTOMATION FLOW:**
 ## - Turn N: Build orders submitted → queued
@@ -222,6 +233,43 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
       for houseId in report.defenders:
         result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
+
+  # Update detection statistics from events (for diagnostics)
+  for event in result.events:
+    case event.eventType
+    of GameEventType.RaiderDetected:
+      # Detector successfully detected raiders
+      if event.detectorHouse.isSome:
+        let detectorId = event.detectorHouse.get()
+        result.newState.houses[detectorId].lastTurnRaidersDetected += 1
+        result.newState.houses[detectorId].lastTurnEliDetectionAttempts += 1
+        if event.eliRoll.isSome:
+          result.newState.houses[detectorId].lastTurnEliRollsSum +=
+            event.eliRoll.get()
+      # Track CLK roll for raider
+      if event.sourceHouseId.isSome and event.clkRoll.isSome:
+        let raiderId = event.sourceHouseId.get()
+        result.newState.houses[raiderId].lastTurnClkRollsSum +=
+          event.clkRoll.get()
+
+    of GameEventType.RaiderStealthSuccess:
+      # Raider evaded detection
+      if event.houseId.isSome:
+        let raiderId = event.houseId.get()
+        result.newState.houses[raiderId].lastTurnRaidersStealthSuccess += 1
+        if event.stealthClkRoll.isSome:
+          result.newState.houses[raiderId].lastTurnClkRollsSum +=
+            event.stealthClkRoll.get()
+      # Track attempted ELI roll for detector
+      if event.attemptedDetectorHouse.isSome:
+        let detectorId = event.attemptedDetectorHouse.get()
+        result.newState.houses[detectorId].lastTurnEliDetectionAttempts += 1
+        if event.stealthEliRoll.isSome:
+          result.newState.houses[detectorId].lastTurnEliRollsSum +=
+            event.stealthEliRoll.get()
+
+    else:
+      discard  # Ignore other event types
 
   # Phase 2: Income (resource collection + capacity enforcement after IU loss)
   resolveIncomePhase(result.newState, effectiveOrders, result.events)

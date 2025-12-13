@@ -72,6 +72,7 @@ const
                     "autopilot,defensive_collapse,turns_to_elimination,missed_orders," &
                     "space_wins,space_losses,space_total,orbital_failures,orbital_total," &
                     "raider_success,raider_attempts," &
+                    "raider_detected,raider_stealth_success,eli_attempts,avg_eli_roll,avg_clk_roll," &
                     "capacity_violations,fighters_disbanded,total_fighters,idle_carriers,total_carriers,total_transports," &
                     "fighter_ships,corvette_ships,frigate_ships,scout_ships,raider_ships," &
                     "destroyer_ships,cruiser_ships,light_cruiser_ships,heavy_cruiser_ships," &
@@ -193,6 +194,8 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.spaceCombatWins},{metrics.spaceCombatLosses},{metrics.spaceCombatTotal}," &
                  &"{metrics.orbitalFailures},{metrics.orbitalTotal}," &
                  &"{metrics.raiderAmbushSuccess},{metrics.raiderAmbushAttempts}," &
+                 &"{metrics.raiderDetectedCount},{metrics.raiderStealthSuccessCount}," &
+                 &"{metrics.eliDetectionAttempts},{metrics.avgEliRoll:.2f},{metrics.avgClkRoll:.2f}," &
                  # Logistics
                  &"{metrics.capacityViolationsActive},{metrics.fightersDisbanded}," &
                  &"{metrics.totalFighters},{metrics.idleCarriers},{metrics.totalCarriers},{metrics.totalTransports}," &

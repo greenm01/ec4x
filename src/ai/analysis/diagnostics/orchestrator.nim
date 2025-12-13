@@ -140,6 +140,11 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   result.orbitalTotal = domestikos.orbitalTotal
   result.raiderAmbushSuccess = domestikos.raiderAmbushSuccess
   result.raiderAmbushAttempts = domestikos.raiderAmbushAttempts
+  result.raiderDetectedCount = domestikos.raiderDetectedCount
+  result.raiderStealthSuccessCount = domestikos.raiderStealthSuccessCount
+  result.eliDetectionAttempts = domestikos.eliDetectionAttempts
+  result.avgEliRoll = domestikos.avgEliRoll
+  result.avgClkRoll = domestikos.avgClkRoll
   result.combatCERAverage = domestikos.combatCERAverage
   result.bombardmentRoundsTotal = domestikos.bombardmentRoundsTotal
   result.groundCombatVictories = domestikos.groundCombatVictories

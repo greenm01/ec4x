@@ -142,6 +142,11 @@ type
     orbitalTotal*: int
     raiderAmbushSuccess*: int   # Successful Raider ambushes
     raiderAmbushAttempts*: int
+    raiderDetectedCount*: int        # Times raiders were detected by ELI
+    raiderStealthSuccessCount*: int  # Times raiders evaded ELI detection
+    eliDetectionAttempts*: int       # Total ELI detection attempts
+    avgEliRoll*: float               # Average ELI roll value
+    avgClkRoll*: float               # Average CLK roll value
 
     # Logistics
     capacityViolationsActive*: int    # Current active capacity violations
@@ -395,6 +400,11 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     orbitalTotal: 0,
     raiderAmbushSuccess: 0,
     raiderAmbushAttempts: 0,
+    raiderDetectedCount: 0,
+    raiderStealthSuccessCount: 0,
+    eliDetectionAttempts: 0,
+    avgEliRoll: 0.0,
+    avgClkRoll: 0.0,
 
     # Logistics
     capacityViolationsActive: 0,

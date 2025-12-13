@@ -119,14 +119,14 @@ proc resolveDiplomaticActions*(state: var GameState,
 proc resolveScoutDetectionEscalations*(state: var GameState,
                                         events: var seq[res_types.GameEvent]) =
   ## Process scout loss events and trigger appropriate diplomatic escalations
-  ## Per scout mechanics revision: SpyScoutDetected → Hostile escalation
+  ## NOTE: After Scout System Unification, only CombatLoss and TravelIntercepted remain
+  ## Neither triggers escalation, so this function currently skips all events
   ## Escalation only goes UP, never down: Neutral → Hostile → Enemy
 
   for event in state.scoutLossEvents:
-    # Only process SpyScoutDetected events for escalation
     # TravelIntercepted and CombatLoss don't trigger escalation
-    if event.eventType != intel_types.DetectionEventType.SpyScoutDetected:
-      continue
+    # All current event types are non-escalating
+    continue
 
     # Skip if either house is eliminated
     if event.owner notin state.houses or event.detectorHouse notin state.houses:
