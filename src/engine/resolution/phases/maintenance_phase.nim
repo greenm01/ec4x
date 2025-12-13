@@ -507,7 +507,7 @@ proc resolveMaintenancePhase*(state: var GameState,
   # Advance construction queues for both facilities (capital ships) and
   # colonies (fighters/buildings)
   logInfo(LogCategory.lcEconomy, "[MAINTENANCE STEP 2] Advancing construction & repair queues...")
-  let maintenanceReport = econ_engine.resolveMaintenancePhaseWithState(state)
+  let maintenanceReport = econ_engine.tickConstructionAndRepair(state, events)
 
   # Split completed projects by commissioning phase
   var planetaryProjects: seq[econ_types.CompletedProject] = @[]

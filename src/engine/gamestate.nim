@@ -309,6 +309,9 @@ type
     lastTurnResearchSRP*: int  # Science RP earned last turn
     lastTurnResearchTRP*: int  # Total Technology RP earned last turn (sum of all fields)
 
+    # Maintenance tracking (for diagnostics)
+    lastTurnMaintenanceCost*: int  # Total maintenance paid last turn
+
     # Espionage tracking (for diagnostics)
     lastTurnEspionageAttempts*: int  # Total espionage attempts last turn
     lastTurnEspionageSuccess*: int   # Successful operations
