@@ -298,18 +298,16 @@ Raiders are specialized covert vessels that conduct intelligence gathering, sabo
 
 **Detection Mechanics:**
 
-Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Raiders. Detection rolls compare the Raider's CLK level against the defender's ELI level using the Raider Detection Table in [Section 2.4.3](02-assets.md#243-raiders).
+A fleet with Raiders attempts to remain cloaked when entering combat. Its success is determined by an opposed roll pitting the attacker's CLK level against the defender's ELI level. See [Section 2.4.3](02-assets.md#243-raiders) for the full detection mechanic.
 
-Higher CLK tiers significantly reduce detection probability, enabling Raiders to operate deep in enemy territory with relative impunity.
+Higher CLK tiers make it more likely for your fleets to gain a devastating ambush advantage.
 
 **Strategic Applications:**
 
-- **Intelligence**: Reveal enemy fleet compositions and colony defenses
-- **Sabotage**: Destroy Industrial Units, damage infrastructure
-- **Assassination**: Eliminate enemy commanders (advanced missions)
-- **Blockade Running**: Covert supply runs to besieged colonies
+- Grant fleets a first-strike **ambush advantage** in combat.
+- Force opponents to invest in defensive ELI technology.
 
-For complete Raider specifications and mission types, see [Section 2.4.3](02-assets.md#243-raiders) and [Section 9.0](09-intelligence.md#90-intelligence-system).
+For complete Raider specifications, see [Section 2.4.3](02-assets.md#243-raiders).
 
 **Strategic Considerations:**
 
@@ -317,7 +315,7 @@ CLK investment creates information asymmetry—Houses with advanced Raiders can 
 
 ## 4.8 Electronic Intelligence (ELI)
 
-Electronic Intelligence represents sensor technology, signals analysis, and detection networks. ELI enables colonies to detect enemy Scouts and Raiders conducting covert operations.
+Electronic Intelligence represents your house's empire-wide sensor, signals analysis, and detection network capabilities. **ELI is a passive technology, not a ship component.** Your researched ELI level applies to all your fleets and colonies, allowing them to detect stealthed enemy units.
 
 **Research Progression:**
 
@@ -337,21 +335,19 @@ Electronic Intelligence represents sensor technology, signals analysis, and dete
 
 **Detection Mechanics:**
 
-ELI determines a colony's ability to detect enemy Scouts and Raiders:
+ELI is the primary counter to both **Spy Scouts** on espionage missions and **Raiders** attempting to ambush your fleets.
 
-**Scout Detection**: Uses the Scout Detection Table in [Section 2.4.2](02-assets.md#242-scouts). Detection probability increases with ELI tier and multiple Scout presence (mesh network effect).
+- **Spy Scout Detection**: Your ELI level makes it easier to detect incoming enemy Spy Scouts. See [Section 2.4.2](02-assets.md#242-spy-scouts) for the detection formula.
+- **Raider Detection**: Your ELI level is added to your detection roll to find cloaked Raider fleets. See [Section 2.4.3](02-assets.md#243-raiders) for the detection formula.
 
-**Raider Detection**: Uses the Raider Detection Table in [Section 2.4.3](02-assets.md#243-raiders). Higher ELI levels significantly increase detection probability against cloaked Raiders.
-
-**Starbase Synergy**: Starbases provide a +2 ELI modifier for detection rolls, making them critical for defending high-value colonies against covert operations. See [Section 2.4.4](02-assets.md#244-starbases).
+**Starbase Synergy**: Starbases provide a powerful **+2 bonus** to your effective ELI level for all detection rolls made in their system, making them critical for defending high-value locations.
 
 **Strategic Considerations:**
 
-ELI provides critical combat benefits by detecting cloaked Raiders and preventing their devastating +4 CER ambush bonus. Your ELI-equipped scouts share detection across your entire task force, negating enemy stealth advantages in both space and orbital combat. However, ELI provides no direct firepower or economic benefit—you must balance ELI investment against other research priorities.
-
-Failing to invest in ELI allows adversaries to operate Raiders with impunity against your forces. Undetected Raiders strike first, potentially crippling your fleet before your capital ships can respond. ELI is defensive technology with offensive implications—Houses without adequate ELI face catastrophic combat disadvantages against cloaked adversaries.
-
-ELI is also essential for planetary defense. Your colonies with high ELI and Starbases (+2 ELI modifier) can detect covert Scout and Raider operations, protecting your industrial capacity from sabotage missions. ELI is a meta-game technology—its value depends entirely on opponent strategies and the prevalence of stealth warfare in your campaign.
+ELI is a purely defensive technology that provides no direct economic or combat benefit. Its value is entirely dependent on your opponents' actions.
+- If your enemies invest in Spy Scouts and Raiders (CLK tech), a strong ELI is critical to protect your empire from espionage and surprise attacks.
+- If your enemies neglect stealth, your investment in ELI may be better spent on weapons or economy.
+- Neglecting ELI research makes you a tempting target for houses specializing in covert operations, potentially allowing them to gain a decisive intelligence or combat advantage.
 
 ## 4.9 Strategic Lift (STL)
 

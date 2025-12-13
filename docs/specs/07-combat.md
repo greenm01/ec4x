@@ -323,7 +323,6 @@ CER determines strike effectiveness—how much damage your squadrons inflict. Ea
 
 1. **Roll 1d10** (result 0-9, treat 10 as 0)
 2. **Add modifiers**:
-   - Scouts in task force: +1
    - Morale modifier (see table below): -1 to +2
    - Surprise (first round only): +3
    - Ambush (Raiders, space combat, first round): +4
