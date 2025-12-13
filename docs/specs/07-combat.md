@@ -163,7 +163,7 @@ Fleets combine into **task forces** during combat—unified battle groups that c
 
 ### 7.2.4 Cloaking and Detection
 
-Raiders are specialized ships that can cloak an entire fleet, making it invisible to enemy sensors. An undetected fleet gains a powerful **ambush advantage** in combat.
+Raiders are specialized ships that can cloak an entire fleet, making it invisible to enemy sensors. An undetected fleet can gain a powerful **first-strike advantage** in combat.
 
 **Detection Mechanics**:
 When a fleet containing one or more Raiders engages in combat (both Space and Orbital), a detection check is made at the start of that combat phase. It is an opposed roll pitting the attacker's **Cloaking (CLK)** technology against the defender's **Electronic Intelligence (ELI)** technology.
@@ -173,13 +173,16 @@ When a fleet containing one or more Raiders engages in combat (both Space and Or
 
 See [Section 2.4.3](02-assets.md#243-raiders) for the full mechanic.
 
-**Ambush Advantage:**
-If a Raider fleet remains undetected at the start of a combat phase (both Space and Orbital), it gains an ambush advantage for that engagement:
-- **+4 Combat Effectiveness Rating (CER)** bonus in the first round of combat.
-- This represents a devastating surprise attack before the enemy can effectively respond.
+**First-Strike Advantage: Ambush & Surprise**
+If a Raider fleet remains undetected at the start of a combat phase (both Space and Orbital), it gains a first-strike advantage for that engagement:
+- A **+4 Combat Effectiveness Rating (CER)** bonus in the first round of combat.
+- **Ambush**: Achieved by a defending Raider fleet.
+- **Surprise**: Achieved by an attacking Raider fleet.
+
+This bonus represents a devastating attack before the enemy can effectively respond.
 
 **Detection Effects**:
-- A detected Raider fleet loses its ambush bonus for that combat phase and fights as a normal fleet.
+- A detected Raider fleet loses its first-strike bonus for that combat phase and fights as a normal fleet.
 - A new detection check is made at the beginning of each combat theater (Space and Orbital). A fleet could be detected in Space Combat but successfully remain hidden for Orbital Combat.
 
 ---
