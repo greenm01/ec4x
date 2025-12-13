@@ -34,7 +34,6 @@ import ../../gamestate, ../../orders, ../../logger, ../../starmap
 import ../../order_types
 import ../fleet_order_execution  # For movement order execution
 import ../../economy/[types as econ_types, engine as econ_engine, facility_queue]
-# Capacity enforcement imports removed - now in income_phase.nim
 import ../../research/[types as res_types, advancement]
 import ../commissioning  # For planetary defense commissioning
 import ../../espionage/[types as esp_types]
@@ -49,13 +48,10 @@ import ../../prestige
 import ../../standing_orders  # For standing order activation
 
 # Forward declaration for helper procs
-proc resolvePopulationArrivals*(state: var GameState,
-                                events: var seq[GameEvent])
-proc processTerraformingProjects(state: var GameState,
-                                  events: var seq[GameEvent])
+proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent])
+proc processTerraformingProjects(state: var GameState,events: var seq[GameEvent])
 
-proc resolvePopulationArrivals*(state: var GameState,
-                                events: var seq[GameEvent]) =
+proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]) =
   ## Process Space Guild population transfers that arrive this turn
   ## Implements risk handling per config/population.toml [transfer_risks]
   ## Per config: dest_blockaded_behavior = "closest_owned"
@@ -520,6 +516,7 @@ proc resolveMaintenancePhase*(state: var GameState,
         )
 
         logDebug(LogCategory.lcResearch, &"{houseId} breakthrough effect applied (category: {event.category})")
+
   var totalAdvancements = 0
   for houseId, house in state.houses.mpairs:
     # Try to advance Economic Level (EL) with accumulated ERP
@@ -586,5 +583,3 @@ proc resolveMaintenancePhase*(state: var GameState,
         ))
 
   logInfo(LogCategory.lcOrders, &"[MAINTENANCE] Research advancements completed ({totalAdvancements} total advancements)")
-
-  # Victory condition check moved to Income Phase (per FINAL_TURN_SEQUENCE.md)
