@@ -18,6 +18,7 @@ import ./basileus_collector    # House status & victory
 import ../../../engine/gamestate
 import ../../../engine/orders
 import ../../../engine/resolution/types as res_types
+import ../../../ai/common/types as ai_types  # For GameAct enum
 import ../../common/types
 import ../../rba/controller_types  # For GOAP metrics collection
 import ../../../engine/logger  # For debug logging
@@ -377,10 +378,21 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # PHASE D: Calculate Act number (1-4) based on turn thresholds
   # ================================================================
 
-  # Dynamic calculation based on expected game length: 25% per act
-  # Example: 100-turn game � Act1=1-25, Act2=26-50, Act3=51-75, Act4=76-100
-  let actThreshold = max(1, maxTurns div 4)
-  result.act = min(4, (state.turn - 1) div actThreshold + 1)
+  # Use the same act calculation as the AI with colonization gate
+  # Returns GameAct enum (0-3), convert to 1-4 for display
+  var currentAct = ai_types.getCurrentGameAct(state.turn)
+
+  # Apply colonization gate (same logic as orders.nim)
+  # Act 2 requires 50% map colonization (or turn 12+ hard cap)
+  if currentAct >= ai_types.GameAct.Act2_RisingTensions and state.turn <= 12:
+    let totalSystems = state.starMap.systems.len
+    var totalColonized = state.colonies.len  # Count all colonies
+
+    let colonizationRatio = float(totalColonized) / float(totalSystems)
+    if colonizationRatio < 0.50:
+      currentAct = ai_types.GameAct.Act1_LandGrab
+
+  result.act = ord(currentAct) + 1
 
   # ================================================================
   # PHASE E: Calculate current rank by prestige (1=best, N=worst)

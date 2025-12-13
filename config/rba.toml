@@ -127,15 +127,15 @@ tech_priority = 0.75
 # - Technology: Research investment
 
 [budget_act1_land_grab]
-expansion = 0.50       # INCREASED: Maximum expansion during land grab (was 0.45)
+expansion = 0.55       # INCREASED: Maximum expansion during land grab
 defense = 0.08         # REDUCED: Low priority - personality-driven (homeworld-only for most AIs)
 military = 0.12        # REDUCED: Shift more budget to expansion
 reconnaissance = 0.08  # REDUCED: Any ship can explore in Act 1
 special_units = 0.12   # REDUCED: Need transports for invasion capability
 technology = 0.05      # Minimal tech investment
-filler_budget_reserved = 0.15  # REDUCED: 15% reserved for capacity utilization (was 0.20)
-# Total: 0.50 + 0.08 + 0.12 + 0.08 + 0.12 + 0.05 + 0.15 = 1.10 (still >1.0, but filler is reserve, not allocation)
-# Note: filler_budget_reserved is a reserve, not an allocation category
+filler_budget_reserved = 0.15  # 15% reserved for capacity utilization (separate from allocations)
+# Total allocations: 0.55 + 0.08 + 0.12 + 0.08 + 0.12 + 0.05 = 1.00
+# Filler budget is a separate reserve pool handled by splitting logic
 
 [budget_act2_rising_tensions]
 expansion = 0.20       # INCREASED from 0.10 - need facilities at new colonies (spaceports/shipyards)
@@ -261,12 +261,6 @@ split_threshold_act1 = 2            # Split fleets with 2+ ships in Act 1
 merge_threshold_act2 = 3            # Merge when 3+ idle single-ship fleets
 rendezvous_preference = "homeworld" # Where to merge fleets: homeworld, frontline, center
 max_invasion_eta_turns = 8          # Maximum ETA for invasion operations
-
-# ETAC (Expansion Transport And Colonizer) Configuration
-etac_max_per_house = 8              # Maximum ETACs a house can build (prevents over-investment)
-etac_early_game_target = 4          # Target ETACs to build in first 7 turns (Act 1)
-etac_colonization_radius = 5        # Max jumps from homeworld for colonization
-etac_auto_colonize_enabled = true   # Enable AutoColonize standing orders for ETACs
 
 # ZeroTurnCommand Fleet Management (Immediate-execution fleet operations)
 fleet_management_enabled = true     # Enable merge/detach/transfer using ZeroTurnCommand API

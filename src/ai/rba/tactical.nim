@@ -6,6 +6,7 @@
 import std/[tables, options, algorithm, sequtils, strformat, random, sets]
 import ../common/types
 import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap, logger, orders]
+import ../../engine/order_types  # For StandingOrder
 import ../../engine/diplomacy/types as dip_types
 import ../../engine/intelligence/types as intel_types
 import ../../common/types/[core, planets]
@@ -451,9 +452,11 @@ proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState
     if not inOperation and fleet.combatStrength() > 0:
       result += 1
 
-proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): seq[FleetOrder] =
+proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand,
+                          standingOrders: Table[FleetId, StandingOrder] = initTable[FleetId, StandingOrder]()): seq[FleetOrder] =
   ## Generate fleet orders for all owned fleets
   ## NOW WITH PHASE-AWARE PRIORITIES (4-act structure)
+  ## standingOrders: Skip tactical orders for fleets with AutoColonize (let standing orders handle it)
   result = @[]
 
   let myFleets = getOwnedFleets(filtered, controller.houseId)
@@ -498,7 +501,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
       # ========================================================================
 
       # Priority 1a: ETACs colonize nearest uncolonized system
-      if hasETAC:
+      # SKIP if fleet has AutoColonize standing order (let standing order handle it)
+      if hasETAC and (fleet.id notin standingOrders or standingOrders[fleet.id].orderType != StandingOrderType.AutoColonize):
         # Find nearest uncolonized system
         var bestTarget: Option[SystemId] = none(SystemId)
         var minDist = 999

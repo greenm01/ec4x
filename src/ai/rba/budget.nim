@@ -16,6 +16,7 @@ import ../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../engine/economy/capacity/fighter  # For fighter capacity calculations
 import ../../common/types/[core, units]
 import ./treasurer     # Treasurer module for budget allocation
+import ./treasurer/budget/splitting  # Budget split (strategic vs filler)
 import ./shared/resource_tracking/tracker  # Generic resource tracking
 import ./shared/intelligence_types  # For IntelligenceSnapshot
 
@@ -990,19 +991,47 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
   # NOTE: Diagnostic logging removed after verification that Strategic Triage fix works
 
-  # 2. Initialize BudgetTracker with full house budget
+  # 2. Calculate dock capacity and estimate excess docks for filler
+  var totalDocks = 0
+  for colony in myColonies:
+    for spaceport in colony.spaceports:
+      totalDocks += spaceport.effectiveDocks
+    for shipyard in colony.shipyards:
+      totalDocks += shipyard.effectiveDocks
+
+  # Strategic requirements typically consume 80-85% of dock capacity
+  # Use 85% as conservative estimate, leaving 15% for filler
+  let strategicDockUsagePct = 0.85
+  let excessDocks = max(1, int(float(totalDocks) * (1.0 - strategicDockUsagePct)))
+
+  logDebug(LogCategory.lcAI,
+           &"Dock capacity: total={totalDocks}, " &
+           &"estimated strategic usage={int(float(totalDocks)*strategicDockUsagePct)}, " &
+           &"excess={excessDocks}")
+
+  # 3. Split budget into strategic and filler portions (using EXCESS docks, not total)
+  # Strategic budget (80-85%): Critical/High/Medium/Low priority requirements
+  # Filler budget (15-20%): Deferred priority capacity utilization (scales with excess dock capacity)
+  let budgetSplit = splitStrategicAndFillerBudgets(availableBudget, act, allocation, excessDocks)
+
+  # 3. Initialize TWO BudgetTrackers to prevent filler from starving strategic
   # CRITICAL: Single tracker prevents overspending across all colonies
   # Previous bug: Per-colony budgets → 3 colonies × 550 PP = 1650 PP spent (house only had 1000!)
-  # Now: Single tracker enforces house-wide budget limit
-  var tracker = initBudgetTracker(controller.houseId, availableBudget, allocation)
+  # Now: Dual trackers enforce strategic vs filler budget separation
+  var strategicTracker = initBudgetTracker(controller.houseId, budgetSplit.strategicBudget, allocation)
+
+  # Filler tracker: Use same allocation as strategic (Deferred requirements can be for any objective)
+  # The filler budget is a separate pool that Deferred requirements draw from
+  var fillerTracker = initBudgetTracker(controller.houseId, budgetSplit.fillerBudget, allocation)
 
   logDebug(LogCategory.lcAI,
     &"{controller.houseId} Budget allocation ({act}): " &
-    &"total={availableBudget}PP, " &
-    &"Expansion={int(allocation[Expansion]*float(availableBudget))}PP, " &
-    &"Reconnaissance={int(allocation[Reconnaissance]*float(availableBudget))}PP, " &
-    &"Military={int(allocation[Military]*float(availableBudget))}PP, " &
-    &"SpecialUnits={int(allocation[SpecialUnits]*float(availableBudget))}PP")
+    &"strategic={budgetSplit.strategicBudget}PP, " &
+    &"filler={budgetSplit.fillerBudget}PP, " &
+    &"Expansion={int(allocation[Expansion]*float(budgetSplit.strategicBudget))}PP, " &
+    &"Reconnaissance={int(allocation[Reconnaissance]*float(budgetSplit.strategicBudget))}PP, " &
+    &"Military={int(allocation[Military]*float(budgetSplit.strategicBudget))}PP, " &
+    &"SpecialUnits={int(allocation[SpecialUnits]*float(budgetSplit.strategicBudget))}PP")
 
   # 3. Generate orders for each objective within budget
   result = @[]
@@ -1015,7 +1044,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
     deferredRequirements: @[],
-    totalBudgetAvailable: availableBudget,
+    totalBudgetAvailable: budgetSplit.strategicBudget + budgetSplit.fillerBudget,  # Total of both budgets
     totalBudgetSpent: 0,
     totalUnfulfilledCost: 0
   )
@@ -1062,6 +1091,14 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
         treasurerFeedback.totalUnfulfilledCost += req.estimatedCost
         continue
 
+      # Select appropriate tracker based on requirement priority
+      # Deferred requirements (capacity fillers) use filler budget
+      # All other priorities (Critical/High/Medium/Low) use strategic budget
+      var activeTracker = if req.priority == RequirementPriority.Deferred:
+        addr fillerTracker
+      else:
+        addr strategicTracker
+
       # Try to allocate budget for this requirement
       # Process requirements based on two-type system (matches engine BuildOrder)
       # ==========================================================================
@@ -1081,7 +1118,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
 
         # PARTIAL FULFILLMENT: Build as many as budget allows
         # If AI requests 2× Battlecruiser (200PP) but only has 100PP, build 1 instead of 0
-        let availableBudget = tracker.getRemainingBudget(req.buildObjective)
+        let availableBudget = activeTracker[].getRemainingBudget(req.buildObjective)
         let affordableQuantity = min(req.quantity, availableBudget div unitCost)
 
         if affordableQuantity > 0:
@@ -1095,7 +1132,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
             buildingType: none(string),
             industrialUnits: 0
           ))
-          tracker.recordTransaction(req.buildObjective, actualCost)
+          activeTracker[].recordTransaction(req.buildObjective, actualCost)
           treasurerFeedback.totalBudgetSpent += actualCost
 
           if affordableQuantity == req.quantity:
@@ -1136,7 +1173,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
         let totalCost = unitCost * req.quantity
 
         # PARTIAL FULFILLMENT: Build as many as budget allows
-        let availableBudget = tracker.getRemainingBudget(req.buildObjective)
+        let availableBudget = activeTracker[].getRemainingBudget(req.buildObjective)
         let affordableQuantity = min(req.quantity, availableBudget div unitCost)
 
         if affordableQuantity > 0:
@@ -1150,7 +1187,7 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
             buildingType: some(itemId),  # Maps to BuildOrder.buildingType
             industrialUnits: 0
           ))
-          tracker.recordTransaction(req.buildObjective, actualCost)
+          activeTracker[].recordTransaction(req.buildObjective, actualCost)
           treasurerFeedback.totalBudgetSpent += actualCost
 
           if affordableQuantity == req.quantity:
@@ -1196,173 +1233,30 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
               &"{controller.houseId} Treasurer Feedback: {treasurerFeedback.fulfilledRequirements.len} fulfilled, " &
               &"{treasurerFeedback.unfulfilledRequirements.len} unfulfilled (shortfall: {treasurerFeedback.totalUnfulfilledCost}PP)")
 
-    # Generate and log budget report
-    let report = generateBudgetReport(tracker, filtered.turn)
-    logBudgetReport(report)
+    # Generate and log budget reports (strategic + filler)
+    let strategicReport = generateBudgetReport(strategicTracker, filtered.turn)
+    logBudgetReport(strategicReport)
+
+    # Log filler budget utilization
+    let fillerSpent = fillerTracker.getTotalSpent()
+    let fillerRemaining = fillerTracker.getTotalRemaining()
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Filler Budget: " &
+            &"{fillerSpent}/{budgetSplit.fillerBudget}PP spent " &
+            &"({int(float(fillerSpent)/float(budgetSplit.fillerBudget)*100.0)}%), " &
+            &"{fillerRemaining}PP remaining")
 
     return result
 
   # ============================================================================
-  # LEGACY PER-COLONY BUILDING (FALLBACK - DEPRECATED)
+  # ERROR: Domestikos requirements not provided
   # ============================================================================
-  # This code path is only used when domestikosRequirements is none()
-  # With intelligence-driven building, this should never execute
-  logWarn(LogCategory.lcAI,
-          &"{controller.houseId} Using legacy per-colony building (domestikosRequirements is none)")
+  # The intelligence-driven build system REQUIRES domestikos requirements
+  # If you're seeing this error, check domestikos.nim line 127:
+  # - Is build_requirements_enabled = true in config/rba.toml?
+  # - Is intelSnapshot being passed properly?
+  logError(LogCategory.lcAI,
+           &"{controller.houseId} CRITICAL: domestikosRequirements is none() - " &
+           &"intelligence-driven building requires Domestikos. No ships will be built!")
 
-  # Sort colonies prioritizing shipyards over spaceports (economy.md:5.1, 5.3)
-  # Shipyard construction has no penalty, spaceport construction has 100% PC increase
-  # Even though penalty isn't implemented in engine yet, prefer shipyards as best practice
-  var coloniesToBuild = myColonies
-  coloniesToBuild.sort(proc(a, b: Colony): int =
-    let aHasShipyard = a.shipyards.len > 0
-    let bHasShipyard = b.shipyards.len > 0
-
-    # Primary sort: Shipyards before spaceports
-    if aHasShipyard and not bHasShipyard:
-      return -1  # a comes first
-    elif bHasShipyard and not aHasShipyard:
-      return 1   # b comes first
-
-    # Tie-breaker: Sort by production (most productive first)
-    return cmp(b.production, a.production)
-  )
-
-  # Get tech levels for gating ship unlocks
-  let cstLevel = house.techTree.levels.constructionTech
-  let fdLevel = house.techTree.levels.fighterDoctrine
-  let colonyCount = myColonies.len
-
-  # LEGACY CODE PATH STUBS
-  # Note: These are placeholders for legacy per-colony building compatibility
-  # With intelligence-driven building (domestikosRequirements always provided),
-  # this code path should never execute
-  var scoutCount = 0
-  var militaryCount = 0
-  var planetBreakerCount = 0
-  var projectedScoutCount = 0
-  var projectedMilitaryCount = 0
-  var projectedPlanetBreakerCount = 0
-  let needETACs = false
-  let needDefenses = false
-  let needScouts = false
-  let needFighters = false
-  let needCarriers = false
-  let needTransports = false
-  let needRaiders = false
-  let canAffordMoreShips = false
-  let atSquadronLimit = true
-
-  logWarn(LogCategory.lcAI,
-          &"{controller.houseId} LEGACY FALLBACK BUILDING ACTIVATED - " &
-          &"Intelligence-driven system should prevent this!")
-
-  # Determine if we need siege capability (Planet-Breakers)
-  # Build PBs when: CST 10 unlocked, fighting heavily fortified enemies, Act 3+
-  let needSiege = act >= GameAct.Act3_TotalWar and cstLevel >= 10
-
-  # PHASE 3: FLEET COMPOSITION ANALYSIS
-  # Analyze current fleet composition to maintain doctrine ratios
-  let currentComposition = analyzeFleetComposition(filtered.ownFleets)
-
-  # Diagnostic: Check facility availability across colonies
-  let facilitiesAvailable = coloniesToBuild.countIt(it.shipyards.len > 0 or it.spaceports.len > 0)
-  if facilitiesAvailable == 0:
-    logWarn(LogCategory.lcAI,
-      &"AI {controller.houseId}: No shipyards/spaceports! Cannot build ships (including scouts)")
-  elif facilitiesAvailable < coloniesToBuild.len:
-    logInfo(LogCategory.lcAI,
-      &"AI {controller.houseId}: Only {facilitiesAvailable}/{coloniesToBuild.len} colonies have facilities - " &
-      &"scout production limited to {facilitiesAvailable} colonies")
-
-  # Process all colonies for build orders
-  # IMPORTANT: Some build orders require facilities, others don't:
-  # - Fighters: Planet-side only, NO facilities required (economy.md:3.10)
-  # - Defense buildings: Planet-side, NO shipyard/spaceport required
-  # - Ships (except fighters): Require shipyard OR spaceport
-  for colony in coloniesToBuild:
-    let hasShipyard = colony.shipyards.len > 0
-    let hasSpaceport = colony.spaceports.len > 0
-    let hasStarbase = colony.starbases.len > 0
-    let canBuildShips = hasShipyard or hasSpaceport
-
-    # Build queue system allows multiple simultaneous projects per colony
-    # BudgetTracker prevents overspending across ALL colonies
-    # Engine will enforce dock capacity limits (spaceports: 5, shipyards: 10)
-
-    # DYNAMIC NEED RECALCULATION
-    # Recalculate need flags using PROJECTED counts (current + built this turn)
-    # NOTE: Scouts only useful in Act 2+ for espionage (spying on enemy colonies)
-    # In Act 1, any ship can explore and reveal map, so scouts provide no advantage
-    let projectedNeedScouts = case act
-      of GameAct.Act1_LandGrab:
-        false  # Don't build scouts in Act 1 (any ship can explore)
-      of GameAct.Act2_RisingTensions:
-        projectedScoutCount < 7  # Build scouts for espionage
-      else:
-        projectedScoutCount < 9  # More scouts for full ELI mesh coverage
-
-    # Defense orders: Available at ALL colonies (planet-side construction)
-    result.add(buildDefenseOrders(colony, tracker, needDefenses, hasStarbase))
-
-    # Special units: Fighters available at ALL colonies (planet-side, no facilities)
-    # Carriers/Transports/Raiders require shipyard/spaceport
-    result.add(buildSpecialUnitsOrders(colony, tracker, needFighters, needCarriers,
-                                      needTransports, needRaiders, canAffordMoreShips, cstLevel,
-                                      filtered.ownFleets, fdLevel))
-
-    # Facility orders: Build Spaceports at colonies without facilities
-    # CRITICAL: This scales ship production from 3/turn (homeworld only) to 3N/turn (N colonies)
-    # Without this, military budget remains massively underutilized (40-60% wasted)
-    result.add(buildFacilityOrders(colony, tracker))
-
-    # Ship build orders: Only for colonies with shipyard/spaceport
-    if canBuildShips:
-      # Generate orders for all objectives using shared BudgetTracker
-      # CRITICAL: tracker is var parameter - gets modified by each build function
-      # CRITICAL: Use PROJECTED counts to avoid double-building
-
-      # PRIORITY 1: SCOUTS (for ELI mesh and espionage)
-      # Build scouts FIRST to ensure they're not blocked by ETAC/Military production
-      # Scouts enable intelligence gathering and espionage missions
-      let reconnaissanceOrders = buildReconnaissanceOrders(colony, tracker, projectedNeedScouts, projectedScoutCount)
-      result.add(reconnaissanceOrders)
-      projectedScoutCount += reconnaissanceOrders.len  # Update projected count
-
-      # PRIORITY 2: EXPANSION (ETACs for colonization)
-      result.add(buildExpansionOrders(colony, tracker, needETACs, hasShipyard))
-
-      # PRIORITY 3: MILITARY (combat ships)
-      let militaryOrders = buildMilitaryOrders(colony, tracker, projectedMilitaryCount,
-                                              canAffordMoreShips, atSquadronLimit, cstLevel, act, personality, currentComposition, controller.intelligenceSnapshot)
-      result.add(militaryOrders)
-      projectedMilitaryCount += militaryOrders.len  # Update projected count
-
-      let siegeOrders = buildSiegeOrders(colony, tracker, projectedPlanetBreakerCount,
-                                         colonyCount, cstLevel, needSiege)
-      result.add(siegeOrders)
-      # Count Planet-Breakers in siege orders
-      for order in siegeOrders:
-        if order.shipClass.isSome and order.shipClass.get() == ShipClass.PlanetBreaker:
-          projectedPlanetBreakerCount += order.quantity
-
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Build generation complete: " &
-          &"built {projectedScoutCount - scoutCount} scouts, " &
-          &"{projectedMilitaryCount - militaryCount} military, " &
-          &"{projectedPlanetBreakerCount - planetBreakerCount} PBs")
-
-  # Log final budget summary
-  tracker.logSummary()
-
-  # Diagnostic: Track unspent budget (potential missed build opportunities)
-  for objective in BuildObjective:
-    let remaining = tracker.getRemainingBudget(objective)
-    if remaining > 100:  # Significant unspent budget
-      logDebug(LogCategory.lcAI,
-        &"AI {controller.houseId}: Unspent budget: {objective}={remaining}PP (check build opportunities)")
-
-  # Legacy fallback path - store feedback and log budget report
-  controller.treasurerFeedback = some(treasurerFeedback)
-  let report = generateBudgetReport(tracker, filtered.turn)
-  logBudgetReport(report)
+  return @[]  # Return empty build orders

@@ -313,7 +313,7 @@ attack_strength = 0
 defense_strength = 15
 command_cost = 0
 command_rating = 0
-carry_limit = 1
+carry_limit = 3  # Can carry 3 Marine Divisions
 tech_level = 1
 build_cost = 30
 upkeep_cost = 1  # MC = 3% of 30 = 0.9 → round to 1

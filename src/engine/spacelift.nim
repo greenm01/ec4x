@@ -10,6 +10,7 @@
 
 import ../common/types/[core, units]
 import config/military_config
+import squadron  # For getShipStats
 
 export HouseId, SystemId, ShipClass
 
@@ -41,13 +42,13 @@ proc newSpaceLiftShip*(id: string, shipClass: ShipClass, owner: HouseId,
                        location: SystemId): SpaceLiftShip =
   ## Create a new spacelift ship
   ## Ships start empty (cargo.quantity = 0)
-  ## Cargo capacity loaded from config/military.toml
+  ## Cargo capacity loaded from config/ships.toml (carry_limit field)
 
   let capacity = case shipClass
-    of ShipClass.TroopTransport:
-      globalMilitaryConfig.spacelift_capacity.troop_transport_capacity
-    of ShipClass.ETAC:
-      globalMilitaryConfig.spacelift_capacity.etac_capacity
+    of ShipClass.TroopTransport, ShipClass.ETAC:
+      # Get capacity from ship stats (carry_limit field in ships.toml)
+      let stats = getShipStats(shipClass)
+      stats.carryLimit
     else: 0
 
   result = SpaceLiftShip(

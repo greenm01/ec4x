@@ -48,7 +48,7 @@ import ../../diplomacy/[types as dip_types]
 import ../../commands/[executor, spy_scout_orders]
 import ../[types as res_types, fleet_orders, economy_resolution,
            diplomatic_resolution, combat_resolution, simultaneous,
-           commissioning, automation, construction]
+           commissioning, automation, construction, order_cleanup]
 import ../../standing_orders
 
 proc resolveCommandPhase*(state: var GameState,
@@ -59,6 +59,14 @@ proc resolveCommandPhase*(state: var GameState,
   ## Phase 3: Execute orders
   ## Commissioning happens FIRST to free up dock capacity before new builds
   logInfo(LogCategory.lcOrders, &"=== Command Phase === (turn={state.turn})")
+
+  # ===================================================================
+  # STEP 0: ORDER CLEANUP FROM PREVIOUS TURN
+  # ===================================================================
+  # Clean up completed/failed/aborted orders based on events from previous turn
+  # This runs BEFORE accepting new orders to ensure standing orders can activate
+  logInfo(LogCategory.lcOrders, "[COMMAND STEP 0] Cleaning up orders from previous turn...")
+  order_cleanup.cleanFleetOrders(state, events)
 
   # ===================================================================
   # PART A: SHIP COMMISSIONING & AUTOMATION

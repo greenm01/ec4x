@@ -7,8 +7,21 @@
 
 import std/[tables, strformat]
 import ../../../../engine/logger
-import ../../common/types as ai_common_types
+import ../../../common/types as ai_common_types
 import ../../config
+
+proc getAverageShipCostForAct(act: ai_common_types.GameAct): int =
+  ## Get average ship construction cost for act (for capacity-driven budgeting)
+  ## Values derived from ships.toml typical ship mix per act
+  case act
+  of ai_common_types.GameAct.Act1_LandGrab:
+    25  # ETACs, Scouts, light escorts
+  of ai_common_types.GameAct.Act2_RisingTensions:
+    50  # Light Cruisers, Destroyers, Carriers
+  of ai_common_types.GameAct.Act3_TotalWar:
+    125  # Battlecruisers, Battleships, Dreadnoughts
+  of ai_common_types.GameAct.Act4_Endgame:
+    200  # Super Dreadnoughts, Planet Breakers
 
 type
   BudgetSplit* = object
@@ -21,7 +34,8 @@ type
 proc splitStrategicAndFillerBudgets*(
   totalBudget: int,
   act: ai_common_types.GameAct,
-  allocation: Table[ai_common_types.BuildObjective, float]
+  allocation: Table[ai_common_types.BuildObjective, float],
+  availableDocks: int
 ): BudgetSplit =
   ## Split total budget into strategic requirements and capacity filler budgets
   ##
@@ -32,7 +46,7 @@ proc splitStrategicAndFillerBudgets*(
   ## - Act 1: 20% filler (expansion focus, need capacity utilization)
   ## - Act 2-4: 15% filler (more strategic focus)
 
-  # Get act-specific filler reservation from config
+  # Get act-specific filler reservation from config (percentage-based)
   let fillerReservationPct = case act
     of ai_common_types.GameAct.Act1_LandGrab:
       globalRBAConfig.budget_act1_land_grab.filler_budget_reserved
@@ -43,8 +57,18 @@ proc splitStrategicAndFillerBudgets*(
     of ai_common_types.GameAct.Act4_Endgame:
       globalRBAConfig.budget_act4_endgame.filler_budget_reserved
 
-  # Calculate split
-  let fillerBudget = int(float(totalBudget) * fillerReservationPct)
+  # Calculate capacity-driven budget (scales with dock capacity)
+  let avgActCost = getAverageShipCostForAct(act)
+  let capacityBasedBudget = availableDocks * avgActCost
+
+  # Calculate percentage-based budget (traditional approach)
+  let percentageBasedBudget = int(float(totalBudget) * fillerReservationPct)
+
+  # Use higher of the two, but cap at 50% of treasury (prevents runaway spending)
+  let uncappedFillerBudget = max(capacityBasedBudget, percentageBasedBudget)
+  let maxFillerBudget = totalBudget div 2  # 50% cap
+  let fillerBudget = min(uncappedFillerBudget, maxFillerBudget)
+
   let strategicBudget = totalBudget - fillerBudget
 
   # Allocate strategic budget across objectives using percentages
@@ -55,9 +79,12 @@ proc splitStrategicAndFillerBudgets*(
 
   logInfo(LogCategory.lcAI,
           &"Budget split ({act}): Strategic={strategicBudget}PP " &
-          &"({int((1.0 - fillerReservationPct) * 100.0)}%), " &
+          &"({int(float(strategicBudget) / float(totalBudget) * 100.0)}%), " &
           &"Filler={fillerBudget}PP " &
-          &"({int(fillerReservationPct * 100.0)}%)")
+          &"({int(float(fillerBudget) / float(totalBudget) * 100.0)}%) " &
+          &"[percentage={percentageBasedBudget}PP, " &
+          &"capacity={capacityBasedBudget}PP ({availableDocks}×{avgActCost}PP), " &
+          &"cap={maxFillerBudget}PP]")
 
   # Log objective breakdown for diagnostics
   for objective, budget in strategicByObjective:
