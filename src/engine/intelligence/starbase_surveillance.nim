@@ -14,6 +14,8 @@ import types as intel_types
 import corruption
 import ../gamestate, ../fleet, ../squadron
 import ../espionage/types as esp_types
+import ../resolution/[types as res_types]
+import ../resolution/event_factory/[intelligence as event_factory]
 
 proc performStealthCheck*(
   stealthLevel: int,
@@ -39,7 +41,8 @@ proc generateStarbaseSurveillance*(
   starbaseSystemId: SystemId,
   starbaseOwner: HouseId,
   turn: int,
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
 ): Option[intel_types.StarbaseSurveillanceReport] =
   ## Generate surveillance report from starbase sensors
   ## Monitors starbase system ONLY (not adjacent systems)
@@ -135,15 +138,29 @@ proc generateStarbaseSurveillance*(
     threatsDetected: detectedFleets.len
   )
 
+  # Generate StarbaseSurveillanceDetection event for diagnostics
+  events.add(event_factory.starbaseSurveillanceDetection(
+    starbaseId = starbaseId,
+    owner = starbaseOwner,
+    systemId = starbaseSystemId,
+    detectedCount = detectedFleets.len,
+    undetectedCount = undetectedFleets.len
+  ))
+
   return some(report)
 
-proc processAllStarbaseSurveillance*(state: var GameState, turn: int, rng: var Rand) =
+proc processAllStarbaseSurveillance*(
+  state: var GameState,
+  turn: int,
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
+) =
   ## Process surveillance for ALL starbases in the game
   ## Called once per turn during intelligence phase
 
   for systemId, colony in state.colonies:
     if colony.starbases.len > 0:
-      var surveillance = generateStarbaseSurveillance(state, systemId, colony.owner, turn, rng)
+      var surveillance = generateStarbaseSurveillance(state, systemId, colony.owner, turn, rng, events)
 
       if surveillance.isSome:
         # Apply corruption if starbase owner's intelligence is compromised (disinformation)

@@ -414,6 +414,6 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Per Conflict Phase Step 6c: Intelligence gathering happens AFTER combat
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Starbase surveillance (continuous monitoring)...")
   var survRng = initRand(state.turn + 12345)  # Unique seed for surveillance
-  starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng)
+  starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng, events)
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Completed starbase surveillance")
 
