@@ -1,14 +1,9 @@
-{
-  "column_count": 200,
-  "ship_role_classifications": {
-    "Escort": [
-      "corvette_ships",
-      "frigate_ships",
-      "destroyer_ships",
-      "light_cruiser_ships",
-      "scout_ships"
-    ],
-    "Capital": [
+📊 Parsing diagnostic columns from csv_writer.nim
+✅ Found 207 diagnostic columns
+✅ Updated: /home/niltempus/dev/ec4x/scripts/analysis/diagnostic_columns.json
+   Column count: 207
+   Last updated: 2025-12-13
+l": [
       "heavy_cruiser_ships",
       "battlecruiser_ships",
       "battleship_ships",
@@ -35,7 +30,7 @@
     "FG": "Frigate (Escort)",
     "DD": "Destroyer (Escort)",
     "CL": "Light Cruiser (Escort)",
-    "SC": "Scout (Auxiliary)",
+    "SC": "Scout (Escort)",
     "CA": "Heavy Cruiser (Capital)",
     "BC": "Battle Cruiser (Capital)",
     "BB": "Battleship (Capital)",
@@ -151,6 +146,13 @@
     "orbital_total",
     "raider_success",
     "raider_attempts",
+    "raider_detected",
+    "raider_stealth_success",
+    "eli_attempts",
+    "avg_eli_roll",
+    "avg_clk_roll",
+    "scouts_detected",
+    "scouts_detected_by",
     "capacity_violations",
     "fighters_disbanded",
     "total_fighters",
