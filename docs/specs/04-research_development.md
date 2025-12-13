@@ -274,7 +274,7 @@ Terraforming converts marginal colonies into economic powerhouses. A fully terra
 
 ## 4.7 Cloaking (CLK)
 
-Cloaking technology enables covert operations through Raiders - specialized ships that conduct espionage and disruptive attacks behind enemy lines.
+Cloaking technology allows a Raider to grant stealth to its entire assigned fleet. This provides a powerful tactical advantage, enabling fleets to move undetected and strike with the element of surprise.
 
 **Research Progression:**
 
@@ -292,26 +292,32 @@ Cloaking technology enables covert operations through Raiders - specialized ship
 
 <!-- CLK_TABLE_END -->
 
-**Raider Capabilities:**
+**Fleet Stealth Mechanics:**
 
-Raiders are specialized covert vessels that conduct intelligence gathering, sabotage, and assassination missions. Each CLK tier improves Raider stealth, making them harder to detect.
+A fleet with at least one Raider is considered "cloaked." It can move through enemy or neutral territory without being automatically detected, allowing for strategic repositioning and surprise maneuvers.
+
+**Combat Advantage: Ambush & Surprise**
+
+A successful stealth approach into combat grants the Raider's fleet a significant first-strike advantage.
+- **Ambush (Defending)**: A defending fleet with Raiders in its home system can ambush an incoming enemy fleet.
+- **Surprise (Attacking)**: An attacking fleet with Raiders can initiate combat with a surprise first strike.
+
+Both scenarios grant a **+4 CER bonus** in the first round of combat if the Raider fleet wins the detection roll. See [Section 7.2.4](07-combat.md#724-cloaking-and-detection) for combat mechanics.
 
 **Detection Mechanics:**
 
-A fleet with Raiders attempts to remain cloaked when entering combat. Its success is determined by an opposed roll pitting the attacker's CLK level against the defender's ELI level. See [Section 2.4.3](02-assets.md#243-raiders) for the full detection mechanic.
-
-Higher CLK tiers make it more likely for your fleets to gain a devastating ambush advantage.
+A fleet with Raiders attempts to remain cloaked when entering combat. Its success is determined by an opposed roll pitting its CLK level against the defender's ELI level. See [Section 2.4.3](02-assets.md#243-raiders) for the full detection mechanic.
 
 **Strategic Applications:**
-
-- Grant fleets a first-strike **ambush advantage** in combat.
-- Force opponents to invest in defensive ELI technology.
+- Move fleets through enemy territory undetected.
+- Initiate combat with a decisive first-strike advantage.
+- Force opponents to invest heavily in defensive ELI technology to counter your stealth capabilities.
 
 For complete Raider specifications, see [Section 2.4.3](02-assets.md#243-raiders).
 
 **Strategic Considerations:**
 
-CLK investment creates information asymmetry—Houses with advanced Raiders can scout enemy positions while remaining undetected. However, Raiders are fragile and expensive, and aggressive ELI investment by adversaries can neutralize CLK advantages. The CLK vs. ELI arms race becomes critical in late-game peer conflicts.
+CLK investment is a purely military technology. Advanced Raiders can make even a smaller fleet a deadly threat by ensuring it strikes first. However, Raiders are fragile and expensive, and aggressive ELI investment by adversaries can neutralize the CLK advantage. The CLK vs. ELI arms race becomes critical in late-game peer conflicts.
 
 ## 4.8 Electronic Intelligence (ELI)
 

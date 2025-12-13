@@ -271,7 +271,9 @@ Three of your Spy Scouts enter a system with a starbase, owned by a house with E
 
 ### 2.4.3 Raiders
 
-Raiders are specialized combat vessels equipped with advanced cloaking systems. Their primary purpose is to grant an entire fleet a devastating **ambush advantage** in the first round of combat.
+Raiders are specialized combat vessels equipped with advanced cloaking systems. Their presence grants stealth to an entire fleet, providing two primary advantages:
+1.  **Stealth Movement**: Move across the starmap undetected by enemies with inferior sensor technology.
+2.  **Combat Advantage**: Initiate combat with a devastating first strike.
 
 **Cloaking Technology**:
 
@@ -288,9 +290,15 @@ When a fleet containing one or more Raiders engages in combat (both Space and Or
 - **ELI Level**: The defending house's researched ELI tech level.
 - **Starbase Bonus**: A starbase in the system adds **+2** to the defender's roll.
 
+**Combat Advantage: Ambush & Surprise**
+
+If a Raider fleet wins the detection roll at the start of combat, it gains a first-strike advantage that grants a **+4 CER bonus** in the first round.
+- **Ambush**: Achieved by a defending Raider fleet in its own or a neutral system.
+- **Surprise**: Achieved by an attacking Raider fleet initiating combat.
+
 **Detection Outcome**:
-- **Attacker Roll > Defender Roll**: The Raider fleet remains cloaked. It gains the ambush advantage in Space Combat.
-- **Defender Roll ≥ Attacker Roll**: The Raider fleet is detected. It does not gain the ambush advantage.
+- **Attacker Roll > Defender Roll**: The Raider fleet remains cloaked. It gains the first-strike advantage.
+- **Defender Roll ≥ Attacker Roll**: The Raider fleet is detected. It fights as a normal fleet with no bonus.
 
 **Strategic Implications**:
 The CLK vs. ELI technology race is central to late-game warfare.
