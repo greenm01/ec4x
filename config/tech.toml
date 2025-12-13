@@ -280,8 +280,8 @@ eden_pp = 2000
 # ============================================================================
 
 [electronic_intelligence]
-# Enables detection of cloaked Raiders and enemy Scouts
-# Upgrades apply to new Starbases and Scouts only
+# House-wide sensor technology for detecting cloaked Raiders and Spy Scouts.
+# ELI level applies to all fleets and colonies.
 
 level_1_sl = 1
 level_1_trp = 12
