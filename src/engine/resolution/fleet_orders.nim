@@ -209,39 +209,18 @@ var movementCallDepth {.global.} = 0
 # Spy Scout Movement Support
 # =============================================================================
 
-proc createSpyScoutProxyFleet(state: GameState, spyId: string): Fleet =
-  ## Create temporary fleet proxy for spy scout movement
-  ## Allows spy scouts to use standard movement arbiter (DoD compliance)
-  let spy = state.spyScouts[spyId]
-
-  # Create minimal scout squadron for lane validation
-  let scoutShip = newEnhancedShip(ShipClass.Scout, techLevel = 1)
-  let squadron = newSquadron(scoutShip, id = spyId & "_sq", owner = spy.owner, location = spy.location)
-
-  result = Fleet(
-    id: spyId,
-    owner: spy.owner,
-    location: spy.location,
-    squadrons: @[squadron],
-    spaceLiftShips: @[],
-    status: FleetStatus.Active,
-    autoBalanceSquadrons: false
-  )
-
 # =============================================================================
 # Movement Resolution
 # =============================================================================
 
 proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
-                         events: var seq[GameEvent], spyScoutId: Option[string] = none(string)) =
-  ## Execute a fleet or spy scout movement order with pathfinding and lane traversal rules
+                         events: var seq[GameEvent]) =
+  ## Execute a fleet movement order with pathfinding and lane traversal rules
   ## Per operations.md:6.1 - Lane traversal rules:
   ##   - Major lanes: 2 jumps per turn if all systems owned by player
   ##   - Major lanes: 1 jump per turn if jumping into unexplored/rival system
   ##   - Minor/Restricted lanes: 1 jump per turn maximum
   ##   - Crippled ships or Spacelift ships cannot cross Restricted lanes
-  ##
-  ## If spyScoutId is provided, moves spy scout instead of fleet
 
   # Detect infinite recursion
   movementCallDepth += 1
@@ -255,23 +234,11 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   if order.targetSystem.isNone:
     return
 
-  # Get moving entity (fleet or spy scout)
-  var fleet: Fleet
-  var isSpyScout = false
-
-  if spyScoutId.isSome:
-    # Spy scout mode - create proxy fleet
-    let spyId = spyScoutId.get()
-    if spyId notin state.spyScouts:
-      return
-    fleet = createSpyScoutProxyFleet(state, spyId)
-    isSpyScout = true
-  else:
-    # Normal fleet mode
-    let fleetOpt = state.getFleet(order.fleetId)
-    if fleetOpt.isNone:
-      return
-    fleet = fleetOpt.get()
+  # Get fleet
+  let fleetOpt = state.getFleet(order.fleetId)
+  if fleetOpt.isNone:
+    return
+  var fleet = fleetOpt.get()
 
   # Reserve and Mothballed fleets cannot move (permanently stationed at colony)
   # Per operations.md: Both statuses represent fleets that are station-keeping
@@ -286,16 +253,15 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
   # Already at destination - clear order (arrival complete)
   if startId == targetId:
-    if not isSpyScout:
-      logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination, order complete")
-      # Generate OrderCompleted event - cleanup handled by Command Phase
-      events.add(event_factory.orderCompleted(
-        houseId,
-        order.fleetId,
-        "Move",
-        details = &"arrived at {targetId}",
-        systemId = some(targetId)
-      ))
+    logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination, order complete")
+    # Generate OrderCompleted event - cleanup handled by Command Phase
+    events.add(event_factory.orderCompleted(
+      houseId,
+      order.fleetId,
+      "Move",
+      details = &"arrived at {targetId}",
+      systemId = some(targetId)
+    ))
     return
 
   logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} moving from {startId} to {targetId}")
@@ -351,38 +317,28 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   let actualJumps = min(jumpsAllowed, pathResult.path.len - 1)
   let newLocation = pathResult.path[actualJumps]
 
-  # Update location based on entity type
-  if isSpyScout:
-    # Update spy scout location
-    let spyId = spyScoutId.get()
-    var spy = state.spyScouts[spyId]
-    spy.location = newLocation
-    spy.currentPathIndex += actualJumps
-    state.spyScouts[spyId] = spy
-    logInfo(LogCategory.lcFleet, &"Spy scout {spyId} moved {actualJumps} jump(s) to system {newLocation}")
+  # Update fleet location
+  fleet.location = newLocation
+  state.fleets[order.fleetId] = fleet
+
+  # Generate OrderCompleted event for fleet movement
+  let moveDetails = if newLocation == targetId:
+    &"arrived at {targetId}"
   else:
-    # Update fleet location
-    fleet.location = newLocation
-    state.fleets[order.fleetId] = fleet
+    &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
 
-    # Generate OrderCompleted event for fleet movement
-    let moveDetails = if newLocation == targetId:
-      &"arrived at {targetId}"
-    else:
-      &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
+  events.add(event_factory.orderCompleted(
+    houseId,
+    order.fleetId,
+    "Move",
+    details = moveDetails,
+    systemId = some(newLocation)
+  ))
 
-    events.add(event_factory.orderCompleted(
-      houseId,
-      order.fleetId,
-      "Move",
-      details = moveDetails,
-      systemId = some(newLocation)
-    ))
-
-    # Check if we've arrived at final destination (N+1 behavior)
-    # Event generated above, cleanup handled by Command Phase
-    if newLocation == targetId:
-      logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination {targetId}, order complete")
+  # Check if we've arrived at final destination (N+1 behavior)
+  # Event generated above, cleanup handled by Command Phase
+  if newLocation == targetId:
+    logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination {targetId}, order complete")
 
       # Check if this fleet is on a spy mission and start mission on arrival
       if fleet.missionState == FleetMissionState.Traveling:
@@ -442,22 +398,21 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
   # Check for fleet encounters at destination with STEALTH DETECTION
   # Per assets.md:2.4.3 - Cloaked fleets can only be detected by scouts or starbases
-  # NOTE: Spy scouts don't participate in fleet encounters (they use separate detection system)
-  if not isSpyScout:
-    var enemyFleetsAtLocation: seq[tuple[fleetId: FleetId, fleet: Fleet]] = @[]
-    let detectingFleet = state.fleets[order.fleetId]
-    let hasScouts = detectingFleet.squadrons.anyIt(it.hasScouts())
+  # Note: Scout-only fleets are excluded from combat by combat resolution system
+  var enemyFleetsAtLocation: seq[tuple[fleetId: FleetId, fleet: Fleet]] = @[]
+  let detectingFleet = state.fleets[order.fleetId]
+  let hasScouts = detectingFleet.squadrons.anyIt(it.hasScouts())
 
-    for otherFleetId, otherFleet in state.fleets:
-      if otherFleetId != order.fleetId and otherFleet.location == newLocation:
-        if otherFleet.owner != houseId:
-          # STEALTH CHECK: Cloaked fleets only detected by scouts
-          if otherFleet.isCloaked() and not hasScouts:
-            logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} failed to detect cloaked fleet {otherFleetId} at {newLocation} (no scouts)")
-            continue  # Cloaked fleet remains undetected
+  for otherFleetId, otherFleet in state.fleets:
+    if otherFleetId != order.fleetId and otherFleet.location == newLocation:
+      if otherFleet.owner != houseId:
+        # STEALTH CHECK: Cloaked fleets only detected by scouts
+        if otherFleet.isCloaked() and not hasScouts:
+          logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} failed to detect cloaked fleet {otherFleetId} at {newLocation} (no scouts)")
+          continue  # Cloaked fleet remains undetected
 
-          logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
-          enemyFleetsAtLocation.add((otherFleetId, otherFleet))
+        logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
+        enemyFleetsAtLocation.add((otherFleetId, otherFleet))
 
     # Generate fleet encounter event (Phase 7b)
     if enemyFleetsAtLocation.len > 0:

@@ -108,9 +108,7 @@ type
     FleetTransfer,        # Squadrons transferred between existing fleets
     CargoLoaded,          # Marines/colonists loaded onto spacelift ships
     CargoUnloaded,        # Marines/colonists unloaded from spacelift ships
-    ScoutMeshNetworkFormed, # Multiple scouts formed detection network
-    SpyScoutDeployed,     # Spy scout created for espionage mission
-    SpyScoutTravel        # Spy scout moved toward target
+    ScoutMeshNetworkFormed # Multiple scouts formed detection network
 
   GameEvent* = ref object of RootObj
     ## Base type for all game events.
@@ -386,20 +384,6 @@ type
       totalScouts*: Option[int] # Total scouts in network
       meshEliBonus*: Option[int] # Detection bonus (+1, +2, +3)
       meshLocation*: Option[SystemId] # Where network formed
-
-    of SpyScoutDeployed:
-      spyScoutId*: Option[string] # Spy scout unique ID
-      deployingHouseId*: Option[HouseId] # House deploying scout
-      spyMissionType*: Option[string] # "SpyPlanet", "SpySystem", "HackStarbase"
-      spyTargetSystem*: Option[SystemId] # Target system
-      spyTargetHouse*: Option[HouseId] # Target house
-
-    of SpyScoutTravel:
-      travelingSpyScoutId*: Option[string] # Spy scout ID
-      travelOrigin*: Option[SystemId] # Starting location
-      travelDestination*: Option[SystemId] # Destination
-      travelProgress*: Option[int] # Jumps completed / total jumps
-      detectionRisk*: Option[bool] # Whether passing through hostile systems
 
   CombatReport* = object
     systemId*: SystemId

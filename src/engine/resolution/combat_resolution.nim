@@ -107,6 +107,18 @@ proc applySpaceLiftScreeningLosses(
       &"{combatPhase} combat: {losses} spacelift ships destroyed (screened by task force)"
     ))
 
+proc isScoutOnlyFleet(fleet: Fleet): bool =
+  ## Check if fleet contains only Scout ships (auxiliary units for intel gathering)
+  ## Scout-only fleets are invisible to combat fleets and never participate in combat
+  if fleet.squadrons.len == 0:
+    return false
+
+  for squadron in fleet.squadrons:
+    if squadron.flagship.shipClass != ShipClass.Scout:
+      return false
+
+  return true
+
 proc getTargetBucket(shipClass: ShipClass): TargetBucket =
   ## Determine target bucket from ship class
   ## Note: Starbases use TargetBucket.Starbase but aren't in ShipClass (they're facilities)
@@ -271,6 +283,12 @@ proc executeCombat(
         continue
 
       for squadron in fleet.squadrons:
+        # Scout squadrons never participate in combat (auxiliary units for intel gathering)
+        # They are excluded from task forces even if in mixed fleets
+        if squadron.flagship.shipClass == ShipClass.Scout:
+          logDebug("Combat", "Scout squadron excluded from task force", "squadronId=", $squadron.id)
+          continue
+
         let combatSq = CombatSquadron(
           squadron: squadron,
           state: if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
@@ -613,6 +631,12 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   for fleetId, fleet in state.fleets:
     if fleet.location == systemId:
       fleetsAtSystem.add((fleetId, fleet))
+
+      # Scout-only fleets are invisible to combat fleets and never participate in combat
+      # They operate independently for intelligence gathering (per 02-assets.md:2.4.2)
+      if isScoutOnlyFleet(fleet):
+        logDebug("Combat", "Scout-only fleet excluded from combat", "fleetId=", $fleetId)
+        continue
 
       # Classify fleet based on ownership and orders
       let isDefender = systemOwner.isSome and systemOwner.get() == fleet.owner
