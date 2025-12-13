@@ -501,13 +501,60 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
     let fleetType = if hasETAC: "ETAC" elif hasCombatShips: "Combat" else: "Empty"
     logDebug(LogCategory.lcAI, &"  Fleet {fleet.id} ({fleetType}) at {fleet.location}: Determining orders...")
 
-    # Skip non-colonization orders for ETAC fleets
+    # Special handling for ETAC fleets
     if isETACFleet(fleet):
-      # ETAC fleets can ONLY perform colonization operations
-      # AutoColonize standing orders will handle them
-      logDebug(LogCategory.lcAI,
-        &"Fleet {fleet.id} has ETACs - deferring to AutoColonize standing orders")
-      continue
+      # Check if ETAC has colonists
+      var hasColonists = false
+      var totalPTU = 0
+      for ship in fleet.spaceLiftShips:
+        if ship.cargo.cargoType == CargoType.Colonists:
+          hasColonists = true
+          totalPTU += ship.cargo.quantity
+
+      if hasColonists:
+        # ETAC has PTUs - defer to AutoColonize standing orders
+        logDebug(LogCategory.lcAI,
+          &"Fleet {fleet.id} has {totalPTU} PTU - deferring to AutoColonize standing orders")
+        continue
+      else:
+        # ETAC empty - send home for reload
+        # Find nearest colony with sufficient population for PTU transfer
+        const MIN_POPULATION_FOR_RELOAD = 3
+        var bestColony: Option[SystemId] = none(SystemId)
+        var bestDistance = 999
+
+        for colony in filtered.ownColonies:
+          if colony.population < MIN_POPULATION_FOR_RELOAD:
+            continue  # Colony too small to spare PTUs
+
+          # Calculate distance via jump lanes
+          let pathResult = filtered.starMap.findPath(fleet.location, colony.systemId, fleet)
+          if not pathResult.found:
+            continue
+
+          let distance = pathResult.path.len - 1
+          if distance < bestDistance:
+            bestDistance = distance
+            bestColony = some(colony.systemId)
+
+        if bestColony.isSome:
+          let targetColony = bestColony.get()
+          order.orderType = FleetOrderType.Move
+          order.targetSystem = some(targetColony)
+          order.priority = 90  # High priority - need reload
+
+          result.add(order)
+
+          # Get colony population for logging
+          let targetColonyData = filtered.ownColonies.filterIt(it.systemId == targetColony)[0]
+          logInfo(LogCategory.lcAI,
+            &"Fleet {fleet.id} empty ETAC seeking reload at {targetColony} " &
+            &"({bestDistance} jumps, pop {targetColonyData.population})")
+          continue
+        else:
+          logWarn(LogCategory.lcAI,
+            &"Fleet {fleet.id} empty ETAC has no viable reload colonies (need pop >= {MIN_POPULATION_FOR_RELOAD})")
+          continue
 
     # ==========================================================================
     # PHASE-AWARE PRIORITY SYSTEM
