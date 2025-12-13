@@ -7,15 +7,15 @@
 ##
 ## Step 1: Space Combat (simultaneous resolution)
 ## Step 2: Orbital Combat (simultaneous resolution)
-## Step 3: Blockade Resolution (simultaneous)
-## Step 4: Planetary Combat (bombard/invade/blitz, simultaneous)
-## Step 5: Colonization (ETAC operations, simultaneous)
-## Step 6: Espionage Operations (simultaneous)
-##   6a: Spy Scout Detection (pre-combat prep, excludes detected scouts from battle)
-##   6b: Fleet-Based Espionage (SpyPlanet, SpySystem, HackStarbase)
-##   6c: Space Guild Espionage (EBP-based covert ops)
-##   6d: Starbase Surveillance (continuous monitoring)
-## Step 7: Spy Scout Travel (1-2 jumps per turn, per assets.md:2.4.2)
+## Step 3: Blockade Resolution (simultaneous resolution)
+## Step 4: Planetary Combat (sequential execution, simultaneous priority)
+## Step 5: Colonization (simultaneous resolution)
+## Step 6: Espionage Operations (simultaneous resolution)
+##   6a. Spy Scout Detection (pre-combat preparation)
+##   6b. Fleet-Based Espionage (SpyPlanet, SpySystem, HackStarbase)
+##   6c. Space Guild Espionage (EBP-based covert ops)
+##   6d. Starbase Surveillance (continuous monitoring)
+## Step 7: Spy Scout Travel
 ##
 ## **Implementation Note:**
 ## Spy detection (Step 6a) executes BEFORE combat (line 49-53) to exclude

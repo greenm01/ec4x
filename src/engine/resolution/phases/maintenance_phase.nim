@@ -6,49 +6,22 @@
 ## **Canonical Execution Order:**
 ##
 ## Step 1: Fleet Movement and Order Activation
-## - Step 1a: Activate ALL orders (both active and standing)
-##   * Active orders: Already validated in Command Phase Part C, now become active
-##   * Standing orders: Check conditions, generate fleet orders
-##   * Three-tier lifecycle: Initiate (Command) → Activate (Maintenance) → Execute (Conflict/Income)
-##   * Generated orders written to state.fleetOrders or state.queuedCombatOrders
-## - Step 1b: Perform order maintenance (check completions, validate conditions)
-##   * Orders: Move, SeekHome, Patrol, Hold, etc.
-##   * Lifecycle management, NOT execution
-## - Step 1c: Perform fleet movement toward order targets
-##   * Fleets physically move along pathfinding routes (1-2 jumps/turn)
-##   * Movement is part of "Activate" phase (traveling to target)
-##   * Universal movement for ALL order types (Move, Bombard, Colonize, etc.)
+##   1a. Order Activation
+##   1b. Order Maintenance
+##   1c. Fleet Movement
 ##
-## Step 2: Construction & Repair Advancement
-## - Advance all facility construction queues (capital ships at shipyards)
-## - Advance all colony construction queues (fighters, buildings at spaceports)
-## - Advance all repair queues (damaged ships, facilities)
-## - Store completed projects in state.pendingCommissions for next turn's commissioning
+## Step 2: Construction and Repair Advancement
+##   2a. Construction Queue Advancement
+##   2b. Split Commissioning (Planetary Defense immediate, Military Units next turn)
+##   2c. Repair Queue
 ##
 ## Step 3: Diplomatic Actions
-## - Process diplomatic state changes (from Command Phase proposals)
-## - State changes take effect AFTER all command processing complete
-## - Ensures consistent turn boundary for treaty activations
 ##
-## Step 4: Population Arrivals
-## - Process Space Guild population transfers completing this turn
-## - Handle blockaded/conquered destination fallback to nearest owned colony
+## Step 4: Population Transfers
 ##
-## Step 5: Terraforming Projects
-## - Advance active terraforming projects on colonies
-## - Complete projects when timer reaches zero
+## Step 5: Terraforming
 ##
-## Step 6: Cleanup & Timer Updates
-## - Decrement ongoing espionage effect counters
-## - Expire pending diplomatic proposals (timeout tracking)
-## - Update diplomatic status timers (dishonored status, isolation penalties)
-## - Advance capacity enforcement grace period timers (from Income Phase Step 5)
-##
-## **Research Advancement:** (not a numbered step, happens after Step 6)
-## - Attempt EL (Economic Level) upgrades with accumulated ERP
-## - Attempt SL (Science Level) upgrades with accumulated SRP
-## - Attempt TechField upgrades with accumulated TRP
-## - Uses RP accumulated from Income Phase Step 6
+## Step 6: Cleanup and Preparation
 ##
 ## **Key Properties:**
 ## - Completed projects stored in pendingCommissions, NOT commissioned immediately
@@ -445,63 +418,6 @@ proc resolveMaintenancePhase*(state: var GameState,
     &"[MAINTENANCE STEP 1d] Completed ({arrivedFleetCount} fleets arrived at targets)")
 
   # ===================================================================
-  # STEPS 4-6: POPULATION, TERRAFORMING, CLEANUP
-  # ===================================================================
-  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEPS 4-6] Processing population, terraforming, cleanup...")
-
-  # Decrement ongoing espionage effect counters
-  var remainingEffects: seq[esp_types.OngoingEffect] = @[]
-  for effect in state.ongoingEffects:
-    var updatedEffect = effect
-    updatedEffect.turnsRemaining -= 1
-
-    if updatedEffect.turnsRemaining > 0:
-      remainingEffects.add(updatedEffect)
-      logDebug(LogCategory.lcGeneral,
-        &"Effect on {updatedEffect.targetHouse} expires in " &
-        &"{updatedEffect.turnsRemaining} turn(s)")
-    else:
-      logDebug(LogCategory.lcGeneral,
-        &"Effect on {updatedEffect.targetHouse} has expired")
-
-  state.ongoingEffects = remainingEffects
-
-  # Expire pending diplomatic proposals
-  for proposal in state.pendingProposals.mitems:
-    if proposal.status == dip_proposals.ProposalStatus.Pending:
-      proposal.expiresIn -= 1
-
-      if proposal.expiresIn <= 0:
-        proposal.status = dip_proposals.ProposalStatus.Expired
-        logDebug(LogCategory.lcGeneral,
-          &"Proposal {proposal.id} expired ({proposal.proposer} → " &
-          &"{proposal.target})")
-
-  # Clean up old proposals (keep 10 turn history)
-  let currentTurn = state.turn
-  state.pendingProposals.keepIf(proc(p: dip_proposals.PendingProposal): bool =
-    p.status == dip_proposals.ProposalStatus.Pending or
-    (currentTurn - p.submittedTurn) < 10
-  )
-
-  # Process Space Guild population transfers arriving this turn
-  resolvePopulationArrivals(state, events)
-
-  # ===================================================================
-  # STEP 3: DIPLOMATIC ACTIONS
-  # ===================================================================
-  # Process diplomatic actions (moved from Command Phase)
-  # Diplomatic state changes happen AFTER all commands execute
-  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Processing diplomatic actions...")
-  diplomatic_resolution.resolveDiplomaticActions(state, orders, events)
-  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Completed diplomatic actions")
-
-  # Process active terraforming projects
-  processTerraformingProjects(state, events)
-
-  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEPS 4-6] Completed population/terraforming/cleanup")
-
-  # ===================================================================
   # STEP 2: CONSTRUCTION & REPAIR ADVANCEMENT
   # ===================================================================
   # Advance construction queues for both facilities (capital ships) and
@@ -532,6 +448,38 @@ proc resolveMaintenancePhase*(state: var GameState,
     &"[MAINTENANCE STEP 2] Completed ({planetaryProjects.len} planetary commissioned, " &
     &"{militaryProjects.len} ships pending)")
 
+  # ===================================================================
+  # STEP 3: DIPLOMATIC ACTIONS
+  # ===================================================================
+  # Process diplomatic actions (moved from Command Phase)
+  # Diplomatic state changes happen AFTER all commands execute
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Processing diplomatic actions...")
+  diplomatic_resolution.resolveDiplomaticActions(state, orders, events)
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 3] Completed diplomatic actions")
+
+  # ===================================================================
+  # STEP 4: POPULATION TRANSFERS
+  # ===================================================================
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 4] Processing population transfers...")
+  resolvePopulationArrivals(state, events)
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 4] Completed population transfers")
+
+  # ===================================================================
+  # STEP 5: TERRAFORMING
+  # ===================================================================
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 5] Processing terraforming projects...")
+  processTerraformingProjects(state, events)
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 5] Completed terraforming projects")
+
+  # ===================================================================
+  # STEP 6: CLEANUP AND PREPARATION
+  # ===================================================================
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 6] Performing cleanup...")
+  # Timer logic moved to Income Phase Step 9.
+  # Other cleanup (destroyed entities, fog of war) is handled implicitly
+  # by other systems or is not yet implemented.
+  logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 6] Cleanup complete")
+
    # ===================================================================
   # RESEARCH ADVANCEMENT
   # ===================================================================
@@ -539,6 +487,39 @@ proc resolveMaintenancePhase*(state: var GameState,
   # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP
   # is available
   logInfo(LogCategory.lcOrders, "[MAINTENANCE] Processing research advancements...")
+
+  # Research breakthroughs (every 5 turns)
+  # Per economy.md:4.1.1: Breakthrough rolls provide bonus RP, cost reductions, or free levels
+  if advancement.isBreakthroughTurn(state.turn):
+    logDebug(LogCategory.lcResearch, &"[RESEARCH BREAKTHROUGHS] Turn {state.turn} - rolling for breakthroughs")
+    for houseId in state.houses.keys:
+      # Calculate total RP invested in last 5 turns
+      # NOTE: This is a simplified approximation - proper implementation would track historical RP
+      let investedRP = state.houses[houseId].lastTurnResearchERP +
+                       state.houses[houseId].lastTurnResearchSRP +
+                       state.houses[houseId].lastTurnResearchTRP
+
+      # Roll for breakthrough
+      var rng = initRand(hash(state.turn) xor hash(houseId))
+      let breakthroughOpt = advancement.rollBreakthrough(investedRP * 5, rng)  # Approximate 5-turn total
+
+      if breakthroughOpt.isSome:
+        let breakthrough = breakthroughOpt.get
+        logInfo(LogCategory.lcResearch, &"{houseId} BREAKTHROUGH: {breakthrough}")
+
+        # Apply breakthrough effects
+        let allocation = res_types.ResearchAllocation(
+          economic: state.houses[houseId].lastTurnResearchERP,
+          science: state.houses[houseId].lastTurnResearchSRP,
+          technology: initTable[TechField, int]()
+        )
+        let event = advancement.applyBreakthrough(
+          state.houses[houseId].techTree,
+          breakthrough,
+          allocation
+        )
+
+        logDebug(LogCategory.lcResearch, &"{houseId} breakthrough effect applied (category: {event.category})")
   var totalAdvancements = 0
   for houseId, house in state.houses.mpairs:
     # Try to advance Economic Level (EL) with accumulated ERP

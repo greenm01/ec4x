@@ -5,31 +5,21 @@
 ##
 ## **Canonical Execution Order:**
 ##
-## **Part A: Commissioning & Automation**
-## - Commission completed projects from state.pendingCommissions
-##   (projects completed in previous turn's Maintenance Phase)
-## - Auto-create squadrons, auto-assign to fleets
-## - Auto-load PTUs onto ETAC ships (1 PTU per ETAC)
-## - Colony automation:
-##   * Auto-load fighters to carriers (if colony.autoLoadingEnabled)
-##   * Auto-submit repair orders (if colony.autoRepairEnabled)
-##   * Auto-balance squadrons across fleets (always enabled)
+## **Part A: Server Processing (BEFORE Player Window)**
+## - Step 1: Starport & Shipyard Commissioning
+## - Step 2: Colony Automation
 ##
-## **Part B: Player Submission Window** (24-hour window in multiplayer mode)
-## - Process build orders (construction, research allocation)
-## - Process colony management orders (tax rates, automation toggles)
-## - Process Space Guild population transfers
-## - Process diplomatic actions (proposals, treaty modifications)
-## - Process spy scout orders (join, move, rendezvous)
-## - Process terraforming orders
-## - Process zero-turn administrative commands (immediate execution)
+## **Part B: Player Submission Window**
+## - Zero-Turn Administrative Commands
+## - Query Commands
+## - Order Submission
 ##
-## **Part C: Order Validation & Storage**
-## Universal lifecycle: All non-admin orders stored in state.fleetOrders
-## - Validate all submitted orders (active orders and standing order configs)
-## - Execute administrative orders immediately (Reserve, Mothball - zero-turn)
-## - Store all other orders in state.fleetOrders for activation
-## - Standing order configs validated, stored in state.standingOrders
+## **Part C: Order Validation & Storage (AFTER Player Window)**
+## - Administrative orders execute
+## - All other orders: Validate and store in state.fleetOrders
+## - Standing order configs: Validated and stored in state.standingOrders
+## - Build orders: Add to construction queues
+## - Tech research: Allocate RP
 ##
 ## **Key Properties:**
 ## - Commissioning happens FIRST to free dock capacity before new builds
@@ -101,6 +91,108 @@ proc resolveCommandPhase*(state: var GameState,
   for houseId in state.houses.keys:
     if houseId in orders:
       construction.resolveBuildOrders(state, orders[houseId], events)
+
+  # Process research allocation
+  # Per economy.md:4.0: Players allocate PP to research each turn
+  # PP is converted to ERP/SRP/TRP based on current tech levels and GHO
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      let packet = orders[houseId]
+      let allocation = packet.researchAllocation
+
+      # Calculate total PP cost for this research allocation
+      var totalResearchCost = allocation.economic + allocation.science
+      for field, pp in allocation.technology:
+        totalResearchCost += pp
+
+      # Scale down research allocation if treasury cannot afford it
+      # Research is planned at AI time but processed after Income Phase
+      # This prevents negative treasury from over-aggressive research budgets
+      var scaledAllocation = allocation
+
+      # CRITICAL: If treasury is negative or zero, no research happens
+      if state.houses[houseId].treasury <= 0:
+        # Zero out all research - house is bankrupt
+        scaledAllocation.economic = 0
+        scaledAllocation.science = 0
+        scaledAllocation.technology = initTable[TechField, int]()
+        totalResearchCost = 0
+
+        logWarn(LogCategory.lcResearch,
+          &"{houseId} research cancelled - negative treasury ({state.houses[houseId].treasury} PP)")
+
+      elif totalResearchCost > state.houses[houseId].treasury:
+        # Calculate scaling factor (how much we can actually afford)
+        let affordablePercent = float(state.houses[houseId].treasury) / float(totalResearchCost)
+
+        # Scale all allocations proportionally
+        scaledAllocation.economic = int(float(allocation.economic) * affordablePercent)
+        scaledAllocation.science = int(float(allocation.science) * affordablePercent)
+
+        var scaledTech = initTable[TechField, int]()
+        for field, pp in allocation.technology:
+          scaledTech[field] = int(float(pp) * affordablePercent)
+        scaledAllocation.technology = scaledTech
+
+        # Recalculate actual cost
+        totalResearchCost = scaledAllocation.economic + scaledAllocation.science
+        for field, pp in scaledAllocation.technology:
+          totalResearchCost += pp
+
+        logWarn(LogCategory.lcResearch,
+          &"{houseId} research budget scaled down by {int(affordablePercent * 100)}% due to treasury constraints")
+
+      # Deduct research cost from treasury (CRITICAL FIX)
+      # Research competes with builds for treasury resources
+      if totalResearchCost > 0:
+        state.houses[houseId].treasury -= totalResearchCost
+        logInfo(LogCategory.lcResearch,
+          &"{houseId} spent {totalResearchCost} PP on research " &
+          &"(treasury: {state.houses[houseId].treasury + totalResearchCost} → {state.houses[houseId].treasury})")
+
+      # Calculate GHO for this house
+      var gho = 0
+      for colony in state.colonies.values:
+        if colony.owner == houseId:
+          gho += colony.production
+
+      # Get current tech levels
+      let currentSL = state.houses[houseId].techTree.levels.scienceLevel  # Science Level
+
+      # Convert PP allocations to RP (use SCALED allocation, not original)
+      let earnedRP = res_costs.allocateResearch(scaledAllocation, gho, currentSL)
+
+      # Accumulate RP
+      state.houses[houseId].techTree.accumulated.economic += earnedRP.economic
+      state.houses[houseId].techTree.accumulated.science += earnedRP.science
+
+      for field, trp in earnedRP.technology:
+        if field notin state.houses[houseId].techTree.accumulated.technology:
+          state.houses[houseId].techTree.accumulated.technology[field] = 0
+        state.houses[houseId].techTree.accumulated.technology[field] += trp
+
+      # Save earned RP to House state for diagnostics tracking
+      state.houses[houseId].lastTurnResearchERP = earnedRP.economic
+      state.houses[houseId].lastTurnResearchSRP = earnedRP.science
+      var totalTRP = 0
+      for field, trp in earnedRP.technology:
+        totalTRP += trp
+      state.houses[houseId].lastTurnResearchTRP = totalTRP
+
+      # Log allocations (use SCALED allocation for accurate reporting)
+      if scaledAllocation.economic > 0:
+        logDebug(LogCategory.lcResearch,
+          &"{houseId} allocated {scaledAllocation.economic} PP → {earnedRP.economic} ERP " &
+          &"(total: {state.houses[houseId].techTree.accumulated.economic} ERP)")
+      if scaledAllocation.science > 0:
+        logDebug(LogCategory.lcResearch,
+          &"{houseId} allocated {scaledAllocation.science} PP → {earnedRP.science} SRP " &
+          &"(total: {state.houses[houseId].techTree.accumulated.science} SRP)")
+      for field, pp in scaledAllocation.technology:
+        if pp > 0 and field in earnedRP.technology:
+          let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
+          logDebug(LogCategory.lcResearch,
+            &"{houseId} allocated {pp} PP → {earnedRP.technology[field]} TRP ({field}) (total: {totalTRP} TRP)")
 
   # Process colony management orders (tax rates, auto-repair toggles)
   for houseId in state.houses.keys:
