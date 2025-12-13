@@ -6,13 +6,15 @@ Knowledge is power in EC4X. The intelligence system determines what you know abo
 
 Intelligence flows from multiple sources, each revealing different aspects of your enemies' capabilities and intentions.
 
-### 9.1.1 Scout Reconnaissance (Perfect Quality)
+### 9.1.1 Spy Scout Missions (Perfect Quality)
 
-Your scout squadrons are the eyes and ears of your House. When dispatched on reconnaissance missions, they gather comprehensive intelligence on enemy assets, movements, and capabilities. Scout reports include complete fleet compositions with tech levels and hull integrity, detailed colony statistics including economic output and construction projects, and strategic assessments of enemy patrol patterns and force deployments.
+Your **Spy Scouts** are the primary tool for gathering detailed, high-quality intelligence. When you dispatch a Spy Scout on an espionage mission (e.g., `Spy on Planet`), it attempts to penetrate enemy defenses to collect a comprehensive report.
 
-Scouts provide the highest quality intelligence available. Their reports are detailed, accurate, and current. However, even scout intelligence can be compromised. Houses that successfully plant disinformation in your intelligence network or those operating under the stigma of dishonor may corrupt scout reports with false data. See [Section 9.4](#94-intelligence-corruption) for details on intelligence reliability.
+If successful, the intelligence gathered is of **Perfect Quality**—it is detailed, accurate, and current as of that turn. This includes complete fleet compositions with tech levels, detailed colony statistics, economic output, construction projects, and more.
 
-Scout missions are described in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) of the Operations manual.
+However, this is a high-risk operation. The Spy Scout is consumed in the attempt, and if detected, the mission fails completely.
+
+See espionage orders in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) for mission details.
 
 ### 9.1.2 Fleet Encounters
 
@@ -20,11 +22,9 @@ When your fleets encounter enemy forces in the same system, your captains automa
 
 Visual intelligence has natural limitations. Your captains cannot assess technological sophistication from a distance, determine hull damage states, or identify cargo contents. An enemy transport fleet shows only the number of ships, not whether they carry invasion troops, colonists, or equipment. Tech levels display as zero since there is no way to visually assess research advancement. This reflects the reality of tactical observation in space warfare.
 
-### 9.1.3 Spy Operations (Spy Quality)
+### 9.1.3 Espionage Operations (Perfect Quality)
 
-Your scout squadrons conducting espionage missions (SpyOnPlanet, SpyOnSystem, HackStarbase) penetrate deeper than visual observation. These covert operations provide economic intelligence, construction queue details, and technological assessments that visual sightings cannot reveal.
-
-Planet surveillance exposes colony population, industrial capacity, defensive installations, and most critically, economic output and tax revenue. You learn what the colony produces and how much flows to the enemy treasury. System reconnaissance reveals full fleet dispositions including tech levels, hull integrity, and cargo manifests. Starbase hacking accesses financial records, research allocations, and technology advancement across all fields.
+Your **Spy Scouts** conducting espionage missions (`Spy on Planet`, `Spy on System`, `Hack a Starbase`) penetrate deeper than visual observation. If successful, these covert operations provide **Perfect Quality** intelligence, including economic data, construction queues, and technological assessments that visual sightings cannot reveal.
 
 This level of detail transforms strategic decision-making. Knowing an enemy's economic strength and research focus allows you to predict their capabilities turns in advance.
 
@@ -86,9 +86,9 @@ Intelligence reports carry quality indicators reflecting reliability and detail 
 
 **Visual** quality comes from fleet encounters. You see what's there but cannot assess technological sophistication or internal states. Ship types and counts are accurate. Tech levels, hull damage, and cargo contents remain unknown. This represents what your ship captains observe visually.
 
-**Spy** quality comes from espionage operations. You gain economic data, tech levels, hull integrity assessments, and construction details. This penetrates beyond visual observation to reveal strategic information.
+**Spy** quality is not currently used.
 
-**Perfect** quality comes from scout reconnaissance and your own assets. All details are available, accurate, and current. Perfect quality intelligence forms the foundation of strategic planning.
+**Perfect** quality comes from successful **Spy Scout** missions and observations of your own assets. All details are available, accurate, and current. Perfect quality intelligence forms the foundation of strategic planning.
 
 Intelligence quality affects decision-making. Visual sightings reveal enemy presence but not capability. Spy-quality intelligence reveals capability but may lack real-time updates. Perfect quality intelligence provides complete situational awareness.
 

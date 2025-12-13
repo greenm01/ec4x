@@ -234,94 +234,65 @@ Each FS contributes:
 
 Fighters are fragile but cost-effective. A mature colony can field dozens of squadrons, making direct assault prohibitively expensive.
 
-### 2.4.2 Scouts
+### 2.4.2 Spy Scouts
 
-Scouts are fast, stealthy reconnaissance ships that gather intelligence on enemy fleet compositions, colony defenses, and strategic positions.
+Scouts are specialized, single-use auxiliary ships designed for espionage and reconnaissance. They do not participate in combat. When you issue a spy order (`Spy on Planet`, `Spy on System`, `Hack a Starbase`), the Scout is consumed on a one-way mission to gather high-value intelligence.
 
 **Detection Mechanics**:
 
-Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Scouts. Detection probability depends on:
+When Spy Scouts enter a system with enemy assets, the defending house automatically attempts to detect them. Detection is a single 1d20 roll by the defender.
 
-- Defender's ELI level
-- Number of Scouts in system (mesh network effect)
-- Presence of Starbases (+2 ELI modifier)
+**Detection Formula**:
 
-**Scout Detection Table**
+`Target Number = 15 - (Number of Spy Scouts) + (Defender's ELI Level + Starbase Bonus)`
 
-<!-- SCOUT_DETECTION_TABLE_START -->
+- A roll **greater than or equal to** the Target Number detects the Spy Scouts.
+- **Number of Spy Scouts**: More scouts are harder to detect, lowering the target number.
+- **Defender's ELI Level**: The defending house's researched ELI tech level. Higher ELI makes detection easier.
+- **Starbase Bonus**: A starbase in the system adds **+2** to the defender's effective ELI level.
 
-Detection compares total effective ELI (including modifiers) against number of Scouts present:
+**Detection Outcome**:
+- **Success (Roll >= Target)**: All Spy Scouts on the mission are detected and destroyed. The mission fails, and no intelligence is gathered.
+- **Failure (Roll < Target)**: The Spy Scouts remain undetected and successfully gather **Perfect Quality** intelligence.
 
-| Defender ELI | 1 Scout | 2 Scouts | 3+ Scouts |
-|:------------:|:-------:|:--------:|:---------:|
-| ELI 1        | 1-2     | 1-3      | 1-4       |
-| ELI 2        | 1-3     | 1-4      | 1-5       |
-| ELI 3        | 1-4     | 1-6      | 1-8       |
-| ELI 4        | 1-6     | 1-8      | 1-10      |
-| ELI 5        | 1-8     | 1-10     | 1-12      |
+**Example**:
+Three of your Spy Scouts enter a system with a starbase, owned by a house with ELI III.
+- Target Number = `15 - 3 (scouts) + 3 (ELI III) + 2 (starbase) = 17`
+- The defender must roll 17 or higher on a 1d20 to detect your scouts.
 
-*Table shows detection threshold on 1D20. Roll equal or higher to detect.*
-
-<!-- SCOUT_DETECTION_TABLE_END -->
-
-**Mesh Network Effect**: Multiple Scouts in the same system improve detection resistance. The defender's effective ELI decreases as Scout count increases—Scout swarms are harder to detect than individual Scouts.
-
-**Starbase Modifier**: Starbases add +2 to effective ELI level for detection rolls, representing superior sensor arrays and dedicated detection systems.
-
-For ELI research progression, see [Section 4.8](04-research_development.md#48-electronic-intelligence-eli).
-
-**Intelligence Gathering**:
-
-Successfully undetected Scouts reveal:
-
-- Fleet composition and squadron organization
-- Colony defense strength (fighters, batteries, shields)
-- Industrial capacity (IU count)
-- Construction projects in progress
-
-Detected Scouts are immediately destroyed.
+**Strategic Implications**:
+- Sending Spy Scouts in larger groups is safer.
+- Attacking well-defended systems (high ELI tech, starbases) is very risky.
+- Neglecting your own ELI research makes your empire vulnerable to enemy intelligence gathering.
 
 ### 2.4.3 Raiders
 
-Raiders are specialized covert warfare vessels equipped with advanced cloaking systems. They conduct sabotage, intelligence gathering, and disruptive operations deep behind enemy lines.
+Raiders are specialized combat vessels equipped with advanced cloaking systems. Their primary purpose is to grant an entire fleet a devastating **ambush advantage** in the first round of combat.
 
 **Cloaking Technology**:
 
-Raider stealth capability is determined by Cloaking (CLK) research level. Higher CLK tiers significantly reduce detection probability.
+A Raider's effectiveness is determined by its house's Cloaking (CLK) research level. Higher CLK provides better stealth.
 
 **Detection Mechanics**:
 
 When a fleet containing one or more Raiders engages in combat (both Space and Orbital), a detection check is made at the start of that combat phase. Detection is an opposed roll pitting the attacker's CLK against the defender's ELI.
 
-**Raider Detection Table**
+**Detection Roll**:
+- **Attacker Rolls**: `1d10 + CLK Level`
+- **Defender Rolls**: `1d10 + ELI Level + Starbase Bonus`
 
-<!-- RAIDER_DETECTION_TABLE_START -->
+- **ELI Level**: The defending house's researched ELI tech level.
+- **Starbase Bonus**: A starbase in the system adds **+2** to the defender's roll.
 
-Detection compares Raider CLK vs. Defender ELI:
+**Detection Outcome**:
+- **Attacker Roll > Defender Roll**: The Raider fleet remains cloaked. It gains the ambush advantage in Space Combat.
+- **Defender Roll ≥ Attacker Roll**: The Raider fleet is detected. It does not gain the ambush advantage.
 
-| ELI \ CLK Advantage | >10-12 | 7-9 | 4-6 | 1-3 | Equal | -1 to -3 | -4 to -6 | -7 to -9 | <-10 to -12 |
-|:-------------------:|:------:|:---:|:---:|:---:|:-----:|:--------:|:--------:|:--------:|:-----------:|
-| **Detection Roll**  | 1D3    | 1D4 | 1D6 | 1D8 | 1D10  | 1D12     | 1D16     | 1D20     | Auto-Fail   |
-
-*Roll type determines detection threshold on 1D20. Example: 1D3 result is random number 1-3; if detection roll ≥ threshold, Raider is detected.*
-
-<!-- RAIDER_DETECTION_TABLE_END -->
-
-**Starbase Modifier**: Starbases add +2 to effective ELI level for detection rolls against Raiders.
-
-For CLK research progression, see [Section 4.7](04-research_development.md#47-cloaking-clk). For ELI research, see [Section 4.8](04-research_development.md#48-electronic-intelligence-eli).
-
-**Mission Capabilities**:
-
-Successfully undetected Raiders:
-
-- Provide a first strike ambush advantage for defending fleets in Space Combat
-- Provide a first strike surprise advantage for offensive fleets in Space Combat
-- Remain cloaked throughout fleet movement.
-
-**Strategic Considerations**:
-
-Raiders are expensive, fragile, and require sustained CLK investment to remain effective. However, they create asymmetric advantages—a single successful Raider mission can cripple an enemy industrial world, potentially shifting strategic balance. The CLK vs. ELI arms race becomes critical in peer conflicts.
+**Strategic Implications**:
+The CLK vs. ELI technology race is central to late-game warfare.
+- A house with high CLK can ambush fleets from houses with poor ELI.
+- A house with high ELI can neutralize the Raider threat.
+- Starbases are critical for defending key systems against ambushes.
 
 ### 2.4.4 Starbases
 
@@ -339,9 +310,12 @@ Starbases (SB) are powerful orbital fortresses that facilitate planetary defense
 
 **Detection Capabilities**:
 
-Starbases are equipped with ELI to counter spy Scouts and Raiders. Refer to the Scout Detection Table in [Section 2.4.2](#242-scouts) and Raider Detection Table in [Section 2.4.3](#243-raiders) respectively.
+Starbases are equipped with powerful sensor arrays that enhance a system's defensive capabilities against stealth units.
 
-Starbases receive a **+2 ELI modifier** for all detection rolls, reflecting their superior sensor arrays and dedicated detection systems.
+- **Against Spy Scouts**: A Starbase provides a **+2 bonus** to the defending house's ELI Level for detection rolls.
+- **Against Raiders**: A Starbase provides a **+2 bonus** to the defending house's detection roll.
+
+This makes starbases critical for protecting high-value systems from both espionage and surprise attacks.
 
 **Combat Statistics**:
 

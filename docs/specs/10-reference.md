@@ -30,7 +30,7 @@ Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/F
 | CX    | Super Carrier     | Capital       | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
 | FS    | Fighter Squadron  | Fighter       | 1   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
 | RR    | Raider            | Capital       | 3   | 150 | 4%  | 12  | 10  | 2   | 8   | NA  |
-| SC    | Scout             | Escort        | 1   | 50  | 2%  | 1   | 2   | 1   | NA  | NA  |
+| SC    | Scout             | Auxiliary     | 1   | 50  | 2%  | 1   | 2   | NA  | NA  | NA  |
 
 *Source: config/ships.toml*
 
@@ -40,7 +40,7 @@ Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/F
 
 - **Escort**: Combat-capable ships with CR < 7. Not individually capacity-limited, but count toward total squadron limit.
 - **Capital**: Flagship-capable ships with CR >= 7. Subject to both capital squadron limits AND total squadron limits.
-- **Auxiliary**: Non-combat support ships (ETAC, Troop Transports). Do not count toward squadron limits.
+- **Auxiliary**: Non-combat support ships (ETAC, Troop Transports, Scouts). Do not count toward squadron limits.
 - **SpecialWeapon**: Unique strategic units (Planet-Breakers) with special capacity rules.
 - **Fighter**: Embarked strike craft with per-colony capacity limits.
 
@@ -278,7 +278,6 @@ Ground units received 33% cost reductions to make defensive investments more acc
 | Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                                  | [2.4.8](02-assets.md#248-planet-breaker)                      |
 | Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess.              | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
 | Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                                          | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
-| Scout CER Bonus                               | Maximum +1 total to CER for the entire Task Force, regardless of number of scouts present.                                                                                                                                     | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
 | Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass).                                                           | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
 | Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                                    | [6.2.6](06-operations.md#626-guardblockade-a-planet-05)       |
 | Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                                    | [3.2](03-economy.md#32-tax-rate)                              |

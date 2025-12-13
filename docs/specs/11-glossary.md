@@ -28,7 +28,7 @@
 | PB | Planet-Breaker – massive siege weapon for orbital bombardment | [2.4.8](02-assets.md#248-planet-breaker) |
 | RR | Raider – cloaked stealth attack ship | [2.4.3](02-assets.md#243-raiders) |
 | SB | Starbase – immobile orbital fortress | [2.4.4](02-assets.md#244-starbases) |
-| SC | Scout – stealth reconnaissance ship | [2.4.2](02-assets.md#242-scouts) |
+| SC | Scout – single-use auxiliary ship for espionage and reconnaissance | [2.4.2](02-assets.md#242-spy-scouts) |
 
 ## Ground Forces
 | Term | Definition | Section Link |
