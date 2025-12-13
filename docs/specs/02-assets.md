@@ -309,36 +309,15 @@ Detection compares Raider CLK vs. Defender ELI:
 
 **Starbase Modifier**: Starbases add +2 to effective ELI level for detection rolls against Raiders.
 
-**Example Detection Scenario**:
-
-```
-Defender Colony:
-  ELI 3
-  2 operational Starbases
-  Starbase Modifier: +2
-  Total Effective ELI: ELI 3 + 2 = ELI 5
-
-Raider:
-  CLK 4
-
-ELI Advantage: ELI 5 - CLK 4 = +1
-Detection Threshold: From table, use 1-3 range, so roll 1D8
-Random Threshold Roll (1D8): Result is 5
-Detection Roll (1D20): If the roll is 5 or higher, the Raider is detected
-```
-
 For CLK research progression, see [Section 4.7](04-research_development.md#47-cloaking-clk). For ELI research, see [Section 4.8](04-research_development.md#48-electronic-intelligence-eli).
 
 **Mission Capabilities**:
 
-Successfully undetected Raiders can:
+Successfully undetected Raiders:
 
-- **Sabotage**: Destroy Industrial Units, reducing GCO
-- **Infrastructure Damage**: Target spaceports, shipyards, or starbases
-- **Intelligence**: Reveal detailed colony information beyond Scout capability
-- **Assassination**: Eliminate colony governors or military commanders (advanced missions)
-
-Detected Raiders are immediately destroyed.
+- Provide a first strike ambush advantage for defending fleets in Space Combat
+- Provide a first strike surprise advantage for offensive fleets in Space Combat
+- Remain cloaked throughout fleet movement.
 
 **Strategic Considerations**:
 
