@@ -91,6 +91,7 @@ type
 
     # Public information (all houses can see)
     housePrestige*: Table[HouseId, int]  # Prestige scores
+    houseColonies*: Table[HouseId, int]  # Colony counts (public leaderboard)
     houseDiplomacy*: Table[(HouseId, HouseId), DiplomaticState]  # Diplomatic relations
     houseEliminated*: Table[HouseId, bool]  # Elimination status
 
@@ -358,12 +359,20 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
 
   # Public information
   result.housePrestige = initTable[HouseId, int]()
+  result.houseColonies = initTable[HouseId, int]()
   result.houseDiplomacy = initTable[(HouseId, HouseId), DiplomaticState]()
   result.houseEliminated = initTable[HouseId, bool]()
 
   for otherId, otherHouse in state.houses:
     result.housePrestige[otherId] = otherHouse.prestige
     result.houseEliminated[otherId] = otherHouse.eliminated
+
+    # Count colonies for public leaderboard (like prestige, visible to all)
+    var colonyCount = 0
+    for systemId, colony in state.colonies:
+      if colony.owner == otherId:
+        colonyCount += 1
+    result.houseColonies[otherId] = colonyCount
 
   # Populate diplomatic relations involving the viewing house
   # 1. Relations *from* the viewing house *to* other houses

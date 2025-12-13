@@ -54,19 +54,20 @@ proc validateOrderAtExecution(
   # Order-specific validation
   case order.orderType
   of FleetOrderType.Colonize:
-    # Check fleet still has colonization capability
-    var hasColonyShip = false
-    for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
-        if not squadron.flagship.isCrippled:
-          hasColonyShip = true
+    # Check fleet still has ETAC
+    # ARCHITECTURE FIX: ETACs are spacelift ships, not squadrons (per fleet.nim)
+    var hasETAC = false
+    for ship in fleet.spaceLiftShips:
+      if ship.shipClass == ShipClass.ETAC:
+        if not ship.isCrippled:
+          hasETAC = true
           break
 
-    if not hasColonyShip:
+    if not hasETAC:
       return ExecutionValidationResult(
         valid: false,
         shouldAbort: true,
-        reason: "Lost colonization capability (ships crippled/destroyed)"
+        reason: "Lost ETAC (ships crippled/destroyed)"
       )
 
     # Check target not already colonized
@@ -355,16 +356,10 @@ proc performOrderMaintenance*(
           else:
             discard
     elif outcome == OrderOutcome.Failed:
-      # Order failed validation - remove from queue
+      # Order failed validation - event generated, cleanup handled by Command Phase
       logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} failed validation")
-      if actualOrder.fleetId in state.fleetOrders:
-        state.fleetOrders.del(actualOrder.fleetId)
-        standing_orders.resetStandingOrderGracePeriod(state, actualOrder.fleetId)
     elif outcome == OrderOutcome.Aborted:
-      # Order aborted (target lost, conditions changed) - remove from queue
+      # Order aborted - event generated, cleanup handled by Command Phase
       logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} aborted")
-      if actualOrder.fleetId in state.fleetOrders:
-        state.fleetOrders.del(actualOrder.fleetId)
-        standing_orders.resetStandingOrderGracePeriod(state, actualOrder.fleetId)
 
   logDebug(LogCategory.lcOrders, &"[{phaseDescription}] Completed fleet order execution")

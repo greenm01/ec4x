@@ -210,7 +210,10 @@ proc createAutoColonizeOrder*(fleet: Fleet, maxRange: int,
     createdTurn: 0,
     lastActivatedTurn: 0,
     activationCount: 0,
-    suspended: false
+    suspended: false,
+    enabled: true,  # Enable standing order for AI
+    activationDelayTurns: 0,  # No delay for AI ETACs (immediate reactivation after colonization)
+    turnsUntilActivation: 0   # Active immediately
   )
 
 proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],
@@ -566,12 +569,15 @@ proc findNearestUnclaimedSystem*(filtered: FilteredGameState,
   ## Find nearest unclaimed system suitable for colonization
   ## Prefers systems matching preferred planet classes
 
-  # Get list of colonized systems
+  # Get list of colonized systems (own colonies only - enemy colonies should not block targeting)
   var colonizedSystems = initHashSet[SystemId]()
   for colony in filtered.ownColonies:
     colonizedSystems.incl(colony.systemId)
-  for visCol in filtered.visibleColonies:
-    colonizedSystems.incl(visCol.systemId)
+
+  logDebug(LogCategory.lcAI,
+           &"findNearestUnclaimedSystem: fromSystem={fromSystem}, " &
+           &"visibleSystems={filtered.visibleSystems.len}, " &
+           &"ownColonies={filtered.ownColonies.len}, maxRange={maxRange}")
 
   # Search visible systems for unclaimed ones
   var candidates: seq[SystemId] = @[]
@@ -582,10 +588,17 @@ proc findNearestUnclaimedSystem*(filtered: FilteredGameState,
       # For now, any unclaimed visible system is a candidate
       candidates.add(systemId)
 
+  logDebug(LogCategory.lcAI,
+           &"  Found {candidates.len} candidate systems for colonization")
+
   # Return first candidate (tactical module will prioritize based on value)
   if candidates.len > 0:
+    logDebug(LogCategory.lcAI,
+             &"  Selected target: {candidates[0]}")
     return some(candidates[0])
 
+  logDebug(LogCategory.lcAI,
+           &"  No suitable colonization targets found")
   return none(SystemId)
 
 proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,

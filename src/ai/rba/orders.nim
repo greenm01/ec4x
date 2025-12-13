@@ -17,7 +17,7 @@ import ../../engine/resolution/types as event_types # Use engine/resolution/type
 import ../../engine/commands/zero_turn_commands
 import ../../engine/research/types as res_types
 import ../common/types as ai_types
-import ./[controller_types, budget, drungarius, tactical, intelligence, logistics, standing_orders_manager, logothete]
+import ./[controller_types, budget, drungarius, tactical, intelligence, logistics, standing_orders_manager, logothete, fleet_organization]
 import ./orders/[phase0_intelligence, phase1_requirements, phase1_5_goap, phase2_mediation, phase3_execution, colony_management, phase4_feedback]
 import ./goap/integration/plan_tracking  # For addPlan
 import ./basileus/execution  # For AdvisorType and centralized execution
@@ -67,7 +67,31 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   )
 
   let p = controller.personality
-  let currentAct = ai_types.getCurrentGameAct(filtered.turn)
+  var currentAct = ai_types.getCurrentGameAct(filtered.turn)
+
+  # Act 1 → Act 2 Colonization Gate:
+  # Act 2 should not begin until map is substantially colonized
+  # This ensures land grab phase completes before military buildup
+  #
+  # Uses public leaderboard data (houseColonies) to see total map colonization
+  # This avoids fog-of-war issues - colony counts are public like prestige
+  if currentAct >= ai_types.GameAct.Act2_RisingTensions and filtered.turn <= 12:
+    let totalSystems = filtered.starMap.systems.len
+
+    # Calculate total colonized systems from public leaderboard
+    var totalColonized = 0
+    for houseId, colonyCount in filtered.houseColonies:
+      totalColonized += colonyCount
+
+    let colonizationRatio = float(totalColonized) / float(totalSystems)
+
+    # Require 50% of map colonized before Act 2 (lowered from 85% due to hoarding issues)
+    # e.g., 19 out of 37 systems = 51%
+    if colonizationRatio < 0.50:
+      currentAct = ai_types.GameAct.Act1_LandGrab
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Act 1 EXTENDED - map colonization " &
+              &"{totalColonized}/{totalSystems} ({int(colonizationRatio*100)}%, need 50%)")
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} ========================================")
@@ -284,7 +308,7 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Convert strategic standing orders to explicit fleet orders
   var strategicOrdersConverted = 0
   for fleetId, standingOrder in standingOrders:
-    if standingOrder.orderType in {StandingOrderType.DefendSystem, StandingOrderType.AutoRepair}:
+    if standingOrder.orderType in {StandingOrderType.DefendSystem, StandingOrderType.AutoRepair, StandingOrderType.AutoColonize}:
       var fleetOpt: Option[Fleet] = none(Fleet)
       for f in filtered.ownFleets:
         if f.id == fleetId:
@@ -336,7 +360,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # PHASE 7: TACTICAL FLEET ORDERS
   # ==========================================================================
-  let tacticalOrders = generateFleetOrders(controller, filtered, rng)
+  # Pass standingOrders so tactical skips ETACs with AutoColonize (let standing orders handle them)
+  let tacticalOrders = generateFleetOrders(controller, filtered, rng, standingOrders)
 
   for order in tacticalOrders:
     result.orderPacket.fleetOrders.add(order)
@@ -367,6 +392,11 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Add Domestikos fleet management commands (merge/detach/transfer)
   # Generated in Phase 1 by generateAllAdvisorRequirements()
   result.zeroTurnCommands.add(controller.fleetManagementCommands)
+
+  # Comprehensive fleet organization at colonies
+  # Detach ETACs, assign squadrons, load cargo, merge undersized fleets
+  let fleetOrgCommands = fleet_organization.organizeFleets(controller, filtered)
+  result.zeroTurnCommands.add(fleetOrgCommands)
 
   # Population transfers still use OrderPacket (not deprecated)
   result.orderPacket.populationTransfers = logisticsOrders.population

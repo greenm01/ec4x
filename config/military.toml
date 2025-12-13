@@ -36,9 +36,9 @@ capital_ship_cr_threshold = 7  # Ships with CR >= 7 are capital ships
 
 [spacelift_capacity]
 # BALANCE: Cargo capacity for spacelift ships
+# NOTE: Troop transport capacity defined in config/ships.toml (carry_limit field)
 # Tactical doctrine: Bombard → Invade (requires meaningful ground force)
-troop_transport_capacity = 3  # Marine Divisions per TroopTransport
-etac_capacity = 1             # Population Transfer Units per ETAC
+etac_capacity = 1  # Population Transfer Units per ETAC
 
 # ============================================================================
 # SALVAGE MECHANICS

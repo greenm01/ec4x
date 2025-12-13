@@ -26,17 +26,13 @@ proc completeFleetOrder*(
   details: string = "", systemId: Option[SystemId] = none(SystemId),
   events: var seq[GameEvent]
 ) =
-  ## Standard completion handler: event + removal + grace period reset
-  ## Use this for all order completions to ensure consistent behavior
+  ## Standard completion handler: generates OrderCompleted event
+  ## Cleanup handled by event-driven order_cleanup module in Command Phase
   if fleetId notin state.fleets: return
   let houseId = state.fleets[fleetId].owner
 
   events.add(event_factory.orderCompleted(
     houseId, fleetId, orderType, details, systemId))
-
-  if fleetId in state.fleetOrders:
-    state.fleetOrders.del(fleetId)
-    standing_orders.resetStandingOrderGracePeriod(state, fleetId)
 
   logInfo(LogCategory.lcOrders, &"Fleet {fleetId} {orderType} order completed")
 
@@ -290,11 +286,9 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
   # Already at destination - clear order (arrival complete)
   if startId == targetId:
-    if not isSpyScout and order.fleetId in state.fleetOrders:
-      state.fleetOrders.del(order.fleetId)
-      standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
+    if not isSpyScout:
       logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination, order complete")
-      # Generate OrderCompleted event for successful arrival
+      # Generate OrderCompleted event - cleanup handled by Command Phase
       events.add(event_factory.orderCompleted(
         houseId,
         order.fleetId,
@@ -385,10 +379,9 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
       systemId = some(newLocation)
     ))
 
-    # Check if we've arrived at final destination - clear order if so (N+1 behavior)
-    if newLocation == targetId and order.fleetId in state.fleetOrders:
-      state.fleetOrders.del(order.fleetId)
-      standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
+    # Check if we've arrived at final destination (N+1 behavior)
+    # Event generated above, cleanup handled by Command Phase
+    if newLocation == targetId:
       logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination {targetId}, order complete")
     else:
       logInfo(LogCategory.lcFleet, &"Fleet {order.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
@@ -579,19 +572,16 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
     prestigeAwarded
   ))
 
-  # Remove colonization order on success (mission complete)
-  if order.fleetId in state.fleetOrders:
-    state.fleetOrders.del(order.fleetId)
-    standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
-    logDebug(LogCategory.lcColonization,
-      &"Fleet {order.fleetId} colonization order removed (mission complete)")
-
   # Generate OrderCompleted event for successful colonization
+  # Cleanup handled by Command Phase
   events.add(event_factory.orderCompleted(
     houseId, order.fleetId, "Colonize",
     details = &"established colony at {targetId}",
     systemId = some(targetId)
   ))
+
+  logDebug(LogCategory.lcColonization,
+    &"Fleet {order.fleetId} colonization complete, cleanup deferred to Command Phase")
 
 proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
                             events: var seq[GameEvent]) =
@@ -673,13 +663,9 @@ proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: Fleet
     systemId = some(targetId)
   ))
 
-  # Remove view world order on completion
-  if order.fleetId in state.fleetOrders:
-    state.fleetOrders.del(order.fleetId)
-    standing_orders.resetStandingOrderGracePeriod(state, order.fleetId)
-
   # Order completes - fleet remains at system (player must issue new orders)
   # NOTE: Fleet is in deep space, not orbit, so no orbital combat triggered
+  # Cleanup handled by Command Phase
 
 proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
   ## Automatically load available marines/colonists onto empty transports at colonies

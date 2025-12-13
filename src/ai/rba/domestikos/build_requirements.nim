@@ -559,16 +559,19 @@ proc assessExpansionNeeds*(
         etacCount += 1
 
   # Smart targeting: Build ETACs based on uncolonized systems
-  # Uses config values to control production rate and queuing.
+  # Dynamic cap: min(playerCount, uncolonizedSystems/2)
+  # Scales down as map fills, prevents overproduction
   let cfg = globalRBAConfig.domestikos
+  let dynamicCap = min(filtered.starMap.playerCount,
+                       max(1, uncolonizedVisible div 2))
   let targetETACs = if uncolonizedVisible > 0:
-    max(1, int(uncolonizedVisible.float * cfg.etacs_per_uncolonized_system))
+    min(dynamicCap, etacCount + 2)  # Never queue more than +2 at once
   else:
     etacCount
 
   logDebug(LogCategory.lcAI,
            &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
-           &"uncolonizedVisible {uncolonizedVisible}")
+           &"uncolonizedVisible {uncolonizedVisible}, dynamicCap {dynamicCap}")
 
   if etacCount < targetETACs:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
@@ -1758,15 +1761,30 @@ proc generateBuildRequirements*(
       # CRITICAL: Add ETACs already generated THIS turn (prevents slot 0-8 each making an ETAC)
       currentETACs += etacsGeneratedThisTurn
 
-      # ETAC cap: Ring-based scaling to support parallel colonization
-      # Formula: playerCount + numRings (e.g., 4 players + 3 rings = 7 ETACs per house)
-      # ETACs are reusable - this cap allows parallel expansion across map rings
-      let etacCap = filtered.starMap.playerCount + int(filtered.starMap.numRings)
+      # Dynamic ETAC cap: min(playerCount, uncolonizedSystems/2)
+      # Count uncolonized systems from visible map (same logic as assessExpansionNeeds)
+      var uncolonizedVisible = 0
+      for systemId, visSystem in filtered.visibleSystems:
+        var hasColony = false
+        for colony in filtered.ownColonies:
+          if colony.systemId == systemId:
+            hasColony = true
+            break
+        if not hasColony:
+          for visColony in filtered.visibleColonies:
+            if visColony.systemId == systemId:
+              hasColony = true
+              break
+        if not hasColony:
+          uncolonizedVisible += 1
 
-      logDebug(LogCategory.lcAI, &"ETAC cap: {currentETACs}/{etacCap} (slot {slot}, turn reqs: {etacsGeneratedThisTurn})")
+      let etacCap = min(filtered.starMap.playerCount, max(1, uncolonizedVisible div 2))
 
-      # If under cap AND in Act 1: build ETAC (per user table: Act 1 only)
-      if currentAct == GameAct.Act1_LandGrab and currentETACs < etacCap:
+      logDebug(LogCategory.lcAI, &"ETAC cap: {currentETACs}/{etacCap} (slot {slot}, uncolonized={uncolonizedVisible}, turn reqs: {etacsGeneratedThisTurn})")
+
+      # If under cap: build ETAC (cap scales with uncolonized systems, no Act restriction)
+      # Keep building ETACs as long as there are systems to colonize
+      if currentETACs < etacCap:
         logDebug(LogCategory.lcAI, &"Building ETAC {currentETACs + 1}/{etacCap}")
         shipClass = some(ShipClass.ETAC)
         objective = BuildObjective.Expansion

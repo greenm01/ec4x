@@ -27,7 +27,7 @@ import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, spacelif
 import ../../engine/commands/zero_turn_commands
 import ../../engine/economy/maintenance
 import ../common/types as ai_types
-import ./[controller_types, config]
+import ./[controller_types, config, intelligence]  # intelligence for calculateDistance
 import ./shared/colony_assessment  # Shared defense assessment
 import ./shared/[intelligence_helpers, intelligence_types]  # DRY intelligence lookups
 
@@ -361,7 +361,7 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
             action: CargoManagementAction.LoadCargo,
             fleetId: fleet.id,
             cargoType: some(CargoType.Marines),
-            quantity: some(1)  # Load 1 MD per transport
+            quantity: some(3)  # Load 3 MDs per transport (full capacity)
           ))
           marineLoadOrdersGenerated.inc()
           logInfo(LogCategory.lcAI,
@@ -408,7 +408,7 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
                 action: CargoManagementAction.LoadCargo,
                 fleetId: fleet.id,
                 cargoType: some(CargoType.Marines),
-                quantity: some(1)  # Load 1 MD per transport
+                quantity: some(3)  # Load 3 MDs per transport (full capacity)
               ))
               logInfo(LogCategory.lcAI, &"{controller.houseId} Loading marines on transport {fleet.id} for invasion")
               break
@@ -815,6 +815,18 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
 
     if neededForOperation:
       continue  # Fleet assigned to operation, don't mothball
+
+    # Check if fleet has an active order (Bug #8 fix: don't mothball fleets mid-journey)
+    # Orders persist across turns - fleet may be traveling to execute colonization
+    let hasActiveOrder = fleet.id in filtered.ownFleetOrders
+    if hasActiveOrder:
+      continue  # Fleet has active order, don't mothball
+
+    # NEVER mothball ETACs - keep them active until all planets colonized, then salvage
+    # ETACs are expansion ships with persistent colonization missions
+    let hasETAC = fleet.spaceLiftShips.len > 0
+    if hasETAC:
+      continue  # Never mothball ETAC fleets
 
     # Check if this system has redundant fleets (multiple fleets at same colony)
     var fleetsAtThisSystem = 0
@@ -1413,8 +1425,82 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
   # Step 5: Optimize fleet compositions for operations
   result.squadrons = recommendFleetRebalancing(controller, inventory, filtered)
 
-  # Step 5: Fleet lifecycle management (Reserve/Mothball/Salvage/Reactivate)
+  # Step 6: Proactive transport movement - move empty transports to marine garrisons
   result.fleetOrders = @[]
+
+  # Find fleets with empty transports
+  for fleet in filtered.ownFleets:
+    var hasEmptyTransport = false
+    for spaceLift in fleet.spaceLiftShips:
+      if spaceLift.shipClass == ShipClass.TroopTransport and spaceLift.isEmpty:
+        hasEmptyTransport = true
+        break
+
+    if hasEmptyTransport:
+      # Check if fleet is already at a colony with marines
+      var alreadyAtMarineColony = false
+      for colony in filtered.ownColonies:
+        if colony.systemId == fleet.location and colony.marines >= 3:
+          alreadyAtMarineColony = true
+          break
+
+      # If not at a marine colony, find nearest colony with marines and move there
+      if not alreadyAtMarineColony:
+        var nearestColony: Option[SystemId] = none(SystemId)
+        var nearestDistance = int.high
+
+        for colony in filtered.ownColonies:
+          if colony.marines >= 3:
+            # Calculate distance (simple hop count via star map)
+            let distance = calculateDistance(filtered.starMap, fleet.location, colony.systemId)
+            if distance < nearestDistance:
+              nearestDistance = distance
+              nearestColony = some(colony.systemId)
+
+        if nearestColony.isSome:
+          result.fleetOrders.add(FleetOrder(
+            fleetId: fleet.id,
+            orderType: FleetOrderType.Move,
+            targetSystem: nearestColony,
+            targetFleet: none(FleetId),
+            priority: 75  # Medium-high priority
+          ))
+          logInfo(LogCategory.lcAI,
+                  &"{controller.houseId} Moving empty transport fleet {fleet.id} " &
+                  &"from {fleet.location} to {nearestColony.get()} to load marines " &
+                  &"(distance: {nearestDistance} hops)")
+
+  # Step 7: Fleet lifecycle management (Reserve/Mothball/Salvage/Reactivate)
+  result.fleetOrders = result.fleetOrders  # Keep existing orders from Step 6
+
+  # Act 2 transition: Salvage all ETAC fleets (obsolete after land grab phase)
+  # ETACs are single-purpose colonizers with no combat/strategic value in Act 2+
+  # Salvaging them converts PP back to treasury for military buildup
+  if currentAct >= ai_types.GameAct.Act2_RisingTensions:
+    for fleet in filtered.ownFleets:
+      # Check if fleet contains ANY ETACs
+      var hasETACs = false
+      var etacCount = 0
+      for squadron in fleet.squadrons:
+        if squadron.flagship.shipClass == ShipClass.ETAC:
+          hasETACs = true
+          etacCount += 1
+        for ship in squadron.ships:
+          if ship.shipClass == ShipClass.ETAC:
+            hasETACs = true
+            etacCount += 1
+
+      if hasETACs:
+        result.fleetOrders.add(FleetOrder(
+          fleetId: fleet.id,
+          orderType: FleetOrderType.Salvage,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId),
+          priority: 100  # High priority - Act transition cleanup
+        ))
+        logInfo(LogCategory.lcAI,
+                &"{controller.houseId} SALVAGING fleet {fleet.id} with {etacCount} ETACs " &
+                &"(Act 2 - ETACs obsolete)")
 
   # Fleet lifecycle management based on treasury health
   # NOTE: Functions have their own internal checks, we just call them based on general conditions

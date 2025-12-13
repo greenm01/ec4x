@@ -194,19 +194,20 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
              &"({pathResult.path.len - 1} jumps via {fleet.location})")
 
   of FleetOrderType.Colonize:
-    # Check fleet has spacelift squadron
-    var hasColonyShip = false
-    for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
-        if not squadron.flagship.isCrippled:
-          hasColonyShip = true
+    # Check fleet has ETAC
+    # ARCHITECTURE FIX: ETACs are spacelift ships (fleet.spaceLiftShips), not squadrons
+    var hasETAC = false
+    for ship in fleet.spaceLiftShips:
+      if ship.shipClass == ShipClass.ETAC:
+        if not ship.isCrippled:
+          hasETAC = true
           break
 
-    if not hasColonyShip:
+    if not hasETAC:
       logWarn(LogCategory.lcOrders,
               &"{issuingHouse} Colonize order REJECTED: {order.fleetId} - " &
-              &"no functional spacelift squadron (ETAC/Troop Transport required)")
-      return ValidationResult(valid: false, error: "Colonize requires functional spacelift squadron")
+              &"no functional ETAC")
+      return ValidationResult(valid: false, error: "Colonize requires functional ETAC")
 
     if order.targetSystem.isNone:
       logWarn(LogCategory.lcOrders,
