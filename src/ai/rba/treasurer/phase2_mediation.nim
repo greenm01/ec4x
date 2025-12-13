@@ -1,5 +1,6 @@
 import std/[tables, options, strformat]
 import ../../../engine/[logger, gamestate]
+import ../../../engine/economy/maintenance  # For calculateHouseMaintenanceCost
 import ../controller_types # For AIController, all requirements and feedback types
 import ../../common/types as ai_types # For GameAct
 import ../basileus/mediation # For mediateRequirements
@@ -33,6 +34,16 @@ proc mediateAndAllocateBudget*(
   let goapEstimates = controller.goapBudgetEstimates # Directly use the stored estimates
   let goapReservedAmount = controller.goapReservedBudget # Use the GOAP reserved amount
 
+  # CRITICAL: Calculate maintenance costs and reserve from treasury
+  # The AI MUST account for maintenance before allocating to construction
+  # Otherwise it enters a maintenance death spiral (spending all PP, losing ships)
+  let maintenanceCost = calculateHouseMaintenanceCost(filtered.state, controller.houseId)
+  let availableBudget = max(0, filtered.ownHouse.treasury - maintenanceCost)
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Treasurer: Treasury={filtered.ownHouse.treasury} PP, " &
+          &"Maintenance={maintenanceCost} PP, Available={availableBudget} PP")
+
   # Perform multi-advisor allocation
   result = allocateBudgetMultiAdvisor(
     domestikosReqs,
@@ -42,7 +53,7 @@ proc mediateAndAllocateBudget*(
     protostratorReqs,
     controller.personality,
     filtered.currentAct,
-    filtered.ownHouse.treasury,
+    availableBudget,  # Use treasury AFTER maintenance reserve
     controller.houseId,
     filtered,
     goapEstimates, # Pass GOAP estimates to the allocator

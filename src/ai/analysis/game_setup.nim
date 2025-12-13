@@ -6,7 +6,7 @@
 import std/[tables, strformat, sequtils, strutils, algorithm]
 import ../../engine/[gamestate, starmap, fleet, squadron, spacelift]
 import ../../engine/initialization/[house, colony]
-import ../../engine/config/[prestige_multiplier, house_themes, gameplay_config]
+import ../../engine/config/[prestige_multiplier, population_growth_multiplier, house_themes, gameplay_config]
 import ../../common/types/[core, units, planets, tech, diplomacy]
 import ../../common/[system]
 import ../../engine/diplomacy/types as dip_types # For DiplomaticRelation
@@ -123,6 +123,9 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
 
   # Initialize dynamic prestige multiplier based on map size
   initializePrestigeMultiplier(starMap.systems.len, numHouses)
+
+  # Initialize population growth multiplier based on map size
+  initializePopulationGrowthMultiplier(starMap.systems.len, numHouses)
 
   # Load house theme configuration from global gameplay config
   let activeThemeName = globalGameplayConfig.theme.active_theme

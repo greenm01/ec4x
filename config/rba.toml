@@ -138,11 +138,11 @@ filler_budget_reserved = 0.15  # 15% reserved for capacity utilization (separate
 # Filler budget is a separate reserve pool handled by splitting logic
 
 [budget_act2_rising_tensions]
-expansion = 0.20       # INCREASED from 0.10 - need facilities at new colonies (spaceports/shipyards)
-defense = 0.15         # Unchanged - maintain colony defense
-military = 0.15        # REDUCED from 0.25 - shift budget to expansion infrastructure
-reconnaissance = 0.15  # Unchanged - scouts for espionage
-special_units = 0.30   # Unchanged - carriers+fighters critical
+expansion = 0.45       # INCREASED from 0.20 - maintain colonization momentum through Act 2
+defense = 0.10         # REDUCED from 0.15 - shift to expansion
+military = 0.15        # Unchanged - balanced military buildup
+reconnaissance = 0.10  # REDUCED from 0.15 - shift to expansion
+special_units = 0.15   # REDUCED from 0.30 - shift to expansion
 technology = 0.05      # Unchanged - minimal investment
 filler_budget_reserved = 0.15  # 15% reserved for capacity utilization (Gap Fix)
     
@@ -512,6 +512,6 @@ disable_rba_campaigns_with_goap = false # Set true to disable Phase 2 RBA campai
 [colonization]
 proximity_max_distance = 3        # Max jumps for proximity bonus
 proximity_bonus_per_jump = 25.0   # Bonus points per jump closer to owned colony
-proximity_weight_act1 = 0.3       # Proximity weight in Act 1-2 (low - frontier expansion)
+proximity_weight_act1 = 0.05      # REDUCED from 0.3 - maximum spread in Act 1-2 (frontier expansion)
 proximity_weight_act4 = 0.9       # Proximity weight in Act 3-4 (high - consolidation)
 

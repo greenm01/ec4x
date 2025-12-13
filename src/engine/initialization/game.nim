@@ -14,6 +14,7 @@ import ../starmap
 import ../order_types
 import ../fleet as fleet_mod
 import ../config/prestige_multiplier
+import ../config/population_growth_multiplier
 import ../config/game_setup_config
 import ../../common/types/[core, units]
 import ./[house, colony, fleet as init_fleet, validation]
@@ -106,6 +107,9 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
 
   # Initialize the prestige multiplier
   prestige_multiplier.initializePrestigeMultiplier(starMap.systems.len, playerCount)
+
+  # Initialize the population growth multiplier
+  population_growth_multiplier.initializePopulationGrowthMultiplier(starMap.systems.len, playerCount)
 
   # Create game state with populated map
   result = GameState(

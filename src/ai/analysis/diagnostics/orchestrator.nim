@@ -568,3 +568,30 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
       # Note: goapPlanningTimeMs is tracked in Phase 1.5 result
       # For now, we don't have access to that here, so leave it at 0.0
       # Post-MVP: Consider storing last planning time in controller
+
+    # Phase I: Collect Budget Allocation Metrics (Treasurer → Advisor Flow)
+    # Verifies DRY fix: Domestikos executes Treasurer's mediation, no re-calculation
+    if ctrl.lastTurnAllocationResult.isSome:
+      let allocation = ctrl.lastTurnAllocationResult.get()
+
+      # Per-advisor budget allocations from Treasurer mediation
+      result.domestikosBudgetAllocated =
+        allocation.budgets.getOrDefault(AdvisorType.Domestikos, 0)
+      result.logotheteBudgetAllocated =
+        allocation.budgets.getOrDefault(AdvisorType.Logothete, 0)
+      result.drungariusBudgetAllocated =
+        allocation.budgets.getOrDefault(AdvisorType.Drungarius, 0)
+      result.eparchBudgetAllocated =
+        allocation.budgets.getOrDefault(AdvisorType.Eparch, 0)
+
+      # Domestikos requirements and fulfillment (from Treasurer feedback)
+      result.domestikosRequirementsFulfilled =
+        allocation.treasurerFeedback.fulfilledRequirements.len
+      result.domestikosRequirementsUnfulfilled =
+        allocation.treasurerFeedback.unfulfilledRequirements.len
+      result.domestikosRequirementsDeferred =
+        allocation.treasurerFeedback.deferredRequirements.len
+      result.domestikosRequirementsTotal =
+        result.domestikosRequirementsFulfilled +
+        result.domestikosRequirementsUnfulfilled +
+        result.domestikosRequirementsDeferred
