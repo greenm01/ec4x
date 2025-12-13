@@ -53,6 +53,10 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   else:
     result.avgClkRoll = 0.0
 
+  # Scout detection metrics (reconnaissance)
+  result.scoutsDetected = house.lastTurnScoutsDetected
+  result.scoutsDetectedBy = house.lastTurnScoutsDetectedBy
+
   result.combatCERAverage = 0
   result.bombardmentRoundsTotal = 0
   result.groundCombatVictories = 0

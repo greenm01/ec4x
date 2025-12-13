@@ -301,6 +301,8 @@ type
     lastTurnEliDetectionAttempts*: int   # Total ELI detection rolls
     lastTurnEliRollsSum*: int            # Sum of ELI rolls (for average)
     lastTurnClkRollsSum*: int            # Sum of CLK rolls (for average)
+    lastTurnScoutsDetected*: int         # Enemy scouts detected (observer)
+    lastTurnScoutsDetectedBy*: int       # Own scouts detected by enemy (target)
 
     # Safe retreat routes (automatic seek-home behavior)
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
