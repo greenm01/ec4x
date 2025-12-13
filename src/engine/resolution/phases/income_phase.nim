@@ -5,8 +5,8 @@
 ##
 ## **Canonical Execution Order:**
 ##
-## Step 1: Calculate Base Production (colony GCO → gross PP)
 ## Step 2: Apply Blockades (reduce GCO for blockaded colonies)
+## Step 1: Calculate Base Production (colony GCO → gross PP)
 ## Step 3: Calculate Maintenance Costs (deduct from gross production → net PP)
 ## Step 4: Execute Salvage Orders (recover PP from combat wreckage)
 ## Step 5: Capacity Enforcement (after IU loss from combat/blockades)
@@ -186,6 +186,39 @@ proc resolveIncomePhase*(
   for houseId, house in state.houses:
     houseTreasuries[houseId] = house.treasury
 
+
+  # ===================================================================
+  # STEP 1: CALCULATE BASE PRODUCTION
+  # ===================================================================
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Calculating base production...")
+
+  # Call economy engine with natural growth rate from config
+  let incomeReport = econ_engine.resolveIncomePhase(
+    coloniesSeqIncome,
+    houseTaxPolicies,
+    houseTechLevels,
+    houseCSTTechLevels,
+    houseTreasuries,
+    baseGrowthRate = globalEconomyConfig.population.natural_growth_rate
+  )
+
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Production calculation completed")
+
+  # ===================================================================
+  # STEP 3: CALCULATE AND DEDUCT MAINTENANCE UPKEEP
+  # ===================================================================
+  # Per canonical turn cycle: Calculate maintenance for surviving ships/facilities
+  # after Conflict Phase, deduct from treasuries before collecting resources
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Calculating maintenance upkeep...")
+
+  let maintenanceUpkeepByHouse = econ_engine.calculateAndDeductMaintenanceUpkeep(state, events)
+
+  # Log maintenance costs for diagnostics
+  for houseId, upkeepCost in maintenanceUpkeepByHouse:
+    logInfo(LogCategory.lcEconomy, &"  {houseId}: {upkeepCost} PP maintenance")
+
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Maintenance upkeep completed")
+
   # ===================================================================
   # STEP 4: EXECUTE SALVAGE ORDERS
   # ===================================================================
@@ -194,7 +227,7 @@ proc resolveIncomePhase*(
   # 2. Salvage is an economic operation (ships → PP)
   # 3. Salvage PP should be included in turn's treasury before income calculation
   # 4. Fleet must have arrived at target (checked via arrivedFleets)
-  logDebug(LogCategory.lcEconomy, "[SALVAGE] Executing salvage orders...")
+  logInfo(LogCategory.lcEconomy, "[INCOME STEP 4] Executing salvage orders...")
 
   for houseId in state.houses.keys:
     if houseId in orders:
@@ -224,7 +257,7 @@ proc resolveIncomePhase*(
                 logDebug(LogCategory.lcEconomy,
                   &"[SALVAGE] {houseId} Fleet-{order.fleetId} failed")
 
-  logDebug(LogCategory.lcEconomy, "[SALVAGE] Completed salvage orders")
+  logInfo(LogCategory.lcEconomy, "[INCOME STEP 4] Completed salvage orders")
 
   # ===================================================================
   # STEP 5: CAPACITY ENFORCEMENT AFTER IU LOSS
@@ -233,8 +266,8 @@ proc resolveIncomePhase*(
   # Enforce capacity limits AFTER IU loss from blockades/combat
   # Order: Capital squadrons (immediate) → Total squadrons (2-turn grace) →
   #        Fighters (2-turn grace) → Planet-breakers (immediate)
-  logDebug(LogCategory.lcEconomy,
-          "[CAPACITY ENFORCEMENT] Checking capacity violations after IU loss...")
+  logInfo(LogCategory.lcEconomy,
+          "[INCOME STEP 5] Checking capacity violations after IU loss...")
 
   # Check fighter squadron capacity violations (assets.md:2.4.1)
   # Uses unified capacity management system (economy/capacity/fighter.nim)
@@ -303,40 +336,8 @@ proc resolveIncomePhase*(
         none(SystemId)
       ))
 
-  logDebug(LogCategory.lcEconomy,
-          "[CAPACITY ENFORCEMENT] Completed capacity enforcement")
-
-  # ===================================================================
-  # STEP 1: CALCULATE BASE PRODUCTION
-  # ===================================================================
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Calculating base production...")
-
-  # Call economy engine with natural growth rate from config
-  let incomeReport = econ_engine.resolveIncomePhase(
-    coloniesSeqIncome,
-    houseTaxPolicies,
-    houseTechLevels,
-    houseCSTTechLevels,
-    houseTreasuries,
-    baseGrowthRate = globalEconomyConfig.population.natural_growth_rate
-  )
-
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Production calculation completed")
-
-  # ===================================================================
-  # STEP 3: CALCULATE AND DEDUCT MAINTENANCE UPKEEP
-  # ===================================================================
-  # Per canonical turn cycle: Calculate maintenance for surviving ships/facilities
-  # after Conflict Phase, deduct from treasuries before collecting resources
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Calculating maintenance upkeep...")
-
-  let maintenanceUpkeepByHouse = econ_engine.calculateAndDeductMaintenanceUpkeep(state, events)
-
-  # Log maintenance costs for diagnostics
-  for houseId, upkeepCost in maintenanceUpkeepByHouse:
-    logInfo(LogCategory.lcEconomy, &"  {houseId}: {upkeepCost} PP maintenance")
-
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Maintenance upkeep completed")
+  logInfo(LogCategory.lcEconomy,
+          "[INCOME STEP 5] Completed capacity enforcement")
 
   # ===================================================================
   # STEP 6: COLLECT RESOURCES
