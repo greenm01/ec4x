@@ -99,6 +99,18 @@ type
     scout_count_act3_plus*: int
 
 # ==============================================================================
+# Colonization Parameters
+# ==============================================================================
+
+type
+  RBAColonizationConfig* = object
+    ## Proximity-weighted colonization targeting configuration
+    proximity_max_distance*: int
+    proximity_bonus_per_jump*: float
+    proximity_weight_act1*: float
+    proximity_weight_act4*: float
+
+# ==============================================================================
 # Logistics Parameters
 # ==============================================================================
 
@@ -391,6 +403,8 @@ type
     economic*: EconomicParametersConfig
     # Orders parameters
     orders*: OrdersConfig
+    # Colonization parameters
+    colonization*: RBAColonizationConfig
     # Logistics parameters
     logistics*: LogisticsConfig
     # Fleet composition ratios (3 doctrines)

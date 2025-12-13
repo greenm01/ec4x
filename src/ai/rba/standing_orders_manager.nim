@@ -8,12 +8,13 @@
 ## - Assign standing orders based on fleet role, personality, and strategic context
 ## - Let standing orders handle routine tasks while explicit orders handle critical operations
 
-import std/[tables, options, strformat, sets]
+import std/[tables, options, strformat, sets, algorithm]
 import ../common/types
-import ../../engine/[gamestate, fleet, logger, fog_of_war]
+import ../../engine/[gamestate, fleet, logger, fog_of_war, standing_orders, starmap]
 import ../../engine/order_types
 import ../../common/types/[core, planets]
 import ./controller_types
+import ./config  # RBA configuration for colonization parameters
 
 export StandingOrderType, StandingOrder, StandingOrderParams
 
@@ -563,43 +564,107 @@ proc findBestDrydockForRepair*(filtered: FilteredGameState, fleetLocation: Syste
   return result
 
 proc findNearestUnclaimedSystem*(filtered: FilteredGameState,
+                                 fleet: Fleet,
                                  fromSystem: SystemId,
                                  maxRange: int,
                                  preferredClasses: seq[PlanetClass]): Option[SystemId] =
-  ## Find nearest unclaimed system suitable for colonization
-  ## Prefers systems matching preferred planet classes
+  ## Find best unclaimed system for colonization using Act-aware scoring with proximity bonuses
+  ##
+  ## **Frontier Expansion Algorithm (Act 1-2):**
+  ## Prioritizes DISTANCE over planet quality to enable rapid expansion
+  ## Prevents ETACs from traveling deep into enemy territory chasing high-quality planets
+  ##
+  ## **Quality Consolidation (Act 3-4):**
+  ## Prioritizes planet quality over distance for strategic positioning
 
   # Get list of colonized systems (own colonies only - enemy colonies should not block targeting)
   var colonizedSystems = initHashSet[SystemId]()
   for colony in filtered.ownColonies:
     colonizedSystems.incl(colony.systemId)
 
+  # Calculate current Act for logging
+  let currentAct = if filtered.turn <= 7: 1
+                   elif filtered.turn <= 14: 2
+                   elif filtered.turn <= 21: 3
+                   else: 4
+
   logDebug(LogCategory.lcAI,
-           &"findNearestUnclaimedSystem: fromSystem={fromSystem}, " &
+           &"findNearestUnclaimedSystem (Act {currentAct}): fromSystem={fromSystem}, " &
            &"visibleSystems={filtered.visibleSystems.len}, " &
            &"ownColonies={filtered.ownColonies.len}, maxRange={maxRange}")
 
-  # Search visible systems for unclaimed ones
-  var candidates: seq[SystemId] = @[]
+  # Search visible systems and score using shared frontier expansion algorithm
+  type ScoredCandidate = tuple[systemId: SystemId, score: float, distance: int, planetClass: PlanetClass]
+  var scoredCandidates: seq[ScoredCandidate] = @[]
 
   for systemId, visSystem in filtered.visibleSystems:
     if systemId notin colonizedSystems:
-      # Check if system has habitable planet (would need planet data to verify)
-      # For now, any unclaimed visible system is a candidate
-      candidates.add(systemId)
+      # Calculate jump lane pathfinding distance (reflects actual travel cost)
+      let pathResult = filtered.starMap.findPath(fromSystem, systemId, fleet)
+      if not pathResult.found:
+        continue  # System unreachable via jump lanes
+
+      let distance = pathResult.path.len - 1  # Number of jumps
+
+      if distance > maxRange:
+        continue  # Too far
+
+      # Get planet class from star map
+      let planetClass = filtered.starMap.systems[systemId].planetClass
+
+      # Calculate proximity bonus (favor systems near already-owned colonies)
+      var proximityBonus = 0.0
+
+      # Find distance to nearest owned colony
+      var nearestColonyDistance = int.high
+      for ownedSystemId in colonizedSystems:
+        let pathToColony = filtered.starMap.findPath(systemId, ownedSystemId, fleet)
+        if pathToColony.found:
+          let distToColony = pathToColony.path.len - 1
+          if distToColony < nearestColonyDistance:
+            nearestColonyDistance = distToColony
+
+            # Early termination: adjacent to owned colony is optimal
+            if nearestColonyDistance == 1:
+              break
+
+      # Apply linear decay proximity bonus
+      if nearestColonyDistance <= globalRBAConfig.colonization.proximity_max_distance:
+        proximityBonus = float(globalRBAConfig.colonization.proximity_max_distance - nearestColonyDistance + 1) *
+                         globalRBAConfig.colonization.proximity_bonus_per_jump
+
+      # Use shared scoring function with proximity bonus and config weights
+      let score = standing_orders.scoreColonizationCandidate(
+        filtered.turn,
+        distance,
+        planetClass,
+        proximityBonus,
+        globalRBAConfig.colonization.proximity_weight_act1,
+        globalRBAConfig.colonization.proximity_weight_act4
+      )
+      scoredCandidates.add((systemId: systemId, score: score, distance: distance, planetClass: planetClass))
 
   logDebug(LogCategory.lcAI,
-           &"  Found {candidates.len} candidate systems for colonization")
+           &"  Found {scoredCandidates.len} candidate systems for colonization")
 
-  # Return first candidate (tactical module will prioritize based on value)
-  if candidates.len > 0:
+  if scoredCandidates.len == 0:
     logDebug(LogCategory.lcAI,
-             &"  Selected target: {candidates[0]}")
-    return some(candidates[0])
+             &"  No suitable colonization targets found")
+    return none(SystemId)
 
-  logDebug(LogCategory.lcAI,
-           &"  No suitable colonization targets found")
-  return none(SystemId)
+  # Sort by score (highest first)
+  scoredCandidates.sort(proc(a, b: ScoredCandidate): int =
+    if a.score > b.score: -1
+    elif a.score < b.score: 1
+    else: 0
+  )
+
+  let best = scoredCandidates[0]
+  logInfo(LogCategory.lcAI,
+          &"  AutoColonize target (Act {currentAct}): System {best.systemId} " &
+          &"({best.planetClass}, {best.distance} jumps, score={best.score:.1f})")
+
+  return some(best.systemId)
 
 proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
                                        fleet: Fleet,
@@ -632,6 +697,7 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
     # Find nearest unclaimed system
     let targetSystem = findNearestUnclaimedSystem(
       filtered,
+      fleet,
       fleet.location,
       standingOrder.params.colonizeMaxRange,
       standingOrder.params.preferredPlanetClasses

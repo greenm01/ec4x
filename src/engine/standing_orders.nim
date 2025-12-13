@@ -247,18 +247,79 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
   return ActivationResult(success: true,
                         action: "Hold position within defensive range")
 
+proc scoreColonizationCandidate*(
+  turn: int,
+  distance: int,
+  planetClass: PlanetClass,
+  proximityBonus: float = 0.0,
+  proximityWeightAct1: float = 0.3,
+  proximityWeightAct4: float = 0.9
+): float =
+  ## Calculate colonization score using Act-aware frontier expansion algorithm
+  ##
+  ## **Frontier Expansion (Act 1-2):** Distance 10x more important than quality
+  ## **Quality Consolidation (Act 3-4):** Quality 3x more important than distance
+  ## **Proximity Bonus:** Systems near owned colonies get weighted bonus (Act-aware)
+  ##
+  ## **Exported for reuse across engine and AI modules (DRY principle)**
+
+  # Calculate current Act from turn number (7 turns per Act)
+  let currentAct = if turn <= 7: 1
+                   elif turn <= 14: 2
+                   elif turn <= 21: 3
+                   else: 4
+
+  # Calculate planet quality score (0-100)
+  let qualityScore = case planetClass
+    of PlanetClass.Eden: 100.0
+    of PlanetClass.Lush: 80.0
+    of PlanetClass.Benign: 60.0
+    of PlanetClass.Harsh: 40.0
+    of PlanetClass.Hostile: 30.0
+    of PlanetClass.Desolate: 20.0
+    of PlanetClass.Extreme: 10.0
+
+  # Calculate distance score (closer = better)
+  # Exponential penalty for distance to strongly discourage distant systems
+  let distanceScore = 100.0 / (1.0 + float(distance) * float(distance))
+
+  # Calculate Act-aware proximity weight
+  let proximityWeight = if currentAct <= 2:
+    proximityWeightAct1  # Low weight in Act 1-2 (frontier expansion)
+  else:
+    proximityWeightAct4  # High weight in Act 3-4 (consolidation)
+
+  # Act-aware weighting with proximity bonus
+  result = if currentAct <= 2:
+    # Act 1-2: FRONTIER EXPANSION (Distance 10x more important than quality)
+    (distanceScore * 10.0) + (qualityScore * 1.0) + (proximityBonus * proximityWeight)
+  else:
+    # Act 3-4: QUALITY CONSOLIDATION (Quality 3x more important than distance)
+    (qualityScore * 3.0) + (distanceScore * 1.0) + (proximityBonus * proximityWeight)
+
 proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation: SystemId,
                                 maxRange: int,
                                 preferredClasses: seq[PlanetClass]): Option[SystemId] =
-  ## Find best uncolonized system for colonization
-  ## Returns nearest system with preferred planet class
-  ## Distance calculated via jump lanes (pathfinding), not hex distance
+  ## Find best uncolonized system for colonization using Act-aware scoring
+  ##
+  ## **Frontier Expansion Algorithm (Act 1-2):**
+  ## Prioritizes DISTANCE over planet quality to enable rapid expansion
+  ## Prevents ETACs from traveling deep into enemy territory chasing high-quality planets
+  ##
+  ## **Quality Consolidation (Act 3-4):**
+  ## Prioritizes planet quality over distance for strategic positioning
   ##
   ## **Fog-of-War Compliance:**
   ## Only considers systems the house knows about (uses getKnownSystems helper)
   var candidates: seq[(SystemId, int, PlanetClass)] = @[]
 
   let houseId = fleet.owner
+
+  # Calculate current Act from turn number (7 turns per Act)
+  let currentAct = if state.turn <= 7: 1
+                   elif state.turn <= 14: 2
+                   elif state.turn <= 21: 3
+                   else: 4
 
   # Get known systems (fog-of-war compliant)
   let knownSystems = getKnownSystems(state, houseId)
@@ -298,22 +359,27 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
   if candidates.len == 0:
     return none(SystemId)
 
-  # Sort candidates: preferred classes first, then by distance
-  candidates.sort(proc(a, b: (SystemId, int, PlanetClass)): int =
-    # Prioritize preferred planet classes
-    let aPreferred = a[2] in preferredClasses
-    let bPreferred = b[2] in preferredClasses
+  # Score candidates using shared frontier expansion algorithm
+  type ScoredCandidate = tuple[systemId: SystemId, score: float, distance: int, planetClass: PlanetClass]
+  var scoredCandidates: seq[ScoredCandidate] = @[]
 
-    if aPreferred and not bPreferred:
-      return -1
-    elif bPreferred and not aPreferred:
-      return 1
-    else:
-      # Same preference level - sort by distance
-      return cmp(a[1], b[1])
+  for (systemId, distance, planetClass) in candidates:
+    let score = scoreColonizationCandidate(state.turn, distance, planetClass)
+    scoredCandidates.add((systemId, score, distance, planetClass))
+
+  # Sort by score (highest first)
+  scoredCandidates.sort(proc(a, b: ScoredCandidate): int =
+    if a.score > b.score: -1
+    elif a.score < b.score: 1
+    else: 0
   )
 
-  return some(candidates[0][0])
+  let best = scoredCandidates[0]
+  logDebug(LogCategory.lcOrders,
+           &"AutoColonize target selection (Act {currentAct}): " &
+           &"System {best.systemId} ({best.planetClass}, {best.distance} jumps, score={best.score:.1f})")
+
+  return some(best.systemId)
 
 proc activateAutoColonize(state: var GameState, fleetId: FleetId,
                         params: StandingOrderParams): ActivationResult =

@@ -14,13 +14,13 @@ There are three classes of jump lanes that determine which ship types can traver
 
 - **Major lanes** (50% of all lanes): Allow all ship types including crippled ships, ETACs, and troop transports
 
-- **Minor lanes** (35% of all lanes): Block crippled ships only; all other ships may pass
+- **Minor lanes** (35% of all lanes): Allow all ship types
 
-- **Restricted lanes** (15% of all lanes): Block crippled ships, ETACs, and troop transports
+- **Restricted lanes** (15% of all lanes): Block crippled ships only
   
   <!-- LANE_DISTRIBUTION_END -->
 
-This distribution ensures 85% of lanes allow colonization ships through, reducing strategic bottlenecks while maintaining tactical complexity. Movement across the lanes is explained in [Section 6.1](06-operations.md#61-jump-lanes).
+This distribution affects pathfinding costs (Major=1, Minor=2, Restricted=3) while allowing all ship types to traverse all lanes (except crippled ships on restricted lanes). Movement across the lanes is explained in [Section 6.1](06-operations.md#61-jump-lanes).
 
 **Hub Connectivity**
 

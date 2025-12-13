@@ -504,3 +504,14 @@ invasion_priority_boost = 0.2           # Priority boost for invasion goals
 # Phase 3: Campaign Coordination
 disable_rba_campaigns_with_goap = false # Set true to disable Phase 2 RBA campaigns when GOAP handles invasions
 
+# ==============================================================================
+# COLONIZATION PARAMETERS
+# ==============================================================================
+# Proximity-weighted colonization targeting for circular expansion patterns
+
+[colonization]
+proximity_max_distance = 3        # Max jumps for proximity bonus
+proximity_bonus_per_jump = 25.0   # Bonus points per jump closer to owned colony
+proximity_weight_act1 = 0.3       # Proximity weight in Act 1-2 (low - frontier expansion)
+proximity_weight_act4 = 0.9       # Proximity weight in Act 3-4 (high - consolidation)
+

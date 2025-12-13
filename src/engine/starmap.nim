@@ -380,16 +380,19 @@ proc validateHomeworldLanes*(starMap: StarMap): seq[string] =
   return errors
 
 proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool =
-  ## Check if fleet can traverse lane type per game rules
+  ## Check if fleet can traverse a specific lane type
+  ##
+  ## Lane Restrictions (simplified):
+  ## - Major lanes: Allow all ships
+  ## - Minor lanes: Allow all ships (no crippled restriction)
+  ## - Restricted lanes: Block crippled ships only
   case laneType:
   of LaneType.Major, LaneType.Minor:
-    return true
+    return true  # All ships can traverse major and minor lanes
   of LaneType.Restricted:
-    # Restricted lanes: no crippled squadrons or spacelift squadrons
+    # Restricted lanes block crippled ships only
     for squadron in fleet.squadrons:
       if squadron.flagship.isCrippled:
-        return false
-      if squadron.flagship.shipClass in [ShipClass.TroopTransport, ShipClass.ETAC]:
         return false
     return true
 
