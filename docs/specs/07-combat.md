@@ -177,17 +177,14 @@ Raiders can cloak, becoming invisible until detected. Detection determines initi
 - See 02-assets.md Section 2.4.2 for full ELI mesh network calculation
 - Starbases get +2 ELI bonus for detection
 
-**Ambush Advantage (Space Combat Only):**
-- Undetected Raiders strike first
-- **+4 Combat Effectiveness Rating (CER)** bonus
-- Attacks before enemy capital squadrons can respond
-- Ambush advantage ONLY in space combat
+**Ambush Advantage:**
+If a Raider fleet remains undetected at the start of a combat phase (both Space and Orbital), it gains an ambush advantage for that engagement:
+- **+4 Combat Effectiveness Rating (CER)** bonus in the first round of combat.
+- This represents a devastating surprise attack before the enemy can effectively respond.
 
-**Detection Effects (All Combat):**
-- Detected Raiders lose ambush bonus
-- Detection shared across entire task force
-- Once detected in space combat, remain detected in orbital combat
-- Newly encountered Raiders in orbital combat get no ambush bonus (orbital defenses detect approaching threats)
+**Detection Effects**:
+- A detected Raider fleet loses its ambush bonus for that combat phase and fights as a normal fleet.
+- A new detection check is made at the beginning of each combat theater (Space and Orbital). A fleet could be detected in Space Combat but successfully remain hidden for Orbital Combat.
 
 **Strategic Implications:**
 - Scout fleets with ELI detect cloaked Raiders, negating ambush
