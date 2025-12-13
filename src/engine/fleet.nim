@@ -177,6 +177,14 @@ proc hasScouts*(f: Fleet): bool =
       return true
   return false
 
+proc countScoutSquadrons*(f: Fleet): int =
+  ## Count number of scout squadrons in fleet
+  ## Used for Scout-on-Scout detection formula
+  result = 0
+  for sq in f.squadrons:
+    if sq.flagship.shipClass == ShipClass.Scout:
+      result += 1
+
 proc hasCombatSquadrons*(f: Fleet): bool =
   ## Check if fleet has any non-scout combat squadrons
   for sq in f.squadrons:

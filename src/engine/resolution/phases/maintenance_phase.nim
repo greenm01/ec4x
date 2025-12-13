@@ -46,6 +46,8 @@ import ../diplomatic_resolution
 import ../event_factory/init as event_factory
 import ../../prestige
 import ../../standing_orders  # For standing order activation
+import ../../fleet  # For scout detection helpers
+import ../../intelligence/[types as intel_types, generator]  # For intel generation
 
 # Forward declaration for helper procs
 proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent])
@@ -412,6 +414,103 @@ proc resolveMaintenancePhase*(state: var GameState,
 
   logInfo(LogCategory.lcOrders,
     &"[MAINTENANCE STEP 1d] Completed ({arrivedFleetCount} fleets arrived at targets)")
+
+  # ===================================================================
+  # STEP 1e: SCOUT-ON-SCOUT DETECTION (RECONNAISSANCE)
+  # ===================================================================
+  # When scout fleets from different houses are at same location,
+  # each side makes independent ELI-based detection roll
+  # Detection formula: 1d20 vs (15 - observerScoutCount + targetELI)
+  # Asymmetric detection possible (A detects B, but B doesn't detect A)
+  # No combat triggered - scouts never fight each other
+  # Intelligence Quality: Visual (only observable data)
+
+  logDebug(LogCategory.lcOrders,
+    "[MAINTENANCE STEP 1e] Checking for scout-on-scout encounters...")
+
+  # Group fleets by location for efficient detection checks
+  var fleetsByLocation = initTable[SystemId, seq[FleetId]]()
+  for fleetId, fleet in state.fleets:
+    if fleet.location notin fleetsByLocation:
+      fleetsByLocation[fleet.location] = @[]
+    fleetsByLocation[fleet.location].add(fleetId)
+
+  var scoutDetectionCount = 0
+
+  # Check each location for scout encounters
+  for systemId, fleetIds in fleetsByLocation:
+    # Need at least 2 fleets for detection
+    if fleetIds.len < 2:
+      continue
+
+    # Filter for scout-only fleets
+    var scoutFleets: seq[tuple[id: FleetId, owner: HouseId]] = @[]
+    for fleetId in fleetIds:
+      let fleet = state.fleets[fleetId]
+      if fleet.isScoutOnly():
+        scoutFleets.add((id: fleetId, owner: fleet.owner))
+
+    # Need at least 2 scout fleets for detection
+    if scoutFleets.len < 2:
+      continue
+
+    # Check each pair of scout fleets from different houses
+    for i in 0..<scoutFleets.len:
+      for j in (i+1)..<scoutFleets.len:
+        let observer = scoutFleets[i]
+        let target = scoutFleets[j]
+
+        # Skip if same house (can't detect own scouts)
+        if observer.owner == target.owner:
+          continue
+
+        let observerFleet = state.fleets[observer.id]
+        let targetFleet = state.fleets[target.id]
+
+        # Count scout squadrons for detection formula
+        let observerScoutCount = observerFleet.countScoutSquadrons()
+        let targetELI = state.houses[target.owner].techTree.levels.electronicIntelligence
+
+        # Detection roll: 1d20 vs (15 - observerScoutCount + targetELI)
+        let detectionRoll = rng.rand(1..20)
+        let detectionThreshold = 15 - observerScoutCount + targetELI
+
+        logDebug(LogCategory.lcOrders,
+          &"  {observer.owner} scouts ({observerScoutCount} sq) roll {detectionRoll} " &
+          &"vs {detectionThreshold} to detect {target.owner} scouts at {systemId}")
+
+        # Check if detection succeeds
+        if detectionRoll >= detectionThreshold:
+          # Generate ScoutDetected event
+          events.add(event_factory.scoutDetected(
+            owner = target.owner,  # The scout's owner
+            detector = observer.owner,  # The house that detected
+            systemId = systemId,
+            scoutType = "Fleet"
+          ))
+
+          # Generate Visual quality intel report
+          let intelReport = generator.generateSystemIntelReport(
+            state,
+            observer.owner,  # Scout owner (observer)
+            systemId,
+            intel_types.IntelQuality.Visual  # Only observable data
+          )
+
+          # Add intel report to observer's database
+          if intelReport.isSome:
+            state.houses[observer.owner].intelligence.addSystemReport(
+              intelReport.get()
+            )
+
+          scoutDetectionCount += 1
+
+          logDebug(LogCategory.lcOrders,
+            &"  {observer.owner} detected {target.owner} scouts at {systemId} " &
+            &"(roll: {detectionRoll} >= {detectionThreshold})")
+
+  logInfo(LogCategory.lcOrders,
+    &"[MAINTENANCE STEP 1e] Completed ({scoutDetectionCount} scout detections)")
 
   # ===================================================================
   # STEP 2: CONSTRUCTION & REPAIR ADVANCEMENT

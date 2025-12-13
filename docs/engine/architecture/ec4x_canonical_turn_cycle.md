@@ -463,6 +463,22 @@ Players can immediately interact with newly-commissioned ships and colonies.
 - Result: Conflict/Income phases use `arrivedFleets` to determine which orders execute
 - **Critical:** This is THE mechanism that determines when orders execute
 
+**1e. Scout-on-Scout Detection** (reconnaissance encounters)
+- Group all fleets by location (systemId)
+- For each location with 2+ fleets:
+  - Filter for scout-only fleets from different houses
+  - For each pair of scout fleets from different houses:
+    - Each side makes independent ELI-based detection roll
+    - Detection formula: `1d20 vs (15 - observerScoutCount + targetELI)`
+    - If detection succeeds:
+      - Generate `ScoutDetected` event
+      - Generate Visual quality `SystemIntelReport`
+      - Add intel report to observer's intelligence database
+- **Asymmetric detection:** Fleet A may detect Fleet B, but B may not detect A
+- **No combat:** Scouts never fight each other (intelligence gathering only)
+- **Intelligence Quality:** Visual (only observable data, not Perfect)
+- Result: Houses gain intel on enemy scout presence at same location
+
 **2. Construction and Repair Advancement** (parallel processing)
 
 **2a. Construction Queue Advancement:**
