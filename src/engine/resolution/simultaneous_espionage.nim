@@ -4,6 +4,7 @@
 ## to prevent first-mover advantages in intelligence operations.
 
 import std/[tables, options, random, strformat, algorithm]
+import ../intelligence/spy_resolution
 import simultaneous_types
 import simultaneous_resolver
 import ../gamestate
@@ -85,46 +86,52 @@ proc detectEspionageConflicts*(
 proc resolveEspionageConflict*(
   state: var GameState,
   conflict: EspionageConflict,
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
 ): seq[simultaneous_types.EspionageResult] =
-  ## Resolve espionage conflict using prestige-based priority
-  ## Dishonored houses go to end of list, if both dishonored then random
+  ## Resolve espionage conflict by performing detection checks for each intent.
   result = @[]
 
   if conflict.intents.len == 0:
     return
 
-  # Sort by: 1) prestige (highest first), 2) random tiebreaker
-  var sorted = conflict.intents
-  let seed = tiebreakerSeed(state.turn, conflict.targetSystem)
-  var rng = initRand(seed)
+  for intent in conflict.intents:
+    let detected = spy_resolution.resolveSpyScoutDetection(
+      state,
+      intent.houseId,
+      intent.fleetId,
+      intent.targetSystem,
+      rng
+    )
 
-  sorted.sort do (a, b: EspionageIntent) -> int:
-    if a.espionageStrength != b.espionageStrength:
-      return cmp(b.espionageStrength, a.espionageStrength)  # Descending
+    var outcome: ResolutionOutcome
+    if detected:
+      outcome = ResolutionOutcome.Failure
+      if intent.targetSystem in state.colonies:
+        let defender = state.colonies[intent.targetSystem].owner
+        events.add(intelligence_events.scoutDetected(
+          intent.houseId,
+          defender,
+          intent.targetSystem,
+          "Spy Scout"
+        ))
     else:
-      return rng.rand(1) * 2 - 1  # Random: -1 or 1
+      outcome = ResolutionOutcome.Success
 
-  let first = sorted[0]
-  logDebug(LogCategory.lcCombat,
-           &"{conflict.intents.len} houses conducting espionage at {conflict.targetSystem}, priority: {first.houseId} (prestige: {first.espionageStrength})")
-
-  # All espionage attempts succeed, but in priority order
-  # (Actual espionage resolution happens in main loop with proper detection rolls)
-  for intent in sorted:
     result.add(simultaneous_types.EspionageResult(
       houseId: intent.houseId,
       fleetId: intent.fleetId,
       originalTarget: intent.targetSystem,
-      outcome: ResolutionOutcome.Success,
-      actualTarget: some(intent.targetSystem),
-      prestigeAwarded: 0  # Prestige handled by espionage engine
+      outcome: outcome,
+      actualTarget: if outcome == ResolutionOutcome.Success: some(intent.targetSystem) else: none(SystemId),
+      prestigeAwarded: 0  # Prestige handled elsewhere
     ))
 
 proc resolveEspionage*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[res_types.GameEvent]
 ): seq[simultaneous_types.EspionageResult] =
   ## Main entry point: Resolve all espionage orders simultaneously
   result = @[]
@@ -136,7 +143,7 @@ proc resolveEspionage*(
   let conflicts = detectEspionageConflicts(intents)
 
   for conflict in conflicts:
-    let conflictResults = resolveEspionageConflict(state, conflict, rng)
+    let conflictResults = resolveEspionageConflict(state, conflict, rng, events)
     result.add(conflictResults)
 
 proc wasEspionageHandled*(
@@ -377,7 +384,14 @@ proc processScoutIntelligence*(
   ## Also creates detailed narrative events for espionage reports
 
   for result in results:
-    # Only process successful espionage
+    # Consume scout fleet, regardless of outcome
+    if result.fleetId in state.fleets:
+      state.fleets.del(result.fleetId)
+      if result.fleetId in state.fleetOrders:
+        state.fleetOrders.del(result.fleetId)
+      logInfo(LogCategory.lcOrders, &"Spy Scout fleet {result.fleetId} consumed on mission.")
+
+    # Only process successful espionage for intelligence gathering
     if result.outcome != ResolutionOutcome.Success:
       continue
 
