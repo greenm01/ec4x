@@ -163,19 +163,15 @@ Fleets combine into **task forces** during combat—unified battle groups that c
 
 ### 7.2.4 Cloaking and Detection
 
-Raiders can cloak, becoming invisible until detected. Detection determines initiative and targeting.
+Raiders are specialized ships that can cloak an entire fleet, making it invisible to enemy sensors. An undetected fleet gains a powerful **ambush advantage** in combat.
 
-**Cloaking Mechanics:**
-- **Raiders** can activate cloaking (stealth mode) and their fleets remain invisible until detected
-- **Detection range**: Limited to system location.
-- **Detection sources**: ELI-equipped scouts, starbases (orbital combat only)
+**Detection Mechanics**:
+When a fleet containing one or more Raiders engages in combat (both Space and Orbital), a detection check is made at the start of that combat phase. It is an opposed roll pitting the attacker's **Cloaking (CLK)** technology against the defender's **Electronic Intelligence (ELI)** technology.
 
-**Detection is Probabilistic:**
-- Detection is NOT automatic—it's a dice roll based on tech levels
-- ELI (Electronic Intelligence) tech level vs CLK (Cloaking) tech level
-- Multiple scouts improve detection through mesh network bonuses
-- See 02-assets.md Section 2.4.2 for full ELI mesh network calculation
-- Starbases get +2 ELI bonus for detection
+- **Attacker Rolls**: `1d10 + CLK Level`
+- **Defender Rolls**: `1d10 + ELI Level + Starbase Bonus`
+
+See [Section 2.4.3](02-assets.md#243-raiders) for the full mechanic.
 
 **Ambush Advantage:**
 If a Raider fleet remains undetected at the start of a combat phase (both Space and Orbital), it gains an ambush advantage for that engagement:
@@ -185,11 +181,6 @@ If a Raider fleet remains undetected at the start of a combat phase (both Space 
 **Detection Effects**:
 - A detected Raider fleet loses its ambush bonus for that combat phase and fights as a normal fleet.
 - A new detection check is made at the beginning of each combat theater (Space and Orbital). A fleet could be detected in Space Combat but successfully remain hidden for Orbital Combat.
-
-**Strategic Implications:**
-- Scout fleets with ELI detect cloaked Raiders, negating ambush
-- Raider fleets without ELI opposition devastate unprepared enemies
-- Starbases provide detection in orbital combat (can't be surprised at home)
 
 ---
 
