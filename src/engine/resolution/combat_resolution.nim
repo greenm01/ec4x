@@ -351,12 +351,6 @@ proc executeCombat(
   # Generate deterministic seed
   let deterministicSeed = hash((state.turn, systemId, combatPhase)).int64
 
-  # Determine if ambush bonuses and starbase combat apply
-  # Ambush (+4 CER) only in space combat, NOT orbital combat
-  # Starbases can fight only in orbital combat, NOT space combat (but always detect)
-  let allowAmbush = (combatPhase == "Space Combat")
-  let allowStarbaseCombat = (combatPhase == "Orbital Combat" or includeStarbases)
-
   # Build diplomatic relations table for combat logic
   var diplomaticRelations = initTable[tuple[a, b: HouseId], dip_types.DiplomaticState]()
   let houseIds = toSeq(taskForces.keys)
@@ -368,6 +362,62 @@ proc executeCombat(
       let stateBtoA = dip_engine.getDiplomaticState(state.houses[houseB].diplomaticRelations, houseA)
       diplomaticRelations[(houseA, houseB)] = stateAtoB
       diplomaticRelations[(houseB, houseA)] = stateBtoA
+
+  # Raider Detection Logic per assets.md:2.4.3
+  var raiderTFs: seq[int]
+  for i, tf in allTaskForces:
+    var hasRaiders = false
+    for sq in tf.squadrons:
+      if sq.squadron.flagship.shipClass == ShipClass.Raider:
+        hasRaiders = true
+        break
+    if hasRaiders:
+      raiderTFs.add(i)
+
+  var detectionRng = initRand(deterministicSeed)
+  var newlyDetectedHouses: seq[HouseId] = @[]
+
+  for i in raiderTFs:
+    var attackerTF = allTaskForces[i]
+    if attackerTF.house in preDetectedHouses:
+      attackerTF.isCloaked = false
+      allTaskForces[i] = attackerTF
+      continue
+
+    attackerTF.isCloaked = true
+    var isDetected = false
+    let attackerHouse = state.houses[attackerTF.house]
+    let attackerCLK = attackerHouse.techTree.levels.cloakingTech
+    let attackerRoll = detectionRng.rand(1..10) + attackerCLK
+
+    for j, defenderTF in allTaskForces:
+      if i == j: continue
+      let relation = diplomaticRelations.getOrDefault((attackerTF.house, defenderTF.house), dip_types.DiplomaticState.Neutral)
+      if relation == dip_types.DiplomaticState.Neutral: continue
+
+      let defenderHouse = state.houses[defenderTF.house]
+      let defenderELI = defenderHouse.techTree.levels.electronicIntelligence
+      var starbaseBonus = 0
+      if systemOwner.isSome and systemOwner.get() == defenderTF.house:
+        if systemId in state.colonies and state.colonies[systemId].starbases.len > 0:
+          starbaseBonus = globalFacilitiesConfig.starbase.economic_lift_bonus
+      let defenderRoll = detectionRng.rand(1..10) + defenderELI + starbaseBonus
+
+      logInfo(LogCategory.lcCombat, &"Raider Detection Check: {attackerTF.house} (CLK {attackerCLK}, roll {attackerRoll}) vs {defenderTF.house} (ELI {defenderELI}, bonus {starbaseBonus}, roll {defenderRoll})")
+      if defenderRoll >= attackerRoll:
+        isDetected = true
+        logInfo(LogCategory.lcCombat, &"Raider fleet from {attackerTF.house} DETECTED by {defenderTF.house}.")
+        break
+
+    if isDetected:
+      attackerTF.isCloaked = false
+      newlyDetectedHouses.add(attackerTF.house)
+    else:
+      logInfo(LogCategory.lcCombat, &"Raider fleet from {attackerTF.house} remains UNDETECTED.")
+    allTaskForces[i] = attackerTF
+
+  let allowAmbush = (combatPhase == "Space Combat" or combatPhase == "Orbital Combat")
+  let allowStarbaseCombat = (combatPhase == "Orbital Combat" or includeStarbases)
 
   var battleContext = BattleContext(
     systemId: systemId,
@@ -384,14 +434,7 @@ proc executeCombat(
   # Execute battle
   let outcome = combat_engine.resolveCombat(battleContext)
 
-  # Track detected houses (any that were cloaked but are now detected)
-  var detectedHouses: seq[HouseId] = @[]
-  for tf in outcome.survivors:
-    # If house had Raiders but is no longer cloaked, they were detected
-    if not tf.isCloaked:
-      detectedHouses.add(tf.house)
-
-  return (outcome, fleetsInCombat, detectedHouses)
+  return (outcome, fleetsInCombat, newlyDetectedHouses)
 
 proc processCombatEvents(
   state: var GameState,
