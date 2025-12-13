@@ -325,7 +325,6 @@ type
     fleets*: Table[FleetId, Fleet]
     fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
     activeSpyMissions*: Table[FleetId, ActiveSpyMission]  # Active spy missions (fleet-based system)
-    queuedCombatOrders*: seq[FleetOrder]  # Combat orders queued for next turn's Conflict Phase
     arrivedFleets*: Table[FleetId, SystemId]  # Fleets that arrived at order targets (checked in Conflict/Income phase)
     standingOrders*: Table[FleetId, StandingOrder]  # Standing orders (execute when no explicit order)
     turnDeadline*: int64          # Unix timestamp

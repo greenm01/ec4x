@@ -242,9 +242,6 @@ proc resolveCommandPhase*(state: var GameState,
           logDebug(LogCategory.lcResearch,
             &"{houseId} allocated {pp} PP → {earnedRP.technology[field]} TRP ({field}) (total: {totalTRP} TRP)")
 
-  # Clear legacy queue (no longer used, kept for compatibility)
-  state.queuedCombatOrders = @[]
-
   var ordersStored = 0
   var adminExecuted = 0
 

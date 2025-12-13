@@ -154,7 +154,6 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     fleets: initTable[FleetId, Fleet](),
     fleetOrders: initTable[FleetId, FleetOrder](),
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
-    queuedCombatOrders: @[],
     arrivedFleets: initTable[FleetId, SystemId](),
     standingOrders: initTable[FleetId, StandingOrder](),
     starMap: starMap,
