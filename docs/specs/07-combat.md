@@ -300,9 +300,9 @@ Carriers and fighters form a symbiotic combat relationship with unique vulnerabi
 - No retreat, no repairs—fighters are expendable
 - Replace losses through colony production (requires capacity)
 
-**Phase 3: Capital Squadrons (Main Engagement)**
+**Phase 3: Capital & Escort Squadrons (Main Engagement)**
 
-Battleship, Dreadnought, Cruiser, and Destroyer squadrons exchange fire. The decisive engagement phase.
+Capital and escort squadrons exchange fire. The decisive engagement phase.
 
 **Conditions:**
 - All capital squadrons and escorts engage
