@@ -292,18 +292,20 @@ On victory:
 
 ### Part A: Server Processing (BEFORE Player Window)
 
-**1. Military Unit Commissioning**
-- Commission military units completed in previous turn's Maintenance Phase
-- **Military units only:** Capital ships, spacelift ships (ETAC, TroopTransport)
+**1. Starport & Shipyard Commissioning**
+- Commission ships completed in previous turn's Maintenance Phase
+- **Ship units only:** Escort, Capital, Special Weapon, Spacelift (ETAC, TroopTransport) ships
 - Frees dock space at shipyards/spaceports
 - Auto-create squadrons, auto-assign to fleets
-- Auto-load 1 PTU onto ETAC ships
-- **Note:** Planetary defense (facilities, fighters, ground units) already commissioned in Maintenance Phase
+- Auto-load PTU onto ETAC ships
+- Fighters are an exception, as they are commissioned planetside.
+- **Note:** Planetary defense (facilities, fighters, ground units) and facilities are already commissioned in Maintenance Phase
 
 **2. Colony Automation**
 - Auto-load fighters to carriers (uses newly-freed hangar capacity)
 - Auto-submit repair orders (uses newly-freed dock capacity)
 - Auto-balance squadrons across fleets
+- Auto-load PTU onto ETAC ships
 
 **Result:** New game state exists (commissioned ships, repaired ships queued, new colonies)
 
