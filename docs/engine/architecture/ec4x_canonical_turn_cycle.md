@@ -64,15 +64,13 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 ### Execution Order
 
 **1. Space Combat** (simultaneous resolution)
-- Collect all space combat intents
-- Resolve conflicts (determine winners)
-- Execute combat engine for all battles
+- **1a. Raider Detection**: Perform detection checks for all engaging fleets containing Raiders to determine surprise/ambush advantage.
+- **1b. Combat Resolution**: Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses.
 - Generate GameEvents (ShipDestroyed, FleetEliminated)
 
 **2. Orbital Combat** (simultaneous resolution)
-- Collect all orbital bombardment intents
-- Resolve conflicts (determine priority order)
-- Execute orbital strikes sequentially
+- **2a. Raider Detection**: Perform a new round of detection checks for fleets engaging in orbital combat.
+- **2b. Combat Resolution**: Collect all orbital combat intents, resolve conflicts, and execute strikes sequentially, applying any first-strike bonuses.
 - Generate GameEvents (StarbaseDestroyed, DefensesWeakened)
 
 **3. Blockade Resolution** (simultaneous resolution)
@@ -96,38 +94,24 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 
 **6. Espionage Operations** (simultaneous resolution)
 
-**6a. Spy Scout Detection** (pre-combat preparation)
-- Execute BEFORE combat resolution (Step 1-2)
-- Check detection for all active spy scouts
-- Detected scouts excluded from combat participation
-- Generate GameEvents (SpyScoutDetected)
-- Implementation: Executes at beginning of Conflict Phase
+**6a. Fleet-Based Espionage**
+- `SpyPlanet`, `SpySystem`, and `HackStarbase` orders execute.
+- **Spy Scout Detection**: As part of mission execution, detection checks are performed against the target system's defenses (ELI + Starbase).
+- Update intelligence tables for successful missions.
+- Generate GameEvents (IntelGathered, SpyScoutDetected)
 
-**6b. Fleet-Based Espionage**
-- SpyPlanet: Gather colony economic/military intel
-- SpySystem: Map system defenses and fleet presence
-- HackStarbase: Infiltrate starbase systems
-- Update intelligence tables
-- Generate GameEvents (IntelGathered)
-
-**6c. Space Guild Espionage** (EBP-based covert ops)
+**6b. Space Guild Espionage** (EBP-based covert ops)
 - Tech Theft, Sabotage, Assassination, Cyber Attack
 - Economic Manipulation, Psyops, Counter-Intel
 - Intelligence Theft, Plant Disinformation, Recruit Agent
 - Generate GameEvents (EspionageSuccess, EspionageDetected)
 
-**6d. Starbase Surveillance** (continuous monitoring)
+**6c. Starbase Surveillance** (continuous monitoring)
 - Automatic intelligence gathering from friendly starbases
 - Monitors adjacent systems for fleet movements
 - Updates intelligence tables with starbase sensor data
 - No player action required (passive system)
 
-**7. Spy Scout Travel**
-- Move traveling spy scouts through jump lanes
-- Travel speed: 1-2 jumps per turn based on lane control
-- Detection checks occur at intermediate systems
-- Scouts may be detected and eliminated during travel
-- Generate GameEvents (SpyScoutMoved, SpyScoutDetected)
 
 ### Key Properties
 - All orders execute from previous turn's submission
