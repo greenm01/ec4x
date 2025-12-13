@@ -87,14 +87,15 @@ This document resolves 17 identified gaps in the phase order architecture and pr
 
 **Execution Order:**
 
-1. **Calculate Base Production**
+1. **Apply Blockades** (from Conflict Phase)
+   - Blockaded colonies: 50% production penalty
+   - Update economic output
+
+2. **Calculate Base Production**
    - For each colony: Base PP/RP from planet class and resource rating
    - Apply improvements (Infrastructure, Manufactories, Labs)
    - Apply espionage effects (economic sabotage, cyber attacks)
-
-2. **Apply Blockades** (from Conflict Phase)
-   - Blockaded colonies: 50% production penalty
-   - Update economic output
+   - **Note:** This calculation uses post-blockade GCO values.
 
 3. **Calculate Maintenance Costs**
    - Calculate maintenance for all surviving ships/facilities (after Conflict Phase)
