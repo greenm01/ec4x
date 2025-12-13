@@ -5,21 +5,21 @@
 ##
 ## **Canonical Execution Order:**
 ##
-## Step 1: Apply Blockades (reduce GCO for blockaded colonies)
-## Step 2: Calculate Base Production (colony GCO → gross PP)
-## Step 3: Calculate Maintenance Costs (deduct from gross production → net PP)
-## Step 4: Execute Salvage Orders (recover PP from combat wreckage)
-## Step 5: Capacity Enforcement (after IU loss from combat/blockades)
-##   5a: Capital Squadron Capacity (immediate enforcement, no grace period)
-##   5b: Total Squadron Limit (2-turn grace period before auto-disband)
-##   5c: Fighter Squadron Capacity (2-turn grace period before auto-disband)
-##   5d: Planet-Breaker Enforcement (immediate, colony count limit)
-## Step 6: Collect Resources (apply net PP/RP to house treasuries)
-## Step 7: Calculate Prestige (award/deduct for turn events)
+## Step 1: Calculate Base Production
+## Step 2: Apply Blockades (from Conflict Phase)
+## Step 3: Calculate Maintenance Costs
+## Step 4: Execute Salvage Orders
+## Step 5: Capacity Enforcement After IU Loss
+##   5a. Capital Squadron Capacity (No Grace Period)
+##   5b. Total Squadron Limit (2-Turn Grace Period)
+##   5c. Fighter Squadron Capacity (2-Turn Grace Period)
+##   5d. Planet-Breaker Enforcement (Immediate)
+## Step 6: Collect Resources
+## Step 7: Calculate Prestige
 ## Step 8: House Elimination & Victory Checks
-##   8a: House Elimination (standard elimination + defensive collapse)
-##   8b: Victory Conditions (prestige/elimination/turn limit)
-## Step 9: Advance Timers (espionage effects, diplomatic timers, grace periods)
+##   8a. House Elimination
+##   8b. Victory Conditions
+## Step 9: Advance Timers
 ##
 ## **Key Properties:**
 ## - Production calculated AFTER Conflict Phase damage (damaged facilities produce less)
@@ -61,19 +61,6 @@ proc resolveIncomePhase*(
   ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
   logDebug(LogCategory.lcGeneral, &"[Income Phase]")
 
-  # ===================================================================
-  # STEP 1: APPLY BLOCKADES (from Conflict Phase)
-  # ===================================================================
-  # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
-  # reduce GCO for that same turn's Income Phase calculation - there is no delay"
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Applying blockade penalties...")
-  blockade_engine.applyBlockades(state)
-
-  var blockadeCount = 0
-  for systemId, colony in state.colonies:
-    if colony.blockaded:
-      blockadeCount += 1
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Completed ({blockadeCount} colonies blockaded)")
 
   # Apply ongoing espionage effects to houses
   var activeEffects: seq[esp_types.OngoingEffect] = @[]
@@ -157,9 +144,9 @@ proc resolveIncomePhase*(
 
 
   # ===================================================================
-  # STEP 2: CALCULATE BASE PRODUCTION
+  # STEP 1: CALCULATE BASE PRODUCTION
   # ===================================================================
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Calculating base production...")
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Calculating base production...")
 
   # Convert colonies table to sequence for income phase
   # NOTE: No type conversion needed - gamestate.Colony has all economic fields
@@ -197,7 +184,7 @@ proc resolveIncomePhase*(
     baseGrowthRate = globalEconomyConfig.population.natural_growth_rate
   )
 
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Production calculation completed")
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Production calculation completed")
 
   # ===================================================================
   # STEP 3: CALCULATE AND DEDUCT MAINTENANCE UPKEEP
@@ -213,6 +200,20 @@ proc resolveIncomePhase*(
     logInfo(LogCategory.lcEconomy, &"  {houseId}: {upkeepCost} PP maintenance")
 
   logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Maintenance upkeep completed")
+
+  # ===================================================================
+  # STEP 2: APPLY BLOCKADES (from Conflict Phase)
+  # ===================================================================
+  # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
+  # reduce GCO for that same turn's Income Phase calculation - there is no delay"
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Applying blockade penalties...")
+  blockade_engine.applyBlockades(state)
+
+  var blockadeCount = 0
+  for systemId, colony in state.colonies:
+    if colony.blockaded:
+      blockadeCount += 1
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Completed ({blockadeCount} colonies blockaded)")
 
   # ===================================================================
   # STEP 4: EXECUTE SALVAGE ORDERS
@@ -491,146 +492,44 @@ proc resolveIncomePhase*(
     logInfo(LogCategory.lcGeneral,
       &"*** {victorName} has won the game! ***")
 
-  # Construction/repair advancement REMOVED from Income Phase
-  # Per FINAL_TURN_SEQUENCE.md:
-  # - Maintenance Phase: Construction queues advance, projects marked complete
-  # - Command Phase Part A: Completed projects commissioned
-  # This separation ensures proper 1-turn delay between completion and commissioning
+  # ===================================================================
+  # STEP 9: ADVANCE TIMERS
+  # ===================================================================
+  logInfo(LogCategory.lcOrders, "[INCOME STEP 9] Advancing timers...")
 
-  # Process research allocation
-  # Per economy.md:4.0: Players allocate PP to research each turn
-  # PP is converted to ERP/SRP/TRP based on current tech levels and GHO
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      let packet = orders[houseId]
-      let allocation = packet.researchAllocation
+  # Decrement ongoing espionage effect counters
+  var remainingEffects: seq[esp_types.OngoingEffect] = @[]
+  for effect in state.ongoingEffects:
+    var updatedEffect = effect
+    updatedEffect.turnsRemaining -= 1
 
-      # Calculate total PP cost for this research allocation
-      var totalResearchCost = allocation.economic + allocation.science
-      for field, pp in allocation.technology:
-        totalResearchCost += pp
+    if updatedEffect.turnsRemaining > 0:
+      remainingEffects.add(updatedEffect)
+      logDebug(LogCategory.lcGeneral,
+        &"Effect on {updatedEffect.targetHouse} expires in " &
+        &"{updatedEffect.turnsRemaining} turn(s)")
+    else:
+      logDebug(LogCategory.lcGeneral,
+        &"Effect on {updatedEffect.targetHouse} has expired")
 
-      # Scale down research allocation if treasury cannot afford it
-      # Research is planned at AI time but processed after Income Phase
-      # This prevents negative treasury from over-aggressive research budgets
-      var scaledAllocation = allocation
+  state.ongoingEffects = remainingEffects
 
-      # CRITICAL: If treasury is negative or zero, no research happens
-      if state.houses[houseId].treasury <= 0:
-        # Zero out all research - house is bankrupt
-        scaledAllocation.economic = 0
-        scaledAllocation.science = 0
-        scaledAllocation.technology = initTable[TechField, int]()
-        totalResearchCost = 0
+  # Expire pending diplomatic proposals
+  for proposal in state.pendingProposals.mitems:
+    if proposal.status == dip_proposals.ProposalStatus.Pending:
+      proposal.expiresIn -= 1
 
-        logWarn(LogCategory.lcResearch,
-          &"{houseId} research cancelled - negative treasury ({state.houses[houseId].treasury} PP)")
+      if proposal.expiresIn <= 0:
+        proposal.status = dip_proposals.ProposalStatus.Expired
+        logDebug(LogCategory.lcGeneral,
+          &"Proposal {proposal.id} expired ({proposal.proposer} → " &
+          &"{proposal.target})")
 
-      elif totalResearchCost > state.houses[houseId].treasury:
-        # Calculate scaling factor (how much we can actually afford)
-        let affordablePercent = float(state.houses[houseId].treasury) / float(totalResearchCost)
+  # Clean up old proposals (keep 10 turn history)
+  let currentTurn = state.turn
+  state.pendingProposals.keepIf(proc(p: dip_proposals.PendingProposal): bool =
+    p.status == dip_proposals.ProposalStatus.Pending or
+    (currentTurn - p.submittedTurn) < 10
+  )
 
-        # Scale all allocations proportionally
-        scaledAllocation.economic = int(float(allocation.economic) * affordablePercent)
-        scaledAllocation.science = int(float(allocation.science) * affordablePercent)
-
-        var scaledTech = initTable[TechField, int]()
-        for field, pp in allocation.technology:
-          scaledTech[field] = int(float(pp) * affordablePercent)
-        scaledAllocation.technology = scaledTech
-
-        # Recalculate actual cost
-        totalResearchCost = scaledAllocation.economic + scaledAllocation.science
-        for field, pp in scaledAllocation.technology:
-          totalResearchCost += pp
-
-        logWarn(LogCategory.lcResearch,
-          &"{houseId} research budget scaled down by {int(affordablePercent * 100)}% due to treasury constraints")
-
-      # Deduct research cost from treasury (CRITICAL FIX)
-      # Research competes with builds for treasury resources
-      if totalResearchCost > 0:
-        state.houses[houseId].treasury -= totalResearchCost
-        logInfo(LogCategory.lcResearch,
-          &"{houseId} spent {totalResearchCost} PP on research " &
-          &"(treasury: {state.houses[houseId].treasury + totalResearchCost} → {state.houses[houseId].treasury})")
-
-      # Calculate GHO for this house
-      var gho = 0
-      for colony in state.colonies.values:
-        if colony.owner == houseId:
-          gho += colony.production
-
-      # Get current tech levels
-      let currentSL = state.houses[houseId].techTree.levels.scienceLevel  # Science Level
-
-      # Convert PP allocations to RP (use SCALED allocation, not original)
-      let earnedRP = res_costs.allocateResearch(scaledAllocation, gho, currentSL)
-
-      # Accumulate RP
-      state.houses[houseId].techTree.accumulated.economic += earnedRP.economic
-      state.houses[houseId].techTree.accumulated.science += earnedRP.science
-
-      for field, trp in earnedRP.technology:
-        if field notin state.houses[houseId].techTree.accumulated.technology:
-          state.houses[houseId].techTree.accumulated.technology[field] = 0
-        state.houses[houseId].techTree.accumulated.technology[field] += trp
-
-      # Save earned RP to House state for diagnostics tracking
-      state.houses[houseId].lastTurnResearchERP = earnedRP.economic
-      state.houses[houseId].lastTurnResearchSRP = earnedRP.science
-      var totalTRP = 0
-      for field, trp in earnedRP.technology:
-        totalTRP += trp
-      state.houses[houseId].lastTurnResearchTRP = totalTRP
-
-      # Log allocations (use SCALED allocation for accurate reporting)
-      if scaledAllocation.economic > 0:
-        logDebug(LogCategory.lcResearch,
-          &"{houseId} allocated {scaledAllocation.economic} PP → {earnedRP.economic} ERP " &
-          &"(total: {state.houses[houseId].techTree.accumulated.economic} ERP)")
-      if scaledAllocation.science > 0:
-        logDebug(LogCategory.lcResearch,
-          &"{houseId} allocated {scaledAllocation.science} PP → {earnedRP.science} SRP " &
-          &"(total: {state.houses[houseId].techTree.accumulated.science} SRP)")
-      for field, pp in scaledAllocation.technology:
-        if pp > 0 and field in earnedRP.technology:
-          let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
-          logDebug(LogCategory.lcResearch,
-            &"{houseId} allocated {pp} PP → {earnedRP.technology[field]} TRP ({field}) (total: {totalTRP} TRP)")
-
-  # Tech advancement happens in resolveCommandPhase (not here)
-  # Per economy.md:4.1: Tech upgrades can be purchased every turn if RP is available
-
-  # Research breakthroughs (every 5 turns)
-  # Per economy.md:4.1.1: Breakthrough rolls provide bonus RP, cost reductions, or free levels
-  if advancement.isBreakthroughTurn(state.turn):
-    logDebug(LogCategory.lcResearch, &"[RESEARCH BREAKTHROUGHS] Turn {state.turn} - rolling for breakthroughs")
-    for houseId in state.houses.keys:
-      # Calculate total RP invested in last 5 turns
-      # NOTE: This is a simplified approximation - proper implementation would track historical RP
-      let investedRP = state.houses[houseId].lastTurnResearchERP +
-                       state.houses[houseId].lastTurnResearchSRP +
-                       state.houses[houseId].lastTurnResearchTRP
-
-      # Roll for breakthrough
-      var rng = initRand(hash(state.turn) xor hash(houseId))
-      let breakthroughOpt = advancement.rollBreakthrough(investedRP * 5, rng)  # Approximate 5-turn total
-
-      if breakthroughOpt.isSome:
-        let breakthrough = breakthroughOpt.get
-        logInfo(LogCategory.lcResearch, &"{houseId} BREAKTHROUGH: {breakthrough}")
-
-        # Apply breakthrough effects
-        let allocation = res_types.ResearchAllocation(
-          economic: state.houses[houseId].lastTurnResearchERP,
-          science: state.houses[houseId].lastTurnResearchSRP,
-          technology: initTable[TechField, int]()
-        )
-        let event = advancement.applyBreakthrough(
-          state.houses[houseId].techTree,
-          breakthrough,
-          allocation
-        )
-
-        logDebug(LogCategory.lcResearch, &"{houseId} breakthrough effect applied (category: {event.category})")
+  logInfo(LogCategory.lcOrders, "[INCOME STEP 9] Completed advancing timers")
