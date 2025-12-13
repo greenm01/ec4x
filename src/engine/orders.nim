@@ -97,49 +97,16 @@ type
 
 # Order validation
 
-proc validateSpyScoutOrder(spyScoutId: string, orderType: FleetOrderType,
-                          state: GameState): ValidationResult =
-  ## Validate orders for spy scout "fleets" (SpyScout objects)
-  ## Allowed orders: 01 (Hold), 02 (Move), 09/10/11 (Spy missions),
-  ##                 13/14 (Join/Rendezvous), 15 (Salvage),
-  ##                 16/17 (Reserve/Mothball), 19 (ViewWorld)
-  ## Note: Spy scouts use SpyScoutOrder system, but validation happens here
-
-  const allowedOrders = {
-    FleetOrderType.Hold,
-    FleetOrderType.Move,
-    FleetOrderType.SpyPlanet,
-    FleetOrderType.SpySystem,
-    FleetOrderType.HackStarbase,
-    FleetOrderType.JoinFleet,
-    FleetOrderType.Rendezvous,
-    FleetOrderType.Salvage,
-    FleetOrderType.Reserve,
-    FleetOrderType.Mothball,
-    FleetOrderType.ViewWorld
-  }
-
-  if orderType notin allowedOrders:
-    return ValidationResult(
-      valid: false,
-      error: "Spy scout fleets cannot perform " & $orderType & " operations"
-    )
-
-  return ValidationResult(valid: true)
-
 proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: HouseId): ValidationResult =
   ## Validate a fleet order against current game state
   ## Checks:
   ## - Fleet exists
   ## - Fleet ownership (prevents controlling enemy fleets)
+  ## - Fleet mission state (locked if OnSpyMission)
   ## - Target validity (system exists, path exists)
   ## - Required capabilities (spacelift, combat, scout)
   ## Creates GameEvent when orders are rejected
   result = ValidationResult(valid: true, error: "")
-
-  # NEW: Check if this is actually a SpyScout "fleet"
-  if order.fleetId in state.spyScouts:
-    return validateSpyScoutOrder(order.fleetId, order.orderType, state)
 
   # Check fleet exists
   let fleetOpt = state.getFleet(order.fleetId)
@@ -157,6 +124,16 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
             &"(owned by {fleet.owner})")
     return ValidationResult(valid: false,
                            error: &"Fleet {order.fleetId} is not owned by {issuingHouse}")
+
+  # Check if fleet is locked on active spy mission
+  # Scouts on active missions (OnSpyMission state) cannot accept new orders
+  # Scouts traveling to mission (Traveling state) can change orders (cancel mission)
+  if fleet.missionState == FleetMissionState.OnSpyMission:
+    logWarn(LogCategory.lcOrders,
+            &"{issuingHouse} Order REJECTED: {order.fleetId} is on active spy mission " &
+            &"(cannot issue new orders while mission active)")
+    return ValidationResult(valid: false,
+                           error: "Fleet locked on active spy mission (scouts consumed)")
 
   logDebug(LogCategory.lcOrders,
            &"{issuingHouse} Validating {order.orderType} order for {order.fleetId} " &
