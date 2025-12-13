@@ -5,21 +5,19 @@
 ##
 ## **Canonical Execution Order:**
 ##
-## Step 1: Space Combat (simultaneous resolution)
-## Step 2: Orbital Combat (simultaneous resolution)
-## Step 3: Blockade Resolution (simultaneous resolution)
-## Step 4: Planetary Combat (sequential execution, simultaneous priority)
-## Step 5: Colonization (simultaneous resolution)
-## Step 6: Espionage Operations (simultaneous resolution)
-##   6a. Spy Scout Detection (pre-combat preparation)
-##   6b. Fleet-Based Espionage (SpyPlanet, SpySystem, HackStarbase)
-##   6c. Space Guild Espionage (EBP-based covert ops)
-##   6d. Starbase Surveillance (continuous monitoring)
-##
-## **Implementation Note:**
-## Spy detection (Step 6a) executes BEFORE combat (line 49-53) to exclude
-## detected scouts from participating in battles. All other espionage operations
-## execute AFTER combat to gather post-battle intelligence.
+## 1. Space Combat (simultaneous resolution)
+##   1a. Raider Detection
+##   1b. Combat Resolution
+## 2. Orbital Combat (simultaneous resolution)
+##   2a. Raider Detection
+##   2b. Combat Resolution
+## 3. Blockade Resolution
+## 4. Planetary Combat
+## 5. Colonization
+## 6. Espionage Operations
+##   6a. Fleet-Based Espionage (includes Spy Scout Detection)
+##   6b. Space Guild Espionage
+##   6c. Starbase Surveillance
 
 import std/[tables, options, random, sequtils, strformat]
 import ../../../common/types/core
@@ -99,18 +97,6 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   logInfo(LogCategory.lcOrders,
           &"Active fleet orders merged " &
           &"({mergedFleetOrderCount} Conflict Phase orders)")
-
-  # ===================================================================
-  # STEP 6a: SPY SCOUT DETECTION (Pre-Combat Prep)
-  # ===================================================================
-  # Resolve spy scout detection BEFORE combat
-  # Spy scouts that go undetected remain hidden and don't participate in combat
-  # Per assets.md:2.4.2 - detection checks occur each turn for active spy scouts
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a] Spy scout detection (pre-combat prep)...")
-  let detectionResults = spy_resolution.resolveSpyDetection(state, events)
-  for msg in detectionResults:
-    logInfo("Intelligence", "Spy detection", msg)
-  logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6a] Completed ({detectionResults.len} detection checks)")
 
   # Find all systems where combat should occur based on diplomatic status and orders.
   # Use effectiveOrders (includes merged queued combat orders)
@@ -291,10 +277,11 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
       logDebug(LogCategory.lcOrders, &"  Cleared arrival status for fleet {result.fleetId}")
 
   # ===================================================================
-  # STEP 6b: FLEET-BASED ESPIONAGE
+  # STEP 6a: FLEET-BASED ESPIONAGE
   # ===================================================================
   # Resolve fleet-based espionage orders simultaneously
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Fleet-based espionage (SpyPlanet, SpySystem, HackStarbase)...")
+  # Includes Spy Scout detection as part of mission execution
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a] Fleet-based espionage (SpyPlanet, SpySystem, HackStarbase)...")
   let espionageResults = simultaneous_espionage.resolveEspionage(state,
                                                                   arrivedOrders, rng)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6b] Completed ({espionageResults.len} fleet espionage attempts)")
@@ -307,26 +294,26 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
   # Process scout espionage results and gather intelligence
   # Creates detailed narrative events for espionage reports
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Processing scout intelligence...")
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a] Processing scout intelligence...")
   simultaneous_espionage.processScoutIntelligence(state, espionageResults,
                                                    effectiveOrders, rng, events)
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Scout intelligence gathering complete")
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a] Scout intelligence gathering complete")
 
   # ===================================================================
-  # STEP 6c: SPACE GUILD ESPIONAGE (EBP-based)
+  # STEP 6b: SPACE GUILD ESPIONAGE (EBP-based)
   # ===================================================================
   # Process OrderPacket.espionageAction (EBP-based espionage)
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Space Guild espionage (EBP-based covert ops)...")
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Space Guild espionage (EBP-based covert ops)...")
   simultaneous_espionage.processEspionageActions(state, effectiveOrders, rng, events)
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Completed EBP-based espionage processing")
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6b] Completed EBP-based espionage processing")
 
   # ===================================================================
-  # STEP 6d: STARBASE SURVEILLANCE
+  # STEP 6c: STARBASE SURVEILLANCE
   # ===================================================================
   # Process starbase surveillance (continuous monitoring every turn)
-  # Per Conflict Phase Step 6d: Intelligence gathering happens AFTER combat
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6d] Starbase surveillance (continuous monitoring)...")
+  # Per Conflict Phase Step 6c: Intelligence gathering happens AFTER combat
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Starbase surveillance (continuous monitoring)...")
   var survRng = initRand(state.turn + 12345)  # Unique seed for surveillance
   starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng)
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6d] Completed starbase surveillance")
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6c] Completed starbase surveillance")
 

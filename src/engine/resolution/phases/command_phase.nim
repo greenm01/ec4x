@@ -25,7 +25,6 @@
 ## - Commissioning happens FIRST to free dock capacity before new builds
 ## - Auto-repair can use newly-freed dock capacity from commissioning
 ## - Universal lifecycle: All orders follow same path (stored → activated → executed)
-## - No separate queues or special handling (DRY design)
 ## - Admin orders execute immediately; all others stored for Maintenance Phase
 ## - Four-tier lifecycle: Initiate (Part B) → Validate (Part C) → Activate (Maintenance) → Execute (Conflict/Income)
 
@@ -35,7 +34,7 @@ import ../../../common/types/core
 import ../../../common/logger as common_logger
 import ../../gamestate, ../../orders, ../../fleet, ../../squadron, ../../logger, ../../order_types
 import ../../diplomacy/[types as dip_types]
-import ../../commands/[executor, spy_scout_orders]
+import ../../commands/[executor]
 import ../[types as res_types, fleet_orders, economy_resolution,
            diplomatic_resolution, combat_resolution, simultaneous,
            commissioning, automation, construction, order_cleanup]
@@ -85,6 +84,53 @@ proc resolveCommandPhase*(state: var GameState,
   # In multiplayer, this would be the window where players submit orders
   # In AI mode, orders are pre-computed and passed to this function
   logInfo(LogCategory.lcOrders, "[COMMAND PART B] Processing player submissions...")
+
+  # Process colony management orders (tax rates, auto-repair toggles)
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      economy_resolution.resolveColonyManagementOrders(state, orders[houseId])
+
+  # Process Space Guild population transfers
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      economy_resolution.resolvePopulationTransfers(state, orders[houseId], events)
+
+
+  # NOTE: Squadron management and cargo management are now handled by
+  # zero-turn commands (src/engine/commands/zero_turn_commands.nim)
+  # These execute immediately during order submission, not turn resolution
+
+  # Auto-load cargo at colonies (if no manual cargo order exists)
+  autoLoadCargo(state, orders, events)
+
+  # Process terraforming orders
+  for houseId in state.houses.keys:
+    if houseId in orders:
+      resolveTerraformOrders(state, orders[houseId], events)
+
+  logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
+
+  # ===================================================================
+  # PART C: ORDER VALIDATION & STORAGE
+  # ===================================================================
+  # Universal order lifecycle (applies to ALL orders):
+  # - Initiate (Command Phase Part B): Player submits orders
+  # - Validate (Command Phase Part C): Engine validates and stores orders ← THIS SECTION
+  # - Activate (Maintenance Phase Step 1a): Orders become active, fleets start moving
+  # - Execute (Conflict/Income Phase): Missions happen at targets
+  #
+  # Universal order processing (DRY design):
+  # - Administrative orders: Validate & execute immediately (zero-turn)
+  # - All other orders: Validate & store in state.fleetOrders
+  #   * Move, Patrol, SeekHome, Hold
+  #   * Bombard, Invade, Blitz, Guard*
+  #   * Colonize, SpyPlanet, SpySystem, HackStarbase
+  #   * Salvage
+  # - Standing order configs: Validate & store in state.standingOrders
+  #
+  # Key principle: All non-admin orders follow same path → No special cases
+
+  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Validating and storing fleet orders...")
 
   # Process build orders (new construction using freed capacity)
   logInfo(LogCategory.lcEconomy, "[BUILD ORDERS] Processing construction orders...")
@@ -193,57 +239,6 @@ proc resolveCommandPhase*(state: var GameState,
           let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
           logDebug(LogCategory.lcResearch,
             &"{houseId} allocated {pp} PP → {earnedRP.technology[field]} TRP ({field}) (total: {totalTRP} TRP)")
-
-  # Process colony management orders (tax rates, auto-repair toggles)
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      economy_resolution.resolveColonyManagementOrders(state, orders[houseId])
-
-  # Process Space Guild population transfers
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      economy_resolution.resolvePopulationTransfers(state, orders[houseId], events)
-
-  # Process scout detection escalations (from Conflict Phase spy detections)
-  # SpyScoutDetected events trigger Hostile escalation
-  diplomatic_resolution.resolveScoutDetectionEscalations(state, events)
-
-
-  # NOTE: Squadron management and cargo management are now handled by
-  # zero-turn commands (src/engine/commands/zero_turn_commands.nim)
-  # These execute immediately during order submission, not turn resolution
-
-  # Auto-load cargo at colonies (if no manual cargo order exists)
-  autoLoadCargo(state, orders, events)
-
-  # Process terraforming orders
-  for houseId in state.houses.keys:
-    if houseId in orders:
-      resolveTerraformOrders(state, orders[houseId], events)
-
-  logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
-
-  # ===================================================================
-  # PART C: ORDER VALIDATION & STORAGE
-  # ===================================================================
-  # Universal order lifecycle (applies to ALL orders):
-  # - Initiate (Command Phase Part B): Player submits orders
-  # - Validate (Command Phase Part C): Engine validates and stores orders ← THIS SECTION
-  # - Activate (Maintenance Phase Step 1a): Orders become active, fleets start moving
-  # - Execute (Conflict/Income Phase): Missions happen at targets
-  #
-  # Universal order processing (DRY design):
-  # - Administrative orders: Validate & execute immediately (zero-turn)
-  # - All other orders: Validate & store in state.fleetOrders
-  #   * Move, Patrol, SeekHome, Hold
-  #   * Bombard, Invade, Blitz, Guard*
-  #   * Colonize, SpyPlanet, SpySystem, HackStarbase
-  #   * Salvage
-  # - Standing order configs: Validate & store in state.standingOrders
-  #
-  # Key principle: All non-admin orders follow same path → No special cases
-
-  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Validating and storing fleet orders...")
 
   # Clear legacy queue (no longer used, kept for compatibility)
   state.queuedCombatOrders = @[]
