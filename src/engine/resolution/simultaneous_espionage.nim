@@ -106,7 +106,7 @@ proc resolveEspionageConflict*(
 
     var outcome: ResolutionOutcome
     if detected:
-      outcome = ResolutionOutcome.Failure
+      outcome = ResolutionOutcome.ConflictLost
       if intent.targetSystem in state.colonies:
         let defender = state.colonies[intent.targetSystem].owner
         events.add(intelligence_events.scoutDetected(

@@ -1,6 +1,6 @@
 # EC4X TODO & Roadmap
 
-**Last Updated:** 2025-12-08
+**Last Updated:** 2025-12-13
 **Current Phase:** Phase 2 Complete - Ready for Phase 3
 **Test Status:** 36 integration test files, 673 test cases - ALL PASSING ✅
 **Balance Status:** RBA functional, 2 balance issues identified
@@ -150,6 +150,7 @@
 
 ### Major Milestones
 
+- ✅ Scout System Unification (2025-12-13) - Fleet-based spy missions with persistent detection
 - ✅ Dynamic AI Systems (2025-12-01) - Expansion, diplomacy, combat tracking
 - ✅ Population Transfer Fix (2025-11-29) - Config initialization bug
 - ✅ TODO Comment Resolution (2025-11-28) - 50 of 54 resolved (93%)

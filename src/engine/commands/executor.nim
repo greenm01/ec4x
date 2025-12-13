@@ -696,103 +696,75 @@ proc executeSpyPlanetOrder(
         return OrderOutcome.Failed
 
   # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
-  var totalScouts = 0
-  var scoutELI = 0  # Use first scout's ELI level
+  let scoutCount = fleet.squadrons.len
 
-  for squadron in fleet.squadrons:
-    totalScouts += 1
-    if scoutELI == 0:  # Take ELI from first scout
-      scoutELI = squadron.flagship.stats.techLevel
+  # Set fleet mission state
+  var updatedFleet = fleet
+  updatedFleet.missionState = FleetMissionState.Traveling
+  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnPlanet))
+  updatedFleet.missionTarget = some(targetSystem)
 
-  # Deploy spy scout (already validated targetSystem above)
+  # Create movement order to target (if not already there)
+  if fleet.location != targetSystem:
+    # Calculate jump lane path from current location to target
+    let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
 
-  # Calculate jump lane path from current location to target
-  let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+    if path.path.len == 0:
+      events.add(event_factory.orderFailed(
+        fleet.owner,
+        fleet.id,
+        "SpyPlanet",
+        reason = "no path to target system",
+        systemId = some(fleet.location)
+      ))
+      return OrderOutcome.Failed
 
-  if path.path.len == 0:
-    events.add(event_factory.orderFailed(
+    # Create movement order
+    let travelOrder = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.MoveToSystem,
+      targetSystem: some(targetSystem)
+    )
+    state.fleetOrders[fleet.id] = travelOrder
+
+    # Update fleet in state
+    state.fleets[fleet.id] = updatedFleet
+
+    # Generate order accepted event
+    events.add(event_factory.orderCompleted(
       fleet.owner,
       fleet.id,
       "SpyPlanet",
-      reason = "no path to target system",
+      details = &"scout fleet traveling to {targetSystem} for spy mission ({scoutCount} scouts)",
       systemId = some(fleet.location)
     ))
-    return OrderOutcome.Failed
-
-  # Create spy scout with travel state
-  let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
-  let spyScout = SpyScout(
-    id: spyId,
-    owner: fleet.owner,
-    location: fleet.location,           # Starting location (not target)
-    eliLevel: scoutELI,
-    mission: SpyMissionType.SpyOnPlanet,
-    commissionedTurn: state.turn,
-    detected: false,
-    # NEW: Travel tracking
-    state: SpyScoutState.Traveling,     # Traveling state
-    targetSystem: targetSystem,          # Final destination
-    travelPath: path.path,               # Jump lane route
-    currentPathIndex: 0,                 # Start at beginning
-    mergedScoutCount: totalScouts        # All scouts in fleet (mesh network bonus)
-  )
-
-  state.spyScouts[spyId] = spyScout
-
-  # Emit SpyScoutDeployed event (Phase 7b)
-  # Get target house from colony (or empty string if uncolonized)
-  let targetHouseId = if targetSystem in state.colonies:
-    state.colonies[targetSystem].owner
   else:
-    ""
-  events.add(event_factory.spyScoutDeployed(
-    spyId,
-    fleet.owner,
-    "SpyOnPlanet",
-    targetSystem,
-    targetHouseId,
-    fleet.location
-  ))
+    # Already at target - start mission immediately
+    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionStartTurn = state.turn
 
-  # Emit ScoutMeshNetworkFormed event if multiple scouts merged (Phase 7b)
-  if totalScouts > 1:
-    let meshBonus = if totalScouts >= 6: 3
-                    elif totalScouts >= 4: 2
-                    elif totalScouts >= 2: 1
-                    else: 0
-    events.add(event_factory.scoutMeshNetworkFormed(
-      fleet.owner,
-      @[fleet.id],
-      totalScouts,
-      meshBonus,
-      fleet.location
-    ))
+    # Register active mission
+    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
+      fleetId: fleet.id,
+      missionType: SpyMissionType.SpyOnPlanet,
+      targetSystem: targetSystem,
+      scoutCount: scoutCount,
+      startTurn: state.turn,
+      ownerHouse: fleet.owner
+    )
 
-  # Remove ALL scouts from fleet (they all become the spy scout)
-  var updatedFleet = fleet
-  updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
-
-  # Check if fleet is now empty and clean up if needed
-  if updatedFleet.isEmpty():
-    # Fleet is empty (no squadrons AND no spacelift ships) - remove it completely
-    state.fleets.del(fleet.id)
-    if fleet.id in state.fleetOrders:
-      state.fleetOrders.del(fleet.id)
-    if fleet.id in state.standingOrders:
-      state.standingOrders.del(fleet.id)
-    logInfo(LogCategory.lcFleet, "Removed empty fleet " & $fleet.id & " after scout deployment (Order 09: Spy on Planet)")
-  else:
-    # Fleet still has squadrons - update it
+    # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
 
-  # Generate OrderCompleted event for spy scout deployment
-  events.add(event_factory.orderCompleted(
-    fleet.owner,
-    fleet.id,
-    "SpyPlanet",
-    details = &"deployed {totalScouts} scout(s) to spy on {targetSystem}",
-    systemId = some(targetSystem)
-  ))
+    # Generate mission start event
+    events.add(event_factory.orderCompleted(
+      fleet.owner,
+      fleet.id,
+      "SpyPlanet",
+      details = &"spy mission started at {targetSystem} ({scoutCount} scouts)",
+      systemId: some(targetSystem)
+    ))
+  )
 
   return OrderOutcome.Success
 
@@ -856,102 +828,76 @@ proc executeHackStarbaseOrder(
       ))
       return OrderOutcome.Failed
 
-  # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
-  var totalScouts = 0
-  var scoutELI = 0  # Use first scout's ELI level
+  # Count scouts for mission (validation already confirmed scout-only fleet)
+  let scoutCount = fleet.squadrons.len
 
-  for squadron in fleet.squadrons:
-    totalScouts += 1
-    if scoutELI == 0:  # Take ELI from first scout
-      scoutELI = squadron.flagship.stats.techLevel
+  # Set fleet mission state
+  var updatedFleet = fleet
+  updatedFleet.missionState = FleetMissionState.Traveling
+  updatedFleet.missionType = some(ord(SpyMissionType.HackStarbase))
+  updatedFleet.missionTarget = some(targetSystem)
 
-  # Calculate jump lane path from current location to target
-  let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+  # Create movement order to target (if not already there)
+  if fleet.location != targetSystem:
+    # Calculate jump lane path from current location to target
+    let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
 
-  if path.path.len == 0:
-    events.add(event_factory.orderFailed(
+    if path.path.len == 0:
+      events.add(event_factory.orderFailed(
+        fleet.owner,
+        fleet.id,
+        "HackStarbase",
+        reason = "no path to target system",
+        systemId = some(fleet.location)
+      ))
+      return OrderOutcome.Failed
+
+    # Create movement order
+    let travelOrder = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.MoveToSystem,
+      targetSystem: some(targetSystem)
+    )
+    state.fleetOrders[fleet.id] = travelOrder
+
+    # Update fleet in state
+    state.fleets[fleet.id] = updatedFleet
+
+    # Generate order accepted event
+    events.add(event_factory.orderCompleted(
       fleet.owner,
       fleet.id,
       "HackStarbase",
-      reason = "no path to target system",
+      details = &"scout fleet traveling to {targetSystem} to hack starbase ({scoutCount} scouts)",
       systemId = some(fleet.location)
     ))
-    return OrderOutcome.Failed
-
-  # Create spy scout with travel state
-  let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
-  let spyScout = SpyScout(
-    id: spyId,
-    owner: fleet.owner,
-    location: fleet.location,           # Starting location (not target)
-    eliLevel: scoutELI,
-    mission: SpyMissionType.HackStarbase,
-    commissionedTurn: state.turn,
-    detected: false,
-    # NEW: Travel tracking
-    state: SpyScoutState.Traveling,     # Traveling state
-    targetSystem: targetSystem,          # Final destination
-    travelPath: path.path,               # Jump lane route
-    currentPathIndex: 0,                 # Start at beginning
-    mergedScoutCount: totalScouts        # All scouts in fleet (mesh network bonus)
-  )
-
-  state.spyScouts[spyId] = spyScout
-
-  # Emit SpyScoutDeployed event (Phase 7b)
-  # Get target house from colony (or empty string if uncolonized)
-  let targetHouseId2 = if targetSystem in state.colonies:
-    state.colonies[targetSystem].owner
   else:
-    ""
-  events.add(event_factory.spyScoutDeployed(
-    spyId,
-    fleet.owner,
-    "HackStarbase",
-    targetSystem,
-    targetHouseId2,
-    fleet.location
-  ))
+    # Already at target - start mission immediately
+    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionStartTurn = state.turn
 
-  # Emit ScoutMeshNetworkFormed event if multiple scouts merged (Phase 7b)
-  if totalScouts > 1:
-    let meshBonus2 = if totalScouts >= 6: 3
-                     elif totalScouts >= 4: 2
-                     elif totalScouts >= 2: 1
-                     else: 0
-    events.add(event_factory.scoutMeshNetworkFormed(
-      fleet.owner,
-      @[fleet.id],
-      totalScouts,
-      meshBonus2,
-      fleet.location
-    ))
+    # Register active mission
+    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
+      fleetId: fleet.id,
+      missionType: SpyMissionType.HackStarbase,
+      targetSystem: targetSystem,
+      scoutCount: scoutCount,
+      startTurn: state.turn,
+      ownerHouse: fleet.owner
+    )
 
-  # Remove ALL scouts from fleet (they all become the spy scout)
-  var updatedFleet = fleet
-  updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
-
-  # Check if fleet is now empty and clean up if needed
-  if updatedFleet.isEmpty():
-    # Fleet is empty (no squadrons AND no spacelift ships) - remove it completely
-    state.fleets.del(fleet.id)
-    if fleet.id in state.fleetOrders:
-      state.fleetOrders.del(fleet.id)
-    if fleet.id in state.standingOrders:
-      state.standingOrders.del(fleet.id)
-    logInfo(LogCategory.lcFleet, "Removed empty fleet " & $fleet.id & " after scout deployment (Order 10: Hack Starbase)")
-  else:
-    # Fleet still has squadrons - update it
+    # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
 
-  # Generate OrderCompleted event for spy scout deployment
-  events.add(event_factory.orderCompleted(
-    fleet.owner,
-    fleet.id,
-    "HackStarbase",
-    details = &"deployed {totalScouts} scout(s) to hack starbase at {targetSystem}",
-    systemId = some(targetSystem)
-  ))
+    # Generate mission start event
+    events.add(event_factory.orderCompleted(
+      fleet.owner,
+      fleet.id,
+      "HackStarbase",
+      details = &"starbase hack mission started at {targetSystem} ({scoutCount} scouts)",
+      systemId: some(targetSystem)
+    ))
+  )
 
   return OrderOutcome.Success
 
@@ -995,102 +941,76 @@ proc executeSpySystemOrder(
         ))
         return OrderOutcome.Failed
 
-  # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
-  var totalScouts = 0
-  var scoutELI = 0  # Use first scout's ELI level
+  # Count scouts for mission (validation already confirmed scout-only fleet)
+  let scoutCount = fleet.squadrons.len
 
-  for squadron in fleet.squadrons:
-    totalScouts += 1
-    if scoutELI == 0:  # Take ELI from first scout
-      scoutELI = squadron.flagship.stats.techLevel
+  # Set fleet mission state
+  var updatedFleet = fleet
+  updatedFleet.missionState = FleetMissionState.Traveling
+  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnSystem))
+  updatedFleet.missionTarget = some(targetSystem)
 
-  # Calculate jump lane path from current location to target
-  let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+  # Create movement order to target (if not already there)
+  if fleet.location != targetSystem:
+    # Calculate jump lane path from current location to target
+    let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
 
-  if path.path.len == 0:
-    events.add(event_factory.orderFailed(
+    if path.path.len == 0:
+      events.add(event_factory.orderFailed(
+        fleet.owner,
+        fleet.id,
+        "SpySystem",
+        reason = "no path to target system",
+        systemId = some(fleet.location)
+      ))
+      return OrderOutcome.Failed
+
+    # Create movement order
+    let travelOrder = FleetOrder(
+      fleetId: fleet.id,
+      orderType: FleetOrderType.MoveToSystem,
+      targetSystem: some(targetSystem)
+    )
+    state.fleetOrders[fleet.id] = travelOrder
+
+    # Update fleet in state
+    state.fleets[fleet.id] = updatedFleet
+
+    # Generate order accepted event
+    events.add(event_factory.orderCompleted(
       fleet.owner,
       fleet.id,
       "SpySystem",
-      reason = "no path to target system",
+      details = &"scout fleet traveling to {targetSystem} for system reconnaissance ({scoutCount} scouts)",
       systemId = some(fleet.location)
     ))
-    return OrderOutcome.Failed
-
-  # Create spy scout with travel state
-  let spyId = "spy-" & $fleet.owner & "-" & $state.turn & "-" & $targetSystem
-  let spyScout = SpyScout(
-    id: spyId,
-    owner: fleet.owner,
-    location: fleet.location,           # Starting location (not target)
-    eliLevel: scoutELI,
-    mission: SpyMissionType.SpyOnSystem,
-    commissionedTurn: state.turn,
-    detected: false,
-    # NEW: Travel tracking
-    state: SpyScoutState.Traveling,     # Traveling state
-    targetSystem: targetSystem,          # Final destination
-    travelPath: path.path,               # Jump lane route
-    currentPathIndex: 0,                 # Start at beginning
-    mergedScoutCount: totalScouts        # All scouts in fleet (mesh network bonus)
-  )
-
-  state.spyScouts[spyId] = spyScout
-
-  # Emit SpyScoutDeployed event (Phase 7b)
-  # Get target house from colony (or empty string if uncolonized)
-  let targetHouseId3 = if targetSystem in state.colonies:
-    state.colonies[targetSystem].owner
   else:
-    ""
-  events.add(event_factory.spyScoutDeployed(
-    spyId,
-    fleet.owner,
-    "SpyOnSystem",
-    targetSystem,
-    targetHouseId3,
-    fleet.location
-  ))
+    # Already at target - start mission immediately
+    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionStartTurn = state.turn
 
-  # Emit ScoutMeshNetworkFormed event if multiple scouts merged (Phase 7b)
-  if totalScouts > 1:
-    let meshBonus3 = if totalScouts >= 6: 3
-                     elif totalScouts >= 4: 2
-                     elif totalScouts >= 2: 1
-                     else: 0
-    events.add(event_factory.scoutMeshNetworkFormed(
-      fleet.owner,
-      @[fleet.id],
-      totalScouts,
-      meshBonus3,
-      fleet.location
-    ))
+    # Register active mission
+    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
+      fleetId: fleet.id,
+      missionType: SpyMissionType.SpyOnSystem,
+      targetSystem: targetSystem,
+      scoutCount: scoutCount,
+      startTurn: state.turn,
+      ownerHouse: fleet.owner
+    )
 
-  # Remove ALL scouts from fleet (they all become the spy scout)
-  var updatedFleet = fleet
-  updatedFleet.squadrons = @[]  # Clear all squadrons (validated as scout-only)
-
-  # Check if fleet is now empty and clean up if needed
-  if updatedFleet.isEmpty():
-    # Fleet is empty (no squadrons AND no spacelift ships) - remove it completely
-    state.fleets.del(fleet.id)
-    if fleet.id in state.fleetOrders:
-      state.fleetOrders.del(fleet.id)
-    if fleet.id in state.standingOrders:
-      state.standingOrders.del(fleet.id)
-    logInfo(LogCategory.lcFleet, "Removed empty fleet " & $fleet.id & " after scout deployment (Order 11: Spy on System)")
-  else:
-    # Fleet still has squadrons - update it
+    # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
 
-  # Generate OrderCompleted event for spy scout deployment
-  events.add(event_factory.orderCompleted(
-    fleet.owner,
-    fleet.id,
-    "SpySystem",
-    details = &"deployed {totalScouts} scout(s) to spy on system {targetSystem}",
-    systemId = some(targetSystem)
-  ))
+    # Generate mission start event
+    events.add(event_factory.orderCompleted(
+      fleet.owner,
+      fleet.id,
+      "SpySystem",
+      details = &"system reconnaissance mission started at {targetSystem} ({scoutCount} scouts)",
+      systemId: some(targetSystem)
+    ))
+  )
 
   return OrderOutcome.Success
 

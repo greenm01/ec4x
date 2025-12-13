@@ -28,7 +28,7 @@
 ## - Military units (ships) are stored and commissioned next turn (Command Phase Part A)
 ## - Fleet movement positions units for next turn's Conflict Phase
 
-import std/[tables, options, strformat, strutils, algorithm, sequtils, random, sets]
+import std/[tables, options, strformat, strutils, algorithm, sequtils, random, sets, hashes]
 import ../../../common/[types/core, types/units, types/tech, types/combat]
 import ../../gamestate, ../../orders, ../../logger, ../../starmap
 import ../../order_types

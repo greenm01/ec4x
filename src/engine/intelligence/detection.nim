@@ -12,7 +12,7 @@ import std/[math, random, sequtils, options, strutils]
 import ../squadron
 import ../config/espionage_config
 
-export ThresholdRange, Option
+export Option
 
 ## Global RNG instance (for overload wrappers)
 var globalRNG* = initRand()
@@ -96,199 +96,71 @@ proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int 
 
 ## Spy Scout Detection
 
-proc rollSpyDetectionThreshold*(thresholdRange: ThresholdRange, rng: var Rand): int =
-  ## Roll threshold for spy detection (1d3 within range)
-  ## For testing and internal use
-  let roll3 = rng.rand(1..3)
-  case roll3
-  of 1: thresholdRange[0]
-  of 2: (thresholdRange[0] + thresholdRange[1]) div 2
-  else: thresholdRange[1]
-
-proc rollSpyDetectionThreshold*(thresholdRange: ThresholdRange): int =
-  ## Wrapper using global RNG
-  rollSpyDetectionThreshold(thresholdRange, globalRNG)
-
-## Spy Scout Detection (Parameterized RNG version)
-
-proc attemptSpyDetection*(
-  detectorELI: int,
-  spyELI: int,
+proc detectSpyScouts*(
+  numScouts: int,
+  defenderELI: int,
+  starbaseBonus: int,
   rng: var Rand
 ): DetectionResult =
-  ## Attempt to detect a spy scout (with provided RNG)
-  ## Returns detection result with all roll details
+  ## Detect spy scouts using simplified formula from assets.md:2.4.2
+  ## Formula: Target = 15 - numScouts + (defenderELI + starbaseBonus)
+  ## Roll 1d20, >= target = detected
   ##
-  ## Process:
-  ## 1. Get threshold range from detection table
-  ## 2. Roll 1d3 to select threshold within range
-  ## 3. Roll 1d20, if >= threshold then detected
+  ## Returns detection result with roll details
 
-  # Get threshold range from config
-  let thresholdRange = getSpyDetectionThreshold(detectorELI, spyELI)
-
-  # Roll for actual threshold (1d3)
-  let threshold = rollSpyDetectionThreshold(thresholdRange, rng)
-
-  # Roll for detection (1d20)
-  let detectionRoll = rng.rand(1..20)
+  let targetNumber = 15 - numScouts + (defenderELI + starbaseBonus)
+  let roll = rng.rand(1..20)
+  let detected = roll >= targetNumber
 
   result = DetectionResult(
-    detected: detectionRoll > threshold,
-    effectiveELI: detectorELI,
-    threshold: threshold,
-    roll: detectionRoll
+    detected: detected,
+    effectiveELI: defenderELI + starbaseBonus,
+    threshold: targetNumber,
+    roll: roll
   )
 
-proc detectSpyScout*(
-  detectorUnit: ELIUnit,
-  spyELI: int,
-  rng: var Rand
+proc detectSpyScouts*(
+  numScouts: int,
+  defenderELI: int,
+  starbaseBonus: int = 0
 ): DetectionResult =
-  ## High-level spy scout detection (with provided RNG)
-  ## Calculates effective ELI and attempts detection
-
-  let effectiveELI = calculateEffectiveELI(detectorUnit.eliLevels, detectorUnit.isStarbase)
-  result = attemptSpyDetection(effectiveELI, spyELI, rng)
-  result.effectiveELI = effectiveELI
-
-## Spy Scout Detection (Global RNG wrappers - eliminates duplication!)
-
-proc attemptSpyDetection*(detectorELI, spyELI: int): DetectionResult =
   ## Wrapper using global RNG
-  attemptSpyDetection(detectorELI, spyELI, globalRNG)
-
-proc detectSpyScout*(detectorUnit: ELIUnit, spyELI: int): DetectionResult =
-  ## Wrapper using global RNG
-  detectSpyScout(detectorUnit, spyELI, globalRNG)
+  detectSpyScouts(numScouts, defenderELI, starbaseBonus, globalRNG)
 
 ## Raider Detection
 
-proc getRaiderThresholdStrategy*(eliLevel: int, cloakLevel: int): string =
-  ## Determine which threshold to use based on ELI advantage
-  ## Returns: "lower" if ELI is 2+ higher, "random" if equal/1 higher, "upper" if lower
-  let advantage = eliLevel - cloakLevel
-
-  if advantage >= 2:
-    return "lower"
-  elif advantage >= 0:
-    return "random"
-  else:
-    return "upper"
-
-## Raider Detection (Parameterized RNG version)
-
-proc rollRaiderThreshold*(
-  thresholdRange: ThresholdRange,
-  strategy: string,
-  rng: var Rand
-): int =
-  ## Roll threshold based on strategy (with provided RNG)
-  ## "lower" = use min, "upper" = use max, "random" = roll 1d3
-  case strategy
-  of "lower":
-    thresholdRange[0]
-  of "upper":
-    thresholdRange[1]
-  of "random":
-    let roll = rng.rand(1..3)
-    case roll
-    of 1: thresholdRange[0]
-    of 2: (thresholdRange[0] + thresholdRange[1]) div 2
-    else: thresholdRange[1]
-  else:
-    thresholdRange[1]  # Default to upper
-
-proc attemptRaiderDetection*(
-  detectorELI: int,
-  cloakLevel: int,
+proc detectRaider*(
+  attackerCLK: int,
+  defenderELI: int,
+  starbaseBonus: int,
   rng: var Rand
 ): DetectionResult =
-  ## Attempt to detect a cloaked raider fleet (with provided RNG)
-  ## Returns detection result with all roll details
+  ## Detect cloaked raiders using opposed roll from assets.md:2.4.3
+  ## Formula: Attacker rolls 1d10 + CLK vs Defender rolls 1d10 + ELI + starbaseBonus
+  ## Detected = defenderRoll >= attackerRoll (ties go to defender)
   ##
-  ## Process:
-  ## 1. Get threshold range from detection table
-  ## 2. Determine strategy based on ELI advantage
-  ## 3. Apply strategy to get threshold
-  ## 4. Roll 1d20, if >= threshold then detected
+  ## Returns detection result with roll details
 
-  # Get threshold range from config
-  let thresholdRange = getRaiderDetectionThreshold(detectorELI, cloakLevel)
-
-  # Determine strategy based on ELI advantage
-  let strategy = getRaiderThresholdStrategy(detectorELI, cloakLevel)
-
-  # Get threshold based on strategy
-  let threshold = rollRaiderThreshold(thresholdRange, strategy, rng)
-
-  # Roll for detection (1d20)
-  let detectionRoll = rng.rand(1..20)
+  let attackerRoll = rng.rand(1..10) + attackerCLK
+  let defenderRoll = rng.rand(1..10) + defenderELI + starbaseBonus
+  let detected = defenderRoll >= attackerRoll
 
   result = DetectionResult(
-    detected: detectionRoll > threshold,
-    effectiveELI: detectorELI,
-    threshold: threshold,
-    roll: detectionRoll
+    detected: detected,
+    effectiveELI: defenderRoll,  # Defender's total roll
+    threshold: attackerRoll,     # Attacker's total roll (used as "threshold" to beat)
+    roll: defenderRoll           # Defender's roll (same as effectiveELI)
   )
 
 proc detectRaider*(
-  detectorUnit: ELIUnit,
-  cloakLevel: int,
-  rng: var Rand
+  attackerCLK: int,
+  defenderELI: int,
+  starbaseBonus: int = 0
 ): DetectionResult =
-  ## High-level raider detection (with provided RNG)
-  ## Calculates effective ELI and attempts detection
-
-  let effectiveELI = calculateEffectiveELI(detectorUnit.eliLevels, detectorUnit.isStarbase)
-  result = attemptRaiderDetection(effectiveELI, cloakLevel, rng)
-  result.effectiveELI = effectiveELI
-
-## Raider Detection (Global RNG wrappers - eliminates duplication!)
-
-proc rollRaiderThreshold*(thresholdRange: ThresholdRange, strategy: string): int =
   ## Wrapper using global RNG
-  rollRaiderThreshold(thresholdRange, strategy, globalRNG)
+  detectRaider(attackerCLK, defenderELI, starbaseBonus, globalRNG)
 
-proc attemptRaiderDetection*(detectorELI, cloakLevel: int): DetectionResult =
-  ## Wrapper using global RNG
-  attemptRaiderDetection(detectorELI, cloakLevel, globalRNG)
-
-proc detectRaider*(detectorUnit: ELIUnit, cloakLevel: int): DetectionResult =
-  ## Wrapper using global RNG
-  detectRaider(detectorUnit, cloakLevel, globalRNG)
-
-## Fleet/Squadron ELI Helpers
-
-proc getScoutELILevels*(squadron: Squadron): seq[int] =
-  ## Extract ELI levels from all scouts in a squadron
-  ## Returns sequence of ELI tech levels
-  result = @[]
-
-  for ship in squadron.allShips():
-    if ship.stats.specialCapability.startsWith("ELI"):
-      result.add(ship.stats.techLevel)
-
-proc getFleetELILevels*(squadrons: seq[Squadron]): seq[int] =
-  ## Extract ELI levels from all scouts in a fleet
-  result = @[]
-
-  for squadron in squadrons:
-    for eliLevel in getScoutELILevels(squadron):
-      result.add(eliLevel)
-
-proc getFleetCloakLevel*(squadrons: seq[Squadron]): int =
-  ## Get highest cloaking level in a fleet
-  ## Fleets are cloaked if they contain raiders
-  ## Returns highest CLK level, or 0 if no cloaking
-  result = 0
-
-  for squadron in squadrons:
-    for ship in squadron.allShips():
-      if ship.stats.specialCapability.startsWith("CLK") and not ship.isCrippled:
-        # Extract CLK level from "CLK1", "CLK2", etc.
-        let clkLevel = ship.stats.techLevel
-        result = max(result, clkLevel)
+## Fleet ELI Capability Check
 
 proc hasELICapability*(squadrons: seq[Squadron]): bool =
   ## Check if fleet has any ELI-capable units (scouts)
@@ -297,10 +169,3 @@ proc hasELICapability*(squadrons: seq[Squadron]): bool =
       if ship.stats.specialCapability.startsWith("ELI"):
         return true
   return false
-
-proc createELIUnit*(squadrons: seq[Squadron], isStarbase: bool = false): ELIUnit =
-  ## Create an ELIUnit from squadrons or starbase
-  result = ELIUnit(
-    eliLevels: getFleetELILevels(squadrons),
-    isStarbase: isStarbase
-  )

@@ -339,7 +339,6 @@ proc executeCombat(
       roe: 5,  # Default ROE
       isCloaked: false,
       moraleModifier: 0,
-      scoutBonus: false,
       isDefendingHomeworld: false
     )
 

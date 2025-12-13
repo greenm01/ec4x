@@ -263,7 +263,7 @@ special_capability = "CLK"
 [scout]
 name = "Scout"
 class = "SC"
-ship_role = "escort"
+ship_role = "auxiliary"
 attack_strength = 1
 defense_strength = 2
 command_cost = 1

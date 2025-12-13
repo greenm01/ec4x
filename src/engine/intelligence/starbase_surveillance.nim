@@ -95,14 +95,16 @@ proc generateStarbaseSurveillance*(
       var evaded = false
 
       if hasScouts:
-        # Scouts can evade with ELI capability
-        # NOTE: Scout ELI level not tracked in Fleet, using ELI 3 as baseline
-        evaded = performStealthCheck(3, 5, rng)
+        # Scouts can evade with ELI capability (house-level tech)
+        let fleetOwnerHouse = state.houses[fleet.owner]
+        let scoutELI = fleetOwnerHouse.techTree.levels.electronicIntelligence
+        evaded = performStealthCheck(scoutELI, 5, rng)
 
       elif hasCloakedRaiders:
-        # Cloaked raiders can evade
-        # Raiders have high stealth (level 4)
-        evaded = performStealthCheck(4, 5, rng)
+        # Cloaked raiders can evade (house-level CLK tech)
+        let fleetOwnerHouse = state.houses[fleet.owner]
+        let raiderCLK = fleetOwnerHouse.techTree.levels.cloakingTech
+        evaded = performStealthCheck(raiderCLK, 5, rng)
 
       if evaded:
         undetectedFleets.add(fleetId)

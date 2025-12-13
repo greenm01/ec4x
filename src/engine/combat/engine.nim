@@ -70,40 +70,38 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       # as combat task forces are assembled based on conflict_phase.nim's checks.
       # No further diplomatic checks needed within the combat engine's detection phase.
 
-      # Create ELI unit using house ELI level, not ship stats
-      # Count scouts for mesh network bonus
-      var scoutCount = 0
-      # TODO: Check if battle system has starbases (colony facilities, not squadrons)
-      # Starbases moved to facility system - need colony data to determine presence
-      var hasStarbase = false  # Placeholder - needs colony data integration
+      # Raider detection uses simplified opposed rolls (assets.md:2.4.3)
+      # Attacker: 1d10 + CLK vs Defender: 1d10 + ELI + starbaseBonus
+
+      # Check if detector has scouts (required for detection)
+      var hasScouts = false
       for sq in detectorTF.squadrons:
         if sq.squadron.scoutShips().len > 0:
-          scoutCount += sq.squadron.scoutShips().len
+          hasScouts = true
+          break
 
-      # Build ELI levels array for mesh network calculation
-      # All scouts have the house's ELI tech level
-      var eliLevels: seq[int] = @[]
-      for i in 0..<scoutCount:
-        eliLevels.add(detectorTF.eliLevel)
-
-      let detectorUnit = ELIUnit(
-        eliLevels: eliLevels,
-        isStarbase: hasStarbase
-      )
+      # Check for starbase presence (provides +2 detection bonus)
+      # TODO: Starbases moved to facility system - need colony data to determine presence
+      let starbaseBonus = 0  # Placeholder until colony integration
 
       # Use target's house CLK level
       let targetCloakLevel = targetTF.clkLevel
 
-      if targetCloakLevel > 0 and eliLevels.len > 0:
-        # Attempt detection
-        let detectionResult = detectRaider(detectorUnit, targetCloakLevel, detectionRng)
+      if targetCloakLevel > 0 and hasScouts:
+        # Attempt detection with opposed rolls
+        let detectionResult = detectRaider(
+          targetCloakLevel,      # Attacker's CLK
+          detectorTF.eliLevel,   # Defender's ELI
+          starbaseBonus,         # +2 if starbase present, else 0
+          detectionRng
+        )
 
         when defined(debugDetection):
-          logDebug("Detection", "Cloak detection attempt",
-                  "detector=", $detectorTF.house, " detectorELI=", $detectorTF.eliLevel,
-                  " scouts=", $scoutCount, " target=", $targetTF.house, " targetCLK=", $targetCloakLevel,
-                  " effectiveELI=", $detectionResult.effectiveELI, " roll=", $detectionResult.roll,
-                  " threshold=", $detectionResult.threshold, " detected=", $detectionResult.detected)
+          logDebug("Detection", "Raider detection attempt (opposed rolls)",
+                  "detector=", $detectorTF.house, " defenderELI=", $detectorTF.eliLevel,
+                  " target=", $targetTF.house, " attackerCLK=", $targetCloakLevel,
+                  " defenderRoll=", $detectionResult.roll, " attackerRoll=", $detectionResult.threshold,
+                  " detected=", $detectionResult.detected)
 
         if detectionResult.detected:
           # Raiders detected! Remove ambush advantage
@@ -288,7 +286,6 @@ proc initializeTaskForce*(
     roe: roe,
     isCloaked: false,
     moraleModifier: 0,
-    scoutBonus: false,
     isDefendingHomeworld: isHomeworld,
     eliLevel: eliLevel,
     clkLevel: clkLevel
@@ -297,12 +294,6 @@ proc initializeTaskForce*(
   # Convert squadrons
   for sq in squadrons:
     result.squadrons.add(initializeCombatSquadron(sq))
-
-  # Check for scouts (ELI capability)
-  for sq in squadrons:
-    if sq.scoutShips().len > 0:
-      result.scoutBonus = true
-      break
 
   # Check if all squadrons are cloaked Raiders
   var allCloaked = true

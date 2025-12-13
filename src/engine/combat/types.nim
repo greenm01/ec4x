@@ -95,7 +95,6 @@ type
     roe*: int                # Rules of Engagement (0-10)
     isCloaked*: bool         # All Raiders, none detected
     moraleModifier*: int     # -1 to +2 from prestige
-    scoutBonus*: bool        # Has scouts (+1 CER)
     isDefendingHomeworld*: bool  # Never retreat
     eliLevel*: int           # House ELI tech level for detection
     clkLevel*: int           # House CLK tech level for cloaking

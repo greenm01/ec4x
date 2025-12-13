@@ -766,16 +766,24 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             # which have better tactical capabilities than single-ship squadrons
             var addedToSquadron = false
 
-            # Classify ship as escort or capital based on hull class and role
-            # Escorts: Small/fast ships (SC, FG, DD, CT, CL) - support role, expendable
-            # Capitals: Large/powerful ships (CA+, BB+, CV+) - flagship role, valuable
-            let isEscort = shipClass in [
-              ShipClass.Scout, ShipClass.Frigate, ShipClass.Destroyer,
-              ShipClass.Corvette, ShipClass.LightCruiser
-            ]
+            # Classify ship based on role from config
+            # Scouts: Intelligence-only, create standalone squadrons (never join combat)
+            # Escorts: Join capital squadrons for combined-arms groups
+            # Capitals: Flagship role, create new squadrons
+            # Note: ETAC/TroopTransport are auxiliary but handled separately as spacelift
+            let isScout = shipClass == ShipClass.Scout
+            let isEscort = newShip.stats.role == ShipRole.Escort
+
+            # SCOUT ASSIGNMENT: Create standalone squadrons (intelligence-only, never join combat)
+            if isScout:
+              let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
+              let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+              colony.unassignedSquadrons.add(newSquadron)
+              logDebug(LogCategory.lcEconomy, &"Commissioned Scout into standalone squadron at {systemId}")
+              addedToSquadron = true
 
             # ESCORT ASSIGNMENT: Join existing squadrons to create balanced battle groups
-            if isEscort:
+            elif isEscort:
               # Try to join unassigned capital ship squadrons first
               for squadron in colony.unassignedSquadrons.mitems:
                 let flagshipIsCapital = squadron.flagship.shipClass in [

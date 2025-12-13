@@ -94,11 +94,22 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 
 **6. Espionage Operations** (simultaneous resolution)
 
-**6a. Fleet-Based Espionage**
-- `SpyPlanet`, `SpySystem`, and `HackStarbase` orders execute.
-- **Spy Scout Detection**: As part of mission execution, detection checks are performed against the target system's defenses (ELI + Starbase).
-- Update intelligence tables for successful missions.
-- Generate GameEvents (IntelGathered, SpyScoutDetected)
+**6a. Fleet-Based Espionage** (one-time execution on arrival)
+- `SpyPlanet`, `SpySystem`, and `HackStarbase` orders execute when scout fleet arrives at target
+- Scout fleet transitions from Traveling to OnSpyMission state
+- Fleet locked (cannot accept new orders), scouts "consumed"
+- Mission registered in activeSpyMissions table
+- Generate GameEvents (SpyMissionStarted)
+- **Note**: Detection checks happen in Step 6a.5, NOT on arrival
+
+**6a.5. Persistent Spy Mission Detection** (every turn for active missions)
+- Iterate all activeSpyMissions from previous turns
+- For each active mission:
+  - Run detection check: 1d20 vs (15 - scoutCount + ELI + starbaseBonus)
+  - **If DETECTED**: Scouts destroyed immediately, mission fails, diplomatic escalation
+  - **If UNDETECTED**: Generate Perfect quality intelligence, mission continues
+- Repeat detection check next turn for surviving missions
+- Generate GameEvents (IntelGathered, SpyScoutDetected, DiplomaticStateChanged)
 
 **6b. Space Guild Espionage** (EBP-based covert ops)
 - Tech Theft, Sabotage, Assassination, Cyber Attack
@@ -678,7 +689,13 @@ Maintenance Phase -> New positions, completed construction
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
 ║  ║ Step 6: Espionage Operations (Simultaneous)           ║ ║
-║  ║  6a. Fleet-Based: SpyPlanet, SpySystem, HackStarbase  ║ ║
+║  ║  6a. Fleet-Based Mission Start (on arrival)           ║ ║
+║  ║    • Scout fleet → OnSpyMission state                 ║ ║
+║  ║    • Register in activeSpyMissions table              ║ ║
+║  ║  6a.5. Persistent Spy Detection (each turn)           ║ ║
+║  ║    • Check all activeSpyMissions from prior turns     ║ ║
+║  ║    • Detected → destroy scouts, fail mission          ║ ║
+║  ║    • Undetected → generate Perfect intel, continue    ║ ║
 ║  ║  6b. Space Guild: Tech Theft, Sabotage, etc.          ║ ║
 ║  ║  • GameEvents: IntelGathered, EspionageSuccess        ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║

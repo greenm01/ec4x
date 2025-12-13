@@ -236,6 +236,13 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
       if targetFleet.location != sourceFleet.location:
         return ValidationResult(valid: false, error: "Both fleets must be at same location")
 
+      # Check scout/combat fleet mixing (validate after transfer would occur)
+      # TODO: This is a simplified check - ideally we'd simulate the transfer
+      # and check if the result would mix scouts with combat ships
+      let mergeCheck = sourceFleet.canMergeWith(targetFleet)
+      if not mergeCheck.canMerge:
+        return ValidationResult(valid: false, error: mergeCheck.reason)
+
   of ZeroTurnCommandType.MergeFleets:
     # Validate target fleet
     if cmd.targetFleetId.isNone:
@@ -256,6 +263,11 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
     # Cannot merge fleet into itself
     if cmd.sourceFleetId.get() == targetFleetId:
       return ValidationResult(valid: false, error: "Cannot merge fleet into itself")
+
+    # Check scout/combat fleet mixing
+    let mergeCheck = sourceFleet.canMergeWith(targetFleet)
+    if not mergeCheck.canMerge:
+      return ValidationResult(valid: false, error: mergeCheck.reason)
 
   of ZeroTurnCommandType.LoadCargo, ZeroTurnCommandType.UnloadCargo:
     # Validate cargo type specified for LoadCargo

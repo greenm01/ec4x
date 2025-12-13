@@ -88,8 +88,8 @@ import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, lo
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types] # Renamed to avoid conflict with gamestate.diplomacy
 import research/[types as res_types_research]
-import commands/[executor, spy_scout_orders]
-import intelligence/[spy_travel, spy_resolution]
+import commands/[executor]
+import intelligence/[spy_resolution]
 import intelligence/event_processor/init as event_processor
 import economy/repair_queue
 # Import resolution modules

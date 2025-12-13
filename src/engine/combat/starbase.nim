@@ -122,17 +122,16 @@ proc shouldStarbaseJoinCombat*(
 ##    - Creates SpyScout object with HackStarbase mission type
 ##    - Scouts remain in system gathering intelligence per turn
 ##
-## 2. **Detection Mechanics** (intelligence/detection.nim)
-##    Per assets.md:2.4.2 Spy Detection Table:
-##    - calculateEffectiveELI(): Weighted average + dominant tech penalty + mesh bonus
-##    - Starbase +2 ELI modifier against spy scouts (line 92)
-##    - attemptSpyDetection(): 1D3 threshold selection + 1D20 detection roll (lines 101-132)
-##    - Mesh network bonuses: +1 (2-3 scouts), +2 (4-5 scouts), +3 (6+ scouts)
+## 2. **Detection Mechanics** (intelligence/spy_resolution.nim)
+##    Per assets.md:2.4.2 Spy Scout Detection:
+##    - Simple formula: Target = 15 - numScouts + (defenderELI + starbaseBonus)
+##    - Starbase +2 bonus to defender's ELI
+##    - Single 1d20 roll: >= Target = Detected
 ##
 ## 3. **Turn Resolution** (intelligence/spy_resolution.nim)
-##    - resolveSpyDetection(): Checks each spy scout against enemy fleets/starbases
-##    - Uses detection.nim for ELI calculations and threshold rolls
-##    - Detected scouts destroyed (lines 41-78)
+##    - resolveSpyScoutDetection(): Checks detection for each spy mission
+##    - Uses simple detection formula (no complex tables)
+##    - Detected scouts destroyed and mission fails
 ##
 ## 4. **Intelligence Generation** (intelligence/generator.nim:156)
 ##    Per operations.md:6.2.11 - Economic and R&D intelligence:
@@ -147,19 +146,6 @@ proc shouldStarbaseJoinCombat*(
 ## **Architectural Separation:**
 ## - Combat module: Handles starbase combat mechanics (AS/DS, CER rolls, critical hits)
 ## - Intelligence module: Handles covert espionage operations (no combat involvement)
-
-proc attemptStarbaseHack*(
-  scout: Squadron,
-  targetStarbase: Squadron,
-  rng: var CombatRNG
-): tuple[success: bool, detected: bool, intel: string] =
-  ## DEPRECATED: Orphaned stub from earlier design - never called
-  ## See module documentation above for actual implementation path
-  ## This function signature was intended for combat-phase hacking but
-  ## the architecture evolved to use turn-based spy scout system instead
-
-  result = (false, false, "")
-  logWarn("Combat", "Deprecated starbase hacking stub called - use spy scout system", "status=orphaned")
 
 ## Notes for Future Implementation
 ##

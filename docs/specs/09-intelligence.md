@@ -8,13 +8,35 @@ Intelligence flows from multiple sources, each revealing different aspects of yo
 
 ### 9.1.1 Spy Scout Missions (Perfect Quality)
 
-Your **Scouts** are the primary tool for gathering detailed, high-quality intelligence. When you dispatch a fleet of Scouts on an espionage mission (e.g., `Spy on Planet`), they attempt to penetrate enemy defenses to collect a comprehensive report.
+Your **Scouts** are the primary tool for gathering detailed, high-quality intelligence. When you dispatch a fleet of Scouts on an espionage mission (e.g., `Spy on Planet`), they travel to the target system and establish a persistent intelligence-gathering operation.
 
-If successful, the intelligence gathered is of **Perfect Quality**—it is detailed, accurate, and current as of that turn. This includes complete fleet compositions with tech levels, detailed colony statistics, economic output, construction projects, and more.
+**Mission Execution**:
 
-However, this is a high-risk operation. All Scouts in the fleet are consumed in the attempt, and if detected, the mission fails completely.
+Scout espionage missions progress through multiple phases:
 
-See espionage orders in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) for mission details.
+1. **Travel**: The Scout fleet moves toward the target system. During this phase, you can cancel the mission by issuing new orders.
+2. **Arrival**: When the fleet arrives, the mission begins. Scouts are "consumed" (committed to the mission) and the fleet is locked. You cannot recall scouts once the mission starts.
+3. **Persistent Operation**: Scouts remain at the target, gathering intelligence each turn while evading detection.
+4. **Detection Checks**: Every turn, the defending house attempts to detect your scouts. If detected, all scouts are destroyed immediately and the mission fails. If undetected, scouts gather **Perfect Quality** intelligence for that turn.
+
+**Intelligence Quality**:
+
+If successful, the intelligence gathered each turn is of **Perfect Quality**—it is detailed, accurate, and current as of that turn. This includes:
+- Complete fleet compositions with tech levels
+- Detailed colony statistics (population, industrial output, facilities)
+- Construction queues with turn counts
+- Economic output and net tax revenue
+- Defensive installations (starbases, ground batteries, shields)
+
+**Risk vs. Reward**:
+
+Scout missions are high-risk operations with significant rewards:
+- **Cumulative Risk**: Detection checks occur every turn. Longer missions face higher cumulative detection risk.
+- **Multi-Turn Intelligence**: Successful missions provide Perfect Quality intelligence over multiple turns, tracking enemy development in real-time.
+- **Irreversible Commitment**: Once scouts arrive at the target, you cannot recall them. They remain on mission until detected or the target is lost.
+- **Diplomatic Escalation**: If detected, your diplomatic stance with the defender escalates to Hostile.
+
+See espionage orders in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) for mission details and detection mechanics.
 
 ### 9.1.2 Fleet Encounters
 

@@ -240,34 +240,48 @@ Scouts are specialized auxiliary ships for espionage and reconnaissance. They ar
 
 They have two primary functions:
 1.  **Reconnaissance (Non-Consumable)**: Using the `View a World` order, a Scout can gather basic intelligence on a system from a safe distance without being consumed.
-2.  **Espionage (Consumable)**: When you issue a spy order (`Spy on Planet`, `Spy on System`, `Hack a Starbase`), all Scouts in the fleet are consumed on a one-way mission to gather high-value intelligence.
+2.  **Espionage (Consumable)**: When you issue a spy order (`Spy on Planet`, `Spy on System`, `Hack a Starbase`), the Scout fleet travels to the target system and establishes a persistent intelligence-gathering mission. All Scouts in the fleet are consumed (committed to the mission) and cannot be recalled.
+
+**Mission Lifecycle**:
+
+When you issue a spy order, the mission progresses through multiple phases:
+
+1. **Travel Phase**: Scout fleet moves toward the target system using normal fleet movement. During this phase, you can cancel the mission by issuing new orders.
+2. **Mission Start**: When the fleet arrives at the target system, the mission begins. The scouts are now "consumed" (committed to the mission), the fleet is locked, and you cannot issue new orders to this fleet.
+3. **Persistent Operation**: Scouts remain at the target system gathering intelligence over multiple turns. Each turn, the defending house attempts to detect them.
+4. **Termination**: The mission ends when scouts are detected (and destroyed) or the target colony is captured/destroyed.
 
 **Detection Mechanics**:
 
-When Spy Scouts enter a system with enemy assets, the defending house automatically attempts to detect them. Detection is a single 1d20 roll by the defender.
+Each turn while scouts are on an active mission, the defending house automatically attempts to detect them. Detection is a 1d20 roll by the defender that occurs **every turn** until the mission ends.
 
 **Detection Formula**:
 
-`Target Number = 15 - (Number of Spy Scouts) + (Defender's ELI Level + Starbase Bonus)`
+`Target Number = 15 - (Number of Scouts) + (Defender's ELI Level + Starbase Bonus)`
 
-- A roll **greater than or equal to** the Target Number detects the Spy Scouts.
-- **Number of Spy Scouts**: More scouts are harder to detect, lowering the target number.
+- A roll **greater than or equal to** the Target Number detects the Scouts.
+- **Number of Scouts**: More scouts are harder to detect, lowering the target number.
 - **Defender's ELI Level**: The defending house's researched ELI tech level. Higher ELI makes detection easier.
 - **Starbase Bonus**: A starbase in the system adds **+2** to the defender's effective ELI level.
 
-**Detection Outcome**:
-- **Success (Roll >= Target)**: All Spy Scouts on the mission are detected and destroyed. The mission fails, and no intelligence is gathered.
-- **Failure (Roll < Target)**: The Spy Scouts remain undetected and successfully gather **Perfect Quality** intelligence.
+**Detection Outcome (Each Turn)**:
+- **Success (Roll >= Target)**: All Scouts on the mission are detected and immediately destroyed. The mission fails, and no intelligence is gathered that turn. Diplomatic stance escalates to Hostile.
+- **Failure (Roll < Target)**: The Scouts remain undetected and successfully gather **Perfect Quality** intelligence for that turn. The mission continues, and detection will be attempted again next turn.
 
 **Example**:
-Three of your Spy Scouts enter a system with a starbase, owned by a house with ELI III.
+Three of your Scouts establish a mission in a system with a starbase, owned by a house with ELI III.
 - Target Number = `15 - 3 (scouts) + 3 (ELI III) + 2 (starbase) = 17`
 - The defender must roll 17 or higher on a 1d20 to detect your scouts.
+- Each turn, a new roll is made. Your scouts gather intelligence every turn they remain undetected.
+- Over a 3-turn mission, the defender has three separate chances to detect and destroy your scouts.
 
 **Strategic Implications**:
-- Sending Spy Scouts in larger groups is safer.
-- Attacking well-defended systems (high ELI tech, starbases) is very risky.
-- Neglecting your own ELI research makes your empire vulnerable to enemy intelligence gathering.
+- Sending Scouts in larger groups is safer per turn, but detection risk accumulates over multiple turns.
+- Short missions (1-2 turns) in well-defended systems are risky but may succeed before detection.
+- Long missions (3+ turns) face high cumulative detection risk. Against prepared defenses, most long missions will eventually fail.
+- Attacking systems with high ELI tech and starbases is extremely risky, especially for multi-turn operations.
+- Neglecting your own ELI research makes your empire vulnerable to persistent enemy intelligence gathering.
+- Once scouts arrive and the mission starts, you cannot recall them. They are committed until detected or the target is lost.
 
 ### 2.4.3 Raiders
 

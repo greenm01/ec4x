@@ -226,6 +226,14 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
              &"{issuingHouse} Colonize order VALID: {order.fleetId} → {targetId}")
 
   of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
+    # Check fleet has no scouts (scouts are intelligence-only, not combat units)
+    for squadron in fleet.squadrons:
+      if squadron.flagship.shipClass == ShipClass.Scout:
+        logWarn(LogCategory.lcOrders,
+                &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
+                &"combat orders cannot include scouts (scouts are intelligence-only)")
+        return ValidationResult(valid: false, error: "Combat orders cannot include scouts")
+
     # Check fleet has combat squadrons
     var hasMilitary = false
     for squadron in fleet.squadrons:
@@ -305,6 +313,14 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
               &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} → {targetFleetId} " &
               &"(fleets at different systems: {fleet.location} vs {targetFleet.location})")
       return ValidationResult(valid: false, error: "Fleets must be in same system to join")
+
+    # Check scout/combat fleet mixing
+    let mergeCheck = fleet.canMergeWith(targetFleet)
+    if not mergeCheck.canMerge:
+      logWarn(LogCategory.lcOrders,
+              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} → {targetFleetId} - " &
+              &"{mergeCheck.reason}")
+      return ValidationResult(valid: false, error: mergeCheck.reason)
 
     logDebug(LogCategory.lcOrders,
              &"{issuingHouse} JoinFleet order VALID: {order.fleetId} → {targetFleetId} " &

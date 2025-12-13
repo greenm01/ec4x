@@ -10,9 +10,9 @@
 
 import squadron, spacelift
 import ../common/types/[core, combat]
-import std/[algorithm, strutils]
+import std/[algorithm, strutils, options]
 
-export FleetId, SystemId, HouseId, LaneType
+export FleetId, SystemId, HouseId, LaneType, FleetMissionState
 export Squadron, EnhancedShip, ShipClass  # Export for fleet users
 export SpaceLiftShip, SpaceLiftCargo, CargoType  # Export spacelift types
 
@@ -34,6 +34,12 @@ type
     autoBalanceSquadrons*: bool        # Auto-optimize squadron composition (default: true)
     # NOTE: currentOrder stored in GameState.fleetOrders table to avoid circular dependency
 
+    # Spy mission state (for Scout-only fleets)
+    missionState*: FleetMissionState      # Spy mission state
+    missionType*: Option[int]             # Type of active mission (SpyMissionType)
+    missionTarget*: Option[SystemId]      # Target system for mission
+    missionStartTurn*: int                # Turn mission began (for duration tracking)
+
 proc newFleet*(squadrons: seq[Squadron] = @[], spaceLiftShips: seq[SpaceLiftShip] = @[],
                id: FleetId = "", owner: HouseId = "", location: SystemId = 0,
                status: FleetStatus = FleetStatus.Active,
@@ -41,7 +47,11 @@ proc newFleet*(squadrons: seq[Squadron] = @[], spaceLiftShips: seq[SpaceLiftShip
   ## Create a new fleet with the given squadrons and spacelift ships
   Fleet(id: id, squadrons: squadrons, spaceLiftShips: spaceLiftShips,
         owner: owner, location: location, status: status,
-        autoBalanceSquadrons: autoBalanceSquadrons)
+        autoBalanceSquadrons: autoBalanceSquadrons,
+        missionState: FleetMissionState.None,
+        missionType: none(int),
+        missionTarget: none(SystemId),
+        missionStartTurn: 0)
 
 proc `$`*(f: Fleet): string =
   ## String representation of a fleet
@@ -149,6 +159,47 @@ proc hasTransportShips*(f: Fleet): bool =
     if not ship.isCrippled:
       return true
   return false
+
+proc isScoutOnly*(f: Fleet): bool =
+  ## Check if fleet contains ONLY scout squadrons (no combat ships)
+  ## Scouts are intelligence-only units that cannot join combat operations
+  if f.squadrons.len == 0:
+    return false
+  for sq in f.squadrons:
+    if sq.flagship.shipClass != ShipClass.Scout:
+      return false
+  return true
+
+proc hasScouts*(f: Fleet): bool =
+  ## Check if fleet contains any scout squadrons
+  for sq in f.squadrons:
+    if sq.flagship.shipClass == ShipClass.Scout:
+      return true
+  return false
+
+proc hasCombatSquadrons*(f: Fleet): bool =
+  ## Check if fleet has any non-scout combat squadrons
+  for sq in f.squadrons:
+    if sq.flagship.shipClass != ShipClass.Scout:
+      return true
+  return false
+
+proc canMergeWith*(f1: Fleet, f2: Fleet): tuple[canMerge: bool, reason: string] =
+  ## Check if two fleets can merge (validates scout/combat mixing)
+  ## Only scouts are intelligence-only and cannot mix with combat fleets
+  ## ETACs and Troop Transports CAN join combat fleets (they need escorts)
+  let f1HasScouts = f1.hasScouts()
+  let f2HasScouts = f2.hasScouts()
+  let f1HasCombat = f1.hasCombatSquadrons()
+  let f2HasCombat = f2.hasCombatSquadrons()
+
+  # Prevent scout-only fleets from joining combat fleets
+  if f1HasScouts and not f1HasCombat and f2HasCombat:
+    return (false, "Cannot merge scout-only fleet with combat fleet")
+  if f2HasScouts and not f2HasCombat and f1HasCombat:
+    return (false, "Cannot merge combat fleet with scout-only fleet")
+
+  return (true, "")
 
 proc combatSquadrons*(f: Fleet): seq[Squadron] =
   ## Get all combat-capable squadrons

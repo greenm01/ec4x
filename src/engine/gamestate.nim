@@ -214,49 +214,16 @@ type
     HackStarbase    # Order 10: Infiltrate starbase network
     SpyOnSystem     # Order 11: System reconnaissance
 
-  SpyScoutState* {.pure.} = enum
-    ## Operational state of spy scout
-    Traveling    # En route to target
-    OnMission    # Arrived at target, gathering intel
-    Returning    # Mission complete, returning home (optional)
-    Detected     # Detected and marked for destruction
+  ActiveSpyMission* = object
+    ## Active spy mission tracked in fleet-based system
+    ## Replaces SpyScout entity for persistent mission tracking
+    fleetId*: FleetId
+    missionType*: SpyMissionType
+    targetSystem*: SystemId
+    scoutCount*: int        # Number of scouts on the mission
+    startTurn*: int         # Turn mission began
+    ownerHouse*: HouseId
 
-  SpyScout* = object
-    ## Independent spy scout on intelligence mission
-    ## Per assets.md:2.4.2
-    id*: string                   # Unique scout identifier
-    owner*: HouseId               # House that deployed the scout
-    location*: SystemId           # Current system location
-    eliLevel*: int                # ELI tech level (1-5)
-    mission*: SpyMissionType      # Type of intelligence mission
-    commissionedTurn*: int        # Turn scout was deployed
-    detected*: bool               # Has scout been detected and destroyed
-
-    # Travel tracking (NEW)
-    state*: SpyScoutState         # Current operational state
-    targetSystem*: SystemId       # Final mission destination
-    travelPath*: seq[SystemId]    # Planned jump lane path
-    currentPathIndex*: int        # Progress through path (0-based)
-    mergedScoutCount*: int        # Number of scouts merged (for mesh bonus)
-
-  SpyScoutOrderType* {.pure.} = enum
-    ## Order types for spy scout fleets
-    ## Transparent to user - spy scouts behave like normal fleets
-    Hold              # Stay at current location on mission
-    Move              # Travel to target system
-    JoinSpyScout      # Merge with another spy scout (mesh network bonus)
-    JoinFleet         # Merge with normal fleet (becomes squadron, spy scout deleted)
-    Rendezvous        # Meet with other spy scouts/fleets at location
-    CancelMission     # Abort mission and return home
-
-  SpyScoutOrder* = object
-    ## Order for individual spy scout (parallel to FleetOrder)
-    spyScoutId*: string
-    orderType*: SpyScoutOrderType
-    targetSystem*: Option[SystemId]
-    targetSpyScout*: Option[string]      # For JoinSpyScout
-    targetFleet*: Option[FleetId]        # For JoinFleet
-    priority*: int
 
   FallbackRoute* = object
     ## Designated safe retreat route for a region
@@ -350,14 +317,13 @@ type
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
     fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
+    activeSpyMissions*: Table[FleetId, ActiveSpyMission]  # Active spy missions (fleet-based system)
     queuedCombatOrders*: seq[FleetOrder]  # Combat orders queued for next turn's Conflict Phase
     arrivedFleets*: Table[FleetId, SystemId]  # Fleets that arrived at order targets (checked in Conflict/Income phase)
     standingOrders*: Table[FleetId, StandingOrder]  # Standing orders (execute when no explicit order)
     turnDeadline*: int64          # Unix timestamp
     ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
-    spyScouts*: Table[string, SpyScout]  # Active spy scouts on intelligence missions
-    spyScoutOrders*: Table[string, SpyScoutOrder]  # Orders for spy scouts (parallel to fleetOrders)
-    scoutLossEvents*: seq[intel_types.ScoutLossEvent]  # Scout losses for diplomatic processing (NEW)
+    scoutLossEvents*: seq[intel_types.ScoutLossEvent]  # Scout losses for diplomatic processing
     populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
     pendingProposals*: seq[dip_proposals.PendingProposal]  # Pending diplomatic proposals
     pendingMilitaryCommissions*: seq[econ_types.CompletedProject]  # Military units awaiting commissioning in next Command Phase
