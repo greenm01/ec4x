@@ -166,9 +166,8 @@ Fleets combine into **task forces** during combat—unified battle groups that c
 Raiders can cloak, becoming invisible until detected. Detection determines initiative and targeting.
 
 **Cloaking Mechanics:**
-- **Raiders** can activate cloaking (stealth mode)
-- Cloaked Raiders invisible until detected
-- **Detection range**: 1 jump lane (adjacent systems)
+- **Raiders** can activate cloaking (stealth mode) and their fleets remain invisible until detected
+- **Detection range**: Limited to system location.
 - **Detection sources**: ELI-equipped scouts, starbases (orbital combat only)
 
 **Detection is Probabilistic:**
@@ -229,7 +228,7 @@ ROE determines when your fleets **retreat** during combat, not whether combat st
 - **Guard fleets**: GuardStarbase, GuardPlanet, DefendSystem orders - they defend in orbital combat only
 - **Reserve fleets**: Stationed at colony, fight in orbital combat only
 - **Mothballed fleets**: Offline, screened in orbital combat, cannot fight
-- **Starbases**: Fixed installations, orbital combat only
+- **Starbases**: Fixed installations, orbital combat only. The do provide ELI support to space combatants.
 
 **Multi-Faction Combat:**
 
@@ -252,7 +251,7 @@ Cloaked Raiders without ELI opposition strike first with +4 CER bonus. Devastati
 
 **Conditions:**
 - Raiders present in task force
-- No enemy ELI-equipped scouts to detect them
+- After ELI resolution Raider fleets remain undetected
 - Raiders get ambush bonus (+4 CER)
 
 **Phase 2: Fighter Squadrons (Intercept)**
