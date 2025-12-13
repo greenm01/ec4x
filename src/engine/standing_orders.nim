@@ -263,10 +263,23 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
   # Get known systems (fog-of-war compliant)
   let knownSystems = getKnownSystems(state, houseId)
 
+  # Collect systems already targeted by other fleets (prevents duplicate targets)
+  var alreadyTargeted: seq[SystemId] = @[]
+  for otherFleetId, order in state.fleetOrders:
+    if otherFleetId == fleet.id:
+      continue  # Don't exclude our own current target
+    if order.orderType in {FleetOrderType.Colonize, FleetOrderType.Move}:
+      if order.targetSystem.isSome:
+        alreadyTargeted.add(order.targetSystem.get())
+
   # Scan known systems within range
   for systemId in knownSystems:
     # Skip if we know it's colonized
     if hasColonyIntel(state, houseId, systemId):
+      continue
+
+    # Skip systems already targeted by other fleets
+    if systemId in alreadyTargeted:
       continue
 
     # Check distance via jump lanes
