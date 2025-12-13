@@ -523,10 +523,10 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 
 ### 7.4.2 Orbital Combat Differences from Space Combat
 
-**No Ambush Bonus:**
-- Orbital defenses detect all approaching threats
-- Raiders get NO +4 CER bonus in orbital combat
-- Detection sharing still works (starbases provide detection)
+**New Detection Check:**
+- A new detection check is performed at the start of Orbital Combat.
+- Raider fleets that were detected in Space Combat have a chance to re-cloak and gain the ambush bonus again.
+- Starbases, with their powerful sensors, add their +2 bonus to the defender's detection roll, making it much harder to achieve an ambush in Orbital Combat.
 
 **Starbases Participate:**
 - Starbases add significant AS/DS to defender task force
