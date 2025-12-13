@@ -1,15 +1,14 @@
 #!/usr/bin/env python3.11
 """
-Analyze Scout-on-Scout Detection Mechanics
+Analyze Scout Detection and Espionage Mission Mechanics
 
-Examines reconnaissance encounters between scout fleets:
-- Detection success rates by house
-- ELI tech correlation with detection success
-- Scout fleet positioning and encounters
-- Asymmetric detection patterns
+Examines two types of intelligence operations:
+1. Scout-on-Scout Detection (reconnaissance encounters)
+2. Espionage Mission Detection (spy missions detected/destroyed)
 
 Usage:
-    python3.11 scripts/analysis/analyze_scout_detection.py [--seed SEED]
+    python3.11 scripts/analysis/analyze_scout_detection.py --seed SEED
+    python3.11 scripts/analysis/analyze_scout_detection.py -s SEED
     python3.11 scripts/analysis/analyze_scout_detection.py --games PATTERN
 """
 
@@ -18,11 +17,207 @@ import argparse
 from pathlib import Path
 
 
-def analyze_scout_detection(df: pl.DataFrame, game_id: str = "unknown") -> None:
-    """Analyze scout detection patterns from game diagnostics."""
+def analyze_espionage_missions(df: pl.DataFrame, game_id: str = "unknown") -> None:
+    """Analyze espionage mission outcomes and detection patterns."""
 
     print(f"\n{'='*70}")
-    print(f"Scout Detection Analysis - Game {game_id}")
+    print(f"Espionage Mission Analysis - Game {game_id}")
+    print(f"{'='*70}")
+
+    # Check if there are any espionage operations
+    total_ops = (
+        df["espionage_success"].sum() +
+        df["espionage_failure"].sum() +
+        df["espionage_detected"].sum()
+    )
+
+    if total_ops == 0:
+        print("\n⚠️  No espionage operations in this game")
+        return
+
+    # Overall espionage statistics
+    print(f"\n📊 Overall Espionage Operations")
+    print(f"{'─'*70}")
+    print(f"Total operations: {total_ops}")
+    print(f"  Successful: {df['espionage_success'].sum()}")
+    print(f"  Failed: {df['espionage_failure'].sum()}")
+    print(f"  Detected: {df['espionage_detected'].sum()}")
+
+    success_rate = (df["espionage_success"].sum() / total_ops * 100) if total_ops > 0 else 0
+    detection_rate = (df["espionage_detected"].sum() / total_ops * 100) if total_ops > 0 else 0
+
+    print(f"\nSuccess rate: {success_rate:.1f}%")
+    print(f"Detection rate: {detection_rate:.1f}%")
+
+    # Espionage by house
+    print(f"\n🕵️  Espionage Performance by House")
+    print(f"{'─'*70}")
+    house_esp = (
+        df.group_by("house")
+        .agg([
+            pl.col("espionage_success").sum().alias("success"),
+            pl.col("espionage_failure").sum().alias("failure"),
+            pl.col("espionage_detected").sum().alias("detected"),
+            pl.col("tech_eli").mean().alias("avg_eli"),
+            pl.col("tech_clk").mean().alias("avg_clk"),
+            pl.col("tech_cic").mean().alias("avg_cic"),
+            pl.col("spy_planet").sum().alias("spy_missions"),
+            pl.col("hack_starbase").sum().alias("hack_missions")
+        ])
+        .with_columns([
+            (pl.col("success") + pl.col("failure") + pl.col("detected")).alias("total_ops")
+        ])
+        .filter(pl.col("total_ops") > 0)
+        .sort("success", descending=True)
+    )
+
+    if house_esp.height == 0:
+        print("No espionage data available")
+        return
+
+    print(f"{'House':20} | {'Success':7} | {'Fail':4} | {'Detected':8} | {'ELI':4} | {'CLK':4} | {'CIC':4}")
+    print(f"{'─'*80}")
+    for row in house_esp.iter_rows(named=True):
+        success_pct = (row['success'] / row['total_ops'] * 100) if row['total_ops'] > 0 else 0
+        print(f"{row['house']:20} | "
+              f"{row['success']:7} | "
+              f"{row['failure']:4} | "
+              f"{row['detected']:8} | "
+              f"{row['avg_eli']:4.1f} | "
+              f"{row['avg_clk']:4.1f} | "
+              f"{row['avg_cic']:4.1f}")
+
+    # Mission type breakdown
+    print(f"\n🎯 Mission Type Distribution")
+    print(f"{'─'*70}")
+    mission_types = (
+        df.group_by("house")
+        .agg([
+            pl.col("spy_planet").sum().alias("spy_planet"),
+            pl.col("hack_starbase").sum().alias("hack_starbase"),
+            pl.col("espionage_success").sum().alias("success")
+        ])
+        .filter((pl.col("spy_planet") > 0) | (pl.col("hack_starbase") > 0))
+        .sort("success", descending=True)
+    )
+
+    if mission_types.height > 0:
+        print(f"{'House':20} | {'SpyPlanet':10} | {'HackStarbase':12} | {'Total':5}")
+        print(f"{'─'*70}")
+        for row in mission_types.iter_rows(named=True):
+            total = row['spy_planet'] + row['hack_starbase']
+            print(f"{row['house']:20} | "
+                  f"{row['spy_planet']:10} | "
+                  f"{row['hack_starbase']:12} | "
+                  f"{total:5}")
+
+    # Mission duration analysis (estimate via scout count changes)
+    print(f"\n⏱️  Mission Duration Analysis")
+    print(f"{'─'*70}")
+
+    # Track scout count changes to estimate mission lifetimes
+    duration_data = []
+    for house in df["house"].unique():
+        house_df = df.filter(pl.col("house") == house).sort("turn")
+
+        if house_df.height < 2:
+            continue
+
+        # Calculate turn-over-turn changes in active missions
+        scout_counts = house_df["scout_count"].to_list()
+        turns = house_df["turn"].to_list()
+
+        missions_started = 0
+        missions_ended = 0
+        total_mission_turns = 0
+
+        for i in range(1, len(scout_counts)):
+            prev_count = scout_counts[i-1]
+            curr_count = scout_counts[i]
+
+            if curr_count > prev_count:
+                missions_started += (curr_count - prev_count)
+            elif curr_count < prev_count:
+                missions_ended += (prev_count - curr_count)
+
+            # Accumulate active mission-turns
+            total_mission_turns += curr_count
+
+        if missions_ended > 0:
+            avg_duration = total_mission_turns / missions_ended
+            duration_data.append({
+                "house": house,
+                "missions_ended": missions_ended,
+                "avg_duration": avg_duration
+            })
+
+    if duration_data:
+        print(f"{'House':20} | {'Missions Ended':14} | {'Avg Duration':12}")
+        print(f"{'─'*70}")
+        for data in sorted(duration_data, key=lambda x: x['avg_duration'], reverse=True):
+            print(f"{data['house']:20} | "
+                  f"{data['missions_ended']:14} | "
+                  f"{data['avg_duration']:12.1f} turns")
+    else:
+        print("Insufficient data for mission duration estimation")
+
+    # Detection correlation with tech levels
+    print(f"\n🔬 Detection vs Counter-Intelligence Tech")
+    print(f"{'─'*70}")
+
+    # Analyze detection rates by CIC level
+    detection_by_cic = (
+        df.filter(
+            (pl.col("espionage_detected") > 0) |
+            (pl.col("espionage_success") > 0) |
+            (pl.col("espionage_failure") > 0)
+        )
+        .group_by("tech_cic")
+        .agg([
+            pl.col("espionage_detected").sum().alias("detected"),
+            pl.col("espionage_success").sum().alias("success"),
+            pl.col("espionage_failure").sum().alias("failure"),
+            pl.len().alias("sample_size")
+        ])
+        .with_columns([
+            ((pl.col("detected") / (pl.col("detected") + pl.col("success") + pl.col("failure"))) * 100)
+            .alias("detection_rate")
+        ])
+        .sort("tech_cic")
+    )
+
+    if detection_by_cic.height > 0:
+        print(f"{'CIC Lvl':7} | {'Detected':8} | {'Success':7} | {'Failed':6} | {'Detection %':11}")
+        print(f"{'─'*70}")
+        for row in detection_by_cic.iter_rows(named=True):
+            print(f"{row['tech_cic']:7} | "
+                  f"{row['detected']:8} | "
+                  f"{row['success']:7} | "
+                  f"{row['failure']:6} | "
+                  f"{row['detection_rate']:10.1f}%")
+
+    # Key insights
+    print(f"\n💡 Key Insights")
+    print(f"{'─'*70}")
+
+    if house_esp.height > 0:
+        best_spy = house_esp.row(0, named=True)
+        print(f"• Most successful: {best_spy['house']} ({best_spy['success']} successes)")
+
+        most_detected = house_esp.sort("detected", descending=True).row(0, named=True)
+        print(f"• Most detected: {most_detected['house']} ({most_detected['detected']} times)")
+
+    print(f"\n📝 Espionage Detection Factors:")
+    print(f"   • Higher CLK → Better mission stealth (harder to detect)")
+    print(f"   • Higher CIC (defender) → Better counter-intelligence (more detections)")
+    print(f"   • ELI → Helps detect enemy scouts, not direct mission detection")
+
+
+def analyze_scout_detection(df: pl.DataFrame, game_id: str = "unknown") -> None:
+    """Analyze scout-on-scout detection patterns from game diagnostics."""
+
+    print(f"\n{'='*70}")
+    print(f"Scout-on-Scout Detection Analysis - Game {game_id}")
     print(f"{'='*70}")
 
     # Filter for games with scout detection activity
@@ -32,7 +227,7 @@ def analyze_scout_detection(df: pl.DataFrame, game_id: str = "unknown") -> None:
 
     if scout_activity.height == 0:
         print("\n⚠️  No scout-on-scout encounters in this game")
-        print("   (Scout fleets from different houses never at same location)")
+        print("   (Scout-only fleets from different houses never at same location)")
         return
 
     # Overall detection stats
@@ -157,7 +352,7 @@ def analyze_scout_detection(df: pl.DataFrame, game_id: str = "unknown") -> None:
         .group_by("tech_eli")
         .agg([
             pl.col("scouts_detected").sum().alias("total_detections"),
-            pl.count().alias("sample_size")
+            pl.len().alias("sample_size")
         ])
         .sort("tech_eli")
     )
@@ -192,7 +387,7 @@ def analyze_scout_detection(df: pl.DataFrame, game_id: str = "unknown") -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Analyze scout-on-scout detection mechanics"
+        description="Analyze scout detection and espionage mission mechanics"
     )
     parser.add_argument(
         "--seed", "-s",
@@ -205,6 +400,16 @@ def main():
         default="balance_results/diagnostics/game_*.csv",
         help="Game file pattern (default: all games)"
     )
+    parser.add_argument(
+        "--espionage-only",
+        action="store_true",
+        help="Only show espionage mission analysis (skip scout-on-scout)"
+    )
+    parser.add_argument(
+        "--reconnaissance-only",
+        action="store_true",
+        help="Only show scout-on-scout analysis (skip espionage missions)"
+    )
 
     args = parser.parse_args()
 
@@ -216,7 +421,13 @@ def main():
             return 1
 
         df = pl.read_csv(csv_path)
-        analyze_scout_detection(df, game_id=str(args.seed))
+
+        # Run both analyses unless filtered
+        if not args.reconnaissance_only:
+            analyze_espionage_missions(df, game_id=str(args.seed))
+
+        if not args.espionage_only:
+            analyze_scout_detection(df, game_id=str(args.seed))
 
     else:
         # Analyze all matching games
@@ -231,34 +442,31 @@ def main():
 
         # Aggregate analysis across all games
         print(f"\n{'='*70}")
-        print(f"Multi-Game Scout Detection Analysis ({len(csv_files)} games)")
+        print(f"Multi-Game Intelligence Analysis ({len(csv_files)} games)")
         print(f"{'='*70}")
 
-        total_detections = df["scouts_detected"].sum()
-        total_detected = df["scouts_detected_by"].sum()
-        games_with_detections = (
-            df.group_by("game_id")
-            .agg(pl.col("scouts_detected").sum())
-            .filter(pl.col("scouts_detected") > 0)
-            .height
+        total_esp_ops = (
+            df["espionage_success"].sum() +
+            df["espionage_failure"].sum() +
+            df["espionage_detected"].sum()
         )
+        total_scout_detections = df["scouts_detected"].sum()
 
         print(f"\n📊 Overall Statistics")
         print(f"{'─'*70}")
         print(f"Total games analyzed: {len(csv_files)}")
-        print(f"Games with scout encounters: {games_with_detections}")
-        print(f"Total detection events: {total_detections}")
-        print(f"Total scouts detected: {total_detected}")
+        print(f"Espionage operations: {total_esp_ops}")
+        print(f"Scout-on-scout detections: {total_scout_detections}")
 
-        if total_detections > 0:
-            # Run detailed analysis on aggregate data
+        # Run analyses
+        if not args.reconnaissance_only and total_esp_ops > 0:
+            analyze_espionage_missions(df, game_id=f"{len(csv_files)} games")
+
+        if not args.espionage_only and total_scout_detections > 0:
             analyze_scout_detection(df, game_id=f"{len(csv_files)} games")
-        else:
-            print("\n⚠️  No scout-on-scout encounters across all games")
-            print("   This may indicate:")
-            print("   • Short game duration (scouts need time to meet)")
-            print("   • Low scout production by AI")
-            print("   • Scouts using different systems (avoiding encounters)")
+
+        if total_esp_ops == 0 and total_scout_detections == 0:
+            print("\n⚠️  No intelligence operations across all games")
 
     return 0
 
