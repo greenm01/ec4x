@@ -19,17 +19,17 @@ For complete details on jump lane classes, distribution, and the starmap structu
 - **Controlled major lanes**: If you own all systems along the travel path, your fleets can jump two major lanes in one turn
 - **Minor and restricted lanes**: Enable a single jump per turn, regardless of the destination
 - **Unexplored or rival systems**: Limit movement to one jump maximum
-- **Lane restrictions**: Fleets containing crippled ships or Spacelift Command ships cannot traverse restricted lanes
+- **Lane restrictions**: Fleets containing crippled ships cannot traverse restricted lanes
 
 ### 6.1.3 Strategic Implications
 
 **Chokepoints control empires**: Systems with few connecting lanes become natural defensive positions. Control the chokepoint and you control the region.
 
-**Connectivity determines value**: Well-connected systems with major lanes serve as staging areas and logistics hubs. Isolated systems connected only by restricted lanes require specialized defense forces without ETACs or damaged ships.
+**Connectivity determines value**: Well-connected systems with major lanes serve as staging areas and logistics hubs. Isolated systems connected only by restricted lanes remain accessible but incur higher pathfinding costs.
 
 **Patrol routes follow lanes**: Standing patrol orders automatically follow jump lane networks. Your fleets defend multiple systems using established lanes.
 
-**Lane class matters for expansion**: Restricted lanes prevent ETAC passage, creating natural expansion barriers. Plan colonization routes around major and minor lanes for reliable access.
+**Lane class matters for expansion**: Restricted lanes cost more movement points (weight 3 vs major weight 1), creating natural pathfinding preferences. ETACs can traverse all lane types when not crippled.
 
 ---
 
