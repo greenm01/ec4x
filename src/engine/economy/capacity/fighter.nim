@@ -30,6 +30,8 @@ import ../../state_helpers
 import ../../iterators
 import ../../../common/types/core
 import ../../../common/logger
+import ../../resolution/types as resolution_types  # For GameEvent
+import ../../resolution/event_factory/fleet_ops  # For squadronDisbanded
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 
@@ -173,9 +175,11 @@ proc planEnforcement*(state: GameState, violation: types.CapacityViolation): typ
   result.description = $toDisbandCount & " fighter squadron(s) auto-disbanded at colony-" &
                       violation.entityId & " (capacity violation)"
 
-proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
+proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,
+                       events: var seq[resolution_types.GameEvent]) =
   ## Apply enforcement actions
   ## Explicit mutation - disbands fighters and clears violation
+  ## Emits SquadronDisbanded events for tracking
 
   if action.actionType != "disband" or action.affectedUnits.len == 0:
     return
@@ -184,6 +188,20 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
   state.withColony(colonyId):
     # Disband fighters (oldest first)
     for fighterId in action.affectedUnits:
+      # Find the fighter squadron before removing it (for event metadata)
+      let fighterOpt = colony.fighterSquadrons.filterIt(it.id == fighterId)
+      if fighterOpt.len > 0:
+        let fighter = fighterOpt[0]
+
+        # Emit SquadronDisbanded event (fighters use ShipClass.Fighter)
+        events.add(fleet_ops.squadronDisbanded(
+          houseId = colony.owner,
+          squadronId = fighterId,
+          shipClass = ShipClass.Fighter,  # Fighter squadron
+          reason = "Fighter squadron capacity exceeded (IU loss)",
+          systemId = colonyId
+        ))
+
       let fid = fighterId  # Copy to avoid lent capture issue
       colony.fighterSquadrons.keepIf(proc(f: FighterSquadron): bool = f.id != fid)
 
@@ -197,7 +215,8 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
               "colony=", $colonyId,
               " disbanded=", $action.affectedUnits.len)
 
-proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction] =
+proc processCapacityEnforcement*(state: var GameState,
+                                events: var seq[resolution_types.GameEvent]): seq[types.EnforcementAction] =
   ## Main entry point - batch process all capacity violations
   ## Called during Maintenance phase
   ## Data-oriented: analyze all → plan enforcement → apply enforcement
@@ -232,7 +251,7 @@ proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAct
     logEconomy("Enforcing expired capacity violations",
               "count=", $enforcementActions.len)
     for action in enforcementActions:
-      applyEnforcement(state, action)
+      applyEnforcement(state, action, events)
       result.add(action)  # Track which actions were applied
   else:
     logDebug("Military", "No violations requiring immediate enforcement")

@@ -32,6 +32,8 @@ import ../../../common/types/core
 import ../../../common/types/units
 import ../../../common/logger
 import ../../config/military_config
+import ../../resolution/types as resolution_types  # For GameEvent
+import ../../resolution/event_factory/fleet_ops  # For squadronDisbanded
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 
@@ -296,9 +298,11 @@ proc planEnforcement*(state: GameState, violation: types.CapacityViolation): typ
   result.description = $toDisbandCount & " squadron(s) auto-disbanded for " &
                       violation.entityId & " (exceeded total squadron capacity, IU loss)"
 
-proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
+proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,
+                       events: var seq[resolution_types.GameEvent]) =
   ## Apply enforcement actions
   ## Explicit mutation - disbands excess squadrons
+  ## Emits SquadronDisbanded events for tracking
 
   if action.actionType != "auto_disband" or action.affectedUnits.len == 0:
     return
@@ -318,13 +322,25 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
 
       # Remove squadrons (reverse order to maintain indices)
       for idx in toRemove.reversed:
+        let squadron = fleet.squadrons[idx]
+
+        # Emit SquadronDisbanded event
+        events.add(fleet_ops.squadronDisbanded(
+          houseId = houseId,
+          squadronId = squadron.id,
+          shipClass = squadron.flagship.shipClass,
+          reason = "Total squadron capacity exceeded (IU loss)",
+          systemId = fleet.location
+        ))
+
         fleet.squadrons.delete(idx)
 
   logEconomy("Total squadron capacity enforcement complete",
             "house=", $houseId,
             " disbanded=", $action.affectedUnits.len)
 
-proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction] =
+proc processCapacityEnforcement*(state: var GameState,
+                                events: var seq[resolution_types.GameEvent]): seq[types.EnforcementAction] =
   ## Main entry point - batch process all total squadron capacity violations
   ## Called during Income Phase (after IU loss from blockades/combat)
   ## Data-oriented: analyze all → manage grace periods → plan enforcement →
@@ -370,7 +386,7 @@ proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAct
     logEconomy("Enforcing total squadron capacity violations",
               "count=", $enforcementActions.len)
     for action in enforcementActions:
-      applyEnforcement(state, action)
+      applyEnforcement(state, action, events)
       result.add(action)
       # Clear grace period after enforcement
       let houseId = core.HouseId(action.entityId)
