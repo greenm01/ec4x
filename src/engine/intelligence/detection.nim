@@ -30,7 +30,7 @@ type
     threshold*: int
     roll*: int
 
-## ELI Mesh Network Calculation
+## ELI Detection Calculation
 
 proc calculateWeightedAverageELI*(eliLevels: seq[int]): int =
   ## Calculate weighted average ELI level (step 1)
@@ -56,23 +56,9 @@ proc applyDominantTechPenalty*(weightedAvg: int, eliLevels: seq[int]): int =
   else:
     return weightedAvg
 
-proc getMeshNetworkBonus*(scoutCount: int): int =
-  ## Calculate mesh network modifier based on scout count
-  ## Per assets.md:2.4.2: 1=+0, 2-3=+1, 4-5=+2, 6+=+3
-  let cfg = globalEspionageConfig.scout_detection
-
-  if scoutCount <= 1:
-    return 0
-  elif scoutCount <= 3:
-    return cfg.mesh_2_3_scouts
-  elif scoutCount <= 5:
-    return cfg.mesh_4_5_scouts
-  else:
-    return cfg.mesh_6_plus_scouts
-
 proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int =
   ## Calculate final effective ELI level for detection
-  ## Combines weighted average, dominant tech penalty, and mesh network bonus
+  ## Combines weighted average and dominant tech penalty
   ## Starbases get +2 bonus against spy scouts
   if eliLevels.len == 0:
     return 0
@@ -85,14 +71,11 @@ proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int 
   # Step 2: Dominant tech penalty
   let afterPenalty = applyDominantTechPenalty(weightedAvg, eliLevels)
 
-  # Step 3: Mesh network modifier (only for fleets, not starbases)
-  let meshBonus = if isStarbase: 0 else: getMeshNetworkBonus(eliLevels.len)
-
-  # Step 4: Starbase bonus (only against spy scouts)
+  # Step 3: Starbase bonus (only against spy scouts)
   let starbaseBonus = if isStarbase: cfg.starbase_eli_bonus else: 0
 
   # Final ELI (capped at max level)
-  result = min(cfg.max_eli_level, afterPenalty + meshBonus + starbaseBonus)
+  result = min(cfg.max_eli_level, afterPenalty + starbaseBonus)
 
 ## Spy Scout Detection
 

@@ -35,6 +35,24 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   result.orbitalTotal = 0
   result.raiderAmbushSuccess = 0
   result.raiderAmbushAttempts = 0
+
+  # Detection metrics (tracked from events)
+  result.raiderDetectedCount = house.lastTurnRaidersDetected
+  result.raiderStealthSuccessCount = house.lastTurnRaidersStealthSuccess
+  result.eliDetectionAttempts = house.lastTurnEliDetectionAttempts
+  # Calculate averages (avoid division by zero)
+  if house.lastTurnEliDetectionAttempts > 0:
+    result.avgEliRoll = float(house.lastTurnEliRollsSum) /
+      float(house.lastTurnEliDetectionAttempts)
+  else:
+    result.avgEliRoll = 0.0
+  let totalClkRolls = house.lastTurnRaidersDetected +
+    house.lastTurnRaidersStealthSuccess
+  if totalClkRolls > 0:
+    result.avgClkRoll = float(house.lastTurnClkRollsSum) / float(totalClkRolls)
+  else:
+    result.avgClkRoll = 0.0
+
   result.combatCERAverage = 0
   result.bombardmentRoundsTotal = 0
   result.groundCombatVictories = 0

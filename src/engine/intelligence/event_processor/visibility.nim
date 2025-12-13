@@ -69,7 +69,6 @@ proc shouldHouseSeeEvent*(
      res_types.GameEventType.StarbaseCombat,
      res_types.GameEventType.RaiderDetected,
      res_types.GameEventType.RaiderAmbush,
-     res_types.GameEventType.EliMeshNetworkFormed,
      res_types.GameEventType.FighterDeployed,
      res_types.GameEventType.FighterEngagement,
      res_types.GameEventType.CarrierDestroyed:
@@ -79,6 +78,15 @@ proc shouldHouseSeeEvent*(
 
     # Visible if present in system (fleet, colony, or starbase surveillance)
     return hasPresenceInSystem(state, houseId, systemId)
+
+  # Raider stealth success - only visible to raider (for diagnostics)
+  # Defender doesn't know they failed to detect
+  of res_types.GameEventType.RaiderStealthSuccess:
+    return false  # Only raider sees (filtered by houseId check above)
+
+  # Starbase surveillance - only visible to starbase owner (for diagnostics)
+  of res_types.GameEventType.StarbaseSurveillanceDetection:
+    return false  # Only owner sees (filtered by houseId check above)
 
   # Espionage events - only visible to attacker
   # (Defender awareness handled through detection events)
@@ -162,11 +170,7 @@ proc shouldHouseSeeEvent*(
     return false
 
   # Legacy intel gathering - private to house
-  of res_types.GameEventType.IntelGathered,
-     # Phase 7b: Scout mesh network and spy scout operations - private
-     res_types.GameEventType.ScoutMeshNetworkFormed,
-     res_types.GameEventType.SpyScoutDeployed,
-     res_types.GameEventType.SpyScoutTravel:
+  of res_types.GameEventType.IntelGathered:
     return false
 
   # Generic/categorical event types - default to private

@@ -75,17 +75,6 @@ template withStandingOrder*(state: var GameState, fleetId: FleetId, body: untype
   body
   state.standingOrders[fleetId] = standingOrder
 
-template withSpyScout*(state: var GameState, scoutId: string, body: untyped): untyped =
-  ## Safe spy scout mutation - ensures write-back
-  ##
-  ## Example:
-  ##   state.withSpyScout(scoutId):
-  ##     spyScout.location = targetSystem
-  ##     spyScout.detected = true
-  var spyScout {.inject.} = state.spyScouts[scoutId]
-  body
-  state.spyScouts[scoutId] = spyScout
-
 template withDiplomacy*(state: var GameState, housePair: (HouseId, HouseId), body: untyped): untyped =
   ## Safe diplomacy mutation - ensures write-back
   ##

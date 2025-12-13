@@ -81,8 +81,9 @@ type
     CombatPhaseBegan,     # Combat sub-phase (Raider/Fighter/Capital) began
     CombatPhaseCompleted, # Combat sub-phase completed
     RaiderDetected,       # Cloaked raider detected by ELI/scouts
+    RaiderStealthSuccess, # Raider stealth succeeded, evaded detection
+    StarbaseSurveillanceDetection, # Starbase sensors detected fleet activity
     RaiderAmbush,         # Raider ambush executed with +4 CER bonus
-    EliMeshNetworkFormed, # Scout mesh network formed for detection
     FighterDeployed,      # Fighter squadron deployed from carrier
     FighterEngagement,    # Fighter engaged target (no CER, full AS damage)
     CarrierDestroyed,     # Carrier destroyed with embarked fighters
@@ -107,8 +108,7 @@ type
     FleetDetachment,      # Squadrons split off to new fleet
     FleetTransfer,        # Squadrons transferred between existing fleets
     CargoLoaded,          # Marines/colonists loaded onto spacelift ships
-    CargoUnloaded,        # Marines/colonists unloaded from spacelift ships
-    ScoutMeshNetworkFormed # Multiple scouts formed detection network
+    CargoUnloaded         # Marines/colonists unloaded from spacelift ships
 
   GameEvent* = ref object of RootObj
     ## Base type for all game events.
@@ -218,17 +218,24 @@ type
       detectorType*: Option[string] # "Scout", "Starbase"
       eliRoll*: Option[int] # ELI detection roll
       clkRoll*: Option[int] # CLK cloaking roll
-      meshBonus*: Option[int] # Mesh network bonus (+1, +2, +3)
+
+    of RaiderStealthSuccess:
+      stealthFleetId*: Option[FleetId] # Raider fleet that evaded
+      attemptedDetectorHouse*: Option[HouseId] # House that tried to detect
+      attemptedDetectorType*: Option[string] # "Scout", "Starbase"
+      stealthEliRoll*: Option[int] # Defender's ELI roll
+      stealthClkRoll*: Option[int] # Raider's CLK roll (won)
+
+    of StarbaseSurveillanceDetection:
+      surveillanceStarbaseId*: Option[string] # Starbase ID
+      surveillanceOwner*: Option[HouseId] # Starbase owner
+      detectedFleetsCount*: Option[int] # Number of fleets detected
+      undetectedFleetsCount*: Option[int] # Fleets that evaded (stealth)
 
     of RaiderAmbush:
       ambushFleetId*: Option[FleetId] # Raider fleet executing ambush
       ambushTargetHouse*: Option[HouseId] # Target of ambush
       ambushBonus*: Option[int] # CER bonus (+4 for ambush)
-
-    of EliMeshNetworkFormed:
-      meshHouse*: Option[HouseId] # House with mesh network
-      scoutCount*: Option[int] # Number of scouts in mesh
-      meshBonusEli*: Option[int] # Mesh network ELI bonus (+1, +2, +3)
 
     # Fighter/Carrier Events
     of FighterDeployed:
@@ -378,12 +385,6 @@ type
       unloadCargoType*: Option[string] # "Marines" or "Colonists"
       unloadCargoQuantity*: Option[int] # Number of units unloaded
       unloadLocation*: Option[SystemId] # Where unloaded
-
-    of ScoutMeshNetworkFormed:
-      meshFleetIds*: Option[seq[FleetId]] # Fleets forming mesh
-      totalScouts*: Option[int] # Total scouts in network
-      meshEliBonus*: Option[int] # Detection bonus (+1, +2, +3)
-      meshLocation*: Option[SystemId] # Where network formed
 
   CombatReport* = object
     systemId*: SystemId

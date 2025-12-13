@@ -420,3 +420,25 @@ proc scoutDestroyed*(
     shipClass: some(ShipClass.Scout),
     details: some(&"Destroyed by {destroyer}")
   )
+
+proc starbaseSurveillanceDetection*(
+  starbaseId: string,
+  owner: HouseId,
+  systemId: SystemId,
+  detectedCount: int,
+  undetectedCount: int
+): event_types.GameEvent =
+  ## Create event for starbase surveillance detection
+  ## For diagnostics - tracks passive sensor monitoring
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.StarbaseSurveillanceDetection,
+    turn: 0,
+    houseId: some(owner),
+    description: &"Starbase {starbaseId} surveillance at {systemId}: " &
+                 &"{detectedCount} fleets detected, {undetectedCount} evaded",
+    systemId: some(systemId),
+    surveillanceStarbaseId: some(starbaseId),
+    surveillanceOwner: some(owner),
+    detectedFleetsCount: some(detectedCount),
+    undetectedFleetsCount: some(undetectedCount)
+  )

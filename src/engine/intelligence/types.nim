@@ -9,7 +9,6 @@ import ../../common/types/[core, tech]
 type
   DetectionEventType* {.pure.} = enum
     ## Classification of how a scout was lost
-    SpyScoutDetected      # Spy caught red-handed on mission (→ Hostile escalation)
     CombatLoss            # Scout destroyed in normal combat (→ per combat rules)
     TravelIntercepted     # Spy caught traveling through system (→ NO escalation)
 

@@ -38,6 +38,7 @@ import ../../commands/[executor]
 import ../[types as res_types, fleet_orders, economy_resolution,
            diplomatic_resolution, combat_resolution, simultaneous,
            commissioning, automation, construction, order_cleanup]
+import ../../research/[costs as res_costs]
 import ../../standing_orders
 
 proc resolveCommandPhase*(state: var GameState,
@@ -53,7 +54,8 @@ proc resolveCommandPhase*(state: var GameState,
   # STEP 0: ORDER CLEANUP FROM PREVIOUS TURN
   # ===================================================================
   # Clean up completed/failed/aborted orders based on events from previous turn
-  # This runs BEFORE accepting new orders to ensure standing orders can activate
+  # This runs BEFORE Part A to ensure standing orders can activate in Maintenance Phase
+  # Per canonical turn cycle: Step 0 runs before commissioning/automation
   logInfo(LogCategory.lcOrders, "[COMMAND STEP 0] Cleaning up orders from previous turn...")
   order_cleanup.cleanFleetOrders(state, events)
 

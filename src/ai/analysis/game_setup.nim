@@ -4,12 +4,16 @@
 ## Uses existing engine initialization functions
 
 import std/[tables, strformat, sequtils, strutils, algorithm]
-import ../../engine/[gamestate, starmap, fleet, squadron, spacelift]
+import ../../engine/[gamestate, starmap, fleet, squadron, spacelift, orders, standing_orders]
 import ../../engine/initialization/[house, colony]
 import ../../engine/config/[prestige_multiplier, population_growth_multiplier, house_themes, gameplay_config]
 import ../../common/types/[core, units, planets, tech, diplomacy]
 import ../../common/[system]
 import ../../engine/diplomacy/types as dip_types # For DiplomaticRelation
+import ../../engine/intelligence/types as intel_types # For ScoutLossEvent
+import ../../engine/population/types as pop_types # For PopulationInTransit
+import ../../engine/diplomacy/proposals as dip_proposals # For PendingProposal
+import ../../engine/economy/types as econ_types # For CompletedProject
 
 export house.initializeHouse
 export colony.createHomeColony
@@ -148,10 +152,20 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     houses: initTable[HouseId, House](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
+    fleetOrders: initTable[FleetId, FleetOrder](),
+    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
+    queuedCombatOrders: @[],
+    arrivedFleets: initTable[FleetId, SystemId](),
+    standingOrders: initTable[FleetId, StandingOrder](),
     starMap: starMap,
     turnDeadline: 0,
     ongoingEffects: @[],
-    spyScouts: initTable[string, SpyScout]()
+    scoutLossEvents: @[],
+    populationInTransit: @[],
+    pendingProposals: @[],
+    pendingMilitaryCommissions: @[],
+    pendingPlanetaryCommissions: @[],
+    gracePeriodTimers: initTable[HouseId, GracePeriodTracker]()
   )
 
   # Create houses at player system positions using active theme
