@@ -26,7 +26,7 @@ import ../../gamestate, ../../orders, ../../order_types, ../../fleet, ../../squa
 import ../../espionage/[types as esp_types, engine as esp_engine]
 import ../../diplomacy/[types as dip_types]
 import ../../research/[types as res_types_research]
-import ../../intelligence/[spy_travel, spy_resolution, espionage_intel, starbase_surveillance]
+import ../../intelligence/[spy_resolution, espionage_intel, starbase_surveillance]
 import ../[types as res_types, combat_resolution]
 import ../[simultaneous_blockade, simultaneous_planetary, simultaneous_espionage, simultaneous_types, simultaneous]
 import ../../prestige as prestige_types
@@ -283,8 +283,8 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # Includes Spy Scout detection as part of mission execution
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a] Fleet-based espionage (SpyPlanet, SpySystem, HackStarbase)...")
   let espionageResults = simultaneous_espionage.resolveEspionage(state,
-                                                                  arrivedOrders, rng)
-  logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6b] Completed ({espionageResults.len} fleet espionage attempts)")
+                                                                  arrivedOrders, rng, events)
+  logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6a] Completed ({espionageResults.len} fleet espionage attempts)")
 
   # Clear arrivedFleets for executed espionage orders
   for result in espionageResults:
