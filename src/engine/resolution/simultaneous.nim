@@ -168,10 +168,15 @@ proc establishColony(
   # Add colony to state
   state.colonies[systemId] = colony
 
-  # Unload colonists from fleet
+  # Unload ONLY 1 PTU from ETAC (preserves remaining PTUs for multi-colony missions)
   for ship in fleet.spaceLiftShips.mitems:
-    if ship.cargo.cargoType == CargoType.Colonists:
-      discard ship.unloadCargo()
+    if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
+      ship.cargo.quantity -= 1
+      if ship.cargo.quantity == 0:
+        ship.cargo.cargoType = CargoType.None
+      logDebug(LogCategory.lcColonization,
+        &"ETAC {ship.id} transferred 1 PTU to establish colony at {systemId} " &
+        &"({ship.cargo.quantity} PTU remaining)")
   state.fleets[fleetId] = fleet
 
   # Apply prestige award

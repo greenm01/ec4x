@@ -45,6 +45,7 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     repairQueue: @[],
     autoRepairEnabled: false,  # Default OFF - player must enable
     autoLoadingEnabled: true,  # Default ON - auto-load fighters to carriers
+    autoReloadETACs: true,     # Default ON - auto-load PTUs onto ETACs
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
     fighterSquadrons: @[],
@@ -133,6 +134,7 @@ proc createETACColony*(systemId: SystemId, owner: HouseId,
     repairQueue: @[],
     autoRepairEnabled: false,  # Default OFF
     autoLoadingEnabled: true,  # Default ON
+    autoReloadETACs: true,     # Default ON
     unassignedSquadrons: @[],
     unassignedSpaceLiftShips: @[],
     fighterSquadrons: @[],
