@@ -187,6 +187,20 @@ proc resolveIncomePhase*(
   logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Production calculation completed")
 
   # ===================================================================
+  # STEP 2: APPLY BLOCKADES (from Conflict Phase)
+  # ===================================================================
+  # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
+  # reduce GCO for that same turn's Income Phase calculation - there is no delay"
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Applying blockade penalties...")
+  blockade_engine.applyBlockades(state)
+
+  var blockadeCount = 0
+  for systemId, colony in state.colonies:
+    if colony.blockaded:
+      blockadeCount += 1
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Completed ({blockadeCount} colonies blockaded)")
+
+  # ===================================================================
   # STEP 3: CALCULATE AND DEDUCT MAINTENANCE UPKEEP
   # ===================================================================
   # Per canonical turn cycle: Calculate maintenance for surviving ships/facilities
@@ -200,20 +214,6 @@ proc resolveIncomePhase*(
     logInfo(LogCategory.lcEconomy, &"  {houseId}: {upkeepCost} PP maintenance")
 
   logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Maintenance upkeep completed")
-
-  # ===================================================================
-  # STEP 2: APPLY BLOCKADES (from Conflict Phase)
-  # ===================================================================
-  # Per operations.md:6.2.6: "Blockades established during the Conflict Phase
-  # reduce GCO for that same turn's Income Phase calculation - there is no delay"
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Applying blockade penalties...")
-  blockade_engine.applyBlockades(state)
-
-  var blockadeCount = 0
-  for systemId, colony in state.colonies:
-    if colony.blockaded:
-      blockadeCount += 1
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Completed ({blockadeCount} colonies blockaded)")
 
   # ===================================================================
   # STEP 4: EXECUTE SALVAGE ORDERS

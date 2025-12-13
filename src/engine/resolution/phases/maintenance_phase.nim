@@ -24,9 +24,9 @@
 ## Step 6: Cleanup and Preparation
 ##
 ## **Key Properties:**
-## - Completed projects stored in pendingCommissions, NOT commissioned immediately
-## - Commissioning happens next turn's Command Phase Part A
-## - Fleet movement happens LAST to position units for next Conflict Phase
+## - Split Commissioning: Planetary defenses commission immediately (Step 2b)
+## - Military units (ships) are stored and commissioned next turn (Command Phase Part A)
+## - Fleet movement positions units for next turn's Conflict Phase
 
 import std/[tables, options, strformat, strutils, algorithm, sequtils, random, sets]
 import ../../../common/[types/core, types/units, types/tech, types/combat]
