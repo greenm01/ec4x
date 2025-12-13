@@ -39,9 +39,9 @@ proc collectBasileusMetrics*(state: GameState, houseId: HouseId,
   # MAINTENANCE & ECONOMIC OBLIGATIONS
   # ================================================================
 
-  # TODO: Track actual maintenance cost from turn resolution
-  result.maintenanceCostTotal = 0
-  result.maintenanceShortfallTurns = 0
+  # Track actual maintenance cost from turn resolution
+  result.maintenanceCostTotal = house.lastTurnMaintenanceCost
+  result.maintenanceShortfallTurns = house.consecutiveShortfallTurns
 
   # ================================================================
   # HOUSE STATUS (from gameplay.toml thresholds)

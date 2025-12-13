@@ -9,6 +9,7 @@
 import std/[tables, options]
 import types, income, projects, maintenance, maintenance_shortfall, facility_queue
 import capacity/carrier_hangar  # For carrier hangar capacity enforcement
+import ../resolution/types as resolution_types  # For GameEvent
 import ../../common/types/[core, units]
 import ../gamestate  # For unified Colony type
 import ../state_helpers  # For withHouse macro
@@ -97,6 +98,76 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
     # Store report
     result.houseReports[houseId] = houseReport
 
+## Income Phase Step 3: Maintenance Upkeep Deduction (ec4x_canonical_turn_cycle.md:156-160)
+
+proc calculateAndDeductMaintenanceUpkeep*(
+  state: var GameState,
+  events: var seq[resolution_types.GameEvent]
+): Table[HouseId, int] =
+  ## Calculate and deduct maintenance upkeep costs from house treasuries
+  ## This implements Income Phase Step 3 (after Conflict Phase, before resource collection)
+  ##
+  ## Per canonical turn cycle (ec4x_canonical_turn_cycle.md lines 156-160):
+  ## - Calculate maintenance for surviving ships/facilities
+  ## - Handle maintenance shortfall cascade
+  ## - Deduct from treasuries
+  ## - Generate MaintenancePaid events
+  ##
+  ## Returns: Table[HouseId, int] of total maintenance costs per house (for reporting)
+
+  result = initTable[HouseId, int]()
+
+  # Calculate upkeep and handle shortfalls for all houses
+  for (houseId, house) in state.activeHousesWithId():
+    var totalUpkeep = 0
+
+    # Fleet maintenance (surviving ships after Conflict Phase)
+    for fleet in state.fleetsOwned(houseId):
+      # Calculate maintenance for this fleet
+      var fleetData: seq[(ShipClass, bool)] = @[]
+      for squadron in fleet.squadrons:
+        # Add flagship
+        fleetData.add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
+        # Add squadron ships (non-flagship escorts)
+        for ship in squadron.ships:
+          fleetData.add((ship.shipClass, ship.isCrippled))
+
+      totalUpkeep += calculateFleetMaintenance(fleetData)
+
+    # Colony maintenance (facilities, ground forces)
+    for colony in state.coloniesOwned(houseId):
+      totalUpkeep += calculateColonyUpkeep(colony)
+
+    result[houseId] = totalUpkeep
+
+    # CHECK FOR SHORTFALL BEFORE DEDUCTION (economy.md:3.11)
+    if house.treasury < totalUpkeep:
+      let shortfall = totalUpkeep - house.treasury
+
+      # Execute maintenance shortfall cascade
+      let cascade = processShortfall(state, houseId, shortfall)
+      applyShortfallCascade(state, cascade, events)
+      # Cascade: zeroes treasury, adds salvage, increments consecutiveShortfallTurns
+      # Events emitted for fleet disbanding
+    else:
+      # Full payment - reset shortfall counter
+      state.withHouse(houseId):
+        house.consecutiveShortfallTurns = 0
+
+    # Deduct maintenance (treasury may have salvage added by cascade)
+    state.withHouse(houseId):
+      house.treasury -= totalUpkeep
+      house.lastTurnMaintenanceCost = totalUpkeep  # For diagnostics
+
+    # Generate MaintenancePaid event
+    events.add(resolution_types.GameEvent(
+      eventType: resolution_types.GameEventType.Economy,
+      turn: state.turn,
+      houseId: some(houseId),
+      description: "Maintenance upkeep paid: " & $totalUpkeep & " PP",
+      details: some("MaintenanceUpkeep")
+    ))
+
 ## Maintenance Phase Resolution (gameplay.md:1.3.4)
 
 proc resolveMaintenancePhase*(colonies: var seq[Colony],
@@ -163,59 +234,23 @@ proc resolveMaintenancePhase*(colonies: var seq[Colony],
 
   return result
 
-proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport =
-  ## Resolve maintenance phase with full shortfall cascade support
-  ## Per economy.md:3.11 - Handles treasury shortfalls with fleet disbanding,
-  ## infrastructure stripping, and escalating prestige penalties.
+proc tickConstructionAndRepair*(
+  state: var GameState,
+  events: var seq[resolution_types.GameEvent]
+): MaintenanceReport =
+  ## Advance construction and repair queues
+  ## This is called during Maintenance Phase (Phase 4)
   ##
-  ## This version requires full GameState for proper cascade implementation.
+  ## NOTE: This does NOT calculate or deduct maintenance costs!
+  ## Maintenance upkeep is handled in Income Phase Step 3 via
+  ## calculateAndDeductMaintenanceUpkeep()
 
   result = MaintenanceReport(
     turn: state.turn,
     completedProjects: @[],
-    houseUpkeep: initTable[HouseId, int](),
+    houseUpkeep: initTable[HouseId, int](),  # Empty - maintenance handled in Income Phase
     repairsApplied: @[]
   )
-
-  # Calculate upkeep and handle shortfalls for all houses
-  for (houseId, house) in state.activeHousesWithId():
-    var totalUpkeep = 0
-
-    # Fleet maintenance
-    for fleet in state.fleetsOwned(houseId):
-      # Calculate maintenance for this fleet
-      var fleetData: seq[(ShipClass, bool)] = @[]
-      for squadron in fleet.squadrons:
-        # Add flagship
-        fleetData.add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
-        # Add squadron ships (non-flagship)
-        for ship in squadron.ships:
-          fleetData.add((ship.shipClass, ship.isCrippled))
-
-      totalUpkeep += calculateFleetMaintenance(fleetData)
-
-    # Colony maintenance (facilities, ground forces)
-    for colony in state.coloniesOwned(houseId):
-      totalUpkeep += calculateColonyUpkeep(colony)
-
-    result.houseUpkeep[houseId] = totalUpkeep
-
-    # CHECK FOR SHORTFALL BEFORE DEDUCTION (economy.md:3.11)
-    if house.treasury < totalUpkeep:
-      let shortfall = totalUpkeep - house.treasury
-
-      # Execute maintenance shortfall cascade
-      let cascade = processShortfall(state, houseId, shortfall)
-      applyShortfallCascade(state, cascade)
-      # Cascade: zeroes treasury, adds salvage, increments consecutiveShortfallTurns
-    else:
-      # Full payment - reset shortfall counter
-      state.withHouse(houseId):
-        house.consecutiveShortfallTurns = 0
-
-    # Deduct maintenance (treasury may have salvage added by cascade)
-    state.withHouse(houseId):
-      house.treasury -= totalUpkeep
 
   # Advance construction projects
   # TWO SYSTEMS:

@@ -12,12 +12,13 @@
 ## Data-oriented design: Calculate what WOULD happen (pure function),
 ## then apply changes (explicit mutations).
 
-import std/[tables, algorithm]
+import std/[tables, algorithm, options]
 import ../gamestate
 import ../state_helpers
 import ../iterators
 import ../prestige
 import ../config/ground_units_config
+import ../resolution/types as resolution_types  # For GameEvent
 import ../../common/types/core
 import ../../common/logger
 import config_accessors  # For getShipConstructionCost
@@ -288,9 +289,11 @@ proc processShortfall*(state: GameState, houseId: HouseId, shortfall: int): Shor
   result.remainingShortfall = remaining
   result.fullyResolved = (remaining <= 0)
 
-proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade) =
+proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade,
+                           events: var seq[resolution_types.GameEvent]) =
   ## Apply cascade to state - clear, explicit mutations
   ## Uses state_helpers for safe Table mutations
+  ## Emits game events for fleet disbanding
 
   # Step 1 & 5: Update house (treasury, prestige, and shortfall counter)
   # Combine all house mutations to avoid template redefinition
@@ -314,12 +317,37 @@ proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade) =
 
   # Step 3: Disband fleets
   for fleetId in cascade.fleetsDisbanded:
+    # Get fleet location before deletion for event
+    let fleetLocation = if fleetId in state.fleets:
+      state.fleets[fleetId].location
+    else:
+      SystemId(0)  # Unknown/invalid system
+
+    # Calculate salvage for this fleet
+    let fleetSalvage = calculateFleetSalvageValue(state, fleetId)
+
     state.fleets.del(fleetId)
     # Also remove fleet orders if they exist
     if fleetId in state.fleetOrders:
       state.fleetOrders.del(fleetId)
     if fleetId in state.standingOrders:
       state.standingOrders.del(fleetId)
+
+    # Emit FleetDisbanded event
+    if events.len >= 0:  # Check if events seq is available
+      events.add(resolution_types.GameEvent(
+        eventType: resolution_types.GameEventType.FleetDisbanded,
+        turn: state.turn,
+        houseId: some(cascade.houseId),
+        description: "Fleet " & $fleetId & " disbanded due to maintenance shortfall (salvage: " & $fleetSalvage & " PP)",
+        details: some("MaintenanceShortfall"),
+        systemId: some(fleetLocation),
+        fleetId: some(fleetId),
+        fleetEventType: some("Disbanded"),
+        salvageValue: some(fleetSalvage)
+      ))
+
+    logInfo("Economy", "Fleet ", fleetId, " disbanded due to maintenance shortfall (salvage: ", fleetSalvage, " PP)")
 
   # Step 4: Strip infrastructure
   # Group stripped assets by system for efficient mutation
@@ -389,7 +417,8 @@ proc resolveMaintenanceShortfalls*(state: var GameState) =
     if house.treasury < totalCosts:
       let shortfall = totalCosts - house.treasury
       let cascade = processShortfall(state, houseId, shortfall)
-      applyShortfallCascade(state, cascade)
+      var dummyEvents: seq[resolution_types.GameEvent] = @[]
+      applyShortfallCascade(state, cascade, dummyEvents)
     else:
       # Full payment made - reset shortfall counter
       # Shortfall counter tracking handled in applyShortfallCascade

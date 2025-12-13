@@ -7,6 +7,8 @@ import ../../common/types/diplomacy # For DiplomaticState, DiplomaticActionType
 import ../../common/types/tech # For TechField
 import ../../engine/espionage/types as esp_types # For EspionageAction (for operationType field)
 
+export units.ShipClass  # Export ShipClass for event factory functions
+
 type
   GameEventType* {.pure.} = enum
     ## Categories of game events.
@@ -42,6 +44,9 @@ type
     BuildingCompleted,    # Building construction finished
     UnitRecruited,        # Ground unit recruited
     UnitDisbanded,        # Unit disbanded
+    FleetDisbanded,       # Fleet disbanded (maintenance shortfall)
+    SquadronDisbanded,    # Squadron auto-disbanded (capacity enforcement)
+    SquadronScrapped,     # Squadron auto-scrapped (capacity enforcement)
     TechAdvance,          # Technology level increased
     HouseEliminated,      # House eliminated from game
     PopulationTransfer,   # Population moved between systems
@@ -176,10 +181,12 @@ type
       ## Colony events (newOwner/oldOwner/details in common fields)
       colonyEventType*: Option[string] # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited", "UnitDisbanded", "TerraformComplete"
 
-    of Fleet, FleetDestroyed, ShipCommissioned, ScoutDestroyed:
-      ## Fleet events (fleetId/details in common fields)
-      fleetEventType*: Option[string] # "Created", "Destroyed", "Crippled", "Repaired" for generic Fleet
+    of Fleet, FleetDestroyed, ShipCommissioned, ScoutDestroyed, FleetDisbanded,
+       SquadronDisbanded, SquadronScrapped:
+      ## Fleet events (fleetId/details in common fields, reason in common fields)
+      fleetEventType*: Option[string] # "Created", "Destroyed", "Crippled", "Repaired", "Disbanded", "Scrapped" for generic Fleet
       shipClass*: Option[ShipClass] # For fleet creation/destruction/crippling/commissioning/scout destruction
+      salvageValue*: Option[int] # Salvage value recovered (25% for maintenance, 50% for capitals, 0% for auto-disband)
 
     of Intelligence, IntelGathered, ScoutDetected:
       ## Intelligence events (details in common fields)

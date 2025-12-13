@@ -291,3 +291,68 @@ proc spyScoutTravel*(
     travelProgress: some(progress),
     detectionRisk: some(detectionRisk)
   )
+
+# =============================================================================
+# Fleet/Squadron Disbanding Events
+# =============================================================================
+
+proc fleetDisbanded*(
+  houseId: HouseId,
+  fleetId: FleetId,
+  reason: string,
+  salvageValue: int,
+  systemId: SystemId
+): event_types.GameEvent =
+  ## Create event for fleet disbanded (maintenance shortfall)
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.FleetDisbanded,
+    turn: 0,
+    houseId: some(houseId),
+    description: &"Fleet {fleetId} disbanded due to {reason} (salvage: {salvageValue} PP)",
+    details: some(reason),
+    systemId: some(systemId),
+    fleetId: some(fleetId),
+    fleetEventType: some("Disbanded"),
+    salvageValue: some(salvageValue)
+  )
+
+proc squadronDisbanded*(
+  houseId: HouseId,
+  squadronId: string,
+  shipClass: event_types.ShipClass,
+  reason: string,
+  systemId: SystemId
+): event_types.GameEvent =
+  ## Create event for squadron auto-disbanded (capacity enforcement)
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.SquadronDisbanded,
+    turn: 0,
+    houseId: some(houseId),
+    description: &"Squadron {squadronId} ({shipClass}) auto-disbanded: {reason} (no salvage)",
+    details: some(reason),
+    systemId: some(systemId),
+    fleetEventType: some("Disbanded"),
+    shipClass: some(shipClass),
+    salvageValue: some(0)
+  )
+
+proc squadronScrapped*(
+  houseId: HouseId,
+  squadronId: string,
+  shipClass: event_types.ShipClass,
+  reason: string,
+  salvageValue: int,
+  systemId: SystemId
+): event_types.GameEvent =
+  ## Create event for squadron auto-scrapped (capacity enforcement)
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.SquadronScrapped,
+    turn: 0,
+    houseId: some(houseId),
+    description: &"Squadron {squadronId} ({shipClass}) auto-scrapped: {reason} (salvage: {salvageValue} PP)",
+    details: some(reason),
+    systemId: some(systemId),
+    fleetEventType: some("Scrapped"),
+    shipClass: some(shipClass),
+    salvageValue: some(salvageValue)
+  )

@@ -45,7 +45,7 @@ import ../../intelligence/[
   detection, types as intel_types, generator as intel_gen,
   starbase_surveillance, scout_intel
 ]
-import ../../config/[espionage_config, construction_config, gameplay_config]
+import ../../config/[espionage_config, construction_config, gameplay_config, economy_config]
 import ../../resolution/[fleet_orders, automation, types as res_game_types]
 import ../../resolution/event_factory/init as event_factory
 import ../../commands/executor as cmd_executor  # For salvage order execution
@@ -307,23 +307,36 @@ proc resolveIncomePhase*(
           "[CAPACITY ENFORCEMENT] Completed capacity enforcement")
 
   # ===================================================================
-  # STEP 1 & 3: ECONOMY ENGINE (Production + Maintenance)
+  # STEP 1: CALCULATE BASE PRODUCTION
   # ===================================================================
-  # Economy engine calculates:
-  # - Step 1: Base production (PP/RP from colonies, improvements, modifiers)
-  # - Step 3: Maintenance costs (deducted from treasuries)
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1 & 3] Running economy engine (production + maintenance)...")
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Calculating base production...")
 
-  # Call economy engine
+  # Call economy engine with natural growth rate from config
   let incomeReport = econ_engine.resolveIncomePhase(
     coloniesSeqIncome,
     houseTaxPolicies,
     houseTechLevels,
     houseCSTTechLevels,
-    houseTreasuries
+    houseTreasuries,
+    baseGrowthRate = globalEconomyConfig.population.natural_growth_rate
   )
 
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1 & 3] Economy engine completed")
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Production calculation completed")
+
+  # ===================================================================
+  # STEP 3: CALCULATE AND DEDUCT MAINTENANCE UPKEEP
+  # ===================================================================
+  # Per canonical turn cycle: Calculate maintenance for surviving ships/facilities
+  # after Conflict Phase, deduct from treasuries before collecting resources
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Calculating maintenance upkeep...")
+
+  let maintenanceUpkeepByHouse = econ_engine.calculateAndDeductMaintenanceUpkeep(state, events)
+
+  # Log maintenance costs for diagnostics
+  for houseId, upkeepCost in maintenanceUpkeepByHouse:
+    logInfo(LogCategory.lcEconomy, &"  {houseId}: {upkeepCost} PP maintenance")
+
+  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Maintenance upkeep completed")
 
   # ===================================================================
   # STEP 6: COLLECT RESOURCES

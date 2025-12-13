@@ -109,6 +109,9 @@ proc shouldHouseSeeEvent*(
      res_types.GameEventType.BuildingCompleted,
      res_types.GameEventType.UnitRecruited,
      res_types.GameEventType.UnitDisbanded,
+     res_types.GameEventType.FleetDisbanded,
+     res_types.GameEventType.SquadronDisbanded,
+     res_types.GameEventType.SquadronScrapped,
      res_types.GameEventType.PopulationTransfer,
      res_types.GameEventType.TerraformComplete:
     return false
