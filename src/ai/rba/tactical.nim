@@ -452,6 +452,22 @@ proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState
     if not inOperation and fleet.combatStrength() > 0:
       result += 1
 
+proc isETACFleet(fleet: Fleet): bool =
+  ## Check if fleet has ETACs (colonization-only fleet)
+  for ship in fleet.spaceLiftShips:
+    if ship.shipClass == ShipClass.ETAC:
+      return true
+  return false
+
+proc isColonizationOrder(orderType: FleetOrderType): bool =
+  ## Check if order is valid for ETAC fleets
+  orderType in {
+    FleetOrderType.Hold,
+    FleetOrderType.Move,
+    FleetOrderType.SeekHome,
+    FleetOrderType.Colonize
+  }
+
 proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand,
                           standingOrders: Table[FleetId, StandingOrder] = initTable[FleetId, StandingOrder]()): seq[FleetOrder] =
   ## Generate fleet orders for all owned fleets
@@ -484,6 +500,14 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
     let fleetType = if hasETAC: "ETAC" elif hasCombatShips: "Combat" else: "Empty"
     logDebug(LogCategory.lcAI, &"  Fleet {fleet.id} ({fleetType}) at {fleet.location}: Determining orders...")
+
+    # Skip non-colonization orders for ETAC fleets
+    if isETACFleet(fleet):
+      # ETAC fleets can ONLY perform colonization operations
+      # AutoColonize standing orders will handle them
+      logDebug(LogCategory.lcAI,
+        &"Fleet {fleet.id} has ETACs - deferring to AutoColonize standing orders")
+      continue
 
     # ==========================================================================
     # PHASE-AWARE PRIORITY SYSTEM

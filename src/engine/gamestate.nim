@@ -170,6 +170,7 @@ type
     repairQueue*: seq[econ_types.RepairProject]      # Ships/starbases awaiting repair
     autoRepairEnabled*: bool                         # Enable automatic repair submission (defaults false, player-controlled)
     autoLoadingEnabled*: bool                        # Enable automatic fighter loading to carriers (defaults true, player-controlled)
+    autoReloadETACs*: bool                           # Enable automatic PTU loading onto ETACs (defaults true, player-controlled)
     activeTerraforming*: Option[TerraformProject]    # Active terraforming project
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)

@@ -146,99 +146,66 @@ proc autoLoadColonistsToETACs*(
   state: var GameState, colony: var Colony, systemId: SystemId,
   orders: Table[HouseId, OrderPacket]
 ) =
-  ## Auto-load colonists (PTUs) onto empty ETACs stationed at colony
-  ## Always enabled (no toggle) - essential for colonization gameplay
+  ## Auto-load colonists (PTUs) onto ETACs at colony
+  ## Toggle-able via colony.autoReloadETACs (default: true)
   ##
   ## **Behavior:**
-  ## 1. Find Active ETACs at colony with empty cargo
-  ## 2. Only consider stationary ETACs (no movement orders)
-  ## 3. Load 1 PTU per ETAC (ETAC capacity = 1 PTU)
-  ## 4. Extract PTU from colony population (with extraction cost)
-  ## 5. Skip if colony population <= 1 (preserve minimum population)
+  ## Simple: If ETAC is at home colony and has available capacity, load PTU
+  ## - No stationary checks (load regardless of orders)
+  ## - No extraction cost (direct 1:1 transfer)
+  ## - Preserve minimum 1 PU at colony
   ##
-  ## **Extraction Cost:**
-  ## - Cost = 1.0 / (1.0 + 0.00657 * population)
-  ## - Higher population = lower extraction cost
-  ## - Minimum 1 PU retained at colony
+  ## **Supports Variable Capacity:**
+  ## - ETAC capacity configurable in ships.toml (default: 2)
+  ## - Loads multiple PTUs if capacity allows
+  ## - Partial loads if colony population limited
   ##
-  ## **Edge Cases:**
-  ## - Colony pop <= 1: Skip loading (preserve population)
-  ## - ETAC already has cargo: Skip (already loaded)
-  ## - ETAC has movement orders: Skip (don't load moving ETACs)
-  ## - No ETACs: No-op
-  ##
-  ## **Called From:** processColonyAutomation() after fighter loading
-  ##
-  ## **Design Note:** This eliminates the need for manual PTU loading
-  ## and makes colonization gameplay smooth. ETACs stationed at colonies
-  ## automatically prepare for colonization missions.
+  ## **DoD: O(n) where n = number of fleets**
 
-  if colony.population <= 1:
-    # Don't extract last population unit
+  # Check toggle (default: true for backward compatibility)
+  if not colony.autoReloadETACs:
     return
 
-  # Find Active stationary ETACs at colony with empty cargo
+  if colony.population <= 1:
+    return  # Preserve minimum population
+
+  # DoD: Single pass through fleets
   var loadedCount = 0
 
   for fleetId, fleet in state.fleets.mpairs:
-    if fleet.owner != colony.owner or fleet.location != systemId:
+    # Early exit: fleet not at this colony
+    if fleet.location != systemId or fleet.owner != colony.owner:
       continue
 
-    if fleet.status != FleetStatus.Active:
-      continue
-
-    # Check if fleet is stationary (no movement orders)
-    var isStationary = true
-    if colony.owner in orders:
-      for order in orders[colony.owner].fleetOrders:
-        if order.fleetId == fleetId:
-          # Moving orders: skip this fleet
-          if order.orderType in [FleetOrderType.Move, FleetOrderType.Colonize,
-                                 FleetOrderType.Patrol, FleetOrderType.SeekHome]:
-            isStationary = false
-          break
-
-    if not isStationary:
-      continue
-
-    # Check standing orders (persistent movement behaviors)
-    if fleetId in state.standingOrders:
-      let standingOrder = state.standingOrders[fleetId]
-      # Movement-based standing orders: skip this fleet
-      # EXCEPTION: AutoColonize ETACs need to load PTU when they return home
-      # AutoColonize will execute after loading and send them out again
-      if standingOrder.orderType in [StandingOrderType.PatrolRoute,
-                                     StandingOrderType.AutoReinforce,
-                                     StandingOrderType.AutoRepair,
-                                     StandingOrderType.BlockadeTarget]:
-        continue
-
-    # Load colonists onto empty ETACs
+    # Load PTUs onto ETACs with available capacity
     for ship in fleet.spaceLiftShips.mitems:
       if ship.shipClass != ShipClass.ETAC:
         continue
 
-      if ship.cargo.cargoType != CargoType.None:
-        continue  # Skip already-loaded ETACs
+      # Check available capacity
+      let availableCapacity = ship.cargo.capacity - ship.cargo.quantity
+      if availableCapacity <= 0:
+        continue
 
-      if colony.population <= 1:
-        break  # Stop loading if population runs out
+      # Calculate transfer amount
+      let needed = availableCapacity
+      let available = colony.population - 1  # Preserve 1 PU minimum
+      if available <= 0:
+        continue
 
-      # Extract PTU from colony
-      let extractionCost =
-        1.0 / (1.0 + 0.00657 * colony.population.float)
-      let newPopulation = colony.population.float - extractionCost
-      colony.population = max(1, newPopulation.int)
+      let transferAmount = min(needed, available)
 
-      # Load PTU onto ETAC
+      # Direct transfer (no extraction cost)
+      ship.cargo.quantity += transferAmount
       ship.cargo.cargoType = CargoType.Colonists
-      ship.cargo.quantity = 1
+      state.colonies[systemId].population -= transferAmount
 
-      loadedCount += 1
+      loadedCount += transferAmount
 
       logDebug(LogCategory.lcEconomy,
-        &"Loaded 1 PTU onto {ship.id} at {systemId} " &
-        &"(extraction: {extractionCost:.2f} PU, remaining: {colony.population})")
+        &"Loaded {transferAmount} PTU onto ETAC {ship.id} at {systemId} " &
+        &"({ship.cargo.quantity}/{ship.cargo.capacity} capacity, " &
+        &"colony pop: {state.colonies[systemId].population})")
 
   if loadedCount > 0:
     logInfo(LogCategory.lcEconomy,

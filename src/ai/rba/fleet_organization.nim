@@ -52,14 +52,16 @@ proc detachETACsIfMixed(
       &"Fleet {fleet.id} has {etacCount} ETACs + 1 escort (optimal, no detachment needed)")
     return
 
-  # Detach: 1 escort squadron + all spaceLift → new ETAC fleet
-  # Leave remaining combat squadrons for tactical use
+  # Detach: 1 escort squadron + ONLY ETACs → new colonization fleet
+  # Leave remaining combat squadrons + TroopTransports for tactical/invasion use
 
   var shipIndices: seq[int] = @[0]  # First squadron as escort
 
-  # Add all spaceLift (ETACs + TroopTransports)
+  # Add ONLY ETACs (TroopTransports stay with combat fleet for invasions)
   for i in 0 ..< fleet.spaceLiftShips.len:
-    shipIndices.add(combatCount + i)  # Indexed after squadrons
+    let ship = fleet.spaceLiftShips[i]
+    if ship.shipClass == ShipClass.ETAC:
+      shipIndices.add(combatCount + i)  # Indexed after squadrons
 
   let newFleetId = controller.houseId & "_etac_" & $colony.systemId & "_" &
                    $filtered.turn
@@ -72,9 +74,15 @@ proc detachETACsIfMixed(
     newFleetId: some(newFleetId)
   ))
 
+  # Count TroopTransports staying with combat fleet
+  var troopTransportCount = 0
+  for ship in fleet.spaceLiftShips:
+    if ship.shipClass == ShipClass.TroopTransport:
+      troopTransportCount += 1
+
   logInfo(LogCategory.lcAI,
     &"Detaching {etacCount} ETACs + 1 escort from {fleet.id} at {colony.systemId} " &
-    &"(leaving {combatCount-1} combat squadrons)")
+    &"(leaving {combatCount-1} combat squadrons + {troopTransportCount} transports)")
 
 proc assignUnassignedSquadrons(
   controller: AIController,
