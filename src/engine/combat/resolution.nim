@@ -82,7 +82,6 @@ proc resolvePhase1_Ambush*(
       rng,
       CombatPhase.Ambush,
       roundNumber,
-      hasScouts = taskForces[tfIdx].scoutBonus,
       moraleModifier = taskForces[tfIdx].moraleModifier,
       isSurprise = (roundNumber == 1),
       isAmbush = allowAmbush,  # +4 bonus only in space combat
@@ -337,7 +336,6 @@ proc resolveCRTier(
       rng,
       CombatPhase.MainEngagement,
       roundNumber,
-      hasScouts = taskForces[tfIdx].scoutBonus,
       moraleModifier = taskForces[tfIdx].moraleModifier,
       isSurprise = (roundNumber == 1),
       desperationBonus = desperationBonus

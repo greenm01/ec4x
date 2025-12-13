@@ -59,7 +59,6 @@ proc roll1d20*(rng: var CombatRNG): int =
 proc calculateModifiers*(
   phase: CombatPhase,
   roundNumber: int,
-  hasScouts: bool,
   moraleModifier: int,
   isSurprise: bool,
   isAmbush: bool
@@ -67,10 +66,6 @@ proc calculateModifiers*(
   ## Calculate total CER modifiers for an attack
   ## Returns sum of all applicable modifiers
   result = 0
-
-  # Scouts: +1 max for entire Task Force
-  if hasScouts:
-    result += 1
 
   # Morale: -1 to +2 from prestige check
   result += moraleModifier
@@ -89,7 +84,6 @@ proc rollCER*(
   rng: var CombatRNG,
   phase: CombatPhase,
   roundNumber: int,
-  hasScouts: bool,
   moraleModifier: int,
   isSurprise: bool = false,
   isAmbush: bool = false,
@@ -102,7 +96,7 @@ proc rollCER*(
 
   let naturalRoll = rng.roll1d10()  # 0-9
   let baseModifiers = calculateModifiers(
-    phase, roundNumber, hasScouts, moraleModifier,
+    phase, roundNumber, moraleModifier,
     isSurprise, isAmbush
   )
   let modifiers = baseModifiers + desperationBonus
@@ -153,7 +147,7 @@ proc deterministicRoll*(seed: string, phase: CombatPhase, roundNum: int): CERRol
   ## Create deterministic CER roll for testing
   ## Uses same seed every time for reproducibility
   var rng = initRNG(seed)
-  rollCER(rng, phase, roundNum, hasScouts = false, moraleModifier = 0)
+  rollCER(rng, phase, roundNum, moraleModifier = 0)
 
 proc simulateRolls*(seed: int64, count: int): seq[int] =
   ## Simulate multiple dice rolls to verify distribution

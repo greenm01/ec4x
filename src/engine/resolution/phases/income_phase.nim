@@ -40,6 +40,7 @@ import ../../economy/capacity/capital_squadrons as capital_squadron_capacity
 import ../../economy/capacity/total_squadrons as total_squadron_capacity
 import ../../research/[types as res_types, costs as res_costs, advancement]
 import ../../espionage/[types as esp_types]
+import ../../diplomacy/[proposals as dip_proposals]
 import ../../blockade/engine as blockade_engine
 import ../../intelligence/[
   detection, types as intel_types, generator as intel_gen,

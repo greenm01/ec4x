@@ -13,8 +13,8 @@
 ## - Capital squadron limit is a SUBSET of total limit (not additive)
 ## - Minimum 20 squadrons for early-game viability
 ## - Map size multipliers scale capacity for larger/smaller maps
-## - Includes ALL squadrons: capital ships, escorts, scouts, raiders
-## - Excludes: fighters (separate per-colony limits), auxiliary (ETAC/TT)
+## - Includes ALL squadrons: capital ships, escorts, raiders
+## - Excludes: fighters (separate per-colony limits), auxiliary ships (ETAC/TT/Scout)
 ##
 ## **Enforcement:**
 ## - 2-turn grace period for losing IU (gives time to adjust)
