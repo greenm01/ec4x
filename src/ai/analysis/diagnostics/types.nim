@@ -147,6 +147,8 @@ type
     eliDetectionAttempts*: int       # Total ELI detection attempts
     avgEliRoll*: float               # Average ELI roll value
     avgClkRoll*: float               # Average CLK roll value
+    scoutsDetected*: int             # Enemy scouts detected (observer)
+    scoutsDetectedBy*: int           # Own scouts detected by enemy (target)
 
     # Logistics
     capacityViolationsActive*: int    # Current active capacity violations

@@ -268,6 +268,17 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
           result.newState.houses[detectorId].lastTurnEliRollsSum +=
             event.stealthEliRoll.get()
 
+    of GameEventType.ScoutDetected:
+      # Scout-on-scout detection (reconnaissance)
+      # Observer detected enemy scout
+      if event.sourceHouseId.isSome:
+        let observerId = event.sourceHouseId.get()
+        result.newState.houses[observerId].lastTurnScoutsDetected += 1
+      # Target scout was detected
+      if event.targetHouseId.isSome:
+        let targetId = event.targetHouseId.get()
+        result.newState.houses[targetId].lastTurnScoutsDetectedBy += 1
+
     else:
       discard  # Ignore other event types
 
