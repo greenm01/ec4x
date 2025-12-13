@@ -203,6 +203,9 @@ Space combat occurs when mobile fleets encounter each other in the same system. 
 - **Neutral Status**: Combat occurs only if Neutral fleets have **threatening orders** (Invade, Bombard, Blitz, Blockade) in a system you control.
 - **Neutral + Non-Threatening**: No combat (peaceful coexistence)
 
+**Special Case: Mutual Stealth**
+If two cloaked Raider fleets from opposing houses are in the same system and neither detects the other during the Raider Detection step (see [Section 7.2.4](07-combat.md#724-cloaking-and-detection)), combat is not initiated. The fleets are considered to have passed each other undetected and will continue to execute their assigned fleet orders.
+
 **Rules of Engagement (ROE 0-10):**
 
 ROE determines when your fleets **retreat** during combat, not whether combat starts. Set higher ROE for aggressive stands, lower ROE for cautious retreats when outmatched.
@@ -236,14 +239,13 @@ When three or more houses have mobile fleets in the same system:
 
 Space combat resolves in three phases determining strike order:
 
-**Phase 1: Undetected Raiders (Ambush)**
+**Phase 1: Undetected Raiders (Ambush / Surprise)**
 
-Cloaked Raiders without ELI opposition strike first with +4 CER bonus. Devastating alpha strike before enemy responds.
+Undetected Raider fleets strike first with a **+4 CER bonus**. This represents a devastating ambush (for a defending fleet) or surprise attack (for an attacking fleet) before the enemy can respond.
 
 **Conditions:**
-- Raiders present in task force
-- After ELI resolution Raider fleets remain undetected
-- Raiders get ambush bonus (+4 CER)
+- A fleet with Raiders wins the detection roll at the start of combat.
+- The fleet gains the first-strike bonus (+4 CER).
 
 **Phase 2: Fighter Squadrons (Intercept)**
 
