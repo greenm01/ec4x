@@ -208,9 +208,6 @@ proc resolveCommandPhase*(state: var GameState,
   # SpyScoutDetected events trigger Hostile escalation
   diplomatic_resolution.resolveScoutDetectionEscalations(state, events)
 
-  # Process spy scout orders (join, move, rendezvous)
-  # Spy scouts can merge with each other or with normal fleets
-  spy_scout_orders.resolveSpyScoutOrders(state)
 
   # NOTE: Squadron management and cargo management are now handled by
   # zero-turn commands (src/engine/commands/zero_turn_commands.nim)

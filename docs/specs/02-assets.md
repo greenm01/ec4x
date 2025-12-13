@@ -236,7 +236,11 @@ Fighters are fragile but cost-effective. A mature colony can field dozens of squ
 
 ### 2.4.2 Spy Scouts
 
-Scouts are specialized, single-use auxiliary ships designed for espionage and reconnaissance. They do not participate in combat. When you issue a spy order (`Spy on Planet`, `Spy on System`, `Hack a Starbase`), the Scout is consumed on a one-way mission to gather high-value intelligence.
+Scouts are specialized auxiliary ships for espionage and reconnaissance. They are non-combat units that operate in **Scout-only fleets**. This allows you to move them to strategic locations and group them together before a mission.
+
+They have two primary functions:
+1.  **Reconnaissance (Non-Consumable)**: Using the `View a World` order, a Scout can gather basic intelligence on a system from a safe distance without being consumed.
+2.  **Espionage (Consumable)**: When you issue a spy order (`Spy on Planet`, `Spy on System`, `Hack a Starbase`), all Scouts in the fleet are consumed on a one-way mission to gather high-value intelligence.
 
 **Detection Mechanics**:
 

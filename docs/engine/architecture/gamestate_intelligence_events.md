@@ -350,7 +350,7 @@ GameEvent* = ref object
 | Category         | Count | Examples                                              | Purpose            |
 |------------------|-------|-------------------------------------------------------|--------------------|
 | **Combat**       | 50+   | WeaponFired, ShipDestroyed, BombardmentRoundCompleted | Tactical detail    |
-| **Fleet Ops**    | 12    | StandingOrderActivated, SpyScoutDeployed              | Fleet tracking     |
+| **Fleet Ops**    | 12    | StandingOrderActivated, FleetMerged                   | Fleet tracking     |
 | **Construction** | 8     | ShipCommissioned, BuildingCompleted                   | Production updates |
 | **Economic**     | 6     | PopulationTransfer, TerraformComplete                 | Economic events    |
 | **Diplomatic**   | 6     | WarDeclared, DiplomaticRelationChanged                | Relations tracking |
@@ -367,7 +367,7 @@ GameEvent* = ref object
 │ Engine modules emit events:                                      │
 │   - Combat resolution -> WeaponFired, ShipDestroyed              │
 │   - Diplomatic actions -> WarDeclared, PeaceSigned               │
-│   - Fleet operations -> SpyScoutDeployed, StandingOrderActivated │
+│   - Fleet operations -> FleetMerged, StandingOrderActivated      │
 │                                                                  │
 │ events.add(event_factory.weaponFired(...))                       │
 └──────────────────────────────────────────────────────────────────┘
@@ -529,7 +529,7 @@ if event.eventType == FleetDestroyed and event.systemId == myColony:
 │                                                                 │
 │ 6. Engine emits events:                                         │
 │    events.add(event_factory.weaponFired(...))                   │
-│    events.add(event_factory.spyScoutDeployed(...))              │
+│    events.add(event_factory.orderIssued("SpyOnPlanet", ...))    │
 │    events.add(event_factory.warDeclared(...))                   │
 │                                                                 │
 │ 7. Engine updates intelligence:                                 │
@@ -825,9 +825,10 @@ proc processEvents(controller: var AIController,
         controller.setDefensiveMode()
         controller.recallExpeditionaryForces()
 
-    of SpyScoutDeployed:
-      # Own spy scout deployed - track mission
-      controller.trackSpyMission(event.spyScoutId, event.targetSystem)
+    of OrderIssued:
+      if event.orderType == "SpyOnPlanet":
+        # Own spy mission issued - track mission
+        controller.trackSpyMission(event.fleetId, event.targetSystem)
 ```
 
 ### Generating Client Reports
@@ -848,9 +849,10 @@ proc generateAlertsSection(events: seq[GameEvent], ...): ReportSection =
                        &"{event.targetHouseId} changed from {event.oldState} " &
                        &"to {event.newState} ({event.changeReason})")
 
-    of SpyScoutDeployed:
-      result.lines.add(&"• Spy scout deployed: {event.mission} targeting " &
-                       &"{event.targetSystem} ({event.scoutCount} scouts)")
+    of OrderIssued:
+      if event.orderType == "SpyOnPlanet":
+        result.lines.add(&"• Espionage mission launched: {event.orderType} targeting " &
+                         &"{event.targetSystem} ({event.fleetSize} scouts)")
 ```
 
 ---
@@ -1332,7 +1334,7 @@ before Nostr multiplayer deployment.
 
 - **Fog-of-War System:** `fog_of_war.md` (if exists)
 - **Combat Events:** `active_fleet_order_game_events.md`
-- **Spy Scouts:** `spy_scouts.md`
+- **Spy Scouts:** `docs/specs/02-assets.md#242-spy-scouts`
 - **Intelligence Gathering:** `docs/specs/intel.md`
 - **Canonical Turn Cycle:** `ec4x_canonical_turn_cycle.md`
 

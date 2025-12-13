@@ -8,11 +8,11 @@ Intelligence flows from multiple sources, each revealing different aspects of yo
 
 ### 9.1.1 Spy Scout Missions (Perfect Quality)
 
-Your **Spy Scouts** are the primary tool for gathering detailed, high-quality intelligence. When you dispatch a Spy Scout on an espionage mission (e.g., `Spy on Planet`), it attempts to penetrate enemy defenses to collect a comprehensive report.
+Your **Scouts** are the primary tool for gathering detailed, high-quality intelligence. When you dispatch a fleet of Scouts on an espionage mission (e.g., `Spy on Planet`), they attempt to penetrate enemy defenses to collect a comprehensive report.
 
 If successful, the intelligence gathered is of **Perfect Quality**—it is detailed, accurate, and current as of that turn. This includes complete fleet compositions with tech levels, detailed colony statistics, economic output, construction projects, and more.
 
-However, this is a high-risk operation. The Spy Scout is consumed in the attempt, and if detected, the mission fails completely.
+However, this is a high-risk operation. All Scouts in the fleet are consumed in the attempt, and if detected, the mission fails completely.
 
 See espionage orders in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) for mission details.
 
@@ -24,7 +24,7 @@ Visual intelligence has natural limitations. Your captains cannot assess technol
 
 ### 9.1.3 Espionage Operations (Perfect Quality)
 
-Your **Spy Scouts** conducting espionage missions (`Spy on Planet`, `Spy on System`, `Hack a Starbase`) penetrate deeper than visual observation. If successful, these covert operations provide **Perfect Quality** intelligence, including economic data, construction queues, and technological assessments that visual sightings cannot reveal.
+Your **Scouts** conducting espionage missions (`Spy on Planet`, `Spy on System`, `Hack a Starbase`) penetrate deeper than visual observation. If successful, these covert operations provide **Perfect Quality** intelligence, including economic data, construction queues, and technological assessments that visual sightings cannot reveal.
 
 This level of detail transforms strategic decision-making. Knowing an enemy's economic strength and research focus allows you to predict their capabilities turns in advance.
 

@@ -15,7 +15,6 @@
 ##   6b. Fleet-Based Espionage (SpyPlanet, SpySystem, HackStarbase)
 ##   6c. Space Guild Espionage (EBP-based covert ops)
 ##   6d. Starbase Surveillance (continuous monitoring)
-## Step 7: Spy Scout Travel
 ##
 ## **Implementation Note:**
 ## Spy detection (Step 6a) executes BEFORE combat (line 49-53) to exclude
@@ -331,15 +330,3 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   starbase_surveillance.processAllStarbaseSurveillance(state, state.turn, survRng)
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6d] Completed starbase surveillance")
 
-  # ===================================================================
-  # STEP 7: SPY SCOUT TRAVEL
-  # ===================================================================
-  # Move traveling spy scouts through jump lanes
-  # Per assets.md:2.4.2 - scouts travel 1-2 jumps per turn based on lane control
-  # Detection checks occur at intermediate systems
-  # Phase 7b: Emits SpyScoutTravel events
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 7] Spy scout travel (1-2 jumps per turn)...")
-  let travelResults = spy_travel.resolveSpyScoutTravel(state, events)
-  for msg in travelResults:
-    logInfo("Intelligence", "Spy scout travel", msg)
-  logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 7] Completed ({travelResults.len} scout movements)")

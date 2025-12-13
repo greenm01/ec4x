@@ -299,11 +299,10 @@ Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Trans
 
 ### 6.3.13 Spy on a Planet (11)
 
-Deploy a **Spy Scout** on a one-way mission to gather detailed intelligence on an enemy colony. The Scout is consumed in the attempt, regardless of outcome.
+Deploy a Scout fleet on a one-way mission to gather detailed intelligence on an enemy colony. All Scouts in the fleet are consumed in the attempt, regardless of outcome.
 
 **Requirements:**
-- Fleet must contain one or more Scout auxiliary ships.
-- Each Scout will be consumed to conduct one spy mission. You can send multiple from the same fleet.
+- Fleet must contain **only Scout auxiliary ships**.
 
 **Detection & Mission Success**:
 Upon arrival, the defending house makes a detection roll to find your Spy Scout(s).
@@ -327,12 +326,10 @@ For the complete detection mechanic, see [Section 2.4.2](02-assets.md#242-spy-sc
 
 ### 6.3.14 Spy on a System (12)
 
-Deploy surveillance operations to detect hostile fleet movements. Your scout ships monitor jump lane traffic, track enemy fleet positions, and provide early warning of invasions.
+Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet activity in a system. All Scouts in the fleet are consumed in the attempt.
 
 **Requirements:**
-- Fleet must contain **only Scout squadrons** (no combat ships or spacelift)
-- One or more scout squadrons allowed (multi-scout deployments supported)
-- Spy scouts are consumed permanently when deployed (cannot be recovered)
+- Fleet must contain **only Scout auxiliary ships**.
 
 **Detection & Mission Success**: See Order 11 (Spy on Planet) for detection mechanics.
 
@@ -350,13 +347,11 @@ Deploy surveillance operations to detect hostile fleet movements. Your scout shi
 
 ### 6.3.15 Hack a Starbase (13)
 
-Conduct cyber warfare operations against enemy starbases. Your intelligence units penetrate starbase networks, extracting economic data, research information, and operational intelligence.
+Conduct a cyber warfare operation against an enemy starbase. All Scouts in the fleet are consumed in the attempt.
 
 **Requirements:**
-- Fleet must contain **only Scout squadrons** (no combat ships or spacelift)
-- One or more scout squadrons allowed (multi-scout deployments supported)
-- Target system must have enemy starbase
-- Spy scouts are consumed permanently when deployed (cannot be recovered)
+- Fleet must contain **only Scout auxiliary ships**.
+- Target system must have an enemy starbase.
 
 **Detection & Mission Success**: See Order 11 (Spy on Planet) for detection mechanics.
 
@@ -377,20 +372,20 @@ Conduct cyber warfare operations against enemy starbases. Your intelligence unit
 Transfer your fleet to merge with another fleet at the same location. Consolidate forces, reinforce battle groups, or reorganize for strategic operations. All squadrons and spacelift ships from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
 
 **Use Join Fleet to:**
-- Reinforce damaged fleets with fresh squadrons
-- Consolidate scattered forces after combat
-- Create combined task forces for major operations
-- Consolidate Scout auxiliary ships into a single fleet before deploying them on a spy mission.
+- Reinforce damaged fleets with fresh squadrons.
+- Consolidate scattered forces after combat.
+- Create combined task forces for major operations.
+- Group multiple Scouts into a single fleet to improve their stealth for an espionage mission.
 
 ### 6.3.17 Rendezvous at System (15)
 
 Order your fleet to travel to a designated system and await further instructions. Coordinate multi-fleet operations by designating rendezvous points. Multiple fleets with Rendezvous orders to the same system automatically merge when they arrive, with all forces consolidating into the fleet with the lowest ID.
 
 **Use Rendezvous to:**
-- Coordinate multi-fleet invasions
-- Establish staging areas for offensives
-- Organize defensive concentrations
-- Consolidate multiple fleets containing Scout auxiliaries before a major intelligence operation.
+- Coordinate multi-fleet invasions.
+- Establish staging areas for offensives.
+- Organize defensive concentrations.
+- Consolidate multiple Scout fleets at a staging point before an espionage mission.
 
 ### 6.3.18 Salvage (16)
 
@@ -457,24 +452,23 @@ Reactivate Reserve or Mothballed fleets to Active status. Your fleet returns to 
 
 ### 6.3.22 View a World (20)
 
-Send a fleet to perform long-range planetary reconnaissance from the edge of a solar system. Your ship approaches the system edge, conducts a long-range scan of the planet, then backs off into deep space—gathering intelligence without orbital approach or detection risk.
+Send a fleet to perform long-range reconnaissance from the edge of a solar system. This is a primary, non-consumable mission for Scouts, allowing them to gather basic intelligence without being detected or destroyed.
 
 **Intelligence Gathered:**
-- **Planet Owner**: Which house controls the colony (if colonized)
-- **Planet Class**: Production potential (Hostile, Benign, Lush, etc.)
-- **Strategic Value**: Assess colonization priority for ETACs
+- **Planet Owner**: Which house controls the colony (if colonized).
+- **Planet Class**: Production potential (Hostile, Benign, Lush, etc.).
+- **Strategic Value**: Assess colonization priority for ETACs.
 
 **Tactical Advantages:**
-- **Deep Space Approach**: Ship remains in deep space, avoiding orbital combat
-- **Any Ship Type**: No specialized equipment required
-- **Early Intelligence**: Identify valuable targets before committing ETACs
-- **Diplomatic Safety**: No hostile act, safe for gathering intel on neutrals
+- **Safe Reconnaissance**: The fleet remains at the edge of the system, avoiding detection and combat.
+- **Any Ship Type**: While ideal for Scouts, any ship can perform this action.
+- **Early Intelligence**: Identify valuable targets before committing ETACs or Spy Scouts.
+- **Diplomatic Safety**: Not a hostile act; safe for gathering intel on neutrals.
 
 **Use View a World to:**
-- Recon uncolonized systems before ETAC deployment
-- Identify high-value planets (Eden, Lush) for priority colonization
-- Map enemy territory and production capacity
-- Gather intelligence on neutral/hostile colonies without triggering combat
+- Explore the map safely with Scouts in the early game.
+- Identify high-value planets (Eden, Lush) for priority colonization.
+- Gather basic intelligence on enemy territory before committing to a risky espionage mission.
 
 ---
 
