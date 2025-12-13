@@ -5,6 +5,8 @@
 import std/[strformat, options]
 import ../../../engine/[gamestate, fog_of_war, logger, orders]
 import ../../../engine/economy/projects
+import ../../../engine/economy/maintenance  # For accurate maintenance calculation
+import ../../../common/types/units  # For ShipClass
 
 proc calculateProjectedTreasury*(filtered: FilteredGameState): int =
   ## Calculate projected treasury for AI planning
@@ -22,11 +24,24 @@ proc calculateProjectedTreasury*(filtered: FilteredGameState): int =
     # GCO (Gross Colonial Output) is the total economic output
     expectedIncome += (colony.grossOutput * filtered.ownHouse.taxPolicy.currentRate) div 100
 
-  # Calculate expected maintenance from fleets
+  # Calculate expected maintenance costs (ACCURATE calculation)
+  # Matches the actual maintenance.nim calculation logic
   var expectedMaintenance = 0
+
+  # Fleet maintenance
   for fleet in filtered.ownFleets:
-    # Each fleet costs ~2 PP maintenance (simplified)
-    expectedMaintenance += 2
+    var fleetData: seq[(ShipClass, bool)] = @[]
+    for squadron in fleet.squadrons:
+      # Add flagship
+      fleetData.add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
+      # Add squadron ships (non-flagship escorts)
+      for ship in squadron.ships:
+        fleetData.add((ship.shipClass, ship.isCrippled))
+    expectedMaintenance += calculateFleetMaintenance(fleetData)
+
+  # Colony maintenance (facilities, ground forces)
+  for colony in filtered.ownColonies:
+    expectedMaintenance += calculateColonyUpkeep(colony)
 
   result = currentTreasury + expectedIncome - expectedMaintenance
   result = max(result, 0)  # Can't go negative

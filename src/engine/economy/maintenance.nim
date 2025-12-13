@@ -10,7 +10,7 @@
 import types
 import ../../common/types/units
 import ../config/[construction_config, facilities_config, ground_units_config, combat_config]
-import ../squadron, ../gamestate, ../fleet
+import ../squadron, ../gamestate, ../fleet, ../iterators
 
 export types.MaintenanceReport
 # NOTE: Don't export Colony to avoid ambiguity - importers should use gamestate directly
@@ -136,6 +136,29 @@ proc calculateColonyUpkeep*(colony: gamestate.Colony): int =
 
   # Marines
   result += colony.marines * getMarineUpkeep()
+
+proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int =
+  ## Calculate total maintenance cost for a house (fleets + colonies)
+  ## This is a PURE calculation function for AI budget planning
+  ## Does NOT deduct from treasury - just calculates the cost
+  ##
+  ## Used by AI to reserve maintenance budget before allocating to construction
+  result = 0
+
+  # Fleet maintenance
+  for fleet in state.fleetsOwned(houseId):
+    var fleetData: seq[(ShipClass, bool)] = @[]
+    for squadron in fleet.squadrons:
+      # Add flagship
+      fleetData.add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
+      # Add squadron ships (non-flagship escorts)
+      for ship in squadron.ships:
+        fleetData.add((ship.shipClass, ship.isCrippled))
+    result += calculateFleetMaintenance(fleetData)
+
+  # Colony maintenance (facilities, ground forces)
+  for colony in state.coloniesOwned(houseId):
+    result += calculateColonyUpkeep(colony)
 
 ## Infrastructure Repair
 
