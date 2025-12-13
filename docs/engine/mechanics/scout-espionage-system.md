@@ -243,7 +243,7 @@ proc escalateDiplomaticStance(state, defender, attacker):
 
 ## Scout-on-Scout Detection (Reconnaissance)
 
-**NOT YET IMPLEMENTED** (planned for Phase 8)
+**IMPLEMENTED** (Maintenance Phase Step 1e)
 
 When scout fleets from different houses are at same location:
 - Each side makes separate ELI-based detection roll
