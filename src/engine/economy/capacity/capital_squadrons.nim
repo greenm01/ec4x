@@ -26,6 +26,8 @@ import ../types as econ_types  # For ConstructionType, ConstructionProject
 import ../../../common/types/core
 import ../../../common/types/units  # For ShipClass, Ship
 import ../../../common/logger
+import ../../resolution/types as resolution_types  # For GameEvent
+import ../../resolution/event_factory/fleet_ops  # For squadronScrapped
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 
@@ -229,9 +231,11 @@ proc planEnforcement*(state: GameState, violation: types.CapacityViolation): typ
   result.description = $toScrapCount & " capital squadron(s) auto-scrapped for " &
                       violation.entityId & " (IU loss, 50% salvage paid)"
 
-proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
+proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,
+                       events: var seq[resolution_types.GameEvent]) =
   ## Apply enforcement actions
   ## Explicit mutation - scraps capital squadrons and credits salvage value
+  ## Emits SquadronScrapped events for tracking
 
   if action.actionType != "auto_scrap" or action.affectedUnits.len == 0:
     return
@@ -255,6 +259,19 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
 
       # Remove squadrons (reverse order to maintain indices)
       for idx in toRemove.reversed:
+        let squadron = fleet.squadrons[idx]
+        let salvage = calculateSalvageValue(squadron.flagship.shipClass)
+
+        # Emit SquadronScrapped event
+        events.add(fleet_ops.squadronScrapped(
+          houseId = houseId,
+          squadronId = squadron.id,
+          shipClass = squadron.flagship.shipClass,
+          reason = "Capital squadron capacity exceeded (IU loss)",
+          salvageValue = salvage,
+          systemId = fleet.location
+        ))
+
         fleet.squadrons.delete(idx)
 
   # Credit salvage to house treasury
@@ -269,7 +286,8 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction) =
             " scrapped=", $action.affectedUnits.len,
             " salvage=", $totalSalvage)
 
-proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction] =
+proc processCapacityEnforcement*(state: var GameState,
+                                events: var seq[resolution_types.GameEvent]): seq[types.EnforcementAction] =
   ## Main entry point - batch process all capital squadron capacity violations
   ## Called during Maintenance phase
   ## Data-oriented: analyze all → plan enforcement → apply enforcement
@@ -300,7 +318,7 @@ proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAct
     logEconomy("Enforcing capital squadron capacity violations",
               "count=", $enforcementActions.len)
     for action in enforcementActions:
-      applyEnforcement(state, action)
+      applyEnforcement(state, action, events)
       result.add(action)  # Track which actions were applied
   else:
     logDebug("Military", "No capital squadron violations requiring enforcement")

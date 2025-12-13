@@ -241,7 +241,7 @@ proc resolveIncomePhase*(
   # 2-turn grace period per colony
   logDebug(LogCategory.lcEconomy,
           "[CAPACITY] Checking fighter squadron capacity...")
-  let fighterEnforcement = fighter_capacity.processCapacityEnforcement(state)
+  let fighterEnforcement = fighter_capacity.processCapacityEnforcement(state, events)
   for action in fighterEnforcement:
     if action.affectedUnits.len > 0:
       let colonyId = SystemId(parseInt(action.entityId))
@@ -275,7 +275,7 @@ proc resolveIncomePhase*(
   logDebug(LogCategory.lcEconomy,
           "[CAPACITY] Checking capital squadron capacity...")
   let capitalEnforcement =
-    capital_squadron_capacity.processCapacityEnforcement(state)
+    capital_squadron_capacity.processCapacityEnforcement(state, events)
   for action in capitalEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
@@ -292,7 +292,7 @@ proc resolveIncomePhase*(
   logDebug(LogCategory.lcEconomy,
           "[CAPACITY] Checking total squadron capacity...")
   let totalEnforcement =
-    total_squadron_capacity.processCapacityEnforcement(state)
+    total_squadron_capacity.processCapacityEnforcement(state, events)
   for action in totalEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
