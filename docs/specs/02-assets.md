@@ -291,7 +291,7 @@ Raider stealth capability is determined by Cloaking (CLK) research level. Higher
 
 **Detection Mechanics**:
 
-Enemy colonies equipped with Electronic Intelligence (ELI) technology can detect Raiders. Detection rolls compare the Raider's CLK level against the defender's ELI level.
+When a fleet containing one or more Raiders engages in combat (both Space and Orbital), a detection check is made at the start of that combat phase. Detection is an opposed roll pitting the attacker's CLK against the defender's ELI.
 
 **Raider Detection Table**
 
