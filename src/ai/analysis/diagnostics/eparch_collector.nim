@@ -34,9 +34,9 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   for systemId, colony in state.colonies:
     if colony.owner == houseId:
       totalProduction += colony.production
-      totalPU += colony.population  # Population in millions (display field)
-      totalPTU += colony.souls div 50000  # souls / 50k = PTU (approximation)
-      totalIU += colony.industrial.units  # Actual IU count
+      totalPU += colony.populationUnits  # Actual PU (economic units)
+      totalPTU += colony.populationTransferUnits  # Actual PTU
+      totalIU += colony.infrastructure  # Infrastructure units
       # GCO = colony output before tax (use production as proxy)
       grossColonyOutput += colony.production
 
@@ -51,9 +51,10 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   result.netHouseValue =
     (grossColonyOutput * house.taxPolicy.currentRate) div 100
 
-  # Population growth rate (base 2.0% + tax modifiers from economy.md)
-  # Simplified: just track base rate for now
-  result.populationGrowthRate = 200  # 2.00% in basis points
+  # Population growth rate (actual from config with map scaling)
+  # Base rate (5%) × tax multiplier × map multiplier
+  # Simplified: report base config rate in basis points
+  result.populationGrowthRate = 500  # 5.00% base rate in basis points
 
   # ================================================================
   # ECONOMIC HEALTH

@@ -9,6 +9,23 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in
+      let
+        pythonEnv = pkgs.python311.withPackages (ps: with ps; [
+          # AI development
+          pip
+          virtualenv
+          google-generativeai
+
+          # Data Analysis Stack (Terminal-focused)
+          polars       # Fast DataFrame library
+          pyarrow      # Parquet I/O backend
+          rich         # Beautiful terminal output
+          tabulate     # ASCII/Markdown tables
+          numpy        # Statistical functions
+          scipy        # Advanced statistics
+          click        # CLI framework
+        ]);
+      in
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
@@ -16,26 +33,14 @@
             nim
             nimble
 
-            # Python AI development
-            python311
-            python311Packages.pip
-            python311Packages.virtualenv
+            # Python with packages
+            pythonEnv
             aider-chat
-            python311Packages.google-generativeai
-
-            # Data Analysis Stack (Terminal-focused)
-            python311Packages.polars       # Fast DataFrame library (already present)
-            python311Packages.pyarrow      # Parquet I/O backend
-            python311Packages.rich         # Beautiful terminal output
-            python311Packages.tabulate     # ASCII/Markdown tables
-            python311Packages.numpy        # Statistical functions
-            python311Packages.scipy        # Advanced statistics
-            python311Packages.click        # CLI framework
 
             # dev tools
             git
-            git-filter-repo 
-            
+            git-filter-repo
+
           ];
           shellHook = ''
             export IN_NIX_SHELL=1

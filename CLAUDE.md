@@ -108,11 +108,11 @@ nimble buildSimulation 2>&1 | tail -10
 ./bin/run_simulation -s 12345 --fixed-turns --turns 35 --players 4
 
 # 3. Batch test (20 games, 7 turns, ~10 seconds)
-python3 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 35
+python3.11 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 35
 # Seeds are auto-generated based on game number
 
 # 4. Analyze with Python + polars
-python3 scripts/analysis/your_script.py
+python3.11 scripts/analysis/your_script.py  # Use python3.11 for polars
 ```
 
 ### Why This Workflow?
@@ -185,16 +185,37 @@ balance_results/diagnostics/
 
 Each CSV contains:
 - `game_id` column with the seed value
-- Per-turn economic/military stats  
+- Per-turn economic/military stats (190+ columns)
 - Victory conditions and final scores
 - Combat outcomes
 
 **Files are HUGE** (multi-GB for 100+ games) - polars handles them efficiently.
 
+### Available Diagnostic Columns
+
+**Reference:** `scripts/analysis/diagnostic_columns.json` contains the complete list of 200 diagnostic columns.
+
+**Auto-generated:** Run `python3.11 scripts/update_diagnostic_columns.py` after modifying columns in `csv_writer.nim`
+
+**Quick lookup:** `cat scripts/analysis/diagnostic_columns.json | jq '.diagnostic_columns'`
+
+**Common columns for analysis:**
+- Treasury: `treasury`, `production`, `maintenance_cost`, `treasury_deficit`
+- Ships: `total_ships`, `ships_gained`, `ships_lost`, ship type columns (e.g., `destroyer_ships`)
+- Colonies: `total_colonies`, `colonies_gained`, `colonies_lost`
+- Tech: `tech_cst`, `tech_wep`, `tech_el`, `tech_sl`, etc.
+- Combat: `space_wins`, `space_losses`, `combat_cer_avg`
+- Prestige: `prestige`, `prestige_change`, `prestige_victory_progress`
+
+**Ship Classifications:** The JSON includes ship role classifications (Escort, Capital, Auxiliary, Fighter, SpecialWeapon) matching the tables in `docs/specs/10-reference.md`.
+
 ### Creating Analysis Scripts
 
 ```python
 import polars as pl
+
+# IMPORTANT: Use python3.11 (not python3) for polars in nix-shell
+# After rebuilding flake: exit and re-enter nix develop
 
 # Load specific game by seed
 df = pl.read_csv("balance_results/diagnostics/game_12345.csv")

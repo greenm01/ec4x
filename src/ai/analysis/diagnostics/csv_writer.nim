@@ -87,6 +87,9 @@ const
                     "spy_planet,hack_starbase,total_espionage," &
                     "undefended_colonies,total_colonies,mothball_used,mothball_total," &
                     "invalid_orders,total_orders," &
+                    "domestikos_budget_allocated,logothete_budget_allocated,drungarius_budget_allocated,eparch_budget_allocated," &
+                    "build_orders_generated,pp_spent_construction," &
+                    "domestikos_requirements_total,domestikos_requirements_fulfilled,domestikos_requirements_unfulfilled,domestikos_requirements_deferred," &
                     "colonies_lost,colonies_gained,colonies_gained_via_colonization,colonies_gained_via_conquest,ships_lost,ships_gained,fighters_lost,fighters_gained," &
                     "bilateral_relations," &
                     "events_order_completed,events_order_failed,events_order_rejected," &
@@ -215,6 +218,10 @@ proc writeCSVRow*(file: File, metrics: DiagnosticMetrics) =
                  &"{metrics.mothballedFleetsUsed},{metrics.mothballedFleetsTotal}," &
                  # Orders
                  &"{metrics.invalidOrders},{metrics.totalOrders}," &
+                 # Budget Allocation (Treasurer → Advisor Flow)
+                 &"{metrics.domestikosBudgetAllocated},{metrics.logotheteBudgetAllocated},{metrics.drungariusBudgetAllocated},{metrics.eparchBudgetAllocated}," &
+                 &"{metrics.buildOrdersGenerated},{metrics.ppSpentConstruction}," &
+                 &"{metrics.domestikosRequirementsTotal},{metrics.domestikosRequirementsFulfilled},{metrics.domestikosRequirementsUnfulfilled},{metrics.domestikosRequirementsDeferred}," &
                  # Change Deltas
                  &"{metrics.coloniesLost},{metrics.coloniesGained},{metrics.coloniesGainedViaColonization},{metrics.coloniesGainedViaConquest},{metrics.shipsLost},{metrics.shipsGained},{metrics.fightersLost},{metrics.fightersGained}," &
                  # Bilateral Diplomatic Relations

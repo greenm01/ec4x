@@ -970,293 +970,101 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
                                    act: GameAct,
                                    personality: AIPersonality,
                                    availableBudget: int,
-                                   domestikosRequirements: Option[BuildRequirements]): seq[BuildOrder] =
-  ## Generate build orders using budget allocation system
+                                   treasurerFeedback: TreasurerFeedback): seq[BuildOrder] =
+  ## Generate build orders from Treasurer's mediation results
   ##
-  ## Intelligence-driven ship building: All decisions come from Domestikos requirements
-  ## This replaces hardcoded Act-based flags with adaptive, intelligence-informed decisions
+  ## DRY PRINCIPLE: Treasurer already mediated requirements and decided what to build.
+  ## This function EXECUTES those decisions by converting fulfilled requirements
+  ## into actual BuildOrders. No re-mediation, no duplicate budget tracking.
+  ##
+  ## DoD PRINCIPLE: Clear data flow: Treasurer decides → Domestikos executes
+  ## Separation of concerns: Treasurer = budget allocation, Domestikos = build execution
   ##
   ## IMPORTANT: availableBudget should be treasury AFTER maintenance costs
   ## Otherwise AI will overspend and enter maintenance death spiral
 
-  # 1. Calculate budget allocation percentages
-  # NEW: Treasurer module handles allocation with Domestikos consultation
-  var allocation = treasurer.allocateBudget(
-    act,
-    personality,
-    controller.intelligenceSnapshot,  # Phase D: Threat-aware allocation
-    domestikosRequirements,  # Treasurer consults Domestikos requirements
-    availableBudget       # Treasurer needs total budget to calculate percentages
-  )
-
-  # NOTE: Diagnostic logging removed after verification that Strategic Triage fix works
-
-  # 2. Calculate dock capacity and estimate excess docks for filler
-  var totalDocks = 0
-  for colony in myColonies:
-    for spaceport in colony.spaceports:
-      totalDocks += spaceport.effectiveDocks
-    for shipyard in colony.shipyards:
-      totalDocks += shipyard.effectiveDocks
-
-  # Strategic requirements typically consume 80-85% of dock capacity
-  # Use 85% as conservative estimate, leaving 15% for filler
-  let strategicDockUsagePct = 0.85
-  let excessDocks = max(1, int(float(totalDocks) * (1.0 - strategicDockUsagePct)))
-
-  logDebug(LogCategory.lcAI,
-           &"Dock capacity: total={totalDocks}, " &
-           &"estimated strategic usage={int(float(totalDocks)*strategicDockUsagePct)}, " &
-           &"excess={excessDocks}")
-
-  # 3. Split budget into strategic and filler portions (using EXCESS docks, not total)
-  # Strategic budget (80-85%): Critical/High/Medium/Low priority requirements
-  # Filler budget (15-20%): Deferred priority capacity utilization (scales with excess dock capacity)
-  let budgetSplit = splitStrategicAndFillerBudgets(availableBudget, act, allocation, excessDocks)
-
-  # 3. Initialize TWO BudgetTrackers to prevent filler from starving strategic
-  # CRITICAL: Single tracker prevents overspending across all colonies
-  # Previous bug: Per-colony budgets → 3 colonies × 550 PP = 1650 PP spent (house only had 1000!)
-  # Now: Dual trackers enforce strategic vs filler budget separation
-  var strategicTracker = initBudgetTracker(controller.houseId, budgetSplit.strategicBudget, allocation)
-
-  # Filler tracker: Use same allocation as strategic (Deferred requirements can be for any objective)
-  # The filler budget is a separate pool that Deferred requirements draw from
-  var fillerTracker = initBudgetTracker(controller.houseId, budgetSplit.fillerBudget, allocation)
-
-  logDebug(LogCategory.lcAI,
-    &"{controller.houseId} Budget allocation ({act}): " &
-    &"strategic={budgetSplit.strategicBudget}PP, " &
-    &"filler={budgetSplit.fillerBudget}PP, " &
-    &"Expansion={int(allocation[Expansion]*float(budgetSplit.strategicBudget))}PP, " &
-    &"Reconnaissance={int(allocation[Reconnaissance]*float(budgetSplit.strategicBudget))}PP, " &
-    &"Military={int(allocation[Military]*float(budgetSplit.strategicBudget))}PP, " &
-    &"SpecialUnits={int(allocation[SpecialUnits]*float(budgetSplit.strategicBudget))}PP")
-
-  # 3. Generate orders for each objective within budget
   result = @[]
 
-  # 3.1. PHASE 3: Process Domestikos Requirements FIRST (before colony loop)
-  # Domestikos requirements have absolute priority (Critical > High > Medium)
-  # This ensures tactical needs drive production instead of hardcoded thresholds
-  # Track Treasurer feedback for Domestikos-Treasurer feedback loop
-  var treasurerFeedback = TreasurerFeedback(
-    fulfilledRequirements: @[],
-    unfulfilledRequirements: @[],
-    deferredRequirements: @[],
-    totalBudgetAvailable: budgetSplit.strategicBudget + budgetSplit.fillerBudget,  # Total of both budgets
-    totalBudgetSpent: 0,
-    totalUnfulfilledCost: 0
-  )
+  # Execute fulfilled requirements from Treasurer's mediation
+  # Treasurer already decided these can be afforded and should be built
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Domestikos: Executing {treasurerFeedback.fulfilledRequirements.len} " &
+          &"fulfilled requirements from Treasurer mediation")
 
-  if domestikosRequirements.isSome:
-    let reqs = domestikosRequirements.get()
-    logDebug(LogCategory.lcAI,
-             &"{controller.houseId} Treasurer: Processing {reqs.requirements.len} Domestikos requirements")
-    for req in reqs.requirements:
-      # Process requirements in priority order (already sorted by Domestikos)
-      # Process ALL priorities including Deferred (capacity fillers)
-      # Deferred requirements ensure full dock utilization when budget permits
+  for req in treasurerFeedback.fulfilledRequirements:
+    # Treasurer already decided to fulfill this requirement - just execute it
+    # No budget checking needed (already done during mediation)
 
-      let itemName = if req.shipClass.isSome: $req.shipClass.get() else: req.reason
-      logDebug(LogCategory.lcAI,
-               &"{controller.houseId} Treasurer: Processing {req.quantity}× {itemName} " &
-               &"(priority={req.priority}, cost={req.estimatedCost}PP)")
+    let itemName = if req.shipClass.isSome: $req.shipClass.get()
+                   else: req.itemId.get("unknown")
 
-      # Find best colony to build (prefer target system if specified)
-      # IMPORTANT: Ships require facilities (shipyard/spaceport), but defense buildings don't
-      let requiresFacility = req.shipClass.isSome
-      var buildColony: Option[Colony] = none(Colony)
+    # Find suitable colony (prefer target system if specified)
+    # Ships require facilities (shipyard/spaceport), ground units don't
+    let requiresFacility = req.shipClass.isSome
+    var buildColony: Option[Colony] = none(Colony)
 
-      if req.targetSystem.isSome:
-        # Try to build at/near target system
-        for colony in myColonies:
-          if colony.systemId == req.targetSystem.get():
-            if not requiresFacility or colony.shipyards.len > 0 or colony.spaceports.len > 0:
-              buildColony = some(colony)
-              break
-
-      # Fallback: Use first suitable colony
-      if buildColony.isNone:
-        for colony in myColonies:
+    # Priority 1: Target system
+    if req.targetSystem.isSome:
+      for colony in myColonies:
+        if colony.systemId == req.targetSystem.get():
           if not requiresFacility or colony.shipyards.len > 0 or colony.spaceports.len > 0:
             buildColony = some(colony)
             break
 
-      if buildColony.isNone:
-        logWarn(LogCategory.lcAI,
-                &"{controller.houseId} Treasurer: Domestikos requirement cannot be fulfilled: " &
-                &"no suitable colonies (need {req.quantity}× {itemName})")
-        treasurerFeedback.unfulfilledRequirements.add(req)
-        treasurerFeedback.totalUnfulfilledCost += req.estimatedCost
-        continue
+    # Priority 2: Any suitable colony
+    if buildColony.isNone:
+      for colony in myColonies:
+        if not requiresFacility or colony.shipyards.len > 0 or colony.spaceports.len > 0:
+          buildColony = some(colony)
+          break
 
-      # Select appropriate tracker based on requirement priority
-      # Deferred requirements (capacity fillers) use filler budget
-      # All other priorities (Critical/High/Medium/Low) use strategic budget
-      var activeTracker = if req.priority == RequirementPriority.Deferred:
-        addr fillerTracker
-      else:
-        addr strategicTracker
+    if buildColony.isNone:
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Domestikos: Cannot execute fulfilled requirement - " &
+              &"no suitable colony for {req.quantity}× {itemName}")
+      continue
 
-      # Try to allocate budget for this requirement
-      # Process requirements based on two-type system (matches engine BuildOrder)
-      # ==========================================================================
-      # SHIPS: req.shipClass.isSome → BuildOrder(buildType: Ship, shipClass: Some(X))
-      # NON-SHIPS: req.itemId.isSome → BuildOrder(buildType: Building, buildingType: Some("X"))
-      #   - Ground units: "Army", "Marine", "GroundBattery", "PlanetaryShield"
-      #   - Facilities: "Spaceport", "Shipyard"
-      #
-      # Unit roles (Offensive/Defensive/Infrastructure) are conceptual categories,
-      # not type distinctions - see controller_types.nim BuildRequirement docs
-      let col = buildColony.get()
-      if req.shipClass.isSome:
-        let shipClass = req.shipClass.get()
-        let shipStats = getShipStats(shipClass)
-        let unitCost = shipStats.buildCost
-        let totalCost = unitCost * req.quantity
+    let col = buildColony.get()
 
-        # PARTIAL FULFILLMENT: Build as many as budget allows
-        # If AI requests 2× Battlecruiser (200PP) but only has 100PP, build 1 instead of 0
-        let availableBudget = activeTracker[].getRemainingBudget(req.buildObjective)
-        let affordableQuantity = min(req.quantity, availableBudget div unitCost)
-
-        if affordableQuantity > 0:
-          # Build what we can afford (may be less than requested)
-          let actualCost = unitCost * affordableQuantity
-          result.add(BuildOrder(
-            colonySystem: col.systemId,
-            buildType: BuildType.Ship,
-            quantity: affordableQuantity,
-            shipClass: some(shipClass),
-            buildingType: none(string),
-            industrialUnits: 0
-          ))
-          activeTracker[].recordTransaction(req.buildObjective, actualCost)
-          treasurerFeedback.totalBudgetSpent += actualCost
-
-          if affordableQuantity == req.quantity:
-            # Full fulfillment
-            treasurerFeedback.fulfilledRequirements.add(req)
-            logInfo(LogCategory.lcAI,
-                    &"{controller.houseId} Fulfilled Domestikos requirement: " &
-                    &"{affordableQuantity}× {shipClass} at {col.systemId} " &
-                    &"(priority={req.priority}, cost={actualCost}PP, reason={req.reason})")
-          else:
-            # Partial fulfillment
-            let unfulfilledQuantity = req.quantity - affordableQuantity
-            let unfulfilledCost = unitCost * unfulfilledQuantity
-
-            # Track partial fulfillment in feedback
-            var partialReq = req
-            partialReq.quantity = unfulfilledQuantity
-            partialReq.estimatedCost = unfulfilledCost
-            treasurerFeedback.unfulfilledRequirements.add(partialReq)
-            treasurerFeedback.totalUnfulfilledCost += unfulfilledCost
-
-            logInfo(LogCategory.lcAI,
-                    &"{controller.houseId} PARTIAL fulfillment: {affordableQuantity}× {shipClass} at {col.systemId} " &
-                    &"(requested {req.quantity}, cost={actualCost}PP, still need {unfulfilledQuantity}× = {unfulfilledCost}PP)")
-        else:
-          # Cannot afford even 1 unit
-          treasurerFeedback.unfulfilledRequirements.add(req)
-          treasurerFeedback.totalUnfulfilledCost += totalCost
-          logWarn(LogCategory.lcAI,
-                  &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
-                  &"{req.quantity}× {shipClass} (need {totalCost}PP, have {availableBudget}PP)")
-      elif req.itemId.isSome:
-        # Handle ground units, facilities, and other non-ship items
-        let itemId = req.itemId.get()
-
-        # Calculate cost based on item type
-        let unitCost = getBuildingCost(itemId)
-        let totalCost = unitCost * req.quantity
-
-        # PARTIAL FULFILLMENT: Build as many as budget allows
-        let availableBudget = activeTracker[].getRemainingBudget(req.buildObjective)
-        let affordableQuantity = min(req.quantity, availableBudget div unitCost)
-
-        if affordableQuantity > 0:
-          # Build what we can afford (may be less than requested)
-          let actualCost = unitCost * affordableQuantity
-          result.add(BuildOrder(
-            colonySystem: col.systemId,
-            buildType: BuildType.Building,
-            quantity: affordableQuantity,
-            shipClass: none(ShipClass),
-            buildingType: some(itemId),  # Maps to BuildOrder.buildingType
-            industrialUnits: 0
-          ))
-          activeTracker[].recordTransaction(req.buildObjective, actualCost)
-          treasurerFeedback.totalBudgetSpent += actualCost
-
-          if affordableQuantity == req.quantity:
-            # Full fulfillment
-            treasurerFeedback.fulfilledRequirements.add(req)
-            logInfo(LogCategory.lcAI,
-                    &"{controller.houseId} Fulfilled Domestikos requirement: " &
-                    &"{affordableQuantity}× {itemId} at {col.systemId} " &
-                    &"(priority={req.priority}, cost={actualCost}PP, reason={req.reason})")
-          else:
-            # Partial fulfillment
-            let unfulfilledQuantity = req.quantity - affordableQuantity
-            let unfulfilledCost = unitCost * unfulfilledQuantity
-
-            var partialReq = req
-            partialReq.quantity = unfulfilledQuantity
-            partialReq.estimatedCost = unfulfilledCost
-            treasurerFeedback.unfulfilledRequirements.add(partialReq)
-            treasurerFeedback.totalUnfulfilledCost += unfulfilledCost
-
-            logInfo(LogCategory.lcAI,
-                    &"{controller.houseId} PARTIAL fulfillment: {affordableQuantity}× {itemId} at {col.systemId} " &
-                    &"(requested {req.quantity}, cost={actualCost}PP, still need {unfulfilledQuantity}× = {unfulfilledCost}PP)")
-        else:
-          # Cannot afford even 1 unit
-          treasurerFeedback.unfulfilledRequirements.add(req)
-          treasurerFeedback.totalUnfulfilledCost += totalCost
-          logWarn(LogCategory.lcAI,
-                  &"{controller.houseId} Domestikos requirement unfulfilled (insufficient {req.buildObjective} budget): " &
-                  &"{req.quantity}× {itemId} (need {totalCost}PP, have {availableBudget}PP)")
-      else:
-        # Invalid requirement - neither ship nor itemId specified
-        logWarn(LogCategory.lcAI,
-                &"{controller.houseId} Invalid BuildRequirement: no shipClass or itemId specified (reason: {req.reason})")
-        treasurerFeedback.unfulfilledRequirements.add(req)
-        continue
-
-    # Requirements-driven path complete - skip legacy per-colony building
-    # Store feedback and return
-    controller.treasurerFeedback = some(treasurerFeedback)
-    if treasurerFeedback.unfulfilledRequirements.len > 0:
+    # Convert requirement to BuildOrder (two-type system per controller_types.nim)
+    # SHIPS: req.shipClass.isSome → BuildOrder(buildType: Ship)
+    # NON-SHIPS: req.itemId.isSome → BuildOrder(buildType: Building)
+    if req.shipClass.isSome:
+      let shipClass = req.shipClass.get()
+      result.add(BuildOrder(
+        colonySystem: col.systemId,
+        buildType: BuildType.Ship,
+        quantity: req.quantity,
+        shipClass: some(shipClass),
+        buildingType: none(string),
+        industrialUnits: 0
+      ))
       logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Treasurer Feedback: {treasurerFeedback.fulfilledRequirements.len} fulfilled, " &
-              &"{treasurerFeedback.unfulfilledRequirements.len} unfulfilled (shortfall: {treasurerFeedback.totalUnfulfilledCost}PP)")
+              &"{controller.houseId} Domestikos: Building {req.quantity}× {shipClass} " &
+              &"at {col.systemId} (fulfilled by Treasurer mediation)")
 
-    # Generate and log budget reports (strategic + filler)
-    let strategicReport = generateBudgetReport(strategicTracker, filtered.turn)
-    logBudgetReport(strategicReport)
+    elif req.itemId.isSome:
+      let itemId = req.itemId.get()
+      result.add(BuildOrder(
+        colonySystem: col.systemId,
+        buildType: BuildType.Building,
+        quantity: req.quantity,
+        shipClass: none(ShipClass),
+        buildingType: some(itemId),
+        industrialUnits: 0
+      ))
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Domestikos: Building {req.quantity}× {itemId} " &
+              &"at {col.systemId} (fulfilled by Treasurer mediation)")
 
-    # Log filler budget utilization
-    let fillerSpent = fillerTracker.getTotalSpent()
-    let fillerRemaining = fillerTracker.getTotalRemaining()
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Filler Budget: " &
-            &"{fillerSpent}/{budgetSplit.fillerBudget}PP spent " &
-            &"({int(float(fillerSpent)/float(budgetSplit.fillerBudget)*100.0)}%), " &
-            &"{fillerRemaining}PP remaining")
+    else:
+      # Invalid requirement - neither ship nor itemId specified
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Invalid BuildRequirement: " &
+              &"no shipClass or itemId specified (reason: {req.reason})")
 
-    return result
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Domestikos: Generated {result.len} build orders " &
+          &"from {treasurerFeedback.fulfilledRequirements.len} fulfilled requirements")
 
-  # ============================================================================
-  # ERROR: Domestikos requirements not provided
-  # ============================================================================
-  # The intelligence-driven build system REQUIRES domestikos requirements
-  # If you're seeing this error, check domestikos.nim line 127:
-  # - Is build_requirements_enabled = true in config/rba.toml?
-  # - Is intelSnapshot being passed properly?
-  logError(LogCategory.lcAI,
-           &"{controller.houseId} CRITICAL: domestikosRequirements is none() - " &
-           &"intelligence-driven building requires Domestikos. No ships will be built!")
-
-  return @[]  # Return empty build orders
+  return result

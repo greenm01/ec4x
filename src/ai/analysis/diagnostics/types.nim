@@ -221,6 +221,18 @@ type
     buildOrdersSubmitted*: int    # Construction orders this turn
     colonizeOrdersSubmitted*: int # Colonization attempts this turn
 
+    # Budget Allocation (Treasurer → Advisor Flow - DRY Fix Verification)
+    domestikosBudgetAllocated*: int       # PP allocated to Domestikos by Treasurer
+    logotheteBudgetAllocated*: int        # PP allocated to Logothete by Treasurer
+    drungariusBudgetAllocated*: int       # PP allocated to Drungarius by Treasurer
+    eparchBudgetAllocated*: int           # PP allocated to Eparch by Treasurer
+    buildOrdersGenerated*: int            # Build orders created by Domestikos
+    ppSpentConstruction*: int             # Actual PP spent on construction
+    domestikosRequirementsTotal*: int     # Total requirements from Domestikos
+    domestikosRequirementsFulfilled*: int # Requirements fulfilled by Treasurer mediation
+    domestikosRequirementsUnfulfilled*: int # Requirements not affordable
+    domestikosRequirementsDeferred*: int  # Low-priority requirements deferred
+
     # Build Queue (NEW - track construction pipeline)
     totalBuildQueueDepth*: int    # Sum of all colony queue depths
     etacInConstruction*: int      # ETACs currently being built
@@ -445,6 +457,18 @@ proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
     fleetOrdersSubmitted: 0,
     buildOrdersSubmitted: 0,
     colonizeOrdersSubmitted: 0,
+
+    # Budget Allocation
+    domestikosBudgetAllocated: 0,
+    logotheteBudgetAllocated: 0,
+    drungariusBudgetAllocated: 0,
+    eparchBudgetAllocated: 0,
+    buildOrdersGenerated: 0,
+    ppSpentConstruction: 0,
+    domestikosRequirementsTotal: 0,
+    domestikosRequirementsFulfilled: 0,
+    domestikosRequirementsUnfulfilled: 0,
+    domestikosRequirementsDeferred: 0,
 
     # Build Queue
     totalBuildQueueDepth: 0,

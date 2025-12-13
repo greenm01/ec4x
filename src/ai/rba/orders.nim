@@ -234,10 +234,11 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     result.orderPacket.diplomaticActions = execution.executeDiplomaticActions(controller, filtered)
 
     # Execute build orders (ships, buildings, ground units)
+    # Use Treasurer's mediation feedback - no re-calculation (DRY principle)
     var buildOrders = generateBuildOrdersWithBudget(
       controller, filtered, filtered.ownHouse, myColonies, currentAct, p,
       allocation.budgets[AdvisorType.Domestikos],
-      controller.domestikosRequirements
+      allocation.treasurerFeedback  # From multi-advisor mediation
     )
 
     logInfo(LogCategory.lcAI,
@@ -465,5 +466,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
           &"{controller.houseId}   Terraform orders: {result.orderPacket.terraformOrders.len}")
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} ========================================")
+
+  # Store allocation result for diagnostics (budget flow verification)
+  controller.lastTurnAllocationResult = some(allocation)
 
   return result
