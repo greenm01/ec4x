@@ -147,6 +147,15 @@ int ec4x_get_victor(EC4XGame game);
 // =============================================================================
 
 /**
+ * Collect fleet snapshots for current turn (stored in memory)
+ * Should be called every turn alongside ec4x_collect_diagnostics
+ * @param game Game handle
+ * @param turn Current turn number
+ * @return 0 on success, negative on error
+ */
+int ec4x_collect_fleet_snapshots(EC4XGame game, int turn);
+
+/**
  * Collect diagnostics for current turn (all houses)
  * Stores in internal buffer for batch DB write at end
  * @param game Game handle
@@ -156,7 +165,8 @@ int ec4x_get_victor(EC4XGame game);
 int ec4x_collect_diagnostics(EC4XGame game, int turn);
 
 /**
- * Write all collected diagnostics to SQLite database
+ * Write all collected diagnostics to SQLite database or CSV
+ * If database was enabled, writes to database. Otherwise writes to CSV.
  * Should be called once after game completes
  * @param game Game handle
  * @param db_path Path to SQLite database file

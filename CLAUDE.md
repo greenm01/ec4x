@@ -96,52 +96,52 @@ method move(self: var Fleet) =
 ### Quick Development Loop
 
 ```bash
-# 1. Build simulation (includes git hash)
-nimble buildSimulation 2>&1 | tail -10
+# 1. Build C API simulation (parallel AI, includes git hash)
+nimble buildCAPI 2>&1 | tail -10
 
 # 2. Test single game with specific seed
-./bin/run_simulation --seed 12345
-# Or with short flag: ./bin/run_simulation -s 12345
-# Output: balance_results/diagnostics/game_12345.csv
+LD_LIBRARY_PATH=bin ./bin/run_simulation_c --seed 12345
+# Or with short flags: LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 12345
+# Output: balance_results/diagnostics/game_12345.db (SQLite)
 
 # 3. Test with custom parameters
-./bin/run_simulation -s 12345 --fixed-turns --turns 35 --players 4
+LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 12345 -t 35 -p 4
 
-# 3. Batch test (20 games, 7 turns, ~10 seconds)
+# 4. Batch test (20 games, 7 turns, ~10 seconds)
 python3.11 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 35
 # Seeds are auto-generated based on game number
 
-# 4. Analyze with Python + polars
+# 5. Analyze with Python + polars (query SQLite databases)
 python3.11 scripts/analysis/your_script.py  # Use python3.11 for polars
 ```
 
 ### Why This Workflow?
 
+- **C API with pthreads:** ~3x speedup with parallel AI order generation
 - **Python for analysis:** Dynamic, iterate on queries without recompiling
-- **Polars over pandas:** 10-50x faster on large CSVs (multi-GB files)
+- **SQLite databases:** Structured data with fleet tracking, faster than CSVs
+- **Polars over pandas:** 10-50x faster on large datasets
 - **Throwaway scripts:** Write quick queries, get answers, move on
-- **Git hash tracking:** `nimble buildSimulation` writes to `bin/.build_git_hash`
-- **Reproducible seeds:** Each game gets unique seed, stored in CSV for debugging
+- **Git hash tracking:** `nimble buildCAPI` writes to `bin/.build_git_hash`
+- **Reproducible seeds:** Each game gets unique seed, stored as game_id
 
-### Available Flags for run_simulation
+### Available Flags for run_simulation_c
 
 ```bash
-./bin/run_simulation [OPTIONS]
+LD_LIBRARY_PATH=bin ./bin/run_simulation_c [OPTIONS]
 
 # Key flags:
---seed, -s NUMBER         Random seed (default: 42, stored in CSV as game_id)
+--seed, -s NUMBER         Random seed (default: 42, stored as game_id)
 --turns, -t NUMBER        Max turns safety limit (default: 200)
---players, -p NUMBER      Number of AI players (default: 4)
---map-rings, -m NUMBER    Hex rings for map size (default: 3)
---fixed-turns             Run exactly N turns (disable victory check)
---run-until-victory       Run until victory (default behavior)
---output, -o FILE         Output JSON file path
---log-level, -l LEVEL     DEBUG, INFO, WARN, ERROR (default: INFO)
+--players, -p NUMBER      Number of AI players (default: 4, max: 12)
+--rings, -r NUMBER        Hex rings for map size (default: 4, range: 1-5)
+--output-db FILE          SQLite database path (default: game_<seed>.db)
+--output-csv FILE         Legacy CSV output (optional)
 
 # Examples:
-./bin/run_simulation -s 12345 -t 100           # Specific seed, max 100 turns
-./bin/run_simulation -s 99999 -p 6 -m 4       # 6 players, larger map
-./bin/run_simulation --fixed-turns -t 30      # Force exactly 30 turns
+LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 12345 -t 100
+LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 99999 -p 6 -r 4
+LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 42 --output-csv results.csv
 ```
 
 ---
@@ -150,8 +150,9 @@ python3.11 scripts/analysis/your_script.py  # Use python3.11 for polars
 
 ```bash
 # Primary builds
-nimble buildSimulation      # Sim binary + git hash (USE THIS)
-nimble buildAll             # All binaries (ec4x + run_simulation)
+nimble buildCAPI            # C API parallel simulation (USE THIS)
+nimble buildSimulation      # Nim simulation (legacy, slower)
+nimble buildAll             # All binaries (ec4x + both simulations)
 nimble buildDebug           # Debug symbols enabled
 
 # Testing
@@ -174,22 +175,23 @@ nimble tidy                # Remove build artifacts
 
 ## Analysis Workflow (Python + Polars)
 
-### CSV Output Location
+### Database Output Location
 
 ```
 balance_results/diagnostics/
-├── game_12345.csv          # Single game (seed in filename)
-├── game_12346.csv          # Another game
-└── game_*.csv              # Pattern for batch runs
+├── game_12345.db           # SQLite database (seed in filename)
+├── game_12346.db           # Another game
+└── game_*.db               # Pattern for batch runs
 ```
 
-Each CSV contains:
-- `game_id` column with the seed value
-- Per-turn economic/military stats (190+ columns)
-- Victory conditions and final scores
-- Combat outcomes
+Each database contains:
+- **diagnostics** table: Per-turn economic/military stats (200+ columns)
+- **fleet_tracking** table: Per-turn fleet snapshots (location, orders, ships)
+- **games** table: Game metadata (seed, players, map size)
+- **game_events** table: Major events (optional)
+- **game_states** table: Full state snapshots (optional)
 
-**Files are HUGE** (multi-GB for 100+ games) - polars handles them efficiently.
+**Performance:** SQLite is faster than CSV for complex queries and joins.
 
 ### Available Diagnostic Columns
 
@@ -213,46 +215,50 @@ Each CSV contains:
 
 ```python
 import polars as pl
+import sqlite3
 
 # IMPORTANT: Use python3.11 (not python3) for polars in nix-shell
 # After rebuilding flake: exit and re-enter nix develop
 
-# Load specific game by seed
-df = pl.read_csv("balance_results/diagnostics/game_12345.csv")
+# Query SQLite database with polars
+db_path = "balance_results/diagnostics/game_12345.db"
+conn = sqlite3.connect(db_path)
 
-# Or load all games (lazy evaluation)
-df = pl.scan_csv("balance_results/diagnostics/game_*.csv")
+# Load diagnostics table
+df = pl.read_database("SELECT * FROM diagnostics", conn)
 
-# Filter and analyze
-results = (
-    df.filter(pl.col("turn") >= 7)
-    .group_by("ai_strategy")
-    .agg([
-        (pl.col("victory_type") == "Domination").mean().alias("win_rate"),
-        pl.count().alias("games")
-    ])
-    .collect()
-)
+# Track ETAC behavior over time
+etac_analysis = pl.read_database("""
+    SELECT turn, house_id, SUM(etac_count) as total_etacs,
+           COUNT(DISTINCT fleet_id) as fleet_count
+    FROM fleet_tracking
+    GROUP BY turn, house_id
+    ORDER BY turn, house_id
+""", conn)
 
-print(results)
+print(etac_analysis)
+
+# Or query CSV for backward compatibility
+# df = pl.read_csv("balance_results/diagnostics/game_12345.csv")
 ```
 
-### Why Polars?
+### Why Polars + SQLite?
 
-- **10-50x faster** than pandas on large CSVs
+- **10-50x faster** than pandas on large datasets
+- **SQLite joins** - combine diagnostics with fleet tracking efficiently
 - **Lazy evaluation** - only processes needed data
 - **Better memory** - ~50% less usage than pandas
 - **Fast iteration** - no compilation, instant feedback
 
 ### Analysis Pattern
 
-1. User runs simulation batch → generates CSVs
-2. Claude writes Python script for specific analysis
+1. User runs simulation batch → generates SQLite databases
+2. Claude writes Python script for specific analysis (SQL + polars)
 3. User runs script → shares small text output (~1-5KB)
 4. Claude interprets results, suggests next analysis
 5. Iterate quickly without recompiling
 
-**DON'T:** Ask user to upload raw CSVs (5-20MB, wastes 10k+ tokens)
+**DON'T:** Ask user to upload raw databases (5-20MB, wastes 10k+ tokens)
 **DO:** Write Python script that outputs summary text
 
 ---
@@ -261,8 +267,12 @@ print(results)
 
 ```
 src/
+├── c_api/                       # C FFI for parallel orchestration
+│   ├── engine_ffi.nim          # Nim→C exports (thread-safe)
+│   ├── ec4x_engine.h           # C API header
+│   └── run_simulation.c        # Parallel simulation (pthreads)
 ├── ai/
-│   ├── rba/             # Rule-Based Advisor (production AI - currently being fixed)
+│   ├── rba/                    # Rule-Based Advisor (production AI)
 │   │   ├── player.nim          # Public API
 │   │   ├── controller.nim      # Strategy profiles
 │   │   ├── intelligence.nim    # Intel gathering
@@ -270,22 +280,27 @@ src/
 │   │   ├── tactical.nim        # Fleet operations
 │   │   └── budget.nim          # Budget allocation
 │   ├── analysis/               # Simulation & diagnostics
-│   │   ├── run_simulation.nim  # Main simulation harness
-│   │   └── diagnostics.nim     # 200+ metrics logged to CSV
-│   ├── sweep/                  # GOAP infrastructure (experimental, not integrated)
-│   ├── tuning/genetic/         # Genetic algo for AI personality weights
+│   │   ├── run_simulation.nim  # Nim simulation harness (legacy)
+│   │   └── diagnostics.nim     # 200+ metrics collection
+│   ├── sweep/                  # GOAP infrastructure (experimental)
+│   ├── tuning/genetic/         # Genetic algo for AI weights
 │   ├── training/               # Neural network training exports
 │   └── common/                 # Shared AI types
+├── engine/
+│   └── persistence/            # SQLite persistence layer
+│       ├── schema.nim          # Database schema
+│       ├── writer.nim          # Batch writes (diagnostics + fleet tracking)
+│       └── types.nim           # Database types
 
 config/
 ├── *.toml                      # Game balance (14 files)
 └── rba.toml                    # RBA AI weights & thresholds
 
-balance_results/diagnostics/    # CSV output from simulations
+balance_results/diagnostics/    # SQLite database output (.db files)
 
 scripts/
 ├── run_balance_test_parallel.py  # Batch runner (Python)
-└── analysis/                     # Your polars-based analysis scripts
+└── analysis/                     # Polars + SQLite analysis scripts
 ```
 
 ---
@@ -453,14 +468,16 @@ Current:
 
 ## Common Gotchas
 
-- **Stale binaries:** Use `nimble buildSimulation` (has `--forceBuild`), not direct `nim c`
+- **Stale binaries:** Use `nimble buildCAPI` (has `--forceBuild`), not direct `nim c`
+- **LD_LIBRARY_PATH:** Always set when running C API: `LD_LIBRARY_PATH=bin ./bin/run_simulation_c`
 - **RBA weights:** Edit `config/rba.toml`, NOT hardcoded in source
-- **CSV size:** Multi-hundred game runs = GB+ of data, use polars
-- **Git hash:** Always in `bin/.build_git_hash` after `nimble buildSimulation`
-- **Clean old CSVs:** `rm -rf balance_results/diagnostics/*` before new runs
-- **Analysis:** Write Python scripts, don't compile analysis into ec4x
-- **Seeds matter:** Use `--seed` for reproducible testing, stored in CSV as `game_id`
-- **CSV filenames:** Pattern is `game_{seed}.csv`, not timestamped files
+- **Database size:** Multi-hundred game runs = GB+ of data, use SQLite + polars
+- **Git hash:** Always in `bin/.build_git_hash` after `nimble buildCAPI`
+- **Clean old databases:** `rm -rf balance_results/diagnostics/*.db` before new runs
+- **Analysis:** Write Python scripts with SQLite queries, don't compile analysis into ec4x
+- **Seeds matter:** Use `--seed` for reproducible testing, stored as game_id
+- **Database filenames:** Pattern is `game_{seed}.db`, not timestamped files
+- **Fleet tracking:** Query `fleet_tracking` table for ETAC/scout behavior analysis
 
 ---
 
@@ -547,6 +564,6 @@ Add victory condition system
 
 ---
 
-**Last Updated:** 2025-12-06  
-**Location:** Project root (`CLAUDE.md`)  
+**Last Updated:** 2025-12-14
+**Location:** Project root (`CLAUDE.md`)
 **Usage:** Reference with `@CLAUDE.md` at session start
