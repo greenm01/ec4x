@@ -12,7 +12,7 @@ There are three classes of jump lanes that determine which ship types can traver
 
 <!-- LANE_DISTRIBUTION_START -->
 
-- **Major lanes** (50% of all lanes): Allow all ship types including crippled ships, ETACs, and troop transports
+- **Major lanes** (50% of all lanes): Allow all ship types
 
 - **Minor lanes** (35% of all lanes): Allow all ship types
 

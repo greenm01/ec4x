@@ -233,7 +233,7 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
     starMap.systems[system.id].player = some(i.uint)
     starMap.playerSystemIds.add(system.id)
 
-proc connectHub(starMap: var StarMap) =
+proc connectHub(starMap: var StarMap, rng: var Rand) =
   ## Connect hub with mixed lane types to first ring (prevents rush-to-center)
   let hubSystem = starMap.systems[starMap.hubId]
 
@@ -246,7 +246,6 @@ proc connectHub(starMap: var StarMap) =
     raise newException(StarMapError, "Hub must have exactly 6 first-ring neighbors")
 
   # Connect with weighted lane types to avoid predictable convergence at center
-  var rng = initRand(starMap.seed)
   let weights = globalStarmapConfig.lane_weights
   for neighborId in ring1Neighbors:
     let laneType = weightedSample(
@@ -257,9 +256,13 @@ proc connectHub(starMap: var StarMap) =
     let lane = JumpLane(source: starMap.hubId, destination: neighborId, laneType: laneType)
     starMap.addLane(lane)
 
-proc connectPlayerSystems(starMap: var StarMap) =
+proc connectPlayerSystems(starMap: var StarMap, rng: var Rand) =
   ## Connect player systems with configurable number of lanes (default: 3)
   let laneCount = globalStarmapConfig.homeworld_placement.homeworld_lane_count
+
+  # Debug: Check config value
+  when not defined(release):
+    echo "DEBUG: connectPlayerSystems laneCount=", laneCount, " players=", starMap.playerSystemIds.len
 
   for playerId in starMap.playerSystemIds:
     let system = starMap.systems[playerId]
@@ -281,13 +284,13 @@ proc connectPlayerSystems(starMap: var StarMap) =
       raise newException(StarMapError,
         "Player system must have at least " & $laneCount & " available neighbors")
 
-    neighbors.shuffle()
+    shuffle(rng, neighbors)
     for i in 0..<min(laneCount, neighbors.len):
       let laneType = if i < laneCount: LaneType.Major else: LaneType.Minor
       let lane = JumpLane(source: playerId, destination: neighbors[i], laneType: laneType)
       starMap.addLane(lane)
 
-proc connectRemainingSystem(starMap: var StarMap) =
+proc connectRemainingSystem(starMap: var StarMap, rng: var Rand) =
   ## Connect all remaining systems with random lane types
   for system in starMap.systems.values:
     if system.ring == 0 or system.player.isSome:
@@ -314,7 +317,6 @@ proc connectRemainingSystem(starMap: var StarMap) =
           continue  # Skip connecting to player systems that already have 3 connections
 
       # Use weighted lane type selection for balanced gameplay
-      var rng = initRand(starMap.seed + system.id.int64)  # Deterministic per-system RNG
       let weights = globalStarmapConfig.lane_weights
       let laneType = weightedSample(
         [LaneType.Major, LaneType.Minor, LaneType.Restricted],
@@ -326,12 +328,13 @@ proc connectRemainingSystem(starMap: var StarMap) =
 
 proc generateLanes(starMap: var StarMap) =
   ## Generate all jump lanes following game specification
-  randomize()
+  # Create RNG with stored seed for deterministic lane generation
+  var rng = initRand(starMap.seed)
 
   try:
-    starMap.connectHub()
-    starMap.connectPlayerSystems()
-    starMap.connectRemainingSystem()
+    starMap.connectHub(rng)
+    starMap.connectPlayerSystems(rng)
+    starMap.connectRemainingSystem(rng)
   except StarMapError:
     raise
   except:

@@ -336,6 +336,7 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
     # Track orders submitted this turn
     result.fleetOrdersSubmitted = packet.fleetOrders.len
     result.buildOrdersSubmitted = packet.buildOrders.len
+    result.buildOrdersGenerated = packet.buildOrders.len  # For CSV output
 
     # Count colonization orders
     var colonizeCount = 0
@@ -375,6 +376,7 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
     result.totalEspionageMissions = 0
     result.fleetOrdersSubmitted = 0
     result.buildOrdersSubmitted = 0
+    result.buildOrdersGenerated = 0  # For CSV output
     result.colonizeOrdersSubmitted = 0
     result.totalOrders = 0
     result.invalidOrders = 0

@@ -33,6 +33,9 @@
             nim
             nimble
 
+            # Database support
+            sqlite
+
             # Python with packages
             pythonEnv
             aider-chat
@@ -72,6 +75,9 @@
             if command -v fish >/dev/null 2>&1; then
               exec fish -C "function fish_greeting; end"
             fi
+
+            set -x LD_LIBRARY_PATH bin $LD_LIBRARY_PATH
+            
           '';
         };
       });
