@@ -47,7 +47,7 @@
           ];
           shellHook = ''
             export IN_NIX_SHELL=1
-            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:$PWD/bin:$LD_LIBRARY_PATH"
 
             echo "EC4X Development Shell"
             echo "======================"
@@ -61,6 +61,11 @@
             echo "  nimble test        - Run tests"
             echo "  nimble tasks       - Show all available tasks"
             echo ""
+            echo "C API:"
+            echo "  nimble buildCAPI                      - Build parallel C simulation"
+            echo "  ./bin/run_simulation_c --turns 10     - Run parallel simulation"
+            echo "  ./bin/run_c --turns 10 --seed 12345   - Convenience wrapper"
+            echo ""
             echo "AI Training:"
             echo "  cd ai_training && ./setup_amd_ml.sh  - Setup ML environment"
             echo "  python3.11 training_daemon.py        - Start continuous training"
@@ -73,11 +78,8 @@
 
             # Launch fish if available (suppress greeting)
             if command -v fish >/dev/null 2>&1; then
-              exec fish -C "function fish_greeting; end"
+              exec fish -C "function fish_greeting; end; set -x LD_LIBRARY_PATH $PWD/bin $LD_LIBRARY_PATH"
             fi
-
-            set -x LD_LIBRARY_PATH bin $LD_LIBRARY_PATH
-            
           '';
         };
       });
