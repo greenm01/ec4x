@@ -52,8 +52,18 @@ proc analyzeFleetUtilization*(
         analysis.hasCombatShips = true
 
     # Determine utilization based on orders
-    if fleet.id in tacticalOrders:
-      # Fleet has tactical order - considered tactical (don't touch)
+    # CRITICAL: Check persistent active orders FIRST (from previous turns)
+    # ETAC fleets with any active orders should not be reassigned by Domestikos
+    if fleet.id in filtered.ownFleetOrders:
+      let activeOrder = filtered.ownFleetOrders[fleet.id]
+      # ETAC fleets with Move orders (reload) or Colonize orders are tactical
+      if analysis.hasETACs and activeOrder.orderType in {FleetOrderType.Move, FleetOrderType.Colonize}:
+        analysis.utilization = FleetUtilization.Tactical
+      else:
+        # Other fleets with active orders also considered tactical
+        analysis.utilization = FleetUtilization.Tactical
+    elif fleet.id in tacticalOrders:
+      # Fleet has NEW tactical order (this turn) - considered tactical (don't touch)
       analysis.utilization = FleetUtilization.Tactical
     elif fleet.id in standingOrders:
       let standingOrder = standingOrders[fleet.id]

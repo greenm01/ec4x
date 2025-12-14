@@ -43,15 +43,25 @@ proc detachETACsIfMixed(
   if combatCount == 0:
     return  # Pure ETAC fleet, already optimized
 
-  # CRITICAL FIX: Don't detach ETACs from fleets actively colonizing
-  # Bug: Detaching ETACs mid-mission causes 78% colonization failure rate
-  # Check if fleet has active Colonize order
+  # CRITICAL FIX: Don't detach ETACs from fleets with active orders OR standing orders
+  # Bug: Detaching ETACs causes fleet ID to change, invalidating orders
+  # Standing orders activate AFTER zero-turn commands, so check both:
+  #   1. Active orders (from previous turns, state.fleetOrders)
+  #   2. Standing orders (not yet activated, state.standingOrders)
   if fleet.id in filtered.ownFleetOrders:
     let order = filtered.ownFleetOrders[fleet.id]
-    if order.orderType == FleetOrderType.Colonize:
+    logDebug(LogCategory.lcAI,
+      &"Skipping ETAC detachment for {fleet.id} (active {order.orderType} order)")
+    return  # Don't disrupt active mission
+
+  # ALSO check for standing orders (AutoColonize, AutoRepair, etc.)
+  # Standing orders will activate in Maintenance Phase AFTER this runs
+  if fleet.id in controller.standingOrders:
+    let standingOrder = controller.standingOrders[fleet.id]
+    if standingOrder.enabled and not standingOrder.suspended:
       logDebug(LogCategory.lcAI,
-        &"Skipping ETAC detachment for {fleet.id} (active Colonize order)")
-      return  # Don't disrupt active colonization mission
+        &"Skipping ETAC detachment for {fleet.id} (has {standingOrder.orderType} standing order)")
+      return  # Don't disrupt standing order that will activate later
 
   # MIXED FLEET - needs detachment
 

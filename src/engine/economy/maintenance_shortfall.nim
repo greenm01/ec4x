@@ -122,6 +122,44 @@ proc calculatePrestigePenalty*(consecutiveTurns: int): int =
   of 3: return 14
   else: return 17
 
+proc getFleetDisbandPriority(state: GameState, fleetId: FleetId): int =
+  ## Calculate fleet disbanding priority (lower = disband first)
+  ## Priority tiers:
+  ## - 100: Scout/patrol fleets (expendable)
+  ## - 500: Combat fleets (important)
+  ## - 900: ETAC/colonization fleets (critical)
+  ##
+  ## Within same tier, sort by fleet ID for determinism
+
+  let fleet = state.fleets[fleetId]
+
+  # Check for spacelift ships (ETACs) - highest priority (disband last)
+  if fleet.spaceLiftShips.len > 0:
+    return 900  # Critical - colonization capability
+
+  # Check for combat squadrons
+  if fleet.squadrons.len > 0:
+    # Check if primarily scouts (all squadrons are scouts)
+    var allScouts = true
+    for squadron in fleet.squadrons:
+      # Check flagship
+      if squadron.flagship.shipClass notin {ShipClass.Scout}:
+        allScouts = false
+        break
+      # Check other ships
+      for ship in squadron.ships:
+        if ship.shipClass notin {ShipClass.Scout}:
+          allScouts = false
+          break
+
+    if allScouts:
+      return 100  # Low priority - scouts are expendable
+    else:
+      return 500  # Medium priority - combat fleets
+
+  # Empty fleets or unknown composition
+  return 200  # Low-medium priority
+
 proc processShortfall*(state: GameState, houseId: HouseId, shortfall: int): ShortfallCascade =
   ## Pure function - computes what WOULD happen during shortfall cascade
   ## Returns explicit cascade plan without mutating state
@@ -158,12 +196,21 @@ proc processShortfall*(state: GameState, houseId: HouseId, shortfall: int): Shor
   # No need to explicitly cancel here - the shortfall prevents TRP allocation
   result.researchCancelled = false  # No active "research projects" to cancel
 
-  # Step 3: Disband fleets (lowest ID first) until shortfall met
+  # Step 3: Disband fleets by PRIORITY (scouts first, ETACs last) until shortfall met
+  # CRITICAL FIX: Don't disband alphabetically - protect colonization assets
   var fleetIds: seq[FleetId] = @[]
   for (fleetId, fleet) in state.fleetsOwnedWithId(houseId):
     fleetIds.add(fleetId)
 
-  fleetIds.sort()  # Lowest ID first per spec
+  # Sort by priority (low priority first), then by ID for determinism
+  fleetIds.sort(proc(a, b: FleetId): int =
+    let priorityA = getFleetDisbandPriority(state, a)
+    let priorityB = getFleetDisbandPriority(state, b)
+    if priorityA != priorityB:
+      return cmp(priorityA, priorityB)  # Lower priority first
+    else:
+      return cmp(a, b)  # Same priority, sort by ID
+  )
 
   for fleetId in fleetIds:
     if remaining <= 0:
@@ -173,6 +220,11 @@ proc processShortfall*(state: GameState, houseId: HouseId, shortfall: int): Shor
     result.fleetsDisbanded.add(fleetId)
     result.salvageFromFleets += salvage
     remaining -= salvage
+
+    # Log which fleet was disbanded and its priority
+    let priority = getFleetDisbandPriority(state, fleetId)
+    logDebug("Economy", "Disbanding fleet ", fleetId, " (priority=", priority,
+             ", salvage=", salvage, " PP)")
 
   # Step 4: Strip infrastructure if fleets insufficient
   if remaining > 0:

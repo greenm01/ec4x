@@ -525,15 +525,30 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
       if hasColonists:
         # CRITICAL FIX: Only defer if fleet ACTUALLY has AutoColonize standing order
         # Bug: Was skipping all loaded ETACs, causing 0 colonize orders generated
-        if fleet.id in standingOrders and standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize:
+        # Check: Standing order exists, is AutoColonize, is enabled, and not suspended
+        if fleet.id in standingOrders and
+           standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
+           standingOrders[fleet.id].enabled and
+           not standingOrders[fleet.id].suspended:
           logDebug(LogCategory.lcAI,
-            &"Fleet {fleet.id} has {totalPTU} PTU and AutoColonize standing order - deferring")
+            &"Fleet {fleet.id} has {totalPTU} PTU and active AutoColonize standing order - deferring")
           continue
         # No standing order - fall through to tactical colonization logic
         logDebug(LogCategory.lcAI,
           &"Fleet {fleet.id} has {totalPTU} PTU but no AutoColonize - tactical will assign orders")
       else:
-        # ETAC empty - send home for reload
+        # ETAC empty - check for AutoColonize standing order first
+        # If present and active, let standing order handle reload (standing_orders.nim:490-523)
+        # Check: Standing order exists, is AutoColonize, is enabled, and not suspended
+        if fleet.id in standingOrders and
+           standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
+           standingOrders[fleet.id].enabled and
+           not standingOrders[fleet.id].suspended:
+          logDebug(LogCategory.lcAI,
+            &"Fleet {fleet.id} empty ETAC with active AutoColonize standing order - deferring to standing order for reload")
+          continue
+
+        # No standing order - tactical sends ETAC home for reload
         # Find nearest colony with sufficient population for PTU transfer
         const MIN_POPULATION_FOR_RELOAD = 3
         var bestColony: Option[SystemId] = none(SystemId)
@@ -588,8 +603,12 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
       # ========================================================================
 
       # Priority 1a: ETACs colonize best available system using Act-aware scoring
-      # SKIP if fleet has AutoColonize standing order (let standing order handle it)
-      if hasETAC and (fleet.id notin standingOrders or standingOrders[fleet.id].orderType != StandingOrderType.AutoColonize):
+      # SKIP if fleet has active AutoColonize standing order (let standing order handle it)
+      let hasActiveAutoColonize = fleet.id in standingOrders and
+                                   standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
+                                   standingOrders[fleet.id].enabled and
+                                   not standingOrders[fleet.id].suspended
+      if hasETAC and not hasActiveAutoColonize:
         # Use engine function for Act-aware colonization target selection
         # Act 1: Prioritizes distance over quality (frontier expansion)
         let bestTarget = findColonizationTargetFiltered(
@@ -795,8 +814,12 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
               continue
 
       # Priority 4: Opportunistic colonization with Act-aware scoring (ETACs only)
-      # SKIP if fleet has AutoColonize standing order (let standing order handle it)
-      if hasETAC and (fleet.id notin standingOrders or standingOrders[fleet.id].orderType != StandingOrderType.AutoColonize):
+      # SKIP if fleet has active AutoColonize standing order (let standing order handle it)
+      let hasActiveAutoColonize = fleet.id in standingOrders and
+                                   standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
+                                   standingOrders[fleet.id].enabled and
+                                   not standingOrders[fleet.id].suspended
+      if hasETAC and not hasActiveAutoColonize:
         # Use engine function for Act-aware colonization target selection
         # Act 2: Still prioritizes distance but considers quality more than Act 1
         let bestTarget = findColonizationTargetFiltered(
@@ -1012,6 +1035,10 @@ proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGa
 
   for fleet in filtered.ownFleets:
     if fleet.owner == controller.houseId:
+      # CRITICAL FIX: Never add ETACs to military operations (even mixed fleets)
+      if isETACFleet(fleet):
+        continue
+
       var inOperation = false
       for op in controller.operations:
         if fleet.id in op.requiredFleets:
