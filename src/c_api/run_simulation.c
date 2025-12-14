@@ -13,6 +13,11 @@
 #include <time.h>
 #include <sys/time.h>
 
+// Nim runtime stubs (required for static linking with --noMain)
+// The Nim library references these but we provide our own main()
+int cmdCount = 0;
+char** cmdLine = NULL;
+
 // Configuration
 #define MAX_PLAYERS 12
 #define DEFAULT_TURNS 200
