@@ -445,13 +445,14 @@ proc assignStandingOrders*(controller: var AIController,
 
     of FleetRole.Colonizer:
       # ETAC fleets automatically colonize
-      let order = createAutoColonizeOrder(fleet, 10, preferredPlanetClasses)
+      # No range limit - colonize ALL unclaimed systems (pathfinding handles reachability)
+      let order = createAutoColonizeOrder(fleet, 999, preferredPlanetClasses)
       result[fleet.id] = order
       assignedCount += 1
 
       logInfo(LogCategory.lcAI,
               &"{controller.houseId} Fleet {fleet.id}: Assigned AutoColonize " &
-              &"(ETAC fleet, range 10 jumps)")
+              &"(ETAC fleet, unlimited range)")
 
     of FleetRole.Scout:
       # Scouts patrol and evade when outnumbered
@@ -594,6 +595,9 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
 
   of StandingOrderType.AutoColonize:
     # Find best colonization target using Act-aware engine function
+    logDebug(LogCategory.lcAI,
+             &"[RBA CONVERSION] {fleet.id} AutoColonize: Finding target (maxRange={standingOrder.params.colonizeMaxRange})")
+
     let targetSystem = findColonizationTargetFiltered(
       filtered,
       fleet,
@@ -604,10 +608,18 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
     )
 
     if targetSystem.isSome:
+      let target = targetSystem.get()
+
+      # CRITICAL: Validate target is not SystemId(0)
+      if target == SystemId(0):
+        logError(LogCategory.lcAI,
+                 &"[RBA CONVERSION] {fleet.id} AutoColonize: BUG - got SystemId(0) from findColonizationTargetFiltered!")
+        return none(FleetOrder)
+
       # Check if fleet is already at target
-      if fleet.location == targetSystem.get:
+      if fleet.location == target:
         logDebug(LogCategory.lcAI,
-                 &"{fleet.id} AutoColonize: Colonizing {targetSystem.get}")
+                 &"[RBA CONVERSION] {fleet.id} AutoColonize: Colonizing {target}")
 
         return some(FleetOrder(
           fleetId: fleet.id,
@@ -618,7 +630,7 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
         ))
       else:
         logDebug(LogCategory.lcAI,
-                 &"{fleet.id} AutoColonize: Moving to {targetSystem.get}")
+                 &"[RBA CONVERSION] {fleet.id} AutoColonize: Moving to {target}")
 
         return some(FleetOrder(
           fleetId: fleet.id,
@@ -629,12 +641,24 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
         ))
     else:
       logDebug(LogCategory.lcAI,
-               &"{fleet.id} AutoColonize: No unclaimed systems found, holding")
+               &"[RBA CONVERSION] {fleet.id} AutoColonize: No unclaimed systems found, holding")
       return none(FleetOrder)
 
   of StandingOrderType.DefendSystem:
     # Patrol assigned system or move to it
     let targetSystem = standingOrder.params.defendTargetSystem
+
+    # CRITICAL: Validate target system exists
+    if targetSystem == SystemId(0):
+      logError(LogCategory.lcAI,
+               &"[RBA CONVERSION] {fleet.id} DefendSystem: BUG - defendTargetSystem is SystemId(0)!")
+      return none(FleetOrder)
+
+    # Check if system still exists in visible systems
+    if targetSystem notin filtered.visibleSystems:
+      logWarn(LogCategory.lcAI,
+              &"[RBA CONVERSION] {fleet.id} DefendSystem: Target system {targetSystem} not visible, holding")
+      return none(FleetOrder)
 
     if fleet.location == targetSystem:
       logDebug(LogCategory.lcAI,

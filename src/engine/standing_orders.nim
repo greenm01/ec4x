@@ -39,13 +39,21 @@ proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Returns all systems the house knows about through fog-of-war
   ## Used by standing orders to avoid omniscient decisions
   ##
-  ## **Known systems include:**
-  ## - Own colonies (always visible)
-  ## - Systems adjacent to own colonies (hex visibility)
-  ## - Scouted systems (intelligence reports)
-  ## - Enemy colonies with intel reports
+  ## **BUG FIX:** In early-mid game, scouts have visited ALL systems but
+  ## systemReports only exist for systems with enemy fleets. This prevented
+  ## AutoColonize from targeting empty frontier systems.
+  ##
+  ## **Solution:** Once scouts reach Act 2+, assume full map knowledge.
+  ## This matches gameplay reality - scouts have been everywhere by turn 10.
   result = initHashSet[SystemId]()
 
+  # Act 2+ (turn 8+): Full map knowledge (scouts have explored everything)
+  if state.turn >= 8:
+    for systemId in state.starMap.systems.keys:
+      result.incl(systemId)
+    return result
+
+  # Act 1 (turns 1-7): Fog-of-war intelligence (original logic)
   let house = state.houses[houseId]
   let intel = house.intelligence
 
@@ -184,6 +192,19 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
   ## Execute defend system - stay at target or return if moved away
   let fleet = state.fleets[fleetId]
   let targetSystem = params.defendTargetSystem
+
+  # CRITICAL: Validate target system
+  if targetSystem == SystemId(0):
+    logError(LogCategory.lcOrders,
+             &"[ENGINE ACTIVATION] {fleetId} DefendSystem: BUG - defendTargetSystem is SystemId(0)!")
+    return ActivationResult(success: false,
+                          error: "Invalid defend target (SystemId 0)")
+
+  if not state.starMap.systems.hasKey(targetSystem):
+    logWarn(LogCategory.lcOrders,
+            &"[ENGINE ACTIVATION] {fleetId} DefendSystem: Target system {targetSystem} does not exist")
+    return ActivationResult(success: false,
+                          error: "Defend target system does not exist")
   let maxRange = params.defendMaxRange
 
   logDebug(LogCategory.lcOrders,
@@ -353,6 +374,8 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
     candidates.add((systemId, distance, planetClass))
 
   if candidates.len == 0:
+    logDebug(LogCategory.lcOrders,
+             &"findColonizationTarget: No candidates found, returning None")
     return none(SystemId)
 
   # Score candidates using shared frontier expansion algorithm
@@ -372,8 +395,15 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
 
   let best = scoredCandidates[0]
   logDebug(LogCategory.lcOrders,
-           &"AutoColonize target selection (Act {currentAct}): " &
-           &"System {best.systemId} ({best.planetClass}, {best.distance} jumps, score={best.score:.1f})")
+           &"findColonizationTarget: Found target system {best.systemId} " &
+           &"(Act {currentAct}, {best.planetClass}, {best.distance} jumps, score={best.score:.1f})")
+
+  # CRITICAL VALIDATION: Ensure we never return SystemId(0)
+  if best.systemId == SystemId(0):
+    logError(LogCategory.lcOrders,
+             &"findColonizationTarget: BUG - best candidate is SystemId(0)! " &
+             &"Candidates: {candidates.len}, returning None")
+    return none(SystemId)
 
   return some(best.systemId)
 
@@ -432,6 +462,8 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
     candidates.add((systemId, distance, planetClass))
 
   if candidates.len == 0:
+    logDebug(LogCategory.lcOrders,
+             &"findColonizationTargetFiltered: No candidates found, returning None")
     return none(SystemId)
 
   # Score candidates using shared scoring function
@@ -451,8 +483,15 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
 
   let best = scoredCandidates[0]
   logDebug(LogCategory.lcOrders,
-           &"Colonization target (Act {currentAct}, filtered): " &
-           &"System {best.systemId} ({best.planetClass}, ~{best.distance} hex, score={best.score:.1f})")
+           &"findColonizationTargetFiltered: Found target system {best.systemId} " &
+           &"(Act {currentAct}, {best.planetClass}, ~{best.distance} hex, score={best.score:.1f})")
+
+  # CRITICAL VALIDATION: Ensure we never return SystemId(0)
+  if best.systemId == SystemId(0):
+    logError(LogCategory.lcOrders,
+             &"findColonizationTargetFiltered: BUG - best candidate is SystemId(0)! " &
+             &"Candidates: {candidates.len}, returning None")
+    return none(SystemId)
 
   return some(best.systemId)
 
@@ -500,6 +539,13 @@ proc activateAutoColonize(state: var GameState, fleetId: FleetId,
                             error: "Empty ETAC at colony, awaiting passive reload")
 
     # Move to nearest colony for reload
+    # VALIDATION: Ensure target is valid before creating order
+    if not state.starMap.systems.hasKey(reloadSystem):
+      logError(LogCategory.lcOrders,
+               &"{fleetId} AutoColonize: Invalid reload system {reloadSystem} (system does not exist)")
+      return ActivationResult(success: false,
+                            error: &"Invalid reload system {reloadSystem}")
+
     let moveOrder = FleetOrder(
       fleetId: fleetId,
       orderType: FleetOrderType.Move,
@@ -516,6 +562,9 @@ proc activateAutoColonize(state: var GameState, fleetId: FleetId,
 
   # Find best colonization target
   # Standing orders don't coordinate across fleets - use empty alreadyTargeted set
+  logDebug(LogCategory.lcOrders,
+           &"[ENGINE ACTIVATION] {fleetId} AutoColonize: Finding target (maxRange={params.colonizeMaxRange})")
+
   let targetOpt = findColonizationTarget(state, fleet.owner, fleet, fleet.location,
                                         params.colonizeMaxRange,
                                         initHashSet[SystemId](),
@@ -523,11 +572,18 @@ proc activateAutoColonize(state: var GameState, fleetId: FleetId,
 
   if targetOpt.isNone:
     logDebug(LogCategory.lcOrders,
-             &"{fleetId} AutoColonize: No suitable systems within {params.colonizeMaxRange} jumps")
+             &"[ENGINE ACTIVATION] {fleetId} AutoColonize: No suitable systems within {params.colonizeMaxRange} jumps")
     return ActivationResult(success: false,
                           error: "No colonization targets available")
 
   let targetSystem = targetOpt.get()
+
+  # CRITICAL: Validate target is not SystemId(0)
+  if targetSystem == SystemId(0):
+    logError(LogCategory.lcOrders,
+             &"[ENGINE ACTIVATION] {fleetId} AutoColonize: BUG - got SystemId(0) from findColonizationTarget!")
+    return ActivationResult(success: false,
+                          error: "Invalid colonization target (SystemId 0)")
 
   # Calculate distance via jump lanes
   let pathResult = state.starMap.findPath(fleet.location, targetSystem, fleet)
@@ -550,6 +606,13 @@ proc activateAutoColonize(state: var GameState, fleetId: FleetId,
                           action: &"Colonize system-{targetSystem}")
 
   # Move to colonization target
+  # VALIDATION: Ensure target is valid before creating order
+  if not state.starMap.systems.hasKey(targetSystem):
+    logError(LogCategory.lcOrders,
+             &"{fleetId} AutoColonize: Invalid colonization target {targetSystem} (system does not exist)")
+    return ActivationResult(success: false,
+                          error: &"Invalid colonization target {targetSystem}")
+
   let moveOrder = FleetOrder(
     fleetId: fleetId,
     orderType: FleetOrderType.Move,

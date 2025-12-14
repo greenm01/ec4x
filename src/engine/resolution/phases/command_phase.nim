@@ -38,6 +38,7 @@ import ../../commands/[executor]
 import ../[types as res_types, fleet_orders, economy_resolution,
            diplomatic_resolution, combat_resolution, simultaneous,
            commissioning, automation, construction, order_cleanup]
+import ../event_factory/[init as event_factory]
 import ../../research/[costs as res_costs]
 import ../../standing_orders
 
@@ -258,12 +259,23 @@ proc resolveCommandPhase*(state: var GameState,
           else:
             logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {order.fleetId}: {order.orderType}")
 
-        # All other orders: store for movement and execution
+        # All other orders: VALIDATE then store for movement and execution
         # Universal lifecycle: Initiate (here) → Activate (Maintenance) → Execute (Conflict/Income)
         else:
-          state.fleetOrders[order.fleetId] = order
-          ordersStored += 1
-          logDebug(LogCategory.lcOrders, &"  [STORED] Fleet {order.fleetId}: {order.orderType}")
+          # CRITICAL: Validate order before storing (prevents NULL target Move orders)
+          let validation = validateFleetOrder(order, state, houseId)
+          if validation.valid:
+            state.fleetOrders[order.fleetId] = order
+            ordersStored += 1
+            logDebug(LogCategory.lcOrders, &"  [STORED] Fleet {order.fleetId}: {order.orderType}")
+          else:
+            logWarn(LogCategory.lcOrders,
+                    &"  [REJECTED] Fleet {order.fleetId}: {order.orderType} - {validation.error}")
+            # Generate rejection event
+            events.add(event_factory.orderRejected(
+              houseId, $order.orderType, validation.error,
+              fleetId = some(order.fleetId)
+            ))
 
   logInfo(LogCategory.lcOrders, &"[COMMAND PART C] Completed ({ordersStored} orders stored, {adminExecuted} admin executed)")
 

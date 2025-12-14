@@ -292,8 +292,8 @@ capacity_high_utilization_threshold = 0.9  # Defer non-critical requirements at 
 scouts_per_stale_intel_system = 0.5        # 1 scout per 2 stale intel systems
 scouts_per_enemy_house = 1.0               # 1 scout per enemy house for espionage
 max_scouts_act1 = 3                        # Minimal scouts in Act 1 (any ship explores)
-etacs_per_uncolonized_system = 0.5         # 1 ETAC per 2 uncolonized systems
-max_etacs_queued = 5                       # Cap ETAC production at 5
+etacs_per_uncolonized_system = 1.5         # 1.5 ETACs per uncolonized system (buffer for losses)
+max_etacs_queued = 12                      # Cap ETAC production at 12 (increased for resilience)
 
 # Offensive building (personality-modulated)
 aggressive_transport_ratio = 0.33          # Aggressive AI: 1 transport per 3 colonies

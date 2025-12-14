@@ -88,14 +88,33 @@ proc identifyMergerGroups*(
       continue
 
     # Separate into scout fleets and combat fleets
+    # CRITICAL: NEVER merge ETAC fleets - they need stable fleet IDs for standing orders
     var scoutFleets: seq[FleetAnalysis] = @[]
     var combatFleets: seq[FleetAnalysis] = @[]
 
-    for fleet in fleetsAtLocation:
-      if fleet.hasScouts and not fleet.hasCombatShips:
-        scoutFleets.add(fleet)
-      elif fleet.hasCombatShips:
-        combatFleets.add(fleet)
+    for fleetAnalysis in fleetsAtLocation:
+      # Skip ETACs - they have AutoColonize standing orders that need stable fleet IDs
+      # Check both the analysis flag AND the actual fleet data
+      if fleetAnalysis.hasETACs:
+        continue
+
+      # Also check the actual fleet to be absolutely sure
+      var actualFleet: Fleet
+      var foundFleet = false
+      for fleet in filtered.ownFleets:
+        if fleet.id == fleetAnalysis.fleetId:
+          actualFleet = fleet
+          foundFleet = true
+          break
+
+      if foundFleet and actualFleet.spaceLiftShips.len > 0:
+        # Has spacelift ships - skip to avoid merging ETACs
+        continue
+
+      if fleetAnalysis.hasScouts and not fleetAnalysis.hasCombatShips:
+        scoutFleets.add(fleetAnalysis)
+      elif fleetAnalysis.hasCombatShips:
+        combatFleets.add(fleetAnalysis)
 
     # Create merger groups for scouts (if 2+ scout fleets)
     # Optimal spy mission size: 3-6 scouts for mesh network bonus

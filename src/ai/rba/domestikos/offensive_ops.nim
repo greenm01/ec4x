@@ -679,12 +679,14 @@ proc generateCampaignOrder(
   var bestDistance = 999
 
   # First pass: check assigned fleets
+  # CRITICAL FIX: Never assign ETACs to military campaigns (they're for colonization only)
   for fleetId in campaign.assignedFleets:
     for analysis in analyses:
       if analysis.fleetId == fleetId:
-        # Check if fleet is available
+        # Check if fleet is available and NOT an ETAC
         if analysis.utilization in {FleetUtilization.Idle,
-                                     FleetUtilization.UnderUtilized}:
+                                     FleetUtilization.UnderUtilized} and
+           not analysis.hasETACs:
           let dist = calculateDistance(filtered.starMap,
                                        analysis.location,
                                        campaign.targetSystem)
@@ -694,9 +696,10 @@ proc generateCampaignOrder(
         break
 
   # Second pass: find nearby idle fleets if no assigned fleet available
+  # CRITICAL FIX: Never assign ETACs to military campaigns (they're for colonization only)
   if bestFleet.isNone:
     for analysis in analyses:
-      if analysis.utilization == FleetUtilization.Idle:
+      if analysis.utilization == FleetUtilization.Idle and not analysis.hasETACs:
         let dist = calculateDistance(filtered.starMap,
                                      analysis.location,
                                      campaign.targetSystem)

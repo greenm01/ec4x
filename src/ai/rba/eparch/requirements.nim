@@ -52,12 +52,14 @@ proc findBestShipyardColony(
 ): Option[SystemId] =
   ## Phase 7.1: Select colony with highest production, considering threat levels
   ## (Shipyards require Spaceport prerequisite per facilities.toml)
+  ## CRITICAL FIX: Allow multiple shipyards per colony (removed == 0 check)
+  ## Targets in Act 3-4 require 1.5-2.5x shipyards per colony for production capacity
   var bestColony: Option[SystemId] = none(SystemId)
   var highestScore = -1000.0  # Allow negative scores
 
   for colony in colonies:
     # CRITICAL: Must have Spaceport (prerequisite for Shipyard construction)
-    if colony.spaceports.len > 0 and colony.shipyards.len == 0:
+    if colony.spaceports.len > 0:
       var score = float(colony.production)
 
       # Phase 7.1: Apply threat penalty
@@ -200,12 +202,12 @@ proc generateFacilityRequirements(
           &"{houseId} Eparch: Evaluating facility needs for {colonies.len} colonies (Act {currentAct})")
 
   # 1. Evaluate Spaceport needs FIRST (prerequisite for Shipyards)
-  # Target: 1 Spaceport per colony (no more - they're 2x cost vs Shipyards)
-  # Note: Spaceports are 2x expensive for ship production and can't repair
-  # Only build Spaceport if colony has none (first infrastructure priority)
+  # Target: 1 Spaceport per colony (required for shipyard/starbase construction)
+  # Note: Spaceports have 100% commission penalty (ships cost 2x to build)
+  # Only build 1 per colony (prerequisite only), then use Shipyards for production
   let currentSpaceports = countFacilities(colonies, "Spaceport")
   let targetShipyards = getTargetShipyards(currentAct, colonies.len)
-  let spaceportsNeeded = colonies.len  # Max 1 per colony (no advantage to multiple)
+  let spaceportsNeeded = colonies.len  # Exactly 1 per colony (prerequisite only)
 
   logInfo(LogCategory.lcAI,
           &"{houseId} Eparch: Spaceports - have {currentSpaceports}, need {spaceportsNeeded} " &
