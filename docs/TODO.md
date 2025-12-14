@@ -150,6 +150,7 @@
 
 ### Major Milestones
 
+- ✅ Auto-Colonization Consolidation (2025-12-13) - Unified colonization logic in engine with Act-aware scoring
 - ✅ Scout System Unification (2025-12-13) - Fleet-based spy missions with persistent detection
 - ✅ Dynamic AI Systems (2025-12-01) - Expansion, diplomacy, combat tracking
 - ✅ Population Transfer Fix (2025-11-29) - Config initialization bug

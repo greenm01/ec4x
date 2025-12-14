@@ -307,6 +307,12 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   #           &"{controller.houseId} Logistics added {result.buildRequirements.len} build requirements (e.g., Drydocks)")
 
   # Convert strategic standing orders to explicit fleet orders
+  # Track already-targeted systems to prevent duplicate colonize orders
+  var alreadyTargeted = initHashSet[SystemId]()
+  for existingOrder in filtered.ownFleetOrders.values:
+    if existingOrder.orderType == FleetOrderType.Colonize and existingOrder.targetSystem.isSome:
+      alreadyTargeted.incl(existingOrder.targetSystem.get())
+
   var strategicOrdersConverted = 0
   for fleetId, standingOrder in standingOrders:
     if standingOrder.orderType in {StandingOrderType.DefendSystem, StandingOrderType.AutoRepair, StandingOrderType.AutoColonize}:
@@ -318,10 +324,15 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
       if fleetOpt.isSome:
         let fleet = fleetOpt.get()
-        let orderOpt = convertStandingOrderToFleetOrder(standingOrder, fleet, filtered)
+        let orderOpt = convertStandingOrderToFleetOrder(standingOrder, fleet, filtered, alreadyTargeted)
 
         if orderOpt.isSome:
-          result.orderPacket.fleetOrders.add(orderOpt.get())
+          let order = orderOpt.get()
+          # Track colonize targets to prevent duplicates in subsequent conversions
+          if order.orderType == FleetOrderType.Colonize and order.targetSystem.isSome:
+            alreadyTargeted.incl(order.targetSystem.get())
+
+          result.orderPacket.fleetOrders.add(order)
           strategicOrdersConverted += 1
 
   logInfo(LogCategory.lcAI,

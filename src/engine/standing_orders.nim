@@ -13,7 +13,7 @@
 ## See docs/architecture/standing-orders.md for complete design.
 
 import std/[tables, options, strformat, algorithm, sets, sequtils]
-import gamestate, orders, fleet, starmap, logger, spacelift
+import gamestate, orders, fleet, starmap, logger, spacelift, fog_of_war
 import order_types
 import ../common/types/[core, planets]
 import config/standing_orders_config
@@ -297,10 +297,12 @@ proc scoreColonizationCandidate*(
     # Act 3-4: QUALITY CONSOLIDATION (Quality 3x more important than distance)
     (qualityScore * 3.0) + (distanceScore * 1.0) + (proximityBonus * proximityWeight)
 
-proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation: SystemId,
-                                maxRange: int,
-                                preferredClasses: seq[PlanetClass]): Option[SystemId] =
-  ## Find best uncolonized system for colonization using Act-aware scoring
+proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
+                            currentLocation: SystemId,
+                            maxRange: int,
+                            alreadyTargeted: HashSet[SystemId],
+                            preferredClasses: seq[PlanetClass] = @[]): Option[SystemId] =
+  ## Engine-provided colonization target selection with Act-aware scoring
   ##
   ## **Frontier Expansion Algorithm (Act 1-2):**
   ## Prioritizes DISTANCE over planet quality to enable rapid expansion
@@ -311,9 +313,10 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
   ##
   ## **Fog-of-War Compliance:**
   ## Only considers systems the house knows about (uses getKnownSystems helper)
+  ##
+  ## **Duplicate Prevention:**
+  ## Pass alreadyTargeted HashSet to skip systems already being colonized
   var candidates: seq[(SystemId, int, PlanetClass)] = @[]
-
-  let houseId = fleet.owner
 
   # Calculate current Act from turn number (7 turns per Act)
   let currentAct = if state.turn <= 7: 1
@@ -324,22 +327,13 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
   # Get known systems (fog-of-war compliant)
   let knownSystems = getKnownSystems(state, houseId)
 
-  # Collect systems already targeted by other fleets (prevents duplicate targets)
-  var alreadyTargeted: seq[SystemId] = @[]
-  for otherFleetId, order in state.fleetOrders:
-    if otherFleetId == fleet.id:
-      continue  # Don't exclude our own current target
-    if order.orderType in {FleetOrderType.Colonize, FleetOrderType.Move}:
-      if order.targetSystem.isSome:
-        alreadyTargeted.add(order.targetSystem.get())
-
   # Scan known systems within range
   for systemId in knownSystems:
     # Skip if we know it's colonized
     if hasColonyIntel(state, houseId, systemId):
       continue
 
-    # Skip systems already targeted by other fleets
+    # Skip systems already targeted by other fleets (duplicate prevention)
     if systemId in alreadyTargeted:
       continue
 
@@ -381,6 +375,85 @@ proc findBestColonizationTarget(state: GameState, fleet: Fleet, currentLocation:
 
   return some(best.systemId)
 
+proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
+                                     currentLocation: SystemId,
+                                     maxRange: int,
+                                     alreadyTargeted: HashSet[SystemId],
+                                     preferredClasses: seq[PlanetClass] = @[]): Option[SystemId] =
+  ## AI-optimized wrapper that works with pre-filtered game state
+  ## Avoids redundant fog-of-war filtering when AI already has FilteredGameState
+  ##
+  ## Same Act-aware scoring and duplicate prevention as main function
+  var candidates: seq[(SystemId, int, PlanetClass)] = @[]
+
+  # Calculate current Act from turn number (7 turns per Act)
+  let currentAct = if filtered.turn <= 7: 1
+                   elif filtered.turn <= 14: 2
+                   elif filtered.turn <= 21: 3
+                   else: 4
+
+  # Scan visible systems within range
+  # Fog-of-war: Only visible systems are in this table (respects all players' visibility)
+  for systemId, visSystem in filtered.visibleSystems:
+    # Skip if colonized (check own colonies + visible colonies)
+    var isColonized = false
+    for colony in filtered.ownColonies:
+      if colony.systemId == systemId:
+        isColonized = true
+        break
+    if not isColonized:
+      for visColony in filtered.visibleColonies:
+        if visColony.systemId == systemId:
+          isColonized = true
+          break
+    if isColonized:
+      continue
+
+    # Skip systems already targeted by other fleets (duplicate prevention)
+    if systemId in alreadyTargeted:
+      continue
+
+    # Check distance via jump lanes (proper pathfinding)
+    let pathResult = filtered.starMap.findPath(currentLocation, systemId, fleet)
+    if not pathResult.found:
+      continue  # Can't reach this system
+
+    let distance = pathResult.path.len - 1  # Path includes start, so subtract 1
+    if distance > maxRange:
+      continue
+
+    # Get planet class from star map (VisibleSystem doesn't include planet details)
+    if systemId notin filtered.starMap.systems:
+      continue  # System not in star map (shouldn't happen but be safe)
+    let system = filtered.starMap.systems[systemId]
+    let planetClass = system.planetClass
+    candidates.add((systemId, distance, planetClass))
+
+  if candidates.len == 0:
+    return none(SystemId)
+
+  # Score candidates using shared scoring function
+  type ScoredCandidate = tuple[systemId: SystemId, score: float, distance: int, planetClass: PlanetClass]
+  var scoredCandidates: seq[ScoredCandidate] = @[]
+
+  for (systemId, distance, planetClass) in candidates:
+    let score = scoreColonizationCandidate(filtered.turn, distance, planetClass)
+    scoredCandidates.add((systemId, score, distance, planetClass))
+
+  # Sort by score (highest first)
+  scoredCandidates.sort(proc(a, b: ScoredCandidate): int =
+    if a.score > b.score: -1
+    elif a.score < b.score: 1
+    else: 0
+  )
+
+  let best = scoredCandidates[0]
+  logDebug(LogCategory.lcOrders,
+           &"Colonization target (Act {currentAct}, filtered): " &
+           &"System {best.systemId} ({best.planetClass}, ~{best.distance} hex, score={best.score:.1f})")
+
+  return some(best.systemId)
+
 proc activateAutoColonize(state: var GameState, fleetId: FleetId,
                         params: StandingOrderParams): ActivationResult =
   ## Execute auto-colonize - find and colonize nearest suitable system
@@ -414,9 +487,11 @@ proc activateAutoColonize(state: var GameState, fleetId: FleetId,
                           error: "Empty ETAC needs manual movement to colony for reload")
 
   # Find best colonization target
-  let targetOpt = findBestColonizationTarget(state, fleet, fleet.location,
-                                             params.colonizeMaxRange,
-                                             params.preferredPlanetClasses)
+  # Standing orders don't coordinate across fleets - use empty alreadyTargeted set
+  let targetOpt = findColonizationTarget(state, fleet.owner, fleet, fleet.location,
+                                        params.colonizeMaxRange,
+                                        initHashSet[SystemId](),
+                                        params.preferredPlanetClasses)
 
   if targetOpt.isNone:
     logDebug(LogCategory.lcOrders,
