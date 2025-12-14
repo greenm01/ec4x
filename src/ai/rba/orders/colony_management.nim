@@ -34,7 +34,7 @@ proc generateColonyManagementOrders*(
   ## - Future: Consider dock capacity constraints
 
   # Get auto-repair threshold from config (default 100 PP)
-  let autoRepairThreshold = globalRBAConfig.eparch.auto_repair_threshold
+  let autoRepairThreshold = controller.rbaConfig.eparch.auto_repair_threshold
 
   # Determine if we should enable auto-repair based on treasury
   let treasuryHealthy = filtered.ownHouse.treasury >= autoRepairThreshold

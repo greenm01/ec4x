@@ -373,7 +373,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # PHASE 7: TACTICAL FLEET ORDERS
   # ==========================================================================
   # Pass standingOrders so tactical skips ETACs with AutoColonize (let standing orders handle them)
-  let tacticalOrders = generateFleetOrders(controller, filtered, rng, standingOrders)
+  # Pass alreadyTargeted so tactical coordinates with standing orders (no duplicate colonization targets)
+  let tacticalOrders = generateFleetOrders(controller, filtered, rng, standingOrders, alreadyTargeted)
 
   for order in tacticalOrders:
     result.orderPacket.fleetOrders.add(order)

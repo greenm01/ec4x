@@ -469,10 +469,12 @@ proc isColonizationOrder(orderType: FleetOrderType): bool =
   }
 
 proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand,
-                          standingOrders: Table[FleetId, StandingOrder] = initTable[FleetId, StandingOrder]()): seq[FleetOrder] =
+                          standingOrders: Table[FleetId, StandingOrder] = initTable[FleetId, StandingOrder](),
+                          alreadyTargeted: HashSet[SystemId] = initHashSet[SystemId]()): seq[FleetOrder] =
   ## Generate fleet orders for all owned fleets
   ## NOW WITH PHASE-AWARE PRIORITIES (4-act structure)
   ## standingOrders: Skip tactical orders for fleets with AutoColonize (let standing orders handle it)
+  ## alreadyTargeted: Systems already targeted by standing orders (passed from orders.nim for coordination)
   result = @[]
 
   let myFleets = getOwnedFleets(filtered, controller.houseId)
@@ -486,7 +488,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
   # Build set of systems already targeted by other fleets to prevent duplicates
   # Bug fix: Multiple fleets were targeting same system, causing 78% colonization failure rate
-  var alreadyTargeted = initHashSet[SystemId]()
+  # Start with targets from standing orders (passed as parameter)
+  var alreadyTargeted = alreadyTargeted  # Make mutable copy
   for fleetId, existingOrder in filtered.ownFleetOrders:
     if existingOrder.orderType == FleetOrderType.Colonize and existingOrder.targetSystem.isSome:
       alreadyTargeted.incl(existingOrder.targetSystem.get())

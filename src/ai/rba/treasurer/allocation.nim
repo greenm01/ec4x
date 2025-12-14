@@ -17,7 +17,8 @@ import ../drungarius/threat_assessment
 import ./consultation
 import ../../../engine/logger
 
-proc getBaselineAllocation*(act: GameAct): BudgetAllocation =
+proc getBaselineAllocation*(controller: AIController,
+                           act: GameAct): BudgetAllocation =
   ## Extract baseline allocation percentages from config based on game act
   ##
   ## These percentages represent strategic intent for each act:
@@ -28,13 +29,13 @@ proc getBaselineAllocation*(act: GameAct): BudgetAllocation =
 
   let cfg = case act
     of GameAct.Act1_LandGrab:
-      globalRBAConfig.budget_act1_land_grab
+      controller.rbaConfig.budget_act1_land_grab
     of GameAct.Act2_RisingTensions:
-      globalRBAConfig.budget_act2_rising_tensions
+      controller.rbaConfig.budget_act2_rising_tensions
     of GameAct.Act3_TotalWar:
-      globalRBAConfig.budget_act3_total_war
+      controller.rbaConfig.budget_act3_total_war
     of GameAct.Act4_Endgame:
-      globalRBAConfig.budget_act4_endgame
+      controller.rbaConfig.budget_act4_endgame
 
   result = {
     Expansion: cfg.expansion,
@@ -73,13 +74,14 @@ proc applyPersonalityModifiers*(
     allocation[Military] = max(0.10, allocation[Military] - economicMod * 0.5)
 
 proc applyThreatAwareAllocation*(
+  controller: AIController,
   allocation: var BudgetAllocation,
   intelSnapshot: IntelligenceSnapshot
 ) =
   ## Graduated threat-aware budget adjustment based on intelligence (Phase D)
   ## Replaces binary isUnderThreat flag with nuanced threat response
 
-  let config = globalRBAConfig.intelligence_threat_response
+  let config = controller.rbaConfig.intelligence_threat_response
   let threats = intelSnapshot.military.threatsByColony
 
   if threats.len == 0:
@@ -162,6 +164,7 @@ proc normalizeAllocation*(allocation: var BudgetAllocation) =
       allocation[key] = allocation[key] / total
 
 proc allocateBudget*(
+  controller: AIController,
   act: GameAct,
   personality: AIPersonality,
   intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot),
@@ -185,7 +188,7 @@ proc allocateBudget*(
   ## - Falls back to static config percentages
 
   # 1. Baseline from config
-  result = getBaselineAllocation(act)
+  result = getBaselineAllocation(controller, act)
 
   # 2. Personality modifiers
   applyPersonalityModifiers(result, personality, act)
@@ -196,7 +199,7 @@ proc allocateBudget*(
 
   # 4. Threat-aware allocation (Phase D - NEW)
   if intelSnapshot.isSome:
-    applyThreatAwareAllocation(result, intelSnapshot.get())
+    applyThreatAwareAllocation(controller, result, intelSnapshot.get())
 
   # 5. Normalize
   normalizeAllocation(result)
