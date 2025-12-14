@@ -19,6 +19,7 @@ import ../common/types/[core, planets]
 import config/standing_orders_config
 import resolution/[event_factory/init as event_factory, types as resolution_types]
 import intelligence/types as intel_types
+import population/transfers  # For findNearestOwnedColony
 
 export StandingOrderType, StandingOrder, StandingOrderParams
 
@@ -478,13 +479,39 @@ proc activateAutoColonize(state: var GameState, fleetId: FleetId,
       break
 
   if not hasColonists:
-    # ETAC empty - NO automatic orders generated
-    # Player/AI must intentionally send ETAC home for reload
-    # Passive auto-reload will occur when ETAC arrives at friendly colony
-    logDebug(LogCategory.lcOrders,
-      &"Fleet {fleetId} has empty ETAC - awaiting manual movement to colony for reload")
-    return ActivationResult(success: false,
-                          error: "Empty ETAC needs manual movement to colony for reload")
+    # ETAC empty - automatically return to nearest colony for reload
+    let nearestColony = findNearestOwnedColony(state, fleet.location, fleet.owner)
+
+    if nearestColony.isNone:
+      # No colonies to reload at - hold position
+      logWarn(LogCategory.lcOrders,
+              &"{fleetId} AutoColonize: Empty ETAC but no owned colonies found for reload")
+      return ActivationResult(success: false,
+                            error: "Empty ETAC with no colonies for reload")
+
+    let reloadSystem = nearestColony.get()
+
+    # If already at a colony, hold position (passive reload will occur)
+    if fleet.location == reloadSystem:
+      logInfo(LogCategory.lcOrders,
+              &"{fleetId} AutoColonize: Empty ETAC at {reloadSystem}, holding for reload")
+      return ActivationResult(success: false,
+                            error: "Empty ETAC at colony, awaiting passive reload")
+
+    # Move to nearest colony for reload
+    let moveOrder = FleetOrder(
+      fleetId: fleetId,
+      orderType: FleetOrderType.Move,
+      targetSystem: some(reloadSystem),
+      priority: 100
+    )
+    state.fleetOrders[fleetId] = moveOrder
+
+    logInfo(LogCategory.lcOrders,
+            &"{fleetId} AutoColonize: Empty ETAC moving to {reloadSystem} for reload")
+
+    return ActivationResult(success: true,
+                          action: &"Moving to {reloadSystem} for ETAC reload")
 
   # Find best colonization target
   # Standing orders don't coordinate across fleets - use empty alreadyTargeted set
