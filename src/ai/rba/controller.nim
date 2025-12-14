@@ -17,22 +17,23 @@ export StandingOrder, StandingOrderType, StandingOrderParams
 # Strategy Profiles
 # =============================================================================
 
-proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
+proc getStrategyPersonality*(strategy: AIStrategy,
+                             rbaConfig: RBAConfig): AIPersonality =
   ## Get personality parameters from config
-  ## Loads values from config/rba.toml instead of hardcoded constants
+  ## Takes RBAConfig explicitly to avoid global state in FFI context
   let cfg = case strategy
-    of AIStrategy.Aggressive: globalRBAConfig.strategies_aggressive
-    of AIStrategy.Economic: globalRBAConfig.strategies_economic
-    of AIStrategy.Espionage: globalRBAConfig.strategies_espionage
-    of AIStrategy.Diplomatic: globalRBAConfig.strategies_diplomatic
-    of AIStrategy.Balanced: globalRBAConfig.strategies_balanced
-    of AIStrategy.Turtle: globalRBAConfig.strategies_turtle
-    of AIStrategy.Expansionist: globalRBAConfig.strategies_expansionist
-    of AIStrategy.TechRush: globalRBAConfig.strategies_tech_rush
-    of AIStrategy.Raider: globalRBAConfig.strategies_raider
-    of AIStrategy.MilitaryIndustrial: globalRBAConfig.strategies_military_industrial
-    of AIStrategy.Opportunistic: globalRBAConfig.strategies_opportunistic
-    of AIStrategy.Isolationist: globalRBAConfig.strategies_isolationist
+    of AIStrategy.Aggressive: rbaConfig.strategies_aggressive
+    of AIStrategy.Economic: rbaConfig.strategies_economic
+    of AIStrategy.Espionage: rbaConfig.strategies_espionage
+    of AIStrategy.Diplomatic: rbaConfig.strategies_diplomatic
+    of AIStrategy.Balanced: rbaConfig.strategies_balanced
+    of AIStrategy.Turtle: rbaConfig.strategies_turtle
+    of AIStrategy.Expansionist: rbaConfig.strategies_expansionist
+    of AIStrategy.TechRush: rbaConfig.strategies_tech_rush
+    of AIStrategy.Raider: rbaConfig.strategies_raider
+    of AIStrategy.MilitaryIndustrial: rbaConfig.strategies_military_industrial
+    of AIStrategy.Opportunistic: rbaConfig.strategies_opportunistic
+    of AIStrategy.Isolationist: rbaConfig.strategies_isolationist
 
   AIPersonality(
     aggression: cfg.aggression,
@@ -43,17 +44,26 @@ proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
     techPriority: cfg.tech_priority
   )
 
+proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality =
+  ## Get personality parameters from global config
+  ## Convenience overload for non-FFI context
+  getStrategyPersonality(strategy, globalRBAConfig)
+
 # =============================================================================
 # Constructor Functions
 # =============================================================================
 
-proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemId = 0.SystemId): AIController =
-  ## Create a new AI controller for a house
-  ## Note: homeworld should be set from GameState after initialization if not provided
+proc newAIController*(houseId: HouseId, strategy: AIStrategy,
+                     rbaConfig: RBAConfig,
+                     homeworld: SystemId = 0.SystemId): AIController =
+  ## Create a new AI controller for a house with explicit config
+  ## Takes RBAConfig explicitly to avoid global state in FFI context
+  ## Note: homeworld should be set from GameState after initialization if not
+  ## provided
   AIController(
     houseId: houseId,
     strategy: strategy,
-    personality: getStrategyPersonality(strategy),
+    personality: getStrategyPersonality(strategy, rbaConfig),
     # intelligence field removed - use intelligenceSnapshot instead
     operations: @[],
     reserves: @[],
@@ -64,20 +74,31 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemI
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
     # GOAP strategic planning integration (MVP: Fleet + Build domains)
-    goapEnabled: globalRBAConfig.goap.enabled,
+    goapEnabled: rbaConfig.goap.enabled,
     goapLastPlanningTurn: -1,
     goapActiveGoals: @[],
     goapBudgetEstimates: none(Table[conversion.DomainType, int]),
     goapReservedBudget: none(int),
-    goapConfig: globalRBAConfig.goap,
+    goapConfig: rbaConfig.goap,
     goapPlanTracker: newPlanTracker(),
+    rbaConfig: rbaConfig,  # Store full config for subsystems
     intelligenceNeedsRefresh: false,  # Initialize refresh flag
     # Phase 2: Multi-turn invasion campaigns
     activeCampaigns: @[]
   )
 
-proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId = 0.SystemId): AIController =
+proc newAIController*(houseId: HouseId, strategy: AIStrategy,
+                     homeworld: SystemId = 0.SystemId): AIController =
+  ## Create a new AI controller for a house using global config
+  ## Convenience overload for non-FFI context
+  newAIController(houseId, strategy, globalRBAConfig, homeworld)
+
+proc newAIControllerWithPersonality*(houseId: HouseId,
+                                     personality: AIPersonality,
+                                     rbaConfig: RBAConfig,
+                                     homeworld: SystemId = 0.SystemId): AIController =
   ## Create a new AI controller with a custom personality (for genetic algorithm)
+  ## Takes explicit config to avoid global state in FFI context
   ## Note: homeworld should be set from GameState after initialization if not provided
   AIController(
     houseId: houseId,
@@ -93,17 +114,26 @@ proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonalit
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
     # GOAP strategic planning integration (MVP: Fleet + Build domains)
-    goapEnabled: globalRBAConfig.goap.enabled,
+    goapEnabled: rbaConfig.goap.enabled,
     goapLastPlanningTurn: -1,
     goapActiveGoals: @[],
     goapBudgetEstimates: none(Table[conversion.DomainType, int]),
     goapReservedBudget: none(int),
-    goapConfig: globalRBAConfig.goap,
+    goapConfig: rbaConfig.goap,
     goapPlanTracker: newPlanTracker(),
+    rbaConfig: rbaConfig,  # Store full config for subsystems
     intelligenceNeedsRefresh: false,  # Initialize refresh flag
     # Phase 2: Multi-turn invasion campaigns
     activeCampaigns: @[]
   )
+
+proc newAIControllerWithPersonality*(houseId: HouseId,
+                                     personality: AIPersonality,
+                                     homeworld: SystemId = 0.SystemId): AIController =
+  ## Create a new AI controller with a custom personality using global config
+  ## Convenience overload for non-FFI context
+  newAIControllerWithPersonality(houseId, personality, globalRBAConfig,
+                                 homeworld)
 
 # =============================================================================
 # High-Level Coordination Functions

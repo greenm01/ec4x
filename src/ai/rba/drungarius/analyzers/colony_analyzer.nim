@@ -33,7 +33,18 @@ proc analyzeColonyIntelligence*(
   result.vulnerableTargets = @[]
   result.highValueTargets = @[]
 
-  let config = globalRBAConfig.intelligence
+  # DEBUG: Check controller state BEFORE accessing rbaConfig
+  when not defined(release):
+    echo &"DEBUG colony_analyzer: START"
+    echo &"DEBUG colony_analyzer: controller.houseId={controller.houseId}"
+    echo &"DEBUG colony_analyzer: filtered.viewingHouse={filtered.viewingHouse}"
+    echo &"DEBUG colony_analyzer: filtered.ownHouse.intelligence.colonyReports.len={filtered.ownHouse.intelligence.colonyReports.len}"
+    if controller.isNil:
+      echo "DEBUG colony_analyzer: controller is NIL!"
+    else:
+      echo &"DEBUG colony_analyzer: controller.rbaConfig address = {cast[int](controller.rbaConfig.addr)}"
+
+  let config = controller.rbaConfig.intelligence
 
   # Phase 1 diagnostic: Log intelligence database size
   logInfo(LogCategory.lcAI,

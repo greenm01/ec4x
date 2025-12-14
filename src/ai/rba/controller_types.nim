@@ -375,6 +375,7 @@ type
     goapConfig*: config.GOAPConfig # Configuration for the GOAP planner
     goapPlanTracker*: PlanTracker # Manages GOAP's multi-turn plans
     lastTurnAllocationResult*: Option[MultiAdvisorAllocation] # NEW: Stores result of last turn's budget allocation
+    rbaConfig*: config.RBAConfig # Full RBA config (explicit for FFI context)
 
     # Phase C: Enhanced intelligence distribution
     intelligenceSnapshot*: Option[IntelligenceSnapshot]  # Current turn's intelligence from Drungarius
