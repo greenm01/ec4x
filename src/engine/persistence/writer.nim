@@ -8,7 +8,7 @@ import db_connector/db_sqlite
 import ./types, ./schema
 import ../../ai/analysis/diagnostics/types  # DiagnosticMetrics
 import ../gamestate  # For GameState, Fleet, FleetOrder
-import ../resolution/types  # For GameEvent
+import ../resolution/types  # For GameEvent, GameEventType
 
 const ENGINE_VERSION = "0.1.0"  # TODO: Get from build system
 
@@ -199,6 +199,11 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64,
       ?,
       ?, ?, ?, ?, ?,
       ?, ?,
+      ?, ?,
+      ?,
+      ?, ?, ?, ?, ?,
+      ?, ?,
+      ?, ?,
       ?, ?
     )
   """,
@@ -324,8 +329,26 @@ proc insertGameEvent*(db: DbConn, gameId: int64, turn: int,
   let houseIdStr = if event.houseId.isSome: $event.houseId.get else: ""
   let fleetIdStr = if event.fleetId.isSome: event.fleetId.get else: ""
   let systemIdVal = if event.systemId.isSome: $event.systemId.get else: "0"
-  let orderTypeStr = if event.orderType.isSome: event.orderType.get else: ""
-  let reasonStr = if event.reason.isSome: event.reason.get else: ""
+
+  # orderType only exists for order-related events (case object variant)
+  let orderTypeStr =
+    case event.eventType
+    of GameEventType.OrderIssued, GameEventType.OrderCompleted,
+       GameEventType.OrderRejected, GameEventType.OrderFailed,
+       GameEventType.OrderAborted, GameEventType.FleetArrived:
+      if event.orderType.isSome: event.orderType.get else: ""
+    else:
+      ""
+
+  # reason only exists for order-related events
+  let reasonStr =
+    case event.eventType
+    of GameEventType.OrderIssued, GameEventType.OrderCompleted,
+       GameEventType.OrderRejected, GameEventType.OrderFailed,
+       GameEventType.OrderAborted, GameEventType.FleetArrived:
+      if event.reason.isSome: event.reason.get else: ""
+    else:
+      ""
 
   # Serialize event-specific data as JSON (if needed)
   let eventDataJson = "{}"  # TODO: Implement serializeEventData()
