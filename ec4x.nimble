@@ -20,6 +20,13 @@ requires "terminaltables >= 0.1.0"
 # BUILD TASKS
 # ==============================================================================
 
+task buildPreCommit, "Build main binaries (for pre-commit hook)":
+  echo "Building EC4X binaries..."
+  mkDir "bin"
+  exec "nim c --hints:off --warnings:off -d:release --opt:speed --passL:-lsqlite3 -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "nim c --hints:off --warnings:off -d:release --opt:speed -o:bin/ec4x src/cli/ec4x.nim"
+  echo "Build completed successfully!"
+
 task buildAll, "Build all binaries":
   echo "Building EC4X binaries..."
   mkDir "bin"
@@ -39,6 +46,17 @@ task buildSimulation, "Build simulation binary":
   exec "nim c --forceBuild -d:release --opt:speed --passL:-lsqlite3 -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   echo "Build completed! Git hash: $(cat bin/.build_git_hash)"
+
+task buildCAPI, "Build C API parallel simulation (pthreads)":
+  echo "Building C API simulation with parallel AI..."
+  mkDir "bin"
+  # Step 1: Compile Nim engine as shared library (using arc GC for thread safety)
+  exec "nim c --app:lib --noMain --opt:speed --threads:on --mm:arc --passL:-lsqlite3 -o:bin/libec4x_engine.so src/c_api/engine_ffi.nim"
+  # Step 2: Compile C orchestrator and link with Nim library
+  exec "gcc -O3 -pthread -o bin/run_simulation_c src/c_api/run_simulation.c -Lbin -lec4x_engine -lm -ldl"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  echo "C API simulation built! Git hash: $(cat bin/.build_git_hash)"
+  echo "Run with: LD_LIBRARY_PATH=bin ./bin/run_simulation_c"
 
 task buildAnalysis, "Build ec4x analysis CLI tool":
   echo "Building ec4x analysis CLI..."
