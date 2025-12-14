@@ -5,7 +5,7 @@
 
 import std/[tables, options, algorithm, sequtils, strformat, random, sets]
 import ../common/types
-import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap, logger, orders]
+import ../../engine/[gamestate, fog_of_war, fleet, squadron, starmap, logger, orders, standing_orders]
 import ../../engine/order_types  # For StandingOrder
 import ../../engine/diplomacy/types as dip_types
 import ../../engine/intelligence/types as intel_types
@@ -520,10 +520,15 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           totalPTU += ship.cargo.quantity
 
       if hasColonists:
-        # ETAC has PTUs - defer to AutoColonize standing orders
+        # CRITICAL FIX: Only defer if fleet ACTUALLY has AutoColonize standing order
+        # Bug: Was skipping all loaded ETACs, causing 0 colonize orders generated
+        if fleet.id in standingOrders and standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize:
+          logDebug(LogCategory.lcAI,
+            &"Fleet {fleet.id} has {totalPTU} PTU and AutoColonize standing order - deferring")
+          continue
+        # No standing order - fall through to tactical colonization logic
         logDebug(LogCategory.lcAI,
-          &"Fleet {fleet.id} has {totalPTU} PTU - deferring to AutoColonize standing orders")
-        continue
+          &"Fleet {fleet.id} has {totalPTU} PTU but no AutoColonize - tactical will assign orders")
       else:
         # ETAC empty - send home for reload
         # Find nearest colony with sufficient population for PTU transfer
@@ -579,33 +584,17 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
       # Priority: Exploration (70-80%) >> Colonization >> Minimal Defense
       # ========================================================================
 
-      # Priority 1a: ETACs colonize nearest uncolonized system
+      # Priority 1a: ETACs colonize best available system using Act-aware scoring
       # SKIP if fleet has AutoColonize standing order (let standing order handle it)
       if hasETAC and (fleet.id notin standingOrders or standingOrders[fleet.id].orderType != StandingOrderType.AutoColonize):
-        # Find nearest uncolonized system (skip already-targeted systems)
-        var bestTarget: Option[SystemId] = none(SystemId)
-        var minDist = 999
-        let fromCoords = filtered.starMap.systems[fleet.location].coords
-
-        for systemId, visSystem in filtered.visibleSystems:
-          # Skip if already colonized
-          if isSystemColonized(filtered, systemId):
-            continue
-
-          # FIX: Skip if already targeted by another fleet
-          if systemId in alreadyTargeted:
-            continue
-
-          # Calculate distance
-          let coords = filtered.starMap.systems[systemId].coords
-          let dx = abs(coords.q - fromCoords.q)
-          let dy = abs(coords.r - fromCoords.r)
-          let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
-          let dist = (dx + dy + dz) div 2
-
-          if dist < minDist:
-            minDist = dist
-            bestTarget = some(systemId)
+        # Use engine function for Act-aware colonization target selection
+        # Act 1: Prioritizes distance over quality (frontier expansion)
+        let bestTarget = findColonizationTargetFiltered(
+          filtered, fleet, fleet.location,
+          maxRange = 20,  # Reasonable max range for colonization
+          alreadyTargeted,
+          preferredClasses = @[]  # No class preference in Act 1
+        )
 
         if bestTarget.isSome:
           order.orderType = FleetOrderType.Colonize
@@ -613,7 +602,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.targetFleet = none(FleetId)
           # Mark as targeted to prevent other fleets from picking same system
           alreadyTargeted.incl(bestTarget.get())
-          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 1: Land Grab)")
+          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 1: Act-aware selection)")
           result.add(order)
           continue
         else:
@@ -655,7 +644,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
       # FIX: Exclude ETAC fleets (colonization-only, even with escorts)
       if hasCombatShips and not isETACFleet(fleet):
         # Build set of systems already targeted by our other fleets this turn
-        var alreadyTargeted = initHashSet[SystemId]()
+        # NOTE: Uses the alreadyTargeted set defined at line 490 (don't redeclare!)
         for existingOrder in result:
           if existingOrder.targetSystem.isSome:
             alreadyTargeted.incl(existingOrder.targetSystem.get())
@@ -802,29 +791,17 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
               result.add(order)
               continue
 
-      # Priority 4: Opportunistic colonization (ETACs only)
-      if hasETAC:
-        var bestTarget: Option[SystemId] = none(SystemId)
-        var minDist = 999
-        let fromCoords = filtered.starMap.systems[fleet.location].coords
-
-        for systemId, visSystem in filtered.visibleSystems:
-          if isSystemColonized(filtered, systemId):
-            continue
-
-          # FIX: Skip if already targeted by another fleet
-          if systemId in alreadyTargeted:
-            continue
-
-          let coords = filtered.starMap.systems[systemId].coords
-          let dx = abs(coords.q - fromCoords.q)
-          let dy = abs(coords.r - fromCoords.r)
-          let dz = abs((coords.q + coords.r) - (fromCoords.q + fromCoords.r))
-          let dist = (dx + dy + dz) div 2
-
-          if dist < minDist:
-            minDist = dist
-            bestTarget = some(systemId)
+      # Priority 4: Opportunistic colonization with Act-aware scoring (ETACs only)
+      # SKIP if fleet has AutoColonize standing order (let standing order handle it)
+      if hasETAC and (fleet.id notin standingOrders or standingOrders[fleet.id].orderType != StandingOrderType.AutoColonize):
+        # Use engine function for Act-aware colonization target selection
+        # Act 2: Still prioritizes distance but considers quality more than Act 1
+        let bestTarget = findColonizationTargetFiltered(
+          filtered, fleet, fleet.location,
+          maxRange = 20,  # Reasonable max range for colonization
+          alreadyTargeted,
+          preferredClasses = @[]  # No specific class preference
+        )
 
         if bestTarget.isSome:
           order.orderType = FleetOrderType.Colonize
@@ -832,7 +809,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.targetFleet = none(FleetId)
           # Mark as targeted to prevent other fleets from picking same system
           alreadyTargeted.incl(bestTarget.get())
-          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 2: Opportunistic)")
+          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 2: Act-aware selection)")
           result.add(order)
           continue
 
