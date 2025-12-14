@@ -36,7 +36,7 @@ task buildDebug, "Build with debug information":
 
 task buildSimulation, "Build simulation binary":
   echo "Building simulation binary..."
-  exec "nim c --forceBuild -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  exec "nim c --forceBuild -d:release --opt:speed --passL:-lsqlite3 -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
   echo "Build completed! Git hash: $(cat bin/.build_git_hash)"
 
