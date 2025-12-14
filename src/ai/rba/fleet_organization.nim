@@ -43,6 +43,16 @@ proc detachETACsIfMixed(
   if combatCount == 0:
     return  # Pure ETAC fleet, already optimized
 
+  # CRITICAL FIX: Don't detach ETACs from fleets actively colonizing
+  # Bug: Detaching ETACs mid-mission causes 78% colonization failure rate
+  # Check if fleet has active Colonize order
+  if fleet.id in filtered.ownFleetOrders:
+    let order = filtered.ownFleetOrders[fleet.id]
+    if order.orderType == FleetOrderType.Colonize:
+      logDebug(LogCategory.lcAI,
+        &"Skipping ETAC detachment for {fleet.id} (active Colonize order)")
+      return  # Don't disrupt active colonization mission
+
   # MIXED FLEET - needs detachment
 
   if combatCount == 1:
