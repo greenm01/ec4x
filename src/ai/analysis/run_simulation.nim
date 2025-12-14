@@ -17,6 +17,8 @@ import ../../client/reports/turn_report
 import ../../engine/research/types as res_types
 import ../../engine/espionage/types as esp_types
 import ../../engine/resolution/types as resolution_types
+import ../../engine/persistence/[types as db_types, schema, writer]
+import db_connector/db_sqlite
 
 proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 3, runUntilVictory: bool = true): JsonNode =
   ## Run a full game simulation with AI players
@@ -79,6 +81,21 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
   createDir("balance_results/simulation_reports")
   createDir("balance_results/diagnostics")
 
+  # Database setup - initialize SQLite database for rich diagnostics
+  let dbPath = &"balance_results/diagnostics/game_{seed}.db"
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  if not initializeDatabase(db):
+    echo "ERROR: Failed to initialize database schema"
+    quit(1)
+
+  # Insert game metadata
+  let gameId = insertGame(db, seed, numHouses, maxTurns,
+                         mapRings, strategies.mapIt($it))
+  logInfo(LogCategory.lcGeneral,
+          &"Database initialized: {dbPath}, game_id={gameId}")
+
   # Victory condition setup - load from game setup config
   # Prestige threshold from config (0 = disabled)
   let setupConfig = game_setup_config.globalGameSetupConfig
@@ -135,6 +152,36 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
     let turnResult = resolveTurn(game, ordersTable)
     game = turnResult.newState
 
+    # Track fleet state for this turn (for colonization debugging)
+    for fleetId, fleet in game.fleets:
+      # Check if fleet has active order
+      let hasOrder = fleetId in game.fleetOrders
+      let orderType = if hasOrder: $game.fleetOrders[fleetId].orderType else: ""
+      let orderTarget = if hasOrder and game.fleetOrders[fleetId].targetSystem.isSome:
+                          int(game.fleetOrders[fleetId].targetSystem.get) else: 0
+
+      # Check if fleet arrived this turn
+      let hasArrived = fleetId in game.arrivedFleets
+
+      # Count ship types in fleet
+      var etacCount = 0
+      var scoutCount = 0
+      var combatShips = 0
+      for squadron in fleet.squadrons:
+        case squadron.flagship.shipClass
+        of ShipClass.ETAC:
+          etacCount += 1
+        of ShipClass.Scout:
+          scoutCount += 1
+        else:
+          combatShips += 1
+
+      # Insert fleet snapshot
+      insertFleetSnapshot(db, gameId, turn, $fleetId, $fleet.owner,
+                         int(fleet.location), orderType, orderTarget,
+                         hasArrived, fleet.squadrons.len,
+                         etacCount, scoutCount, combatShips)
+
     # Phase 7e: Deliver events to AI controllers for reactive behavior
     # AI updates threat assessments, priorities based on observable events
     for i in 0..<controllers.len:
@@ -153,11 +200,18 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
       # Get strategy from corresponding controller
       let strategy = controllers[i].strategy
       # Use seed as game identifier
-      let gameId = $seed
+      let gameIdStr = $seed
       # Pass controller for GOAP metrics collection
-      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt, gameId, maxTurns, turnResult.events, some(controllers[i]))
+      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt, gameIdStr, maxTurns, turnResult.events, some(controllers[i]))
       allDiagnostics.add(metrics)
       prevMetrics[houseId] = metrics
+
+      # Write diagnostic metrics to database immediately
+      insertDiagnosticRow(db, gameId, metrics)
+
+    # Write game events to database (after all houses processed)
+    for event in turnResult.events:
+      insertGameEvent(db, gameId, turn, event)
 
     # Generate turn reports for each house and update AI controllers
     var turnReportData = %* {
@@ -228,7 +282,20 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
 
   echo &"\nSimulation complete! Ran {actualTurns} turns"
 
-  # Write diagnostic metrics to CSV
+  # Update game result in database (victor and victory type if applicable)
+  var victorHouse = ""
+  var victoryTypeStr = ""
+  if runUntilVictory:
+    let victoryCheck = victory_engine.checkVictoryConditions(game, victoryCondition)
+    if victoryCheck.victoryOccurred:
+      victorHouse = $victoryCheck.status.victor
+      victoryTypeStr = $victoryCheck.status.victoryType
+
+  updateGameResult(db, gameId, actualTurns, victorHouse, victoryTypeStr)
+  logInfo(LogCategory.lcGeneral,
+          &"Updated game result: {actualTurns} turns, victor={victorHouse}")
+
+  # Write diagnostic metrics to CSV (backward compatibility)
   let diagnosticFilename = &"balance_results/diagnostics/game_{seed}.csv"
   writeDiagnosticsCSV(diagnosticFilename, allDiagnostics)
 
