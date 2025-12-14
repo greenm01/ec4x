@@ -19,8 +19,11 @@ import ../engine/config/[
 import ../ai/rba/[player, controller_types, orders as ai_orders, config as rba_config]
 import ../ai/analysis/[game_setup, diagnostics]
 import ../ai/analysis/diagnostics/csv_writer
+import ../engine/persistence/[types as db_types, schema, writer]
 import ../ai/common/types  # For AIStrategy
 import ../common/types/core  # For HouseId types
+import ../common/types/units  # For ShipClass
+import db_connector/db_sqlite
 
 # Thread-local error storage for C error handling
 var lastError {.threadvar.}: string
@@ -39,14 +42,29 @@ proc ec4x_init_runtime(): cint {.exportc, dynlib.} =
 
 # Opaque handle wrappers
 type
+  FleetSnapshot = object
+    turn: int
+    fleetId: string
+    houseId: string
+    locationSystem: int
+    orderType: string
+    orderTarget: int
+    hasArrived: int
+    shipsTotal: int
+    etacCount: int
+    scoutCount: int
+    combatShips: int
+
   CGame = ref object
     state: GameState
     controllers: seq[AIController]
     diagnostics: seq[DiagnosticMetrics]
+    fleetSnapshots: seq[FleetSnapshot]  # Fleet tracking data (collected in memory)
     rbaConfig: rba_config.RBAConfig  # Explicit config to avoid global state
     seed: int64
     numPlayers: int
     maxTurns: int
+    mapRings: int
 
   CFilteredState = ref object
     filtered: FilteredGameState
@@ -130,10 +148,12 @@ proc ec4x_init_game(num_players: cint, seed: int64, map_rings: cint,
       state: game,
       controllers: controllers,
       diagnostics: @[],
+      fleetSnapshots: @[],
       rbaConfig: rbaConf,  # Store config explicitly
       seed: seed,
       numPlayers: num_players.int,
-      maxTurns: max_turns.int
+      maxTurns: max_turns.int,
+      mapRings: map_rings.int
     )
 
     when not defined(release):
@@ -441,9 +461,79 @@ proc ec4x_get_diagnostic_field_str(game: pointer, index: cint,
   # For now, stub returns NULL
   return nil
 
+proc ec4x_collect_fleet_snapshots(game: pointer, turn: cint): cint
+    {.exportc, dynlib.} =
+  ## Collect fleet snapshots for current turn (stored in memory)
+  ## Call this every turn to build up fleet tracking data
+  clearError()
+  if game == nil:
+    setError("Game handle is NULL")
+    return -1
+
+  try:
+    let handle = cast[CGame](game)
+
+    # Collect fleet snapshots for this turn
+    for fleetId, fleet in handle.state.fleets:
+      # Count ship types
+      var totalSquadronShips = 0
+      var scoutCount = 0
+      var etacCount = 0
+
+      # Count all squadron ships (combat + scouts)
+      for squadron in fleet.squadrons:
+        totalSquadronShips += 1 + squadron.ships.len  # flagship + escorts
+
+        # Count scouts separately
+        if squadron.flagship.shipClass == ShipClass.Scout:
+          scoutCount += 1
+        for ship in squadron.ships:
+          if ship.shipClass == ShipClass.Scout:
+            scoutCount += 1
+
+      # Combat ships = all squadron ships EXCEPT scouts
+      let combatShips = totalSquadronShips - scoutCount
+
+      # Count spacelift ships (ETACs)
+      for spaceLiftShip in fleet.spaceLiftShips:
+        if spaceLiftShip.shipClass == ShipClass.ETAC:
+          etacCount += 1
+
+      # Get order info
+      var orderType = "None"
+      var orderTarget = -1
+      var hasArrived = 1
+      if fleetId in handle.state.fleetOrders:
+        let order = handle.state.fleetOrders[fleetId]
+        orderType = $order.orderType
+        if order.targetSystem.isSome:
+          orderTarget = int(order.targetSystem.get())
+          hasArrived = if fleet.location == SystemId(orderTarget): 1 else: 0
+
+      # Store snapshot in memory
+      handle.fleetSnapshots.add(FleetSnapshot(
+        turn: turn,
+        fleetId: $fleetId,
+        houseId: $fleet.owner,
+        locationSystem: int(fleet.location),
+        orderType: orderType,
+        orderTarget: orderTarget,
+        hasArrived: hasArrived,
+        shipsTotal: totalSquadronShips + fleet.spaceLiftShips.len,
+        etacCount: etacCount,
+        scoutCount: scoutCount,
+        combatShips: combatShips
+      ))
+
+    result = 0
+  except Exception as e:
+    setError(&"Failed to collect fleet snapshots: {e.msg}")
+    result = -1
+
 proc ec4x_write_diagnostics_db(game: pointer, db_path: cstring): cint
     {.exportc, dynlib.} =
-  ## Write diagnostics to CSV (convert .db path to .csv)
+  ## Write all collected diagnostics and fleet snapshots to SQLite database
+  ## Writes in batch at end of simulation for performance
   clearError()
   if game == nil:
     setError("Game handle is NULL")
@@ -454,18 +544,43 @@ proc ec4x_write_diagnostics_db(game: pointer, db_path: cstring): cint
 
   try:
     let handle = cast[CGame](game)
-    if handle.diagnostics.len == 0:
-      return 0  # No diagnostics to write
+    let path = $db_path
 
-    # Convert .db to .csv path
-    var path = $db_path
-    if path.endsWith(".db"):
-      path = path[0..^4] & ".csv"
+    # Open database and initialize schema
+    let db = open(path, "", "", "")
+    defer: db.close()
 
-    writeDiagnosticsCSV(path, handle.diagnostics)
+    if not initializeDatabase(db):
+      setError("Failed to initialize database schema")
+      return -1
+
+    # Insert game metadata
+    let gameId = handle.seed  # Use seed as game_id
+
+    # Build strategies list for all players
+    var strategies: seq[string] = @[]
+    for i in 0..<handle.numPlayers:
+      strategies.add("RBA")  # All AI players use RBA strategy
+
+    discard insertGame(db, gameId, handle.numPlayers, handle.maxTurns,
+                      handle.mapRings, strategies)
+
+    # Write diagnostics
+    for metrics in handle.diagnostics:
+      insertDiagnosticRow(db, gameId, metrics)
+
+    # Write fleet snapshots
+    for snapshot in handle.fleetSnapshots:
+      insertFleetSnapshot(db, gameId, snapshot.turn, snapshot.fleetId,
+                         snapshot.houseId, snapshot.locationSystem,
+                         snapshot.orderType, snapshot.orderTarget,
+                         snapshot.hasArrived == 1, snapshot.shipsTotal,
+                         snapshot.etacCount, snapshot.scoutCount,
+                         snapshot.combatShips)
+
     result = 0
   except Exception as e:
-    setError(&"Failed to write diagnostics: {e.msg}")
+    setError(&"Failed to write diagnostics database: {e.msg}")
     result = -1
 
 proc ec4x_write_diagnostics_csv(game: pointer, csv_path: cstring): cint

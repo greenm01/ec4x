@@ -221,6 +221,11 @@ int run_simulation(int num_players, int max_turns, int64_t seed, int map_rings,
         t_end = get_time_ms();
         total_diagnostics_time += (t_end - t_start);
 
+        // Collect fleet snapshots (in memory)
+        if (ec4x_collect_fleet_snapshots(game, turn) != 0) {
+            fprintf(stderr, "Warning: Failed to collect fleet snapshots for turn %d\n", turn);
+        }
+
         // Check for victory
         if (ec4x_check_victory(game)) {
             int victor = ec4x_get_victor(game);
