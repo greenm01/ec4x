@@ -3,7 +3,7 @@
 ## Executes a complete game simulation with AI players
 ## and generates balance analysis report
 
-import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options]
+import std/[json, times, strformat, random, sequtils, tables, algorithm, os, strutils, options, monotimes]
 import game_setup, diagnostics, balance_test_config  # Test-specific modules
 import ../../ai/rba/player as ai
 import ../../ai/rba/event_subscription  # Phase 7e: Event-based reactive behavior
@@ -20,14 +20,25 @@ import ../../engine/resolution/types as resolution_types
 import ../../engine/persistence/[types as db_types, schema, writer]
 import db_connector/db_sqlite
 
-proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 3, runUntilVictory: bool = true): JsonNode =
+# Performance profiling types
+type ProfileTiming = object
+  aiOrderGeneration: float
+  fogOfWarFiltering: float
+  zeroTurnCommands: float
+  turnResolution: float
+  diagnostics: float
+  turnReport: float
+
+proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], seed: int64 = 42, mapRings: int = 3, runUntilVictory: bool = true, diagnosticFrequency: int = 1): JsonNode =
   ## Run a full game simulation with AI players
   ## maxTurns: maximum turn limit (safety timeout, default 200)
   ## runUntilVictory: if true, run until victory achieved (default true)
   ## mapRings: number of hex rings (must be >= 1, zero not allowed)
+  ## diagnosticFrequency: collect diagnostics every N turns (1=every turn, 5=every 5 turns)
   let victoryModeStr = if runUntilVictory: "Run until victory" else: "Fixed turns"
   echo &"Starting simulation: {numHouses} houses, max {maxTurns} turns"
   echo &"Victory mode: {victoryModeStr}"
+  echo &"Diagnostic frequency: every {diagnosticFrequency} turn(s)"
   echo &"Strategies: {strategies}"
 
   var rng = initRand(seed)
@@ -110,6 +121,9 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
           &"Victory condition: Prestige threshold={victoryCondition.prestigeThreshold}, " &
           &"Max turns={maxTurns}, Run until victory={runUntilVictory}")
 
+  # Performance profiling accumulators
+  var totalProfile = ProfileTiming()
+
   # Run simulation for specified turns
   var actualTurns = 0
   for turn in 1..maxTurns:
@@ -122,35 +136,50 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
 
     # Collect orders from all AI players with fog-of-war filtering
     var ordersTable = initTable[HouseId, OrderPacket]()
+
+    # PROFILING: Fog-of-war filtering
+    var t0 = getMonoTime()
+    var filteredViews: seq[FilteredGameState] = @[]
     for i in 0..<controllers.len:
-      var controller = controllers[i]
-      # Apply fog-of-war filtering - AI only sees what it should
-      let filteredView = createFogOfWarView(game, controller.houseId)
+      filteredViews.add(createFogOfWarView(game, controllers[i].houseId))
+    var t1 = getMonoTime()
+    totalProfile.fogOfWarFiltering += (t1 - t0).inMilliseconds.float
 
-      # Generate orders using RBA (returns both zero-turn commands and order packet)
-      let aiSubmission = ai.generateAIOrders(controller, filteredView, rng, @[])
+    # PROFILING: AI order generation
+    t0 = getMonoTime()
+    for i in 0..<controllers.len:
+      let controller = controllers[i]
+      let filteredView = filteredViews[i]
 
-      # Execute zero-turn commands first (immediate, at friendly colonies)
-      # Phase 7b: Events from zero-turn commands (temporary - not used in simulation)
+      # Generate AI orders with fog-of-war filtering
+      let aiSubmission = ai.generateAIOrders(controllers[i], filteredView, rng, @[])
+
+      # Queue order packet for normal turn resolution
+      ordersTable[controller.houseId] = aiSubmission.orderPacket
+
+      # Execute zero-turn commands
+      var t2 = getMonoTime()
       var zeroTurnEvents: seq[resolution_types.GameEvent] = @[]
       for cmd in aiSubmission.zeroTurnCommands:
         let zt = submitZeroTurnCommand(game, cmd, zeroTurnEvents)
         if not zt.success:
           logWarn(LogCategory.lcAI,
                   &"House {controller.houseId} zero-turn command failed: {zt.error}")
-          # Note: Partial success is OK (e.g., cargo capacity limits)
-
-      # Queue order packet for normal turn resolution
-      ordersTable[controller.houseId] = aiSubmission.orderPacket
-      controllers[i] = controller
+      var t3 = getMonoTime()
+      totalProfile.zeroTurnCommands += (t3 - t2).inMilliseconds.float
+    t1 = getMonoTime()
+    totalProfile.aiOrderGeneration += (t1 - t0).inMilliseconds.float
 
     # Sync AI controller fallback routes to engine (for automatic seek-home behavior)
     for i in 0..<controllers.len:
       controllers[i].syncFallbackRoutesToEngine(game)
 
-    # Resolve turn with actual game engine
+    # PROFILING: Turn resolution
+    t0 = getMonoTime()
     let turnResult = resolveTurn(game, ordersTable)
     game = turnResult.newState
+    t1 = getMonoTime()
+    totalProfile.turnResolution += (t1 - t0).inMilliseconds.float
 
     # Track fleet state for this turn (for colonization debugging)
     for fleetId, fleet in game.fleets:
@@ -197,27 +226,29 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
         turnResult.events
       )
 
-    # Collect diagnostic metrics after turn resolution
-    for i, houseId in houseIds:
-      let prevOpt = if houseId in prevMetrics: some(prevMetrics[houseId]) else: none(DiagnosticMetrics)
-      # Pass orders for this house to track espionage missions
-      let ordersOpt = if houseId in ordersTable: some(ordersTable[houseId]) else: none(OrderPacket)
-      # Get strategy from corresponding controller
-      let strategy = controllers[i].strategy
-      # Use seed as game identifier
-      let gameIdStr = $seed
-      # Pass controller for GOAP metrics collection
-      let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt, gameIdStr, maxTurns, turnResult.events, some(controllers[i]))
-      allDiagnostics.add(metrics)
-      prevMetrics[houseId] = metrics
+    # PROFILING: Diagnostics collection (in-memory only, no DB writes in loop)
+    t0 = getMonoTime()
+    # Collect diagnostic metrics after turn resolution (controlled by frequency)
+    # Always collect on turn 1 and last turn, otherwise every N turns
+    if turn == 1 or turn == actualTurns or turn mod diagnosticFrequency == 0:
+      for i, houseId in houseIds:
+        let prevOpt = if houseId in prevMetrics: some(prevMetrics[houseId]) else: none(DiagnosticMetrics)
+        # Pass orders for this house to track espionage missions
+        let ordersOpt = if houseId in ordersTable: some(ordersTable[houseId]) else: none(OrderPacket)
+        # Get strategy from corresponding controller
+        let strategy = controllers[i].strategy
+        # Use seed as game identifier
+        let gameIdStr = $seed
+        # Pass controller for GOAP metrics collection
+        let metrics = collectDiagnostics(game, houseId, strategy, prevOpt, ordersOpt, gameIdStr, maxTurns, turnResult.events, some(controllers[i]))
+        allDiagnostics.add(metrics)
+        prevMetrics[houseId] = metrics
+        # NOTE: Database writes moved outside loop for batching
+    t1 = getMonoTime()
+    totalProfile.diagnostics += (t1 - t0).inMilliseconds.float
 
-      # Write diagnostic metrics to database immediately
-      insertDiagnosticRow(db, gameId, metrics)
-
-    # Write game events to database (after all houses processed)
-    for event in turnResult.events:
-      insertGameEvent(db, gameId, turn, event)
-
+    # PROFILING: Turn report generation
+    t0 = getMonoTime()
     # Generate turn reports for each house and update AI controllers
     var turnReportData = %* {
       "turn": turn,
@@ -247,6 +278,8 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
 
     # Store turn reports in audit trail
     turnReports.add(turnReportData)
+    t1 = getMonoTime()
+    totalProfile.turnReport += (t1 - t0).inMilliseconds.float
 
     # Log any significant events
     if turn mod 10 == 0:
@@ -300,9 +333,38 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
   logInfo(LogCategory.lcGeneral,
           &"Updated game result: {actualTurns} turns, victor={victorHouse}")
 
+  # BATCH WRITE: Insert all diagnostics to database in one go
+  echo &"Writing {allDiagnostics.len} diagnostic records to database..."
+  let dbWriteStart = getMonoTime()
+  for metrics in allDiagnostics:
+    insertDiagnosticRow(db, gameId, metrics)
+  let dbWriteEnd = getMonoTime()
+  let dbWriteMs = (dbWriteEnd - dbWriteStart).inMilliseconds.float
+  echo &"Database write completed in {dbWriteMs:.1f}ms"
+
   # Write diagnostic metrics to CSV (backward compatibility)
   let diagnosticFilename = &"balance_results/diagnostics/game_{seed}.csv"
   writeDiagnosticsCSV(diagnosticFilename, allDiagnostics)
+
+  # PROFILING SUMMARY
+  let totalMs = totalProfile.fogOfWarFiltering + totalProfile.aiOrderGeneration +
+                totalProfile.zeroTurnCommands + totalProfile.turnResolution +
+                totalProfile.diagnostics + totalProfile.turnReport
+  echo ""
+  echo "=".repeat(80)
+  echo &"PERFORMANCE PROFILING SUMMARY ({actualTurns} turns)"
+  echo "=".repeat(80)
+  echo &"Fog-of-War Filtering:  {totalProfile.fogOfWarFiltering:8.1f} ms ({totalProfile.fogOfWarFiltering/totalMs*100:5.1f}%)"
+  echo &"AI Order Generation:   {totalProfile.aiOrderGeneration:8.1f} ms ({totalProfile.aiOrderGeneration/totalMs*100:5.1f}%)"
+  echo &"  Zero-Turn Commands:  {totalProfile.zeroTurnCommands:8.1f} ms ({totalProfile.zeroTurnCommands/totalMs*100:5.1f}%)"
+  echo &"Turn Resolution:       {totalProfile.turnResolution:8.1f} ms ({totalProfile.turnResolution/totalMs*100:5.1f}%)"
+  echo &"Diagnostics:           {totalProfile.diagnostics:8.1f} ms ({totalProfile.diagnostics/totalMs*100:5.1f}%)"
+  echo &"Turn Reports:          {totalProfile.turnReport:8.1f} ms ({totalProfile.turnReport/totalMs*100:5.1f}%)"
+  echo "-".repeat(80)
+  echo &"TOTAL:                 {totalMs:8.1f} ms ({totalMs/1000:6.2f} seconds)"
+  echo &"Average per turn:      {totalMs/actualTurns.float:8.1f} ms"
+  echo "=".repeat(80)
+  echo ""
 
   # Calculate final rankings
   var rankings = newJArray()
@@ -365,6 +427,7 @@ when isMainModule:
   var numPlayers = 4  # Default to 4 players
   var outputFile = "balance_results/full_simulation.json"
   var logLevel = "INFO"
+  var diagnosticFrequency = 1  # Default: collect every turn
 
   # Parse flags
   var i = 1
@@ -382,6 +445,7 @@ when isMainModule:
       echo "  --seed, -s NUMBER         Random seed for map generation (default: 42)"
       echo "  --map-rings, -m NUMBER    Number of hex rings for map (default: 3)"
       echo "  --players, -p NUMBER      Number of AI players (default: 4)"
+      echo "  --diagnostic-freq, -d N   Collect diagnostics every N turns (default: 1, try 5 for speed)"
       echo "  --output, -o FILE         Output JSON file path (default: balance_results/full_simulation.json)"
       echo "  --log-level, -l LEVEL     Logging level: DEBUG, INFO, WARN, ERROR (default: INFO)"
       echo "  --help, -h                Show this help message"
@@ -459,6 +523,20 @@ when isMainModule:
         echo "Error: Invalid log level '", paramStr(i), "' (must be DEBUG, INFO, WARN, or ERROR)"
         quit(1)
 
+    elif arg in ["--diagnostic-freq", "-d"]:
+      if i >= paramCount():
+        echo "Error: --diagnostic-freq requires a value"
+        quit(1)
+      inc i
+      try:
+        diagnosticFrequency = parseInt(paramStr(i))
+        if diagnosticFrequency < 1:
+          echo "Error: --diagnostic-freq must be >= 1"
+          quit(1)
+      except ValueError:
+        echo "Error: Invalid diagnostic-freq value '", paramStr(i), "' (must be integer)"
+        quit(1)
+
     else:
       echo "Error: Unknown option '", arg, "'"
       echo "Use --help to see available options"
@@ -492,7 +570,7 @@ when isMainModule:
     let strategyIndex = (i + rotation) mod balanceTestStrategies.len
     strategies.add(balanceTestStrategies[strategyIndex])
 
-  let report = runSimulation(numPlayers, maxTurns, strategies, seed, mapRings, runUntilVictory)
+  let report = runSimulation(numPlayers, maxTurns, strategies, seed, mapRings, runUntilVictory, diagnosticFrequency)
 
   # Export report
   let outputDir = outputFile.parentDir()

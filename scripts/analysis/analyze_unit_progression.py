@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.11
 """
 Analyze RBA unit progression patterns by Act.
 
@@ -7,11 +7,16 @@ Validates that RBA follows the unit-progression.md specification:
 - Act 2 (turns 8-15): Capitals, transports, marines, invasion prep
 - Act 3 (turns 16-25): Heavy capitals, active invasions, attrition war
 - Act 4 (turns 26+): SuperDreadnoughts, PlanetBreakers, total domination
+
+Usage:
+    python3.11 scripts/analysis/analyze_unit_progression.py --seed SEED
+    python3.11 scripts/analysis/analyze_unit_progression.py -s SEED
+    python3.11 scripts/analysis/analyze_unit_progression.py --games PATTERN
 """
 
 import polars as pl
 from pathlib import Path
-import sys
+import argparse
 
 
 def load_diagnostics(game_id: str = None) -> pl.DataFrame:
@@ -19,23 +24,23 @@ def load_diagnostics(game_id: str = None) -> pl.DataFrame:
     if game_id:
         csv_path = f"balance_results/diagnostics/game_{game_id}.csv"
         if not Path(csv_path).exists():
-            print(f"ERROR: File not found: {csv_path}")
-            sys.exit(1)
-        print(f"Loading {csv_path}...")
+            print(f"❌ File not found: {csv_path}")
+            raise SystemExit(1)
+        print(f"📊 Loading game {game_id}...")
         df = pl.read_csv(csv_path)
     else:
         path = Path("balance_results/diagnostics")
         if not path.exists():
-            print(f"ERROR: Directory not found: balance_results/diagnostics")
-            sys.exit(1)
+            print(f"❌ Directory not found: balance_results/diagnostics")
+            raise SystemExit(1)
         csv_files = list(path.glob("game_*.csv"))
         if not csv_files:
-            print(f"ERROR: No game_*.csv files found")
-            sys.exit(1)
-        print(f"Loading {len(csv_files)} CSV files...")
-        df = pl.read_csv(str(path / "game_*.csv"))
+            print(f"❌ No game_*.csv files found")
+            raise SystemExit(1)
+        print(f"📊 Loading {len(csv_files)} game files...")
+        df = pl.scan_csv(str(path / "game_*.csv")).collect()
 
-    print(f"Loaded {len(df)} rows")
+    print(f"✓ Loaded {len(df)} rows")
     return df
 
 
@@ -49,6 +54,124 @@ def classify_act(turn: int) -> str:
         return "Act3"
     else:
         return "Act4"
+
+
+def analyze_colonization_by_turn(df: pl.DataFrame) -> None:
+    """Analyze colonization patterns turn-by-turn."""
+
+    print("\n" + "=" * 80)
+    print("COLONIZATION PROGRESSION BY TURN")
+    print("=" * 80)
+
+    if "total_colonies" not in df.columns:
+        print("⚠️  total_colonies column not found")
+        return
+
+    # Colonization metrics per turn
+    colon_by_turn = (
+        df.group_by("turn")
+        .agg([
+            pl.col("total_colonies").mean().alias("avg_colonies"),
+            pl.col("total_colonies").max().alias("max_colonies"),
+            pl.col("total_colonies").sum().alias("total_colonies"),
+            pl.col("colonies_gained_via_colonization").sum().alias("total_colonized") if "colonies_gained_via_colonization" in df.columns else pl.lit(0).alias("total_colonized"),
+            pl.col("etac_ships").mean().alias("avg_etacs"),
+            pl.col("total_systems_on_map").first().alias("map_size")
+        ])
+        .sort("turn")
+    )
+
+    print("\nTurn | Act    | Avg Colonies | Colonized | Avg ETACs | Map Utilization")
+    print("-" * 80)
+    for row in colon_by_turn.iter_rows(named=True):
+        turn = row["turn"]
+        act = classify_act(turn)
+        map_size = row["map_size"]
+        utilization = (row["total_colonies"] / map_size * 100) if map_size > 0 else 0
+
+        # Flag turns where colonization is slow
+        marker = ""
+        if act in ["Act1", "Act2"] and utilization < 50:
+            marker = "⚠️ "
+
+        print(f"{marker}{turn:4} | {act:6} | {row['avg_colonies']:12.2f} | {row['total_colonized']:9} | {row['avg_etacs']:9.2f} | {utilization:6.1f}%")
+
+    # Summary analysis
+    act1_df = df.filter(pl.col("turn") <= 7)
+    act2_df = df.filter((pl.col("turn") > 7) & (pl.col("turn") <= 15))
+
+    if len(act1_df) > 0:
+        act1_end_colonies = act1_df.filter(pl.col("turn") == 7).select(pl.col("total_colonies").mean()).item()
+        act1_end_etacs = act1_df.filter(pl.col("turn") == 7).select(pl.col("etac_ships").mean()).item()
+
+        print(f"\n📊 Act 1 Summary (End of Turn 7):")
+        print(f"   Avg colonies: {act1_end_colonies:.2f}")
+        print(f"   Avg ETACs: {act1_end_etacs:.2f}")
+
+    if len(act2_df) > 0:
+        act2_end_colonies = act2_df.filter(pl.col("turn") == 15).select(pl.col("total_colonies").mean()).item() if 15 in act2_df["turn"].to_list() else None
+        act2_end_etacs = act2_df.filter(pl.col("turn") == 15).select(pl.col("etac_ships").mean()).item() if 15 in act2_df["turn"].to_list() else None
+
+        if act2_end_colonies:
+            print(f"\n📊 Act 2 Summary (End of Turn 15):")
+            print(f"   Avg colonies: {act2_end_colonies:.2f}")
+            print(f"   Avg ETACs: {act2_end_etacs:.2f}")
+
+    print("\n⚠️  EXPECTED BEHAVIOR (from unit-progression.md):")
+    print("  Act 1: Rapid expansion (ETAC-driven colonization)")
+    print("  Turn 7: Should have 50%+ map coverage")
+    print("  Turn 15: Should have 75%+ map coverage")
+
+
+def analyze_etac_efficiency(df: pl.DataFrame) -> None:
+    """Analyze ETAC production vs colonization efficiency."""
+
+    print("\n" + "=" * 80)
+    print("ETAC EFFICIENCY ANALYSIS")
+    print("=" * 80)
+
+    if "etac_ships" not in df.columns or "colonies_gained_via_colonization" not in df.columns:
+        print("⚠️  Required columns not found")
+        return
+
+    # Per-house ETAC efficiency in Act 1
+    act1_df = df.filter(pl.col("turn") <= 7)
+
+    efficiency = (
+        act1_df.group_by("house")
+        .agg([
+            pl.col("etac_ships").max().alias("max_etacs"),
+            pl.col("colonies_gained_via_colonization").sum().alias("total_colonized"),
+            pl.col("total_colonies").max().alias("final_colonies"),
+            pl.col("total_systems_on_map").first().alias("map_size")
+        ])
+        .with_columns([
+            (pl.col("total_colonized") / pl.col("max_etacs").clip(1, None)).alias("colonies_per_etac")
+        ])
+        .sort("total_colonized", descending=True)
+    )
+
+    print("\n🏆 House Colonization Performance (Act 1):")
+    print("-" * 80)
+    print(f"{'House':20} | {'Max ETACs':9} | {'Colonized':10} | {'Final':6} | {'Efficiency':10}")
+    print("-" * 80)
+
+    for row in efficiency.iter_rows(named=True):
+        eff = row['colonies_per_etac']
+        rating = ""
+        if eff >= 1.0:
+            rating = "★★★"
+        elif eff >= 0.5:
+            rating = "★★"
+        elif eff >= 0.25:
+            rating = "★"
+
+        print(f"{row['house']:20} | {row['max_etacs']:9} | {row['total_colonized']:10} | {row['final_colonies']:6} | {eff:10.2f} {rating}")
+
+    print("\n💡 Efficiency Analysis:")
+    print("   • 1.0+ colonies/ETAC = Excellent (each ETAC colonizes)")
+    print("   • 0.5+ colonies/ETAC = Good (most ETACs colonize)")
+    print("   • <0.5 colonies/ETAC = Poor (ETACs not being used)")
 
 
 def analyze_fleet_composition_by_act(df: pl.DataFrame) -> None:
@@ -128,7 +251,7 @@ def analyze_etac_by_turn(df: pl.DataFrame) -> None:
     print("=" * 80)
 
     if "etac_ships" not in df.columns:
-        print("ERROR: etac_ships column not found")
+        print("❌ etac_ships column not found")
         return
 
     # Average ETAC count per turn across all houses
@@ -197,11 +320,11 @@ def analyze_invasion_capability_by_turn(df: pl.DataFrame) -> None:
     print("=" * 80)
 
     if "troop_transport_ships" not in df.columns:
-        print("WARNING: troop_transport_ships column not found")
+        print("⚠️  troop_transport_ships column not found")
         return
 
     if "marine_division_units" not in df.columns:
-        print("WARNING: marine_division_units column not found")
+        print("⚠️  marine_division_units column not found")
         return
 
     # Check if we have the detailed breakdown columns
@@ -265,7 +388,7 @@ def analyze_strategy_progression(df: pl.DataFrame) -> None:
     print("=" * 80)
 
     if "strategy" not in df.columns:
-        print("WARNING: strategy column not found")
+        print("⚠️  strategy column not found")
         return
 
     strategies = df["strategy"].unique().to_list()
@@ -302,13 +425,29 @@ def analyze_strategy_progression(df: pl.DataFrame) -> None:
 def main():
     """Run all unit progression analyses."""
 
-    # Check for command line argument (game_id)
-    game_id = sys.argv[1] if len(sys.argv) > 1 else None
+    parser = argparse.ArgumentParser(
+        description="Analyze RBA unit progression patterns by Act"
+    )
+    parser.add_argument(
+        "--seed", "-s",
+        type=int,
+        help="Analyze specific game seed"
+    )
+    parser.add_argument(
+        "--games", "-g",
+        type=str,
+        help="Game file pattern (default: all games)"
+    )
+
+    args = parser.parse_args()
 
     # Load diagnostics
+    game_id = str(args.seed) if args.seed else None
     df = load_diagnostics(game_id)
 
     # Run analyses
+    analyze_colonization_by_turn(df)
+    analyze_etac_efficiency(df)
     analyze_fleet_composition_by_act(df)
     analyze_etac_by_turn(df)
     analyze_capital_ships_by_turn(df)
@@ -318,17 +457,17 @@ def main():
     print("\n" + "=" * 80)
     print("ANALYSIS COMPLETE")
     print("=" * 80)
-    print("\nNext steps:")
-    print("1. Check if ETAC production continues past Act 1")
-    print("2. Verify capital ships appear in appropriate acts")
-    print("3. Confirm invasion capability starts in Act 2")
-    print("4. Compare strategies for diversity")
-    print("\nSee docs/ai/mechanics/unit-progression.md for expected behavior")
+    print("\n✓ Next steps:")
+    print("  1. Check if ETAC production continues past Act 1")
+    print("  2. Verify capital ships appear in appropriate acts")
+    print("  3. Confirm invasion capability starts in Act 2")
+    print("  4. Compare strategies for diversity")
+    print("\n📖 See docs/ai/mechanics/unit-progression.md for expected behavior")
 
     if game_id:
-        print(f"\nTo analyze all games: python {sys.argv[0]}")
+        print(f"\n💡 To analyze all games: python3.11 {__file__}")
     else:
-        print(f"\nTo analyze specific game: python {sys.argv[0]} 99999")
+        print(f"\n💡 To analyze specific game: python3.11 {__file__} --seed 99")
 
 
 if __name__ == "__main__":
