@@ -478,7 +478,15 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
   result = @[]
 
   let myFleets = getOwnedFleets(filtered, controller.houseId)
-  let currentAct = getCurrentGameAct(filtered.turn)
+
+  # Calculate total colonized systems from public leaderboard
+  let totalSystems = filtered.starMap.systems.len
+  var totalColonized = 0
+  for houseId, colonyCount in filtered.houseColonies:
+    totalColonized += colonyCount
+
+  # Use colonization-based Act determination (90% threshold for Act 2 transition)
+  let currentAct = getCurrentGameAct(totalSystems, totalColonized, filtered.turn)
 
   # Update operation status
   updateOperationStatus(controller, filtered)
@@ -514,6 +522,9 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
     # Special handling for ETAC fleets
     if isETACFleet(fleet):
+      # Check if colonization is complete first
+      let colonizationComplete = totalColonized >= totalSystems
+
       # Check if ETAC has colonists
       var hasColonists = false
       var totalPTU = 0
@@ -522,7 +533,95 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           hasColonists = true
           totalPTU += ship.cargo.quantity
 
+      # Check if ETAC arrived at colony with Move order (salvage flow)
+      # If so, issue Salvage order (unload happens via zero-turn in orders.nim)
+      if colonizationComplete and hasColonists:
+        let atColony = fleet.location in filtered.ownColonies.mapIt(it.systemId)
+        let hasMoveOrder = fleet.id in filtered.ownFleetOrders and
+                          filtered.ownFleetOrders[fleet.id].orderType == FleetOrderType.Move
+
+        if atColony and hasMoveOrder:
+          # ETAC arrived at colony - issue Salvage order
+          # UnloadCargo zero-turn will execute first (in orders.nim)
+          order.orderType = FleetOrderType.Salvage
+          order.targetSystem = none(SystemId)
+          order.priority = 50
+
+          # CRITICAL: Clear AutoColonize standing order to prevent reactivation
+          if fleet.id in controller.standingOrders:
+            controller.standingOrders.del(fleet.id)
+            logInfo(LogCategory.lcAI,
+                    &"Fleet {fleet.id} AutoColonize standing order cleared (arrived for salvage)")
+
+          result.add(order)
+          logInfo(LogCategory.lcAI,
+                  &"Fleet {fleet.id} ETAC arrived at colony - issuing Salvage order " &
+                  &"(will unload {totalPTU} PTU then salvage same turn)")
+          continue
+
       if hasColonists:
+        # Check if colonization is complete
+        let colonizationComplete = totalColonized >= totalSystems
+        if colonizationComplete:
+          # All systems colonized - prepare ETAC for salvage
+          # Check if ETAC is at a colony
+          let atColony = fleet.location in filtered.ownColonies.mapIt(it.systemId)
+
+          if not atColony:
+            # Not at colony - move to nearest colony first
+            # Cargo will be unloaded when it arrives (next turn)
+            var bestColony: Option[SystemId] = none(SystemId)
+            var bestDistance = 999
+
+            for colony in filtered.ownColonies:
+              let pathResult = filtered.starMap.findPath(fleet.location, colony.systemId, fleet)
+              if not pathResult.found:
+                continue
+
+              let distance = pathResult.path.len - 1
+              if distance < bestDistance:
+                bestDistance = distance
+                bestColony = some(colony.systemId)
+
+            if bestColony.isSome:
+              order.orderType = FleetOrderType.Move
+              order.targetSystem = bestColony
+              order.priority = 60  # High priority
+
+              # CRITICAL: Clear AutoColonize standing order to prevent reactivation
+              # When Move completes, we don't want AutoColonize to reactivate
+              if fleet.id in controller.standingOrders:
+                controller.standingOrders.del(fleet.id)
+                logInfo(LogCategory.lcAI,
+                        &"Fleet {fleet.id} AutoColonize standing order cleared (moving for salvage)")
+
+              result.add(order)
+              logInfo(LogCategory.lcAI,
+                      &"Fleet {fleet.id} loaded ETAC moving to colony for cargo unload and salvage " &
+                      &"(colonization complete: {totalColonized}/{totalSystems}, {totalPTU} PTU)")
+            else:
+              logWarn(LogCategory.lcAI,
+                      &"Fleet {fleet.id} loaded ETAC has no reachable colonies for salvage!")
+          else:
+            # At colony - will unload cargo via zero-turn (handled in orders.nim)
+            # Then salvage (both in same turn)
+            order.orderType = FleetOrderType.Salvage
+            order.targetSystem = none(SystemId)
+            order.priority = 50  # Medium priority
+
+            # CRITICAL: Clear AutoColonize standing order to prevent reactivation
+            if fleet.id in controller.standingOrders:
+              controller.standingOrders.del(fleet.id)
+              logInfo(LogCategory.lcAI,
+                      &"Fleet {fleet.id} AutoColonize standing order cleared (issuing Salvage)")
+
+            result.add(order)
+            logInfo(LogCategory.lcAI,
+                    &"Fleet {fleet.id} loaded ETAC at colony - will unload {totalPTU} PTU then salvage " &
+                    &"(colonization complete: {totalColonized}/{totalSystems})")
+
+          continue
+
         # CRITICAL FIX: Only defer if fleet ACTUALLY has AutoColonize standing order
         # Bug: Was skipping all loaded ETACs, causing 0 colonize orders generated
         # Check: Standing order exists, is AutoColonize, is enabled, and not suspended
@@ -548,7 +647,27 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
             &"Fleet {fleet.id} empty ETAC with active AutoColonize standing order - deferring to standing order for reload")
           continue
 
-        # No standing order - tactical sends ETAC home for reload
+        # No standing order - check if colonization is complete
+        # If 100% colonized, salvage ETAC instead of reloading
+        let colonizationComplete = totalColonized >= totalSystems
+        if colonizationComplete:
+          # All systems colonized - salvage this ETAC
+          order.orderType = FleetOrderType.Salvage
+          order.targetSystem = none(SystemId)
+          order.priority = 50  # Medium priority
+
+          # CRITICAL: Clear AutoColonize standing order to prevent reactivation
+          if fleet.id in controller.standingOrders:
+            controller.standingOrders.del(fleet.id)
+            logInfo(LogCategory.lcAI,
+                    &"Fleet {fleet.id} AutoColonize standing order cleared (empty ETAC salvaging)")
+
+          result.add(order)
+          logInfo(LogCategory.lcAI,
+                  &"Fleet {fleet.id} ETAC salvaging (colonization complete: {totalColonized}/{totalSystems})")
+          continue
+
+        # Otherwise, tactical sends ETAC home for reload
         # Find nearest colony with sufficient population for PTU transfer
         const MIN_POPULATION_FOR_RELOAD = 3
         var bestColony: Option[SystemId] = none(SystemId)

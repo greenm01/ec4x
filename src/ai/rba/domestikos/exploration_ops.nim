@@ -35,9 +35,11 @@ proc generateExplorationOrders*(
     return result
 
   # Find idle or under-utilized fleets suitable for exploration
+  # CRITICAL: Exclude ETAC fleets - they're for colonization, not exploration
   var availableExplorers: seq[FleetAnalysis] = @[]
   for analysis in analyses:
-    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
+    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized} and
+       not analysis.hasETACs:
       availableExplorers.add(analysis)
 
   if availableExplorers.len == 0:
@@ -83,9 +85,11 @@ proc generateReconnaissanceOrders*(
     return result
 
   # Find scout-capable fleets (idle/underutilized with scouts or small ships)
+  # CRITICAL: Exclude ETAC fleets - they're for colonization, not reconnaissance
   var availableScouts: seq[FleetAnalysis] = @[]
   for analysis in analyses:
-    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
+    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized} and
+       not analysis.hasETACs:
       # Prefer actual scouts, but any small fleet can scout
       if analysis.hasScouts or analysis.shipCount <= 2:
         availableScouts.add(analysis)

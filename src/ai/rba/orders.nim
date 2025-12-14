@@ -60,6 +60,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
       diplomaticActions: @[],
       populationTransfers: @[],
       terraformOrders: @[],
+      colonyManagement: @[],
+      standingOrders: initTable[FleetId, StandingOrder](),
       espionageAction: none(EspionageAttempt),
       ebpInvestment: 0,
       cipInvestment: 0
@@ -67,31 +69,23 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   )
 
   let p = controller.personality
-  var currentAct = ai_types.getCurrentGameAct(filtered.turn)
 
-  # Act 1 → Act 2 Colonization Gate:
-  # Act 2 should not begin until map is substantially colonized
-  # This ensures land grab phase completes before military buildup
-  #
-  # Uses public leaderboard data (houseColonies) to see total map colonization
+  # Calculate total colonized systems from public leaderboard
+  # Uses public data (houseColonies) to see total map colonization
   # This avoids fog-of-war issues - colony counts are public like prestige
-  if currentAct >= ai_types.GameAct.Act2_RisingTensions and filtered.turn <= 12:
-    let totalSystems = filtered.starMap.systems.len
+  let totalSystems = filtered.starMap.systems.len
+  var totalColonized = 0
+  for houseId, colonyCount in filtered.houseColonies:
+    totalColonized += colonyCount
 
-    # Calculate total colonized systems from public leaderboard
-    var totalColonized = 0
-    for houseId, colonyCount in filtered.houseColonies:
-      totalColonized += colonyCount
+  # Use colonization-based Act determination (90% threshold for Act 2 transition)
+  var currentAct = ai_types.getCurrentGameAct(totalSystems, totalColonized, filtered.turn)
 
-    let colonizationRatio = float(totalColonized) / float(totalSystems)
-
-    # Require 50% of map colonized before Act 2 (lowered from 85% due to hoarding issues)
-    # e.g., 19 out of 37 systems = 51%
-    if colonizationRatio < 0.50:
-      currentAct = ai_types.GameAct.Act1_LandGrab
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Act 1 EXTENDED - map colonization " &
-              &"{totalColonized}/{totalSystems} ({int(colonizationRatio*100)}%, need 50%)")
+  let colonizationRatio = float(totalColonized) / float(totalSystems)
+  if currentAct == ai_types.GameAct.Act1_LandGrab and colonizationRatio < 0.90:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Act 1 LAND GRAB - map colonization " &
+            &"{totalColonized}/{totalSystems} ({int(colonizationRatio*100)}%, need 90%)")
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} ========================================")
@@ -297,6 +291,9 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let standingOrders = assignStandingOrders(controller, filtered, filtered.turn)
   controller.standingOrders = standingOrders
 
+  # Add standing orders to order packet so they're written to GameState
+  result.orderPacket.standingOrders = standingOrders
+
   # TODO: Add Logistics-generated build requirements (e.g., for Drydocks) to Domestikos requirements
   # Commented out - AIOrderSubmission doesn't have buildRequirements field
   # if result.buildRequirements.len > 0:
@@ -306,37 +303,11 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   #   logInfo(LogCategory.lcAI,
   #           &"{controller.houseId} Logistics added {result.buildRequirements.len} build requirements (e.g., Drydocks)")
 
-  # Convert strategic standing orders to explicit fleet orders
-  # Track already-targeted systems to prevent duplicate colonize orders
-  var alreadyTargeted = initHashSet[SystemId]()
-  for existingOrder in filtered.ownFleetOrders.values:
-    if existingOrder.orderType == FleetOrderType.Colonize and existingOrder.targetSystem.isSome:
-      alreadyTargeted.incl(existingOrder.targetSystem.get())
-
-  var strategicOrdersConverted = 0
-  for fleetId, standingOrder in standingOrders:
-    if standingOrder.orderType in {StandingOrderType.DefendSystem, StandingOrderType.AutoRepair, StandingOrderType.AutoColonize}:
-      var fleetOpt: Option[Fleet] = none(Fleet)
-      for f in filtered.ownFleets:
-        if f.id == fleetId:
-          fleetOpt = some(f)
-          break
-
-      if fleetOpt.isSome:
-        let fleet = fleetOpt.get()
-        let orderOpt = convertStandingOrderToFleetOrder(standingOrder, fleet, filtered, alreadyTargeted)
-
-        if orderOpt.isSome:
-          let order = orderOpt.get()
-          # Track colonize targets to prevent duplicates in subsequent conversions
-          if order.orderType == FleetOrderType.Colonize and order.targetSystem.isSome:
-            alreadyTargeted.incl(order.targetSystem.get())
-
-          result.orderPacket.fleetOrders.add(order)
-          strategicOrdersConverted += 1
-
+  # NOTE: Standing orders are now handled by engine's standing order system
+  # They're submitted via orderPacket.standingOrders and activate in Maintenance Phase
+  # RBA no longer converts standing orders to fleet orders - engine handles activation
   logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Converted {strategicOrdersConverted} strategic standing orders")
+          &"{controller.houseId} Assigned {standingOrders.len} standing orders (engine will activate in Maintenance Phase)")
 
   # ==========================================================================
   # PHASE 6.5: GOAP PLAN EXECUTION (Phase 3 Integration)
@@ -372,9 +343,9 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # ==========================================================================
   # PHASE 7: TACTICAL FLEET ORDERS
   # ==========================================================================
-  # Pass standingOrders so tactical skips ETACs with AutoColonize (let standing orders handle them)
-  # Pass alreadyTargeted so tactical coordinates with standing orders (no duplicate colonization targets)
-  let tacticalOrders = generateFleetOrders(controller, filtered, rng, standingOrders, alreadyTargeted)
+  # Pass standingOrders so tactical knows which fleets have standing orders (skip those fleets)
+  # No need to pass alreadyTargeted - engine coordinates ETAC targets during standing order activation
+  let tacticalOrders = generateFleetOrders(controller, filtered, rng, standingOrders, initHashSet[SystemId]())
 
   for order in tacticalOrders:
     result.orderPacket.fleetOrders.add(order)
@@ -410,6 +381,53 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   # Detach ETACs, assign squadrons, load cargo, merge undersized fleets
   let fleetOrgCommands = fleet_organization.organizeFleets(controller, filtered)
   result.zeroTurnCommands.add(fleetOrgCommands)
+
+  # Unload cargo from ETACs at colonies (before salvage or after arriving)
+  # Two cases:
+  # 1. ETAC at colony with Salvage order → unload then salvage
+  # 2. ETAC at colony with Move/Hold order (arrived) → unload, next turn salvage
+  for fleet in filtered.ownFleets:
+    # Check if this is an ETAC at a colony
+    let atColony = fleet.location in filtered.ownColonies.mapIt(it.systemId)
+    if not atColony:
+      continue
+
+    # Check if has cargo to unload
+    var totalPTU = 0
+    for ship in fleet.spaceLiftShips:
+      if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
+        totalPTU += ship.cargo.quantity
+
+    if totalPTU == 0:
+      continue  # No cargo to unload
+
+    # Check if this ETAC has orders that indicate it's ready for salvage
+    # (Salvage order already issued, or Move/Hold at colony after 100% colonization)
+    let hasOrderAtColony = fleet.id in filtered.ownFleetOrders
+    if hasOrderAtColony:
+      let order = filtered.ownFleetOrders[fleet.id]
+      # Unload if:
+      # - Has Salvage order (ready to salvage after unload)
+      # - Has Move/Hold at colony (arrived, will get Salvage next turn)
+      if order.orderType in {FleetOrderType.Salvage, FleetOrderType.Move, FleetOrderType.Hold}:
+        # Check if colonization is complete (indicates this is salvage-related)
+        let totalSystems = filtered.starMap.systems.len
+        var totalColonized = 0
+        for houseId, colonyCount in filtered.houseColonies:
+          totalColonized += colonyCount
+        let colonizationComplete = totalColonized >= totalSystems
+
+        if colonizationComplete:
+          # Generate unload command for this ETAC
+          let unloadCmd = ZeroTurnCommand(
+            houseId: controller.houseId,
+            commandType: ZeroTurnCommandType.UnloadCargo,
+            sourceFleetId: some(fleet.id)
+          )
+          result.zeroTurnCommands.add(unloadCmd)
+          logInfo(LogCategory.lcAI,
+                  &"{controller.houseId} ETAC {fleet.id} at colony unloading {totalPTU} PTU " &
+                  &"(order: {order.orderType}, colonization: {totalColonized}/{totalSystems})")
 
   # Population transfers still use OrderPacket (not deprecated)
   result.orderPacket.populationTransfers = logisticsOrders.population
