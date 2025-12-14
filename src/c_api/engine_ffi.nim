@@ -402,51 +402,55 @@ proc ec4x_collect_diagnostics(game: pointer, turn: cint): cint
     setError(&"Failed to collect diagnostics: {e.msg}")
     result = -1
 
+proc ec4x_get_diagnostics_count(game: pointer): cint {.exportc, dynlib.} =
+  ## Get the number of diagnostic records collected
+  if game == nil:
+    return 0
+
+  let handle = cast[CGame](game)
+  return cint(handle.diagnostics.len)
+
+proc ec4x_get_diagnostic_field_int(game: pointer, index: cint,
+                                    field_name: cstring): int64 {.exportc, dynlib.} =
+  ## Get an integer field from a diagnostic record
+  ## Returns 0 if field not found or invalid
+  if game == nil or index < 0:
+    return 0
+
+  let handle = cast[CGame](game)
+  if index >= handle.diagnostics.len:
+    return 0
+
+  # TODO: Implement field extraction by name
+  # For now, stub returns 0
+  return 0
+
+proc ec4x_get_diagnostic_field_str(game: pointer, index: cint,
+                                    field_name: cstring): cstring {.exportc, dynlib.} =
+  ## Get a string field from a diagnostic record
+  ## Returns NULL if field not found or invalid
+  if game == nil or index < 0:
+    return nil
+
+  let handle = cast[CGame](game)
+  if index >= handle.diagnostics.len:
+    return nil
+
+  # TODO: Implement field extraction by name
+  # For now, stub returns NULL
+  return nil
+
 proc ec4x_write_diagnostics_db(game: pointer, db_path: cstring): cint
     {.exportc, dynlib.} =
+  ## Database write is handled by C code calling ec4x_get_diagnostics_count
+  ## and ec4x_get_diagnostic_field_* functions
+  ## This is just a stub that returns success
   clearError()
-  if game == nil:
-    setError("Game handle is NULL")
-    return -1
-  if db_path == nil:
-    setError("Database path is NULL")
-    return -1
-
-  try:
-    let handle = cast[CGame](game)
-    let path = $db_path
-
-    # TODO: Implement database write
-    # For now, just return success
-    # This will need to:
-    # 1. Open SQLite database
-    # 2. Create tables if needed
-    # 3. Insert game metadata
-    # 4. Batch insert all diagnostic rows
-
-    result = 0
-  except Exception as e:
-    setError(&"Failed to write diagnostics database: {e.msg}")
-    result = -1
+  return 0
 
 proc ec4x_write_diagnostics_csv(game: pointer, csv_path: cstring): cint
     {.exportc, dynlib.} =
+  ## CSV write is handled by C code
+  ## This is just a stub that returns success
   clearError()
-  if game == nil:
-    setError("Game handle is NULL")
-    return -1
-  if csv_path == nil:
-    setError("CSV path is NULL")
-    return -1
-
-  try:
-    let handle = cast[CGame](game)
-    let path = $csv_path
-
-    # TODO: Implement CSV write
-    # This will write all collected diagnostics to CSV
-
-    result = 0
-  except Exception as e:
-    setError(&"Failed to write diagnostics CSV: {e.msg}")
-    result = -1
+  return 0
