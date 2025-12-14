@@ -330,8 +330,9 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
 
   # Scan known systems within range
   for systemId in knownSystems:
-    # Skip if we know it's colonized
-    if hasColonyIntel(state, houseId, systemId):
+    # Skip if system actually has a colony (ground truth check)
+    # This prevents targeting systems that were colonized after our last scout
+    if systemId in state.colonies:
       continue
 
     # Skip systems already targeted by other fleets (duplicate prevention)
