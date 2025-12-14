@@ -484,6 +484,14 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
   logInfo(LogCategory.lcAI, &"{controller.houseId} Turn {filtered.turn} ({currentAct}): Generating orders for {myFleets.len} fleets")
 
+  # Build set of systems already targeted by other fleets to prevent duplicates
+  # Bug fix: Multiple fleets were targeting same system, causing 78% colonization failure rate
+  var alreadyTargeted = initHashSet[SystemId]()
+  for fleetId, existingOrder in filtered.ownFleetOrders:
+    if existingOrder.orderType == FleetOrderType.Colonize and existingOrder.targetSystem.isSome:
+      alreadyTargeted.incl(existingOrder.targetSystem.get())
+      logDebug(LogCategory.lcAI, &"  System {existingOrder.targetSystem.get()} already targeted by {fleetId}")
+
   for fleet in myFleets:
     var order: FleetOrder
     order.fleetId = fleet.id
@@ -574,7 +582,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
       # Priority 1a: ETACs colonize nearest uncolonized system
       # SKIP if fleet has AutoColonize standing order (let standing order handle it)
       if hasETAC and (fleet.id notin standingOrders or standingOrders[fleet.id].orderType != StandingOrderType.AutoColonize):
-        # Find nearest uncolonized system
+        # Find nearest uncolonized system (skip already-targeted systems)
         var bestTarget: Option[SystemId] = none(SystemId)
         var minDist = 999
         let fromCoords = filtered.starMap.systems[fleet.location].coords
@@ -582,6 +590,10 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
         for systemId, visSystem in filtered.visibleSystems:
           # Skip if already colonized
           if isSystemColonized(filtered, systemId):
+            continue
+
+          # FIX: Skip if already targeted by another fleet
+          if systemId in alreadyTargeted:
             continue
 
           # Calculate distance
@@ -599,6 +611,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.orderType = FleetOrderType.Colonize
           order.targetSystem = bestTarget
           order.targetFleet = none(FleetId)
+          # Mark as targeted to prevent other fleets from picking same system
+          alreadyTargeted.incl(bestTarget.get())
           logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 1: Land Grab)")
           result.add(order)
           continue
@@ -606,7 +620,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           logDebug(LogCategory.lcAI, &"    → No colonization targets found (map fully colonized?)")
 
       # Priority 1b: View World missions for unexamined systems (Act 1 intelligence gathering)
-      if hasCombatShips:
+      # FIX: Exclude ETAC fleets (colonization-only, even with escorts)
+      if hasCombatShips and not isETACFleet(fleet):
         # Check for unexamined systems (no intel report on file)
         var viewTarget: Option[SystemId] = none(SystemId)
         var minDist = 999
@@ -637,7 +652,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           continue
 
       # Priority 1c: Combat ships explore aggressively
-      if hasCombatShips:
+      # FIX: Exclude ETAC fleets (colonization-only, even with escorts)
+      if hasCombatShips and not isETACFleet(fleet):
         # Build set of systems already targeted by our other fleets this turn
         var alreadyTargeted = initHashSet[SystemId]()
         for existingOrder in result:
@@ -796,6 +812,10 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           if isSystemColonized(filtered, systemId):
             continue
 
+          # FIX: Skip if already targeted by another fleet
+          if systemId in alreadyTargeted:
+            continue
+
           let coords = filtered.starMap.systems[systemId].coords
           let dx = abs(coords.q - fromCoords.q)
           let dy = abs(coords.r - fromCoords.r)
@@ -810,12 +830,15 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.orderType = FleetOrderType.Colonize
           order.targetSystem = bestTarget
           order.targetFleet = none(FleetId)
+          # Mark as targeted to prevent other fleets from picking same system
+          alreadyTargeted.incl(bestTarget.get())
           logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 2: Opportunistic)")
           result.add(order)
           continue
 
       # Priority 5: Exploration/patrol
-      if hasCombatShips:
+      # FIX: Exclude ETAC fleets (colonization-only, even with escorts)
+      if hasCombatShips and not isETACFleet(fleet):
         var reconTarget: Option[SystemId] = none(SystemId)
         var minDist = 999
         let fromCoords = filtered.starMap.systems[fleet.location].coords
@@ -933,7 +956,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
               continue
 
       # Priority 4: Aggressive patrol/reconnaissance
-      if hasCombatShips:
+      # FIX: Exclude ETAC fleets (colonization-only, even with escorts)
+      if hasCombatShips and not isETACFleet(fleet):
         var reconTarget: Option[SystemId] = none(SystemId)
         var minDist = 999
         let fromCoords = filtered.starMap.systems[fleet.location].coords
