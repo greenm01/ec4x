@@ -49,6 +49,9 @@ task buildSimulation, "Build simulation binary":
 
 task buildCAPI, "Build C API parallel simulation (pthreads)":
   echo "Building C API simulation with parallel AI..."
+  echo "Cleaning build artifacts and diagnostic data..."
+  exec "rm -rf bin/ nimcache/"
+  exec "find balance_results/diagnostics/ -type f -delete 2>/dev/null || true"
   mkDir "bin"
   # Step 1: Compile Nim engine as shared library (using arc GC for thread safety)
   exec "nim c --app:lib --noMain --opt:speed --threads:on --mm:arc --passL:-lsqlite3 -o:bin/libec4x_engine.so src/c_api/engine_ffi.nim"
