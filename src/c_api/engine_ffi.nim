@@ -4,7 +4,7 @@
 ## Thread safety: AI order generation is thread-safe with copied FilteredGameState.
 ##                Turn resolution and zero-turn commands must be sequential.
 
-import std/[tables, strformat, options, random, sequtils, algorithm]
+import std/[tables, strformat, options, random, sequtils, algorithm, strutils]
 import std/isolation  # For GC operations in FFI
 import ../engine/[gamestate, fog_of_war, resolve, orders]
 import ../engine/commands/zero_turn_commands
@@ -18,6 +18,7 @@ import ../engine/config/[
 ]
 import ../ai/rba/[player, controller_types, orders as ai_orders, config as rba_config]
 import ../ai/analysis/[game_setup, diagnostics]
+import ../ai/analysis/diagnostics/csv_writer
 import ../ai/common/types  # For AIStrategy
 import ../common/types/core  # For HouseId types
 
@@ -442,15 +443,50 @@ proc ec4x_get_diagnostic_field_str(game: pointer, index: cint,
 
 proc ec4x_write_diagnostics_db(game: pointer, db_path: cstring): cint
     {.exportc, dynlib.} =
-  ## Database write is handled by C code calling ec4x_get_diagnostics_count
-  ## and ec4x_get_diagnostic_field_* functions
-  ## This is just a stub that returns success
+  ## Write diagnostics to CSV (convert .db path to .csv)
   clearError()
-  return 0
+  if game == nil:
+    setError("Game handle is NULL")
+    return -1
+  if db_path == nil:
+    setError("Database path is NULL")
+    return -1
+
+  try:
+    let handle = cast[CGame](game)
+    if handle.diagnostics.len == 0:
+      return 0  # No diagnostics to write
+
+    # Convert .db to .csv path
+    var path = $db_path
+    if path.endsWith(".db"):
+      path = path[0..^4] & ".csv"
+
+    writeDiagnosticsCSV(path, handle.diagnostics)
+    result = 0
+  except Exception as e:
+    setError(&"Failed to write diagnostics: {e.msg}")
+    result = -1
 
 proc ec4x_write_diagnostics_csv(game: pointer, csv_path: cstring): cint
     {.exportc, dynlib.} =
-  ## CSV write is handled by C code
-  ## This is just a stub that returns success
+  ## Write diagnostics to CSV
   clearError()
-  return 0
+  if game == nil:
+    setError("Game handle is NULL")
+    return -1
+  if csv_path == nil:
+    setError("CSV path is NULL")
+    return -1
+
+  try:
+    let handle = cast[CGame](game)
+    if handle.diagnostics.len == 0:
+      return 0  # No diagnostics to write
+
+    let path = $csv_path
+    writeDiagnosticsCSV(path, handle.diagnostics)
+    result = 0
+  except Exception as e:
+    setError(&"Failed to write diagnostics CSV: {e.msg}")
+    result = -1
