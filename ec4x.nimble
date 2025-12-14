@@ -41,24 +41,38 @@ task buildDebug, "Build with debug information":
   exec "nim c --warnings:on -d:debug --debuginfo --linedir:on -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
   echo "Debug build completed successfully!"
 
-task buildSimulation, "Build simulation binary":
-  echo "Building simulation binary..."
-  exec "nim c --forceBuild -d:release --opt:speed --passL:-lsqlite3 -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
-  exec "git rev-parse --short HEAD > bin/.build_git_hash"
-  echo "Build completed! Git hash: $(cat bin/.build_git_hash)"
-
-task buildCAPI, "Build C API parallel simulation (pthreads)":
-  echo "Building C API simulation with parallel AI..."
+task buildSimulation, "Build parallel simulation (C API, static)":
+  echo "Building parallel simulation binary (C API with pthreads)..."
   echo "Cleaning build artifacts and diagnostic data..."
   exec "rm -rf bin/ nimcache/"
   exec "find balance_results/diagnostics/ -type f -delete 2>/dev/null || true"
   mkDir "bin"
-  # Step 1: Compile Nim engine as shared library (using arc GC for thread safety)
+  # Step 1: Compile Nim engine as static library (using arc GC for thread safety)
+  exec "nim c --app:staticlib --noMain --opt:speed --threads:on --mm:arc --passL:-lsqlite3 -o:bin/libec4x_engine.a src/c_api/engine_ffi.nim"
+  # Step 2: Compile C orchestrator and link statically
+  exec "gcc -O3 -pthread -o bin/run_simulation src/c_api/run_simulation.c bin/libec4x_engine.a -lsqlite3 -lm -ldl"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  echo "Build completed! Git hash: $(cat bin/.build_git_hash)"
+  echo "Run with: ./bin/run_simulation"
+
+task buildSimulationNim, "Build Nim simulation (legacy, sequential)":
+  echo "Building Nim simulation binary (legacy, sequential)..."
+  exec "nim c --forceBuild -d:release --opt:speed --passL:-lsqlite3 -o:bin/run_simulation_nim src/ai/analysis/run_simulation.nim"
+  exec "git rev-parse --short HEAD > bin/.build_git_hash"
+  echo "Build completed! Git hash: $(cat bin/.build_git_hash)"
+
+task buildCAPI, "Build C API with dynamic linking (advanced)":
+  echo "Building C API simulation with dynamic linking..."
+  echo "Cleaning build artifacts and diagnostic data..."
+  exec "rm -rf bin/ nimcache/"
+  exec "find balance_results/diagnostics/ -type f -delete 2>/dev/null || true"
+  mkDir "bin"
+  # Step 1: Compile Nim engine as shared library
   exec "nim c --app:lib --noMain --opt:speed --threads:on --mm:arc --passL:-lsqlite3 -o:bin/libec4x_engine.so src/c_api/engine_ffi.nim"
-  # Step 2: Compile C orchestrator and link with Nim library
+  # Step 2: Compile C orchestrator and link dynamically
   exec "gcc -O3 -pthread -o bin/run_simulation_c src/c_api/run_simulation.c -Lbin -lec4x_engine -lm -ldl"
   exec "git rev-parse --short HEAD > bin/.build_git_hash"
-  echo "C API simulation built! Git hash: $(cat bin/.build_git_hash)"
+  echo "Dynamic C API simulation built! Git hash: $(cat bin/.build_git_hash)"
   echo "Run with: LD_LIBRARY_PATH=bin ./bin/run_simulation_c"
 
 task buildAnalysis, "Build ec4x analysis CLI tool":

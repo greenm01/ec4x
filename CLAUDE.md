@@ -96,16 +96,16 @@ method move(self: var Fleet) =
 ### Quick Development Loop
 
 ```bash
-# 1. Build C API simulation (parallel AI, includes git hash)
-nimble buildCAPI 2>&1 | tail -10
+# 1. Build simulation (parallel C API, static binary)
+nimble buildSimulation 2>&1 | tail -10
 
 # 2. Test single game with specific seed
-LD_LIBRARY_PATH=bin ./bin/run_simulation_c --seed 12345
-# Or with short flags: LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 12345
-# Output: balance_results/diagnostics/game_12345.db (SQLite)
+./bin/run_simulation --seed 12345
+# Or with short flags: ./bin/run_simulation -s 12345
+# Output: balance_results/diagnostics/game_12345.db (SQLite) + .csv
 
 # 3. Test with custom parameters
-LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 12345 -t 35 -p 4
+./bin/run_simulation -s 12345 -t 35 -p 4
 
 # 4. Batch test (20 games, 7 turns, ~10 seconds)
 python3.11 scripts/run_balance_test_parallel.py --workers 8 --games 20 --turns 35
@@ -122,26 +122,26 @@ python3.11 scripts/analysis/your_script.py  # Use python3.11 for polars
 - **SQLite databases:** Structured data with fleet tracking, faster than CSVs
 - **Polars over pandas:** 10-50x faster on large datasets
 - **Throwaway scripts:** Write quick queries, get answers, move on
-- **Git hash tracking:** `nimble buildCAPI` writes to `bin/.build_git_hash`
+- **Git hash tracking:** `nimble buildSimulation` writes to `bin/.build_git_hash`
 - **Reproducible seeds:** Each game gets unique seed, stored as game_id
 
-### Available Flags for run_simulation_c
+### Available Flags for run_simulation
 
 ```bash
-LD_LIBRARY_PATH=bin ./bin/run_simulation_c [OPTIONS]
+./bin/run_simulation [OPTIONS]
 
 # Key flags:
 --seed, -s NUMBER         Random seed (default: 42, stored as game_id)
 --turns, -t NUMBER        Max turns safety limit (default: 200)
 --players, -p NUMBER      Number of AI players (default: 4, max: 12)
 --rings, -r NUMBER        Hex rings for map size (default: 4, range: 1-5)
---output-db FILE          SQLite database path (default: game_<seed>.db)
---output-csv FILE         Legacy CSV output (optional)
+--db FILE                 SQLite database path (default: game_<seed>.db)
+--csv FILE                CSV output path (default: game_<seed>.csv)
 
 # Examples:
-LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 12345 -t 100
-LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 99999 -p 6 -r 4
-LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 42 --output-csv results.csv
+./bin/run_simulation -s 12345 -t 100
+./bin/run_simulation -s 99999 -p 6 -r 4
+./bin/run_simulation -s 42 --csv custom.csv
 ```
 
 ---
@@ -150,10 +150,13 @@ LD_LIBRARY_PATH=bin ./bin/run_simulation_c -s 42 --output-csv results.csv
 
 ```bash
 # Primary builds
-nimble buildCAPI            # C API parallel simulation (USE THIS)
-nimble buildSimulation      # Nim simulation (legacy, slower)
-nimble buildAll             # All binaries (ec4x + both simulations)
+nimble buildSimulation      # Parallel simulation (C API, static) - USE THIS
+nimble buildAll             # All binaries (ec4x + simulation)
 nimble buildDebug           # Debug symbols enabled
+
+# Legacy/Advanced builds
+nimble buildSimulationNim   # Nim simulation (sequential, legacy)
+nimble buildCAPI            # C API with dynamic linking (advanced)
 
 # Testing
 nimble testBalanceQuick     # 20 games, 7 turns (~10s)
@@ -267,10 +270,10 @@ print(etac_analysis)
 
 ```
 src/
-├── c_api/                       # C FFI for parallel orchestration
+├── c_api/                       # C FFI for parallel orchestration (PRIMARY)
 │   ├── engine_ffi.nim          # Nim→C exports (thread-safe)
 │   ├── ec4x_engine.h           # C API header
-│   └── run_simulation.c        # Parallel simulation (pthreads)
+│   └── run_simulation.c        # Parallel simulation (pthreads) → bin/run_simulation
 ├── ai/
 │   ├── rba/                    # Rule-Based Advisor (production AI)
 │   │   ├── player.nim          # Public API
@@ -280,7 +283,7 @@ src/
 │   │   ├── tactical.nim        # Fleet operations
 │   │   └── budget.nim          # Budget allocation
 │   ├── analysis/               # Simulation & diagnostics
-│   │   ├── run_simulation.nim  # Nim simulation harness (legacy)
+│   │   ├── run_simulation.nim  # Nim simulation (legacy, sequential)
 │   │   └── diagnostics.nim     # 200+ metrics collection
 │   ├── sweep/                  # GOAP infrastructure (experimental)
 │   ├── tuning/genetic/         # Genetic algo for AI weights
@@ -468,11 +471,11 @@ Current:
 
 ## Common Gotchas
 
-- **Stale binaries:** Use `nimble buildCAPI` (has `--forceBuild`), not direct `nim c`
-- **LD_LIBRARY_PATH:** Always set when running C API: `LD_LIBRARY_PATH=bin ./bin/run_simulation_c`
+- **Stale binaries:** Use `nimble buildSimulation` (does full clean), not direct `nim c`
+- **Run command:** Just `./bin/run_simulation` (no LD_LIBRARY_PATH needed)
 - **RBA weights:** Edit `config/rba.toml`, NOT hardcoded in source
 - **Database size:** Multi-hundred game runs = GB+ of data, use SQLite + polars
-- **Git hash:** Always in `bin/.build_git_hash` after `nimble buildCAPI`
+- **Git hash:** Always in `bin/.build_git_hash` after `nimble buildSimulation`
 - **Clean old databases:** `rm -rf balance_results/diagnostics/*.db` before new runs
 - **Analysis:** Write Python scripts with SQLite queries, don't compile analysis into ec4x
 - **Seeds matter:** Use `--seed` for reproducible testing, stored as game_id
