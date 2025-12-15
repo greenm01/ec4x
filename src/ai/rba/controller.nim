@@ -73,6 +73,7 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy,
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
+    eparchColonizationOrders: @[],  # Eparch colonization orders (Phase 1→6.9)
     # GOAP strategic planning integration (MVP: Fleet + Build domains)
     goapEnabled: rbaConfig.goap.enabled,
     goapLastPlanningTurn: -1,
@@ -113,6 +114,7 @@ proc newAIControllerWithPersonality*(houseId: HouseId,
     offensiveFleetOrders: @[],
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
+    eparchColonizationOrders: @[],  # Eparch colonization orders (Phase 1→6.9)
     # GOAP strategic planning integration (MVP: Fleet + Build domains)
     goapEnabled: rbaConfig.goap.enabled,
     goapLastPlanningTurn: -1,

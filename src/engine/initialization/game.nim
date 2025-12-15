@@ -60,6 +60,9 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
     let homeworld = colony.createHomeColony(homeworldSystemId, houseId)
     state.colonies[homeworldSystemId] = homeworld
 
+    # Track homeworld system for this house
+    state.homeworlds[houseId] = homeworldSystemId
+
     # Create starting fleets from individual fleet configurations
     let newFleets = init_fleet.createStartingFleets(houseId, homeworldSystemId, fleetConfigs)
 
@@ -118,6 +121,7 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     phase: GamePhase.Setup,
     starMap: starMap,
     houses: initTable[HouseId, House](),
+    homeworlds: initTable[HouseId, SystemId](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
     fleetOrders: initTable[FleetId, FleetOrder](),
@@ -161,6 +165,7 @@ proc newGameState*(gameId: string, playerCount: int,
     phase: GamePhase.Setup,
     starMap: starMap,
     houses: initTable[HouseId, House](),
+    homeworlds: initTable[HouseId, SystemId](),
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
     fleetOrders: initTable[FleetId, FleetOrder](),

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.11
 """
 Single Game Detailed Analysis Tool
 
@@ -6,27 +6,70 @@ Generates comprehensive tables and metrics for a single game simulation
 to diagnose AI behavior, unit production, combat losses, and strategic patterns.
 
 Usage:
-    python3 analyze_single_game.py <game_seed>
-    python3 analyze_single_game.py 2000  # Analyze game_2000.csv
+    python3.11 analyze_single_game.py <game_seed>
+    python3.11 analyze_single_game.py -s 12345
+    python3.11 analyze_single_game.py 2000  # Analyze game_2000.db
 """
 
 import sys
-import csv
+import argparse
+import sqlite3
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
-def load_game_data(game_seed: str) -> List[Dict]:
-    """Load diagnostic CSV for a specific game."""
-    csv_path = Path(f"balance_results/diagnostics/game_{game_seed}.csv")
+def load_game_data_sqlite(game_seed: str) -> Tuple[List[Dict], sqlite3.Connection]:
+    """Load diagnostic data from SQLite database."""
+    db_path = Path(f"balance_results/diagnostics/game_{game_seed}.db")
 
-    if not csv_path.exists():
-        print(f"❌ Error: Game file not found: {csv_path}")
+    if not db_path.exists():
+        print(f"❌ Error: Game database not found: {db_path}")
         sys.exit(1)
 
-    with open(csv_path, 'r') as f:
-        reader = csv.DictReader(f)
-        return list(reader)
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM diagnostics ORDER BY turn, house_id")
+    rows = cursor.fetchall()
+
+    # Convert to list of dicts for compatibility
+    data = []
+    for row in rows:
+        data.append(dict(row))
+
+    return data, conn
+
+def get_etac_timeline(conn: sqlite3.Connection) -> List[Dict]:
+    """Get turn-by-turn ETAC counts from fleet_tracking."""
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT
+                turn,
+                SUM(etac_count) as concurrent_etacs,
+                (SELECT SUM(total_colonies) FROM diagnostics WHERE diagnostics.turn = fleet_tracking.turn) as total_colonies,
+                (SELECT MAX(total_systems_on_map) FROM diagnostics WHERE diagnostics.turn = fleet_tracking.turn) as total_systems
+            FROM fleet_tracking
+            WHERE etac_count > 0
+            GROUP BY turn
+            ORDER BY turn
+        """)
+
+        timeline = []
+        for row in cursor.fetchall():
+            timeline.append({
+                'turn': row[0],
+                'concurrent_etacs': row[1],
+                'total_colonies': row[2],
+                'total_systems': row[3],
+                'colonization_pct': (row[2] / row[3] * 100) if row[3] else 0
+            })
+        return timeline
+    except sqlite3.OperationalError:
+        # No fleet_tracking table
+        return []
 
 def get_final_turn_data(data: List[Dict]) -> Dict[str, Dict]:
     """Extract final turn data for each house."""
@@ -35,7 +78,7 @@ def get_final_turn_data(data: List[Dict]) -> Dict[str, Dict]:
 
     for row in data:
         if int(row['turn']) == max_turn:
-            house = row['house']
+            house = row['house_id']
             final_data[house] = row
 
     return final_data
@@ -49,13 +92,10 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
         'colonies_gained': 0,
         'colonies_gained_via_colonization': 0,
         'colonies_gained_via_conquest': 0,
-        'ships_built': 0,
+        'etac_construction_events': 0,  # Total ETAC builds across all turns
         'fighters_built': 0,
-        'ship_type_losses': defaultdict(int)  # Track per-ship-type losses
+        'ship_type_losses': defaultdict(int)
     })
-
-    # Track previous turn values to calculate losses
-    prev_counts = defaultdict(lambda: defaultdict(int))
 
     ship_types = [
         'destroyer_ships', 'cruiser_ships', 'light_cruiser_ships', 'heavy_cruiser_ships',
@@ -64,8 +104,10 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
         'scout_ships', 'corvette_ships', 'frigate_ships', 'raider_ships', 'planet_breaker_ships'
     ]
 
+    prev_counts = defaultdict(lambda: defaultdict(int))
+
     for row in data:
-        house = row['house']
+        house = row['house_id']
         turn = int(row['turn'])
 
         stats[house]['ships_lost'] += int(row.get('ships_lost', 0))
@@ -76,14 +118,16 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
         stats[house]['colonies_gained_via_conquest'] += int(row.get('colonies_gained_via_conquest', 0))
         stats[house]['fighters_built'] += int(row.get('fighters_gained', 0))
 
-        # Track per-ship-type losses (decrease from prev turn, accounting for builds)
-        # Note: This is approximate - we detect decreases but can't distinguish
-        # combat losses from ships being disbanded/decommissioned
+        # Sum ETAC construction events (etac_ships field shows builds that turn)
+        etac_builds = int(row.get('etac_ships', 0))
+        if etac_builds > 0:
+            stats[house]['etac_construction_events'] += etac_builds
+
+        # Track per-ship-type losses
         for ship_type in ship_types:
             current = int(row.get(ship_type, 0))
             previous = prev_counts[house][ship_type]
 
-            # If count decreased and we saw ships_lost this turn, attribute proportionally
             if current < previous and int(row.get('ships_lost', 0)) > 0:
                 decrease = previous - current
                 stats[house]['ship_type_losses'][ship_type] += decrease
@@ -92,6 +136,87 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
 
     return dict(stats)
 
+def print_etac_analysis(timeline: List[Dict], cumulative: Dict[str, Dict], data: List[Dict]):
+    """Print detailed ETAC construction and utilization analysis."""
+    print("\n" + "="*100)
+    print("ETAC CONSTRUCTION & COLONIZATION TIMELINE")
+    print("="*100)
+
+    if not timeline:
+        print("⚠️  No fleet_tracking data available - using diagnostics only")
+        print("\nNote: etac_ships in diagnostics shows construction events, not concurrent count")
+        return
+
+    print(f"\n{'Turn':<6} {'Concurrent ETACs':<18} {'Colonies':<12} {'Colonization %':<16} {'Status':<20}")
+    print("-" * 100)
+
+    peak_etacs = 0
+    peak_turn = 0
+    threshold_80_turn = None
+    threshold_90_turn = None
+
+    for entry in timeline:
+        turn = entry['turn']
+        concurrent = entry['concurrent_etacs']
+        colonies = entry['total_colonies']
+        pct = entry['colonization_pct']
+
+        if concurrent > peak_etacs:
+            peak_etacs = concurrent
+            peak_turn = turn
+
+        status = ""
+        if pct >= 80 and threshold_80_turn is None:
+            threshold_80_turn = turn
+            status = "← 80% threshold"
+        if pct >= 90 and threshold_90_turn is None:
+            threshold_90_turn = turn
+            status = "← 90% reached"
+        if pct >= 100:
+            status = "← 100% complete"
+
+        colony_str = f"{colonies}/{entry['total_systems']}"
+        print(f"{turn:<6} {concurrent:<18} {colony_str:<12} {pct:<15.1f}% {status:<20}")
+
+    # Summary statistics
+    print("\n" + "="*100)
+    print("ETAC CONSTRUCTION SUMMARY")
+    print("="*100)
+
+    print(f"\n{'Metric':<40} {'Value':<30}")
+    print("-" * 100)
+    print(f"{'Peak Concurrent ETACs':<40} {peak_etacs} (turn {peak_turn})")
+
+    if threshold_80_turn:
+        print(f"{'80% Colonization Reached':<40} Turn {threshold_80_turn}")
+    if threshold_90_turn:
+        print(f"{'90% Colonization Reached':<40} Turn {threshold_90_turn}")
+
+    # Total construction events by house
+    print(f"\n{'House':<20} {'Construction Events':<20} {'Cost (PP)':<15}")
+    print("-" * 70)
+
+    total_construction = 0
+    for house in sorted(cumulative.keys()):
+        construction = cumulative[house]['etac_construction_events']
+        cost = construction * 25  # ETAC cost
+        total_construction += construction
+        short_name = house.replace('house-', '')
+        print(f"{short_name:<20} {construction:<20} {cost:<15}")
+
+    print("-" * 70)
+    print(f"{'TOTAL':<20} {total_construction:<20} {total_construction * 25:<15}")
+
+    print(f"\n{'IMPORTANT DISTINCTION':^100}")
+    print("-" * 100)
+    print(f"  Concurrent ETACs: Ships actively in fleets (peak: {peak_etacs})")
+    print(f"  Construction Events: Cumulative builds across all turns (total: {total_construction})")
+    print(f"  ")
+    print(f"  Construction events > concurrent because:")
+    print(f"    - ETACs colonize systems and disappear")
+    print(f"    - Some ETACs are salvaged after 100% colonization")
+    print(f"    - New ETACs built to replace used ones")
+
 def print_final_fleet_composition(final_data: Dict[str, Dict], cumulative: Dict[str, Dict], max_turn: int):
     """Print detailed fleet composition table by ship type."""
     print("\n" + "="*100)
@@ -99,7 +224,6 @@ def print_final_fleet_composition(final_data: Dict[str, Dict], cumulative: Dict[
     print("="*100)
 
     ship_types = [
-        # Combat Ships
         ('destroyer_ships', 'Destroyers'),
         ('cruiser_ships', 'Cruisers'),
         ('light_cruiser_ships', 'Lt Cruisers'),
@@ -108,206 +232,40 @@ def print_final_fleet_composition(final_data: Dict[str, Dict], cumulative: Dict[
         ('battleship_ships', 'Battleships'),
         ('dreadnought_ships', 'Dreadnoughts'),
         ('super_dreadnought_ships', 'Super Dreads'),
-        # Carriers & Fighters
         ('carrier_ships', 'Carriers'),
         ('super_carrier_ships', 'Super Carriers'),
         ('total_fighters', 'Fighters'),
-        # Spacelift Ships (ETAC, Troop Transports)
-        ('etac_ships', 'ETACs'),
+        ('etac_ships', 'ETACs (concurrent)'),
         ('troop_transport_ships', 'Transports'),
-        # Scouts & Raiders
         ('scout_ships', 'Scouts'),
         ('corvette_ships', 'Corvettes'),
         ('frigate_ships', 'Frigates'),
         ('raider_ships', 'Raiders'),
-        # Special Weapons
         ('planet_breaker_ships', 'Planet Breakers'),
-        # Total
         ('total_ships', 'TOTAL SHIPS')
     ]
 
-    # Header - show current and (losses)
     houses = sorted(final_data.keys())
-    print(f"{'Ship Type':<20}", end='')
+    print(f"{'Ship Type':<22}", end='')
     for house in houses:
         short_name = house.replace('house-', '')
-        print(f"{short_name:>18}", end='')  # Wider for "current (lost)"
-    print(f"{'    TOTAL':>18}")
-    print("-" * 140)
+        print(f"{short_name:>15}", end='')
+    print(f"{'TOTAL':>15}")
+    print("-" * 100)
 
-    # Rows - show "current (lost)" format
     for col, label in ship_types:
         if label == 'TOTAL SHIPS':
-            print("-" * 140)
-        print(f"{label:<20}", end='')
+            print("-" * 100)
+        print(f"{label:<22}", end='')
         row_total = 0
-        row_losses = 0
         for house in houses:
             count = int(final_data[house].get(col, 0))
-            losses = cumulative[house]['ship_type_losses'].get(col, 0)
-            row_total += count
-            row_losses += losses
-
-            if count > 0 or losses > 0:
-                display = f"{count} ({losses})" if losses > 0 else str(count)
-                print(f"{display:>18}", end='')
-            else:
-                print(f"{'—':>18}", end='')
-
-        total_display = f"{row_total} ({row_losses})" if row_losses > 0 else str(row_total)
-        print(f"{total_display:>18}")
-
-    # Add legend
-    print("\nFormat: Current (Combat Losses)")
-
-def print_ground_forces(final_data: Dict[str, Dict], max_turn: int):
-    """Print ground forces composition table."""
-    print("\n" + "="*100)
-    print(f"GROUND FORCES (Turn {max_turn})")
-    print("="*100)
-
-    # Check if we have the detailed marine breakdown
-    has_breakdown = 'marines_at_colonies' in next(iter(final_data.values()))
-
-    if has_breakdown:
-        ground_types = [
-            ('army_units', 'Armies'),
-            ('marines_at_colonies', 'Marines (at colonies)'),
-            ('marines_on_transports', 'Marines (on transports)'),
-            ('marine_division_units', 'Marines (TOTAL)'),
-            ('ground_battery_units', 'Ground Batteries')
-        ]
-    else:
-        ground_types = [
-            ('army_units', 'Armies'),
-            ('marine_division_units', 'Marines'),
-            ('ground_battery_units', 'Ground Batteries')
-        ]
-
-    houses = sorted(final_data.keys())
-
-    # Header
-    print(f"{'Unit Type':<30}", end='')
-    for house in houses:
-        print(f"{house.replace('house-', ''):>12}", end='')
-    print(f"{'TOTAL':>12}")
-    print("-" * 100)
-
-    # Print each ground unit type
-    for col_name, display_name in ground_types:
-        print(f"{display_name:<30}", end='')
-        row_total = 0
-        for house in houses:
-            count = int(final_data[house].get(col_name, 0))
             row_total += count
             if count > 0:
-                print(f"{count:>12}", end='')
+                print(f"{count:>15}", end='')
             else:
-                print(f"{'—':>12}", end='')
-        print(f"{row_total:>12}")
-
-    # Print totals row
-    print("-" * 100)
-    print(f"{'TOTAL GROUND UNITS':<30}", end='')
-    for house in houses:
-        total = (int(final_data[house].get('army_units', 0)) +
-                 int(final_data[house].get('marine_division_units', 0)) +
-                 int(final_data[house].get('ground_battery_units', 0)))
-        print(f"{total:>12}", end='')
-
-    grand_total = sum(
-        int(final_data[house].get('army_units', 0)) +
-        int(final_data[house].get('marine_division_units', 0)) +
-        int(final_data[house].get('ground_battery_units', 0))
-        for house in houses
-    )
-    print(f"{grand_total:>12}")
-
-def print_facilities_and_defenses(final_data: Dict[str, Dict], max_turn: int):
-    """Print facilities and planetary defenses table."""
-    print("\n" + "="*100)
-    print(f"FACILITIES & PLANETARY DEFENSES (Turn {max_turn})")
-    print("="*100)
-
-    facility_types = [
-        ('total_shipyards', 'Shipyards'),
-        ('total_spaceports', 'Spaceports'),
-        ('total_drydocks', 'Drydocks'),
-        ('starbases_actual', 'Starbases'),
-        ('planetary_shield_units', 'Planetary Shields')
-    ]
-
-    houses = sorted(final_data.keys())
-
-    # Header
-    print(f"{'Facility Type':<30}", end='')
-    for house in houses:
-        print(f"{house.replace('house-', ''):>12}", end='')
-    print(f"{'TOTAL':>12}")
-    print("-" * 100)
-
-    # Print each facility type
-    for col_name, display_name in facility_types:
-        print(f"{display_name:<30}", end='')
-        row_total = 0
-        for house in houses:
-            count = int(final_data[house].get(col_name, 0))
-            row_total += count
-            if count > 0:
-                print(f"{count:>12}", end='')
-            else:
-                print(f"{'—':>12}", end='')
-        print(f"{row_total:>12}")
-
-def print_combat_losses(cumulative: Dict[str, Dict], final_data: Dict[str, Dict]):
-    """Print combat losses table."""
-    print("\n" + "="*100)
-    print("COMBAT LOSSES (Cumulative)")
-    print("="*100)
-
-    houses = sorted(cumulative.keys())
-    print(f"{'House':<20}{'Ships Lost':>15}{'Fighters Lost':>15}{'Total Losses':>15}{'Survival %':>15}")
-    print("-" * 100)
-
-    for house in houses:
-        ships_lost = cumulative[house]['ships_lost']
-        fighters_lost = cumulative[house]['fighters_lost']
-        total_lost = ships_lost + fighters_lost
-
-        # Calculate survival rate (final units / (final + lost))
-        final_ships = int(final_data[house].get('total_ships', 0))
-        final_fighters = int(final_data[house].get('total_fighters', 0))
-        total_final = final_ships + final_fighters
-        total_ever = total_final + total_lost
-        survival_pct = (total_final / total_ever * 100) if total_ever > 0 else 0
-
-        short_name = house.replace('house-', '')
-        print(f"{short_name:<20}{ships_lost:>15}{fighters_lost:>15}{total_lost:>15}{survival_pct:>14.1f}%")
-
-def print_production_summary(cumulative: Dict[str, Dict], final_data: Dict[str, Dict]):
-    """Print production summary."""
-    print("\n" + "="*100)
-    print("PRODUCTION SUMMARY")
-    print("="*100)
-
-    houses = sorted(cumulative.keys())
-    print(f"{'House':<20}{'Fighters Built':>15}{'Ships Built*':>15}{'Total Built':>15}{'Build Rate':>15}")
-    print("-" * 100)
-
-    for house in houses:
-        fighters_built = cumulative[house]['fighters_built']
-        # Ships built = final ships + ships lost (rough estimate)
-        final_ships = int(final_data[house].get('total_ships', 0))
-        ships_lost = cumulative[house]['ships_lost']
-        ships_built = final_ships + ships_lost
-
-        total_built = ships_built + fighters_built
-        build_rate = total_built / 45.0  # Units per turn
-
-        short_name = house.replace('house-', '')
-        print(f"{short_name:<20}{fighters_built:>15}{ships_built:>15}{total_built:>15}{build_rate:>14.2f}/t")
-
-    print("\n* Ships Built = Final Ships + Ships Lost (includes combat replacements)")
+                print(f"{'—':>15}", end='')
+        print(f"{row_total:>15}")
 
 def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str, Dict], data: List[Dict]):
     """Print territorial control and colony changes."""
@@ -315,15 +273,13 @@ def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str,
     print("TERRITORIAL CONTROL")
     print("="*100)
 
-    # Total systems on map (from diagnostics, constant for all houses)
     total_systems_on_map = int(data[0].get('total_systems_on_map', 0))
-
-    # Total currently colonized across all houses
     total_colonized = sum(int(final_data[house].get('total_colonies', 0)) for house in final_data.keys())
 
     print(f"Total Systems on Map: {total_systems_on_map}")
     print(f"Total Currently Colonized: {total_colonized}")
     print(f"Uncolonized Systems: {total_systems_on_map - total_colonized}")
+    print(f"Colonization: {total_colonized/total_systems_on_map*100:.1f}%")
     print()
 
     houses = sorted(cumulative.keys())
@@ -364,94 +320,54 @@ def print_economy_and_prestige(final_data: Dict[str, Dict]):
         short_name = house.replace('house-', '')
         results.append((prestige, house, short_name, treasury, production, colonies, pp_per_colony))
 
-    # Sort by prestige (highest first)
     results.sort(reverse=True)
 
     for i, (prestige, house, short_name, treasury, production, colonies, pp_per_colony) in enumerate(results):
         rank = "👑" if i == 0 else f"#{i+1}"
         print(f"{rank:>2} {short_name:<17}{prestige:>12}{treasury:>12}{production:>12}{colonies:>10}{pp_per_colony:>11.1f}")
 
-def detect_red_flags(data: List[Dict], cumulative: Dict[str, Dict], final_data: Dict[str, Dict]):
-    """Detect and report anomalies and red flags."""
-    print("\n" + "="*100)
-    print("RED FLAGS & ANOMALIES")
-    print("="*100)
-
-    flags = []
-
-    for house in final_data.keys():
-        short_name = house.replace('house-', '')
-        final = final_data[house]
-
-        # Check 1: Low ship production
-        ships_built = int(final.get('total_ships', 0)) + cumulative[house]['ships_lost']
-        if ships_built < 15:
-            flags.append(('🚨 LOW PRODUCTION', f"{short_name}: Only {ships_built} ships built in 45 turns"))
-
-        # Check 2: High treasury hoarding
-        treasury = int(final.get('treasury', 0))
-        if treasury > 5000:
-            flags.append(('💰 HOARDING', f"{short_name}: {treasury} PP unspent (excessive saving)"))
-
-        # Check 3: Heavy combat losses
-        ships_lost = cumulative[house]['ships_lost']
-        if ships_lost > 20:
-            flags.append(('💥 HEAVY LOSSES', f"{short_name}: Lost {ships_lost} ships to combat"))
-
-        # Check 4: No capital ships
-        capitals = sum(int(final.get(col, 0)) for col in [
-            'battlecruiser_ships', 'battleship_ships', 'dreadnought_ships',
-            'super_dreadnought_ships', 'carrier_ships', 'super_carrier_ships'
-        ])
-        if capitals == 0:
-            flags.append(('⚠️  NO CAPITALS', f"{short_name}: No capital ships by Turn 45"))
-
-        # Check 5: Undefended colonies
-        undefended = int(final.get('undefended_colonies', 0))
-        if undefended > 0:
-            flags.append(('🛡️  VULNERABLE', f"{short_name}: {undefended} undefended colonies"))
-
-        # Check 6: Lost more colonies than gained
-        net_colonies = cumulative[house]['colonies_gained'] - cumulative[house]['colonies_lost']
-        if net_colonies < -1:
-            flags.append(('🌍 LOSING GROUND', f"{short_name}: Net {net_colonies} colonies (losing territory)"))
-
-    if not flags:
-        print("✅ No major red flags detected!")
-    else:
-        # Print as table
-        print(f"{'Flag':<20}{'Description':<80}")
-        print("-" * 100)
-        for flag_type, description in flags:
-            print(f"{flag_type:<20}{description:<80}")
-
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 analyze_single_game.py <game_seed>")
-        print("Example: python3 analyze_single_game.py 2000")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Detailed game analysis tool for EC4X simulations"
+    )
+    parser.add_argument(
+        "game_seed",
+        nargs="?",
+        help="Game seed to analyze (e.g., 12345)"
+    )
+    parser.add_argument(
+        "-s", "--seed",
+        dest="seed_flag",
+        help="Game seed to analyze (alternative to positional arg)"
+    )
 
-    game_seed = sys.argv[1]
+    args = parser.parse_args()
+
+    # Use -s flag if provided, otherwise use positional argument
+    game_seed = args.seed_flag if args.seed_flag else args.game_seed
+
+    if not game_seed:
+        parser.print_help()
+        sys.exit(1)
 
     print(f"\n{'='*100}")
     print(f"DETAILED GAME ANALYSIS - Seed {game_seed}")
     print(f"{'='*100}")
 
-    # Load data
-    data = load_game_data(game_seed)
+    # Load data from SQLite
+    data, conn = load_game_data_sqlite(game_seed)
     final_data = get_final_turn_data(data)
     cumulative = get_cumulative_stats(data)
+    timeline = get_etac_timeline(conn)
     max_turn = max(int(row['turn']) for row in data)
 
     # Print all tables
+    print_etac_analysis(timeline, cumulative, data)
     print_final_fleet_composition(final_data, cumulative, max_turn)
-    print_ground_forces(final_data, max_turn)
-    print_facilities_and_defenses(final_data, max_turn)
-    print_combat_losses(cumulative, final_data)
-    print_production_summary(cumulative, final_data)
     print_territorial_control(cumulative, final_data, data)
     print_economy_and_prestige(final_data)
-    detect_red_flags(data, cumulative, final_data)
+
+    conn.close()
 
     print("\n" + "="*100)
     print("END OF ANALYSIS")

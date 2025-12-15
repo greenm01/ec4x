@@ -1023,7 +1023,7 @@ proc executeColonizeOrder(
 ): OrderOutcome =
   ## Order 12: Establish colony with ETAC
   ## Reserved for ETAC under fleet escort per operations.md:6.2.13
-  ## Colonization logic handled in resolve.nim
+  ## Calls resolveColonizationOrder to execute actual colonization
 
   if order.targetSystem.isNone:
     return OrderOutcome.Failed
@@ -1040,6 +1040,12 @@ proc executeColonizeOrder(
 
   if not hasLoadedETAC:
     return OrderOutcome.Failed
+
+  # Execute actual colonization using centralized colonization logic
+  var colonizationEvents: seq[resolution_types.GameEvent] = @[]
+  fleet_orders.resolveColonizationOrder(state, fleet.owner, order,
+                                        colonizationEvents)
+  events.add(colonizationEvents)
 
   return OrderOutcome.Success
 

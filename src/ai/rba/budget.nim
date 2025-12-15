@@ -1011,12 +1011,30 @@ proc generateBuildOrdersWithBudget*(controller: AIController,
             buildColony = some(colony)
             break
 
-    # Priority 2: Any suitable colony
+    # Priority 2: Smart colony selection based on ship type
     if buildColony.isNone:
-      for colony in myColonies:
-        if not requiresFacility or colony.shipyards.len > 0 or colony.spaceports.len > 0:
-          buildColony = some(colony)
-          break
+      # For ETACs: Prioritize FRONTIER colonies (new colonies with only spaceports)
+      # This enables wave-based expansion: new colonies build ETACs immediately
+      # Heuristic: Homeworlds have BOTH spaceports AND shipyards,
+      #            Frontier colonies have ONLY spaceports
+      if req.shipClass.isSome and req.shipClass.get() == ShipClass.ETAC:
+        # Try frontier colonies FIRST (spaceports only, no shipyards)
+        for colony in myColonies:
+          if colony.spaceports.len > 0 and colony.shipyards.len == 0:
+            buildColony = some(colony)
+            break
+        # Fallback: If no frontier colonies, use any colony with facilities
+        if buildColony.isNone:
+          for colony in myColonies:
+            if colony.spaceports.len > 0 or colony.shipyards.len > 0:
+              buildColony = some(colony)
+              break
+      else:
+        # For other ships: Any colony with facilities (existing logic)
+        for colony in myColonies:
+          if not requiresFacility or colony.shipyards.len > 0 or colony.spaceports.len > 0:
+            buildColony = some(colony)
+            break
 
     if buildColony.isNone:
       logWarn(LogCategory.lcAI,

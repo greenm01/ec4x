@@ -93,7 +93,7 @@ proc identifyMergerGroups*(
     var combatFleets: seq[FleetAnalysis] = @[]
 
     for fleetAnalysis in fleetsAtLocation:
-      # Skip ETACs - they have AutoColonize standing orders that need stable fleet IDs
+      # Skip ETACs - they're managed by ETAC manager and need stable fleet IDs
       # Check both the analysis flag AND the actual fleet data
       if fleetAnalysis.hasETACs:
         continue
@@ -237,6 +237,11 @@ proc identifyDetachmentOpportunities*(
   # Act 1: Aggressive splitting for exploration
   if currentAct == ai_types.GameAct.Act1_LandGrab:
     for analysis in analyses:
+      # ETAC FLEETS: Skip entirely - Eparch manages all ETAC operations
+      # Domestikos should not modify fleets containing ETACs
+      if analysis.hasETACs:
+        continue
+
       # Split fleets with 4+ ships (over-utilized for exploration)
       if analysis.shipCount >= 4 and
          (analysis.utilization == FleetUtilization.Idle or
@@ -263,6 +268,11 @@ proc identifyDetachmentOpportunities*(
   # Act 2+: Detach scouts from combat fleets for intel ops
   else:
     for analysis in analyses:
+      # ETAC FLEETS: Skip entirely - Eparch manages all ETAC operations
+      # Domestikos should not modify fleets containing ETACs
+      if analysis.hasETACs:
+        continue
+
       # Combat fleets with scouts should detach them for recon
       if analysis.hasCombatShips and analysis.hasScouts and analysis.shipCount >= 3:
         # Check if at friendly colony
@@ -334,9 +344,10 @@ proc identifyTransferOpportunities*(
   ## Identify ship transfer opportunities between co-located fleets
   ##
   ## Transfer criteria:
-  ## - Optimize invasion fleet composition (need ETACs)
   ## - Balance combat power between defensive fleets
   ## - Consolidate specialized units (all scouts together)
+  ##
+  ## IMPORTANT: ETACs are NEVER transferred - they are solely for colonization
 
   result = @[]
 
@@ -356,32 +367,11 @@ proc identifyTransferOpportunities*(
     if not isSystemFriendlyColony(filtered, systemId, houseId):
       continue
 
-    # Look for invasion fleets without ETACs near fleets with ETACs
-    var invasionFleets: seq[FleetAnalysis] = @[]
-    var etacFleets: seq[FleetAnalysis] = @[]
-
-    for fleet in fleetsAtLocation:
-      # Identify potential invasion fleets (combat ships, no ETACs)
-      if fleet.hasCombatShips and not fleet.hasETACs:
-        invasionFleets.add(fleet)
-      # Identify fleets with available ETACs
-      elif fleet.hasETACs:
-        etacFleets.add(fleet)
-
-    # Transfer ETACs to invasion fleets
-    for invasionFleet in invasionFleets:
-      for etacFleet in etacFleets:
-        if etacFleet.shipCount >= 2:  # Don't strip last ship
-          # Transfer first ETAC to invasion fleet
-          # Note: Would need ship type detection to find ETAC index
-          result.add(TransferPlan(
-            sourceFleetId: etacFleet.fleetId,
-            targetFleetId: invasionFleet.fleetId,
-            shipIndices: @[0],  # TODO: Find actual ETAC index
-            location: systemId,
-            reason: "Transfer ETAC to invasion fleet"
-          ))
-          break  # One ETAC per invasion fleet
+    # REMOVED: ETAC transfer logic
+    # ETACs are ONLY for colonization, never for invasions
+    # Invasions use troop transports, not ETACs
+    # ETACs should never be transferred out of their colonization fleets
+    discard  # Placeholder to keep structure
 
 proc generateTransferCommands*(
   filtered: FilteredGameState,

@@ -365,6 +365,7 @@ type
     scienceFeedback*: Option[ScienceFeedback]  # Treasurer feedback on research allocation
     drungariusFeedback*: Option[DrungariusFeedback]  # Treasurer feedback on espionage budget
     eparchFeedback*: Option[EparchFeedback]  # Treasurer feedback on economic budget
+    eparchColonizationOrders*: seq[FleetOrder]  # Eparch colonization orders (stored Phase 1, executed Phase 6.9)
 
     # GOAP Phase 4: Strategic planning integration (MVP: Fleet + Build domains)
     goapEnabled*: bool  # Quick check if GOAP is enabled

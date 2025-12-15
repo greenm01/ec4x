@@ -37,6 +37,7 @@ type
     populationTransfers*: seq[PopulationTransferOrder]  # Space Guild transfers
     terraformOrders*: seq[TerraformOrder]                # Terraforming projects
     colonyManagement*: seq[ColonyManagementOrder]        # Colony-level management (tax rates, auto-repair, etc.)
+    standingOrders*: Table[FleetId, StandingOrder]       # Persistent fleet behaviors (AutoColonize, DefendSystem, etc.)
 
     # Espionage budget allocation (diplomacy.md:8.2)
     espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
@@ -173,8 +174,14 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
   of FleetOrderType.Colonize:
     # Check fleet has ETAC
     # ARCHITECTURE FIX: ETACs are spacelift ships (fleet.spaceLiftShips), not squadrons
+    logDebug(LogCategory.lcOrders,
+            &"{issuingHouse} Validating Colonize order for {order.fleetId} at " &
+            &"{fleet.location} ({fleet.spaceLiftShips.len} spacelift ships)")
     var hasETAC = false
     for ship in fleet.spaceLiftShips:
+      logDebug(LogCategory.lcOrders,
+              &"  Ship {ship.id}: class={ship.shipClass}, crippled={ship.isCrippled}, " &
+              &"cargo={ship.cargo.cargoType}/{ship.cargo.quantity}")
       if ship.shipClass == ShipClass.ETAC:
         if not ship.isCrippled:
           hasETAC = true

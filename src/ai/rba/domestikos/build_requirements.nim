@@ -491,134 +491,8 @@ proc assessReconnaissanceGaps*(
               &"{staleIntelSystems.len} stale systems)"
     ))
 
-proc assessExpansionNeeds*(
-  filtered: FilteredGameState,
-  controller: AIController,
-  currentAct: GameAct
-): seq[BuildRequirement] =
-  ## Intelligence-driven ETAC requirements for colonization
-  ## Active in Act 1 ONLY to prevent late-game ETAC spam.
-  result = @[]
-
-  # Act 1 (Land Grab): Expansion is primary objective
-  # Acts 2-4: Stop proactive ETAC production, focus on military/economy
-  if currentAct != ai_common_types.GameAct.Act1_LandGrab:
-    return
-
-  # Count uncolonized visible systems
-  var uncolonizedVisible = 0
-  for systemId, visSystem in filtered.visibleSystems:
-    # Check if this system has any colony (ours or enemy)
-    var hasColony = false
-
-    # Check our colonies
-    for colony in filtered.ownColonies:
-      if colony.systemId == systemId:
-        hasColony = true
-        break
-
-    # Check visible enemy colonies
-    if not hasColony:
-      for visColony in filtered.visibleColonies:
-        if visColony.systemId == systemId:
-          hasColony = true
-          break
-
-    if not hasColony:
-      uncolonizedVisible += 1
-
-  if uncolonizedVisible == 0:
-    return  # No targets
-
-  # Count ETACs by status: total, under construction, ready to colonize
-  var etacCount = 0
-  var readyETACs = 0  # ETACs with loaded PTU ready to colonize
-  var emptyETACs = 0  # ETACs returning home for PTU refill
-
-  for fleet in filtered.ownFleets:
-    for ship in fleet.spaceLiftShips:
-      if ship.shipClass == ShipClass.ETAC:
-        etacCount += 1
-        # Check if ETAC has colonists loaded (ready to colonize)
-        if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-          readyETACs += 1
-        else:
-          emptyETACs += 1
-
-  # Also count ETACs under construction (prevents duplicate orders)
-  for colony in filtered.ownColonies:
-    if colony.underConstruction.isSome:
-      let project = colony.underConstruction.get()
-      if project.projectType == econ_types.ConstructionType.Ship and
-         project.itemId == "ETAC":
-        etacCount += 1
-    # Also check construction queue
-    for queuedProject in colony.constructionQueue:
-      if queuedProject.projectType == econ_types.ConstructionType.Ship and
-         queuedProject.itemId == "ETAC":
-        etacCount += 1
-
-  # Smart targeting: Build ETACs based on uncolonized systems and map size
-  # Dynamic cap scales with map rings: N players = N rings + 1 center hub
-  # Formula accounts for 3 PTU ETAC capacity (each ETAC colonizes 3 systems)
-  # Reduced from ~5 per house (for 2 PTU) to ~3 per house (for 3 PTU)
-  let cfg = globalRBAConfig.domestikos
-  let ringsCount = filtered.starMap.numRings.int
-  let baseCapPerPlayer = max(3, (ringsCount + 2) div 2)  # Adjusted for 3 PTU capacity
-
-  # Calculate total systems for exponential decay
-  let totalSystems = filtered.starMap.systems.len
-
-  # Exponential decay: Build fewer ETACs as colonization progresses
-  # Threshold: Apply decay only when <80% systems remain uncolonized
-  # This allows fast early expansion, then scales down to prevent ETAC spam
-  # Example with 49/61 uncolonized (80%): No decay, full 3 ETACs
-  # Example with 30/61 uncolonized (49%): Scaled 0.61, factor 0.37 → 1 ETAC
-  # Example with 10/61 uncolonized (16%): Scaled 0.20, factor 0.04 → 0 ETACs
-  let uncolonizedRatio = uncolonizedVisible.float / totalSystems.float
-  let decayFactor = if uncolonizedRatio > 0.8:
-    1.0  # No decay while >80% uncolonized (early expansion)
-  else:
-    # Exponential decay when <80% uncolonized (late expansion)
-    let scaledRatio = uncolonizedRatio / 0.8
-    scaledRatio * scaledRatio  # Quadratic decay
-  let dynamicCap = max(1, (baseCapPerPlayer.float * decayFactor).int)
-
-  let targetETACs = if uncolonizedVisible > 0:
-    min(dynamicCap, etacCount + 2)  # Never queue more than +2 at once
-  else:
-    etacCount
-
-  logDebug(LogCategory.lcAI,
-           &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
-           &"uncolonizedVisible {uncolonizedVisible}, dynamicCap {dynamicCap}, " &
-           &"decay {decayFactor:.3f}")
-
-  if etacCount < targetETACs:
-    let etacCost = getShipConstructionCost(ShipClass.ETAC)
-    let needed = min(targetETACs - etacCount, globalRBAConfig.domestikos.max_etacs_queued)
-
-    if needed > 0:
-      let priority = case currentAct
-        of ai_common_types.GameAct.Act1_LandGrab:
-          RequirementPriority.High  # Land grab urgency
-        of ai_common_types.GameAct.Act2_RisingTensions:
-          RequirementPriority.Medium  # Balanced expansion
-        of ai_common_types.GameAct.Act3_TotalWar:
-          RequirementPriority.Low  # Military priority, but finish expansion
-        else:
-          RequirementPriority.Low
-
-      result.add(BuildRequirement(
-        requirementType: RequirementType.ExpansionSupport,
-        priority: priority,
-        shipClass: some(ShipClass.ETAC),
-        quantity: needed,
-        buildObjective: ai_common_types.BuildObjective.Expansion,
-        estimatedCost: etacCost * needed,
-        reason: &"Expansion (have {etacCount}/{targetETACs} ETACs, " &
-                &"{uncolonizedVisible} systems visible)"
-      ))
+# assessExpansionNeeds removed - ETACs now managed by Eparch (economic advisor)
+# See src/ai/rba/eparch/expansion.nim for ETAC construction and colonization
 
 proc assessOffensiveReadiness*(
   filtered: FilteredGameState,
@@ -1649,9 +1523,7 @@ proc generateBuildRequirements*(
   let reconGaps = assessReconnaissanceGaps(filtered, controller, currentAct, intelSnapshot)
   requirements.add(reconGaps)
 
-  # Intelligence-driven expansion requirements (ETACs)
-  let expansionNeeds = assessExpansionNeeds(filtered, controller, currentAct)
-  requirements.add(expansionNeeds)
+  # ETACs now managed by Eparch (economic advisor) - removed from Domestikos
 
   # Personality-modulated offensive requirements (transports, marines)
   let offensiveNeeds = assessOffensiveReadiness(filtered, controller, currentAct, intelSnapshot)
@@ -1720,13 +1592,7 @@ proc generateBuildRequirements*(
            &"affordable={affordableFillerCount} fillers ({currentAct})")
 
   # STEP 2: Generate capacity fillers using 20-slot budget-matched rotation
-  # Track ETAC requirements generated in THIS turn (prevents generating 9 ETACs in one loop)
-  # CRITICAL: Count ETACs already requested by assessExpansionNeeds() (prevents double-building)
-  var etacsGeneratedThisTurn = 0
-  for req in expansionNeeds:
-    if req.shipClass.isSome and req.shipClass.get() == ShipClass.ETAC:
-      etacsGeneratedThisTurn += req.quantity
-
+  # ETACs now managed by Eparch - no need to track here
   # Starbases moved to Eparch (facilities, not ships)
   # No longer tracked in capacity filler - Eparch handles facility construction
 
@@ -1761,61 +1627,11 @@ proc generateBuildRequirements*(
     let slot = i mod 20
     case slot
     of 0..8:  # 45% Expansion/Military (9 slots)
-      # Count ETACs in fleets + under construction + queued
-      var currentETACs = 0
-      for fleet in filtered.ownFleets:
-        currentETACs += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.ETAC)
+      # ETACs now managed by Eparch (economic advisor) - removed from capacity fillers
+      # Capacity fillers focus on military ship production only
 
-      # CRITICAL: Also count ETACs under construction (prevents treadmill)
-      for colony in filtered.ownColonies:
-        if colony.underConstruction.isSome:
-          let project = colony.underConstruction.get()
-          if project.projectType == econ_types.ConstructionType.Ship and
-             project.itemId == "ETAC":
-            currentETACs += 1
-        # Also check construction queue
-        for queuedProject in colony.constructionQueue:
-          if queuedProject.projectType == econ_types.ConstructionType.Ship and
-             queuedProject.itemId == "ETAC":
-            currentETACs += 1
-
-      # CRITICAL: Add ETACs already generated THIS turn (prevents slot 0-8 each making an ETAC)
-      currentETACs += etacsGeneratedThisTurn
-
-      # Dynamic ETAC cap: min(playerCount, uncolonizedSystems/2)
-      # Count uncolonized systems from visible map (same logic as assessExpansionNeeds)
-      var uncolonizedVisible = 0
-      for systemId, visSystem in filtered.visibleSystems:
-        var hasColony = false
-        for colony in filtered.ownColonies:
-          if colony.systemId == systemId:
-            hasColony = true
-            break
-        if not hasColony:
-          for visColony in filtered.visibleColonies:
-            if visColony.systemId == systemId:
-              hasColony = true
-              break
-        if not hasColony:
-          uncolonizedVisible += 1
-
-      let etacCap = min(filtered.starMap.playerCount, max(1, uncolonizedVisible div 2))
-
-      logDebug(LogCategory.lcAI, &"ETAC cap: {currentETACs}/{etacCap} (slot {slot}, uncolonized={uncolonizedVisible}, turn reqs: {etacsGeneratedThisTurn})")
-
-      # If under cap: build ETAC (cap scales with uncolonized systems, no Act restriction)
-      # Keep building ETACs as long as there are systems to colonize
-      if currentETACs < etacCap:
-        logDebug(LogCategory.lcAI, &"Building ETAC {currentETACs + 1}/{etacCap}")
-        shipClass = some(ShipClass.ETAC)
-        objective = BuildObjective.Expansion
-        reason = &"Expansion (ETAC {currentETACs + 1}/{etacCap})"
-        estimatedCost = 25
-        requirementType = RequirementType.ExpansionSupport
-        etacsGeneratedThisTurn += 1
-      else:
-        # At cap: build best available military ship based on CST tech
-        # Check from most powerful to least, use first available
+      # Build best available military ship based on CST tech
+      # Check from most powerful to least, use first available
         let candidates = case currentAct
           of GameAct.Act1_LandGrab:
             # Act 1: Light escorts only (no Cruiser/Battlecruiser until Act 2)
@@ -1841,7 +1657,7 @@ proc generateBuildRequirements*(
                     else:
                       some(ShipClass.Corvette)  # Fallback if no affordable option
         objective = BuildObjective.Military
-        reason = &"Military (ETACs at cap {etacCap})"
+        reason = &"Military capacity filler"
         estimatedCost = getShipConstructionCost(shipClass.get())
         requirementType = RequirementType.OffensivePrep
 

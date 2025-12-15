@@ -43,9 +43,9 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     owner = owner,
     location = location
   )
-  # Load starting PTU for colonization
+  # Load starting PTU for colonization (one-time consumable: 3 PTU foundation colony)
   etac1.cargo.cargoType = CargoType.Colonists
-  etac1.cargo.quantity = 1
+  etac1.cargo.quantity = 3
   result.add(Fleet(
     id: (&"{owner}_fleet1").FleetId,
     owner: owner,
@@ -69,9 +69,9 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     owner = owner,
     location = location
   )
-  # Load starting PTU for colonization
+  # Load starting PTU for colonization (one-time consumable: 3 PTU foundation colony)
   etac2.cargo.cargoType = CargoType.Colonists
-  etac2.cargo.quantity = 1
+  etac2.cargo.quantity = 3
   result.add(Fleet(
     id: (&"{owner}_fleet2").FleetId,
     owner: owner,
@@ -80,7 +80,33 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     spaceLiftShips: @[etac2]
   ))
 
-  # Fleet 3: Destroyer
+  # Fleet 3: ETAC + Light Cruiser (3rd ETAC fleet per plan)
+  let cruiser3 = createSquadron(
+    shipClass = ShipClass.LightCruiser,
+    techLevel = 1,
+    id = (&"{owner}_cruiser_sq3").SquadronId,
+    owner = owner,
+    location = location,
+    isCrippled = false
+  )
+  var etac3 = newSpaceLiftShip(
+    id = &"{owner}_ETAC_3",
+    shipClass = ShipClass.ETAC,
+    owner = owner,
+    location = location
+  )
+  # Load starting PTU for colonization (one-time consumable: 3 PTU foundation colony)
+  etac3.cargo.cargoType = CargoType.Colonists
+  etac3.cargo.quantity = 3
+  result.add(Fleet(
+    id: (&"{owner}_fleet3").FleetId,
+    owner: owner,
+    location: location,
+    squadrons: @[cruiser3],
+    spaceLiftShips: @[etac3]
+  ))
+
+  # Fleet 4: Destroyer
   let destroyer1 = createSquadron(
     shipClass = ShipClass.Destroyer,
     techLevel = 1,
@@ -90,14 +116,14 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     isCrippled = false
   )
   result.add(Fleet(
-    id: (&"{owner}_fleet3").FleetId,
+    id: (&"{owner}_fleet4").FleetId,
     owner: owner,
     location: location,
     squadrons: @[destroyer1],
     spaceLiftShips: @[]
   ))
 
-  # Fleet 4: Destroyer
+  # Fleet 5: Destroyer
   let destroyer2 = createSquadron(
     shipClass = ShipClass.Destroyer,
     techLevel = 1,
@@ -107,7 +133,7 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     isCrippled = false
   )
   result.add(Fleet(
-    id: (&"{owner}_fleet4").FleetId,
+    id: (&"{owner}_fleet5").FleetId,
     owner: owner,
     location: location,
     squadrons: @[destroyer2],
@@ -150,6 +176,7 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     turn: 1,
     phase: GamePhase.Active,
     houses: initTable[HouseId, House](),
+    homeworlds: initTable[HouseId, SystemId](),  # Track homeworld per house
     colonies: initTable[SystemId, Colony](),
     fleets: initTable[FleetId, Fleet](),
     fleetOrders: initTable[FleetId, FleetOrder](),
@@ -184,6 +211,9 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
     # Create home colony
     result.colonies[homeSystemId] = colony.createHomeColony(homeSystemId, houseId)
 
+    # Track homeworld system for this house (used for ETAC build requirements)
+    result.homeworlds[houseId] = homeSystemId
+
     # BALANCE FIX: Normalize starting system quality to ensure fairness
     # Override procedural generation to give all players identical starting conditions
     result.starMap.systems[homeSystemId].planetClass = PlanetClass.Eden
@@ -210,7 +240,7 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
       activeConstructions: @[]
     ))
 
-    # Create starting fleets at homeworld (4 fleets matching original EC)
+    # Create starting fleets at homeworld (5 fleets: 3 ETAC + 2 scout)
     let startingFleets = createStartingFleets(houseId, homeSystemId)
     for fleet in startingFleets:
       result.fleets[fleet.id] = fleet

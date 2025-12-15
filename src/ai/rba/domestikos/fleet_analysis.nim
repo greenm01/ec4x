@@ -51,6 +51,13 @@ proc analyzeFleetUtilization*(
       else:
         analysis.hasCombatShips = true
 
+    # CRITICAL FIX: Check spaceLiftShips for ETACs (they're not squadrons!)
+    # ETACs are civilian colonization vessels, not military squadrons
+    for ship in fleet.spaceLiftShips:
+      analysis.shipCount += 1
+      if ship.shipClass == ShipClass.ETAC:
+        analysis.hasETACs = true
+
     # Determine utilization based on orders
     # CRITICAL: Check persistent active orders FIRST (from previous turns)
     # ETAC fleets with any active orders should not be reassigned by Domestikos
@@ -79,8 +86,7 @@ proc analyzeFleetUtilization*(
       of StandingOrderType.PatrolRoute:
         # Patrolling - typically optimal
         analysis.utilization = FleetUtilization.Optimal
-      of StandingOrderType.AutoRepair, StandingOrderType.AutoEvade,
-         StandingOrderType.AutoColonize, StandingOrderType.AutoReinforce,
+      of StandingOrderType.AutoRepair, StandingOrderType.AutoReinforce,
          StandingOrderType.BlockadeTarget:
         # Special orders - don't touch
         analysis.utilization = FleetUtilization.Tactical

@@ -1,4 +1,5 @@
 Processing: src/core.nim
+Processing: src/c_api/engine_ffi.nim
 Processing: src/cli/ec4x.nim
 Processing: src/cli/commands/data.nim
 Processing: src/cli/commands/analyze.nim
@@ -20,13 +21,13 @@ Processing: src/ai/analysis/diagnostics.nim
 Processing: src/ai/analysis/game_setup.nim
 Processing: src/ai/analysis/run_simulation.nim
 Processing: src/ai/analysis/diagnostics/logothete_collector.nim
-Processing: src/ai/analysis/diagnostics/basileus_collector.nim
-Processing: src/ai/analysis/diagnostics/eparch_collector.nim
 Processing: src/ai/analysis/diagnostics/protostrator_collector.nim
-Processing: src/ai/analysis/diagnostics/csv_writer.nim
-Processing: src/ai/analysis/diagnostics/domestikos_collector.nim
 Processing: src/ai/analysis/diagnostics/drungarius_collector.nim
+Processing: src/ai/analysis/diagnostics/eparch_collector.nim
+Processing: src/ai/analysis/diagnostics/basileus_collector.nim
+Processing: src/ai/analysis/diagnostics/domestikos_collector.nim
 Processing: src/ai/analysis/diagnostics/types.nim
+Processing: src/ai/analysis/diagnostics/csv_writer.nim
 Processing: src/ai/analysis/diagnostics/orchestrator.nim
 Processing: src/ai/analysis/formatters/compact.nim
 Processing: src/ai/analysis/formatters/markdown.nim
@@ -44,22 +45,23 @@ Processing: src/ai/rba/drungarius.nim
 Processing: src/ai/rba/eparch.nim
 Processing: src/ai/rba/logothete.nim
 Processing: src/ai/rba/protostrator.nim
-Processing: src/ai/rba/tactical.nim
 Processing: src/ai/rba/treasurer.nim
 Processing: src/ai/rba/strategic.nim
 Processing: src/ai/rba/tactical_assessment.nim
 Processing: src/ai/rba/player.nim
 Processing: src/ai/rba/phase4_feedback.nim
 Processing: src/ai/rba/domestikos.nim
-Processing: src/ai/rba/config.nim
+Processing: src/ai/rba/event_subscription.nim
+Processing: src/ai/rba/logistics.nim
+Processing: src/ai/rba/budget.nim
+Processing: src/ai/rba/intelligence.nim
 Processing: src/ai/rba/controller_types.nim
 Processing: src/ai/rba/controller.nim
-Processing: src/ai/rba/intelligence.nim
-Processing: src/ai/rba/event_subscription.nim
+Processing: src/ai/rba/fleet_organization.nim
 Processing: src/ai/rba/standing_orders_manager.nim
 Processing: src/ai/rba/orders.nim
-Processing: src/ai/rba/budget.nim
-Processing: src/ai/rba/logistics.nim
+Processing: src/ai/rba/tactical.nim
+Processing: src/ai/rba/config.nim
 Processing: src/ai/rba/goap/integration/conversion.nim
 Processing: src/ai/rba/goap/integration/plan_tracking.nim
 Processing: src/ai/rba/goap/integration/replanning.nim
@@ -94,8 +96,8 @@ Processing: src/ai/rba/logothete/requirements.nim
 Processing: src/ai/rba/logothete/counter_tech.nim
 Processing: src/ai/rba/eparch/terraforming.nim
 Processing: src/ai/rba/eparch/industrial_investment.nim
-Processing: src/ai/rba/eparch/requirements.nim
 Processing: src/ai/rba/eparch/economic_requirements.nim
+Processing: src/ai/rba/eparch/requirements.nim
 Processing: src/ai/rba/drungarius/operations.nim
 Processing: src/ai/rba/drungarius/threat_assessment.nim
 Processing: src/ai/rba/drungarius/execution.nim
@@ -108,35 +110,33 @@ Processing: src/ai/rba/drungarius/analyzers/construction_trends_analyzer.nim
 Processing: src/ai/rba/drungarius/analyzers/surveillance_analyzer.nim
 Processing: src/ai/rba/drungarius/analyzers/counterintel_analyzer.nim
 Processing: src/ai/rba/drungarius/analyzers/diplomatic_events_analyzer.nim
-Processing: src/ai/rba/drungarius/analyzers/colony_analyzer.nim
 Processing: src/ai/rba/drungarius/analyzers/combat_analyzer.nim
 Processing: src/ai/rba/drungarius/analyzers/system_analyzer.nim
-Processing: src/ai/rba/domestikos/fleet_analysis.nim
+Processing: src/ai/rba/drungarius/analyzers/colony_analyzer.nim
 Processing: src/ai/rba/domestikos/staging.nim
-Processing: src/ai/rba/domestikos/fleet_management.nim
 Processing: src/ai/rba/domestikos/intelligence_ops.nim
-Processing: src/ai/rba/domestikos/unit_priority.nim
 Processing: src/ai/rba/domestikos/combat_doctrine_adapter.nim
 Processing: src/ai/rba/domestikos/exploration_ops.nim
-Processing: src/ai/rba/domestikos/offensive_ops.nim
 Processing: src/ai/rba/domestikos/defensive_ops.nim
+Processing: src/ai/rba/domestikos/unit_priority.nim
+Processing: src/ai/rba/domestikos/fleet_analysis.nim
+Processing: src/ai/rba/domestikos/fleet_management.nim
+Processing: src/ai/rba/domestikos/offensive_ops.nim
 Processing: src/ai/rba/domestikos/build_requirements.nim
 Processing: src/ai/rba/domestikos/requirements/types.nim
 Processing: src/ai/rba/domestikos/requirements/defense_gaps.nim
 Processing: src/ai/rba/domestikos/requirements/standing_order_support.nim
 Processing: src/ai/rba/domestikos/requirements/reprioritization.nim
-Processing: src/ai/rba/treasurer/allocation.nim
-Processing: src/ai/rba/treasurer/phase2_mediation.nim
 Processing: src/ai/rba/treasurer/multi_advisor.nim
 Processing: src/ai/rba/treasurer/consultation.nim
 Processing: src/ai/rba/treasurer/phase1_5_goap.nim
+Processing: src/ai/rba/treasurer/phase2_mediation.nim
+Processing: src/ai/rba/treasurer/allocation.nim
 Processing: src/ai/rba/treasurer/budget/feedback.nim
 Processing: src/ai/rba/treasurer/budget/splitting.nim
 Processing: src/ai/rba/protostrator/diplomatic_requirements.nim
-Processing: src/ai/rba/protostrator/requirements.nim
 Processing: src/ai/rba/protostrator/assessment.nim
-Processing: src/ai/rba/orders/colony_management.nim
-Processing: src/ai/rba/orders/utils.nim
+Processing: src/ai/rba/protostrator/requirements.nim
 Processing: src/ai/rba/orders/phase0_intelligence.nim
 Processing: src/ai/rba/orders/phase3_execution.nim
 Processing: src/ai/rba/orders/phase1_requirements.nim
@@ -144,6 +144,8 @@ Processing: src/ai/rba/orders/phase2_mediation.nim
 Processing: src/ai/rba/orders/phase4_feedback.nim
 Processing: src/ai/rba/orders/phase1_5_goap.nim
 Processing: src/ai/rba/orders/phase5_strategic.nim
+Processing: src/ai/rba/orders/utils.nim
+Processing: src/ai/rba/orders/colony_management.nim
 Processing: src/ai/rba/basileus/execution.nim
 Processing: src/ai/rba/basileus/mediation.nim
 Processing: src/ai/rba/basileus/personality.nim
@@ -170,29 +172,33 @@ Processing: src/transport/nostr/client.nim
 Processing: src/transport/nostr/types.nim
 Processing: src/engine/ship.nim
 Processing: src/engine/logger.nim
-Processing: src/engine/state_helpers.nim
 Processing: src/engine/validation.nim
 Processing: src/engine/ai_special_modes.nim
 Processing: src/engine/setup.nim
 Processing: src/engine/salvage.nim
 Processing: src/engine/config.nim
 Processing: src/engine/squadron.nim
-Processing: src/engine/fleet.nim
 Processing: src/engine/prestige.nim
-Processing: src/engine/orders.nim
-Processing: src/engine/resolve.nim
-Processing: src/engine/starmap.nim
-Processing: src/engine/gamestate.nim
-Processing: src/engine/standing_orders.nim
-Processing: src/engine/iterators.nim
 Processing: src/engine/order_types.nim
 Processing: src/engine/fog_of_war.nim
 Processing: src/engine/spacelift.nim
+Processing: src/engine/orders.nim
+Processing: src/engine/iterators.nim
+Processing: src/engine/state_helpers.nim
+Processing: src/engine/fleet.nim
+Processing: src/engine/gamestate.nim
+Processing: src/engine/resolve.nim
+Processing: src/engine/starmap.nim
+Processing: src/engine/standing_orders.nim
+Processing: src/engine/persistence/types.nim
+Processing: src/engine/persistence/schema.nim
+Processing: src/engine/persistence/queries.nim
+Processing: src/engine/persistence/writer.nim
 Processing: src/engine/initialization/validation.nim
-Processing: src/engine/initialization/colony.nim
 Processing: src/engine/initialization/config_resolver.nim
 Processing: src/engine/initialization/fleet.nim
 Processing: src/engine/initialization/house.nim
+Processing: src/engine/initialization/colony.nim
 Processing: src/engine/initialization/game.nim
 Processing: src/engine/prestige/sources.nim
 Processing: src/engine/prestige/events.nim
@@ -209,50 +215,49 @@ Processing: src/engine/resolution/simultaneous_resolver.nim
 Processing: src/engine/resolution/simultaneous_blockade.nim
 Processing: src/engine/resolution/construction.nim
 Processing: src/engine/resolution/simultaneous_types.nim
-Processing: src/engine/resolution/economy_resolution.nim
 Processing: src/engine/resolution/commissioning.nim
-Processing: src/engine/resolution/combat_resolution.nim
-Processing: src/engine/resolution/diplomatic_resolution.nim
-Processing: src/engine/resolution/automation.nim
 Processing: src/engine/resolution/simultaneous_planetary.nim
-Processing: src/engine/resolution/simultaneous_espionage.nim
-Processing: src/engine/resolution/fleet_orders.nim
-Processing: src/engine/resolution/types.nim
+Processing: src/engine/resolution/order_cleanup.nim
 Processing: src/engine/resolution/fleet_order_execution.nim
 Processing: src/engine/resolution/simultaneous.nim
+Processing: src/engine/resolution/automation.nim
+Processing: src/engine/resolution/simultaneous_espionage.nim
+Processing: src/engine/resolution/combat_resolution.nim
+Processing: src/engine/resolution/types.nim
+Processing: src/engine/resolution/fleet_orders.nim
+Processing: src/engine/resolution/economy_resolution.nim
+Processing: src/engine/resolution/diplomatic_resolution.nim
 Processing: src/engine/resolution/event_factory/alerts.nim
 Processing: src/engine/resolution/event_factory/commissioning.nim
 Processing: src/engine/resolution/event_factory/economic.nim
 Processing: src/engine/resolution/event_factory/prestige.nim
 Processing: src/engine/resolution/event_factory/victory.nim
-Processing: src/engine/resolution/event_factory/intelligence.nim
-Processing: src/engine/resolution/event_factory/military.nim
 Processing: src/engine/resolution/event_factory/init.nim
-Processing: src/engine/resolution/event_factory/fleet_ops.nim
 Processing: src/engine/resolution/event_factory/diplomatic.nim
 Processing: src/engine/resolution/event_factory/orders.nim
+Processing: src/engine/resolution/event_factory/fleet_ops.nim
+Processing: src/engine/resolution/event_factory/military.nim
+Processing: src/engine/resolution/event_factory/intelligence.nim
 Processing: src/engine/resolution/phases/income_phase.nim
+Processing: src/engine/resolution/phases/conflict_phase.nim
 Processing: src/engine/resolution/phases/maintenance_phase.nim
 Processing: src/engine/resolution/phases/command_phase.nim
-Processing: src/engine/resolution/phases/conflict_phase.nim
 Processing: src/engine/population/types.nim
 Processing: src/engine/population/transfers.nim
 Processing: src/engine/blockade/engine.nim
-Processing: src/engine/commands/spy_scout_orders.nim
 Processing: src/engine/commands/zero_turn_commands.nim
 Processing: src/engine/commands/executor.nim
 Processing: src/engine/intelligence/blockade_intel.nim
 Processing: src/engine/intelligence/espionage_intel.nim
-Processing: src/engine/intelligence/detection.nim
 Processing: src/engine/intelligence/diplomatic_intel.nim
-Processing: src/engine/intelligence/types.nim
 Processing: src/engine/intelligence/combat_intel.nim
 Processing: src/engine/intelligence/corruption.nim
 Processing: src/engine/intelligence/generator.nim
 Processing: src/engine/intelligence/scout_intel.nim
 Processing: src/engine/intelligence/spy_resolution.nim
+Processing: src/engine/intelligence/detection.nim
+Processing: src/engine/intelligence/types.nim
 Processing: src/engine/intelligence/starbase_surveillance.nim
-Processing: src/engine/intelligence/spy_travel.nim
 Processing: src/engine/intelligence/event_processor/helpers.nim
 Processing: src/engine/intelligence/event_processor/init.nim
 Processing: src/engine/intelligence/event_processor/converters.nim
@@ -270,7 +275,6 @@ Processing: src/engine/diplomacy/types.nim
 Processing: src/engine/diplomacy/engine.nim
 Processing: src/engine/config/validators.nim
 Processing: src/engine/config/diplomacy_config.nim
-Processing: src/engine/config/espionage_config.nim
 Processing: src/engine/config/gameplay_config.nim
 Processing: src/engine/config/combat_config.nim
 Processing: src/engine/config/ground_units_config.nim
@@ -287,46 +291,48 @@ Processing: src/engine/config/economy_config.nim
 Processing: src/engine/config/game_setup_config.nim
 Processing: src/engine/config/military_config.nim
 Processing: src/engine/config/population_config.nim
+Processing: src/engine/config/population_growth_multiplier.nim
+Processing: src/engine/config/espionage_config.nim
 Processing: src/engine/research/costs.nim
 Processing: src/engine/research/types.nim
 Processing: src/engine/research/effects.nim
 Processing: src/engine/research/advancement.nim
-Processing: src/engine/economy/maintenance.nim
 Processing: src/engine/economy/facility_damage.nim
-Processing: src/engine/economy/maintenance_shortfall.nim
 Processing: src/engine/economy/production.nim
 Processing: src/engine/economy/types.nim
 Processing: src/engine/economy/repair_queue.nim
-Processing: src/engine/economy/income.nim
 Processing: src/engine/economy/projects.nim
 Processing: src/engine/economy/config_accessors.nim
-Processing: src/engine/economy/engine.nim
 Processing: src/engine/economy/facility_queue.nim
+Processing: src/engine/economy/income.nim
+Processing: src/engine/economy/engine.nim
+Processing: src/engine/economy/maintenance.nim
+Processing: src/engine/economy/maintenance_shortfall.nim
 Processing: src/engine/economy/capacity/planet_breakers.nim
-Processing: src/engine/economy/capacity/fighter.nim
 Processing: src/engine/economy/capacity/types.nim
-Processing: src/engine/economy/capacity/capital_squadrons.nim
 Processing: src/engine/economy/capacity/construction_docks.nim
-Processing: src/engine/economy/capacity/total_squadrons.nim
 Processing: src/engine/economy/capacity/carrier_hangar.nim
+Processing: src/engine/economy/capacity/capital_squadrons.nim
+Processing: src/engine/economy/capacity/fighter.nim
+Processing: src/engine/economy/capacity/total_squadrons.nim
 Processing: src/engine/combat/retreat.nim
-Processing: src/engine/combat/cer.nim
-Processing: src/engine/combat/resolution.nim
-Processing: src/engine/combat/starbase.nim
 Processing: src/engine/combat/ground.nim
 Processing: src/engine/combat/damage.nim
-Processing: src/engine/combat/engine.nim
 Processing: src/engine/combat/targeting.nim
 Processing: src/engine/combat/types.nim
+Processing: src/engine/combat/engine.nim
+Processing: src/engine/combat/resolution.nim
+Processing: src/engine/combat/cer.nim
+Processing: src/engine/combat/starbase.nim
 Processing: src/common/hex.nim
 Processing: src/common/system.nim
 Processing: src/common/logger.nim
-Processing: src/common/types/core.nim
 Processing: src/common/types/planets.nim
 Processing: src/common/types/combat.nim
 Processing: src/common/types/tech.nim
 Processing: src/common/types/units.nim
 Processing: src/common/types/diplomacy.nim
+Processing: src/common/types/core.nim
 {
   "procs": [
     {
@@ -638,16 +644,28 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc collectLogotheteMetrics*(state: GameState, houseId: HouseId,"
     },
     {
-      "module": "basileus_collector",
-      "sig": "proc collectBasileusMetrics*(state: GameState, houseId: HouseId,"
+      "module": "protostrator_collector",
+      "sig": "proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): DiagnosticMetrics"
+    },
+    {
+      "module": "drungarius_collector",
+      "sig": "proc collectDrungariusMetrics*(state: GameState, houseId: HouseId): DiagnosticMetrics"
     },
     {
       "module": "eparch_collector",
       "sig": "proc collectEparchMetrics*(state: GameState, houseId: HouseId,"
     },
     {
-      "module": "protostrator_collector",
-      "sig": "proc collectProtostratorMetrics*(state: GameState, houseId: HouseId): DiagnosticMetrics"
+      "module": "basileus_collector",
+      "sig": "proc collectBasileusMetrics*(state: GameState, houseId: HouseId,"
+    },
+    {
+      "module": "domestikos_collector",
+      "sig": "proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,"
+    },
+    {
+      "module": "types",
+      "sig": "proc initDiagnosticMetrics*(turn: int, houseId: HouseId,"
     },
     {
       "module": "csv_writer",
@@ -660,18 +678,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "csv_writer",
       "sig": "proc writeDiagnosticsCSV*(filename: string, metrics: seq[DiagnosticMetrics])"
-    },
-    {
-      "module": "domestikos_collector",
-      "sig": "proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,"
-    },
-    {
-      "module": "drungarius_collector",
-      "sig": "proc collectDrungariusMetrics*(state: GameState, houseId: HouseId): DiagnosticMetrics"
-    },
-    {
-      "module": "types",
-      "sig": "proc initDiagnosticMetrics*(turn: int, houseId: HouseId,"
     },
     {
       "module": "orchestrator",
@@ -918,78 +924,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc exportTrainingExample*("
     },
     {
-      "module": "tactical",
-      "sig": "proc getOwnedColonies*(filtered: FilteredGameState, houseId: HouseId): seq[Colony]"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc isSingleScoutSquadron*(squadron: Squadron): bool"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc planCoordinatedOperation*(controller: var AIController, filtered: FilteredGameState,"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc updateOperationStatus*(controller: var AIController, filtered: FilteredGameState)"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc shouldExecuteOperation*(controller: AIController, op: CoordinatedOperation, turn: int): bool"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc removeCompletedOperations*(controller: var AIController, turn: int)"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc identifyImportantColonies*(controller: AIController, filtered: FilteredGameState): seq[SystemId]"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc getReserveForSystem*(controller: AIController, systemId: SystemId): Option[FleetId]"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGameState)"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc respondToThreats*(controller: var AIController, filtered: FilteredGameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]]"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameState)"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc syncFallbackRoutesToEngine*(controller: AIController, state: var GameState)"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc findFallbackSystem*(controller: AIController, currentSystem: SystemId): Option[SystemId]"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc identifyInvasionOpportunities*(controller: var AIController, filtered: FilteredGameState, currentAct: GameAct): seq[SystemId]"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState): int"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand): seq[FleetOrder]"
-    },
-    {
-      "module": "tactical",
-      "sig": "proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGameState,"
-    },
-    {
       "module": "strategic",
       "sig": "proc calculateDefensiveStrength*(filtered: FilteredGameState, systemId: SystemId): int"
     },
@@ -1038,86 +972,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc generateDomestikosOrders*("
     },
     {
-      "module": "config",
-      "sig": "proc validateRBAConfig*(config: RBAConfig)"
-    },
-    {
-      "module": "config",
-      "sig": "proc loadRBAConfig*(configPath: string"
-    },
-    {
-      "module": "config",
-      "sig": "proc reloadRBAConfig*()"
-    },
-    {
-      "module": "config",
-      "sig": "proc reloadRBAConfigFromPath*(configPath: string)"
-    },
-    {
-      "module": "controller_types",
-      "sig": "proc newPlanTracker*(): PlanTracker"
-    },
-    {
-      "module": "controller",
-      "sig": "proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality"
-    },
-    {
-      "module": "controller",
-      "sig": "proc newAIController*(houseId: HouseId, strategy: AIStrategy, homeworld: SystemId"
-    },
-    {
-      "module": "controller",
-      "sig": "proc newAIControllerWithPersonality*(houseId: HouseId, personality: AIPersonality, homeworld: SystemId"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc identifyEnemyHomeworlds*(filtered: FilteredGameState): seq[SystemId]"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc needsReconnaissance*(filtered: FilteredGameState, targetSystem: SystemId): bool"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc isSystemColonized*(filtered: FilteredGameState, systemId: SystemId): bool"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc getColony*(filtered: FilteredGameState, systemId: SystemId): Option[Colony]"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc updateIntelligence*(controller: var AIController,"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc getIntelAge*(controller: AIController, systemId: SystemId,"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc needsReconnaissanceController*(controller: AIController,"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc findBestColonizationTarget*(controller: var AIController, filtered: FilteredGameState,"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): intel_types.EconomicIntelligence"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc countUncolonizedSystems*(filtered: FilteredGameState): int"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc calculateDistance*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId): int"
-    },
-    {
-      "module": "intelligence",
-      "sig": "proc countSharedBorders*(filtered: FilteredGameState, intelSnapshot: IntelligenceSnapshot, ownHouse: HouseId, targetHouse: HouseId): int"
-    },
-    {
       "module": "event_subscription",
       "sig": "proc newEventSubscription*(houseId: HouseId): EventSubscription"
     },
@@ -1160,114 +1014,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "event_subscription",
       "sig": "proc createDefaultRBASubscription*(houseId: HouseId): EventSubscription"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc findBestDrydockForRepair*(filtered: FilteredGameState,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createAutoRepairOrder*(fleet: Fleet, filtered: FilteredGameState,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createAutoEvadeOrder*(fleet: Fleet, fallbackSystem: SystemId,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createDefendSystemOrder*(fleet: Fleet, targetSystem: SystemId,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createAutoColonizeOrder*(fleet: Fleet, maxRange: int,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc getActiveDefenseOrders*("
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc getUndefendedSystemsWithOrders*("
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc assignStandingOrders*(controller: var AIController,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc findBestDrydockForRepair*(filtered: FilteredGameState, fleetLocation: SystemId): Option[SystemId]"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc findNearestUnclaimedSystem*(filtered: FilteredGameState,"
-    },
-    {
-      "module": "standing_orders_manager",
-      "sig": "proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,"
-    },
-    {
-      "module": "orders",
-      "sig": "proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand, events: seq[GameEvent]): AIOrderSubmission"
-    },
-    {
-      "module": "budget",
-      "sig": "proc initBudgetTracker*(houseId: HouseId, treasury: int,"
-    },
-    {
-      "module": "budget",
-      "sig": "proc houseId*(tracker: BudgetTracker): HouseId"
-    },
-    {
-      "module": "budget",
-      "sig": "proc calculateObjectiveBudgets*(treasury: int, allocation: BudgetAllocation): Table[BuildObjective, int]"
-    },
-    {
-      "module": "budget",
-      "sig": "proc buildExpansionOrders*(colony: Colony, tracker: var BudgetTracker,"
-    },
-    {
-      "module": "budget",
-      "sig": "proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[BuildOrder]"
-    },
-    {
-      "module": "budget",
-      "sig": "proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,"
-    },
-    {
-      "module": "budget",
-      "sig": "proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,"
-    },
-    {
-      "module": "budget",
-      "sig": "proc buildReconnaissanceOrders*(colony: Colony, tracker: var BudgetTracker,"
-    },
-    {
-      "module": "budget",
-      "sig": "proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,"
-    },
-    {
-      "module": "budget",
-      "sig": "proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,"
-    },
-    {
-      "module": "budget",
-      "sig": "proc generateBudgetReport*(tracker: BudgetTracker, turn: int): BudgetReport"
-    },
-    {
-      "module": "budget",
-      "sig": "proc logBudgetReport*(report: BudgetReport)"
-    },
-    {
-      "module": "budget",
-      "sig": "proc generateBuildOrdersWithBudget*(controller: AIController,"
     },
     {
       "module": "logistics",
@@ -1340,6 +1086,274 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "logistics",
       "sig": "proc convertSquadronToZeroTurnCommands*("
+    },
+    {
+      "module": "budget",
+      "sig": "proc initBudgetTracker*(houseId: HouseId, treasury: int,"
+    },
+    {
+      "module": "budget",
+      "sig": "proc houseId*(tracker: BudgetTracker): HouseId"
+    },
+    {
+      "module": "budget",
+      "sig": "proc calculateObjectiveBudgets*(treasury: int, allocation: BudgetAllocation): Table[BuildObjective, int]"
+    },
+    {
+      "module": "budget",
+      "sig": "proc buildExpansionOrders*(colony: Colony, tracker: var BudgetTracker,"
+    },
+    {
+      "module": "budget",
+      "sig": "proc buildFacilityOrders*(colony: Colony, tracker: var BudgetTracker): seq[BuildOrder]"
+    },
+    {
+      "module": "budget",
+      "sig": "proc buildDefenseOrders*(colony: Colony, tracker: var BudgetTracker,"
+    },
+    {
+      "module": "budget",
+      "sig": "proc buildMilitaryOrders*(colony: Colony, tracker: var BudgetTracker,"
+    },
+    {
+      "module": "budget",
+      "sig": "proc buildReconnaissanceOrders*(colony: Colony, tracker: var BudgetTracker,"
+    },
+    {
+      "module": "budget",
+      "sig": "proc buildSpecialUnitsOrders*(colony: Colony, tracker: var BudgetTracker,"
+    },
+    {
+      "module": "budget",
+      "sig": "proc buildSiegeOrders*(colony: Colony, tracker: var BudgetTracker,"
+    },
+    {
+      "module": "budget",
+      "sig": "proc generateBudgetReport*(tracker: BudgetTracker, turn: int): BudgetReport"
+    },
+    {
+      "module": "budget",
+      "sig": "proc logBudgetReport*(report: BudgetReport)"
+    },
+    {
+      "module": "budget",
+      "sig": "proc generateBuildOrdersWithBudget*(controller: AIController,"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc identifyEnemyHomeworlds*(filtered: FilteredGameState): seq[SystemId]"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc needsReconnaissance*(filtered: FilteredGameState, targetSystem: SystemId): bool"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc isSystemColonized*(filtered: FilteredGameState, systemId: SystemId): bool"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc getColony*(filtered: FilteredGameState, systemId: SystemId): Option[Colony]"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc updateIntelligence*(controller: var AIController,"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc getIntelAge*(controller: AIController, systemId: SystemId,"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc needsReconnaissanceController*(controller: AIController,"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc gatherEconomicIntelligence*(controller: var AIController, filtered: FilteredGameState): intel_types.EconomicIntelligence"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc countUncolonizedSystems*(filtered: FilteredGameState): int"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc calculateDistance*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId): int"
+    },
+    {
+      "module": "intelligence",
+      "sig": "proc countSharedBorders*(filtered: FilteredGameState, intelSnapshot: IntelligenceSnapshot, ownHouse: HouseId, targetHouse: HouseId): int"
+    },
+    {
+      "module": "controller_types",
+      "sig": "proc newPlanTracker*(): PlanTracker"
+    },
+    {
+      "module": "controller",
+      "sig": "proc getStrategyPersonality*(strategy: AIStrategy,"
+    },
+    {
+      "module": "controller",
+      "sig": "proc getStrategyPersonality*(strategy: AIStrategy): AIPersonality"
+    },
+    {
+      "module": "controller",
+      "sig": "proc newAIController*(houseId: HouseId, strategy: AIStrategy,"
+    },
+    {
+      "module": "controller",
+      "sig": "proc newAIController*(houseId: HouseId, strategy: AIStrategy,"
+    },
+    {
+      "module": "controller",
+      "sig": "proc newAIControllerWithPersonality*(houseId: HouseId,"
+    },
+    {
+      "module": "controller",
+      "sig": "proc newAIControllerWithPersonality*(houseId: HouseId,"
+    },
+    {
+      "module": "fleet_organization",
+      "sig": "proc organizeFleets*("
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc findBestDrydockForRepair*(filtered: FilteredGameState,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createAutoRepairOrder*(fleet: Fleet, filtered: FilteredGameState,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createAutoEvadeOrder*(fleet: Fleet, fallbackSystem: SystemId,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createDefendSystemOrder*(fleet: Fleet, targetSystem: SystemId,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createAutoColonizeOrder*(fleet: Fleet, maxRange: int,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc getActiveDefenseOrders*("
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc getUndefendedSystemsWithOrders*("
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc assignStandingOrders*(controller: var AIController,"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc findBestDrydockForRepair*(filtered: FilteredGameState, fleetLocation: SystemId): Option[SystemId]"
+    },
+    {
+      "module": "standing_orders_manager",
+      "sig": "proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,"
+    },
+    {
+      "module": "orders",
+      "sig": "proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand, events: seq[GameEvent]): AIOrderSubmission"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc getOwnedColonies*(filtered: FilteredGameState, houseId: HouseId): seq[Colony]"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc isSingleScoutSquadron*(squadron: Squadron): bool"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc planCoordinatedOperation*(controller: var AIController, filtered: FilteredGameState,"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc updateOperationStatus*(controller: var AIController, filtered: FilteredGameState)"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc shouldExecuteOperation*(controller: AIController, op: CoordinatedOperation, turn: int): bool"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc removeCompletedOperations*(controller: var AIController, turn: int)"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc identifyImportantColonies*(controller: AIController, filtered: FilteredGameState): seq[SystemId]"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc getReserveForSystem*(controller: AIController, systemId: SystemId): Option[FleetId]"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGameState)"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc respondToThreats*(controller: var AIController, filtered: FilteredGameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]]"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameState)"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc syncFallbackRoutesToEngine*(controller: AIController, state: var GameState)"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc findFallbackSystem*(controller: AIController, currentSystem: SystemId): Option[SystemId]"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc identifyInvasionOpportunities*(controller: var AIController, filtered: FilteredGameState, currentAct: GameAct): seq[SystemId]"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState): int"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameState, rng: var Rand,"
+    },
+    {
+      "module": "tactical",
+      "sig": "proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGameState,"
+    },
+    {
+      "module": "config",
+      "sig": "proc validateRBAConfig*(config: RBAConfig)"
+    },
+    {
+      "module": "config",
+      "sig": "proc loadRBAConfig*(configPath: string"
+    },
+    {
+      "module": "config",
+      "sig": "proc reloadRBAConfig*()"
+    },
+    {
+      "module": "config",
+      "sig": "proc reloadRBAConfigFromPath*(configPath: string)"
     },
     {
       "module": "conversion",
@@ -1918,19 +1932,19 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc generateIUInvestmentRecommendations*("
     },
     {
-      "module": "requirements",
+      "module": "economic_requirements",
       "sig": "proc generateEconomicRequirements*("
     },
     {
-      "module": "requirements",
+      "module": "economic_requirements",
       "sig": "proc reprioritizeEconomicRequirements*("
     },
     {
-      "module": "economic_requirements",
+      "module": "requirements",
       "sig": "proc generateEconomicRequirements*("
     },
     {
-      "module": "economic_requirements",
+      "module": "requirements",
       "sig": "proc reprioritizeEconomicRequirements*("
     },
     {
@@ -2062,10 +2076,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc calculateHouseRelativeStrength*("
     },
     {
-      "module": "colony_analyzer",
-      "sig": "proc analyzeColonyIntelligence*("
-    },
-    {
       "module": "combat_analyzer",
       "sig": "proc analyzeCombatReports*("
     },
@@ -2086,12 +2096,8 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc trackFleetMovements*("
     },
     {
-      "module": "fleet_analysis",
-      "sig": "proc analyzeFleetUtilization*("
-    },
-    {
-      "module": "fleet_analysis",
-      "sig": "proc findNearestColonyForDefense*("
+      "module": "colony_analyzer",
+      "sig": "proc analyzeColonyIntelligence*("
     },
     {
       "module": "staging",
@@ -2100,6 +2106,58 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "staging",
       "sig": "proc selectStagingAreaForGeneral*("
+    },
+    {
+      "module": "intelligence_ops",
+      "sig": "proc estimateLocalThreat*("
+    },
+    {
+      "module": "intelligence_ops",
+      "sig": "proc estimateLocalThreatFromIntel*("
+    },
+    {
+      "module": "combat_doctrine_adapter",
+      "sig": "proc adaptTacticsToEnemyDoctrine*("
+    },
+    {
+      "module": "combat_doctrine_adapter",
+      "sig": "proc recommendedROEAgainst*("
+    },
+    {
+      "module": "combat_doctrine_adapter",
+      "sig": "proc shouldPursue*("
+    },
+    {
+      "module": "exploration_ops",
+      "sig": "proc generateExplorationOrders*("
+    },
+    {
+      "module": "exploration_ops",
+      "sig": "proc generateReconnaissanceOrders*("
+    },
+    {
+      "module": "defensive_ops",
+      "sig": "proc generateDefensiveReassignments*("
+    },
+    {
+      "module": "defensive_ops",
+      "sig": "proc generateDefensiveOrders*("
+    },
+    {
+      "module": "unit_priority",
+      "sig": "proc calculateUnitPriority*("
+    },
+    {
+      "module": "unit_priority",
+      "sig": "proc selectBestUnit*("
+    },
+    {
+      "module": "fleet_analysis",
+      "sig": "proc analyzeFleetUtilization*("
+    },
+    {
+      "module": "fleet_analysis",
+      "sig": "proc findNearestColonyForDefense*("
     },
     {
       "module": "fleet_management",
@@ -2134,42 +2192,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc generateFleetManagementCommands*("
     },
     {
-      "module": "intelligence_ops",
-      "sig": "proc estimateLocalThreat*("
-    },
-    {
-      "module": "intelligence_ops",
-      "sig": "proc estimateLocalThreatFromIntel*("
-    },
-    {
-      "module": "unit_priority",
-      "sig": "proc calculateUnitPriority*("
-    },
-    {
-      "module": "unit_priority",
-      "sig": "proc selectBestUnit*("
-    },
-    {
-      "module": "combat_doctrine_adapter",
-      "sig": "proc adaptTacticsToEnemyDoctrine*("
-    },
-    {
-      "module": "combat_doctrine_adapter",
-      "sig": "proc recommendedROEAgainst*("
-    },
-    {
-      "module": "combat_doctrine_adapter",
-      "sig": "proc shouldPursue*("
-    },
-    {
-      "module": "exploration_ops",
-      "sig": "proc generateExplorationOrders*("
-    },
-    {
-      "module": "exploration_ops",
-      "sig": "proc generateReconnaissanceOrders*("
-    },
-    {
       "module": "offensive_ops",
       "sig": "proc generateMergeOrders*("
     },
@@ -2184,14 +2206,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "offensive_ops",
       "sig": "proc generateCounterAttackOrders*("
-    },
-    {
-      "module": "defensive_ops",
-      "sig": "proc generateDefensiveReassignments*("
-    },
-    {
-      "module": "defensive_ops",
-      "sig": "proc generateDefensiveOrders*("
     },
     {
       "module": "build_requirements",
@@ -2274,34 +2288,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc reprioritizeRequirements*("
     },
     {
-      "module": "allocation",
-      "sig": "proc getBaselineAllocation*(act: GameAct): BudgetAllocation"
-    },
-    {
-      "module": "allocation",
-      "sig": "proc applyPersonalityModifiers*("
-    },
-    {
-      "module": "allocation",
-      "sig": "proc applyThreatAwareAllocation*("
-    },
-    {
-      "module": "allocation",
-      "sig": "proc applyThreatBoost*(allocation: var BudgetAllocation)"
-    },
-    {
-      "module": "allocation",
-      "sig": "proc normalizeAllocation*(allocation: var BudgetAllocation)"
-    },
-    {
-      "module": "allocation",
-      "sig": "proc allocateBudget*("
-    },
-    {
-      "module": "phase2_mediation",
-      "sig": "proc mediateAndAllocateBudget*("
-    },
-    {
       "module": "multi_advisor",
       "sig": "proc extractBuildFeedback*("
     },
@@ -2362,6 +2348,34 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc executePhase15_GOAP*("
     },
     {
+      "module": "phase2_mediation",
+      "sig": "proc mediateAndAllocateBudget*("
+    },
+    {
+      "module": "allocation",
+      "sig": "proc getBaselineAllocation*(controller: AIController,"
+    },
+    {
+      "module": "allocation",
+      "sig": "proc applyPersonalityModifiers*("
+    },
+    {
+      "module": "allocation",
+      "sig": "proc applyThreatAwareAllocation*("
+    },
+    {
+      "module": "allocation",
+      "sig": "proc applyThreatBoost*(allocation: var BudgetAllocation)"
+    },
+    {
+      "module": "allocation",
+      "sig": "proc normalizeAllocation*(allocation: var BudgetAllocation)"
+    },
+    {
+      "module": "allocation",
+      "sig": "proc allocateBudget*("
+    },
+    {
       "module": "feedback",
       "sig": "proc getCheaperAlternatives*("
     },
@@ -2392,14 +2406,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "splitting",
       "sig": "proc getFillerBudgetRemaining*(split: BudgetSplit, spent: int): int"
-    },
-    {
-      "module": "requirements",
-      "sig": "proc generateDiplomaticRequirements*("
-    },
-    {
-      "module": "requirements",
-      "sig": "proc reprioritizeDiplomaticRequirements*("
     },
     {
       "module": "assessment",
@@ -2442,16 +2448,12 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGameState,"
     },
     {
-      "module": "colony_management",
-      "sig": "proc generateColonyManagementOrders*("
+      "module": "requirements",
+      "sig": "proc generateDiplomaticRequirements*("
     },
     {
-      "module": "utils",
-      "sig": "proc calculateProjectedTreasury*(filtered: FilteredGameState): int"
-    },
-    {
-      "module": "utils",
-      "sig": "proc calculateTotalCost*(buildOrders: seq[BuildOrder]): int"
+      "module": "requirements",
+      "sig": "proc reprioritizeDiplomaticRequirements*("
     },
     {
       "module": "phase0_intelligence",
@@ -2560,6 +2562,18 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "phase5_strategic",
       "sig": "proc describeReplanResult*("
+    },
+    {
+      "module": "utils",
+      "sig": "proc calculateProjectedTreasury*(filtered: FilteredGameState): int"
+    },
+    {
+      "module": "utils",
+      "sig": "proc calculateTotalCost*(buildOrders: seq[BuildOrder]): int"
+    },
+    {
+      "module": "colony_management",
+      "sig": "proc generateColonyManagementOrders*("
     },
     {
       "module": "execution",
@@ -2695,7 +2709,15 @@ Processing: src/common/types/diplomacy.nim
     },
     {
       "module": "types",
-      "sig": "proc getCurrentGameAct*(turn: int): GameAct"
+      "sig": "proc getCurrentGameActLegacy*(turn: int): GameAct"
+    },
+    {
+      "module": "types",
+      "sig": "proc getCurrentGameAct*(totalSystems: int, colonizedSystems: int, turn: int,"
+    },
+    {
+      "module": "types",
+      "sig": "proc getGameAct*(totalSystems: int, colonizedCount: int, turn: int): GameAct {.inline.}"
     },
     {
       "module": "turn_report",
@@ -3362,92 +3384,72 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc canLoadFighters*(sq: Squadron, acoLevel: int, count: int): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc newFleet*(squadrons: seq[Squadron]"
+      "module": "order_types",
+      "sig": "proc isThreateningFleetOrder*(orderType: FleetOrderType): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc `$`*(f: Fleet): string"
+      "module": "order_types",
+      "sig": "proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc len*(f: Fleet): int"
+      "module": "order_types",
+      "sig": "proc isMovementOrder*(orderType: FleetOrderType): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc isEmpty*(f: Fleet): bool"
+      "module": "order_types",
+      "sig": "proc isCombatOrder*(orderType: FleetOrderType): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc add*(f: var Fleet, squadron: Squadron)"
+      "module": "order_types",
+      "sig": "proc isAdministrativeOrder*(orderType: FleetOrderType): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc remove*(f: var Fleet, index: int)"
+      "module": "order_types",
+      "sig": "proc isSpecialOrder*(orderType: FleetOrderType): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc clear*(f: var Fleet)"
+      "module": "fog_of_war",
+      "sig": "proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState"
     },
     {
-      "module": "fleet",
-      "sig": "proc canTraverse*(f: Fleet, laneType: LaneType): bool"
+      "module": "fog_of_war",
+      "sig": "proc getIntelStaleness*(filtered: FilteredGameState, systemId: SystemId): int"
     },
     {
-      "module": "fleet",
-      "sig": "proc combatStrength*(f: Fleet): int"
+      "module": "fog_of_war",
+      "sig": "proc canSeeColonyDetails*(filtered: FilteredGameState, systemId: SystemId): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc isCloaked*(f: Fleet): bool"
+      "module": "fog_of_war",
+      "sig": "proc canSeeFleets*(filtered: FilteredGameState, systemId: SystemId): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc transportCapacity*(f: Fleet): int"
+      "module": "spacelift",
+      "sig": "proc newSpaceLiftShip*(id: string, shipClass: ShipClass, owner: HouseId,"
     },
     {
-      "module": "fleet",
-      "sig": "proc hasCombatShips*(f: Fleet): bool"
+      "module": "spacelift",
+      "sig": "proc isEmpty*(ship: SpaceLiftShip): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc hasTransportShips*(f: Fleet): bool"
+      "module": "spacelift",
+      "sig": "proc isFull*(ship: SpaceLiftShip): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc combatSquadrons*(f: Fleet): seq[Squadron]"
+      "module": "spacelift",
+      "sig": "proc canLoad*(ship: SpaceLiftShip, cargoType: CargoType): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc spaceLiftShipsSeq*(f: Fleet): seq[SpaceLiftShip]"
+      "module": "spacelift",
+      "sig": "proc loadCargo*(ship: var SpaceLiftShip, cargoType: CargoType, quantity: int): bool"
     },
     {
-      "module": "fleet",
-      "sig": "proc crippledSquadrons*(f: Fleet): seq[Squadron]"
+      "module": "spacelift",
+      "sig": "proc unloadCargo*(ship: var SpaceLiftShip): tuple[cargoType: CargoType, quantity: int]"
     },
     {
-      "module": "fleet",
-      "sig": "proc effectiveSquadrons*(f: Fleet): seq[Squadron]"
-    },
-    {
-      "module": "fleet",
-      "sig": "proc merge*(f1: var Fleet, f2: Fleet)"
-    },
-    {
-      "module": "fleet",
-      "sig": "proc split*(f: var Fleet, indices: seq[int]): Fleet"
-    },
-    {
-      "module": "fleet",
-      "sig": "proc balanceSquadrons*(f: var Fleet)"
-    },
-    {
-      "module": "fleet",
-      "sig": "proc getAllShips*(f: Fleet): seq[EnhancedShip]"
-    },
-    {
-      "module": "fleet",
-      "sig": "proc translateShipIndicesToSquadrons*(f: Fleet, indices: seq[int]):"
+      "module": "spacelift",
+      "sig": "proc `$`*(ship: SpaceLiftShip): string"
     },
     {
       "module": "orders",
@@ -3506,88 +3508,112 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc previewOrderPacketCost*(packet: OrderPacket, state: GameState): OrderCostSummary"
     },
     {
-      "module": "resolve",
-      "sig": "proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnResult"
+      "module": "fleet",
+      "sig": "proc newFleet*(squadrons: seq[Squadron]"
     },
     {
-      "module": "starmap",
-      "sig": "proc validateMapRings*(rings: int, playerCount: int"
+      "module": "fleet",
+      "sig": "proc `$`*(f: Fleet): string"
     },
     {
-      "module": "starmap",
-      "sig": "proc newStarMap*(playerCount: int, seed: int64"
+      "module": "fleet",
+      "sig": "proc len*(f: Fleet): int"
     },
     {
-      "module": "starmap",
-      "sig": "proc getAdjacentSystems*(starMap: StarMap, systemId: uint): seq[uint]"
+      "module": "fleet",
+      "sig": "proc isEmpty*(f: Fleet): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc countHexNeighbors*(starMap: StarMap, coords: Hex): int"
+      "module": "fleet",
+      "sig": "proc add*(f: var Fleet, squadron: Squadron)"
     },
     {
-      "module": "starmap",
-      "sig": "proc validateConnectivity*(starMap: StarMap): bool"
+      "module": "fleet",
+      "sig": "proc remove*(f: var Fleet, index: int)"
     },
     {
-      "module": "starmap",
-      "sig": "proc validateHomeworldLanes*(starMap: StarMap): seq[string]"
+      "module": "fleet",
+      "sig": "proc clear*(f: var Fleet)"
     },
     {
-      "module": "starmap",
-      "sig": "proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool"
+      "module": "fleet",
+      "sig": "proc canTraverse*(f: Fleet, laneType: LaneType): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc weight*(laneType: LaneType): uint32"
+      "module": "fleet",
+      "sig": "proc combatStrength*(f: Fleet): int"
     },
     {
-      "module": "starmap",
-      "sig": "proc getLaneType*(starMap: StarMap, fromSystem: SystemId,"
+      "module": "fleet",
+      "sig": "proc isCloaked*(f: Fleet): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathResult"
+      "module": "fleet",
+      "sig": "proc transportCapacity*(f: Fleet): int"
     },
     {
-      "module": "starmap",
-      "sig": "proc populate*(starMap: var StarMap)"
+      "module": "fleet",
+      "sig": "proc hasCombatShips*(f: Fleet): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc starMap*(playerCount: int): StarMap"
+      "module": "fleet",
+      "sig": "proc hasTransportShips*(f: Fleet): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc getStarMapStats*(starMap: StarMap): string"
+      "module": "fleet",
+      "sig": "proc isScoutOnly*(f: Fleet): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc verifyGameRules*(starMap: StarMap): bool"
+      "module": "fleet",
+      "sig": "proc hasScouts*(f: Fleet): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc isReachable*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): bool"
+      "module": "fleet",
+      "sig": "proc countScoutSquadrons*(f: Fleet): int"
     },
     {
-      "module": "starmap",
-      "sig": "proc findPathsInRange*(starMap: StarMap, start: uint, maxCost: uint32, fleet: Fleet): seq[uint]"
+      "module": "fleet",
+      "sig": "proc hasCombatSquadrons*(f: Fleet): bool"
     },
     {
-      "module": "starmap",
-      "sig": "proc getPathCost*(starMap: StarMap, path: seq[uint], fleet: Fleet): uint32"
+      "module": "fleet",
+      "sig": "proc canMergeWith*(f1: Fleet, f2: Fleet): tuple[canMerge: bool, reason: string]"
     },
     {
-      "module": "starmap",
-      "sig": "proc playerSystems*(starMap: StarMap, playerId: uint): seq[System]"
+      "module": "fleet",
+      "sig": "proc combatSquadrons*(f: Fleet): seq[Squadron]"
     },
     {
-      "module": "starmap",
-      "sig": "proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,"
+      "module": "fleet",
+      "sig": "proc spaceLiftShipsSeq*(f: Fleet): seq[SpaceLiftShip]"
     },
     {
-      "module": "starmap",
-      "sig": "proc calculateMultiFleetETA*(starMap: StarMap, assemblyPoint: SystemId,"
+      "module": "fleet",
+      "sig": "proc crippledSquadrons*(f: Fleet): seq[Squadron]"
+    },
+    {
+      "module": "fleet",
+      "sig": "proc effectiveSquadrons*(f: Fleet): seq[Squadron]"
+    },
+    {
+      "module": "fleet",
+      "sig": "proc merge*(f1: var Fleet, f2: Fleet)"
+    },
+    {
+      "module": "fleet",
+      "sig": "proc split*(f: var Fleet, indices: seq[int]): Fleet"
+    },
+    {
+      "module": "fleet",
+      "sig": "proc balanceSquadrons*(f: var Fleet)"
+    },
+    {
+      "module": "fleet",
+      "sig": "proc getAllShips*(f: Fleet): seq[EnhancedShip]"
+    },
+    {
+      "module": "fleet",
+      "sig": "proc translateShipIndicesToSquadrons*(f: Fleet, indices: seq[int]):"
     },
     {
       "module": "gamestate",
@@ -3738,6 +3764,90 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc advanceTurn*(state: var GameState)"
     },
     {
+      "module": "resolve",
+      "sig": "proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnResult"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc validateMapRings*(rings: int, playerCount: int"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc newStarMap*(playerCount: int, seed: int64"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc getAdjacentSystems*(starMap: StarMap, systemId: uint): seq[uint]"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc countHexNeighbors*(starMap: StarMap, coords: Hex): int"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc validateConnectivity*(starMap: StarMap): bool"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc validateHomeworldLanes*(starMap: StarMap): seq[string]"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc weight*(laneType: LaneType): uint32"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc getLaneType*(starMap: StarMap, fromSystem: SystemId,"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathResult"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc populate*(starMap: var StarMap)"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc starMap*(playerCount: int): StarMap"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc getStarMapStats*(starMap: StarMap): string"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc verifyGameRules*(starMap: StarMap): bool"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc isReachable*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): bool"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc findPathsInRange*(starMap: StarMap, start: uint, maxCost: uint32, fleet: Fleet): seq[uint]"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc getPathCost*(starMap: StarMap, path: seq[uint], fleet: Fleet): uint32"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc playerSystems*(starMap: StarMap, playerId: uint): seq[System]"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,"
+    },
+    {
+      "module": "starmap",
+      "sig": "proc calculateMultiFleetETA*(starMap: StarMap, assemblyPoint: SystemId,"
+    },
+    {
       "module": "standing_orders",
       "sig": "proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId]"
     },
@@ -3748,6 +3858,18 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "standing_orders",
       "sig": "proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,"
+    },
+    {
+      "module": "standing_orders",
+      "sig": "proc scoreColonizationCandidate*("
+    },
+    {
+      "module": "standing_orders",
+      "sig": "proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,"
+    },
+    {
+      "module": "standing_orders",
+      "sig": "proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,"
     },
     {
       "module": "standing_orders",
@@ -3762,84 +3884,80 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[resolution_types.GameEvent])"
     },
     {
-      "module": "order_types",
-      "sig": "proc isThreateningFleetOrder*(orderType: FleetOrderType): bool"
+      "module": "types",
+      "sig": "proc defaultDBConfig*(dbPath: string): DBConfig"
     },
     {
-      "module": "order_types",
-      "sig": "proc isNonThreateningButProvocativeFleetOrder*(orderType: FleetOrderType): bool"
+      "module": "schema",
+      "sig": "proc initializeDatabase*(db: DbConn): bool"
     },
     {
-      "module": "order_types",
-      "sig": "proc isMovementOrder*(orderType: FleetOrderType): bool"
+      "module": "queries",
+      "sig": "proc getColonizationFailures*(db: DbConn, gameId: int64): seq[Row]"
     },
     {
-      "module": "order_types",
-      "sig": "proc isCombatOrder*(orderType: FleetOrderType): bool"
+      "module": "queries",
+      "sig": "proc getColonizationWithFleets*(db: DbConn, gameId: int64): seq[Row]"
     },
     {
-      "module": "order_types",
-      "sig": "proc isAdministrativeOrder*(orderType: FleetOrderType): bool"
+      "module": "queries",
+      "sig": "proc getFleetLifecycle*(db: DbConn, gameId: int64, fleetId: string): seq[Row]"
     },
     {
-      "module": "order_types",
-      "sig": "proc isSpecialOrder*(orderType: FleetOrderType): bool"
+      "module": "queries",
+      "sig": "proc getFleetsByHouse*(db: DbConn, gameId: int64, houseId: string,"
     },
     {
-      "module": "fog_of_war",
-      "sig": "proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState"
+      "module": "queries",
+      "sig": "proc getOrderExecutionStats*(db: DbConn, gameId: int64,"
     },
     {
-      "module": "fog_of_war",
-      "sig": "proc getIntelStaleness*(filtered: FilteredGameState, systemId: SystemId): int"
+      "module": "queries",
+      "sig": "proc getEventsByType*(db: DbConn, gameId: int64,"
     },
     {
-      "module": "fog_of_war",
-      "sig": "proc canSeeColonyDetails*(filtered: FilteredGameState, systemId: SystemId): bool"
+      "module": "queries",
+      "sig": "proc getETACFleets*(db: DbConn, gameId: int64, turn: int): seq[Row]"
     },
     {
-      "module": "fog_of_war",
-      "sig": "proc canSeeFleets*(filtered: FilteredGameState, systemId: SystemId): bool"
+      "module": "queries",
+      "sig": "proc getColonizationSummary*(db: DbConn, gameId: int64): seq[Row]"
     },
     {
-      "module": "spacelift",
-      "sig": "proc newSpaceLiftShip*(id: string, shipClass: ShipClass, owner: HouseId,"
+      "module": "queries",
+      "sig": "proc getDiagnosticsByTurn*(db: DbConn, gameId: int64,"
     },
     {
-      "module": "spacelift",
-      "sig": "proc isEmpty*(ship: SpaceLiftShip): bool"
+      "module": "queries",
+      "sig": "proc getGameMetadata*(db: DbConn, gameId: int64): Row"
     },
     {
-      "module": "spacelift",
-      "sig": "proc isFull*(ship: SpaceLiftShip): bool"
+      "module": "writer",
+      "sig": "proc insertGame*(db: DbConn, seed: int64, numPlayers, maxTurns,"
     },
     {
-      "module": "spacelift",
-      "sig": "proc canLoad*(ship: SpaceLiftShip, cargoType: CargoType): bool"
+      "module": "writer",
+      "sig": "proc updateGameResult*(db: DbConn, gameId: int64, actualTurns: int,"
     },
     {
-      "module": "spacelift",
-      "sig": "proc loadCargo*(ship: var SpaceLiftShip, cargoType: CargoType, quantity: int): bool"
+      "module": "writer",
+      "sig": "proc insertDiagnosticRow*(db: DbConn, gameId: int64,"
     },
     {
-      "module": "spacelift",
-      "sig": "proc unloadCargo*(ship: var SpaceLiftShip): tuple[cargoType: CargoType, quantity: int]"
+      "module": "writer",
+      "sig": "proc insertGameEvent*(db: DbConn, gameId: int64, turn: int,"
     },
     {
-      "module": "spacelift",
-      "sig": "proc `$`*(ship: SpaceLiftShip): string"
+      "module": "writer",
+      "sig": "proc insertFleetSnapshot*(db: DbConn, gameId: int64, turn: int,"
+    },
+    {
+      "module": "writer",
+      "sig": "proc insertGameState*(db: DbConn, gameId: int64, turn: int,"
     },
     {
       "module": "validation",
       "sig": "proc validateTechTree*(techTree: res_types.TechTree)"
-    },
-    {
-      "module": "colony",
-      "sig": "proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony"
-    },
-    {
-      "module": "colony",
-      "sig": "proc createETACColony*(systemId: SystemId, owner: HouseId,"
     },
     {
       "module": "config_resolver",
@@ -3860,6 +3978,14 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "house",
       "sig": "proc initializeHouse*(name: string, color: string): House"
+    },
+    {
+      "module": "colony",
+      "sig": "proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony"
+    },
+    {
+      "module": "colony",
+      "sig": "proc createETACColony*(systemId: SystemId, owner: HouseId,"
     },
     {
       "module": "game",
@@ -4102,38 +4228,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var seq[res_types.GameEvent])"
     },
     {
-      "module": "economy_resolution",
-      "sig": "proc autoBalanceSquadronsToFleets*(state: var gamestate.GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])"
-    },
-    {
-      "module": "economy_resolution",
-      "sig": "proc resolveColonyManagementOrders*(state: var GameState, packet: OrderPacket)"
-    },
-    {
-      "module": "economy_resolution",
-      "sig": "proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])"
-    },
-    {
-      "module": "economy_resolution",
-      "sig": "proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])"
-    },
-    {
-      "module": "economy_resolution",
-      "sig": "proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent])"
-    },
-    {
-      "module": "economy_resolution",
-      "sig": "proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], orders: Table[HouseId, OrderPacket], rng: var Rand): seq[econ_types.CompletedProject]"
-    },
-    {
-      "module": "economy_resolution",
-      "sig": "proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent])"
-    },
-    {
-      "module": "economy_resolution",
-      "sig": "proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])"
-    },
-    {
       "module": "commissioning",
       "sig": "proc getOperationalStarbaseCount*(colony: Colony): int"
     },
@@ -4166,28 +4260,52 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc commissionShips*("
     },
     {
-      "module": "combat_resolution",
-      "sig": "proc resolveBattle*(state: var GameState, systemId: SystemId,"
+      "module": "simultaneous_planetary",
+      "sig": "proc collectPlanetaryCombatIntents*("
     },
     {
-      "module": "combat_resolution",
-      "sig": "proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+      "module": "simultaneous_planetary",
+      "sig": "proc detectPlanetaryCombatConflicts*("
     },
     {
-      "module": "combat_resolution",
-      "sig": "proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+      "module": "simultaneous_planetary",
+      "sig": "proc resolvePlanetaryCombatConflict*("
     },
     {
-      "module": "combat_resolution",
-      "sig": "proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+      "module": "simultaneous_planetary",
+      "sig": "proc resolvePlanetaryCombat*("
     },
     {
-      "module": "diplomatic_resolution",
-      "sig": "proc resolveDiplomaticActions*(state: var GameState,"
+      "module": "simultaneous_planetary",
+      "sig": "proc wasPlanetaryCombatHandled*("
     },
     {
-      "module": "diplomatic_resolution",
-      "sig": "proc resolveScoutDetectionEscalations*(state: var GameState,"
+      "module": "order_cleanup",
+      "sig": "proc cleanFleetOrders*(state: var GameState, events: seq[res_types.GameEvent])"
+    },
+    {
+      "module": "fleet_order_execution",
+      "sig": "proc performOrderMaintenance*("
+    },
+    {
+      "module": "simultaneous",
+      "sig": "proc collectColonizationIntents*("
+    },
+    {
+      "module": "simultaneous",
+      "sig": "proc detectColonizationConflicts*("
+    },
+    {
+      "module": "simultaneous",
+      "sig": "proc resolveColonizationConflict*("
+    },
+    {
+      "module": "simultaneous",
+      "sig": "proc resolveColonization*("
+    },
+    {
+      "module": "simultaneous",
+      "sig": "proc wasColonizationHandled*("
     },
     {
       "module": "automation",
@@ -4208,26 +4326,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "automation",
       "sig": "proc processColonyAutomation*(state: var GameState, orders: Table[HouseId, OrderPacket])"
-    },
-    {
-      "module": "simultaneous_planetary",
-      "sig": "proc collectPlanetaryCombatIntents*("
-    },
-    {
-      "module": "simultaneous_planetary",
-      "sig": "proc detectPlanetaryCombatConflicts*("
-    },
-    {
-      "module": "simultaneous_planetary",
-      "sig": "proc resolvePlanetaryCombatConflict*("
-    },
-    {
-      "module": "simultaneous_planetary",
-      "sig": "proc resolvePlanetaryCombat*("
-    },
-    {
-      "module": "simultaneous_planetary",
-      "sig": "proc wasPlanetaryCombatHandled*("
     },
     {
       "module": "simultaneous_espionage",
@@ -4256,6 +4354,22 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "simultaneous_espionage",
       "sig": "proc processScoutIntelligence*("
+    },
+    {
+      "module": "combat_resolution",
+      "sig": "proc resolveBattle*(state: var GameState, systemId: SystemId,"
+    },
+    {
+      "module": "combat_resolution",
+      "sig": "proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+    },
+    {
+      "module": "combat_resolution",
+      "sig": "proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,"
+    },
+    {
+      "module": "combat_resolution",
+      "sig": "proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,"
     },
     {
       "module": "fleet_orders",
@@ -4294,28 +4408,44 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent])"
     },
     {
-      "module": "fleet_order_execution",
-      "sig": "proc performOrderMaintenance*("
+      "module": "economy_resolution",
+      "sig": "proc autoBalanceSquadronsToFleets*(state: var gamestate.GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])"
     },
     {
-      "module": "simultaneous",
-      "sig": "proc collectColonizationIntents*("
+      "module": "economy_resolution",
+      "sig": "proc resolveColonyManagementOrders*(state: var GameState, packet: OrderPacket)"
     },
     {
-      "module": "simultaneous",
-      "sig": "proc detectColonizationConflicts*("
+      "module": "economy_resolution",
+      "sig": "proc resolveTerraformOrders*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])"
     },
     {
-      "module": "simultaneous",
-      "sig": "proc resolveColonizationConflict*("
+      "module": "economy_resolution",
+      "sig": "proc resolvePopulationTransfers*(state: var GameState, packet: OrderPacket, events: var seq[GameEvent])"
     },
     {
-      "module": "simultaneous",
-      "sig": "proc resolveColonization*("
+      "module": "economy_resolution",
+      "sig": "proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent])"
     },
     {
-      "module": "simultaneous",
-      "sig": "proc wasColonizationHandled*("
+      "module": "economy_resolution",
+      "sig": "proc resolveMaintenancePhase*(state: var GameState, events: var seq[GameEvent], orders: Table[HouseId, OrderPacket], rng: var Rand): seq[econ_types.CompletedProject]"
+    },
+    {
+      "module": "economy_resolution",
+      "sig": "proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent])"
+    },
+    {
+      "module": "economy_resolution",
+      "sig": "proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.Colony, systemId: SystemId, orders: Table[HouseId, OrderPacket])"
+    },
+    {
+      "module": "diplomatic_resolution",
+      "sig": "proc resolveDiplomaticActions*(state: var GameState,"
+    },
+    {
+      "module": "diplomatic_resolution",
+      "sig": "proc resolveScoutDetectionEscalations*(state: var GameState,"
     },
     {
       "module": "alerts",
@@ -4372,6 +4502,222 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "victory",
       "sig": "proc techAdvance*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc warDeclared*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc peaceSigned*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc diplomaticRelationChanged*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc treatyProposed*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc treatyAccepted*("
+    },
+    {
+      "module": "diplomatic",
+      "sig": "proc treatyBroken*("
+    },
+    {
+      "module": "orders",
+      "sig": "proc orderRejected*("
+    },
+    {
+      "module": "orders",
+      "sig": "proc orderFailed*("
+    },
+    {
+      "module": "orders",
+      "sig": "proc orderAborted*("
+    },
+    {
+      "module": "orders",
+      "sig": "proc orderIssued*("
+    },
+    {
+      "module": "orders",
+      "sig": "proc orderCompleted*("
+    },
+    {
+      "module": "orders",
+      "sig": "proc fleetArrived*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc standingOrderSet*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc standingOrderActivated*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc standingOrderSuspended*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc fleetEncounter*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc fleetMerged*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc fleetDetachment*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc fleetTransfer*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc cargoLoaded*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc cargoUnloaded*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc fleetDisbanded*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc squadronDisbanded*("
+    },
+    {
+      "module": "fleet_ops",
+      "sig": "proc squadronScrapped*("
+    },
+    {
+      "module": "military",
+      "sig": "proc colonyEstablished*("
+    },
+    {
+      "module": "military",
+      "sig": "proc systemCaptured*("
+    },
+    {
+      "module": "military",
+      "sig": "proc battle*("
+    },
+    {
+      "module": "military",
+      "sig": "proc fleetDestroyed*("
+    },
+    {
+      "module": "military",
+      "sig": "proc invasionRepelled*("
+    },
+    {
+      "module": "military",
+      "sig": "proc bombardment*("
+    },
+    {
+      "module": "military",
+      "sig": "proc colonyCaptured*("
+    },
+    {
+      "module": "military",
+      "sig": "proc battleOccurred*("
+    },
+    {
+      "module": "military",
+      "sig": "proc combatTheaterBegan*("
+    },
+    {
+      "module": "military",
+      "sig": "proc combatTheaterCompleted*("
+    },
+    {
+      "module": "military",
+      "sig": "proc combatPhaseBegan*("
+    },
+    {
+      "module": "military",
+      "sig": "proc combatPhaseCompleted*("
+    },
+    {
+      "module": "military",
+      "sig": "proc raiderDetected*("
+    },
+    {
+      "module": "military",
+      "sig": "proc raiderStealthSuccess*("
+    },
+    {
+      "module": "military",
+      "sig": "proc raiderAmbush*("
+    },
+    {
+      "module": "military",
+      "sig": "proc fighterDeployed*("
+    },
+    {
+      "module": "military",
+      "sig": "proc fighterEngagement*("
+    },
+    {
+      "module": "military",
+      "sig": "proc carrierDestroyed*("
+    },
+    {
+      "module": "military",
+      "sig": "proc weaponFired*("
+    },
+    {
+      "module": "military",
+      "sig": "proc shipDamaged*("
+    },
+    {
+      "module": "military",
+      "sig": "proc shipDestroyed*("
+    },
+    {
+      "module": "military",
+      "sig": "proc fleetRetreat*("
+    },
+    {
+      "module": "military",
+      "sig": "proc bombardmentRoundBegan*("
+    },
+    {
+      "module": "military",
+      "sig": "proc bombardmentRoundCompleted*("
+    },
+    {
+      "module": "military",
+      "sig": "proc shieldActivated*("
+    },
+    {
+      "module": "military",
+      "sig": "proc groundBatteryFired*("
+    },
+    {
+      "module": "military",
+      "sig": "proc invasionBegan*("
+    },
+    {
+      "module": "military",
+      "sig": "proc blitzBegan*("
+    },
+    {
+      "module": "military",
+      "sig": "proc groundCombatRound*("
+    },
+    {
+      "module": "military",
+      "sig": "proc starbaseCombat*("
     },
     {
       "module": "intelligence",
@@ -4442,232 +4788,24 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc scoutDestroyed*("
     },
     {
-      "module": "military",
-      "sig": "proc colonyEstablished*("
-    },
-    {
-      "module": "military",
-      "sig": "proc systemCaptured*("
-    },
-    {
-      "module": "military",
-      "sig": "proc battle*("
-    },
-    {
-      "module": "military",
-      "sig": "proc fleetDestroyed*("
-    },
-    {
-      "module": "military",
-      "sig": "proc invasionRepelled*("
-    },
-    {
-      "module": "military",
-      "sig": "proc bombardment*("
-    },
-    {
-      "module": "military",
-      "sig": "proc colonyCaptured*("
-    },
-    {
-      "module": "military",
-      "sig": "proc battleOccurred*("
-    },
-    {
-      "module": "military",
-      "sig": "proc combatTheaterBegan*("
-    },
-    {
-      "module": "military",
-      "sig": "proc combatTheaterCompleted*("
-    },
-    {
-      "module": "military",
-      "sig": "proc combatPhaseBegan*("
-    },
-    {
-      "module": "military",
-      "sig": "proc combatPhaseCompleted*("
-    },
-    {
-      "module": "military",
-      "sig": "proc raiderDetected*("
-    },
-    {
-      "module": "military",
-      "sig": "proc raiderAmbush*("
-    },
-    {
-      "module": "military",
-      "sig": "proc eliMeshNetworkFormed*("
-    },
-    {
-      "module": "military",
-      "sig": "proc fighterDeployed*("
-    },
-    {
-      "module": "military",
-      "sig": "proc fighterEngagement*("
-    },
-    {
-      "module": "military",
-      "sig": "proc carrierDestroyed*("
-    },
-    {
-      "module": "military",
-      "sig": "proc weaponFired*("
-    },
-    {
-      "module": "military",
-      "sig": "proc shipDamaged*("
-    },
-    {
-      "module": "military",
-      "sig": "proc shipDestroyed*("
-    },
-    {
-      "module": "military",
-      "sig": "proc fleetRetreat*("
-    },
-    {
-      "module": "military",
-      "sig": "proc bombardmentRoundBegan*("
-    },
-    {
-      "module": "military",
-      "sig": "proc bombardmentRoundCompleted*("
-    },
-    {
-      "module": "military",
-      "sig": "proc shieldActivated*("
-    },
-    {
-      "module": "military",
-      "sig": "proc groundBatteryFired*("
-    },
-    {
-      "module": "military",
-      "sig": "proc invasionBegan*("
-    },
-    {
-      "module": "military",
-      "sig": "proc blitzBegan*("
-    },
-    {
-      "module": "military",
-      "sig": "proc groundCombatRound*("
-    },
-    {
-      "module": "military",
-      "sig": "proc starbaseCombat*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc standingOrderSet*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc standingOrderActivated*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc standingOrderSuspended*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc fleetEncounter*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc fleetMerged*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc fleetDetachment*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc fleetTransfer*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc cargoLoaded*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc cargoUnloaded*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc scoutMeshNetworkFormed*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc spyScoutDeployed*("
-    },
-    {
-      "module": "fleet_ops",
-      "sig": "proc spyScoutTravel*("
-    },
-    {
-      "module": "diplomatic",
-      "sig": "proc warDeclared*("
-    },
-    {
-      "module": "diplomatic",
-      "sig": "proc peaceSigned*("
-    },
-    {
-      "module": "diplomatic",
-      "sig": "proc diplomaticRelationChanged*("
-    },
-    {
-      "module": "diplomatic",
-      "sig": "proc treatyProposed*("
-    },
-    {
-      "module": "diplomatic",
-      "sig": "proc treatyAccepted*("
-    },
-    {
-      "module": "diplomatic",
-      "sig": "proc treatyBroken*("
-    },
-    {
-      "module": "orders",
-      "sig": "proc orderRejected*("
-    },
-    {
-      "module": "orders",
-      "sig": "proc orderFailed*("
-    },
-    {
-      "module": "orders",
-      "sig": "proc orderAborted*("
-    },
-    {
-      "module": "orders",
-      "sig": "proc orderIssued*("
-    },
-    {
-      "module": "orders",
-      "sig": "proc orderCompleted*("
-    },
-    {
-      "module": "orders",
-      "sig": "proc fleetArrived*("
+      "module": "intelligence",
+      "sig": "proc starbaseSurveillanceDetection*("
     },
     {
       "module": "income_phase",
       "sig": "proc resolveIncomePhase*("
     },
     {
-      "module": "maintenance_phase",
-      "sig": "proc resolvePopulationArrivals*(state: var GameState,"
+      "module": "conflict_phase",
+      "sig": "proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPacket],"
     },
     {
       "module": "maintenance_phase",
-      "sig": "proc resolvePopulationArrivals*(state: var GameState,"
+      "sig": "proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent])"
+    },
+    {
+      "module": "maintenance_phase",
+      "sig": "proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent])"
     },
     {
       "module": "maintenance_phase",
@@ -4676,10 +4814,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "command_phase",
       "sig": "proc resolveCommandPhase*(state: var GameState,"
-    },
-    {
-      "module": "conflict_phase",
-      "sig": "proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPacket],"
     },
     {
       "module": "transfers",
@@ -4732,22 +4866,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "engine",
       "sig": "proc canBreakBlockade*("
-    },
-    {
-      "module": "spy_scout_orders",
-      "sig": "proc executeSpyScoutJoinFleet*(state: var GameState, spyScout: SpyScout, targetFleetId: FleetId): bool"
-    },
-    {
-      "module": "spy_scout_orders",
-      "sig": "proc executeSpyScoutJoinSpyScout*(state: var GameState, sourceId: string, targetId: string): bool"
-    },
-    {
-      "module": "spy_scout_orders",
-      "sig": "proc executeSpyScoutMove*(state: var GameState, spyScout: SpyScout, targetSystem: SystemId): bool"
-    },
-    {
-      "module": "spy_scout_orders",
-      "sig": "proc resolveSpyScoutOrders*(state: var GameState)"
     },
     {
       "module": "zero_turn_commands",
@@ -4826,94 +4944,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc generateEspionageIntelligence*("
     },
     {
-      "module": "detection",
-      "sig": "proc calculateWeightedAverageELI*(eliLevels: seq[int]): int"
-    },
-    {
-      "module": "detection",
-      "sig": "proc applyDominantTechPenalty*(weightedAvg: int, eliLevels: seq[int]): int"
-    },
-    {
-      "module": "detection",
-      "sig": "proc getMeshNetworkBonus*(scoutCount: int): int"
-    },
-    {
-      "module": "detection",
-      "sig": "proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool"
-    },
-    {
-      "module": "detection",
-      "sig": "proc rollSpyDetectionThreshold*(thresholdRange: ThresholdRange, rng: var Rand): int"
-    },
-    {
-      "module": "detection",
-      "sig": "proc rollSpyDetectionThreshold*(thresholdRange: ThresholdRange): int"
-    },
-    {
-      "module": "detection",
-      "sig": "proc attemptSpyDetection*("
-    },
-    {
-      "module": "detection",
-      "sig": "proc detectSpyScout*("
-    },
-    {
-      "module": "detection",
-      "sig": "proc attemptSpyDetection*(detectorELI, spyELI: int): DetectionResult"
-    },
-    {
-      "module": "detection",
-      "sig": "proc detectSpyScout*(detectorUnit: ELIUnit, spyELI: int): DetectionResult"
-    },
-    {
-      "module": "detection",
-      "sig": "proc getRaiderThresholdStrategy*(eliLevel: int, cloakLevel: int): string"
-    },
-    {
-      "module": "detection",
-      "sig": "proc rollRaiderThreshold*("
-    },
-    {
-      "module": "detection",
-      "sig": "proc attemptRaiderDetection*("
-    },
-    {
-      "module": "detection",
-      "sig": "proc detectRaider*("
-    },
-    {
-      "module": "detection",
-      "sig": "proc rollRaiderThreshold*(thresholdRange: ThresholdRange, strategy: string): int"
-    },
-    {
-      "module": "detection",
-      "sig": "proc attemptRaiderDetection*(detectorELI, cloakLevel: int): DetectionResult"
-    },
-    {
-      "module": "detection",
-      "sig": "proc detectRaider*(detectorUnit: ELIUnit, cloakLevel: int): DetectionResult"
-    },
-    {
-      "module": "detection",
-      "sig": "proc getScoutELILevels*(squadron: Squadron): seq[int]"
-    },
-    {
-      "module": "detection",
-      "sig": "proc getFleetELILevels*(squadrons: seq[Squadron]): seq[int]"
-    },
-    {
-      "module": "detection",
-      "sig": "proc getFleetCloakLevel*(squadrons: seq[Squadron]): int"
-    },
-    {
-      "module": "detection",
-      "sig": "proc hasELICapability*(squadrons: seq[Squadron]): bool"
-    },
-    {
-      "module": "detection",
-      "sig": "proc createELIUnit*(squadrons: seq[Squadron], isStarbase: bool"
-    },
-    {
       "module": "diplomatic_intel",
       "sig": "proc generateHostilityDeclarationIntel*("
     },
@@ -4936,66 +4966,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "diplomatic_intel",
       "sig": "proc generateDiplomaticBreakIntel*("
-    },
-    {
-      "module": "types",
-      "sig": "proc newIntelligenceDatabase*(): IntelligenceDatabase"
-    },
-    {
-      "module": "types",
-      "sig": "proc addColonyReport*(db: var IntelligenceDatabase, report: ColonyIntelReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc addSystemReport*(db: var IntelligenceDatabase, report: SystemIntelReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc addStarbaseReport*(db: var IntelligenceDatabase, report: StarbaseIntelReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc addEspionageActivity*(db: var IntelligenceDatabase, report: EspionageActivityReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc addCombatReport*(db: var IntelligenceDatabase, report: CombatEncounterReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc addScoutEncounter*(db: var IntelligenceDatabase, report: ScoutEncounterReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc addStarbaseSurveillance*(db: var IntelligenceDatabase, report: StarbaseSurveillanceReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc addPopulationTransferStatus*(db: var IntelligenceDatabase, report: PopulationTransferStatusReport)"
-    },
-    {
-      "module": "types",
-      "sig": "proc updateFleetMovementHistory*(db: var IntelligenceDatabase, fleetId: FleetId, owner: HouseId, systemId: SystemId, turn: int)"
-    },
-    {
-      "module": "types",
-      "sig": "proc updateConstructionActivity*(db: var IntelligenceDatabase, systemId: SystemId, owner: HouseId, turn: int,"
-    },
-    {
-      "module": "types",
-      "sig": "proc getColonyIntel*(db: IntelligenceDatabase, systemId: SystemId): Option[ColonyIntelReport]"
-    },
-    {
-      "module": "types",
-      "sig": "proc getSystemIntel*(db: IntelligenceDatabase, systemId: SystemId): Option[SystemIntelReport]"
-    },
-    {
-      "module": "types",
-      "sig": "proc getStarbaseIntel*(db: IntelligenceDatabase, systemId: SystemId): Option[StarbaseIntelReport]"
-    },
-    {
-      "module": "types",
-      "sig": "proc getIntelStaleness*(report: ColonyIntelReport | SystemIntelReport | StarbaseIntelReport, currentTurn: int): int"
     },
     {
       "module": "combat_intel",
@@ -5083,15 +5053,103 @@ Processing: src/common/types/diplomacy.nim
     },
     {
       "module": "spy_resolution",
-      "sig": "proc resolveSpyDetection*("
+      "sig": "proc resolveSpyScoutDetection*("
     },
     {
       "module": "spy_resolution",
-      "sig": "proc gatherIntelligence*(state: GameState, spy: SpyScout): Option[string]"
+      "sig": "proc resolveSpyScoutDetection*("
     },
     {
-      "module": "spy_resolution",
-      "sig": "proc resolveIntelligenceGathering*(state: GameState): Table[HouseId, seq[string]]"
+      "module": "detection",
+      "sig": "proc calculateWeightedAverageELI*(eliLevels: seq[int]): int"
+    },
+    {
+      "module": "detection",
+      "sig": "proc applyDominantTechPenalty*(weightedAvg: int, eliLevels: seq[int]): int"
+    },
+    {
+      "module": "detection",
+      "sig": "proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool"
+    },
+    {
+      "module": "detection",
+      "sig": "proc detectSpyScouts*("
+    },
+    {
+      "module": "detection",
+      "sig": "proc detectSpyScouts*("
+    },
+    {
+      "module": "detection",
+      "sig": "proc detectRaider*("
+    },
+    {
+      "module": "detection",
+      "sig": "proc detectRaider*("
+    },
+    {
+      "module": "detection",
+      "sig": "proc hasELICapability*(squadrons: seq[Squadron]): bool"
+    },
+    {
+      "module": "types",
+      "sig": "proc newIntelligenceDatabase*(): IntelligenceDatabase"
+    },
+    {
+      "module": "types",
+      "sig": "proc addColonyReport*(db: var IntelligenceDatabase, report: ColonyIntelReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc addSystemReport*(db: var IntelligenceDatabase, report: SystemIntelReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc addStarbaseReport*(db: var IntelligenceDatabase, report: StarbaseIntelReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc addEspionageActivity*(db: var IntelligenceDatabase, report: EspionageActivityReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc addCombatReport*(db: var IntelligenceDatabase, report: CombatEncounterReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc addScoutEncounter*(db: var IntelligenceDatabase, report: ScoutEncounterReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc addStarbaseSurveillance*(db: var IntelligenceDatabase, report: StarbaseSurveillanceReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc addPopulationTransferStatus*(db: var IntelligenceDatabase, report: PopulationTransferStatusReport)"
+    },
+    {
+      "module": "types",
+      "sig": "proc updateFleetMovementHistory*(db: var IntelligenceDatabase, fleetId: FleetId, owner: HouseId, systemId: SystemId, turn: int)"
+    },
+    {
+      "module": "types",
+      "sig": "proc updateConstructionActivity*(db: var IntelligenceDatabase, systemId: SystemId, owner: HouseId, turn: int,"
+    },
+    {
+      "module": "types",
+      "sig": "proc getColonyIntel*(db: IntelligenceDatabase, systemId: SystemId): Option[ColonyIntelReport]"
+    },
+    {
+      "module": "types",
+      "sig": "proc getSystemIntel*(db: IntelligenceDatabase, systemId: SystemId): Option[SystemIntelReport]"
+    },
+    {
+      "module": "types",
+      "sig": "proc getStarbaseIntel*(db: IntelligenceDatabase, systemId: SystemId): Option[StarbaseIntelReport]"
+    },
+    {
+      "module": "types",
+      "sig": "proc getIntelStaleness*(report: ColonyIntelReport | SystemIntelReport | StarbaseIntelReport, currentTurn: int): int"
     },
     {
       "module": "starbase_surveillance",
@@ -5103,15 +5161,7 @@ Processing: src/common/types/diplomacy.nim
     },
     {
       "module": "starbase_surveillance",
-      "sig": "proc processAllStarbaseSurveillance*(state: var GameState, turn: int, rng: var Rand)"
-    },
-    {
-      "module": "spy_travel",
-      "sig": "proc recordScoutLoss*(state: var GameState, scoutId: string,"
-    },
-    {
-      "module": "spy_travel",
-      "sig": "proc resolveSpyScoutTravel*(state: var GameState, events: var seq[resolution_types.GameEvent]): seq[string]"
+      "sig": "proc processAllStarbaseSurveillance*("
     },
     {
       "module": "helpers",
@@ -5370,22 +5420,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc reloadDiplomacyConfig*()"
     },
     {
-      "module": "espionage_config",
-      "sig": "proc loadEspionageConfig*(configPath: string"
-    },
-    {
-      "module": "espionage_config",
-      "sig": "proc reloadEspionageConfig*()"
-    },
-    {
-      "module": "espionage_config",
-      "sig": "proc getSpyDetectionThreshold*(detectorELI: int, spyELI: int): ThresholdRange"
-    },
-    {
-      "module": "espionage_config",
-      "sig": "proc getRaiderDetectionThreshold*(detectorELI: int, cloakLevel: int): ThresholdRange"
-    },
-    {
       "module": "gameplay_config",
       "sig": "proc loadGameplayConfig*(configPath: string"
     },
@@ -5586,6 +5620,34 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc reloadPopulationConfig*()"
     },
     {
+      "module": "population_growth_multiplier",
+      "sig": "proc calculatePopulationGrowthMultiplier*(numSystems: int, numPlayers: int): float"
+    },
+    {
+      "module": "population_growth_multiplier",
+      "sig": "proc initializePopulationGrowthMultiplier*(numSystems: int, numPlayers: int)"
+    },
+    {
+      "module": "population_growth_multiplier",
+      "sig": "proc setPopulationGrowthMultiplierForTesting*(multiplier: float)"
+    },
+    {
+      "module": "population_growth_multiplier",
+      "sig": "proc getPopulationGrowthMultiplier*(): float"
+    },
+    {
+      "module": "population_growth_multiplier",
+      "sig": "proc applyGrowthMultiplier*(baseGrowthRate: float): float"
+    },
+    {
+      "module": "espionage_config",
+      "sig": "proc loadEspionageConfig*(configPath: string"
+    },
+    {
+      "module": "espionage_config",
+      "sig": "proc reloadEspionageConfig*()"
+    },
+    {
       "module": "costs",
       "sig": "proc calculateERPCost*(gho: int): float"
     },
@@ -5734,62 +5796,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc attemptTechAdvancement*(state: var GameState, houseId: HouseId, tree: var types.TechTree, field: TechField): Option[ResearchAdvancement]"
     },
     {
-      "module": "maintenance",
-      "sig": "proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool, fleetStatus: FleetStatus"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getSpaceportUpkeep*(): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getShipyardUpkeep*(): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getStarbaseUpkeep*(): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getGroundBatteryUpkeep*(): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getPlanetaryShieldUpkeep*(): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getArmyUpkeep*(): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getMarineUpkeep*(): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc getBuildingMaintenance*(buildingType: string): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc calculateColonyUpkeep*(colony: gamestate.Colony): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc calculateRepairCost*(damage: float): int"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc applyRepair*(colony: var Colony, repairPoints: int): float"
-    },
-    {
-      "module": "maintenance",
-      "sig": "proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int)"
-    },
-    {
       "module": "facility_damage",
       "sig": "proc clearFacilityQueues*(colony: var Colony, facilityType: econ_types.FacilityType)"
     },
@@ -5800,30 +5806,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "facility_damage",
       "sig": "proc handleFacilityDestruction*(colony: var Colony, facilityType: econ_types.FacilityType)"
-    },
-    {
-      "module": "maintenance_shortfall",
-      "sig": "proc calculateFleetSalvageValue*(state: GameState, fleetId: FleetId): int"
-    },
-    {
-      "module": "maintenance_shortfall",
-      "sig": "proc calculateAssetSalvageValue*(assetType: AssetType): int"
-    },
-    {
-      "module": "maintenance_shortfall",
-      "sig": "proc calculatePrestigePenalty*(consecutiveTurns: int): int"
-    },
-    {
-      "module": "maintenance_shortfall",
-      "sig": "proc processShortfall*(state: GameState, houseId: HouseId, shortfall: int): ShortfallCascade"
-    },
-    {
-      "module": "maintenance_shortfall",
-      "sig": "proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade)"
-    },
-    {
-      "module": "maintenance_shortfall",
-      "sig": "proc resolveMaintenanceShortfalls*(state: var GameState)"
     },
     {
       "module": "production",
@@ -5876,42 +5858,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "repair_queue",
       "sig": "proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId)"
-    },
-    {
-      "module": "income",
-      "sig": "proc calculateTaxPenalty*(avgTaxRate: int): int"
-    },
-    {
-      "module": "income",
-      "sig": "proc calculateTaxBonus*(taxRate: int, colonyCount: int): int"
-    },
-    {
-      "module": "income",
-      "sig": "proc getPopulationGrowthMultiplier*(taxRate: int): float"
-    },
-    {
-      "module": "income",
-      "sig": "proc calculateRollingTaxAverage*(history: seq[int]): int"
-    },
-    {
-      "module": "income",
-      "sig": "proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseCSTTech: int, houseTaxRate: int): ColonyIncomeReport"
-    },
-    {
-      "module": "income",
-      "sig": "proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,"
-    },
-    {
-      "module": "income",
-      "sig": "proc getPlanetCapacity*(planetClass: PlanetClass): int"
-    },
-    {
-      "module": "income",
-      "sig": "proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float"
-    },
-    {
-      "module": "income",
-      "sig": "proc applyIndustrialGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float"
     },
     {
       "module": "projects",
@@ -5978,18 +5924,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc getMarineBuildCost*(): int"
     },
     {
-      "module": "engine",
-      "sig": "proc resolveIncomePhase*(colonies: var seq[Colony],"
-    },
-    {
-      "module": "engine",
-      "sig": "proc resolveMaintenancePhase*(colonies: var seq[Colony],"
-    },
-    {
-      "module": "engine",
-      "sig": "proc resolveMaintenancePhaseWithState*(state: var GameState): MaintenanceReport"
-    },
-    {
       "module": "facility_queue",
       "sig": "proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,"
     },
@@ -6020,6 +5954,142 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "facility_queue",
       "sig": "proc advanceConstruction*(colony: var gamestate.Colony): Option[econ_types.CompletedProject]"
+    },
+    {
+      "module": "income",
+      "sig": "proc calculateTaxPenalty*(avgTaxRate: int): int"
+    },
+    {
+      "module": "income",
+      "sig": "proc calculateTaxBonus*(taxRate: int, colonyCount: int): int"
+    },
+    {
+      "module": "income",
+      "sig": "proc getPopulationGrowthMultiplier*(taxRate: int): float"
+    },
+    {
+      "module": "income",
+      "sig": "proc calculateRollingTaxAverage*(history: seq[int]): int"
+    },
+    {
+      "module": "income",
+      "sig": "proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseCSTTech: int, houseTaxRate: int): ColonyIncomeReport"
+    },
+    {
+      "module": "income",
+      "sig": "proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,"
+    },
+    {
+      "module": "income",
+      "sig": "proc getPlanetCapacity*(planetClass: PlanetClass): int"
+    },
+    {
+      "module": "income",
+      "sig": "proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float"
+    },
+    {
+      "module": "income",
+      "sig": "proc applyIndustrialGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float"
+    },
+    {
+      "module": "engine",
+      "sig": "proc resolveIncomePhase*(colonies: var seq[Colony],"
+    },
+    {
+      "module": "engine",
+      "sig": "proc calculateAndDeductMaintenanceUpkeep*("
+    },
+    {
+      "module": "engine",
+      "sig": "proc resolveMaintenancePhase*(colonies: var seq[Colony],"
+    },
+    {
+      "module": "engine",
+      "sig": "proc tickConstructionAndRepair*("
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool, fleetStatus: FleetStatus"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getSpaceportUpkeep*(): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getShipyardUpkeep*(): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getStarbaseUpkeep*(): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getGroundBatteryUpkeep*(): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getPlanetaryShieldUpkeep*(): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getArmyUpkeep*(): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getMarineUpkeep*(): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc getBuildingMaintenance*(buildingType: string): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc calculateColonyUpkeep*(colony: gamestate.Colony): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc calculateRepairCost*(damage: float): int"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc applyRepair*(colony: var Colony, repairPoints: int): float"
+    },
+    {
+      "module": "maintenance",
+      "sig": "proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int)"
+    },
+    {
+      "module": "maintenance_shortfall",
+      "sig": "proc calculateFleetSalvageValue*(state: GameState, fleetId: FleetId): int"
+    },
+    {
+      "module": "maintenance_shortfall",
+      "sig": "proc calculateAssetSalvageValue*(assetType: AssetType): int"
+    },
+    {
+      "module": "maintenance_shortfall",
+      "sig": "proc calculatePrestigePenalty*(consecutiveTurns: int): int"
+    },
+    {
+      "module": "maintenance_shortfall",
+      "sig": "proc processShortfall*(state: GameState, houseId: HouseId, shortfall: int): ShortfallCascade"
+    },
+    {
+      "module": "maintenance_shortfall",
+      "sig": "proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade,"
+    },
+    {
+      "module": "maintenance_shortfall",
+      "sig": "proc resolveMaintenanceShortfalls*(state: var GameState)"
     },
     {
       "module": "planet_breakers",
@@ -6056,90 +6126,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "planet_breakers",
       "sig": "proc canBuildPlanetBreaker*(state: GameState, houseId: core.HouseId): bool"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc analyzeCapacity*(state: GameState, colony: Colony, houseId: core.HouseId): types.CapacityViolation"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc checkViolations*(state: GameState): seq[types.CapacityViolation]"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc updateViolationTracking*(state: var GameState, violation: types.CapacityViolation)"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc planEnforcement*(state: GameState, violation: types.CapacityViolation): types.EnforcementAction"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc applyEnforcement*(state: var GameState, action: types.EnforcementAction)"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction]"
-    },
-    {
-      "module": "fighter",
-      "sig": "proc canCommissionFighter*(state: GameState, colony: Colony): bool"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc getCapitalShipCRThreshold*(): int"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc getMapSizeMultiplier*(mapRings: int, numPlayers: int): float"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc calculateMaxCapitalSquadrons*(industrialUnits: int, mapRings: int"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc isCapitalShip*(shipClass: ShipClass): bool"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc countCapitalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: core.HouseId): int"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityViolation"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc checkViolations*(state: GameState): seq[types.CapacityViolation]"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc calculateSalvageValue*(shipClass: ShipClass): int"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc planEnforcement*(state: GameState, violation: types.CapacityViolation): types.EnforcementAction"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc applyEnforcement*(state: var GameState, action: types.EnforcementAction)"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction]"
-    },
-    {
-      "module": "capital_squadrons",
-      "sig": "proc canBuildCapitalShip*(state: GameState, houseId: core.HouseId): bool"
     },
     {
       "module": "construction_docks",
@@ -6190,54 +6176,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc assignAndQueueProject*(state: var GameState, colonyId: core.SystemId,"
     },
     {
-      "module": "total_squadrons",
-      "sig": "proc calculateMaxTotalSquadrons*(industrialUnits: int, mapRings: int"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc isMilitarySquadron*(shipClass: ShipClass): bool"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc countTotalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc countTotalSquadronsUnderConstruction*(state: GameState,"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityViolation"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc startGracePeriod*(state: var GameState, houseId: core.HouseId)"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc clearGracePeriod*(state: var GameState, houseId: core.HouseId)"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc checkViolations*(state: GameState): seq[types.CapacityViolation]"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc planEnforcement*(state: GameState, violation: types.CapacityViolation): types.EnforcementAction"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc applyEnforcement*(state: var GameState, action: types.EnforcementAction)"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction]"
-    },
-    {
-      "module": "total_squadrons",
-      "sig": "proc canBuildSquadron*(state: GameState, houseId: core.HouseId, shipClass: ShipClass): bool"
-    },
-    {
       "module": "carrier_hangar",
       "sig": "proc isCarrier*(shipClass: ShipClass): bool"
     },
@@ -6282,6 +6220,138 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc processCapacityEnforcement*(state: var GameState): seq[types.EnforcementAction]"
     },
     {
+      "module": "capital_squadrons",
+      "sig": "proc getCapitalShipCRThreshold*(): int"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc getMapSizeMultiplier*(mapRings: int, numPlayers: int): float"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc calculateMaxCapitalSquadrons*(industrialUnits: int, mapRings: int"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc isCapitalShip*(shipClass: ShipClass): bool"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc countCapitalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: core.HouseId): int"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityViolation"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc checkViolations*(state: GameState): seq[types.CapacityViolation]"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc calculateSalvageValue*(shipClass: ShipClass): int"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc planEnforcement*(state: GameState, violation: types.CapacityViolation): types.EnforcementAction"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc processCapacityEnforcement*(state: var GameState,"
+    },
+    {
+      "module": "capital_squadrons",
+      "sig": "proc canBuildCapitalShip*(state: GameState, houseId: core.HouseId): bool"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc analyzeCapacity*(state: GameState, colony: Colony, houseId: core.HouseId): types.CapacityViolation"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc checkViolations*(state: GameState): seq[types.CapacityViolation]"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc updateViolationTracking*(state: var GameState, violation: types.CapacityViolation)"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc planEnforcement*(state: GameState, violation: types.CapacityViolation): types.EnforcementAction"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc processCapacityEnforcement*(state: var GameState,"
+    },
+    {
+      "module": "fighter",
+      "sig": "proc canCommissionFighter*(state: GameState, colony: Colony): bool"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc calculateMaxTotalSquadrons*(industrialUnits: int, mapRings: int"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc isMilitarySquadron*(shipClass: ShipClass): bool"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc countTotalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc countTotalSquadronsUnderConstruction*(state: GameState,"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc analyzeCapacity*(state: GameState, houseId: core.HouseId): types.CapacityViolation"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc startGracePeriod*(state: var GameState, houseId: core.HouseId)"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc clearGracePeriod*(state: var GameState, houseId: core.HouseId)"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc checkViolations*(state: GameState): seq[types.CapacityViolation]"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc planEnforcement*(state: GameState, violation: types.CapacityViolation): types.EnforcementAction"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc processCapacityEnforcement*(state: var GameState,"
+    },
+    {
+      "module": "total_squadrons",
+      "sig": "proc canBuildSquadron*(state: GameState, houseId: core.HouseId, shipClass: ShipClass): bool"
+    },
+    {
       "module": "retreat",
       "sig": "proc getMoraleROEModifier*(prestige: int): int"
     },
@@ -6312,94 +6382,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "retreat",
       "sig": "proc `$`*(eval: RetreatEvaluation): string"
-    },
-    {
-      "module": "cer",
-      "sig": "proc initRNG*(seed: int64): CombatRNG"
-    },
-    {
-      "module": "cer",
-      "sig": "proc initRNG*(seedString: string): CombatRNG"
-    },
-    {
-      "module": "cer",
-      "sig": "proc next*(rng: var CombatRNG): uint64"
-    },
-    {
-      "module": "cer",
-      "sig": "proc rollDie*(rng: var CombatRNG, sides: int): int"
-    },
-    {
-      "module": "cer",
-      "sig": "proc roll1d10*(rng: var CombatRNG): int"
-    },
-    {
-      "module": "cer",
-      "sig": "proc roll1d20*(rng: var CombatRNG): int"
-    },
-    {
-      "module": "cer",
-      "sig": "proc calculateModifiers*("
-    },
-    {
-      "module": "cer",
-      "sig": "proc rollCER*("
-    },
-    {
-      "module": "cer",
-      "sig": "proc applyDamage*(damage: int, effectiveness: float): int"
-    },
-    {
-      "module": "cer",
-      "sig": "proc calculateHits*(squadronAS: int, cerRoll: CERRoll): int"
-    },
-    {
-      "module": "cer",
-      "sig": "proc `$`*(cer: CERRoll): string"
-    },
-    {
-      "module": "cer",
-      "sig": "proc deterministicRoll*(seed: string, phase: CombatPhase, roundNum: int): CERRoll"
-    },
-    {
-      "module": "cer",
-      "sig": "proc simulateRolls*(seed: int64, count: int): seq[int]"
-    },
-    {
-      "module": "resolution",
-      "sig": "proc resolvePhase1_Ambush*("
-    },
-    {
-      "module": "resolution",
-      "sig": "proc resolvePhase2_Fighters*("
-    },
-    {
-      "module": "resolution",
-      "sig": "proc resolvePhase3_CapitalShips*("
-    },
-    {
-      "module": "resolution",
-      "sig": "proc resolveRound*("
-    },
-    {
-      "module": "starbase",
-      "sig": "proc hasStarbaseDetection*(taskForce: TaskForce): bool"
-    },
-    {
-      "module": "starbase",
-      "sig": "proc getStarbaseDetectionBonus*(taskForce: TaskForce): int"
-    },
-    {
-      "module": "starbase",
-      "sig": "proc createStarbaseCombatSquadron*("
-    },
-    {
-      "module": "starbase",
-      "sig": "proc shouldStarbaseJoinCombat*("
-    },
-    {
-      "module": "starbase",
-      "sig": "proc attemptStarbaseHack*("
     },
     {
       "module": "ground",
@@ -6514,22 +6496,6 @@ Processing: src/common/types/diplomacy.nim
       "sig": "proc `$`*(change: StateChange): string"
     },
     {
-      "module": "engine",
-      "sig": "proc resolveCombat*(context: BattleContext): CombatResult"
-    },
-    {
-      "module": "engine",
-      "sig": "proc initializeCombatSquadron*(squadron: Squadron): CombatSquadron"
-    },
-    {
-      "module": "engine",
-      "sig": "proc initializeTaskForce*("
-    },
-    {
-      "module": "engine",
-      "sig": "proc quickBattle*("
-    },
-    {
       "module": "targeting",
       "sig": "proc isHostile*("
     },
@@ -6624,6 +6590,106 @@ Processing: src/common/types/diplomacy.nim
     {
       "module": "types",
       "sig": "proc calculateTargetWeight*(cs: CombatSquadron): float"
+    },
+    {
+      "module": "engine",
+      "sig": "proc resolveCombat*(context: BattleContext): CombatResult"
+    },
+    {
+      "module": "engine",
+      "sig": "proc initializeCombatSquadron*(squadron: Squadron): CombatSquadron"
+    },
+    {
+      "module": "engine",
+      "sig": "proc initializeTaskForce*("
+    },
+    {
+      "module": "engine",
+      "sig": "proc quickBattle*("
+    },
+    {
+      "module": "resolution",
+      "sig": "proc resolvePhase1_Ambush*("
+    },
+    {
+      "module": "resolution",
+      "sig": "proc resolvePhase2_Fighters*("
+    },
+    {
+      "module": "resolution",
+      "sig": "proc resolvePhase3_CapitalShips*("
+    },
+    {
+      "module": "resolution",
+      "sig": "proc resolveRound*("
+    },
+    {
+      "module": "cer",
+      "sig": "proc initRNG*(seed: int64): CombatRNG"
+    },
+    {
+      "module": "cer",
+      "sig": "proc initRNG*(seedString: string): CombatRNG"
+    },
+    {
+      "module": "cer",
+      "sig": "proc next*(rng: var CombatRNG): uint64"
+    },
+    {
+      "module": "cer",
+      "sig": "proc rollDie*(rng: var CombatRNG, sides: int): int"
+    },
+    {
+      "module": "cer",
+      "sig": "proc roll1d10*(rng: var CombatRNG): int"
+    },
+    {
+      "module": "cer",
+      "sig": "proc roll1d20*(rng: var CombatRNG): int"
+    },
+    {
+      "module": "cer",
+      "sig": "proc calculateModifiers*("
+    },
+    {
+      "module": "cer",
+      "sig": "proc rollCER*("
+    },
+    {
+      "module": "cer",
+      "sig": "proc applyDamage*(damage: int, effectiveness: float): int"
+    },
+    {
+      "module": "cer",
+      "sig": "proc calculateHits*(squadronAS: int, cerRoll: CERRoll): int"
+    },
+    {
+      "module": "cer",
+      "sig": "proc `$`*(cer: CERRoll): string"
+    },
+    {
+      "module": "cer",
+      "sig": "proc deterministicRoll*(seed: string, phase: CombatPhase, roundNum: int): CERRoll"
+    },
+    {
+      "module": "cer",
+      "sig": "proc simulateRolls*(seed: int64, count: int): seq[int]"
+    },
+    {
+      "module": "starbase",
+      "sig": "proc hasStarbaseDetection*(taskForce: TaskForce): bool"
+    },
+    {
+      "module": "starbase",
+      "sig": "proc getStarbaseDetectionBonus*(taskForce: TaskForce): int"
+    },
+    {
+      "module": "starbase",
+      "sig": "proc createStarbaseCombatSquadron*("
+    },
+    {
+      "module": "starbase",
+      "sig": "proc shouldStarbaseJoinCombat*("
     },
     {
       "module": "hex",
@@ -7029,138 +7095,68 @@ Processing: src/common/types/diplomacy.nim
       "kind": "enum"
     },
     {
-      "name": "StrategyPersonalityConfig",
-      "module": "config",
+      "name": "EventSubscription",
+      "module": "event_subscription",
       "kind": "object"
     },
     {
-      "name": "BudgetAllocationConfig",
-      "module": "config",
+      "name": "CargoManagementAction",
+      "module": "logistics",
+      "kind": "enum"
+    },
+    {
+      "name": "CargoManagementOrder",
+      "module": "logistics",
       "kind": "object"
     },
     {
-      "name": "TacticalConfig",
-      "module": "config",
+      "name": "SquadronManagementAction",
+      "module": "logistics",
+      "kind": "enum"
+    },
+    {
+      "name": "SquadronManagementOrder",
+      "module": "logistics",
       "kind": "object"
     },
     {
-      "name": "StrategicConfig",
-      "module": "config",
+      "name": "AssetInventory",
+      "module": "logistics",
       "kind": "object"
     },
     {
-      "name": "EconomicParametersConfig",
-      "module": "config",
+      "name": "ReallocationRecommendation",
+      "module": "logistics",
       "kind": "object"
     },
     {
-      "name": "EparchConfig",
-      "module": "config",
+      "name": "FleetLifecycleDecision",
+      "module": "logistics",
+      "kind": "enum"
+    },
+    {
+      "name": "FleetRole",
+      "module": "logistics",
+      "kind": "enum"
+    },
+    {
+      "name": "OptimalComposition",
+      "module": "logistics",
       "kind": "object"
     },
     {
-      "name": "OrdersConfig",
-      "module": "config",
+      "name": "FleetComposition",
+      "module": "budget",
       "kind": "object"
     },
     {
-      "name": "LogisticsConfig",
-      "module": "config",
+      "name": "CompositionDoctrine",
+      "module": "budget",
       "kind": "object"
     },
     {
-      "name": "FleetCompositionRatioConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "ThreatAssessmentConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "AdmiralConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "ThreatResponseConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "SurveillanceConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "DiplomaticEventsConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "CounterintelConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "ConstructionAnalysisConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "PatrolDetectionConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "IntelligenceConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "DrungariusConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "GOAPConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "FeedbackSystemConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "ReprioritizationConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "StandingOrdersIntegrationConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "EparchIndustrialConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "TreasuryThresholdsConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "AffordabilityChecksConfig",
-      "module": "config",
-      "kind": "object"
-    },
-    {
-      "name": "RBAConfig",
-      "module": "config",
+      "name": "BudgetReport",
+      "module": "budget",
       "kind": "object"
     },
     {
@@ -7324,11 +7320,6 @@ Processing: src/common/types/diplomacy.nim
       "kind": "object"
     },
     {
-      "name": "EventSubscription",
-      "module": "event_subscription",
-      "kind": "object"
-    },
-    {
       "name": "FleetRole",
       "module": "standing_orders_manager",
       "kind": "enum"
@@ -7344,63 +7335,148 @@ Processing: src/common/types/diplomacy.nim
       "kind": "object"
     },
     {
-      "name": "FleetComposition",
-      "module": "budget",
+      "name": "StrategyPersonalityConfig",
+      "module": "config",
       "kind": "object"
     },
     {
-      "name": "CompositionDoctrine",
-      "module": "budget",
+      "name": "BudgetAllocationConfig",
+      "module": "config",
       "kind": "object"
     },
     {
-      "name": "BudgetReport",
-      "module": "budget",
+      "name": "TacticalConfig",
+      "module": "config",
       "kind": "object"
     },
     {
-      "name": "CargoManagementAction",
-      "module": "logistics",
-      "kind": "enum"
-    },
-    {
-      "name": "CargoManagementOrder",
-      "module": "logistics",
+      "name": "StrategicConfig",
+      "module": "config",
       "kind": "object"
     },
     {
-      "name": "SquadronManagementAction",
-      "module": "logistics",
-      "kind": "enum"
-    },
-    {
-      "name": "SquadronManagementOrder",
-      "module": "logistics",
+      "name": "EconomicParametersConfig",
+      "module": "config",
       "kind": "object"
     },
     {
-      "name": "AssetInventory",
-      "module": "logistics",
+      "name": "EparchConfig",
+      "module": "config",
       "kind": "object"
     },
     {
-      "name": "ReallocationRecommendation",
-      "module": "logistics",
+      "name": "OrdersConfig",
+      "module": "config",
       "kind": "object"
     },
     {
-      "name": "FleetLifecycleDecision",
-      "module": "logistics",
-      "kind": "enum"
+      "name": "ActTransitionsConfig",
+      "module": "config",
+      "kind": "object"
     },
     {
-      "name": "FleetRole",
-      "module": "logistics",
-      "kind": "enum"
+      "name": "RBAColonizationConfig",
+      "module": "config",
+      "kind": "object"
     },
     {
-      "name": "OptimalComposition",
-      "module": "logistics",
+      "name": "LogisticsConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "FleetCompositionRatioConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "ThreatAssessmentConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "AdmiralConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "ThreatResponseConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "SurveillanceConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "DiplomaticEventsConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "CounterintelConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "ConstructionAnalysisConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "PatrolDetectionConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "IntelligenceConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "DrungariusConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "GOAPConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "FeedbackSystemConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "ReprioritizationConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "StandingOrdersIntegrationConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "EparchIndustrialConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "TreasuryThresholdsConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "AffordabilityChecksConfig",
+      "module": "config",
+      "kind": "object"
+    },
+    {
+      "name": "RBAConfig",
+      "module": "config",
       "kind": "object"
     },
     {
@@ -7499,6 +7575,16 @@ Processing: src/common/types/diplomacy.nim
       "kind": "object"
     },
     {
+      "name": "ROERecommendation",
+      "module": "combat_doctrine_adapter",
+      "kind": "object"
+    },
+    {
+      "name": "FormationSpread",
+      "module": "combat_doctrine_adapter",
+      "kind": "enum"
+    },
+    {
       "name": "FleetUtilization",
       "module": "fleet_analysis",
       "kind": "enum"
@@ -7522,16 +7608,6 @@ Processing: src/common/types/diplomacy.nim
       "name": "TransferPlan",
       "module": "fleet_management",
       "kind": "object"
-    },
-    {
-      "name": "ROERecommendation",
-      "module": "combat_doctrine_adapter",
-      "kind": "object"
-    },
-    {
-      "name": "FormationSpread",
-      "module": "combat_doctrine_adapter",
-      "kind": "enum"
     },
     {
       "name": "DefenseGap",
@@ -8049,201 +8125,6 @@ Processing: src/common/types/diplomacy.nim
       "kind": "enum"
     },
     {
-      "name": "FleetStatus",
-      "module": "fleet",
-      "kind": "enum"
-    },
-    {
-      "name": "Fleet",
-      "module": "fleet",
-      "kind": "object"
-    },
-    {
-      "name": "TerraformOrder",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "OrderPacket",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "BuildOrder",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "BuildType",
-      "module": "orders",
-      "kind": "enum"
-    },
-    {
-      "name": "DiplomaticAction",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "DiplomaticActionType",
-      "module": "orders",
-      "kind": "enum"
-    },
-    {
-      "name": "PopulationTransferOrder",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "ValidationResult",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "OrderValidationContext",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "OrderCostSummary",
-      "module": "orders",
-      "kind": "object"
-    },
-    {
-      "name": "TurnResult",
-      "module": "resolve",
-      "kind": "object"
-    },
-    {
-      "name": "StarMapError",
-      "module": "starmap",
-      "kind": "object"
-    },
-    {
-      "name": "StarMap",
-      "module": "starmap",
-      "kind": "object"
-    },
-    {
-      "name": "JumpLane",
-      "module": "starmap",
-      "kind": "object"
-    },
-    {
-      "name": "PathResult",
-      "module": "starmap",
-      "kind": "object"
-    },
-    {
-      "name": "BuildingType",
-      "module": "gamestate",
-      "kind": "enum"
-    },
-    {
-      "name": "FighterSquadron",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "Starbase",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "Spaceport",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "Shipyard",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "Drydock",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "CapacityViolation",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "TerraformProject",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "Colony",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "SpyMissionType",
-      "module": "gamestate",
-      "kind": "enum"
-    },
-    {
-      "name": "SpyScoutState",
-      "module": "gamestate",
-      "kind": "enum"
-    },
-    {
-      "name": "SpyScout",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "SpyScoutOrderType",
-      "module": "gamestate",
-      "kind": "enum"
-    },
-    {
-      "name": "SpyScoutOrder",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "FallbackRoute",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "AutoRetreatPolicy",
-      "module": "gamestate",
-      "kind": "enum"
-    },
-    {
-      "name": "HouseStatus",
-      "module": "gamestate",
-      "kind": "enum"
-    },
-    {
-      "name": "House",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "GamePhase",
-      "module": "gamestate",
-      "kind": "enum"
-    },
-    {
-      "name": "GracePeriodTracker",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "GameState",
-      "module": "gamestate",
-      "kind": "object"
-    },
-    {
-      "name": "ActivationResult",
-      "module": "standing_orders",
-      "kind": "object"
-    },
-    {
       "name": "FleetOrderType",
       "module": "order_types",
       "kind": "enum"
@@ -8316,6 +8197,196 @@ Processing: src/common/types/diplomacy.nim
     {
       "name": "SpaceLiftShip",
       "module": "spacelift",
+      "kind": "object"
+    },
+    {
+      "name": "TerraformOrder",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "OrderPacket",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "BuildOrder",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "BuildType",
+      "module": "orders",
+      "kind": "enum"
+    },
+    {
+      "name": "DiplomaticAction",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "DiplomaticActionType",
+      "module": "orders",
+      "kind": "enum"
+    },
+    {
+      "name": "PopulationTransferOrder",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "ValidationResult",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "OrderValidationContext",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "OrderCostSummary",
+      "module": "orders",
+      "kind": "object"
+    },
+    {
+      "name": "FleetStatus",
+      "module": "fleet",
+      "kind": "enum"
+    },
+    {
+      "name": "Fleet",
+      "module": "fleet",
+      "kind": "object"
+    },
+    {
+      "name": "BuildingType",
+      "module": "gamestate",
+      "kind": "enum"
+    },
+    {
+      "name": "FighterSquadron",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "Starbase",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "Spaceport",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "Shipyard",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "Drydock",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "CapacityViolation",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "TerraformProject",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "Colony",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "SpyMissionType",
+      "module": "gamestate",
+      "kind": "enum"
+    },
+    {
+      "name": "ActiveSpyMission",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "FallbackRoute",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "AutoRetreatPolicy",
+      "module": "gamestate",
+      "kind": "enum"
+    },
+    {
+      "name": "HouseStatus",
+      "module": "gamestate",
+      "kind": "enum"
+    },
+    {
+      "name": "House",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "GamePhase",
+      "module": "gamestate",
+      "kind": "enum"
+    },
+    {
+      "name": "GracePeriodTracker",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "GameState",
+      "module": "gamestate",
+      "kind": "object"
+    },
+    {
+      "name": "TurnResult",
+      "module": "resolve",
+      "kind": "object"
+    },
+    {
+      "name": "StarMapError",
+      "module": "starmap",
+      "kind": "object"
+    },
+    {
+      "name": "StarMap",
+      "module": "starmap",
+      "kind": "object"
+    },
+    {
+      "name": "JumpLane",
+      "module": "starmap",
+      "kind": "object"
+    },
+    {
+      "name": "PathResult",
+      "module": "starmap",
+      "kind": "object"
+    },
+    {
+      "name": "ActivationResult",
+      "module": "standing_orders",
+      "kind": "object"
+    },
+    {
+      "name": "DBConfig",
+      "module": "types",
+      "kind": "object"
+    },
+    {
+      "name": "WriteResult",
+      "module": "types",
       "kind": "object"
     },
     {
@@ -8477,6 +8548,11 @@ Processing: src/common/types/diplomacy.nim
       "name": "OrderOutcome",
       "module": "executor",
       "kind": "enum"
+    },
+    {
+      "name": "DetectionResult",
+      "module": "spy_resolution",
+      "kind": "object"
     },
     {
       "name": "ELIUnit",
@@ -8791,51 +8867,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "name": "DiplomacyConfig",
       "module": "diplomacy_config",
-      "kind": "object"
-    },
-    {
-      "name": "EspionageCostsConfig",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "EspionageInvestmentConfig",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "EspionageDetectionConfig",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "EspionageEffectsConfig",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "ScoutDetectionConfig",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "RaiderDetectionConfig",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "SpyDetectionTable",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "RaiderDetectionTable",
-      "module": "espionage_config",
-      "kind": "object"
-    },
-    {
-      "name": "EspionageConfig",
-      "module": "espionage_config",
       "kind": "object"
     },
     {
@@ -9419,6 +9450,36 @@ Processing: src/common/types/diplomacy.nim
       "kind": "object"
     },
     {
+      "name": "EspionageCostsConfig",
+      "module": "espionage_config",
+      "kind": "object"
+    },
+    {
+      "name": "EspionageInvestmentConfig",
+      "module": "espionage_config",
+      "kind": "object"
+    },
+    {
+      "name": "EspionageDetectionConfig",
+      "module": "espionage_config",
+      "kind": "object"
+    },
+    {
+      "name": "EspionageEffectsConfig",
+      "module": "espionage_config",
+      "kind": "object"
+    },
+    {
+      "name": "ScoutDetectionConfig",
+      "module": "espionage_config",
+      "kind": "object"
+    },
+    {
+      "name": "EspionageConfig",
+      "module": "espionage_config",
+      "kind": "object"
+    },
+    {
       "name": "ResearchCategory",
       "module": "types",
       "kind": "enum"
@@ -9466,21 +9527,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "name": "ResearchReport",
       "module": "types",
-      "kind": "object"
-    },
-    {
-      "name": "AssetType",
-      "module": "maintenance_shortfall",
-      "kind": "enum"
-    },
-    {
-      "name": "StrippedAsset",
-      "module": "maintenance_shortfall",
-      "kind": "object"
-    },
-    {
-      "name": "ShortfallCascade",
-      "module": "maintenance_shortfall",
       "kind": "object"
     },
     {
@@ -9564,6 +9610,21 @@ Processing: src/common/types/diplomacy.nim
       "kind": "object"
     },
     {
+      "name": "AssetType",
+      "module": "maintenance_shortfall",
+      "kind": "enum"
+    },
+    {
+      "name": "StrippedAsset",
+      "module": "maintenance_shortfall",
+      "kind": "object"
+    },
+    {
+      "name": "ShortfallCascade",
+      "module": "maintenance_shortfall",
+      "kind": "object"
+    },
+    {
       "name": "CapacityType",
       "module": "types",
       "kind": "enum"
@@ -9586,11 +9647,6 @@ Processing: src/common/types/diplomacy.nim
     {
       "name": "FacilityCapacity",
       "module": "construction_docks",
-      "kind": "object"
-    },
-    {
-      "name": "CombatRNG",
-      "module": "cer",
       "kind": "object"
     },
     {
@@ -9704,6 +9760,11 @@ Processing: src/common/types/diplomacy.nim
       "kind": "object"
     },
     {
+      "name": "CombatRNG",
+      "module": "cer",
+      "kind": "object"
+    },
+    {
       "name": "Hex",
       "module": "hex",
       "kind": "object"
@@ -9797,6 +9858,11 @@ Processing: src/common/types/diplomacy.nim
       "name": "PrestigeChange",
       "module": "diplomacy",
       "kind": "object"
+    },
+    {
+      "name": "FleetMissionState",
+      "module": "core",
+      "kind": "enum"
     }
   ]
 }

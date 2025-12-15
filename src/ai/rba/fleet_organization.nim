@@ -54,7 +54,7 @@ proc detachETACsIfMixed(
       &"Skipping ETAC detachment for {fleet.id} (active {order.orderType} order)")
     return  # Don't disrupt active mission
 
-  # ALSO check for standing orders (AutoColonize, AutoRepair, etc.)
+  # ALSO check for standing orders (AutoRepair, PatrolRoute, etc.)
   # Standing orders will activate in Maintenance Phase AFTER this runs
   if fleet.id in controller.standingOrders:
     let standingOrder = controller.standingOrders[fleet.id]

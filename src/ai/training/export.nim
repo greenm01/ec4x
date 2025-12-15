@@ -210,7 +210,13 @@ proc encodeGameState*(state: GameState, houseId: HouseId): seq[float] =
   result[idx] = min(economicRatio, 10.0) / 10.0; inc idx  # 505: economic ratio
 
   # Game phase (Act1-4)
-  let currentAct = getCurrentGameAct(state.turn)
+
+  # Calculate total colonized systems
+  let totalSystems = state.starMap.systems.len
+  let totalColonized = state.colonies.len
+
+  # Use colonization-based Act determination (90% threshold for Act 2 transition)
+  let currentAct = getCurrentGameAct(totalSystems, totalColonized, state.turn)
   result[idx] = (if currentAct == GameAct.Act1_LandGrab: 1.0 else: 0.0); inc idx  # 506
   result[idx] = (if currentAct == GameAct.Act2_RisingTensions: 1.0 else: 0.0); inc idx  # 507
   result[idx] = (if currentAct == GameAct.Act3_TotalWar: 1.0 else: 0.0); inc idx  # 508

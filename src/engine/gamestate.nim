@@ -323,6 +323,7 @@ type
     phase*: GamePhase
     starMap*: StarMap
     houses*: Table[HouseId, House]
+    homeworlds*: Table[HouseId, SystemId]  # Track homeworld system per house
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
     fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)

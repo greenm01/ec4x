@@ -96,7 +96,7 @@ proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bo
 proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
                                    systemId: SystemId): seq[Fleet] =
   ## Returns enemy fleets at system that house has intel on
-  ## Used by AutoEvade and other defensive standing orders
+  ## Used by defensive standing orders
   ##
   ## **Detection sources:**
   ## - Fleet movement history (detected by scouts/surveillance)
@@ -285,10 +285,11 @@ proc scoreColonizationCandidate*(
   ##
   ## **Exported for reuse across engine and AI modules (DRY principle)**
 
-  # Calculate current Act from turn number (7 turns per Act)
-  let currentAct = if turn <= 7: 1
-                   elif turn <= 14: 2
-                   elif turn <= 21: 3
+  # Calculate current Act from turn number (heuristic for colonization scoring)
+  # Aligned with colonization-based Act transitions (Act 1 ~15 turns, Act 2 ~22, Act 3 ~35)
+  let currentAct = if turn <= 15: 1
+                   elif turn <= 22: 2
+                   elif turn <= 35: 3
                    else: 4
 
   # Calculate planet quality score (0-100)
@@ -340,10 +341,11 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
   ## Pass alreadyTargeted HashSet to skip systems already being colonized
   var candidates: seq[(SystemId, int, PlanetClass)] = @[]
 
-  # Calculate current Act from turn number (7 turns per Act)
-  let currentAct = if state.turn <= 7: 1
-                   elif state.turn <= 14: 2
-                   elif state.turn <= 21: 3
+  # Calculate current Act from turn number (heuristic for colonization scoring)
+  # Aligned with colonization-based Act transitions (Act 1 ~15 turns, Act 2 ~22, Act 3 ~35)
+  let currentAct = if state.turn <= 15: 1
+                   elif state.turn <= 22: 2
+                   elif state.turn <= 35: 3
                    else: 4
 
   # Get known systems (fog-of-war compliant)
@@ -418,10 +420,11 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
   ## Same Act-aware scoring and duplicate prevention as main function
   var candidates: seq[(SystemId, int, PlanetClass)] = @[]
 
-  # Calculate current Act from turn number (7 turns per Act)
-  let currentAct = if filtered.turn <= 7: 1
-                   elif filtered.turn <= 14: 2
-                   elif filtered.turn <= 21: 3
+  # Calculate current Act from turn number (heuristic for colonization scoring)
+  # Aligned with colonization-based Act transitions (Act 1 ~15 turns, Act 2 ~22, Act 3 ~35)
+  let currentAct = if filtered.turn <= 15: 1
+                   elif filtered.turn <= 22: 2
+                   elif filtered.turn <= 35: 3
                    else: 4
 
   # Scan visible systems within range
@@ -494,141 +497,6 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
     return none(SystemId)
 
   return some(best.systemId)
-
-proc activateAutoColonize(state: var GameState, fleetId: FleetId,
-                        params: StandingOrderParams): ActivationResult =
-  ## Execute auto-colonize - find and colonize nearest suitable system
-  ## For ETAC fleets that should automatically expand
-  let fleet = state.fleets[fleetId]
-
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} AutoColonize: Searching for targets within {params.colonizeMaxRange} jumps")
-
-  # Verify fleet has colonization capability (ETAC with colonists)
-  if fleet.spaceLiftShips.len == 0:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} AutoColonize failed: Fleet has no spacelift ships")
-    return ActivationResult(success: false,
-                          error: "No spacelift ships for colonization")
-
-  # Check if any spacelift ship carries colonists
-  var hasColonists = false
-  for ship in fleet.spaceLiftShips:
-    if ship.cargo.cargoType == CargoType.Colonists:
-      hasColonists = true
-      break
-
-  if not hasColonists:
-    # ETAC empty - automatically return to nearest colony for reload
-    let nearestColony = findNearestOwnedColony(state, fleet.location, fleet.owner)
-
-    if nearestColony.isNone:
-      # No colonies to reload at - hold position
-      logWarn(LogCategory.lcOrders,
-              &"{fleetId} AutoColonize: Empty ETAC but no owned colonies found for reload")
-      return ActivationResult(success: false,
-                            error: "Empty ETAC with no colonies for reload")
-
-    let reloadSystem = nearestColony.get()
-
-    # If already at a colony, hold position (passive reload will occur)
-    if fleet.location == reloadSystem:
-      logInfo(LogCategory.lcOrders,
-              &"{fleetId} AutoColonize: Empty ETAC at {reloadSystem}, holding for reload")
-      return ActivationResult(success: false,
-                            error: "Empty ETAC at colony, awaiting passive reload")
-
-    # Move to nearest colony for reload
-    # VALIDATION: Ensure target is valid before creating order
-    if not state.starMap.systems.hasKey(reloadSystem):
-      logError(LogCategory.lcOrders,
-               &"{fleetId} AutoColonize: Invalid reload system {reloadSystem} (system does not exist)")
-      return ActivationResult(success: false,
-                            error: &"Invalid reload system {reloadSystem}")
-
-    let moveOrder = FleetOrder(
-      fleetId: fleetId,
-      orderType: FleetOrderType.Move,
-      targetSystem: some(reloadSystem),
-      priority: 100
-    )
-    state.fleetOrders[fleetId] = moveOrder
-
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} AutoColonize: Empty ETAC moving to {reloadSystem} for reload")
-
-    return ActivationResult(success: true,
-                          action: &"Moving to {reloadSystem} for ETAC reload")
-
-  # Find best colonization target
-  # Standing orders don't coordinate across fleets - use empty alreadyTargeted set
-  logDebug(LogCategory.lcOrders,
-           &"[ENGINE ACTIVATION] {fleetId} AutoColonize: Finding target (maxRange={params.colonizeMaxRange})")
-
-  let targetOpt = findColonizationTarget(state, fleet.owner, fleet, fleet.location,
-                                        params.colonizeMaxRange,
-                                        initHashSet[SystemId](),
-                                        params.preferredPlanetClasses)
-
-  if targetOpt.isNone:
-    logDebug(LogCategory.lcOrders,
-             &"[ENGINE ACTIVATION] {fleetId} AutoColonize: No suitable systems within {params.colonizeMaxRange} jumps")
-    return ActivationResult(success: false,
-                          error: "No colonization targets available")
-
-  let targetSystem = targetOpt.get()
-
-  # CRITICAL: Validate target is not SystemId(0)
-  if targetSystem == SystemId(0):
-    logError(LogCategory.lcOrders,
-             &"[ENGINE ACTIVATION] {fleetId} AutoColonize: BUG - got SystemId(0) from findColonizationTarget!")
-    return ActivationResult(success: false,
-                          error: "Invalid colonization target (SystemId 0)")
-
-  # Calculate distance via jump lanes
-  let pathResult = state.starMap.findPath(fleet.location, targetSystem, fleet)
-  let distance = if pathResult.found: pathResult.path.len - 1 else: 0
-
-  # If already at target, issue colonize order
-  if fleet.location == targetSystem:
-    let colonizeOrder = FleetOrder(
-      fleetId: fleetId,
-      orderType: FleetOrderType.Colonize,
-      targetSystem: some(targetSystem),
-      priority: 100
-    )
-    state.fleetOrders[fleetId] = colonizeOrder
-
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} AutoColonize: At target system-{targetSystem}, colonizing")
-
-    return ActivationResult(success: true,
-                          action: &"Colonize system-{targetSystem}")
-
-  # Move to colonization target
-  # VALIDATION: Ensure target is valid before creating order
-  if not state.starMap.systems.hasKey(targetSystem):
-    logError(LogCategory.lcOrders,
-             &"{fleetId} AutoColonize: Invalid colonization target {targetSystem} (system does not exist)")
-    return ActivationResult(success: false,
-                          error: &"Invalid colonization target {targetSystem}")
-
-  let moveOrder = FleetOrder(
-    fleetId: fleetId,
-    orderType: FleetOrderType.Move,
-    targetSystem: some(targetSystem),
-    priority: 100
-  )
-  state.fleetOrders[fleetId] = moveOrder
-
-  let planetClass = state.starMap.systems[targetSystem].planetClass
-
-  logInfo(LogCategory.lcOrders,
-          &"{fleetId} AutoColonize: Moving to system-{targetSystem} " &
-          &"({planetClass}, {distance} jumps)")
-
-  return ActivationResult(success: true,
-                        action: &"Move to colonization target system-{targetSystem}")
 
 proc activateAutoRepair(state: var GameState, fleetId: FleetId,
                       params: StandingOrderParams): ActivationResult =
@@ -906,128 +774,6 @@ proc calculateFleetStrength(fleet: Fleet): int =
     for ship in squadron.ships:
       result += ship.stats.attackStrength
 
-proc activateAutoEvade(state: var GameState, fleetId: FleetId,
-                     params: StandingOrderParams, roe: int): ActivationResult =
-  ## Execute auto-evade - retreat to fallback system when outnumbered
-  ## Uses evadeTriggerRatio to determine when to retreat
-  let fleet = state.fleets[fleetId]
-  let currentLocation = fleet.location
-
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} AutoEvade: Checking for hostile forces at system-{currentLocation}")
-
-  # Calculate our strength
-  let ourStrength = calculateFleetStrength(fleet)
-
-  # Find hostile fleets at current location (fog-of-war compliant)
-  let knownEnemyFleets = getKnownEnemyFleetsInSystem(state, fleet.owner, currentLocation)
-  var totalHostileStrength = 0
-  let hostileCount = knownEnemyFleets.len
-
-  for enemyFleet in knownEnemyFleets:
-    let hostileStrength = calculateFleetStrength(enemyFleet)
-    totalHostileStrength += hostileStrength
-
-    logDebug(LogCategory.lcOrders,
-             &"{fleetId} AutoEvade: Detected {enemyFleet.id} " &
-             &"(strength {hostileStrength}, intel-based)")
-
-  if hostileCount == 0:
-    # No hostiles - hold position
-    logDebug(LogCategory.lcOrders,
-             &"{fleetId} AutoEvade: No hostile forces detected, holding position")
-
-    let holdOrder = FleetOrder(
-      fleetId: fleetId,
-      orderType: FleetOrderType.Hold,
-      targetSystem: none(SystemId),
-      priority: 100
-    )
-    state.fleetOrders[fleetId] = holdOrder
-
-    return ActivationResult(success: true,
-                          action: "Hold (no hostiles)")
-
-  # Calculate strength ratio
-  let strengthRatio = if totalHostileStrength > 0:
-                        ourStrength.float / totalHostileStrength.float
-                      else:
-                        1.0
-
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} AutoEvade: Strength ratio {strengthRatio:.2f} " &
-           &"(us {ourStrength} vs them {totalHostileStrength}), " &
-           &"trigger {params.evadeTriggerRatio:.2f}")
-
-  # Check if we should retreat
-  if strengthRatio >= params.evadeTriggerRatio:
-    # We're strong enough - hold position
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} AutoEvade: Strength sufficient ({strengthRatio:.2f} >= " &
-            &"{params.evadeTriggerRatio:.2f}), holding position")
-
-    let holdOrder = FleetOrder(
-      fleetId: fleetId,
-      orderType: FleetOrderType.Hold,
-      targetSystem: none(SystemId),
-      priority: 100
-    )
-    state.fleetOrders[fleetId] = holdOrder
-
-    return ActivationResult(success: true,
-                          action: &"Hold (strength ratio {strengthRatio:.2f})")
-
-  # Retreat to fallback system
-  let fallbackSystem = params.fallbackSystem
-
-  # Verify fallback system exists and is reachable
-  if fallbackSystem notin state.starMap.systems:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} AutoEvade failed: Fallback system-{fallbackSystem} does not exist")
-    return ActivationResult(success: false,
-                          error: "Fallback system does not exist")
-
-  let pathResult = state.starMap.findPath(currentLocation, fallbackSystem, fleet)
-  if not pathResult.found:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} AutoEvade failed: Cannot reach fallback system-{fallbackSystem}")
-    return ActivationResult(success: false,
-                          error: "Cannot reach fallback system")
-
-  let distance = pathResult.path.len - 1
-
-  # If already at fallback, hold position
-  if currentLocation == fallbackSystem:
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} AutoEvade: Already at fallback system-{fallbackSystem}, holding")
-
-    let holdOrder = FleetOrder(
-      fleetId: fleetId,
-      orderType: FleetOrderType.Hold,
-      targetSystem: none(SystemId),
-      priority: 100
-    )
-    state.fleetOrders[fleetId] = holdOrder
-
-    return ActivationResult(success: true,
-                          action: "Hold at fallback")
-
-  # Retreat to fallback
-  logInfo(LogCategory.lcOrders,
-          &"{fleetId} AutoEvade: RETREATING - outnumbered " &
-          &"({strengthRatio:.2f} < {params.evadeTriggerRatio:.2f}), " &
-          &"falling back to system-{fallbackSystem} ({distance} jumps)")
-
-  let moveOrder = FleetOrder(
-    fleetId: fleetId,
-    orderType: FleetOrderType.Move,
-    targetSystem: some(fallbackSystem),
-    priority: 100
-  )
-  state.fleetOrders[fleetId] = moveOrder
-
-  return ActivationResult(success: true,
-                        action: &"Retreat to fallback system-{fallbackSystem}")
 
 proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
                           params: StandingOrderParams): ActivationResult =
@@ -1141,17 +887,11 @@ proc activateStandingOrder*(state: var GameState, fleetId: FleetId,
   of StandingOrderType.DefendSystem, StandingOrderType.GuardColony:
     return activateDefendSystem(state, fleetId, standingOrder.params)
 
-  of StandingOrderType.AutoColonize:
-    return activateAutoColonize(state, fleetId, standingOrder.params)
-
   of StandingOrderType.AutoReinforce:
     return activateAutoReinforce(state, fleetId, standingOrder.params)
 
   of StandingOrderType.AutoRepair:
     return activateAutoRepair(state, fleetId, standingOrder.params)
-
-  of StandingOrderType.AutoEvade:
-    return activateAutoEvade(state, fleetId, standingOrder.params, standingOrder.roe)
 
   of StandingOrderType.BlockadeTarget:
     return activateBlockadeTarget(state, fleetId, standingOrder.params)
@@ -1185,6 +925,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
   var skippedCount = 0
   var failedCount = 0
   var notImplementedCount = 0
+  var noStandingOrderCount = 0  # Fleets without standing orders assigned
 
   for fleetId, fleet in state.fleets:
     # Skip if fleet has explicit order this turn
@@ -1214,6 +955,9 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
 
     # Check for standing order
     if fleetId notin state.standingOrders:
+      logDebug(LogCategory.lcOrders,
+               &"{fleetId} (owner: {fleet.owner}) has no standing order assigned, skipping")
+      noStandingOrderCount += 1
       continue
 
     var standingOrder = state.standingOrders[fleetId]
@@ -1292,7 +1036,10 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
 
   # Summary logging
   let totalAttempted = activatedCount + failedCount + notImplementedCount
+  let totalFleets = state.fleets.len
   logInfo(LogCategory.lcOrders,
-          &"Standing Orders Summary: {activatedCount}/{totalAttempted} activated, " &
-          &"{skippedCount} skipped (explicit orders), {failedCount} failed, " &
-          &"{notImplementedCount} not implemented")
+          &"Standing Orders Summary: {totalFleets} total fleets, " &
+          &"{noStandingOrderCount} without standing orders, " &
+          &"{skippedCount} skipped (explicit orders/suspended/disabled/delay), " &
+          &"{activatedCount}/{totalAttempted} activated, " &
+          &"{failedCount} failed, {notImplementedCount} not implemented")

@@ -71,10 +71,8 @@ type
     None              # No standing order (default)
     PatrolRoute       # Follow patrol path indefinitely
     DefendSystem      # Guard system, engage hostile forces per ROE
-    AutoColonize      # ETACs auto-colonize nearest suitable system
     AutoReinforce     # Join nearest friendly fleet when damaged
     AutoRepair        # Return to nearest shipyard when HP < threshold
-    AutoEvade         # Fall back to safe system if outnumbered per ROE
     GuardColony       # Defend specific colony system
     BlockadeTarget    # Maintain blockade on enemy colony
 
@@ -88,18 +86,12 @@ type
     of DefendSystem, GuardColony:
       defendTargetSystem*: SystemId     # System to defend
       defendMaxRange*: int              # Max distance from target (jumps)
-    of AutoColonize:
-      preferredPlanetClasses*: seq[PlanetClass]  # Priority classes
-      colonizeMaxRange*: int            # Max colonization distance
     of AutoReinforce:
       reinforceDamageThreshold*: float  # HP% to trigger (e.g., 0.5 = 50%)
       targetFleet*: Option[FleetId]     # Specific fleet, or nearest
     of AutoRepair:
       repairDamageThreshold*: float     # HP% to trigger
       targetShipyard*: Option[SystemId] # Specific shipyard, or nearest
-    of AutoEvade:
-      fallbackSystem*: SystemId         # Safe retreat destination
-      evadeTriggerRatio*: float         # Strength ratio to retreat
     of BlockadeTarget:
       blockadeTargetColony*: SystemId   # Colony to blockade
     else:
