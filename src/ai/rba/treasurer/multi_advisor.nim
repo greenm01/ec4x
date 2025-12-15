@@ -268,8 +268,13 @@ proc allocateBudgetMultiAdvisor*(
               &"{houseId} Treasurer: WARNING - GOAP plans need {shortfall}PP more than available")
 
   # === STEP 1: Reserve minimums (prevents starvation) ===
-  let minReconBudget = int(float(availableBudget) * 0.10)  # 10% for scouts
-  let minExpansionBudget = int(float(availableBudget) * 0.05)  # 5% for expansion
+  # Act 1: Expansion is #1 priority (60% for Spaceports + Shipyards + ETACs)
+  # Acts 2+: Conservative reserves (10% recon, 5% expansion)
+  let minReconBudget = int(float(availableBudget) * 0.10)  # 10% for scouts (all acts)
+  let minExpansionBudget = if currentAct == ai_types.GameAct.Act1_LandGrab:
+    int(float(availableBudget) * 0.60)  # Act 1: 60% for aggressive colonization
+  else:
+    int(float(availableBudget) * 0.05)  # Acts 2+: 5% for conservative expansion
   let reservedBudget = minReconBudget + minExpansionBudget
   let remainingBudget = availableBudget - reservedBudget
 
@@ -304,11 +309,13 @@ proc allocateBudgetMultiAdvisor*(
   )
 
   # === STEP 3: Combine reserves + mediated allocations ===
+  # NOTE: Expansion reserve (minExpansionBudget) goes to Eparch (manages ETACs)
+  #       Recon reserve (minReconBudget) goes to Domestikos (scout fleets)
   result.budgets = initTable[AdvisorType, int]()
-  result.budgets[AdvisorType.Domestikos] = reservedBudget + mediation.domestikosBudget
+  result.budgets[AdvisorType.Domestikos] = minReconBudget + mediation.domestikosBudget
   result.budgets[AdvisorType.Logothete] = mediation.logotheteBudget
   result.budgets[AdvisorType.Drungarius] = mediation.drungariusBudget
-  result.budgets[AdvisorType.Eparch] = mediation.eparchBudget
+  result.budgets[AdvisorType.Eparch] = minExpansionBudget + mediation.eparchBudget
   result.budgets[AdvisorType.Protostrator] = 0  # Diplomacy costs 0 PP
   result.budgets[AdvisorType.Treasurer] = 0  # Treasurer doesn't get budget
   result.reservedBudget = actualGoapReserved # Store the amount actually reserved
@@ -335,10 +342,11 @@ proc allocateBudgetMultiAdvisor*(
   logInfo(LogCategory.lcAI,
           &"{houseId} Treasurer: Final budgets - " &
           &"Domestikos={result.budgets[AdvisorType.Domestikos]}PP " &
-          &"(+{reservedBudget}PP local reserved), " &
+          &"(+{minReconBudget}PP recon reserved), " &
           &"Logothete={result.budgets[AdvisorType.Logothete]}PP, " &
           &"Drungarius={result.budgets[AdvisorType.Drungarius]}PP, " &
-          &"Eparch={result.budgets[AdvisorType.Eparch]}PP, " &
+          &"Eparch={result.budgets[AdvisorType.Eparch]}PP " &
+          &"(+{minExpansionBudget}PP expansion reserved), " &
           &"GOAP Reserved={result.reservedBudget}PP")
 
   # Log unfulfilled counts for feedback loop

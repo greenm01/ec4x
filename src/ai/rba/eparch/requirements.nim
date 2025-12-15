@@ -203,71 +203,91 @@ proc generateFacilityRequirements(
   logInfo(LogCategory.lcAI,
           &"{houseId} Eparch: Evaluating facility needs for {colonies.len} colonies (Act {currentAct})")
 
-  # 1. Evaluate Spaceport needs FIRST (prerequisite for Shipyards)
-  # Target: 1 Spaceport per colony (required for shipyard/starbase construction)
-  # Note: Spaceports have 100% commission penalty (ships cost 2x to build)
-  # Only build 1 per colony (prerequisite only), then use Shipyards for production
+  # 1. Evaluate Spaceport needs FIRST (prerequisite for Shipyards and ETAC construction)
+  # Strategy: 1 Spaceport per colony, 1 Shipyard per colony
+  # ETACs built at Spaceports initially, then Shipyards once available (cheaper - no commission penalty)
   let currentSpaceports = countFacilities(colonies, "Spaceport")
   let targetShipyards = getTargetShipyards(currentAct, colonies.len)
-  let spaceportsNeeded = colonies.len  # Exactly 1 per colony (prerequisite only)
+  let spaceportsNeeded = colonies.len  # 1 per colony for ETAC production while Shipyard builds
 
   logInfo(LogCategory.lcAI,
           &"{houseId} Eparch: Spaceports - have {currentSpaceports}, need {spaceportsNeeded} " &
-          &"(1 per colony, then build Shipyards for production)")
+          &"(1 per colony for initial ETAC production)")
 
-  # Generate spaceport requirements for ALL colonies that need them
-  # (not just one per turn - enables wave-based ETAC expansion)
+  # Generate Spaceport requirements for ALL colonies without one
+  # (enables parallel ETAC construction while Shipyards are being built)
   if currentSpaceports < spaceportsNeeded:
     var coloniesNeedingSpaceports: seq[Colony] = @[]
 
-    # Find all colonies without spaceports
     for colony in colonies:
       if colony.spaceports.len == 0:
         coloniesNeedingSpaceports.add(colony)
 
     logInfo(LogCategory.lcAI,
-            &"{houseId} Eparch: {coloniesNeedingSpaceports.len} colonies need spaceports")
+            &"{houseId} Eparch: {coloniesNeedingSpaceports.len} colonies need Spaceports")
 
-    # Generate requirement for EACH colony without a spaceport
+    # Generate requirement for EACH colony without a Spaceport
     for colony in coloniesNeedingSpaceports:
       result.add(EconomicRequirement(
         requirementType: EconomicRequirementType.Facility,
-        priority: RequirementPriority.Critical,  # CRITICAL: Enables wave-based ETAC expansion
+        priority: RequirementPriority.Critical,  # CRITICAL: Enables ETAC construction immediately
         targetColony: colony.systemId,
         facilityType: some("Spaceport"),
         terraformTarget: none(PlanetClass),
         estimatedCost: globalFacilitiesConfig.spaceport.build_cost,
-        reason: &"Spaceport at {colony.systemId} - enables ETAC construction for wave expansion"
+        reason: &"Spaceport at {colony.systemId} - enables ETAC construction (then Shipyard)"
       ))
 
-  # 2. Evaluate Shipyard needs SECOND (production capacity)
+  # 2. Evaluate Shipyard needs SECOND (cheaper ETAC production - no commission penalty)
   let currentShipyards = countFacilities(colonies, "Shipyard")
   # targetShipyards already calculated above for Spaceport logic
 
   logInfo(LogCategory.lcAI,
           &"{houseId} Eparch: Shipyards - have {currentShipyards}, need {targetShipyards}")
 
+  # Act 1: Build Shipyards at ALL colonies with Spaceports (parallel construction)
+  # Acts 2+: Build 1 at a time (conservative)
   if currentShipyards < targetShipyards:
-    # Find best colony for Shipyard (Phase 7.1: threat-aware)
-    logInfo(LogCategory.lcAI,
-            &"{houseId} Eparch: Need {targetShipyards - currentShipyards} more Shipyards, finding best colony...")
-    let bestColony = findBestShipyardColony(colonies, intelSnapshot)
-    if bestColony.isSome:
+    if currentAct == ai_common_types.GameAct.Act1_LandGrab:
+      # Act 1: Aggressive parallel Shipyard construction at all colonies with Spaceports
+      var coloniesNeedingShipyards: seq[Colony] = @[]
+
+      for colony in colonies:
+        if colony.spaceports.len > 0 and colony.shipyards.len == 0:
+          coloniesNeedingShipyards.add(colony)
+
       logInfo(LogCategory.lcAI,
-              &"{houseId} Eparch: Found colony {bestColony.get()} for Shipyard construction")
-      result.add(EconomicRequirement(
-        requirementType: EconomicRequirementType.Facility,
-        priority: RequirementPriority.High,
-        targetColony: bestColony.get(),
-        facilityType: some("Shipyard"),
-        terraformTarget: none(PlanetClass),
-        estimatedCost: globalFacilitiesConfig.shipyard.build_cost,
-        reason: &"Shipyard {currentShipyards+1}/{targetShipyards} needed for " &
-                &"Act {currentAct} production capacity"
-      ))
+              &"{houseId} Eparch: {coloniesNeedingShipyards.len} colonies with Spaceports need Shipyards")
+
+      for colony in coloniesNeedingShipyards:
+        result.add(EconomicRequirement(
+          requirementType: EconomicRequirementType.Facility,
+          priority: RequirementPriority.Critical,  # CRITICAL: Cheaper ETAC production
+          targetColony: colony.systemId,
+          facilityType: some("Shipyard"),
+          terraformTarget: none(PlanetClass),
+          estimatedCost: globalFacilitiesConfig.shipyard.build_cost,
+          reason: &"Shipyard at {colony.systemId} - cheaper ETAC production (no commission penalty)"
+        ))
     else:
-      logWarn(LogCategory.lcAI,
-              &"{houseId} Eparch: No suitable colony found for Shipyard (all colonies may already have Shipyards)")
+      # Acts 2+: Build 1 Shipyard at a time (threat-aware selection)
+      let bestColony = findBestShipyardColony(colonies, intelSnapshot)
+      if bestColony.isSome:
+        logInfo(LogCategory.lcAI,
+                &"{houseId} Eparch: Found colony {bestColony.get()} for Shipyard construction")
+        result.add(EconomicRequirement(
+          requirementType: EconomicRequirementType.Facility,
+          priority: RequirementPriority.High,
+          targetColony: bestColony.get(),
+          facilityType: some("Shipyard"),
+          terraformTarget: none(PlanetClass),
+          estimatedCost: globalFacilitiesConfig.shipyard.build_cost,
+          reason: &"Shipyard {currentShipyards+1}/{targetShipyards} needed for " &
+                  &"Act {currentAct} production capacity"
+        ))
+      else:
+        logWarn(LogCategory.lcAI,
+                &"{houseId} Eparch: No suitable colony found for Shipyard")
 
   # 3. Evaluate Starbase needs THIRD (economic and defensive bonuses)
   let currentStarbases = colonies.mapIt(it.starbases.len).sum()
