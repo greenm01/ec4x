@@ -636,18 +636,11 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
         logDebug(LogCategory.lcAI,
           &"Fleet {fleet.id} has {totalPTU} PTU but no AutoColonize - tactical will assign orders")
       else:
-        # ETAC empty - check for AutoColonize standing order first
-        # If present and active, let standing order handle reload (standing_orders.nim:490-523)
-        # Check: Standing order exists, is AutoColonize, is enabled, and not suspended
-        if fleet.id in standingOrders and
-           standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
-           standingOrders[fleet.id].enabled and
-           not standingOrders[fleet.id].suspended:
-          logDebug(LogCategory.lcAI,
-            &"Fleet {fleet.id} empty ETAC with active AutoColonize standing order - deferring to standing order for reload")
-          continue
+        # ETAC empty - tactical handles reload regardless of standing orders
+        # Standing orders can only generate fleet orders (Hold/Move/Colonize), not load cargo
+        # Tactical must issue Move order to colony for autoLoadCargo() to work
 
-        # No standing order - check if colonization is complete
+        # Check if colonization is complete
         # If 100% colonized, salvage ETAC instead of reloading
         let colonizationComplete = totalColonized >= totalSystems
         if colonizationComplete:
@@ -691,7 +684,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           let targetColony = bestColony.get()
           order.orderType = FleetOrderType.Move
           order.targetSystem = some(targetColony)
-          order.priority = 90  # High priority - need reload
+          order.priority = 100  # Maximum priority - ETAC reload is critical
 
           result.add(order)
 
