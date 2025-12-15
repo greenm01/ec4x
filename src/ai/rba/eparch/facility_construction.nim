@@ -4,7 +4,7 @@
 
 import ../../common/types
 import ../controller_types
-import ../intelligence
+import ../drungarius
 import ../../../engine/[gamestate, fog_of_war, orders]
 
 proc generateFacilityBuildOrders*(controller: var AIController,
