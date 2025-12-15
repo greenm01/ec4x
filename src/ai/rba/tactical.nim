@@ -473,7 +473,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
                           alreadyTargeted: HashSet[SystemId] = initHashSet[SystemId]()): seq[FleetOrder] =
   ## Generate fleet orders for all owned fleets
   ## NOW WITH PHASE-AWARE PRIORITIES (4-act structure)
-  ## standingOrders: Skip tactical orders for fleets with AutoColonize (let standing orders handle it)
+  ## standingOrders: Skip tactical orders for fleets with active standing orders
   ## alreadyTargeted: Systems already targeted by standing orders (passed from orders.nim for coordination)
   result = @[]
 
@@ -547,11 +547,9 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.targetSystem = none(SystemId)
           order.priority = 50
 
-          # CRITICAL: Clear AutoColonize standing order to prevent reactivation
+          # Clear any standing orders for this fleet
           if fleet.id in controller.standingOrders:
             controller.standingOrders.del(fleet.id)
-            logInfo(LogCategory.lcAI,
-                    &"Fleet {fleet.id} AutoColonize standing order cleared (arrived for salvage)")
 
           result.add(order)
           logInfo(LogCategory.lcAI,
@@ -588,12 +586,9 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
               order.targetSystem = bestColony
               order.priority = 60  # High priority
 
-              # CRITICAL: Clear AutoColonize standing order to prevent reactivation
-              # When Move completes, we don't want AutoColonize to reactivate
+              # Clear any standing orders for this fleet
               if fleet.id in controller.standingOrders:
                 controller.standingOrders.del(fleet.id)
-                logInfo(LogCategory.lcAI,
-                        &"Fleet {fleet.id} AutoColonize standing order cleared (moving for salvage)")
 
               result.add(order)
               logInfo(LogCategory.lcAI,
@@ -609,11 +604,9 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
             order.targetSystem = none(SystemId)
             order.priority = 50  # Medium priority
 
-            # CRITICAL: Clear AutoColonize standing order to prevent reactivation
+            # Clear any standing orders for this fleet
             if fleet.id in controller.standingOrders:
               controller.standingOrders.del(fleet.id)
-              logInfo(LogCategory.lcAI,
-                      &"Fleet {fleet.id} AutoColonize standing order cleared (issuing Salvage)")
 
             result.add(order)
             logInfo(LogCategory.lcAI,
@@ -622,19 +615,10 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
           continue
 
-        # CRITICAL FIX: Only defer if fleet ACTUALLY has AutoColonize standing order
-        # Bug: Was skipping all loaded ETACs, causing 0 colonize orders generated
-        # Check: Standing order exists, is AutoColonize, is enabled, and not suspended
-        if fleet.id in standingOrders and
-           standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
-           standingOrders[fleet.id].enabled and
-           not standingOrders[fleet.id].suspended:
-          logDebug(LogCategory.lcAI,
-            &"Fleet {fleet.id} has {totalPTU} PTU and active AutoColonize standing order - deferring")
-          continue
-        # No standing order - fall through to tactical colonization logic
+        # ETACs with cargo - Eparch manages colonization (Phase 6.9)
         logDebug(LogCategory.lcAI,
-          &"Fleet {fleet.id} has {totalPTU} PTU but no AutoColonize - tactical will assign orders")
+          &"Fleet {fleet.id} has {totalPTU} PTU - Eparch manages colonization")
+        continue  # ✅ FIX: Skip to next fleet, don't generate Hold order
       else:
         # ETAC empty - tactical handles reload regardless of standing orders
         # Standing orders can only generate fleet orders (Hold/Move/Colonize), not load cargo
@@ -649,11 +633,9 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           order.targetSystem = none(SystemId)
           order.priority = 50  # Medium priority
 
-          # CRITICAL: Clear AutoColonize standing order to prevent reactivation
+          # Clear any standing orders for this fleet
           if fleet.id in controller.standingOrders:
             controller.standingOrders.del(fleet.id)
-            logInfo(LogCategory.lcAI,
-                    &"Fleet {fleet.id} AutoColonize standing order cleared (empty ETAC salvaging)")
 
           result.add(order)
           logInfo(LogCategory.lcAI,
@@ -714,33 +696,10 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
       # Priority: Exploration (70-80%) >> Colonization >> Minimal Defense
       # ========================================================================
 
-      # Priority 1a: ETACs colonize best available system using Act-aware scoring
-      # SKIP if fleet has active AutoColonize standing order (let standing order handle it)
-      let hasActiveAutoColonize = fleet.id in standingOrders and
-                                   standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
-                                   standingOrders[fleet.id].enabled and
-                                   not standingOrders[fleet.id].suspended
-      if hasETAC and not hasActiveAutoColonize:
-        # Use engine function for Act-aware colonization target selection
-        # Act 1: Prioritizes distance over quality (frontier expansion)
-        let bestTarget = findColonizationTargetFiltered(
-          filtered, fleet, fleet.location,
-          maxRange = 20,  # Reasonable max range for colonization
-          alreadyTargeted,
-          preferredClasses = @[]  # No class preference in Act 1
-        )
-
-        if bestTarget.isSome:
-          order.orderType = FleetOrderType.Colonize
-          order.targetSystem = bestTarget
-          order.targetFleet = none(FleetId)
-          # Mark as targeted to prevent other fleets from picking same system
-          alreadyTargeted.incl(bestTarget.get())
-          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 1: Act-aware selection)")
-          result.add(order)
-          continue
-        else:
-          logDebug(LogCategory.lcAI, &"    → No colonization targets found (map fully colonized?)")
+      # Priority 1a: ETAC colonization now handled by etac_manager module
+      # ETACs receive explicit colonization orders in Phase 6.9 (before tactical)
+      # Tactical AI skips ETACs entirely - they're managed separately
+      # (Logic removed - see src/ai/rba/etac_manager.nim)
 
       # Priority 1b: View World missions for unexamined systems (Act 1 intelligence gathering)
       # FIX: Exclude ETAC fleets (colonization-only, even with escorts)
@@ -925,31 +884,10 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
               result.add(order)
               continue
 
-      # Priority 4: Opportunistic colonization with Act-aware scoring (ETACs only)
-      # SKIP if fleet has active AutoColonize standing order (let standing order handle it)
-      let hasActiveAutoColonize = fleet.id in standingOrders and
-                                   standingOrders[fleet.id].orderType == StandingOrderType.AutoColonize and
-                                   standingOrders[fleet.id].enabled and
-                                   not standingOrders[fleet.id].suspended
-      if hasETAC and not hasActiveAutoColonize:
-        # Use engine function for Act-aware colonization target selection
-        # Act 2: Still prioritizes distance but considers quality more than Act 1
-        let bestTarget = findColonizationTargetFiltered(
-          filtered, fleet, fleet.location,
-          maxRange = 20,  # Reasonable max range for colonization
-          alreadyTargeted,
-          preferredClasses = @[]  # No specific class preference
-        )
-
-        if bestTarget.isSome:
-          order.orderType = FleetOrderType.Colonize
-          order.targetSystem = bestTarget
-          order.targetFleet = none(FleetId)
-          # Mark as targeted to prevent other fleets from picking same system
-          alreadyTargeted.incl(bestTarget.get())
-          logInfo(LogCategory.lcAI, &"    → COLONIZE {bestTarget.get()} (Act 2: Act-aware selection)")
-          result.add(order)
-          continue
+      # Priority 4: ETAC colonization now handled by etac_manager module
+      # ETACs receive explicit colonization orders in Phase 6.9 (before tactical)
+      # Tactical AI skips ETACs entirely - they're managed separately
+      # (Logic removed - see src/ai/rba/etac_manager.nim)
 
       # Priority 5: Exploration/patrol
       # FIX: Exclude ETAC fleets (colonization-only, even with escorts)

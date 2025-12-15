@@ -287,10 +287,19 @@ proc generateDiplomaticRequirements*(
         let sharedBorders = intelligence.countSharedBorders(filtered, intelSnapshot, controller.houseId, houseId)
         # In the 3-state system, there are no formal allies to count for target house.
         # Assume 0 allies, as this contributes to "target isolated" for war evaluation.
-        let targetAllies = 0 
+        let targetAllies = 0
 
         # Get current game act
-        let currentAct = ai_types.getCurrentGameAct(filtered.turn)
+
+        # Calculate total colonized systems from public leaderboard
+        let totalSystems = filtered.starMap.systems.len
+        var totalColonized = 0
+        for houseId, colonyCount in filtered.houseColonies:
+          totalColonized += colonyCount
+
+        # Use colonization-based Act determination (90% threshold for Act 2 transition)
+        let currentAct = ai_types.getCurrentGameAct(totalSystems, totalColonized,
+                                                    filtered.turn)
 
         # Evaluate war readiness with multi-factor system
         let warEval = evaluateWarReadiness(

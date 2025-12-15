@@ -60,9 +60,8 @@ proc collectColonizationIntents*(
       for squadron in fleet.squadrons:
         fleetStrength += squadron.combatStrength()
 
-      # Check if fleet has standing orders for fallback
-      let hasStandingOrders = order.fleetId in state.standingOrders and
-                              state.standingOrders[order.fleetId].orderType == StandingOrderType.AutoColonize
+      # AutoColonize standing orders removed - manual orders only
+      let hasStandingOrders = false
 
       # Get target system from order
       if order.targetSystem.isNone:
@@ -149,7 +148,14 @@ proc establishColony(
   logInfo(LogCategory.lcColonization,
           &"Fleet {fleetId} colonizing {planetClass} world with {resources} resources at {systemId}")
 
-  # Create ETAC colony
+  # Get PTU quantity from ETAC cargo (one-time consumable: deposits all PTU)
+  var ptuToDeposit = 0
+  for ship in fleet.spaceLiftShips:
+    if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
+      ptuToDeposit = ship.cargo.quantity
+      break
+
+  # Create ETAC colony with all PTU (foundation colony)
   let colony = createETACColony(systemId, houseId, planetClass, resources)
 
   # Use colonization engine to establish with prestige
@@ -158,7 +164,7 @@ proc establishColony(
     systemId,
     colony.planetClass,
     colony.resources,
-    1  # ETAC carries exactly 1 PTU
+    ptuToDeposit  # Deposit all PTU (3 PTU = 3 PU foundation colony)
   )
 
   if not colResult.success:
@@ -168,15 +174,25 @@ proc establishColony(
   # Add colony to state
   state.colonies[systemId] = colony
 
-  # Unload ONLY 1 PTU from ETAC (preserves remaining PTUs for multi-colony missions)
+  # Unload ALL PTU from ETAC (one-time consumable)
   for ship in fleet.spaceLiftShips.mitems:
     if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-      ship.cargo.quantity -= 1
-      if ship.cargo.quantity == 0:
-        ship.cargo.cargoType = CargoType.None
+      let transferredPTU = ship.cargo.quantity
+      ship.cargo.quantity = 0
+      ship.cargo.cargoType = CargoType.None
       logDebug(LogCategory.lcColonization,
-        &"ETAC {ship.id} transferred 1 PTU to establish colony at {systemId} " &
-        &"({ship.cargo.quantity} PTU remaining)")
+        &"ETAC {ship.id} transferred {transferredPTU} PTU to establish colony at {systemId} " &
+        &"(0 PTU remaining)")
+
+  # ETAC cannibalized - remove from game, structure becomes colony infrastructure
+  for i in countdown(fleet.spaceLiftShips.high, 0):
+    let ship = fleet.spaceLiftShips[i]
+    if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
+      # ETAC cannibalized - ship structure becomes starting IU
+      fleet.spaceLiftShips.delete(i)
+      logInfo(LogCategory.lcEconomy,
+        &"ETAC {ship.id} cannibalized - structure became colony infrastructure at {systemId}")
+
   state.fleets[fleetId] = fleet
 
   # Apply prestige award
@@ -262,51 +278,11 @@ proc collectFallbackIntents(
   originalTargets: Table[FleetId, SystemId]
 ): seq[ColonizationIntent] =
   ## Collect fallback colonization intents from losers
+  ## NOTE: AutoColonize standing orders removed - this now returns empty
+  ## Fallback behavior no longer supported (manual orders only)
   ##
-  ## Returns: Sequence of fallback intents with their alternative targets
+  ## Returns: Empty sequence (no fallback intents)
   result = @[]
-
-  for loser in losers:
-    # Skip if no standing orders
-    if not loser.hasStandingOrders:
-      continue
-
-    # Get fleet
-    if loser.fleetId notin state.fleets:
-      continue
-
-    let fleet = state.fleets[loser.fleetId]
-
-    # Get standing order parameters
-    if loser.fleetId notin state.standingOrders:
-      continue
-
-    let standingOrder = state.standingOrders[loser.fleetId]
-    let maxRange = standingOrder.params.colonizeMaxRange
-    let preferredClasses = standingOrder.params.preferredPlanetClasses
-
-    # Find alternative target
-    let targetOpt = findBestColonizationTarget(
-      state,
-      fleet,
-      fleet.location,
-      maxRange,
-      preferredClasses
-    )
-
-    if targetOpt.isSome:
-      let fallbackTarget = targetOpt.get()
-      logDebug(LogCategory.lcColonization,
-               &"Fleet {loser.fleetId}: Found fallback target {fallbackTarget}")
-
-      # Create new intent for fallback target
-      result.add(ColonizationIntent(
-        houseId: loser.houseId,
-        fleetId: loser.fleetId,
-        targetSystem: fallbackTarget,
-        fleetStrength: loser.fleetStrength,
-        hasStandingOrders: loser.hasStandingOrders
-      ))
 
 proc resolveColonizationConflict*(
   state: var GameState,

@@ -140,13 +140,17 @@ Drydocks are repair-only facilities and cannot construct ships. They are fixed i
 
 #### 2.3.2.4 Environmental Transformation And Colonization (ETAC)
 
-ETACs plant a seed by establishing colonies on uninhabited planets. They may be reused but require PTU reload. Empty ETACs are auto-reloaded when positioned at House owned colonies.
+ETACs are self-sufficient generation ships employing cryostasis technology to transport colonists across the void. Each ETAC carries 3 PTU of frozen colonists, sufficient to establish a single "foundation colony" with a robust 3 PU starter population (~3M souls). This larger initial population enables rapid economic development—foundation colonies can construct spaceports and build additional ETACs to continue the expansion wave.
 
-**Carry Limit (CL)**: 1 PTU at STL I, scales with Strategic Lift (STL) technology  
-**Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)  
+ETACs are one-time consumable assets—after depositing their colonists, the vessel itself is cannibalized to establish the colony's starting infrastructure (IU). The ship's advanced systems, power cores, and manufacturing facilities form the foundation of the new settlement. Players begin with 3 ETAC fleets (each containing 1 ETAC and 1 Cruiser escort) to seed their initial expansion.
+
+**Carry Limit (CL)**: 3 PTU (deposits all on single colony)
+**Starter Population**: 3 PU foundation colony (vs 1 PU previously)
+**Construction Cost**: 15 PP base (30 PP at spaceport with 2× penalty)
+**Consumption**: Ship cannibalized for colony infrastructure (no refund)
+**Starting Forces**: 3 ETAC fleets per house (configurable)
+**Lane Restrictions**: Blocked by Restricted lanes (15% of lanes)
 **Combat**: Zero offensive/defensive capability
-
-You must load ETACs with colonists before departure. For STL capacity progression, see [Section 4.9](04-research_development.md#49-strategic-lift-stl).
 
 #### 2.3.2.5 Troop Transports
 

@@ -142,30 +142,6 @@ proc createAutoRepairOrder*(fleet: Fleet, filtered: FilteredGameState,
     suspended: false
   )
 
-proc createAutoEvadeOrder*(fleet: Fleet, fallbackSystem: SystemId,
-                          triggerRatio: float, roe: int): StandingOrder =
-  ## Create AutoEvade standing order for risk-averse fleets
-  ## Retreats to fallback when outnumbered
-
-  logDebug(LogCategory.lcAI,
-           &"{fleet.id} Assigning AutoEvade standing order " &
-           &"(trigger ratio {triggerRatio:.2f}, fallback {fallbackSystem}, ROE {roe})")
-
-  result = StandingOrder(
-    fleetId: fleet.id,
-    orderType: StandingOrderType.AutoEvade,
-    params: StandingOrderParams(
-      orderType: StandingOrderType.AutoEvade,
-      fallbackSystem: fallbackSystem,
-      evadeTriggerRatio: triggerRatio
-    ),
-    roe: roe,
-    createdTurn: 0,
-    lastActivatedTurn: 0,
-    activationCount: 0,
-    suspended: false
-  )
-
 proc createDefendSystemOrder*(fleet: Fleet, targetSystem: SystemId,
                               maxRange: int, roe: int): StandingOrder =
   ## Create DefendSystem standing order for defensive fleets
@@ -188,33 +164,6 @@ proc createDefendSystemOrder*(fleet: Fleet, targetSystem: SystemId,
     lastActivatedTurn: 0,
     activationCount: 0,
     suspended: false
-  )
-
-proc createAutoColonizeOrder*(fleet: Fleet, maxRange: int,
-                              preferredClasses: seq[PlanetClass]): StandingOrder =
-  ## Create AutoColonize standing order for ETAC fleets
-  ## Automatically finds and colonizes suitable systems
-
-  logDebug(LogCategory.lcAI,
-           &"{fleet.id} Assigning AutoColonize standing order " &
-           &"(range {maxRange} jumps, preferred classes: {preferredClasses.len})")
-
-  result = StandingOrder(
-    fleetId: fleet.id,
-    orderType: StandingOrderType.AutoColonize,
-    params: StandingOrderParams(
-      orderType: StandingOrderType.AutoColonize,
-      preferredPlanetClasses: preferredClasses,
-      colonizeMaxRange: maxRange
-    ),
-    roe: 5,  # Moderate ROE for colonization
-    createdTurn: 0,
-    lastActivatedTurn: 0,
-    activationCount: 0,
-    suspended: false,
-    enabled: true,  # Enable standing order for AI
-    activationDelayTurns: 0,  # No delay for AI ETACs (immediate reactivation after colonization)
-    turnsUntilActivation: 0   # Active immediately
   )
 
 proc createPatrolRouteOrder*(fleet: Fleet, patrolSystems: seq[SystemId],
@@ -371,6 +320,18 @@ proc assignStandingOrders*(controller: var AIController,
   var skippedCount = 0
   var preservedCount = 0
 
+  # Check if colonization is complete (100%)
+  let totalSystems = filtered.starMap.systems.len
+  var totalColonized = 0
+  for houseId, colonyCount in filtered.houseColonies:
+    totalColonized += colonyCount
+  let colonizationComplete = totalColonized >= totalSystems
+
+  if colonizationComplete:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Colonization complete ({totalColonized}/{totalSystems}) - " &
+            &"ETACs will be salvaged by tactical module")
+
   # Identify undefended colonies for Defender fleet assignment
   var undefendedColonies = identifyUndefendedColonies(filtered)
   var coloniesNeedingDefense = undefendedColonies.len
@@ -408,10 +369,8 @@ proc assignStandingOrders*(controller: var AIController,
                    &"{controller.houseId} Fleet {fleet.id}: Preserving DefendSystem order for {target}")
           continue
 
-      # For other order types, preserve them (AutoRepair, AutoColonize, AutoEvade)
-      elif existingOrder.orderType in {StandingOrderType.AutoRepair,
-                                       StandingOrderType.AutoColonize,
-                                       StandingOrderType.AutoEvade}:
+      # For other order types, preserve them (AutoRepair)
+      elif existingOrder.orderType in {StandingOrderType.AutoRepair}:
         result[fleet.id] = existingOrder
         preservedCount += 1
         logDebug(LogCategory.lcAI,
@@ -444,34 +403,19 @@ proc assignStandingOrders*(controller: var AIController,
                  &"(no suitable drydock found)")
 
     of FleetRole.Colonizer:
-      # ETAC fleets automatically colonize
-      # No range limit - colonize ALL unclaimed systems (pathfinding handles reachability)
-      let order = createAutoColonizeOrder(fleet, 999, preferredPlanetClasses)
-      result[fleet.id] = order
-      assignedCount += 1
-
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Fleet {fleet.id}: Assigned AutoColonize " &
-              &"(ETAC fleet, unlimited range)")
+      # ETAC fleets managed by ETAC manager - explicit colonization orders
+      skippedCount += 1
+      logDebug(LogCategory.lcAI,
+              &"{controller.houseId} Fleet {fleet.id}: No standing order " &
+              &"(colonizer role, ETAC manager control)")
 
     of FleetRole.Scout:
-      # Scouts patrol and evade when outnumbered
-      if p.riskTolerance < 0.5:
-        # Risk-averse scouts use AutoEvade
-        let evadeRatio = 0.7  # Retreat when at 70% enemy strength or worse
-        let order = createAutoEvadeOrder(fleet, fallbackSystem, evadeRatio, baseROE)
-        result[fleet.id] = order
-        assignedCount += 1
-
-        logInfo(LogCategory.lcAI,
-                &"{controller.houseId} Fleet {fleet.id}: Assigned AutoEvade " &
-                &"(scout, risk-averse)")
-      else:
-        # Aggressive scouts - no standing order (tactical will assign missions)
-        skippedCount += 1
-        logDebug(LogCategory.lcAI,
-                 &"{controller.houseId} Fleet {fleet.id}: No standing order " &
-                 &"(scout, aggressive personality)")
+      # Scouts managed by tactical module - no standing orders
+      # They need explicit orders for coordinated reconnaissance operations
+      skippedCount += 1
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} Fleet {fleet.id}: No standing order " &
+               &"(scout role, tactical control)")
 
     of FleetRole.Defender:
       # Defensive fleets guard homeworld/colonies
@@ -573,7 +517,6 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
   ## alreadyTargeted: Systems already targeted by other fleets (for duplicate prevention)
 
   case standingOrder.orderType
-
   of StandingOrderType.AutoRepair:
     let targetShipyard = standingOrder.params.targetShipyard # This is now set by createAutoRepairOrder
 
@@ -591,57 +534,6 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
     else:
       logWarn(LogCategory.lcAI,
               &"{fleet.id} AutoRepair: No specific repair target, holding position")
-      return none(FleetOrder)
-
-  of StandingOrderType.AutoColonize:
-    # Find best colonization target using Act-aware engine function
-    logDebug(LogCategory.lcAI,
-             &"[RBA CONVERSION] {fleet.id} AutoColonize: Finding target (maxRange={standingOrder.params.colonizeMaxRange})")
-
-    let targetSystem = findColonizationTargetFiltered(
-      filtered,
-      fleet,
-      fleet.location,
-      standingOrder.params.colonizeMaxRange,
-      alreadyTargeted,
-      standingOrder.params.preferredPlanetClasses
-    )
-
-    if targetSystem.isSome:
-      let target = targetSystem.get()
-
-      # CRITICAL: Validate target is not SystemId(0)
-      if target == SystemId(0):
-        logError(LogCategory.lcAI,
-                 &"[RBA CONVERSION] {fleet.id} AutoColonize: BUG - got SystemId(0) from findColonizationTargetFiltered!")
-        return none(FleetOrder)
-
-      # Check if fleet is already at target
-      if fleet.location == target:
-        logDebug(LogCategory.lcAI,
-                 &"[RBA CONVERSION] {fleet.id} AutoColonize: Colonizing {target}")
-
-        return some(FleetOrder(
-          fleetId: fleet.id,
-          orderType: FleetOrderType.Colonize,
-          targetSystem: targetSystem,
-          targetFleet: none(FleetId),
-          priority: 60
-        ))
-      else:
-        logDebug(LogCategory.lcAI,
-                 &"[RBA CONVERSION] {fleet.id} AutoColonize: Moving to {target}")
-
-        return some(FleetOrder(
-          fleetId: fleet.id,
-          orderType: FleetOrderType.Move,
-          targetSystem: targetSystem,
-          targetFleet: none(FleetId),
-          priority: 60
-        ))
-    else:
-      logDebug(LogCategory.lcAI,
-               &"[RBA CONVERSION] {fleet.id} AutoColonize: No unclaimed systems found, holding")
       return none(FleetOrder)
 
   of StandingOrderType.DefendSystem:
@@ -682,26 +574,6 @@ proc convertStandingOrderToFleetOrder*(standingOrder: StandingOrder,
         targetFleet: none(FleetId),
         priority: 40
       ))
-
-  of StandingOrderType.AutoEvade:
-    # Retreat to fallback system if threatened
-    # For now, always generate Move order to fallback (threat detection TBD)
-    let fallbackSystem = standingOrder.params.fallbackSystem
-
-    if fleet.location != fallbackSystem:
-      logDebug(LogCategory.lcAI,
-               &"{fleet.id} AutoEvade: Retreating to {fallbackSystem}")
-
-      return some(FleetOrder(
-        fleetId: fleet.id,
-        orderType: FleetOrderType.Move,
-        targetSystem: some(fallbackSystem),
-        targetFleet: none(FleetId),
-        priority: 30  # High priority for retreats
-      ))
-    else:
-      # Already at safe location, hold
-      return none(FleetOrder)
 
   of StandingOrderType.PatrolRoute:
     # Follow patrol path

@@ -86,7 +86,7 @@ proc initNewColony*(systemId: SystemId, owner: HouseId,
     capacityViolation: CapacityViolation(active: false, violationType: "", turnsRemaining: 0, violationTurn: 0),
     starbases: @[],
 
-    # Facilities (none initially)
+    # Facilities (none initially - must be built)
     spaceports: @[],
     shipyards: @[],
 

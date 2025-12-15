@@ -1,21 +1,26 @@
 # Starting Fleet Compositions
 # Separate file to avoid toml_serialization conflicts with indexed tables
-# 4 fleets total:
-# - Fleet 1: ETAC + Light Cruiser (colonization fleet with 1 PTU)
-# - Fleet 2: ETAC + Light Cruiser (colonization fleet with 1 PTU)
-# - Fleet 3: Destroyer (scout fleet)
+# 5 fleets total (per plan: 3 ETAC fleets per house = 12 ETACs total for 4 players):
+# - Fleet 1: ETAC + Light Cruiser (colonization fleet with 3 PTU - foundation colony)
+# - Fleet 2: ETAC + Light Cruiser (colonization fleet with 3 PTU - foundation colony)
+# - Fleet 3: ETAC + Light Cruiser (colonization fleet with 3 PTU - foundation colony)
 # - Fleet 4: Destroyer (scout fleet)
+# - Fleet 5: Destroyer (scout fleet)
 
 [fleet1]
 ships = ["ETAC", "LightCruiser"]
-cargo_ptu = 1
+cargo_ptu = 3  # One-time consumable: 3 PTU foundation colony
 
 [fleet2]
 ships = ["ETAC", "LightCruiser"]
-cargo_ptu = 1
+cargo_ptu = 3  # One-time consumable: 3 PTU foundation colony
 
 [fleet3]
-ships = ["Destroyer"]
+ships = ["ETAC", "LightCruiser"]
+cargo_ptu = 3  # One-time consumable: 3 PTU foundation colony
 
 [fleet4]
+ships = ["Destroyer"]
+
+[fleet5]
 ships = ["Destroyer"]

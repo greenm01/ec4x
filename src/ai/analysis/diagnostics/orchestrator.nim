@@ -382,23 +382,16 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
     result.invalidOrders = 0
 
   # ================================================================
-  # PHASE D: Calculate Act number (1-4) based on turn thresholds
+  # PHASE D: Calculate Act number (1-4) based on colonization progress
   # ================================================================
 
-  # Use the same act calculation as the AI with colonization gate
+  # Use colonization-based Act determination (90% threshold for Act 2 transition)
   # Returns GameAct enum (0-3), convert to 1-4 for display
-  var currentAct = ai_types.getCurrentGameAct(state.turn)
+  let totalSystems = state.starMap.systems.len
+  let totalColonized = state.colonies.len  # Count all colonies
 
-  # Apply colonization gate (same logic as orders.nim)
-  # Act 2 requires 50% map colonization (or turn 12+ hard cap)
-  if currentAct >= ai_types.GameAct.Act2_RisingTensions and state.turn <= 12:
-    let totalSystems = state.starMap.systems.len
-    var totalColonized = state.colonies.len  # Count all colonies
-
-    let colonizationRatio = float(totalColonized) / float(totalSystems)
-    if colonizationRatio < 0.50:
-      currentAct = ai_types.GameAct.Act1_LandGrab
-
+  let currentAct = ai_types.getCurrentGameAct(totalSystems, totalColonized,
+                                               state.turn)
   result.act = ord(currentAct) + 1
 
   # ================================================================

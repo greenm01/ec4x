@@ -7,12 +7,14 @@
 
 import std/[options, strformat, random, math, sequtils, algorithm, tables]
 import ../../../engine/[gamestate, fog_of_war, logger]
+import ../../../engine/config/facilities_config  # For facility build costs
 import ../controller_types
 import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_common_types  # For GameAct
 import ../config
 import ./industrial_investment
 import ./terraforming
+import ./expansion  # ETAC expansion operations
 
 # ============================================================================
 # FACILITY REQUIREMENTS GENERATION
@@ -213,19 +215,29 @@ proc generateFacilityRequirements(
           &"{houseId} Eparch: Spaceports - have {currentSpaceports}, need {spaceportsNeeded} " &
           &"(1 per colony, then build Shipyards for production)")
 
+  # Generate spaceport requirements for ALL colonies that need them
+  # (not just one per turn - enables wave-based ETAC expansion)
   if currentSpaceports < spaceportsNeeded:
-    # Build at colonies without Spaceports (Phase 7.1: threat-aware)
-    let bestColony = findBestSpaceportColony(colonies, intelSnapshot)
-    if bestColony.isSome:
+    var coloniesNeedingSpaceports: seq[Colony] = @[]
+
+    # Find all colonies without spaceports
+    for colony in colonies:
+      if colony.spaceports.len == 0:
+        coloniesNeedingSpaceports.add(colony)
+
+    logInfo(LogCategory.lcAI,
+            &"{houseId} Eparch: {coloniesNeedingSpaceports.len} colonies need spaceports")
+
+    # Generate requirement for EACH colony without a spaceport
+    for colony in coloniesNeedingSpaceports:
       result.add(EconomicRequirement(
         requirementType: EconomicRequirementType.Facility,
-        priority: RequirementPriority.High,  # High priority (prerequisite for Shipyard)
-        targetColony: bestColony.get(),
+        priority: RequirementPriority.Critical,  # CRITICAL: Enables wave-based ETAC expansion
+        targetColony: colony.systemId,
         facilityType: some("Spaceport"),
         terraformTarget: none(PlanetClass),
-        estimatedCost: 50,  # Spaceport cost (from config)
-        reason: &"Spaceport {currentSpaceports+1}/{spaceportsNeeded} baseline " &
-                &"infrastructure (required for ship operations)"
+        estimatedCost: globalFacilitiesConfig.spaceport.build_cost,
+        reason: &"Spaceport at {colony.systemId} - enables ETAC construction for wave expansion"
       ))
 
   # 2. Evaluate Shipyard needs SECOND (production capacity)
@@ -249,7 +261,7 @@ proc generateFacilityRequirements(
         targetColony: bestColony.get(),
         facilityType: some("Shipyard"),
         terraformTarget: none(PlanetClass),
-        estimatedCost: 100,  # Shipyard cost (from config)
+        estimatedCost: globalFacilitiesConfig.shipyard.build_cost,
         reason: &"Shipyard {currentShipyards+1}/{targetShipyards} needed for " &
                 &"Act {currentAct} production capacity"
       ))
@@ -278,7 +290,7 @@ proc generateFacilityRequirements(
         targetColony: bestColony.get(),
         facilityType: some("Starbase"),
         terraformTarget: none(PlanetClass),
-        estimatedCost: 300,  # Starbase cost (from config)
+        estimatedCost: globalFacilitiesConfig.starbase.build_cost,
         reason: &"Starbase {currentStarbases+1}/{targetStarbases} for economic (ELI+2) " &
                 &"and defensive bonuses"
       ))
@@ -366,7 +378,17 @@ proc generateEconomicRequirements*(
 
   # Generate facility requirements (Shipyards and Spaceports)
   # Phase 7.1: Pass intelligence snapshot for threat-aware facility selection
-  let currentAct = ai_common_types.getCurrentGameAct(filtered.turn)
+
+  # Calculate total colonized systems from public leaderboard
+  let totalSystems = filtered.starMap.systems.len
+  var totalColonized = 0
+  for houseId, colonyCount in filtered.houseColonies:
+    totalColonized += colonyCount
+
+  # Use colonization-based Act determination (90% threshold for Act 2 transition)
+  let currentAct = ai_common_types.getCurrentGameAct(totalSystems, totalColonized,
+                                                      filtered.turn)
+
   let facilityRequirements = generateFacilityRequirements(filtered,
                                                           controller.houseId,
                                                           currentAct,
@@ -380,6 +402,32 @@ proc generateEconomicRequirements*(
             &"{controller.houseId} Eparch: FACILITY REQUIREMENT GENERATED at {facility.targetColony}: " &
             &"{facility.facilityType.get()} for {facility.estimatedCost} PP " &
             &"(priority {facility.priority}, reason: {facility.reason})")
+
+  # Generate ETAC expansion requirements (construction + colonization)
+  # Eparch is single source of truth for all expansion operations
+  let expansionPlan = planExpansionOperations(filtered, controller, currentAct)
+
+  # Add ETAC construction requirements to economic requirements
+  for etacReq in expansionPlan.buildRequirements:
+    requirements.add(etacReq)
+    totalCost += etacReq.estimatedCost
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Eparch: ETAC CONSTRUCTION REQUIREMENT - " &
+            &"{etacReq.facilityType.get()} x{etacReq.estimatedCost div 15} " &
+            &"for {etacReq.estimatedCost} PP (priority {etacReq.priority}, " &
+            &"reason: {etacReq.reason})")
+
+  # Store colonization orders for Phase 6.9 execution
+  # Note: mutable controller - this is a deliberate side-effect
+  controller.eparchColonizationOrders = expansionPlan.colonizationOrders
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Eparch: Expansion planning complete - " &
+          &"{expansionPlan.buildRequirements.len} ETAC construction reqs, " &
+          &"{expansionPlan.colonizationOrders.len} colonization orders stored, " &
+          &"{expansionPlan.etacsReady} ETACs ready, " &
+          &"{expansionPlan.uncolonizedSystems} systems uncolonized")
 
   result = EconomicRequirements(
     requirements: requirements,

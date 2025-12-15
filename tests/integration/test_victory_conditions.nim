@@ -149,12 +149,12 @@ suite "Victory Conditions":
 
     let leaderboard = generateLeaderboard(state)
 
-    check leaderboard.len == 4
-    check leaderboard[0].rank == 1
-    check leaderboard[0].houseId == "house2".HouseId  # Highest prestige
-    check leaderboard[1].houseId == "house1".HouseId
-    check leaderboard[2].houseId == "house3".HouseId
-    check leaderboard[3].houseId == "house4".HouseId
+    check leaderboard.rankings.len == 4
+    check leaderboard.rankings[0].rank == 1
+    check leaderboard.rankings[0].houseId == "house2".HouseId  # Highest prestige
+    check leaderboard.rankings[1].houseId == "house1".HouseId
+    check leaderboard.rankings[2].houseId == "house3".HouseId
+    check leaderboard.rankings[3].houseId == "house4".HouseId
 
   test "Leaderboard places eliminated houses last":
     var starMap = newStarMap(3)
@@ -172,7 +172,7 @@ suite "Victory Conditions":
 
     let leaderboard = generateLeaderboard(state)
 
-    check leaderboard[0].houseId == "house1".HouseId  # Active with 2000
-    check leaderboard[1].houseId == "house3".HouseId  # Active with 1500
-    check leaderboard[2].houseId == "house2".HouseId  # Eliminated (last)
-    check leaderboard[2].eliminated == true
+    check leaderboard.rankings[0].houseId == "house1".HouseId  # Active with 2000
+    check leaderboard.rankings[1].houseId == "house3".HouseId  # Active with 1500
+    check leaderboard.rankings[2].houseId == "house2".HouseId  # Eliminated (last)
+    check leaderboard.rankings[2].eliminated == true

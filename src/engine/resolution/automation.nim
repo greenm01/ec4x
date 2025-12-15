@@ -302,7 +302,6 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         let standingOrder = state.standingOrders[fleetId]
         # Movement-based standing orders: skip this fleet
         if standingOrder.orderType in [StandingOrderType.PatrolRoute,
-                                       StandingOrderType.AutoColonize,
                                        StandingOrderType.AutoReinforce,
                                        StandingOrderType.AutoRepair,
                                        StandingOrderType.BlockadeTarget]:

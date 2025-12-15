@@ -97,12 +97,12 @@ Squadrons automatically join fleets at their construction colony, eliminating ta
 
 **Stationary fleets receive reinforcements:**
 - Fleets with **Hold, Guard, or Patrol** orders (at same system)
-- Fleets with **defensive standing orders** (DefendSystem, GuardColony, AutoEvade)
+- Fleets with **defensive standing orders** (DefendSystem, GuardColony)
 - Fleets with **no orders** (default stationary posture)
 
 **Moving fleets do not receive reinforcements:**
 - Fleets executing **movement orders** or on patrol routes
-- Fleets with **movement-based standing orders** (PatrolRoute, AutoColonize, AutoRepair)
+- Fleets with **movement-based standing orders** (PatrolRoute, AutoRepair)
 - **Reserve or Mothballed** fleets (intentional reduced-readiness status)
 
 This system ensures squadrons join fleets **intentionally stationary** at your colony, not temporarily passing through. Your fleets maintain operational readiness without interrupting ongoing missions.
@@ -290,12 +290,13 @@ Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Trans
 - Target system cannot already have a colony (one colony per system)
 
 **Results:**
-- New colony established at infrastructure Level I
-- PTUs consumed (ETAC cargo emptied)
+- New colony established at infrastructure Level I (3 PU foundation colony)
+- All 3 PTU deposited on single colony
+- ETAC ship cannibalized for colony infrastructure (no refund)
 - Awards prestige for expansion
 - **ETAC behavior after colonization:**
-  - With AutoColonize standing order: Automatically returns home for PTU reload, then resumes colonization
-  - Without standing orders: Remains at new colony (requires manual orders)
+  - Ship is removed from game (one-time consumable)
+  - Build new ETACs at established colonies to continue expansion
 
 ### 6.3.13 Spy on a Planet (11)
 
@@ -706,19 +707,19 @@ Establish persistent fleet behaviors that execute automatically when no explicit
 
 ### 6.5.1 Standing Order Types
 
-Persistent behaviors that execute when fleet has no active mission:
+Persistent behaviors that execute when fleet has no active mission. Standing orders generate active fleet orders automatically.
 
-| Type             | Purpose                                      | Movement |
-| ---------------- | -------------------------------------------- | -------- |
-| None             | No standing order (default)                  | No       |
-| PatrolRoute      | Follow patrol path indefinitely              | Yes      |
-| DefendSystem     | Guard system, engage hostiles per ROE        | No       |
-| GuardColony      | Defend specific colony                       | No       |
-| AutoColonize     | ETACs auto-colonize nearest suitable system  | Yes      |
-| AutoReinforce    | Join nearest damaged friendly fleet          | Yes      |
-| AutoRepair       | Return to shipyard when crippled             | Yes      |
-| AutoEvade        | Retreat if outnumbered per ROE               | Yes      |
-| BlockadeTarget   | Maintain blockade on enemy colony            | No       |
+| Standing Order Type | Active Order Generated    | Purpose                                                                           |
+| ------------------- | ------------------------- | --------------------------------------------------------------------------------- |
+| None                | None (00)                 | Hold position. Standby for orders.                                                |
+| PatrolRoute         | Move Fleet (01)           | Move to target waypoint2, turn around and move back to waypoint1. Repeat in loop. |
+| DefendSystem        | Patrol a System (03)      | Patrol system. Remain on station until ordered otherwise (persist).               |
+| GuardColony         | Patrol a System (03)      | Guard colony/planet. Remain on station until ordered otherwise (persist).         |
+| AutoReinforce       | Join another Fleet (14)   | Seek target fleet and join.                                                       |
+| AutoRepair          | Move Fleet (01)           | Move to nearest house controlled shipyard for repair.                             |
+| BlockadeTarget      | Blockade a Planet (06)    | Blockade enemy colony/planet in designated system.                                |
+
+**Note:** Active order codes reference table 6.2.1. All fleet orders (except Hold) include automatic travel to target.
 
 ### 6.5.2 Standing Order Execution
 
@@ -749,7 +750,7 @@ Standing orders include multiple layers of control to prevent unwanted automatio
 - Default: `activation.default_activation_delay_turns` (1 turn)
 - Configurable per-fleet
 - Countdown resets when you issue explicit order
-- **Critical for preventing strategic errors**: Fleet completes colonization mission, you have 1 turn to issue new orders before AutoColonize standing order takes over
+- **Critical for preventing strategic errors**: Fleet completes mission, you have 1 turn to issue new orders before standing order takes over
 
 **Activation Flow Example:**
 ```
@@ -813,25 +814,7 @@ Defend a specific colony within a system. Functionally identical to Defend Syste
 - Designate which infrastructure to protect
 - Create colony-specific defensive postures
 
-### 6.5.7 Auto-Colonize Standing Order
-
-Order ETAC fleets to autonomously identify and colonize nearest suitable systems. Your colonization fleets automatically expand your empire without explicit orders for each colony.
-
-**Requirements:**
-- Fleet must contain ETACs with PTUs
-
-**Behavior:**
-- Fleet identifies nearest uncolonized system
-- Travels to system automatically
-- Establishes colony
-- Resumes search for next target
-
-**Use Auto-Colonize to:**
-- Automate expansion waves
-- Reduce colonization micromanagement
-- Ensure rapid territory acquisition during land grabs
-
-### 6.5.8 Auto-Reinforce Standing Order
+### 6.5.7 Auto-Reinforce Standing Order
 
 Order your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers squadrons to restore combat effectiveness.
 
@@ -864,25 +847,7 @@ Order damaged fleets to automatically return to drydocks when crippled. Your fle
 - Reduce fleet management micromanagement
 - Ensure damaged forces return to operational status
 
-### 6.5.9 Auto-Evade Standing Order
-
-Order your fleet to automatically retreat when outnumbered per ROE settings. Your fleet continuously assesses threat levels and withdraws to safety when engagement becomes unfavorable.
-
-**Configuration:**
-- Rules of Engagement (0-10 scale) determines retreat threshold
-
-**Behavior:**
-- Fleet monitors hostile forces in system
-- Calculates force ratio
-- If outmatched per ROE, retreats to safe system
-- Resumes mission when threat clears
-
-**Use Auto-Evade to:**
-- Protect valuable scouts and intelligence units
-- Preserve outnumbered forces
-- Avoid unfavorable engagements
-
-### 6.5.10 Blockade Target Standing Order
+### 6.5.9 Blockade Target Standing Order
 
 Maintain continuous blockade of enemy colony. Your fleet establishes orbital blockade and maintains it indefinitely, strangling enemy economy.
 
@@ -901,7 +866,7 @@ Maintain continuous blockade of enemy colony. Your fleet establishes orbital blo
 - Weaken enemy colonies before invasion
 - Automate blockade operations
 
-### 6.5.11 Rules of Engagement (ROE)
+### 6.5.10 Rules of Engagement (ROE)
 
 Configure standing order combat behavior with Rules of Engagement—a 0-10 scale determining when to fight and when to retreat.
 
@@ -915,7 +880,6 @@ Configure standing order combat behavior with Rules of Engagement—a 0-10 scale
 **Examples:**
 - **Patrol Route with ROE=2**: Fleet patrols border but retreats from any hostile contact
 - **Defend System with ROE=8**: Fleet defends aggressively, fighting unless outnumbered 4:1
-- **Auto-Evade with ROE=5**: Fleet retreats if enemy force equal or superior
 
 ---
 

@@ -117,8 +117,14 @@ type
     eliminated*: bool
     rank*: int
 
-proc generateLeaderboard*(state: GameState): seq[HouseRanking] =
-  ## Generate ranked leaderboard of all houses
+  Leaderboard* = object
+    ## Public leaderboard showing house rankings and game state
+    rankings*: seq[HouseRanking]
+    totalSystems*: int  # Total colonizable systems in the game
+    totalColonized*: int  # Total systems currently colonized
+
+proc generateLeaderboard*(state: GameState): Leaderboard =
+  ## Generate ranked leaderboard of all houses with game metadata
   var rankings: seq[HouseRanking] = @[]
 
   for houseId, house in state.houses:
@@ -145,4 +151,13 @@ proc generateLeaderboard*(state: GameState): seq[HouseRanking] =
   for i, ranking in rankings.mpairs:
     ranking.rank = i + 1
 
-  return rankings
+  # Calculate total colonized systems
+  var totalColonized = 0
+  for ranking in rankings:
+    totalColonized += ranking.colonies
+
+  return Leaderboard(
+    rankings: rankings,
+    totalSystems: state.starMap.systems.len,
+    totalColonized: totalColonized
+  )

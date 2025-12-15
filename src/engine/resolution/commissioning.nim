@@ -480,14 +480,13 @@ proc commissionShips*(
             let shipId = owner & "_" & $shipClass & "_" & $completed.colonyId & "_" & $state.turn
             var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, owner, completed.colonyId)
 
-            # Auto-load PTU onto ETAC at commissioning
-            if shipClass == ShipClass.ETAC and colony.population > 1:
-              let extractionCost = 1.0 / (1.0 + 0.00657 * colony.population.float)
-              let newPopulation = colony.population.float - extractionCost
-              colony.population = max(1, newPopulation.int)
+            # ETACs commission with full cargo (3 PTU) at no extraction cost
+            # Lore: Self-sufficient generation ships with cryostasis colonists
+            if shipClass == ShipClass.ETAC:
               spaceLiftShip.cargo.cargoType = CargoType.Colonists
-              spaceLiftShip.cargo.quantity = 1
-              logInfo(LogCategory.lcEconomy, &"Loaded 1 PTU onto {shipId} (extraction: {extractionCost:.2f} PU from {completed.colonyId})")
+              spaceLiftShip.cargo.quantity = 3  # Full capacity, no colony drain
+              logInfo(LogCategory.lcEconomy,
+                &"Commissioned {shipId} with 3 PTU (cryostasis generation ship)")
 
             colony.unassignedSpaceLiftShips.add(spaceLiftShip)
             saveColony(completed.colonyId, colony)
@@ -498,13 +497,11 @@ proc commissionShips*(
               let shipToAssign = colony.unassignedSpaceLiftShips[colony.unassignedSpaceLiftShips.len - 1]
 
               var targetFleetId = ""
-              for fleetId, fleet in state.fleets:
-                if fleet.location == completed.colonyId and fleet.owner == owner:
-                  targetFleetId = fleetId
-                  break
 
-              if targetFleetId == "":
-                # Create new fleet for spacelift ship
+              # ETACs ALWAYS get their own fleet for independent colonization
+              # TroopTransports can share fleets (they're for invasions, need coordination)
+              if shipClass == ShipClass.ETAC:
+                # Create new fleet for this ETAC (never share)
                 targetFleetId = $owner & "_fleet" & $(state.fleets.len + 1)
                 state.fleets[targetFleetId] = Fleet(
                   id: targetFleetId,
@@ -515,11 +512,31 @@ proc commissionShips*(
                   status: FleetStatus.Active,
                   autoBalanceSquadrons: true
                 )
-                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new fleet {targetFleetId}")
+                logInfo(LogCategory.lcFleet, &"Commissioned ETAC in new independent fleet {targetFleetId}")
               else:
-                # Add to existing fleet
-                state.fleets[targetFleetId].spaceLiftShips.add(shipToAssign)
-                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in fleet {targetFleetId}")
+                # TroopTransports: Find existing fleet or create new one
+                for fleetId, fleet in state.fleets:
+                  if fleet.location == completed.colonyId and fleet.owner == owner:
+                    targetFleetId = fleetId
+                    break
+
+                if targetFleetId == "":
+                  # Create new fleet for spacelift ship
+                  targetFleetId = $owner & "_fleet" & $(state.fleets.len + 1)
+                  state.fleets[targetFleetId] = Fleet(
+                    id: targetFleetId,
+                    owner: owner,
+                    location: completed.colonyId,
+                    squadrons: @[],
+                    spaceLiftShips: @[shipToAssign],
+                    status: FleetStatus.Active,
+                    autoBalanceSquadrons: true
+                  )
+                  logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new fleet {targetFleetId}")
+                else:
+                  # Add to existing fleet
+                  state.fleets[targetFleetId].spaceLiftShips.add(shipToAssign)
+                  logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in fleet {targetFleetId}")
 
               # Remove from unassigned pool (it's now in fleet)
               colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)

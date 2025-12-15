@@ -1218,12 +1218,12 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.C
             break
 
       # Also check standing orders - fleets with movement-based standing orders should not receive squadrons
-      # Movement-based: PatrolRoute, AutoColonize, AutoReinforce, AutoRepair (when seeking shipyard)
-      # Stationary: DefendSystem, GuardColony, AutoEvade, BlockadeTarget (at target)
+      # Movement-based: PatrolRoute, AutoReinforce, AutoRepair (when seeking shipyard)
+      # Stationary: DefendSystem, GuardColony, BlockadeTarget (at target)
       if isStationary and fleetId in state.standingOrders:
         let standingOrder = state.standingOrders[fleetId]
         case standingOrder.orderType
-        of StandingOrderType.PatrolRoute, StandingOrderType.AutoColonize, StandingOrderType.AutoReinforce:
+        of StandingOrderType.PatrolRoute, StandingOrderType.AutoReinforce:
           # These always involve movement between systems
           isStationary = false
         of StandingOrderType.AutoRepair:
@@ -1231,7 +1231,7 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.C
           # For simplicity, treat as non-stationary (don't want to add squadrons if fleet might leave for repairs)
           isStationary = false
         else:
-          # DefendSystem, GuardColony, AutoEvade, BlockadeTarget are stationary (at/defending a system)
+          # DefendSystem, GuardColony, BlockadeTarget are stationary (at/defending a system)
           # None, or any future order types default to stationary
           discard
 

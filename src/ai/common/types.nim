@@ -224,8 +224,9 @@ type
 # Utility Functions
 # =============================================================================
 
-proc getCurrentGameAct*(turn: int): GameAct =
-  ## Determine current game act based on turn number
+proc getCurrentGameActLegacy*(turn: int): GameAct =
+  ## Legacy turn-based Act determination (kept for backward compatibility)
+  ## Use getCurrentGameAct() with GameState for colonization-based Acts
   if turn <= 7:
     GameAct.Act1_LandGrab
   elif turn <= 15:
@@ -234,3 +235,35 @@ proc getCurrentGameAct*(turn: int): GameAct =
     GameAct.Act3_TotalWar
   else:
     GameAct.Act4_Endgame
+
+proc getCurrentGameAct*(totalSystems: int, colonizedSystems: int, turn: int,
+                        act1Threshold: float = 0.90,
+                        act2Threshold: float = 0.98,
+                        act2MaxTurn: int = 22,
+                        act3MaxTurn: int = 35): GameAct =
+  ## Determine current game act based on colonization progress
+  ## Act 1 ends when ≥act1Threshold% of systems are colonized (Land Grab complete)
+  ## Act 2-4 transitions based on act2Threshold and turn thresholds
+  ## Thresholds can be customized via parameters (defaults from config/rba.toml)
+  let colonizationPercent = if totalSystems > 0:
+    colonizedSystems.float / totalSystems.float
+  else:
+    1.0  # Empty map = Act 1
+
+  if colonizationPercent < act1Threshold:
+    # Still in land grab phase - continues until job is done
+    GameAct.Act1_LandGrab
+  elif colonizationPercent < act2Threshold or turn <= act2MaxTurn:
+    # Consolidation phase - minor expansion continues
+    GameAct.Act2_RisingTensions
+  elif turn <= act3MaxTurn:
+    # Major conflicts
+    GameAct.Act3_TotalWar
+  else:
+    # Final push for victory
+    GameAct.Act4_Endgame
+
+# Helper overloads for convenience (import gamestate if needed)
+proc getGameAct*(totalSystems: int, colonizedCount: int, turn: int): GameAct {.inline.} =
+  ## Convenience wrapper for getCurrentGameAct
+  getCurrentGameAct(totalSystems, colonizedCount, turn)

@@ -407,11 +407,21 @@ proc ec4x_collect_diagnostics(game: pointer, turn: cint): cint
 
     # Collect diagnostics for all houses
     for controller in handle.controllers:
+      # Find previous turn's metrics for this house (for delta calculation)
+      var prevMetrics = none(DiagnosticMetrics)
+      if handle.diagnostics.len > 0:
+        # Find the most recent diagnostic entry for this house
+        for i in countdown(handle.diagnostics.high, 0):
+          if handle.diagnostics[i].houseId == controller.houseId and
+             handle.diagnostics[i].turn == turn - 1:
+            prevMetrics = some(handle.diagnostics[i])
+            break
+
       let metrics = collectDiagnostics(
         state = handle.state,
         houseId = controller.houseId,
         strategy = controller.strategy,
-        prevMetrics = none(DiagnosticMetrics),
+        prevMetrics = prevMetrics,
         orders = none(OrderPacket),
         gameId = $handle.seed,
         maxTurns = handle.maxTurns

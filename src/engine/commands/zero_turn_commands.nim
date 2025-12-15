@@ -213,11 +213,20 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
     if not result.valid:
       return result
 
-    # DetachShips specific: cannot detach spacelift-only fleet
+    # DetachShips specific: cannot detach spacelift-only fleet (except ETACs)
     if cmd.commandType == ZeroTurnCommandType.DetachShips:
       let (squadronIndices, spaceliftIndices) = fleet.translateShipIndicesToSquadrons(cmd.shipIndices)
       if squadronIndices.len == 0 and spaceliftIndices.len > 0:
-        return ValidationResult(valid: false, error: "Cannot detach spacelift ships without combat escorts")
+        # Check if ALL spacelift ships being detached are ETACs (don't need escorts)
+        var allETACs = true
+        for idx in spaceliftIndices:
+          if fleet.spaceLiftShips[idx].shipClass != ShipClass.ETAC:
+            allETACs = false
+            break
+
+        if not allETACs:
+          # TroopTransports and other spacelift ships need combat escorts
+          return ValidationResult(valid: false, error: "Cannot detach non-ETAC spacelift ships without combat escorts")
 
     # TransferShips specific: validate target fleet
     if cmd.commandType == ZeroTurnCommandType.TransferShips:

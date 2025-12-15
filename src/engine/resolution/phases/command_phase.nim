@@ -245,6 +245,7 @@ proc resolveCommandPhase*(state: var GameState,
 
   var ordersStored = 0
   var adminExecuted = 0
+  var standingOrdersProcessed = 0
 
   # Collect and categorize orders from all houses
   for houseId in state.houses.keys:
@@ -277,5 +278,19 @@ proc resolveCommandPhase*(state: var GameState,
               fleetId = some(order.fleetId)
             ))
 
-  logInfo(LogCategory.lcOrders, &"[COMMAND PART C] Completed ({ordersStored} orders stored, {adminExecuted} admin executed)")
+      # Process standing orders (persistent fleet behaviors)
+      for fleetId, standingOrder in orders[houseId].standingOrders:
+        # Validate that fleet exists and belongs to this house
+        if fleetId in state.fleets and state.fleets[fleetId].owner == houseId:
+          state.standingOrders[fleetId] = standingOrder
+          standingOrdersProcessed += 1
+          logDebug(LogCategory.lcOrders,
+                   &"  [STANDING ORDER] {fleetId}: {standingOrder.orderType} assigned")
+        else:
+          logWarn(LogCategory.lcOrders,
+                  &"  [REJECTED] {fleetId}: Standing order rejected (fleet not found or wrong owner)")
+
+  logInfo(LogCategory.lcOrders,
+          &"[COMMAND PART C] Completed ({ordersStored} orders stored, " &
+          &"{standingOrdersProcessed} standing orders assigned, {adminExecuted} admin executed)")
 

@@ -524,9 +524,16 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   let planetClass = system.planetClass
   let resources = system.resourceRating
 
-  logInfo(LogCategory.lcColonization, &"Fleet {order.fleetId} colonizing {planetClass} world with {resources} resources at {targetId}")
+  # Get PTU quantity from ETAC cargo (should be 3 for new ETACs)
+  var ptuToDeposit = 0
+  for ship in fleet.spaceLiftShips:
+    if ship.cargo.cargoType == CargoType.Colonists:
+      ptuToDeposit = ship.cargo.quantity
+      break
 
-  # Create ETAC colony with 1 PTU (50k souls)
+  logInfo(LogCategory.lcColonization, &"Fleet {order.fleetId} colonizing {planetClass} world with {resources} resources at {targetId} (depositing {ptuToDeposit} PTU)")
+
+  # Create ETAC colony (foundation colony with 3 PU starter population)
   let colony = createETACColony(targetId, houseId, planetClass, resources)
 
   # Use colonization engine to establish with prestige
@@ -535,7 +542,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
     targetId,
     colony.planetClass,
     colony.resources,
-    1  # ETAC carries exactly 1 PTU
+    ptuToDeposit  # Deposit all cargo (3 PTU = 3 PU foundation colony)
   )
 
   if not result.success:
@@ -547,7 +554,37 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   # Unload colonists from fleet
   for ship in fleet.spaceLiftShips.mitems:
     if ship.cargo.cargoType == CargoType.Colonists:
+      logDebug(LogCategory.lcColonization,
+        &"Unloading {ship.cargo.quantity} PTU from {ship.shipClass} {ship.id}")
       discard ship.unloadCargo()
+      logDebug(LogCategory.lcColonization,
+        &"After unload: {ship.shipClass} {ship.id} cargo quantity = {ship.cargo.quantity}")
+
+  # ETAC cannibalized - remove from game, structure becomes colony infrastructure
+  logDebug(LogCategory.lcColonization,
+    &"Checking {fleet.spaceLiftShips.len} spaceLiftShips for cannibalization")
+  for i in countdown(fleet.spaceLiftShips.high, 0):
+    let ship = fleet.spaceLiftShips[i]
+    logDebug(LogCategory.lcColonization,
+      &"Ship {i}: class={ship.shipClass}, cargoQty={ship.cargo.quantity}, " &
+      &"cargoType={ship.cargo.cargoType}")
+    if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
+      # ETAC cannibalized - ship structure becomes starting IU
+      fleet.spaceLiftShips.delete(i)
+
+      # Fire GameEvent for colonization success
+      events.add(GameEvent(
+        eventType: GameEventType.ColonyEstablished,
+        turn: state.turn,
+        houseId: some(houseId),
+        systemId: some(targetId),
+        description: &"ETAC {ship.id} cannibalized establishing colony infrastructure",
+        colonyEventType: some("Established")
+      ))
+
+      logInfo(LogCategory.lcEconomy,
+        &"ETAC {ship.id} cannibalized - structure became colony infrastructure at {targetId}")
+
   state.fleets[order.fleetId] = fleet
 
   # Apply prestige award

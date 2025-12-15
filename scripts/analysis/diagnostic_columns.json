@@ -2,7 +2,7 @@
 ✅ Found 208 diagnostic columns
 ✅ Updated: /home/niltempus/dev/ec4x/scripts/analysis/diagnostic_columns.json
    Column count: 208
-   Last updated: 2025-12-13
+   Last updated: 2025-12-14
 l": [
       "heavy_cruiser_ships",
       "battlecruiser_ships",
@@ -254,6 +254,6 @@ l": [
     "goap_actions_executed",
     "goap_actions_failed"
   ],
-  "last_updated": "2025-12-13",
+  "last_updated": "2025-12-14",
   "source": "balance_results/diagnostics/game_*.csv"
 }
