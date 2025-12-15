@@ -98,7 +98,7 @@ proc selectEspionageOperation*(controller: AIController, filtered: FilteredGameS
       return esp_types.EspionageAction.PlantDisinformation  # Corrupt their intel for 2 turns
 
   # Economic warfare for economic-focused AIs
-  if p.economicFocus > globalRBAConfig.drungarius_requirements.economic_focus_manipulation and ebp >= cfg.ebp_economic_manipulation and rng.rand(1.0) < cfg.chance_economic_manipulation:
+  if p.economicFocus > cfg.economic_focus_manipulation and ebp >= cfg.ebp_economic_manipulation and rng.rand(1.0) < cfg.chance_economic_manipulation:
     return esp_types.EspionageAction.EconomicManipulation  # Disrupt economy
 
   # Cyber attacks before invasions (if we have operations targeting this system)

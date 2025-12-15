@@ -736,6 +736,7 @@ frequency_risk_tolerance_threshold = 0.6   # Above this = espionage-focused
 frequency_economic_focus_threshold = 0.7   # Above this = economic-focused
 frequency_aggression_threshold = 0.7       # Above this = aggressive (less espionage)
 frequency_economic_focus_cap = 0.5         # Below this for espionage-focused check
+economic_focus_manipulation = 0.6          # For economic manipulation
 
 # Counter-intel periodic sweep
 counter_intel_periodic_frequency = 5    # Sweep every N turns (defensive AI)
@@ -823,7 +824,6 @@ cost_counter_intel_sweep = 4            # Counter-intel sweep cost
 aggression_secondary_sabotage = 0.6     # For secondary sabotage target
 aggression_disinformation = 0.6         # For disinformation operations
 aggression_assassination = 0.8          # For assassination (very aggressive)
-economic_focus_manipulation = 0.6       # For economic manipulation
 risk_tolerance_ci_maintenance = 0.4     # Below this = maintain CI posture
 
 # Prestige awareness (Gap 6)
