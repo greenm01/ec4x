@@ -15,6 +15,7 @@ import ../shared/intelligence_types  # For IntelligenceSnapshot
 import ../../common/types as ai_types
 import ../goap/core/types # For GoalType
 import ../goap/integration/plan_tracking # For PlanTracker, PlanStatus
+import ../config  # For globalRBAConfig
 
 # =============================================================================
 # Phase 5.1: Multi-Factor Espionage Target Scoring
@@ -44,6 +45,7 @@ proc scoreEspionageTarget*(
 
   result.houseId = targetHouse
   result.score = 0.0
+  let cfg = globalRBAConfig.drungarius.requirements
 
   # 1. Tech Value: Target houses ahead in tech (steal research)
   result.techValue = 0.0
@@ -55,20 +57,21 @@ proc scoreEspionageTarget*(
       totalEnemyTech += level
 
     # Compare to our tech (rough proxy: assume we're around Act-appropriate level)
+    # Configuration from config/rba.toml [drungarius]
     let ourTechEstimate = case currentAct
-      of ai_types.GameAct.Act1_LandGrab: 15      # ~3 per field
-      of ai_types.GameAct.Act2_RisingTensions: 25  # ~5 per field
-      of ai_types.GameAct.Act3_TotalWar: 35       # ~7 per field
-      of ai_types.GameAct.Act4_Endgame: 45        # ~9 per field
+      of ai_types.GameAct.Act1_LandGrab: globalRBAConfig.drungarius.research_budget_act1 * 5  # ~15 (3 per field)
+      of ai_types.GameAct.Act2_RisingTensions: globalRBAConfig.drungarius.research_budget_act2 * 3 + 4  # ~25 (5 per field)
+      of ai_types.GameAct.Act3_TotalWar: globalRBAConfig.drungarius.research_budget_act3 * 3 + 5  # ~35 (7 per field)
+      of ai_types.GameAct.Act4_Endgame: globalRBAConfig.drungarius.research_budget_act4 * 3  # ~45 (9 per field)
 
     if totalEnemyTech > ourTechEstimate:
-      result.techValue = float(totalEnemyTech - ourTechEstimate) / 10.0  # 0.0-3.0 range
+      result.techValue = float(totalEnemyTech - ourTechEstimate) / cfg.tech_value_divisor
 
   # 2. Economic Value: Target high producers (sabotage priority)
   result.economicValue = 0.0
   if intelSnapshot.economic.enemyEconomicStrength.hasKey(targetHouse):
     let enemyEcon = intelSnapshot.economic.enemyEconomicStrength[targetHouse]
-    result.economicValue = float(enemyEcon.estimatedTotalProduction) / 100.0  # 0.0-5.0+ range
+    result.economicValue = float(enemyEcon.estimatedTotalProduction) / cfg.economic_value_divisor
 
   # 3. Military Threat: Target strong militaries (need intel)
   result.militaryThreat = 0.0
@@ -79,7 +82,7 @@ proc scoreEspionageTarget*(
       enemyFleetCount += 1
       enemyTotalStrength += fleet.estimatedStrength
 
-  result.militaryThreat = float(enemyTotalStrength) / 200.0  # 0.0-5.0+ range
+  result.militaryThreat = float(enemyTotalStrength) / cfg.military_threat_divisor
 
   # 4. CI Weakness: Target houses with low counter-intel (easier operations)
   result.ciWeakness = 0.0
@@ -87,30 +90,30 @@ proc scoreEspionageTarget*(
     let risk = intelSnapshot.espionage.detectionRisks[targetHouse]
     case risk
     of DetectionRiskLevel.Unknown:
-      result.ciWeakness = 2.5  # Unknown = moderate assumption
+      result.ciWeakness = cfg.ci_weakness_unknown
     of DetectionRiskLevel.Low:
-      result.ciWeakness = 3.0  # Easy target
+      result.ciWeakness = cfg.ci_weakness_low
     of DetectionRiskLevel.Moderate:
-      result.ciWeakness = 1.5  # Moderate target
+      result.ciWeakness = cfg.ci_weakness_moderate
     of DetectionRiskLevel.High:
-      result.ciWeakness = 0.5  # Risky target
+      result.ciWeakness = cfg.ci_weakness_high
     of DetectionRiskLevel.Critical:
-      result.ciWeakness = 0.1  # Very risky (almost avoid)
+      result.ciWeakness = cfg.ci_weakness_critical
   else:
-    result.ciWeakness = 2.0  # Unknown = assume moderate
+    result.ciWeakness = cfg.ci_weakness_default
 
   # 5. Diplomatic Weight: Prioritize enemies over neutrals
-  result.diplomaticWeight = 1.0  # Base weight
+  result.diplomaticWeight = cfg.diplomatic_weight_neutral  # Base weight
   let dipKey = (ownHouse, targetHouse)
   if filtered.houseDiplomacy.hasKey(dipKey):
     let dipState = filtered.houseDiplomacy[dipKey]
     case dipState
     of dip_types.DiplomaticState.Enemy:
-      result.diplomaticWeight = 3.0  # Open war = high priority
+      result.diplomaticWeight = cfg.diplomatic_weight_enemy
     of dip_types.DiplomaticState.Hostile:
-      result.diplomaticWeight = 2.0  # Hostile = medium-high priority
+      result.diplomaticWeight = cfg.diplomatic_weight_hostile
     of dip_types.DiplomaticState.Neutral:
-      result.diplomaticWeight = 1.0  # Neutral = base priority
+      result.diplomaticWeight = cfg.diplomatic_weight_neutral
 
   # Calculate weighted score based on personality
   # Aggressive personalities weight military threat higher
@@ -122,11 +125,11 @@ proc scoreEspionageTarget*(
   let riskWeight = 1.0 - personality.riskTolerance  # Low risk = prefer easy targets
 
   result.score =
-    (result.techValue * 1.0) +           # Tech always valuable
-    (result.economicValue * economicWeight * 1.5) +  # Economic focus amplifies
-    (result.militaryThreat * aggressionWeight * 1.5) + # Aggression amplifies
-    (result.ciWeakness * riskWeight * 1.2) +         # Risk-averse prefer easy
-    (result.diplomaticWeight * 2.0)                  # Diplomacy always important
+    (result.techValue * cfg.score_weight_tech) +
+    (result.economicValue * economicWeight * cfg.score_weight_economic) +
+    (result.militaryThreat * aggressionWeight * cfg.score_weight_military) +
+    (result.ciWeakness * riskWeight * cfg.score_weight_ci_weakness) +
+    (result.diplomaticWeight * cfg.score_weight_diplomatic)
 
   return result
 
@@ -202,6 +205,7 @@ proc selectSabotageBottlenecks*(
 
   result = @[]
   var scoredTargets: seq[SabotageTarget] = @[]
+  let cfg = globalRBAConfig.drungarius.requirements
 
   # Analyze construction activity for shipyard concentrations
   for systemId, activity in intelSnapshot.economic.constructionActivity:
@@ -216,17 +220,17 @@ proc selectSabotageBottlenecks*(
       continue  # Unknown owner, skip
 
     # Calculate bottleneck score
-    let shipyardWeight = activity.shipyardCount * 100  # Shipyards are high value
-    let projectWeight = activity.constructionQueue.len * 20  # Active projects = busy
+    let shipyardWeight = activity.shipyardCount * cfg.sabotage_shipyard_weight
+    let projectWeight = activity.constructionQueue.len * cfg.sabotage_project_weight
     let activityWeight = case activity.activityLevel
-      of ConstructionActivityLevel.VeryHigh: 80
-      of ConstructionActivityLevel.High: 50
-      of ConstructionActivityLevel.Moderate: 20
-      of ConstructionActivityLevel.Low: 5
+      of ConstructionActivityLevel.VeryHigh: cfg.sabotage_activity_very_high
+      of ConstructionActivityLevel.High: cfg.sabotage_activity_high
+      of ConstructionActivityLevel.Moderate: cfg.sabotage_activity_moderate
+      of ConstructionActivityLevel.Low: cfg.sabotage_activity_low
       else: 0
 
     # Infrastructure value (IU and starbases)
-    let infrastructureValue = activity.observedInfrastructure * 10 + activity.observedStarbases * 50
+    let infrastructureValue = activity.observedInfrastructure * cfg.sabotage_infrastructure_unit_value + activity.observedStarbases * cfg.sabotage_starbase_value
 
     # Total score
     let totalScore = float(shipyardWeight + projectWeight + activityWeight + infrastructureValue)
@@ -239,7 +243,7 @@ proc selectSabotageBottlenecks*(
         shipyardCount: activity.shipyardCount,
         activeProjects: activity.constructionQueue.len,
         productionValue: activity.observedInfrastructure,
-        reason: if activity.shipyardCount >= 2:
+        reason: if activity.shipyardCount >= cfg.sabotage_shipyard_concentration:
           &"Shipyard concentration ({activity.shipyardCount} yards)"
         elif activity.activityLevel == ConstructionActivityLevel.VeryHigh:
           "Very high construction activity"
@@ -277,6 +281,7 @@ proc assessCounterIntelligenceNeeds*(
   ## Returns CIP investment and counter-intel sweep requirements
 
   result = @[]
+  let cfg = globalRBAConfig.drungarius.requirements
 
   # Track detected espionage activity by house
   var espionageActivityByHouse = initTable[HouseId, int]()
@@ -290,11 +295,11 @@ proc assessCounterIntelligenceNeeds*(
         # High/Critical risk = we're detecting heavy espionage
         if not espionageActivityByHouse.hasKey(houseId):
           espionageActivityByHouse[houseId] = 0
-        espionageActivityByHouse[houseId] += 3  # Heavy activity
+        espionageActivityByHouse[houseId] += cfg.ci_detection_heavy_activity
       of DetectionRiskLevel.Moderate:
         if not espionageActivityByHouse.hasKey(houseId):
           espionageActivityByHouse[houseId] = 0
-        espionageActivityByHouse[houseId] += 1  # Moderate activity
+        espionageActivityByHouse[houseId] += cfg.ci_detection_moderate_activity
       else:
         discard
 
@@ -304,9 +309,9 @@ proc assessCounterIntelligenceNeeds*(
     totalThreat += activity
 
   # If significant espionage threat detected, boost CIP investment
-  if totalThreat >= 5 and currentCIP < (targetCIP + 3):
-    let cipBoost = min(3, (targetCIP + 3) - currentCIP)
-    let investmentCost = cipBoost * 40  # 40 PP per CIP point
+  if totalThreat >= cfg.ci_total_threat_threshold and currentCIP < (targetCIP + cfg.ci_emergency_cip_boost_max):
+    let cipBoost = min(cfg.ci_emergency_cip_boost_max, (targetCIP + cfg.ci_emergency_cip_boost_max) - currentCIP)
+    let investmentCost = cipBoost * cfg.ci_pp_per_point
 
     result.add(EspionageRequirement(
       requirementType: EspionageRequirementType.CIPInvestment,
@@ -323,13 +328,13 @@ proc assessCounterIntelligenceNeeds*(
 
   # Generate counter-intel sweeps for each active threat
   for houseId, activity in espionageActivityByHouse:
-    if activity >= 2:  # Significant activity (2+ operations)
+    if activity >= cfg.ci_significant_activity:
       result.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
         priority: RequirementPriority.High,
         targetHouse: none(HouseId),  # Counter-intel is defensive
         operation: some(esp_types.EspionageAction.CounterIntelSweep),
-        estimatedCost: 4,
+        estimatedCost: cfg.cost_counter_intel_sweep,
         reason: &"Counter-intel sweep vs {houseId} espionage (activity level: {activity})"
       ))
 
@@ -363,6 +368,7 @@ proc generateEspionageRequirements*(
   let p = controller.personality
   let currentEBP = filtered.ownHouse.espionageBudget.ebpPoints
   let currentCIP = filtered.ownHouse.espionageBudget.cipPoints
+  let cfg = globalRBAConfig.drungarius.requirements
 
   # Check if "MaintainPrestige" GOAP goal is active (Gap 6)
   # TODO: Re-enable once goapPlanTracker is integrated into AIController
@@ -370,8 +376,8 @@ proc generateEspionageRequirements*(
   # let isMaintainPrestigeActive = controller.goapPlanTracker.activePlans.anyIt(
   #   it.status == PlanStatus.Active and it.plan.goal.goalType == GoalType.MaintainPrestige
   # )
-  let prestigePenaltyThresholdRatio = 0.05 # 5% of budget as per docs/specs/diplomacy.md
-  let ppPerEBP_CIP = 40 # As per docs/specs/diplomacy.md
+  let prestigePenaltyThresholdRatio = cfg.prestige_penalty_threshold_ratio
+  let ppPerEBP_CIP = cfg.ci_pp_per_point
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Drungarius: Generating espionage requirements " &
@@ -381,17 +387,23 @@ proc generateEspionageRequirements*(
   let bestTargets = selectBestEspionageTargets(intelSnapshot, filtered, p, currentAct, maxTargets = 3)
 
   # === EBP/CIP Investment Target Levels by Act ===
-  var targetEBP = case currentAct # Use var for modification
-    of ai_types.GameAct.Act1_LandGrab: 5
-    of ai_types.GameAct.Act2_RisingTensions: 10
-    of ai_types.GameAct.Act3_TotalWar: 15
-    of ai_types.GameAct.Act4_Endgame: 20
+  # Configuration from config/rba.toml [drungarius]
+  var targetEBP = globalRBAConfig.drungarius.espionage_budget_act1 # Use var for modification
+  var targetCIP = globalRBAConfig.drungarius.research_budget_act1
 
-  var targetCIP = case currentAct # Use var for modification
-    of ai_types.GameAct.Act1_LandGrab: 3
-    of ai_types.GameAct.Act2_RisingTensions: 7
-    of ai_types.GameAct.Act3_TotalWar: 12
-    of ai_types.GameAct.Act4_Endgame: 15
+  case currentAct
+  of ai_types.GameAct.Act1_LandGrab:
+    targetEBP = globalRBAConfig.drungarius.espionage_budget_act1
+    targetCIP = globalRBAConfig.drungarius.research_budget_act1
+  of ai_types.GameAct.Act2_RisingTensions:
+    targetEBP = globalRBAConfig.drungarius.espionage_budget_act2
+    targetCIP = globalRBAConfig.drungarius.research_budget_act2
+  of ai_types.GameAct.Act3_TotalWar:
+    targetEBP = globalRBAConfig.drungarius.espionage_budget_act3 + cfg.act3_war_ebp_bonus
+    targetCIP = globalRBAConfig.drungarius.research_budget_act3 + cfg.act3_war_cip_bonus
+  of ai_types.GameAct.Act4_Endgame:
+    targetEBP = globalRBAConfig.drungarius.espionage_budget_act4
+    targetCIP = globalRBAConfig.drungarius.research_budget_act4
 
   # === PRESTIGE AWARENESS (Gap 6): Adjust target EBP/CIP if MaintainPrestige is active ===
   var adjustedTargetEBP = targetEBP
@@ -437,14 +449,14 @@ proc generateEspionageRequirements*(
   # === CRITICAL/HIGH: EBP Investment (early game) ===
   if currentEBP < targetEBP:
     let ebpGap = targetEBP - currentEBP
-    let priority = if currentEBP < 3:
+    let priority = if currentEBP < cfg.ebp_critical_threshold:
       RequirementPriority.Critical  # Very low EBP = critical
-    elif ebpGap >= 5:
+    elif ebpGap >= cfg.ebp_high_gap_threshold:
       RequirementPriority.High  # Significant gap
     else:
       RequirementPriority.Medium
 
-    let investmentCost = ebpGap * ppPerEBP_CIP # Actual cost: 40 PP per EBP point
+    let investmentCost = ebpGap * ppPerEBP_CIP
 
     result.requirements.add(EspionageRequirement(
       requirementType: EspionageRequirementType.EBPInvestment,
@@ -459,12 +471,12 @@ proc generateEspionageRequirements*(
   # === MEDIUM: CIP Investment (defensive espionage) ===
   if currentCIP < targetCIP:
     let cipGap = targetCIP - currentCIP
-    let priority = if cipGap >= 5:
+    let priority = if cipGap >= cfg.cip_high_gap_threshold:
       RequirementPriority.High  # Significant gap
     else:
       RequirementPriority.Medium
 
-    let investmentCost = cipGap * ppPerEBP_CIP # Actual cost: 40 PP per CIP point
+    let investmentCost = cipGap * ppPerEBP_CIP
 
     result.requirements.add(EspionageRequirement(
       requirementType: EspionageRequirementType.CIPInvestment,
@@ -486,8 +498,8 @@ proc generateEspionageRequirements*(
   # Fallback: Basic risk-based sweeps if no threats detected
   if ciRequirements.len == 0:
     if currentCIP < targetCIP:
-      let priority = if currentCIP < 5: RequirementPriority.High else: RequirementPriority.Medium
-      let cost = 4
+      let priority = if currentCIP < cfg.cip_high_priority_threshold: RequirementPriority.High else: RequirementPriority.Medium
+      let cost = cfg.cost_counter_intel_sweep
 
       result.requirements.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
@@ -498,9 +510,9 @@ proc generateEspionageRequirements*(
         reason: &"Preventive Counter-Intelligence Sweep (CIP: {currentCIP}/{targetCIP})"
       ))
       result.totalEstimatedCost += cost
-    elif p.riskTolerance < 0.4 and currentCIP < 10:
+    elif p.riskTolerance < cfg.risk_tolerance_ci_maintenance and currentCIP < cfg.cip_risk_averse_threshold:
       # Risk-averse personalities maintain CI posture
-      let cost = 4
+      let cost = cfg.cost_counter_intel_sweep
       result.requirements.add(EspionageRequirement(
         requirementType: EspionageRequirementType.Operation,
         priority: RequirementPriority.Medium,
@@ -513,7 +525,7 @@ proc generateEspionageRequirements*(
 
   # === HIGH: Phase 5.3 - Economic Bottleneck Sabotage ===
   # Target shipyard concentrations and high-value infrastructure
-  if currentEBP >= 7:
+  if currentEBP >= cfg.req_ebp_sabotage_bottleneck:
     let bottlenecks = selectSabotageBottlenecks(intelSnapshot, maxTargets = 2)
 
     if bottlenecks.len > 0:
@@ -525,17 +537,17 @@ proc generateEspionageRequirements*(
         targetHouse: some(primary.owner),
         operation: some(esp_types.EspionageAction.SabotageHigh),
         targetSystem: some(primary.systemId),
-        estimatedCost: 50,
+        estimatedCost: cfg.cost_sabotage,
         reason: &"Economic bottleneck sabotage - {primary.systemId}: {primary.reason}"
       ))
-      result.totalEstimatedCost += 50
+      result.totalEstimatedCost += cfg.cost_sabotage
 
       logInfo(LogCategory.lcAI,
               &"{controller.houseId} Drungarius: Targeting bottleneck {primary.systemId} " &
               &"({primary.shipyardCount} shipyards, score={primary.score:.0f})")
 
       # If aggressive and multiple bottlenecks, add secondary target
-      if bottlenecks.len >= 2 and p.aggression > 0.6 and currentEBP >= 12:
+      if bottlenecks.len >= 2 and p.aggression > cfg.aggression_secondary_sabotage and currentEBP >= cfg.req_ebp_secondary_sabotage:
         let secondary = bottlenecks[1]
         result.requirements.add(EspionageRequirement(
           requirementType: EspionageRequirementType.Operation,
@@ -543,10 +555,10 @@ proc generateEspionageRequirements*(
           targetHouse: some(secondary.owner),
           operation: some(esp_types.EspionageAction.SabotageHigh),
           targetSystem: some(secondary.systemId),
-          estimatedCost: 50,
+          estimatedCost: cfg.cost_sabotage,
           reason: &"Secondary bottleneck - {secondary.systemId}: {secondary.reason}"
         ))
-        result.totalEstimatedCost += 50
+        result.totalEstimatedCost += cfg.cost_sabotage
     elif intelSnapshot.highValueTargets.len > 0:
       # Fallback: Use legacy high-value target list if no bottlenecks identified
       let targetSystem = intelSnapshot.highValueTargets[0]
@@ -563,14 +575,14 @@ proc generateEspionageRequirements*(
           targetHouse: some(targetOwner),
           operation: some(esp_types.EspionageAction.SabotageHigh),
           targetSystem: some(targetSystem),
-          estimatedCost: 50,
+          estimatedCost: cfg.cost_sabotage,
           reason: &"High-value target - system {targetSystem}"
         ))
-        result.totalEstimatedCost += 50
+        result.totalEstimatedCost += cfg.cost_sabotage
 
   # === HIGH: Operations against enemies ===
   # Phase 5.1: Use multi-factor scored targets instead of simple list
-  if currentEBP >= 8 and bestTargets.len > 0:
+  if currentEBP >= cfg.req_ebp_operations_vs_enemies and bestTargets.len > 0:
     # Target best-scored house
     let targetHouse = bestTargets[0]
 
@@ -593,13 +605,13 @@ proc generateEspionageRequirements*(
       priority: adjustedPriority,
       targetHouse: some(targetHouse),
       operation: some(esp_types.EspionageAction.IntelligenceTheft),
-      estimatedCost: 40,  # Intelligence theft cost estimate
+      estimatedCost: cfg.cost_intelligence_theft,
       reason: &"Intelligence theft from {targetHouse} (multi-factor scoring: best target){detectionRiskNote}"
     ))
-    result.totalEstimatedCost += 40
+    result.totalEstimatedCost += cfg.cost_intelligence_theft
 
   # === MEDIUM: Disinformation operations ===
-  if currentEBP >= 6 and p.aggression > 0.6:
+  if currentEBP >= cfg.req_ebp_disinformation and p.aggression > cfg.aggression_disinformation:
     # Phase 5.1: Aggressive AIs target military threats with disinformation
     if bestTargets.len > 0:
       let targetHouse = bestTargets[0]  # Best target (likely military threat)
@@ -609,13 +621,13 @@ proc generateEspionageRequirements*(
         priority: RequirementPriority.Medium,
         targetHouse: some(targetHouse),
         operation: some(esp_types.EspionageAction.PlantDisinformation),
-        estimatedCost: 35,  # Disinformation cost estimate
+        estimatedCost: cfg.cost_disinformation,
         reason: &"Plant disinformation against {targetHouse} (aggression={p.aggression:.2f}, scored target)"
       ))
-      result.totalEstimatedCost += 35
+      result.totalEstimatedCost += cfg.cost_disinformation
 
   # === MEDIUM: Economic manipulation ===
-  if currentEBP >= 6 and p.economicFocus > 0.6:
+  if currentEBP >= cfg.req_ebp_economic_manipulation and p.economicFocus > cfg.economic_focus_manipulation:
     # Phase 5.1: Economic-focused AIs target high producers
     if bestTargets.len > 0:
       # For economic ops, prefer second-best target if available (diversify)
@@ -626,13 +638,13 @@ proc generateEspionageRequirements*(
         priority: RequirementPriority.Medium,
         targetHouse: some(targetHouse),
         operation: some(esp_types.EspionageAction.EconomicManipulation),
-        estimatedCost: 35,  # Economic manipulation cost estimate
+        estimatedCost: cfg.cost_economic_manipulation,
         reason: &"Economic manipulation against {targetHouse} (economicFocus={p.economicFocus:.2f}, scored target)"
       ))
-      result.totalEstimatedCost += 35
+      result.totalEstimatedCost += cfg.cost_economic_manipulation
 
   # === LOW: Cyber attacks ===
-  if currentEBP >= 5:
+  if currentEBP >= cfg.req_ebp_cyber_attack:
     if intelSnapshot.highValueTargets.len > 0:
       let targetSystem = intelSnapshot.highValueTargets[0]
       var targetOwner: HouseId = HouseId("")
@@ -648,13 +660,13 @@ proc generateEspionageRequirements*(
           targetHouse: some(targetOwner),
           operation: some(esp_types.EspionageAction.CyberAttack),
           targetSystem: some(targetSystem), # Set target system for system-specific operation
-          estimatedCost: 30,  # Cyber attack cost estimate
+          estimatedCost: cfg.cost_cyber_attack,
           reason: &"Cyber attack on {targetOwner} system {targetSystem}"
         ))
-        result.totalEstimatedCost += 30
+        result.totalEstimatedCost += cfg.cost_cyber_attack
 
   # === DEFERRED: Assassination (luxury operation) ===
-  if currentEBP >= 10 and p.aggression > 0.8:
+  if currentEBP >= cfg.req_ebp_assassination and p.aggression > cfg.aggression_assassination:
     # Phase 5.1: Very aggressive AIs target most threatening enemy
     if bestTargets.len > 0:
       let targetHouse = bestTargets[0]  # Best target (highest threat)
@@ -664,10 +676,10 @@ proc generateEspionageRequirements*(
         priority: RequirementPriority.Deferred,
         targetHouse: some(targetHouse),
         operation: some(esp_types.EspionageAction.Assassination),
-        estimatedCost: 60,  # Assassination cost estimate (expensive)
+        estimatedCost: cfg.cost_assassination,
         reason: &"Assassination attempt on {targetHouse} (luxury operation, aggression={p.aggression:.2f}, highest-scored threat)"
       ))
-      result.totalEstimatedCost += 60
+      result.totalEstimatedCost += cfg.cost_assassination
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Drungarius: Generated {result.requirements.len} espionage requirements " &

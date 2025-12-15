@@ -11,136 +11,39 @@
 ##
 ## Integration: Called by build_requirements.nim capacity filler
 
-import std/[tables, options]
+import std/options
 import ../../../common/types/units
 import ../../../engine/economy/config_accessors
 import ../../common/types as ai_common_types
+import ../config  # For globalRBAConfig
 
 # ============================================================================
-# ACT APPROPRIATENESS SCORING TABLES
+# CONFIG-DRIVEN SCORING FUNCTIONS
 # ============================================================================
+# All unit priority scores are now loaded from config/rba.toml
+# This enables balance tuning without recompilation
 
-const ActAppropriatenessScores = {
-  # Act 1: Land Grab - Expansion and colony defense
-  GameAct.Act1_LandGrab: {
-    ShipClass.ETAC: 4.0,
-    ShipClass.Destroyer: 3.0,
-    ShipClass.Frigate: 3.0,
-    ShipClass.Corvette: 3.0,
-    ShipClass.Scout: 2.5,
-    ShipClass.LightCruiser: 2.0,
-    ShipClass.TroopTransport: 0.0,  # HARD GATE - Act 2+ only
-    ShipClass.Cruiser: 1.0,
-    ShipClass.Raider: 1.0,
-    ShipClass.Battlecruiser: 0.5,
-    ShipClass.HeavyCruiser: 0.5,
-    ShipClass.Battleship: 0.5,
-    ShipClass.Dreadnought: 0.5,
-    ShipClass.SuperDreadnought: 0.5,
-    ShipClass.Carrier: 0.5,
-    ShipClass.SuperCarrier: 0.5,
-    ShipClass.PlanetBreaker: 0.5,
-    ShipClass.Fighter: 2.0
-  }.toTable,
-
-  # Act 2: Rising Tensions - Military buildup with medium capitals
-  GameAct.Act2_RisingTensions: {
-    ShipClass.Cruiser: 4.0,
-    ShipClass.LightCruiser: 4.0,
-    ShipClass.Battlecruiser: 4.0,
-    ShipClass.Carrier: 3.5,
-    ShipClass.HeavyCruiser: 3.0,
-    ShipClass.Destroyer: 2.0,
-    ShipClass.Frigate: 2.0,
-    ShipClass.ETAC: 2.0,
-    ShipClass.Raider: 2.5,
-    ShipClass.Scout: 2.0,
-    ShipClass.TroopTransport: 2.0,
-    ShipClass.Corvette: 1.5,
-    ShipClass.Battleship: 1.5,
-    ShipClass.Dreadnought: 1.0,
-    ShipClass.SuperDreadnought: 1.0,
-    ShipClass.SuperCarrier: 1.5,
-    ShipClass.PlanetBreaker: 1.0,
-    ShipClass.Fighter: 2.5
-  }.toTable,
-
-  # Act 3: Total War - Heavy capitals and decisive battles
-  GameAct.Act3_TotalWar: {
-    ShipClass.Battleship: 4.0,
-    ShipClass.Dreadnought: 4.0,
-    ShipClass.SuperCarrier: 3.5,
-    ShipClass.HeavyCruiser: 3.0,
-    ShipClass.Cruiser: 2.5,
-    ShipClass.Battlecruiser: 2.5,
-    ShipClass.Carrier: 2.5,
-    ShipClass.SuperDreadnought: 2.0,
-    ShipClass.Raider: 2.0,
-    ShipClass.PlanetBreaker: 2.0,
-    ShipClass.LightCruiser: 2.0,
-    ShipClass.Destroyer: 1.5,
-    ShipClass.TroopTransport: 1.5,
-    ShipClass.Frigate: 1.0,
-    ShipClass.Corvette: 1.0,
-    ShipClass.ETAC: 0.5,
-    ShipClass.Scout: 1.0,
-    ShipClass.Fighter: 2.0
-  }.toTable,
-
-  # Act 4: Endgame - Ultimate capitals and siege warfare
-  GameAct.Act4_Endgame: {
-    ShipClass.SuperDreadnought: 4.0,
-    ShipClass.Dreadnought: 4.0,
-    ShipClass.PlanetBreaker: 3.5,
-    ShipClass.Battleship: 3.0,
-    ShipClass.SuperCarrier: 3.0,
-    ShipClass.HeavyCruiser: 2.5,
-    ShipClass.Battlecruiser: 2.0,
-    ShipClass.Carrier: 2.0,
-    ShipClass.Cruiser: 1.5,
-    ShipClass.Raider: 1.5,
-    ShipClass.LightCruiser: 1.0,
-    ShipClass.TroopTransport: 1.0,
-    ShipClass.Destroyer: 0.5,
-    ShipClass.Frigate: 0.5,
-    ShipClass.Corvette: 0.5,
-    ShipClass.ETAC: 0.5,
-    ShipClass.Scout: 0.5,
-    ShipClass.Fighter: 1.5
-  }.toTable
-}.toTable
-
-# ============================================================================
-# STRATEGIC VALUE SCORING
-# ============================================================================
-
-const StrategicValueScores = {
-  # Capital Ships (2.0 points) - Ultimate firepower
-  ShipClass.SuperDreadnought: 2.0,
-  ShipClass.Dreadnought: 2.0,
-  ShipClass.Battleship: 2.0,
-  ShipClass.SuperCarrier: 2.0,
-
-  # Medium Capitals (1.5 points) - Force projection
-  ShipClass.Battlecruiser: 1.5,
-  ShipClass.HeavyCruiser: 1.5,
-  ShipClass.Cruiser: 1.5,
-  ShipClass.Carrier: 1.5,
-
-  # Escorts & Specialized (1.0 points) - Core fleet
-  ShipClass.Destroyer: 1.0,
-  ShipClass.LightCruiser: 1.0,
-  ShipClass.Frigate: 1.0,
-  ShipClass.ETAC: 1.0,
-  ShipClass.Raider: 1.0,
-  ShipClass.PlanetBreaker: 1.0,
-
-  # Light Units (0.5 points) - Support roles
-  ShipClass.Corvette: 0.5,
-  ShipClass.Scout: 0.5,
-  ShipClass.TroopTransport: 0.5,
-  ShipClass.Fighter: 0.5
-}.toTable
+proc getScoreFromConfig(scores: ShipClassScores, unit: ShipClass): float =
+  ## Helper to extract score for a ship class from config ShipClassScores
+  case unit
+  of ShipClass.ETAC: scores.etac
+  of ShipClass.Destroyer: scores.destroyer
+  of ShipClass.Frigate: scores.frigate
+  of ShipClass.Corvette: scores.corvette
+  of ShipClass.Scout: scores.scout
+  of ShipClass.LightCruiser: scores.light_cruiser
+  of ShipClass.Cruiser: scores.cruiser
+  of ShipClass.Raider: scores.raider
+  of ShipClass.Battlecruiser: scores.battlecruiser
+  of ShipClass.HeavyCruiser: scores.heavy_cruiser
+  of ShipClass.Battleship: scores.battleship
+  of ShipClass.Dreadnought: scores.dreadnought
+  of ShipClass.SuperDreadnought: scores.super_dreadnought
+  of ShipClass.Carrier: scores.carrier
+  of ShipClass.SuperCarrier: scores.super_carrier
+  of ShipClass.PlanetBreaker: scores.planet_breaker
+  of ShipClass.TroopTransport: scores.troop_transport
+  of ShipClass.Fighter: scores.fighter
 
 # ============================================================================
 # SCORING FUNCTIONS
@@ -152,19 +55,24 @@ proc getActAppropriatenessScore(
 ): float =
   ## Get Act appropriateness score for unit (0.0 - 4.0 points)
   ## Units appropriate for current Act score higher
-  if ActAppropriatenessScores.hasKey(currentAct) and
-     ActAppropriatenessScores[currentAct].hasKey(unit):
-    return ActAppropriatenessScores[currentAct][unit]
-  else:
-    return 0.0
+  ## Scores loaded from config/rba.toml [domestikos.unit_priorities.act*]
+  let scores = case currentAct
+    of ai_common_types.GameAct.Act1_LandGrab:
+      globalRBAConfig.domestikos.unit_priorities.act1_land_grab
+    of ai_common_types.GameAct.Act2_RisingTensions:
+      globalRBAConfig.domestikos.unit_priorities.act2_rising_tensions
+    of ai_common_types.GameAct.Act3_TotalWar:
+      globalRBAConfig.domestikos.unit_priorities.act3_total_war
+    of ai_common_types.GameAct.Act4_Endgame:
+      globalRBAConfig.domestikos.unit_priorities.act4_endgame
+
+  return getScoreFromConfig(scores, unit)
 
 proc getStrategicValueScore(unit: ShipClass): float =
   ## Get strategic value score for unit (0.0 - 2.0 points)
   ## Capital > Medium > Escort > Light
-  if StrategicValueScores.hasKey(unit):
-    return StrategicValueScores[unit]
-  else:
-    return 0.0
+  ## Scores loaded from config/rba.toml [domestikos.unit_priorities.strategic_values]
+  return getScoreFromConfig(globalRBAConfig.domestikos.unit_priorities.strategic_values, unit)
 
 proc getBudgetEfficiencyScore(unit: ShipClass, budget: int): float =
   ## Get budget efficiency score (0.0 - 1.0 points)

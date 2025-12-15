@@ -20,6 +20,21 @@ import ../../../engine/research/types as res_types
 import ../../../engine/research/advancement  # For max tech level constants
 import ../controller_types
 import ../shared/intelligence_types  # For RequirementPriority, ResearchPriority
+import ../config  # For globalRBAConfig
+
+proc applyTechFieldAllocation(alloc: TechFieldAllocation, techBudget: int): Table[TechField, int] =
+  ## Convert TechFieldAllocation percentages to actual PP amounts
+  ## Returns Table with tech field allocations
+  result = initTable[TechField, int]()
+  result[TechField.WeaponsTech] = int(float(techBudget) * alloc.weapons_tech)
+  result[TechField.ConstructionTech] = int(float(techBudget) * alloc.construction_tech)
+  result[TechField.CloakingTech] = int(float(techBudget) * alloc.cloaking_tech)
+  result[TechField.ElectronicIntelligence] = int(float(techBudget) * alloc.electronic_intelligence)
+  result[TechField.TerraformingTech] = int(float(techBudget) * alloc.terraforming_tech)
+  result[TechField.ShieldTech] = int(float(techBudget) * alloc.shield_tech)
+  result[TechField.CounterIntelligence] = int(float(techBudget) * alloc.counter_intelligence)
+  result[TechField.FighterDoctrine] = int(float(techBudget) * alloc.fighter_doctrine)
+  result[TechField.AdvancedCarrierOps] = int(float(techBudget) * alloc.advanced_carrier_ops)
 
 proc allocateResearch*(
   controller: AIController,
@@ -68,56 +83,39 @@ proc allocateResearch*(
             &"(maxed={elMaxed}), SL={currentSL}/{maxScienceLevel} (maxed={slMaxed})")
 
   # Distribute research budget across EL/SL/TRP based on strategy
-  if p.techPriority > 0.6:
-    # Heavy research investment - balance across all three categories
-    result.economic = researchBudget div 3        # 33% to EL
-    result.science = researchBudget div 4         # 25% to SL
+  # Configuration from config/rba.toml [logothete.allocation] and [logothete.tech_allocations]
+  let cfg = globalRBAConfig.logothete.tech_allocations
+
+  if p.techPriority > cfg.tech_priority_threshold:
+    # Heavy research investment - balance across all three categories (Act 1-2 ratios)
+    result.economic = int(float(researchBudget) * globalRBAConfig.logothete.allocation.act1_economic_ratio)
+    result.science = int(float(researchBudget) * globalRBAConfig.logothete.allocation.act1_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
 
-    if p.aggression > 0.5:
+    if p.aggression > cfg.aggression_peaceful:
       # Aggressive: weapons + cloaking + construction + FD
-      result.technology[TechField.WeaponsTech] = techBudget * 3 div 10      # 30%
-      result.technology[TechField.ConstructionTech] = techBudget * 2 div 10  # 20%
-      result.technology[TechField.CloakingTech] = techBudget * 2 div 10      # 20%
-      result.technology[TechField.ElectronicIntelligence] = techBudget div 10  # 10%
-      result.technology[TechField.FighterDoctrine] = techBudget div 10       # 10%
-      result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
+      result.technology = applyTechFieldAllocation(cfg.tech_priority_aggressive, techBudget)
     else:
       # Peaceful: infrastructure + counter-intel + terraforming
-      result.technology[TechField.ConstructionTech] = techBudget * 3 div 10  # 30%
-      result.technology[TechField.TerraformingTech] = techBudget * 2 div 10  # 20%
-      result.technology[TechField.ElectronicIntelligence] = techBudget div 10  # 10%
-      result.technology[TechField.ShieldTech] = techBudget * 2 div 10        # 20%
-      result.technology[TechField.CounterIntelligence] = techBudget div 10   # 10%
-      result.technology[TechField.FighterDoctrine] = techBudget div 10       # 10%
-  elif p.economicFocus > 0.7:
-    # Economic focus: prioritize EL/SL for growth + infrastructure
-    result.economic = researchBudget * 2 div 5   # 40% to EL
-    result.science = researchBudget * 2 div 5    # 40% to SL
+      result.technology = applyTechFieldAllocation(cfg.tech_priority_peaceful, techBudget)
+  elif p.economicFocus > cfg.economic_focus_threshold:
+    # Economic focus: prioritize EL/SL for growth + infrastructure (Act 3 balanced)
+    result.economic = int(float(researchBudget) * globalRBAConfig.logothete.allocation.act3_economic_ratio)
+    result.science = int(float(researchBudget) * globalRBAConfig.logothete.allocation.act3_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
-    result.technology[TechField.ConstructionTech] = techBudget * 4 div 10  # 40%
-    result.technology[TechField.TerraformingTech] = techBudget * 3 div 10  # 30%
-    result.technology[TechField.FighterDoctrine] = techBudget * 2 div 10   # 20%
-    result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
-  elif p.aggression > 0.7:
-    # Aggressive: minimal EL/SL, heavy military tech focus
-    result.economic = researchBudget div 5       # 20% to EL
-    result.science = researchBudget div 5        # 20% to SL
+    result.technology = applyTechFieldAllocation(cfg.economic_focus, techBudget)
+  elif p.aggression > cfg.aggression_threshold:
+    # Aggressive: minimal EL/SL, heavy military tech focus (war economy)
+    result.economic = int(float(researchBudget) * globalRBAConfig.logothete.allocation.war_economic_ratio)
+    result.science = int(float(researchBudget) * globalRBAConfig.logothete.allocation.war_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
-    result.technology[TechField.WeaponsTech] = techBudget * 4 div 10       # 40%
-    result.technology[TechField.ConstructionTech] = techBudget * 3 div 10  # 30%
-    result.technology[TechField.FighterDoctrine] = techBudget * 2 div 10   # 20%
-    result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
+    result.technology = applyTechFieldAllocation(cfg.war_economy, techBudget)
   else:
-    # Balanced strategy across all tech
-    result.economic = researchBudget div 3
-    result.science = researchBudget div 3
+    # Balanced strategy across all tech (default allocation)
+    result.economic = int(float(researchBudget) * globalRBAConfig.logothete.allocation.default_economic_ratio)
+    result.science = int(float(researchBudget) * globalRBAConfig.logothete.allocation.default_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
-    result.technology[TechField.ConstructionTech] = techBudget * 3 div 10  # 30%
-    result.technology[TechField.WeaponsTech] = techBudget * 2 div 10       # 20%
-    result.technology[TechField.FighterDoctrine] = techBudget * 2 div 10   # 20%
-    result.technology[TechField.TerraformingTech] = techBudget * 2 div 10  # 20%
-    result.technology[TechField.AdvancedCarrierOps] = techBudget div 10    # 10%
+    result.technology = applyTechFieldAllocation(cfg.balanced_default, techBudget)
 
   # INTELLIGENCE-DRIVEN TECH GAP BOOSTING (Phase C)
   # Boost allocation to critical tech gaps identified by Drungarius
