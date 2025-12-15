@@ -409,7 +409,11 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
     10.0  # They have no economy
 
   # Find mutual enemies
-  result.mutualEnemies = findMutualEnemies(filtered, controller.houseId, targetHouse)
+  if controller.intelligenceSnapshot.isSome:
+    result.mutualEnemies = findMutualEnemiesWithIntelligence(filtered, controller.houseId, targetHouse, controller.intelligenceSnapshot.get())
+  else:
+    # Fallback to non-intel version if snapshot is not available
+    result.mutualEnemies = findMutualEnemies(filtered, controller.houseId, targetHouse)
 
   # Estimate violation risk
   result.violationRisk = estimateViolationRisk(filtered, targetHouse)
