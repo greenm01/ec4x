@@ -558,12 +558,25 @@ proc assessExpansionNeeds*(
          queuedProject.itemId == "ETAC":
         etacCount += 1
 
-  # Smart targeting: Build ETACs based on uncolonized systems
-  # Dynamic cap: min(playerCount, uncolonizedSystems/2)
-  # Scales down as map fills, prevents overproduction
+  # Smart targeting: Build ETACs based on uncolonized systems and map size
+  # Dynamic cap scales with map rings: N players = N rings + 1 center hub
+  # Formula accounts for 3 PTU ETAC capacity (each ETAC colonizes 3 systems)
+  # Reduced from ~5 per house (for 2 PTU) to ~3 per house (for 3 PTU)
   let cfg = globalRBAConfig.domestikos
-  let dynamicCap = min(filtered.starMap.playerCount,
-                       max(1, uncolonizedVisible div 2))
+  let ringsCount = filtered.starMap.numRings.int
+  let baseCapPerPlayer = max(3, (ringsCount + 2) div 2)  # Adjusted for 3 PTU capacity
+
+  # During Act 1, maintain production as long as ANY systems remain uncolonized
+  # Acts 2+: Scale down based on remaining systems
+  let dynamicCap = if currentAct == ai_common_types.GameAct.Act1_LandGrab:
+    # Act 1: Maintain full ETAC fleet until land grab complete
+    # Cap is PER HOUSE (not multiplied by playerCount)
+    baseCapPerPlayer
+  else:
+    # Acts 2+: Scale based on remaining uncolonized systems
+    min(baseCapPerPlayer,
+        max(2, uncolonizedVisible div 4))
+
   let targetETACs = if uncolonizedVisible > 0:
     min(dynamicCap, etacCount + 2)  # Never queue more than +2 at once
   else:
