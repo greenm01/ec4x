@@ -184,6 +184,13 @@ proc selectCounterTech*(enemyHouse, enemyTechLevels, ourTechLevels, intelSnapsho
 * **Infrastructure priority boost:** 1.5-2.0x when significantly behind
 * Compares: production output, shipyard counts, economic capabilities
 
+**7.3: Centralized Expansion Management (ETAC Fleets)**
+* **Responsibility shifted from Tactical/Domestikos to Eparch**
+* Eparch now generates all colonization orders for ETAC fleets in Phase 1
+* Handles new ETAC construction requirements as part of economic planning
+* Ensures aggressive, parallel colonization in Act 1 ("Land Grab")
+* Aligns expansion with economic strategy (not military)
+
 **Key Functions:**
 ```nim
 proc findBestShipyardColony*(..., intelSnapshot) -> Option[SystemId]
@@ -196,6 +203,7 @@ proc assessCompetitiveEconomicPosition*(ourHouse, intelSnapshot) -> EconomicComp
 * Infrastructure placement considers threat levels (avoid building in war zones)
 * Economic strategy responds to competitive pressure (boost when behind)
 * No more expensive starbases in threatened colonies
+* **ETAC fleet management centralized under Eparch** (economic expansion, not military)
 
 ==== Phase 8: Protostrator (Diplomatic Advisor) Enhancements
 
@@ -264,6 +272,7 @@ proc assessDiplomaticUrgency*(filtered, intelSnapshot) -> seq[ThreatIndicator]
 * Improved threat awareness (detect fleet buildups and escalations)
 * Proactive counter-intelligence (respond to espionage pressure)
 * Research priorities driven by competitive landscape
+* **More aggressive and coordinated early-game expansion** driven by Eparch
 
 ---
 
