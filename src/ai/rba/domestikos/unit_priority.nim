@@ -58,13 +58,13 @@ proc getActAppropriatenessScore(
   ## Scores loaded from config/rba.toml [domestikos.unit_priorities.act*]
   let scores = case currentAct
     of ai_common_types.GameAct.Act1_LandGrab:
-      globalRBAConfig.domestikos.unit_priorities.act1_land_grab
+      globalRBAConfig.domestikos_unit_priorities_act1_land_grab
     of ai_common_types.GameAct.Act2_RisingTensions:
-      globalRBAConfig.domestikos.unit_priorities.act2_rising_tensions
+      globalRBAConfig.domestikos_unit_priorities_act2_rising_tensions
     of ai_common_types.GameAct.Act3_TotalWar:
-      globalRBAConfig.domestikos.unit_priorities.act3_total_war
+      globalRBAConfig.domestikos_unit_priorities_act3_total_war
     of ai_common_types.GameAct.Act4_Endgame:
-      globalRBAConfig.domestikos.unit_priorities.act4_endgame
+      globalRBAConfig.domestikos_unit_priorities_act4_endgame
 
   return getScoreFromConfig(scores, unit)
 
@@ -72,7 +72,7 @@ proc getStrategicValueScore(unit: ShipClass): float =
   ## Get strategic value score for unit (0.0 - 2.0 points)
   ## Capital > Medium > Escort > Light
   ## Scores loaded from config/rba.toml [domestikos.unit_priorities.strategic_values]
-  return getScoreFromConfig(globalRBAConfig.domestikos.unit_priorities.strategic_values, unit)
+  return getScoreFromConfig(globalRBAConfig.domestikos_unit_priorities_strategic_values, unit)
 
 proc getBudgetEfficiencyScore(unit: ShipClass, budget: int): float =
   ## Get budget efficiency score (0.0 - 1.0 points)
