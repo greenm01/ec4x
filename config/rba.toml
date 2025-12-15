@@ -343,6 +343,133 @@ priority_acceptable_close = 50.0     # Acceptable location, close distance
 priority_acceptable_far = 30.0       # Acceptable location, far distance
 priority_owned_system = 200.0        # Strong preference for owned systems
 
+# ==============================================================================
+# UNIT PRIORITY SCORING
+# ==============================================================================
+# Act-aware priority scores for ship construction (src/ai/rba/domestikos/unit_priority.nim)
+# Used by build_requirements.nim capacity filler to select optimal units
+#
+# Scoring breakdown:
+#   - Act appropriateness: 0.0 - 4.0 points (defined below per Act)
+#   - Strategic value: 0.0 - 2.0 points (defined in strategic_values)
+#   - Budget efficiency: 0.0 - 1.0 points (calculated at runtime)
+#
+# Total max score: 7.0 points
+
+[domestikos.unit_priorities.act1_land_grab]
+# Act 1: Land Grab - Expansion and colony defense
+# Priority: ETACs, Escorts, Light ships
+etac = 4.0
+destroyer = 3.0
+frigate = 3.0
+corvette = 3.0
+scout = 2.5
+light_cruiser = 2.0
+fighter = 2.0
+cruiser = 1.0
+raider = 1.0
+battlecruiser = 0.5
+heavy_cruiser = 0.5
+battleship = 0.5
+dreadnought = 0.5
+super_dreadnought = 0.5
+carrier = 0.5
+super_carrier = 0.5
+planet_breaker = 0.5
+troop_transport = 0.0  # HARD GATE - Act 2+ only
+
+[domestikos.unit_priorities.act2_rising_tensions]
+# Act 2: Rising Tensions - Military buildup with medium capitals
+# Priority: Cruisers, Battlecruisers, Carriers
+cruiser = 4.0
+light_cruiser = 4.0
+battlecruiser = 4.0
+carrier = 3.5
+heavy_cruiser = 3.0
+raider = 2.5
+fighter = 2.5
+destroyer = 2.0
+frigate = 2.0
+etac = 2.0
+scout = 2.0
+troop_transport = 2.0
+corvette = 1.5
+battleship = 1.5
+super_carrier = 1.5
+dreadnought = 1.0
+super_dreadnought = 1.0
+planet_breaker = 1.0
+
+[domestikos.unit_priorities.act3_total_war]
+# Act 3: Total War - Heavy capitals and decisive battles
+# Priority: Battleships, Dreadnoughts, Super Carriers
+battleship = 4.0
+dreadnought = 4.0
+super_carrier = 3.5
+heavy_cruiser = 3.0
+cruiser = 2.5
+battlecruiser = 2.5
+carrier = 2.5
+super_dreadnought = 2.0
+raider = 2.0
+planet_breaker = 2.0
+light_cruiser = 2.0
+fighter = 2.0
+destroyer = 1.5
+troop_transport = 1.5
+frigate = 1.0
+corvette = 1.0
+scout = 1.0
+etac = 0.5
+
+[domestikos.unit_priorities.act4_endgame]
+# Act 4: Endgame - Ultimate capitals and siege warfare
+# Priority: Super Dreadnoughts, Planet Breakers
+super_dreadnought = 4.0
+dreadnought = 4.0
+planet_breaker = 3.5
+battleship = 3.0
+super_carrier = 3.0
+heavy_cruiser = 2.5
+battlecruiser = 2.0
+carrier = 2.0
+cruiser = 1.5
+raider = 1.5
+fighter = 1.5
+light_cruiser = 1.0
+troop_transport = 1.0
+destroyer = 0.5
+frigate = 0.5
+corvette = 0.5
+etac = 0.5
+scout = 0.5
+
+[domestikos.unit_priorities.strategic_values]
+# Strategic value scoring (0.0 - 2.0 points)
+# Independent of Act - represents inherent combat value
+# Capital Ships (2.0 points) - Ultimate firepower
+super_dreadnought = 2.0
+dreadnought = 2.0
+battleship = 2.0
+super_carrier = 2.0
+# Medium Capitals (1.5 points) - Force projection
+battlecruiser = 1.5
+heavy_cruiser = 1.5
+cruiser = 1.5
+carrier = 1.5
+# Escorts & Specialized (1.0 points) - Core fleet
+destroyer = 1.0
+light_cruiser = 1.0
+frigate = 1.0
+etac = 1.0
+raider = 1.0
+planet_breaker = 1.0
+# Light Units (0.5 points) - Support roles
+corvette = 0.5
+scout = 0.5
+troop_transport = 0.5
+fighter = 0.5
+
 # ZeroTurnCommand Fleet Management (Immediate-execution fleet operations)
 fleet_management_enabled = true     # Enable merge/detach/transfer using ZeroTurnCommand API
                                     # Act 1: Detach ships for exploration coverage
@@ -563,6 +690,151 @@ research_budget_act3 = 10               # Act 3: Increased tech tracking
 research_budget_act4 = 15               # Act 4: Maximum tech intelligence
 
 # ==============================================================================
+# ESPIONAGE OPERATIONS (src/ai/rba/drungarius/operations.nim)
+# ==============================================================================
+
+[drungarius.operations]
+# EBP (Espionage Budget Points) thresholds for operations
+ebp_intelligence_theft = 8              # Steal enemy intel database
+ebp_assassination = 10                  # Assassinate enemy leaders
+ebp_sabotage_high = 7                   # High-value sabotage
+ebp_plant_disinformation = 6            # Corrupt enemy intelligence
+ebp_economic_manipulation = 6           # Economic warfare
+ebp_cyber_attack = 6                    # Soften defenses
+ebp_tech_theft = 5                      # Steal research (default)
+ebp_psyops_campaign = 3                 # Economic harassment
+ebp_sabotage_low = 2                    # Minimal sabotage
+
+# CIP (Counter-Intelligence Points) thresholds
+cip_minimum_counter_intel = 4           # Minimum CIP for counter-intel sweep
+cip_activation_threshold = 4            # Projected CIP to activate counter-intel
+
+# Prestige-based decision thresholds
+prestige_gap_assassination = 300        # Prestige gap to consider assassination
+prestige_gap_sabotage_high = 200        # Prestige gap for high sabotage
+prestige_gap_intelligence_theft = 100   # Prestige gap for intel theft targeting
+prestige_gap_disinformation = 200       # Prestige gap for disinformation targeting
+prestige_high_target_threshold = 900    # Protect when prestige > this
+prestige_safety_threshold = 50          # Don't do espionage if prestige < this
+
+# Operation chance multipliers (0.0-1.0, rolled per operation)
+chance_intelligence_theft = 0.15        # 15% chance when EBP available
+chance_assassination = 0.30             # 30% chance vs prestige leaders
+chance_sabotage_high = 0.40             # 40% chance vs rich enemies
+chance_plant_disinformation = 0.20      # 20% chance when available
+chance_economic_manipulation = 0.50     # 50% for economic-focused AI
+chance_psyops_campaign = 0.50           # 50% for cheap harassment
+
+# Target selection scoring weights
+target_prestige_gap_multiplier = 0.01   # +1 priority per 100 prestige gap
+target_enemy_priority_boost = 200.0     # Major boost for diplomatic enemies
+target_random_factor_max = 50.0         # Prevent predictability (0-50 random)
+
+# Personality-based espionage frequency (% chance per turn)
+frequency_espionage_focused = 0.70      # 70% for risk-tolerant + low economic
+frequency_economic_focused = 0.40       # 40% for high economic focus
+frequency_aggressive = 0.30             # 30% for aggressive military AI
+frequency_balanced = 0.50               # 50% for balanced AI
+
+# Personality thresholds for frequency determination
+frequency_risk_tolerance_threshold = 0.6   # Above this = espionage-focused
+frequency_economic_focus_threshold = 0.7   # Above this = economic-focused
+frequency_aggression_threshold = 0.7       # Above this = aggressive (less espionage)
+frequency_economic_focus_cap = 0.5         # Below this for espionage-focused check
+
+# Counter-intel periodic sweep
+counter_intel_periodic_frequency = 5    # Sweep every N turns (defensive AI)
+counter_intel_aggression_threshold = 0.5  # Below this = defensive (periodic sweeps)
+
+# ==============================================================================
+# ESPIONAGE REQUIREMENTS (src/ai/rba/drungarius/requirements.nim)
+# ==============================================================================
+
+[drungarius.requirements]
+# Target scoring normalization divisors
+tech_value_divisor = 10.0               # Normalize tech level differences
+economic_value_divisor = 100.0          # Normalize production values
+military_threat_divisor = 200.0         # Normalize fleet strength
+
+# Detection risk CI weakness scores (0.0-3.0)
+ci_weakness_unknown = 2.5               # Unknown target risk
+ci_weakness_low = 3.0                   # Easy target
+ci_weakness_moderate = 1.5              # Moderate risk
+ci_weakness_high = 0.5                  # Risky target
+ci_weakness_critical = 0.1              # Very risky (almost avoid)
+ci_weakness_default = 2.0               # Default assumption
+
+# Diplomatic priority weights
+diplomatic_weight_enemy = 3.0           # Open war = highest priority
+diplomatic_weight_hostile = 2.0         # Hostile = medium-high
+diplomatic_weight_neutral = 1.0         # Neutral = baseline
+
+# Multi-factor score weights (personality-adjusted)
+score_weight_tech = 1.0                 # Tech always valuable
+score_weight_economic = 1.5             # Economic focus amplifies
+score_weight_military = 1.5             # Aggression amplifies
+score_weight_ci_weakness = 1.2          # Risk-averse prefer easy
+score_weight_diplomatic = 2.0           # Diplomacy always important
+
+# Sabotage bottleneck scoring
+sabotage_shipyard_weight = 100          # Points per shipyard
+sabotage_project_weight = 20            # Points per active project
+sabotage_activity_very_high = 80        # Very high construction activity
+sabotage_activity_high = 50             # High activity
+sabotage_activity_moderate = 20         # Moderate activity
+sabotage_activity_low = 5               # Low activity
+sabotage_infrastructure_unit_value = 10 # Points per IU
+sabotage_starbase_value = 50            # Points per starbase
+sabotage_shipyard_concentration = 2     # Threshold for concentration (yards)
+
+# Counter-intelligence assessment
+ci_detection_heavy_activity = 3         # Activity points for High/Critical risk
+ci_detection_moderate_activity = 1      # Activity points for Moderate risk
+ci_total_threat_threshold = 5           # Significant espionage threat
+ci_emergency_cip_boost_max = 3          # Max emergency CIP boost
+ci_pp_per_point = 40                    # PP cost per EBP/CIP point
+ci_significant_activity = 2             # Threshold for counter-intel sweep
+
+# EBP/CIP investment priorities
+ebp_critical_threshold = 3              # Below this = Critical priority
+ebp_high_gap_threshold = 5              # Gap for High priority investment
+cip_high_gap_threshold = 5              # Gap for High priority investment
+cip_high_priority_threshold = 5         # For fallback CI sweeps
+cip_risk_averse_threshold = 10          # For risk-averse CI maintenance
+
+# Act 3 war intensity bonuses
+act3_war_ebp_bonus = 5                  # +5 EBP for war intensity
+act3_war_cip_bonus = 2                  # +2 CIP for tech tracking
+
+# Operation EBP thresholds (requirements generation)
+req_ebp_sabotage_bottleneck = 7         # For economic bottleneck sabotage
+req_ebp_secondary_sabotage = 12         # For secondary bottleneck target
+req_ebp_operations_vs_enemies = 8       # For intelligence theft operations
+req_ebp_disinformation = 6              # For disinformation ops
+req_ebp_economic_manipulation = 6       # For economic manipulation
+req_ebp_cyber_attack = 5                # For cyber attacks
+req_ebp_assassination = 10              # For assassination (luxury op)
+
+# Operation cost estimates (PP)
+cost_sabotage = 50                      # Sabotage operation cost
+cost_intelligence_theft = 40            # Intelligence theft cost
+cost_disinformation = 35                # Disinformation cost
+cost_economic_manipulation = 35         # Economic manipulation cost
+cost_cyber_attack = 30                  # Cyber attack cost
+cost_assassination = 60                 # Assassination cost (expensive)
+cost_counter_intel_sweep = 4            # Counter-intel sweep cost
+
+# Personality thresholds for requirements
+aggression_secondary_sabotage = 0.6     # For secondary sabotage target
+aggression_disinformation = 0.6         # For disinformation operations
+aggression_assassination = 0.8          # For assassination (very aggressive)
+economic_focus_manipulation = 0.6       # For economic manipulation
+risk_tolerance_ci_maintenance = 0.4     # Below this = maintain CI posture
+
+# Prestige awareness (Gap 6)
+prestige_penalty_threshold_ratio = 0.05 # 5% of budget threshold
+
+# ==============================================================================
 # BASILEUS CONFIGURATION (Decision Mediator)
 # ==============================================================================
 # Personality-driven advisor weight adjustments
@@ -752,6 +1024,85 @@ default_science_ratio = 0.33        # 33% to SL
 # Counter-technology response parameters
 enemy_advantage_critical = 3        # Enemy 3+ levels ahead = critical
 enemy_advantage_high = 2            # Enemy 2+ levels ahead = high priority
+
+# ==============================================================================
+# TECHNOLOGY FIELD ALLOCATIONS
+# ==============================================================================
+# Personality-driven tech field allocation percentages (src/ai/rba/logothete/allocation.nim)
+# After EL/SL split, remaining budget (TRP) is allocated across 9 tech fields
+# Percentages as ratios (0.0-1.0) that must sum to ~1.0 per strategy
+
+[logothete.tech_allocations]
+# Personality thresholds for strategy selection
+tech_priority_threshold = 0.6       # High tech priority cutoff
+economic_focus_threshold = 0.7      # High economic focus cutoff
+aggression_threshold = 0.7          # High aggression cutoff
+aggression_peaceful = 0.5           # Threshold for peaceful vs aggressive split
+
+# Tech Priority + Aggressive Strategy (techPriority > 0.6, aggression > 0.5)
+# Focus: Weapons, Construction, Cloaking, FD
+[logothete.tech_allocations.tech_priority_aggressive]
+weapons_tech = 0.30                 # 30% - Primary offensive tech
+construction_tech = 0.20            # 20% - Build capacity for war fleet
+cloaking_tech = 0.20                # 20% - Stealth operations
+electronic_intelligence = 0.10      # 10% - Intel gathering
+fighter_doctrine = 0.10             # 10% - Carrier operations
+advanced_carrier_ops = 0.10         # 10% - Enhanced carrier capability
+terraforming_tech = 0.0             # 0% - Not priority for aggression
+shield_tech = 0.0                   # 0% - Offense over defense
+counter_intelligence = 0.0          # 0% - Not priority
+
+# Tech Priority + Peaceful Strategy (techPriority > 0.6, aggression <= 0.5)
+# Focus: Infrastructure, Counter-intel, Terraforming
+[logothete.tech_allocations.tech_priority_peaceful]
+construction_tech = 0.30            # 30% - Infrastructure focus
+terraforming_tech = 0.20            # 20% - Peaceful expansion
+shield_tech = 0.20                  # 20% - Defensive technology
+electronic_intelligence = 0.10      # 10% - Intel gathering
+counter_intelligence = 0.10         # 10% - Defensive espionage
+fighter_doctrine = 0.10             # 10% - Carrier operations
+weapons_tech = 0.0                  # 0% - Not priority for peaceful
+cloaking_tech = 0.0                 # 0% - Not priority
+advanced_carrier_ops = 0.0          # 0% - Minimal carrier focus
+
+# Economic Focus Strategy (economicFocus > 0.7)
+# Focus: Construction, Terraforming, light carrier support
+[logothete.tech_allocations.economic_focus]
+construction_tech = 0.40            # 40% - Maximum build capacity
+terraforming_tech = 0.30            # 30% - Colony development
+fighter_doctrine = 0.20             # 20% - Carrier for defense
+advanced_carrier_ops = 0.10         # 10% - Enhanced carriers
+weapons_tech = 0.0                  # 0% - Not economic priority
+cloaking_tech = 0.0                 # 0% - Not economic priority
+electronic_intelligence = 0.0       # 0% - Not economic priority
+shield_tech = 0.0                   # 0% - Not economic priority
+counter_intelligence = 0.0          # 0% - Not economic priority
+
+# War Economy Strategy (aggression > 0.7)
+# Focus: Weapons, Construction for warships, carrier operations
+[logothete.tech_allocations.war_economy]
+weapons_tech = 0.40                 # 40% - Maximum offensive power
+construction_tech = 0.30            # 30% - Build war fleet
+fighter_doctrine = 0.20             # 20% - Carrier strike capability
+advanced_carrier_ops = 0.10         # 10% - Enhanced carriers
+cloaking_tech = 0.0                 # 0% - Not priority in total war
+electronic_intelligence = 0.0       # 0% - Not priority
+terraforming_tech = 0.0             # 0% - Not priority in war
+shield_tech = 0.0                   # 0% - Offense over defense
+counter_intelligence = 0.0          # 0% - Not priority
+
+# Balanced/Default Strategy (fallback)
+# Focus: Construction, Weapons, Carriers, Terraforming
+[logothete.tech_allocations.balanced_default]
+construction_tech = 0.30            # 30% - Infrastructure foundation
+weapons_tech = 0.20                 # 20% - Moderate offense
+fighter_doctrine = 0.20             # 20% - Carrier operations
+terraforming_tech = 0.20            # 20% - Colony development
+advanced_carrier_ops = 0.10         # 10% - Carrier support
+cloaking_tech = 0.0                 # 0% - Not balanced priority
+electronic_intelligence = 0.0       # 0% - Not balanced priority
+shield_tech = 0.0                   # 0% - Not balanced priority
+counter_intelligence = 0.0          # 0% - Not balanced priority
 
 # ==============================================================================
 # GOAP STRATEGIC PLANNING
