@@ -45,7 +45,7 @@ proc scoreEspionageTarget*(
 
   result.houseId = targetHouse
   result.score = 0.0
-  let cfg = globalRBAConfig.drungarius.requirements
+  let cfg = globalRBAConfig.drungarius_requirements
 
   # 1. Tech Value: Target houses ahead in tech (steal research)
   result.techValue = 0.0
@@ -205,7 +205,7 @@ proc selectSabotageBottlenecks*(
 
   result = @[]
   var scoredTargets: seq[SabotageTarget] = @[]
-  let cfg = globalRBAConfig.drungarius.requirements
+  let cfg = globalRBAConfig.drungarius_requirements
 
   # Analyze construction activity for shipyard concentrations
   for systemId, activity in intelSnapshot.economic.constructionActivity:
@@ -281,7 +281,7 @@ proc assessCounterIntelligenceNeeds*(
   ## Returns CIP investment and counter-intel sweep requirements
 
   result = @[]
-  let cfg = globalRBAConfig.drungarius.requirements
+  let cfg = globalRBAConfig.drungarius_requirements
 
   # Track detected espionage activity by house
   var espionageActivityByHouse = initTable[HouseId, int]()
@@ -368,7 +368,7 @@ proc generateEspionageRequirements*(
   let p = controller.personality
   let currentEBP = filtered.ownHouse.espionageBudget.ebpPoints
   let currentCIP = filtered.ownHouse.espionageBudget.cipPoints
-  let cfg = globalRBAConfig.drungarius.requirements
+  let cfg = globalRBAConfig.drungarius_requirements
 
   # Check if "MaintainPrestige" GOAP goal is active (Gap 6)
   # TODO: Re-enable once goapPlanTracker is integrated into AIController
